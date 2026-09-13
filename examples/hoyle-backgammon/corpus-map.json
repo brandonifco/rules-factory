@@ -1,6 +1,10 @@
 {
   "schemaVersion": 1,
   "corpus": "hoyle-1909",
+  "baseline": {
+    "contentHash": "5d505fa9f6202340eb55313b8ef607b816087a860d3d51b1bf92b5f65240645e",
+    "hashDerivation": "gutenberg-plain-text-including-boilerplate"
+  },
   "entries": [
     {
       "id": "men-count",

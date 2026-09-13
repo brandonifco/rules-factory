@@ -4,7 +4,19 @@ The interface between reading a corpus and building an engine from it. Everythin
 [method.md](method.md) phases 1–4 produces it; everything in phases 5–8 consumes it.
 
 A map is a list of entries, one per rule the corpus states, plus the manifest of the corpora
-they cite.
+they cite, plus a stamp naming the baseline it was built against:
+
+```json
+{ "schemaVersion": 1, "corpus": "cfr-14-107",
+  "baseline": { "contentHash": "80f6bc4b…", "hashDerivation": "ecfr-versioner-xml",
+                "asOf": "2026-01-01" },
+  "entries": [ … ] }
+```
+
+The stamp is not decoration. A map is true of **one state of one corpus**. Without it, two
+maps cannot be compared, a map cannot be checked against the text it claims to describe, and
+it silently outlives that text. The third trial's differ printed `2020-01-01 -> ?` for
+exactly this reason.
 
 ## Why it exists
 

@@ -2,9 +2,9 @@
   "schemaVersion": 1,
   "corpus": "cfr-14-107",
   "baseline": {
-    "contentHash": "80f6bc4b002df9dcc60a651fec30a2dc3590081cc3e5fd431d9885c69b7ce35e",
+    "contentHash": "8ed5ad4b7d898c28c657a46a110afbc99c006daa7a9808bf4b6caecb0569d66a",
     "hashDerivation": "ecfr-versioner-xml",
-    "asOf": "2026-01-01"
+    "asOf": "2020-01-01"
   },
   "entries": [
     {
@@ -137,8 +137,9 @@
       "scope": "in",
       "clarity": "clear",
       "dependsOn": [],
-      "evidence": "One aircraft; two aircraft; and the same person acting as visual observer for a second.",
-      "status": "mapped"
+      "evidence": "One aircraft; two aircraft; the same person acting as visual observer for a second.",
+      "status": "mapped",
+      "note": "2020 wording bars a person who may 'operate'; the later wording bars one who may 'manipulate flight controls'."
     },
     {
       "id": "airspace-authorized",
@@ -191,24 +192,17 @@
     },
     {
       "id": "night-operation",
-      "name": "Operation at night",
+      "name": "Night operation is prohibited",
       "locator": {
         "sourceId": "cfr-14-107",
         "citation": "\u00a7 107.29(a)"
       },
       "kind": "operation",
       "scope": "in",
-      "clarity": "ambiguous",
-      "dependsOn": [
-        "anti-collision-lighting"
-      ],
-      "evidence": "Night with training and lighting; night without either; and the \u00a7 107.65 training date boundary of April 6, 2021.",
-      "status": "mapped",
-      "ambiguity": {
-        "question": "'Flash rate sufficient to avoid a collision' states no rate. Whether a given light qualifies is not determinable from this corpus.",
-        "fate": "unresolved",
-        "unresolvedReason": "RequiresInterpretation"
-      }
+      "clarity": "clear",
+      "dependsOn": [],
+      "evidence": "Night, and not-night. There is no condition under which night operation is permitted.",
+      "status": "mapped"
     },
     {
       "id": "civil-twilight-operation",
@@ -318,40 +312,25 @@
       "evidence": "The participating-person case, the covered-structure case, and a plain overflight with neither.",
       "status": "mapped",
       "ambiguity": {
-        "question": "'Reasonable protection from a falling small unmanned aircraft' is a judgement; and (c) defers to subpart D, which this map has not covered.",
+        "question": "'Reasonable protection from a falling small unmanned aircraft' is a judgement. There is no third exception in this version.",
         "fate": "unresolved",
         "unresolvedReason": "RequiresInterpretation"
       }
     },
     {
-      "id": "subpart-d-categories",
-      "name": "Operational categories for flight over human beings",
-      "locator": {
-        "sourceId": "cfr-14-107",
-        "citation": "subpart D"
-      },
-      "kind": "operation",
-      "scope": "out",
-      "clarity": "clear",
-      "dependsOn": [],
-      "evidence": "None \u2014 deliberately not covered.",
-      "status": "declined",
-      "note": "Out of scope for this trial, which maps subpart B only. Reachable from \u00a7 107.39(c), so an engine must be able to say OutsideCurrentScope rather than simply lacking it."
-    },
-    {
       "id": "anti-collision-lighting",
-      "name": "Anti-collision lighting is fitted and visible for 3 statute miles",
+      "name": "Anti-collision lighting during civil twilight",
       "locator": {
         "sourceId": "cfr-14-107",
-        "citation": "\u00a7 107.29(a)(2), (b)"
+        "citation": "\u00a7 107.29(b)"
       },
       "kind": "operation",
       "scope": "in",
       "clarity": "clear",
       "dependsOn": [],
-      "evidence": "Fitted and unfitted. The 3 statute mile visibility figure is a value the corpus states plainly.",
+      "evidence": "Fitted and unfitted, for civil twilight only. Visible for at least 3 statute miles.",
       "status": "mapped",
-      "note": "The permission to reduce but not extinguish intensity is the pilot's determination, not a computation. See the trial report."
+      "note": "The permission to reduce intensity is the pilot's determination, not a computation."
     },
     {
       "id": "visual-line-of-sight",
@@ -397,7 +376,7 @@
       "dependsOn": [],
       "evidence": "Each of (a) through (e) asserted and unasserted. (f) is reachable only through subpart D.",
       "status": "mapped",
-      "note": "Six obligations, all assertions about what a person did. The engine records them; it cannot verify any."
+      "note": "Five obligations, (a) through (e). There is no subpart D paragraph at this date."
     }
   ]
 }

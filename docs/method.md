@@ -157,6 +157,15 @@ is ambiguous, and **the implementer does not resolve it.** See Phase 4.
 Be suspicious of "clear". Totality is the claim that needs justifying; ambiguity is the
 default. An entry marked clear should be able to say *why* it is total.
 
+**Clarity belongs to a version of the corpus, not to a rule, and it does not only improve.**
+In the third trial, a flat prohibition on night flight — perfectly clear and trivially
+implementable — was amended into a conditional permission turning on "a flash rate
+sufficient to avoid a collision", which states no rate. The rule became more permissive and
+less determinate at once, so an engine that could answer completely against the older text
+must decline against the newer one, without the engine changing at all. Re-mapping a revised
+corpus must re-ask this question of every entry it touches rather than carrying the previous
+verdict forward.
+
 ## Phase 4 — Decide the ambiguities
 
 An ambiguous entry has exactly two possible fates, and choosing between them is the most
@@ -243,6 +252,28 @@ Be honest about what this proves. Recording a verdict proves accountability — 
 person or agent checked a specific reading against a specific extract. It does not prove the
 reading was right. No mechanism can. What it removes is the ability to skip the step
 silently.
+
+## Re-mapping a revised corpus
+
+A corpus that is revised gets re-mapped, not re-read from scratch. The question becomes
+"what moved", which is markedly cheaper than "what is here" — a maintained map costs far
+less to keep current than to create.
+
+Three things the third trial found, which a re-map must account for:
+
+**A stable id can hide a reversal.** Ids should survive across versions — that is what makes
+two maps comparable at all — but stability is exactly what lets an opposite rule keep its
+name. Diff entry *content*, never the entry list.
+
+**An amendment reaches into sections it did not add.** A new subpart appeared as a third
+exception inside an existing section. Re-mapping only the sections whose text changed caught
+it, because that section's text did change; the hazard is a new section referenced by text
+that did not otherwise move.
+
+**A text diff and a map diff disagree, and both are right.** A section reworded from "may not
+operate" to "may not manipulate flight controls" changed no entry, because the map records
+the rule and not its phrasing. The text diff flags it, the map diff does not, and the mapper
+has to judge — which is the work, and is not automatable by either diff alone.
 
 ## Phase 8 — Close the entry
 

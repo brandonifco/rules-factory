@@ -1,0 +1,416 @@
+<?xml version="1.0"?>
+<DIV5 N="107" TYPE="PART" VOLUME="2" hierarchy_metadata="{&amp;quot;path&amp;quot;:&amp;quot;/on/_SUBSTITUTE_DATE_/title-14/part-107&amp;quot;,&amp;quot;citation&amp;quot;:&amp;quot;14 CFR Part 107&amp;quot;,&amp;quot;alternate_reference&amp;quot;:&amp;quot;FAR Part 107&amp;quot;}">
+<HEAD>PART 107 - SMALL UNMANNED AIRCRAFT SYSTEMS
+</HEAD>
+<AUTH>
+<HED>Authority:</HED><PSPACE>49 U.S.C. 106(f), 40101 note, 40103(b), 44701(a)(5); Sec. 333 of Pub. L. 112-95, 126 Stat. 75.
+</PSPACE></AUTH>
+<SOURCE>
+<HED>Source:</HED><PSPACE>Docket FAA-2015-0150, Amdt. 107-1, 81 FR 42209, June 28, 2016, unless otherwise noted.
+</PSPACE></SOURCE>
+<DIV6 N="A" TYPE="SUBPART" hierarchy_metadata="{&amp;quot;path&amp;quot;:&amp;quot;/on/_SUBSTITUTE_DATE_/title-14/part-107/subpart-A&amp;quot;,&amp;quot;citation&amp;quot;:&amp;quot;14 CFR Part 107 Subpart A&amp;quot;,&amp;quot;alternate_reference&amp;quot;:&amp;quot;FAR Part 107 Subpart A&amp;quot;}">
+<HEAD>Subpart A - General</HEAD>
+<DIV8 N="107.1" TYPE="SECTION" hierarchy_metadata="{&quot;path&quot;:&quot;/on/_SUBSTITUTE_DATE_/title-14/section-107.1&quot;,&quot;citation&quot;:&quot;14 CFR 107.1&quot;,&quot;alternate_reference&quot;:&quot;FAR 107.1&quot;}">
+<HEAD>&#xA7; 107.1 Applicability.</HEAD>
+<P>(a) Except as provided in paragraph (b) of this section, this part applies to the registration, airman certification, and operation of civil small unmanned aircraft systems within the United States.</P>
+<P>(b) This part does not apply to the following:</P>
+<P>(1) Air carrier operations;</P>
+<P>(2) Any aircraft subject to the provisions of part 101 of this chapter; or</P>
+<P>(3) Any operation that a remote pilot in command elects to conduct pursuant to an exemption issued under section 333 of Public Law 112-95, unless otherwise specified in the exemption.</P>
+</DIV8>
+
+<DIV8 N="107.3" TYPE="SECTION" hierarchy_metadata="{&quot;path&quot;:&quot;/on/_SUBSTITUTE_DATE_/title-14/section-107.3&quot;,&quot;citation&quot;:&quot;14 CFR 107.3&quot;,&quot;alternate_reference&quot;:&quot;FAR 107.3&quot;}">
+<HEAD>&#xA7; 107.3 Definitions.</HEAD>
+<P>The following definitions apply to this part. If there is a conflict between the definitions of this part and definitions specified in &#xA7; 1.1 of this chapter, the definitions in this part control for purposes of this part:</P>
+<P><I>Control station</I> means an interface used by the remote pilot to control the flight path of the small unmanned aircraft.</P>
+<P><I>Corrective lenses</I> means spectacles or contact lenses.</P>
+<P><I>Small unmanned aircraft</I> means an unmanned aircraft weighing less than 55 pounds on takeoff, including everything that is on board or otherwise attached to the aircraft.</P>
+<P><I>Small unmanned aircraft system (small UAS)</I> means a small unmanned aircraft and its associated elements (including communication links and the components that control the small unmanned aircraft) that are required for the safe and efficient operation of the small unmanned aircraft in the national airspace system.</P>
+<P><I>Unmanned aircraft</I> means an aircraft operated without the possibility of direct human intervention from within or on the aircraft.</P>
+<P><I>Visual observer</I> means a person who is designated by the remote pilot in command to assist the remote pilot in command and the person manipulating the flight controls of the small UAS to see and avoid other air traffic or objects aloft or on the ground.</P>
+</DIV8>
+
+<DIV8 N="107.5" TYPE="SECTION" hierarchy_metadata="{&quot;path&quot;:&quot;/on/_SUBSTITUTE_DATE_/title-14/section-107.5&quot;,&quot;citation&quot;:&quot;14 CFR 107.5&quot;,&quot;alternate_reference&quot;:&quot;FAR 107.5&quot;}">
+<HEAD>&#xA7; 107.5 Falsification, reproduction or alteration.</HEAD>
+<P>(a) No person may make or cause to be made -</P>
+<P>(1) Any fraudulent or intentionally false record or report that is required to be made, kept, or used to show compliance with any requirement under this part.</P>
+<P>(2) Any reproduction or alteration, for fraudulent purpose, of any certificate, rating, authorization, record or report under this part.</P>
+<P>(b) The commission by any person of an act prohibited under paragraph (a) of this section is a basis for any of the following:</P>
+<P>(1) Denial of an application for a remote pilot certificate or a certificate of waiver,</P>
+<P>(2) Suspension or revocation of any certificate or waiver issued by the Administrator under this part and held by that person; or</P>
+<P>(3) A civil penalty.</P>
+</DIV8>
+
+<DIV8 N="107.7" TYPE="SECTION" hierarchy_metadata="{&quot;path&quot;:&quot;/on/_SUBSTITUTE_DATE_/title-14/section-107.7&quot;,&quot;citation&quot;:&quot;14 CFR 107.7&quot;,&quot;alternate_reference&quot;:&quot;FAR 107.7&quot;}">
+<HEAD>&#xA7; 107.7 Inspection, testing, and demonstration of compliance.</HEAD>
+<P>(a) A remote pilot in command, owner, or person manipulating the flight controls of a small unmanned aircraft system must, upon request, make available to the Administrator:</P>
+<P>(1) The remote pilot certificate with a small UAS rating; and</P>
+<P>(2) Any other document, record, or report required to be kept under the regulations of this chapter.</P>
+<P>(b) The remote pilot in command, visual observer, owner, operator, or person manipulating the flight controls of a small unmanned aircraft system must, upon request, allow the Administrator to make any test or inspection of the small unmanned aircraft system, the remote pilot in command, the person manipulating the flight controls of a small unmanned aircraft system, and, if applicable, the visual observer to determine compliance with this part.</P>
+</DIV8>
+
+<DIV8 N="107.9" TYPE="SECTION" hierarchy_metadata="{&quot;path&quot;:&quot;/on/_SUBSTITUTE_DATE_/title-14/section-107.9&quot;,&quot;citation&quot;:&quot;14 CFR 107.9&quot;,&quot;alternate_reference&quot;:&quot;FAR 107.9&quot;}">
+<HEAD>&#xA7; 107.9 Accident reporting.</HEAD>
+<P>No later than 10 calendar days after an operation that meets the criteria of either paragraph (a) or (b) of this section, a remote pilot in command must report to the FAA, in a manner acceptable to the Administrator, any operation of the small unmanned aircraft involving at least:</P>
+<P>(a) Serious injury to any person or any loss of consciousness; or</P>
+<P>(b) Damage to any property, other than the small unmanned aircraft, unless one of the following conditions is satisfied:</P>
+<P>(1) The cost of repair (including materials and labor) does not exceed $500; or</P>
+<P>(2) The fair market value of the property does not exceed $500 in the event of total loss.</P>
+</DIV8>
+
+</DIV6>
+<DIV6 N="B" TYPE="SUBPART" hierarchy_metadata="{&amp;quot;path&amp;quot;:&amp;quot;/on/_SUBSTITUTE_DATE_/title-14/part-107/subpart-B&amp;quot;,&amp;quot;citation&amp;quot;:&amp;quot;14 CFR Part 107 Subpart B&amp;quot;,&amp;quot;alternate_reference&amp;quot;:&amp;quot;FAR Part 107 Subpart B&amp;quot;}">
+<HEAD>Subpart B - Operating Rules</HEAD>
+<DIV8 N="107.11" TYPE="SECTION" hierarchy_metadata="{&quot;path&quot;:&quot;/on/_SUBSTITUTE_DATE_/title-14/section-107.11&quot;,&quot;citation&quot;:&quot;14 CFR 107.11&quot;,&quot;alternate_reference&quot;:&quot;FAR 107.11&quot;}">
+<HEAD>&#xA7; 107.11 Applicability.</HEAD>
+<P>This subpart applies to the operation of all civil small unmanned aircraft systems subject to this part.</P>
+</DIV8>
+
+<DIV8 N="107.12" TYPE="SECTION" hierarchy_metadata="{&quot;path&quot;:&quot;/on/_SUBSTITUTE_DATE_/title-14/section-107.12&quot;,&quot;citation&quot;:&quot;14 CFR 107.12&quot;,&quot;alternate_reference&quot;:&quot;FAR 107.12&quot;}">
+<HEAD>&#xA7; 107.12 Requirement for a remote pilot certificate with a small UAS rating.</HEAD>
+<P>(a) Except as provided in paragraph (c) of this section, no person may manipulate the flight controls of a small unmanned aircraft system unless:</P>
+<P>(1) That person has a remote pilot certificate with a small UAS rating issued pursuant to subpart C of this part and satisfies the requirements of &#xA7; 107.65; or</P>
+<P>(2) That person is under the direct supervision of a remote pilot in command and the remote pilot in command has the ability to immediately take direct control of the flight of the small unmanned aircraft.</P>
+<P>(b) Except as provided in paragraph (c) of this section, no person may act as a remote pilot in command unless that person has a remote pilot certificate with a small UAS rating issued pursuant to Subpart C of this part and satisfies the requirements of &#xA7; 107.65.</P>
+<P>(c) The Administrator may, consistent with international standards, authorize an airman to operate a civil foreign-registered small unmanned aircraft without an FAA-issued remote pilot certificate with a small UAS rating.</P>
+</DIV8>
+
+<DIV8 N="107.13" TYPE="SECTION" hierarchy_metadata="{&quot;path&quot;:&quot;/on/_SUBSTITUTE_DATE_/title-14/section-107.13&quot;,&quot;citation&quot;:&quot;14 CFR 107.13&quot;,&quot;alternate_reference&quot;:&quot;FAR 107.13&quot;}">
+<HEAD>&#xA7; 107.13 Registration.</HEAD>
+<P>A person operating a civil small unmanned aircraft system for purposes of flight must comply with the provisions of &#xA7; 91.203(a)(2) of this chapter.</P>
+</DIV8>
+
+<DIV8 N="107.15" TYPE="SECTION" hierarchy_metadata="{&quot;path&quot;:&quot;/on/_SUBSTITUTE_DATE_/title-14/section-107.15&quot;,&quot;citation&quot;:&quot;14 CFR 107.15&quot;,&quot;alternate_reference&quot;:&quot;FAR 107.15&quot;}">
+<HEAD>&#xA7; 107.15 Condition for safe operation.</HEAD>
+<P>(a) No person may operate a civil small unmanned aircraft system unless it is in a condition for safe operation. Prior to each flight, the remote pilot in command must check the small unmanned aircraft system to determine whether it is in a condition for safe operation.</P>
+<P>(b) No person may continue flight of the small unmanned aircraft when he or she knows or has reason to know that the small unmanned aircraft system is no longer in a condition for safe operation.</P>
+</DIV8>
+
+<DIV8 N="107.17" TYPE="SECTION" hierarchy_metadata="{&quot;path&quot;:&quot;/on/_SUBSTITUTE_DATE_/title-14/section-107.17&quot;,&quot;citation&quot;:&quot;14 CFR 107.17&quot;,&quot;alternate_reference&quot;:&quot;FAR 107.17&quot;}">
+<HEAD>&#xA7; 107.17 Medical condition.</HEAD>
+<P>No person may manipulate the flight controls of a small unmanned aircraft system or act as a remote pilot in command, visual observer, or direct participant in the operation of the small unmanned aircraft if he or she knows or has reason to know that he or she has a physical or mental condition that would interfere with the safe operation of the small unmanned aircraft system.</P>
+</DIV8>
+
+<DIV8 N="107.19" TYPE="SECTION" hierarchy_metadata="{&quot;path&quot;:&quot;/on/_SUBSTITUTE_DATE_/title-14/section-107.19&quot;,&quot;citation&quot;:&quot;14 CFR 107.19&quot;,&quot;alternate_reference&quot;:&quot;FAR 107.19&quot;}">
+<HEAD>&#xA7; 107.19 Remote pilot in command.</HEAD>
+<P>(a) A remote pilot in command must be designated before or during the flight of the small unmanned aircraft.</P>
+<P>(b) The remote pilot in command is directly responsible for and is the final authority as to the operation of the small unmanned aircraft system.</P>
+<P>(c) The remote pilot in command must ensure that the small unmanned aircraft will pose no undue hazard to other people, other aircraft, or other property in the event of a loss of control of the aircraft for any reason.</P>
+<P>(d) The remote pilot in command must ensure that the small UAS operation complies with all applicable regulations of this chapter.</P>
+<P>(e) The remote pilot in command must have the ability to direct the small unmanned aircraft to ensure compliance with the applicable provisions of this chapter.</P>
+</DIV8>
+
+<DIV8 N="107.21" TYPE="SECTION" hierarchy_metadata="{&quot;path&quot;:&quot;/on/_SUBSTITUTE_DATE_/title-14/section-107.21&quot;,&quot;citation&quot;:&quot;14 CFR 107.21&quot;,&quot;alternate_reference&quot;:&quot;FAR 107.21&quot;}">
+<HEAD>&#xA7; 107.21 In-flight emergency.</HEAD>
+<P>(a) In an in-flight emergency requiring immediate action, the remote pilot in command may deviate from any rule of this part to the extent necessary to meet that emergency.</P>
+<P>(b) Each remote pilot in command who deviates from a rule under paragraph (a) of this section must, upon request of the Administrator, send a written report of that deviation to the Administrator.</P>
+</DIV8>
+
+<DIV8 N="107.23" TYPE="SECTION" hierarchy_metadata="{&quot;path&quot;:&quot;/on/_SUBSTITUTE_DATE_/title-14/section-107.23&quot;,&quot;citation&quot;:&quot;14 CFR 107.23&quot;,&quot;alternate_reference&quot;:&quot;FAR 107.23&quot;}">
+<HEAD>&#xA7; 107.23 Hazardous operation.</HEAD>
+<P>No person may:</P>
+<P>(a) Operate a small unmanned aircraft system in a careless or reckless manner so as to endanger the life or property of another; or</P>
+<P>(b) Allow an object to be dropped from a small unmanned aircraft in a manner that creates an undue hazard to persons or property.</P>
+</DIV8>
+
+<DIV8 N="107.25" TYPE="SECTION" hierarchy_metadata="{&quot;path&quot;:&quot;/on/_SUBSTITUTE_DATE_/title-14/section-107.25&quot;,&quot;citation&quot;:&quot;14 CFR 107.25&quot;,&quot;alternate_reference&quot;:&quot;FAR 107.25&quot;}">
+<HEAD>&#xA7; 107.25 Operation from a moving vehicle or aircraft.</HEAD>
+<P>No person may operate a small unmanned aircraft system&#x2014;</P>
+<P>(a) From a moving aircraft; or</P>
+<P>(b) From a moving land or water-borne vehicle unless the small unmanned aircraft is flown over a sparsely populated area and is not transporting another person's property for compensation or hire.</P>
+</DIV8>
+
+<DIV8 N="107.27" TYPE="SECTION" hierarchy_metadata="{&quot;path&quot;:&quot;/on/_SUBSTITUTE_DATE_/title-14/section-107.27&quot;,&quot;citation&quot;:&quot;14 CFR 107.27&quot;,&quot;alternate_reference&quot;:&quot;FAR 107.27&quot;}">
+<HEAD>&#xA7; 107.27 Alcohol or drugs.</HEAD>
+<P>A person manipulating the flight controls of a small unmanned aircraft system or acting as a remote pilot in command or visual observer must comply with the provisions of &#xA7;&#xA7; 91.17 and 91.19 of this chapter.</P>
+</DIV8>
+
+<DIV8 N="107.29" TYPE="SECTION" hierarchy_metadata="{&quot;path&quot;:&quot;/on/_SUBSTITUTE_DATE_/title-14/section-107.29&quot;,&quot;citation&quot;:&quot;14 CFR 107.29&quot;,&quot;alternate_reference&quot;:&quot;FAR 107.29&quot;}">
+<HEAD>&#xA7; 107.29 Daylight operation.</HEAD>
+<P>(a) No person may operate a small unmanned aircraft system during night.</P>
+<P>(b) No person may operate a small unmanned aircraft system during periods of civil twilight unless the small unmanned aircraft has lighted anti-collision lighting visible for at least 3 statute miles. The remote pilot in command may reduce the intensity of the anti-collision lighting if he or she determines that, because of operating conditions, it would be in the interest of safety to do so.</P>
+<P>(c) For purposes of paragraph (b) of this section, civil twilight refers to the following:</P>
+<P>(1) Except for Alaska, a period of time that begins 30 minutes before official sunrise and ends at official sunrise;</P>
+<P>(2) Except for Alaska, a period of time that begins at official sunset and ends 30 minutes after official sunset; and</P>
+<P>(3) In Alaska, the period of civil twilight as defined in the Air Almanac.</P>
+</DIV8>
+
+<DIV8 N="107.31" TYPE="SECTION" hierarchy_metadata="{&quot;path&quot;:&quot;/on/_SUBSTITUTE_DATE_/title-14/section-107.31&quot;,&quot;citation&quot;:&quot;14 CFR 107.31&quot;,&quot;alternate_reference&quot;:&quot;FAR 107.31&quot;}">
+<HEAD>&#xA7; 107.31 Visual line of sight aircraft operation.</HEAD>
+<P>(a) With vision that is unaided by any device other than corrective lenses, the remote pilot in command, the visual observer (if one is used), and the person manipulating the flight control of the small unmanned aircraft system must be able to see the unmanned aircraft throughout the entire flight in order to:</P>
+<P>(1) Know the unmanned aircraft's location;</P>
+<P>(2) Determine the unmanned aircraft's attitude, altitude, and direction of flight;</P>
+<P>(3) Observe the airspace for other air traffic or hazards; and</P>
+<P>(4) Determine that the unmanned aircraft does not endanger the life or property of another.</P>
+<P>(b) Throughout the entire flight of the small unmanned aircraft, the ability described in paragraph (a) of this section must be exercised by either:</P>
+<P>(1) The remote pilot in command and the person manipulating the flight controls of the small unmanned aircraft system; or</P>
+<P>(2) A visual observer.</P>
+</DIV8>
+
+<DIV8 N="107.33" TYPE="SECTION" hierarchy_metadata="{&quot;path&quot;:&quot;/on/_SUBSTITUTE_DATE_/title-14/section-107.33&quot;,&quot;citation&quot;:&quot;14 CFR 107.33&quot;,&quot;alternate_reference&quot;:&quot;FAR 107.33&quot;}">
+<HEAD>&#xA7; 107.33 Visual observer.</HEAD>
+<P>If a visual observer is used during the aircraft operation, all of the following requirements must be met:</P>
+<P>(a) The remote pilot in command, the person manipulating the flight controls of the small unmanned aircraft system, and the visual observer must maintain effective communication with each other at all times.</P>
+<P>(b) The remote pilot in command must ensure that the visual observer is able to see the unmanned aircraft in the manner specified in &#xA7; 107.31.</P>
+<P>(c) The remote pilot in command, the person manipulating the flight controls of the small unmanned aircraft system, and the visual observer must coordinate to do the following:</P>
+<P>(1) Scan the airspace where the small unmanned aircraft is operating for any potential collision hazard; and</P>
+<P>(2) Maintain awareness of the position of the small unmanned aircraft through direct visual observation.</P>
+</DIV8>
+
+<DIV8 N="107.35" TYPE="SECTION" hierarchy_metadata="{&quot;path&quot;:&quot;/on/_SUBSTITUTE_DATE_/title-14/section-107.35&quot;,&quot;citation&quot;:&quot;14 CFR 107.35&quot;,&quot;alternate_reference&quot;:&quot;FAR 107.35&quot;}">
+<HEAD>&#xA7; 107.35 Operation of multiple small unmanned aircraft.</HEAD>
+<P>A person may not operate or act as a remote pilot in command or visual observer in the operation of more than one unmanned aircraft at the same time.</P>
+</DIV8>
+
+<DIV8 N="107.36" TYPE="SECTION" hierarchy_metadata="{&quot;path&quot;:&quot;/on/_SUBSTITUTE_DATE_/title-14/section-107.36&quot;,&quot;citation&quot;:&quot;14 CFR 107.36&quot;,&quot;alternate_reference&quot;:&quot;FAR 107.36&quot;}">
+<HEAD>&#xA7; 107.36 Carriage of hazardous material.</HEAD>
+<P>A small unmanned aircraft may not carry hazardous material. For purposes of this section, the term hazardous material is defined in 49 CFR 171.8.</P>
+</DIV8>
+
+<DIV8 N="107.37" TYPE="SECTION" hierarchy_metadata="{&quot;path&quot;:&quot;/on/_SUBSTITUTE_DATE_/title-14/section-107.37&quot;,&quot;citation&quot;:&quot;14 CFR 107.37&quot;,&quot;alternate_reference&quot;:&quot;FAR 107.37&quot;}">
+<HEAD>&#xA7; 107.37 Operation near aircraft; right-of-way rules.</HEAD>
+<P>(a) Each small unmanned aircraft must yield the right of way to all aircraft, airborne vehicles, and launch and reentry vehicles. Yielding the right of way means that the small unmanned aircraft must give way to the aircraft or vehicle and may not pass over, under, or ahead of it unless well clear.</P>
+<P>(b) No person may operate a small unmanned aircraft so close to another aircraft as to create a collision hazard.</P>
+</DIV8>
+
+<DIV8 N="107.39" TYPE="SECTION" hierarchy_metadata="{&quot;path&quot;:&quot;/on/_SUBSTITUTE_DATE_/title-14/section-107.39&quot;,&quot;citation&quot;:&quot;14 CFR 107.39&quot;,&quot;alternate_reference&quot;:&quot;FAR 107.39&quot;}">
+<HEAD>&#xA7; 107.39 Operation over human beings.</HEAD>
+<P>No person may operate a small unmanned aircraft over a human being unless that human being is:</P>
+<P>(a) Directly participating in the operation of the small unmanned aircraft; or</P>
+<P>(b) Located under a covered structure or inside a stationary vehicle that can provide reasonable protection from a falling small unmanned aircraft.</P>
+</DIV8>
+
+<DIV8 N="107.41" TYPE="SECTION" hierarchy_metadata="{&quot;path&quot;:&quot;/on/_SUBSTITUTE_DATE_/title-14/section-107.41&quot;,&quot;citation&quot;:&quot;14 CFR 107.41&quot;,&quot;alternate_reference&quot;:&quot;FAR 107.41&quot;}">
+<HEAD>&#xA7; 107.41 Operation in certain airspace.</HEAD>
+<P>No person may operate a small unmanned aircraft in Class B, Class C, or Class D airspace or within the lateral boundaries of the surface area of Class E airspace designated for an airport unless that person has prior authorization from Air Traffic Control (ATC).</P>
+</DIV8>
+
+<DIV8 N="107.43" TYPE="SECTION" hierarchy_metadata="{&quot;path&quot;:&quot;/on/_SUBSTITUTE_DATE_/title-14/section-107.43&quot;,&quot;citation&quot;:&quot;14 CFR 107.43&quot;,&quot;alternate_reference&quot;:&quot;FAR 107.43&quot;}">
+<HEAD>&#xA7; 107.43 Operation in the vicinity of airports.</HEAD>
+<P>No person may operate a small unmanned aircraft in a manner that interferes with operations and traffic patterns at any airport, heliport, or seaplane base.</P>
+</DIV8>
+
+<DIV8 N="107.45" TYPE="SECTION" hierarchy_metadata="{&quot;path&quot;:&quot;/on/_SUBSTITUTE_DATE_/title-14/section-107.45&quot;,&quot;citation&quot;:&quot;14 CFR 107.45&quot;,&quot;alternate_reference&quot;:&quot;FAR 107.45&quot;}">
+<HEAD>&#xA7; 107.45 Operation in prohibited or restricted areas.</HEAD>
+<P>No person may operate a small unmanned aircraft in prohibited or restricted areas unless that person has permission from the using or controlling agency, as appropriate.</P>
+</DIV8>
+
+<DIV8 N="107.47" TYPE="SECTION" hierarchy_metadata="{&quot;path&quot;:&quot;/on/_SUBSTITUTE_DATE_/title-14/section-107.47&quot;,&quot;citation&quot;:&quot;14 CFR 107.47&quot;,&quot;alternate_reference&quot;:&quot;FAR 107.47&quot;}">
+<HEAD>&#xA7; 107.47 Flight restrictions in the proximity of certain areas designated by notice to airmen.</HEAD>
+<P>A person acting as a remote pilot in command must comply with the provisions of &#xA7;&#xA7; 91.137 through 91.145 and 99.7 of this chapter.</P>
+</DIV8>
+
+<DIV8 N="107.49" TYPE="SECTION" hierarchy_metadata="{&quot;path&quot;:&quot;/on/_SUBSTITUTE_DATE_/title-14/section-107.49&quot;,&quot;citation&quot;:&quot;14 CFR 107.49&quot;,&quot;alternate_reference&quot;:&quot;FAR 107.49&quot;}">
+<HEAD>&#xA7; 107.49 Preflight familiarization, inspection, and actions for aircraft operation.</HEAD>
+<P>Prior to flight, the remote pilot in command must:</P>
+<P>(a) Assess the operating environment, considering risks to persons and property in the immediate vicinity both on the surface and in the air. This assessment must include:</P>
+<P>(1) Local weather conditions;</P>
+<P>(2) Local airspace and any flight restrictions;</P>
+<P>(3) The location of persons and property on the surface; and</P>
+<P>(4) Other ground hazards.</P>
+<P>(b) Ensure that all persons directly participating in the small unmanned aircraft operation are informed about the operating conditions, emergency procedures, contingency procedures, roles and responsibilities, and potential hazards;</P>
+<P>(c) Ensure that all control links between ground control station and the small unmanned aircraft are working properly;</P>
+<P>(d) If the small unmanned aircraft is powered, ensure that there is enough available power for the small unmanned aircraft system to operate for the intended operational time; and</P>
+<P>(e) Ensure that any object attached or carried by the small unmanned aircraft is secure and does not adversely affect the flight characteristics or controllability of the aircraft.</P>
+</DIV8>
+
+<DIV8 N="107.51" TYPE="SECTION" hierarchy_metadata="{&quot;path&quot;:&quot;/on/_SUBSTITUTE_DATE_/title-14/section-107.51&quot;,&quot;citation&quot;:&quot;14 CFR 107.51&quot;,&quot;alternate_reference&quot;:&quot;FAR 107.51&quot;}">
+<HEAD>&#xA7; 107.51 Operating limitations for small unmanned aircraft.</HEAD>
+<P>A remote pilot in command and the person manipulating the flight controls of the small unmanned aircraft system must comply with all of the following operating limitations when operating a small unmanned aircraft system:</P>
+<P>(a) The groundspeed of the small unmanned aircraft may not exceed 87 knots (100 miles per hour).</P>
+<P>(b) The altitude of the small unmanned aircraft cannot be higher than 400 feet above ground level, unless the small unmanned aircraft:</P>
+<P>(1) Is flown within a 400-foot radius of a structure; and</P>
+<P>(2) Does not fly higher than 400 feet above the structure's immediate uppermost limit.</P>
+<P>(c) The minimum flight visibility, as observed from the location of the control station must be no less than 3 statute miles. For purposes of this section, flight visibility means the average slant distance from the control station at which prominent unlighted objects may be seen and identified by day and prominent lighted objects may be seen and identified by night.</P>
+<P>(d) The minimum distance of the small unmanned aircraft from clouds must be no less than:</P>
+<P>(1) 500 feet below the cloud; and</P>
+<P>(2) 2,000 feet horizontally from the cloud.</P>
+</DIV8>
+
+</DIV6>
+<DIV6 N="C" TYPE="SUBPART" hierarchy_metadata="{&amp;quot;path&amp;quot;:&amp;quot;/on/_SUBSTITUTE_DATE_/title-14/part-107/subpart-C&amp;quot;,&amp;quot;citation&amp;quot;:&amp;quot;14 CFR Part 107 Subpart C&amp;quot;,&amp;quot;alternate_reference&amp;quot;:&amp;quot;FAR Part 107 Subpart C&amp;quot;}">
+<HEAD>Subpart C - Remote Pilot Certification</HEAD>
+<DIV8 N="107.53" TYPE="SECTION" hierarchy_metadata="{&quot;path&quot;:&quot;/on/_SUBSTITUTE_DATE_/title-14/section-107.53&quot;,&quot;citation&quot;:&quot;14 CFR 107.53&quot;,&quot;alternate_reference&quot;:&quot;FAR 107.53&quot;}">
+<HEAD>&#xA7; 107.53 Applicability.</HEAD>
+<P>This subpart prescribes the requirements for issuing a remote pilot certificate with a small UAS rating.</P>
+</DIV8>
+
+<DIV8 N="107.57" TYPE="SECTION" hierarchy_metadata="{&quot;path&quot;:&quot;/on/_SUBSTITUTE_DATE_/title-14/section-107.57&quot;,&quot;citation&quot;:&quot;14 CFR 107.57&quot;,&quot;alternate_reference&quot;:&quot;FAR 107.57&quot;}">
+<HEAD>&#xA7; 107.57 Offenses involving alcohol or drugs.</HEAD>
+<P>(a) A conviction for the violation of any Federal or State statute relating to the growing, processing, manufacture, sale, disposition, possession, transportation, or importation of narcotic drugs, marijuana, or depressant or stimulant drugs or substances is grounds for:</P>
+<P>(1) Denial of an application for a remote pilot certificate with a small UAS rating for a period of up to 1 year after the date of final conviction; or</P>
+<P>(2) Suspension or revocation of a remote pilot certificate with a small UAS rating.</P>
+<P>(b) Committing an act prohibited by &#xA7; 91.17(a) or &#xA7; 91.19(a) of this chapter is grounds for:</P>
+<P>(1) Denial of an application for a remote pilot certificate with a small UAS rating for a period of up to 1 year after the date of that act; or</P>
+<P>(2) Suspension or revocation of a remote pilot certificate with a small UAS rating.</P>
+</DIV8>
+
+<DIV8 N="107.59" TYPE="SECTION" hierarchy_metadata="{&quot;path&quot;:&quot;/on/_SUBSTITUTE_DATE_/title-14/section-107.59&quot;,&quot;citation&quot;:&quot;14 CFR 107.59&quot;,&quot;alternate_reference&quot;:&quot;FAR 107.59&quot;}">
+<HEAD>&#xA7; 107.59 Refusal to submit to an alcohol test or to furnish test results.</HEAD>
+<P>A refusal to submit to a test to indicate the percentage by weight of alcohol in the blood, when requested by a law enforcement officer in accordance with &#xA7; 91.17(c) of this chapter, or a refusal to furnish or authorize the release of the test results requested by the Administrator in accordance with &#xA7; 91.17(c) or (d) of this chapter, is grounds for:</P>
+<P>(a) Denial of an application for a remote pilot certificate with a small UAS rating for a period of up to 1 year after the date of that refusal; or</P>
+<P>(b) Suspension or revocation of a remote pilot certificate with a small UAS rating.</P>
+</DIV8>
+
+<DIV8 N="107.61" TYPE="SECTION" hierarchy_metadata="{&quot;path&quot;:&quot;/on/_SUBSTITUTE_DATE_/title-14/section-107.61&quot;,&quot;citation&quot;:&quot;14 CFR 107.61&quot;,&quot;alternate_reference&quot;:&quot;FAR 107.61&quot;}">
+<HEAD>&#xA7; 107.61 Eligibility.</HEAD>
+<P>Subject to the provisions of &#xA7;&#xA7; 107.57 and 107.59, in order to be eligible for a remote pilot certificate with a small UAS rating under this subpart, a person must:</P>
+<P>(a) Be at least 16 years of age;</P>
+<P>(b) Be able to read, speak, write, and understand the English language. If the applicant is unable to meet one of these requirements due to medical reasons, the FAA may place such operating limitations on that applicant's certificate as are necessary for the safe operation of the small unmanned aircraft;</P>
+<P>(c) Not know or have reason to know that he or she has a physical or mental condition that would interfere with the safe operation of a small unmanned aircraft system; and</P>
+<P>(d) Demonstrate aeronautical knowledge by satisfying one of the following conditions:</P>
+<P>(1) Pass an initial aeronautical knowledge test covering the areas of knowledge specified in &#xA7; 107.73(a); or</P>
+<P>(2) If a person holds a pilot certificate (other than a student pilot certificate) issued under part 61 of this chapter and meets the flight review requirements specified in &#xA7; 61.56, complete an initial training course covering the areas of knowledge specified in &#xA7; 107.74(a) in a manner acceptable to the Administrator.</P>
+</DIV8>
+
+<DIV8 N="107.63" TYPE="SECTION" hierarchy_metadata="{&quot;path&quot;:&quot;/on/_SUBSTITUTE_DATE_/title-14/section-107.63&quot;,&quot;citation&quot;:&quot;14 CFR 107.63&quot;,&quot;alternate_reference&quot;:&quot;FAR 107.63&quot;}">
+<HEAD>&#xA7; 107.63 Issuance of a remote pilot certificate with a small UAS rating.</HEAD>
+<P>An applicant for a remote pilot certificate with a small UAS rating under this subpart must make the application in a form and manner acceptable to the Administrator.</P>
+<P>(a) The application must include either:</P>
+<P>(1) Evidence showing that the applicant passed an initial aeronautical knowledge test. If applying using a paper application, this evidence must be an airman knowledge test report showing passage of the knowledge test; or</P>
+<P>(2) If a person holds a pilot certificate (other than a student pilot certificate) issued under part 61 of this chapter and meets the flight review requirements specified in &#xA7; 61.56, a certificate of completion of a part 107 initial training course.</P>
+<P>(b) If the application is being made pursuant to paragraph (a)(2) of this section:</P>
+<P>(1) The application must be submitted to the responsible Flight Standards office, a designated pilot examiner, an airman certification representative for a pilot school, a certificated flight instructor, or other person authorized by the Administrator;</P>
+<P>(2) The person accepting the application submission must verify the identity of the applicant in a manner acceptable to the Administrator; and</P>
+<P>(3) The person making the application must, by logbook endorsement or other manner acceptable to the Administrator, show the applicant meets the flight review requirements specified in &#xA7; 61.56 of this chapter.</P>
+<CITA TYPE="N">[Docket FAA-2015-0150, Amdt. 107-1, 81 FR 42209, June 28, 2016, as amended by Docket FAA-2018-0119, Amdt. 107-2, 83 FR 9172, Mar. 5, 2018]
+</CITA>
+</DIV8>
+
+<DIV8 N="107.64" TYPE="SECTION" hierarchy_metadata="{&quot;path&quot;:&quot;/on/_SUBSTITUTE_DATE_/title-14/section-107.64&quot;,&quot;citation&quot;:&quot;14 CFR 107.64&quot;,&quot;alternate_reference&quot;:&quot;FAR 107.64&quot;}">
+<HEAD>&#xA7; 107.64 Temporary certificate.</HEAD>
+<P>(a) A temporary remote pilot certificate with a small UAS rating is issued for up to 120 calendar days, at which time a permanent certificate will be issued to a person whom the Administrator finds qualified under this part.</P>
+<P>(b) A temporary remote pilot certificate with a small UAS rating expires:</P>
+<P>(1) On the expiration date shown on the certificate;</P>
+<P>(2) Upon receipt of the permanent certificate; or</P>
+<P>(3) Upon receipt of a notice that the certificate sought is denied or revoked.</P>
+</DIV8>
+
+<DIV8 N="107.65" TYPE="SECTION" hierarchy_metadata="{&quot;path&quot;:&quot;/on/_SUBSTITUTE_DATE_/title-14/section-107.65&quot;,&quot;citation&quot;:&quot;14 CFR 107.65&quot;,&quot;alternate_reference&quot;:&quot;FAR 107.65&quot;}">
+<HEAD>&#xA7; 107.65 Aeronautical knowledge recency.</HEAD>
+<P>A person may not operate a small unmanned aircraft system unless that person has completed one of the following, within the previous 24 calendar months:</P>
+<P>(a) Passed an initial aeronautical knowledge test covering the areas of knowledge specified in &#xA7; 107.73(a);</P>
+<P>(b) Passed a recurrent aeronautical knowledge test covering the areas of knowledge specified in &#xA7; 107.73(b); or</P>
+<P>(c) If a person holds a pilot certificate (other than a student pilot certificate) issued under part 61 of this chapter and meets the flight review requirements specified in &#xA7; &#xA7; 61.56, passed either an initial or recurrent training course covering the areas of knowledge specified in &#xA7; 107.74(a) or (b) in a manner acceptable to the Administrator.</P>
+</DIV8>
+
+<DIV8 N="107.67" TYPE="SECTION" hierarchy_metadata="{&quot;path&quot;:&quot;/on/_SUBSTITUTE_DATE_/title-14/section-107.67&quot;,&quot;citation&quot;:&quot;14 CFR 107.67&quot;,&quot;alternate_reference&quot;:&quot;FAR 107.67&quot;}">
+<HEAD>&#xA7; 107.67 Knowledge tests: General procedures and passing grades.</HEAD>
+<P>(a) Knowledge tests prescribed by or under this part are given by persons and in the manner designated by the Administrator.</P>
+<P>(b) An applicant for a knowledge test must have proper identification at the time of application that contains the applicant's:</P>
+<P>(1) Photograph;</P>
+<P>(2) Signature;</P>
+<P>(3) Date of birth, which shows the applicant meets or will meet the age requirements of this part for the certificate and rating sought before the expiration date of the airman knowledge test report; and</P>
+<P>(4) Permanent mailing address. If the applicant's permanent mailing address is a post office box number, then the applicant must also provide a current residential address.</P>
+<P>(c) The minimum passing grade for the knowledge test will be specified by the Administrator.</P>
+</DIV8>
+
+<DIV8 N="107.69" TYPE="SECTION" hierarchy_metadata="{&quot;path&quot;:&quot;/on/_SUBSTITUTE_DATE_/title-14/section-107.69&quot;,&quot;citation&quot;:&quot;14 CFR 107.69&quot;,&quot;alternate_reference&quot;:&quot;FAR 107.69&quot;}">
+<HEAD>&#xA7; 107.69 Knowledge tests: Cheating or other unauthorized conduct.</HEAD>
+<P>(a) An applicant for a knowledge test may not:</P>
+<P>(1) Copy or intentionally remove any knowledge test;</P>
+<P>(2) Give to another applicant or receive from another applicant any part or copy of a knowledge test;</P>
+<P>(3) Give or receive assistance on a knowledge test during the period that test is being given;</P>
+<P>(4) Take any part of a knowledge test on behalf of another person;</P>
+<P>(5) Be represented by, or represent, another person for a knowledge test;</P>
+<P>(6) Use any material or aid during the period that the test is being given, unless specifically authorized to do so by the Administrator; and</P>
+<P>(7) Intentionally cause, assist, or participate in any act prohibited by this paragraph.</P>
+<P>(b) An applicant who the Administrator finds has committed an act prohibited by paragraph (a) of this section is prohibited, for 1 year after the date of committing that act, from:</P>
+<P>(1) Applying for any certificate, rating, or authorization issued under this chapter; and</P>
+<P>(2) Applying for and taking any test under this chapter.</P>
+<P>(c) Any certificate or rating held by an applicant may be suspended or revoked if the Administrator finds that person has committed an act prohibited by paragraph (a) of this section.</P>
+</DIV8>
+
+<DIV8 N="107.71" TYPE="SECTION" hierarchy_metadata="{&quot;path&quot;:&quot;/on/_SUBSTITUTE_DATE_/title-14/section-107.71&quot;,&quot;citation&quot;:&quot;14 CFR 107.71&quot;,&quot;alternate_reference&quot;:&quot;FAR 107.71&quot;}">
+<HEAD>&#xA7; 107.71 Retesting after failure.</HEAD>
+<P>An applicant for a knowledge test who fails that test may not reapply for the test for 14 calendar days after failing the test.</P>
+</DIV8>
+
+<DIV8 N="107.73" TYPE="SECTION" hierarchy_metadata="{&quot;path&quot;:&quot;/on/_SUBSTITUTE_DATE_/title-14/section-107.73&quot;,&quot;citation&quot;:&quot;14 CFR 107.73&quot;,&quot;alternate_reference&quot;:&quot;FAR 107.73&quot;}">
+<HEAD>&#xA7; 107.73 Initial and recurrent knowledge tests.</HEAD>
+<P>(a) An initial aeronautical knowledge test covers the following areas of knowledge:</P>
+<P>(1) Applicable regulations relating to small unmanned aircraft system rating privileges, limitations, and flight operation;</P>
+<P>(2) Airspace classification, operating requirements, and flight restrictions affecting small unmanned aircraft operation;</P>
+<P>(3) Aviation weather sources and effects of weather on small unmanned aircraft performance;</P>
+<P>(4) Small unmanned aircraft loading;</P>
+<P>(5) Emergency procedures;</P>
+<P>(6) Crew resource management;</P>
+<P>(7) Radio communication procedures;</P>
+<P>(8) Determining the performance of small unmanned aircraft;</P>
+<P>(9) Physiological effects of drugs and alcohol;</P>
+<P>(10) Aeronautical decision-making and judgment;</P>
+<P>(11) Airport operations; and</P>
+<P>(12) Maintenance and preflight inspection procedures.</P>
+<P>(b) A recurrent aeronautical knowledge test covers the following areas of knowledge:</P>
+<P>(1) Applicable regulations relating to small unmanned aircraft system rating privileges, limitations, and flight operation;</P>
+<P>(2) Airspace classification and operating requirements and flight restrictions affecting small unmanned aircraft operation;</P>
+<P>(3) Emergency procedures;</P>
+<P>(4) Crew resource management;</P>
+<P>(5) Aeronautical decision-making and judgment;</P>
+<P>(6) Airport operations; and</P>
+<P>(7) Maintenance and preflight inspection procedures.</P>
+</DIV8>
+
+<DIV8 N="107.74" TYPE="SECTION" hierarchy_metadata="{&quot;path&quot;:&quot;/on/_SUBSTITUTE_DATE_/title-14/section-107.74&quot;,&quot;citation&quot;:&quot;14 CFR 107.74&quot;,&quot;alternate_reference&quot;:&quot;FAR 107.74&quot;}">
+<HEAD>&#xA7; 107.74 Initial and recurrent training courses.</HEAD>
+<P>(a) An initial training course covers the following areas of knowledge:</P>
+<P>(1) Applicable regulations relating to small unmanned aircraft system rating privileges, limitations, and flight operation;</P>
+<P>(2) Effects of weather on small unmanned aircraft performance;</P>
+<P>(3) Small unmanned aircraft loading;</P>
+<P>(4) Emergency procedures;</P>
+<P>(5) Crew resource management;</P>
+<P>(6) Determining the performance of small unmanned aircraft; and</P>
+<P>(7) Maintenance and preflight inspection procedures.</P>
+<P>(b) A recurrent training course covers the following areas of knowledge:</P>
+<P>(1) Applicable regulations relating to small unmanned aircraft system rating privileges, limitations, and flight operation;</P>
+<P>(2) Emergency procedures;</P>
+<P>(3) Crew resource management; and</P>
+<P>(4) Maintenance and preflight inspection procedures.</P>
+</DIV8>
+
+<DIV8 N="107.77" TYPE="SECTION" hierarchy_metadata="{&quot;path&quot;:&quot;/on/_SUBSTITUTE_DATE_/title-14/section-107.77&quot;,&quot;citation&quot;:&quot;14 CFR 107.77&quot;,&quot;alternate_reference&quot;:&quot;FAR 107.77&quot;}">
+<HEAD>&#xA7; 107.77 Change of name or address.</HEAD>
+<P>(a) <I>Change of name.</I> An application to change the name on a certificate issued under this subpart must be accompanied by the applicant's:</P>
+<P>(1) Remote pilot certificate with small UAS rating; and</P>
+<P>(2) A copy of the marriage license, court order, or other document verifying the name change.</P>
+<P>(b) The documents in paragraph (a) of this section will be returned to the applicant after inspection.</P>
+<P>(c) <I>Change of address.</I> The holder of a remote pilot certificate with small UAS rating issued under this subpart who has made a change in permanent mailing address may not, after 30 days from that date, exercise the privileges of the certificate unless the holder has notified the FAA of the change in address using one of the following methods:</P>
+<P>(1) By letter to the FAA Airman Certification Branch, P.O. Box 25082, Oklahoma City, OK 73125 providing the new permanent mailing address, or if the permanent mailing address includes a post office box number, then the holder's current residential address; or</P>
+<P>(2) By using the FAA Web site portal at <I>www.faa.gov</I> providing the new permanent mailing address, or if the permanent mailing address includes a post office box number, then the holder's current residential address.</P>
+</DIV8>
+
+<DIV8 N="107.79" TYPE="SECTION" hierarchy_metadata="{&quot;path&quot;:&quot;/on/_SUBSTITUTE_DATE_/title-14/section-107.79&quot;,&quot;citation&quot;:&quot;14 CFR 107.79&quot;,&quot;alternate_reference&quot;:&quot;FAR 107.79&quot;}">
+<HEAD>&#xA7; 107.79 Voluntary surrender of certificate.</HEAD>
+<P>(a) The holder of a certificate issued under this subpart may voluntarily surrender it for cancellation.</P>
+<P>(b) Any request made under paragraph (a) of this section must include the following signed statement or its equivalent: &#x201C;I voluntarily surrender my remote pilot certificate with a small UAS rating for cancellation. This request is made for my own reasons, with full knowledge that my certificate will not be reissued to me unless I again complete the requirements specified in &#xA7;&#xA7; 107.61 and 107.63.&#x201D;</P>
+</DIV8>
+
+</DIV6>
+<DIV6 N="D" TYPE="SUBPART" hierarchy_metadata="{&amp;quot;path&amp;quot;:&amp;quot;/on/_SUBSTITUTE_DATE_/title-14/part-107/subpart-D&amp;quot;,&amp;quot;citation&amp;quot;:&amp;quot;14 CFR Part 107 Subpart D&amp;quot;,&amp;quot;alternate_reference&amp;quot;:&amp;quot;FAR Part 107 Subpart D&amp;quot;}">
+<HEAD>Subpart D - Waivers</HEAD>
+<DIV8 N="107.200" TYPE="SECTION" hierarchy_metadata="{&quot;path&quot;:&quot;/on/_SUBSTITUTE_DATE_/title-14/section-107.200&quot;,&quot;citation&quot;:&quot;14 CFR 107.200&quot;,&quot;alternate_reference&quot;:&quot;FAR 107.200&quot;}">
+<HEAD>&#xA7; 107.200 Waiver policy and requirements.</HEAD>
+<P>(a) The Administrator may issue a certificate of waiver authorizing a deviation from any regulation specified in &#xA7; 107.205 if the Administrator finds that a proposed small UAS operation can safely be conducted under the terms of that certificate of waiver.</P>
+<P>(b) A request for a certificate of waiver must contain a complete description of the proposed operation and justification that establishes that the operation can safely be conducted under the terms of a certificate of waiver.</P>
+<P>(c) The Administrator may prescribe additional limitations that the Administrator considers necessary.</P>
+<P>(d) A person who receives a certificate of waiver issued under this section:</P>
+<P>(1) May deviate from the regulations of this part to the extent specified in the certificate of waiver; and</P>
+<P>(2) Must comply with any conditions or limitations that are specified in the certificate of waiver.</P>
+</DIV8>
+
+<DIV8 N="107.205" TYPE="SECTION" hierarchy_metadata="{&quot;path&quot;:&quot;/on/_SUBSTITUTE_DATE_/title-14/section-107.205&quot;,&quot;citation&quot;:&quot;14 CFR 107.205&quot;,&quot;alternate_reference&quot;:&quot;FAR 107.205&quot;}">
+<HEAD>&#xA7; 107.205 List of regulations subject to waiver.</HEAD>
+<P>A certificate of waiver issued pursuant to &#xA7; 107.200 may authorize a deviation from the following regulations of this part:</P>
+<P>(a) Section 107.25 - Operation from a moving vehicle or aircraft. However, no waiver of this provision will be issued to allow the carriage of property of another by aircraft for compensation or hire.</P>
+<P>(b) Section 107.29 - Daylight operation.</P>
+<P>(c) Section 107.31 - Visual line of sight aircraft operation. However, no waiver of this provision will be issued to allow the carriage of property of another by aircraft for compensation or hire.</P>
+<P>(d) Section 107.33 - Visual observer.</P>
+<P>(e) Section 107.35 - Operation of multiple small unmanned aircraft systems.</P>
+<P>(f) Section 107.37(a) - Yielding the right of way.</P>
+<P>(g) Section 107.39 - Operation over people.</P>
+<P>(h) Section 107.41 - Operation in certain airspace.</P>
+<P>(i) Section 107.51 - Operating limitations for small unmanned aircraft.</P>
+</DIV8>
+
+</DIV6>
+</DIV5>
