@@ -51,7 +51,7 @@ before either has been implemented.
 | `scope` | `in` or `out`. Out is a recorded verdict with a reason, not an omission. |
 | `clarity` | `clear` or `ambiguous`. `clear` asserts the corpus determines exactly one answer for every valid input. |
 | `ambiguity` | Absent when clear. Otherwise the question, and its `fate`. |
-| `dependsOn` | Entry ids. Determines backlog order. |
+| `dependsOn` | Entry ids. Determines backlog order — the sequence entries must be *implemented* in. **Not** a runtime precondition; see below. |
 | `evidence` | What must be demonstrated. For a finite table: the whole table, not a sample. |
 | `status` | See below. |
 | `implementedIn` | The ruleset revision that implemented it. Set when status becomes `implemented`. |
@@ -86,6 +86,17 @@ when no reading is defensible enough to bake in, or when the choice belongs to t
 
 There is no third value. An implementer choosing a reading silently is the failure this
 field exists to prevent.
+
+### `dependsOn` is not a precondition
+
+`dependsOn` orders *implementation*. A rule that applies only in a phase — bearing off
+begins once every man is home; entry from the bar blocks every other move — has a **runtime
+precondition**, which is a different fact and currently has nowhere to live.
+
+The two coincide often enough to be confused, and a stateless corpus never distinguishes
+them: a regulation evaluating one flight against a set of limits asks the question not at
+all. Any corpus with turn structure asks it immediately. Recorded as an open question
+rather than guessed at.
 
 ### `status`
 
@@ -194,6 +205,10 @@ entries, close to 2:1, and the split that mattered was separating a stated figur
 comparison against it: one paragraph of § 107.51 holds three distinct figures, and a single
 entry would have lost two of them. The dependency graph remains the arbiter for the harder
 cases.
+
+**Runtime preconditions.** A phase condition is not `dependsOn`, and has no field. Does it
+need one, or does it belong to the engine rather than the map? Undecided; found in the
+second trial, invisible in the first.
 
 **A standard versus a gap.** New, and unresolved. "Well clear" and "reasonable protection"
 are ambiguous to an engine and entirely settled in the corpus. Both available fates imply

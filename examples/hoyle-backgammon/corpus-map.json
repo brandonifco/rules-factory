@@ -1,0 +1,394 @@
+{
+  "schemaVersion": 1,
+  "corpus": "hoyle-1909",
+  "entries": [
+    {
+      "id": "men-count",
+      "name": "Thirty men, fifteen to a side",
+      "locator": {
+        "sourceId": "hoyle-1909",
+        "citation": "BACKGAMMON / The Board and Men / p. 271"
+      },
+      "kind": "value",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [],
+      "evidence": "Both figures.",
+      "status": "mapped"
+    },
+    {
+      "id": "board-tables",
+      "name": "The board is two tables, inner and outer",
+      "locator": {
+        "sourceId": "hoyle-1909",
+        "citation": "BACKGAMMON / The Board and Men / p. 271"
+      },
+      "kind": "value",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [],
+      "evidence": "Which table is inner is set by the starting arrangement, not fixed.",
+      "status": "mapped"
+    },
+    {
+      "id": "starting-position",
+      "name": "The starting arrangement of the men",
+      "locator": {
+        "sourceId": "hoyle-1909",
+        "citation": "BACKGAMMON / The Board and Men / p. 271"
+      },
+      "kind": "value",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [],
+      "evidence": "Cannot be evidenced from this corpus.",
+      "status": "declined",
+      "ambiguity": {
+        "question": "The text says only 'with the men placed as in Fig. 1'. The arrangement is stated in an illustration, not in prose.",
+        "fate": "unresolved",
+        "unresolvedReason": "MissingRulesData"
+      },
+      "note": "The rule is fully determined in the corpus -- as an image a plain-text adapter cannot read."
+    },
+    {
+      "id": "opening-roll",
+      "name": "Deciding who begins",
+      "locator": {
+        "sourceId": "hoyle-1909",
+        "citation": "BACKGAMMON / Playing / p. 273"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [],
+      "evidence": "Higher single die begins; a tie throws again; repeated ties.",
+      "status": "mapped"
+    },
+    {
+      "id": "opening-thrower-option",
+      "name": "The opening thrower may keep the throw or throw again",
+      "locator": {
+        "sourceId": "hoyle-1909",
+        "citation": "BACKGAMMON / Playing / p. 273"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [
+        "opening-roll"
+      ],
+      "evidence": "Both elections.",
+      "status": "mapped"
+    },
+    {
+      "id": "throw-two-dice",
+      "name": "All subsequent throws use both dice",
+      "locator": {
+        "sourceId": "hoyle-1909",
+        "citation": "BACKGAMMON / Playing / p. 273"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [
+        "opening-roll"
+      ],
+      "evidence": "That the opening throw is one die and every later throw two.",
+      "status": "mapped"
+    },
+    {
+      "id": "move-by-pip",
+      "name": "Each die moves one man that many points",
+      "locator": {
+        "sourceId": "hoyle-1909",
+        "citation": "BACKGAMMON / Playing / p. 273"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [
+        "throw-two-dice"
+      ],
+      "evidence": "A throw played on one man and on two; the worked 'six trois' example.",
+      "status": "mapped"
+    },
+    {
+      "id": "doublets",
+      "name": "Doublets are played twice over",
+      "locator": {
+        "sourceId": "hoyle-1909",
+        "citation": "BACKGAMMON / Playing / p. 273"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [
+        "move-by-pip"
+      ],
+      "evidence": "All three worked examples: aces to four points, deuces to eight, threes to twelve.",
+      "status": "mapped"
+    },
+    {
+      "id": "legal-destination",
+      "name": "A man may be played only to a permitted point",
+      "locator": {
+        "sourceId": "hoyle-1909",
+        "citation": "BACKGAMMON / Playing / p. 273"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [],
+      "evidence": "Vacant; own men; exactly one adversary man; two or more refused.",
+      "status": "mapped"
+    },
+    {
+      "id": "made-point",
+      "name": "Two men make a point",
+      "locator": {
+        "sourceId": "hoyle-1909",
+        "citation": "BACKGAMMON / Playing / p. 273"
+      },
+      "kind": "value",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [
+        "legal-destination"
+      ],
+      "evidence": "Two men and one.",
+      "status": "mapped"
+    },
+    {
+      "id": "blot-hit",
+      "name": "A single man is a blot and may be hit",
+      "locator": {
+        "sourceId": "hoyle-1909",
+        "citation": "BACKGAMMON / Playing / p. 273"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [
+        "legal-destination"
+      ],
+      "evidence": "A blot hit goes to the bar and restarts from the adversary's inner table, however far advanced.",
+      "status": "mapped"
+    },
+    {
+      "id": "enter-from-bar",
+      "name": "A man on the bar re-enters before any other man moves",
+      "locator": {
+        "sourceId": "hoyle-1909",
+        "citation": "BACKGAMMON / Playing / p. 273"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [
+        "blot-hit"
+      ],
+      "evidence": "Entry available and unavailable; all other men suspended while one is up.",
+      "status": "mapped"
+    },
+    {
+      "id": "full-table-suspension",
+      "name": "Play is wholly suspended against a full home table",
+      "locator": {
+        "sourceId": "hoyle-1909",
+        "citation": "BACKGAMMON / Playing / p. 273"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [
+        "enter-from-bar"
+      ],
+      "evidence": "Six points held by two or more; the adversary throwing and moving alone.",
+      "status": "mapped"
+    },
+    {
+      "id": "must-play-whole-throw",
+      "name": "The whole throw must be played if it can be",
+      "locator": {
+        "sourceId": "hoyle-1909",
+        "citation": "BACKGAMMON / Playing / p. 273"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "ambiguous",
+      "dependsOn": [
+        "move-by-pip"
+      ],
+      "evidence": "A throw fully playable, partly playable, and unplayable.",
+      "status": "mapped",
+      "ambiguity": {
+        "question": "An unplayable part is lost and the whole must be played 'if it is possible'. The text does not say what happens when either die alone is playable but not both -- a case every modern ruleset settles explicitly.",
+        "fate": "unresolved",
+        "unresolvedReason": "RequiresInterpretation"
+      }
+    },
+    {
+      "id": "bearing-off-eligible",
+      "name": "Bearing off begins when all men are home",
+      "locator": {
+        "sourceId": "hoyle-1909",
+        "citation": "BACKGAMMON / Bearing off the Men / p. 275"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [],
+      "evidence": "All fifteen home; fourteen home; a man hit back out mid-bear-off.",
+      "status": "mapped"
+    },
+    {
+      "id": "bearing-off-move-or-remove",
+      "name": "Each throw may move within the table or remove a man",
+      "locator": {
+        "sourceId": "hoyle-1909",
+        "citation": "BACKGAMMON / Bearing off the Men / p. 275"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [
+        "bearing-off-eligible"
+      ],
+      "evidence": "The worked distribution, for both the quatre and the trois.",
+      "status": "mapped"
+    },
+    {
+      "id": "bearing-off-highest",
+      "name": "An unusable number bears off from the highest occupied point",
+      "locator": {
+        "sourceId": "hoyle-1909",
+        "citation": "BACKGAMMON / Bearing off the Men / p. 275"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [
+        "bearing-off-move-or-remove"
+      ],
+      "evidence": "The six-throw example; and a usable throw, which must be played forward instead.",
+      "status": "mapped"
+    },
+    {
+      "id": "bearing-off-doublets",
+      "name": "Doublets bear off or move, or both",
+      "locator": {
+        "sourceId": "hoyle-1909",
+        "citation": "BACKGAMMON / Bearing off the Men / p. 275"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [
+        "doublets",
+        "bearing-off-move-or-remove"
+      ],
+      "evidence": "The deuces example: three borne off, the fourth played forward.",
+      "status": "mapped"
+    },
+    {
+      "id": "win-condition",
+      "name": "First to remove all men wins",
+      "locator": {
+        "sourceId": "hoyle-1909",
+        "citation": "BACKGAMMON / Bearing off the Men / p. 275"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [
+        "bearing-off-eligible"
+      ],
+      "evidence": "The winning removal, and the loser's state at that moment.",
+      "status": "mapped"
+    },
+    {
+      "id": "game-value",
+      "name": "A win is a hit, a gammon, or a backgammon",
+      "locator": {
+        "sourceId": "hoyle-1909",
+        "citation": "BACKGAMMON / Bearing off the Men / p. 275"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [
+        "win-condition"
+      ],
+      "evidence": "All three: adversary bearing off; not yet bearing off; a man up or in the winner's home table.",
+      "status": "mapped"
+    },
+    {
+      "id": "stake-multiplier",
+      "name": "What each result pays",
+      "locator": {
+        "sourceId": "hoyle-1909",
+        "citation": "BACKGAMMON / Bearing off the Men / p. 275"
+      },
+      "kind": "value",
+      "scope": "in",
+      "clarity": "ambiguous",
+      "dependsOn": [
+        "game-value"
+      ],
+      "evidence": "Single for a hit, double for a gammon; a backgammon cannot be evidenced.",
+      "status": "mapped",
+      "ambiguity": {
+        "question": "A backgammon pays 'either thrice or four times (as may have been agreed)'. The corpus delegates the figure to the players.",
+        "fate": "unresolved",
+        "unresolvedReason": "RequiresInterpretation"
+      },
+      "note": "Delegated to the players, not to a referee -- the same shape as a regulation delegating judgement to a pilot. An assertion, not a gap."
+    },
+    {
+      "id": "next-game-opening",
+      "name": "Who throws first in the following game",
+      "locator": {
+        "sourceId": "hoyle-1909",
+        "citation": "BACKGAMMON / Bearing off the Men / p. 275"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [
+        "game-value"
+      ],
+      "evidence": "After a hit; after a gammon; after a backgammon.",
+      "status": "mapped"
+    },
+    {
+      "id": "doubling-cube",
+      "name": "Doubling",
+      "locator": {
+        "sourceId": "hoyle-1909",
+        "citation": "(absent)"
+      },
+      "kind": "operation",
+      "scope": "out",
+      "clarity": "clear",
+      "dependsOn": [],
+      "evidence": "None.",
+      "status": "declined",
+      "note": "Not an omission from the map. This 1909 corpus predates the doubling cube, so the rule is not in it. An engine built from this corpus is a 1909 engine."
+    },
+    {
+      "id": "strategy-advice",
+      "name": "Opening play advice",
+      "locator": {
+        "sourceId": "hoyle-1909",
+        "citation": "BACKGAMMON / Hints for Play / p. 277"
+      },
+      "kind": "operation",
+      "scope": "out",
+      "clarity": "clear",
+      "dependsOn": [],
+      "evidence": "None.",
+      "status": "declined",
+      "note": "Non-normative. Advice, not rules -- but similar advice appears inside the normative sections too ('it is always an object to do this')."
+    }
+  ]
+}

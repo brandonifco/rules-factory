@@ -55,6 +55,13 @@ A CC-BY SRD or a public-domain statute is `pin-in-repo`: committing it is what m
 engine reproducible without a licence. Getting this wrong is a legal problem in one
 direction and a reproducibility problem in the other.
 
+**Record what the adapter cannot reach.** A corpus states its rules in more than one
+modality. The starting position of a backgammon board, in a trial corpus, is given entirely
+as an illustration — fully determined, and invisible to a plain-text adapter. That is not a
+reference to another corpus, so the references list below does not describe it; it is a
+limit of the adapter chosen in this phase. An entry beyond the adapter's reach is declined
+as `MissingRulesData`, and the reason names the modality, not a missing document.
+
 **Record what it defers to.** A corpus routinely defines its own terms by reference to
 another — a regulation citing a different title, a rulebook citing a supplement, a statute
 citing a schedule. Those references are the boundary of any engine built from it, and the
@@ -79,6 +86,13 @@ when a rule "obviously" says something.
 **Cite, do not copy.** The map records where a rule lives and what it is called. It does not
 reproduce the corpus. For a licensed corpus that is a legal requirement; for every corpus it
 is a discipline that keeps the map reviewable.
+
+**Advice is not a rule, and it is not always in its own section.** A corpus usually
+separates guidance from obligation — but not reliably, and not sentence by sentence. "It is
+always an object to do this" sits in the middle of a trial corpus's movement rules. Drop
+advice, and note in the entry that you dropped it: an agent enumerating mechanically will
+otherwise map it as a rule, or drop it silently, and silently is worse because the next
+reader cannot tell which happened.
 
 **Do not classify while walking.** A first pass that is simultaneously deciding value versus
 operation, in scope versus out, produces worse results at both. Enumerate first.
@@ -124,6 +138,12 @@ entries with a dependency between them. This is the most common decomposition er
 single entry that needs "and" in its description is two entries.
 
 ### In scope or out
+
+**The corpus bounds the engine, not the subject.** A map can only contain what its corpus
+states. A 1909 games text has no doubling cube; an engine built from it is a 1909 engine,
+and that is a correct outcome rather than an incomplete one. Record such a rule as out of
+scope with "absent from this corpus" as the reason, so that it is distinguishable from a
+rule nobody looked for. The distinction is the whole reason the map exists.
 
 Out-of-scope is a *recorded* verdict with a reason, not an omission. An entry ruled out is
 still in the map, marked, and becomes `OutsideCurrentScope` if an engine operation can reach

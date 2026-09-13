@@ -1,0 +1,17 @@
+{
+  "schemaVersion": 1,
+  "corpora": [
+    {
+      "sourceId": "hoyle-1909",
+      "title": "Hoyle's Games Modernized (Project Gutenberg eBook 39445)",
+      "adapter": "plain-text",
+      "locatorGrammar": "chapter-section-and-page-marker",
+      "contentHash": "5d505fa9f6202340eb55313b8ef607b816087a860d3d51b1bf92b5f65240645e",
+      "hashDerivation": "gutenberg-plain-text-including-boilerplate",
+      "boundaryPolicy": "pin-in-repo",
+      "licence": "public-domain-underlying-work; Project Gutenberg trademark terms apply to the edition",
+      "retrievedFrom": "https://www.gutenberg.org/ebooks/39445.txt.utf-8",
+      "references": []
+    }
+  ]
+}
