@@ -43,12 +43,24 @@ is pinned to a date. A corpus that is a fixed printing has no temporal dimension
 pinned without one. Absent means "timeless", never "unknown": if the corpus is revisable and
 you do not know the date, the baseline is not pinned and the work cannot start.
 
+This pins *which text is in force* and nothing else. A rule may contain dates of its own —
+a requirement that applies only to training completed after a given day, an authorisation
+that expires. Those are ordinary operations over a date the caller supplies, and are not
+corpus versioning. Two different temporal things, easily conflated.
+
 **May it be committed?** This is a property of the corpus's licence, not a house style, and
 the two existing engines answer it in opposite directions and are both right. A commercial
 rulebook is `never-commit`: the repository holds its hash and its metadata and nothing else.
 A CC-BY SRD or a public-domain statute is `pin-in-repo`: committing it is what makes the
 engine reproducible without a licence. Getting this wrong is a legal problem in one
 direction and a reproducibility problem in the other.
+
+**Record what it defers to.** A corpus routinely defines its own terms by reference to
+another — a regulation citing a different title, a rulebook citing a supplement, a statute
+citing a schedule. Those references are the boundary of any engine built from it, and the
+manifest should name them as referenced-but-not-admitted rather than leave the boundary to
+be inferred from whichever entries happen to be declined. In one trial slice, a quarter of
+the sections deferred their meaning to a corpus that had not been admitted.
 
 Choose the adapter that can read the format, and the locator grammar it produces. Page
 numbers for a printed book; designations like `§ 1.401(k)-1(b)(4)(ii)` for a regulation;
@@ -75,9 +87,10 @@ operation, in scope versus out, produces worse results at both. Enumerate first.
 
 Each entry gets three verdicts.
 
-### Value or operation
+### Value, operation, or assertion
 
-Does the corpus state a **fact** or a **procedure**?
+Does the corpus state a **fact**, a **procedure**, or **a condition the engine cannot
+check**?
 
 A fact is a value: a table of thresholds, a list of conditions, a creature's statistics, a
 contribution limit for a given year. Values live in the engine's `Data` layer. They are
@@ -88,9 +101,27 @@ is still wrong.
 A procedure is an operation: how a test resolves, how damage applies, how a limit is
 computed. Operations live in the `Rules` layer and consume values.
 
-When an entry is both — a procedure with a table inside it — it is two entries with a
-dependency between them. This is the most common decomposition error: a single entry that
-needs "and" in its description is two entries.
+An **assertion** is neither: a fact about the world that only the caller can supply. A
+regulation requiring that a pilot *was able to see* the aircraft, or *maintained
+communication*, or *completed a preflight assessment*, states a real and binding rule that
+no engine can evaluate. What an engine owes an assertion is: **demand it, attribute it to
+whoever made it, record it with the outcome, and never infer it.** An engine that quietly
+defaults an unasserted condition to true has substituted its own judgement for the person's.
+
+Two things that look like other categories are assertions.
+
+*Judgement the corpus deliberately delegates.* "If the pilot determines it would be in the
+interest of safety" is not ambiguous — the corpus is perfectly clear that the decision
+belongs to the pilot. Classifying it as ambiguous would report a deliberate delegation as a
+defect in the text.
+
+*Facts about the physical world.* Whether it was raining, whether a structure was within
+400 feet, whether a person was under cover. The engine consumes these; it does not derive
+them.
+
+When an entry is both value and operation — a procedure with a table inside it — it is two
+entries with a dependency between them. This is the most common decomposition error: a
+single entry that needs "and" in its description is two entries.
 
 ### In scope or out
 
@@ -119,6 +150,15 @@ the right fate when the engine must produce an answer and a defensible one exist
 **A runtime unresolved.** The engine returns `RequiresInterpretation` and declines. This is
 the right fate when no reading is defensible enough to bake in, or when the ambiguity is the
 caller's to resolve rather than the engine's.
+
+**A standard is not a gap, and must not be resolved as one.** "Well clear", "reasonable
+protection", "a flash rate sufficient to avoid a collision" — a regulator who writes these
+has not been vague by accident. The standard *is* the rule, chosen over a number
+deliberately, and an engine that resolved it to a number would have substituted its own rule
+for the corpus's. Such an entry is ambiguous to the engine and settled in the corpus, and its
+fate is almost always a runtime unresolved rather than a recorded decision. Record which it
+is; the difference matters to anyone later wondering whether the corpus can be read more
+precisely.
 
 What is never acceptable is the third option: an implementer picking a reading silently.
 That produces an engine that is reproducibly wrong, which is worse than one that is

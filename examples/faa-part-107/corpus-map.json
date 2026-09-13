@@ -1,0 +1,398 @@
+{
+  "schemaVersion": 1,
+  "corpus": "cfr-14-107",
+  "entries": [
+    {
+      "id": "speed-limit",
+      "name": "Maximum groundspeed",
+      "locator": {
+        "sourceId": "cfr-14-107",
+        "citation": "\u00a7 107.51(a)"
+      },
+      "kind": "value",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [],
+      "evidence": "The single figure, both units as printed: 87 knots / 100 mph.",
+      "status": "mapped"
+    },
+    {
+      "id": "altitude-limit",
+      "name": "Maximum altitude above ground level",
+      "locator": {
+        "sourceId": "cfr-14-107",
+        "citation": "\u00a7 107.51(b)"
+      },
+      "kind": "value",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [],
+      "evidence": "400 feet, and the 400-foot structure radius and 400-foot above-structure allowance as three distinct figures.",
+      "status": "mapped"
+    },
+    {
+      "id": "visibility-minimum",
+      "name": "Minimum flight visibility",
+      "locator": {
+        "sourceId": "cfr-14-107",
+        "citation": "\u00a7 107.51(c)"
+      },
+      "kind": "value",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [],
+      "evidence": "3 statute miles, plus the section's own definition of flight visibility, which is a definition and not a threshold.",
+      "status": "mapped"
+    },
+    {
+      "id": "cloud-clearance",
+      "name": "Minimum distance from clouds",
+      "locator": {
+        "sourceId": "cfr-14-107",
+        "citation": "\u00a7 107.51(d)"
+      },
+      "kind": "value",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [],
+      "evidence": "Both figures: 500 ft below, 2,000 ft horizontal. A single combined value would lose the distinction.",
+      "status": "mapped"
+    },
+    {
+      "id": "civil-twilight-window",
+      "name": "Civil twilight, outside Alaska",
+      "locator": {
+        "sourceId": "cfr-14-107",
+        "citation": "\u00a7 107.29(c)(1)-(2)"
+      },
+      "kind": "value",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [],
+      "evidence": "Both windows: 30 minutes before official sunrise to sunrise, and sunset to 30 minutes after.",
+      "status": "mapped"
+    },
+    {
+      "id": "speed-within-limit",
+      "name": "Groundspeed is within the limit",
+      "locator": {
+        "sourceId": "cfr-14-107",
+        "citation": "\u00a7 107.51(a)"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [
+        "speed-limit"
+      ],
+      "evidence": "At, just below and just above 87 knots. The printed mph figure is a rounding of the knots figure; test which one governs.",
+      "status": "mapped"
+    },
+    {
+      "id": "altitude-within-limit",
+      "name": "Altitude is within the limit",
+      "locator": {
+        "sourceId": "cfr-14-107",
+        "citation": "\u00a7 107.51(b)"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [
+        "altitude-limit"
+      ],
+      "evidence": "The plain 400 ft AGL case; inside a 400 ft radius of a structure; and the boundary where the aircraft is within the radius but above the structure's uppermost limit plus 400.",
+      "status": "mapped"
+    },
+    {
+      "id": "weather-minimums-met",
+      "name": "Visibility and cloud clearance are met",
+      "locator": {
+        "sourceId": "cfr-14-107",
+        "citation": "\u00a7 107.51(c)-(d)"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [
+        "visibility-minimum",
+        "cloud-clearance"
+      ],
+      "evidence": "Each minimum independently, and the case where one passes and the other fails.",
+      "status": "mapped"
+    },
+    {
+      "id": "single-aircraft",
+      "name": "Only one aircraft is operated at a time",
+      "locator": {
+        "sourceId": "cfr-14-107",
+        "citation": "\u00a7 107.35"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [],
+      "evidence": "One aircraft; two aircraft; and the same person acting as visual observer for a second.",
+      "status": "mapped"
+    },
+    {
+      "id": "airspace-authorized",
+      "name": "Controlled airspace requires prior ATC authorization",
+      "locator": {
+        "sourceId": "cfr-14-107",
+        "citation": "\u00a7 107.41"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [],
+      "evidence": "Each of Class B, C, D and the lateral surface area of Class E, with and without authorization; and Class G, which needs none.",
+      "status": "mapped",
+      "note": "The airspace class is an input. Determining it from a position requires a corpus this map has not admitted."
+    },
+    {
+      "id": "restricted-area-permitted",
+      "name": "Prohibited or restricted areas require permission",
+      "locator": {
+        "sourceId": "cfr-14-107",
+        "citation": "\u00a7 107.45"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [],
+      "evidence": "With and without permission from the using or controlling agency.",
+      "status": "mapped",
+      "note": "Same shape as airspace-authorized: the designation is an input, not something derived here."
+    },
+    {
+      "id": "moving-vehicle-operation",
+      "name": "Operation from a moving vehicle or aircraft",
+      "locator": {
+        "sourceId": "cfr-14-107",
+        "citation": "\u00a7 107.25"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "ambiguous",
+      "dependsOn": [],
+      "evidence": "From a moving aircraft (always prohibited); from a moving land vehicle over a sparsely populated area without carriage for hire; and the two ways the exception fails.",
+      "status": "mapped",
+      "ambiguity": {
+        "question": "Part 107 does not define 'sparsely populated area', and the term carries the whole exception in (b).",
+        "fate": "unresolved",
+        "unresolvedReason": "RequiresInterpretation"
+      }
+    },
+    {
+      "id": "night-operation",
+      "name": "Operation at night",
+      "locator": {
+        "sourceId": "cfr-14-107",
+        "citation": "\u00a7 107.29(a)"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "ambiguous",
+      "dependsOn": [
+        "anti-collision-lighting"
+      ],
+      "evidence": "Night with training and lighting; night without either; and the \u00a7 107.65 training date boundary of April 6, 2021.",
+      "status": "mapped",
+      "ambiguity": {
+        "question": "'Flash rate sufficient to avoid a collision' states no rate. Whether a given light qualifies is not determinable from this corpus.",
+        "fate": "unresolved",
+        "unresolvedReason": "RequiresInterpretation"
+      }
+    },
+    {
+      "id": "civil-twilight-operation",
+      "name": "Operation during civil twilight",
+      "locator": {
+        "sourceId": "cfr-14-107",
+        "citation": "\u00a7 107.29(b)-(c)"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [
+        "civil-twilight-window",
+        "anti-collision-lighting"
+      ],
+      "evidence": "Inside and outside each twilight window, with and without lighting.",
+      "status": "mapped",
+      "note": "Alaska is a separate entry: the corpus defers the definition elsewhere."
+    },
+    {
+      "id": "civil-twilight-alaska",
+      "name": "Civil twilight in Alaska",
+      "locator": {
+        "sourceId": "cfr-14-107",
+        "citation": "\u00a7 107.29(c)(3)"
+      },
+      "kind": "value",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [],
+      "evidence": "Cannot be evidenced from this corpus.",
+      "status": "declined",
+      "ambiguity": {
+        "question": "The corpus defines Alaskan civil twilight by reference to the Air Almanac, a corpus this map has not admitted.",
+        "fate": "unresolved",
+        "unresolvedReason": "MissingRulesData"
+      }
+    },
+    {
+      "id": "hazardous-material",
+      "name": "Carriage of hazardous material",
+      "locator": {
+        "sourceId": "cfr-14-107",
+        "citation": "\u00a7 107.36"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [],
+      "evidence": "Cannot be evidenced from this corpus.",
+      "status": "declined",
+      "ambiguity": {
+        "question": "'Hazardous material' is defined by reference to 49 CFR 171.8, a corpus this map has not admitted.",
+        "fate": "unresolved",
+        "unresolvedReason": "MissingRulesData"
+      }
+    },
+    {
+      "id": "right-of-way",
+      "name": "Yielding right of way to other aircraft",
+      "locator": {
+        "sourceId": "cfr-14-107",
+        "citation": "\u00a7 107.37(a)"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "ambiguous",
+      "dependsOn": [],
+      "evidence": "Cannot be evidenced without a reading of 'well clear'.",
+      "status": "mapped",
+      "ambiguity": {
+        "question": "'Well clear' is not defined in this part, and the yielding obligation turns on it.",
+        "fate": "unresolved",
+        "unresolvedReason": "RequiresInterpretation"
+      }
+    },
+    {
+      "id": "collision-hazard-proximity",
+      "name": "Operating so close to another aircraft as to create a collision hazard",
+      "locator": {
+        "sourceId": "cfr-14-107",
+        "citation": "\u00a7 107.37(b)"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "ambiguous",
+      "dependsOn": [],
+      "evidence": "Cannot be evidenced.",
+      "status": "mapped",
+      "ambiguity": {
+        "question": "A hazard judgement with no stated threshold. Not a gap in the corpus; the corpus deliberately states a standard rather than a number.",
+        "fate": "unresolved",
+        "unresolvedReason": "RequiresInterpretation"
+      }
+    },
+    {
+      "id": "over-human-beings",
+      "name": "Operation over a human being",
+      "locator": {
+        "sourceId": "cfr-14-107",
+        "citation": "\u00a7 107.39"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "ambiguous",
+      "dependsOn": [],
+      "evidence": "The participating-person case, the covered-structure case, and a plain overflight with neither.",
+      "status": "mapped",
+      "ambiguity": {
+        "question": "'Reasonable protection from a falling small unmanned aircraft' is a judgement; and (c) defers to subpart D, which this map has not covered.",
+        "fate": "unresolved",
+        "unresolvedReason": "RequiresInterpretation"
+      }
+    },
+    {
+      "id": "subpart-d-categories",
+      "name": "Operational categories for flight over human beings",
+      "locator": {
+        "sourceId": "cfr-14-107",
+        "citation": "subpart D"
+      },
+      "kind": "operation",
+      "scope": "out",
+      "clarity": "clear",
+      "dependsOn": [],
+      "evidence": "None \u2014 deliberately not covered.",
+      "status": "declined",
+      "note": "Out of scope for this trial, which maps subpart B only. Reachable from \u00a7 107.39(c), so an engine must be able to say OutsideCurrentScope rather than simply lacking it."
+    },
+    {
+      "id": "anti-collision-lighting",
+      "name": "Anti-collision lighting is fitted and visible for 3 statute miles",
+      "locator": {
+        "sourceId": "cfr-14-107",
+        "citation": "\u00a7 107.29(a)(2), (b)"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [],
+      "evidence": "Fitted and unfitted. The 3 statute mile visibility figure is a value the corpus states plainly.",
+      "status": "mapped",
+      "note": "The permission to reduce but not extinguish intensity is the pilot's determination, not a computation. See the trial report."
+    },
+    {
+      "id": "visual-line-of-sight",
+      "name": "Visual line of sight is maintained",
+      "locator": {
+        "sourceId": "cfr-14-107",
+        "citation": "\u00a7 107.31"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [],
+      "evidence": "Maintained by the remote pilot in command; maintained by a visual observer; maintained by neither.",
+      "status": "mapped",
+      "note": "Whether anyone could in fact see the aircraft is not computable. The engine demands the assertion and records who made it."
+    },
+    {
+      "id": "visual-observer-conditions",
+      "name": "Visual observer requirements, when one is used",
+      "locator": {
+        "sourceId": "cfr-14-107",
+        "citation": "\u00a7 107.33"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [
+        "visual-line-of-sight"
+      ],
+      "evidence": "With and without a visual observer, and with one whose communication requirement is unmet.",
+      "status": "mapped"
+    },
+    {
+      "id": "preflight-actions",
+      "name": "Preflight familiarization, inspection and actions",
+      "locator": {
+        "sourceId": "cfr-14-107",
+        "citation": "\u00a7 107.49"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [],
+      "evidence": "Each of (a) through (e) asserted and unasserted. (f) is reachable only through subpart D.",
+      "status": "mapped",
+      "note": "Six obligations, all assertions about what a person did. The engine records them; it cannot verify any."
+    }
+  ]
+}

@@ -1,0 +1,17 @@
+{
+  "schemaVersion": 1,
+  "corpora": [
+    {
+      "sourceId": "cfr-14-107",
+      "title": "14 CFR Part 107 \u2014 Small Unmanned Aircraft Systems",
+      "adapter": "ecfr-xml",
+      "locatorGrammar": "section-designation",
+      "contentHash": "80f6bc4b002df9dcc60a651fec30a2dc3590081cc3e5fd431d9885c69b7ce35e",
+      "hashDerivation": "ecfr-versioner-xml",
+      "asOf": "2026-01-01",
+      "boundaryPolicy": "pin-in-repo",
+      "licence": "public-domain-us-government",
+      "retrievedFrom": "https://www.ecfr.gov/api/versioner/v1/full/2026-01-01/title-14.xml?part=107"
+    }
+  ]
+}

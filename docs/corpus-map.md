@@ -47,7 +47,7 @@ before either has been implemented.
 | `id` | Stable slug. Referenced by `dependsOn`, by issues, and by the engine's own citations. Never reused. |
 | `name` | What the rule is called, in the corpus's language where it has one. |
 | `locator` | Corpus id plus a citation in that corpus's grammar. **Required.** An entry without one is not an entry. |
-| `kind` | `value` or `operation` — a fact the corpus states, or a procedure it describes. |
+| `kind` | `value`, `operation` or `assertion` — a fact the corpus states, a procedure it describes, or a condition only the caller can supply. See below. |
 | `scope` | `in` or `out`. Out is a recorded verdict with a reason, not an omission. |
 | `clarity` | `clear` or `ambiguous`. `clear` asserts the corpus determines exactly one answer for every valid input. |
 | `ambiguity` | Absent when clear. Otherwise the question, and its `fate`. |
@@ -55,6 +55,26 @@ before either has been implemented.
 | `evidence` | What must be demonstrated. For a finite table: the whole table, not a sample. |
 | `status` | See below. |
 | `implementedIn` | The ruleset revision that implemented it. Set when status becomes `implemented`. |
+
+### `kind: assertion`
+
+Added after the first trial against a real corpus, where eight of twenty-four entries were
+neither a value nor an operation.
+
+An assertion is a condition the engine cannot evaluate: that a person could see the
+aircraft, that communication was maintained, that a preflight check was performed, that a
+pilot judged an action safe. These are real, binding rules — and no computation settles
+them.
+
+An engine owes an assertion four things: **demand it, attribute it, record it alongside the
+outcome, and never infer it.** Defaulting an unasserted condition to true substitutes the
+engine's judgement for a person's, silently, which is the failure the unresolved-result
+contract exists to prevent in the other direction.
+
+Two things that look like other kinds are assertions. Judgement the corpus *deliberately*
+delegates ("if the pilot determines it would be in the interest of safety") is not
+ambiguous — the corpus is entirely clear about who decides. And facts about the physical
+world are consumed, not derived.
 
 ### `ambiguity.fate`
 
@@ -139,8 +159,23 @@ covers. A boundary policy is a property of the licence, and the two engines this
 derived from answer it in opposite directions — one commits its extracted corpus because the
 SRD is CC-BY, the other commits nothing because its rulebook is commercial.
 
+`references` lists corpora this one defers to — a regulation citing another title, a
+rulebook citing a supplement — each marked admitted or not. Those references are the
+boundary of any engine built from the corpus, and naming them makes that boundary
+inspectable rather than inferred from whichever entries happen to be declined. In the first
+trial, three of twelve sections deferred their meaning to a corpus that had not been
+admitted.
+
+```json
+"references": [
+  { "sourceId": "cfr-49-171", "citation": "§ 171.8", "admitted": false },
+  { "sourceId": "air-almanac", "admitted": false }
+]
+```
+
 `asOf` is present only for a corpus that is revised over time. Absent means timeless, never
-unknown.
+unknown. It pins which text is in force and nothing more — a rule may carry dates of its
+own, which are ordinary operations over a date the caller supplies.
 
 ## Where the map lives
 
@@ -150,11 +185,20 @@ its `status` fields are only true of a particular commit.
 
 ## Open questions
 
-Recorded rather than decided, because they need a real corpus to answer well.
+Recorded rather than decided. The first trial —
+[examples/faa-part-107](../examples/faa-part-107/README.md) — answered some and sharpened
+the rest.
 
-**Granularity.** How fine is an entry? "How a test resolves" and "how a glitch is scored"
-are plausibly one entry or four. The dependency graph is the likely arbiter — if two things
-are never implemented separately, they are one entry — but that is a hypothesis.
+**Granularity.** Partly answered. Twelve sections of regulation produced twenty-four
+entries, close to 2:1, and the split that mattered was separating a stated figure from the
+comparison against it: one paragraph of § 107.51 holds three distinct figures, and a single
+entry would have lost two of them. The dependency graph remains the arbiter for the harder
+cases.
+
+**A standard versus a gap.** New, and unresolved. "Well clear" and "reasonable protection"
+are ambiguous to an engine and entirely settled in the corpus. Both available fates imply
+the corpus failed to say something, and it did not. Whether this needs a third fate or only
+better prose is undecided.
 
 **Who writes it.** The ambition is that an agent produces a first draft from the corpus and
 a human reviews the decomposition. Whether the first draft is good enough to be worth
