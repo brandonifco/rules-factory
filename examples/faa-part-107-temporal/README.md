@@ -10,10 +10,12 @@ pinned twice.
 **Slice:** the same twelve sections both times, mapped independently against each text.
 
 **Result:** 44 sections → 61. Of the twelve mapped, **eight unchanged, four changed, none
-removed.** 25 entries in 2020, 27 in 2026 — 23 and 24 as first mapped, before
+removed.** 27 entries in 2020, 29 in 2026 — 23 and 24 as first mapped, before
 [0005](../../docs/decisions/0005-a-field-earns-its-place-by-being-checkable.md) split the
-delegated standards into entries of their own and
-[#26](https://github.com/brandonifco/rules-factory/issues/26) added the fifth.
+delegated standards into entries of their own,
+[#26](https://github.com/brandonifco/rules-factory/issues/26) added the fifth, and
+[0008](../../docs/decisions/0008-recognising-a-delegated-standard-is-a-procedure-not-a-test.md)'s
+procedure split `well-clear` and `prominent-objects` out as gaps.
 
 ```
 2020-01-01  ->  2026-01-01
@@ -48,37 +50,62 @@ a different tool and not a flag on the shipped one:
 $ python3 examples/faa-part-107/check-locators-section.py \
       examples/faa-part-107-temporal/corpus-map-2020-01-01.json \
       examples/faa-part-107-temporal/part107-2020-01-01.xml
-locators ok (all 25 checked against the section tree)
+locators ok (all 27 checked against the section tree)
 ```
 
-## The finding worth the trial
+## The finding worth the trial, withdrawn and replaced
 
-**An amendment turned a rule the engine computes into one that demands a caller's
-assertion.**
+**Withdrawn: "an amendment turned a rule the engine computes into one that demands a caller's
+assertion."** It has been stated three times, and it never had the premise it needed.
 
-In 2020, § 107.29 was titled *Daylight operation* and said: "No person may operate a small
-unmanned aircraft system during night." A flat prohibition — perfectly clear, trivially
-implementable, and total: given the time, the engine answers.
+The premise was that in 2020 § 107.29(a) — "No person may operate a small unmanned aircraft
+system during night" — was cleanly computable: *given the time, the engine answers*. It was not.
+**§ 107.3 defines six terms at that date and seven in 2026, and `night` is not among them in
+either**, read directly from both corpus files. The 2020 rule *is* the undefined word and nothing
+else. An engine built from that map would decide night operations with no definition of night,
+and the comparison the finding rested on was between two entries that are both incomplete —
+[#33](https://github.com/brandonifco/rules-factory/issues/33).
 
-By 2026 it is titled *Operation at night* and permits night flight subject to training and
-"lighted anti-collision lighting visible for at least 3 statute miles **that has a flash rate
-sufficient to avoid a collision**." That clause states no rate, and it is not meant to: the
-regulator wrote a standard where a number would have gone. The rule is still clear and still
-implementable — but the engine can no longer answer from the flight alone. It must **demand
-an assertion**, attribute it, and record it with the outcome.
+Both entries are now `definedElsewhere` against 14 CFR § 1.1, which § 107.3 puts in force for
+this part, and both decline with `MissingRulesData`. See the entry notes for the limit on that
+claim: § 107.3's clause is a general priority rule, so it becomes checkable only when `cfr-14-1`
+is admitted. It is listed as a `reference` in both manifests and admitted in neither.
 
-That is what the map now says. The 2026 map gains an entry the 2020 map has no counterpart
-for — `flash-rate-sufficient`, `kind: assertion` — and the differ reports it as an addition
-rather than as a change of `clarity` on `night-operation`.
+**What the diff now shows, stated plainly.**
 
-**As first mapped, this was recorded as an amendment introducing an ambiguity**, and read as
-the first evidence that `clarity` is a property of a corpus version rather than of a rule.
-0005 rejected that reading: a delegated standard is not a defect in the text, so `clarity`
-does not move, and under the corrected classification that finding has zero instances in any
-map. What survives is the stronger half, and it did not need `clarity` to carry it — the
-direction of travel is not always toward precision, a map is a statement about one text, and
-an engine's honesty about what it cannot answer alone can change without the engine changing
-at all.
+| | 2020 | 2026 |
+|---|---|---|
+| § 107.29(a) turns on | "night", undefined in the corpus | "night", undefined in the corpus |
+| the engine's answer | `MissingRulesData` | `MissingRulesData` |
+| what else the rule defers | nothing | the flash rate, to the caller (`flash-rate-sufficient`) |
+| what else the rule gained | — | a computable training date, and a bound on reducing intensity |
+
+So the amendment **added a delegated standard to a rule that was already undecidable, for a
+different reason, at both dates**. That is a weaker claim than the one withdrawn and it is the
+one the corpus supports. `flash-rate-sufficient` is still an entry the 2020 map has no
+counterpart for, and the differ still reports it as an addition rather than as a change of
+`clarity` — that half never depended on the 2020 entry being computable.
+
+**The direction-of-travel claim survives on its own evidence**, which is the second instance
+below rather than this one: a map is a statement about one text, and what an engine can answer
+alone changes with the text without the engine changing at all.
+
+**Why it took three passes, which is the part worth keeping.** Each restatement was forced by
+looking at a field nothing checks. The first reading recorded the amendment as introducing an
+ambiguity; 0005 rejected that, because a delegated standard is not a defect in the text. The
+second kept `clarity` out of it and rested on "computable in 2020". This one removes that, and
+only because
+[0008](../../docs/decisions/0008-recognising-a-delegated-standard-is-a-procedure-not-a-test.md)'s
+procedure was applied to every entry rather than to the interesting ones. **`clarity` is the one
+field nothing compares against the corpus**, and all three errors lived in it. The undefined-term
+sweep behind this is in [trial 1's README](../faa-part-107/README.md#the-undefined-term-sweep):
+49 terms, 21 that carry a rule, 3 recorded wrong.
+
+**A finding the corrected maps make visible.** `well-clear` and `prominent-objects` are new
+entries in **both** maps, identical at both dates, so the differ reports them nowhere. That is
+the point: these gaps are not amendments, they are two places where the corpus was open all
+along and the map said otherwise. A diff of two maps can only show what the mapper noticed at
+both dates, and it is silent by construction about what was missed at both.
 
 **A second instance of the same shape, found by [#26](https://github.com/brandonifco/rules-factory/issues/26).**
 `intensity-reduction-in-interest-of-safety` — the remote pilot's judgement that reducing the

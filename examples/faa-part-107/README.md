@@ -15,11 +15,17 @@ flight operate?*
 
 **Result as it stands**, after
 [0005](../../docs/decisions/0005-a-field-earns-its-place-by-being-checkable.md) landed
-findings 1–4 in the map itself and
+findings 1–4 in the map itself,
 [#26](https://github.com/brandonifco/rules-factory/issues/26) added the fifth delegated
-judgement: 27 entries. 6 values, 16 operations, 5 assertions. 26 clear, 1 ambiguous. 3
-declined. The three extra entries are the delegated standards, split out of the rules that
-consume them; the four ambiguities that went away were never gaps in the text.
+judgement, and
+[0008](../../docs/decisions/0008-recognising-a-delegated-standard-is-a-procedure-not-a-test.md)'s
+procedure was applied to every entry
+([#33](https://github.com/brandonifco/rules-factory/issues/33),
+[#34](https://github.com/brandonifco/rules-factory/issues/34)): **29 entries. 6 values, 19
+operations, 4 assertions. 26 clear, 3 ambiguous. 4 declined.** The delegated standards are
+entries split out of the rules that consume them; so, now, are the two gaps the sweep below
+found. `right-of-way` stopped being an assertion, and `night-operation` stopped being a rule
+this map could claim to have derived from the text it admitted.
 
 Every entry's `evidence` is now a **verbatim span of the corpus**
 ([#18](https://github.com/brandonifco/rules-factory/issues/18)), and the mapper's summary of
@@ -49,9 +55,10 @@ the corpus states, three operations that compare against them. Splitting the fig
 the comparison is not bureaucracy — the altitude limit has three distinct figures inside one
 paragraph, and a single "400 feet" entry would have lost two of them.
 
-**Ratio.** Twelve sections produced twenty-four entries, almost exactly 2:1 — twenty-six once
-0005 split the two delegated standards out, which moves the ratio very little. Useful for
-estimating: this slice is 1/5 of the part, so the whole is roughly 120 entries.
+**Ratio.** Twelve sections produced twenty-four entries, almost exactly 2:1 — twenty-nine once
+0005 split the delegated standards out and 0008's procedure split the gaps, which moves the
+ratio very little. Useful for estimating: this slice is 1/5 of the part, so the whole is
+roughly 145 entries.
 
 ## What broke
 
@@ -137,6 +144,20 @@ that each states a **standard the operator must meet**, where "sparsely populate
 undefined factual predicate vested in nobody. `moving-vehicle-operation` stays a gap on either
 reading.
 
+**And that separation did not survive.** Five one-sentence tests have now failed, and
+[0008](../../docs/decisions/0008-recognising-a-delegated-standard-is-a-procedure-not-a-test.md)
+replaces them with an ordered procedure whose last gate requires the corpus to state, **in the
+same constituent as the open term**, either the measure or the set of values the term may take.
+Three of the four above quote one — "sufficient **to avoid a collision**", "reasonable protection
+**from a falling small unmanned aircraft**", "so close **as to create a collision hazard**".
+**`well clear` quotes neither.** § 107.37(a) is a definition whose definiens has two coordinate
+conjuncts; "must give way" is a second obligation, not what the clearance is measured against;
+the term occurs exactly once in the corpus and § 107.3 does not define it. So it is a gap, it is
+the same shape as "sparsely populated area", and the procedure returns the same answer for both —
+which is the first time any formulation has. `right-of-way` is now an `operation` over its two
+computable enumerations, `well-clear` is its own entry with `fate: unresolved`, and what
+separated them before was aviation practice, which is in neither text.
+
 ### 4. External corpora are pervasive, and the manifest cannot describe one it has not admitted
 
 Three of twelve sections defer their meaning elsewhere: § 107.36 defines hazardous material
@@ -158,6 +179,16 @@ inspectable instead of inferred.
 and neither entry carries an `ambiguity` block, because neither is ambiguous. The third
 deferral, § 107.39(c) to subpart D, is not an unadmitted corpus at all — it is this corpus,
 out of scope, and it is `subpart-d-categories`.
+
+**Three of twelve was an undercount, and the fourth is the one that mattered.** § 107.3 puts
+"the definitions specified in § 1.1 of this chapter" in force for the whole part, which is a
+deferral to an unadmitted corpus covering *every* term § 107.3 does not define — including
+`night`, which § 107.29 turns on entirely at both dates. Both manifests now list `cfr-14-1`
+alongside `cfr-49-171` and `air-almanac`, admitted in neither, and `night-operation` names it.
+It is a weaker citation than the other two: § 107.36 and § 107.29(c)(3) each name the corpus
+**for the term**, where § 107.3 states only a priority rule and leaves which terms § 1.1 supplies
+unknowable until it is admitted. Recorded in the entry's note, because a reference that resolves
+in the manifest can still be a claim nobody has checked.
 
 ### 5. Temporal handling covers one of two temporal things
 
@@ -237,8 +268,8 @@ What this check does catch is drift (a citation edited later while the quote sta
 paraphrase presented as evidence, and a quote that turns out to live in more places than the
 citation admits.
 
-Which is why the result is worth stating plainly: **27 of 27 citations in the 2026 map and 25
-of 25 in the 2020 map verify, none was found wrong, and none was corrected.** Against
+Which is why the result is worth stating plainly: **29 of 29 citations in the 2026 map and 27
+of 27 in the 2020 map verify, none was found wrong, and none was corrected.** Against
 backgammon the same class of check found thirteen errors in twenty-four. That is a fact about
 the two locator grammars, not about the two mappers.
 
@@ -284,6 +315,90 @@ reachable only through subpart D"* — and § 107.49 has no paragraph (f) at tha
 case asserted about a text that does not state it, copied across from the 2026 map, and the
 entry's own `note` contradicted it two lines later ("Five obligations"). A summary can claim a
 case the corpus does not contain; a quote cannot.
+
+## The undefined-term sweep
+
+`clarity` is the one field nothing compares against the corpus, and the map was caught giving
+**opposite verdicts on identical ground**: `moving-vehicle-operation` was `ambiguous` because
+"sparsely populated area" is undefined, while `night-operation` was `clear` although "night" is
+undefined in exactly the same sense — and in 2020 the undefined word *is* the entire rule.
+[#33](https://github.com/brandonifco/rules-factory/issues/33) and
+[#34](https://github.com/brandonifco/rules-factory/issues/34) each asked for the same thing from
+opposite ends: not four fixes, but **every term every mapped entry relies on, against the terms
+§ 107.3 defines.** One instance found by inspection is not a count — that is the argument that
+turned #26's single dropped case into seventeen.
+
+**§ 107.3 defines seven terms in the 2026 text and six in 2020** — control station, corrective
+lenses, *declaration of compliance* (2026 only), small unmanned aircraft, small unmanned aircraft
+system, unmanned aircraft, visual observer — and **night is not among them at either date**, read
+directly from `part107.xml` and `part107-2020-01-01.xml`.
+
+**The count is 49 distinct terms undefined by § 107.3 across the two maps' in-scope entries, of
+which 21 carry a rule. Three of the 21 were recorded as needing nothing — six entry instances,
+three per map.** The remaining 28 are disposed of before gate 3: 5 are fixed elsewhere in the
+admitted corpus (`remote pilot in command` at §§ 107.12 and 107.19, `civil twilight` at
+§ 107.29(c), `flight visibility` at § 107.51(c), *yielding the right of way* at § 107.37(a), the
+knowledge test at § 107.65) and 23 are ordinary caller-supplied parameters that gate 1 stops —
+groundspeed, altitude above ground level, a structure and its uppermost limit, a cloud, the
+airspace class, a prohibited or restricted area, the three protected kinds and the three relative
+positions in § 107.37(a), a human being, a covered structure, a stationary vehicle, whether the
+vehicle is moving, whether lighting is fitted. **A parameter is not a rule and gets no entry**, as
+`corpus-map.md` rules for `airspace-authorized`.
+
+The 21 that carry a rule:
+
+| term | entries relying on it | 0008 returns | recorded as | verdict |
+|---|---|---|---|---|
+| "night" | `night-operation` ×2 | gate 2 → `definedElsewhere`, 14 CFR § 1.1 | `clear`, computable | **wrong — fixed** |
+| "well clear" | `right-of-way` ×2 | gate 3 → gap | `kind: assertion` | **wrong — fixed** |
+| "prominent" | `weather-minimums-met` ×2 | gate 3 → gap | `clear` | **wrong — fixed** |
+| "sparsely populated area" | `moving-vehicle-operation` ×2 | gate 3 → gap | gap, `unresolved` | agrees |
+| "hazardous material" | `hazardous-material` ×2 | gate 2 → `definedElsewhere` | `definedElsewhere` | agrees |
+| Alaskan civil twilight | `civil-twilight-alaska` ×2 | gate 2 → `definedElsewhere` | `definedElsewhere` | agrees |
+| "a flash rate sufficient" | `flash-rate-sufficient` ×1 | gate 3 → assertion | assertion | agrees |
+| "so close … as to create a collision hazard" | `collision-hazard-proximity` ×2 | gate 3 → assertion | assertion | agrees |
+| "reasonable protection" | `reasonable-protection` ×2 | gate 3 → assertion | assertion | agrees |
+| "in the interest of safety" | `intensity-reduction-in-interest-of-safety` ×2 | gate 3 → assertion | assertion | agrees |
+| "official sunrise", "official sunset" | `civil-twilight-window` ×2, `civil-twilight-operation` ×2 | gate 1 → parameter | `clear` | agrees, with a caveat below |
+| "directly participating" | `over-human-beings` ×2 | gate 3 → gap | `operation`, `clear` | **#11** |
+| "effective communication" | `visual-observer-conditions` ×2 | gate 3 → gap | `operation`, `clear` | **#11** |
+| "coordinate", "maintain awareness" | `visual-observer-conditions` ×2 | gate 3 → gap | `operation`, `clear` | **#11** |
+| "able to see … throughout the entire flight" | `visual-line-of-sight` ×2 | gate 3 → gap | `operation`, `clear` | **#11** |
+| "endanger the life or property of another" | `visual-line-of-sight` ×2 | gate 3 → gap | `operation`, `clear` | **#11** |
+| "assess … considering risks" | `preflight-actions` ×2 | gate 3 → gap | `operation`, `clear` | **#11** |
+| "informed about" | `preflight-actions` ×2 | gate 3 → gap | `operation`, `clear` | **#11** |
+| "working properly" | `preflight-actions` ×2 | gate 3 → gap | `operation`, `clear` | **#11** |
+| "enough available power … for the intended operational time" | `preflight-actions` ×2 | gate 3 → gap | `operation`, `clear` | **#11** |
+| "secure and does not adversely affect" | `preflight-actions` ×2 | gate 3 → gap | `operation`, `clear` | **#11** |
+
+**The three that were wrong are the three #33 and #34 named, and the sweep found no fourth.**
+That is worth stating as a result and not as an absence: the two issues were written from the
+interesting entries, and this is the first pass that looked at the boring ones.
+
+**The residue is one open question, not ten new ones.** The ten rows marked #11 are a single
+family — facts a *person* asserts, in the three entries
+[#11](https://github.com/brandonifco/rules-factory/issues/11) has been open over since the first
+trial, plus `over-human-beings`. 0008's gates return a gap for every one of them on their own
+words, and 0005 explicitly leaves the family undecided. **Nothing here is changed on that
+account**, because a sweep that settled #11 as a side effect would be doing exactly what 0008
+rejected test 4 for. What the sweep adds is the count: the question is worth **ten terms across
+four entries, twenty instances**, not three entries.
+
+**One caveat, recorded where the claim is made.** "Official sunrise" and "official sunset" anchor
+both civil-twilight windows and are undefined in the corpus. They are treated as parameters —
+sunrise at a place and date is an objective fact the caller supplies — but *"official"* is doing
+work that the corpus does not do, and § 107.29(c)(3) shows the drafter naming a publication (the
+Air Almanac) when he means one. If that word is a deferral, `civil-twilight-window` is a second
+`definedElsewhere` and not a clear value. Not changed here; stated so that the next reader is
+deciding it rather than inheriting it.
+
+**What this says about the checks.** Every check in the repository was green while the map
+carried three verdicts its own corpus contradicts, because `clarity` is compared against nothing.
+`check-map.py` cannot close this — it does not read the corpus, by design — and
+`check-locators-section.py` verifies that a citation resolves, not that the passage it resolves to
+supports the verdict. A checker that could catch this would need the list of terms § 107.3 defines
+and the list each entry relies on, and the second list is the part that is judgement. **The
+honest position is that this is a review obligation with a recorded count, not a gate.**
 
 ## What it means for the kernel
 
