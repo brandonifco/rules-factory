@@ -44,15 +44,14 @@
       "kind": "value",
       "scope": "in",
       "clarity": "clear",
+      "beyondAdapter": {
+        "adapter": "plain-text",
+        "modality": "illustration"
+      },
       "dependsOn": [],
       "evidence": "Cannot be evidenced from this corpus.",
       "status": "declined",
-      "ambiguity": {
-        "question": "The text says only 'with the men placed as in Fig. 1'. The arrangement is stated in an illustration, not in prose.",
-        "fate": "unresolved",
-        "unresolvedReason": "MissingRulesData"
-      },
-      "note": "The rule is fully determined in the corpus -- as an image a plain-text adapter cannot read."
+      "note": "The rule is fully determined in the corpus, in Fig. 1. The declared plain-text adapter cannot read a figure, so the engine declines with MissingRulesData. An adapter that could see figures would reach it."
     },
     {
       "id": "opening-roll",
@@ -113,6 +112,9 @@
       "dependsOn": [
         "throw-two-dice"
       ],
+      "gatedBy": [
+        "enter-from-bar"
+      ],
       "evidence": "A throw played on one man and on two; the worked 'six trois' example.",
       "status": "mapped"
     },
@@ -128,6 +130,9 @@
       "clarity": "clear",
       "dependsOn": [
         "move-by-pip"
+      ],
+      "gatedBy": [
+        "enter-from-bar"
       ],
       "evidence": "All three worked examples: aces to four points, deuces to eight, threes to twelve.",
       "status": "mapped"
@@ -223,6 +228,9 @@
       "dependsOn": [
         "move-by-pip"
       ],
+      "gatedBy": [
+        "enter-from-bar"
+      ],
       "evidence": "A throw fully playable, partly playable, and unplayable.",
       "status": "mapped",
       "ambiguity": {
@@ -258,6 +266,9 @@
       "dependsOn": [
         "bearing-off-eligible"
       ],
+      "gatedBy": [
+        "bearing-off-eligible"
+      ],
       "evidence": "The worked distribution, for both the quatre and the trois.",
       "status": "mapped"
     },
@@ -273,6 +284,9 @@
       "clarity": "clear",
       "dependsOn": [
         "bearing-off-move-or-remove"
+      ],
+      "gatedBy": [
+        "bearing-off-eligible"
       ],
       "evidence": "The six-throw example; and a usable throw, which must be played forward instead.",
       "status": "mapped"
@@ -290,6 +304,9 @@
       "dependsOn": [
         "doublets",
         "bearing-off-move-or-remove"
+      ],
+      "gatedBy": [
+        "bearing-off-eligible"
       ],
       "evidence": "The deuces example: three borne off, the fourth played forward.",
       "status": "mapped"

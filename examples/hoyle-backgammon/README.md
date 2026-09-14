@@ -48,7 +48,12 @@ modality of the same corpus**.
 
 That matters because the manifest's `references` list, added after the first trial, does not
 help: there is nothing to reference. What determines reachability is the **adapter**, and
-the map has no way to say "this entry is beyond what the declared adapter can read."
+the map had no way to say "this entry is beyond what the declared adapter can read."
+
+*Resolved.* [0004](../../docs/decisions/0004-adapter-reach-is-a-property-of-the-entry.md)
+adds `beyondAdapter`, and `starting-position` carries
+`{ "adapter": "plain-text", "modality": "illustration" }`. It no longer carries an
+`ambiguity` block, because nothing about it was ambiguous.
 
 ### 2. `dependsOn` conflates two different orderings
 
@@ -62,6 +67,13 @@ condition holds.
 
 A stateless corpus hides this. Part 107 evaluates one flight against a set of limits and
 never asked the question. Any corpus with turn structure asks it immediately.
+
+*Resolved.* [0003](../../docs/decisions/0003-a-phase-gate-names-a-rule-not-a-condition.md)
+adds `gatedBy`, an array of entry ids and nothing else. Six entries in this map carry it:
+three gated by `enter-from-bar`, three by `bearing-off-eligible`. Filling it showed that the
+gate relation is not recoverable from `dependsOn` — `bearing-off-doublets` has six
+implementation ancestors and one gate, and `move-by-pip` is gated by an entry that is
+neither its ancestor nor its descendant.
 
 ### 3. Non-normative text sits inside normative sections
 
@@ -122,3 +134,9 @@ century and a subject apart without strain.
 Findings 1 and 2 are schema changes. Finding 3 is a method change. Finding 4 is a paragraph
 the method was missing and the map already supported. All four are cheap now and would be
 expensive after tooling reads the map.
+
+Findings 1 and 2 have since been decided —
+[0004](../../docs/decisions/0004-adapter-reach-is-a-property-of-the-entry.md) and
+[0003](../../docs/decisions/0003-a-phase-gate-names-a-rule-not-a-condition.md) — and this
+map is written against the result. Finding 3 remains a method change with no field behind
+it: `scope` still excludes an entry and not a sentence.
