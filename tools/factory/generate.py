@@ -1,14 +1,17 @@
 """M2 of #3: scaffold a .NET engine and generate the `*.g.cs` files that tie it to its map.
 
-Two kinds of output, and the line between them is the file name:
+Three kinds of output, one per ownership class (ownership.py holds the table, decision 0018):
 
-  * **Scaffold** -- global.json, NuGet.config, Directory.Build.props, Directory.Packages.props,
-    the solution, both project files and an empty `corpus-map.overlay.json`. Written only when
-    absent: after the first `produce` they belong to the engine, and a second `produce` must
-    not undo an edit to them (above all to the overlay, which is the engine's own file, 0015).
-    So none of them may say anything the factory's inputs decide. A re-run with a different map
-    version would leave such a file naming the old one while the code and provenance.json named
-    the new (#66).
+  * **Managed** -- global.json, NuGet.config and Directory.Build.props (`managed_files`): the
+    factory's build policy. Rewritten when the recipe version moves and the engine has not
+    edited them; a hand edit is refused unless `--adopt` or `--reset` settles it.
+  * **Engine-owned** -- Directory.Packages.props, the solution, both project files and an
+    empty `corpus-map.overlay.json` (`engine_owned`). Written only when absent: after the first
+    `produce` they belong to the engine, and a second `produce` must not undo an edit to them
+    (above all to the overlay, which is the engine's own file, 0015).
+    Neither managed nor engine-owned files may say anything the factory's inputs decide. A
+    re-run with a different map version would leave such a file naming the old one while the
+    code and provenance.json named the new (#66).
   * **Generated** -- every file named `*.g.*`: the `*.g.cs` under `Generated/`, and
     `RulesFactory.Packages.g.props` in the engine root. Rewritten on every `produce`, from the
     package map merged with the engine's overlay, and never edited by hand; provenance.json
@@ -22,8 +25,8 @@ engine may bump on its own. Because the pins now have one home, `produce` refuse
 writing anything, an engine whose own MSBuild files pin the kernel or the map again, reference a
 map package themselves, or whose Directory.Packages.props does not import the generated file.
 
-global.json's SDK version is the kernel's toolchain and stays scaffold: an engine may need to
-move it, and the SDK is not a package the build restores.
+global.json's SDK version is the kernel's toolchain and is managed, not generated: the SDK is
+not a package the build restores, and an engine that must move it adopts the file.
 
 The corpus is copied to `corpus/` on every run; intake has already proved its bytes.
 
@@ -57,6 +60,8 @@ paths, no dictionary-order accidents.
 import json
 import os
 import re
+
+import ownership
 
 KERNEL_VERSION = "0.2.0"
 # The SDK rules-kernel pins (its global.json), so a produced engine builds with the kernel's
@@ -648,14 +653,21 @@ def tests_cs(model):
 # --- scaffold ------------------------------------------------------------------------------
 
 
-def scaffold(model):
-    name = model.name
-    packages = "\n".join(f'    <PackageVersion Include="{p}" Version="{v}" />' for p, v in TEST_PACKAGES)
+# No double hyphen in this text: it goes inside XML comments, where "--" is not allowed.
+MANAGED_NOTE = ("Managed by rules-factory (recipe {version}): `factory produce` updates this file when its\n"
+                "       recipe changes and refuses to overwrite a hand edit; adopting it makes it the engine's own.")
+
+
+def managed_files():
+    """The managed recipes (ownership.py): path -> text. Independent of the engine and the map, so
+    each recipe version is one fixed sequence of bytes."""
+    versions = {row.pattern: row.recipe for row in ownership.managed_rows("")}
     return {
         "global.json": json.dumps({"sdk": {"version": SDK_VERSION, "rollForward": "disable"}}, indent=2) + "\n",
         "NuGet.config": (
             '<?xml version="1.0" encoding="utf-8"?>\n'
-            "<!-- Restore talks to nuget.org and nothing else; packages.lock.json pins every content hash. -->\n"
+            "<!-- Restore talks to nuget.org and nothing else; packages.lock.json pins every content hash.\n"
+            f"     {MANAGED_NOTE.format(version=versions['NuGet.config'])} -->\n"
             "<configuration>\n"
             "  <packageSources>\n"
             "    <clear />\n"
@@ -669,7 +681,8 @@ def scaffold(model):
             "</configuration>\n"),
         "Directory.Build.props": (
             "<Project>\n\n"
-            "  <!-- Produced by rules-factory tools/factory. Zero-warning, deterministic builds. -->\n"
+            "  <!-- Zero-warning, deterministic builds.\n"
+            f"       {MANAGED_NOTE.format(version=versions['Directory.Build.props'])} -->\n"
             "  <PropertyGroup>\n"
             "    <TargetFrameworks>net8.0;net10.0</TargetFrameworks>\n"
             "    <LangVersion>latest</LangVersion>\n"
@@ -691,6 +704,14 @@ def scaffold(model):
             "    <RestoreLockedMode Condition=\"'$(CI)' == 'true'\">true</RestoreLockedMode>\n"
             "  </PropertyGroup>\n\n"
             "</Project>\n"),
+    }
+
+
+def engine_owned(model):
+    """The engine-owned scaffold (ownership.py): path -> text, written only when absent."""
+    name = model.name
+    packages = "\n".join(f'    <PackageVersion Include="{p}" Version="{v}" />' for p, v in TEST_PACKAGES)
+    return {
         "Directory.Packages.props": (
             "<Project>\n\n"
             "  <PropertyGroup>\n"
@@ -826,8 +847,14 @@ def refuse_split_pins(model, out):
                               f"{PACKAGES_PROPS}, which every produce rewrites, so remove them from those files")
 
 
-def produce(intake, name, out, log=None):
-    """Scaffold (when absent) and generate (always) an engine for `intake` under `out`."""
+def produce(intake, name, out, log=None, adopt=(), reset=()):
+    """Write an engine for `intake` under `out`, each file as its ownership class says.
+
+    Engine-owned files are written when absent; managed files as ownership.plan_managed decides
+    (`adopt` and `reset` are the managed paths given to --adopt and --reset); generated files
+    always. The returned model carries `managed` ({path: recipe version}) and `adopted` (managed
+    paths now engine-owned) for provenance to record. Every refusal is raised before any write.
+    """
     overlay_path = os.path.join(out, OVERLAY_NAME)
     overlay = {}
     if os.path.isfile(overlay_path):
@@ -838,14 +865,22 @@ def produce(intake, name, out, log=None):
             raise GenerationError(f"cannot read {overlay_path}: {error}")
     model = Model(intake, merge(intake.map, overlay), name)
     refuse_split_pins(model, out)
+    try:
+        managed_writes, model.managed, model.adopted, notes = ownership.plan_managed(
+            out, name, {p: t.encode("utf-8") for p, t in managed_files().items()}, adopt, reset)
+    except ownership.OwnershipError as error:
+        raise GenerationError(str(error))
     corpus_file = os.path.basename(str(intake.corpus.get("committedPath") or intake.corpus_name))
 
     written = []
-    for relative, text in scaffold(model).items():
+    for relative, text in engine_owned(model).items():
         path = os.path.join(out, *relative.split("/"))
         if not os.path.exists(path):
             _write(path, text.encode("utf-8"))
             written.append(relative)
+    for relative, data in sorted(managed_writes.items()):
+        _write(os.path.join(out, *relative.split("/")), data)
+        written.append(relative)
     _write(os.path.join(out, "corpus", corpus_file), intake.corpus_bytes)
     written.append(f"corpus/{corpus_file}")
     for relative, text in generated(model).items():
@@ -857,6 +892,8 @@ def produce(intake, name, out, log=None):
             rows[item["row"]] = rows.get(item["row"], 0) + 1
         summary = ", ".join(f"row {r}: {n}" if r else f"no row: {n}" for r, n in sorted(rows.items(), key=lambda kv: kv[0] or 0))
         print(f"--- produce: {len(model.entries)} entries registered ({summary})", file=log)
+        for note in notes:
+            print(note, file=log)
         for relative in written:
             print(f"wrote {relative}", file=log)
     return model

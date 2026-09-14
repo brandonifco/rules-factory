@@ -3,8 +3,8 @@
 generates exactly what the correspondence table says.
 
 What is asserted here without a .NET SDK: two runs give byte-identical trees; a second run into
-the same directory leaves scaffold files (the overlay above all) alone and rewrites the
-generated ones; a re-run with a newer or older version of the map leaves nothing naming the
+the same directory leaves engine-owned files (the overlay above all) alone and rewrites the
+generated ones (managed files: test_factory_ownership.py); a re-run with a newer or older version of the map leaves nothing naming the
 version it replaced, pins included (#66); every one of Part 107's 44 entries is emitted with its citation verbatim and
 the correspondence row the table's first match gives it; the overlay moves an entry between
 rows; an overlay that breaks 0015's merge rules is refused. And produce is transactional (#67):
@@ -14,9 +14,10 @@ in-process) is rolled back; a commit whose rollback also failed is rolled back b
 and a copy of that half-committed engine is refused, naming the journal.
 
 What is not: that the produced solution builds and its generated tests pass. That needs the
-SDK the kernel pins and nuget.org, so it is not a unit test here: scripts/validate-engine.sh
-produces the backgammon engine from scratch and restores, builds (`-warnaserror`) and tests it,
-and CI's `engine` job runs that script with the pinned SDK installed.
+SDK the kernel pins and nuget.org, so it is not a unit test here, and produce runs with
+`--no-verify`: scripts/validate-engine.sh produces the backgammon engine from scratch and runs
+`factory verify` on it (restore, build `-warnaserror`, test, the engine's gate), and CI's `engine`
+job runs that script with the pinned SDK installed. verify's own logic is test_factory_verify.py's.
 
 Run: python3 -m unittest discover -s tools/tests
 """
@@ -109,7 +110,9 @@ class ProduceCase(unittest.TestCase):
         buffer = io.StringIO()
         with redirect_stdout(buffer), redirect_stderr(buffer):
             code = factory.main(["produce", "--package", package or self.part107, "--corpus", corpus,
-                                 "--name", name, "--out", out, "--allow-dirty"])
+                                 "--name", name, "--out", out, "--allow-dirty",
+                                 # nor is building it: no SDK assumed (test_factory_verify.py)
+                                 "--no-verify"])
         return code, buffer.getvalue()
 
     def produced(self, out=None, **kwargs):
@@ -185,14 +188,14 @@ class TestScaffold(ProduceCase):
         os.makedirs(os.path.dirname(hand))
         with open(hand, "w", encoding="utf-8") as handle:
             handle.write("// mine\n")
-        with open(os.path.join(out, "Directory.Build.props"), "a", encoding="utf-8") as handle:
+        with open(os.path.join(out, "Directory.Packages.props"), "a", encoding="utf-8") as handle:
             handle.write("<!-- edited -->\n")
         generated_file = os.path.join(out, *GENERATED[0].split("/"))
         with open(generated_file, "w", encoding="utf-8") as handle:
             handle.write("// hand edit to a generated file\n")
         self.produced(out)
         self.assertEqual(self.read(out, f"src/{NAME}/Rules/Speed.cs"), "// mine\n")
-        self.assertTrue(self.read(out, "Directory.Build.props").endswith("<!-- edited -->\n"))
+        self.assertTrue(self.read(out, "Directory.Packages.props").endswith("<!-- edited -->\n"))
         self.assertIn("public static class MapEntries", self.read(out, GENERATED[0]))
 
 

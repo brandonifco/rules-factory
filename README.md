@@ -9,8 +9,16 @@ projects, a declared rules surface, a pinned corpus, seeded decision records, ag
 gates, and a decomposed backlog ready to be worked.
 
 It is **not** a template you copy and diverge from. A factory keeps a relationship with what
-it produced: output carries provenance saying which factory version built it from what, and
-the factory validates its own output before declaring success.
+it produced, and every file it writes has one owner
+([decision 0018](docs/decisions/0018-every-file-the-factory-writes-has-one-owner.md)).
+*Generated* files, such as the code tied to the map, the pins, the gate and the backlog, are
+rewritten on every run. *Managed* files (`global.json`, `NuGet.config`,
+`Directory.Build.props`) hold the factory's build policy at a recipe version. A re-run updates
+them, and refuses to overwrite a hand edit until the engine adopts the file or resets it.
+*Engine-owned* files, such as the overlay, the solution and the projects, are written once and
+then belong to the engine. Output carries provenance saying which factory version built it from
+what, and which class each file is in. The factory validates its own output before declaring
+success.
 
 ## Status
 

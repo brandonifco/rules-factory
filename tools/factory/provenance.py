@@ -31,18 +31,49 @@ The fields, and where each comes from:
     repository-relative POSIX path in ascending byte order; and `digest`, the SHA-256 of the
     UTF-8 text made of one line `<sha256>  <path>\\n` per file in that order (`sha256sum` format).
   * `generated` -- `[{path, sha256}]`, sorted by path, for every file `produce` wrote on this
-    run under the engine directory, except `provenance.json` itself and the write-once scaffold
-    (generate.scaffold): scaffold files belong to the engine after the first run and a second
-    run leaves them alone, so hashing them would make an engine's own edits (its overlay above
-    all) look like tampering, and would make a fresh run and a re-run disagree. Leaving them out
-    is only safe because no scaffold file says anything the inputs decide: the kernel and map
-    pins and the map's PackageReference live in the generated `RulesFactory.Packages.g.props`,
-    which is listed here like any `*.g.cs` (#66). The list is not
-    hard-coded: `Recorder` notes every path opened for writing (or renamed into place) while
-    `produce` runs, so a later step's output is picked up without touching this module. Its
-    root is the staging copy every step writes into (transaction.py), so the recorded paths,
-    relative to that root, are the paths the commit puts in place under `--out`.
+    run under the engine directory whose ownership class (ownership.py, decision 0018) is
+    generated, except `provenance.json` itself. Managed and engine-owned files are not listed
+    here: a re-run does not rewrite an engine-owned file, so hashing it here would make an
+    engine's own edits (its overlay above all) look like tampering, and a managed file is
+    recorded in `managed`. Leaving them out is only safe because neither says anything the
+    inputs decide: the kernel and map pins and the map's PackageReference live in the generated
+    `RulesFactory.Packages.g.props`, which is listed here like any `*.g.cs` (#66). The list is
+    not hard-coded: `Recorder` notes every path opened for writing (or renamed into place) while
+    `produce` runs, so a later step's output is picked up without touching this module, and a
+    written path the ownership table does not classify is refused. Its root is the staging copy
+    every step writes into (transaction.py), so the recorded paths, relative to that root, are
+    the paths the commit puts in place under `--out`.
     Writes made by a child process are not seen; no step makes any.
+  * `managed` -- `[{path, recipeVersion, sha256}]`, sorted by path, for every managed file that
+    is still managed (not adopted): the recipe version it holds and the SHA-256 of its bytes,
+    which are that recipe's. This is the one place a managed file is hashed.
+  * `engineOwned` -- `[{path, adopted}]`, sorted by path, for every engine-owned file of the
+    ownership table present in the engine (the lock files once verify's restore wrote them;
+    produce's `after_restore` hook rebuilds the whole record, this section included), with `adopted: true` for a managed file the engine adopted (--adopt). The
+    next `produce` reads the adoptions back from here. No hash: every engine-owned file is a
+    build input, hashed once in `buildInputs`.
+  * `buildInputs` -- `[{path, sha256}]`, sorted by path in ascending byte order, for every file
+    under the engine directory that the .NET build reads as configuration and that the engine
+    owns, as it stands when `produce` finishes. The rule is `is_build_input`, its only
+    definition: at any depth, with `bin`, `obj`, `.git` and `.vs` pruned, a file named
+    `global.json`, `NuGet.config` (any case, as NuGet finds it), `packages.lock.json`,
+    `Directory.Build.rsp`, `.editorconfig`, `.globalconfig` or `corpus-map.overlay.json`, or
+    ending in `.props`, `.targets`, `.sln`, `.slnx`, `.csproj`, `.fsproj` or `.vbproj`; minus
+    `provenance.json` and every file already in `generated` or `managed` (RulesFactory.Packages.g.props
+    and a managed global.json are the factory's, and are listed there, once). The section does
+    not say the factory wrote these files: some are the engine-owned scaffold (or an adopted
+    managed file), which the engine may have edited since, and the rest (lock files, an
+    engine's own `.targets`) the factory never writes at all. It says which
+    bytes were there. Rule by name rather than a list of the scaffold, so an input the engine
+    adds is covered without anyone remembering to add it.
+    Lock files are the one input `produce` cannot see coming: it runs no restore, so the first
+    `produce` of an engine records none, and the restore after it (`validate.sh lock`) writes
+    them. Holding a record to lock files it never saw would make every engine mismatch from its
+    first restore until someone re-ran `produce`, and a check that always fails is ignored. So a
+    record that lists no `packages.lock.json` makes no claim about lock files, and recompute
+    leaves lock files out on both sides; a record that lists any is held to all of them, so
+    after that a lock file changed, removed or added is a named mismatch. Re-running `produce`
+    once the lock files are written is what brings them under the record.
   * `randomness` -- `"none"`: nothing the factory emits depends on a random source.
 
 Deterministic: no timestamps, no machine paths; two runs from the same inputs are identical.
@@ -50,10 +81,31 @@ Deterministic: no timestamps, no machine paths; two runs from the same inputs ar
 `recompute(engine_dir, produce_into, package)` re-produces the engine in a scratch copy from
 the same package and the engine's committed corpus, and returns every mismatch as a line naming
 the field (`map.nupkgSha256`, `corpus.contentHash`, `recipes.files[tools/factory/generate.py]`,
-`generated[src/X/Generated/MapEntries.g.cs]`, ...). It also hashes each recorded generated file
-on disk, so a hand edit to a generated file (a pin in RulesFactory.Packages.g.props included) is
-caught even though re-producing would undo it.
+`generated[src/X/Generated/MapEntries.g.cs]`, `managed[global.json]`, `buildInputs[X.slnx]`, ...).
+It also hashes each recorded generated file on disk, so a hand edit to a generated file (a pin in
+RulesFactory.Packages.g.props included) is caught even though re-producing would undo it; each
+recorded managed file, so a hand edit is named even though re-producing refuses it; and
+it applies the build-input rule to the engine on disk, so an edited, removed or added build
+input is named `buildInputs[<path>]` even when the edit makes re-producing refuse.
 An empty list means the record is true of the engine and the factory running the check.
+
+What a match proves, and what it does not. The record carries two different guarantees:
+
+  * generation provenance (`factory`, `map`, `corpus`, `kernel`, `recipes`, `generated`): the
+    generated files are exactly what this factory commit makes from this package and corpus;
+  * build-input provenance (`managed`, `buildInputs`): every file in the engine that the build reads as
+    configuration -- the SDK pin, package sources, MSBuild props and targets, projects and
+    solution, the overlay, and the lock files once recorded -- has the recorded bytes, whoever
+    wrote them.
+
+Together they say the engine's source tree is the recorded one. They do not say what a machine
+did with it: which SDK is actually installed and selected (global.json names a version; nothing
+hashes a toolchain), what restore fetched beyond the content hashes the lock files pin (and,
+before lock files are recorded, nothing about packages beyond their versions), environment
+variables and command-line properties (`CI`, `-p:...`), files outside the engine directory that
+MSBuild or NuGet also read (a `Directory.Build.props` or `NuGet.config` in a parent directory,
+the user-level NuGet.config), or that a given assembly was built from this tree: the embedded
+copy of provenance.json ties an assembly to a record, not to a build.
 
 Standard library only.
 """
@@ -69,15 +121,22 @@ import tempfile
 
 import generate
 import intake as intake_step
+import ownership
 
 FILE_NAME = "provenance.json"
-FORMAT = 1
+FORMAT = 3  # 2: buildInputs (#69); 3: managed and engineOwned (#72)
 FACTORY_DIR = os.path.dirname(os.path.abspath(__file__))
 TAG = re.compile(r"^factory/v(\d+)\.(\d+)\.(\d+)$")
 SHORT_SHA = 12
 DIGEST_RULE = ("sha256 over UTF-8 lines '<sha256>  <path>\\n', one per recipe file, "
                "in ascending byte order of path")
-COPY_IGNORE = shutil.ignore_patterns("bin", "obj", ".git", ".vs")
+SKIP_DIRS = frozenset({"bin", "obj", ".git", ".vs"})
+COPY_IGNORE = shutil.ignore_patterns(*sorted(SKIP_DIRS))
+# The build-input rule (`buildInputs` above; `is_build_input` applies it). Names compare casefolded.
+BUILD_INPUT_NAMES = frozenset({"global.json", "nuget.config", "packages.lock.json", "directory.build.rsp",
+                               ".editorconfig", ".globalconfig", generate.OVERLAY_NAME.lower()})
+BUILD_INPUT_SUFFIXES = (".props", ".targets", ".sln", ".slnx", ".csproj", ".fsproj", ".vbproj")
+LOCK_FILE = "packages.lock.json"
 
 
 def sha256(data):
@@ -194,6 +253,49 @@ class Recorder:
         return False
 
 
+# --- build inputs ----------------------------------------------------------------------------
+
+
+def is_build_input(relative):
+    """Whether the engine-relative POSIX path `relative` is a build input: the one rule."""
+    parts = relative.split("/")
+    if any(part in SKIP_DIRS for part in parts[:-1]):
+        return False
+    name = parts[-1].lower()
+    return name in BUILD_INPUT_NAMES or name.endswith(BUILD_INPUT_SUFFIXES)
+
+
+def is_lock_file(relative):
+    return relative.split("/")[-1].lower() == LOCK_FILE
+
+
+def build_inputs(root, exclude=()):
+    """`[{path, sha256}]` of every build input under `root`, sorted, minus `exclude` and provenance.json.
+
+    Symlinked directories are followed, as transaction.py follows them when staging, so what is
+    hashed is what the build would read.
+    """
+    exclude = set(exclude) | {FILE_NAME}
+    found = []
+    for directory, dirs, names in os.walk(root, followlinks=True):
+        dirs[:] = [d for d in dirs if d not in SKIP_DIRS]
+        for name in names:
+            path = os.path.join(directory, name)
+            relative = os.path.relpath(path, root).replace(os.sep, "/")
+            if relative in exclude or not is_build_input(relative) or not os.path.isfile(path):
+                continue
+            found.append({"path": relative, "sha256": sha256_file(path)})
+    found.sort(key=lambda f: f["path"].encode("utf-8"))
+    return found
+
+
+def claimed(recorded_inputs, inputs):
+    """`inputs` as far as the record makes a claim: without lock files when it lists none (above)."""
+    if any(isinstance(item, dict) and is_lock_file(str(item.get("path", ""))) for item in recorded_inputs):
+        return inputs
+    return [item for item in inputs if not is_lock_file(item["path"])]
+
+
 # --- the embedded copy -----------------------------------------------------------------------
 
 
@@ -268,12 +370,25 @@ def emit(model, out):
 
 def build(state, result, model, recorder, factory_dir=FACTORY_DIR):
     corpus = result.corpus
-    write_once = set(generate.scaffold(model).keys())
+    root = recorder.root
     generated_files = []
     for relative in sorted(recorder.paths, key=lambda p: p.encode("utf-8")):
-        if relative == FILE_NAME or relative in write_once:
+        try:
+            row = ownership.classify(relative, model.name)
+        except ownership.OwnershipError as error:
+            raise generate.GenerationError(str(error))
+        if row is None:
+            raise generate.GenerationError(f"produce wrote {relative}, which the ownership table "
+                                           f"(tools/factory/ownership.py) does not classify; add it to the table")
+        if relative == FILE_NAME or row.cls != ownership.GENERATED:
             continue
-        generated_files.append({"path": relative, "sha256": sha256_file(os.path.join(recorder.root, *relative.split("/")))})
+        generated_files.append({"path": relative, "sha256": sha256_file(os.path.join(root, *relative.split("/")))})
+    managed = [{"path": path, "recipeVersion": version, "sha256": sha256_file(os.path.join(root, *path.split("/")))}
+               for path, version in sorted(model.managed.items(), key=lambda kv: kv[0].encode("utf-8"))]
+    # Only those present: the lock files exist once verify's restore has written them.
+    owned = sorted({row.pattern for row in ownership.rows(model.name) if row.cls == ownership.ENGINE_OWNED
+                    and os.path.isfile(os.path.join(root, *row.pattern.split("/")))}
+                   | set(model.adopted), key=lambda p: p.encode("utf-8"))
     return {
         "provenanceFormat": FORMAT,
         "engine": {"name": model.name},
@@ -297,6 +412,9 @@ def build(state, result, model, recorder, factory_dir=FACTORY_DIR):
         "packs": [],
         "recipes": recipes(factory_dir, state["_top"]),
         "generated": generated_files,
+        "managed": managed,
+        "engineOwned": [{"path": path, "adopted": path in model.adopted} for path in owned],
+        "buildInputs": build_inputs(root, {g["path"] for g in generated_files} | set(model.managed)),
         "randomness": "none",
     }
 
@@ -381,6 +499,26 @@ def recompute(engine_dir, produce_into, package=None):
             mismatches.append(f"generated[{item.get('path')}].sha256: recorded {item.get('sha256')}, "
                               f"on disk {sha256_file(where)}")
 
+    # Managed files on disk: a hand edit makes re-producing refuse, so it is only named here.
+    for item in recorded.get("managed") or []:
+        if not isinstance(item, dict):
+            continue
+        where = os.path.join(engine_dir, *str(item.get("path")).split("/"))
+        if not os.path.isfile(where):
+            mismatches.append(f"managed[{item.get('path')}]: recorded, missing on disk")
+        elif sha256_file(where) != item.get("sha256"):
+            mismatches.append(f"managed[{item.get('path')}].sha256: recorded {item.get('sha256')}, "
+                              f"on disk {sha256_file(where)}")
+
+    # Build inputs on disk, by the same rule, so an edit that makes re-producing refuse is still
+    # named. Re-producing below hashes the scratch copy, which gives the same lines (not repeated).
+    recorded_inputs = recorded.get("buildInputs")
+    recorded_generated = {str(g.get("path")) for key in ("generated", "managed")
+                          for g in recorded.get(key) or [] if isinstance(g, dict)}
+    if isinstance(recorded_inputs, list):
+        on_disk = claimed(recorded_inputs, build_inputs(engine_dir, recorded_generated))
+        mismatches.extend(diff(recorded_inputs, on_disk, "buildInputs"))
+
     corpus = recorded.get("corpus") or {}
     corpus_files = [g["path"] for g in recorded.get("generated") or [] if str(g.get("path", "")).startswith("corpus/")]
     if len(corpus_files) != 1:
@@ -406,6 +544,11 @@ def recompute(engine_dir, produce_into, package=None):
             actual = produce_into(spec, os.path.join(copy, *corpus_files[0].split("/")), name, copy)
         except (intake_step.Refused, intake_step.Usage, generate.GenerationError) as error:
             return mismatches + [f"produce refused to re-produce the engine, so nothing else was compared: {error}"]
+    if isinstance(recorded_inputs, list) and isinstance(actual.get("buildInputs"), list):
+        actual = {**actual, "buildInputs": claimed(recorded_inputs, actual["buildInputs"])}
+        # engineOwned names the lock files too; the same no-claim rule applies to it (#72).
+        if isinstance(actual.get("engineOwned"), list):
+            actual["engineOwned"] = claimed(recorded_inputs, actual["engineOwned"])
     for line in diff(recorded, actual):
         if line not in mismatches:
             mismatches.append(line)

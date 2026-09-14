@@ -48,7 +48,8 @@ PACKAGE_ID = "RulesFactory.Maps.FaaPart107"
 MAP_ENTRIES = f"src/{NAME}/Generated/MapEntries.g.cs"
 REGISTRY = f"src/{NAME}/Generated/Registry.g.cs"
 RECIPE = ("scripts/validate.sh", "scripts/map-overlay.py", "scripts/engine-gate.py",
-          "scripts/factory/generate.py", "scripts/factory/intake.py", "scripts/factory/provenance.py", ".github/workflows/validate.yml")
+          "scripts/factory/generate.py", "scripts/factory/intake.py", "scripts/factory/ownership.py",
+          "scripts/factory/provenance.py", ".github/workflows/validate.yml")
 IMPLEMENTED_IN = {"ruleset": "faa-part-107", "version": 1}
 
 
@@ -59,11 +60,12 @@ def pack(map_dir, out):
     return os.path.join(out, name)
 
 
-def produce(package, out):
+def produce(package, out, *extra):
     buffer = io.StringIO()
     with redirect_stdout(buffer), redirect_stderr(buffer):
         code = factory.main(["produce", "--package", package, "--corpus", PART107_XML, "--name", NAME, "--out", out,
-                             "--allow-dirty"])  # this checkout's state is not under test here
+                             "--allow-dirty",  # this checkout's state is not under test here
+                             "--no-verify", *extra])  # nor is building it: no SDK assumed (test_factory_verify.py)
     if code != 0:
         raise AssertionError(buffer.getvalue())
 
@@ -148,7 +150,7 @@ class TestRecipeIsEmitted(GateCase):
         self.assertIn(f'NAME="{NAME}"', gate)
         self.assertNotIn("@NAME@", gate)
         subprocess.run(["bash", "-n", os.path.join(engine, "scripts", "validate.sh")], check=True)
-        for module in ("generate.py", "intake.py", "provenance.py"):
+        for module in ("generate.py", "intake.py", "ownership.py", "provenance.py"):
             with open(os.path.join(FACTORY, module), "rb") as a, \
                     open(os.path.join(engine, "scripts", "factory", module), "rb") as b:
                 self.assertEqual(a.read(), b.read(), "the gate regenerates with the factory's own generator")
@@ -387,6 +389,10 @@ class TestValidateShWithDotnet(GateCase):
         cls.base = os.path.join(cls.shared, "base")
         produce(cls.nupkg, cls.base)
         cls.localize(cls.base)
+        # global.json and NuGet.config are managed (tools/factory/ownership.py): the localised copies
+        # are hand edits, so the tests below that re-produce would be refused. Adopting them once
+        # here is what a real engine that must move its SDK or add a feed does.
+        produce(cls.nupkg, cls.base, "--adopt", "global.json", "--adopt", "NuGet.config")
         cls.fresh = cls.validate(cls.base, "lock")
 
     @classmethod

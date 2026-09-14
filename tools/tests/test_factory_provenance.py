@@ -13,6 +13,13 @@ corpus copy, a recipe, or the package makes recompute fail naming the field; aft
 a newer map, recompute passes, and a pin hand-edited back to the old version fails it (#66); a dirty factory
 is refused, and `--allow-dirty` records it; a factory outside git is refused.
 
+Build inputs (#69): `buildInputs` lists the engine-owned build files by rule, never a generated
+or managed file (#72: those are hashed once, in `generated` and `managed`); a fresh run and a
+re-run agree on it; editing the overlay or a csproj, or adding or removing a build input, is a
+`buildInputs[<path>]` mismatch and not a `generated` one; editing global.json is a
+`managed[global.json]` mismatch until `--adopt global.json` records it; lock files are no claim
+until a record lists one, and then every lock file is held.
+
 The embedded copy is only exercised by `dotnet test` on a produced engine, which needs the
 SDK the kernel pins and network access to nuget.org; that test skips, saying why, without them.
 
@@ -116,7 +123,9 @@ class ProvenanceCase(unittest.TestCase):
     def produce(self, out=None, repo=None, package=None, corpus=PART107_XML, name=NAME, extra=()):
         out = out or os.path.join(self.tmp, "engine")
         code, output = self.factory("produce", "--package", package or self.part107, "--corpus", corpus,
-                                    "--name", name, "--out", out, *extra, repo=repo)
+                                    "--name", name, "--out", out, *extra,
+                                    "--no-verify",  # building is TestEmbeddedCopyBuilds's (and verify's) job
+                                    repo=repo)
         return code, output, out
 
     def produced(self, **kwargs):
@@ -190,9 +199,47 @@ class TestRecord(ProvenanceCase):
                      f"tests/{NAME}.Tests/Generated/ProvenanceTests.g.cs", PACKAGES_PROPS):
             self.assertIn(path, generated)
         for path in ("provenance.json", "corpus-map.overlay.json", "global.json", f"src/{NAME}/{NAME}.csproj"):
-            self.assertNotIn(path, generated, "provenance.json and the write-once scaffold are not generated")
+            self.assertNotIn(path, generated, "provenance.json, managed and engine-owned files are not generated")
         for path, digest in generated.items():
             self.assertEqual(digest, sha256_file(os.path.join(out, *path.split("/"))), path)
+
+    def test_build_inputs(self):
+        out = self.produced()
+        record = self.record(out)
+        inputs = {b["path"]: b["sha256"] for b in record["buildInputs"]}
+        self.assertEqual(list(inputs), sorted(inputs, key=lambda p: p.encode("utf-8")))
+        self.assertEqual(set(inputs), {"Directory.Packages.props", f"{NAME}.slnx", "corpus-map.overlay.json",
+                                       f"src/{NAME}/{NAME}.csproj", f"tests/{NAME}.Tests/{NAME}.Tests.csproj"})
+        for path, digest in inputs.items():
+            self.assertEqual(digest, sha256_file(os.path.join(out, *path.split("/"))), path)
+        generated = {g["path"] for g in record["generated"]}
+        self.assertIn(PACKAGES_PROPS, generated)
+        self.assertEqual(set(inputs) & generated, set(), "a generated file is not listed again as a build input")
+        managed = {m["path"]: m for m in record["managed"]}
+        self.assertEqual(set(managed), {"global.json", "NuGet.config", "Directory.Build.props"})
+        for path, item in managed.items():
+            self.assertEqual(item["sha256"], sha256_file(os.path.join(out, *path.split("/"))), path)
+            self.assertIsInstance(item["recipeVersion"], int)
+        self.assertEqual(set(inputs) & set(managed), set(), "a managed file is hashed once, in managed")
+        self.assertEqual({e["path"] for e in record["engineOwned"]}, set(inputs),
+                         "every engine-owned file is a build input, and hashed there")
+        self.assertFalse(any(e["adopted"] for e in record["engineOwned"]))
+        self.assertNotIn("provenance.json", inputs)
+
+    def test_the_rule_is_by_name_and_skips_build_output(self):
+        for path in ("global.json", "sub/nuget.CONFIG", "Directory.Build.targets", "src/A/A.csproj", "A.sln",
+                     "src/A/packages.lock.json", "corpus-map.overlay.json", ".editorconfig", "x/My.targets"):
+            self.assertTrue(provenance.is_build_input(path), path)
+        for path in ("src/A/obj/A.csproj.nuget.g.props", "bin/x.props", ".git/x.props", "src/A/Rules/Speed.cs",
+                     "scripts/validate.sh", "backlog/README.md", "corpus/part107.xml"):
+            self.assertFalse(provenance.is_build_input(path), path)
+
+    def test_a_fresh_run_and_a_rerun_agree_on_build_inputs(self):
+        first = self.produced(out=os.path.join(self.tmp, "a"))
+        second = self.produced(out=os.path.join(self.tmp, "b"))
+        self.assertEqual(self.record(first)["buildInputs"], self.record(second)["buildInputs"])
+        self.produced(out=first)
+        self.assertEqual(self.record(first)["buildInputs"], self.record(second)["buildInputs"])
 
     def test_the_version_comes_from_a_factory_tag_on_head(self):
         repo = self.own_repo()
@@ -244,6 +291,8 @@ class TestRecompute(ProvenanceCase):
         pathlib.Path(out, "src", NAME, "Rules", "Speed.cs").write_text("// mine\n", encoding="utf-8")
         pathlib.Path(out, "src", NAME, "bin").mkdir()
         pathlib.Path(out, "src", NAME, "bin", "junk.dll").write_bytes(b"\0")
+        pathlib.Path(out, "src", NAME, "obj").mkdir()
+        pathlib.Path(out, "src", NAME, "obj", f"{NAME}.csproj.nuget.g.props").write_text("<Project />\n", encoding="utf-8")
         code, output = self.recompute(out)
         self.assertEqual(code, 0, output)
 
@@ -301,7 +350,8 @@ class TestRecompute(ProvenanceCase):
                        "tests": [{"test": "T.t", "mutation": "m"}]}
         pathlib.Path(out, "corpus-map.overlay.json").write_text(json.dumps({"reasonable-protection": implemented}),
                                                                  encoding="utf-8")
-        self.assert_recompute_names(out, f"generated[src/{NAME}/Generated/Registry.g.cs].sha256")
+        self.assert_recompute_names(out, f"generated[src/{NAME}/Generated/Registry.g.cs].sha256",
+                                    "buildInputs[corpus-map.overlay.json].sha256")
         self.produced(out=out)
         code, output = self.recompute(out)
         self.assertEqual(code, 0, output)
@@ -332,6 +382,69 @@ class TestRecompute(ProvenanceCase):
         props = pathlib.Path(out, PACKAGES_PROPS)
         props.write_text(props.read_text(encoding="utf-8").replace("[1.0.0]", "[2.0.0]"), encoding="utf-8")
         self.assert_recompute_names(out, f"generated[{PACKAGES_PROPS}].sha256", package=v1)
+
+    def test_a_changed_global_json(self):
+        out = self.produced()
+        path = pathlib.Path(out, "global.json")
+        path.write_text(path.read_text(encoding="utf-8").replace('"disable"', '"latestFeature"'), encoding="utf-8")
+        output = self.assert_recompute_names(out, "managed[global.json].sha256")
+        self.assertNotIn("MISMATCH generated[", output, "a managed file is not a generated mismatch")
+        self.assertIn("edited by hand", output, "re-producing refuses the hand-edited managed file")
+        self.produced(out=out, extra=("--adopt", "global.json"))
+        self.assertIn({"path": "global.json", "adopted": True}, self.record(out)["engineOwned"])
+        self.assertIn("global.json", [b["path"] for b in self.record(out)["buildInputs"]])
+        code, output = self.recompute(out)
+        self.assertEqual(code, 0, "re-producing with --adopt records the engine's edit: " + output)
+
+    def test_a_changed_csproj(self):
+        out = self.produced()
+        with open(os.path.join(out, "tests", f"{NAME}.Tests", f"{NAME}.Tests.csproj"), "a", encoding="utf-8") as handle:
+            handle.write("<!-- an engine's edit -->\n")
+        output = self.assert_recompute_names(out, f"buildInputs[tests/{NAME}.Tests/{NAME}.Tests.csproj].sha256")
+        self.assertNotIn("MISMATCH generated[", output)
+
+    def test_an_added_and_a_removed_build_input(self):
+        out = self.produced()
+        pathlib.Path(out, "Directory.Build.targets").write_text("<Project />\n", encoding="utf-8")
+        os.remove(os.path.join(out, f"{NAME}.slnx"))
+        os.remove(os.path.join(out, "NuGet.config"))
+        self.assert_recompute_names(out, "buildInputs[Directory.Build.targets]: not recorded",
+                                    f"buildInputs[{NAME}.slnx]: recorded, recomputed nothing",
+                                    "managed[NuGet.config]: recorded, missing on disk")
+
+    def test_an_edit_that_makes_produce_refuse_is_still_named(self):
+        out = self.produced()
+        path = pathlib.Path(out, "Directory.Packages.props")
+        text = path.read_text(encoding="utf-8")
+        path.write_text(text.replace("</ItemGroup>", '  <PackageVersion Include="RulesKernel" Version="9.9.9" />\n  </ItemGroup>', 1),
+                        encoding="utf-8")
+        output = self.assert_recompute_names(out, "buildInputs[Directory.Packages.props].sha256")
+        self.assertIn("produce refused", output)
+
+    def test_lock_files(self):
+        """None recorded: no claim, so a restore does not break recompute. Once recorded, all are held."""
+        out = self.produced()
+        src_lock = pathlib.Path(out, "src", NAME, "packages.lock.json")
+        tests_lock = pathlib.Path(out, "tests", f"{NAME}.Tests", "packages.lock.json")
+        src_lock.write_text('{"version": 2}\n', encoding="utf-8")
+        tests_lock.write_text('{"version": 2}\n', encoding="utf-8")
+        code, output = self.recompute(out)
+        self.assertEqual(code, 0, output)
+
+        self.produced(out=out)
+        recorded = [b["path"] for b in self.record(out)["buildInputs"]]
+        self.assertIn(f"src/{NAME}/packages.lock.json", recorded)
+        self.assertIn(f"tests/{NAME}.Tests/packages.lock.json", recorded)
+        code, output = self.recompute(out)
+        self.assertEqual(code, 0, output)
+
+        src_lock.write_text('{"version": 2, "dependencies": {}}\n', encoding="utf-8")
+        tests_lock.unlink()
+        pathlib.Path(out, "extra").mkdir()
+        pathlib.Path(out, "extra", "packages.lock.json").write_text("{}\n", encoding="utf-8")
+        self.assert_recompute_names(out, f"buildInputs[src/{NAME}/packages.lock.json].sha256",
+                                    f"buildInputs[tests/{NAME}.Tests/packages.lock.json]: recorded, recomputed nothing",
+                                    "buildInputs[extra/packages.lock.json]: not recorded")
 
     def test_a_hand_edited_record(self):
         out = self.produced()
