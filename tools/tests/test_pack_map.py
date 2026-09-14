@@ -18,6 +18,8 @@ import io
 import json
 import os
 import shutil
+import subprocess
+import sys
 import tempfile
 import unittest
 import zipfile
@@ -33,6 +35,10 @@ pack_map = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(pack_map)
 
 PACKAGE = "RulesFactory.Maps.HoyleBackgammon"
+with open(os.path.join(HOYLE, "map-package.json"), encoding="utf-8") as _handle:
+    VERSION = json.load(_handle)["version"]
+NUPKG = f"{PACKAGE}.{VERSION}.nupkg"
+TAG = f"map/hoyle-backgammon/v{VERSION}"
 
 
 class PackCase(unittest.TestCase):
@@ -73,19 +79,20 @@ class PackCase(unittest.TestCase):
 
 class TestPacksTheExample(PackCase):
     def test_the_example_passes_its_gate_and_packs(self):
-        code, output = self.pack("--tag", "map/hoyle-backgammon/v1.0.0")
+        code, output = self.pack("--tag", TAG)
         self.assertEqual(code, 0, output)
-        self.assertEqual(self.packages(), [f"{PACKAGE}.1.0.0.nupkg"], output)
+        self.assertEqual(self.packages(), [NUPKG], output)
 
     def test_the_package_carries_the_map_verbatim_and_nothing_unexpected(self):
         code, output = self.pack()
         self.assertEqual(code, 0, output)
-        with zipfile.ZipFile(os.path.join(self.out, f"{PACKAGE}.1.0.0.nupkg")) as archive:
+        with zipfile.ZipFile(os.path.join(self.out, NUPKG)) as archive:
             names = archive.namelist()
             self.assertEqual(
                 sorted(n for n in names if not n.endswith(".psmdcp")),
                 sorted(["_rels/.rels", "[Content_Types].xml", f"{PACKAGE}.nuspec",
-                        "map/corpus-map.json", "map/corpus-manifest.json", f"build/{PACKAGE}.props"]))
+                        "map/corpus-map.json", "map/corpus-manifest.json", "tools/check-map.py",
+                        f"build/{PACKAGE}.props"]))
             self.assertEqual(len([n for n in names if n.endswith(".psmdcp")]), 1, names)
             with open(os.path.join(HOYLE, "corpus-map.json"), "rb") as handle:
                 self.assertEqual(archive.read("map/corpus-map.json"), handle.read())
@@ -93,7 +100,7 @@ class TestPacksTheExample(PackCase):
                 self.assertEqual(archive.read("map/corpus-manifest.json"), handle.read())
             nuspec = archive.read(f"{PACKAGE}.nuspec").decode("utf-8")
             self.assertIn(f"<id>{PACKAGE}</id>", nuspec)
-            self.assertIn("<version>1.0.0</version>", nuspec)
+            self.assertIn(f"<version>{VERSION}</version>", nuspec)
             self.assertIn("<licenseUrl>https://licenses.nuget.org/Apache-2.0</licenseUrl>", nuspec)
             self.assertIn("schemaVersion 1", nuspec)
             self.assertIn("5d505fa9f6202340eb55313b8ef607b816087a860d3d51b1bf92b5f65240645e", nuspec)
@@ -104,7 +111,7 @@ class TestPacksTheExample(PackCase):
         self.assertEqual(self.pack(out=second)[0], 0)
         digests = set()
         for directory in (self.out, second):
-            with open(os.path.join(directory, f"{PACKAGE}.1.0.0.nupkg"), "rb") as handle:
+            with open(os.path.join(directory, NUPKG), "rb") as handle:
                 digests.add(hashlib.sha256(handle.read()).hexdigest())
         self.assertEqual(len(digests), 1, digests)
 
@@ -115,9 +122,62 @@ class TestPacksTheExample(PackCase):
         self.edit("corpus-manifest.json", add_corpus)
         code, output = self.pack()
         self.assertEqual(code, 0, output)
-        with zipfile.ZipFile(os.path.join(self.out, f"{PACKAGE}.1.0.0.nupkg")) as archive:
+        with zipfile.ZipFile(os.path.join(self.out, NUPKG)) as archive:
             packaged = json.loads(archive.read("map/corpus-manifest.json"))
         self.assertEqual([c["sourceId"] for c in packaged["corpora"]], ["hoyle-1909"])
+
+
+class TestCarriesTheConsumerChecker(PackCase):
+    """#51: the engine runs the status-dependent checks from the package, not from a copy.
+
+    Each test runs the packaged checker from a directory holding only the extracted package,
+    so a checker that needed anything from this repository beyond its own bytes fails here.
+    """
+
+    def extract(self):
+        code, output = self.pack()
+        self.assertEqual(code, 0, output)
+        root = os.path.join(self.tmp, "restored")
+        with zipfile.ZipFile(os.path.join(self.out, NUPKG)) as archive:
+            archive.extractall(root)
+        return root
+
+    def run_packaged(self, root, map_path):
+        return subprocess.run(
+            [sys.executable, os.path.join(root, "tools", "check-map.py"), map_path, "--phase", "consumer"],
+            cwd=root, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
+
+    def test_the_package_carries_the_checker_verbatim_and_the_props_names_it(self):
+        code, output = self.pack()
+        self.assertEqual(code, 0, output)
+        with zipfile.ZipFile(os.path.join(self.out, NUPKG)) as archive:
+            with open(os.path.join(os.path.dirname(HERE), "check-map.py"), "rb") as handle:
+                self.assertEqual(archive.read("tools/check-map.py"), handle.read())
+            props = archive.read(f"build/{PACKAGE}.props").decode("utf-8")
+        self.assertIn('ConsumerChecker="$(MSBuildThisFileDirectory)../tools/check-map.py"', props)
+
+    def test_the_packaged_checker_passes_the_packaged_map_in_the_consumer_phase(self):
+        root = self.extract()
+        completed = self.run_packaged(root, os.path.join(root, "map", "corpus-map.json"))
+        self.assertEqual(completed.returncode, 0, completed.stdout)
+        for check in ("vocabulary", "status", "absent", "correspondence"):
+            self.assertRegex(completed.stdout, rf"\[(ok|skip)\] {check}:")
+        self.assertNotIn("] schema:", completed.stdout)  # structure was discharged at publish
+
+    def test_the_packaged_checker_fails_a_merge_with_a_status_dependent_error(self):
+        root = self.extract()
+        with open(os.path.join(root, "map", "corpus-map.json"), encoding="utf-8") as handle:
+            merged = json.load(handle)
+        # What an overlay can do and structure cannot see: claim `implemented` with no tests.
+        entry = self.entry(merged, "player-count")
+        entry.update(status="implemented", implementedIn={"ruleset": "hoyle", "version": 1})
+        entry.pop("tests", None)
+        path = os.path.join(root, "map", "merged.json")
+        with open(path, "w", encoding="utf-8") as handle:
+            json.dump(merged, handle, indent=2)
+        completed = self.run_packaged(root, path)
+        self.assertEqual(completed.returncode, 1, completed.stdout)
+        self.assertIn("[fail] status:", completed.stdout)
 
 
 class TestRefuses(PackCase):
@@ -125,7 +185,7 @@ class TestRefuses(PackCase):
         # Trial 5's depends-cycle: the injection #39 records passing the engine's gate green.
         self.edit("corpus-map.json", lambda m: self.entry(m, "point-designations")
                   .setdefault("dependsOn", []).append("starting-position"))
-        code, output = self.pack("--tag", "map/hoyle-backgammon/v1.0.0")
+        code, output = self.pack("--tag", TAG)
         self.assert_refused(code, output)
         self.assertIn("dependsOn cycle", output)
         self.assertIn("REFUSED", output)
@@ -161,11 +221,11 @@ class TestRefuses(PackCase):
         self.assertIn("NOT VERIFIED", output)
 
     def test_a_tag_that_disagrees_with_the_reviewed_version_is_refused(self):
-        code, output = self.pack("--tag", "map/hoyle-backgammon/v1.0.1")
+        code, output = self.pack("--tag", "map/hoyle-backgammon/v0.0.1")
         self.assert_refused(code, output, expect_code=2)
 
     def test_a_tag_naming_another_map_is_refused(self):
-        code, output = self.pack("--tag", "map/faa-part-107/v1.0.0")
+        code, output = self.pack("--tag", f"map/faa-part-107/v{VERSION}")
         self.assert_refused(code, output, expect_code=2)
 
     def test_a_version_that_is_not_semver_is_refused(self):

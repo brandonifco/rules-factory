@@ -552,7 +552,12 @@ has to judge — which is the work, and is not automatable by either diff alone.
 The entry's status advances, and it records which ruleset revision implemented it **and the
 tests that prove it, each with the mutation that was recorded turning it red**. An entry that
 cannot name a test that has been seen to fail does not advance to `implemented`; it stays
-`mapped`, whatever code exists ([#2](https://github.com/brandonifco/rules-factory/issues/2)). That is
+`mapped`, whatever code exists ([#2](https://github.com/brandonifco/rules-factory/issues/2)),
+**and the engine declines it with `UnsupportedRule` until that test exists**
+([#47](https://github.com/brandonifco/rules-factory/issues/47)). Code for an unproven entry is not
+reachable at runtime. An engine that answers an entry its map calls `mapped` breaks row 2 of the
+correspondence table, and the fix is to decline it or prove it, never to list it as an exception.
+That is
 what makes the map a live artifact rather than a plan: at any moment it says what the engine
 covers, what it deliberately does not, and what it cannot yet answer — which is the same
 question `UnresolvedReason` answers at runtime, from the other side.
@@ -574,9 +579,12 @@ is visible to every tool that already exists. What the engine owes follows from 
    engine that disagrees with an entry's content has a finding to file against the factory. It
    does not get to correct its own copy, because it has no copy.
 3. **Its gate merges the overlay offline and checks the result.** Every overlay key names an
-   entry in the package, and only the three fields are set. `check-map.py --phase consumer`
-   passes on the merge. The structural checks were run before the version existed, and an overlay
-   cannot change their verdict, so the engine does not repeat them.
+   entry in the package, and only the three fields are set. The package's own
+   `tools/check-map.py --phase consumer` passes on the merge. The engine runs the checker it
+   restored, not a copy, so a change to a status-dependent check reaches it with the next version
+   ([#51](https://github.com/brandonifco/rules-factory/issues/51)). The structural checks were run
+   before the version existed, and an overlay cannot change their verdict, so the engine does not
+   repeat them.
 4. **It moves when the source moves, and the version number says how hard that is.** A patch
    changes prose only. A minor adds entries or corrects citations, so the overlay still merges and
    new entries are `mapped`, which is `UnsupportedRule` until built. **A major means an entry the
@@ -588,7 +596,7 @@ is visible to every tool that already exists. What the engine owes follows from 
    engine that notices a wrong entry files it upstream and waits for a version. That way the next
    engine built from the same map gets the correction too.
 
-What the engine does not owe: a copy of the structural checker, or a scheduled job that watches
+What the engine does not owe: a copy of any checker, or a scheduled job that watches
 the factory. The package makes both unnecessary.
 
 ## What this method refuses to do
