@@ -94,6 +94,7 @@ class TestPacksTheExample(PackCase):
             nuspec = archive.read(f"{PACKAGE}.nuspec").decode("utf-8")
             self.assertIn(f"<id>{PACKAGE}</id>", nuspec)
             self.assertIn("<version>1.0.0</version>", nuspec)
+            self.assertIn("<licenseUrl>https://licenses.nuget.org/Apache-2.0</licenseUrl>", nuspec)
             self.assertIn("schemaVersion 1", nuspec)
             self.assertIn("5d505fa9f6202340eb55313b8ef607b816087a860d3d51b1bf92b5f65240645e", nuspec)
 
