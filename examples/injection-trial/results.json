@@ -1,0 +1,1716 @@
+{
+ "subjects": {
+  "factory": {
+   "repo": "/home/brandon/rules-factory",
+   "commit": "ecc53b8c231c0eef67ee081c29043ddbf8004336",
+   "map": "examples/hoyle-backgammon/corpus-map.json"
+  },
+  "engine": {
+   "repo": "/home/brandon/hoyle-backgammon",
+   "commit": "67563b35bed185a0ffa4706622858c5cb40df791",
+   "map": "corpus-map.json",
+   "manifest": "corpus-manifest.json"
+  }
+ },
+ "detector_class": {
+  "schema": "schema",
+  "required-fields": "schema",
+  "vocabulary": "schema",
+  "unique-ids": "schema",
+  "references": "schema",
+  "no-cycles": "schema",
+  "manifest": "schema",
+  "exclusions": "schema",
+  "status": "schema",
+  "decision-records": "schema",
+  "conflicts": "schema",
+  "absent": "schema",
+  "cross-references": "schema",
+  "correspondence": "schema",
+  "locators": "corpus",
+  "absence": "corpus",
+  "coverage": "corpus",
+  "corpus/hoyle.txt matches the pinned baseline hash": "excluded",
+  "corpus-map.json matches its pinned hash": "excluded",
+  "MapEntries matches corpus-map.json entry for entry": "code",
+  "every unresolved reason and every map entry agree with the correspondence table": "code",
+  "nothing inside the engine calls BeyondAdapter": "code",
+  "every corpus-map.json citation resolves to its page in corpus/hoyle.txt": "corpus",
+  "engine citation step, run in isolation": "corpus",
+  "dotnet restore": "build",
+  "dotnet format --verify-no-changes": "build",
+  "build Debug (0 warnings)": "build",
+  "test Debug": "build",
+  "build Release w/ CI=true (0 warnings)": "build",
+  "test Release w/ CI=true": "build",
+  "git diff --check": "excluded"
+ },
+ "runs": [
+  {
+   "id": "control-unmodified",
+   "family": "control",
+   "predicted_stratum": null,
+   "modelled_on": null,
+   "why_wrong": "Nothing is wrong. This run establishes that every detector is green before any injection, so that a detector already red cannot be counted as a catch.",
+   "applies": [
+    "factory",
+    "engine"
+   ],
+   "copies": {
+    "factory": {
+     "not_applied": null,
+     "checks": {
+      "schema": "ok",
+      "required-fields": "ok",
+      "vocabulary": "ok",
+      "unique-ids": "ok",
+      "references": "ok",
+      "no-cycles": "ok",
+      "manifest": "ok",
+      "exclusions": "ok",
+      "status": "skip",
+      "decision-records": "ok",
+      "conflicts": "ok",
+      "absent": "ok",
+      "cross-references": "ok",
+      "correspondence": "ok",
+      "locators": "ok",
+      "absence": "ok",
+      "coverage": "ok"
+     },
+     "evidence": {},
+     "check-map_exit": 0,
+     "check-locators_exit": 0
+    },
+    "engine": {
+     "not_applied": null,
+     "checks": {
+      "corpus/hoyle.txt matches the pinned baseline hash": "ok",
+      "corpus-map.json matches its pinned hash": "ok",
+      "MapEntries matches corpus-map.json entry for entry": "ok",
+      "every unresolved reason and every map entry agree with the correspondence table": "ok",
+      "nothing inside the engine calls BeyondAdapter": "ok",
+      "every corpus-map.json citation resolves to its page in corpus/hoyle.txt": "ok",
+      "dotnet restore": "ok",
+      "dotnet format --verify-no-changes": "ok",
+      "build Debug (0 warnings)": "ok",
+      "test Debug": "ok",
+      "build Release w/ CI=true (0 warnings)": "ok",
+      "test Release w/ CI=true": "ok",
+      "git diff --check": "ok",
+      "engine citation step, run in isolation": "ok"
+     },
+     "evidence": {},
+     "gate_exit": 0,
+     "seconds": 10.9
+    }
+   }
+  },
+  {
+   "id": "control-harmless-note",
+   "family": "control",
+   "predicted_stratum": null,
+   "modelled_on": null,
+   "why_wrong": "Nothing is wrong. A `note` is reworded without changing any claim; a detector that fires here is a false positive.",
+   "applies": [
+    "factory",
+    "engine"
+   ],
+   "copies": {
+    "factory": {
+     "not_applied": null,
+     "checks": {
+      "schema": "ok",
+      "required-fields": "ok",
+      "vocabulary": "ok",
+      "unique-ids": "ok",
+      "references": "ok",
+      "no-cycles": "ok",
+      "manifest": "ok",
+      "exclusions": "ok",
+      "status": "skip",
+      "decision-records": "ok",
+      "conflicts": "ok",
+      "absent": "ok",
+      "cross-references": "ok",
+      "correspondence": "ok",
+      "locators": "ok",
+      "absence": "ok",
+      "coverage": "ok"
+     },
+     "evidence": {},
+     "check-map_exit": 0,
+     "check-locators_exit": 0
+    },
+    "engine": {
+     "not_applied": null,
+     "checks": {
+      "corpus/hoyle.txt matches the pinned baseline hash": "ok",
+      "corpus-map.json matches its pinned hash": "ok",
+      "MapEntries matches corpus-map.json entry for entry": "ok",
+      "every unresolved reason and every map entry agree with the correspondence table": "ok",
+      "nothing inside the engine calls BeyondAdapter": "ok",
+      "every corpus-map.json citation resolves to its page in corpus/hoyle.txt": "ok",
+      "dotnet restore": "ok",
+      "dotnet format --verify-no-changes": "ok",
+      "build Debug (0 warnings)": "ok",
+      "test Debug": "ok",
+      "build Release w/ CI=true (0 warnings)": "ok",
+      "test Release w/ CI=true": "ok",
+      "git diff --check": "ok",
+      "engine citation step, run in isolation": "ok"
+     },
+     "evidence": {},
+     "gate_exit": 0,
+     "seconds": 9.8
+    }
+   }
+  },
+  {
+   "id": "cite-page-off-by-one",
+   "family": "wrong citation",
+   "predicted_stratum": "corpus",
+   "modelled_on": "issue #18 -- 13 of 24 citations named the wrong page",
+   "why_wrong": "move-by-pip's rule sentence is on p. 273; the citation now names p. 274, which is where the span's worked example continues.",
+   "applies": [
+    "factory",
+    "engine"
+   ],
+   "copies": {
+    "factory": {
+     "not_applied": null,
+     "checks": {
+      "schema": "ok",
+      "required-fields": "ok",
+      "vocabulary": "ok",
+      "unique-ids": "ok",
+      "references": "ok",
+      "no-cycles": "ok",
+      "manifest": "ok",
+      "exclusions": "ok",
+      "status": "skip",
+      "decision-records": "ok",
+      "conflicts": "ok",
+      "absent": "ok",
+      "cross-references": "ok",
+      "correspondence": "ok",
+      "locators": "ok",
+      "absence": "ok",
+      "coverage": "ok"
+     },
+     "evidence": {},
+     "check-map_exit": 0,
+     "check-locators_exit": 0
+    },
+    "engine": {
+     "not_applied": null,
+     "checks": {
+      "corpus/hoyle.txt matches the pinned baseline hash": "ok",
+      "corpus-map.json matches its pinned hash": "ok",
+      "MapEntries matches corpus-map.json entry for entry": "fail",
+      "engine citation step, run in isolation": "ok"
+     },
+     "evidence": {
+      "validate.sh": [
+       "error: move-by-pip: code cites 'BACKGAMMON / Playing / p. 273', map cites 'BACKGAMMON / Playing / p. 274'"
+      ]
+     },
+     "gate_exit": 1,
+     "seconds": 0.2
+    }
+   }
+  },
+  {
+   "id": "cite-page-distant",
+   "family": "wrong citation",
+   "predicted_stratum": "corpus",
+   "modelled_on": "issue #18",
+   "why_wrong": "win-condition is stated in Bearing off the Men; the citation now names a page in The Board and Men, five pages earlier, which does not contain it.",
+   "applies": [
+    "factory",
+    "engine"
+   ],
+   "copies": {
+    "factory": {
+     "not_applied": null,
+     "checks": {
+      "schema": "ok",
+      "required-fields": "ok",
+      "vocabulary": "ok",
+      "unique-ids": "ok",
+      "references": "ok",
+      "no-cycles": "ok",
+      "manifest": "ok",
+      "exclusions": "ok",
+      "status": "skip",
+      "decision-records": "ok",
+      "conflicts": "ok",
+      "absent": "ok",
+      "cross-references": "ok",
+      "correspondence": "ok",
+      "locators": "fail",
+      "absence": "ok",
+      "coverage": "ok"
+     },
+     "evidence": {
+      "check-locators": [
+       "  X  win-condition: cited p. 271, evidence is on p. 276"
+      ]
+     },
+     "check-map_exit": 0,
+     "check-locators_exit": 1
+    },
+    "engine": {
+     "not_applied": null,
+     "checks": {
+      "corpus/hoyle.txt matches the pinned baseline hash": "ok",
+      "corpus-map.json matches its pinned hash": "ok",
+      "MapEntries matches corpus-map.json entry for entry": "fail",
+      "engine citation step, run in isolation": "fail"
+     },
+     "evidence": {
+      "validate.sh": [
+       "error: win-condition: code cites 'BACKGAMMON / Bearing off the Men / p. 275', map cites 'BACKGAMMON / Bearing off the Men / p. 271'"
+      ],
+      "engine citation step, run in isolation": [
+       "error: win-condition: cites 'Bearing off the Men / p. 271', but p. 271 lies outside that section of the chapter"
+      ]
+     },
+     "gate_exit": 1,
+     "seconds": 0.2
+    }
+   }
+  },
+  {
+   "id": "cite-wrong-section-right-page",
+   "family": "wrong citation",
+   "predicted_stratum": "corpus",
+   "modelled_on": "issue #18",
+   "why_wrong": "p. 274 falls inside Playing. The citation now names Bearing off the Men, a section that begins a page later, so the citation contradicts itself.",
+   "applies": [
+    "factory",
+    "engine"
+   ],
+   "copies": {
+    "factory": {
+     "not_applied": null,
+     "checks": {
+      "schema": "ok",
+      "required-fields": "ok",
+      "vocabulary": "ok",
+      "unique-ids": "ok",
+      "references": "ok",
+      "no-cycles": "ok",
+      "manifest": "ok",
+      "exclusions": "ok",
+      "status": "skip",
+      "decision-records": "ok",
+      "conflicts": "ok",
+      "absent": "ok",
+      "cross-references": "ok",
+      "correspondence": "ok",
+      "locators": "ok",
+      "absence": "ok",
+      "coverage": "ok"
+     },
+     "evidence": {},
+     "check-map_exit": 0,
+     "check-locators_exit": 0
+    },
+    "engine": {
+     "not_applied": null,
+     "checks": {
+      "corpus/hoyle.txt matches the pinned baseline hash": "ok",
+      "corpus-map.json matches its pinned hash": "ok",
+      "MapEntries matches corpus-map.json entry for entry": "fail",
+      "engine citation step, run in isolation": "fail"
+     },
+     "evidence": {
+      "validate.sh": [
+       "error: legal-destination: code cites 'BACKGAMMON / Playing / p. 273', map cites 'BACKGAMMON / Bearing off the Men / p. 273'"
+      ],
+      "engine citation step, run in isolation": [
+       "error: legal-destination: cites 'Bearing off the Men / p. 273', but p. 273 lies outside that section of the chapter"
+      ]
+     },
+     "gate_exit": 1,
+     "seconds": 0.2
+    }
+   }
+  },
+  {
+   "id": "cite-page-plausible-neighbour",
+   "family": "wrong citation",
+   "predicted_stratum": "corpus",
+   "modelled_on": "issue #18",
+   "why_wrong": "direction-of-travel's sentence is on p. 273. p. 274 is the next page of the same section, which is what makes this the error a careless mapper makes.",
+   "applies": [
+    "factory",
+    "engine"
+   ],
+   "copies": {
+    "factory": {
+     "not_applied": null,
+     "checks": {
+      "schema": "ok",
+      "required-fields": "ok",
+      "vocabulary": "ok",
+      "unique-ids": "ok",
+      "references": "ok",
+      "no-cycles": "ok",
+      "manifest": "ok",
+      "exclusions": "ok",
+      "status": "skip",
+      "decision-records": "ok",
+      "conflicts": "ok",
+      "absent": "ok",
+      "cross-references": "ok",
+      "correspondence": "ok",
+      "locators": "fail",
+      "absence": "ok",
+      "coverage": "ok"
+     },
+     "evidence": {
+      "check-locators": [
+       "  X  direction-of-travel: cited p. 274, evidence is on p. 273"
+      ]
+     },
+     "check-map_exit": 0,
+     "check-locators_exit": 1
+    },
+    "engine": {
+     "not_applied": null,
+     "checks": {
+      "corpus/hoyle.txt matches the pinned baseline hash": "ok",
+      "corpus-map.json matches its pinned hash": "ok",
+      "MapEntries matches corpus-map.json entry for entry": "fail",
+      "engine citation step, run in isolation": "fail"
+     },
+     "evidence": {
+      "validate.sh": [
+       "error: direction-of-travel: code cites 'BACKGAMMON / Playing / p. 273', map cites 'BACKGAMMON / Playing / p. 274'"
+      ],
+      "engine citation step, run in isolation": [
+       "error: direction-of-travel: its evidence is a sentence of the corpus, but not one the p. 274 it cites reaches"
+      ]
+     },
+     "gate_exit": 1,
+     "seconds": 0.2
+    }
+   }
+  },
+  {
+   "id": "evidence-summarised",
+   "family": "unusable evidence",
+   "predicted_stratum": "corpus",
+   "modelled_on": "issue #18 -- evidence held a summary, so no citation was checkable",
+   "why_wrong": "`evidence` is meant to hold the corpus's words. Replaced by a summary of what they show, which is the state the whole map was in before #18.",
+   "applies": [
+    "factory"
+   ],
+   "copies": {
+    "factory": {
+     "not_applied": null,
+     "checks": {
+      "schema": "ok",
+      "required-fields": "ok",
+      "vocabulary": "ok",
+      "unique-ids": "ok",
+      "references": "ok",
+      "no-cycles": "ok",
+      "manifest": "ok",
+      "exclusions": "ok",
+      "status": "skip",
+      "decision-records": "ok",
+      "conflicts": "ok",
+      "absent": "ok",
+      "cross-references": "ok",
+      "correspondence": "ok",
+      "locators": "fail",
+      "absence": "ok",
+      "coverage": "ok"
+     },
+     "evidence": {
+      "check-locators": []
+     },
+     "check-map_exit": 0,
+     "check-locators_exit": 1
+    }
+   }
+  },
+  {
+   "id": "evidence-adjacent-sentence",
+   "family": "wrong evidence",
+   "predicted_stratum": "human",
+   "modelled_on": "MAP-FINDINGS.md finding 10 -- throw-two-dice's evidence described a game nobody plays",
+   "why_wrong": "throw-two-dice is about every throw after the opening. Its evidence is now opening-roll's sentence: verbatim, on the cited page, and about the one throw this entry does not govern.",
+   "applies": [
+    "factory"
+   ],
+   "copies": {
+    "factory": {
+     "not_applied": null,
+     "checks": {
+      "schema": "ok",
+      "required-fields": "ok",
+      "vocabulary": "ok",
+      "unique-ids": "ok",
+      "references": "ok",
+      "no-cycles": "ok",
+      "manifest": "ok",
+      "exclusions": "ok",
+      "status": "skip",
+      "decision-records": "ok",
+      "conflicts": "ok",
+      "absent": "ok",
+      "cross-references": "ok",
+      "correspondence": "ok",
+      "locators": "ok",
+      "absence": "ok",
+      "coverage": "ok"
+     },
+     "evidence": {},
+     "check-map_exit": 0,
+     "check-locators_exit": 0
+    }
+   }
+  },
+  {
+   "id": "evidence-truncated",
+   "family": "wrong evidence",
+   "predicted_stratum": "human",
+   "modelled_on": null,
+   "why_wrong": "legal-destination names three permitted destinations. The evidence is cut after the first, so the quote is still verbatim and still on the cited page while supporting a third of the rule the entry states.",
+   "applies": [
+    "factory"
+   ],
+   "copies": {
+    "factory": {
+     "not_applied": null,
+     "checks": {
+      "schema": "ok",
+      "required-fields": "ok",
+      "vocabulary": "ok",
+      "unique-ids": "ok",
+      "references": "ok",
+      "no-cycles": "ok",
+      "manifest": "ok",
+      "exclusions": "ok",
+      "status": "skip",
+      "decision-records": "ok",
+      "conflicts": "ok",
+      "absent": "ok",
+      "cross-references": "ok",
+      "correspondence": "ok",
+      "locators": "ok",
+      "absence": "ok",
+      "coverage": "ok"
+     },
+     "evidence": {},
+     "check-map_exit": 0,
+     "check-locators_exit": 0
+    }
+   }
+  },
+  {
+   "id": "depends-dropped",
+   "family": "incomplete dependsOn",
+   "predicted_stratum": "human",
+   "modelled_on": "MAP-FINDINGS.md finding 8 -- five dependsOn lists were incomplete",
+   "why_wrong": "move-by-pip consumes a throw. Dropping throw-two-dice from its dependsOn puts it before the rule that produces its input.",
+   "applies": [
+    "factory",
+    "engine"
+   ],
+   "copies": {
+    "factory": {
+     "not_applied": null,
+     "checks": {
+      "schema": "ok",
+      "required-fields": "ok",
+      "vocabulary": "ok",
+      "unique-ids": "ok",
+      "references": "ok",
+      "no-cycles": "ok",
+      "manifest": "ok",
+      "exclusions": "ok",
+      "status": "skip",
+      "decision-records": "ok",
+      "conflicts": "ok",
+      "absent": "ok",
+      "cross-references": "ok",
+      "correspondence": "ok",
+      "locators": "ok",
+      "absence": "ok",
+      "coverage": "ok"
+     },
+     "evidence": {},
+     "check-map_exit": 0,
+     "check-locators_exit": 0
+    },
+    "engine": {
+     "not_applied": null,
+     "checks": {
+      "corpus/hoyle.txt matches the pinned baseline hash": "ok",
+      "corpus-map.json matches its pinned hash": "ok",
+      "MapEntries matches corpus-map.json entry for entry": "ok",
+      "every unresolved reason and every map entry agree with the correspondence table": "ok",
+      "nothing inside the engine calls BeyondAdapter": "ok",
+      "every corpus-map.json citation resolves to its page in corpus/hoyle.txt": "ok",
+      "dotnet restore": "ok",
+      "dotnet format --verify-no-changes": "ok",
+      "build Debug (0 warnings)": "ok",
+      "test Debug": "ok",
+      "build Release w/ CI=true (0 warnings)": "ok",
+      "test Release w/ CI=true": "ok",
+      "git diff --check": "ok",
+      "engine citation step, run in isolation": "ok"
+     },
+     "evidence": {},
+     "gate_exit": 0,
+     "seconds": 9.4
+    }
+   }
+  },
+  {
+   "id": "depends-spurious",
+   "family": "wrong dependsOn",
+   "predicted_stratum": "human",
+   "modelled_on": null,
+   "why_wrong": "Hitting a blot has nothing to do with doublets; the edge orders work that has no ordering constraint and, in a large map, serialises it wrongly.",
+   "applies": [
+    "factory",
+    "engine"
+   ],
+   "copies": {
+    "factory": {
+     "not_applied": null,
+     "checks": {
+      "schema": "ok",
+      "required-fields": "ok",
+      "vocabulary": "ok",
+      "unique-ids": "ok",
+      "references": "ok",
+      "no-cycles": "ok",
+      "manifest": "ok",
+      "exclusions": "ok",
+      "status": "skip",
+      "decision-records": "ok",
+      "conflicts": "ok",
+      "absent": "ok",
+      "cross-references": "ok",
+      "correspondence": "ok",
+      "locators": "ok",
+      "absence": "ok",
+      "coverage": "ok"
+     },
+     "evidence": {},
+     "check-map_exit": 0,
+     "check-locators_exit": 0
+    },
+    "engine": {
+     "not_applied": null,
+     "checks": {
+      "corpus/hoyle.txt matches the pinned baseline hash": "ok",
+      "corpus-map.json matches its pinned hash": "ok",
+      "MapEntries matches corpus-map.json entry for entry": "ok",
+      "every unresolved reason and every map entry agree with the correspondence table": "ok",
+      "nothing inside the engine calls BeyondAdapter": "ok",
+      "every corpus-map.json citation resolves to its page in corpus/hoyle.txt": "ok",
+      "dotnet restore": "ok",
+      "dotnet format --verify-no-changes": "ok",
+      "build Debug (0 warnings)": "ok",
+      "test Debug": "ok",
+      "build Release w/ CI=true (0 warnings)": "ok",
+      "test Release w/ CI=true": "ok",
+      "git diff --check": "ok",
+      "engine citation step, run in isolation": "ok"
+     },
+     "evidence": {},
+     "gate_exit": 0,
+     "seconds": 9.5
+    }
+   }
+  },
+  {
+   "id": "depends-cycle",
+   "family": "wrong dependsOn",
+   "predicted_stratum": "schema",
+   "modelled_on": null,
+   "why_wrong": "starting-position already depends on point-designations. The reverse edge makes the pair mutually dependent, so no implementation order exists.",
+   "applies": [
+    "factory",
+    "engine"
+   ],
+   "copies": {
+    "factory": {
+     "not_applied": null,
+     "checks": {
+      "schema": "ok",
+      "required-fields": "ok",
+      "vocabulary": "ok",
+      "unique-ids": "ok",
+      "references": "ok",
+      "no-cycles": "fail",
+      "manifest": "ok",
+      "exclusions": "ok",
+      "status": "skip",
+      "decision-records": "ok",
+      "conflicts": "ok",
+      "absent": "ok",
+      "cross-references": "ok",
+      "correspondence": "ok",
+      "locators": "ok",
+      "absence": "ok",
+      "coverage": "ok"
+     },
+     "evidence": {
+      "check-map": [
+       "  X  dependsOn cycle: point-designations -> starting-position -> point-designations"
+      ]
+     },
+     "check-map_exit": 1,
+     "check-locators_exit": 0
+    },
+    "engine": {
+     "not_applied": null,
+     "checks": {
+      "corpus/hoyle.txt matches the pinned baseline hash": "ok",
+      "corpus-map.json matches its pinned hash": "ok",
+      "MapEntries matches corpus-map.json entry for entry": "ok",
+      "every unresolved reason and every map entry agree with the correspondence table": "ok",
+      "nothing inside the engine calls BeyondAdapter": "ok",
+      "every corpus-map.json citation resolves to its page in corpus/hoyle.txt": "ok",
+      "dotnet restore": "ok",
+      "dotnet format --verify-no-changes": "ok",
+      "build Debug (0 warnings)": "ok",
+      "test Debug": "ok",
+      "build Release w/ CI=true (0 warnings)": "ok",
+      "test Release w/ CI=true": "ok",
+      "git diff --check": "ok",
+      "engine citation step, run in isolation": "ok"
+     },
+     "evidence": {},
+     "gate_exit": 0,
+     "seconds": 9.4
+    }
+   }
+  },
+  {
+   "id": "depends-dangling",
+   "family": "wrong dependsOn",
+   "predicted_stratum": "schema",
+   "modelled_on": null,
+   "why_wrong": "Names an entry the map does not carry -- the shape a rename or a typo leaves behind.",
+   "applies": [
+    "factory",
+    "engine"
+   ],
+   "copies": {
+    "factory": {
+     "not_applied": null,
+     "checks": {
+      "schema": "ok",
+      "required-fields": "ok",
+      "vocabulary": "ok",
+      "unique-ids": "ok",
+      "references": "fail",
+      "no-cycles": "ok",
+      "manifest": "ok",
+      "exclusions": "ok",
+      "status": "skip",
+      "decision-records": "ok",
+      "conflicts": "ok",
+      "absent": "ok",
+      "cross-references": "ok",
+      "correspondence": "ok",
+      "locators": "ok",
+      "absence": "ok",
+      "coverage": "ok"
+     },
+     "evidence": {
+      "check-map": [
+       "  X  win-condition: dependsOn names 'bearing-off-order', which is not an entry in this map"
+      ]
+     },
+     "check-map_exit": 1,
+     "check-locators_exit": 0
+    },
+    "engine": {
+     "not_applied": null,
+     "checks": {
+      "corpus/hoyle.txt matches the pinned baseline hash": "ok",
+      "corpus-map.json matches its pinned hash": "ok",
+      "MapEntries matches corpus-map.json entry for entry": "ok",
+      "every unresolved reason and every map entry agree with the correspondence table": "ok",
+      "nothing inside the engine calls BeyondAdapter": "ok",
+      "every corpus-map.json citation resolves to its page in corpus/hoyle.txt": "ok",
+      "dotnet restore": "ok",
+      "dotnet format --verify-no-changes": "ok",
+      "build Debug (0 warnings)": "ok",
+      "test Debug": "ok",
+      "build Release w/ CI=true (0 warnings)": "ok",
+      "test Release w/ CI=true": "ok",
+      "git diff --check": "ok",
+      "engine citation step, run in isolation": "ok"
+     },
+     "evidence": {},
+     "gate_exit": 0,
+     "seconds": 9.6
+    }
+   }
+  },
+  {
+   "id": "gate-dropped",
+   "family": "missing gatedBy",
+   "predicted_stratum": "human",
+   "modelled_on": "MAP-FINDINGS.md findings 6 and 7 -- two missing gates, one of them with a determinism consequence no correctness test would see",
+   "why_wrong": "bearing-off-highest is reachable only once the player is eligible to bear off. Without the gate the rule appears to apply from the first throw.",
+   "applies": [
+    "factory",
+    "engine"
+   ],
+   "copies": {
+    "factory": {
+     "not_applied": null,
+     "checks": {
+      "schema": "ok",
+      "required-fields": "ok",
+      "vocabulary": "ok",
+      "unique-ids": "ok",
+      "references": "ok",
+      "no-cycles": "ok",
+      "manifest": "ok",
+      "exclusions": "ok",
+      "status": "skip",
+      "decision-records": "ok",
+      "conflicts": "ok",
+      "absent": "ok",
+      "cross-references": "ok",
+      "correspondence": "ok",
+      "locators": "ok",
+      "absence": "ok",
+      "coverage": "ok"
+     },
+     "evidence": {},
+     "check-map_exit": 0,
+     "check-locators_exit": 0
+    },
+    "engine": {
+     "not_applied": null,
+     "checks": {
+      "corpus/hoyle.txt matches the pinned baseline hash": "ok",
+      "corpus-map.json matches its pinned hash": "ok",
+      "MapEntries matches corpus-map.json entry for entry": "ok",
+      "every unresolved reason and every map entry agree with the correspondence table": "ok",
+      "nothing inside the engine calls BeyondAdapter": "ok",
+      "every corpus-map.json citation resolves to its page in corpus/hoyle.txt": "ok",
+      "dotnet restore": "ok",
+      "dotnet format --verify-no-changes": "ok",
+      "build Debug (0 warnings)": "ok",
+      "test Debug": "ok",
+      "build Release w/ CI=true (0 warnings)": "ok",
+      "test Release w/ CI=true": "ok",
+      "git diff --check": "ok",
+      "engine citation step, run in isolation": "ok"
+     },
+     "evidence": {},
+     "gate_exit": 0,
+     "seconds": 9.5
+    }
+   }
+  },
+  {
+   "id": "gate-spurious",
+   "family": "wrong gatedBy",
+   "predicted_stratum": "human",
+   "modelled_on": null,
+   "why_wrong": "The opening roll happens before any man can be on the bar, so gating it by enter-from-bar asserts a phase relation the corpus makes impossible.",
+   "applies": [
+    "factory",
+    "engine"
+   ],
+   "copies": {
+    "factory": {
+     "not_applied": null,
+     "checks": {
+      "schema": "ok",
+      "required-fields": "ok",
+      "vocabulary": "ok",
+      "unique-ids": "ok",
+      "references": "ok",
+      "no-cycles": "ok",
+      "manifest": "ok",
+      "exclusions": "ok",
+      "status": "skip",
+      "decision-records": "ok",
+      "conflicts": "ok",
+      "absent": "ok",
+      "cross-references": "ok",
+      "correspondence": "ok",
+      "locators": "ok",
+      "absence": "ok",
+      "coverage": "ok"
+     },
+     "evidence": {},
+     "check-map_exit": 0,
+     "check-locators_exit": 0
+    },
+    "engine": {
+     "not_applied": null,
+     "checks": {
+      "corpus/hoyle.txt matches the pinned baseline hash": "ok",
+      "corpus-map.json matches its pinned hash": "ok",
+      "MapEntries matches corpus-map.json entry for entry": "ok",
+      "every unresolved reason and every map entry agree with the correspondence table": "ok",
+      "nothing inside the engine calls BeyondAdapter": "ok",
+      "every corpus-map.json citation resolves to its page in corpus/hoyle.txt": "ok",
+      "dotnet restore": "ok",
+      "dotnet format --verify-no-changes": "ok",
+      "build Debug (0 warnings)": "ok",
+      "test Debug": "ok",
+      "build Release w/ CI=true (0 warnings)": "ok",
+      "test Release w/ CI=true": "ok",
+      "git diff --check": "ok",
+      "engine citation step, run in isolation": "ok"
+     },
+     "evidence": {},
+     "gate_exit": 0,
+     "seconds": 9.3
+    }
+   }
+  },
+  {
+   "id": "kind-operation-to-value",
+   "family": "wrong kind",
+   "predicted_stratum": "human",
+   "modelled_on": null,
+   "why_wrong": "move-by-pip transforms a position given a throw. Typed `value` it claims to be a fact the corpus states, and the correspondence table treats it as one.",
+   "applies": [
+    "factory",
+    "engine"
+   ],
+   "copies": {
+    "factory": {
+     "not_applied": null,
+     "checks": {
+      "schema": "ok",
+      "required-fields": "ok",
+      "vocabulary": "ok",
+      "unique-ids": "ok",
+      "references": "ok",
+      "no-cycles": "ok",
+      "manifest": "ok",
+      "exclusions": "ok",
+      "status": "skip",
+      "decision-records": "ok",
+      "conflicts": "ok",
+      "absent": "ok",
+      "cross-references": "ok",
+      "correspondence": "ok",
+      "locators": "ok",
+      "absence": "ok",
+      "coverage": "ok"
+     },
+     "evidence": {},
+     "check-map_exit": 0,
+     "check-locators_exit": 0
+    },
+    "engine": {
+     "not_applied": null,
+     "checks": {
+      "corpus/hoyle.txt matches the pinned baseline hash": "ok",
+      "corpus-map.json matches its pinned hash": "ok",
+      "MapEntries matches corpus-map.json entry for entry": "ok",
+      "every unresolved reason and every map entry agree with the correspondence table": "ok",
+      "nothing inside the engine calls BeyondAdapter": "ok",
+      "every corpus-map.json citation resolves to its page in corpus/hoyle.txt": "ok",
+      "dotnet restore": "ok",
+      "dotnet format --verify-no-changes": "ok",
+      "build Debug (0 warnings)": "ok",
+      "test Debug": "ok",
+      "build Release w/ CI=true (0 warnings)": "ok",
+      "test Release w/ CI=true": "ok",
+      "git diff --check": "ok",
+      "engine citation step, run in isolation": "ok"
+     },
+     "evidence": {},
+     "gate_exit": 0,
+     "seconds": 9.4
+    }
+   }
+  },
+  {
+   "id": "kind-assertion-to-value",
+   "family": "wrong kind",
+   "predicted_stratum": "human",
+   "modelled_on": "MAP-FINDINGS.md finding 9 -- a delegated standard typed as an ordinary value, with the entry's own note contradicting its fields",
+   "why_wrong": "The multiple is vested in the players by agreement. Typed `value` the engine owes it none of the four things an assertion is owed -- demand, attribution, recording, never infer.",
+   "applies": [
+    "factory",
+    "engine"
+   ],
+   "copies": {
+    "factory": {
+     "not_applied": null,
+     "checks": {
+      "schema": "ok",
+      "required-fields": "ok",
+      "vocabulary": "ok",
+      "unique-ids": "ok",
+      "references": "ok",
+      "no-cycles": "ok",
+      "manifest": "ok",
+      "exclusions": "ok",
+      "status": "skip",
+      "decision-records": "ok",
+      "conflicts": "ok",
+      "absent": "ok",
+      "cross-references": "ok",
+      "correspondence": "ok",
+      "locators": "ok",
+      "absence": "ok",
+      "coverage": "ok"
+     },
+     "evidence": {},
+     "check-map_exit": 0,
+     "check-locators_exit": 0
+    },
+    "engine": {
+     "not_applied": null,
+     "checks": {
+      "corpus/hoyle.txt matches the pinned baseline hash": "ok",
+      "corpus-map.json matches its pinned hash": "ok",
+      "MapEntries matches corpus-map.json entry for entry": "ok",
+      "every unresolved reason and every map entry agree with the correspondence table": "ok",
+      "nothing inside the engine calls BeyondAdapter": "ok",
+      "every corpus-map.json citation resolves to its page in corpus/hoyle.txt": "ok",
+      "dotnet restore": "ok",
+      "dotnet format --verify-no-changes": "ok",
+      "build Debug (0 warnings)": "ok",
+      "test Debug": "ok",
+      "build Release w/ CI=true (0 warnings)": "ok",
+      "test Release w/ CI=true": "ok",
+      "git diff --check": "ok",
+      "engine citation step, run in isolation": "ok"
+     },
+     "evidence": {},
+     "gate_exit": 0,
+     "seconds": 9.6
+    }
+   }
+  },
+  {
+   "id": "clarity-ambiguous-to-clear",
+   "family": "wrong clarity",
+   "predicted_stratum": "human",
+   "modelled_on": "MAP-FINDINGS.md finding 4 -- game-value was `clear` and a reachable win satisfies none of its three named results",
+   "why_wrong": "Restores the exact error trial 4 found: the entry asserts the corpus determines one answer for every input, and a reachable finish has none.",
+   "applies": [
+    "factory",
+    "engine"
+   ],
+   "copies": {
+    "factory": {
+     "not_applied": null,
+     "checks": {
+      "schema": "ok",
+      "required-fields": "ok",
+      "vocabulary": "ok",
+      "unique-ids": "ok",
+      "references": "ok",
+      "no-cycles": "ok",
+      "manifest": "ok",
+      "exclusions": "ok",
+      "status": "skip",
+      "decision-records": "ok",
+      "conflicts": "ok",
+      "absent": "ok",
+      "cross-references": "ok",
+      "correspondence": "ok",
+      "locators": "ok",
+      "absence": "ok",
+      "coverage": "ok"
+     },
+     "evidence": {},
+     "check-map_exit": 0,
+     "check-locators_exit": 0
+    },
+    "engine": {
+     "not_applied": null,
+     "checks": {
+      "corpus/hoyle.txt matches the pinned baseline hash": "ok",
+      "corpus-map.json matches its pinned hash": "ok",
+      "MapEntries matches corpus-map.json entry for entry": "ok",
+      "every unresolved reason and every map entry agree with the correspondence table": "fail",
+      "engine citation step, run in isolation": "ok"
+     },
+     "evidence": {
+      "validate.sh": [
+       "error: src/HoyleBackgammon/Rules/Outcome.cs: RequiresInterpretation citing MapEntries.GameValue: game-value matches no correspondence row -- the map says the engine answers it (matches no row: a built, clear, unambiguous rule the engine answers) -- yet the code declines",
+       "error: game-value: the map says the engine answers it (matches no row: a built, clear, unambiguous rule the engine answers) but the code returns RequiresInterpretation citing it -- the map asserts something the code disproves"
+      ]
+     },
+     "gate_exit": 1,
+     "seconds": 0.2
+    }
+   }
+  },
+  {
+   "id": "clarity-clear-to-ambiguous",
+   "family": "wrong clarity",
+   "predicted_stratum": "human",
+   "modelled_on": null,
+   "why_wrong": "bearing-off-highest is determinate -- a number that cannot be used bears a man off the highest occupied point. Declaring it unresolved declines a rule the corpus settles, which is the more expensive direction of this error.",
+   "applies": [
+    "factory",
+    "engine"
+   ],
+   "copies": {
+    "factory": {
+     "not_applied": null,
+     "checks": {
+      "schema": "ok",
+      "required-fields": "ok",
+      "vocabulary": "ok",
+      "unique-ids": "ok",
+      "references": "ok",
+      "no-cycles": "ok",
+      "manifest": "ok",
+      "exclusions": "ok",
+      "status": "skip",
+      "decision-records": "ok",
+      "conflicts": "ok",
+      "absent": "ok",
+      "cross-references": "ok",
+      "correspondence": "ok",
+      "locators": "ok",
+      "absence": "ok",
+      "coverage": "ok"
+     },
+     "evidence": {},
+     "check-map_exit": 0,
+     "check-locators_exit": 0
+    },
+    "engine": {
+     "not_applied": null,
+     "checks": {
+      "corpus/hoyle.txt matches the pinned baseline hash": "ok",
+      "corpus-map.json matches its pinned hash": "ok",
+      "MapEntries matches corpus-map.json entry for entry": "ok",
+      "every unresolved reason and every map entry agree with the correspondence table": "fail",
+      "engine citation step, run in isolation": "ok"
+     },
+     "evidence": {
+      "validate.sh": [
+       "error: bearing-off-highest: matches row 6 (ambiguity.fate: unresolved), so the engine must be able to return RequiresInterpretation citing it, and no code path does"
+      ]
+     },
+     "gate_exit": 1,
+     "seconds": 0.2
+    }
+   }
+  },
+  {
+   "id": "clarity-inconsistent",
+   "family": "wrong clarity",
+   "predicted_stratum": "schema",
+   "modelled_on": null,
+   "why_wrong": "`clarity: clear` and an `ambiguity` block assert opposite things about the same entry.",
+   "applies": [
+    "factory",
+    "engine"
+   ],
+   "copies": {
+    "factory": {
+     "not_applied": null,
+     "checks": {
+      "schema": "ok",
+      "required-fields": "ok",
+      "vocabulary": "ok",
+      "unique-ids": "ok",
+      "references": "ok",
+      "no-cycles": "ok",
+      "manifest": "ok",
+      "exclusions": "fail",
+      "status": "skip",
+      "decision-records": "ok",
+      "conflicts": "ok",
+      "absent": "ok",
+      "cross-references": "ok",
+      "correspondence": "ok",
+      "locators": "ok",
+      "absence": "ok",
+      "coverage": "ok"
+     },
+     "evidence": {
+      "check-map": [
+       "  X  game-value: clarity is `clear` but an `ambiguity` block is present"
+      ]
+     },
+     "check-map_exit": 1,
+     "check-locators_exit": 0
+    },
+    "engine": {
+     "not_applied": null,
+     "checks": {
+      "corpus/hoyle.txt matches the pinned baseline hash": "ok",
+      "corpus-map.json matches its pinned hash": "ok",
+      "MapEntries matches corpus-map.json entry for entry": "ok",
+      "every unresolved reason and every map entry agree with the correspondence table": "ok",
+      "nothing inside the engine calls BeyondAdapter": "ok",
+      "every corpus-map.json citation resolves to its page in corpus/hoyle.txt": "ok",
+      "dotnet restore": "ok",
+      "dotnet format --verify-no-changes": "ok",
+      "build Debug (0 warnings)": "ok",
+      "test Debug": "ok",
+      "build Release w/ CI=true (0 warnings)": "ok",
+      "test Release w/ CI=true": "ok",
+      "git diff --check": "ok",
+      "engine citation step, run in isolation": "ok"
+     },
+     "evidence": {},
+     "gate_exit": 0,
+     "seconds": 9.4
+    }
+   }
+  },
+  {
+   "id": "scope-in-to-out",
+   "family": "wrong scope",
+   "predicted_stratum": "human",
+   "modelled_on": null,
+   "why_wrong": "legal-destination is the general qualification on every move in the game. Marked out of scope, the map says an engine need not implement it and the correspondence table says the engine should decline citing it.",
+   "applies": [
+    "factory",
+    "engine"
+   ],
+   "copies": {
+    "factory": {
+     "not_applied": null,
+     "checks": {
+      "schema": "ok",
+      "required-fields": "ok",
+      "vocabulary": "ok",
+      "unique-ids": "ok",
+      "references": "ok",
+      "no-cycles": "ok",
+      "manifest": "ok",
+      "exclusions": "ok",
+      "status": "skip",
+      "decision-records": "ok",
+      "conflicts": "ok",
+      "absent": "ok",
+      "cross-references": "ok",
+      "correspondence": "ok",
+      "locators": "ok",
+      "absence": "ok",
+      "coverage": "ok"
+     },
+     "evidence": {},
+     "check-map_exit": 0,
+     "check-locators_exit": 0
+    },
+    "engine": {
+     "not_applied": null,
+     "checks": {
+      "corpus/hoyle.txt matches the pinned baseline hash": "ok",
+      "corpus-map.json matches its pinned hash": "ok",
+      "MapEntries matches corpus-map.json entry for entry": "ok",
+      "every unresolved reason and every map entry agree with the correspondence table": "fail",
+      "engine citation step, run in isolation": "ok"
+     },
+     "evidence": {
+      "validate.sh": [
+       "error: legal-destination: matches row 1 (scope: out), so the engine must be able to return OutsideCurrentScope citing it, and no code path does"
+      ]
+     },
+     "gate_exit": 1,
+     "seconds": 0.2
+    }
+   }
+  },
+  {
+   "id": "status-claimed-without-revision",
+   "family": "wrong status",
+   "predicted_stratum": "schema",
+   "modelled_on": null,
+   "why_wrong": "Claims an entry is implemented without naming the ruleset and revision that implements it, so the claim names nothing that could be checked.",
+   "applies": [
+    "factory"
+   ],
+   "copies": {
+    "factory": {
+     "not_applied": null,
+     "checks": {
+      "schema": "ok",
+      "required-fields": "ok",
+      "vocabulary": "ok",
+      "unique-ids": "ok",
+      "references": "ok",
+      "no-cycles": "ok",
+      "manifest": "ok",
+      "exclusions": "ok",
+      "status": "fail",
+      "decision-records": "ok",
+      "conflicts": "ok",
+      "absent": "ok",
+      "cross-references": "ok",
+      "correspondence": "ok",
+      "locators": "ok",
+      "absence": "ok",
+      "coverage": "ok"
+     },
+     "evidence": {
+      "check-map": [
+       "  X  men-count: status is `implemented` but no `implementedIn` names the ruleset revision"
+      ]
+     },
+     "check-map_exit": 1,
+     "check-locators_exit": 0
+    }
+   }
+  },
+  {
+   "id": "entry-deleted-unreferenced",
+   "family": "missing entry",
+   "predicted_stratum": "corpus",
+   "modelled_on": "issue #20 -- four unmapped rules, including the corpus's only statement of how many faces a die has",
+   "why_wrong": "Deletes die-faces, the corpus's only authority for a die having six faces. Nothing in the map references it, so its absence leaves no dangling edge.",
+   "applies": [
+    "factory"
+   ],
+   "copies": {
+    "factory": {
+     "not_applied": null,
+     "checks": {
+      "schema": "ok",
+      "required-fields": "ok",
+      "vocabulary": "ok",
+      "unique-ids": "ok",
+      "references": "ok",
+      "no-cycles": "ok",
+      "manifest": "ok",
+      "exclusions": "ok",
+      "status": "skip",
+      "decision-records": "ok",
+      "conflicts": "ok",
+      "absent": "ok",
+      "cross-references": "ok",
+      "correspondence": "ok",
+      "locators": "ok",
+      "absence": "ok",
+      "coverage": "fail"
+     },
+     "evidence": {
+      "check-locators": [
+       "  X  p. 278: inside the declared extent and reached by no entry's verified evidence",
+       "  X  p. 279: inside the declared extent and reached by no entry's verified evidence",
+       "  X  p. 280: inside the declared extent and reached by no entry's verified evidence"
+      ]
+     },
+     "check-map_exit": 0,
+     "check-locators_exit": 1
+    }
+   }
+  },
+  {
+   "id": "entry-deleted-referenced",
+   "family": "missing entry",
+   "predicted_stratum": "schema",
+   "modelled_on": "issue #20",
+   "why_wrong": "Deletes point-designations, which three other entries depend on.",
+   "applies": [
+    "factory",
+    "engine"
+   ],
+   "copies": {
+    "factory": {
+     "not_applied": null,
+     "checks": {
+      "schema": "ok",
+      "required-fields": "ok",
+      "vocabulary": "ok",
+      "unique-ids": "ok",
+      "references": "fail",
+      "no-cycles": "ok",
+      "manifest": "ok",
+      "exclusions": "ok",
+      "status": "skip",
+      "decision-records": "ok",
+      "conflicts": "ok",
+      "absent": "ok",
+      "cross-references": "ok",
+      "correspondence": "ok",
+      "locators": "ok",
+      "absence": "ok",
+      "coverage": "ok"
+     },
+     "evidence": {
+      "check-map": [
+       "  X  starting-position: dependsOn names 'point-designations', which is not an entry in this map",
+       "  X  direction-of-travel: dependsOn names 'point-designations', which is not an entry in this map",
+       "  X  die-faces: dependsOn names 'point-designations', which is not an entry in this map"
+      ]
+     },
+     "check-map_exit": 1,
+     "check-locators_exit": 0
+    },
+    "engine": {
+     "not_applied": null,
+     "checks": {
+      "corpus/hoyle.txt matches the pinned baseline hash": "ok",
+      "corpus-map.json matches its pinned hash": "ok",
+      "MapEntries matches corpus-map.json entry for entry": "fail",
+      "engine citation step, run in isolation": "ok"
+     },
+     "evidence": {
+      "validate.sh": [
+       "error: code declares 'point-designations', which the map does not carry"
+      ]
+     },
+     "gate_exit": 1,
+     "seconds": 0.2
+    }
+   }
+  },
+  {
+   "id": "entry-fabricated-unquotable",
+   "family": "fabricated entry",
+   "predicted_stratum": "corpus",
+   "modelled_on": null,
+   "why_wrong": "An entry for a rule the corpus does not contain, with evidence that is not in the corpus at all -- a mapper writing from knowledge of the game.",
+   "applies": [
+    "factory",
+    "engine"
+   ],
+   "copies": {
+    "factory": {
+     "not_applied": null,
+     "checks": {
+      "schema": "ok",
+      "required-fields": "ok",
+      "vocabulary": "ok",
+      "unique-ids": "ok",
+      "references": "ok",
+      "no-cycles": "ok",
+      "manifest": "ok",
+      "exclusions": "ok",
+      "status": "skip",
+      "decision-records": "ok",
+      "conflicts": "ok",
+      "absent": "ok",
+      "cross-references": "ok",
+      "correspondence": "ok",
+      "locators": "fail",
+      "absence": "ok",
+      "coverage": "ok"
+     },
+     "evidence": {
+      "check-locators": []
+     },
+     "check-map_exit": 0,
+     "check-locators_exit": 1
+    },
+    "engine": {
+     "not_applied": null,
+     "checks": {
+      "corpus/hoyle.txt matches the pinned baseline hash": "ok",
+      "corpus-map.json matches its pinned hash": "ok",
+      "MapEntries matches corpus-map.json entry for entry": "fail",
+      "engine citation step, run in isolation": "ok"
+     },
+     "evidence": {
+      "validate.sh": [
+       "error: the map carries entries the code never names: borne-off-men-do-not-re-enter"
+      ]
+     },
+     "gate_exit": 1,
+     "seconds": 0.2
+    }
+   }
+  },
+  {
+   "id": "entry-fabricated-real-quote",
+   "family": "fabricated entry",
+   "predicted_stratum": "human",
+   "modelled_on": "an entry claiming a case the corpus does not state (issue #31)",
+   "why_wrong": "Backgammon has no compulsion to hit. The entry states one, and cites a real sentence of the corpus, on the page it is really on, which says something else -- so every mechanical check the citation faces is satisfied.",
+   "applies": [
+    "factory",
+    "engine"
+   ],
+   "copies": {
+    "factory": {
+     "not_applied": null,
+     "checks": {
+      "schema": "ok",
+      "required-fields": "ok",
+      "vocabulary": "ok",
+      "unique-ids": "ok",
+      "references": "ok",
+      "no-cycles": "ok",
+      "manifest": "ok",
+      "exclusions": "ok",
+      "status": "skip",
+      "decision-records": "ok",
+      "conflicts": "ok",
+      "absent": "ok",
+      "cross-references": "ok",
+      "correspondence": "ok",
+      "locators": "ok",
+      "absence": "ok",
+      "coverage": "ok"
+     },
+     "evidence": {},
+     "check-map_exit": 0,
+     "check-locators_exit": 0
+    },
+    "engine": {
+     "not_applied": null,
+     "checks": {
+      "corpus/hoyle.txt matches the pinned baseline hash": "ok",
+      "corpus-map.json matches its pinned hash": "ok",
+      "MapEntries matches corpus-map.json entry for entry": "fail",
+      "engine citation step, run in isolation": "ok"
+     },
+     "evidence": {
+      "validate.sh": [
+       "error: the map carries entries the code never names: blot-must-be-hit"
+      ]
+     },
+     "gate_exit": 1,
+     "seconds": 0.2
+    }
+   }
+  },
+  {
+   "id": "beyond-adapter-false",
+   "family": "false unreachability",
+   "predicted_stratum": "human",
+   "modelled_on": "MAP-FINDINGS.md finding 1 -- the map's worst real error, and the one that motivated a schema field, a decision record and an engine's architecture",
+   "why_wrong": "Restores it exactly: starting-position declared unreadable by the plain-text adapter because it is in a figure, while the entry's own evidence is the prose statement of it, verbatim, on the cited page.",
+   "applies": [
+    "factory",
+    "engine"
+   ],
+   "copies": {
+    "factory": {
+     "not_applied": null,
+     "checks": {
+      "schema": "ok",
+      "required-fields": "ok",
+      "vocabulary": "ok",
+      "unique-ids": "ok",
+      "references": "ok",
+      "no-cycles": "ok",
+      "manifest": "ok",
+      "exclusions": "ok",
+      "status": "skip",
+      "decision-records": "ok",
+      "conflicts": "ok",
+      "absent": "ok",
+      "cross-references": "ok",
+      "correspondence": "ok",
+      "locators": "ok",
+      "absence": "ok",
+      "coverage": "ok"
+     },
+     "evidence": {},
+     "check-map_exit": 0,
+     "check-locators_exit": 0
+    },
+    "engine": {
+     "not_applied": null,
+     "checks": {
+      "corpus/hoyle.txt matches the pinned baseline hash": "ok",
+      "corpus-map.json matches its pinned hash": "ok",
+      "MapEntries matches corpus-map.json entry for entry": "ok",
+      "every unresolved reason and every map entry agree with the correspondence table": "fail",
+      "engine citation step, run in isolation": "ok"
+     },
+     "evidence": {
+      "validate.sh": [
+       "error: starting-position: matches row 4 (carries beyondAdapter), so the engine must be able to return MissingRulesData citing it, and no code path does"
+      ]
+     },
+     "gate_exit": 1,
+     "seconds": 0.2
+    }
+   }
+  },
+  {
+   "id": "absence-terms-present",
+   "family": "false absence",
+   "predicted_stratum": "corpus",
+   "modelled_on": "issues #20 and #29 -- an absence declared without looking",
+   "why_wrong": "Claims the corpus contains no doubling rule and searches for a term the corpus does use, for another reason, inside the declared extent.",
+   "applies": [
+    "factory"
+   ],
+   "copies": {
+    "factory": {
+     "not_applied": null,
+     "checks": {
+      "schema": "ok",
+      "required-fields": "ok",
+      "vocabulary": "ok",
+      "unique-ids": "ok",
+      "references": "ok",
+      "no-cycles": "ok",
+      "manifest": "ok",
+      "exclusions": "ok",
+      "status": "skip",
+      "decision-records": "ok",
+      "conflicts": "ok",
+      "absent": "ok",
+      "cross-references": "ok",
+      "correspondence": "ok",
+      "locators": "ok",
+      "absence": "fail",
+      "coverage": "ok"
+     },
+     "evidence": {
+      "check-locators": [
+       "  X  doubling-cube: claims the corpus does not state this rule and names 'double' among the words it would use -- and the extent contains it: ...t of his throwing the same points with both dice (known as \"doublets\"), he is entitled to play the throw twice over. Suppose, for example, t..."
+      ]
+     },
+     "check-map_exit": 0,
+     "check-locators_exit": 1
+    }
+   }
+  },
+  {
+   "id": "absence-stated-in-other-words",
+   "family": "false absence",
+   "predicted_stratum": "human",
+   "modelled_on": "check-locators.py's own stated limitation, here made a measurement rather than a claim",
+   "why_wrong": "Claims the corpus contains no rule for taking an adversary's man, and searches for words the corpus does not use. It states the rule throughout, in its own vocabulary -- a blot is 'taken up'.",
+   "applies": [
+    "factory"
+   ],
+   "copies": {
+    "factory": {
+     "not_applied": null,
+     "checks": {
+      "schema": "ok",
+      "required-fields": "ok",
+      "vocabulary": "ok",
+      "unique-ids": "ok",
+      "references": "ok",
+      "no-cycles": "ok",
+      "manifest": "ok",
+      "exclusions": "ok",
+      "status": "skip",
+      "decision-records": "ok",
+      "conflicts": "ok",
+      "absent": "ok",
+      "cross-references": "ok",
+      "correspondence": "ok",
+      "locators": "ok",
+      "absence": "fail",
+      "coverage": "ok"
+     },
+     "evidence": {
+      "check-locators": [
+       "  X  capture-rule-absent: claims the corpus does not state this rule and names 'capture' among the words it would use -- and the extent contains it: ... \"make\" such point, and as he thereby secures such men from capture, and at the same time impedes the onward march of the enemy, it is alway..."
+      ]
+     },
+     "check-map_exit": 0,
+     "check-locators_exit": 1
+    }
+   }
+  },
+  {
+   "id": "absence-in-unused-words",
+   "family": "false absence",
+   "predicted_stratum": "human",
+   "modelled_on": "check-locators.py's own stated limitation",
+   "why_wrong": "Same false claim as absence-stated-in-other-words -- the corpus states the rule, at length, on p. 274 -- with searched terms the corpus does not use.",
+   "applies": [
+    "factory"
+   ],
+   "copies": {
+    "factory": {
+     "not_applied": null,
+     "checks": {
+      "schema": "ok",
+      "required-fields": "ok",
+      "vocabulary": "ok",
+      "unique-ids": "ok",
+      "references": "ok",
+      "no-cycles": "ok",
+      "manifest": "ok",
+      "exclusions": "ok",
+      "status": "skip",
+      "decision-records": "ok",
+      "conflicts": "ok",
+      "absent": "ok",
+      "cross-references": "ok",
+      "correspondence": "ok",
+      "locators": "ok",
+      "absence": "ok",
+      "coverage": "ok"
+     },
+     "evidence": {},
+     "check-map_exit": 0,
+     "check-locators_exit": 0
+    }
+   }
+  },
+  {
+   "id": "name-contradicts-corpus",
+   "family": "entry contradicts corpus",
+   "predicted_stratum": "human",
+   "modelled_on": null,
+   "why_wrong": "The corpus says twelve points to a table, twenty-four in all. The entry now says fourteen, above a verbatim quote that says otherwise -- the number the whole engine is built around, wrong in the field a reader reads first.",
+   "applies": [
+    "factory",
+    "engine"
+   ],
+   "copies": {
+    "factory": {
+     "not_applied": null,
+     "checks": {
+      "schema": "ok",
+      "required-fields": "ok",
+      "vocabulary": "ok",
+      "unique-ids": "ok",
+      "references": "ok",
+      "no-cycles": "ok",
+      "manifest": "ok",
+      "exclusions": "ok",
+      "status": "skip",
+      "decision-records": "ok",
+      "conflicts": "ok",
+      "absent": "ok",
+      "cross-references": "ok",
+      "correspondence": "ok",
+      "locators": "ok",
+      "absence": "ok",
+      "coverage": "ok"
+     },
+     "evidence": {},
+     "check-map_exit": 0,
+     "check-locators_exit": 0
+    },
+    "engine": {
+     "not_applied": null,
+     "checks": {
+      "corpus/hoyle.txt matches the pinned baseline hash": "ok",
+      "corpus-map.json matches its pinned hash": "ok",
+      "MapEntries matches corpus-map.json entry for entry": "fail",
+      "engine citation step, run in isolation": "ok"
+     },
+     "evidence": {
+      "validate.sh": [
+       "error: board-tables: code names it 'The board is two tables, inner and outer', map names it 'The board is two tables of fourteen points each'"
+      ]
+     },
+     "gate_exit": 1,
+     "seconds": 0.2
+    }
+   }
+  }
+ ]
+}
