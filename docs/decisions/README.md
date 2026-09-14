@@ -17,3 +17,4 @@ kept; its number is never reused.
 | [0006](0006-the-general-rule-governs-entry-and-full-means-adversely-full.md) | The general rule governs entry, and "full" means adversely full |
 | [0007](0007-a-conflict-is-a-question-not-a-pair.md) | A conflict is a question, not a pair |
 | [0008](0008-recognising-a-delegated-standard-is-a-procedure-not-a-test.md) | Recognising a delegated standard is a procedure, not a test, and its residue is named |
+| [0009](0009-absence-is-a-verdict-with-evidence.md) | Absence is a verdict with evidence, and scope belongs to a rule, never to a section |

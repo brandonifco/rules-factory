@@ -8,13 +8,17 @@ written to set standards.
 **Corpus:** *Hoyle's Games Modernized* (1909), Project Gutenberg eBook 39445. Public domain,
 `pin-in-repo`, plain text.
 
-**Slice mapped:** the Backgammon rules — The Board and Men, Playing, Bearing off the Men.
-8,013 characters, **1.1% of a 740 KB corpus**. Hints for Play excluded as advice.
+**Slice mapped:** the Backgammon chapter, pages 271–280 — The Board and Men, Playing,
+Bearing off the Men, and Hints for Play. The map declares that range as its `extent`, and
+every page in it is reached by some entry's located evidence
+([0009](../../docs/decisions/0009-absence-is-a-verdict-with-evidence.md)). Hints for Play was
+excluded as advice until #20; its advice still is, and the throw enumeration inside it is
+not.
 
 **Result, as first mapped:** 24 entries. 5 values, 19 operations. 22 clear, 2 ambiguous. 3
 declined.
 
-**Result today:** 29 entries. 8 values, 20 operations, 1 assertion. 24 clear, 5 ambiguous. 3
+**Result today:** 30 entries. 9 values, 20 operations, 1 assertion. 25 clear, 5 ambiguous. 3
 declined. The difference is corrections, not a wider slice: `player-count`,
 `point-designations` and `direction-of-travel` are rules the first pass read past
 ([#13](https://github.com/brandonifco/rules-factory/issues/13)); `inner-table-handedness` and
@@ -24,7 +28,11 @@ declined. The difference is corrections, not a wider slice: `player-count`,
 `legal-destination`, `enter-from-bar`, `full-table-suspension` and `game-value` moved from
 `clear` to `ambiguous` under
 [0006](../../docs/decisions/0006-the-general-rule-governs-entry-and-full-means-adversely-full.md)
-and [#14](https://github.com/brandonifco/rules-factory/issues/14).
+and [#14](https://github.com/brandonifco/rules-factory/issues/14); and `die-faces` is the
+corpus's only statement of how many faces a die has, which sat unmapped inside the section
+the map had excluded wholesale
+([#20](https://github.com/brandonifco/rules-factory/issues/20),
+[0009](../../docs/decisions/0009-absence-is-a-verdict-with-evidence.md)).
 
 ## Against the first trial
 
@@ -111,15 +119,29 @@ gate relation is not recoverable from `dependsOn` — `bearing-off-doublets` has
 implementation ancestors and one gate, and `move-by-pip` is gated by an entry that is
 neither its ancestor nor its descendant.
 
-### 3. Non-normative text sits inside normative sections
+### 3. Non-normative text sits inside normative sections — and normative text inside advice
 
-*Hints for Play* is plainly advice and is excluded as a whole section. But "it is always an
-object to do this" sits in the middle of the Playing rules, and "as may be desirable" in the
+*Hints for Play* is plainly advice, and was excluded **as a whole section**. But "it is always
+an object to do this" sits in the middle of the Playing rules, and "as may be desirable" in the
 middle of bearing off.
 
-`scope` operates on entries. There is no mechanism for a sentence of advice inside a rule,
-and an agent enumerating mechanically will either map it as a rule or silently drop it.
-Dropping it is right; doing so silently is not.
+`scope` operates on entries. There is no mechanism for a sentence of advice inside a rule, and
+an agent enumerating mechanically will either map it as a rule or silently drop it. Dropping it
+is right; doing so silently is not.
+
+**The mirror image is worse, and it is what excluding by section cost.** Inside *Hints for
+Play* sits the only statement in this corpus of how many faces a die has: *"We will go
+seriatim through all the possible throws"*, followed by twenty-one of them — nineteen
+headings, because SIX TROIS, SIX QUATRE and SIX CINQUE share one — and an unordered pair over
+*n* faces has *n(n+1)/2* throws, which equals 21 for exactly one positive *n*. The normative
+sections never say. `DicePair.OfSixes` was an engine assumption with no mapped authority
+([#20](https://github.com/brandonifco/rules-factory/issues/20)).
+
+[0009](../../docs/decisions/0009-absence-is-a-verdict-with-evidence.md) rules that `scope` is
+decided per rule and a section has no scope of its own. `strategy-advice` declines the advice;
+`die-faces` is `scope: in` and cites the same section. What makes "no entry anywhere cites this
+section" a fact rather than a hope is the map's declared `extent`: pages 278–280 held the
+enumeration and no entry's evidence reached them.
 
 ### 4. The corpus bounds the engine, not the subject
 
@@ -127,10 +149,19 @@ This text predates the doubling cube. A modern player would call an engine built
 incomplete, and they would be right about the *game* and wrong about the *engine*: the rule
 is not in the corpus, so it is not in the map.
 
-`doubling-cube` is recorded as `scope: out` with that reason rather than omitted, because
-"absent from the corpus" and "nobody looked" must not be indistinguishable. **An engine built
-from a 1909 corpus is a 1909 engine**, and the map is what makes that legible rather than
-embarrassing.
+`doubling-cube` is recorded rather than omitted, because "absent from the corpus" and "nobody
+looked" must not be indistinguishable. **An engine built from a 1909 corpus is a 1909 engine**,
+and the map is what makes that legible rather than embarrassing.
+
+It took two goes to record it honestly. The first spelled it `scope: out` with the citation
+`(absent)`, which is the same two words as "we read this and declined it" plus a locator that
+cites nothing — and `check-locators.py` had to special-case it, so the gate's "all 29 checked"
+verified twenty-eight
+([#29](https://github.com/brandonifco/rules-factory/issues/29)). It now carries
+[`absentFrom`](../../docs/decisions/0009-absence-is-a-verdict-with-evidence.md), names four
+terms the corpus would use if it had the rule — none of which occurs in pages 271–280 — and
+cites and quotes the passage the rule *would* be in: the sentence that enumerates the apparatus
+and closes the list.
 
 ### 5. Delegation to a person, confirmed in a second genre
 

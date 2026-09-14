@@ -10,6 +10,7 @@ they cite, plus a stamp naming the baseline it was built against:
 { "schemaVersion": 1, "corpus": "cfr-14-107",
   "baseline": { "contentHash": "80f6bc4b…", "hashDerivation": "ecfr-versioner-xml",
                 "asOf": "2026-01-01" },
+  "extent": { "unit": "page", "from": 271, "to": 280 },
   "entries": [ … ] }
 ```
 
@@ -17,6 +18,31 @@ The stamp is not decoration. A map is true of **one state of one corpus**. Witho
 maps cannot be compared, a map cannot be checked against the text it claims to describe, and
 it silently outlives that text. The third trial's differ printed `2020-01-01 -> ?` for
 exactly this reason.
+
+## `extent` — how much of the corpus this map claims to have read
+
+The baseline says *which text*. `extent` says *how much of it*, in the corpus's own units.
+Added in [0009](decisions/0009-absence-is-a-verdict-with-evidence.md).
+
+It is the field that makes "no entry anywhere cites this section" a **fact** rather than a
+hope: `check-locators.py`'s `coverage` check names every page inside the extent that no
+entry's located evidence reaches. A page nobody quoted is a page nobody demonstrably read, and that is
+the state — *nobody looked* — a map exists to distinguish from a recorded verdict. It also
+bounds an absence claim: see `absentFrom` below.
+
+It is a property of the **map**, not of the corpus, and so it does not belong in the manifest.
+`contentHash` and `licence` are true of the text whoever reads it; how far a mapper got is
+true of one mapping.
+
+**What it does not buy.** Nothing sizes it. A map declaring one page of a four-hundred-page
+book covers that page and passes. The field buys that the claim is written down and can be
+argued with — and that a map cannot quietly shrink its own extent to match what it happened to
+read, which deriving the extent from the citations would have allowed: the backgammon
+citations run 271–277, and the throw enumeration that #20 is about is on 278–280.
+
+**One grammar today.** `unit: "page"` is checkable because page markers are in the text. A
+`section-designation` corpus needs the paragraph-path equivalent and does not have one, so
+`coverage` reports NOT VERIFIED there rather than passing.
 
 ## Why it exists
 
@@ -61,13 +87,15 @@ before either has been implemented.
 | `name` | What the rule is called, in the corpus's language where it has one. |
 | `locator` | Corpus id plus a citation in that corpus's grammar. **Required.** An entry without one is not an entry. |
 | `kind` | `value`, `operation` or `assertion` — a fact the corpus states, a procedure it describes, or a condition only the caller can supply. See below. |
-| `scope` | `in` or `out`. Out is a recorded verdict with a reason, not an omission. |
+| `scope` | `in` or `out`. Out is a recorded verdict with a reason, not an omission. **Decided per rule. A section has no scope of its own.** See below. |
 | `clarity` | `clear` or `ambiguous`. `clear` asserts the corpus determines exactly one answer for every valid input — so a corpus that states the rule twice, differently, is `ambiguous`. |
 | `ambiguity` | Absent when clear. Otherwise the question, its `fate`, and — where the corpus contradicts itself — the `conflict` the question belongs to. Never a carrier for a decline that is not an ambiguity. |
 | `dependsOn` | Entry ids. Determines backlog order — the sequence entries must be *implemented* in. **Not** a runtime precondition; see `gatedBy`. |
 | `gatedBy` | Entry ids. The rules that govern whether this one is reachable at runtime. Absent on an entry that always applies. Orders nothing. See below. |
 | `beyondAdapter` | Present only when the declared adapter cannot read the rule the locator cites. Names the adapter and the modality. See below. |
 | `definedElsewhere` | Present only when the rule's meaning is fixed in a corpus that was not admitted. Names the manifest `references` entry. See below. |
+| `absentFrom` | Present only when the corpus does **not** state the rule at all. Names the terms searched for. See below. |
+| `crossReferences` | The pointers this entry's `evidence` makes, each resolved to an entry or to a recorded reason there is none. See below. |
 | `evidence` | One contiguous verbatim span of the corpus: the passage that *states* this rule. Not a summary of it. See below. |
 | `status` | Whether the engine has built this entry. Independent of `ambiguity.fate`. See below. |
 | `implementedIn` | The ruleset revision that implemented it. Set when status becomes `implemented`. |
@@ -191,15 +219,15 @@ without becoming checkable. The whole-table rule survives the move intact — **
 prints a finite table, the note requires the whole table and never a sample** — and so does the
 rule that a span must cover every case the entry claims, not one of them.
 
-**A `scope: out` entry quotes too.** An out-of-scope verdict is a verdict about a passage, and
-a passage nobody can locate is a verdict about nothing: `strategy-advice` quotes the opening
-sentence of the section it declines, and demands nothing of the engine. The exception is a rule
-that is **absent from the corpus** — `doubling-cube`, which this 1909 text predates. There is
-nothing to quote, its citation reads `(absent)` rather than a page, and it is the one entry in
-the backgammon map with no span. `check-locators.py` skips an entry whose citation names no
-page and still counts it among the entries it checked, so its total is one larger than the
-number of citations it actually verified. Recorded here because the gate says "all 29 checked"
-and means twenty-eight.
+**A `scope: out` entry quotes too, and so does an absent one.** An out-of-scope verdict is a
+verdict about a passage, and a passage nobody can locate is a verdict about nothing:
+`strategy-advice` quotes the opening sentence of the advice it declines, and demands nothing
+of the engine. A rule the corpus does not state at all — `doubling-cube`, which this 1909 text
+predates — quotes **the passage the rule would be in**, and carries `absentFrom` to say that is
+what the span is. There is no exception and no entry without a span. Until
+[0009](decisions/0009-absence-is-a-verdict-with-evidence.md) there was: the citation read
+`(absent)`, the checker special-cased it, and the gate's line "all 29 checked" meant
+twenty-eight.
 
 **An `evidence` a licence forbids quoting is recorded as absent, never as a summary.** Phase 2
 of [method.md](method.md) says *cite, do not copy*, and for a `never-commit` corpus a span in
@@ -367,6 +395,89 @@ altitude. `definedElsewhere` is wrong (there is no airspace corpus to name) and 
 **A parameter is not a rule, so it gets no entry at all**; the entry stays an `operation` with a
 `note` saying the input comes from outside.
 
+### `absentFrom`
+
+The corpus does **not** state the rule. Added in
+[0009](decisions/0009-absence-is-a-verdict-with-evidence.md).
+
+```json
+"absentFrom": { "searched": ["doubling", "doubling cube", "redouble", "offer to double"] }
+```
+
+Three states exist and two of them are `scope: out`: *read and declined*, *read and not
+there*, and *nobody looked*. `absentFrom` is what separates the first two; the third is a
+missing entry, which `extent` and `crossReferences` are what narrow.
+
+`searched` is the words the corpus would use if it stated the rule. Non-empty, and
+**`check-locators.py` searches the declared `extent` for every one of them — an entry whose
+terms turn up fails.** It is the only check here that goes red by *finding* something. The
+search is bounded by `extent` and must be: "doubling" does not occur in Hoyle's backgammon
+chapter and does occur elsewhere in the same volume, so a whole-volume search would refuse a
+true absence and teach mappers to write vaguer terms.
+
+`locator` and `evidence` are required exactly as on any other entry. They cite and quote **the
+passage the rule would be in** — for `doubling-cube`, the sentence that enumerates the
+apparatus and closes the list. So an absence costs a mapper *more* reading than a scope
+verdict, not less, which is the right price for the failure it exists to catch.
+
+`scope: out` and `status: declined`; `beyondAdapter`, `definedElsewhere` and an `ambiguity`
+block are excluded — a rule is not both nowhere in this corpus and somewhere in it we cannot
+reach, and a rule with no words cannot be ambiguous about them. Nothing may `dependsOn` or
+`gatedBy` an absent entry: that edge can never be satisfied.
+
+**What it does not buy.** A term absent is not a rule absent. The corpus could state the rule
+in words nobody searched for. What the check catches is a mapper who declared an absence
+without looking — which is what [#29](https://github.com/brandonifco/rules-factory/issues/29)
+was.
+
+### `scope` is decided per rule. A section has no scope of its own
+
+A section is a unit of the corpus's **layout**; `scope` is a judgement about a **rule**. There
+is no field for excluding a section and there will not be one.
+
+The instance: the backgammon map excluded *Hints for Play* wholesale as advice, and inside it
+sits the only authority in the corpus for a die having six faces — *"all the possible throws"*,
+followed by twenty-one of them, and *n(n+1)/2 = 21* has one positive solution.
+`strategy-advice` declines **the advice**; `die-faces` is `scope: in` and cites the same
+section. Two entries citing one section, with opposite verdicts, is correct.
+
+Excluding a section requires reading it first, and what records that reading is `extent`
+coverage: every page inside the declared extent is reached by some entry's located evidence, or
+`check-locators.py` names it.
+
+### `crossReferences`
+
+A reference the corpus makes is an entry, or a recorded reason there is none. Added in
+[0009](decisions/0009-absence-is-a-verdict-with-evidence.md).
+
+```json
+"crossReferences": [
+  { "cites": "as at starting", "resolvedBy": "opening-roll" },
+  { "cites": "as in Fig. 1", "unmapped": "Fig. 1 is an illustration, not a passage." }
+]
+```
+
+§ 107.29(a) opens *"Except as provided in paragraph (d) of this section"* and (d) has no entry
+in either Part 107 map ([#28](https://github.com/brandonifco/rules-factory/issues/28)). Nothing
+detected it, because a cross-reference was a sentence inside an `evidence` span and no field
+made a mapper answer it.
+
+`check-map.py --only cross-references` reads a closed list of pointer phrases out of each
+entry's `evidence` and requires each to be claimed by a declaration whose `cites` appears
+**verbatim in that same evidence** — the answer is anchored in the corpus's words rather than
+asserted beside them — and resolved by exactly one of `resolvedBy` (an entry id in this map) or
+`unmapped` (a reason there is none).
+
+What an *"except as provided in"* clause obliges a mapper to do is therefore: **follow it, and
+produce either an entry or a sentence saying why there is none.** Not a judgement about whether
+the target matters.
+
+**Two limits.** The phrase list is closed and short: `starting-position` quotes *"as shown in
+{273} Fig. 1"* and the page marker falling inside the phrase hides it, so a corpus that points
+somewhere in other words passes. And `unmapped` is prose, the carrier 0003 and 0004 both
+rejected — what is checked is that a mapper was made to write one and anchored it, not that it
+is true.
+
 ### `status`
 
 ```
@@ -421,6 +532,11 @@ and the invariant is unwritable in either direction.
 | 6 | `ambiguity.fate: unresolved` | `RequiresInterpretation` |
 | 7 | two implemented entries with no entry for their combination | `UnsupportedInteraction` |
 | 8 | `kind: assertion` | **nothing — the engine demands the value and proceeds** |
+
+`absentFrom` adds no row. An engine asked about a rule the corpus does not state answers
+`OutsideCurrentScope`, the same as one it read and declined — which is why 0009 records the
+difference in a field only the map reads rather than in a third `scope` value the engine would
+have to share. The distinction the map preserves is the mapper's, not the runtime's.
 
 Row 8 is the one that is easy to get wrong. An assertion is not a failure to resolve; it is a
 parameter. An engine returning `RequiresInterpretation` where the corpus named a decider is
@@ -530,6 +646,17 @@ Open questions are tracked as issues so they are worked rather than admired:
 - [#18](https://github.com/brandonifco/rules-factory/issues/18) — `evidence` held a summary, so
   no citation was checkable and thirteen wrong ones survived a build. Decided above: `evidence`
   is a contiguous verbatim span and the summary moves to `note`.
+- [#29](https://github.com/brandonifco/rules-factory/issues/29) — three states, two words for
+  them. Decided: [0009](decisions/0009-absence-is-a-verdict-with-evidence.md) adds `absentFrom`,
+  and rules that an absence is an entry rather than a manifest record because `references` is
+  bounded by the corpus and absence is not.
+- [#20](https://github.com/brandonifco/rules-factory/issues/20) — `scope: out` applied to a
+  section cost the map the number of faces on a die. Decided:
+  [0009](decisions/0009-absence-is-a-verdict-with-evidence.md) — `scope` is per rule, and
+  `extent` coverage is what records that a section was read.
+- [#28](https://github.com/brandonifco/rules-factory/issues/28) — a carve-out with no entry in
+  either direction. Decided: [0009](decisions/0009-absence-is-a-verdict-with-evidence.md) adds
+  `crossReferences`. The Part 107 data fix is not done there and #28 stays open for it.
 
 **Where a decline's runtime reason lives.** Opened by 0004, answered by 0005: an entry whose
 meaning is fixed in an unadmitted corpus takes `definedElsewhere`, parallel to

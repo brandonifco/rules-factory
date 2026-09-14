@@ -5,6 +5,11 @@
     "contentHash": "5d505fa9f6202340eb55313b8ef607b816087a860d3d51b1bf92b5f65240645e",
     "hashDerivation": "gutenberg-plain-text-including-boilerplate"
   },
+  "extent": {
+    "unit": "page",
+    "from": 271,
+    "to": 280
+  },
   "entries": [
     {
       "id": "player-count",
@@ -88,7 +93,13 @@
       ],
       "evidence": "With the men placed as in Fig. 1, the right hand is the inner or home table, and the left hand consequently the outer table.",
       "status": "declined",
-      "note": "The only fact in this corpus that is genuinely beyond a plain-text adapter. The rule is fully determined - but only in Fig. 1, which fixes the left/right orientation the sentence refers to. No engine that models positions player-relatively ever asks; it is recorded because the limit is real, not because it is load-bearing."
+      "note": "The only fact in this corpus that is genuinely beyond a plain-text adapter. The rule is fully determined - but only in Fig. 1, which fixes the left/right orientation the sentence refers to. No engine that models positions player-relatively ever asks; it is recorded because the limit is real, not because it is load-bearing.",
+      "crossReferences": [
+        {
+          "cites": "as in Fig. 1",
+          "unmapped": "Fig. 1 is an illustration, not a passage, so there is no entry to name. That the rule is stated only there is this entry's beyondAdapter, which is the record of the same fact from the reader's side."
+        }
+      ]
     },
     {
       "id": "starting-position",
@@ -510,26 +521,58 @@
       ],
       "evidence": "Where several games are played in succession, the winner of a \"hit\" throws first in the game next following. After a gammon or backgammon, the players throw again for the right to begin, as at starting.",
       "status": "mapped",
-      "note": "Demonstrate the following game's opening after a hit, after a gammon, and after a backgammon. Depends on opening-roll: \"as at starting\" is a reference to it and not a restatement. Cited p. 275 until the span was quoted and checked."
+      "note": "Demonstrate the following game's opening after a hit, after a gammon, and after a backgammon. Depends on opening-roll: \"as at starting\" is a reference to it and not a restatement. Cited p. 275 until the span was quoted and checked.",
+      "crossReferences": [
+        {
+          "cites": "as at starting",
+          "resolvedBy": "opening-roll"
+        }
+      ]
+    },
+    {
+      "id": "die-faces",
+      "name": "The faces a die bears, and the throws a pair of them can show",
+      "locator": {
+        "sourceId": "hoyle-1909",
+        "citation": "BACKGAMMON / Hints for Play / p. 277"
+      },
+      "kind": "value",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [
+        "point-designations",
+        "throw-two-dice"
+      ],
+      "evidence": "We will go _seriatim_ through all the possible throws. In some instances alternative methods will be given, according as the player aims merely at securing a hit, and is content, therefore, to play for safety, or elects to {278} play a more risky game upon the chance of securing a gammon. This case often arises where the player has already lost the first hit of a rubber, in which case, if he loses the next game, he has lost the rubber also; but if he can secure a gammon (reckoning as a double game), he becomes the winner of the rubber. ACES.--(The best possible throw at starting.) Play two men on your \"bar\" point, and two on your cinque point.[67] DEUCE ACE.--For a hit, play the deuce from the five men in your adversary's outer-table, and the ace from the ace point in his inner table. For a gammon, play the ace from the six to the ace point in your own table. DEUCES.--For a hit, play two from the six to the quatre point in your own table, and the other two from the ace to the trois point in your opponent's inner table. For a gammon, play the second pair from the five men in his outer table. TROIS ACE.--Make your cinque point. TROIS DEUCE.--The approved play is to carry two men from the five in your adversary's outer table to the quatre and cinque points in your own outer table. This, of course, makes two blots. To avoid this, some, for a hit, play one man from the same {279} point to the _deuce_ point in the above-mentioned table, but the bolder play is to be preferred. DOUBLE TROIS.--There are three ways of playing this throw. Some players make the bar point. The more usual play is, for a hit, to play two to the cinque point in the player's own, and the other two to the quatre point in the adversary's table. For a gammon, play the last two from the six to the trois point in your own table. QUATRE ACE.--Play the quatre from the five men in your opponent's outer table, and the ace from his ace point. (Timid players, fearing to leave two blots, sometimes play the whole throw from the first-mentioned point, but the plan is not to be recommended.) QUATRE DEUCE.--Make your quatre point. QUATRE TROIS.--Play two men from the five in your adversary's outer table. DOUBLE QUATRE.--Play two men from the ace to the cinque point in the adversary's inner table, and two from the five in his outer table. For a gammon, play two men only, from the point last mentioned to the cinque point in your own table. CINQUE ACE.--Play the cinque from the five men in your adversary's outer table, and the ace from the ace point in his inner table. For a gammon, play the ace from the six to the cinque point in your own table. CINQUE DEUCE.--Play both men from the five in your adversary's outer table. CINQUE TROIS.--Make your trois point. CINQUE QUATRE.--Move one man from your adversary's ace point to the trois point in his outer table. {280} DOUBLE CINQUE.--Carry two men from the five in the adversary's outer table, and make your trois point. SIX ACE.--Make your bar point. SIX DEUCE.--Move a man from the five in your adversary's outer table to the cinque point in your own table. SIX TROIS, SIX QUATRE, SIX CINQUE.--Carry one man from your adversary's ace point as far as the throw will permit. SIXES.--Place two men on your adversary's bar point, and two on your own.",
+      "status": "mapped",
+      "note": "The only authority in this corpus for a die having six faces, and the engine's DicePair.OfSixes had none before this entry existed (issue #20). The corpus never writes \"six\" of a die. It declares the enumeration exhaustive -- \"all the possible throws\" -- and then names twenty-one: ACES, DEUCE ACE, DEUCES, TROIS ACE, TROIS DEUCE, DOUBLE TROIS, QUATRE ACE, QUATRE DEUCE, QUATRE TROIS, DOUBLE QUATRE, CINQUE ACE, CINQUE DEUCE, CINQUE TROIS, CINQUE QUATRE, DOUBLE CINQUE, SIX ACE, SIX DEUCE, SIX TROIS, SIX QUATRE, SIX CINQUE, SIXES. (Nineteen headings; SIX TROIS, SIX QUATRE and SIX CINQUE share one.) An unordered pair over n faces has n(n+1)/2 throws, and n(n+1)/2 = 21 has exactly one positive solution, n = 6. Demonstrate all twenty-one throws and the six faces, and that no seventh face is admitted. Why an entry in a section another entry declines: strategy-advice declines the advice, not the section. scope is decided per rule (docs/decisions/0009); a section is a unit of layout and has no scope of its own, which is why the corpus's only statement of the throw space sat unmapped inside a section everyone read as excluded. The span is long because the rule is stated by extension: the exhaustiveness claim and the twenty-first throw are 601 words apart, no ellipsis is permitted, and the whole-table rule requires the whole enumeration and never a sample. The advice interleaved through it is strategy-advice's subject and is carried because eliding it would break the match. Limit stated where the claim is: the corpus states the throw space and never says the dice are fair, so nothing here licenses a distribution -- only the support."
     },
     {
       "id": "doubling-cube",
-      "name": "Doubling",
+      "name": "Doubling the stake during play",
       "locator": {
         "sourceId": "hoyle-1909",
-        "citation": "(absent)"
+        "citation": "BACKGAMMON / The Board and Men / p. 272"
       },
       "kind": "operation",
       "scope": "out",
       "clarity": "clear",
       "dependsOn": [],
-      "evidence": "None.",
+      "evidence": "A pair of dice (or sometimes a pair for each player) and a couple of dice-boxes complete the apparatus of the game.",
       "status": "declined",
-      "note": "Not an omission from the map. This 1909 corpus predates the doubling cube, so the rule is not in it. An engine built from this corpus is a 1909 engine. It is the one entry with no evidence span, because there is no passage to quote: the locator reads \"(absent)\" rather than a page. Stated where the claim is -- check-locators.py skips an entry whose citation names no page and still counts it among the entries it checked, so its \"all 29 checked\" line is one larger than the number of citations actually verified."
+      "note": "The corpus does not contain this rule, which is a different verdict from declining to cover one, and `absentFrom` is what separates them (docs/decisions/0009). The cited sentence is where the rule would be if the corpus had it: the doubling cube is a piece of apparatus, and this sentence enumerates the apparatus and closes the list (\"complete the apparatus of the game\"). The stakes passage on pp. 276-277 closes a second list -- \"the value of the game depends upon the stage reached by the adverse player, as follows\", then three results and nothing else -- so a stake that could be raised during play has no room there either. Four terms are searched for and none occurs in pages 271-280; check-locators.py fails this entry if one turns up. Stated where the claim is: absence of those four terms is not absence of the rule. The corpus could state it in words nobody searched for, and no check reaches that. Note also that the search is bounded by the declared extent and must be: \"doubling\" does not occur in the backgammon chapter and does occur elsewhere in the same volume. Previously cited \"(absent)\", which is what issue #29 was filed about.",
+      "absentFrom": {
+        "searched": [
+          "doubling",
+          "doubling cube",
+          "redouble",
+          "offer to double"
+        ]
+      }
     },
     {
       "id": "strategy-advice",
-      "name": "Opening play advice",
+      "name": "The advisory principles of play",
       "locator": {
         "sourceId": "hoyle-1909",
         "citation": "BACKGAMMON / Hints for Play / p. 277"
@@ -540,7 +583,7 @@
       "dependsOn": [],
       "evidence": "A leading principle is to \"make points\" whenever you fairly can, especially in or close to your home table.",
       "status": "declined",
-      "note": "Non-normative. Advice, not rules -- but similar advice appears inside the normative sections too ('it is always an object to do this'). Nothing is demanded of the engine. The span is the opening sentence of the section being ruled out, quoted so that the citation is checkable: an out-of-scope verdict is a verdict about a passage, and a passage that cannot be located is a verdict about nothing."
+      "note": "Non-normative. Advice, not rules -- but similar advice appears inside the normative sections too ('it is always an object to do this'). Nothing is demanded of the engine. The span is the opening sentence of the advice being declined, quoted so that the citation is checkable: an out-of-scope verdict is a verdict about a passage, and a passage that cannot be located is a verdict about nothing. **This verdict is about the advice and not about the section that holds it.** Hints for Play also states die-faces, which is scope: in and load-bearing, and reading this entry as excluding the section is what cost the map the number of faces on a die (issue #20, docs/decisions/0009). A section is a unit of the corpus's layout; scope is a judgement about a rule."
     }
   ]
 }

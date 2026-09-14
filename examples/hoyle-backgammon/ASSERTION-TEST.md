@@ -1,5 +1,16 @@
 # The bearer test, applied to all 29 entries of the backgammon map
 
+**Amended 2026-09-14.** The map has thirty entries now. `die-faces` was added under
+[#20](https://github.com/brandonifco/rules-factory/issues/20) and
+[0009](../../docs/decisions/0009-absence-is-a-verdict-with-evidence.md) — the corpus's only
+statement of how many faces a die has, which sat inside a section this map had excluded
+wholesale. It is examined in the table below as entry 30; the verdict, the score and the
+argument are unchanged, because the candidate is silent on it exactly as it is on the other
+eight plain values. `doubling-cube`'s row is also corrected: it now has a passage to quote,
+and the observation at the end of this file about `check-locators.py` miscounting is
+superseded by the same decision. Everything else is the record as it was written, not
+rewritten to look prescient.
+
 Exercise ordered by [#30](https://github.com/brandonifco/rules-factory/issues/30). The candidate
 under test, as stated there and in `docs/corpus-map.md`'s `kind: assertion` section:
 
@@ -8,7 +19,8 @@ under test, as stated there and in `docs/corpus-map.md`'s `kind: assertion` sect
 > (arm a); or named parties, by fixing a set of permitted values and vesting the choice between
 > them (arm b). A gap has no bearer: only a word the corpus uses and never defines.
 
-Entries examined: **29 of 29.** Every quotation below was checked against
+Entries examined: **29 of 29** as the map then stood, and 30 of 30 after the amendment above.
+Every quotation below was checked against
 `examples/hoyle-backgammon/hoyle.txt` at the line given.
 
 ## Verdict: **fails**
@@ -103,11 +115,12 @@ unsupplied. "Silent" is scored as agreement where the entry is not an assertion.
 | 25 | `agreed-backgammon-multiple` | "either thrice or four times (as may have been agreed)" | assertion (arm b) — or gap, if arm b's "named" is enforced | assertion | agree **vacuously** (see reasons 1–2) |
 | 26 | `stake-multiplier` | "pays double the agreed stake" / "thrice or four times … the single stake" — **never states what a hit pays** | gap | value / clear | **no** |
 | 27 | `next-game-opening` | "the winner of a 'hit' throws first in the game next following" | — | operation | agree |
-| 28 | `doubling-cube` | *(absent — no passage)* | gap | `scope: out`, clear | **no** |
+| 28 | `doubling-cube` | *(the rule is absent; the entry quotes where it would be — "a couple of dice-boxes **complete the apparatus of the game**")* | gap | `scope: out`, clear, `absentFrom` | **no** |
 | 29 | `strategy-advice` | "make points whenever you **fairly** can" | assertion (arm a) | `scope: out`, declined | **no** |
+| 30 | `die-faces` | "We will go _seriatim_ through **all the possible throws**", then twenty-one of them | — | value | agree |
 
 **Score: 11 disagreements, 2 right-verdict-wrong-reason, 1 vacuous agreement, 1 substantive
-agreement, 14 silent.** In every one of the 11 the map is right and the candidate is wrong.
+agreement, 15 silent** (14 when the exercise was run; `die-faces` is the fifteenth). In every one of the 11 the map is right and the candidate is wrong.
 
 ## The disagreements that matter
 
@@ -319,7 +332,7 @@ decision, not a clause: it should not be adopted by being written down here.
 
 ## Entries whose `kind` should change
 
-**None.** All 29 `kind` values as recorded survive both the candidate and G1–G4. The candidate
+**None.** All `kind` values as recorded survive both the candidate and G1–G4. The candidate
 disagrees with eleven of them and the map is right in every case.
 
 One finding filed rather than fixed, and it is not about `kind`: **`stake-multiplier`'s
@@ -327,14 +340,17 @@ One finding filed rather than fixed, and it is not about `kind`: **`stake-multip
 inference honestly, which is why this is a question and not a defect — but it is the same shape
 as the `game-value` violation 0005 named, and it should be decided rather than left in the note.
 
-One pre-existing observation, already recorded in `doubling-cube`'s own note and repeated here
-only because it bears on any count drawn from this map: `check-locators.py` skips the entry whose
-citation names no page and still counts it, so its "all 29 checked" line verifies 28 citations.
-That is a "check that proves nothing says so" case and it is already stated where the claim is.
+One pre-existing observation, recorded here when the exercise was run and **since fixed**:
+`check-locators.py` skipped the entry whose citation named no page and still counted it, so its
+"all 29 checked" line verified 28 citations. Under
+[0009](../../docs/decisions/0009-absence-is-a-verdict-with-evidence.md) an absent rule cites and
+quotes the passage it would be in, so there is no longer an entry the checker cannot check, and
+its count means what it says.
 
 ## Confirmations for the record
 
-- Entries examined: **29 of 29**, not the interesting ones.
+- Entries examined: **29 of 29** when the exercise was run; 30 of 30 after the amendment
+  above, which examined the entry added since.
 - Every corpus quotation above was located in `hoyle.txt` and is reproduced verbatim, with the
   line number given for the load-bearing ones.
 - Nothing in this file asserts a fact about Hoyle that was not read at the locator. The claims

@@ -21,6 +21,15 @@ What it cannot do, stated here rather than in a commit message:
     because the engine simply answers. Unmatched entries are reported; an unmatched entry
     is a **failure** only when `status: declined`, which asserts no implemented path at all
     and therefore owes a runtime reason.
+  * **An absence is claimed here and proved elsewhere.** `absentFrom` (0009) asserts the
+    corpus does not contain the rule. Nothing in this file reads a corpus, so the `absent`
+    check enforces only the shape of the claim -- that it is non-empty, that it excludes
+    the fields it contradicts, and that nothing depends on a rule that does not exist. The
+    claim itself is falsified by `check-locators.py`, which searches the text.
+  * **A cross-reference nobody noticed is invisible.** `cross-references` reads the
+    pointer phrases it knows about and no others; a corpus that points somewhere in words
+    outside that list produces a map that passes. The list is stated in
+    `POINTER_PHRASES` rather than inferred, so what the check does not cover is readable.
   * Nothing here checks that an entry is the *right* decomposition of the corpus, that a
     `gatedBy` list is complete, or that `evidence` is sufficient. Those are review.
 
@@ -185,6 +194,13 @@ def check_vocabulary(ctx):
                     bad.append(f"  X  {name}: beyondAdapter is missing `{field}`")
         if "definedElsewhere" in entry and not block(entry, "definedElsewhere").get("reference"):
             bad.append(f"  X  {name}: definedElsewhere is missing `reference`")
+        if "absentFrom" in entry:
+            searched = block(entry, "absentFrom").get("searched")
+            if not isinstance(searched, list) or not searched:
+                bad.append(f"  X  {name}: absentFrom is missing a non-empty `searched` list; an "
+                           f"absence nobody searched for is the state 0009 exists to separate out")
+            elif any(not isinstance(term, str) or not term.strip() for term in searched):
+                bad.append(f"  X  {name}: absentFrom.searched holds something that is not a term")
     return verdict(bad, "every closed vocabulary holds only its stated values", "a field is outside its closed vocabulary")
 
 
@@ -474,6 +490,186 @@ def check_conflicts(ctx):
                    "a conflict is not well-formed")
 
 
+def check_absent(ctx):
+    """`absentFrom` says the corpus does not contain the rule at all (0009).
+
+    Three states share one schema and two of them are `scope: out`: read-and-declined, and
+    read-and-not-there. `absentFrom` is the discriminator, and everything here follows from
+    what it asserts:
+
+      * it is a verdict, so `scope: out` and `status: declined` -- row 1 of the
+        correspondence table dominates, and 0008's procedure has `scope: in` as its
+        precondition, so an absent rule must never reach the gates;
+      * a rule cannot be both nowhere in the corpus and somewhere in it the reader cannot
+        reach, so `beyondAdapter` and `definedElsewhere` are excluded;
+      * an absent rule has no words, so it cannot be ambiguous about them;
+      * nothing can be implemented after a rule that does not exist, so an absent entry
+        neither depends on nor gates anything, and nothing names it in either relation.
+        That edge would be unsatisfiable forever, which is what `blocked` looks like when
+        it will never clear.
+
+    What it cannot do: this file never reads a corpus, so the claim itself -- *the words
+    are not there* -- is not tested here. `check-locators.py` searches the text for the
+    terms `searched` names and fails when one of them turns up.
+    """
+    bad, carriers, absent_ids = [], [], set()
+    for position, entry in enumerate(entries_of(ctx["map"])):
+        if not isinstance(entry, dict):
+            continue
+        name = label(entry, position)
+        if "absentFrom" not in entry:
+            continue
+        carriers.append(name)
+        if isinstance(entry.get("id"), str):
+            absent_ids.add(entry["id"])
+        if not isinstance(entry.get("absentFrom"), dict):
+            bad.append(f"  X  {name}: `absentFrom` is not an object")
+            continue
+        if entry.get("scope") != "out":
+            bad.append(f"  X  {name}: carries `absentFrom` while scope is "
+                       f"{entry.get('scope')!r}; a rule the corpus does not state is not one "
+                       f"the engine covers, and row 1 must dominate")
+        if entry.get("status") != "declined":
+            bad.append(f"  X  {name}: carries `absentFrom` while status is "
+                       f"{entry.get('status')!r}; there is no rule to have built")
+        for field in ("beyondAdapter", "definedElsewhere"):
+            if field in entry:
+                bad.append(f"  X  {name}: carries `absentFrom` and `{field}`; the rule is either "
+                           f"nowhere in this corpus or somewhere in it we cannot reach, not both")
+        if "ambiguity" in entry:
+            bad.append(f"  X  {name}: carries `absentFrom` and an `ambiguity` block; an absent "
+                       f"rule has no words to be ambiguous about")
+        for field in ("dependsOn", "gatedBy"):
+            if entry.get(field):
+                bad.append(f"  X  {name}: carries `absentFrom` and a non-empty `{field}`; a rule "
+                           f"the corpus does not state orders nothing and gates nothing")
+
+    for position, entry in enumerate(entries_of(ctx["map"])):
+        if not isinstance(entry, dict):
+            continue
+        name = label(entry, position)
+        for field in ("dependsOn", "gatedBy"):
+            for ref in entry.get(field) or []:
+                if isinstance(ref, str) and ref in absent_ids:
+                    bad.append(f"  X  {name}: {field} names {ref!r}, which carries `absentFrom`; "
+                               f"that edge can never be satisfied")
+    if not carriers:
+        return skip("no entry carries `absentFrom`, so the rules about an absent rule are "
+                    "vacuous over this map", had_subject=False)
+    return verdict(bad, f"{len(carriers)} absent-rule entr{'y' if len(carriers) == 1 else 'ies'} "
+                        f"({', '.join(sorted(carriers))}): out, declined, carrying nothing that "
+                        f"contradicts an absence, and depended on by nothing",
+                   "an absent-rule entry claims something else as well")
+
+
+# The corpus's own pointers, in the words it uses to make them. Each phrase points at
+# another designated passage and at nothing else: "subject to a certain qualification--viz."
+# points forward inside its own sentence and is deliberately not here, because a check that
+# fires on a self-reference teaches mappers to work around it.
+POINTER_PHRASES = [
+    "except as provided in",
+    "as provided in",
+    "in accordance with §",
+    "pursuant to §",
+    "as in Fig.",
+    "shown in Fig.",
+    "see Fig.",
+    "to be hereafter stated",
+    "as at starting",
+]
+
+
+def pointers_in(evidence):
+    """The pointer phrases this evidence makes, longest first, without their prefixes.
+
+    "Except as provided in" contains "as provided in"; reporting both would demand two
+    declarations for one pointer.
+    """
+    text = " ".join(str(evidence or "").split()).lower()
+    found = [phrase for phrase in POINTER_PHRASES if phrase.lower() in text]
+    return [p for p in found if not any(p != q and p.lower() in q.lower() for q in found)]
+
+
+def check_cross_references(ctx):
+    """A reference the corpus makes is an entry, or a recorded reason there is none (0009).
+
+    § 107.29(a) opens *"Except as provided in paragraph (d) of this section"* and (d) has no
+    entry in either Part 107 map. Nothing detected that, because a cross-reference was a
+    sentence in an `evidence` span and no field made a mapper answer it.
+
+    Each pointer phrase the evidence contains must be claimed by a `crossReferences` entry
+    whose `cites` appears verbatim in that same evidence -- so the declaration is anchored
+    to the corpus's words rather than asserted beside them -- and resolved exactly one way:
+    `resolvedBy`, an entry id in this map, or `unmapped`, a reason there is no entry.
+
+    Two limits, stated where the claim is. The phrase list is closed and short, so a corpus
+    that points somewhere in other words passes silently -- `starting-position` quotes
+    *"as shown in {273} Fig. 1"* and the page marker falling inside the phrase is enough to
+    hide it. And `unmapped` is prose, which 0003 and 0004 both rejected as a carrier: what
+    is checked is that a mapper was made to write one, not that what they wrote is true.
+    """
+    by_id, bad, pointers, declared = index(ctx["map"]), [], 0, 0
+    for position, entry in enumerate(entries_of(ctx["map"])):
+        if not isinstance(entry, dict):
+            continue
+        name = label(entry, position)
+        evidence = " ".join(str(entry.get("evidence") or "").split())
+        made = pointers_in(evidence)
+        pointers += len(made)
+        references = entry.get("crossReferences")
+        if references is None:
+            references = []
+        elif not isinstance(references, list):
+            bad.append(f"  X  {name}: `crossReferences` is not a list")
+            references = []
+        claimed = []
+        for item in references:
+            declared += 1
+            if not isinstance(item, dict):
+                bad.append(f"  X  {name}: crossReferences holds {item!r}, which is not an object")
+                continue
+            cites = item.get("cites")
+            if not isinstance(cites, str) or not cites.strip():
+                bad.append(f"  X  {name}: a crossReferences item has no `cites` naming the "
+                           f"corpus's own words")
+                continue
+            if " ".join(cites.split()) not in evidence:
+                bad.append(f"  X  {name}: crossReferences cites {cites!r}, which does not appear "
+                           f"in this entry's `evidence`; a reference is anchored to the passage "
+                           f"that makes it")
+                continue
+            claimed.append(cites)
+            has_resolution = isinstance(item.get("resolvedBy"), str) and item["resolvedBy"].strip()
+            has_reason = isinstance(item.get("unmapped"), str) and item["unmapped"].strip()
+            if has_resolution and has_reason:
+                bad.append(f"  X  {name}: crossReferences {cites!r} names both `resolvedBy` and "
+                           f"`unmapped`; a reference is an entry or a recorded reason there is "
+                           f"none, not both")
+            elif not has_resolution and not has_reason:
+                bad.append(f"  X  {name}: crossReferences {cites!r} resolves to nothing; name the "
+                           f"entry in `resolvedBy` or the reason there is none in `unmapped`")
+            elif has_resolution:
+                target = item["resolvedBy"]
+                if target not in by_id:
+                    bad.append(f"  X  {name}: crossReferences {cites!r} resolves to {target!r}, "
+                               f"which is not an entry in this map; the reference is the finding")
+                elif target == entry.get("id"):
+                    bad.append(f"  X  {name}: crossReferences {cites!r} resolves to itself")
+        for phrase in made:
+            if not any(phrase.lower() in " ".join(c.split()).lower() for c in claimed):
+                bad.append(f"  X  {name}: `evidence` says {phrase!r} and no `crossReferences` "
+                           f"item claims it; a reference is an entry or a recorded reason "
+                           f"there is none")
+    if not pointers and not declared:
+        return skip("no entry's evidence makes a pointer this check knows and none declares a "
+                    "crossReferences item, so the obligation is vacuous over this map",
+                    had_subject=False)
+    return verdict(bad, f"{pointers} pointer{'' if pointers == 1 else 's'} in evidence, "
+                        f"{declared} declared: each is anchored in the passage that makes it and "
+                        f"names an entry or a reason there is none",
+                   "a cross-reference the corpus makes is unanswered")
+
+
 ROW_DESCRIPTIONS = {
     1: "scope: out -> OutsideCurrentScope",
     2: "status mapped/blocked -> UnsupportedRule",
@@ -574,6 +770,8 @@ CHECKS = [
     ("status", check_status),
     ("decision-records", check_decision_records),
     ("conflicts", check_conflicts),
+    ("absent", check_absent),
+    ("cross-references", check_cross_references),
     ("correspondence", check_correspondence),
 ]
 

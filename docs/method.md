@@ -185,13 +185,39 @@ single entry that needs "and" in its description is two entries.
 
 **The corpus bounds the engine, not the subject.** A map can only contain what its corpus
 states. A 1909 games text has no doubling cube; an engine built from it is a 1909 engine,
-and that is a correct outcome rather than an incomplete one. Record such a rule as out of
-scope with "absent from this corpus" as the reason, so that it is distinguishable from a
-rule nobody looked for. The distinction is the whole reason the map exists.
+and that is a correct outcome rather than an incomplete one.
 
 Out-of-scope is a *recorded* verdict with a reason, not an omission. An entry ruled out is
 still in the map, marked, and becomes `OutsideCurrentScope` if an engine operation can reach
 it. A rule that is simply absent from the map is indistinguishable from one nobody read.
+
+**Three states, and the map must tell them apart.** Read and declined; read and *not in the
+corpus at all*; and nobody looked. The first two are both `scope: out` and the third is a
+missing entry, so until
+[0009](decisions/0009-absence-is-a-verdict-with-evidence.md) the map spelled all three the
+same — and this section asked for the difference in a **reason string**, which is the carrier
+0003, 0004 and 0005 each rejected. It is now structural:
+
+- **Read and declined** — `scope: out`, quoting the passage declined.
+- **Not in the corpus** — `scope: out` plus `absentFrom`, naming the terms you searched for,
+  and citing and quoting **the passage the rule would be in**. `check-locators.py` searches the
+  declared extent for those terms and fails the entry if one turns up. Writing this entry is
+  more work than declining a rule, deliberately: every instance of this failure so far has been
+  a mapper who stopped reading.
+- **Nobody looked** — no entry, and two things narrow it. The map's `extent`, every page of
+  which must be reached by some entry's located evidence; and `crossReferences`, which turns
+  the corpus's own pointers into obligations.
+
+**`scope` is decided per rule, never per section, and excluding a section requires reading it
+first.** A section is a unit of the corpus's layout; `scope` is a judgement about a rule. The
+backgammon map excluded *Hints for Play* wholesale as advice and so lost the only authority in
+the corpus for how many faces a die has
+([#20](https://github.com/brandonifco/rules-factory/issues/20)). Two entries citing one section
+with opposite verdicts is the correct shape, not a conflict.
+
+**Follow every cross-reference the corpus makes.** *"Except as provided in paragraph (d)"* is a
+reference, and a reference is an entry or a recorded reason there is none. Declare it in
+`crossReferences`, quoting the words that make it.
 
 ### Clear or ambiguous
 

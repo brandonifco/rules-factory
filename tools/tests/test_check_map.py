@@ -92,6 +92,17 @@ def valid_map():
                       "fate": "unresolved",
                       "unresolvedReason": "RequiresInterpretation",
                   }),
+            # 0009: read, and the corpus does not state the rule at all. `scope: out` like
+            # subpart-d-categories above and a different verdict, which is the distinction
+            # the field exists to make. The claim itself is falsified by check-locators.py,
+            # which searches the text; nothing in check-map.py reads a corpus.
+            entry("doubling-cube", kind="operation", scope="out", status="declined",
+                  absentFrom={"searched": ["doubling", "redouble"]}),
+            # 0009: the corpus points somewhere, so the mapper answers the pointer.
+            entry("next-game-opening", kind="operation", dependsOn=["speed-limit"],
+                  evidence="After a gammon the players throw again for the right to begin, "
+                           "as at starting.",
+                  crossReferences=[{"cites": "as at starting", "resolvedBy": "speed-limit"}]),
         ],
     }
 
@@ -453,6 +464,153 @@ class TestConflicts(MapCase):
         self.assertEqual(self.status_of(output, "conflicts"), "skip", output)
         self.assertIn("NOT VERIFIED", output)
         self.assertEqual(code, 0, output)
+
+
+class TestAbsent(MapCase):
+    """0009: `absentFrom` separates 'the corpus does not state it' from 'we declined it'."""
+
+    ABSENT = 8  # doubling-cube, in valid_map()'s order
+
+    def test_an_absent_rule_the_map_still_claims_to_cover_fails(self):
+        # scope: out is not decoration here -- row 1 must dominate, and 0008's procedure
+        # has scope: in as its precondition, so an absent rule must never reach the gates.
+        self.assert_catches("absent", lambda d: d["entries"][self.ABSENT].update(scope="in"))
+
+    def test_an_absent_rule_recorded_as_unbuilt_rather_than_declined_fails(self):
+        self.assert_catches("absent", lambda d: d["entries"][self.ABSENT].update(status="mapped"))
+
+    def test_absent_beside_beyond_adapter_fails(self):
+        # Nowhere in the corpus and somewhere in it we cannot reach are different claims.
+        self.assert_catches(
+            "absent",
+            lambda d: d["entries"][self.ABSENT].update(
+                beyondAdapter={"adapter": "plain-text", "modality": "illustration"}),
+        )
+
+    def test_absent_beside_defined_elsewhere_fails(self):
+        self.assert_catches(
+            "absent",
+            lambda d: d["entries"][self.ABSENT].update(definedElsewhere={"reference": "other-corpus"}),
+        )
+
+    def test_absent_beside_an_ambiguity_block_fails(self):
+        # An absent rule has no words to be ambiguous about.
+        def mutate(document):
+            document["entries"][self.ABSENT]["clarity"] = "ambiguous"
+            document["entries"][self.ABSENT]["ambiguity"] = {
+                "question": "The corpus does not say.",
+                "fate": "unresolved",
+                "unresolvedReason": "OutsideCurrentScope",
+            }
+        self.assert_catches("absent", mutate)
+
+    def test_an_absent_rule_that_depends_on_something_fails(self):
+        self.assert_catches(
+            "absent", lambda d: d["entries"][self.ABSENT].update(dependsOn=["speed-limit"]))
+
+    def test_depending_on_an_absent_rule_fails(self):
+        # The edge can never be satisfied: `blocked` that will never clear.
+        self.assert_catches(
+            "absent", lambda d: d["entries"][1].update(dependsOn=["doubling-cube"]))
+
+    def test_gating_on_an_absent_rule_fails(self):
+        self.assert_catches(
+            "absent", lambda d: d["entries"][3].update(gatedBy=["doubling-cube"]))
+
+    def test_an_absence_nobody_searched_for_fails_the_vocabulary(self):
+        # An empty `searched` is the "(absent)" locator in a new spelling: a claim with
+        # nothing behind it. It is caught where the field's shape is checked.
+        self.assert_catches(
+            "vocabulary", lambda d: d["entries"][self.ABSENT]["absentFrom"].update(searched=[]))
+
+    def test_a_map_with_no_absent_rules_does_not_report_ok(self):
+        document = valid_map()
+        document["entries"].pop(self.ABSENT)
+        code, output = self.run_tool(document)
+        self.assertEqual(self.status_of(output, "absent"), "skip", output)
+        self.assertIn("NOT VERIFIED", output)
+        self.assertEqual(code, 0, output)
+
+
+class TestCrossReferences(MapCase):
+    """0009: a reference the corpus makes is an entry, or a recorded reason there is none."""
+
+    POINTER = 9  # next-game-opening, in valid_map()'s order
+
+    def test_a_pointer_with_no_declaration_fails(self):
+        # The live instance: § 107.29(a) opens "Except as provided in paragraph (d)" and
+        # (d) has no entry in either Part 107 map.
+        self.assert_catches(
+            "cross-references", lambda d: d["entries"][self.POINTER].pop("crossReferences"))
+
+    def test_a_pointer_phrased_as_an_exception_is_one_pointer_not_two(self):
+        # "except as provided in" contains "as provided in"; demanding two declarations for
+        # one pointer would teach mappers to pad the list.
+        self.assertEqual(
+            check_map.pointers_in("Except as provided in paragraph (d) of this section, no "
+                                  "person may operate at night."),
+            ["except as provided in"],
+        )
+
+    def test_a_declaration_not_anchored_in_the_evidence_fails(self):
+        self.assert_catches(
+            "cross-references",
+            lambda d: d["entries"][self.POINTER]["crossReferences"][0].update(
+                cites="as provided in paragraph (d)"),
+        )
+
+    def test_a_declaration_resolving_to_no_entry_fails(self):
+        self.assert_catches(
+            "cross-references",
+            lambda d: d["entries"][self.POINTER]["crossReferences"][0].update(
+                resolvedBy="no-such-entry"),
+        )
+
+    def test_a_declaration_resolving_to_itself_fails(self):
+        self.assert_catches(
+            "cross-references",
+            lambda d: d["entries"][self.POINTER]["crossReferences"][0].update(
+                resolvedBy="next-game-opening"),
+        )
+
+    def test_a_declaration_resolving_to_nothing_at_all_fails(self):
+        self.assert_catches(
+            "cross-references",
+            lambda d: d["entries"][self.POINTER]["crossReferences"][0].pop("resolvedBy"),
+        )
+
+    def test_a_declaration_claiming_both_arms_fails(self):
+        # A reference is an entry or a recorded reason there is none, not both.
+        self.assert_catches(
+            "cross-references",
+            lambda d: d["entries"][self.POINTER]["crossReferences"][0].update(
+                unmapped="The figure is not a passage."),
+        )
+
+    def test_a_recorded_reason_there_is_no_entry_is_accepted(self):
+        # inner-table-handedness cites Fig. 1, which is an illustration and not a passage.
+        document = valid_map()
+        document["entries"][self.POINTER]["crossReferences"] = [
+            {"cites": "as at starting", "unmapped": "Nothing in this map states it."}
+        ]
+        code, output = self.run_tool(document)
+        self.assertEqual(self.status_of(output, "cross-references"), "ok", output)
+        self.assertEqual(code, 0, output)
+
+    def test_a_map_whose_corpus_points_nowhere_does_not_report_ok(self):
+        document = valid_map()
+        document["entries"].pop(self.POINTER)
+        code, output = self.run_tool(document)
+        self.assertEqual(self.status_of(output, "cross-references"), "skip", output)
+        self.assertIn("NOT VERIFIED", output)
+        self.assertEqual(code, 0, output)
+
+    def test_the_phrase_list_is_what_the_check_covers_and_nothing_more(self):
+        # Stated as a test because it is the check's limit: a page marker falling inside a
+        # pointer phrase hides it, which is `starting-position`'s "as shown in {273} Fig. 1".
+        self.assertEqual(check_map.pointers_in("The men are arranged as shown in {273} Fig. 1"), [])
+        self.assertEqual(check_map.pointers_in("The men are arranged as shown in Fig. 1"),
+                         ["shown in Fig."])
 
 
 class TestCorrespondence(MapCase):
