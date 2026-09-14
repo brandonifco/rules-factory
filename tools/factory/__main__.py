@@ -5,7 +5,9 @@
                                 --name <PascalName> --out <dir>
   python3 tools/factory backlog --create --repo <owner/name> --dir <engine dir>
 
-`produce` runs, in order, and stops at the first refusal:
+`produce` runs, in order, and stops at the first refusal. Every step writes into a staging copy
+of `--out`, and the result is committed to `--out` only after the last step passed, so a
+refusal leaves `--out` byte-identical to how it started (transaction.py, #67):
 
   * intake (intake.py) -- the package is a map package carrying its checker, the map's
     `schemaVersion` is one the factory reads, the corpus is `committed-copy` and hashes to the
@@ -23,7 +25,9 @@
     dependsOn order, and `backlog/README.md`, rewritten every run;
   * provenance (provenance.py), last -- `provenance.json` in the engine root, embedded in the
     engine. Before anything else, a factory whose git working tree is dirty is refused unless
-    `--allow-dirty`.
+    `--allow-dirty`;
+  * commit (transaction.py) -- the files the steps added, changed or removed are put in place
+    in `--out`, journaled and rolled back on failure (a fresh `--out` is one rename).
 
 `backlog --create` turns those files into GitHub issues through `gh` (or `$FACTORY_GH`),
 skipping any whose title the repository already has.
@@ -52,6 +56,7 @@ import gate  # noqa: E402
 import generate  # noqa: E402
 import intake as intake_step  # noqa: E402
 import provenance  # noqa: E402
+import transaction  # noqa: E402
 
 PASCAL = re.compile(r"^[A-Z][A-Za-z0-9]*$")
 
@@ -61,20 +66,25 @@ def produce(args):
         raise intake_step.Usage(f"--name {args.name!r} is not a PascalCase C# identifier")
     state = provenance.factory_state()
     provenance.require_clean(state, args.allow_dirty)
-    with provenance.Recorder(args.out) as recorder:
-        result = intake_step.intake(args.package, args.corpus, log=sys.stdout)
-        print(f"intake passed: {result.package_id} {result.version}, {len(result.map.get('entries') or [])} entries")
-        model = generate.produce(result, args.name, args.out, log=sys.stdout)
-        gate.emit(args.name, args.out, log=sys.stdout)
-        context = {"name": args.name, "package": result.package_id, "version": result.version}
-        written = backlog_step.emit([item["entry"] for item in model.entries], context, args.out)
-        print(f"--- backlog: {len(written) - 1} item(s)")
-        provenance.emit(model, args.out)
-    # Provenance is written last, outside the recorder: every step above is in `generated`.
-    document = provenance.build(state, result, model, recorder)
-    provenance.write(args.out, document)
-    print(f"wrote {provenance.FILE_NAME}: factory {state['version']}{' (dirty)' if state['dirty'] else ''}, "
-          f"{len(document['generated'])} generated files")
+    # Every step writes into `out`, a staging copy of --out; --out itself is only touched by
+    # commit(), after the last step passed (transaction.py).
+    with transaction.Stage(args.out, log=sys.stdout) as stage:
+        out = stage.root
+        with provenance.Recorder(out) as recorder:
+            result = intake_step.intake(args.package, args.corpus, log=sys.stdout)
+            print(f"intake passed: {result.package_id} {result.version}, {len(result.map.get('entries') or [])} entries")
+            model = generate.produce(result, args.name, out, log=sys.stdout)
+            gate.emit(args.name, out, log=sys.stdout)
+            context = {"name": args.name, "package": result.package_id, "version": result.version}
+            written = backlog_step.emit([item["entry"] for item in model.entries], context, out)
+            print(f"--- backlog: {len(written) - 1} item(s)")
+            provenance.emit(model, out)
+        # Provenance is written last, outside the recorder: every step above is in `generated`.
+        document = provenance.build(state, result, model, recorder)
+        provenance.write(out, document)
+        print(f"wrote {provenance.FILE_NAME}: factory {state['version']}{' (dirty)' if state['dirty'] else ''}, "
+              f"{len(document['generated'])} generated files")
+        stage.commit()
     print(f"produced {args.name} in {args.out}")
     return document
 
@@ -131,6 +141,12 @@ def main(argv=None):
         return 2
     except (intake_step.Refused, generate.GenerationError, backlog_step.BacklogError) as error:
         print(f"factory: REFUSED -- {error}. Nothing was produced.", file=sys.stderr)
+        return 1
+    except transaction.CommitError as error:
+        if error.rolled_back:
+            print(f"factory: FAILED -- {error}; --out is as it was before this run.", file=sys.stderr)
+        else:
+            print(f"factory: FAILED -- {error}. --out is partly written.", file=sys.stderr)
         return 1
 
 

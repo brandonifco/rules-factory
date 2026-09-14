@@ -7,7 +7,11 @@ the same directory leaves scaffold files (the overlay above all) alone and rewri
 generated ones; a re-run with a newer or older version of the map leaves nothing naming the
 version it replaced, pins included (#66); every one of Part 107's 44 entries is emitted with its citation verbatim and
 the correspondence row the table's first match gives it; the overlay moves an entry between
-rows; an overlay that breaks 0015's merge rules is refused.
+rows; an overlay that breaks 0015's merge rules is refused. And produce is transactional (#67):
+a refusal after generation and backlog wrote leaves an existing engine byte-identical (modes
+included) and a fresh `--out` uncreated; a failure injected into the commit (os.replace patched
+in-process) is rolled back; a commit whose rollback also failed is rolled back by the next run,
+and a copy of that half-committed engine is refused, naming the journal.
 
 What is not: that the produced solution builds and its generated tests pass. That needs the
 SDK the kernel pins and nuget.org, so it is not a unit test here: scripts/validate-engine.sh
@@ -27,6 +31,7 @@ import subprocess
 import sys
 import tempfile
 import unittest
+from unittest import mock
 from contextlib import redirect_stdout, redirect_stderr
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -358,6 +363,150 @@ class TestRefuses(ProduceCase):
     def test_a_name_that_is_not_a_csharp_identifier(self):
         code, output = self.produce(os.path.join(self.tmp, "engine"), name="faa-part-107")
         self.assertEqual(code, 2, output)
+
+
+def snapshot(root):
+    """Every directory, and every file with its mode and bytes, under `root`."""
+    entries = {}
+    for directory, dirs, names in os.walk(root):
+        for name in dirs:
+            entries[os.path.relpath(os.path.join(directory, name), root) + "/"] = None
+        for name in names:
+            path = os.path.join(directory, name)
+            with open(path, "rb") as handle:
+                entries[os.path.relpath(path, root)] = (os.stat(path).st_mode, handle.read())
+    return entries
+
+
+class TestTransactional(ProduceCase):
+    """#67: a refusal, or a failed commit, leaves --out as it was."""
+
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        cls.v1 = pack_version(PART107, "1.0.0", os.path.join(cls.shared, "versions"))
+        cls.v2 = pack_version(PART107, "2.0.0", os.path.join(cls.shared, "versions"))
+
+    def existing(self):
+        """A v1 engine with a stale backlog item (a v2 run would change, add and remove files)."""
+        out = self.produced(package=self.v1)
+        with open(os.path.join(out, "backlog", "999-stale.md"), "w", encoding="utf-8") as handle:
+            handle.write("stale\n")
+        os.makedirs(os.path.join(out, "bin"))
+        with open(os.path.join(out, "bin", "build.dll"), "wb") as handle:
+            handle.write(b"built")
+        return out
+
+    def fail_in_backlog(self):
+        real = factory.backlog_step.emit
+
+        def emit_then_refuse(entries, context, out):
+            real(entries, context, out)
+            raise factory.backlog_step.BacklogError("forced after generation and backlog wrote")
+        return mock.patch.object(factory.backlog_step, "emit", emit_then_refuse)
+
+    def fail_replace_after(self, out, count):
+        real, calls = os.replace, []
+        root = os.path.realpath(out) + os.sep
+
+        def replace(src, dst, *args, **kwargs):
+            if os.path.realpath(dst).startswith(root) and not dst.endswith(factory.transaction.JOURNAL):
+                calls.append(dst)
+                if len(calls) == count + 1:  # once: rollback's own os.replace calls go through
+                    raise OSError("forced failure during commit")
+            return real(src, dst, *args, **kwargs)
+        return mock.patch.object(os, "replace", replace)
+
+    def assert_no_leftovers(self, parent):
+        self.assertEqual([n for n in os.listdir(parent) if ".factory-produce-" in n], [])
+
+    def test_a_refusal_after_generation_leaves_an_existing_engine_byte_identical(self):
+        out = self.existing()
+        before = snapshot(out)
+        with self.fail_in_backlog():
+            code, output = self.produce(out, package=self.v2)
+        self.assertEqual(code, 1, output)
+        self.assertIn("forced after generation", output)
+        self.assertIn("Nothing was produced.", output)
+        self.assertEqual(before, snapshot(out))
+        self.assert_no_leftovers(self.tmp)
+
+    def test_a_refusal_leaves_a_fresh_out_uncreated(self):
+        out = os.path.join(self.tmp, "missing", "parent", "engine")
+        with self.fail_in_backlog():
+            code, output = self.produce(out)
+        self.assertEqual(code, 1, output)
+        self.assertEqual(os.listdir(self.tmp), [])
+
+    def test_a_refusal_leaves_an_empty_out_empty(self):
+        out = os.path.join(self.tmp, "engine")
+        os.makedirs(out)
+        with self.fail_in_backlog():
+            code, output = self.produce(out)
+        self.assertEqual(code, 1, output)
+        self.assertEqual(os.listdir(out), [])
+        self.assert_no_leftovers(self.tmp)
+
+    def test_a_commit_removes_and_leaves_bin_alone(self):
+        out = self.existing()
+        self.produced(out, package=self.v2)
+        self.assertFalse(os.path.exists(os.path.join(out, "backlog", "999-stale.md")))
+        self.assertTrue(os.path.isfile(os.path.join(out, "bin", "build.dll")))
+        shutil.rmtree(os.path.join(out, "bin"))
+        fresh = tree(self.produced(os.path.join(self.tmp, "fresh"), package=self.v2))
+        self.assertEqual(fresh, tree(out))
+        self.assert_no_leftovers(self.tmp)
+
+    def test_a_failure_during_commit_is_rolled_back(self):
+        out = self.existing()
+        before = snapshot(out)
+        with self.fail_replace_after(out, 3):
+            code, output = self.produce(out, package=self.v2)
+        self.assertEqual(code, 1, output)
+        self.assertIn("was rolled back", output)
+        self.assertNotIn("Nothing was produced", output)
+        self.assertEqual(before, snapshot(out))
+        self.assert_no_leftovers(self.tmp)
+
+    def test_an_interrupted_commit_is_rolled_back_by_the_next_run(self):
+        out = self.existing()
+        before = snapshot(out)
+        with self.fail_replace_after(out, 3), \
+                mock.patch.object(factory.transaction, "_rollback", side_effect=OSError("the process died")):
+            code, output = self.produce(out, package=self.v2)
+        self.assertEqual(code, 1, output)
+        self.assertIn("partly written", output)
+        journal = os.path.join(out, factory.transaction.JOURNAL)
+        self.assertTrue(os.path.isfile(journal), output)
+        self.assertNotEqual(before, snapshot(out))
+
+        # A copy of the engine taken mid-commit is refused, naming the journal, and changes nothing.
+        copy = os.path.join(self.tmp, "copy")
+        shutil.copytree(out, copy)
+        code, output = self.produce(copy, package=self.v2)
+        self.assertEqual(code, 1, output)
+        self.assertIn(factory.transaction.JOURNAL, output)
+        self.assertIn("not to this directory", output)
+
+        # The rollback alone restores --out exactly.
+        buffer = io.StringIO()
+        factory.transaction.recover(out, buffer)
+        self.assertIn("rolled back an interrupted commit", buffer.getvalue())
+        self.assertEqual(before, snapshot(out))
+        self.assertFalse(os.path.exists(journal))
+
+        # And a run that finds the journal rolls back, then produces as usual.
+        with self.fail_replace_after(out, 3), \
+                mock.patch.object(factory.transaction, "_rollback", side_effect=OSError("the process died")):
+            self.produce(out, package=self.v2)
+        code, output = self.produce(out, package=self.v2)
+        self.assertEqual(code, 0, output)
+        self.assertIn("rolled back an interrupted commit", output)
+        self.assertFalse(os.path.exists(journal))
+        shutil.rmtree(os.path.join(out, "bin"))
+        self.assertEqual(tree(self.produced(os.path.join(self.tmp, "fresh"), package=self.v2)), tree(out))
+        shutil.rmtree(copy)
+        self.assert_no_leftovers(self.tmp)
 
 
 if __name__ == "__main__":
