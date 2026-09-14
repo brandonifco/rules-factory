@@ -50,7 +50,7 @@
       "dependsOn": [],
       "evidence": "(c) The minimum flight visibility, as observed from the location of the control station must be no less than 3 statute miles. For purposes of this section, flight visibility means the average slant distance from the control station at which prominent unlighted objects may be seen and identified by day and prominent lighted objects may be seen and identified by night.",
       "status": "mapped",
-      "note": "3 statute miles, plus the section's own definition of flight visibility, which is a definition and not a threshold."
+      "note": "3 statute miles, plus the section's own definition of flight visibility, which is a definition and not a threshold. The figure is fixed and this entry states it, which is why it stays clear; the definition it quotes turns on 'prominent', which the corpus never fixes, and that is prominent-objects — carried by the entry that applies the definition rather than by the one that states the figure."
     },
     {
       "id": "cloud-clearance",
@@ -128,11 +128,32 @@
       "clarity": "clear",
       "dependsOn": [
         "visibility-minimum",
-        "cloud-clearance"
+        "cloud-clearance",
+        "prominent-objects"
       ],
       "evidence": "(c) The minimum flight visibility, as observed from the location of the control station must be no less than 3 statute miles. For purposes of this section, flight visibility means the average slant distance from the control station at which prominent unlighted objects may be seen and identified by day and prominent lighted objects may be seen and identified by night. (d) The minimum distance of the small unmanned aircraft from clouds must be no less than: (1) 500 feet below the cloud; and (2) 2,000 feet horizontally from the cloud.",
       "status": "mapped",
-      "note": "Each minimum independently, and the case where one passes and the other fails."
+      "note": "Each minimum independently, and the case where one passes and the other fails. The cloud-clearance half is fully computable from two stated figures. The visibility half is not: the quantity to be compared against 3 statute miles is the section's own 'flight visibility', whose definiens turns on which objects are 'prominent', and the corpus fixes no degree of prominence. That term is prominent-objects, split out rather than reclassifying this entry — classifying the whole entry by one of its clauses would have thrown away the 500-foot and 2,000-foot figures (0005)."
+    },
+    {
+      "id": "prominent-objects",
+      "name": "Which objects are prominent, for flight visibility",
+      "locator": {
+        "sourceId": "cfr-14-107",
+        "citation": "§ 107.51(c)"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "ambiguous",
+      "dependsOn": [],
+      "evidence": "For purposes of this section, flight visibility means the average slant distance from the control station at which prominent unlighted objects may be seen and identified by day and prominent lighted objects may be seen and identified by night.",
+      "status": "mapped",
+      "ambiguity": {
+        "question": "Part 107 does not define 'prominent', and the term carries the whole visibility metric: the distance reported as flight visibility is the distance at which prominent objects can be seen, so the degree of prominence fixes the number that § 107.51(c)'s 3-statute-mile threshold is compared against.",
+        "fate": "unresolved",
+        "unresolvedReason": "RequiresInterpretation"
+      },
+      "note": "Gate 1 of 0008 passes: applying § 107.51(c) requires fixing a degree the corpus did not fix, which is what separates flight visibility from groundspeed — an ordinary caller-supplied parameter whose meaning is not open. Gate 2 does not fire: no corpus is named for it. Gate 3's first branch does not fire either — the clause states no measure for 'prominent' in its own constituent and names no decider — so the procedure returns a gap. The same shape as well-clear and moving-vehicle-operation's 'sparsely populated area'. Found by the undefined-term sweep (#33, #34), not by inspection of the interesting entries."
     },
     {
       "id": "single-aircraft",
@@ -211,8 +232,11 @@
       "clarity": "clear",
       "dependsOn": [],
       "evidence": "(a) No person may operate a small unmanned aircraft system during night.",
-      "status": "mapped",
-      "note": "Night, and not-night. There is no condition under which night operation is permitted, and no exception is stated."
+      "status": "declined",
+      "definedElsewhere": {
+        "reference": "cfr-14-1"
+      },
+      "note": "There is no condition under which night operation is permitted, and no exception is stated — so the rule is the word 'night' and nothing else, and § 107.3 does not define it: it defines six terms at this date and night is not among them. The engine cannot compute 'night' and not-night; it can only be told. § 107.3 puts § 1.1 of this chapter in force for this part (\"if there is a conflict… the definitions in this part control\"), so gate 2 of 0008 routes the term to definedElsewhere rather than to a gap, and the whole entry declines. Note that § 107.29(c) fixes civil twilight for purposes of paragraph (b) alone, in the paragraph next door: the drafter fixed the temporal boundary he meant to be computed and left this one to § 1.1. The limit, stated where the claim is: § 107.3's clause is a general priority rule and does not route this term to § 1.1 by name, so the claim that § 1.1 fixes it becomes checkable only when cfr-14-1 is admitted. This entry was recorded as clarity: clear with a computable rule until #33; that verdict and moving-vehicle-operation's rested on identical ground and disagreed."
     },
     {
       "id": "civil-twilight-operation",
@@ -275,13 +299,35 @@
         "sourceId": "cfr-14-107",
         "citation": "\u00a7 107.37(a)"
       },
-      "kind": "assertion",
+      "kind": "operation",
       "scope": "in",
       "clarity": "clear",
-      "dependsOn": [],
+      "dependsOn": [
+        "well-clear"
+      ],
       "evidence": "(a) Each small unmanned aircraft must yield the right of way to all aircraft, airborne vehicles, and launch and reentry vehicles. Yielding the right of way means that the small unmanned aircraft must give way to the aircraft or vehicle and may not pass over, under, or ahead of it unless well clear.",
       "status": "mapped",
-      "note": "The duty runs to every aircraft, airborne vehicle, and launch and reentry vehicle without exception, so nothing here is computed: the entry is the standard 'well clear' and nothing else, and is reclassified in place rather than split. The assertion is demanded for each of passing over, under and ahead of any of the three protected kinds; asserted and withheld; attributed to whoever made it and recorded with the outcome; and never defaulted to true when absent."
+      "note": "Two enumerations, both computable: three protected kinds — aircraft, airborne vehicles, launch and reentry vehicles — and three prohibited relative positions — over, under, ahead. An engine told the object is none of the three, or that the manoeuvre is none of the three, decides the case without the open term at all, and the evidence covers each. The note this replaces said \"nothing here is computed\", which its own evidence contradicts (#34). What is not computed is the exception \"unless well clear\", which is well-clear and is a gap rather than an assertion: 0008 § 2 attacked the purpose clause at this joint and it gave way, so gate 3's first branch does not fire here."
+    },
+    {
+      "id": "well-clear",
+      "name": "The small unmanned aircraft is well clear of the aircraft or vehicle",
+      "locator": {
+        "sourceId": "cfr-14-107",
+        "citation": "§ 107.37(a)"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "ambiguous",
+      "dependsOn": [],
+      "evidence": "Yielding the right of way means that the small unmanned aircraft must give way to the aircraft or vehicle and may not pass over, under, or ahead of it unless well clear.",
+      "status": "mapped",
+      "ambiguity": {
+        "question": "Part 107 does not define 'well clear', and the term carries the whole exception to the prohibition on passing over, under or ahead. 'Well clear' occurs exactly once in the corpus; § 107.3 does not define it and no other section does; and § 107.37(a) states no measure for it in its own constituent — 'must give way' is a coordinate obligation in the definiens, not what the clearance is measured against.",
+        "fate": "unresolved",
+        "unresolvedReason": "RequiresInterpretation"
+      },
+      "note": "Split out of right-of-way, which keeps the two computable enumerations (0005: a standard is its own entry, and the rule that consumes it depends on it). Not kind: assertion — gate 3's first branch requires the corpus to state, in the same constituent as the open term, either the measure or the set of values, and § 107.37(a) states neither. Not a value either: the corpus states no clearance. The kind records what the engine would have to do and cannot, which is why the entry declines at runtime rather than demanding a parameter. The same shape as moving-vehicle-operation's 'sparsely populated area', and the two now return the same answer, which they did not before. Where the project holds the term determinate — 'well clear' is a recognised operational standard in aviation practice — that is fate: decision with a record, never a kind (0008 § 3); this map does not hold it, so the fate is unresolved."
     },
     {
       "id": "collision-hazard-proximity",
