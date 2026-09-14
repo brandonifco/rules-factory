@@ -1,0 +1,54 @@
+# Redactions for blind mapping run 2 (issue #9)
+
+Source: docs/ at rules-factory main 170daa6. One line per change.
+
+- corpus-map.md: stamp example: page extent 271-280 replaced with 12-19
+- corpus-map.md: extent section: removed backgammon citation range 271-277 / throw enumeration 278-280 / #20
+- corpus-map.md: gates preamble: strategy-advice quote replaced with invented card-game advice
+- corpus-map.md: gate 1: stake-multiplier and bearing-off-move-or-remove quotes replaced with invented card-game quotes
+- corpus-map.md: gate 1 'or case': game-value and must-play-whole-throw instances replaced with invented card-game instances
+- corpus-map.md: gate 3: fixed-set quote 'either thrice or four times' replaced
+- corpus-map.md: gate 3: agreement quote reframed as a generic example (no corpus attribution)
+- corpus-map.md: evidence section: 'thirteen of the backgammon map's citations' + #18 link neutralised
+- corpus-map.md: evidence section: point-designations 118/11-word example neutralised
+- corpus-map.md: evidence section: p. 272 / {273} arrangement-sentence example replaced with p. 12 / {13}
+- corpus-map.md: note examples: 'Both figures' / quatre-trois distribution / throw playability replaced with SR6 and card-game examples
+- corpus-map.md: scope-out quoting: strategy-advice and doubling-cube/1909 examples replaced
+- corpus-map.md: absent quoting: backgammon count 'all 29 checked / twenty-eight' neutralised
+- corpus-map.md: clarity/conflict: enter-from-bar vs legal-destination example replaced with invented card-game pair
+- corpus-map.md: conflict JSON: backgammon slug and decision 0006 path replaced with invented slug/record
+- corpus-map.md: conflict section: enter-from-bar / full-table-suspension / legal-destination instance replaced with invented
+- corpus-map.md: gatedBy section: bearing-off / entry-from-bar phase examples replaced with card-game phases
+- corpus-map.md: gatedBy section: bearing-off-doublets (six ancestors) / move-by-pip / enter-from-bar instance replaced
+- corpus-map.md: gatedBy direction: bearing-off-eligible / enter-from-bar replaced
+- corpus-map.md: beyondAdapter: 'the one observed case' (backgammon illustration count) removed
+- corpus-map.md: beyondAdapter locator: 'men are placed as in Fig. 1' replaced
+- corpus-map.md: beyondAdapter: 'the one illustration' neutralised
+- corpus-map.md: absentFrom JSON: doubling-cube search terms replaced
+- corpus-map.md: absentFrom: Hoyle 'doubling' chapter/volume instance made generic
+- corpus-map.md: absentFrom: doubling-cube 'enumerates the apparatus' passage replaced
+- corpus-map.md: scope-per-rule: Hints for Play / die-faces / 21 throws instance replaced with invented
+- corpus-map.md: crossReferences JSON: 'as at starting' / opening-roll replaced
+- corpus-map.md: crossReferences limits: starting-position {273} instance replaced
+- corpus-map.md: status: must-play-whole-throw instance replaced
+- corpus-map.md: status: 'one shape of throw' neutralised
+- corpus-map.md: surprising reading: bearing-off-highest instance replaced
+- corpus-map.md: ordered rows: 'eleven entries across the three maps' neutralised
+- corpus-map.md: row 8: stake-multiplier verdict hint removed
+- corpus-map.md: open questions #18: 'thirteen' removed
+- corpus-map.md: open questions #20: 'number of faces on a die' removed
+- method.md: Phase 1 adapter reach: backgammon starting-position illustration replaced
+- method.md: Phase 2 quote-first: 'Thirteen of the backgammon map's twenty-four citations' neutralised
+- method.md: Phase 2 definitions: board/point/table vocabulary quote, point-designations, direction-of-travel, #13 replaced with invented card-game vocabulary
+- method.md: Phase 2 advice: backgammon advice quote replaced
+- method.md: Phase 2 gatedBy: bearing-off / bar phase examples replaced
+- method.md: Phase 3 scope: 1909 / doubling cube example replaced
+- method.md: Phase 3 scope-per-rule: Hints for Play / die faces / #20 removed
+- method.md: Phase 4 standards: stake-multiplier quote/verdict replaced
+- method.md: Phase 4 gate 1: stake-multiplier, bearing-off quote, game-value, must-play-whole-throw replaced
+- corpus-map.md: all 25 decision-record links unlinked to bare 'decision NNNN' (records mostly cite the backgammon trial; slugs such as 0006 are backgammon-specific)
+- corpus-map.md: all 14 GitHub issue links reduced to bare '#N' text
+- method.md: all 9 decision-record links unlinked to bare 'decision NNNN' (records mostly cite the backgammon trial; slugs such as 0006 are backgammon-specific)
+- method.md: all 2 GitHub issue links reduced to bare '#N' text
+- corpus-map.md: evidence section summary example "Both figures." replaced with "Both suits."
+- corpus-map.md: beyondAdapter and crossReferences examples: "Fig. 1" (the chapter's figure) replaced with invented "Diagram A" (4 occurrences)
