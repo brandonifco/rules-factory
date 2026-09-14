@@ -70,6 +70,16 @@ def main(a_path, b_path):
         # beyondAdapter: a change of reference under the same field is a change.
         if a[i].get("definedElsewhere") != b[i].get("definedElsewhere"):
             ch.append("definedElsewhere")
+        # crossReferences and absentFrom: both added by 0009, and neither was compared here
+        # until 0010's migration made one of them move. § 107.29(a)'s carve-out went from
+        # `unmapped` to `resolvedBy` at the 2026 date -- which is the whole of #28 -- and
+        # this differ reported nothing, because a field nobody adds is compared against
+        # nothing. Every other field the schema defines was already here, and that is what
+        # made the omission invisible: the output looked complete.
+        if a[i].get("crossReferences") != b[i].get("crossReferences"):
+            ch.append("crossReferences")
+        if a[i].get("absentFrom") != b[i].get("absentFrom"):
+            ch.append("absentFrom")
         if amb(a[i]) != amb(b[i]):
             ch.append("ambiguity")
         if ch:

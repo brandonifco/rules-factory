@@ -159,23 +159,31 @@ is still wrong.
 A procedure is an operation: how a test resolves, how damage applies, how a limit is
 computed. Operations live in the `Rules` layer and consume values.
 
-An **assertion** is neither: a fact about the world that only the caller can supply. A
-regulation requiring that a pilot *was able to see* the aircraft, or *maintained
-communication*, or *completed a preflight assessment*, states a real and binding rule that
-no engine can evaluate. What an engine owes an assertion is: **demand it, attribute it to
-whoever made it, record it with the outcome, and never infer it.** An engine that quietly
-defaults an unasserted condition to true has substituted its own judgement for the person's.
+An **assertion** is neither: an **open term the corpus deliberately delegated, having said
+what it is measured against or what set of values it may take**. A regulation requiring that a
+pilot was able to see the aircraft *"in order to"* four stated purposes, or that there was
+*"enough available power … to operate for the intended operational time"*, states a real
+and binding rule that no computation settles. What an engine owes an assertion is: **demand
+it, attribute it to whoever made it, record it with the outcome, and never infer it.** An
+engine that quietly defaults an unasserted condition to true has substituted its own
+judgement for the person's.
 
-Two things that look like other categories are assertions.
+*Judgement the corpus deliberately delegates* looks ambiguous and is not. "If the pilot
+determines it would be in the interest of safety" is not a defect in the text — the corpus
+is perfectly clear that the decision belongs to the pilot. Classifying it as ambiguous would
+report a deliberate delegation as a defect.
 
-*Judgement the corpus deliberately delegates.* "If the pilot determines it would be in the
-interest of safety" is not ambiguous — the corpus is perfectly clear that the decision
-belongs to the pilot. Classifying it as ambiguous would report a deliberate delegation as a
-defect in the text.
-
-*Facts about the physical world.* Whether it was raining, whether a structure was within
-400 feet, whether a person was under cover. The engine consumes these; it does not derive
-them.
+**Whose fact it is decides nothing.** Until
+[0010](decisions/0010-whose-fact-it-is-does-not-decide-the-kind.md) this section also listed
+*"facts about the physical world"* — whether it was raining, whether a person was under
+cover — as assertions. **That is withdrawn.** It is true that the engine consumes such
+facts and does not derive them, and false that they are therefore rules: the airspace class,
+the groundspeed and whether a visual observer was used are **caller-supplied parameters that
+get no entry at all**, which is Phase 4's gate 1 and what `corpus-map.md` rules for
+`airspace-authorized`. § 107.39 shows both answers one sentence apart, on two facts about
+the same third party: *"directly participating"* states no measure and is a gap, while
+*"reasonable protection **from a falling small unmanned aircraft**"* states one and is an
+assertion. **The measure decides; the source never did.**
 
 When an entry is both value and operation — a procedure with a table inside it — it is two
 entries with a dependency between them. This is the most common decomposition error: a
@@ -228,17 +236,31 @@ Be suspicious of "clear". Totality is the claim that needs justifying; ambiguity
 default. An entry marked clear should be able to say *why* it is total.
 
 **An amendment can change what an entry *is*, not only what it says.** In the third trial, a
-flat prohibition on night flight — perfectly clear and trivially implementable — was amended
-into a conditional permission turning on "a flash rate sufficient to avoid a collision", which
-states no rate. The rule became more permissive and less determinate at once.
+flat prohibition on night flight was amended into a conditional permission turning on "a flash
+rate sufficient to avoid a collision", which states no rate.
 
-Under [0005](decisions/0005-a-field-earns-its-place-by-being-checkable.md) that is not a
-change in `clarity`: the newer text delegates the judgement, so the entry gains an assertion
-dependency it did not have. An engine that computed an answer against the older text must
-**demand an input** against the newer one, without the engine changing at all. That is still a
-change no engine can make on its own, and still the reason a map is a statement about one
-text. Re-mapping a revised corpus re-asks `kind`, `clarity` and the dependency graph of every
-entry it touches rather than carrying the previous verdict forward.
+**Withdrawn, in place:** this section said the older rule was "perfectly clear and trivially
+implementable", and concluded that *an amendment can turn a rule the engine computes into one
+that demands a caller's assertion*. **It never had that premise.** § 107.3 defines six terms
+at the 2020 date and seven in 2026, and *night* is not among them at either; the 2020 rule —
+*"No person may operate a small unmanned aircraft system during night"* — **is** the
+undefined word and nothing else. Both entries are now `definedElsewhere` against 14 CFR
+§ 1.1 and both decline with `MissingRulesData`
+([#33](https://github.com/brandonifco/rules-factory/issues/33)).
+
+**What the corpus supports instead:** the amendment **added a delegated standard to a rule
+that was already undecidable, for a different reason, at both dates.** That is weaker than the
+claim withdrawn, and it is the restatement
+[examples/faa-part-107-temporal](../examples/faa-part-107-temporal/README.md) carries. What
+survives untouched is the reason a map is a statement about one text: under
+[0005](decisions/0005-a-field-earns-its-place-by-being-checkable.md) the newer entry gains an
+assertion dependency (`flash-rate-sufficient`) that has no 2020 counterpart, without the
+engine changing at all. Re-mapping a revised corpus re-asks `kind`, `clarity` and the
+dependency graph of every entry it touches rather than carrying the previous verdict forward.
+
+The claim was stated three times and corrected three times, each time by someone looking at
+`clarity` — **the one field nothing compares against the corpus.** That is the more durable
+finding, and it is why trial 1's undefined-term sweep exists.
 
 ## Phase 4 — Decide the ambiguities
 
@@ -301,6 +323,26 @@ both first.
    its own `evidence`. A third party whose determination is a separate act → not a caller
    assertion. Nobody → a genuine gap, its fate a runtime unresolved.
 
+**Gate 1's parameter and gate 3's assertion are different things, and the difference is not
+who supplies the fact.** An engine demands both. Only one of them is a rule. The airspace
+class, the groundspeed, whether a visual observer was used — these are facts the rule
+*tests*, and gate 1 stops them: **no entry, named in the consuming entry's `note`.** An
+assertion is an open term the rule *leaves blank* and the corpus then bounds. § 107.39
+states both, one sentence apart and both about the same third party: *"directly
+participating"* is a gap, *"reasonable protection **from a falling small unmanned
+aircraft**"* is an assertion. Deciding by who could answer would have made them the same, and
+they are not. Decided in
+[0010](decisions/0010-whose-fact-it-is-does-not-decide-the-kind.md), which closes the half of
+[#11](https://github.com/brandonifco/rules-factory/issues/11) 0005 left open by finding that
+there is no "facts a person asserts" category: ten of the twenty measured instances are
+assertions, six are gaps, and two paragraphs split inside themselves.
+
+**A stated measure may itself be open, and gate 3 does not ask.** *"Considering risks to
+persons and property in the **immediate vicinity**"* states what the assessment is measured
+against, and the measure carries an undefined degree of its own. Gate 3 asks whether a measure
+is stated, not whether it is determinate, so the entry is an assertion. Named by 0010 with two
+instances per map, and filed rather than decided.
+
 **The gates do not separate § 107.37(a)'s "unless well clear" from § 107.25(b)'s "sparsely
 populated area", and nothing in the corpus does.** Both are open degrees in the `unless` clause
 of a prohibition with no measure stated in their own constituent; "well clear" appears once and
@@ -308,7 +350,11 @@ of a prohibition with no measure stated in their own constituent; "well clear" a
 term is nevertheless determinate — because practice outside the corpus fixes it — that is a
 recorded decision or a `definedElsewhere`, which are the two fates this phase is about. It is
 never a `kind`, because a map may not claim to have derived from a text what the text does not
-say. `right-of-way` currently rests on that belief without recording it, and 0008 files it.
+say. `right-of-way` rested on that belief without recording it; it is now split, and
+`well-clear` is a gap beside `moving-vehicle-operation`. Four more terms sit in the same
+residue — *"effective communication"*, *"working properly"*, *"directly participating"*,
+*"secure"* — where the operator is plainly the only person who could answer and the corpus
+still states no measure. Being the only possible source is not a reason to reclassify (0010).
 
 **A corpus that contradicts itself is ambiguous**, and its `question` states both readings.
 `clear` asserts the corpus determines exactly one answer, and one that states a rule twice in

@@ -21,11 +21,19 @@ judgement, and
 [0008](../../docs/decisions/0008-recognising-a-delegated-standard-is-a-procedure-not-a-test.md)'s
 procedure was applied to every entry
 ([#33](https://github.com/brandonifco/rules-factory/issues/33),
-[#34](https://github.com/brandonifco/rules-factory/issues/34)): **29 entries. 6 values, 19
-operations, 4 assertions. 26 clear, 3 ambiguous. 4 declined.** The delegated standards are
-entries split out of the rules that consume them; so, now, are the two gaps the sweep below
-found. `right-of-way` stopped being an assertion, and `night-operation` stopped being a rule
-this map could claim to have derived from the text it admitted.
+[#34](https://github.com/brandonifco/rules-factory/issues/34)), and
+[0010](../../docs/decisions/0010-whose-fact-it-is-does-not-decide-the-kind.md) settled the
+sweep's residue and #28's missing carve-out: **40 entries. 6 values, 24 operations, 10
+assertions. 33 clear, 7 ambiguous. 4 declined.** The delegated standards are entries split
+out of the rules that consume them; so are the gaps the sweep below found. `right-of-way`
+stopped being an assertion, `night-operation` stopped being a rule this map could claim to
+have derived from the text it admitted, and the four entries #11 had been open over since
+this trial turned out to hold **both** answers rather than either.
+
+**The map is a third larger than the sections it reads suggest**, and that is the cost of
+`kind` being entry-level: twelve sections, forty entries, of which seventeen are an assertion
+or a gap — sixteen of those split out of a rule that consumes them, and
+`moving-vehicle-operation` the one gap that is a whole rule.
 
 Every entry's `evidence` is now a **verbatim span of the corpus**
 ([#18](https://github.com/brandonifco/rules-factory/issues/18)), and the mapper's summary of
@@ -56,9 +64,11 @@ the comparison is not bureaucracy — the altitude limit has three distinct figu
 paragraph, and a single "400 feet" entry would have lost two of them.
 
 **Ratio.** Twelve sections produced twenty-four entries, almost exactly 2:1 — twenty-nine once
-0005 split the delegated standards out and 0008's procedure split the gaps, which moves the
-ratio very little. Useful for estimating: this slice is 1/5 of the part, so the whole is
-roughly 145 entries.
+0005 split the delegated standards out and 0008's procedure split the gaps, and **forty** once
+0010 split the rest. That is 3.3:1, and the earlier estimate was low by a third because every
+pass so far has found more standards to split, never fewer. Useful for estimating: this slice
+is 1/5 of the part, so the whole is roughly 200 entries — stated as a moving number, since
+it has moved upward three times.
 
 ## What broke
 
@@ -231,7 +241,7 @@ position in the corpus and compare that position to the citation. A proof of con
 ```
 $ python3 examples/faa-part-107/check-locators-section.py \
       examples/faa-part-107/corpus-map.json examples/faa-part-107/part107.xml
-locators ok (all 27 checked against the section tree)
+locators ok (all 40 checked against the section tree)
 ```
 
 **Containment makes it stricter than the page version, in three places.**
@@ -268,8 +278,10 @@ What this check does catch is drift (a citation edited later while the quote sta
 paraphrase presented as evidence, and a quote that turns out to live in more places than the
 citation admits.
 
-Which is why the result is worth stating plainly: **29 of 29 citations in the 2026 map and 27
-of 27 in the 2020 map verify, none was found wrong, and none was corrected.** Against
+Which is why the result is worth stating plainly: **40 of 40 citations in the 2026 map and 37
+of 37 in the 2020 map verify, none was found wrong, and none was corrected** — 29 and 27
+before 0010's migration, and all twenty-one entries it added verified on the first run.
+Against
 backgammon the same class of check found thirteen errors in twenty-four. That is a fact about
 the two locator grammars, not about the two mappers.
 
@@ -360,29 +372,47 @@ The 21 that carry a rule:
 | "reasonable protection" | `reasonable-protection` ×2 | gate 3 → assertion | assertion | agrees |
 | "in the interest of safety" | `intensity-reduction-in-interest-of-safety` ×2 | gate 3 → assertion | assertion | agrees |
 | "official sunrise", "official sunset" | `civil-twilight-window` ×2, `civil-twilight-operation` ×2 | gate 1 → parameter | `clear` | agrees, with a caveat below |
-| "directly participating" | `over-human-beings` ×2 | gate 3 → gap | `operation`, `clear` | **#11** |
-| "effective communication" | `visual-observer-conditions` ×2 | gate 3 → gap | `operation`, `clear` | **#11** |
-| "coordinate", "maintain awareness" | `visual-observer-conditions` ×2 | gate 3 → gap | `operation`, `clear` | **#11** |
-| "able to see … throughout the entire flight" | `visual-line-of-sight` ×2 | gate 3 → gap | `operation`, `clear` | **#11** |
-| "endanger the life or property of another" | `visual-line-of-sight` ×2 | gate 3 → gap | `operation`, `clear` | **#11** |
-| "assess … considering risks" | `preflight-actions` ×2 | gate 3 → gap | `operation`, `clear` | **#11** |
-| "informed about" | `preflight-actions` ×2 | gate 3 → gap | `operation`, `clear` | **#11** |
-| "working properly" | `preflight-actions` ×2 | gate 3 → gap | `operation`, `clear` | **#11** |
-| "enough available power … for the intended operational time" | `preflight-actions` ×2 | gate 3 → gap | `operation`, `clear` | **#11** |
-| "secure and does not adversely affect" | `preflight-actions` ×2 | gate 3 → gap | `operation`, `clear` | **#11** |
+| "directly participating" | `over-human-beings` ×2, `preflight-actions` ×2 | gate 3 → gap | `operation`, `clear` | **wrong — fixed** |
+| "effective communication" | `visual-observer-conditions` ×2 | gate 3 → gap | `operation`, `clear` | **wrong — fixed** |
+| "coordinate", "maintain awareness" | `visual-observer-conditions` ×2 | gate 3 → **assertion** | `operation`, `clear` | **wrong — fixed** |
+| "able to see … throughout the entire flight" | `visual-line-of-sight` ×2 | gate 3 → **assertion** | `operation`, `clear` | **wrong — fixed** |
+| "endanger the life or property of another" | `visual-line-of-sight` ×2 | inside (a)'s measure — **not an open term** | `operation`, `clear` | **sweep wrong, entry right** |
+| "assess … considering risks" | `preflight-actions` ×2 | gate 3 → **assertion** | `operation`, `clear` | **wrong — fixed** |
+| "informed about" | `preflight-actions` ×2 | gate 3 → **assertion** | `operation`, `clear` | **wrong — fixed** |
+| "working properly" | `preflight-actions` ×2 | gate 3 → gap | `operation`, `clear` | **wrong — fixed** |
+| "enough available power … for the intended operational time" | `preflight-actions` ×2 | gate 3 → **assertion** | `operation`, `clear` | **wrong — fixed** |
+| "secure and does not adversely affect" | `preflight-actions` ×2 | gate 3 → **one of each** | `operation`, `clear` | **wrong — fixed** |
 
-**The three that were wrong are the three #33 and #34 named, and the sweep found no fourth.**
-That is worth stating as a result and not as an absence: the two issues were written from the
-interesting entries, and this is the first pass that looked at the boring ones.
+**The three that were wrong on the sweep's own reckoning are the three #33 and #34 named, and
+the sweep found no fourth.** That was worth stating as a result and not as an absence: the two
+issues were written from the interesting entries, and this was the first pass that looked at
+the boring ones. **It did not hold.** 0010 found seven more wrong among the ten rows the sweep
+marked #11 and left standing — see below. Three of twenty-one was the count of entries the
+sweep *re-derived*; the ten it deferred were never re-derived at all.
 
-**The residue is one open question, not ten new ones.** The ten rows marked #11 are a single
-family — facts a *person* asserts, in the three entries
-[#11](https://github.com/brandonifco/rules-factory/issues/11) has been open over since the first
-trial, plus `over-human-beings`. 0008's gates return a gap for every one of them on their own
-words, and 0005 explicitly leaves the family undecided. **Nothing here is changed on that
-account**, because a sweep that settled #11 as a side effect would be doing exactly what 0008
-rejected test 4 for. What the sweep adds is the count: the question is worth **ten terms across
-four entries, twenty instances**, not three entries.
+**The residue was one open question, not ten new ones, and it is now decided.** The ten rows
+last in the table were a single family — facts a *person* asserts, in the three entries
+[#11](https://github.com/brandonifco/rules-factory/issues/11) had been open over since the
+first trial, plus `over-human-beings`. The sweep left them alone deliberately, because a sweep
+that settled #11 as a side effect would be doing exactly what 0008 rejected test 4 for; what
+it added was the count, **ten terms across four entries, twenty instances**, not three
+entries.
+
+[0010](../../docs/decisions/0010-whose-fact-it-is-does-not-decide-the-kind.md) re-derived all
+twenty from the paragraphs they sit in, and **the sweep's own verdict column was wrong on
+seven of the ten rows.** The sweep recorded *gate 3 → gap* for every one; running the gate
+on the words rather than on the family gives **ten assertion instances, six gaps, two that
+split inside one paragraph, and two that are not open terms at all.** § 107.31(a) states
+four purposes in an explicit *"in order to"* clause — a stronger statement of the measure
+than any of the four assertions 0005 and 0008 already accept — and calling that a gap was
+the sweep reading the family rather than the sentence. **The lesson is the sweep's own, turned
+on itself:** a verdict recorded for a group of entries at once is a verdict nobody derived
+per entry.
+
+**The sweep also undercounted by one row.** *"Directly participating"* is recorded above
+against `over-human-beings`; § 107.49(b) uses the same undefined term to delimit **who must
+be briefed**, at both dates. The residue was eleven rows and twenty-two instances. The table
+is corrected in place.
 
 **One caveat, recorded where the claim is made.** "Official sunrise" and "official sunset" anchor
 both civil-twilight windows and are undefined in the corpus. They are treated as parameters —
