@@ -104,7 +104,7 @@ class BacklogCase(unittest.TestCase):
                 self.assertEqual(ids, expected)
                 self.assertEqual(sorted(names), [f"{i:03d}-{n.split('-', 1)[1]}" for i, n in
                                                  enumerate(sorted(names), 1)])
-        self.assertEqual(len(self.items("part107")), 36)
+        self.assertEqual(len(self.items("part107")), 39)
         self.assertEqual(len(self.items("hoyle")), 28)
         self.assertIn("hit-pays-single-stake", "".join(self.items("hoyle")))
 
