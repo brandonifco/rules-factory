@@ -70,12 +70,26 @@ def set_section(m, entry_id, was, now):
     e["locator"]["citation"] = citation.replace(was, now)
 
 
+# The gate fields. docs/decisions/0011 split the undirected `gatedBy` into `enabledBy` and
+# `suspendedBy`. The recorded run was against maps that still carried `gatedBy`, and the
+# engine's copy has not migrated, so a gate patch names the directed field on a migrated map
+# and falls back to `gatedBy` on one that is not. Either way it touches the same edge.
+GATE_FIELDS = ("gatedBy", "enabledBy", "suspendedBy")
+
+
+def gate_field(m, direction):
+    """`direction` ('enabledBy' or 'suspendedBy') on a migrated map, `gatedBy` otherwise."""
+    if any("gatedBy" in e for e in m["entries"]):
+        return "gatedBy"
+    return direction
+
+
 def drop_edge(m, entry_id, field, target):
     e = entry(m, entry_id)
     if target not in (e.get(field) or []):
         raise ValueError(f"{entry_id}: {field} does not contain {target!r}")
     e[field] = [x for x in e[field] if x != target]
-    if not e[field] and field == "gatedBy":
+    if not e[field] and field in GATE_FIELDS:
         del e[field]
 
 
@@ -305,7 +319,7 @@ INJECTIONS = [
         wrong="bearing-off-highest is reachable only once the player is eligible to bear "
               "off. Without the gate the rule appears to apply from the first throw.",
         patch=lambda m, copy: drop_edge(
-            m, "bearing-off-highest", "gatedBy", "bearing-off-eligible"),
+            m, "bearing-off-highest", gate_field(m, "enabledBy"), "bearing-off-eligible"),
     ),
     dict(
         id="gate-spurious",
@@ -314,7 +328,8 @@ INJECTIONS = [
         stratum="human",
         wrong="The opening roll happens before any man can be on the bar, so gating it by "
               "enter-from-bar asserts a phase relation the corpus makes impossible.",
-        patch=lambda m, copy: add_edge(m, "opening-roll", "gatedBy", "enter-from-bar"),
+        patch=lambda m, copy: add_edge(
+            m, "opening-roll", gate_field(m, "suspendedBy"), "enter-from-bar"),
     ),
 
     # --- classification -----------------------------------------------------------------

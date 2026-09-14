@@ -52,9 +52,15 @@
       "scope": "in",
       "clarity": "clear",
       "dependsOn": [],
-      "evidence": "The board is so placed in use that the two compartments, known as \"tables,\" shall lie longitudinally between the players. One of these is known as the \"outer,\" the other as the \"inner\" or \"home\" table. Which of the two is for the time being the inner and which the outer table is governed by the arrangement of the men at starting.",
+      "evidence": "The board is so placed in use that the two compartments, known as \"tables,\" shall lie longitudinally between the players. One of these is known as the \"outer,\" the other as the \"inner\" or \"home\" table. Which of the two is for the time being the inner and which the outer table is governed by the arrangement of the men at starting. With the men placed as in Fig. 1, the right hand is the inner or home table, and the left hand consequently the outer table. The portions of the two latter nearest to each player are known as _his_ inner and outer tables respectively.",
       "status": "mapped",
-      "note": "Player-relative structure only: two tables a side, inner and outer, twelve points each. Which physical compartment is which is a separate fact - see inner-table-handedness."
+      "note": "Player-relative structure only: two compartments, one inner and one outer, and the portion of each nearest a player is his -- so each player has his own inner (home) and outer table. The last sentence is what makes \"his home table\" in bearing-off-eligible and \"his (the winner's) home table\" in game-value name one player's half; the span stopped before it until issue #42, while this note already claimed \"two tables a side\". The Fig. 1 sentence between is inner-table-handedness's rule and is quoted only because the span must be contiguous; its pointer is declared here for the same reason. How many points a table has is point-designations', not this entry's. Which physical compartment is which is a separate fact - see inner-table-handedness.",
+      "crossReferences": [
+        {
+          "cites": "as in Fig. 1",
+          "unmapped": "Fig. 1 is an illustration, not a passage, so there is no entry to name. The sentence making the pointer is inner-table-handedness's rule, carried here only to keep the span contiguous; that entry records the same pointer."
+        }
+      ]
     },
     {
       "id": "point-designations",
@@ -152,6 +158,21 @@
       "note": "Demonstrate both elections. The adopted throw can never be doublets, because a tie throws again and the two dice therefore differ - a consequence of opening-roll that is invisible from either entry alone, and that wires an adopt branch into the doublets path if it is missed."
     },
     {
+      "id": "calling-the-throw",
+      "name": "The thrower calls his throw, the higher number first",
+      "locator": {
+        "sourceId": "hoyle-1909",
+        "citation": "BACKGAMMON / Playing / p. 273"
+      },
+      "kind": "operation",
+      "scope": "out",
+      "clarity": "clear",
+      "dependsOn": [],
+      "evidence": "After throwing, he calls the number of the throw, the higher number first, as \"six deuce,\" \"cinque trois,\" \"quatre ace,\" or as the case may be, and then proceeds to make his move in accordance with it.",
+      "status": "declined",
+      "note": "Read and declined, not absent (docs/decisions/0009): the corpus states the procedure and it is normative, not advice. Out because it is table protocol an engine has no part in: the call is spoken by one player to the other, it moves no man and changes no position, and the corpus attaches nothing to it -- no consequence of a miscall, and the move is made \"in accordance with\" the throw, not with the call. An engine is handed the dice and gives the same answer to every question whether or not anyone called them. The order of naming, higher first, is the convention the corpus's own throw names follow (\"six trois\", and the headings die-faces quotes), and naming is not a rule the engine applies. It had no entry until the blind mapping trial flagged it (issue #42), which was the state 0009 exists to remove: a stated rule with no verdict."
+    },
+    {
       "id": "throw-two-dice",
       "name": "All subsequent throws use both dice",
       "locator": {
@@ -182,7 +203,8 @@
       "scope": "in",
       "clarity": "clear",
       "dependsOn": [
-        "throw-two-dice"
+        "throw-two-dice",
+        "direction-of-travel"
       ],
       "suspendedBy": [
         "enter-from-bar",
@@ -191,7 +213,7 @@
       ],
       "evidence": "The number uppermost on each die entitles the player to move one man forward a corresponding number of points. Thus if he threw \"six trois,\" he is entitled to move one man six points onward, and then the same or another man {274} three points onward.",
       "status": "mapped",
-      "note": "Demonstrate a throw played on one man and on two, and the worked \"six trois\" example. The span straddles the page break and carries the {274} marker verbatim; the rule sentence is on p. 273 and the citation follows it. Suspended by three rules (docs/decisions/0011): enter-from-bar while a man is up, full-table-suspension while the player's play is altogether suspended, and bearing-off-eligible once every man is home, from which point bearing-off-move-or-remove governs every forward move and a number unusable forward bears a man off instead of being lost."
+      "note": "Demonstrate a throw played on one man and on two, and the worked \"six trois\" example. The span straddles the page break and carries the {274} marker verbatim; the rule sentence is on p. 273 and the citation follows it. Suspended by three rules (docs/decisions/0011): enter-from-bar while a man is up, full-table-suspension while the player's play is altogether suspended, and bearing-off-eligible once every man is home, from which point bearing-off-move-or-remove governs every forward move and a number unusable forward bears a man off instead of being lost. Depends on direction-of-travel: \"move one man forward\" is a distance and a direction, and this sentence states only the distance (issue #42)."
     },
     {
       "id": "direction-of-travel",
@@ -303,7 +325,9 @@
       "scope": "in",
       "clarity": "ambiguous",
       "dependsOn": [
-        "blot-hit"
+        "blot-hit",
+        "legal-destination",
+        "point-designations"
       ],
       "suspendedBy": [
         "full-table-suspension"
@@ -316,7 +340,7 @@
         "fate": "decision",
         "decision": "docs/decisions/0006-the-general-rule-governs-entry-and-full-means-adversely-full.md"
       },
-      "note": "Decided: the general rule governs entry, so a point the entering player's own men hold is open to him. The reading is observable in EnterFromBarTests.Entry_is_permitted_on_a_point_the_entering_players_own_men_hold, which fails under the other one. Demonstrate entry available and unavailable, all other men suspended while one is up, and entry onto a point the entering player's own men hold. Cited p. 273 until the span was quoted and checked. Suspended by full-table-suspension (docs/decisions/0011): a completely full table leaves no throw 'corresponding with a vacant point or blot', and the corpus does not have the player throw to find that out -- his play is altogether suspended."
+      "note": "Decided: the general rule governs entry, so a point the entering player's own men hold is open to him. The reading is observable in EnterFromBarTests.Entry_is_permitted_on_a_point_the_entering_players_own_men_hold, which fails under the other one. Demonstrate entry available and unavailable, all other men suspended while one is up, and entry onto a point the entering player's own men hold. Cited p. 273 until the span was quoted and checked. Suspended by full-table-suspension (docs/decisions/0011): a completely full table leaves no throw 'corresponding with a vacant point or blot', and the corpus does not have the player throw to find that out -- his play is altogether suspended. Depends on legal-destination because the decision makes that rule the entering man's destination test, so this entry cannot be built as decided without it; blot-hit reaching it first is ordering by accident, not the reason. Depends on point-designations: \"a throw corresponding with a vacant point\" names the point in the adversary's inner table that each number enters on, and the numbering is stated only there (both issue #42)."
     },
     {
       "id": "full-table-suspension",
@@ -378,10 +402,12 @@
       "kind": "operation",
       "scope": "in",
       "clarity": "clear",
-      "dependsOn": [],
+      "dependsOn": [
+        "board-tables"
+      ],
       "evidence": "When either player has succeeded in getting all his men into his home table, he proceeds to \"bear them off\"--_i.e._, to remove them from the board.",
       "status": "mapped",
-      "note": "Demonstrate all fifteen home, fourteen home, and a man hit back out mid-bear-off."
+      "note": "Demonstrate all fifteen home, fourteen home, and a man hit back out mid-bear-off. Depends on board-tables: the rule is written in \"his home table\", and which half of the board is a player's own home table is stated there and nowhere else (issue #42)."
     },
     {
       "id": "bearing-off-move-or-remove",
@@ -395,14 +421,15 @@
       "clarity": "clear",
       "dependsOn": [
         "bearing-off-eligible",
-        "legal-destination"
+        "legal-destination",
+        "move-by-pip"
       ],
       "enabledBy": [
         "bearing-off-eligible"
       ],
       "evidence": "When the game has reached this stage, each throw entitles the player either to move forward a man or men (to the extent indicated by the throw) within the limits of his own table, or to remove men from the corresponding points.",
       "status": "mapped",
-      "note": "Demonstrate the worked distribution that follows this sentence, for both the quatre and the trois. The span is the sentence that states the rule; the worked example runs on across the {276} marker and is the demonstration, not the statement. Depends on legal-destination: a forward move inside the home table is still refused by a made point and still takes up a blot."
+      "note": "Demonstrate the worked distribution that follows this sentence, for both the quatre and the trois. The span is the sentence that states the rule; the worked example runs on across the {276} marker and is the demonstration, not the statement. Depends on move-by-pip: \"to move forward a man or men (to the extent indicated by the throw)\" is move-by-pip's forward move, one man per number, restated for this phase rather than redefined -- move-by-pip is suspended here and this rule reuses what it states (issue #42). Depends on legal-destination: a forward move inside the home table is still refused by a made point and still takes up a blot."
     },
     {
       "id": "bearing-off-highest",
