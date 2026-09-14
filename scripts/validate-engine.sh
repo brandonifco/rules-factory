@@ -23,9 +23,9 @@
 # a package published on nuget.org (restore resolves it, and RulesKernel, from there).
 #
 # Local runs only: FACTORY_DOTNET_SDK_OVERRIDE=<version> rewrites the scratch engine's
-# global.json to that SDK, for a machine that lacks the pinned one. global.json is a build input
-# provenance records (#69), so the edit is recorded by the re-produce below, like the NuGet.config
-# edit -- and the build then proves the engine on a toolchain the kernel does not pin. CI never
+# global.json to that SDK, for a machine that lacks the pinned one. global.json is a managed file
+# (decision 0018), so the re-produce below adopts it, like the NuGet.config edit, and provenance
+# records it -- and the build then proves the engine on a toolchain the kernel does not pin. CI never
 # sets it, and this script refuses it when CI=true.
 set -euo pipefail
 
@@ -42,7 +42,8 @@ step() { printf '\n==> %s\n' "$*"; }
 sdk_pin() {
   python3 - "$ROOT/tools/factory" <<'PY'
 import importlib.util, os, sys
-spec = importlib.util.spec_from_file_location("factory_generate_pin", os.path.join(sys.argv[1], "generate.py"))
+sys.path.insert(0, sys.argv[1])  # generate.py imports ownership.py beside it
+spec =importlib.util.spec_from_file_location("factory_generate_pin", os.path.join(sys.argv[1], "generate.py"))
 module = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(module)
 print(module.SDK_VERSION)
@@ -107,8 +108,8 @@ fi
 # packages folder (nothing cached from an earlier restore can stand in) and a local feed holding
 # the packed map, with source mapping that resolves RulesFactory.Maps.* from that feed alone.
 # Everything else (RulesKernel, the test packages) still comes from nuget.org. NuGet.config is
-# write-once scaffold, so produce leaves the edit alone, but it is a build input provenance
-# records (#69): the re-produce below records it.
+# a managed file (decision 0018), so the re-produce below adopts it, and provenance then records
+# it as an engine-owned build input (#69).
 export NUGET_PACKAGES="$SCRATCH/nuget-packages"
 python3 - "$ENGINE/NuGet.config" "$SCRATCH/package" <<'PY'
 import sys
@@ -135,8 +136,14 @@ PY
 # as the engine's own CI runs it, with CI=true. Only then is the result committed, and it must be
 # exactly the two lock files added and provenance.json changed.
 step "re-produce, verifying: records the edited scaffold and lock files, then runs the engine's gate"
+# NuGet.config and global.json are managed files (tools/factory/ownership.py, decision 0018): a
+# re-produce refuses a hand edit to them. The edits above are deliberate, so the re-produce adopts
+# exactly the files this script edited, as an engine with a private feed would; provenance records
+# them as engine-owned, and every later recompute's re-produce reads that adoption back.
+ADOPT=(--adopt NuGet.config)
+[ "$SDK" = "$PIN" ] || ADOPT+=(--adopt global.json)
 CI=true python3 tools/factory produce --package "$PACKAGE" --corpus "$CORPUS" --name "$NAME" --out "$ENGINE" \
-  | tee "$SCRATCH/reproduce.log"
+  "${ADOPT[@]}" | tee "$SCRATCH/reproduce.log"
 grep -qxF "committed to $(cd "$ENGINE" && pwd -P): 2 added, 1 changed, 0 removed" "$SCRATCH/reproduce.log" \
   || fail "re-producing should add the 2 lock files and change provenance.json only: $(grep '^committed to' "$SCRATCH/reproduce.log")"
 tail -1 "$SCRATCH/reproduce.log" | grep -q ', verified$' || fail "produce did not end verified"

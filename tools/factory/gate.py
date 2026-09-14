@@ -12,8 +12,9 @@ The recipe is the factory's, not the engine's, so it is rewritten on every `prod
     every test an implemented entry names exists and ran;
   * `scripts/map-overlay.py` -- merge(package, overlay), 0015 rules 1-5;
   * `scripts/engine-gate.py` -- the gate's non-dotnet checks, one subcommand each;
-  * `scripts/factory/{generate,intake,provenance}.py` -- this factory's generator and the modules
-    it needs to render every `*.g.cs` (provenance.py's embedding, which imports intake), verbatim,
+  * `scripts/factory/{generate,intake,ownership,provenance}.py` -- this factory's generator and
+    the modules it needs to render every `*.g.cs` (ownership.py, which generate.py imports;
+    provenance.py's embedding, which imports intake), verbatim,
     so the gate can regenerate without the factory. Every file written here is in
     provenance.json's `generated`, which is what ties these bytes to a factory version;
   * `.github/workflows/validate.yml` -- runs `validate.sh full` and nothing else.
@@ -36,6 +37,7 @@ FILES = {
     "scripts/engine-gate.py": (os.path.join(RECIPE, "engine-gate.py"), True),
     "scripts/factory/generate.py": (os.path.join(HERE, "generate.py"), False),
     "scripts/factory/intake.py": (os.path.join(HERE, "intake.py"), False),
+    "scripts/factory/ownership.py": (os.path.join(HERE, "ownership.py"), False),
     "scripts/factory/provenance.py": (os.path.join(HERE, "provenance.py"), False),
     ".github/workflows/validate.yml": (os.path.join(RECIPE, "validate.yml"), False),
 }

@@ -14,9 +14,11 @@ a newer map, recompute passes, and a pin hand-edited back to the old version fai
 is refused, and `--allow-dirty` records it; a factory outside git is refused.
 
 Build inputs (#69): `buildInputs` lists the engine-owned build files by rule, never a generated
-file; a fresh run and a re-run agree on it; editing global.json, the overlay or a csproj, or adding
-or removing a build input, is a `buildInputs[<path>]` mismatch and not a `generated` one; lock
-files are no claim until a record lists one, and then every lock file is held.
+or managed file (#72: those are hashed once, in `generated` and `managed`); a fresh run and a
+re-run agree on it; editing the overlay or a csproj, or adding or removing a build input, is a
+`buildInputs[<path>]` mismatch and not a `generated` one; editing global.json is a
+`managed[global.json]` mismatch until `--adopt global.json` records it; lock files are no claim
+until a record lists one, and then every lock file is held.
 
 The embedded copy is only exercised by `dotnet test` on a produced engine, which needs the
 SDK the kernel pins and network access to nuget.org; that test skips, saying why, without them.
@@ -197,7 +199,7 @@ class TestRecord(ProvenanceCase):
                      f"tests/{NAME}.Tests/Generated/ProvenanceTests.g.cs", PACKAGES_PROPS):
             self.assertIn(path, generated)
         for path in ("provenance.json", "corpus-map.overlay.json", "global.json", f"src/{NAME}/{NAME}.csproj"):
-            self.assertNotIn(path, generated, "provenance.json and the write-once scaffold are not generated")
+            self.assertNotIn(path, generated, "provenance.json, managed and engine-owned files are not generated")
         for path, digest in generated.items():
             self.assertEqual(digest, sha256_file(os.path.join(out, *path.split("/"))), path)
 
@@ -206,14 +208,22 @@ class TestRecord(ProvenanceCase):
         record = self.record(out)
         inputs = {b["path"]: b["sha256"] for b in record["buildInputs"]}
         self.assertEqual(list(inputs), sorted(inputs, key=lambda p: p.encode("utf-8")))
-        self.assertEqual(set(inputs), {"Directory.Build.props", "Directory.Packages.props", f"{NAME}.slnx",
-                                       "NuGet.config", "corpus-map.overlay.json", "global.json",
+        self.assertEqual(set(inputs), {"Directory.Packages.props", f"{NAME}.slnx", "corpus-map.overlay.json",
                                        f"src/{NAME}/{NAME}.csproj", f"tests/{NAME}.Tests/{NAME}.Tests.csproj"})
         for path, digest in inputs.items():
             self.assertEqual(digest, sha256_file(os.path.join(out, *path.split("/"))), path)
         generated = {g["path"] for g in record["generated"]}
         self.assertIn(PACKAGES_PROPS, generated)
         self.assertEqual(set(inputs) & generated, set(), "a generated file is not listed again as a build input")
+        managed = {m["path"]: m for m in record["managed"]}
+        self.assertEqual(set(managed), {"global.json", "NuGet.config", "Directory.Build.props"})
+        for path, item in managed.items():
+            self.assertEqual(item["sha256"], sha256_file(os.path.join(out, *path.split("/"))), path)
+            self.assertIsInstance(item["recipeVersion"], int)
+        self.assertEqual(set(inputs) & set(managed), set(), "a managed file is hashed once, in managed")
+        self.assertEqual({e["path"] for e in record["engineOwned"]}, set(inputs),
+                         "every engine-owned file is a build input, and hashed there")
+        self.assertFalse(any(e["adopted"] for e in record["engineOwned"]))
         self.assertNotIn("provenance.json", inputs)
 
     def test_the_rule_is_by_name_and_skips_build_output(self):
@@ -377,11 +387,14 @@ class TestRecompute(ProvenanceCase):
         out = self.produced()
         path = pathlib.Path(out, "global.json")
         path.write_text(path.read_text(encoding="utf-8").replace('"disable"', '"latestFeature"'), encoding="utf-8")
-        output = self.assert_recompute_names(out, "buildInputs[global.json].sha256")
-        self.assertNotIn("MISMATCH generated[", output, "an engine-owned file is not a generated mismatch")
-        self.produced(out=out)
+        output = self.assert_recompute_names(out, "managed[global.json].sha256")
+        self.assertNotIn("MISMATCH generated[", output, "a managed file is not a generated mismatch")
+        self.assertIn("edited by hand", output, "re-producing refuses the hand-edited managed file")
+        self.produced(out=out, extra=("--adopt", "global.json"))
+        self.assertIn({"path": "global.json", "adopted": True}, self.record(out)["engineOwned"])
+        self.assertIn("global.json", [b["path"] for b in self.record(out)["buildInputs"]])
         code, output = self.recompute(out)
-        self.assertEqual(code, 0, "re-producing records the engine's edit: " + output)
+        self.assertEqual(code, 0, "re-producing with --adopt records the engine's edit: " + output)
 
     def test_a_changed_csproj(self):
         out = self.produced()
@@ -393,9 +406,11 @@ class TestRecompute(ProvenanceCase):
     def test_an_added_and_a_removed_build_input(self):
         out = self.produced()
         pathlib.Path(out, "Directory.Build.targets").write_text("<Project />\n", encoding="utf-8")
+        os.remove(os.path.join(out, f"{NAME}.slnx"))
         os.remove(os.path.join(out, "NuGet.config"))
         self.assert_recompute_names(out, "buildInputs[Directory.Build.targets]: not recorded",
-                                    "buildInputs[NuGet.config]: recorded, recomputed nothing")
+                                    f"buildInputs[{NAME}.slnx]: recorded, recomputed nothing",
+                                    "managed[NuGet.config]: recorded, missing on disk")
 
     def test_an_edit_that_makes_produce_refuse_is_still_named(self):
         out = self.produced()
