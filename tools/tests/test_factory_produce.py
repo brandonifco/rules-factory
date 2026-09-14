@@ -10,9 +10,9 @@ the correspondence row the table's first match gives it; the overlay moves an en
 rows; an overlay that breaks 0015's merge rules is refused.
 
 What is not: that the produced solution builds and its generated tests pass. That needs the
-SDK the kernel pins and the map package on a feed, neither of which this repository's CI has;
-it was run by hand for the change that added this file (`dotnet build -warnaserror` and
-`dotnet test`, 42 tests per target framework on Part 107, 34 on backgammon).
+SDK the kernel pins and nuget.org, so it is not a unit test here: scripts/validate-engine.sh
+produces the backgammon engine from scratch and restores, builds (`-warnaserror`) and tests it,
+and CI's `engine` job runs that script with the pinned SDK installed.
 
 Run: python3 -m unittest discover -s tools/tests
 """
