@@ -39,7 +39,9 @@ The fields, and where each comes from:
     pins and the map's PackageReference live in the generated `RulesFactory.Packages.g.props`,
     which is listed here like any `*.g.cs` (#66). The list is not
     hard-coded: `Recorder` notes every path opened for writing (or renamed into place) while
-    `produce` runs, so a later step's output is picked up without touching this module.
+    `produce` runs, so a later step's output is picked up without touching this module. Its
+    root is the staging copy every step writes into (transaction.py), so the recorded paths,
+    relative to that root, are the paths the commit puts in place under `--out`.
     Writes made by a child process are not seen; no step makes any.
   * `randomness` -- `"none"`: nothing the factory emits depends on a random source.
 
