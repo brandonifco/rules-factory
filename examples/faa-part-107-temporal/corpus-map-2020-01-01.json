@@ -50,7 +50,7 @@
       "dependsOn": [],
       "evidence": "(c) The minimum flight visibility, as observed from the location of the control station must be no less than 3 statute miles. For purposes of this section, flight visibility means the average slant distance from the control station at which prominent unlighted objects may be seen and identified by day and prominent lighted objects may be seen and identified by night.",
       "status": "mapped",
-      "note": "3 statute miles, plus the section's own definition of flight visibility, which is a definition and not a threshold. The figure is fixed and this entry states it, which is why it stays clear; the definition it quotes turns on 'prominent', which the corpus never fixes, and that is prominent-objects — carried by the entry that applies the definition rather than by the one that states the figure."
+      "note": "3 statute miles, plus the section's own definition of flight visibility, which is a definition and not a threshold. The figure is fixed and this entry states it, which is why it stays clear; the definition it quotes turns on 'prominent', which the corpus never fixes, and that is prominent-objects \u2014 carried by the entry that applies the definition rather than by the one that states the figure."
     },
     {
       "id": "cloud-clearance",
@@ -133,14 +133,14 @@
       ],
       "evidence": "(c) The minimum flight visibility, as observed from the location of the control station must be no less than 3 statute miles. For purposes of this section, flight visibility means the average slant distance from the control station at which prominent unlighted objects may be seen and identified by day and prominent lighted objects may be seen and identified by night. (d) The minimum distance of the small unmanned aircraft from clouds must be no less than: (1) 500 feet below the cloud; and (2) 2,000 feet horizontally from the cloud.",
       "status": "mapped",
-      "note": "Each minimum independently, and the case where one passes and the other fails. The cloud-clearance half is fully computable from two stated figures. The visibility half is not: the quantity to be compared against 3 statute miles is the section's own 'flight visibility', whose definiens turns on which objects are 'prominent', and the corpus fixes no degree of prominence. That term is prominent-objects, split out rather than reclassifying this entry — classifying the whole entry by one of its clauses would have thrown away the 500-foot and 2,000-foot figures (0005)."
+      "note": "Each minimum independently, and the case where one passes and the other fails. The cloud-clearance half is fully computable from two stated figures. The visibility half is not: the quantity to be compared against 3 statute miles is the section's own 'flight visibility', whose definiens turns on which objects are 'prominent', and the corpus fixes no degree of prominence. That term is prominent-objects, split out rather than reclassifying this entry \u2014 classifying the whole entry by one of its clauses would have thrown away the 500-foot and 2,000-foot figures (0005)."
     },
     {
       "id": "prominent-objects",
       "name": "Which objects are prominent, for flight visibility",
       "locator": {
         "sourceId": "cfr-14-107",
-        "citation": "§ 107.51(c)"
+        "citation": "\u00a7 107.51(c)"
       },
       "kind": "operation",
       "scope": "in",
@@ -149,11 +149,11 @@
       "evidence": "For purposes of this section, flight visibility means the average slant distance from the control station at which prominent unlighted objects may be seen and identified by day and prominent lighted objects may be seen and identified by night.",
       "status": "mapped",
       "ambiguity": {
-        "question": "Part 107 does not define 'prominent', and the term carries the whole visibility metric: the distance reported as flight visibility is the distance at which prominent objects can be seen, so the degree of prominence fixes the number that § 107.51(c)'s 3-statute-mile threshold is compared against.",
+        "question": "Part 107 does not define 'prominent', and the term carries the whole visibility metric: the distance reported as flight visibility is the distance at which prominent objects can be seen, so the degree of prominence fixes the number that \u00a7 107.51(c)'s 3-statute-mile threshold is compared against.",
         "fate": "unresolved",
         "unresolvedReason": "RequiresInterpretation"
       },
-      "note": "Gate 1 of 0008 passes: applying § 107.51(c) requires fixing a degree the corpus did not fix, which is what separates flight visibility from groundspeed — an ordinary caller-supplied parameter whose meaning is not open. Gate 2 does not fire: no corpus is named for it. Gate 3's first branch does not fire either — the clause states no measure for 'prominent' in its own constituent and names no decider — so the procedure returns a gap. The same shape as well-clear and moving-vehicle-operation's 'sparsely populated area'. Found by the undefined-term sweep (#33, #34), not by inspection of the interesting entries."
+      "note": "Gate 1 of 0008 passes: applying \u00a7 107.51(c) requires fixing a degree the corpus did not fix, which is what separates flight visibility from groundspeed \u2014 an ordinary caller-supplied parameter whose meaning is not open. Gate 2 does not fire: no corpus is named for it. Gate 3's first branch does not fire either \u2014 the clause states no measure for 'prominent' in its own constituent and names no decider \u2014 so the procedure returns a gap. The same shape as well-clear and moving-vehicle-operation's 'sparsely populated area'. Found by the undefined-term sweep (#33, #34), not by inspection of the interesting entries."
     },
     {
       "id": "single-aircraft",
@@ -236,7 +236,7 @@
       "definedElsewhere": {
         "reference": "cfr-14-1"
       },
-      "note": "There is no condition under which night operation is permitted, and no exception is stated — so the rule is the word 'night' and nothing else, and § 107.3 does not define it: it defines six terms at this date and night is not among them. The engine cannot compute 'night' and not-night; it can only be told. § 107.3 puts § 1.1 of this chapter in force for this part (\"if there is a conflict… the definitions in this part control\"), so gate 2 of 0008 routes the term to definedElsewhere rather than to a gap, and the whole entry declines. Note that § 107.29(c) fixes civil twilight for purposes of paragraph (b) alone, in the paragraph next door: the drafter fixed the temporal boundary he meant to be computed and left this one to § 1.1. The limit, stated where the claim is: § 107.3's clause is a general priority rule and does not route this term to § 1.1 by name, so the claim that § 1.1 fixes it becomes checkable only when cfr-14-1 is admitted. This entry was recorded as clarity: clear with a computable rule until #33; that verdict and moving-vehicle-operation's rested on identical ground and disagreed."
+      "note": "There is no condition under which night operation is permitted, and no exception is stated \u2014 so the rule is the word 'night' and nothing else, and \u00a7 107.3 does not define it: it defines six terms at this date and night is not among them. The engine cannot compute 'night' and not-night; it can only be told. \u00a7 107.3 puts \u00a7 1.1 of this chapter in force for this part (\"if there is a conflict\u2026 the definitions in this part control\"), so gate 2 of 0008 routes the term to definedElsewhere rather than to a gap, and the whole entry declines. Note that \u00a7 107.29(c) fixes civil twilight for purposes of paragraph (b) alone, in the paragraph next door: the drafter fixed the temporal boundary he meant to be computed and left this one to \u00a7 1.1. The limit, stated where the claim is: \u00a7 107.3's clause is a general priority rule and does not route this term to \u00a7 1.1 by name, so the claim that \u00a7 1.1 fixes it becomes checkable only when cfr-14-1 is admitted. This entry was recorded as clarity: clear with a computable rule until #33; that verdict and moving-vehicle-operation's rested on identical ground and disagreed."
     },
     {
       "id": "civil-twilight-operation",
@@ -307,14 +307,14 @@
       ],
       "evidence": "(a) Each small unmanned aircraft must yield the right of way to all aircraft, airborne vehicles, and launch and reentry vehicles. Yielding the right of way means that the small unmanned aircraft must give way to the aircraft or vehicle and may not pass over, under, or ahead of it unless well clear.",
       "status": "mapped",
-      "note": "Two enumerations, both computable: three protected kinds — aircraft, airborne vehicles, launch and reentry vehicles — and three prohibited relative positions — over, under, ahead. An engine told the object is none of the three, or that the manoeuvre is none of the three, decides the case without the open term at all, and the evidence covers each. The note this replaces said \"nothing here is computed\", which its own evidence contradicts (#34). What is not computed is the exception \"unless well clear\", which is well-clear and is a gap rather than an assertion: 0008 § 2 attacked the purpose clause at this joint and it gave way, so gate 3's first branch does not fire here."
+      "note": "Two enumerations, both computable: three protected kinds \u2014 aircraft, airborne vehicles, launch and reentry vehicles \u2014 and three prohibited relative positions \u2014 over, under, ahead. An engine told the object is none of the three, or that the manoeuvre is none of the three, decides the case without the open term at all, and the evidence covers each. The note this replaces said \"nothing here is computed\", which its own evidence contradicts (#34). What is not computed is the exception \"unless well clear\", which is well-clear and is a gap rather than an assertion: 0008 \u00a7 2 attacked the purpose clause at this joint and it gave way, so gate 3's first branch does not fire here."
     },
     {
       "id": "well-clear",
       "name": "The small unmanned aircraft is well clear of the aircraft or vehicle",
       "locator": {
         "sourceId": "cfr-14-107",
-        "citation": "§ 107.37(a)"
+        "citation": "\u00a7 107.37(a)"
       },
       "kind": "operation",
       "scope": "in",
@@ -323,11 +323,11 @@
       "evidence": "Yielding the right of way means that the small unmanned aircraft must give way to the aircraft or vehicle and may not pass over, under, or ahead of it unless well clear.",
       "status": "mapped",
       "ambiguity": {
-        "question": "Part 107 does not define 'well clear', and the term carries the whole exception to the prohibition on passing over, under or ahead. 'Well clear' occurs exactly once in the corpus; § 107.3 does not define it and no other section does; and § 107.37(a) states no measure for it in its own constituent — 'must give way' is a coordinate obligation in the definiens, not what the clearance is measured against.",
+        "question": "Part 107 does not define 'well clear', and the term carries the whole exception to the prohibition on passing over, under or ahead. 'Well clear' occurs exactly once in the corpus; \u00a7 107.3 does not define it and no other section does; and \u00a7 107.37(a) states no measure for it in its own constituent \u2014 'must give way' is a coordinate obligation in the definiens, not what the clearance is measured against.",
         "fate": "unresolved",
         "unresolvedReason": "RequiresInterpretation"
       },
-      "note": "Split out of right-of-way, which keeps the two computable enumerations (0005: a standard is its own entry, and the rule that consumes it depends on it). Not kind: assertion — gate 3's first branch requires the corpus to state, in the same constituent as the open term, either the measure or the set of values, and § 107.37(a) states neither. Not a value either: the corpus states no clearance. The kind records what the engine would have to do and cannot, which is why the entry declines at runtime rather than demanding a parameter. The same shape as moving-vehicle-operation's 'sparsely populated area', and the two now return the same answer, which they did not before. Where the project holds the term determinate — 'well clear' is a recognised operational standard in aviation practice — that is fate: decision with a record, never a kind (0008 § 3); this map does not hold it, so the fate is unresolved."
+      "note": "Split out of right-of-way, which keeps the two computable enumerations (0005: a standard is its own entry, and the rule that consumes it depends on it). Not kind: assertion \u2014 gate 3's first branch requires the corpus to state, in the same constituent as the open term, either the measure or the set of values, and \u00a7 107.37(a) states neither. Not a value either: the corpus states no clearance. The kind records what the engine would have to do and cannot, which is why the entry declines at runtime rather than demanding a parameter. The same shape as moving-vehicle-operation's 'sparsely populated area', and the two now return the same answer, which they did not before. Where the project holds the term determinate \u2014 'well clear' is a recognised operational standard in aviation practice \u2014 that is fate: decision with a record, never a kind (0008 \u00a7 3); this map does not hold it, so the fate is unresolved."
     },
     {
       "id": "collision-hazard-proximity",
@@ -370,11 +370,32 @@
       "scope": "in",
       "clarity": "clear",
       "dependsOn": [
+        "direct-participation",
         "reasonable-protection"
       ],
       "evidence": "No person may operate a small unmanned aircraft over a human being unless that human being is: (a) Directly participating in the operation of the small unmanned aircraft; or (b) Located under a covered structure or inside a stationary vehicle that can provide reasonable protection from a falling small unmanned aircraft.",
       "status": "mapped",
-      "note": "One cause, not two: this version states only the participating-person and covered-structure exceptions. There is no subpart D of operational categories at this date and nothing to defer to. The evidence is the whole section, including both limbs of (b) \u2014 a covered structure and a stationary vehicle."
+      "note": "Two causes, not one: the two exceptions this version states go opposite ways. (a) is direct-participation, a gap \u2014 \"directly participating\" is undefined and the exception turns entirely on it; (b) is reasonable-protection, an assertion, because \"from a falling small unmanned aircraft\" states the measure in the same constituent (0010). There is no subpart D of operational categories at this date and nothing to defer to. The evidence is the whole section, including both limbs of (b) \u2014 a covered structure and a stationary vehicle. The note this replaces said \"One cause, not two\", counting runtime reasons before (a)'s term had been read."
+    },
+    {
+      "id": "direct-participation",
+      "name": "A human being is directly participating in the operation",
+      "locator": {
+        "sourceId": "cfr-14-107",
+        "citation": "\u00a7 107.39(a)"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "ambiguous",
+      "dependsOn": [],
+      "evidence": "(a) Directly participating in the operation of the small unmanned aircraft; or",
+      "status": "mapped",
+      "ambiguity": {
+        "question": "Part 107 does not define \"directly participating\", and the term carries the whole of the \u00a7 107.39 exception it states: whether the aircraft may be flown over a person turns on it. \"In the operation of the small unmanned aircraft\" states what the participation is in, not how direct it must be, and no determination is vested in anybody.",
+        "fate": "unresolved",
+        "unresolvedReason": "RequiresInterpretation"
+      },
+      "note": "Gate 1 passes, gate 2 does not fire, and gate 3's first arm does not fire, so the procedure returns a gap. The same term delimits who must be briefed under \u00a7 107.49(b), and participant-briefing depends on this entry for that reason; the locator names \u00a7 107.39 alone because check-locators-section.py reads one section per citation, so an entry cannot cite two \u2014 a limit of the grammar rather than of the rule, stated where the claim is made. Compare \u00a7 107.39(b), whose \"reasonable protection from a falling small unmanned aircraft\" states its measure and is an assertion: two paragraphs of one sentence go opposite ways, and whose fact it is \u2014 a third party's, in both \u2014 is not what decides it. Found by 0010's re-derivation; trial 1's undefined-term sweep recorded this term against over-human-beings only and missed the \u00a7 107.49(b) instance."
     },
     {
       "id": "intensity-reduction-in-interest-of-safety",
@@ -418,10 +439,27 @@
       "kind": "operation",
       "scope": "in",
       "clarity": "clear",
-      "dependsOn": [],
+      "dependsOn": [
+        "unaided-visual-contact"
+      ],
       "evidence": "(a) With vision that is unaided by any device other than corrective lenses, the remote pilot in command, the visual observer (if one is used), and the person manipulating the flight control of the small unmanned aircraft system must be able to see the unmanned aircraft throughout the entire flight in order to: (1) Know the unmanned aircraft's location; (2) Determine the unmanned aircraft's attitude, altitude, and direction of flight; (3) Observe the airspace for other air traffic or hazards; and (4) Determine that the unmanned aircraft does not endanger the life or property of another. (b) Throughout the entire flight of the small unmanned aircraft, the ability described in paragraph (a) of this section must be exercised by either: (1) The remote pilot in command and the person manipulating the flight controls of the small unmanned aircraft system; or (2) A visual observer.",
       "status": "mapped",
-      "note": "Whether anyone could in fact see the aircraft is not computable. The engine demands the assertion and records who made it. (b) states the two permitted combinations and the evidence covers both: the remote pilot in command together with the person manipulating the flight controls, or a visual observer \u2014 and neither."
+      "note": "(b) states the two permitted combinations and the evidence covers both: the remote pilot in command together with the person manipulating the flight controls, or a visual observer \u2014 and neither. Given the assertion, that is a membership test against a fixed pair of combinations, which is computable, and it is what survives the split. The note this replaces said \"whether anyone could in fact see the aircraft is not computable. The engine demands the assertion and records who made it\" while the entry stayed kind: operation, so the assertion it described was recorded nowhere. It is unaided-visual-contact, and this entry depends on it (0010)."
+    },
+    {
+      "id": "unaided-visual-contact",
+      "name": "The aircraft can be seen unaided throughout the entire flight, for the four stated purposes",
+      "locator": {
+        "sourceId": "cfr-14-107",
+        "citation": "\u00a7 107.31(a)"
+      },
+      "kind": "assertion",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [],
+      "evidence": "(a) With vision that is unaided by any device other than corrective lenses, the remote pilot in command, the visual observer (if one is used), and the person manipulating the flight control of the small unmanned aircraft system must be able to see the unmanned aircraft throughout the entire flight in order to: (1) Know the unmanned aircraft's location; (2) Determine the unmanned aircraft's attitude, altitude, and direction of flight; (3) Observe the airspace for other air traffic or hazards; and (4) Determine that the unmanned aircraft does not endanger the life or property of another.",
+      "status": "mapped",
+      "note": "Gate 3's first arm fires on the plainest measure in this corpus. \u00a7 107.31(a) states an open ability \u2014 \"must be able to see the unmanned aircraft throughout the entire flight\" \u2014 and fixes what it is measured against in the same constituent, with \"in order to:\" and four enumerated purposes. That is the \"sufficient to avoid a collision\" construction with four adjuncts instead of one. \u00a7 107.31(a)(4)'s \"endanger the life or property of another\" sits inside that measure and is not a second open term: \u00a7 107.31 does not prohibit endangering, it requires the ability to see well enough to determine. The assertion is asserted and withheld for each named person, attributed and recorded with the outcome, and never defaulted to true when absent; the corpus states no distance, so no figure is evidenced. Split out of visual-line-of-sight, which keeps \u00a7 107.31(b)'s two permitted combinations \u2014 0005's rule that a standard is its own entry and the rule that consumes it depends on it. Decided in 0010."
     },
     {
       "id": "visual-observer-conditions",
@@ -434,11 +472,48 @@
       "scope": "in",
       "clarity": "clear",
       "dependsOn": [
-        "visual-line-of-sight"
+        "visual-line-of-sight",
+        "effective-communication",
+        "observer-coordination"
       ],
       "evidence": "If a visual observer is used during the aircraft operation, all of the following requirements must be met: (a) The remote pilot in command, the person manipulating the flight controls of the small unmanned aircraft system, and the visual observer must maintain effective communication with each other at all times. (b) The remote pilot in command must ensure that the visual observer is able to see the unmanned aircraft in the manner specified in \u00a7 107.31. (c) The remote pilot in command, the person manipulating the flight controls of the small unmanned aircraft system, and the visual observer must coordinate to do the following: (1) Scan the airspace where the small unmanned aircraft is operating for any potential collision hazard; and (2) Maintain awareness of the position of the small unmanned aircraft through direct visual observation.",
       "status": "mapped",
-      "note": "All three requirements, not just the first: effective communication at all times, the remote pilot in command ensuring the observer can see the aircraft in the manner \u00a7 107.31 specifies, and the coordination (c) requires. With and without a visual observer, and with one whose communication requirement is unmet."
+      "note": "What survives the split is (b) and the condition of application: if a visual observer is used, the remote pilot in command must ensure the observer can see the aircraft in the manner \u00a7 107.31 specifies \u2014 computable once unaided-visual-contact is asserted, reached through visual-line-of-sight. (a) is effective-communication, a gap; (c) is observer-coordination, an assertion. The section's three requirements do not share one verdict, which is what 0010 decides. \u00a7 107.33(b)'s \"in the manner specified in \u00a7 107.31\" is a cross-reference the corpus makes in words outside check-map.py's closed pointer list, so nothing demands a declaration for it; it is answered by the dependsOn edge and named here so the omission is readable."
+    },
+    {
+      "id": "effective-communication",
+      "name": "Effective communication is maintained among the three named persons",
+      "locator": {
+        "sourceId": "cfr-14-107",
+        "citation": "\u00a7 107.33(a)"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "ambiguous",
+      "dependsOn": [],
+      "evidence": "(a) The remote pilot in command, the person manipulating the flight controls of the small unmanned aircraft system, and the visual observer must maintain effective communication with each other at all times.",
+      "status": "mapped",
+      "ambiguity": {
+        "question": "Part 107 does not define \"effective\", and the term carries the whole of \u00a7 107.33(a). The paragraph states no measure for it in its own constituent \u2014 \"with each other at all times\" fixes between whom and when, not what effectiveness is measured against \u2014 and vests the determination in nobody: it is an obligation on three named persons, not a judgement the corpus gives them.",
+        "fate": "unresolved",
+        "unresolvedReason": "RequiresInterpretation"
+      },
+      "note": "Gate 1 passes: applying the paragraph requires fixing a degree the corpus did not fix. Gate 2 does not fire \u2014 \u00a7 107.3 does not define the term and no corpus is named for it. Gate 3's first arm does not fire, so the procedure returns a gap: the same shape as well-clear, prominent-objects and moving-vehicle-operation's \"sparsely populated area\". That the operator is the only person who could answer the question is not what gate 3 asks. An operator who asserts that communication was effective has asserted a conclusion the engine cannot check and that the corpus gave it no warrant to delegate; 0008 \u00a7 2 rules that where a term's determinacy rests on knowledge outside the corpus, that belief is fate: decision with a record, never a kind. Split out of visual-observer-conditions (0010)."
+    },
+    {
+      "id": "observer-coordination",
+      "name": "The three named persons coordinate to scan the airspace and maintain awareness",
+      "locator": {
+        "sourceId": "cfr-14-107",
+        "citation": "\u00a7 107.33(c)"
+      },
+      "kind": "assertion",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [],
+      "evidence": "(c) The remote pilot in command, the person manipulating the flight controls of the small unmanned aircraft system, and the visual observer must coordinate to do the following: (1) Scan the airspace where the small unmanned aircraft is operating for any potential collision hazard; and (2) Maintain awareness of the position of the small unmanned aircraft through direct visual observation.",
+      "status": "mapped",
+      "note": "Gate 3's first arm fires: \"must coordinate\" is followed in the same constituent by \"to do the following:\" and a closed two-item enumeration \u2014 scan the airspace for any potential collision hazard, and maintain awareness of the position through direct visual observation. The infinitival adjunct states what the coordination is for exactly as \"to avoid a collision\" states what the flash rate is for. \"Maintain awareness\" is inside that enumeration and is not a second open term, and \"through direct visual observation\" fixes its means. The assertion is asserted and withheld, attributed to the three named persons and recorded with the outcome, and never defaulted to true when absent. Split out of visual-observer-conditions (0010)."
     },
     {
       "id": "preflight-actions",
@@ -450,10 +525,119 @@
       "kind": "operation",
       "scope": "in",
       "clarity": "clear",
-      "dependsOn": [],
+      "dependsOn": [
+        "preflight-risk-assessment",
+        "participant-briefing",
+        "control-links-working",
+        "sufficient-available-power",
+        "attached-object-secure",
+        "attached-object-no-adverse-effect"
+      ],
       "evidence": "Prior to flight, the remote pilot in command must: (a) Assess the operating environment, considering risks to persons and property in the immediate vicinity both on the surface and in the air. This assessment must include: (1) Local weather conditions; (2) Local airspace and any flight restrictions; (3) The location of persons and property on the surface; and (4) Other ground hazards. (b) Ensure that all persons directly participating in the small unmanned aircraft operation are informed about the operating conditions, emergency procedures, contingency procedures, roles and responsibilities, and potential hazards; (c) Ensure that all control links between ground control station and the small unmanned aircraft are working properly; (d) If the small unmanned aircraft is powered, ensure that there is enough available power for the small unmanned aircraft system to operate for the intended operational time; and (e) Ensure that any object attached or carried by the small unmanned aircraft is secure and does not adversely affect the flight characteristics or controllability of the aircraft.",
       "status": "mapped",
-      "note": "Five obligations, (a) through (e), all assertions about what a person did. The engine records them; it cannot verify any. Each of (a) through (e) asserted and unasserted. There is no paragraph (f) at this date: the summary this note replaces claimed one."
+      "note": "Five obligations in this text, and they do not share one verdict: (a), (b) and (d) are assertions, (c) is a gap, and (e) is one of each \u2014 preflight-risk-assessment, participant-briefing, control-links-working, sufficient-available-power, attached-object-secure and attached-object-no-adverse-effect. The note this replaces said \"Five obligations, all assertions about what a person did\", which is wrong twice over: three of them are about equipment rather than conduct, and two state no measure at all and are gaps (0010). Each obligation asserted and unasserted. What is left here is the conjunction: prior to flight the remote pilot in command must do all of them. \u00a7 107.49 has no paragraph (f) at this date."
+    },
+    {
+      "id": "preflight-risk-assessment",
+      "name": "The operating environment has been assessed against the stated risks",
+      "locator": {
+        "sourceId": "cfr-14-107",
+        "citation": "\u00a7 107.49(a)"
+      },
+      "kind": "assertion",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [],
+      "evidence": "(a) Assess the operating environment, considering risks to persons and property in the immediate vicinity both on the surface and in the air. This assessment must include: (1) Local weather conditions; (2) Local airspace and any flight restrictions; (3) The location of persons and property on the surface; and (4) Other ground hazards.",
+      "status": "mapped",
+      "note": "Gate 3's first arm fires twice over: \"Assess the operating environment\" is qualified in its own constituent by \"considering risks to persons and property in the immediate vicinity both on the surface and in the air\" \u2014 what the assessment is measured against \u2014 and then by a closed four-item list of what it must include. The bearer is named in the section's lead-in, the remote pilot in command. The limit, stated where the claim is made: the measure itself carries an open degree, \"immediate vicinity\", and gate 3 does not ask whether a stated measure is itself determinate. A measure that needs a measure is a shape 0008's procedure cannot see; 0010 records it rather than deciding it."
+    },
+    {
+      "id": "participant-briefing",
+      "name": "The directly participating persons have been informed of the five stated matters",
+      "locator": {
+        "sourceId": "cfr-14-107",
+        "citation": "\u00a7 107.49(b)"
+      },
+      "kind": "assertion",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [
+        "direct-participation"
+      ],
+      "evidence": "(b) Ensure that all persons directly participating in the small unmanned aircraft operation are informed about the operating conditions, emergency procedures, contingency procedures, roles and responsibilities, and potential hazards;",
+      "status": "mapped",
+      "note": "\"Informed about\" is fixed by the set stated in the same constituent \u2014 operating conditions, emergency procedures, contingency procedures, roles and responsibilities, and potential hazards \u2014 which is gate 3's second arm, the delegated choice among values the corpus fixes (\"either thrice or four times\"), and the set is quotable from this entry's own evidence. The audience is not fixed: \"all persons directly participating\" is the same undefined term as \u00a7 107.39(a), which is direct-participation, a gap, and this entry depends on it. One paragraph, two open terms, two verdicts \u2014 which is the sharpest instance of what 0010 decides."
+    },
+    {
+      "id": "control-links-working",
+      "name": "The control links are working properly",
+      "locator": {
+        "sourceId": "cfr-14-107",
+        "citation": "\u00a7 107.49(c)"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "ambiguous",
+      "dependsOn": [],
+      "evidence": "(c) Ensure that all control links between ground control station and the small unmanned aircraft are working properly;",
+      "status": "mapped",
+      "ambiguity": {
+        "question": "Part 107 does not define \"working properly\", and the term carries the whole obligation. \u00a7 107.49(c) states no measure for it in its own constituent \u2014 \"between ground control station and the small unmanned aircraft\" identifies which links, not what properly is measured against \u2014 and vests the determination in nobody.",
+        "fate": "unresolved",
+        "unresolvedReason": "RequiresInterpretation"
+      },
+      "note": "Gate 3 returns a gap, the same answer as effective-communication, prominent-objects and well-clear. That the remote pilot in command is the only person who could answer it is not gate 3's question (0008 \u00a7 2). Split out of preflight-actions (0010)."
+    },
+    {
+      "id": "sufficient-available-power",
+      "name": "There is enough available power for the intended operational time",
+      "locator": {
+        "sourceId": "cfr-14-107",
+        "citation": "\u00a7 107.49(d)"
+      },
+      "kind": "assertion",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [],
+      "evidence": "(d) If the small unmanned aircraft is powered, ensure that there is enough available power for the small unmanned aircraft system to operate for the intended operational time; and",
+      "status": "mapped",
+      "note": "\"Enough available power\" is followed in its own constituent by \"for the small unmanned aircraft system to operate for the intended operational time\" \u2014 an infinitival adjunct on enough, the same construction as \"a flash rate sufficient to avoid a collision\". Gate 3's first arm fires. The intended operational time is an ordinary caller-supplied parameter that gate 1 stops and that gets no entry of its own, as corpus-map.md rules for airspace-authorized's airspace class. Split out of preflight-actions (0010)."
+    },
+    {
+      "id": "attached-object-secure",
+      "name": "An attached or carried object is secure",
+      "locator": {
+        "sourceId": "cfr-14-107",
+        "citation": "\u00a7 107.49(e)"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "ambiguous",
+      "dependsOn": [],
+      "evidence": "Ensure that any object attached or carried by the small unmanned aircraft is secure",
+      "status": "mapped",
+      "ambiguity": {
+        "question": "Part 107 does not define \"secure\", and \u00a7 107.49(e) states no measure for it. The second conjunct \u2014 \"and does not adversely affect the flight characteristics or controllability of the aircraft\" \u2014 is a coordinate predicate of the same copula, not the measure of the first.",
+        "fate": "unresolved",
+        "unresolvedReason": "RequiresInterpretation"
+      },
+      "note": "0008 \u00a7 2 rules that a coordinate conjunct is a second obligation rather than a measure, which is exactly how \"must give way\" was refused as the measure of \"well clear\". So \u00a7 107.49(e) is two entries with opposite verdicts, this one and attached-object-no-adverse-effect. The limit, stated where the claim is made: a reader could take the second conjunct as a gloss on the first \u2014 secure enough not to affect the flight \u2014 and 0005 refused to put one sentence under two ids when it declined to split must-play-whole-throw. The nearer precedent is followed instead: right-of-way and well-clear are one sentence under two ids for precisely this reason (0010)."
+    },
+    {
+      "id": "attached-object-no-adverse-effect",
+      "name": "An attached or carried object does not adversely affect flight characteristics or controllability",
+      "locator": {
+        "sourceId": "cfr-14-107",
+        "citation": "\u00a7 107.49(e)"
+      },
+      "kind": "assertion",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [],
+      "evidence": "does not adversely affect the flight characteristics or controllability of the aircraft",
+      "status": "mapped",
+      "note": "\"Adversely affect\" states what it is measured against in its own constituent and enumerates it: the flight characteristics or controllability of the aircraft. Gate 3's first arm fires. Split from attached-object-secure, whose conjunct states no measure (0010)."
     }
   ]
 }

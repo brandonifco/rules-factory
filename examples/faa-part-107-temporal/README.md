@@ -10,26 +10,36 @@ pinned twice.
 **Slice:** the same twelve sections both times, mapped independently against each text.
 
 **Result:** 44 sections → 61. Of the twelve mapped, **eight unchanged, four changed, none
-removed.** 27 entries in 2020, 29 in 2026 — 23 and 24 as first mapped, before
+removed.** 37 entries in 2020, 40 in 2026 — 23 and 24 as first mapped, before
 [0005](../../docs/decisions/0005-a-field-earns-its-place-by-being-checkable.md) split the
 delegated standards into entries of their own,
-[#26](https://github.com/brandonifco/rules-factory/issues/26) added the fifth, and
+[#26](https://github.com/brandonifco/rules-factory/issues/26) added the fifth,
 [0008](../../docs/decisions/0008-recognising-a-delegated-standard-is-a-procedure-not-a-test.md)'s
-procedure split `well-clear` and `prominent-objects` out as gaps.
+procedure split `well-clear` and `prominent-objects` out as gaps, and
+[0010](../../docs/decisions/0010-whose-fact-it-is-does-not-decide-the-kind.md) split the ten
+terms [#11](https://github.com/brandonifco/rules-factory/issues/11) had been open over into
+five assertions and three gaps, one paragraph that splits into one of each, and one term
+that turned out to be part of another entry's measure — and gave § 107.29(d) the entry
+[#28](https://github.com/brandonifco/rules-factory/issues/28) asked for. **The entry count has
+grown by more than half over four passes and the corpus has not moved once.** What keeps being
+re-mapped is the map.
 
 ```
 2020-01-01  ->  2026-01-01
 
   ADDED    flash-rate-sufficient
+  ADDED    night-waiver-termination
   ADDED    subpart-d-categories
   CHANGED  anti-collision-lighting: name, evidence, note, locator, dependsOn
   CHANGED  civil-twilight-operation: evidence
+  CHANGED  direct-participation: evidence
   CHANGED  intensity-reduction-in-interest-of-safety: evidence, note, locator
-  CHANGED  night-operation: name, evidence, note, dependsOn
+  CHANGED  night-operation: name, evidence, note, dependsOn, crossReferences
   CHANGED  over-human-beings: evidence, note, dependsOn
-  CHANGED  preflight-actions: evidence, note
+  CHANGED  preflight-actions: evidence, note, dependsOn
   CHANGED  reasonable-protection: evidence, note
   CHANGED  single-aircraft: evidence, note
+  CHANGED  sufficient-available-power: evidence
 ```
 
 More entries report an `evidence` change than before, and that is a consequence of
@@ -50,7 +60,7 @@ a different tool and not a flag on the shipped one:
 $ python3 examples/faa-part-107/check-locators-section.py \
       examples/faa-part-107-temporal/corpus-map-2020-01-01.json \
       examples/faa-part-107-temporal/part107-2020-01-01.xml
-locators ok (all 27 checked against the section tree)
+locators ok (all 37 checked against the section tree)
 ```
 
 ## The finding worth the trial, withdrawn and replaced
@@ -99,13 +109,23 @@ only because
 procedure was applied to every entry rather than to the interesting ones. **`clarity` is the one
 field nothing compares against the corpus**, and all three errors lived in it. The undefined-term
 sweep behind this is in [trial 1's README](../faa-part-107/README.md#the-undefined-term-sweep):
-49 terms, 21 that carry a rule, 3 recorded wrong.
+49 terms, 21 that carry a rule, 3 recorded wrong — and then **seven more**, once 0010
+re-derived the ten rows the sweep had deferred to #11 instead of running the gate on them.
+Ten of twenty-one, which is the number to quote.
 
 **A finding the corrected maps make visible.** `well-clear` and `prominent-objects` are new
 entries in **both** maps, identical at both dates, so the differ reports them nowhere. That is
 the point: these gaps are not amendments, they are two places where the corpus was open all
 along and the map said otherwise. A diff of two maps can only show what the mapper noticed at
 both dates, and it is silent by construction about what was missed at both.
+
+**0010 turned that from an observation into a measurement.** It added ten entries to each map
+and **eight of the ten are identical at both dates** — only `direct-participation` and
+`sufficient-available-power` differ, and both differ in punctuation and paragraph lead-in
+rather than in rule. So twenty entry instances appeared, sixteen of them invisible to the
+differ, and every one was a place where both maps agreed and both were wrong. The ratio is
+the finding: **what a two-date diff cannot see is not a corner case here, it is most of what
+the passes have found.**
 
 **A second instance of the same shape, found by [#26](https://github.com/brandonifco/rules-factory/issues/26).**
 `intensity-reduction-in-interest-of-safety` — the remote pilot's judgement that reducing the
@@ -180,6 +200,18 @@ finding. A diff that abbreviates what it compares is not a diff.
 
 Recorded rather than quietly fixed, because it is the same failure that has recurred
 throughout this project: a check whose fidelity is lower than its apparent confidence.
+
+**And it happened again, in the same file, to a field added after it.**
+[0009](../../docs/decisions/0009-absence-is-a-verdict-with-evidence.md) added
+`crossReferences` and `absentFrom`, and neither was ever added to what the differ compares.
+So when 0010 changed `night-operation`'s carve-out from `unmapped` to `resolvedBy` — which
+is the whole of [#28](https://github.com/brandonifco/rules-factory/issues/28), the finding
+this trial's own cross-reference obligation exists for — **the differ printed nothing**. It
+is fixed here, and the fix is one line per field. What is worth keeping is why it was
+invisible: every *other* field the schema defines was already compared, so the output looked
+complete, and a diff that is complete except for the newest field is exactly the shape that
+survives review. **A schema change is a change to everything that reads the schema**, and this
+repository has now missed that twice in one file.
 
 That change is now beyond the differ's reach to miss, for a reason worth naming. § 107.39(c)
 used to be recorded as a second sentence inside an `ambiguity.question` — prose, which only a

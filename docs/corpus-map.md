@@ -115,10 +115,32 @@ outcome, and never infer it.** Defaulting an unasserted condition to true substi
 engine's judgement for a person's, silently, which is the failure the unresolved-result
 contract exists to prevent in the other direction.
 
-Two things that look like other kinds are assertions. Judgement the corpus *deliberately*
-delegates ("if the pilot determines it would be in the interest of safety") is not
-ambiguous — the corpus is entirely clear about who decides. And facts about the physical
-world are consumed, not derived.
+Judgement the corpus *deliberately* delegates ("if the pilot determines it would be in the
+interest of safety") looks ambiguous and is not — the corpus is entirely clear about who
+decides.
+
+**Whose fact it is does not decide the kind. The measure the corpus states does.** An
+assertion is a property of an **open term the corpus delegated with a stated measure or a
+fixed set**, never of the fact's source. § 107.39 settles it in one sentence: (a)'s
+*"directly participating"* and (b)'s *"reasonable protection **from a falling small unmanned
+aircraft**"* are both facts about a third party that only a person could report, and (a) is a
+gap while (b) is an assertion, because only (b) says what the term is measured against.
+§ 107.49 settles it the other way — (a)'s *"assess … considering risks to …"* and
+(c)'s *"working properly"* are two obligations on the same person, both of them things only
+that person could report, and only the first states a measure. This is the half of
+[#11](https://github.com/brandonifco/rules-factory/issues/11) 0005 left open, and it is
+decided in [0010](decisions/0010-whose-fact-it-is-does-not-decide-the-kind.md): ten of the
+twenty measured instances are assertions, six are gaps, two split inside one paragraph, and
+two turned out not to be open terms at all.
+
+**A fact the rule merely tests is a parameter, gets no entry, and is not an assertion.** The
+airspace class, the groundspeed, whether a visual observer was used, whether the aircraft is
+powered — the engine demands all of them and none of them is a rule. Gate 1 below is what
+stops them. Until 0010 this section also said *"facts about the physical world are consumed,
+not derived"* and filed them under `kind: assertion`, which contradicted gate 1 and
+contradicted this document's own ruling on `airspace-authorized`; the sentence is withdrawn
+rather than deleted, because it is how four entries were nearly reclassified in 0005's
+Consequences.
 
 **A delegated judgement is an assertion, and it is an entry of its own.** `kind` is
 entry-level, so classifying a whole entry by one of its clauses destroys the rest of it.
@@ -176,12 +198,28 @@ in the `unless` clause of a prohibition, with no measure stated in its own const
 values fixed and no third party named. § 107.37(a)'s *"unless well clear"* is that shape —
 "well clear" occurs once in the corpus, § 107.3 does not define it, and "must give way" is a
 coordinate obligation rather than a measure — and so is § 107.25(b)'s *"sparsely populated
-area"*. The procedure returns a gap for both. The map records `right-of-way` as an assertion and
-`moving-vehicle-operation` as a gap, and **nothing in the corpus draws that line**; what separates
+area"*. The procedure returns a gap for both. The map recorded `right-of-way` as an assertion and
+`moving-vehicle-operation` as a gap, and **nothing in the corpus draws that line**; what separated
 them is aviation practice, which is in neither text. Where the project believes such a term is
 determinate, that belief is `fate: decision` with a record, or `definedElsewhere` if the practice
 is a corpus that can be admitted — never a `kind`, because a claim the corpus cannot falsify is
-the ground `surprising: true` was rejected on.
+the ground `surprising: true` was rejected on. Both maps now agree with the procedure:
+`right-of-way` keeps its two computable enumerations and `well-clear` is a gap beside
+`moving-vehicle-operation`.
+
+**Four more terms sit in that residue**, and they are where the operator is plainly the only
+person who could answer: `effective-communication`, `control-links-working`,
+`direct-participation`, `attached-object-secure`.
+[0010](decisions/0010-whose-fact-it-is-does-not-decide-the-kind.md) rules that being the only
+possible source is not a reason to reclassify. An operator asserting a conclusion the engine
+cannot check, where the corpus gave no warrant to delegate, is the substitution of judgement
+`never infer it` exists to prevent, arriving from the other side.
+
+**A stated measure may itself be open, and gate 3 does not ask.** § 107.49(a) states what the
+assessment is measured against and that measure carries *"immediate vicinity"*; § 107.49(b)
+fixes five briefing topics, each open-textured. Gate 3 asks whether a measure is *stated*, not
+whether it is *determinate*, so both fire and both are assertions. Named by 0010 with two
+instances per map, and filed rather than decided.
 
 ### `evidence` is the corpus's words, not the mapper's
 
@@ -656,19 +694,29 @@ Open questions are tracked as issues so they are worked rather than admired:
   `extent` coverage is what records that a section was read.
 - [#28](https://github.com/brandonifco/rules-factory/issues/28) — a carve-out with no entry in
   either direction. Decided: [0009](decisions/0009-absence-is-a-verdict-with-evidence.md) adds
-  `crossReferences`. The Part 107 data fix is not done there and #28 stays open for it.
+  `crossReferences`; the Part 107 data fix is
+  [0010](decisions/0010-whose-fact-it-is-does-not-decide-the-kind.md) § 3 —
+  `night-waiver-termination`, `scope: in`, because a rule whose condition can no longer be met
+  is not a rule that is no longer in force.
+- [#11](https://github.com/brandonifco/rules-factory/issues/11) — nothing used
+  `kind: assertion`, and the half about facts a *person* asserts outlived 0005 and 0008.
+  Decided: [0010](decisions/0010-whose-fact-it-is-does-not-decide-the-kind.md) — whose fact
+  it is does not decide the kind, so the family dissolves into assertions and gaps under the
+  gate that already exists, and no new `kind` or field is added.
 
 **Where a decline's runtime reason lives.** Opened by 0004, answered by 0005: an entry whose
 meaning is fixed in an unadmitted corpus takes `definedElsewhere`, parallel to
 `beyondAdapter`, and the `ambiguity` block is no longer a general decline carrier.
 
-**`kind: assertion` is partly adopted.** 0005 settles that the maps were behind the schema,
-not that the category was too wide, and reclassifies the delegated standards. What it does
-**not** cover is the other half of
-[#11](https://github.com/brandonifco/rules-factory/issues/11): facts a *person* asserts —
-`visual-line-of-sight`, `preflight-actions`, `visual-observer-conditions` — which the first
-trial named and which are still `operation` with an explanatory `note`. Those are a different
-argument from a delegated standard and are not decided here.
+**`kind: assertion` is fully adopted.** 0005 settled that the maps were behind the schema,
+not that the category was too wide, and reclassified the delegated standards.
+[0010](decisions/0010-whose-fact-it-is-does-not-decide-the-kind.md) closes the other half of
+[#11](https://github.com/brandonifco/rules-factory/issues/11) — facts a *person* asserts,
+in `visual-line-of-sight`, `preflight-actions`, `visual-observer-conditions` and
+`over-human-beings` — and the answer is that the family is not a category. It is a mixture
+of the two answers gate 3 already gives, and the four entries were mis-split: ten assertion
+instances, six gaps, two paragraphs that split inside themselves, and two terms that are part
+of another entry's measure. Both Part 107 maps are migrated.
 
 **How the maps got this way is worth recording**, because it was not carelessness.
 [method.md](method.md) contradicted itself: Phase 3 said a delegated judgement is an

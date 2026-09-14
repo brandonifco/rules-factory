@@ -145,6 +145,11 @@ and `visual-line-of-sight`, `preflight-actions` and `visual-observer-conditions`
 `operation` with an explanatory note. Those are facts-a-person-asserts, not delegated
 standards. #11 stays open with the remainder named.
 
+**Closed 2026-09-14 by [0010](0010-whose-fact-it-is-does-not-decide-the-kind.md)**, which
+finds that "facts-a-person-asserts" is not a category at all: the three entries named here
+plus `over-human-beings` hold ten assertion instances and six gaps, decided by gate 3 without
+amendment. *Whose* fact it is turned out to predict nothing in either direction.
+
 ### B. A corpus that contradicts itself is `clarity: ambiguous`
 
 The `ambiguity.question` states both readings; `fate` records which governs, or declines.
@@ -266,6 +271,24 @@ longer `ambiguous` and the finding has zero instances. The finding survives in a
 assertion.** Still a change the engine cannot make on its own; still evidence that a map is a
 statement about one text.
 
+> **Withdrawn 2026-09-14, and left in place rather than edited away.** That restatement is
+> also wrong, and for the same reason the one before it was: it needs the 2020
+> `night-operation` entry to have been computable, and it was not. § 107.3 defines six
+> terms at that date and seven in 2026, and *night* is not among them at either — the 2020
+> rule **is** the undefined word and nothing else
+> ([#33](https://github.com/brandonifco/rules-factory/issues/33)). Both entries are now
+> `definedElsewhere` against 14 CFR § 1.1 and both decline with `MissingRulesData`. What
+> the corpus supports is weaker: **the amendment added a delegated standard to a rule that was
+> already undecidable, for a different reason, at both dates.** The restatement lives in
+> [examples/faa-part-107-temporal](../../examples/faa-part-107-temporal/README.md), and
+> `method.md` Phase 3 carries the same withdrawal. What survives untouched is this
+> record's own move: the 2026 entry gains an assertion dependency (`flash-rate-sufficient`)
+> that has no 2020 counterpart, without the engine changing at all.
+>
+> Three statements, three corrections, each forced by looking at `clarity` — **the one
+> field nothing compares against the corpus.** That is the durable finding, and it is the
+> reason trial 1's undefined-term sweep exists.
+
 **`hoyle-backgammon`'s migration is bigger than "an overload already anticipates it".**
 `Outcome.Pays(GameValue)` must go — a source-breaking removal from a shipped public type with
 tests on it. And `Pays(GameValue, int)` takes a bare `int`, which satisfies *demand* and
@@ -282,6 +305,11 @@ gate fails on day one.
   would not validate anyway — there is no airspace corpus in the manifest to name. They are
   `kind: assertion` per `method.md:154-156`, facts about the world the engine consumes. Same
   shape as A: an operation depending on an assertion.
+  **Corrected in place:** the last two sentences are wrong. `corpus-map.md` already ruled that
+  an elsewhere-defined *input* is a caller-supplied **parameter** that gets no entry at all,
+  and [0010](0010-whose-fact-it-is-does-not-decide-the-kind.md) withdraws the
+  `method.md:154-156` sentence this cited. The entries stay `operation`; only the
+  `definedElsewhere`-is-wrong half of the bullet stands.
 - **`direction-of-travel` was `kind: "rule"`**, outside the closed vocabulary, in both copies of
   the backgammon map — introduced yesterday and caught by this review. Nothing checked `kind`
   because nothing consumed it; row 8 makes it load-bearing for the first time. Corrected in the
