@@ -93,8 +93,8 @@ def sha256_file(path):
 def _git(factory_dir, *args):
     try:
         done = subprocess.run(["git", "-C", factory_dir, *args], stdout=subprocess.PIPE,
-                              stderr=subprocess.PIPE, text=True)
-    except OSError as error:
+                              stderr=subprocess.PIPE, text=True, timeout=60)
+    except (OSError, subprocess.TimeoutExpired) as error:
         raise intake_step.Refused(f"cannot run git to identify the factory: {error}")
     if done.returncode != 0:
         raise intake_step.Refused(f"the factory at {factory_dir} is not a git checkout whose commit can be "
