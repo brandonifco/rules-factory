@@ -270,5 +270,6 @@ def intake(package_spec, corpus_path, log=None):
         map=document, map_raw=parts["map"][1],
         manifest=manifest, manifest_raw=parts["manifest"][1],
         checker_raw=parts["checker"][1],
+        part_paths={label: path for label, (path, _) in parts.items()},
         corpus=corpus, corpus_bytes=corpus_bytes, corpus_name=os.path.basename(corpus_path),
     )
