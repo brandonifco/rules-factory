@@ -1,0 +1,412 @@
+{
+  "subpart-d-categories|entry|None|no blind entry quotes this text at this designation": {
+    "verdict": "N",
+    "reason": "Representation, not reading: the reference gives the § 107.39(c) / § 107.49(f) deferral a scope: out entry; the blind map records the same deferral as `unmapped` crossReferences because subpart D is outside its slice. 0009 allows either."
+  },
+  "None|entry|operating-limitations-compliance|no reference entry quotes this text at this designation": {
+    "verdict": "B",
+    "reason": "No reference entry quotes § 107.51's lead-in, which names who is bound (both the remote pilot in command and the person manipulating the flight controls) and makes the four limitations one obligation. Fixed: new entry operating-limitations, depending on speed-within-limit, altitude-within-limit and weather-minimums-met.",
+    "locator": "§ 107.51",
+    "quote": "A remote pilot in command and the person manipulating the flight controls of the small unmanned aircraft system must comply with all of the following operating limitations when operating a small unmanned aircraft system:"
+  },
+  "altitude-limit|evidence|max-altitude-agl|reference span quotes text the blind span omits": {
+    "verdict": "N",
+    "reason": "Split/merge artefact: the two maps divide this text into different entries and the comparator paired fragments. The blind map states 400 ft AGL, the 400-foot radius and the 400-foot allowance as three value entries; the reference states them in one."
+  },
+  "anti-collision-lighting|dependsOn|night-lighting-intensity-reduction|reference has edge to flash-rate-sufficient; no blind edge reaches it": {
+    "verdict": "N",
+    "reason": "Split/merge artefact: the two maps divide this text into different entries and the comparator paired fragments. The partner is the reduction sentence; the blind lighting entry night-anti-collision-lighting has the same edge to its flash-rate assertion."
+  },
+  "anti-collision-lighting|enabledBy|night-lighting-intensity-reduction|blind has edge to night-anti-collision-lighting; reference has no edge to what it links to": {
+    "verdict": "N",
+    "reason": "Split/merge artefact: the two maps divide this text into different entries and the comparator paired fragments. The blind map gives the reduce-but-not-extinguish bound its own entry and gates it on the lighting rule; the reference keeps that bound inside anti-collision-lighting, so there is no second entry to gate."
+  },
+  "anti-collision-lighting|evidence|night-lighting-intensity-reduction|reference span quotes text the blind span omits": {
+    "verdict": "N",
+    "reason": "Split/merge artefact: the two maps divide this text into different entries and the comparator paired fragments. Night and twilight copies of the sentence are separate blind entries; both spans support their entries."
+  },
+  "civil-twilight-operation|dependsOn|twilight-operation-lighting|reference has edge to civil-twilight-window; no blind edge reaches it": {
+    "verdict": "R",
+    "reason": "(c) defines a term (b) uses. The rule cannot be implemented without the definition, which is dependsOn; a gate names a rule that opens or closes reachability, and a definition is not one. The blind map filed the same relation under enabledBy.",
+    "locator": "§ 107.29(c)",
+    "quote": "(c) For purposes of paragraph (b) of this section, civil twilight refers to the following:"
+  },
+  "civil-twilight-operation|enabledBy|twilight-operation-lighting|blind has edge to civil-twilight-morning; reference has no edge to what it links to": {
+    "verdict": "R",
+    "reason": "Same as the civil-twilight-window row: a definition consumed by (b) is a dependsOn edge, which the reference has.",
+    "locator": "§ 107.29(c)",
+    "quote": "(c) For purposes of paragraph (b) of this section, civil twilight refers to the following:"
+  },
+  "civil-twilight-operation|enabledBy|twilight-operation-lighting|blind has edge to civil-twilight-evening; reference has no edge to what it links to": {
+    "verdict": "R",
+    "reason": "Same as the civil-twilight-window row.",
+    "locator": "§ 107.29(c)",
+    "quote": "(c) For purposes of paragraph (b) of this section, civil twilight refers to the following:"
+  },
+  "civil-twilight-operation|enabledBy|twilight-operation-lighting|blind has edge to civil-twilight-alaska; reference has no edge to what it links to": {
+    "verdict": "B",
+    "reason": "Direction: dependsOn, as above. But the edge itself is missing from the reference: civil-twilight-operation quotes (c)(3) and cannot say whether an Alaskan operation is in civil twilight without civil-twilight-alaska. Fixed: dependsOn civil-twilight-alaska added.",
+    "locator": "§ 107.29(c)(3)",
+    "quote": "(3) In Alaska, the period of civil twilight as defined in the Air Almanac."
+  },
+  "civil-twilight-operation|evidence|twilight-operation-lighting|reference span quotes text the blind span omits": {
+    "verdict": "N",
+    "reason": "Split/merge artefact: the two maps divide this text into different entries and the comparator paired fragments. The reference quotes (b) and all of (c) in one entry."
+  },
+  "civil-twilight-window|evidence|civil-twilight-evening|reference span quotes text the blind span omits": {
+    "verdict": "N",
+    "reason": "Split/merge artefact: the two maps divide this text into different entries and the comparator paired fragments. The blind map has one entry each for (c)(1) and (c)(2)."
+  },
+  "cloud-clearance|kind|cloud-clearance|differs": {
+    "verdict": "N",
+    "reason": "Split/merge artefact: the two maps divide this text into different entries and the comparator paired fragments. The blind map states the two figures as value entries and calls the combined rule an operation; the reference has the value entry and applies it in weather-minimums-met."
+  },
+  "cloud-clearance|clarity|cloud-clearance|differs": {
+    "verdict": "U",
+    "reason": "The text joins the two minimums with \"and\" and states no clearance above a cloud. Read literally the aircraft must be both 500 feet below and 2,000 feet horizontally from a cloud, which bars flight level with or above a distant cloud; read as a region, either distance suffices. The corpus does not say which. Fixed: ambiguity (unresolved, RequiresInterpretation) added to cloud-clearance; weather-minimums-met's note corrected.",
+    "locator": "§ 107.51(d)",
+    "quote": "(d) The minimum distance of the small unmanned aircraft from clouds must be no less than: (1) 500 feet below the cloud; and (2) 2,000 feet horizontally from the cloud."
+  },
+  "cloud-clearance|ambiguity|cloud-clearance|present in one map only": {
+    "verdict": "U",
+    "reason": "Same question as the clarity row on this entry.",
+    "locator": "§ 107.51(d)",
+    "quote": "(d) The minimum distance of the small unmanned aircraft from clouds must be no less than: (1) 500 feet below the cloud; and (2) 2,000 feet horizontally from the cloud."
+  },
+  "cloud-clearance|dependsOn|cloud-clearance|blind has edge to cloud-clearance-below; reference has no edge to what it links to": {
+    "verdict": "N",
+    "reason": "Split/merge artefact: the two maps divide this text into different entries and the comparator paired fragments. "
+  },
+  "cloud-clearance|dependsOn|cloud-clearance|blind has edge to cloud-clearance-horizontal; reference has no edge to what it links to": {
+    "verdict": "N",
+    "reason": "Split/merge artefact: the two maps divide this text into different entries and the comparator paired fragments. "
+  },
+  "effective-communication|evidence|vo-effective-communication|blind span quotes text the reference span omits": {
+    "verdict": "N",
+    "reason": "Span choice: the blind span adds § 107.33's lead-in (\"If a visual observer is used\"); in the reference the lead-in is carried by visual-observer-conditions, which depends on effective-communication. Both spans support their entries."
+  },
+  "flash-rate-sufficient|evidence|anti-collision-flash-rate-night|reference span quotes text the blind span omits": {
+    "verdict": "N",
+    "reason": "Span choice: the reference quotes both full sentences, the blind map the clause, once per paragraph. Both support."
+  },
+  "intensity-reduction-in-interest-of-safety|kind|night-lighting-intensity-reduction|differs": {
+    "verdict": "N",
+    "reason": "Split/merge artefact: the two maps divide this text into different entries and the comparator paired fragments. The blind map's assertion is night-lighting-safety-determination (the \"if he or she determines\" clause); its operation is the bound, which the reference keeps in anti-collision-lighting."
+  },
+  "intensity-reduction-in-interest-of-safety|dependsOn|night-lighting-intensity-reduction|blind has edge to night-lighting-safety-determination; reference has no edge to what it links to": {
+    "verdict": "N",
+    "reason": "Split/merge artefact: the two maps divide this text into different entries and the comparator paired fragments. "
+  },
+  "intensity-reduction-in-interest-of-safety|enabledBy|night-lighting-intensity-reduction|blind has edge to night-anti-collision-lighting; reference has no edge to what it links to": {
+    "verdict": "N",
+    "reason": "Split/merge artefact: the two maps divide this text into different entries and the comparator paired fragments. See the anti-collision-lighting enabledBy row."
+  },
+  "moving-vehicle-operation|evidence|no-operation-from-moving-vehicle|reference span quotes text the blind span omits": {
+    "verdict": "N",
+    "reason": "Split/merge artefact: the two maps divide this text into different entries and the comparator paired fragments. The finding behind this split is the clarity row on no-operation-from-moving-aircraft."
+  },
+  "night-operation|dependsOn|night-operation-conditions|reference has edge to night-waiver-termination; no blind edge reaches it": {
+    "verdict": "R",
+    "reason": "(a) applies only outside what (d) provides, so (a) cannot be implemented without (d). The blind map records the pointer but not the edge. After the (d) split below, the edge and the crossReference point at night-waiver-bar, the sentence about operating at night.",
+    "locator": "§ 107.29(a)",
+    "quote": "(a) Except as provided in paragraph (d) of this section, no person may operate a small unmanned aircraft system at night unless—"
+  },
+  "night-operation|evidence|night-operation-conditions|reference span quotes text the blind span omits": {
+    "verdict": "N",
+    "reason": "Split/merge artefact: the two maps divide this text into different entries and the comparator paired fragments. The blind map quotes (a)'s lead-in and gives (1) and (2) entries of their own."
+  },
+  "night-waiver-termination|definedElsewhere|night-waiver-operation-bar|present in one map only": {
+    "verdict": "B",
+    "reason": "The first sentence of (d) turns on \"at night\" exactly as (a) does, and night-operation routes that term to cfr-14-1; the reference entry for (d) did not. Fixed: (d) split as the blind map split it — night-waiver-bar (first sentence, definedElsewhere cfr-14-1) and night-waiver-termination (second sentence, which does not use the term).",
+    "locator": "§ 107.29(d)",
+    "quote": "After May 17, 2021, no person may operate a small unmanned aircraft system at night in accordance with a certificate of waiver issued prior to April 21, 2021 under § 107.200."
+  },
+  "night-waiver-termination|evidence|night-waiver-operation-bar|reference span quotes text the blind span omits": {
+    "verdict": "N",
+    "reason": "Split/merge artefact: the two maps divide this text into different entries and the comparator paired fragments. Adopted as part of the definedElsewhere fix."
+  },
+  "over-human-beings|dependsOn|no-operation-over-human-beings|reference has edge to subpart-d-categories; no blind edge reaches it": {
+    "verdict": "N",
+    "reason": "Representation: the blind map has no subpart D entry (see the subpart-d-categories entry row); its § 107.39(c) entry records the deferral as unmapped."
+  },
+  "over-human-beings|evidence|no-operation-over-human-beings|reference span quotes text the blind span omits": {
+    "verdict": "N",
+    "reason": "Split/merge artefact: the two maps divide this text into different entries and the comparator paired fragments. "
+  },
+  "participant-briefing|dependsOn|preflight-brief-participants|reference has edge to direct-participation; no blind edge reaches it": {
+    "verdict": "R",
+    "reason": "The audience of the briefing is \"all persons directly participating\", the undefined term direct-participation carries. The entry cannot be implemented without it. The blind map has no edge.",
+    "locator": "§ 107.49(b)",
+    "quote": "(b) Ensure that all persons directly participating in the small unmanned aircraft operation are informed about"
+  },
+  "preflight-actions|kind|preflight-assess-environment|differs": {
+    "verdict": "N",
+    "reason": "Merge artefact: the blind map has no entry for § 107.49 as a whole; the partner is its (a) entry."
+  },
+  "preflight-actions|dependsOn|preflight-assess-environment|reference has edge to attached-object-no-adverse-effect; no blind edge reaches it": {
+    "verdict": "N",
+    "reason": "Merge artefact: the blind map has no conjunction entry for § 107.49, so no blind edge can reach the paragraph entries."
+  },
+  "preflight-actions|dependsOn|preflight-assess-environment|reference has edge to attached-object-secure; no blind edge reaches it": {
+    "verdict": "N",
+    "reason": "Merge artefact: the blind map has no conjunction entry for § 107.49, so no blind edge can reach the paragraph entries."
+  },
+  "preflight-actions|dependsOn|preflight-assess-environment|reference has edge to control-links-working; no blind edge reaches it": {
+    "verdict": "N",
+    "reason": "Merge artefact: the blind map has no conjunction entry for § 107.49, so no blind edge can reach the paragraph entries."
+  },
+  "preflight-actions|dependsOn|preflight-assess-environment|reference has edge to participant-briefing; no blind edge reaches it": {
+    "verdict": "N",
+    "reason": "Merge artefact: the blind map has no conjunction entry for § 107.49, so no blind edge can reach the paragraph entries."
+  },
+  "preflight-actions|dependsOn|preflight-assess-environment|reference has edge to preflight-risk-assessment; no blind edge reaches it": {
+    "verdict": "N",
+    "reason": "Merge artefact: the blind map has no conjunction entry for § 107.49, so no blind edge can reach the paragraph entries."
+  },
+  "preflight-actions|dependsOn|preflight-assess-environment|reference has edge to subpart-d-categories; no blind edge reaches it": {
+    "verdict": "N",
+    "reason": "Merge artefact: the blind map has no conjunction entry for § 107.49, so no blind edge can reach the paragraph entries."
+  },
+  "preflight-actions|dependsOn|preflight-assess-environment|reference has edge to sufficient-available-power; no blind edge reaches it": {
+    "verdict": "N",
+    "reason": "Merge artefact: the blind map has no conjunction entry for § 107.49, so no blind edge can reach the paragraph entries."
+  },
+  "preflight-actions|evidence|preflight-assess-environment|reference span quotes text the blind span omits": {
+    "verdict": "N",
+    "reason": "Merge artefact, as above."
+  },
+  "preflight-risk-assessment|evidence|preflight-assess-environment|blind span quotes text the reference span omits": {
+    "verdict": "N",
+    "reason": "Span choice: the blind span adds § 107.49's lead-in; in the reference the lead-in is carried by preflight-actions."
+  },
+  "prominent-objects|kind|flight-visibility-definition|differs": {
+    "verdict": "R",
+    "reason": "The sentence is a definition and states no figure, so it is not a value. What an engine does with it is compare a reported distance, measured as the definition says, against 3 statute miles: an operation.",
+    "locator": "§ 107.51(c)",
+    "quote": "flight visibility means the average slant distance from the control station at which prominent unlighted objects may be seen and identified by day and prominent lighted objects may be seen and identified by night."
+  },
+  "prominent-objects|clarity|flight-visibility-definition|differs": {
+    "verdict": "R",
+    "reason": "\"Prominent\" is not defined in § 107.3 or elsewhere in part 107, and the degree of prominence fixes the distance that is compared against the minimum. The blind map treats the measured distance as a parameter and does not ask what it measures.",
+    "locator": "§ 107.51(c)",
+    "quote": "flight visibility means the average slant distance from the control station at which prominent unlighted objects may be seen and identified by day and prominent lighted objects may be seen and identified by night."
+  },
+  "prominent-objects|ambiguity|flight-visibility-definition|present in one map only": {
+    "verdict": "R",
+    "reason": "Same as the clarity row.",
+    "locator": "§ 107.51(c)",
+    "quote": "flight visibility means the average slant distance from the control station at which prominent unlighted objects may be seen and identified by day and prominent lighted objects may be seen and identified by night."
+  },
+  "reasonable-protection|kind|over-human-sheltered|differs": {
+    "verdict": "N",
+    "reason": "Split/merge artefact: the two maps divide this text into different entries and the comparator paired fragments. The blind assertion shelter-reasonable-protection matches reasonable-protection's kind."
+  },
+  "reasonable-protection|dependsOn|over-human-sheltered|blind has edge to shelter-reasonable-protection; reference has no edge to what it links to": {
+    "verdict": "N",
+    "reason": "Split/merge artefact: the two maps divide this text into different entries and the comparator paired fragments. "
+  },
+  "right-of-way|clarity|yield-meaning|differs": {
+    "verdict": "N",
+    "reason": "Split/merge artefact: the two maps divide this text into different entries and the comparator paired fragments. The partner quotes the \"well clear\" sentence, which the reference also carries as the ambiguous entry well-clear."
+  },
+  "right-of-way|ambiguity|yield-meaning|present in one map only": {
+    "verdict": "N",
+    "reason": "Split/merge artefact: the two maps divide this text into different entries and the comparator paired fragments. "
+  },
+  "right-of-way|dependsOn|yield-meaning|reference has edge to well-clear; no blind edge reaches it": {
+    "verdict": "N",
+    "reason": "Split/merge artefact: the two maps divide this text into different entries and the comparator paired fragments. The blind yield-right-of-way depends on yield-meaning, the counterpart of well-clear."
+  },
+  "right-of-way|evidence|yield-meaning|reference span quotes text the blind span omits": {
+    "verdict": "N",
+    "reason": "Split/merge artefact: the two maps divide this text into different entries and the comparator paired fragments. "
+  },
+  "speed-limit|clarity|groundspeed-limit|differs": {
+    "verdict": "U",
+    "reason": "87 knots is 100.12 miles per hour, so the two printed figures are not equal, and the corpus does not say which governs. The reference note on speed-within-limit already said to \"test which one governs\" without recording a question. Fixed: ambiguity (unresolved, RequiresInterpretation) on speed-limit; speed-within-limit keeps its dependsOn on it.",
+    "locator": "§ 107.51(a)",
+    "quote": "(a) The groundspeed of the small unmanned aircraft may not exceed 87 knots (100 miles per hour)."
+  },
+  "speed-limit|ambiguity|groundspeed-limit|present in one map only": {
+    "verdict": "U",
+    "reason": "Same as the clarity row.",
+    "locator": "§ 107.51(a)",
+    "quote": "(a) The groundspeed of the small unmanned aircraft may not exceed 87 knots (100 miles per hour)."
+  },
+  "speed-within-limit|kind|groundspeed-limit|differs": {
+    "verdict": "N",
+    "reason": "Merge artefact: the blind map has one entry for the figure and its application."
+  },
+  "speed-within-limit|clarity|groundspeed-limit|differs": {
+    "verdict": "N",
+    "reason": "Merge artefact: the question is recorded on speed-limit (row above), which speed-within-limit depends on — the shape weather-minimums-met and prominent-objects already have."
+  },
+  "speed-within-limit|ambiguity|groundspeed-limit|present in one map only": {
+    "verdict": "N",
+    "reason": "Merge artefact, as the clarity row."
+  },
+  "speed-within-limit|dependsOn|groundspeed-limit|reference has edge to speed-limit; no blind edge reaches it": {
+    "verdict": "N",
+    "reason": "Merge artefact."
+  },
+  "visibility-minimum|dependsOn|min-flight-visibility|blind has edge to flight-visibility-definition; reference has no edge to what it links to": {
+    "verdict": "N",
+    "reason": "Split/merge artefact: the two maps divide this text into different entries and the comparator paired fragments. The reference places the definition's edge on weather-minimums-met → prominent-objects; the figure itself is stated without it."
+  },
+  "visibility-minimum|evidence|min-flight-visibility|reference span quotes text the blind span omits": {
+    "verdict": "N",
+    "reason": "Split/merge artefact: the two maps divide this text into different entries and the comparator paired fragments. "
+  },
+  "visual-line-of-sight|kind|vlos-ability|differs": {
+    "verdict": "N",
+    "reason": "Split/merge artefact: the two maps divide this text into different entries and the comparator paired fragments. vlos-ability is unaided-visual-contact's counterpart; vlos-exercised-by is this entry's."
+  },
+  "visual-line-of-sight|dependsOn|vlos-ability|reference has edge to unaided-visual-contact; no blind edge reaches it": {
+    "verdict": "N",
+    "reason": "Split/merge artefact: the two maps divide this text into different entries and the comparator paired fragments. "
+  },
+  "visual-line-of-sight|evidence|vlos-ability|reference span quotes text the blind span omits": {
+    "verdict": "N",
+    "reason": "Split/merge artefact: the two maps divide this text into different entries and the comparator paired fragments. "
+  },
+  "visual-observer-conditions|clarity|vo-effective-communication|differs": {
+    "verdict": "N",
+    "reason": "Merge artefact: the partner is the (a) entry, whose counterpart is effective-communication, which the reference also marks ambiguous."
+  },
+  "visual-observer-conditions|ambiguity|vo-effective-communication|present in one map only": {
+    "verdict": "N",
+    "reason": "Merge artefact, as the clarity row."
+  },
+  "visual-observer-conditions|dependsOn|vo-effective-communication|reference has edge to effective-communication; no blind edge reaches it": {
+    "verdict": "N",
+    "reason": "Merge artefact: the blind map has no entry for § 107.33 as a whole."
+  },
+  "visual-observer-conditions|dependsOn|vo-effective-communication|reference has edge to observer-coordination; no blind edge reaches it": {
+    "verdict": "N",
+    "reason": "Merge artefact: the blind map has no entry for § 107.33 as a whole."
+  },
+  "visual-observer-conditions|dependsOn|vo-effective-communication|reference has edge to visual-line-of-sight; no blind edge reaches it": {
+    "verdict": "N",
+    "reason": "Merge artefact: the blind map has no entry for § 107.33 as a whole."
+  },
+  "visual-observer-conditions|evidence|vo-effective-communication|reference span quotes text the blind span omits": {
+    "verdict": "N",
+    "reason": "Merge artefact."
+  },
+  "weather-minimums-met|kind|flight-visibility-definition|differs": {
+    "verdict": "N",
+    "reason": "Merge artefact: the blind map's counterpart for § 107.51 as a whole is operating-limitations-compliance, which quotes only the lead-in and so does not link here; the partner is a fragment."
+  },
+  "weather-minimums-met|dependsOn|flight-visibility-definition|reference has edge to cloud-clearance; no blind edge reaches it": {
+    "verdict": "N",
+    "reason": "Merge artefact: the blind map's counterpart for § 107.51 as a whole is operating-limitations-compliance, which quotes only the lead-in and so does not link here; the partner is a fragment."
+  },
+  "weather-minimums-met|dependsOn|flight-visibility-definition|reference has edge to prominent-objects; no blind edge reaches it": {
+    "verdict": "N",
+    "reason": "Merge artefact: the blind map's counterpart for § 107.51 as a whole is operating-limitations-compliance, which quotes only the lead-in and so does not link here; the partner is a fragment."
+  },
+  "weather-minimums-met|dependsOn|flight-visibility-definition|reference has edge to visibility-minimum; no blind edge reaches it": {
+    "verdict": "N",
+    "reason": "Merge artefact: the blind map's counterpart for § 107.51 as a whole is operating-limitations-compliance, which quotes only the lead-in and so does not link here; the partner is a fragment."
+  },
+  "weather-minimums-met|evidence|flight-visibility-definition|reference span quotes text the blind span omits": {
+    "verdict": "N",
+    "reason": "Merge artefact: the blind map's counterpart for § 107.51 as a whole is operating-limitations-compliance, which quotes only the lead-in and so does not link here; the partner is a fragment."
+  },
+  "night-operation|clarity|night-rpic-knowledge-currency|differs (blind entry links here but is not its partner)": {
+    "verdict": "U",
+    "reason": "Whether \"initial\" qualifies \"training\" as well as \"knowledge test\" is not settled, and § 107.65 names recurrent training (b) and part 61 training (c) without saying which satisfies § 107.29(a)(1); § 107.65(d) also treats some pre-April 6, 2021 completions as compliant. The reference called the training condition computable. Fixed: new entry night-training-completed, § 107.29(a)(1), ambiguous, unresolved; night-operation depends on it.",
+    "locator": "§ 107.29(a)(1); § 107.65(b), (c)",
+    "quote": "(1) The remote pilot in command of the small unmanned aircraft has completed an initial knowledge test or training, as applicable, under § 107.65 after April 6, 2021; — § 107.65: \"(b) Completed recurrent training ...\"; \"(c) ... completed training covering the areas of knowledge specified in § 107.74.\""
+  },
+  "night-operation|ambiguity|night-rpic-knowledge-currency|present in one map only (blind entry links here but is not its partner)": {
+    "verdict": "U",
+    "reason": "Same as the clarity row.",
+    "locator": "§ 107.29(a)(1); § 107.65(b), (c)",
+    "quote": "(1) The remote pilot in command of the small unmanned aircraft has completed an initial knowledge test or training, as applicable, under § 107.65 after April 6, 2021; — § 107.65: \"(b) Completed recurrent training ...\"; \"(c) ... completed training covering the areas of knowledge specified in § 107.74.\""
+  },
+  "moving-vehicle-operation|clarity|no-operation-from-moving-aircraft|differs (blind entry links here but is not its partner)": {
+    "verdict": "B",
+    "reason": "\"Sparsely populated area\" qualifies only (b). (a) is a prohibition without exception and is clear, but the reference's one entry for the section made it ambiguous with (b). Fixed: new entry moving-aircraft-operation for (a), clear; moving-vehicle-operation narrowed to the lead-in and (b).",
+    "locator": "§ 107.25",
+    "quote": "No person may operate a small unmanned aircraft system— (a) From a moving aircraft; or (b) From a moving land or water-borne vehicle unless the small unmanned aircraft is flown over a sparsely populated area"
+  },
+  "moving-vehicle-operation|ambiguity|no-operation-from-moving-aircraft|present in one map only (blind entry links here but is not its partner)": {
+    "verdict": "B",
+    "reason": "Same as the clarity row.",
+    "locator": "§ 107.25",
+    "quote": "No person may operate a small unmanned aircraft system— (a) From a moving aircraft; or (b) From a moving land or water-borne vehicle unless the small unmanned aircraft is flown over a sparsely populated area"
+  },
+  "civil-twilight-operation,civil-twilight-alaska|crossReferences|civil-twilight-alaska|Air Almanac cited from § 107.29: declared only in the blind map": {
+    "verdict": "N",
+    "reason": "Schema, not corpus: the reference records the deferral to the Air Almanac in definedElsewhere; the blind map records it there and again as an unmapped crossReference. Whether both are required is #62."
+  },
+  "night-waiver-termination|crossReferences|night-waiver-termination|§ 107.29 cited from § 107.29: declared only in the blind map": {
+    "verdict": "B",
+    "reason": "The reference quotes the pointer and declares nothing. Fixed: unmapped declaration on night-waiver-termination — which waivers authorize deviation from § 107.29 is a fact about the waiver, supplied by the caller, not a rule of this section evaluated through it.",
+    "locator": "§ 107.29(d)",
+    "quote": "The certificates of waiver issued prior to March 16, 2021 under § 107.200 that authorize deviation from § 107.29 terminate on May 17, 2021."
+  },
+  "civil-twilight-operation|crossReferences|civil-twilight-morning|§ 107.29(b) cited from § 107.29: declared only in the blind map": {
+    "verdict": "N",
+    "reason": "Pointer and target are in one reference entry: civil-twilight-operation quotes both (b) and (c), and a declaration would resolve to itself, which check-map.py refuses."
+  },
+  "night-operation|crossReferences|night-rpic-knowledge-currency|§ 107.65 cited from § 107.29: declared only in the blind map": {
+    "verdict": "B",
+    "reason": "The reference quotes \"under § 107.65\" and declares nothing. Fixed: unmapped declaration on the new night-training-completed entry (§ 107.65 is in part 107 but outside this map's slice).",
+    "locator": "§ 107.29(a)(1); § 107.65(b), (c)",
+    "quote": "(1) The remote pilot in command of the small unmanned aircraft has completed an initial knowledge test or training, as applicable, under § 107.65 after April 6, 2021; — § 107.65: \"(b) Completed recurrent training ...\"; \"(c) ... completed training covering the areas of knowledge specified in § 107.74.\""
+  },
+  "visual-line-of-sight|crossReferences|vlos-exercised-by|§ 107.31(a) cited from § 107.31: declared only in the blind map": {
+    "verdict": "B",
+    "reason": "The reference quotes the pointer and declares nothing. Fixed: resolvedBy unaided-visual-contact on visual-line-of-sight.",
+    "locator": "§ 107.31(b)",
+    "quote": "the ability described in paragraph (a) of this section must be exercised by either:"
+  },
+  "visual-observer-conditions|crossReferences|vo-able-to-see|§ 107.31 cited from § 107.33: declared only in the blind map": {
+    "verdict": "B",
+    "reason": "The reference's note names this pointer and says only the dependsOn edge answers it. Fixed: resolvedBy visual-line-of-sight on visual-observer-conditions, the entry the edge already names.",
+    "locator": "§ 107.33(b)",
+    "quote": "(b) The remote pilot in command must ensure that the visual observer is able to see the unmanned aircraft in the manner specified in § 107.31."
+  },
+  "hazardous-material|crossReferences|no-hazardous-material|49 CFR 171.8 cited from § 107.36: declared only in the blind map": {
+    "verdict": "N",
+    "reason": "Schema, not corpus: as the Air Almanac row — definedElsewhere already names cfr-49-171 (#62)."
+  },
+  "over-human-beings|crossReferences|over-human-subpart-d|subpart D cited from § 107.39: declared only in the blind map": {
+    "verdict": "B",
+    "reason": "The reference answers the pointer with a dependsOn edge and no declaration. Fixed: resolvedBy subpart-d-categories on over-human-beings.",
+    "locator": "§ 107.39(c)",
+    "quote": "(c) The operation meets the requirements of at least one of the operational categories specified in subpart D of this part."
+  },
+  "preflight-actions|crossReferences|preflight-subpart-d-aircraft|subpart D cited from § 107.49: declared only in the blind map": {
+    "verdict": "B",
+    "reason": "As the § 107.39 row. Fixed: resolvedBy subpart-d-categories on preflight-actions.",
+    "locator": "§ 107.49(f)",
+    "quote": "(f) If the operation will be conducted over human beings under subpart D of this part, ensure that the aircraft meets the requirements of § 107.110, § 107.120(a), § 107.130(a), or § 107.140, as applicable."
+  },
+  "preflight-actions|crossReferences|preflight-subpart-d-aircraft|§ 107.110 cited from § 107.49: declared only in the blind map": {
+    "verdict": "B",
+    "reason": "The reference quotes § 107.110 and declares nothing. Fixed: resolvedBy subpart-d-categories on preflight-actions (§ 107.110 is in subpart D, which that entry declines as scope: out).",
+    "locator": "§ 107.49(f)",
+    "quote": "(f) If the operation will be conducted over human beings under subpart D of this part, ensure that the aircraft meets the requirements of § 107.110, § 107.120(a), § 107.130(a), or § 107.140, as applicable."
+  },
+  "preflight-actions|crossReferences|preflight-subpart-d-aircraft|§ 107.120(a) cited from § 107.49: declared only in the blind map": {
+    "verdict": "B",
+    "reason": "The reference quotes § 107.120(a) and declares nothing. Fixed: resolvedBy subpart-d-categories on preflight-actions (§ 107.120(a) is in subpart D, which that entry declines as scope: out).",
+    "locator": "§ 107.49(f)",
+    "quote": "(f) If the operation will be conducted over human beings under subpart D of this part, ensure that the aircraft meets the requirements of § 107.110, § 107.120(a), § 107.130(a), or § 107.140, as applicable."
+  },
+  "preflight-actions|crossReferences|preflight-subpart-d-aircraft|§ 107.130(a) cited from § 107.49: declared only in the blind map": {
+    "verdict": "B",
+    "reason": "The reference quotes § 107.130(a) and declares nothing. Fixed: resolvedBy subpart-d-categories on preflight-actions (§ 107.130(a) is in subpart D, which that entry declines as scope: out).",
+    "locator": "§ 107.49(f)",
+    "quote": "(f) If the operation will be conducted over human beings under subpart D of this part, ensure that the aircraft meets the requirements of § 107.110, § 107.120(a), § 107.130(a), or § 107.140, as applicable."
+  },
+  "preflight-actions|crossReferences|preflight-subpart-d-aircraft|§ 107.140 cited from § 107.49: declared only in the blind map": {
+    "verdict": "B",
+    "reason": "The reference quotes § 107.140 and declares nothing. Fixed: resolvedBy subpart-d-categories on preflight-actions (§ 107.140 is in subpart D, which that entry declines as scope: out).",
+    "locator": "§ 107.49(f)",
+    "quote": "(f) If the operation will be conducted over human beings under subpart D of this part, ensure that the aircraft meets the requirements of § 107.110, § 107.120(a), § 107.130(a), or § 107.140, as applicable."
+  }
+}

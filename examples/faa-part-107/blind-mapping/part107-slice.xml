@@ -1,0 +1,126 @@
+<?xml version="1.0"?>
+<DIV5 N="107" TYPE="PART" VOLUME="2" hierarchy_metadata="{&amp;quot;path&amp;quot;:&amp;quot;/on/_SUBSTITUTE_DATE_/title-14/part-107&amp;quot;,&amp;quot;citation&amp;quot;:&amp;quot;14 CFR Part 107&amp;quot;,&amp;quot;alternate_reference&amp;quot;:&amp;quot;FAR Part 107&amp;quot;}">
+<HEAD>PART 107&#x2014;SMALL UNMANNED AIRCRAFT SYSTEMS
+</HEAD>
+<AUTH>
+<HED>Authority:</HED><PSPACE>49 U.S.C. 106(f), 40101 note, 40103(b), 44701(a)(5), 46105(c), 46110, 44807.
+</PSPACE></AUTH>
+<SOURCE>
+<HED>Source:</HED><PSPACE>Docket FAA-2015-0150, Amdt. 107-1, 81 FR 42209, June 28, 2016, unless otherwise noted.
+</PSPACE></SOURCE>
+<DIV6 N="B" TYPE="SUBPART" hierarchy_metadata="{&amp;quot;path&amp;quot;:&amp;quot;/on/_SUBSTITUTE_DATE_/title-14/part-107/subpart-B&amp;quot;,&amp;quot;citation&amp;quot;:&amp;quot;14 CFR Part 107 Subpart B&amp;quot;,&amp;quot;alternate_reference&amp;quot;:&amp;quot;FAR Part 107 Subpart B&amp;quot;}">
+<HEAD>Subpart B&#x2014;Operating Rules</HEAD>
+
+<DIV8 N="107.25" TYPE="SECTION" hierarchy_metadata="{&quot;path&quot;:&quot;/on/_SUBSTITUTE_DATE_/title-14/section-107.25&quot;,&quot;citation&quot;:&quot;14 CFR 107.25&quot;,&quot;alternate_reference&quot;:&quot;FAR 107.25&quot;}">
+<HEAD>&#xA7; 107.25 Operation from a moving vehicle or aircraft.</HEAD>
+<P>No person may operate a small unmanned aircraft system&#x2014;</P>
+<P>(a) From a moving aircraft; or</P>
+<P>(b) From a moving land or water-borne vehicle unless the small unmanned aircraft is flown over a sparsely populated area and is not transporting another person's property for compensation or hire.</P>
+</DIV8>
+
+<DIV8 N="107.29" TYPE="SECTION" hierarchy_metadata="{&quot;path&quot;:&quot;/on/_SUBSTITUTE_DATE_/title-14/section-107.29&quot;,&quot;citation&quot;:&quot;14 CFR 107.29&quot;,&quot;alternate_reference&quot;:&quot;FAR 107.29&quot;}">
+<HEAD>&#xA7; 107.29 Operation at night.</HEAD>
+<P>(a) Except as provided in paragraph (d) of this section, no person may operate a small unmanned aircraft system at night unless&#x2014;</P>
+<P>(1) The remote pilot in command of the small unmanned aircraft has completed an initial knowledge test or training, as applicable, under &#xA7; 107.65 after April 6, 2021; and</P>
+<P>(2) The small unmanned aircraft has lighted anti-collision lighting visible for at least 3 statute miles that has a flash rate sufficient to avoid a collision. The remote pilot in command may reduce the intensity of, but may not extinguish, the anti-collision lighting if he or she determines that, because of operating conditions, it would be in the interest of safety to do so.</P>
+<P>(b) No person may operate a small unmanned aircraft system during periods of civil twilight unless the small unmanned aircraft has lighted anti-collision lighting visible for at least 3 statute miles that has a flash rate sufficient to avoid a collision. The remote pilot in command may reduce the intensity of, but may not extinguish, the anti-collision lighting if he or she determines that, because of operating conditions, it would be in the interest of safety to do so.</P>
+<P>(c) For purposes of paragraph (b) of this section, civil twilight refers to the following:</P>
+<P>(1) Except for Alaska, a period of time that begins 30 minutes before official sunrise and ends at official sunrise;</P>
+<P>(2) Except for Alaska, a period of time that begins at official sunset and ends 30 minutes after official sunset; and</P>
+<P>(3) In Alaska, the period of civil twilight as defined in the Air Almanac.</P>
+<P>(d) After May 17, 2021, no person may operate a small unmanned aircraft system at night in accordance with a certificate of waiver issued prior to April 21, 2021 under &#xA7; 107.200. The certificates of waiver issued prior to March 16, 2021 under &#xA7; 107.200 that authorize deviation from &#xA7; 107.29 terminate on May 17, 2021.</P>
+<CITA TYPE="N">[Docket FAA-2015-0150, Amdt. 107-1, 81 FR 42209, June 28, 2016, as amended by Amdt. 107-8, 86 FR 4382, Jan. 15, 2021; 86 FR 13631, Mar. 10, 2020]
+</CITA>
+</DIV8>
+
+<DIV8 N="107.31" TYPE="SECTION" hierarchy_metadata="{&quot;path&quot;:&quot;/on/_SUBSTITUTE_DATE_/title-14/section-107.31&quot;,&quot;citation&quot;:&quot;14 CFR 107.31&quot;,&quot;alternate_reference&quot;:&quot;FAR 107.31&quot;}">
+<HEAD>&#xA7; 107.31 Visual line of sight aircraft operation.</HEAD>
+<P>(a) With vision that is unaided by any device other than corrective lenses, the remote pilot in command, the visual observer (if one is used), and the person manipulating the flight control of the small unmanned aircraft system must be able to see the unmanned aircraft throughout the entire flight in order to:</P>
+<P>(1) Know the unmanned aircraft's location;</P>
+<P>(2) Determine the unmanned aircraft's attitude, altitude, and direction of flight;</P>
+<P>(3) Observe the airspace for other air traffic or hazards; and</P>
+<P>(4) Determine that the unmanned aircraft does not endanger the life or property of another.</P>
+<P>(b) Throughout the entire flight of the small unmanned aircraft, the ability described in paragraph (a) of this section must be exercised by either:</P>
+<P>(1) The remote pilot in command and the person manipulating the flight controls of the small unmanned aircraft system; or</P>
+<P>(2) A visual observer.</P>
+</DIV8>
+
+<DIV8 N="107.33" TYPE="SECTION" hierarchy_metadata="{&quot;path&quot;:&quot;/on/_SUBSTITUTE_DATE_/title-14/section-107.33&quot;,&quot;citation&quot;:&quot;14 CFR 107.33&quot;,&quot;alternate_reference&quot;:&quot;FAR 107.33&quot;}">
+<HEAD>&#xA7; 107.33 Visual observer.</HEAD>
+<P>If a visual observer is used during the aircraft operation, all of the following requirements must be met:</P>
+<P>(a) The remote pilot in command, the person manipulating the flight controls of the small unmanned aircraft system, and the visual observer must maintain effective communication with each other at all times.</P>
+<P>(b) The remote pilot in command must ensure that the visual observer is able to see the unmanned aircraft in the manner specified in &#xA7; 107.31.</P>
+<P>(c) The remote pilot in command, the person manipulating the flight controls of the small unmanned aircraft system, and the visual observer must coordinate to do the following:</P>
+<P>(1) Scan the airspace where the small unmanned aircraft is operating for any potential collision hazard; and</P>
+<P>(2) Maintain awareness of the position of the small unmanned aircraft through direct visual observation.</P>
+</DIV8>
+
+<DIV8 N="107.35" TYPE="SECTION" hierarchy_metadata="{&quot;path&quot;:&quot;/on/_SUBSTITUTE_DATE_/title-14/section-107.35&quot;,&quot;citation&quot;:&quot;14 CFR 107.35&quot;,&quot;alternate_reference&quot;:&quot;FAR 107.35&quot;}">
+<HEAD>&#xA7; 107.35 Operation of multiple small unmanned aircraft.</HEAD>
+<P>A person may not manipulate flight controls or act as a remote pilot in command or visual observer in the operation of more than one unmanned aircraft at the same time.</P>
+<CITA TYPE="N">[Amdt. 107-8, 86 FR 4382, Jan. 15, 2021]
+</CITA>
+</DIV8>
+
+<DIV8 N="107.36" TYPE="SECTION" hierarchy_metadata="{&quot;path&quot;:&quot;/on/_SUBSTITUTE_DATE_/title-14/section-107.36&quot;,&quot;citation&quot;:&quot;14 CFR 107.36&quot;,&quot;alternate_reference&quot;:&quot;FAR 107.36&quot;}">
+<HEAD>&#xA7; 107.36 Carriage of hazardous material.</HEAD>
+<P>A small unmanned aircraft may not carry hazardous material. For purposes of this section, the term hazardous material is defined in 49 CFR 171.8.</P>
+</DIV8>
+
+<DIV8 N="107.37" TYPE="SECTION" hierarchy_metadata="{&quot;path&quot;:&quot;/on/_SUBSTITUTE_DATE_/title-14/section-107.37&quot;,&quot;citation&quot;:&quot;14 CFR 107.37&quot;,&quot;alternate_reference&quot;:&quot;FAR 107.37&quot;}">
+<HEAD>&#xA7; 107.37 Operation near aircraft; right-of-way rules.</HEAD>
+<P>(a) Each small unmanned aircraft must yield the right of way to all aircraft, airborne vehicles, and launch and reentry vehicles. Yielding the right of way means that the small unmanned aircraft must give way to the aircraft or vehicle and may not pass over, under, or ahead of it unless well clear.</P>
+<P>(b) No person may operate a small unmanned aircraft so close to another aircraft as to create a collision hazard.</P>
+</DIV8>
+
+<DIV8 N="107.39" TYPE="SECTION" hierarchy_metadata="{&quot;path&quot;:&quot;/on/_SUBSTITUTE_DATE_/title-14/section-107.39&quot;,&quot;citation&quot;:&quot;14 CFR 107.39&quot;,&quot;alternate_reference&quot;:&quot;FAR 107.39&quot;}">
+<HEAD>&#xA7; 107.39 Operation over human beings.</HEAD>
+<P>No person may operate a small unmanned aircraft over a human being unless&#x2014;</P>
+<P>(a) That human being is directly participating in the operation of the small unmanned aircraft;</P>
+<P>(b) That human being is located under a covered structure or inside a stationary vehicle that can provide reasonable protection from a falling small unmanned aircraft; or</P>
+<P>(c) The operation meets the requirements of at least one of the operational categories specified in subpart D of this part.</P>
+<CITA TYPE="N">[Amdt. 107-8, 86 FR 4382, Jan. 15, 2021]
+</CITA>
+</DIV8>
+
+<DIV8 N="107.41" TYPE="SECTION" hierarchy_metadata="{&quot;path&quot;:&quot;/on/_SUBSTITUTE_DATE_/title-14/section-107.41&quot;,&quot;citation&quot;:&quot;14 CFR 107.41&quot;,&quot;alternate_reference&quot;:&quot;FAR 107.41&quot;}">
+<HEAD>&#xA7; 107.41 Operation in certain airspace.</HEAD>
+<P>No person may operate a small unmanned aircraft in Class B, Class C, or Class D airspace or within the lateral boundaries of the surface area of Class E airspace designated for an airport unless that person has prior authorization from Air Traffic Control (ATC).</P>
+</DIV8>
+
+<DIV8 N="107.45" TYPE="SECTION" hierarchy_metadata="{&quot;path&quot;:&quot;/on/_SUBSTITUTE_DATE_/title-14/section-107.45&quot;,&quot;citation&quot;:&quot;14 CFR 107.45&quot;,&quot;alternate_reference&quot;:&quot;FAR 107.45&quot;}">
+<HEAD>&#xA7; 107.45 Operation in prohibited or restricted areas.</HEAD>
+<P>No person may operate a small unmanned aircraft in prohibited or restricted areas unless that person has permission from the using or controlling agency, as appropriate.</P>
+</DIV8>
+
+<DIV8 N="107.49" TYPE="SECTION" hierarchy_metadata="{&quot;path&quot;:&quot;/on/_SUBSTITUTE_DATE_/title-14/section-107.49&quot;,&quot;citation&quot;:&quot;14 CFR 107.49&quot;,&quot;alternate_reference&quot;:&quot;FAR 107.49&quot;}">
+<HEAD>&#xA7; 107.49 Preflight familiarization, inspection, and actions for aircraft operation.</HEAD>
+<P>Prior to flight, the remote pilot in command must:</P>
+<P>(a) Assess the operating environment, considering risks to persons and property in the immediate vicinity both on the surface and in the air. This assessment must include:</P>
+<P>(1) Local weather conditions;</P>
+<P>(2) Local airspace and any flight restrictions;</P>
+<P>(3) The location of persons and property on the surface; and</P>
+<P>(4) Other ground hazards.</P>
+<P>(b) Ensure that all persons directly participating in the small unmanned aircraft operation are informed about the operating conditions, emergency procedures, contingency procedures, roles and responsibilities, and potential hazards;</P>
+<P>(c) Ensure that all control links between ground control station and the small unmanned aircraft are working properly;</P>
+<P>(d) If the small unmanned aircraft is powered, ensure that there is enough available power for the small unmanned aircraft system to operate for the intended operational time;</P>
+<P>(e) Ensure that any object attached or carried by the small unmanned aircraft is secure and does not adversely affect the flight characteristics or controllability of the aircraft; and</P>
+<P>(f) If the operation will be conducted over human beings under subpart D of this part, ensure that the aircraft meets the requirements of &#xA7; 107.110, &#xA7; 107.120(a), &#xA7; 107.130(a), or &#xA7; 107.140, as applicable.</P>
+<CITA TYPE="N">[Docket FAA-2015-0150, Amdt. 107-1, 81 FR 42209, June 28, 2016, as amended by Amdt. 107-8, 86 FR 4382, Jan. 15, 2021]
+</CITA>
+</DIV8>
+
+<DIV8 N="107.51" TYPE="SECTION" hierarchy_metadata="{&quot;path&quot;:&quot;/on/_SUBSTITUTE_DATE_/title-14/section-107.51&quot;,&quot;citation&quot;:&quot;14 CFR 107.51&quot;,&quot;alternate_reference&quot;:&quot;FAR 107.51&quot;}">
+<HEAD>&#xA7; 107.51 Operating limitations for small unmanned aircraft.</HEAD>
+<P>A remote pilot in command and the person manipulating the flight controls of the small unmanned aircraft system must comply with all of the following operating limitations when operating a small unmanned aircraft system:</P>
+<P>(a) The groundspeed of the small unmanned aircraft may not exceed 87 knots (100 miles per hour).</P>
+<P>(b) The altitude of the small unmanned aircraft cannot be higher than 400 feet above ground level, unless the small unmanned aircraft:</P>
+<P>(1) Is flown within a 400-foot radius of a structure; and</P>
+<P>(2) Does not fly higher than 400 feet above the structure's immediate uppermost limit.</P>
+<P>(c) The minimum flight visibility, as observed from the location of the control station must be no less than 3 statute miles. For purposes of this section, flight visibility means the average slant distance from the control station at which prominent unlighted objects may be seen and identified by day and prominent lighted objects may be seen and identified by night.</P>
+<P>(d) The minimum distance of the small unmanned aircraft from clouds must be no less than:</P>
+<P>(1) 500 feet below the cloud; and</P>
+<P>(2) 2,000 feet horizontally from the cloud.</P>
+</DIV8>
+</DIV6>
+</DIV5>

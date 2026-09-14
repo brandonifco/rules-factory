@@ -23,17 +23,20 @@ procedure was applied to every entry
 ([#33](https://github.com/brandonifco/rules-factory/issues/33),
 [#34](https://github.com/brandonifco/rules-factory/issues/34)), and
 [0010](../../docs/decisions/0010-whose-fact-it-is-does-not-decide-the-kind.md) settled the
-sweep's residue and #28's missing carve-out: **40 entries. 6 values, 24 operations, 10
-assertions. 33 clear, 7 ambiguous. 4 declined.** The delegated standards are entries split
+sweep's residue and #28's missing carve-out, and the
+[blind second mapping](blind-mapping/README.md) (0014) added four entries and three open
+questions: **44 entries. 6 values, 28 operations, 10 assertions. 34 clear, 10 ambiguous. 5
+declined.** The delegated standards are entries split
 out of the rules that consume them; so are the gaps the sweep below found. `right-of-way`
 stopped being an assertion, `night-operation` stopped being a rule this map could claim to
 have derived from the text it admitted, and the four entries #11 had been open over since
 this trial turned out to hold **both** answers rather than either.
 
 **The map is a third larger than the sections it reads suggest**, and that is the cost of
-`kind` being entry-level: twelve sections, forty entries, of which seventeen are an assertion
-or a gap — sixteen of those split out of a rule that consumes them, and
-`moving-vehicle-operation` the one gap that is a whole rule.
+`kind` being entry-level: twelve sections, forty-four entries, of which twenty are an assertion
+or a gap — seventeen of those split out of a rule that consumes them, and three gaps that are
+whole entries: `moving-vehicle-operation`, and the two figures the blind second mapping found
+open, `speed-limit` and `cloud-clearance`.
 
 Every entry's `evidence` is now a **verbatim span of the corpus**
 ([#18](https://github.com/brandonifco/rules-factory/issues/18)), and the mapper's summary of
@@ -279,7 +282,8 @@ paraphrase presented as evidence, and a quote that turns out to live in more pla
 citation admits.
 
 Which is why the result is worth stating plainly: **40 of 40 citations in the 2026 map and 37
-of 37 in the 2020 map verify, none was found wrong, and none was corrected** — 29 and 27
+of 37 in the 2020 map verify, none was found wrong, and none was corrected** (44 of 44 in the
+2026 map since the blind second mapping) — 29 and 27
 before 0010's migration, and all twenty-one entries it added verified on the first run.
 Against
 backgammon the same class of check found thirteen errors in twenty-four. That is a fact about
