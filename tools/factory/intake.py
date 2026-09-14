@@ -1,36 +1,50 @@
 """M1 of #3: intake. Open a map package, prove the corpus in hand is the one it was mapped from.
 
 An engine is only as right as the correspondence between its map and its corpus, so nothing
-is scaffolded until four things are shown, in this order, and any one that is not shown is a
+is scaffolded until five things are shown, in this order, and any one that is not shown is a
 refusal rather than a warning:
 
   1. **The package is a map package.** A `.nupkg` built by `tools/pack-map.py` (0015): its
      `build/<id>.props` declares exactly one `RulesFactoryMap` item, and the map, manifest and
      `ConsumerChecker` that item names are all inside the archive. A package without its
-     checker (pre-2.0.0 backgammon, or a hand-built zip) cannot run the consumer phase, so it
-     is refused, not tolerated.
-  2. **The corpus is verifiable here.** The map cites exactly one corpus, the manifest declares
+     checker (pre-2.0.0 backgammon, or a hand-built zip) is not one an engine's gate can use
+     (#51), so it is refused, not tolerated. The checker's bytes are read so provenance can
+     record their digest; they are never run (below).
+  2. **The map is in a schemaVersion this factory reads.** The supported set is
+     `SCHEMA_VERSIONS` in the factory's own `tools/check-map.py`, not a copy kept here. A map in
+     any other version is refused, naming the versions that would be accepted.
+  3. **The corpus is verifiable here.** The map cites exactly one corpus, the manifest declares
      it, and its `verification` is `committed-copy` (0013). A `local-copy` corpus is NOT
      VERIFIED: an engine produced from it could not re-derive its own baseline in CI.
-  3. **The corpus file is the baseline.** The map's `baseline` agrees with the manifest, and
+  4. **The corpus file is the baseline.** The map's `baseline` agrees with the manifest, and
      the file given on the command line hashes to `contentHash` under `hashDerivation`. A
      derivation this module does not know is refused -- a digest computed the wrong way is
      indistinguishable from a changed corpus.
-  4. **The package's own checker passes, in its consumer phase**, on the packaged map. Before
-     any overlay exists this is the map exactly as published, so a failure here means the
-     checker and the map disagree and no engine should be built on them.
+  5. **The factory's own checker passes, in its consumer phase**, on the packaged map and
+     manifest. Before any overlay exists this is the map exactly as published, so a failure
+     here means the map does not hold under the checks its engine will run, and no engine
+     should be built on it.
+
+**A package is data, never code (0016).** Nothing here executes, imports or `exec`s a byte
+that came out of a package: the map and manifest are parsed as JSON, and the checker that
+judges them is `tools/check-map.py` beside this factory, loaded from the factory's own
+checkout and versioned with it. The package's `ConsumerChecker` is for the engine's build,
+which chose that package by exact version and lock-file hash. The factory has chosen nothing
+yet when it opens a package, so running what the package names would hand the package the
+privileges of whoever runs the factory before a single claim in it had been checked.
 
 What intake cannot do: tell whether the map is *right* about the corpus (the publish gate's
 locator checkers and review did that), or whether a newer version of the package exists.
 
 Standard library only.
 """
+import contextlib
 import hashlib
+import importlib.util
+import io
 import json
 import os
 import re
-import subprocess
-import sys
 import tempfile
 import urllib.request
 import xml.etree.ElementTree as ET
@@ -60,6 +74,11 @@ HASH_DERIVATIONS = {
     "ecfr-versioner-xml": _sha256_of_bytes,
     "gutenberg-plain-text-including-boilerplate": _sha256_of_bytes,
 }
+
+# The factory's own checker: tools/check-map.py, one directory above this package. It is a
+# hyphenated script rather than a module, so it is loaded by path, once, on first use.
+CHECKER_PATH = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "check-map.py")
+_checker_module = None
 
 PACKAGE_REF = re.compile(r"^(?P<id>[A-Za-z0-9_.-]+)@(?P<version>[0-9A-Za-z.+-]+)$")
 THIS_DIR = "$(MSBuildThisFileDirectory)"
@@ -166,8 +185,8 @@ def read_package(nupkg):
         for field, label in (("Include", "map"), ("Manifest", "manifest"), ("ConsumerChecker", "checker")):
             path = _props_path(item[field])
             if path not in names:
-                what = ("the consumer-phase checker (#51), so the engine could not run the checks "
-                        "its own overlay can change" if label == "checker" else f"its {label}")
+                what = ("the consumer-phase checker (#51), so an engine built on it could not run the "
+                        "checks its own overlay can change" if label == "checker" else f"its {label}")
                 raise Refused(f"{package_id} {version} names {path} as {what}, and the package does not contain it")
             parts[label] = (path, archive.read(path))
     return package_id, version, parts
@@ -229,24 +248,74 @@ def verify_corpus(document, manifest, corpus_path):
     return corpus, corpus_bytes
 
 
+# --- the factory's checker ---------------------------------------------------------------
+
+
+def checker():
+    """The factory's own `tools/check-map.py`, imported in-process.
+
+    In-process rather than as a child process: it is the factory's own code, standard library
+    only, and a subprocess would add an interpreter, a timeout to choose and an exit code to
+    translate. A factory checkout without it is broken rather than refusing a package, so its
+    absence is a usage error.
+    """
+    global _checker_module
+    if _checker_module is None:
+        if not os.path.isfile(CHECKER_PATH):
+            raise Usage(f"the factory's checker {CHECKER_PATH} is missing; intake cannot run without it")
+        spec = importlib.util.spec_from_file_location("factory_check_map", CHECKER_PATH)
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        _checker_module = module
+    return _checker_module
+
+
+def check_contract(document):
+    """The package's contract is declarative: a `schemaVersion` the factory's checker reads.
+
+    There is no fallback to the package's own checker for a version the factory does not know.
+    That fallback is exactly the path by which a package would become code again (0016).
+    """
+    supported = checker().SCHEMA_VERSIONS
+    version = document.get("schemaVersion") if isinstance(document, dict) else None
+    if isinstance(version, bool) or version not in supported:
+        raise Refused(f"the map is schemaVersion {version!r}, and this factory's check-map.py reads "
+                      f"schemaVersion {', '.join(map(str, supported))}; a map in another version needs a "
+                      f"factory that reads it, not the package's own checker (0016)")
+    return version
+
+
 # --- the consumer phase ------------------------------------------------------------------
 
 
 def run_consumer_checks(parts, log=None):
+    """The factory's `check-map.py --phase consumer` on the packaged map and manifest.
+
+    Only the map and manifest are written to the scratch directory. The checker is the
+    factory's, so the package's `ConsumerChecker` bytes never reach the filesystem as a
+    script, let alone an interpreter. The checker's report is captured and passed to `log`, so
+    a refusal shows which check failed.
+    """
+    module = checker()
+    output = io.StringIO()
     with tempfile.TemporaryDirectory(prefix="factory-intake-") as scratch:
         paths = {}
-        for label, (path, data) in parts.items():
+        for label in ("map", "manifest"):
+            path, data = parts[label]
             target = os.path.join(scratch, *path.split("/"))
             os.makedirs(os.path.dirname(target), exist_ok=True)
             with open(target, "wb") as handle:
                 handle.write(data)
             paths[label] = target
-        completed = subprocess.run(
-            [sys.executable, paths["checker"], paths["map"], "--manifest", paths["manifest"], "--phase", "consumer"],
-            stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, cwd=scratch)
-    _note(log, completed.stdout.rstrip("\n"))
-    if completed.returncode != 0:
-        raise Refused(f"the package's own check-map.py --phase consumer exited {completed.returncode}")
+        argv = [paths["map"], "--manifest", paths["manifest"], "--repo-root", scratch, "--phase", "consumer"]
+        with contextlib.redirect_stdout(output), contextlib.redirect_stderr(output):
+            try:
+                code = module.main(argv)
+            except SystemExit as stop:  # argparse exits rather than returning
+                code = stop.code if isinstance(stop.code, int) else 2
+    _note(log, output.getvalue().rstrip("\n"))
+    if code != 0:
+        raise Refused(f"the factory's check-map.py --phase consumer exited {code} on the packaged map")
 
 
 # --- the whole of intake -----------------------------------------------------------------
@@ -261,15 +330,17 @@ def intake(package_spec, corpus_path, log=None):
     _note(log, f"--- intake: {package_id} {version}")
     document = _json("map", parts["map"][1])
     manifest = _json("manifest", parts["manifest"][1])
+    schema_version = check_contract(document)
+    _note(log, f"map schemaVersion {schema_version}: read by this factory's check-map.py")
     corpus, corpus_bytes = verify_corpus(document, manifest, corpus_path)
     _note(log, f"corpus {corpus['sourceId']}: {corpus['hashDerivation']} {corpus['contentHash']} matches {corpus_path}")
-    _note(log, "--- intake: the package's check-map.py --phase consumer")
+    _note(log, "--- intake: the factory's check-map.py --phase consumer (the package's checker is not run)")
     run_consumer_checks(parts, log)
     return Intake(
         package_id=package_id, version=version, nupkg_sha256=nupkg_sha256,
         map=document, map_raw=parts["map"][1],
         manifest=manifest, manifest_raw=parts["manifest"][1],
-        checker_raw=parts["checker"][1],
+        checker_raw=parts["checker"][1],  # hashed for provenance, never executed (0016)
         part_paths={label: path for label, (path, _) in parts.items()},
         corpus=corpus, corpus_bytes=corpus_bytes, corpus_name=os.path.basename(corpus_path),
     )

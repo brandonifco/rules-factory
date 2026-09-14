@@ -7,9 +7,11 @@
 
 `produce` runs, in order, and stops at the first refusal:
 
-  * intake (intake.py) -- the package is a map package carrying its checker, the corpus is
-    `committed-copy` and hashes to the map's baseline, and the package's own
-    `check-map.py --phase consumer` passes;
+  * intake (intake.py) -- the package is a map package carrying its checker, the map's
+    `schemaVersion` is one the factory reads, the corpus is `committed-copy` and hashes to the
+    map's baseline, and the factory's own `tools/check-map.py --phase consumer` passes on the
+    packaged map. Nothing from the package is ever run (0016): its checker is hashed, not
+    executed;
   * scaffold and generation (generate.py) -- a .NET solution on RulesKernel and the map
     package, written once, and the `*.g.cs` files, rewritten every run from the package map
     merged with the engine's `corpus-map.overlay.json`;

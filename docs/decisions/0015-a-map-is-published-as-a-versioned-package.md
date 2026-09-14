@@ -17,6 +17,10 @@ fields to three** (`tests`); see *The overlay*.
 than from a copy of its own. The table in *The artifact*, the bump rule for package contents,
 rule 6 of the merge and the vendoring alternative changed; nothing else did.
 
+**Amended by [0016](0016-a-map-package-is-data-not-code.md)** (#65): the packaged checker is for
+the engine's build only. The factory's intake never runs it; it checks a package with its own
+`tools/check-map.py` and refuses a `schemaVersion` that checker does not read.
+
 ## Context
 
 A vendored map goes stale without failing (#27). The backgammon map moved twice in one day and
