@@ -4,7 +4,8 @@ generates exactly what the correspondence table says.
 
 What is asserted here without a .NET SDK: two runs give byte-identical trees; a second run into
 the same directory leaves scaffold files (the overlay above all) alone and rewrites the
-generated ones; every one of Part 107's 44 entries is emitted with its citation verbatim and
+generated ones; a re-run with a newer or older version of the map leaves nothing naming the
+version it replaced, pins included (#66); every one of Part 107's 44 entries is emitted with its citation verbatim and
 the correspondence row the table's first match gives it; the overlay moves an entry between
 rows; an overlay that breaks 0015's merge rules is refused.
 
@@ -15,6 +16,7 @@ it was run by hand for the change that added this file (`dotnet build -warnaserr
 
 Run: python3 -m unittest discover -s tools/tests
 """
+import hashlib
 import importlib.util
 import io
 import json
@@ -49,6 +51,8 @@ GENERATED = (
     f"src/{NAME}/Generated/Provenance.g.cs",
     f"tests/{NAME}.Tests/Generated/ProvenanceTests.g.cs",
 )
+PACKAGES_PROPS = "RulesFactory.Packages.g.props"
+MAP_ID = "RulesFactory.Maps.FaaPart107"
 
 
 def pack(map_dir, out):
@@ -56,6 +60,15 @@ def pack(map_dir, out):
                    stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
     (name,) = [n for n in os.listdir(out) if n.endswith(".nupkg")]
     return os.path.join(out, name)
+
+
+def pack_version(map_dir, version, root):
+    """`map_dir` packed as `version`: a copy under `root` whose map-package.json says so."""
+    copy = os.path.join(root, f"v{version}", os.path.basename(map_dir))
+    shutil.copytree(map_dir, copy)
+    with open(os.path.join(copy, "map-package.json"), "w", encoding="utf-8") as handle:
+        json.dump({"version": version}, handle)
+    return pack(copy, os.path.join(root, f"v{version}", "out"))
 
 
 def tree(root):
@@ -134,7 +147,7 @@ class TestScaffold(ProduceCase):
         files = set(tree(out))
         for expected in ("global.json", "NuGet.config", "Directory.Build.props", "Directory.Packages.props",
                          f"{NAME}.slnx", f"src/{NAME}/{NAME}.csproj", f"tests/{NAME}.Tests/{NAME}.Tests.csproj",
-                         "corpus-map.overlay.json", "corpus/part107.xml", "provenance.json", *GENERATED):
+                         "corpus-map.overlay.json", "corpus/part107.xml", "provenance.json", PACKAGES_PROPS, *GENERATED):
             self.assertIn(expected, files)
         generated_code = {f for f in files if f.endswith(".cs")}
         self.assertEqual(generated_code, set(GENERATED), "every C# file the factory writes is *.g.cs")
@@ -142,9 +155,18 @@ class TestScaffold(ProduceCase):
     def test_pins(self):
         out = self.produced()
         self.assertEqual(json.loads(self.read(out, "global.json"))["sdk"], {"version": "10.0.112", "rollForward": "disable"})
-        packages = self.read(out, "Directory.Packages.props")
+        packages = self.read(out, PACKAGES_PROPS)
         self.assertIn('<PackageVersion Include="RulesKernel" Version="0.2.0" />', packages)
-        self.assertIn('<PackageVersion Include="RulesFactory.Maps.FaaPart107" Version="[1.0.0]" />', packages)
+        self.assertIn(f'<PackageVersion Include="{MAP_ID}" Version="[1.0.0]" />', packages)
+        self.assertIn(f"<ItemGroup Condition=\"'$(MSBuildProjectName)' == '{NAME}'\">", packages)
+        self.assertIn(f'<PackageReference Include="{MAP_ID}" PrivateAssets="all" />', packages)
+        central = self.read(out, "Directory.Packages.props")
+        self.assertIn(f'<Import Project="$(MSBuildThisFileDirectory){PACKAGES_PROPS}" />', central)
+        for scaffold_file in ("Directory.Packages.props", "Directory.Build.props", f"{NAME}.slnx",
+                              f"src/{NAME}/{NAME}.csproj", f"tests/{NAME}.Tests/{NAME}.Tests.csproj"):
+            text = self.read(out, scaffold_file)
+            self.assertNotIn(MAP_ID, text, f"{scaffold_file} is write-once and must not name the map package")
+            self.assertNotIn("0.2.0", text, f"{scaffold_file} is write-once and must not pin the kernel")
         build = self.read(out, "Directory.Build.props")
         self.assertIn("<RestorePackagesWithLockFile>true</RestorePackagesWithLockFile>", build)
         self.assertIn("<RestoreLockedMode", build)
@@ -167,6 +189,60 @@ class TestScaffold(ProduceCase):
         self.assertEqual(self.read(out, f"src/{NAME}/Rules/Speed.cs"), "// mine\n")
         self.assertTrue(self.read(out, "Directory.Build.props").endswith("<!-- edited -->\n"))
         self.assertIn("public static class MapEntries", self.read(out, GENERATED[0]))
+
+
+class TestMapVersionChange(ProduceCase):
+    """#66: re-producing with another version of the map moves every pin with the code."""
+
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        cls.v1 = pack_version(PART107, "1.0.0", os.path.join(cls.shared, "versions"))
+        cls.v2 = pack_version(PART107, "2.0.0", os.path.join(cls.shared, "versions"))
+
+    def assert_names_only(self, out, now, before):
+        files = tree(out)
+        for path, data in files.items():
+            # The corpus, and the factory's own source vendored for the gate (its prose happens to
+            # mention versions), are the same bytes whatever map version is produced.
+            if path.startswith(("corpus/", "scripts/factory/")):
+                continue
+            self.assertNotIn(before.encode(), data, f"{path} still names {before}")
+        self.assertIn(f'<PackageVersion Include="{MAP_ID}" Version="[{now}]" />', self.read(out, PACKAGES_PROPS))
+        for path in GENERATED[:3]:
+            self.assertIn(f"from {MAP_ID} {now}.", self.read(out, path), path)
+        self.assertIn(now, self.read(out, "backlog/README.md"))
+        record = json.loads(self.read(out, "provenance.json"))
+        self.assertEqual(record["map"]["version"], now)
+        generated = {g["path"]: g["sha256"] for g in record["generated"]}
+        self.assertIn(PACKAGES_PROPS, generated, "the pins are recorded")
+        with open(os.path.join(out, PACKAGES_PROPS), "rb") as handle:
+            self.assertEqual(generated[PACKAGES_PROPS], hashlib.sha256(handle.read()).hexdigest())
+
+    def assert_same_as_fresh(self, out, package):
+        fresh = tree(self.produced(os.path.join(self.tmp, "fresh"), package=package))
+        self.assertEqual(fresh, tree(out), "a re-run gives what a fresh run gives")
+
+    def test_upgrade(self):
+        out = self.produced(package=self.v1)
+        self.assert_names_only(out, "1.0.0", "2.0.0")
+        self.produced(out, package=self.v2)
+        self.assert_names_only(out, "2.0.0", "1.0.0")
+        self.assert_same_as_fresh(out, self.v2)
+
+    def test_downgrade(self):
+        out = self.produced(package=self.v2)
+        self.produced(out, package=self.v1)
+        self.assert_names_only(out, "1.0.0", "2.0.0")
+        self.assert_same_as_fresh(out, self.v1)
+
+    def test_engine_owned_scaffold_edits_survive_a_version_change(self):
+        out = self.produced(package=self.v1)
+        with open(os.path.join(out, "Directory.Packages.props"), "a", encoding="utf-8") as handle:
+            handle.write("<!-- edited -->\n")
+        self.produced(out, package=self.v2)
+        self.assertTrue(self.read(out, "Directory.Packages.props").endswith("<!-- edited -->\n"))
+        self.assert_names_only(out, "2.0.0", "1.0.0")
 
 
 class TestGeneration(ProduceCase):
@@ -247,6 +323,37 @@ class TestRefuses(ProduceCase):
     def test_an_overlay_item_without_status(self):
         _, output = self.overlay({"speed-limit": {"tests": []}})
         self.assertIn("does not set status", output)
+
+    def split_pin(self, relative, text):
+        out = self.produced()
+        before = tree(out)
+        with open(os.path.join(out, *relative.split("/")), "w", encoding="utf-8") as handle:
+            handle.write(text)
+        code, output = self.produce(out)
+        self.assertEqual(code, 1, output)
+        self.assertIn("REFUSED", output)
+        self.assertIn(PACKAGES_PROPS, output)
+        after = tree(out)
+        del before[relative], after[relative]
+        self.assertEqual(before, after, "nothing is written")
+        return output
+
+    def test_an_engine_scaffolded_with_the_pins_in_directory_packages_props(self):
+        output = self.split_pin("Directory.Packages.props", (
+            "<Project>\n  <ItemGroup>\n"
+            f'    <PackageVersion Include="RulesKernel" Version="0.2.0" />\n'
+            f'    <PackageVersion Include="{MAP_ID}" Version="[1.0.0]" />\n'
+            "  </ItemGroup>\n</Project>\n"))
+        self.assertIn("Directory.Packages.props pins RulesKernel", output)
+        self.assertIn(f"Directory.Packages.props pins {MAP_ID}", output)
+        self.assertIn(f"does not import {PACKAGES_PROPS}", output)
+
+    def test_a_project_that_references_the_map_itself(self):
+        output = self.split_pin(f"src/{NAME}/{NAME}.csproj", (
+            '<Project Sdk="Microsoft.NET.Sdk">\n  <ItemGroup>\n'
+            f'    <PackageReference Include="{MAP_ID}" PrivateAssets="all" />\n'
+            "  </ItemGroup>\n</Project>\n"))
+        self.assertIn(f"references the map package {MAP_ID}", output)
 
     def test_a_name_that_is_not_a_csharp_identifier(self):
         code, output = self.produce(os.path.join(self.tmp, "engine"), name="faa-part-107")

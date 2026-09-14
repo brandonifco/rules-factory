@@ -183,7 +183,8 @@ def posture(args):
 
 
 def regenerate(args):
-    """Every *.g.cs is what the factory's generator makes of merge(package, overlay), byte for byte.
+    """Every *.g.cs, and RulesFactory.Packages.g.props with the kernel and map pins, is what the
+    factory's generator makes of merge(package, overlay) and the package id and version, byte for byte.
 
     The generator (generate.py, and provenance.py for the files that embed provenance.json) is the
     copy under scripts/factory/, written by the same `factory produce` that wrote the files; that

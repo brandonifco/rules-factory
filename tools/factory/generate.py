@@ -6,9 +6,24 @@ Two kinds of output, and the line between them is the file name:
     the solution, both project files and an empty `corpus-map.overlay.json`. Written only when
     absent: after the first `produce` they belong to the engine, and a second `produce` must
     not undo an edit to them (above all to the overlay, which is the engine's own file, 0015).
-  * **Generated** -- every file named `*.g.cs`, under `Generated/`. Rewritten on every
-    `produce`, from the package map merged with the engine's overlay, and never edited by
-    hand. Hand-written code lives in any other file and is never touched.
+    So none of them may say anything the factory's inputs decide. A re-run with a different map
+    version would leave such a file naming the old one while the code and provenance.json named
+    the new (#66).
+  * **Generated** -- every file named `*.g.*`: the `*.g.cs` under `Generated/`, and
+    `RulesFactory.Packages.g.props` in the engine root. Rewritten on every `produce`, from the
+    package map merged with the engine's overlay, and never edited by hand; provenance.json
+    hashes each one. Hand-written code lives in any other file and is never touched.
+
+`RulesFactory.Packages.g.props` holds what MSBuild reads that the inputs decide: the exact
+version pins of RulesKernel and the map package, and the map's PackageReference (conditioned
+on the engine project, so the test project does not take it). Directory.Packages.props imports
+it, and keeps only the central-package-management switches and the test packages, which an
+engine may bump on its own. Because the pins now have one home, `produce` refuses, before
+writing anything, an engine whose own MSBuild files pin the kernel or the map again, reference a
+map package themselves, or whose Directory.Packages.props does not import the generated file.
+
+global.json's SDK version is the kernel's toolchain and stays scaffold: an engine may need to
+move it, and the SDK is not a package the build restores.
 
 The corpus is copied to `corpus/` on every run; intake has already proved its bytes.
 
@@ -32,8 +47,9 @@ What the generated code states:
     is not `implemented` declines with its row's reason and its own locator; every
     `implemented` entry has a hand-written handler unless its row's default can serve.
 
-Deterministic: the output depends only on the package map, the overlay, the corpus and the
-engine name. No timestamps, no machine paths, no dictionary-order accidents.
+Deterministic: the output depends only on the package map (its id and version included), the
+overlay, the corpus, the engine name and the factory's own pins. No timestamps, no machine
+paths, no dictionary-order accidents.
 """
 import json
 import os
@@ -49,6 +65,7 @@ TEST_PACKAGES = (
     ("xunit.runner.visualstudio", "2.8.2"),
 )
 OVERLAY_NAME = "corpus-map.overlay.json"
+PACKAGES_PROPS = "RulesFactory.Packages.g.props"
 OWNED = ("status", "implementedIn", "tests")
 
 ROWS = {
@@ -559,8 +576,8 @@ def _cited_locator(model, item):
 # --- scaffold ------------------------------------------------------------------------------
 
 
-def scaffold(model, corpus_file):
-    name, pid, version = model.name, model.package_id, model.version
+def scaffold(model):
+    name = model.name
     packages = "\n".join(f'    <PackageVersion Include="{p}" Version="{v}" />' for p, v in TEST_PACKAGES)
     return {
         "global.json": json.dumps({"sdk": {"version": SDK_VERSION, "rollForward": "disable"}}, indent=2) + "\n",
@@ -608,15 +625,9 @@ def scaffold(model, corpus_file):
             "    <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>\n"
             "    <CentralPackageTransitivePinningEnabled>true</CentralPackageTransitivePinningEnabled>\n"
             "  </PropertyGroup>\n\n"
-            "  <ItemGroup>\n"
-            "    <!-- The kernel is referenced, never copied. -->\n"
-            f'    <PackageVersion Include="RulesKernel" Version="{KERNEL_VERSION}" />\n'
-            "  </ItemGroup>\n\n"
-            "  <ItemGroup>\n"
-            "    <!-- The map is referenced, never copied (rules-factory decision 0015), at an exact\n"
-            "         version. The engine's own build facts live in corpus-map.overlay.json. -->\n"
-            f'    <PackageVersion Include="{pid}" Version="[{version}]" />\n'
-            "  </ItemGroup>\n\n"
+            "  <!-- The kernel and map pins, and the reference to the map, are rewritten by every\n"
+            "       `factory produce`: they are facts about what the engine was produced from. -->\n"
+            f'  <Import Project="$(MSBuildThisFileDirectory){PACKAGES_PROPS}" />\n\n'
             "  <ItemGroup>\n"
             f"{packages}\n"
             "  </ItemGroup>\n\n"
@@ -630,9 +641,8 @@ def scaffold(model, corpus_file):
             '<Project Sdk="Microsoft.NET.Sdk">\n\n'
             "  <ItemGroup>\n"
             '    <PackageReference Include="RulesKernel" />\n'
-            "    <!-- The map this engine is built from. It carries no assemblies; its build props add\n"
-            "         one RulesFactoryMap item naming the restored map, manifest and checker. -->\n"
-            f'    <PackageReference Include="{pid}" PrivateAssets="all" />\n'
+            f"    <!-- The map package is referenced from {PACKAGES_PROPS}, which `factory produce`\n"
+            "         rewrites, so the reference always names the package the code was generated from. -->\n"
             "  </ItemGroup>\n\n"
             "  <ItemGroup>\n"
             "    <!-- What this engine was produced from (tools/factory/provenance.py); a generated test\n"
@@ -659,9 +669,34 @@ def scaffold(model, corpus_file):
     }
 
 
+def packages_props(model):
+    """The pins and the map reference: everything MSBuild reads that the factory's inputs decide."""
+    return (
+        "<Project>\n\n"
+        "  <!-- <auto-generated>\n"
+        f"       Generated by rules-factory tools/factory from {xml_text(model.package_id)} {xml_text(model.version)}.\n"
+        "       Rewritten by every `factory produce`; recorded in provenance.json. Do not edit.\n"
+        "       </auto-generated> -->\n\n"
+        "  <ItemGroup>\n"
+        "    <!-- The kernel is referenced, never copied. -->\n"
+        f'    <PackageVersion Include="RulesKernel" Version="{KERNEL_VERSION}" />\n'
+        "    <!-- The map is referenced, never copied (rules-factory decision 0015), at an exact\n"
+        "         version. The engine's own build facts live in corpus-map.overlay.json. -->\n"
+        f'    <PackageVersion Include="{model.package_id}" Version="[{model.version}]" />\n'
+        "  </ItemGroup>\n\n"
+        "  <!-- The map this engine is built from, referenced by the engine project only. It carries no\n"
+        "       assemblies; its build props add one RulesFactoryMap item naming the restored map,\n"
+        "       manifest and checker. -->\n"
+        f"  <ItemGroup Condition=\"'$(MSBuildProjectName)' == '{model.name}'\">\n"
+        f'    <PackageReference Include="{model.package_id}" PrivateAssets="all" />\n'
+        "  </ItemGroup>\n\n"
+        "</Project>\n")
+
+
 def generated(model):
     name = model.name
     return {
+        PACKAGES_PROPS: packages_props(model),
         f"src/{name}/Generated/MapEntries.g.cs": map_entries_cs(model),
         f"src/{name}/Generated/Registry.g.cs": registry_cs(model),
         f"tests/{name}.Tests/Generated/CorrespondenceTests.g.cs": tests_cs(model),
@@ -672,6 +707,51 @@ def _write(path, data):
     os.makedirs(os.path.dirname(path) or ".", exist_ok=True)
     with open(path, "wb") as handle:
         handle.write(data)
+
+
+MSBUILD_FILES = (".props", ".targets", ".csproj")
+ENGINE_BUILD_SKIP = {"bin", "obj", ".git", ".vs", "corpus", "backlog", "Generated"}
+
+
+def refuse_split_pins(model, out):
+    """Refuse an engine whose own MSBuild files would contradict the generated pins.
+
+    The kernel and map versions, and the reference to the map package, have exactly one home:
+    PACKAGES_PROPS, rewritten every run. An engine-owned file that pins either package again, or
+    references a map package itself, or a Directory.Packages.props that does not import the
+    generated file (an engine scaffolded before the pins moved there), would let the build use a
+    version provenance does not name. Refused before anything is written, rather than repaired:
+    those files are the engine's, and the factory does not edit them.
+    """
+    pinned = {"RulesKernel", model.package_id}
+    found = []
+    for directory, dirs, names in os.walk(out):
+        dirs[:] = sorted(d for d in dirs if d not in ENGINE_BUILD_SKIP)
+        for file_name in sorted(names):
+            if not file_name.endswith(MSBUILD_FILES) or file_name == PACKAGES_PROPS:
+                continue
+            path = os.path.join(directory, file_name)
+            relative = os.path.relpath(path, out).replace(os.sep, "/")
+            try:
+                with open(path, encoding="utf-8") as handle:
+                    text = handle.read()
+            except (OSError, UnicodeDecodeError) as error:
+                raise GenerationError(f"cannot read {path}: {error}")
+            for element, package in re.findall(r'<(PackageVersion|PackageReference)\b[^>]*?\bInclude="([^"]+)"', text):
+                if element == "PackageVersion" and package in pinned:
+                    found.append(f"{relative} pins {package}")
+                elif element == "PackageReference" and (package == model.package_id or package.startswith("RulesFactory.Maps.")):
+                    found.append(f"{relative} references the map package {package}")
+            if re.search(r'\bVersionOverride="', text):
+                for package in re.findall(r'<PackageReference\b[^>]*?\bInclude="([^"]+)"[^>]*?\bVersionOverride="', text):
+                    if package in pinned:
+                        found.append(f"{relative} overrides the version of {package}")
+            if relative == "Directory.Packages.props" and PACKAGES_PROPS not in text:
+                found.append(f"{relative} does not import {PACKAGES_PROPS}")
+    if found:
+        raise GenerationError("the engine's own build files would pin a different kernel or map than the one "
+                              f"generated ({'; '.join(found)}); the pins and the map reference belong in "
+                              f"{PACKAGES_PROPS}, which every produce rewrites, so remove them from those files")
 
 
 def produce(intake, name, out, log=None):
@@ -685,10 +765,11 @@ def produce(intake, name, out, log=None):
         except (OSError, ValueError) as error:
             raise GenerationError(f"cannot read {overlay_path}: {error}")
     model = Model(intake, merge(intake.map, overlay), name)
+    refuse_split_pins(model, out)
     corpus_file = os.path.basename(str(intake.corpus.get("committedPath") or intake.corpus_name))
 
     written = []
-    for relative, text in scaffold(model, corpus_file).items():
+    for relative, text in scaffold(model).items():
         path = os.path.join(out, *relative.split("/"))
         if not os.path.exists(path):
             _write(path, text.encode("utf-8"))
