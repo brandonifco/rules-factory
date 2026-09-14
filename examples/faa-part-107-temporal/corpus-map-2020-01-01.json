@@ -18,8 +18,9 @@
       "scope": "in",
       "clarity": "clear",
       "dependsOn": [],
-      "evidence": "The single figure, both units as printed: 87 knots / 100 mph.",
-      "status": "mapped"
+      "evidence": "(a) The groundspeed of the small unmanned aircraft may not exceed 87 knots (100 miles per hour).",
+      "status": "mapped",
+      "note": "The single figure, both units as printed: 87 knots / 100 mph."
     },
     {
       "id": "altitude-limit",
@@ -32,8 +33,9 @@
       "scope": "in",
       "clarity": "clear",
       "dependsOn": [],
-      "evidence": "400 feet, and the 400-foot structure radius and 400-foot above-structure allowance as three distinct figures.",
-      "status": "mapped"
+      "evidence": "(b) The altitude of the small unmanned aircraft cannot be higher than 400 feet above ground level, unless the small unmanned aircraft: (1) Is flown within a 400-foot radius of a structure; and (2) Does not fly higher than 400 feet above the structure's immediate uppermost limit.",
+      "status": "mapped",
+      "note": "400 feet, and the 400-foot structure radius and 400-foot above-structure allowance as three distinct figures."
     },
     {
       "id": "visibility-minimum",
@@ -46,8 +48,9 @@
       "scope": "in",
       "clarity": "clear",
       "dependsOn": [],
-      "evidence": "3 statute miles, plus the section's own definition of flight visibility, which is a definition and not a threshold.",
-      "status": "mapped"
+      "evidence": "(c) The minimum flight visibility, as observed from the location of the control station must be no less than 3 statute miles. For purposes of this section, flight visibility means the average slant distance from the control station at which prominent unlighted objects may be seen and identified by day and prominent lighted objects may be seen and identified by night.",
+      "status": "mapped",
+      "note": "3 statute miles, plus the section's own definition of flight visibility, which is a definition and not a threshold."
     },
     {
       "id": "cloud-clearance",
@@ -60,8 +63,9 @@
       "scope": "in",
       "clarity": "clear",
       "dependsOn": [],
-      "evidence": "Both figures: 500 ft below, 2,000 ft horizontal. A single combined value would lose the distinction.",
-      "status": "mapped"
+      "evidence": "(d) The minimum distance of the small unmanned aircraft from clouds must be no less than: (1) 500 feet below the cloud; and (2) 2,000 feet horizontally from the cloud.",
+      "status": "mapped",
+      "note": "Both figures: 500 ft below, 2,000 ft horizontal. A single combined value would lose the distinction."
     },
     {
       "id": "civil-twilight-window",
@@ -74,8 +78,9 @@
       "scope": "in",
       "clarity": "clear",
       "dependsOn": [],
-      "evidence": "Both windows: 30 minutes before official sunrise to sunrise, and sunset to 30 minutes after.",
-      "status": "mapped"
+      "evidence": "(1) Except for Alaska, a period of time that begins 30 minutes before official sunrise and ends at official sunrise; (2) Except for Alaska, a period of time that begins at official sunset and ends 30 minutes after official sunset;",
+      "status": "mapped",
+      "note": "Both windows: 30 minutes before official sunrise to sunrise, and sunset to 30 minutes after."
     },
     {
       "id": "speed-within-limit",
@@ -90,8 +95,9 @@
       "dependsOn": [
         "speed-limit"
       ],
-      "evidence": "At, just below and just above 87 knots. The printed mph figure is a rounding of the knots figure; test which one governs.",
-      "status": "mapped"
+      "evidence": "(a) The groundspeed of the small unmanned aircraft may not exceed 87 knots (100 miles per hour).",
+      "status": "mapped",
+      "note": "At, just below and just above 87 knots. The printed mph figure is a rounding of the knots figure; test which one governs."
     },
     {
       "id": "altitude-within-limit",
@@ -106,8 +112,9 @@
       "dependsOn": [
         "altitude-limit"
       ],
-      "evidence": "The plain 400 ft AGL case; inside a 400 ft radius of a structure; and the boundary where the aircraft is within the radius but above the structure's uppermost limit plus 400.",
-      "status": "mapped"
+      "evidence": "(b) The altitude of the small unmanned aircraft cannot be higher than 400 feet above ground level, unless the small unmanned aircraft: (1) Is flown within a 400-foot radius of a structure; and (2) Does not fly higher than 400 feet above the structure's immediate uppermost limit.",
+      "status": "mapped",
+      "note": "The plain 400 ft AGL case; inside a 400 ft radius of a structure; and the boundary where the aircraft is within the radius but above the structure's uppermost limit plus 400."
     },
     {
       "id": "weather-minimums-met",
@@ -123,8 +130,9 @@
         "visibility-minimum",
         "cloud-clearance"
       ],
-      "evidence": "Each minimum independently, and the case where one passes and the other fails.",
-      "status": "mapped"
+      "evidence": "(c) The minimum flight visibility, as observed from the location of the control station must be no less than 3 statute miles. For purposes of this section, flight visibility means the average slant distance from the control station at which prominent unlighted objects may be seen and identified by day and prominent lighted objects may be seen and identified by night. (d) The minimum distance of the small unmanned aircraft from clouds must be no less than: (1) 500 feet below the cloud; and (2) 2,000 feet horizontally from the cloud.",
+      "status": "mapped",
+      "note": "Each minimum independently, and the case where one passes and the other fails."
     },
     {
       "id": "single-aircraft",
@@ -137,9 +145,9 @@
       "scope": "in",
       "clarity": "clear",
       "dependsOn": [],
-      "evidence": "One aircraft; two aircraft; the same person acting as visual observer for a second.",
+      "evidence": "A person may not operate or act as a remote pilot in command or visual observer in the operation of more than one unmanned aircraft at the same time.",
       "status": "mapped",
-      "note": "2020 wording bars a person who may 'operate'; the later wording bars one who may 'manipulate flight controls'."
+      "note": "One aircraft; two aircraft; and the same person acting as visual observer for a second. The prohibition binds three roles \u2014 operating, acting as remote pilot in command, acting as visual observer \u2014 and the evidence covers each. This wording bars a person who may 'operate'; the later wording bars one who may 'manipulate flight controls'."
     },
     {
       "id": "airspace-authorized",
@@ -152,9 +160,9 @@
       "scope": "in",
       "clarity": "clear",
       "dependsOn": [],
-      "evidence": "Each of Class B, C, D and the lateral surface area of Class E, with and without authorization; and Class G, which needs none.",
+      "evidence": "No person may operate a small unmanned aircraft in Class B, Class C, or Class D airspace or within the lateral boundaries of the surface area of Class E airspace designated for an airport unless that person has prior authorization from Air Traffic Control (ATC).",
       "status": "mapped",
-      "note": "The airspace class is an input. Determining it from a position requires a corpus this map has not admitted."
+      "note": "Each of Class B, C, D and the lateral surface area of Class E, with and without authorization; and Class G, which needs none. The airspace class is an input. Determining it from a position requires a corpus this map has not admitted."
     },
     {
       "id": "restricted-area-permitted",
@@ -167,9 +175,9 @@
       "scope": "in",
       "clarity": "clear",
       "dependsOn": [],
-      "evidence": "With and without permission from the using or controlling agency.",
+      "evidence": "No person may operate a small unmanned aircraft in prohibited or restricted areas unless that person has permission from the using or controlling agency, as appropriate.",
       "status": "mapped",
-      "note": "Same shape as airspace-authorized: the designation is an input, not something derived here."
+      "note": "Both designations the section states \u2014 prohibited and restricted \u2014 with and without permission from the using or controlling agency. Same shape as airspace-authorized: the designation is an input, not something derived here."
     },
     {
       "id": "moving-vehicle-operation",
@@ -182,13 +190,14 @@
       "scope": "in",
       "clarity": "ambiguous",
       "dependsOn": [],
-      "evidence": "From a moving aircraft (always prohibited); from a moving land vehicle over a sparsely populated area without carriage for hire; and the two ways the exception fails.",
+      "evidence": "No person may operate a small unmanned aircraft system\u2014 (a) From a moving aircraft; or (b) From a moving land or water-borne vehicle unless the small unmanned aircraft is flown over a sparsely populated area and is not transporting another person's property for compensation or hire.",
       "status": "mapped",
       "ambiguity": {
         "question": "Part 107 does not define 'sparsely populated area', and the term carries the whole exception in (b).",
         "fate": "unresolved",
         "unresolvedReason": "RequiresInterpretation"
-      }
+      },
+      "note": "From a moving aircraft (always prohibited); from a moving land or water-borne vehicle over a sparsely populated area without carriage for hire; and the two ways the exception fails. The summary this note replaces said \"a moving land vehicle\" and dropped the water-borne case (#26)."
     },
     {
       "id": "night-operation",
@@ -201,8 +210,9 @@
       "scope": "in",
       "clarity": "clear",
       "dependsOn": [],
-      "evidence": "Night, and not-night. There is no condition under which night operation is permitted.",
-      "status": "mapped"
+      "evidence": "(a) No person may operate a small unmanned aircraft system during night.",
+      "status": "mapped",
+      "note": "Night, and not-night. There is no condition under which night operation is permitted, and no exception is stated."
     },
     {
       "id": "civil-twilight-operation",
@@ -218,9 +228,9 @@
         "civil-twilight-window",
         "anti-collision-lighting"
       ],
-      "evidence": "Inside and outside each twilight window, with and without lighting.",
+      "evidence": "(b) No person may operate a small unmanned aircraft system during periods of civil twilight unless the small unmanned aircraft has lighted anti-collision lighting visible for at least 3 statute miles. The remote pilot in command may reduce the intensity of the anti-collision lighting if he or she determines that, because of operating conditions, it would be in the interest of safety to do so. (c) For purposes of paragraph (b) of this section, civil twilight refers to the following: (1) Except for Alaska, a period of time that begins 30 minutes before official sunrise and ends at official sunrise; (2) Except for Alaska, a period of time that begins at official sunset and ends 30 minutes after official sunset; and (3) In Alaska, the period of civil twilight as defined in the Air Almanac.",
       "status": "mapped",
-      "note": "Alaska is a separate entry: the corpus defers the definition elsewhere."
+      "note": "Inside and outside each twilight window, with and without lighting. Alaska is a separate entry: the corpus defers the definition elsewhere."
     },
     {
       "id": "civil-twilight-alaska",
@@ -233,12 +243,12 @@
       "scope": "in",
       "clarity": "clear",
       "dependsOn": [],
-      "evidence": "Cannot be evidenced from this corpus.",
+      "evidence": "(3) In Alaska, the period of civil twilight as defined in the Air Almanac.",
       "status": "declined",
       "definedElsewhere": {
         "reference": "air-almanac"
       },
-      "note": "§ 107.29(c)(3) fixes the meaning of Alaskan civil twilight in the Air Almanac, which this map has not admitted. Not an ambiguity: the corpus is clear, and the text that would settle it is elsewhere."
+      "note": "\u00a7 107.29(c)(3) fixes the meaning of Alaskan civil twilight in the Air Almanac, which this map has not admitted. Not an ambiguity: the corpus is clear, and the text that would settle it is elsewhere. Nothing beyond the quoted sentence can be evidenced from this corpus."
     },
     {
       "id": "hazardous-material",
@@ -251,12 +261,12 @@
       "scope": "in",
       "clarity": "clear",
       "dependsOn": [],
-      "evidence": "Cannot be evidenced from this corpus.",
+      "evidence": "A small unmanned aircraft may not carry hazardous material. For purposes of this section, the term hazardous material is defined in 49 CFR 171.8.",
       "status": "declined",
       "definedElsewhere": {
         "reference": "cfr-49-171"
       },
-      "note": "§ 107.36 states the prohibition here and fixes the meaning of 'hazardous material' in 49 CFR 171.8, which this map has not admitted. Not an ambiguity: the corpus says exactly what it means and says where."
+      "note": "\u00a7 107.36 states the prohibition here and fixes the meaning of 'hazardous material' in 49 CFR 171.8, which this map has not admitted. Not an ambiguity: the corpus says exactly what it means and says where. Nothing beyond the quoted sentences can be evidenced from this corpus."
     },
     {
       "id": "right-of-way",
@@ -269,9 +279,9 @@
       "scope": "in",
       "clarity": "clear",
       "dependsOn": [],
-      "evidence": "The assertion demanded for each of passing over, under and ahead of another aircraft; asserted and withheld; attributed to whoever made it and recorded with the outcome; and never defaulted to true when absent.",
+      "evidence": "(a) Each small unmanned aircraft must yield the right of way to all aircraft, airborne vehicles, and launch and reentry vehicles. Yielding the right of way means that the small unmanned aircraft must give way to the aircraft or vehicle and may not pass over, under, or ahead of it unless well clear.",
       "status": "mapped",
-      "note": "The duty runs to every aircraft, airborne vehicle, and launch and reentry vehicle without exception, so nothing here is computed: the entry is the standard 'well clear' and nothing else, and is reclassified in place rather than split. Whether the aircraft gave way is the caller's to assert."
+      "note": "The duty runs to every aircraft, airborne vehicle, and launch and reentry vehicle without exception, so nothing here is computed: the entry is the standard 'well clear' and nothing else, and is reclassified in place rather than split. The assertion is demanded for each of passing over, under and ahead of any of the three protected kinds; asserted and withheld; attributed to whoever made it and recorded with the outcome; and never defaulted to true when absent."
     },
     {
       "id": "collision-hazard-proximity",
@@ -284,9 +294,9 @@
       "scope": "in",
       "clarity": "clear",
       "dependsOn": [],
-      "evidence": "The assertion asserted and withheld, attributed and recorded with the outcome, and never defaulted to true when absent.",
+      "evidence": "(b) No person may operate a small unmanned aircraft so close to another aircraft as to create a collision hazard.",
       "status": "mapped",
-      "note": "The corpus states a standard rather than a distance, deliberately, and § 107.37(b) is that sentence and nothing else — so the entry is reclassified in place rather than split. An engine that resolved it to a number would substitute its own rule for the corpus's."
+      "note": "The corpus states a standard rather than a distance, deliberately, and \u00a7 107.37(b) is that sentence and nothing else \u2014 so the entry is reclassified in place rather than split. The assertion is asserted and withheld, attributed and recorded with the outcome, and never defaulted to true when absent. An engine that resolved it to a number would substitute its own rule for the corpus's."
     },
     {
       "id": "reasonable-protection",
@@ -299,9 +309,9 @@
       "scope": "in",
       "clarity": "clear",
       "dependsOn": [],
-      "evidence": "The assertion asserted and withheld for each of a covered structure and a stationary vehicle, attributed and recorded with the outcome, and never defaulted to true when absent.",
+      "evidence": "(b) Located under a covered structure or inside a stationary vehicle that can provide reasonable protection from a falling small unmanned aircraft.",
       "status": "mapped",
-      "note": "The standard qualifies the covered-structure exception; the exception itself is computable once it is asserted. Split out rather than reclassifying over-human-beings, which states a further case that needs no judgement."
+      "note": "The standard qualifies the covered-structure exception; the exception itself is computable once it is asserted. The assertion is asserted and withheld for each of a covered structure and a stationary vehicle, attributed and recorded with the outcome, and never defaulted to true when absent. Split out rather than reclassifying over-human-beings, which states a further case that needs no judgement."
     },
     {
       "id": "over-human-beings",
@@ -316,9 +326,24 @@
       "dependsOn": [
         "reasonable-protection"
       ],
-      "evidence": "The participating-person case, the covered-structure case, and a plain overflight with neither.",
+      "evidence": "No person may operate a small unmanned aircraft over a human being unless that human being is: (a) Directly participating in the operation of the small unmanned aircraft; or (b) Located under a covered structure or inside a stationary vehicle that can provide reasonable protection from a falling small unmanned aircraft.",
       "status": "mapped",
-      "note": "One cause, not two: this version states only the participating-person and covered-structure exceptions. There is no subpart D at this date and nothing to defer to."
+      "note": "One cause, not two: this version states only the participating-person and covered-structure exceptions. There is no subpart D of operational categories at this date and nothing to defer to. The evidence is the whole section, including both limbs of (b) \u2014 a covered structure and a stationary vehicle."
+    },
+    {
+      "id": "intensity-reduction-in-interest-of-safety",
+      "name": "Reducing the anti-collision lighting intensity is in the interest of safety",
+      "locator": {
+        "sourceId": "cfr-14-107",
+        "citation": "\u00a7 107.29(b)"
+      },
+      "kind": "assertion",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [],
+      "evidence": "The remote pilot in command may reduce the intensity of the anti-collision lighting if he or she determines that, because of operating conditions, it would be in the interest of safety to do so.",
+      "status": "mapped",
+      "note": "The corpus delegates the judgement and names its decider in the same breath: \"if he or she determines\". At this date the clause sits in \u00a7 107.29(b) alone and it grants the permission without bounding it: there is no \"but may not extinguish\". Amendment 107-8 both repeats the clause into \u00a7 107.29(a)(2) and adds that bound, so the consuming rule gains a computable constraint the earlier text does not state. This is the example method.md and corpus-map.md both cite for kind: assertion, and it had no entry of its own until #26."
     },
     {
       "id": "anti-collision-lighting",
@@ -330,10 +355,12 @@
       "kind": "operation",
       "scope": "in",
       "clarity": "clear",
-      "dependsOn": [],
-      "evidence": "Fitted and unfitted, for civil twilight only. Visible for at least 3 statute miles.",
+      "dependsOn": [
+        "intensity-reduction-in-interest-of-safety"
+      ],
+      "evidence": "(b) No person may operate a small unmanned aircraft system during periods of civil twilight unless the small unmanned aircraft has lighted anti-collision lighting visible for at least 3 statute miles. The remote pilot in command may reduce the intensity of the anti-collision lighting if he or she determines that, because of operating conditions, it would be in the interest of safety to do so.",
       "status": "mapped",
-      "note": "The permission to reduce intensity is the pilot's determination, not a computation."
+      "note": "Fitted and unfitted, for civil twilight only \u2014 this version requires no lighting at night, because it forbids night operation outright. Visible for at least 3 statute miles. Whether reducing the intensity is in the interest of safety is the remote pilot in command's determination and is its own entry, intensity-reduction-in-interest-of-safety. This version states no flash-rate requirement, so there is no flash-rate-sufficient entry."
     },
     {
       "id": "visual-line-of-sight",
@@ -346,9 +373,9 @@
       "scope": "in",
       "clarity": "clear",
       "dependsOn": [],
-      "evidence": "Maintained by the remote pilot in command; maintained by a visual observer; maintained by neither.",
+      "evidence": "(a) With vision that is unaided by any device other than corrective lenses, the remote pilot in command, the visual observer (if one is used), and the person manipulating the flight control of the small unmanned aircraft system must be able to see the unmanned aircraft throughout the entire flight in order to: (1) Know the unmanned aircraft's location; (2) Determine the unmanned aircraft's attitude, altitude, and direction of flight; (3) Observe the airspace for other air traffic or hazards; and (4) Determine that the unmanned aircraft does not endanger the life or property of another. (b) Throughout the entire flight of the small unmanned aircraft, the ability described in paragraph (a) of this section must be exercised by either: (1) The remote pilot in command and the person manipulating the flight controls of the small unmanned aircraft system; or (2) A visual observer.",
       "status": "mapped",
-      "note": "Whether anyone could in fact see the aircraft is not computable. The engine demands the assertion and records who made it."
+      "note": "Whether anyone could in fact see the aircraft is not computable. The engine demands the assertion and records who made it. (b) states the two permitted combinations and the evidence covers both: the remote pilot in command together with the person manipulating the flight controls, or a visual observer \u2014 and neither."
     },
     {
       "id": "visual-observer-conditions",
@@ -363,8 +390,9 @@
       "dependsOn": [
         "visual-line-of-sight"
       ],
-      "evidence": "With and without a visual observer, and with one whose communication requirement is unmet.",
-      "status": "mapped"
+      "evidence": "If a visual observer is used during the aircraft operation, all of the following requirements must be met: (a) The remote pilot in command, the person manipulating the flight controls of the small unmanned aircraft system, and the visual observer must maintain effective communication with each other at all times. (b) The remote pilot in command must ensure that the visual observer is able to see the unmanned aircraft in the manner specified in \u00a7 107.31. (c) The remote pilot in command, the person manipulating the flight controls of the small unmanned aircraft system, and the visual observer must coordinate to do the following: (1) Scan the airspace where the small unmanned aircraft is operating for any potential collision hazard; and (2) Maintain awareness of the position of the small unmanned aircraft through direct visual observation.",
+      "status": "mapped",
+      "note": "All three requirements, not just the first: effective communication at all times, the remote pilot in command ensuring the observer can see the aircraft in the manner \u00a7 107.31 specifies, and the coordination (c) requires. With and without a visual observer, and with one whose communication requirement is unmet."
     },
     {
       "id": "preflight-actions",
@@ -377,9 +405,9 @@
       "scope": "in",
       "clarity": "clear",
       "dependsOn": [],
-      "evidence": "Each of (a) through (e) asserted and unasserted. (f) is reachable only through subpart D.",
+      "evidence": "Prior to flight, the remote pilot in command must: (a) Assess the operating environment, considering risks to persons and property in the immediate vicinity both on the surface and in the air. This assessment must include: (1) Local weather conditions; (2) Local airspace and any flight restrictions; (3) The location of persons and property on the surface; and (4) Other ground hazards. (b) Ensure that all persons directly participating in the small unmanned aircraft operation are informed about the operating conditions, emergency procedures, contingency procedures, roles and responsibilities, and potential hazards; (c) Ensure that all control links between ground control station and the small unmanned aircraft are working properly; (d) If the small unmanned aircraft is powered, ensure that there is enough available power for the small unmanned aircraft system to operate for the intended operational time; and (e) Ensure that any object attached or carried by the small unmanned aircraft is secure and does not adversely affect the flight characteristics or controllability of the aircraft.",
       "status": "mapped",
-      "note": "Five obligations, (a) through (e). There is no subpart D paragraph at this date."
+      "note": "Five obligations, (a) through (e), all assertions about what a person did. The engine records them; it cannot verify any. Each of (a) through (e) asserted and unasserted. There is no paragraph (f) at this date: the summary this note replaces claimed one."
     }
   ]
 }

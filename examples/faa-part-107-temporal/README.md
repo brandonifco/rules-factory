@@ -10,21 +10,45 @@ pinned twice.
 **Slice:** the same twelve sections both times, mapped independently against each text.
 
 **Result:** 44 sections → 61. Of the twelve mapped, **eight unchanged, four changed, none
-removed.** 24 entries in 2020, 26 in 2026 — 23 and 24 as first mapped, before
+removed.** 25 entries in 2020, 27 in 2026 — 23 and 24 as first mapped, before
 [0005](../../docs/decisions/0005-a-field-earns-its-place-by-being-checkable.md) split the
-delegated standards into entries of their own.
+delegated standards into entries of their own and
+[#26](https://github.com/brandonifco/rules-factory/issues/26) added the fifth.
 
 ```
 2020-01-01  ->  2026-01-01
 
   ADDED    flash-rate-sufficient
   ADDED    subpart-d-categories
-  CHANGED  night-operation: name, evidence, note, dependsOn
   CHANGED  anti-collision-lighting: name, evidence, note, locator, dependsOn
-  CHANGED  over-human-beings: note, dependsOn
-  CHANGED  preflight-actions: note
-  CHANGED  reasonable-protection: note
+  CHANGED  civil-twilight-operation: evidence
+  CHANGED  intensity-reduction-in-interest-of-safety: evidence, note, locator
+  CHANGED  night-operation: name, evidence, note, dependsOn
+  CHANGED  over-human-beings: evidence, note, dependsOn
+  CHANGED  preflight-actions: evidence, note
+  CHANGED  reasonable-protection: evidence, note
   CHANGED  single-aircraft: evidence, note
+```
+
+More entries report an `evidence` change than before, and that is a consequence of
+[#18](https://github.com/brandonifco/rules-factory/issues/18) rather than of the corpus: now
+that `evidence` holds the corpus's own words, **any rewording of a mapped passage moves it**.
+A summary of what a passage shows survives a rewrite of the passage; a quote does not. That
+makes the field a text-diff of the mapped slice, which is more than it was and worth knowing
+before reading the output — `civil-twilight-operation`, for instance, changes only because
+§ 107.29(b) gained the flash-rate clause and the extinguish bound.
+
+Both maps' citations are checked against the corpus by
+[check-locators-section.py](../faa-part-107/check-locators-section.py), which reads a
+`section-designation` locator by containment rather than by page marker — see
+[trial 1's README](../faa-part-107/README.md#is-a-section-citation-checkable) for why that is
+a different tool and not a flag on the shipped one:
+
+```
+$ python3 examples/faa-part-107/check-locators-section.py \
+      examples/faa-part-107-temporal/corpus-map-2020-01-01.json \
+      examples/faa-part-107-temporal/part107-2020-01-01.xml
+locators ok (all 25 checked against the section tree)
 ```
 
 ## The finding worth the trial
@@ -55,6 +79,18 @@ map. What survives is the stronger half, and it did not need `clarity` to carry 
 direction of travel is not always toward precision, a map is a statement about one text, and
 an engine's honesty about what it cannot answer alone can change without the engine changing
 at all.
+
+**A second instance of the same shape, found by [#26](https://github.com/brandonifco/rules-factory/issues/26).**
+`intensity-reduction-in-interest-of-safety` — the remote pilot's judgement that reducing the
+anti-collision lighting is in the interest of safety — exists at both dates and moved in a way
+worth separating from the one above. In 2020 the clause sits in § 107.29(b) alone and grants
+the permission **unbounded**: "may reduce the intensity of the anti-collision lighting". By
+2026 it sits in § 107.29(a)(2) *and* (b), identically worded, and reads "may reduce the
+intensity of, but **may not extinguish**". So the amendment did the opposite of the
+`flash-rate-sufficient` case: it added a bound the engine *can* compute around a judgement it
+already could not. The delegated judgement is unchanged; the rule that consumes it gained a
+constraint. Both directions exist, and a map that recorded only the first would have suggested
+they do not.
 
 ## Three more, smaller
 

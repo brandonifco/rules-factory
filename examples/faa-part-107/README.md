@@ -15,9 +15,16 @@ flight operate?*
 
 **Result as it stands**, after
 [0005](../../docs/decisions/0005-a-field-earns-its-place-by-being-checkable.md) landed
-findings 1–4 in the map itself: 26 entries. 6 values, 16 operations, 4 assertions. 25 clear,
-1 ambiguous. 3 declined. The two extra entries are the delegated standards, split out of the
-rules that consume them; the four ambiguities that went away were never gaps in the text.
+findings 1–4 in the map itself and
+[#26](https://github.com/brandonifco/rules-factory/issues/26) added the fifth delegated
+judgement: 27 entries. 6 values, 16 operations, 5 assertions. 26 clear, 1 ambiguous. 3
+declined. The three extra entries are the delegated standards, split out of the rules that
+consume them; the four ambiguities that went away were never gaps in the text.
+
+Every entry's `evidence` is now a **verbatim span of the corpus**
+([#18](https://github.com/brandonifco/rules-factory/issues/18)), and the mapper's summary of
+what that span shows has moved to `note`. See *Is a section citation checkable?* below for
+what that buys and what it does not.
 
 Chosen deliberately to stress the parts of the design that tabletop corpora flatter: no
 dice, no pages, no printing, and effective dates that bite.
@@ -81,6 +88,23 @@ defect in the text.
 
 It is an assertion — see finding 1 — and the two findings converge on the same fix.
 
+**And it had no entry until [#26](https://github.com/brandonifco/rules-factory/issues/26).**
+This clause is the example [method.md](../../docs/method.md) and
+[corpus-map.md](../../docs/corpus-map.md) both reach for when explaining `kind: assertion`,
+and in both maps it lived in a prose `note` on `anti-collision-lighting` — the one case in
+the corpus that unambiguously satisfies the category was the one case not mapped to it. It is
+now `intensity-reduction-in-interest-of-safety`, and `anti-collision-lighting` depends on it,
+which is the `speed-limit` / `speed-within-limit` shape 0005 names. The computable half stays
+where it was: *may reduce, may not extinguish* is a bound the corpus states, and an entry
+reclassified whole would have thrown it away.
+
+The 2020 text states the clause **without that bound** — "may reduce the intensity of the
+anti-collision lighting", full stop — and states it in § 107.29(b) only. Amendment 107-8 both
+repeated the sentence into § 107.29(a)(2) and added the prohibition on extinguishing, so the
+consuming rule gained a computable constraint at the same moment the delegated judgement
+gained a second home. The differ reports that as `locator`, `evidence` and `note` moving on
+one entry.
+
 ### 3. A standard is not a gap
 
 `well clear` (§ 107.37(a)), `so close as to create a collision hazard` (§ 107.37(b)),
@@ -143,6 +167,123 @@ But the text contains its own dates. § 107.29(a)(1) requires training completed
 April 6, 2021"; § 107.29(d) terminates certain waivers on dates in 2021. Those are ordinary
 operations over a date input, not corpus versioning — but a reader of the method could
 easily conflate them, and the method never mentions the second kind.
+
+## Is a section citation checkable?
+
+[#18](https://github.com/brandonifco/rules-factory/issues/18) asks for the Part 107 maps to
+get the same treatment as the backgammon map, "or a recorded reason their locator grammar
+cannot be checked this way". This is that record, and the answer is **yes, checkable — and
+not by the same tool**.
+
+`tools/check-locators.py` verifies a `printed-page` citation by finding the entry's evidence
+in a flat text corpus, walking back to the nearest `{NNN}` page marker, and comparing. Part
+107 has no page markers, and there is no way to give it any: a section designation is not a
+position in a stream. Three things differ, and none of them is a regex the shipped tool could
+be handed.
+
+| | backgammon | Part 107 |
+|---|---|---|
+| corpus reader | flat text | eCFR XML, parsed as a tree |
+| position model | walk back to the nearest marker | the element that **encloses** the text |
+| citation grammar | `p. 273` | `§ 107.29(a)(2), (b)`, with ranges, lists and `subpart D` |
+
+The `--marker-re` / `--page-re` flags parameterise the wrong layer. They vary the *pattern* a
+positional model looks for; Part 107 needs a different model. Pointing the shipped tool at
+`part107.xml` finds no markers, reports `no page markers found; nothing to check`, and exits
+2 — which is the correct behaviour and not a check.
+
+So the generalisation is the **principle**, not the code: resolve a quote to a structural
+position in the corpus and compare that position to the citation. A proof of concept lives at
+[check-locators-section.py](check-locators-section.py), here rather than in `tools/` because
+`tools/` is not this directory's to change. It runs:
+
+```
+$ python3 examples/faa-part-107/check-locators-section.py \
+      examples/faa-part-107/corpus-map.json examples/faa-part-107/part107.xml
+locators ok (all 27 checked against the section tree)
+```
+
+**Containment makes it stricter than the page version, in three places.**
+
+- A page marker is positional, so a quote straddling a break leaves two citations honest and
+  the checker has to accept either. An element encloses its text: a quote is inside the cited
+  paragraph or it is not, and there is nothing to concede.
+- The page checker takes the **first** `find` hit. This corpus repeats whole sentences
+  verbatim — § 107.29(a)(2) and § 107.29(b) state the anti-collision sentence and the
+  reduce-intensity sentence identically — so a first-hit probe would verify such a quote
+  against whichever copy came first and call it checked. Here a quote occurring *n* times must
+  have all *n* occurrences inside the citation. Citing the reduce-intensity sentence to
+  § 107.29(b) alone fails, correctly, because it also sits in (a)(2).
+- The page checker matches the longest contiguous prefix and reports coverage, because it was
+  retrofitted onto evidence that was never a quote. Here a fragment either appears or the
+  entry is unchecked and the run fails. ` ... ` splits a quote into fragments, each of which
+  must appear, in corpus order, inside the citation — the ellipsis rule #18 asks for, proposed
+  from this end rather than settled.
+
+**The one inference, stated where the claim is.** eCFR XML flattens a section's paragraphs
+into sibling `<P>` elements with the designator left in the text, so `(b)`, `(1)` and `(2)`
+are siblings and the tree has to be rebuilt from the designator forms. `(i)`, `(v)` and `(x)`
+are both letters and roman numerals; the tool resolves one only when exactly one open run it
+could continue, and **refuses the paragraph otherwise** rather than picking a reading. Across
+both corpora — 352 and 215 paragraphs — nothing is refused, and § 107.135(c)(1)'s `(i)`–`(v)`
+run is the case that exercises it.
+
+**What it does not check, and this is the limit that matters.** It proves a quote sits where
+the citation says. It cannot prove the quote is the *right* passage for the entry: a mapper
+who cites the wrong section and then quotes from that section passes. The backgammon failure
+mode — thirteen page numbers wrong by a page or two — is a *counting* error, and a section
+designation is copied from a heading rather than counted, so that mode does not exist here.
+What this check does catch is drift (a citation edited later while the quote stays put), a
+paraphrase presented as evidence, and a quote that turns out to live in more places than the
+citation admits.
+
+Which is why the result is worth stating plainly: **27 of 27 citations in the 2026 map and 25
+of 25 in the 2020 map verify, none was found wrong, and none was corrected.** Against
+backgammon the same class of check found thirteen errors in twenty-four. That is a fact about
+the two locator grammars, not about the two mappers.
+
+## The evidence sweep
+
+`evidence` is specified as *"for a finite table: the whole table, not a sample."*
+[#26](https://github.com/brandonifco/rules-factory/issues/26) named one entry whose evidence
+dropped a case the section states — `moving-vehicle-operation`, "a moving land vehicle" where
+§ 107.25(b) reads "moving land **or water-borne** vehicle" — and asked for the remaining
+entries to be swept, because one instance found by accident is not a count.
+
+**The count is 17: nine of twenty-six entries in the 2026 map and eight of twenty-four in the
+2020 map**, the named instance included. Every one is fixed by #18's rewrite, since a verbatim
+span of the cited passage cannot drop a case the passage states.
+
+| entry | what the section states | what the evidence covered |
+|---|---|---|
+| `single-aircraft` | three roles: manipulating the controls, remote pilot in command, visual observer | the visual observer |
+| `restricted-area-permitted` | two designations: prohibited, restricted | neither, only the permission axis |
+| `moving-vehicle-operation` | land **or water-borne** vehicle | land |
+| `right-of-way` | three protected kinds: aircraft, airborne vehicles, launch and reentry vehicles | "another aircraft" |
+| `over-human-beings` | (b) a covered structure **or** a stationary vehicle | "the covered-structure case" |
+| `anti-collision-lighting` | fitted, visible for 3 statute miles, **and** may be reduced but not extinguished | fitted, and the 3-mile figure |
+| `visual-line-of-sight` | (b)(1) the remote pilot **and** the person manipulating the controls, or (b)(2) an observer | the remote pilot; an observer; neither |
+| `visual-observer-conditions` | three requirements: communication, the pilot ensuring the observer can see, coordination | communication |
+| `night-operation` (2026 only) | "Except as provided in paragraph (d)" | no mention of (d) |
+
+Eight of the nine appear in both maps. `night-operation` differs because the 2020 rule is a
+flat prohibition with no carve-out to drop.
+
+**Three are judgement calls and are listed as hits deliberately rather than quietly.**
+`over-human-beings`'s (c) case and `night-operation`'s (d) carve-out are each reachable as
+another entry or another rule, so a reader could call them delegated rather than dropped; and
+`restricted-area-permitted`'s two designations behave identically, so sampling them costs
+nothing at runtime. They are counted because the test is what the cited passage *states*, not
+what would have gone wrong — a sample that happens to be representative is still a sample, and
+the entry that proved the point was the one where a reader decided "land vehicle" was close
+enough.
+
+**One further defect the sweep found, which is not a dropped case.** The 2020
+`preflight-actions` evidence read *"Each of (a) through (e) asserted and unasserted. (f) is
+reachable only through subpart D"* — and § 107.49 has no paragraph (f) at that date. That is a
+case asserted about a text that does not state it, copied across from the 2026 map, and the
+entry's own `note` contradicted it two lines later ("Five obligations"). A summary can claim a
+case the corpus does not contain; a quote cannot.
 
 ## What it means for the kernel
 
