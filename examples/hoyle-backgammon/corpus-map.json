@@ -7,6 +7,21 @@
   },
   "entries": [
     {
+      "id": "player-count",
+      "name": "Backgammon is played by two persons",
+      "locator": {
+        "sourceId": "hoyle-1909",
+        "citation": "BACKGAMMON / The Board and Men / p. 271"
+      },
+      "kind": "value",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [],
+      "evidence": "Backgammon is played by two persons, on a special \"board\" with thirty \"men,\" fifteen white and fifteen black (or red), similar to those used for the game of Draughts.",
+      "status": "mapped",
+      "note": "men-count took the thirty men from this sentence and left the two persons in it. The engine's Player type and every player-relative rule rest on the count; nothing mapped it."
+    },
+    {
       "id": "men-count",
       "name": "Thirty men, fifteen to a side",
       "locator": {
@@ -25,21 +40,39 @@
       "name": "The board is two tables, inner and outer",
       "locator": {
         "sourceId": "hoyle-1909",
-        "citation": "BACKGAMMON / The Board and Men / p. 271"
+        "citation": "BACKGAMMON / The Board and Men / p. 272"
       },
       "kind": "value",
       "scope": "in",
       "clarity": "clear",
       "dependsOn": [],
-      "evidence": "Which table is inner is set by the starting arrangement, not fixed.",
-      "status": "mapped"
+      "evidence": "The board is so placed in use that the two compartments, known as \"tables,\" shall lie longitudinally between the players. One of these is known as the \"outer,\" the other as the \"inner\" or \"home\" table. Which of the two is for the time being the inner and which the outer table is governed by the arrangement of the men at starting.",
+      "status": "mapped",
+      "note": "Player-relative structure only: two tables a side, inner and outer, twelve points each. Which physical compartment is which is a separate fact - see inner-table-handedness."
     },
     {
-      "id": "starting-position",
-      "name": "The starting arrangement of the men",
+      "id": "point-designations",
+      "name": "How the twenty-four points are named and numbered",
       "locator": {
         "sourceId": "hoyle-1909",
-        "citation": "BACKGAMMON / The Board and Men / p. 271"
+        "citation": "BACKGAMMON / The Board and Men / p. 272"
+      },
+      "kind": "value",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [
+        "board-tables"
+      ],
+      "evidence": "Each table is marked with twelve \"points,\" six at either end. ... The two points in the inner table farthest from the dividing partition or \"bar\" are known as the \"ace\" points, and those next in order as the two or \"deuce\" points, followed in succession by the three or \"trois\" points, the four or \"quatre\" points, the five or \"cinque\" points, and finally the \"six\" points, next the bar. The points in the outer tables are designated in like manner, but starting in this case from the dividing partition. The ace point in the outer table is more commonly known as the \"bar\" point.",
+      "status": "mapped",
+      "note": "The corpus defining its own vocabulary, which is a rule and not a preamble. It is the sole authority for a board having twenty-four points and for the two numbering directions - inner tables from the far end, outer tables from the bar. Without it starting-position, enter-from-bar and every bearing-off entry are uninterpretable."
+    },
+    {
+      "id": "inner-table-handedness",
+      "name": "Which physical compartment of the board is the inner table",
+      "locator": {
+        "sourceId": "hoyle-1909",
+        "citation": "BACKGAMMON / The Board and Men / p. 272"
       },
       "kind": "value",
       "scope": "in",
@@ -48,10 +81,31 @@
         "adapter": "plain-text",
         "modality": "illustration"
       },
-      "dependsOn": [],
-      "evidence": "Cannot be evidenced from this corpus.",
+      "dependsOn": [
+        "board-tables",
+        "starting-position"
+      ],
+      "evidence": "With the men placed as in Fig. 1, the right hand is the inner or home table, and the left hand consequently the outer table.",
       "status": "declined",
-      "note": "The rule is fully determined in the corpus, in Fig. 1. The declared plain-text adapter cannot read a figure, so the engine declines with MissingRulesData. An adapter that could see figures would reach it."
+      "note": "The only fact in this corpus that is genuinely beyond a plain-text adapter. The rule is fully determined - but only in Fig. 1, which fixes the left/right orientation the sentence refers to. No engine that models positions player-relatively ever asks; it is recorded because the limit is real, not because it is load-bearing."
+    },
+    {
+      "id": "starting-position",
+      "name": "The starting arrangement of the men",
+      "locator": {
+        "sourceId": "hoyle-1909",
+        "citation": "BACKGAMMON / The Board and Men / p. 273"
+      },
+      "kind": "value",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [
+        "board-tables",
+        "point-designations"
+      ],
+      "evidence": "The men are arranged at starting as shown in {273} Fig. 1--viz., two of White's men are placed on the ace point in Black's inner table, five are placed on the six point in Black's outer table, three on the deuce point in White's outer table, and five on the six point in White's inner table. Black's men are placed in like manner on the points immediately facing these.",
+      "status": "mapped",
+      "note": "Stated in prose and over-determined. The pips follow from the designations in point-designations: 24(2)/13(5)/8(3)/6(5), fifteen men, mirrored by pip + (25 - pip). Footnote 67 requires exactly three men on the outer deuce point for its blot to exist, and nineteen opening lines in Hints for Play are consistent with this arrangement and no other. Previously mapped beyondAdapter/declined against Fig. 1; that was a misreading of a sentence one paragraph earlier, which is about board handedness."
     },
     {
       "id": "opening-roll",
@@ -117,6 +171,23 @@
       ],
       "evidence": "A throw played on one man and on two; the worked 'six trois' example.",
       "status": "mapped"
+    },
+    {
+      "id": "direction-of-travel",
+      "name": "The twenty-four points are one course with two ends",
+      "locator": {
+        "sourceId": "hoyle-1909",
+        "citation": "BACKGAMMON / Playing / p. 273"
+      },
+      "kind": "rule",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [
+        "point-designations"
+      ],
+      "evidence": "The movement of the men of each player is from the ace point in his opponent's home table towards the like point in his own",
+      "status": "mapped",
+      "note": "move-by-pip gives distance only. This is the sole authority for direction, and for the two players travelling opposite ways over the same twenty-four points - which is what makes a pip count, a blot and bearing off mean anything."
     },
     {
       "id": "doublets",

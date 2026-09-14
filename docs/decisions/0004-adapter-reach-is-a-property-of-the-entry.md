@@ -2,7 +2,56 @@
 
 ## Status
 
-Accepted — 2026-09-13.
+Accepted — 2026-09-13. **Amended 2026-09-13**: the example the Context rests on was
+misread. The decision stands; the instance moved.
+
+## Amendment — the example was wrong, the field is not
+
+Independent verification of the backgammon map found that the Context below misquotes the
+corpus. The starting arrangement is **not** stated as *"with the men placed as in Fig. 1."*
+It is stated in prose, completely, on p. 273:
+
+> The men are arranged at starting as shown in {273} Fig. 1--viz., two of White's men are
+> placed on the ace point in Black's inner table, five are placed on the six point in
+> Black's outer table, three on the deuce point in White's outer table, and five on the six
+> point in White's inner table. Black's men are placed in like manner on the points
+> immediately facing these.
+
+Every designation it uses is defined one paragraph earlier, and the arrangement is
+over-determined: footnote 67 requires exactly three men on the deuce point of the outer
+table for its blot to exist, and nineteen of the opening lines in *Hints for Play* are
+arithmetically consistent with 24(2)/13(5)/8(3)/6(5) and with no other arrangement. A
+plain-text adapter reaches this rule. `starting-position` was never beyond it.
+
+The sentence quoted in the Context is real but belongs to a different paragraph and a
+different fact, on p. 272:
+
+> Which of the two is for the time being the inner and which the outer table is governed by
+> the arrangement of the men at starting. **With the men placed as in Fig. 1, the right hand
+> is the inner or home table**, and the left hand consequently the outer table.
+
+That fact — which physical compartment of a real board is the inner table — *is* stated
+once, as a bare reference to the figure, and nowhere else. So `beyondAdapter` has a
+confirmed instance in this corpus after all. It belongs on the handedness of a physical
+board, not on the arrangement of the men. `board-tables` is split accordingly: the
+player-relative structure the engine uses everywhere, and the physical identification it
+never needs.
+
+**What this changes and what it does not.** The Decision below is unchanged — the field, its
+two required fields, its checkability, and its place in the correspondence table all stand,
+and none of the four rejected alternatives was rejected on grounds specific to
+`starting-position`. What is falsified is the trial's headline. Not "a rule can live in an
+image", but *a rule can live in an image, and the rule we said did, does not.*
+
+**Two limits to record with it.** First, the surviving instance is a fact this engine never
+consumes: under the correspondence table it is `MissingRulesData`, and nothing would ever
+ask. A field whose only confirmed instance is inert is real but not yet load-bearing.
+Second, and worse for the argument: this was a mapper reading one paragraph short and
+writing *"Cannot be evidenced from this corpus"* about a rule the corpus states four times
+over. The open question below asks whether an adapter silently dropping a table produces an
+entry nobody writes. It now has a sibling in the opposite direction — an entry written as
+unreachable when it was not — and no field on a map can detect either, because both are
+about where a human stopped reading.
 
 ## Context
 
@@ -28,7 +77,8 @@ prose discipline. It means "this corpus contains the rule and our reader cannot 
 telling them apart requires reading a sentence and trusting that whoever wrote it observed
 the convention.
 
-The one illustration is the mild case. The general case is worse, and it is the case the
+The one illustration is the mild case. (It is also, per the Amendment above, the wrong
+one; the argument of this paragraph survives on the handedness fact instead.) The general case is worse, and it is the case the
 factory is most likely to meet: a PDF rulebook read as extracted text loses exactly the
 tables a rules engine most needs, and it loses them silently — the adapter returns text, the
 text is missing a column, and nothing anywhere says a column was lost. No trial has produced
