@@ -495,6 +495,14 @@ shown to have got wrong.
 **Preserve determinism deliberately.** Changes to random consumption, ordering, serialization
 or identity are compatibility events. An extra draw shifts every later result.
 
+**State what fixes any list a replay indexes into.** If a recorded game stores a position in a
+list — the index of the chosen play among the legal plays — then the order and length of that
+list are part of the replay format. The engine states the rule that fixes them where the list is
+produced, and ships a test pinning the whole list for at least one non-trivial position, proven
+able to fail by permuting it. The kernel stays out: the list is the engine's. Decided on
+[#22](https://github.com/brandonifco/rules-factory/issues/22); `hoyle-backgammon` pins
+`LegalPlays.For` this way.
+
 ## Phase 7 — Verify against the source
 
 Implementation is not the same as conformance, and an author checking their own reading is
