@@ -60,7 +60,16 @@ modality. The starting position of a backgammon board, in a trial corpus, is giv
 as an illustration — fully determined, and invisible to a plain-text adapter. That is not a
 reference to another corpus, so the references list below does not describe it; it is a
 limit of the adapter chosen in this phase. An entry beyond the adapter's reach is declined
-as `MissingRulesData`, and the reason names the modality, not a missing document.
+as `MissingRulesData` and carries `beyondAdapter`, naming the reader that failed and the
+modality that defeated it — structurally, in the entry, not in a sentence the next reader has
+to parse. The field and its limits are specified in [corpus-map.md](corpus-map.md); the
+argument is [0004](decisions/0004-adapter-reach-is-a-property-of-the-entry.md).
+
+Choosing the adapter is therefore choosing which rules the engine can reach, and it happens
+here, before anything is read. A plain-text adapter over a PDF rulebook will lose the tables
+a rules engine most needs, and it will lose them without complaint: the adapter returns text,
+the text is missing a column, and nothing says so. `beyondAdapter` records a limit a human
+recognised. It does not find one nobody recognised.
 
 **Record what it defers to.** A corpus routinely defines its own terms by reference to
 another — a regulation citing a different title, a rulebook citing a supplement, a statute
@@ -93,6 +102,19 @@ always an object to do this" sits in the middle of a trial corpus's movement rul
 advice, and note in the entry that you dropped it: an agent enumerating mechanically will
 otherwise map it as a rule, or drop it silently, and silently is worse because the next
 reader cannot tell which happened.
+
+**Record what gates an entry, separately from what it depends on.** A corpus with turn
+structure has rules that only apply in a phase: bearing off begins once every man is home;
+a man on the bar suspends every other move. That is a different fact from implementation
+order, and it goes in `gatedBy`, which holds **entry ids and nothing else** — the rule that
+governs reachability, not the condition. Write the condition and you have written a second
+implementation of the rule in a format nothing executes. A gate is itself a rule the corpus
+states, so it already has an entry; if the gate you want to record has none, the finding is
+that the map is missing an entry. See
+[0003](decisions/0003-a-phase-gate-names-a-rule-not-a-condition.md).
+
+A stateless corpus will produce none of these, and that is the right outcome rather than an
+oversight. Both Part 107 maps carry `gatedBy` on no entry.
 
 **Do not classify while walking.** A first pass that is simultaneously deciding value versus
 operation, in scope versus out, produces worse results at both. Enumerate first.
@@ -208,6 +230,10 @@ supplied most of what an issue needs:
 - **Source** — the locator, verbatim from the entry.
 - **Dependencies** — the entries this one depends on, which determine order. Damage after
   attack; the limit after the table it reads.
+- **Reachability** — the entries in `gatedBy`, which determine nothing about order and
+  everything about what the issue must set up. A phase-scoped rule cannot be exercised
+  outside its phase, so an acceptance criterion that ignores the gate is testing a situation
+  the corpus does not describe.
 - **Acceptance criteria** — observable conditions, derived from what the entry claims.
 - **Required evidence** — what must be demonstrated. Where the corpus prints a finite table,
   the whole table, not a sample.

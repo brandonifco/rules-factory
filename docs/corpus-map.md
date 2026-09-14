@@ -63,7 +63,9 @@ before either has been implemented.
 | `scope` | `in` or `out`. Out is a recorded verdict with a reason, not an omission. |
 | `clarity` | `clear` or `ambiguous`. `clear` asserts the corpus determines exactly one answer for every valid input. |
 | `ambiguity` | Absent when clear. Otherwise the question, and its `fate`. |
-| `dependsOn` | Entry ids. Determines backlog order — the sequence entries must be *implemented* in. **Not** a runtime precondition; see below. |
+| `dependsOn` | Entry ids. Determines backlog order — the sequence entries must be *implemented* in. **Not** a runtime precondition; see `gatedBy`. |
+| `gatedBy` | Entry ids. The rules that govern whether this one is reachable at runtime. Absent on an entry that always applies. Orders nothing. See below. |
+| `beyondAdapter` | Present only when the declared adapter cannot read the rule the locator cites. Names the adapter and the modality. See below. |
 | `evidence` | What must be demonstrated. For a finite table: the whole table, not a sample. |
 | `status` | See below. |
 | `implementedIn` | The ruleset revision that implemented it. Set when status becomes `implemented`. |
@@ -99,16 +101,78 @@ when no reading is defensible enough to bake in, or when the choice belongs to t
 There is no third value. An implementer choosing a reading silently is the failure this
 field exists to prevent.
 
-### `dependsOn` is not a precondition
+`ambiguity.unresolvedReason` names the `UnresolvedReason` the engine will return, and is
+present when the fate is `unresolved`. It is the field that ties an entry to the
+correspondence table below.
+
+Both Part 107 maps also use the `ambiguity` block to carry a decline that is **not** an
+ambiguity — `civil-twilight-alaska` and `hazardous-material` are `clarity: clear` and carry
+one, because their meaning is defined in a corpus that was not admitted. The block is
+specified as absent when clear, and those four entries contradict that. Recorded here rather
+than quietly reconciled; see the open questions.
+
+### `dependsOn` orders work; `gatedBy` does not
 
 `dependsOn` orders *implementation*. A rule that applies only in a phase — bearing off
-begins once every man is home; entry from the bar blocks every other move — has a **runtime
-precondition**, which is a different fact and currently has nowhere to live.
+begins once every man is home; entry from the bar suspends every other move — has a
+**runtime precondition**, which is a different fact. `gatedBy` is where it lives. Decided in
+[0003](decisions/0003-a-phase-gate-names-a-rule-not-a-condition.md).
 
-The two coincide often enough to be confused, and a stateless corpus never distinguishes
-them: a regulation evaluating one flight against a set of limits asks the question not at
-all. Any corpus with turn structure asks it immediately. Recorded as an open question
-rather than guessed at.
+The two relations coincide often enough to be confused, and they are not derivable from each
+other. In the backgammon map, `bearing-off-doublets` has six `dependsOn` ancestors and
+exactly one of them is its gate; `move-by-pip` is gated by `enter-from-bar`, which is not
+among its ancestors, and nor is `move-by-pip` among `enter-from-bar`'s. A stateless corpus
+never asks: a regulation evaluating one flight against a set of limits has no phase for a
+rule to be scoped to, and both Part 107 maps carry `gatedBy` on no entry at all.
+
+**`gatedBy` holds entry ids and nothing else.** No predicate, no state name, no threshold,
+no sentence. A gate is itself a rule the corpus states, so it already has an entry with a
+locator; if a gate you want to record has no entry, the map is missing an entry. The
+condition is the engine's to implement — the map says which rule governs reachability and
+points at where to read it.
+
+It says nothing about *direction*. `bearing-off-eligible` permits the entries it gates;
+`enter-from-bar` suspends them. Only the referenced entry's text distinguishes those, and a
+reader who does not follow the id has learned less than they may think.
+
+It is **not transitive and not inherited through `dependsOn`.** Every entry a gate reaches
+names it, even where a `dependsOn` ancestor names the same gate — the two relations are
+independent, so inheriting along one of them would be a guess. Expect repetition.
+
+It orders nothing. `dependsOn` remains the only input to backlog order.
+
+### `beyondAdapter`
+
+The rule is in the corpus, stated in a modality the declared adapter cannot read. Decided in
+[0004](decisions/0004-adapter-reach-is-a-property-of-the-entry.md).
+
+```json
+"beyondAdapter": { "adapter": "plain-text", "modality": "illustration" }
+```
+
+`adapter` must match the `adapter` declared in the manifest for the entry's
+`locator.sourceId`. The fact is adapter-relative, not absolute: a reader that can see
+figures reaches the entry, and naming the reader that could not makes "what did the old
+adapter miss" a query rather than a re-read.
+
+`modality` is a short noun phrase naming what holds the rule — `illustration` in the one
+observed case. Deliberately not a closed vocabulary: one instance is not enough to write
+one from, and it can be closed later from evidence. Explanation goes in `note`, not here.
+
+`locator` is still required and still cites the passage that *states* the rule — the
+sentence saying the men are placed as in Fig. 1. The entry is unreadable, not uncitable.
+
+This is a different fact from the manifest's `references`, and telling them apart is the
+whole point. `references` says the rule is defined in a corpus that was not admitted;
+`beyondAdapter` says the rule is here and our reader cannot see it. Both decline as
+`MissingRulesData` at runtime, and before this field they were indistinguishable without
+reading a prose reason.
+
+The general case is worse than the one illustration: a PDF rulebook read as extracted text
+loses exactly the tables a rules engine most needs. No trial has produced that — both
+corpora were text end to end — and the field does not detect it. It records a limit a human
+recognised. An adapter that silently drops a table produces an entry nobody writes, and no
+field can help with an entry that does not exist.
 
 ### `status`
 
@@ -116,7 +180,8 @@ rather than guessed at.
 mapped       enumerated and classified; not yet worked
 blocked      a dependency is unmet
 implemented  in the engine, with a recorded conformance verdict
-declined     scope is out, or the ambiguity's fate is unresolved
+declined     scope is out, the ambiguity's fate is unresolved, or the entry is
+             beyond the adapter's reach
 ```
 
 `implemented` requires the verdict. Code without one is `mapped`, whatever the repository
@@ -134,6 +199,7 @@ vocabulary. This is the property that makes the map load-bearing rather than doc
 | `scope: out` | `OutsideCurrentScope` |
 | `ambiguity.fate: unresolved` | `RequiresInterpretation` |
 | an `operation` whose `value` dependency is unimplemented | `MissingRulesData` |
+| carries `beyondAdapter` | `MissingRulesData` |
 | two implemented entries with no entry for their combination | `UnsupportedInteraction` |
 
 So an engine's honest answer about what it cannot do should be derivable from its map, and
@@ -221,11 +287,27 @@ cases.
 Open questions are tracked as issues so they are worked rather than admired:
 
 - [#5](https://github.com/brandonifco/rules-factory/issues/5) — `dependsOn` conflates
-  implementation order with runtime precondition. Found in trial 2, invisible in trial 1.
+  implementation order with runtime precondition. Decided:
+  [0003](decisions/0003-a-phase-gate-names-a-rule-not-a-condition.md) adds `gatedBy`.
 - [#6](https://github.com/brandonifco/rules-factory/issues/6) — a standard is not a gap.
   Both available fates imply the corpus failed to say something, and sometimes it did not.
 - [#7](https://github.com/brandonifco/rules-factory/issues/7) — an entry beyond the
-  adapter's reach has no field to say so.
+  adapter's reach has no field to say so. Decided:
+  [0004](decisions/0004-adapter-reach-is-a-property-of-the-entry.md) adds `beyondAdapter`.
+
+**Where a decline's runtime reason lives.** Opened by 0004 rather than answered by it. An
+entry beyond the adapter's reach now records its reason structurally; an entry whose meaning
+is defined in an unadmitted corpus still records the same reason in an `ambiguity` block, on
+an entry that is not ambiguous. The two are the same kind of fact — the engine cannot see
+the rule — and are represented two different ways. Part 107's `civil-twilight-alaska` and
+`hazardous-material` are the instances.
+
+**Nothing yet uses `kind: assertion`.** It was added after the first trial and argued for at
+length above, and no entry in any of the three maps carries it — all 71 entries across them
+are `value` or `operation`. The Part 107 entries the first trial identified, such as
+`visual-line-of-sight` and `preflight-actions`, are still `operation` with an explanatory
+`note`, which is exactly what that trial reported as wrong. Either the maps are behind the
+schema or the category is narrower than the trial claimed, and which is not settled here.
 
 **Who writes it.** The ambition is that an agent produces a first draft from the corpus and
 a human reviews the decomposition. Whether the first draft is good enough to be worth

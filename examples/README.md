@@ -29,7 +29,9 @@ is the answer to "are we learning anything, or just producing artefacts."
   rule for the corpus's. Recorded as an open question rather than forced into a fate.
 - **Manifest `references`** — a quarter of the sections deferred their meaning to a corpus
   that had not been admitted. Those references are the engine's boundary and should be
-  inspectable rather than inferred.
+  inspectable rather than inferred. Both Part 107 manifests now list 49 CFR 171.8 and the
+  Air Almanac as referenced and not admitted; they had the field specified and unused until
+  the schema work for #5 and #7 went looking.
 - **Two temporal things** — `asOf` pins which text is in force; a rule may carry dates of
   its own. The method mentioned only the first.
 
@@ -37,9 +39,15 @@ is the answer to "are we learning anything, or just producing artefacts."
 
 - **Reachability is a property of the adapter** — the starting position of a backgammon
   board is fully determined in the corpus, as an illustration. Not another corpus, another
-  *modality* of the same one, which `references` does not describe.
+  *modality* of the same one, which `references` does not describe. Now `beyondAdapter`, an
+  entry field naming the reader that failed and the modality that defeated it
+  ([0004](../docs/decisions/0004-adapter-reach-is-a-property-of-the-entry.md)).
 - **`dependsOn` conflates implementation order with runtime precondition** — invisible in a
-  stateless corpus, immediate in one with turn structure.
+  stateless corpus, immediate in one with turn structure. Now `gatedBy`, which holds entry
+  ids and refuses to hold a condition
+  ([0003](../docs/decisions/0003-a-phase-gate-names-a-rule-not-a-condition.md)). Six
+  backgammon entries carry it; no Part 107 entry does, which is the correct outcome for a
+  corpus with no phases.
 - **Advice inside normative sections** — `scope` excludes an entry, not a sentence.
 - **The corpus bounds the engine, not the subject** — a 1909 text has no doubling cube, and
   "absent from the corpus" must not look like "nobody looked."

@@ -19,7 +19,7 @@ intermediate representation that manual produces, because those settle the quest
 code would otherwise guess at. See [docs/method.md](docs/method.md) and
 [docs/corpus-map.md](docs/corpus-map.md).
 
-Nothing here builds anything yet. The method has been run twice by hand against real
+Nothing here builds anything yet. The method has been run three times by hand against real
 corpora — see [examples/](examples/README.md), which logs what each trial changed.
 
 ## Where this sits
