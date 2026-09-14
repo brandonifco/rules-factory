@@ -1,0 +1,2096 @@
+{
+  "reference": {
+    "commit": "ecc53b8c231c0eef67ee081c29043ddbf8004336",
+    "path": "examples/hoyle-backgammon/corpus-map.json",
+    "entries": 30
+  },
+  "blind": {
+    "path": "blind-map.json",
+    "entries": 41
+  },
+  "parameters": {
+    "MIN_BLOCK": 4,
+    "LINK_SHARE": 0.5,
+    "PAGE_SLACK": 1,
+    "EVIDENCE_NESTED": 0.9,
+    "NAME_WEIGHT": 1.0
+  },
+  "summary": {
+    "by_leak": {
+      "entry_on_mapper_list": {
+        "n": 9,
+        "caught": 7
+      },
+      "entry_not_on_mapper_list": {
+        "n": 6,
+        "caught": 4
+      },
+      "entry_or_partner_on_mapper_list": {
+        "n": 12,
+        "caught": 9
+      },
+      "entry_or_partner_on_mapper_list_or_found_in_docs": {
+        "n": 14,
+        "caught": 10
+      },
+      "no_leak_found": {
+        "n": 1,
+        "caught": 1
+      }
+    },
+    "baseline_flags": 71,
+    "counted": 15,
+    "caught": 11,
+    "caught_on_injected_field": 11,
+    "caught_ids": [
+      "evidence-truncated",
+      "depends-spurious",
+      "gate-dropped",
+      "gate-spurious",
+      "kind-operation-to-value",
+      "kind-assertion-to-value",
+      "clarity-ambiguous-to-clear",
+      "clarity-clear-to-ambiguous",
+      "scope-in-to-out",
+      "entry-fabricated-real-quote",
+      "absence-stated-in-other-words"
+    ]
+  },
+  "sensitivity": [
+    {
+      "parameter": "MIN_BLOCK",
+      "value": 3,
+      "by_leak": {
+        "entry_on_mapper_list": {
+          "n": 9,
+          "caught": 7
+        },
+        "entry_not_on_mapper_list": {
+          "n": 6,
+          "caught": 4
+        },
+        "entry_or_partner_on_mapper_list": {
+          "n": 12,
+          "caught": 9
+        },
+        "entry_or_partner_on_mapper_list_or_found_in_docs": {
+          "n": 14,
+          "caught": 10
+        },
+        "no_leak_found": {
+          "n": 1,
+          "caught": 1
+        }
+      },
+      "baseline_flags": 71,
+      "counted": 15,
+      "caught": 11,
+      "caught_on_injected_field": 11,
+      "caught_ids": [
+        "evidence-truncated",
+        "depends-spurious",
+        "gate-dropped",
+        "gate-spurious",
+        "kind-operation-to-value",
+        "kind-assertion-to-value",
+        "clarity-ambiguous-to-clear",
+        "clarity-clear-to-ambiguous",
+        "scope-in-to-out",
+        "entry-fabricated-real-quote",
+        "absence-stated-in-other-words"
+      ]
+    },
+    {
+      "parameter": "MIN_BLOCK",
+      "value": 6,
+      "by_leak": {
+        "entry_on_mapper_list": {
+          "n": 9,
+          "caught": 7
+        },
+        "entry_not_on_mapper_list": {
+          "n": 6,
+          "caught": 4
+        },
+        "entry_or_partner_on_mapper_list": {
+          "n": 12,
+          "caught": 9
+        },
+        "entry_or_partner_on_mapper_list_or_found_in_docs": {
+          "n": 14,
+          "caught": 10
+        },
+        "no_leak_found": {
+          "n": 1,
+          "caught": 1
+        }
+      },
+      "baseline_flags": 71,
+      "counted": 15,
+      "caught": 11,
+      "caught_on_injected_field": 11,
+      "caught_ids": [
+        "evidence-truncated",
+        "depends-spurious",
+        "gate-dropped",
+        "gate-spurious",
+        "kind-operation-to-value",
+        "kind-assertion-to-value",
+        "clarity-ambiguous-to-clear",
+        "clarity-clear-to-ambiguous",
+        "scope-in-to-out",
+        "entry-fabricated-real-quote",
+        "absence-stated-in-other-words"
+      ]
+    },
+    {
+      "parameter": "LINK_SHARE",
+      "value": 0.3,
+      "by_leak": {
+        "entry_on_mapper_list": {
+          "n": 9,
+          "caught": 7
+        },
+        "entry_not_on_mapper_list": {
+          "n": 6,
+          "caught": 4
+        },
+        "entry_or_partner_on_mapper_list": {
+          "n": 12,
+          "caught": 9
+        },
+        "entry_or_partner_on_mapper_list_or_found_in_docs": {
+          "n": 14,
+          "caught": 10
+        },
+        "no_leak_found": {
+          "n": 1,
+          "caught": 1
+        }
+      },
+      "baseline_flags": 71,
+      "counted": 15,
+      "caught": 11,
+      "caught_on_injected_field": 11,
+      "caught_ids": [
+        "evidence-truncated",
+        "depends-spurious",
+        "gate-dropped",
+        "gate-spurious",
+        "kind-operation-to-value",
+        "kind-assertion-to-value",
+        "clarity-ambiguous-to-clear",
+        "clarity-clear-to-ambiguous",
+        "scope-in-to-out",
+        "entry-fabricated-real-quote",
+        "absence-stated-in-other-words"
+      ]
+    },
+    {
+      "parameter": "LINK_SHARE",
+      "value": 0.7,
+      "by_leak": {
+        "entry_on_mapper_list": {
+          "n": 9,
+          "caught": 7
+        },
+        "entry_not_on_mapper_list": {
+          "n": 6,
+          "caught": 4
+        },
+        "entry_or_partner_on_mapper_list": {
+          "n": 12,
+          "caught": 9
+        },
+        "entry_or_partner_on_mapper_list_or_found_in_docs": {
+          "n": 14,
+          "caught": 10
+        },
+        "no_leak_found": {
+          "n": 1,
+          "caught": 1
+        }
+      },
+      "baseline_flags": 71,
+      "counted": 15,
+      "caught": 11,
+      "caught_on_injected_field": 11,
+      "caught_ids": [
+        "evidence-truncated",
+        "depends-spurious",
+        "gate-dropped",
+        "gate-spurious",
+        "kind-operation-to-value",
+        "kind-assertion-to-value",
+        "clarity-ambiguous-to-clear",
+        "clarity-clear-to-ambiguous",
+        "scope-in-to-out",
+        "entry-fabricated-real-quote",
+        "absence-stated-in-other-words"
+      ]
+    },
+    {
+      "parameter": "PAGE_SLACK",
+      "value": 0,
+      "by_leak": {
+        "entry_on_mapper_list": {
+          "n": 9,
+          "caught": 7
+        },
+        "entry_not_on_mapper_list": {
+          "n": 6,
+          "caught": 3
+        },
+        "entry_or_partner_on_mapper_list": {
+          "n": 12,
+          "caught": 9
+        },
+        "entry_or_partner_on_mapper_list_or_found_in_docs": {
+          "n": 14,
+          "caught": 9
+        },
+        "no_leak_found": {
+          "n": 1,
+          "caught": 1
+        }
+      },
+      "baseline_flags": 72,
+      "counted": 15,
+      "caught": 10,
+      "caught_on_injected_field": 10,
+      "caught_ids": [
+        "evidence-truncated",
+        "depends-spurious",
+        "gate-dropped",
+        "gate-spurious",
+        "kind-operation-to-value",
+        "clarity-ambiguous-to-clear",
+        "clarity-clear-to-ambiguous",
+        "scope-in-to-out",
+        "entry-fabricated-real-quote",
+        "absence-stated-in-other-words"
+      ]
+    },
+    {
+      "parameter": "PAGE_SLACK",
+      "value": 2,
+      "by_leak": {
+        "entry_on_mapper_list": {
+          "n": 9,
+          "caught": 7
+        },
+        "entry_not_on_mapper_list": {
+          "n": 6,
+          "caught": 4
+        },
+        "entry_or_partner_on_mapper_list": {
+          "n": 12,
+          "caught": 9
+        },
+        "entry_or_partner_on_mapper_list_or_found_in_docs": {
+          "n": 14,
+          "caught": 10
+        },
+        "no_leak_found": {
+          "n": 1,
+          "caught": 1
+        }
+      },
+      "baseline_flags": 71,
+      "counted": 15,
+      "caught": 11,
+      "caught_on_injected_field": 11,
+      "caught_ids": [
+        "evidence-truncated",
+        "depends-spurious",
+        "gate-dropped",
+        "gate-spurious",
+        "kind-operation-to-value",
+        "kind-assertion-to-value",
+        "clarity-ambiguous-to-clear",
+        "clarity-clear-to-ambiguous",
+        "scope-in-to-out",
+        "entry-fabricated-real-quote",
+        "absence-stated-in-other-words"
+      ]
+    },
+    {
+      "parameter": "EVIDENCE_NESTED",
+      "value": 0.8,
+      "by_leak": {
+        "entry_on_mapper_list": {
+          "n": 9,
+          "caught": 7
+        },
+        "entry_not_on_mapper_list": {
+          "n": 6,
+          "caught": 4
+        },
+        "entry_or_partner_on_mapper_list": {
+          "n": 12,
+          "caught": 9
+        },
+        "entry_or_partner_on_mapper_list_or_found_in_docs": {
+          "n": 14,
+          "caught": 10
+        },
+        "no_leak_found": {
+          "n": 1,
+          "caught": 1
+        }
+      },
+      "baseline_flags": 67,
+      "counted": 15,
+      "caught": 11,
+      "caught_on_injected_field": 11,
+      "caught_ids": [
+        "evidence-truncated",
+        "depends-spurious",
+        "gate-dropped",
+        "gate-spurious",
+        "kind-operation-to-value",
+        "kind-assertion-to-value",
+        "clarity-ambiguous-to-clear",
+        "clarity-clear-to-ambiguous",
+        "scope-in-to-out",
+        "entry-fabricated-real-quote",
+        "absence-stated-in-other-words"
+      ]
+    },
+    {
+      "parameter": "EVIDENCE_NESTED",
+      "value": 1.0,
+      "by_leak": {
+        "entry_on_mapper_list": {
+          "n": 9,
+          "caught": 7
+        },
+        "entry_not_on_mapper_list": {
+          "n": 6,
+          "caught": 4
+        },
+        "entry_or_partner_on_mapper_list": {
+          "n": 12,
+          "caught": 9
+        },
+        "entry_or_partner_on_mapper_list_or_found_in_docs": {
+          "n": 14,
+          "caught": 10
+        },
+        "no_leak_found": {
+          "n": 1,
+          "caught": 1
+        }
+      },
+      "baseline_flags": 71,
+      "counted": 15,
+      "caught": 11,
+      "caught_on_injected_field": 11,
+      "caught_ids": [
+        "evidence-truncated",
+        "depends-spurious",
+        "gate-dropped",
+        "gate-spurious",
+        "kind-operation-to-value",
+        "kind-assertion-to-value",
+        "clarity-ambiguous-to-clear",
+        "clarity-clear-to-ambiguous",
+        "scope-in-to-out",
+        "entry-fabricated-real-quote",
+        "absence-stated-in-other-words"
+      ]
+    },
+    {
+      "parameter": "NAME_WEIGHT",
+      "value": 0.0,
+      "by_leak": {
+        "entry_on_mapper_list": {
+          "n": 9,
+          "caught": 7
+        },
+        "entry_not_on_mapper_list": {
+          "n": 6,
+          "caught": 4
+        },
+        "entry_or_partner_on_mapper_list": {
+          "n": 12,
+          "caught": 9
+        },
+        "entry_or_partner_on_mapper_list_or_found_in_docs": {
+          "n": 14,
+          "caught": 10
+        },
+        "no_leak_found": {
+          "n": 1,
+          "caught": 1
+        }
+      },
+      "baseline_flags": 79,
+      "counted": 15,
+      "caught": 11,
+      "caught_on_injected_field": 11,
+      "caught_ids": [
+        "evidence-truncated",
+        "depends-spurious",
+        "gate-dropped",
+        "gate-spurious",
+        "kind-operation-to-value",
+        "kind-assertion-to-value",
+        "clarity-ambiguous-to-clear",
+        "clarity-clear-to-ambiguous",
+        "scope-in-to-out",
+        "entry-fabricated-real-quote",
+        "absence-stated-in-other-words"
+      ]
+    }
+  ],
+  "baseline": {
+    "alignment": {
+      "partner": {
+        "player-count": "players-and-men",
+        "men-count": "players-and-men",
+        "board-tables": "table-designations",
+        "point-designations": "point-designations",
+        "inner-table-handedness": "table-designations",
+        "starting-position": "starting-position",
+        "opening-roll": "opening-roll",
+        "opening-thrower-option": "opening-throw-election",
+        "throw-two-dice": "opening-roll",
+        "move-by-pip": "move-by-pip",
+        "direction-of-travel": "direction-of-travel",
+        "doublets": "doublets",
+        "legal-destination": "legal-destination",
+        "made-point": "make-point",
+        "blot-hit": "hit-blot",
+        "enter-from-bar": "enter-from-bar",
+        "full-table-suspension": "full-table-suspension",
+        "must-play-whole-throw": "must-play-whole-throw",
+        "bearing-off-eligible": "bearing-off-eligible",
+        "bearing-off-move-or-remove": "bearing-off-move-or-remove",
+        "bearing-off-highest": "bearing-off-highest",
+        "bearing-off-doublets": "bearing-off-doublets",
+        "win-condition": "game-won",
+        "game-value": "game-value",
+        "agreed-backgammon-multiple": "backgammon-stake",
+        "stake-multiplier": "gammon-stake",
+        "next-game-opening": "successive-games",
+        "die-faces": "die-faces",
+        "doubling-cube": "doubling-cube",
+        "strategy-advice": "strategy-advice"
+      },
+      "links": {
+        "player-count": {
+          "players-and-men": {
+            "shared": 20,
+            "cov_ref": 0.69,
+            "cov_blind": 1.0,
+            "name": 0.143
+          }
+        },
+        "men-count": {
+          "players-and-men": {
+            "shared": 20,
+            "cov_ref": 0.69,
+            "cov_blind": 1.0,
+            "name": 0.333
+          }
+        },
+        "board-tables": {
+          "table-designations": {
+            "shared": 62,
+            "cov_ref": 1.0,
+            "cov_blind": 0.585,
+            "name": 0.5
+          }
+        },
+        "point-designations": {
+          "point-count": {
+            "shared": 11,
+            "cov_ref": 0.093,
+            "cov_blind": 1.0,
+            "name": 0.143
+          },
+          "point-colours": {
+            "shared": 14,
+            "cov_ref": 0.119,
+            "cov_blind": 1.0,
+            "name": 0.143
+          },
+          "point-designations": {
+            "shared": 93,
+            "cov_ref": 0.788,
+            "cov_blind": 1.0,
+            "name": 0.25
+          }
+        },
+        "inner-table-handedness": {
+          "table-designations": {
+            "shared": 25,
+            "cov_ref": 1.0,
+            "cov_blind": 0.236,
+            "name": 0.25
+          }
+        },
+        "starting-position": {
+          "starting-position": {
+            "shared": 75,
+            "cov_ref": 1.0,
+            "cov_blind": 1.0,
+            "name": 1.0
+          }
+        },
+        "opening-roll": {
+          "opening-roll": {
+            "shared": 38,
+            "cov_ref": 1.0,
+            "cov_blind": 0.844,
+            "name": 0.25
+          }
+        },
+        "opening-thrower-option": {
+          "opening-throw-election": {
+            "shared": 23,
+            "cov_ref": 1.0,
+            "cov_blind": 1.0,
+            "name": 0.429
+          }
+        },
+        "throw-two-dice": {
+          "opening-roll": {
+            "shared": 7,
+            "cov_ref": 1.0,
+            "cov_blind": 0.156,
+            "name": 0.143
+          }
+        },
+        "move-by-pip": {
+          "move-by-pip": {
+            "shared": 45,
+            "cov_ref": 1.0,
+            "cov_blind": 1.0,
+            "name": 0.571
+          }
+        },
+        "direction-of-travel": {
+          "direction-of-travel": {
+            "shared": 26,
+            "cov_ref": 1.0,
+            "cov_blind": 0.306,
+            "name": 0.143
+          }
+        },
+        "doublets": {
+          "doublets": {
+            "shared": 70,
+            "cov_ref": 1.0,
+            "cov_blind": 1.0,
+            "name": 1.0
+          }
+        },
+        "legal-destination": {
+          "legal-destination": {
+            "shared": 43,
+            "cov_ref": 1.0,
+            "cov_blind": 1.0,
+            "name": 0.6
+          }
+        },
+        "made-point": {
+          "make-point": {
+            "shared": 15,
+            "cov_ref": 0.417,
+            "cov_blind": 1.0,
+            "name": 0.5
+          },
+          "make-point-advice": {
+            "shared": 21,
+            "cov_ref": 0.583,
+            "cov_blind": 0.724,
+            "name": 0.333
+          }
+        },
+        "blot-hit": {
+          "blot": {
+            "shared": 12,
+            "cov_ref": 0.167,
+            "cov_blind": 1.0,
+            "name": 0.25
+          },
+          "hit-blot": {
+            "shared": 60,
+            "cov_ref": 0.833,
+            "cov_blind": 1.0,
+            "name": 0.5
+          }
+        },
+        "enter-from-bar": {
+          "enter-from-bar": {
+            "shared": 29,
+            "cov_ref": 0.707,
+            "cov_blind": 1.0,
+            "name": 0.375
+          },
+          "other-men-suspended": {
+            "shared": 12,
+            "cov_ref": 0.293,
+            "cov_blind": 1.0,
+            "name": 0.4
+          }
+        },
+        "full-table-suspension": {
+          "full-table-suspension": {
+            "shared": 47,
+            "cov_ref": 1.0,
+            "cov_blind": 1.0,
+            "name": 0.5
+          }
+        },
+        "must-play-whole-throw": {
+          "throw-part-lost": {
+            "shared": 14,
+            "cov_ref": 0.424,
+            "cov_blind": 1.0,
+            "name": 0.143
+          },
+          "must-play-whole-throw": {
+            "shared": 18,
+            "cov_ref": 0.545,
+            "cov_blind": 1.0,
+            "name": 0.6
+          }
+        },
+        "bearing-off-eligible": {
+          "bearing-off-eligible": {
+            "shared": 28,
+            "cov_ref": 1.0,
+            "cov_blind": 1.0,
+            "name": 1.0
+          }
+        },
+        "bearing-off-move-or-remove": {
+          "bearing-off-move-or-remove": {
+            "shared": 42,
+            "cov_ref": 1.0,
+            "cov_blind": 1.0,
+            "name": 0.714
+          }
+        },
+        "bearing-off-highest": {
+          "bearing-off-highest": {
+            "shared": 38,
+            "cov_ref": 1.0,
+            "cov_blind": 1.0,
+            "name": 0.75
+          }
+        },
+        "bearing-off-doublets": {
+          "bearing-off-doublets": {
+            "shared": 42,
+            "cov_ref": 0.483,
+            "cov_blind": 1.0,
+            "name": 0.5
+          }
+        },
+        "win-condition": {
+          "game-won": {
+            "shared": 16,
+            "cov_ref": 0.485,
+            "cov_blind": 1.0,
+            "name": 0.2
+          },
+          "game-value": {
+            "shared": 17,
+            "cov_ref": 0.515,
+            "cov_blind": 0.14,
+            "name": 0.0
+          }
+        },
+        "game-value": {
+          "game-value": {
+            "shared": 104,
+            "cov_ref": 0.839,
+            "cov_blind": 0.86,
+            "name": 0.75
+          },
+          "gammon-stake": {
+            "shared": 13,
+            "cov_ref": 0.105,
+            "cov_blind": 1.0,
+            "name": 0.167
+          },
+          "backgammon-stake": {
+            "shared": 20,
+            "cov_ref": 0.161,
+            "cov_blind": 1.0,
+            "name": 0.111
+          }
+        },
+        "agreed-backgammon-multiple": {
+          "backgammon-stake": {
+            "shared": 20,
+            "cov_ref": 0.8,
+            "cov_blind": 1.0,
+            "name": 0.222
+          }
+        },
+        "stake-multiplier": {
+          "game-value": {
+            "shared": 50,
+            "cov_ref": 0.714,
+            "cov_blind": 0.413,
+            "name": 0.0
+          },
+          "gammon-stake": {
+            "shared": 13,
+            "cov_ref": 0.186,
+            "cov_blind": 1.0,
+            "name": 0.25
+          },
+          "backgammon-stake": {
+            "shared": 20,
+            "cov_ref": 0.286,
+            "cov_blind": 1.0,
+            "name": 0.0
+          }
+        },
+        "next-game-opening": {
+          "successive-games": {
+            "shared": 36,
+            "cov_ref": 1.0,
+            "cov_blind": 1.0,
+            "name": 0.167
+          }
+        },
+        "die-faces": {
+          "die-faces": {
+            "shared": 9,
+            "cov_ref": 0.014,
+            "cov_blind": 1.0,
+            "name": 0.286
+          },
+          "rubber": {
+            "shared": 50,
+            "cov_ref": 0.079,
+            "cov_blind": 1.0,
+            "name": 0.0
+          },
+          "opening-throw-advice": {
+            "shared": 67,
+            "cov_ref": 0.106,
+            "cov_blind": 1.0,
+            "name": 0.111
+          }
+        },
+        "doubling-cube": {
+          "dice-apparatus": {
+            "shared": 23,
+            "cov_ref": 1.0,
+            "cov_blind": 1.0,
+            "name": 0.0
+          },
+          "doubling-cube": {
+            "shared": 23,
+            "cov_ref": 1.0,
+            "cov_blind": 1.0,
+            "name": 0.8
+          }
+        },
+        "strategy-advice": {
+          "strategy-advice": {
+            "shared": 19,
+            "cov_ref": 1.0,
+            "cov_blind": 1.0,
+            "name": 0.5
+          }
+        }
+      },
+      "unaligned_ref": [],
+      "unaligned_blind": [
+        "bearing-off-must-play-forward",
+        "board-compartments",
+        "board-construction",
+        "calling-the-throw",
+        "opening-throw-ranking"
+      ],
+      "linked_not_partner": [
+        "blot",
+        "dice-apparatus",
+        "make-point-advice",
+        "opening-throw-advice",
+        "other-men-suspended",
+        "point-colours",
+        "point-count",
+        "rubber",
+        "throw-part-lost"
+      ]
+    },
+    "flag_count": 71,
+    "flags_by_field": {
+      "entry": 5,
+      "evidence": 18,
+      "clarity": 2,
+      "ambiguity": 2,
+      "dependsOn": 27,
+      "kind": 2,
+      "gatedBy": 12,
+      "ambiguity.fate": 3
+    },
+    "flags": [
+      {
+        "entry": null,
+        "field": "entry",
+        "detail": "no reference entry quotes this text",
+        "blind": "bearing-off-must-play-forward",
+        "ref_value": null,
+        "blind_value": null
+      },
+      {
+        "entry": null,
+        "field": "entry",
+        "detail": "no reference entry quotes this text",
+        "blind": "board-compartments",
+        "ref_value": null,
+        "blind_value": null
+      },
+      {
+        "entry": null,
+        "field": "entry",
+        "detail": "no reference entry quotes this text",
+        "blind": "board-construction",
+        "ref_value": null,
+        "blind_value": null
+      },
+      {
+        "entry": null,
+        "field": "entry",
+        "detail": "no reference entry quotes this text",
+        "blind": "calling-the-throw",
+        "ref_value": null,
+        "blind_value": null
+      },
+      {
+        "entry": null,
+        "field": "entry",
+        "detail": "no reference entry quotes this text",
+        "blind": "opening-throw-ranking",
+        "ref_value": null,
+        "blind_value": null
+      },
+      {
+        "entry": "agreed-backgammon-multiple",
+        "field": "evidence",
+        "detail": "reference span quotes text the blind span omits",
+        "blind": "backgammon-stake",
+        "ref_value": 0.8,
+        "blind_value": 1.0
+      },
+      {
+        "entry": "bearing-off-doublets",
+        "field": "evidence",
+        "detail": "reference span quotes text the blind span omits",
+        "blind": "bearing-off-doublets",
+        "ref_value": 0.483,
+        "blind_value": 1.0
+      },
+      {
+        "entry": "bearing-off-eligible",
+        "field": "clarity",
+        "detail": "differs",
+        "blind": "bearing-off-eligible",
+        "ref_value": "clear",
+        "blind_value": "ambiguous"
+      },
+      {
+        "entry": "bearing-off-eligible",
+        "field": "ambiguity",
+        "detail": "present in one map only",
+        "blind": "bearing-off-eligible",
+        "ref_value": false,
+        "blind_value": true
+      },
+      {
+        "entry": "bearing-off-eligible",
+        "field": "dependsOn",
+        "detail": "blind has edge to table-designations; reference has no edge to its partner",
+        "blind": "bearing-off-eligible",
+        "ref_value": [
+          "board-tables",
+          "inner-table-handedness"
+        ],
+        "blind_value": "table-designations"
+      },
+      {
+        "entry": "bearing-off-eligible",
+        "field": "dependsOn",
+        "detail": "blind has edge to direction-of-travel; reference has no edge to its partner",
+        "blind": "bearing-off-eligible",
+        "ref_value": [
+          "direction-of-travel"
+        ],
+        "blind_value": "direction-of-travel"
+      },
+      {
+        "entry": "bearing-off-highest",
+        "field": "dependsOn",
+        "detail": "reference has edge to bearing-off-move-or-remove; blind has no edge to its partner",
+        "blind": "bearing-off-highest",
+        "ref_value": "bearing-off-move-or-remove",
+        "blind_value": null
+      },
+      {
+        "entry": "bearing-off-move-or-remove",
+        "field": "dependsOn",
+        "detail": "blind has edge to move-by-pip; reference has no edge to its partner",
+        "blind": "bearing-off-move-or-remove",
+        "ref_value": [
+          "move-by-pip"
+        ],
+        "blind_value": "move-by-pip"
+      },
+      {
+        "entry": "blot-hit",
+        "field": "dependsOn",
+        "detail": "blind has edge to direction-of-travel; reference has no edge to its partner",
+        "blind": "hit-blot",
+        "ref_value": [
+          "direction-of-travel"
+        ],
+        "blind_value": "direction-of-travel"
+      },
+      {
+        "entry": "blot-hit",
+        "field": "evidence",
+        "detail": "reference span quotes text the blind span omits",
+        "blind": "hit-blot",
+        "ref_value": 0.833,
+        "blind_value": 1.0
+      },
+      {
+        "entry": "board-tables",
+        "field": "dependsOn",
+        "detail": "blind has edge to starting-position; reference has no edge to its partner",
+        "blind": "table-designations",
+        "ref_value": [
+          "starting-position"
+        ],
+        "blind_value": "starting-position"
+      },
+      {
+        "entry": "board-tables",
+        "field": "evidence",
+        "detail": "blind span quotes text the reference span omits",
+        "blind": "table-designations",
+        "ref_value": 1.0,
+        "blind_value": 0.585
+      },
+      {
+        "entry": "die-faces",
+        "field": "dependsOn",
+        "detail": "reference has edge to point-designations; blind has no edge to its partner",
+        "blind": "die-faces",
+        "ref_value": "point-designations",
+        "blind_value": null
+      },
+      {
+        "entry": "die-faces",
+        "field": "dependsOn",
+        "detail": "reference has edge to throw-two-dice; blind has no edge to its partner",
+        "blind": "die-faces",
+        "ref_value": "throw-two-dice",
+        "blind_value": null
+      },
+      {
+        "entry": "die-faces",
+        "field": "evidence",
+        "detail": "reference span quotes text the blind span omits",
+        "blind": "die-faces",
+        "ref_value": 0.014,
+        "blind_value": 1.0
+      },
+      {
+        "entry": "direction-of-travel",
+        "field": "kind",
+        "detail": "differs",
+        "blind": "direction-of-travel",
+        "ref_value": "operation",
+        "blind_value": "value"
+      },
+      {
+        "entry": "direction-of-travel",
+        "field": "evidence",
+        "detail": "blind span quotes text the reference span omits",
+        "blind": "direction-of-travel",
+        "ref_value": 1.0,
+        "blind_value": 0.306
+      },
+      {
+        "entry": "doublets",
+        "field": "clarity",
+        "detail": "differs",
+        "blind": "doublets",
+        "ref_value": "clear",
+        "blind_value": "ambiguous"
+      },
+      {
+        "entry": "doublets",
+        "field": "ambiguity",
+        "detail": "present in one map only",
+        "blind": "doublets",
+        "ref_value": false,
+        "blind_value": true
+      },
+      {
+        "entry": "doublets",
+        "field": "gatedBy",
+        "detail": "reference has edge to enter-from-bar; blind has no edge to its partner",
+        "blind": "doublets",
+        "ref_value": "enter-from-bar",
+        "blind_value": null
+      },
+      {
+        "entry": "doublets",
+        "field": "gatedBy",
+        "detail": "blind has edge to full-table-suspension; reference has no edge to its partner",
+        "blind": "doublets",
+        "ref_value": [
+          "full-table-suspension"
+        ],
+        "blind_value": "full-table-suspension"
+      },
+      {
+        "entry": "doubling-cube",
+        "field": "kind",
+        "detail": "differs",
+        "blind": "doubling-cube",
+        "ref_value": "operation",
+        "blind_value": "value"
+      },
+      {
+        "entry": "enter-from-bar",
+        "field": "ambiguity.fate",
+        "detail": "differs",
+        "blind": "enter-from-bar",
+        "ref_value": "decision",
+        "blind_value": "unresolved"
+      },
+      {
+        "entry": "enter-from-bar",
+        "field": "dependsOn",
+        "detail": "blind has edge to legal-destination; reference has no edge to its partner",
+        "blind": "enter-from-bar",
+        "ref_value": [
+          "legal-destination"
+        ],
+        "blind_value": "legal-destination"
+      },
+      {
+        "entry": "enter-from-bar",
+        "field": "dependsOn",
+        "detail": "blind has edge to point-designations; reference has no edge to its partner",
+        "blind": "enter-from-bar",
+        "ref_value": [
+          "point-designations"
+        ],
+        "blind_value": "point-designations"
+      },
+      {
+        "entry": "enter-from-bar",
+        "field": "gatedBy",
+        "detail": "blind has edge to hit-blot; reference has no edge to its partner",
+        "blind": "enter-from-bar",
+        "ref_value": [
+          "blot-hit"
+        ],
+        "blind_value": "hit-blot"
+      },
+      {
+        "entry": "enter-from-bar",
+        "field": "gatedBy",
+        "detail": "blind has edge to full-table-suspension; reference has no edge to its partner",
+        "blind": "enter-from-bar",
+        "ref_value": [
+          "full-table-suspension"
+        ],
+        "blind_value": "full-table-suspension"
+      },
+      {
+        "entry": "enter-from-bar",
+        "field": "evidence",
+        "detail": "reference span quotes text the blind span omits",
+        "blind": "enter-from-bar",
+        "ref_value": 0.707,
+        "blind_value": 1.0
+      },
+      {
+        "entry": "full-table-suspension",
+        "field": "ambiguity.fate",
+        "detail": "differs",
+        "blind": "full-table-suspension",
+        "ref_value": "decision",
+        "blind_value": "unresolved"
+      },
+      {
+        "entry": "full-table-suspension",
+        "field": "gatedBy",
+        "detail": "blind has edge to hit-blot; reference has no edge to its partner",
+        "blind": "full-table-suspension",
+        "ref_value": [
+          "blot-hit"
+        ],
+        "blind_value": "hit-blot"
+      },
+      {
+        "entry": "game-value",
+        "field": "dependsOn",
+        "detail": "reference has edge to enter-from-bar; blind has no edge to its partner",
+        "blind": "game-value",
+        "ref_value": "enter-from-bar",
+        "blind_value": null
+      },
+      {
+        "entry": "game-value",
+        "field": "dependsOn",
+        "detail": "blind has edge to gammon-stake; reference has no edge to its partner",
+        "blind": "game-value",
+        "ref_value": [
+          "stake-multiplier"
+        ],
+        "blind_value": "gammon-stake"
+      },
+      {
+        "entry": "game-value",
+        "field": "dependsOn",
+        "detail": "blind has edge to backgammon-stake; reference has no edge to its partner",
+        "blind": "game-value",
+        "ref_value": [
+          "agreed-backgammon-multiple"
+        ],
+        "blind_value": "backgammon-stake"
+      },
+      {
+        "entry": "game-value",
+        "field": "gatedBy",
+        "detail": "blind has edge to game-won; reference has no edge to its partner",
+        "blind": "game-value",
+        "ref_value": [
+          "win-condition"
+        ],
+        "blind_value": "game-won"
+      },
+      {
+        "entry": "game-value",
+        "field": "evidence",
+        "detail": "spans overlap but neither contains the other",
+        "blind": "game-value",
+        "ref_value": 0.839,
+        "blind_value": 0.86
+      },
+      {
+        "entry": "inner-table-handedness",
+        "field": "dependsOn",
+        "detail": "reference has edge to board-tables; blind has no edge to its partner",
+        "blind": "table-designations",
+        "ref_value": "board-tables",
+        "blind_value": null
+      },
+      {
+        "entry": "inner-table-handedness",
+        "field": "evidence",
+        "detail": "blind span quotes text the reference span omits",
+        "blind": "table-designations",
+        "ref_value": 1.0,
+        "blind_value": 0.236
+      },
+      {
+        "entry": "legal-destination",
+        "field": "ambiguity.fate",
+        "detail": "differs",
+        "blind": "legal-destination",
+        "ref_value": "decision",
+        "blind_value": "unresolved"
+      },
+      {
+        "entry": "legal-destination",
+        "field": "dependsOn",
+        "detail": "blind has edge to point-designations; reference has no edge to its partner",
+        "blind": "legal-destination",
+        "ref_value": [
+          "point-designations"
+        ],
+        "blind_value": "point-designations"
+      },
+      {
+        "entry": "made-point",
+        "field": "evidence",
+        "detail": "reference span quotes text the blind span omits",
+        "blind": "make-point",
+        "ref_value": 0.417,
+        "blind_value": 1.0
+      },
+      {
+        "entry": "men-count",
+        "field": "evidence",
+        "detail": "reference span quotes text the blind span omits",
+        "blind": "players-and-men",
+        "ref_value": 0.69,
+        "blind_value": 1.0
+      },
+      {
+        "entry": "move-by-pip",
+        "field": "dependsOn",
+        "detail": "reference has edge to throw-two-dice; blind has no edge to its partner",
+        "blind": "move-by-pip",
+        "ref_value": "throw-two-dice",
+        "blind_value": null
+      },
+      {
+        "entry": "move-by-pip",
+        "field": "dependsOn",
+        "detail": "blind has edge to direction-of-travel; reference has no edge to its partner",
+        "blind": "move-by-pip",
+        "ref_value": [
+          "direction-of-travel"
+        ],
+        "blind_value": "direction-of-travel"
+      },
+      {
+        "entry": "move-by-pip",
+        "field": "dependsOn",
+        "detail": "blind has edge to point-designations; reference has no edge to its partner",
+        "blind": "move-by-pip",
+        "ref_value": [
+          "point-designations"
+        ],
+        "blind_value": "point-designations"
+      },
+      {
+        "entry": "move-by-pip",
+        "field": "gatedBy",
+        "detail": "reference has edge to enter-from-bar; blind has no edge to its partner",
+        "blind": "move-by-pip",
+        "ref_value": "enter-from-bar",
+        "blind_value": null
+      },
+      {
+        "entry": "move-by-pip",
+        "field": "gatedBy",
+        "detail": "blind has edge to full-table-suspension; reference has no edge to its partner",
+        "blind": "move-by-pip",
+        "ref_value": [
+          "full-table-suspension"
+        ],
+        "blind_value": "full-table-suspension"
+      },
+      {
+        "entry": "must-play-whole-throw",
+        "field": "dependsOn",
+        "detail": "blind has edge to doublets; reference has no edge to its partner",
+        "blind": "must-play-whole-throw",
+        "ref_value": [
+          "doublets"
+        ],
+        "blind_value": "doublets"
+      },
+      {
+        "entry": "must-play-whole-throw",
+        "field": "gatedBy",
+        "detail": "reference has edge to enter-from-bar; blind has no edge to its partner",
+        "blind": "must-play-whole-throw",
+        "ref_value": "enter-from-bar",
+        "blind_value": null
+      },
+      {
+        "entry": "must-play-whole-throw",
+        "field": "evidence",
+        "detail": "reference span quotes text the blind span omits",
+        "blind": "must-play-whole-throw",
+        "ref_value": 0.545,
+        "blind_value": 1.0
+      },
+      {
+        "entry": "next-game-opening",
+        "field": "gatedBy",
+        "detail": "blind has edge to game-won; reference has no edge to its partner",
+        "blind": "successive-games",
+        "ref_value": [
+          "win-condition"
+        ],
+        "blind_value": "game-won"
+      },
+      {
+        "entry": "opening-roll",
+        "field": "dependsOn",
+        "detail": "blind has edge to die-faces; reference has no edge to its partner",
+        "blind": "opening-roll",
+        "ref_value": [
+          "die-faces"
+        ],
+        "blind_value": "die-faces"
+      },
+      {
+        "entry": "opening-roll",
+        "field": "evidence",
+        "detail": "blind span quotes text the reference span omits",
+        "blind": "opening-roll",
+        "ref_value": 1.0,
+        "blind_value": 0.844
+      },
+      {
+        "entry": "opening-thrower-option",
+        "field": "gatedBy",
+        "detail": "blind has edge to opening-roll; reference has no edge to its partner",
+        "blind": "opening-throw-election",
+        "ref_value": [
+          "opening-roll",
+          "throw-two-dice"
+        ],
+        "blind_value": "opening-roll"
+      },
+      {
+        "entry": "player-count",
+        "field": "evidence",
+        "detail": "reference span quotes text the blind span omits",
+        "blind": "players-and-men",
+        "ref_value": 0.69,
+        "blind_value": 1.0
+      },
+      {
+        "entry": "point-designations",
+        "field": "evidence",
+        "detail": "reference span quotes text the blind span omits",
+        "blind": "point-designations",
+        "ref_value": 0.788,
+        "blind_value": 1.0
+      },
+      {
+        "entry": "stake-multiplier",
+        "field": "dependsOn",
+        "detail": "reference has edge to agreed-backgammon-multiple; blind has no edge to its partner",
+        "blind": "gammon-stake",
+        "ref_value": "agreed-backgammon-multiple",
+        "blind_value": null
+      },
+      {
+        "entry": "stake-multiplier",
+        "field": "dependsOn",
+        "detail": "reference has edge to game-value; blind has no edge to its partner",
+        "blind": "gammon-stake",
+        "ref_value": "game-value",
+        "blind_value": null
+      },
+      {
+        "entry": "stake-multiplier",
+        "field": "evidence",
+        "detail": "reference span quotes text the blind span omits",
+        "blind": "gammon-stake",
+        "ref_value": 0.186,
+        "blind_value": 1.0
+      },
+      {
+        "entry": "starting-position",
+        "field": "dependsOn",
+        "detail": "reference has edge to board-tables; blind has no edge to its partner",
+        "blind": "starting-position",
+        "ref_value": "board-tables",
+        "blind_value": null
+      },
+      {
+        "entry": "starting-position",
+        "field": "dependsOn",
+        "detail": "blind has edge to players-and-men; reference has no edge to its partner",
+        "blind": "starting-position",
+        "ref_value": [
+          "men-count",
+          "player-count"
+        ],
+        "blind_value": "players-and-men"
+      },
+      {
+        "entry": "throw-two-dice",
+        "field": "dependsOn",
+        "detail": "reference has edge to opening-roll; blind has no edge to its partner",
+        "blind": "opening-roll",
+        "ref_value": "opening-roll",
+        "blind_value": null
+      },
+      {
+        "entry": "throw-two-dice",
+        "field": "dependsOn",
+        "detail": "blind has edge to die-faces; reference has no edge to its partner",
+        "blind": "opening-roll",
+        "ref_value": [
+          "die-faces"
+        ],
+        "blind_value": "die-faces"
+      },
+      {
+        "entry": "throw-two-dice",
+        "field": "evidence",
+        "detail": "blind span quotes text the reference span omits",
+        "blind": "opening-roll",
+        "ref_value": 1.0,
+        "blind_value": 0.156
+      },
+      {
+        "entry": "win-condition",
+        "field": "dependsOn",
+        "detail": "reference has edge to bearing-off-eligible; blind has no edge to its partner",
+        "blind": "game-won",
+        "ref_value": "bearing-off-eligible",
+        "blind_value": null
+      },
+      {
+        "entry": "win-condition",
+        "field": "gatedBy",
+        "detail": "blind has edge to bearing-off-eligible; reference has no edge to its partner",
+        "blind": "game-won",
+        "ref_value": [
+          "bearing-off-eligible"
+        ],
+        "blind_value": "bearing-off-eligible"
+      },
+      {
+        "entry": "win-condition",
+        "field": "evidence",
+        "detail": "reference span quotes text the blind span omits",
+        "blind": "game-won",
+        "ref_value": 0.485,
+        "blind_value": 1.0
+      }
+    ]
+  },
+  "runs": [
+    {
+      "id": "evidence-adjacent-sentence",
+      "family": "wrong evidence",
+      "counted": true,
+      "probe": false,
+      "trial5_caught": false,
+      "entries": [
+        "throw-two-dice"
+      ],
+      "changed_fields": {
+        "throw-two-dice": [
+          "evidence"
+        ]
+      },
+      "partners": {
+        "throw-two-dice": "opening-roll"
+      },
+      "leaked_entry": false,
+      "leaked_partner": true,
+      "leaked_found_in_docs": false,
+      "caught": false,
+      "caught_on_injected_field": false,
+      "new_flags_on_entry": [],
+      "new_flags_elsewhere": [],
+      "baseline_flags_gone": []
+    },
+    {
+      "id": "evidence-truncated",
+      "family": "wrong evidence",
+      "counted": true,
+      "probe": false,
+      "trial5_caught": false,
+      "entries": [
+        "legal-destination"
+      ],
+      "changed_fields": {
+        "legal-destination": [
+          "evidence"
+        ]
+      },
+      "partners": {
+        "legal-destination": "legal-destination"
+      },
+      "leaked_entry": true,
+      "leaked_partner": true,
+      "leaked_found_in_docs": false,
+      "caught": true,
+      "caught_on_injected_field": true,
+      "new_flags_on_entry": [
+        {
+          "entry": "legal-destination",
+          "field": "evidence",
+          "detail": "blind span quotes text the reference span omits",
+          "blind": "legal-destination",
+          "ref_value": 1.0,
+          "blind_value": 0.581
+        }
+      ],
+      "new_flags_elsewhere": [],
+      "baseline_flags_gone": []
+    },
+    {
+      "id": "depends-dropped",
+      "family": "incomplete dependsOn",
+      "counted": true,
+      "probe": false,
+      "trial5_caught": false,
+      "entries": [
+        "move-by-pip"
+      ],
+      "changed_fields": {
+        "move-by-pip": [
+          "dependsOn"
+        ]
+      },
+      "partners": {
+        "move-by-pip": "move-by-pip"
+      },
+      "leaked_entry": true,
+      "leaked_partner": true,
+      "leaked_found_in_docs": false,
+      "caught": false,
+      "caught_on_injected_field": false,
+      "new_flags_on_entry": [],
+      "new_flags_elsewhere": [],
+      "baseline_flags_gone": [
+        [
+          "move-by-pip",
+          "dependsOn",
+          "reference has edge to throw-two-dice; blind has no edge to its partner",
+          "move-by-pip"
+        ]
+      ]
+    },
+    {
+      "id": "depends-spurious",
+      "family": "wrong dependsOn",
+      "counted": true,
+      "probe": false,
+      "trial5_caught": false,
+      "entries": [
+        "blot-hit"
+      ],
+      "changed_fields": {
+        "blot-hit": [
+          "dependsOn"
+        ]
+      },
+      "partners": {
+        "blot-hit": "hit-blot"
+      },
+      "leaked_entry": false,
+      "leaked_partner": false,
+      "leaked_found_in_docs": false,
+      "caught": true,
+      "caught_on_injected_field": true,
+      "new_flags_on_entry": [
+        {
+          "entry": "blot-hit",
+          "field": "dependsOn",
+          "detail": "reference has edge to doublets; blind has no edge to its partner",
+          "blind": "hit-blot",
+          "ref_value": "doublets",
+          "blind_value": null
+        }
+      ],
+      "new_flags_elsewhere": [],
+      "baseline_flags_gone": []
+    },
+    {
+      "id": "gate-dropped",
+      "family": "missing gatedBy",
+      "counted": true,
+      "probe": false,
+      "trial5_caught": false,
+      "entries": [
+        "bearing-off-highest"
+      ],
+      "changed_fields": {
+        "bearing-off-highest": [
+          "gatedBy"
+        ]
+      },
+      "partners": {
+        "bearing-off-highest": "bearing-off-highest"
+      },
+      "leaked_entry": true,
+      "leaked_partner": true,
+      "leaked_found_in_docs": false,
+      "caught": true,
+      "caught_on_injected_field": true,
+      "new_flags_on_entry": [
+        {
+          "entry": "bearing-off-highest",
+          "field": "gatedBy",
+          "detail": "blind has edge to bearing-off-eligible; reference has no edge to its partner",
+          "blind": "bearing-off-highest",
+          "ref_value": [
+            "bearing-off-eligible"
+          ],
+          "blind_value": "bearing-off-eligible"
+        }
+      ],
+      "new_flags_elsewhere": [],
+      "baseline_flags_gone": []
+    },
+    {
+      "id": "gate-spurious",
+      "family": "wrong gatedBy",
+      "counted": true,
+      "probe": false,
+      "trial5_caught": false,
+      "entries": [
+        "opening-roll"
+      ],
+      "changed_fields": {
+        "opening-roll": [
+          "gatedBy"
+        ]
+      },
+      "partners": {
+        "opening-roll": "opening-roll"
+      },
+      "leaked_entry": true,
+      "leaked_partner": true,
+      "leaked_found_in_docs": false,
+      "caught": true,
+      "caught_on_injected_field": true,
+      "new_flags_on_entry": [
+        {
+          "entry": "opening-roll",
+          "field": "gatedBy",
+          "detail": "reference has edge to enter-from-bar; blind has no edge to its partner",
+          "blind": "opening-roll",
+          "ref_value": "enter-from-bar",
+          "blind_value": null
+        }
+      ],
+      "new_flags_elsewhere": [],
+      "baseline_flags_gone": []
+    },
+    {
+      "id": "kind-operation-to-value",
+      "family": "wrong kind",
+      "counted": true,
+      "probe": false,
+      "trial5_caught": false,
+      "entries": [
+        "move-by-pip"
+      ],
+      "changed_fields": {
+        "move-by-pip": [
+          "kind"
+        ]
+      },
+      "partners": {
+        "move-by-pip": "move-by-pip"
+      },
+      "leaked_entry": true,
+      "leaked_partner": true,
+      "leaked_found_in_docs": false,
+      "caught": true,
+      "caught_on_injected_field": true,
+      "new_flags_on_entry": [
+        {
+          "entry": "move-by-pip",
+          "field": "kind",
+          "detail": "differs",
+          "blind": "move-by-pip",
+          "ref_value": "value",
+          "blind_value": "operation"
+        }
+      ],
+      "new_flags_elsewhere": [],
+      "baseline_flags_gone": []
+    },
+    {
+      "id": "kind-assertion-to-value",
+      "family": "wrong kind",
+      "counted": true,
+      "probe": false,
+      "trial5_caught": false,
+      "entries": [
+        "agreed-backgammon-multiple"
+      ],
+      "changed_fields": {
+        "agreed-backgammon-multiple": [
+          "kind"
+        ]
+      },
+      "partners": {
+        "agreed-backgammon-multiple": "backgammon-stake"
+      },
+      "leaked_entry": false,
+      "leaked_partner": false,
+      "leaked_found_in_docs": true,
+      "caught": true,
+      "caught_on_injected_field": true,
+      "new_flags_on_entry": [
+        {
+          "entry": "agreed-backgammon-multiple",
+          "field": "kind",
+          "detail": "differs",
+          "blind": "backgammon-stake",
+          "ref_value": "value",
+          "blind_value": "assertion"
+        }
+      ],
+      "new_flags_elsewhere": [],
+      "baseline_flags_gone": []
+    },
+    {
+      "id": "clarity-ambiguous-to-clear",
+      "family": "wrong clarity",
+      "counted": true,
+      "probe": false,
+      "trial5_caught": false,
+      "entries": [
+        "game-value"
+      ],
+      "changed_fields": {
+        "game-value": [
+          "ambiguity",
+          "clarity"
+        ]
+      },
+      "partners": {
+        "game-value": "game-value"
+      },
+      "leaked_entry": true,
+      "leaked_partner": true,
+      "leaked_found_in_docs": false,
+      "caught": true,
+      "caught_on_injected_field": true,
+      "new_flags_on_entry": [
+        {
+          "entry": "game-value",
+          "field": "clarity",
+          "detail": "differs",
+          "blind": "game-value",
+          "ref_value": "clear",
+          "blind_value": "ambiguous"
+        },
+        {
+          "entry": "game-value",
+          "field": "ambiguity",
+          "detail": "present in one map only",
+          "blind": "game-value",
+          "ref_value": false,
+          "blind_value": true
+        }
+      ],
+      "new_flags_elsewhere": [],
+      "baseline_flags_gone": []
+    },
+    {
+      "id": "clarity-clear-to-ambiguous",
+      "family": "wrong clarity",
+      "counted": true,
+      "probe": false,
+      "trial5_caught": false,
+      "entries": [
+        "bearing-off-highest"
+      ],
+      "changed_fields": {
+        "bearing-off-highest": [
+          "ambiguity",
+          "clarity"
+        ]
+      },
+      "partners": {
+        "bearing-off-highest": "bearing-off-highest"
+      },
+      "leaked_entry": true,
+      "leaked_partner": true,
+      "leaked_found_in_docs": false,
+      "caught": true,
+      "caught_on_injected_field": true,
+      "new_flags_on_entry": [
+        {
+          "entry": "bearing-off-highest",
+          "field": "clarity",
+          "detail": "differs",
+          "blind": "bearing-off-highest",
+          "ref_value": "ambiguous",
+          "blind_value": "clear"
+        },
+        {
+          "entry": "bearing-off-highest",
+          "field": "ambiguity",
+          "detail": "present in one map only",
+          "blind": "bearing-off-highest",
+          "ref_value": true,
+          "blind_value": false
+        }
+      ],
+      "new_flags_elsewhere": [],
+      "baseline_flags_gone": []
+    },
+    {
+      "id": "scope-in-to-out",
+      "family": "wrong scope",
+      "counted": true,
+      "probe": false,
+      "trial5_caught": false,
+      "entries": [
+        "legal-destination"
+      ],
+      "changed_fields": {
+        "legal-destination": [
+          "scope",
+          "status"
+        ]
+      },
+      "partners": {
+        "legal-destination": "legal-destination"
+      },
+      "leaked_entry": true,
+      "leaked_partner": true,
+      "leaked_found_in_docs": false,
+      "caught": true,
+      "caught_on_injected_field": true,
+      "new_flags_on_entry": [
+        {
+          "entry": "legal-destination",
+          "field": "scope",
+          "detail": "differs",
+          "blind": "legal-destination",
+          "ref_value": "out",
+          "blind_value": "in"
+        }
+      ],
+      "new_flags_elsewhere": [],
+      "baseline_flags_gone": []
+    },
+    {
+      "id": "entry-fabricated-real-quote",
+      "family": "fabricated entry",
+      "counted": true,
+      "probe": false,
+      "trial5_caught": false,
+      "entries": [
+        "blot-must-be-hit"
+      ],
+      "changed_fields": {
+        "blot-must-be-hit": [
+          "entry"
+        ]
+      },
+      "partners": {
+        "blot-must-be-hit": "legal-destination"
+      },
+      "leaked_entry": false,
+      "leaked_partner": true,
+      "leaked_found_in_docs": false,
+      "caught": true,
+      "caught_on_injected_field": true,
+      "new_flags_on_entry": [
+        {
+          "entry": "blot-must-be-hit",
+          "field": "clarity",
+          "detail": "differs",
+          "blind": "legal-destination",
+          "ref_value": "clear",
+          "blind_value": "ambiguous"
+        },
+        {
+          "entry": "blot-must-be-hit",
+          "field": "ambiguity",
+          "detail": "present in one map only",
+          "blind": "legal-destination",
+          "ref_value": false,
+          "blind_value": true
+        },
+        {
+          "entry": "blot-must-be-hit",
+          "field": "dependsOn",
+          "detail": "reference has edge to blot-hit; blind has no edge to its partner",
+          "blind": "legal-destination",
+          "ref_value": "blot-hit",
+          "blind_value": null
+        },
+        {
+          "entry": "blot-must-be-hit",
+          "field": "dependsOn",
+          "detail": "blind has edge to point-designations; reference has no edge to its partner",
+          "blind": "legal-destination",
+          "ref_value": [
+            "point-designations"
+          ],
+          "blind_value": "point-designations"
+        }
+      ],
+      "new_flags_elsewhere": [],
+      "baseline_flags_gone": []
+    },
+    {
+      "id": "beyond-adapter-false",
+      "family": "false unreachability",
+      "counted": true,
+      "probe": false,
+      "trial5_caught": false,
+      "entries": [
+        "starting-position"
+      ],
+      "changed_fields": {
+        "starting-position": [
+          "beyondAdapter",
+          "status"
+        ]
+      },
+      "partners": {
+        "starting-position": "starting-position"
+      },
+      "leaked_entry": true,
+      "leaked_partner": true,
+      "leaked_found_in_docs": false,
+      "caught": false,
+      "caught_on_injected_field": false,
+      "new_flags_on_entry": [],
+      "new_flags_elsewhere": [],
+      "baseline_flags_gone": []
+    },
+    {
+      "id": "absence-stated-in-other-words",
+      "family": "false absence",
+      "counted": true,
+      "probe": false,
+      "trial5_caught": true,
+      "entries": [
+        "capture-rule-absent"
+      ],
+      "changed_fields": {
+        "capture-rule-absent": [
+          "entry"
+        ]
+      },
+      "partners": {
+        "capture-rule-absent": "legal-destination"
+      },
+      "leaked_entry": false,
+      "leaked_partner": true,
+      "leaked_found_in_docs": false,
+      "caught": true,
+      "caught_on_injected_field": true,
+      "new_flags_on_entry": [
+        {
+          "entry": "capture-rule-absent",
+          "field": "scope",
+          "detail": "differs",
+          "blind": "legal-destination",
+          "ref_value": "out",
+          "blind_value": "in"
+        },
+        {
+          "entry": "capture-rule-absent",
+          "field": "clarity",
+          "detail": "differs",
+          "blind": "legal-destination",
+          "ref_value": "clear",
+          "blind_value": "ambiguous"
+        },
+        {
+          "entry": "capture-rule-absent",
+          "field": "ambiguity",
+          "detail": "present in one map only",
+          "blind": "legal-destination",
+          "ref_value": false,
+          "blind_value": true
+        },
+        {
+          "entry": "capture-rule-absent",
+          "field": "dependsOn",
+          "detail": "blind has edge to point-designations; reference has no edge to its partner",
+          "blind": "legal-destination",
+          "ref_value": [
+            "point-designations"
+          ],
+          "blind_value": "point-designations"
+        }
+      ],
+      "new_flags_elsewhere": [],
+      "baseline_flags_gone": []
+    },
+    {
+      "id": "absence-in-unused-words",
+      "family": "false absence",
+      "counted": false,
+      "probe": true,
+      "trial5_caught": false,
+      "entries": [
+        "capture-rule-absent"
+      ],
+      "changed_fields": {
+        "capture-rule-absent": [
+          "entry"
+        ]
+      },
+      "partners": {
+        "capture-rule-absent": "legal-destination"
+      },
+      "leaked_entry": false,
+      "leaked_partner": true,
+      "leaked_found_in_docs": false,
+      "caught": true,
+      "caught_on_injected_field": true,
+      "new_flags_on_entry": [
+        {
+          "entry": "capture-rule-absent",
+          "field": "scope",
+          "detail": "differs",
+          "blind": "legal-destination",
+          "ref_value": "out",
+          "blind_value": "in"
+        },
+        {
+          "entry": "capture-rule-absent",
+          "field": "clarity",
+          "detail": "differs",
+          "blind": "legal-destination",
+          "ref_value": "clear",
+          "blind_value": "ambiguous"
+        },
+        {
+          "entry": "capture-rule-absent",
+          "field": "ambiguity",
+          "detail": "present in one map only",
+          "blind": "legal-destination",
+          "ref_value": false,
+          "blind_value": true
+        },
+        {
+          "entry": "capture-rule-absent",
+          "field": "dependsOn",
+          "detail": "blind has edge to point-designations; reference has no edge to its partner",
+          "blind": "legal-destination",
+          "ref_value": [
+            "point-designations"
+          ],
+          "blind_value": "point-designations"
+        }
+      ],
+      "new_flags_elsewhere": [],
+      "baseline_flags_gone": []
+    },
+    {
+      "id": "name-contradicts-corpus",
+      "family": "entry contradicts corpus",
+      "counted": true,
+      "probe": false,
+      "trial5_caught": false,
+      "entries": [
+        "board-tables"
+      ],
+      "changed_fields": {
+        "board-tables": [
+          "name",
+          "note"
+        ]
+      },
+      "partners": {
+        "board-tables": "table-designations"
+      },
+      "leaked_entry": false,
+      "leaked_partner": false,
+      "leaked_found_in_docs": true,
+      "caught": false,
+      "caught_on_injected_field": false,
+      "new_flags_on_entry": [],
+      "new_flags_elsewhere": [],
+      "baseline_flags_gone": []
+    }
+  ]
+}
