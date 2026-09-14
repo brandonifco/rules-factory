@@ -25,4 +25,5 @@ kept; its number is never reused.
 | [0014](0014-a-map-is-checked-by-a-blind-second-mapping.md) | A map is checked by a blind second mapping, and every disagreement is resolved against the corpus before it is used |
 | [0015](0015-a-map-is-published-as-a-versioned-package.md) | A map is published as a versioned package, checked before it can be a version, and overlaid by its engine on three fields |
 | [0016](0016-a-map-package-is-data-not-code.md) | A map package is data, not code: the factory checks it with its own checker and never runs the package's (amends 0015) |
+| [0017](0017-a-map-change-carries-a-review-of-its-bytes.md) | A map change carries a review of its exact bytes, and a check refuses one that does not (enforces 0014) |
 | [0018](0018-every-file-the-factory-writes-has-one-owner.md) | Every file the factory writes has one owner: generated, managed (factory policy with a recipe version, hand edits refused) or engine-owned |

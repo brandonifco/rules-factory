@@ -1,0 +1,14 @@
+{
+  "about": "The review of each map's exact bytes (docs/decisions/0017-a-map-change-carries-a-review-of-its-bytes.md). tools/check-map-review.py fails any map whose sha256 is not the one recorded here.",
+  "reviews": {
+    "corpus-map.json": {
+      "sha256": "3b2a09e43c0a47398001c1cb87c1cf36ad825ff9e77343a97f9c290da60d906a",
+      "method": "exemption",
+      "exemption": {
+        "kind": "legacy",
+        "issue": "#3",
+        "reason": "Grandfathered, not reviewed: this map predates the review gate and has had no blind second mapping under 0014. Trial 6 (examples/blind-mapping-trial/) compared a blind map with it at ecc53b8, but as a measurement of the method rather than a review of the map: its mapper worked from docs that still carried backgammon examples (0014, run 1), its 71 flags have no row-per-disagreement record, and #42 corrected only the flags scored B, in 32c5a69, which produced these bytes. A blind second mapping is still owed before this map is used as the board-game reference target under #3."
+      }
+    }
+  }
+}

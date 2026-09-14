@@ -320,6 +320,12 @@ with no row is unresolved, and the map is not used.
 
 **What it does not catch.** Two mappers who share a misreading agree, and agreement is silent.
 
+**How the review is held to the map.** `review.json` beside the map names the SHA-256 of the map
+bytes the review covers and points at the comparison and resolution record. `validate.sh` fails a
+map whose bytes no longer match, so a map changed after its review is refused until it is
+reviewed again or given a recorded exemption. See
+[0017](decisions/0017-a-map-change-carries-a-review-of-its-bytes.md).
+
 ## Phase 4 — Decide the ambiguities
 
 An ambiguous entry has exactly two possible fates, and choosing between them is the most

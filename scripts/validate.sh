@@ -44,6 +44,13 @@ check_all_maps() {
   printf '%d map(s) checked\n' "$maps_checked"
 }
 
+# Every map carries a review of its exact bytes (0017): a blind second mapping, a verdict from a
+# separate context, or an exemption that says why. The checker counts the maps it examined and
+# fails on none, and prints every exemption, so neither an empty glob nor a waiver passes quietly.
+check_map_reviews() {
+  python3 tools/check-map-review.py
+}
+
 # A citation is a promise. Two grammars, two checkers: page markers for a Gutenberg text,
 # containment in the section tree for eCFR XML. Neither generalises to the other, and
 # pointing one at the wrong corpus exits 2 rather than passing.
@@ -162,6 +169,7 @@ PY
 # the checks as they were; every step after this one runs the built file.
 run "check-map.py is what tools/checkmap/ builds"      python3 tools/build-check-map.py --check
 run "every corpus map satisfies the schema"            check_all_maps
+run "every corpus map carries a review of its bytes"   check_map_reviews
 run "every citation resolves in its corpus"            check_locators
 run "every map package passes its publish gate"        check_map_packages
 run "the checkers' own tests"                          check_tool_tests

@@ -43,8 +43,9 @@ jobs:
       - name: Install pytest
         run: python3 -m pip install --quiet --disable-pip-version-check pytest
 
-      # Checks every map against the schema, every citation against its corpus, the
-      # checkers' own 56 tests, every repository link, and the decision index.
+      # Checks every map against the schema and for a review of its bytes, every citation
+      # against its corpus, the checkers' own tests, every repository link, and the decision
+      # index. No count here: validate.sh prints the counts, and a number in a comment drifts.
       - name: Validate
         run: ./scripts/validate.sh
 
