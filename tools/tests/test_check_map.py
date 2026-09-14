@@ -43,9 +43,28 @@ MANIFEST = {
             "hashDerivation": "demo-plain-text",
             "boundaryPolicy": "pin-in-repo",
             "licence": "public-domain",
+            # 0013: how the baseline is verified, and whether a map may quote the corpus.
+            "verification": "committed-copy",
+            "committedPath": "demo.txt",
+            "quotation": "verbatim",
             "references": [{"sourceId": "other-corpus", "citation": "s 1", "admitted": False}],
         }
     ],
+}
+
+# A second corpus nobody may commit or quote, for the rules that only a licence triggers.
+COMMERCIAL = {
+    "sourceId": "core-rules",
+    "title": "Core Rulebook",
+    "adapter": "pdf",
+    "locatorGrammar": "printed-page",
+    "contentHash": "c" * 64,
+    "hashDerivation": "pdf-bytes",
+    "boundaryPolicy": "never-commit",
+    "licence": "commercial",
+    "verification": "local-copy",
+    "envVar": "CORE_RULES_PDF",
+    "quotation": "withheld",
 }
 
 
@@ -149,6 +168,8 @@ class MapCase(unittest.TestCase):
             handle.write("# 0007\n")
         self.example = os.path.join(self.root, "examples", "demo")
         os.makedirs(self.example)
+        with open(os.path.join(self.example, "demo.txt"), "w") as handle:
+            handle.write("The committed copy of the demonstration corpus.\n")
         self.write_manifest(MANIFEST)
 
     def write_manifest(self, manifest):
@@ -406,6 +427,102 @@ class TestManifest(MapCase):
         self.assertEqual(self.status_of(output, "manifest"), "skip", output)
         self.assertIn("NOT VERIFIED", output)
         self.assertEqual(code, 1, output)
+
+
+class TestPostures(MapCase):
+    """0013: each corpus declares how it is verified and whether a map may quote it."""
+
+    def assert_manifest_catches(self, mutate, document=None):
+        """The fixture manifest passes `postures`; the mutated one makes it fail."""
+        code, output = self.run_tool(document or valid_map())
+        self.assertEqual(self.status_of(output, "postures"), "ok", output)
+        manifest = json.loads(json.dumps(MANIFEST))
+        mutate(manifest)
+        self.write_manifest(manifest)
+        code, output = self.run_tool(document or valid_map())
+        self.assertEqual(self.status_of(output, "postures"), "fail", output)
+        self.assertEqual(code, 1, output)
+        return output
+
+    def test_a_corpus_with_no_verification_posture_fails(self):
+        self.assert_manifest_catches(lambda m: m["corpora"][0].pop("verification"))
+
+    def test_a_posture_outside_the_vocabulary_fails(self):
+        self.assert_manifest_catches(lambda m: m["corpora"][0].update(verification="trust-me"))
+
+    def test_a_corpus_with_no_quotation_policy_fails(self):
+        self.assert_manifest_catches(lambda m: m["corpora"][0].pop("quotation"))
+
+    def test_a_committed_copy_that_is_not_committed_fails(self):
+        self.assert_manifest_catches(lambda m: m["corpora"][0].update(committedPath="missing.txt"))
+
+    def test_a_committed_copy_naming_no_path_fails(self):
+        self.assert_manifest_catches(lambda m: m["corpora"][0].pop("committedPath"))
+
+    def test_a_never_commit_corpus_claiming_a_committed_copy_fails(self):
+        def mutate(manifest):
+            manifest["corpora"].append(dict(COMMERCIAL, verification="committed-copy",
+                                            committedPath="demo.txt"))
+        output = self.assert_manifest_catches(mutate)
+        self.assertIn("cannot be verified from it", output)
+
+    def test_a_local_copy_naming_no_env_var_fails(self):
+        def mutate(manifest):
+            commercial = dict(COMMERCIAL)
+            commercial.pop("envVar")
+            manifest["corpora"].append(commercial)
+        self.assert_manifest_catches(mutate)
+
+    def test_a_licensed_corpus_declared_properly_passes(self):
+        manifest = json.loads(json.dumps(MANIFEST))
+        manifest["corpora"].append(COMMERCIAL)
+        self.write_manifest(manifest)
+        code, output = self.run_tool(valid_map())
+        self.assertEqual(self.status_of(output, "postures"), "ok", output)
+        self.assertEqual(code, 0, output)
+
+    def test_quoting_a_corpus_whose_quotation_is_withheld_fails(self):
+        # For a never-commit corpus the map itself is the redistribution question.
+        manifest = json.loads(json.dumps(MANIFEST))
+        manifest["corpora"].append(COMMERCIAL)
+        self.write_manifest(manifest)
+        document = _without_evidence_on_last(valid_map())
+        code, output = self.run_tool(document)
+        self.assertEqual(self.status_of(output, "postures"), "ok", output)
+        self.assertEqual(code, 0, output)
+        document["entries"][-1]["evidence"] = "Compare the hits scored by each side."
+        code, output = self.run_tool(document)
+        self.assertEqual(self.status_of(output, "postures"), "fail", output)
+        self.assertIn("quotes `evidence`", output)
+        self.assertEqual(code, 1, output)
+
+    def test_an_entry_of_a_withheld_corpus_needs_no_evidence(self):
+        manifest = json.loads(json.dumps(MANIFEST))
+        manifest["corpora"].append(COMMERCIAL)
+        self.write_manifest(manifest)
+        document = _without_evidence_on_last(valid_map())
+        code, output = self.run_tool(document)
+        self.assertEqual(self.status_of(output, "required-fields"), "ok", output)
+        self.assertEqual(self.status_of(output, "postures"), "ok", output)
+        # Without the withheld policy the same entry is simply missing its evidence.
+        self.write_manifest(MANIFEST)
+        document["entries"][-1]["locator"] = {"sourceId": "demo-corpus", "citation": "p. 36"}
+        code, output = self.run_tool(document)
+        self.assertEqual(self.status_of(output, "required-fields"), "fail", output)
+
+    def test_without_a_manifest_the_postures_are_not_verified(self):
+        os.remove(self.manifest_path)
+        code, output = self.run_tool(valid_map())
+        self.assertEqual(self.status_of(output, "postures"), "skip", output)
+        self.assertEqual(code, 1, output)
+
+
+def _without_evidence_on_last(document):
+    """Append an entry citing the withheld corpus, carrying no span -- as 0013 requires."""
+    document["entries"].append(entry("opposed-test-tie", locator={
+        "sourceId": "core-rules", "citation": "Game Concepts / p. 36"}))
+    document["entries"][-1].pop("evidence")
+    return document
 
 
 class TestExclusions(MapCase):

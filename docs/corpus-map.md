@@ -289,11 +289,14 @@ what the span is. There is no exception and no entry without a span. Until
 twenty-eight.
 
 **An `evidence` a licence forbids quoting is recorded as absent, never as a summary.** Phase 2
-of [method.md](method.md) says *cite, do not copy*, and for a `never-commit` corpus a span in
-the map may be a licence problem rather than a discipline one. Then the entry says so and the
-citation is unverifiable — which the checker reports, because an unlocatable entry fails the
-run and is never counted as ok. What is not acceptable is a summary occupying the field and
-looking like evidence. No trial has produced this case; both mapped corpora are public domain.
+of [method.md](method.md) says *cite, do not copy*, and for a licensed corpus a span in the map
+may be a licence problem rather than a discipline one. The corpus's manifest entry then declares
+`quotation: withheld` ([0013](decisions/0013-verification-posture-belongs-to-the-corpus.md)),
+its entries carry no `evidence`, and `check-map.py --only postures` fails any that do. The
+citation is unverifiable — which `check-locators.py` reports, because an unlocatable entry
+fails the run and is never counted as ok. What is not acceptable is a summary occupying the field
+and looking like evidence. No trial has produced this case; every mapped corpus is public domain
+and declares `quotation: verbatim`.
 
 **What a verified span does not prove.** Only that the page cited is the page the quoted words
 sit on. It says nothing about whether that is the *right* passage for the entry, whether the
@@ -699,7 +702,10 @@ Beside the entries, the corpora they cite:
       "hashDerivation": "ecfr-xml",
       "asOf": "2019-03-14",
       "boundaryPolicy": "pin-in-repo",
-      "licence": "public-domain"
+      "licence": "public-domain",
+      "verification": "committed-copy",
+      "committedPath": "title26.xml",
+      "quotation": "verbatim"
     },
     {
       "sourceId": "core-rules",
@@ -711,7 +717,9 @@ Beside the entries, the corpora they cite:
       "hashDerivation": "pdf-bytes",
       "boundaryPolicy": "never-commit",
       "licence": "commercial",
-      "envVar": "CORE_RULES_PDF"
+      "verification": "local-copy",
+      "envVar": "CORE_RULES_PDF",
+      "quotation": "withheld"
     }
   ]
 }
@@ -722,6 +730,25 @@ redundant, and both are load-bearing. A digest without its derivation does not s
 covers. A boundary policy is a property of the licence, and the two engines this method was
 derived from answer it in opposite directions — one commits its extracted corpus because the
 SRD is CC-BY, the other commits nothing because its rulebook is commercial.
+
+`verification` and `quotation` are the same question asked of a map's *consumers*, and are
+answered per corpus for the same reason ([0013](decisions/0013-verification-posture-belongs-to-the-corpus.md)):
+
+- **`verification`** — how anyone checks the baseline hash. `committed-copy`: the bytes are at
+  `committedPath` beside the manifest, and CI can verify them. `local-copy`: they are not
+  committed; a holder of a legal copy points `envVar` at it, and everyone else — every CI run
+  included — is told `NOT VERIFIED` with the reason, never `ok`. A `never-commit` corpus is
+  always `local-copy`; a `pin-in-repo` corpus that commits only a derivation may be too.
+- **`quotation`** — whether a map may carry verbatim spans of the corpus. `verbatim`, or
+  `withheld` where the licence forbids it: since `evidence` became a span, a map carries a few
+  hundred sentences of its corpus, and for a licensed corpus **the map is itself the
+  redistribution question**. A person declares it; nothing infers it from `licence` or
+  `boundaryPolicy`.
+
+`check-map.py --only postures` requires both on every admitted corpus, refuses a `never-commit`
+`committed-copy`, a `local-copy` with no `envVar`, a `committedPath` that is not a file, and any
+`evidence` on an entry whose corpus is `withheld`. It hashes nothing; verifying the bytes and
+reporting the posture in force is an engine gate's job.
 
 `references` lists corpora this one defers to — a regulation citing another title, a
 rulebook citing a supplement — each marked admitted or not. Those references are the
@@ -772,6 +799,10 @@ Open questions are tracked as issues so they are worked rather than admired:
   corpus implies and never states. Decided:
   [0012](decisions/0012-a-fact-the-corpus-implies-is-a-derived-entry.md) adds `derivedFrom`; a
   derived entry cites nothing.
+- [#15](https://github.com/brandonifco/rules-factory/issues/15) — where a corpus lives when a
+  map moves into an engine. Decided:
+  [0013](decisions/0013-verification-posture-belongs-to-the-corpus.md) extends 0002 — each
+  corpus declares its `verification` posture and its `quotation` policy.
 - [#6](https://github.com/brandonifco/rules-factory/issues/6) — a standard is not a gap.
   Decided: [0005](decisions/0005-a-field-earns-its-place-by-being-checkable.md) — a delegated
   standard is `kind: assertion`, and it is an entry of its own.

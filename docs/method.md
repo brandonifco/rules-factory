@@ -55,6 +55,15 @@ A CC-BY SRD or a public-domain statute is `pin-in-repo`: committing it is what m
 engine reproducible without a licence. Getting this wrong is a legal problem in one
 direction and a reproducibility problem in the other.
 
+**How is it verified, and may the map quote it?** The same question, asked for whoever consumes
+the map — an engine built from it included. A committed corpus is `committed-copy` and anyone
+can check its hash. A corpus that is not committed is `local-copy`: whoever holds a legal copy
+verifies locally, and every other run — CI above all — reports `NOT VERIFIED` with the reason,
+never `ok`. And because a map quotes its corpus sentence by sentence, whether it may do so at all
+is declared too: `quotation: verbatim`, or `withheld` where the licence forbids it. Both are
+answered per corpus in the manifest, by a person, never inferred. See
+[0013](decisions/0013-verification-posture-belongs-to-the-corpus.md).
+
 **Record what the adapter cannot reach.** A corpus states its rules in more than one
 modality. The starting position of a backgammon board, in a trial corpus, is given entirely
 as an illustration — fully determined, and invisible to a plain-text adapter. That is not a
