@@ -171,7 +171,7 @@ class TestGeneratedFilesMatchARegeneration(GateCase):
     def test_passes_on_fresh_output(self):
         code, output = self.regenerate(self.engine())
         self.assertEqual(code, 0, output)
-        self.assertIn("5 generated file(s) match", output)
+        self.assertIn("6 generated file(s) match", output)
 
     def test_fails_on_a_changed_citation(self):
         engine = self.engine()
@@ -482,10 +482,10 @@ class TestValidateShWithDotnet(GateCase):
 
     def test_fails_on_adding_rules_kernel_randomness(self):
         engine = self.copy()
+        # The kernel's own pin is generated (RulesFactory.Packages.g.props); the engine adds the
+        # randomness package in the file it owns.
         edit(os.path.join(engine, "Directory.Packages.props"), lambda t: t.replace(
-            '    <PackageVersion Include="RulesKernel" Version="0.2.0" />',
-            '    <PackageVersion Include="RulesKernel" Version="0.2.0" />\n'
-            '    <PackageVersion Include="RulesKernel.Randomness" Version="0.2.0" />', 1))
+            "  </ItemGroup>", '    <PackageVersion Include="RulesKernel.Randomness" Version="0.2.0" />\n  </ItemGroup>', 1))
         edit(os.path.join(engine, "src", NAME, f"{NAME}.csproj"), lambda t: t.replace(
             '    <PackageReference Include="RulesKernel" />',
             '    <PackageReference Include="RulesKernel" />\n    <PackageReference Include="RulesKernel.Randomness" />', 1))

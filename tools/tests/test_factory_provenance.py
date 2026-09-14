@@ -9,7 +9,8 @@ own copy.
 
 Asserted: two runs give byte-identical provenance, and so does a re-run in place; the fields
 say what the inputs are; recompute passes on fresh output; changing a generated file, the
-corpus copy, a recipe, or the package makes recompute fail naming the field; a dirty factory
+corpus copy, a recipe, or the package makes recompute fail naming the field; after a re-run with
+a newer map, recompute passes, and a pin hand-edited back to the old version fails it (#66); a dirty factory
 is refused, and `--allow-dirty` records it; a factory outside git is refused.
 
 The embedded copy is only exercised by `dotnet test` on a produced engine, which needs the
@@ -38,6 +39,8 @@ PART107_XML = os.path.join(PART107, "part107.xml")
 HOYLE = os.path.join(REPO, "examples", "hoyle-backgammon")
 NAME = "FaaPart107"
 MAP_ENTRIES = f"src/{NAME}/Generated/MapEntries.g.cs"
+PACKAGES_PROPS = "RulesFactory.Packages.g.props"
+MAP_ID = "RulesFactory.Maps.FaaPart107"
 GIT_ENV = {"GIT_AUTHOR_NAME": "factory-test", "GIT_AUTHOR_EMAIL": "factory-test@example.invalid",
            "GIT_COMMITTER_NAME": "factory-test", "GIT_COMMITTER_EMAIL": "factory-test@example.invalid",
            "GIT_AUTHOR_DATE": "2026-01-01T00:00:00Z", "GIT_COMMITTER_DATE": "2026-01-01T00:00:00Z",
@@ -75,6 +78,15 @@ def pack(map_dir, out):
                    stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
     (name,) = [n for n in os.listdir(out) if n.endswith(".nupkg")]
     return os.path.join(out, name)
+
+
+def pack_version(map_dir, version, root):
+    """`map_dir` packed as `version`: a copy under `root` whose map-package.json says so."""
+    copy = os.path.join(root, f"v{version}", os.path.basename(map_dir))
+    shutil.copytree(map_dir, copy)
+    with open(os.path.join(copy, "map-package.json"), "w", encoding="utf-8") as handle:
+        json.dump({"version": version}, handle)
+    return pack(copy, os.path.join(root, f"v{version}", "out"))
 
 
 class ProvenanceCase(unittest.TestCase):
@@ -166,6 +178,7 @@ class TestRecord(ProvenanceCase):
         self.assertEqual(paths, sorted(paths, key=lambda p: p.encode("utf-8")))
         self.assertIn("tools/factory/generate.py", paths)
         self.assertIn("tools/factory/provenance.py", paths)
+        self.assertIn("tools/check-map.py", paths)
         for item in files:
             self.assertEqual(item["sha256"], sha256_file(os.path.join(self.repo, *item["path"].split("/"))))
         lines = "".join(f"{f['sha256']}  {f['path']}\n" for f in files)
@@ -174,7 +187,7 @@ class TestRecord(ProvenanceCase):
         generated = {g["path"]: g["sha256"] for g in record["generated"]}
         self.assertEqual(list(generated), sorted(generated))
         for path in (MAP_ENTRIES, "corpus/part107.xml", "backlog/README.md", f"src/{NAME}/Generated/Provenance.g.cs",
-                     f"tests/{NAME}.Tests/Generated/ProvenanceTests.g.cs"):
+                     f"tests/{NAME}.Tests/Generated/ProvenanceTests.g.cs", PACKAGES_PROPS):
             self.assertIn(path, generated)
         for path in ("provenance.json", "corpus-map.overlay.json", "global.json", f"src/{NAME}/{NAME}.csproj"):
             self.assertNotIn(path, generated, "provenance.json and the write-once scaffold are not generated")
@@ -262,6 +275,17 @@ class TestRecompute(ProvenanceCase):
         self.assert_recompute_names(out, "recipes.files[tools/factory/generate.py].sha256", "recipes.digest",
                                     "factory.commit", repo=repo)
 
+    def test_a_changed_checker(self):
+        repo = self.own_repo()
+        out = self.produced(repo=repo)
+        before = self.record(out)["recipes"]
+        with open(os.path.join(repo, "tools", "check-map.py"), "a", encoding="utf-8") as handle:
+            handle.write("\n# a changed checker\n")
+        git(repo, "commit", "-q", "-am", "change the checker")
+        self.assert_recompute_names(out, "recipes.files[tools/check-map.py].sha256", "recipes.digest", repo=repo)
+        after = self.record(self.produced(out=os.path.join(self.tmp, "again"), repo=repo))["recipes"]
+        self.assertNotEqual(before["digest"], after["digest"])
+
     def test_a_changed_package(self):
         out = self.produced()
         changed = os.path.join(self.tmp, "changed.nupkg")
@@ -281,6 +305,33 @@ class TestRecompute(ProvenanceCase):
         self.produced(out=out)
         code, output = self.recompute(out)
         self.assertEqual(code, 0, output)
+
+    def test_a_pin_edited_back_after_a_map_upgrade(self):
+        root = os.path.join(self.tmp, "versions")
+        v1, v2 = pack_version(PART107, "1.0.0", root), pack_version(PART107, "2.0.0", root)
+        out = self.produced(package=v1)
+        self.produced(out=out, package=v2)
+        self.assertEqual(self.record(out)["map"]["version"], "2.0.0")
+        code, output = self.recompute(out, package=v2)
+        self.assertEqual(code, 0, output)
+
+        props = pathlib.Path(out, PACKAGES_PROPS)
+        text = props.read_text(encoding="utf-8")
+        pin = f'<PackageVersion Include="{MAP_ID}" Version="[2.0.0]" />'
+        self.assertIn(pin, text)
+        props.write_text(text.replace(pin, pin.replace("2.0.0", "1.0.0")), encoding="utf-8")
+        self.assert_recompute_names(out, f"generated[{PACKAGES_PROPS}].sha256", package=v2)
+
+    def test_a_pin_edited_back_after_a_map_downgrade(self):
+        root = os.path.join(self.tmp, "versions")
+        v1, v2 = pack_version(PART107, "1.0.0", root), pack_version(PART107, "2.0.0", root)
+        out = self.produced(package=v2)
+        self.produced(out=out, package=v1)
+        code, output = self.recompute(out, package=v1)
+        self.assertEqual(code, 0, output)
+        props = pathlib.Path(out, PACKAGES_PROPS)
+        props.write_text(props.read_text(encoding="utf-8").replace("[1.0.0]", "[2.0.0]"), encoding="utf-8")
+        self.assert_recompute_names(out, f"generated[{PACKAGES_PROPS}].sha256", package=v1)
 
     def test_a_hand_edited_record(self):
         out = self.produced()

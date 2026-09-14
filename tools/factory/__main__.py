@@ -13,8 +13,10 @@
     packaged map. Nothing from the package is ever run (0016): its checker is hashed, not
     executed;
   * scaffold and generation (generate.py) -- a .NET solution on RulesKernel and the map
-    package, written once, and the `*.g.cs` files, rewritten every run from the package map
-    merged with the engine's `corpus-map.overlay.json`;
+    package, written once and the engine's thereafter; and the generated files, rewritten
+    every run: the `*.g.cs` from the package map merged with the engine's
+    `corpus-map.overlay.json`, and `RulesFactory.Packages.g.props`, which pins RulesKernel and
+    the map package at the versions given and references the map;
   * the gate recipe (gate.py) -- scripts/validate.sh and the scripts and CI workflow it runs,
     rewritten every run;
   * backlog (backlog.py) -- `backlog/NNN-<entry-id>.md`, one per entry still to build, in
