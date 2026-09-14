@@ -285,6 +285,41 @@ The claim was stated three times and corrected three times, each time by someone
 `clarity` — **the one field nothing compares against the corpus.** That is the more durable
 finding, and it is why trial 1's undefined-term sweep exists.
 
+## Before the map is used — a blind second mapping
+
+Mechanical checks prove a quote is *where* an entry says, never that it *says* what the entry
+says; they caught 1 of 15 injected comprehension errors. So no map goes on to Phase 4 until a
+second mapping of the same slice has been compared with it and every disagreement resolved. See
+[0014](decisions/0014-a-map-is-checked-by-a-blind-second-mapping.md).
+
+**Who maps.** Someone who has not seen the first map, its notes, its decision records or its
+findings — and does not get them through a prompt, a brief or a review thread that states the
+first mapper's reading.
+
+**What they get.** The pinned corpus extract, [corpus-map.md](corpus-map.md) and this document,
+**with every worked example drawn from the corpus under mapping removed.** An example that names
+an entry leaks its verdict; so does one rewritten to paraphrase the corpus. Replace examples from
+another corpus, or delete them.
+
+**What is compared,** entry against the entry that quotes the same text:
+
+- `kind`, `scope`, `clarity`, and whether `ambiguity` is present;
+- `dependsOn`, `enabledBy` and `suspendedBy`, edge by edge;
+- whether each side's `evidence` supports its entry — read, not measured by span length;
+- entries only one side has.
+
+**How a disagreement is resolved.** Not by vote, and not by deferring to the first map. Each is a
+question answered by a quote from the corpus, with its locator: the first map is right, the
+second is right, the corpus does not settle it (the entry is ambiguous and goes to Phase 4), or
+it is not a disagreement about the corpus (a split, a merge, a choice of span). The map is
+corrected to the answer.
+
+**Where the record lives.** Beside the map, committed with the corrected map: one row per
+disagreement, with the entry, the field, both values, the verdict and the quote. A disagreement
+with no row is unresolved, and the map is not used.
+
+**What it does not catch.** Two mappers who share a misreading agree, and agreement is silent.
+
 ## Phase 4 — Decide the ambiguities
 
 An ambiguous entry has exactly two possible fates, and choosing between them is the most
