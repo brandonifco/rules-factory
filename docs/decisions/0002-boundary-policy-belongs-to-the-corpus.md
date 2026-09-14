@@ -2,7 +2,9 @@
 
 ## Status
 
-Accepted — 2026-09-13.
+Accepted — 2026-09-13. **Extended 2026-09-14** by
+[0013](0013-verification-posture-belongs-to-the-corpus.md): how a consumer verifies the
+baseline, and whether a map may quote the corpus, are declared per corpus on the same ground.
 
 ## Context
 

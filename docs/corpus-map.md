@@ -75,6 +75,10 @@ before either has been implemented.
   "evidence": "Compare the hits scored by each side. The side with more hits prevails, and the difference is the margin.",
   "status": "implemented",
   "implementedIn": { "ruleset": "sr6", "version": 4 },
+  "tests": [
+    { "test": "OpposedTestTieTests.A_tie_goes_to_the_defender",
+      "mutation": "Awarded ties to the attacker; this test went red." }
+  ],
   "note": "Demonstrate both tie directions, and the boundary where one side has one more hit."
 }
 ```
@@ -85,20 +89,24 @@ before either has been implemented.
 |---|---|
 | `id` | Stable slug. Referenced by `dependsOn`, by issues, and by the engine's own citations. Never reused. |
 | `name` | What the rule is called, in the corpus's language where it has one. |
-| `locator` | Corpus id plus a citation in that corpus's grammar. **Required.** An entry without one is not an entry. |
+| `locator` | Corpus id plus a citation in that corpus's grammar. **Required**, except on a derived entry, which must not carry one. An entry without one is not an entry. |
 | `kind` | `value`, `operation` or `assertion` — a fact the corpus states, a procedure it describes, or a condition only the caller can supply. See below. |
 | `scope` | `in` or `out`. Out is a recorded verdict with a reason, not an omission. **Decided per rule. A section has no scope of its own.** See below. |
 | `clarity` | `clear` or `ambiguous`. `clear` asserts the corpus determines exactly one answer for every valid input — so a corpus that states the rule twice, differently, is `ambiguous`. |
 | `ambiguity` | Absent when clear. Otherwise the question, its `fate`, and — where the corpus contradicts itself — the `conflict` the question belongs to. Never a carrier for a decline that is not an ambiguity. |
-| `dependsOn` | Entry ids. Determines backlog order — the sequence entries must be *implemented* in. **Not** a runtime precondition; see `gatedBy`. |
-| `gatedBy` | Entry ids. The rules that govern whether this one is reachable at runtime. Absent on an entry that always applies. Orders nothing. See below. |
+| `dependsOn` | Entry ids. Determines backlog order — the sequence entries must be *implemented* in. **Not** a runtime precondition; see the gate fields. |
+| `enabledBy` | Entry ids. The rules that make this one reachable at runtime; it does not apply until one holds. Absent on an entry no rule opens. Orders nothing. See below. |
+| `suspendedBy` | Entry ids. The rules that make this one unreachable while they hold. Absent on an entry no rule closes. Orders nothing. See below. |
 | `beyondAdapter` | Present only when the declared adapter cannot read the rule the locator cites. Names the adapter and the modality. See below. |
 | `definedElsewhere` | Present only when the rule's meaning is fixed in a corpus that was not admitted. Names the manifest `references` entry. See below. |
 | `absentFrom` | Present only when the corpus does **not** state the rule at all. Names the terms searched for. See below. |
+| `derivedFrom` | Present only when no sentence states the fact and two or more in-scope entries entail it. Entry ids. The entry then carries no `locator` and no `evidence`. See below. |
 | `crossReferences` | The pointers this entry's `evidence` makes, each resolved to an entry or to a recorded reason there is none. See below. |
-| `evidence` | One contiguous verbatim span of the corpus: the passage that *states* this rule. Not a summary of it. See below. |
+| `evidence` | One contiguous verbatim span of the corpus: the passage that *states* this rule. Not a summary of it. Absent on a derived entry, and only there. See below. |
 | `status` | Whether the engine has built this entry. Independent of `ambiguity.fate`. See below. |
 | `implementedIn` | The ruleset revision that implemented it. Set when status becomes `implemented`. |
+| `tests` | The tests that prove the entry, each `{ "test", "mutation" }`: the test's name, and the recorded change to the engine that turned it red. **Required, non-empty, when status is `implemented`.** See `status`. |
+| `note` | Prose explanation: why the entry is shaped this way, and what a test must demonstrate. **Never a claim a test could carry** — a consequence the mapper proved is a test the entry names. See below. |
 
 ### `kind: assertion`
 
@@ -257,6 +265,19 @@ without becoming checkable. The whole-table rule survives the move intact — **
 prints a finite table, the note requires the whole table and never a sample** — and so does the
 rule that a span must cover every case the entry claims, not one of them.
 
+**`note` is explanation, never a claim a test could carry.** It says why an entry is shaped the
+way it is, what a test must demonstrate, where a span was corrected — reading aids for the next
+mapper and the implementer. It is not where a mapper records something they *proved* about the
+rule. *"The adopted opening throw can never be doublets"* is a claim about the engine's answers
+that a test can assert and that will silently become false if the opening rule changes; written
+in `note` it rots, and nothing notices. Such a consequence is discharged as a test named for what
+it proves, and the entry names the test — the rule 0005's rail E already set for a surprising
+reading, extended to every derived consequence
+([#16](https://github.com/brandonifco/rules-factory/issues/16),
+[method.md Phase 6](method.md#phase-6--implement)). The test for whether a sentence belongs in
+`note`: if a test could fail because the sentence became false, the sentence is the test's, not
+the note's. What cannot be reduced to a test is lost, and that cost is accepted.
+
 **A `scope: out` entry quotes too, and so does an absent one.** An out-of-scope verdict is a
 verdict about a passage, and a passage nobody can locate is a verdict about nothing:
 `strategy-advice` quotes the opening sentence of the advice it declines, and demands nothing
@@ -268,11 +289,14 @@ what the span is. There is no exception and no entry without a span. Until
 twenty-eight.
 
 **An `evidence` a licence forbids quoting is recorded as absent, never as a summary.** Phase 2
-of [method.md](method.md) says *cite, do not copy*, and for a `never-commit` corpus a span in
-the map may be a licence problem rather than a discipline one. Then the entry says so and the
-citation is unverifiable — which the checker reports, because an unlocatable entry fails the
-run and is never counted as ok. What is not acceptable is a summary occupying the field and
-looking like evidence. No trial has produced this case; both mapped corpora are public domain.
+of [method.md](method.md) says *cite, do not copy*, and for a licensed corpus a span in the map
+may be a licence problem rather than a discipline one. The corpus's manifest entry then declares
+`quotation: withheld` ([0013](decisions/0013-verification-posture-belongs-to-the-corpus.md)),
+its entries carry no `evidence`, and `check-map.py --only postures` fails any that do. The
+citation is unverifiable — which `check-locators.py` reports, because an unlocatable entry
+fails the run and is never counted as ok. What is not acceptable is a summary occupying the field
+and looking like evidence. No trial has produced this case; every mapped corpus is public domain
+and declares `quotation: verbatim`.
 
 **What a verified span does not prove.** Only that the page cited is the page the quoted words
 sit on. It says nothing about whether that is the *right* passage for the entry, whether the
@@ -340,37 +364,48 @@ Four rules, and `tools/check-map.py --only conflicts` enforces all four:
 
 Nothing detects a conflict the mapper never noticed: two `clarity: clear` entries stating
 incompatible rules produce a map that validates, which is the same blind spot as an incomplete
-`gatedBy` list. What these rules buy is that a *recorded* conflict cannot be half-settled.
+gate list. What these rules buy is that a *recorded* conflict cannot be half-settled.
 
-### `dependsOn` orders work; `gatedBy` does not
+### `dependsOn` orders work; `enabledBy` and `suspendedBy` do not
 
 `dependsOn` orders *implementation*. A rule that applies only in a phase — bearing off
 begins once every man is home; entry from the bar suspends every other move — has a
-**runtime precondition**, which is a different fact. `gatedBy` is where it lives. Decided in
-[0003](decisions/0003-a-phase-gate-names-a-rule-not-a-condition.md).
+**runtime precondition**, which is a different fact. The gate fields are where it lives.
+Decided in [0003](decisions/0003-a-phase-gate-names-a-rule-not-a-condition.md), and split by
+direction in [0011](decisions/0011-a-gate-has-a-direction.md).
 
 The two relations coincide often enough to be confused, and they are not derivable from each
 other. In the backgammon map, `bearing-off-doublets` has six `dependsOn` ancestors and
-exactly one of them is its gate; `move-by-pip` is gated by `enter-from-bar`, which is not
+exactly one of them is its gate; `move-by-pip` is suspended by `enter-from-bar`, which is not
 among its ancestors, and nor is `move-by-pip` among `enter-from-bar`'s. A stateless corpus
 never asks: a regulation evaluating one flight against a set of limits has no phase for a
-rule to be scoped to, and both Part 107 maps carry `gatedBy` on no entry at all.
+rule to be scoped to, and both Part 107 maps carry neither gate field on any entry.
 
-**`gatedBy` holds entry ids and nothing else.** No predicate, no state name, no threshold,
+**A gate has a direction, and the field says which.** `enabledBy` names the rules that make
+this one reachable; `suspendedBy` the rules that make it unreachable while they hold.
+Direction belongs to the edge, not to the gating rule: `bearing-off-eligible` is in
+`bearing-off-highest`'s `enabledBy` and in `move-by-pip`'s `suspendedBy`, because once every
+man is home bearing off governs every forward move. Until 0011 both were one undirected
+`gatedBy` list, and a reader had to follow each id to learn whether it opened a phase or closed
+one. `check-map.py --only gates` refuses `gatedBy` by name, and refuses an id named in both
+fields of one entry.
+
+**Both hold entry ids and nothing else.** No predicate, no state name, no threshold,
 no sentence. A gate is itself a rule the corpus states, so it already has an entry with a
 locator; if a gate you want to record has no entry, the map is missing an entry. The
-condition is the engine's to implement — the map says which rule governs reachability and
-points at where to read it.
+condition is the engine's to implement — the map says which rule governs reachability, in
+which direction, and points at where to read it.
 
-It says nothing about *direction*. `bearing-off-eligible` permits the entries it gates;
-`enter-from-bar` suspends them. Only the referenced entry's text distinguishes those, and a
-reader who does not follow the id has learned less than they may think.
-
-It is **not transitive and not inherited through `dependsOn`.** Every entry a gate reaches
+They are **not transitive and not inherited through `dependsOn`.** Every entry a gate reaches
 names it, even where a `dependsOn` ancestor names the same gate — the two relations are
-independent, so inheriting along one of them would be a guess. Expect repetition.
+independent, so inheriting along one of them would be a guess. Expect repetition:
+`full-table-suspension` is named by seven entries, each with the judgement in its `note`.
 
-It orders nothing. `dependsOn` remains the only input to backlog order.
+They order nothing. `dependsOn` remains the only input to backlog order.
+
+**What the split does not buy.** Nothing checks that a gate is complete, or that it is in the
+right field: a permitting rule filed under `suspendedBy` resolves and passes. The direction is
+written down where a reviewer reads it, which is all.
 
 ### `beyondAdapter`
 
@@ -460,13 +495,51 @@ verdict, not less, which is the right price for the failure it exists to catch.
 
 `scope: out` and `status: declined`; `beyondAdapter`, `definedElsewhere` and an `ambiguity`
 block are excluded — a rule is not both nowhere in this corpus and somewhere in it we cannot
-reach, and a rule with no words cannot be ambiguous about them. Nothing may `dependsOn` or
-`gatedBy` an absent entry: that edge can never be satisfied.
+reach, and a rule with no words cannot be ambiguous about them. Nothing may name an absent
+entry in `dependsOn`, `enabledBy` or `suspendedBy`: that edge can never be satisfied.
 
 **What it does not buy.** A term absent is not a rule absent. The corpus could state the rule
 in words nobody searched for. What the check catches is a mapper who declared an absence
 without looking — which is what [#29](https://github.com/brandonifco/rules-factory/issues/29)
 was.
+
+### `derivedFrom`
+
+A fact the corpus entails and never states. Added in
+[0012](decisions/0012-a-fact-the-corpus-implies-is-a-derived-entry.md).
+
+```json
+{ "id": "hit-pays-single-stake", "kind": "value", "scope": "in", "clarity": "clear",
+  "derivedFrom": ["stake-multiplier", "agreed-backgammon-multiple"], "dependsOn": ["game-value"],
+  "status": "mapped", "note": "…" }
+```
+
+Hoyle says a gammon pays *"double the agreed stake"* and a backgammon *"thrice or four times …
+the amount of the single stake"*, and never says what a hit pays. That it pays the single stake
+is one step of arithmetic over two stated rules. It used to sit inside `stake-multiplier`,
+`clear`, with nothing to quote.
+
+It is the fourth relation between entries and none of the other three: `dependsOn` orders
+implementation, the gate fields govern reachability, `crossReferences` records a pointer the
+corpus makes. `derivedFrom` says **this fact is entailed by those facts**, and orders nothing.
+
+**A derived entry cites nothing.** No sentence contains its fact, so it has no `locator` and no
+`evidence`, and its sources' located spans are its citation. That is what keeps `evidence` one
+thing — a verbatim span — everywhere it appears. `kind` keeps its ordinary value; there is no
+`kind: derived`, because the field already says it.
+
+`check-map.py --only derived` enforces the shape: at least two sources, each an entry in this
+map, not the entry itself, `scope: in`, no circular derivation, and none of `locator`,
+`evidence`, `crossReferences`, `absentFrom`, `beyondAdapter` or `definedElsewhere` on the derived
+entry. `check-locators.py` names derived entries and does not locate them.
+
+**One source is not a derivation.** A fact that follows from a single entry is that entry's
+consequence, and it is discharged as a test the entry names (see
+[method.md](method.md#phase-6--implement)), not as an entry.
+
+**What it does not buy.** Nothing checks that the sources entail the fact. The check proves the
+reading names what it rests on and that those are rules the map covers; the entailment is in
+`note`, and is review.
 
 ### `scope` is decided per rule. A section has no scope of its own
 
@@ -521,7 +594,7 @@ is true.
 ```
 mapped       enumerated and classified; not yet worked
 blocked      a dependency is unmet
-implemented  in the engine, with a recorded conformance verdict
+implemented  in the engine, naming the tests that prove it, each shown to fail
 declined     no implemented path at all: scope is out, the rule is unreadable,
              or nothing about it was built
 ```
@@ -534,10 +607,36 @@ case*. `must-play-whole-throw` is the instance — the engine implements the com
 declines only where two maximal plays are incomparable, which is neither `declined` nor a
 clean `implemented` under the old coupling.
 
-`implemented` requires the verdict. Code without one is `mapped`, whatever the repository
-contains — otherwise the map records intent rather than fact, and its whole value is that it
-records fact. **Where `fate: unresolved` accompanies it, the verdict covers every case except
-the one `ambiguity.question` names, and the declining case ships a test.**
+`implemented` requires the verdict, and the verdict is **the tests the entry names**. An
+`implemented` entry carries `tests`, non-empty, and every item names a test and records the
+`mutation` that turned it red — what was changed in the engine, for that test to fail. Code
+without them is `mapped`, whatever the repository contains — otherwise the map records intent
+rather than fact, and its whole value is that it records fact. **Where `fate: unresolved`
+accompanies it, the verdict covers every case except the one `ambiguity.question` names, and the
+declining case ships a test** — which is one of the tests named.
+
+```json
+"tests": [
+  { "test": "WholeThrowTests.Where_either_die_alone_can_be_played_but_not_both_the_throw_declines",
+    "mutation": "Let the engine play the higher die when only one of two is playable; this test went red." }
+]
+```
+
+Decided on [#2](https://github.com/brandonifco/rules-factory/issues/2). Until then `implemented`
+was a word someone typed: 26 backgammon entries claimed it in the engine's copy with nothing
+behind any of them. Every real defect this project has found in its own checks was found by
+mutation — five tests that could not fail, a checker counting an entry it had not checked — and
+none by reading. This makes that practice the schema. The same answer as rail E below and as a
+derived consequence (#16): **the artifact is the test.**
+
+`check-map.py --only status` enforces what a map alone can show: `tests` is present and
+non-empty on every `implemented` entry, and wherever it appears each item has a non-blank `test`,
+a non-blank `mutation`, and no test is named twice. **What it cannot show:** that a named test
+exists or ran. That is the engine gate's check, against the engine's own suite. And a recorded
+mutation proves *one* way of breaking the rule is caught — an entry can name one weak test with
+one easy mutation and pass. What is removed is the state of claiming conformance with nothing
+behind it. The mutation is recorded, not re-run; whether a gate ever re-runs them is a separate
+decision.
 
 The cost of decoupling, stated where the claim is: after it, `fate: unresolved` means the
 engine declines for *at least one* input, not for every input, and nothing distinguishes an
@@ -548,7 +647,7 @@ is weaker than it was.
 a flag saying "this is surprising" is unfalsifiable. `bearing-off-highest` is clear, correct,
 and the opposite of what a modern player expects, and the useful artifact is the one test in
 the suite that fails under the reading a reasonable person would have implemented. The entry
-names it in `note`.
+names it in `note` while it is `mapped`, and among its `tests` once it is `implemented`.
 
 ## The map and the engine agree, or the map is wrong
 
@@ -603,7 +702,10 @@ Beside the entries, the corpora they cite:
       "hashDerivation": "ecfr-xml",
       "asOf": "2019-03-14",
       "boundaryPolicy": "pin-in-repo",
-      "licence": "public-domain"
+      "licence": "public-domain",
+      "verification": "committed-copy",
+      "committedPath": "title26.xml",
+      "quotation": "verbatim"
     },
     {
       "sourceId": "core-rules",
@@ -615,7 +717,9 @@ Beside the entries, the corpora they cite:
       "hashDerivation": "pdf-bytes",
       "boundaryPolicy": "never-commit",
       "licence": "commercial",
-      "envVar": "CORE_RULES_PDF"
+      "verification": "local-copy",
+      "envVar": "CORE_RULES_PDF",
+      "quotation": "withheld"
     }
   ]
 }
@@ -626,6 +730,25 @@ redundant, and both are load-bearing. A digest without its derivation does not s
 covers. A boundary policy is a property of the licence, and the two engines this method was
 derived from answer it in opposite directions — one commits its extracted corpus because the
 SRD is CC-BY, the other commits nothing because its rulebook is commercial.
+
+`verification` and `quotation` are the same question asked of a map's *consumers*, and are
+answered per corpus for the same reason ([0013](decisions/0013-verification-posture-belongs-to-the-corpus.md)):
+
+- **`verification`** — how anyone checks the baseline hash. `committed-copy`: the bytes are at
+  `committedPath` beside the manifest, and CI can verify them. `local-copy`: they are not
+  committed; a holder of a legal copy points `envVar` at it, and everyone else — every CI run
+  included — is told `NOT VERIFIED` with the reason, never `ok`. A `never-commit` corpus is
+  always `local-copy`; a `pin-in-repo` corpus that commits only a derivation may be too.
+- **`quotation`** — whether a map may carry verbatim spans of the corpus. `verbatim`, or
+  `withheld` where the licence forbids it: since `evidence` became a span, a map carries a few
+  hundred sentences of its corpus, and for a licensed corpus **the map is itself the
+  redistribution question**. A person declares it; nothing infers it from `licence` or
+  `boundaryPolicy`.
+
+`check-map.py --only postures` requires both on every admitted corpus, refuses a `never-commit`
+`committed-copy`, a `local-copy` with no `envVar`, a `committedPath` that is not a file, and any
+`evidence` on an entry whose corpus is `withheld`. It hashes nothing; verifying the bytes and
+reporting the posture in force is an engine gate's job.
 
 `references` lists corpora this one defers to — a regulation citing another title, a
 rulebook citing a supplement — each marked admitted or not. Those references are the
@@ -668,6 +791,18 @@ Open questions are tracked as issues so they are worked rather than admired:
 - [#5](https://github.com/brandonifco/rules-factory/issues/5) — `dependsOn` conflates
   implementation order with runtime precondition. Decided:
   [0003](decisions/0003-a-phase-gate-names-a-rule-not-a-condition.md) adds `gatedBy`.
+- [#32](https://github.com/brandonifco/rules-factory/issues/32) — a gate that suspends seven
+  entries was named by none of them, and the one field could not say which way a gate points.
+  Decided: [0011](decisions/0011-a-gate-has-a-direction.md) splits `gatedBy` into `enabledBy`
+  and `suspendedBy`.
+- [#31](https://github.com/brandonifco/rules-factory/issues/31) — an entry claimed a rate the
+  corpus implies and never states. Decided:
+  [0012](decisions/0012-a-fact-the-corpus-implies-is-a-derived-entry.md) adds `derivedFrom`; a
+  derived entry cites nothing.
+- [#15](https://github.com/brandonifco/rules-factory/issues/15) — where a corpus lives when a
+  map moves into an engine. Decided:
+  [0013](decisions/0013-verification-posture-belongs-to-the-corpus.md) extends 0002 — each
+  corpus declares its `verification` posture and its `quotation` policy.
 - [#6](https://github.com/brandonifco/rules-factory/issues/6) — a standard is not a gap.
   Decided: [0005](decisions/0005-a-field-earns-its-place-by-being-checkable.md) — a delegated
   standard is `kind: assertion`, and it is an entry of its own.

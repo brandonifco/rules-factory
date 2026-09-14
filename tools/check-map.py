@@ -31,7 +31,8 @@ What it cannot do, stated here rather than in a commit message:
     outside that list produces a map that passes. The list is stated in
     `POINTER_PHRASES` rather than inferred, so what the check does not cover is readable.
   * Nothing here checks that an entry is the *right* decomposition of the corpus, that a
-    `gatedBy` list is complete, or that `evidence` is sufficient. Those are review.
+    gate list (`enabledBy`, `suspendedBy`) is complete, or that `evidence` is sufficient.
+    Those are review.
 
 Usage: check-map.py <corpus-map.json> [--manifest PATH] [--repo-root PATH] [--only CHECK]
 Exit 0 only if every check that ran passed and at least one check actually checked
@@ -56,6 +57,15 @@ UNRESOLVED_REASONS = {
     "UnsupportedInteraction",
 }
 REQUIRED_ENTRY_FIELDS = ["id", "name", "locator", "kind", "scope", "clarity", "evidence", "status"]
+# A derived entry (0012) cites nothing: no sentence contains its fact, so it has no passage
+# to locate or quote. Its sources' locators and evidence are its citation.
+CITING_FIELDS = ("locator", "evidence")
+# What only a passage can carry, and so what a derived entry may not.
+PASSAGE_FIELDS = CITING_FIELDS + ("crossReferences", "absentFrom", "beyondAdapter", "definedElsewhere")
+# The relations that hold entry ids and nothing else. `gatedBy` is not among them: 0011 split
+# it into the two gate fields, and `gates` refuses it by name.
+GATE_FIELDS = ("enabledBy", "suspendedBy")
+ID_LIST_FIELDS = ("dependsOn",) + GATE_FIELDS
 
 
 class Result:
@@ -89,6 +99,18 @@ def verdict(details, ok_summary, fail_summary):
 
 
 # --- helpers -------------------------------------------------------------------------
+
+
+def corpora_of(manifest):
+    if not isinstance(manifest, dict):
+        return {}
+    return {c.get("sourceId"): c for c in manifest.get("corpora") or [] if isinstance(c, dict)}
+
+
+def quotes_withheld(ctx, entry):
+    """True when the entry's corpus declares `quotation: withheld` (0013)."""
+    source = corpora_of(ctx.get("manifest")).get(block(entry, "locator").get("sourceId"))
+    return isinstance(source, dict) and source.get("quotation") == "withheld"
 
 
 def entries_of(doc):
@@ -151,10 +173,15 @@ def check_required_fields(ctx):
             bad.append(f"  X  entry[{position}] is not an object")
             continue
         name = label(entry, position)
+        derived = "derivedFrom" in entry
         for field in REQUIRED_ENTRY_FIELDS:
+            if derived and field in CITING_FIELDS:
+                continue  # `derived` refuses them instead: a derived entry cites nothing
+            if field == "evidence" and quotes_withheld(ctx, entry):
+                continue  # `postures` refuses it instead: the licence forbids the span
             if field not in entry:
                 bad.append(f"  X  {name}: missing required field `{field}`")
-        if "locator" in entry:
+        if "locator" in entry and not derived:
             locator = entry.get("locator")
             if not isinstance(locator, dict):
                 bad.append(f"  X  {name}: `locator` is not an object")
@@ -162,7 +189,7 @@ def check_required_fields(ctx):
                 for field in ("sourceId", "citation"):
                     if not locator.get(field):
                         bad.append(f"  X  {name}: locator is missing `{field}`")
-        for field in ("dependsOn", "gatedBy"):
+        for field in ID_LIST_FIELDS:
             if field in entry and not isinstance(entry[field], list):
                 bad.append(f"  X  {name}: `{field}` is not a list of ids")
     return verdict(bad, f"{len(entries_of(ctx['map']))} entries carry every required field", "required fields are missing")
@@ -221,7 +248,7 @@ def check_unique_ids(ctx):
 
 
 def check_references(ctx):
-    """`dependsOn` and `gatedBy` hold entry ids in the same map, and nothing else.
+    """`dependsOn`, `enabledBy` and `suspendedBy` hold entry ids in the same map, and nothing else.
 
     0003: "If a proposed gate has no entry, the map is missing an entry; that is the
     finding, not a reason to write prose here."
@@ -231,7 +258,7 @@ def check_references(ctx):
         if not isinstance(entry, dict):
             continue
         name = label(entry, position)
-        for field in ("dependsOn", "gatedBy"):
+        for field in ID_LIST_FIELDS:
             for ref in entry.get(field) or []:
                 edges += 1
                 if not isinstance(ref, str):
@@ -241,14 +268,16 @@ def check_references(ctx):
                 elif ref == entry.get("id"):
                     bad.append(f"  X  {name}: {field} names itself")
     if not edges:
-        return skip("no entry names a dependsOn or gatedBy, so no reference was resolved", had_subject=False)
-    return verdict(bad, f"{edges} dependsOn/gatedBy references all resolve", "a reference names no entry")
+        return skip("no entry names a dependsOn, enabledBy or suspendedBy, so no reference was resolved",
+                    had_subject=False)
+    return verdict(bad, f"{edges} dependsOn/enabledBy/suspendedBy references all resolve",
+                   "a reference names no entry")
 
 
 def check_no_cycles(ctx):
     """`dependsOn` determines backlog order, so a cycle means no order exists.
 
-    `gatedBy` is deliberately not checked for cycles: it orders nothing (0003), and a
+    The gate fields are deliberately not checked for cycles: they order nothing (0003), and a
     mutual gate is a legitimate shape -- entry from the bar suspends other moves while
     those moves' own gate names it back.
     """
@@ -274,6 +303,132 @@ def check_no_cycles(ctx):
     if not any(by_id[node].get("dependsOn") for node in by_id):
         return skip("no entry depends on another, so acyclicity was not exercised", had_subject=False)
     return verdict(sorted(set(bad)), f"dependsOn over {len(by_id)} entries is acyclic", "dependsOn has a cycle")
+
+
+def check_gates(ctx):
+    """A gate has a direction, and the field it sits in states it (0011).
+
+    0003 recorded a gate as one undirected list, `gatedBy`, and accepted as a cost that
+    `bearing-off-eligible` (which opens a phase) and `enter-from-bar` (which closes one) looked
+    identical on the entries they gate. 0011 splits the list: `enabledBy` names the rules that
+    make this rule reachable, `suspendedBy` the rules that make it unreachable. Resolving the
+    ids is `references`' job; what is checked here is what the split adds:
+
+      * `gatedBy` is refused by name. A map still carrying it states gates with no direction,
+        which is what 0011 removed, and ignoring the field would make every gate in an
+        unmigrated map vanish from every other check without a word;
+      * no entry names one rule in both fields, because one rule cannot both open and close
+        the same entry's reachability.
+
+    What it cannot do: tell whether a gate is in the right field. A permitting rule filed under
+    `suspendedBy` resolves, is not duplicated, and passes. That is review -- what 0011 buys is
+    that the direction is written where a reviewer reads it, rather than recovered by following
+    the id.
+    """
+    bad, gated = [], 0
+    for position, entry in enumerate(entries_of(ctx["map"])):
+        if not isinstance(entry, dict):
+            continue
+        name = label(entry, position)
+        if "gatedBy" in entry:
+            bad.append(f"  X  {name}: carries `gatedBy`, which 0011 split by direction; name each "
+                       f"gate in `enabledBy` (makes this rule reachable) or `suspendedBy` (makes it "
+                       f"unreachable)")
+        lists = {field: entry.get(field) if isinstance(entry.get(field), list) else []
+                 for field in GATE_FIELDS}
+        if any(lists.values()):
+            gated += 1
+        both = {x for x in lists["enabledBy"] if isinstance(x, str)} & \
+            {x for x in lists["suspendedBy"] if isinstance(x, str)}
+        for ref in sorted(both):
+            bad.append(f"  X  {name}: names {ref!r} in both `enabledBy` and `suspendedBy`; one rule "
+                       f"cannot both open and close this one")
+    if not gated and not bad:
+        return skip("no entry carries `enabledBy` or `suspendedBy`, so no gate's direction was "
+                    "checked -- the right outcome for a stateless corpus", had_subject=False)
+    return verdict(bad, f"{gated} gated entr{'y' if gated == 1 else 'ies'}: every gate is filed by "
+                        f"direction, and none in both directions",
+                   "a gate does not state its direction")
+
+
+def check_derived(ctx):
+    """A derived entry is a fact the corpus entails and never states (0012).
+
+    `stake-multiplier`'s span states what a gammon and a backgammon pay, both as multiples of
+    a single stake, and never what a hit pays. That a hit pays the single stake is read off
+    the other two. 0012 gives the fact its own entry and a fourth relation, `derivedFrom`: not
+    implementation order (`dependsOn`), not reachability (the gate fields), not a pointer the
+    corpus makes (`crossReferences`), but *this fact is entailed by those facts*.
+
+      * `derivedFrom` is a list of at least two ids. A consequence of one entry is that
+        entry's, and 0012 discharges it as a test the entry names, not as an entry;
+      * every source resolves in this map, is not the entry itself, and is `scope: in` -- a
+        fact cannot be derived from a rule the engine does not cover, or from an absence;
+      * no derivation is circular, following `derivedFrom` through derived sources;
+      * a derived entry cites nothing: no `locator`, no `evidence`, and nothing only a passage
+        carries (`crossReferences`, `absentFrom`, `beyondAdapter`, `definedElsewhere`). No
+        sentence contains its fact, so `evidence` keeps one meaning -- a verbatim span -- on
+        every entry that has it, and the derived entry's citation is its sources'.
+
+    What it cannot do: tell whether the sources actually entail the fact. That a hit pays one
+    stake *follows* from the two payouts is the mapper's reading, written in `note`; this check
+    proves only that the reading names what it rests on and that those are rules the map
+    covers.
+    """
+    by_id, bad, carriers = index(ctx["map"]), [], []
+    for position, entry in enumerate(entries_of(ctx["map"])):
+        if not isinstance(entry, dict) or "derivedFrom" not in entry:
+            continue
+        name = label(entry, position)
+        carriers.append(name)
+        sources = entry.get("derivedFrom")
+        if not isinstance(sources, list) or any(not isinstance(s, str) for s in sources):
+            bad.append(f"  X  {name}: `derivedFrom` is not a list of entry ids")
+            continue
+        if len(set(sources)) < 2:
+            bad.append(f"  X  {name}: `derivedFrom` names {len(set(sources))} source(s); a fact "
+                       f"that follows from one entry is that entry's consequence, and is a test "
+                       f"that entry names (0012), not an entry")
+        for ref in sources:
+            target = by_id.get(ref)
+            if target is None:
+                bad.append(f"  X  {name}: derivedFrom names {ref!r}, which is not an entry in this map")
+            elif ref == entry.get("id"):
+                bad.append(f"  X  {name}: derivedFrom names itself")
+            elif target.get("scope") != "in":
+                bad.append(f"  X  {name}: derivedFrom names {ref!r}, which is scope "
+                           f"{target.get('scope')!r}; a fact is not derived from a rule the engine "
+                           f"does not cover")
+        for field in PASSAGE_FIELDS:
+            if field in entry:
+                bad.append(f"  X  {name}: is derived and carries `{field}`; no sentence states a "
+                           f"derived fact, so it cites nothing and its sources are its citation")
+
+    colour = {}
+
+    def walk(node, trail):
+        colour[node] = "open"
+        sources = by_id.get(node, {}).get("derivedFrom")
+        for ref in sources if isinstance(sources, list) else []:
+            if not isinstance(ref, str) or ref not in by_id or ref == node:
+                continue
+            if colour.get(ref) == "open":
+                bad.append("  X  derivedFrom cycle: " + " -> ".join(trail[trail.index(ref):] + [ref]))
+            elif ref not in colour:
+                walk(ref, trail + [ref])
+        colour[node] = "closed"
+
+    for node, entry in by_id.items():
+        if "derivedFrom" in entry and node not in colour:
+            walk(node, [node])
+
+    if not carriers:
+        return skip("no entry carries `derivedFrom`, so no derivation was checked", had_subject=False)
+    return verdict(sorted(set(bad), key=bad.index),
+                   f"{len(carriers)} derived entr{'y' if len(carriers) == 1 else 'ies'} "
+                   f"({', '.join(sorted(carriers))}): each derives from two or more in-scope "
+                   f"entries and cites nothing itself",
+                   "a derived entry is not well-formed")
 
 
 def check_manifest(ctx):
@@ -344,6 +499,86 @@ def check_manifest(ctx):
     return verdict(bad, f"{checked} manifest resolutions all succeed", "something does not resolve in the manifest")
 
 
+VERIFICATION_POSTURES = {"committed-copy", "local-copy"}
+QUOTATION_POLICIES = {"verbatim", "withheld"}
+
+
+def check_postures(ctx):
+    """How each corpus is verified, and whether a map may quote it, are declared per corpus (0013).
+
+    0002 made *where a corpus lives* a property of its licence. 0013 carries that one step on:
+    *how a consumer verifies the baseline* is declared per corpus too, and so is *whether the
+    map may carry verbatim spans of it* -- because since #18 a map quotes a few hundred sentences
+    of its corpus, and for a corpus that may not be committed the map is itself the
+    redistribution question.
+
+    Every admitted corpus in the manifest declares both:
+
+      * `verification`: `committed-copy` (the bytes are in this repository, at `committedPath`,
+        so anyone -- CI included -- can verify the hash) or `local-copy` (they are not; a holder
+        of a legal copy points `envVar` at it, and everyone else is told NOT VERIFIED, never ok);
+      * `quotation`: `verbatim` (entries quote spans, as corpus-map.md requires) or `withheld`
+        (the licence forbids it, so no entry citing the corpus carries `evidence`).
+
+    And what follows from them:
+
+      * `never-commit` is `local-copy`: bytes the repository may not hold cannot be verified
+        from it;
+      * `local-copy` names `envVar`, or nobody could ever verify it;
+      * `committed-copy` names `committedPath`, and the file exists beside the manifest;
+      * under `withheld`, an entry that quotes anyway fails.
+
+    What it cannot do: hash anything. `hashDerivation` names what a digest covers and this file
+    does not know how to recompute any derivation, so a committed file with the wrong bytes
+    passes here. Reporting the posture and verifying the hash is the gate's job. Nor does it
+    decide a licence: `quotation` is declared by a person, and 0013 is explicit that nothing
+    infers it.
+    """
+    manifest = ctx["manifest"]
+    corpora = corpora_of(manifest)
+    if not corpora:
+        return skip("no manifest, or a manifest declaring no corpora, so no corpus's verification "
+                    "posture or quotation policy was read. Pass --manifest.")
+    base = os.path.dirname(os.path.abspath(ctx["manifest_path"])) if ctx.get("manifest_path") else None
+    bad = []
+    for source_id, corpus in corpora.items():
+        name = f"manifest {source_id}"
+        posture, quotation = corpus.get("verification"), corpus.get("quotation")
+        if posture not in VERIFICATION_POSTURES:
+            bad.append(f"  X  {name}: verification is {posture!r}, outside "
+                       f"{{{', '.join(sorted(VERIFICATION_POSTURES))}}}; a corpus with no declared "
+                       f"posture is a failure, not a default (0002, 0013)")
+        if quotation not in QUOTATION_POLICIES:
+            bad.append(f"  X  {name}: quotation is {quotation!r}, outside "
+                       f"{{{', '.join(sorted(QUOTATION_POLICIES))}}}; whether a map may quote its "
+                       f"corpus is declared per corpus, never assumed")
+        if corpus.get("boundaryPolicy") == "never-commit" and posture == "committed-copy":
+            bad.append(f"  X  {name}: is `never-commit` but claims `committed-copy`; bytes the "
+                       f"repository may not hold cannot be verified from it")
+        if posture == "local-copy" and not (isinstance(corpus.get("envVar"), str) and corpus["envVar"].strip()):
+            bad.append(f"  X  {name}: is `local-copy` and names no `envVar`, so nobody holding a "
+                       f"legal copy has anywhere to point the verifier")
+        if posture == "committed-copy":
+            path = corpus.get("committedPath")
+            if not isinstance(path, str) or not path.strip():
+                bad.append(f"  X  {name}: is `committed-copy` and names no `committedPath`")
+            elif base is None or not os.path.isfile(os.path.join(base, path)):
+                bad.append(f"  X  {name}: committedPath {path!r} is not a file beside the manifest; "
+                           f"a committed copy that is not committed is `local-copy`")
+
+    for position, entry in enumerate(entries_of(ctx["map"])):
+        if not isinstance(entry, dict):
+            continue
+        if quotes_withheld(ctx, entry):
+            if entry.get("evidence"):
+                bad.append(f"  X  {label(entry, position)}: quotes `evidence` from "
+                           f"{block(entry, 'locator').get('sourceId')}, whose quotation is `withheld`; "
+                           f"the span is recorded as absent, never quoted and never summarised")
+    postures = sorted(f"{s}: {c.get('verification')}, {c.get('quotation')}" for s, c in corpora.items())
+    return verdict(bad, f"{len(corpora)} corpus postures declared ({'; '.join(postures)})",
+                   "a corpus's verification posture or quotation policy is missing or contradicted")
+
+
 def check_exclusions(ctx):
     """The `ambiguity` block is not a general decline carrier (0005 D).
 
@@ -384,24 +619,67 @@ def check_exclusions(ctx):
                    "an ambiguity block is misused")
 
 
+def tests_problems(name, tests):
+    """What is wrong with a `tests` list, as report lines. Empty when it is well-formed."""
+    if not isinstance(tests, list):
+        return [f"  X  {name}: `tests` is not a list"]
+    bad, seen = [], set()
+    for position, item in enumerate(tests):
+        if not isinstance(item, dict):
+            bad.append(f"  X  {name}: tests[{position}] is not an object naming a test and its mutation")
+            continue
+        test, mutation = item.get("test"), item.get("mutation")
+        if not isinstance(test, str) or not test.strip():
+            bad.append(f"  X  {name}: tests[{position}] names no `test`")
+        elif test in seen:
+            bad.append(f"  X  {name}: names test {test!r} twice")
+        else:
+            seen.add(test)
+        if not isinstance(mutation, str) or not mutation.strip():
+            bad.append(f"  X  {name}: tests[{position}] ({test!r}) records no `mutation`; a test "
+                       f"nobody has seen go red is not evidence")
+    return bad
+
+
 def check_status(ctx):
-    """`implementedIn` is set when status becomes `implemented`, and only then."""
+    """`implemented` is a claim with its evidence attached (#2), not a word someone typed.
+
+    Two rules:
+
+      * `implementedIn` is set when status becomes `implemented`, and only then;
+      * an `implemented` entry names the tests that prove it in `tests`, non-empty, and every
+        test carries the `mutation` that was recorded turning it red. Without them the entry is
+        `mapped`, whatever the repository contains. Wherever `tests` appears, its shape is held
+        to the same rule.
+
+    What it cannot do: this file never sees an engine, so a named test that does not exist, or
+    exists and never ran, passes here. That is the engine gate's check. And a recorded mutation
+    proves one way of breaking the rule is caught, not that the test is good.
+    """
     bad, implemented = [], 0
     for position, entry in enumerate(entries_of(ctx["map"])):
         if not isinstance(entry, dict):
             continue
         name = label(entry, position)
+        if "tests" in entry:
+            bad.extend(tests_problems(name, entry["tests"]))
         if entry.get("status") == "implemented":
             implemented += 1
             if not entry.get("implementedIn"):
                 bad.append(f"  X  {name}: status is `implemented` but no `implementedIn` names the ruleset revision")
+            if not entry.get("tests"):
+                bad.append(f"  X  {name}: status is `implemented` but `tests` names no test that proves "
+                           f"it; without one the entry is `mapped`")
         elif entry.get("implementedIn"):
             bad.append(f"  X  {name}: carries `implementedIn` while status is {entry.get('status')!r}")
-    carriers = sum(1 for e in entries_of(ctx["map"]) if isinstance(e, dict) and e.get("implementedIn"))
+    carriers = sum(1 for e in entries_of(ctx["map"])
+                   if isinstance(e, dict) and (e.get("implementedIn") or "tests" in e))
     if not bad and not implemented and not carriers:
-        return skip("no entry is `implemented` and none carries `implementedIn`, so the rule that "
-                    "one accompanies the other was not exercised", had_subject=False)
-    return verdict(bad, f"{implemented} implemented entries all name their revision", "status and implementedIn disagree")
+        return skip("no entry is `implemented` and none carries `implementedIn` or `tests`, so the "
+                    "rules that accompany an implemented claim were not exercised", had_subject=False)
+    return verdict(bad, f"{implemented} implemented entries all name their revision and the tests, "
+                        f"each with a recorded mutation, that prove them",
+                   "an implemented claim is missing its revision or its tests")
 
 
 def check_decision_records(ctx):
@@ -539,7 +817,7 @@ def check_absent(ctx):
         if "ambiguity" in entry:
             bad.append(f"  X  {name}: carries `absentFrom` and an `ambiguity` block; an absent "
                        f"rule has no words to be ambiguous about")
-        for field in ("dependsOn", "gatedBy"):
+        for field in ID_LIST_FIELDS:
             if entry.get(field):
                 bad.append(f"  X  {name}: carries `absentFrom` and a non-empty `{field}`; a rule "
                            f"the corpus does not state orders nothing and gates nothing")
@@ -548,7 +826,7 @@ def check_absent(ctx):
         if not isinstance(entry, dict):
             continue
         name = label(entry, position)
-        for field in ("dependsOn", "gatedBy"):
+        for field in ID_LIST_FIELDS:
             for ref in entry.get(field) or []:
                 if isinstance(ref, str) and ref in absent_ids:
                     bad.append(f"  X  {name}: {field} names {ref!r}, which carries `absentFrom`; "
@@ -765,7 +1043,10 @@ CHECKS = [
     ("unique-ids", check_unique_ids),
     ("references", check_references),
     ("no-cycles", check_no_cycles),
+    ("gates", check_gates),
+    ("derived", check_derived),
     ("manifest", check_manifest),
+    ("postures", check_postures),
     ("exclusions", check_exclusions),
     ("status", check_status),
     ("decision-records", check_decision_records),
@@ -836,6 +1117,7 @@ def main(argv=None):
     ctx = {
         "map": document,
         "manifest": manifest,
+        "manifest_path": manifest_path,
         "repo_root": args.repo_root or find_repo_root(args.map_path),
         "verbose": args.verbose,
     }

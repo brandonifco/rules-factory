@@ -43,9 +43,28 @@ MANIFEST = {
             "hashDerivation": "demo-plain-text",
             "boundaryPolicy": "pin-in-repo",
             "licence": "public-domain",
+            # 0013: how the baseline is verified, and whether a map may quote the corpus.
+            "verification": "committed-copy",
+            "committedPath": "demo.txt",
+            "quotation": "verbatim",
             "references": [{"sourceId": "other-corpus", "citation": "s 1", "admitted": False}],
         }
     ],
+}
+
+# A second corpus nobody may commit or quote, for the rules that only a licence triggers.
+COMMERCIAL = {
+    "sourceId": "core-rules",
+    "title": "Core Rulebook",
+    "adapter": "pdf",
+    "locatorGrammar": "printed-page",
+    "contentHash": "c" * 64,
+    "hashDerivation": "pdf-bytes",
+    "boundaryPolicy": "never-commit",
+    "licence": "commercial",
+    "verification": "local-copy",
+    "envVar": "CORE_RULES_PDF",
+    "quotation": "withheld",
 }
 
 
@@ -65,6 +84,12 @@ def entry(entry_id, **overrides):
     return base
 
 
+def proof(*names):
+    """#2: the tests an implemented entry names, each with the mutation recorded turning it red."""
+    return [{"test": name, "mutation": f"Inverted the comparison {name} asserts; it went red."}
+            for name in names]
+
+
 def valid_map():
     """A map exercising every shape the spec describes, and nothing the spec forbids."""
     return {
@@ -73,13 +98,17 @@ def valid_map():
         "baseline": {"contentHash": "a" * 64, "hashDerivation": "demo-plain-text"},
         "entries": [
             entry("speed-limit", kind="value", status="implemented",
-                  implementedIn={"ruleset": "demo", "version": 1}),
+                  implementedIn={"ruleset": "demo", "version": 1},
+                  tests=proof("SpeedLimitTests.The_limit_is_87_knots")),
             entry("speed-within-limit", kind="operation", dependsOn=["speed-limit"],
-                  status="implemented", implementedIn={"ruleset": "demo", "version": 1}),
+                  status="implemented", implementedIn={"ruleset": "demo", "version": 1},
+                  tests=proof("SpeedTests.At_the_limit_is_permitted", "SpeedTests.Above_the_limit_is_refused")),
             entry("well-clear", kind="assertion", status="mapped"),
             entry("yield-right-of-way", kind="operation", dependsOn=["well-clear"],
-                  gatedBy=["speed-limit"], status="implemented",
-                  implementedIn={"ruleset": "demo", "version": 1}),
+                  enabledBy=["speed-limit"], suspendedBy=["speed-within-limit"],
+                  status="implemented",
+                  implementedIn={"ruleset": "demo", "version": 1},
+                  tests=proof("RightOfWayTests.Passing_over_is_refused")),
             entry("hazardous-material", kind="value", status="declined",
                   definedElsewhere={"reference": "other-corpus"}),
             entry("inner-table-handedness", kind="value", status="declined",
@@ -87,6 +116,7 @@ def valid_map():
             entry("subpart-d-categories", scope="out", status="declined"),
             entry("must-play-whole-throw", kind="operation", clarity="ambiguous",
                   status="implemented", implementedIn={"ruleset": "demo", "version": 1},
+                  tests=proof("WholeThrowTests.Either_die_alone_but_not_both_declines"),
                   ambiguity={
                       "question": "The text does not say what happens when only one die is playable.",
                       "fate": "unresolved",
@@ -103,8 +133,17 @@ def valid_map():
                   evidence="After a gammon the players throw again for the right to begin, "
                            "as at starting.",
                   crossReferences=[{"cites": "as at starting", "resolvedBy": "speed-limit"}]),
+            derived_entry("hit-pays-single-stake", ["speed-limit", "speed-within-limit"]),
         ],
     }
+
+
+def derived_entry(entry_id, sources, **overrides):
+    """0012: a fact the corpus entails and never states. It cites nothing."""
+    base = entry(entry_id, derivedFrom=list(sources), **overrides)
+    base.pop("locator")
+    base.pop("evidence")
+    return base
 
 
 def decided_entry():
@@ -129,6 +168,8 @@ class MapCase(unittest.TestCase):
             handle.write("# 0007\n")
         self.example = os.path.join(self.root, "examples", "demo")
         os.makedirs(self.example)
+        with open(os.path.join(self.example, "demo.txt"), "w") as handle:
+            handle.write("The committed copy of the demonstration corpus.\n")
         self.write_manifest(MANIFEST)
 
     def write_manifest(self, manifest):
@@ -231,21 +272,53 @@ class TestReferences(MapCase):
     def test_a_dangling_depends_on_fails(self):
         self.assert_catches("references", lambda d: d["entries"][1].update(dependsOn=["no-such-entry"]))
 
-    def test_a_dangling_gated_by_fails(self):
+    def test_a_dangling_enabled_by_fails(self):
         # 0003: a gate with no entry means the map is missing an entry.
-        self.assert_catches("references", lambda d: d["entries"][3].update(gatedBy=["all-men-home"]))
+        self.assert_catches("references", lambda d: d["entries"][3].update(enabledBy=["all-men-home"]))
 
-    def test_a_gated_by_holding_a_condition_rather_than_an_id_fails(self):
-        self.assert_catches("references", lambda d: d["entries"][3].update(gatedBy=[{"allMenHome": True}]))
+    def test_a_dangling_suspended_by_fails(self):
+        self.assert_catches("references", lambda d: d["entries"][3].update(suspendedBy=["man-on-bar"]))
+
+    def test_a_gate_holding_a_condition_rather_than_an_id_fails(self):
+        self.assert_catches("references", lambda d: d["entries"][3].update(suspendedBy=[{"onBar": True}]))
 
     def test_a_map_with_no_edges_does_not_report_ok(self):
         document = valid_map()
         for item in document["entries"]:
             item["dependsOn"] = []
-            item.pop("gatedBy", None)
+            item.pop("enabledBy", None)
+            item.pop("suspendedBy", None)
         code, output = self.run_tool(document)
         self.assertEqual(self.status_of(output, "references"), "skip", output)
         self.assertEqual(self.status_of(output, "no-cycles"), "skip", output)
+        self.assertEqual(self.status_of(output, "gates"), "skip", output)
+        self.assertEqual(code, 0, output)
+
+
+class TestGates(MapCase):
+    """0011: a gate is filed by direction -- what makes a rule reachable, what suspends it."""
+
+    GATED = 3  # yield-right-of-way, in valid_map()'s order
+
+    def test_an_undirected_gated_by_is_refused(self):
+        # The field 0011 split. Left unchecked, an unmigrated map's gates would simply vanish.
+        def mutate(document):
+            gated = document["entries"][self.GATED]
+            gated["gatedBy"] = gated.pop("enabledBy") + gated.pop("suspendedBy")
+        self.assert_catches("gates", mutate)
+
+    def test_one_rule_both_enabling_and_suspending_an_entry_fails(self):
+        self.assert_catches(
+            "gates", lambda d: d["entries"][self.GATED]["suspendedBy"].append("speed-limit"))
+
+    def test_a_map_with_no_gates_does_not_report_ok(self):
+        # Both Part 107 maps: a stateless corpus has no phases, which is right, and proves nothing.
+        document = valid_map()
+        document["entries"][self.GATED].pop("enabledBy")
+        document["entries"][self.GATED].pop("suspendedBy")
+        code, output = self.run_tool(document)
+        self.assertEqual(self.status_of(output, "gates"), "skip", output)
+        self.assertIn("NOT VERIFIED", output)
         self.assertEqual(code, 0, output)
 
 
@@ -256,12 +329,80 @@ class TestNoCycles(MapCase):
         self.assert_catches("no-cycles", mutate)
 
     def test_mutual_gates_are_not_a_cycle(self):
-        # gatedBy orders nothing, so a mutual gate is legitimate and must still pass.
+        # A gate orders nothing, so a mutual gate is legitimate and must still pass.
         document = valid_map()
-        document["entries"][0]["gatedBy"] = ["speed-within-limit"]
-        document["entries"][1]["gatedBy"] = ["speed-limit"]
+        document["entries"][0]["suspendedBy"] = ["speed-within-limit"]
+        document["entries"][1]["suspendedBy"] = ["speed-limit"]
         code, output = self.run_tool(document)
         self.assertEqual(self.status_of(output, "no-cycles"), "ok", output)
+        self.assertEqual(code, 0, output)
+
+
+class TestDerived(MapCase):
+    """0012: `derivedFrom` -- this fact is entailed by those facts, and no sentence states it."""
+
+    DERIVED = 10  # hit-pays-single-stake, in valid_map()'s order
+
+    def test_a_derived_entry_needs_no_locator_or_evidence(self):
+        # The fixture's derived entry carries neither, and required-fields must not demand them.
+        code, output = self.run_tool(valid_map())
+        self.assertEqual(self.status_of(output, "required-fields"), "ok", output)
+        self.assertEqual(self.status_of(output, "derived"), "ok", output)
+
+    def test_an_entry_without_derived_from_still_needs_its_locator(self):
+        # The exemption is keyed on the field, so removing it makes the entry an ordinary one.
+        self.assert_catches("required-fields", lambda d: d["entries"][self.DERIVED].pop("derivedFrom"))
+
+    def test_a_derived_entry_that_quotes_a_span_fails(self):
+        # `evidence` keeps one meaning: a verbatim span. A derived fact has none to quote.
+        self.assert_catches(
+            "derived", lambda d: d["entries"][self.DERIVED].update(evidence="A gammon pays double."))
+
+    def test_a_derived_entry_that_cites_a_passage_fails(self):
+        self.assert_catches(
+            "derived", lambda d: d["entries"][self.DERIVED].update(
+                locator={"sourceId": "demo-corpus", "citation": "Part One / p. 1"}))
+
+    def test_a_derived_entry_carrying_a_cross_reference_fails(self):
+        self.assert_catches(
+            "derived", lambda d: d["entries"][self.DERIVED].update(
+                crossReferences=[{"cites": "as at starting", "resolvedBy": "speed-limit"}]))
+
+    def test_a_source_that_is_not_an_entry_fails(self):
+        self.assert_catches(
+            "derived", lambda d: d["entries"][self.DERIVED]["derivedFrom"].append("no-such-entry"))
+
+    def test_a_source_out_of_scope_fails(self):
+        self.assert_catches(
+            "derived", lambda d: d["entries"][self.DERIVED]["derivedFrom"].append("subpart-d-categories"))
+
+    def test_deriving_from_an_absent_rule_fails(self):
+        # An absence is scope: out, so the scope rule is what refuses it.
+        self.assert_catches(
+            "derived", lambda d: d["entries"][self.DERIVED]["derivedFrom"].append("doubling-cube"))
+
+    def test_a_derivation_from_one_source_fails(self):
+        # A consequence of one entry is that entry's, discharged as a test it names.
+        self.assert_catches(
+            "derived", lambda d: d["entries"][self.DERIVED].update(derivedFrom=["speed-limit"]))
+
+    def test_a_derivation_naming_itself_fails(self):
+        self.assert_catches(
+            "derived", lambda d: d["entries"][self.DERIVED]["derivedFrom"].append("hit-pays-single-stake"))
+
+    def test_a_circular_derivation_fails(self):
+        def mutate(document):
+            document["entries"].append(
+                derived_entry("gammon-pays-double", ["hit-pays-single-stake", "speed-limit"]))
+            document["entries"][self.DERIVED]["derivedFrom"] = ["gammon-pays-double", "speed-limit"]
+        self.assert_catches("derived", mutate)
+
+    def test_a_map_with_no_derived_entries_does_not_report_ok(self):
+        document = valid_map()
+        document["entries"].pop(self.DERIVED)
+        code, output = self.run_tool(document)
+        self.assertEqual(self.status_of(output, "derived"), "skip", output)
+        self.assertIn("NOT VERIFIED", output)
         self.assertEqual(code, 0, output)
 
 
@@ -286,6 +427,102 @@ class TestManifest(MapCase):
         self.assertEqual(self.status_of(output, "manifest"), "skip", output)
         self.assertIn("NOT VERIFIED", output)
         self.assertEqual(code, 1, output)
+
+
+class TestPostures(MapCase):
+    """0013: each corpus declares how it is verified and whether a map may quote it."""
+
+    def assert_manifest_catches(self, mutate, document=None):
+        """The fixture manifest passes `postures`; the mutated one makes it fail."""
+        code, output = self.run_tool(document or valid_map())
+        self.assertEqual(self.status_of(output, "postures"), "ok", output)
+        manifest = json.loads(json.dumps(MANIFEST))
+        mutate(manifest)
+        self.write_manifest(manifest)
+        code, output = self.run_tool(document or valid_map())
+        self.assertEqual(self.status_of(output, "postures"), "fail", output)
+        self.assertEqual(code, 1, output)
+        return output
+
+    def test_a_corpus_with_no_verification_posture_fails(self):
+        self.assert_manifest_catches(lambda m: m["corpora"][0].pop("verification"))
+
+    def test_a_posture_outside_the_vocabulary_fails(self):
+        self.assert_manifest_catches(lambda m: m["corpora"][0].update(verification="trust-me"))
+
+    def test_a_corpus_with_no_quotation_policy_fails(self):
+        self.assert_manifest_catches(lambda m: m["corpora"][0].pop("quotation"))
+
+    def test_a_committed_copy_that_is_not_committed_fails(self):
+        self.assert_manifest_catches(lambda m: m["corpora"][0].update(committedPath="missing.txt"))
+
+    def test_a_committed_copy_naming_no_path_fails(self):
+        self.assert_manifest_catches(lambda m: m["corpora"][0].pop("committedPath"))
+
+    def test_a_never_commit_corpus_claiming_a_committed_copy_fails(self):
+        def mutate(manifest):
+            manifest["corpora"].append(dict(COMMERCIAL, verification="committed-copy",
+                                            committedPath="demo.txt"))
+        output = self.assert_manifest_catches(mutate)
+        self.assertIn("cannot be verified from it", output)
+
+    def test_a_local_copy_naming_no_env_var_fails(self):
+        def mutate(manifest):
+            commercial = dict(COMMERCIAL)
+            commercial.pop("envVar")
+            manifest["corpora"].append(commercial)
+        self.assert_manifest_catches(mutate)
+
+    def test_a_licensed_corpus_declared_properly_passes(self):
+        manifest = json.loads(json.dumps(MANIFEST))
+        manifest["corpora"].append(COMMERCIAL)
+        self.write_manifest(manifest)
+        code, output = self.run_tool(valid_map())
+        self.assertEqual(self.status_of(output, "postures"), "ok", output)
+        self.assertEqual(code, 0, output)
+
+    def test_quoting_a_corpus_whose_quotation_is_withheld_fails(self):
+        # For a never-commit corpus the map itself is the redistribution question.
+        manifest = json.loads(json.dumps(MANIFEST))
+        manifest["corpora"].append(COMMERCIAL)
+        self.write_manifest(manifest)
+        document = _without_evidence_on_last(valid_map())
+        code, output = self.run_tool(document)
+        self.assertEqual(self.status_of(output, "postures"), "ok", output)
+        self.assertEqual(code, 0, output)
+        document["entries"][-1]["evidence"] = "Compare the hits scored by each side."
+        code, output = self.run_tool(document)
+        self.assertEqual(self.status_of(output, "postures"), "fail", output)
+        self.assertIn("quotes `evidence`", output)
+        self.assertEqual(code, 1, output)
+
+    def test_an_entry_of_a_withheld_corpus_needs_no_evidence(self):
+        manifest = json.loads(json.dumps(MANIFEST))
+        manifest["corpora"].append(COMMERCIAL)
+        self.write_manifest(manifest)
+        document = _without_evidence_on_last(valid_map())
+        code, output = self.run_tool(document)
+        self.assertEqual(self.status_of(output, "required-fields"), "ok", output)
+        self.assertEqual(self.status_of(output, "postures"), "ok", output)
+        # Without the withheld policy the same entry is simply missing its evidence.
+        self.write_manifest(MANIFEST)
+        document["entries"][-1]["locator"] = {"sourceId": "demo-corpus", "citation": "p. 36"}
+        code, output = self.run_tool(document)
+        self.assertEqual(self.status_of(output, "required-fields"), "fail", output)
+
+    def test_without_a_manifest_the_postures_are_not_verified(self):
+        os.remove(self.manifest_path)
+        code, output = self.run_tool(valid_map())
+        self.assertEqual(self.status_of(output, "postures"), "skip", output)
+        self.assertEqual(code, 1, output)
+
+
+def _without_evidence_on_last(document):
+    """Append an entry citing the withheld corpus, carrying no span -- as 0013 requires."""
+    document["entries"].append(entry("opposed-test-tie", locator={
+        "sourceId": "core-rules", "citation": "Game Concepts / p. 36"}))
+    document["entries"][-1].pop("evidence")
+    return document
 
 
 class TestExclusions(MapCase):
@@ -338,12 +575,43 @@ class TestStatus(MapCase):
     def test_implemented_in_on_an_unbuilt_entry_fails(self):
         self.assert_catches("status", lambda d: d["entries"][2].update(implementedIn={"ruleset": "demo", "version": 1}))
 
+    def test_implemented_naming_no_tests_fails(self):
+        # #2: `implemented` stops being a word someone typed. Without tests it is `mapped`.
+        self.assert_catches("status", lambda d: d["entries"][0].pop("tests"))
+
+    def test_implemented_with_an_empty_tests_list_fails(self):
+        self.assert_catches("status", lambda d: d["entries"][0].update(tests=[]))
+
+    def test_a_test_with_no_recorded_mutation_fails(self):
+        # A test nobody has seen go red is the class of test this repository keeps finding.
+        self.assert_catches("status", lambda d: d["entries"][1]["tests"][1].pop("mutation"))
+
+    def test_a_blank_mutation_fails(self):
+        self.assert_catches("status", lambda d: d["entries"][1]["tests"][0].update(mutation="  "))
+
+    def test_a_tests_item_naming_no_test_fails(self):
+        self.assert_catches("status", lambda d: d["entries"][1]["tests"][0].pop("test"))
+
+    def test_a_test_named_twice_fails(self):
+        def mutate(document):
+            tests = document["entries"][1]["tests"]
+            tests[1]["test"] = tests[0]["test"]
+        self.assert_catches("status", mutate)
+
+    def test_a_bare_test_name_without_its_mutation_fails(self):
+        self.assert_catches("status", lambda d: d["entries"][0].update(tests=["SpeedLimitTests.The_limit_is_87_knots"]))
+
+    def test_malformed_tests_on_an_unbuilt_entry_still_fail(self):
+        # The shape holds wherever the field appears, not only where it is required.
+        self.assert_catches("status", lambda d: d["entries"][2].update(tests=[{"test": "WellClearTests.X"}]))
+
     def test_a_map_with_nothing_built_does_not_report_ok(self):
         # All three example maps are in this state. Reporting `ok` would be a gate
         # trusted for proving something it never looked at.
         document = valid_map()
         for item in document["entries"]:
             item.pop("implementedIn", None)
+            item.pop("tests", None)
             if item["status"] == "implemented":
                 item["status"] = "mapped"
         code, output = self.run_tool(document)
@@ -513,9 +781,13 @@ class TestAbsent(MapCase):
         self.assert_catches(
             "absent", lambda d: d["entries"][1].update(dependsOn=["doubling-cube"]))
 
-    def test_gating_on_an_absent_rule_fails(self):
+    def test_enabling_on_an_absent_rule_fails(self):
         self.assert_catches(
-            "absent", lambda d: d["entries"][3].update(gatedBy=["doubling-cube"]))
+            "absent", lambda d: d["entries"][3].update(enabledBy=["doubling-cube"]))
+
+    def test_suspending_on_an_absent_rule_fails(self):
+        self.assert_catches(
+            "absent", lambda d: d["entries"][3].update(suspendedBy=["doubling-cube"]))
 
     def test_an_absence_nobody_searched_for_fails_the_vocabulary(self):
         # An empty `searched` is the "(absent)" locator in a new spelling: a claim with

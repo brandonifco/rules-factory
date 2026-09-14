@@ -10,6 +10,9 @@
       "hashDerivation": "gutenberg-plain-text-including-boilerplate",
       "boundaryPolicy": "pin-in-repo",
       "licence": "public-domain-underlying-work; Project Gutenberg trademark terms apply to the edition",
+      "verification": "committed-copy",
+      "committedPath": "hoyle.txt",
+      "quotation": "verbatim",
       "retrievedFrom": "https://www.gutenberg.org/ebooks/39445.txt.utf-8",
       "references": []
     }

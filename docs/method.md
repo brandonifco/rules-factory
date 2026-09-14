@@ -55,6 +55,15 @@ A CC-BY SRD or a public-domain statute is `pin-in-repo`: committing it is what m
 engine reproducible without a licence. Getting this wrong is a legal problem in one
 direction and a reproducibility problem in the other.
 
+**How is it verified, and may the map quote it?** The same question, asked for whoever consumes
+the map — an engine built from it included. A committed corpus is `committed-copy` and anyone
+can check its hash. A corpus that is not committed is `local-copy`: whoever holds a legal copy
+verifies locally, and every other run — CI above all — reports `NOT VERIFIED` with the reason,
+never `ok`. And because a map quotes its corpus sentence by sentence, whether it may do so at all
+is declared too: `quotation: verbatim`, or `withheld` where the licence forbids it. Both are
+answered per corpus in the manifest, by a person, never inferred. See
+[0013](decisions/0013-verification-posture-belongs-to-the-corpus.md).
+
 **Record what the adapter cannot reach.** A corpus states its rules in more than one
 modality. The starting position of a backgammon board, in a trial corpus, is given entirely
 as an illustration — fully determined, and invisible to a plain-text adapter. That is not a
@@ -92,6 +101,13 @@ slices small enough to hold, never the whole corpus at once.
 rule that makes the map trustworthy, because it is the one an agent is most tempted to skip
 when a rule "obviously" says something.
 
+**The one exception is a fact no sentence states.** Where two or more rules the corpus does
+state entail an answer the engine must give — a hit pays the single stake, because a gammon and
+a backgammon are both paid as multiples of it — that answer is its own entry, carrying
+`derivedFrom` and no locator or quote: its sources' citations are its citation. Do not put the
+inference inside one of the source entries, where it passes as stated. See
+[0012](decisions/0012-a-fact-the-corpus-implies-is-a-derived-entry.md).
+
 **Cite, do not copy.** The map records where a rule lives and what it is called. It does not
 reproduce the corpus. For a licensed corpus that is a legal requirement; for every corpus it
 is a discipline that keeps the map reviewable.
@@ -128,15 +144,22 @@ reader cannot tell which happened.
 **Record what gates an entry, separately from what it depends on.** A corpus with turn
 structure has rules that only apply in a phase: bearing off begins once every man is home;
 a man on the bar suspends every other move. That is a different fact from implementation
-order, and it goes in `gatedBy`, which holds **entry ids and nothing else** — the rule that
-governs reachability, not the condition. Write the condition and you have written a second
-implementation of the rule in a format nothing executes. A gate is itself a rule the corpus
-states, so it already has an entry; if the gate you want to record has none, the finding is
-that the map is missing an entry. See
-[0003](decisions/0003-a-phase-gate-names-a-rule-not-a-condition.md).
+order, and it goes in one of two fields by direction: `enabledBy` for a rule that makes this
+one reachable, `suspendedBy` for a rule that makes it unreachable while it holds. Both hold
+**entry ids and nothing else** — the rule that governs reachability, not the condition. Write
+the condition and you have written a second implementation of the rule in a format nothing
+executes. A gate is itself a rule the corpus states, so it already has an entry; if the gate you
+want to record has none, the finding is that the map is missing an entry. See
+[0003](decisions/0003-a-phase-gate-names-a-rule-not-a-condition.md) and
+[0011](decisions/0011-a-gate-has-a-direction.md).
+
+**Ask of every gate which entries it reaches, not only the obvious ones.** A rule that suspends
+a player's whole turn reaches the throw and everything a throw leads to; the backgammon map
+recorded none of that for `full-table-suspension` through a trial, a build and a review, and
+the omission changed every later throw of a seeded game while passing every legality test.
 
 A stateless corpus will produce none of these, and that is the right outcome rather than an
-oversight. Both Part 107 maps carry `gatedBy` on no entry.
+oversight. Both Part 107 maps carry neither field on any entry.
 
 **Do not classify while walking.** A first pass that is simultaneously deciding value versus
 operation, in scope versus out, produces worse results at both. Enumerate first.
@@ -384,8 +407,9 @@ supplied most of what an issue needs:
 - **Source** — the locator, verbatim from the entry, and the `evidence` span it resolves to.
 - **Dependencies** — the entries this one depends on, which determine order. Damage after
   attack; the limit after the table it reads.
-- **Reachability** — the entries in `gatedBy`, which determine nothing about order and
-  everything about what the issue must set up. A phase-scoped rule cannot be exercised
+- **Reachability** — the entries in `enabledBy` and `suspendedBy`, which determine nothing
+  about order and everything about what the issue must set up, and what it must show does
+  not happen. A phase-scoped rule cannot be exercised
   outside its phase, so an acceptance criterion that ignores the gate is testing a situation
   the corpus does not describe.
 - **Acceptance criteria** — observable conditions, derived from what the entry claims.
@@ -407,6 +431,31 @@ reader can check the implementation against the passage without going through th
 the tests derive their expectations from the corpus — never from the implementation. An
 expectation computed the same way as the thing it checks can only confirm that the code does
 what it does.
+
+**A derived consequence is discharged as a test, and the entry names the test.** A mapper
+working an entry often proves something the entry does not say: that `must-play-whole-throw`
+declines in exactly one shape of throw, that the adopted opening throw can never be doublets
+because a tie is thrown again, that `bearing-off-highest` is the opposite of what a modern
+player expects. That reasoning is not stored as prose in the map. It becomes **a test named for
+what it proves** — one that constructs the case and fails if the consequence stops holding —
+and the entry names that test — among its `tests`, with the mutation that turned it red, once
+the entry is `implemented`. No field holds the reasoning itself. Decided on
+[#16](https://github.com/brandonifco/rules-factory/issues/16), for the reason
+[0005](decisions/0005-a-field-earns-its-place-by-being-checkable.md)'s rail E and
+[0004](decisions/0004-adapter-reach-is-a-property-of-the-entry.md) already gave: prose about a
+claim cannot be shown to have gone wrong, and a test can. "This branch is unreachable" will
+silently become false the day the opening rule changes; as a sentence it rots, as a test it
+fails.
+
+This is different from a derived *entry*
+([0012](decisions/0012-a-fact-the-corpus-implies-is-a-derived-entry.md)). A derived entry is an
+answer the engine must give that no sentence states, and it follows from two or more rules. A
+derived consequence is a property of answers that are each stated — often of one entry alone —
+and nobody asks the engine for it; it is what a test asserts about the engine's answers.
+
+**The limit, accepted rather than hidden:** reasoning that does not reduce to a test has nowhere
+to go and is lost. Reasoning that cannot be reduced to a check is also reasoning nobody can be
+shown to have got wrong.
 
 **Preserve determinism deliberately.** Changes to random consumption, ordering, serialization
 or identity are compatibility events. An extra draw shifts every later result.
@@ -457,7 +506,10 @@ has to judge — which is the work, and is not automatable by either diff alone.
 
 ## Phase 8 — Close the entry
 
-The entry's status advances, and it records which ruleset revision implemented it. That is
+The entry's status advances, and it records which ruleset revision implemented it **and the
+tests that prove it, each with the mutation that was recorded turning it red**. An entry that
+cannot name a test that has been seen to fail does not advance to `implemented`; it stays
+`mapped`, whatever code exists ([#2](https://github.com/brandonifco/rules-factory/issues/2)). That is
 what makes the map a live artifact rather than a plan: at any moment it says what the engine
 covers, what it deliberately does not, and what it cannot yet answer — which is the same
 question `UnresolvedReason` answers at runtime, from the other side.

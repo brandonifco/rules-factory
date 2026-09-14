@@ -119,6 +119,11 @@ gate relation is not recoverable from `dependsOn` — `bearing-off-doublets` has
 implementation ancestors and one gate, and `move-by-pip` is gated by an entry that is
 neither its ancestor nor its descendant.
 
+*Since split.* [0011](../../docs/decisions/0011-a-gate-has-a-direction.md) replaces `gatedBy`
+with `enabledBy` and `suspendedBy`, after the build found `full-table-suspension` gating seven
+entries that named none of it and `move-by-pip` missing `bearing-off-eligible`. Ten entries now
+carry a gate: three enabled by `bearing-off-eligible`, seven suspended by one or more rules.
+
 ### 3. Non-normative text sits inside normative sections — and normative text inside advice
 
 *Hints for Play* is plainly advice, and was excluded **as a whole section**. But "it is always

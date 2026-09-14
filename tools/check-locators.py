@@ -136,7 +136,18 @@ def skip(summary, had_subject=True):
 
 
 def check_locators(entries, corpus, index, page_re, reached):
-    """Each entry's cited page against the page its evidence sits on."""
+    """Each entry's cited page against the page its evidence sits on.
+
+    A derived entry (0012) is not located: no sentence states its fact, so it carries no
+    locator and no evidence, and its sources are located as ordinary entries. It is counted
+    and named in the summary rather than silently dropped, so "all N verified" says how many
+    entries it left out and why. That it really cites nothing is `check-map.py --only derived`.
+    """
+    derived = [e.get("id", "?") for e in entries if "derivedFrom" in e]
+    entries = [e for e in entries if "derivedFrom" not in e]
+    aside = (f"; {len(derived)} derived entr{'y' if len(derived) == 1 else 'ies'} "
+             f"({', '.join(derived)}) not located, because a derived entry cites nothing"
+             ) if derived else ""
     bad, unlocatable, uncited, checked = [], 0, 0, 0
     for entry in entries:
         name = entry.get("id", "?")
@@ -170,8 +181,8 @@ def check_locators(entries, corpus, index, page_re, reached):
         )
     if bad:
         return fail(bad, f"{checked} of {len(entries)} citations verified; {unlocatable} "
-                         f"unlocatable, {uncited} citing no page")
-    return ok(f"all {checked} citations verified against the page their evidence sits on")
+                         f"unlocatable, {uncited} citing no page{aside}")
+    return ok(f"all {checked} citations verified against the page their evidence sits on{aside}")
 
 
 def check_absence(entries, extent):

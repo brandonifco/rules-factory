@@ -19,3 +19,6 @@ kept; its number is never reused.
 | [0008](0008-recognising-a-delegated-standard-is-a-procedure-not-a-test.md) | Recognising a delegated standard is a procedure, not a test, and its residue is named |
 | [0009](0009-absence-is-a-verdict-with-evidence.md) | Absence is a verdict with evidence, and scope belongs to a rule, never to a section |
 | [0010](0010-whose-fact-it-is-does-not-decide-the-kind.md) | Whose fact it is does not decide the kind; the measure the corpus states does |
+| [0011](0011-a-gate-has-a-direction.md) | A gate has a direction, and the field it sits in says which (supersedes 0003's polarity paragraph) |
+| [0012](0012-a-fact-the-corpus-implies-is-a-derived-entry.md) | A fact the corpus implies and never states is a derived entry, and it cites nothing |
+| [0013](0013-verification-posture-belongs-to-the-corpus.md) | How a corpus is verified, and whether a map may quote it, belong to the corpus too (extends 0002) |
