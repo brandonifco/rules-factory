@@ -3,23 +3,30 @@
 # scratch, then prove it restores, builds warning-free, passes its generated tests, and
 # recomputes to the provenance it records.
 #
+# What makes an engine acceptable is defined once, by `factory verify` (tools/factory/verify.py),
+# and this script does not restate it. It runs verify once, the way a default `produce` does: on
+# produce's staging copy, before the commit -- provenance; restore, which writes the lock files,
+# recorded in provenance.json before anything builds; then the engine's own gate
+# (scripts/validate.sh full: SDK pin, locked restore, merge, posture, regeneration, format, build
+# -warnaserror and tests in Debug and Release). The solution is built once per configuration.
+# What stays here is what only a CI run of the factory needs: the pinned SDK, a scratch local
+# feed so restore takes the very .nupkg that was packed, the sha512 check that it did, and a
+# final recompute of the committed record.
+#
 # scripts/validate.sh proves the Python machinery. It cannot prove that what the machinery
 # writes is a .NET solution that builds, because that needs the SDK the kernel pins, and the
 # only test that tried (tools/tests/test_factory_provenance.py) skips without it. A green run
 # that skipped the one check that mattered is a check that examined nothing, so here a missing
 # or wrong SDK is a failure, never a skip.
 #
-# After its own restore/build/test, it also runs the gate the engine ships with
-# (scripts/validate.sh full, emitted from tools/factory/recipe/).
-#
 # The engine is produced from the hoyle-backgammon example: a small map, a non-RPG domain, and
 # a package published on nuget.org (restore resolves it, and RulesKernel, from there).
 #
 # Local runs only: FACTORY_DOTNET_SDK_OVERRIDE=<version> rewrites the scratch engine's
-# global.json to that SDK, for a machine that lacks the pinned one. global.json is write-once
-# scaffold, not a generated file, so provenance is unaffected -- but the build then proves the
-# engine on a toolchain the kernel does not pin. CI never sets it, and this script refuses it
-# when CI=true.
+# global.json to that SDK, for a machine that lacks the pinned one. global.json is a managed file
+# (decision 0018), so the re-produce below adopts it, like the NuGet.config edit, and provenance
+# records it -- and the build then proves the engine on a toolchain the kernel does not pin. CI never
+# sets it, and this script refuses it when CI=true.
 set -euo pipefail
 
 cd "$(dirname "$0")/.."
@@ -35,7 +42,8 @@ step() { printf '\n==> %s\n' "$*"; }
 sdk_pin() {
   python3 - "$ROOT/tools/factory" <<'PY'
 import importlib.util, os, sys
-spec = importlib.util.spec_from_file_location("factory_generate_pin", os.path.join(sys.argv[1], "generate.py"))
+sys.path.insert(0, sys.argv[1])  # generate.py imports ownership.py beside it
+spec =importlib.util.spec_from_file_location("factory_generate_pin", os.path.join(sys.argv[1], "generate.py"))
 module = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(module)
 print(module.SDK_VERSION)
@@ -76,8 +84,10 @@ shopt -u nullglob
 PACKAGE="${packages[0]}"
 
 # No --allow-dirty: the engine's provenance must name a commit that actually produced it.
-step "produce $NAME from scratch"
-python3 tools/factory produce --package "$PACKAGE" --corpus "$CORPUS" --name "$NAME" --out "$ENGINE"
+# --no-verify only because global.json and NuGet.config must be edited before anything restores;
+# the re-produce below verifies.
+step "produce $NAME from scratch (unverified)"
+python3 tools/factory produce --package "$PACKAGE" --corpus "$CORPUS" --name "$NAME" --out "$ENGINE" --no-verify
 
 grep -qF "\"version\": \"$PIN\"" "$ENGINE/global.json" \
   || fail "the produced global.json does not pin $PIN: $(cat "$ENGINE/global.json")"
@@ -98,7 +108,8 @@ fi
 # packages folder (nothing cached from an earlier restore can stand in) and a local feed holding
 # the packed map, with source mapping that resolves RulesFactory.Maps.* from that feed alone.
 # Everything else (RulesKernel, the test packages) still comes from nuget.org. NuGet.config is
-# write-once scaffold, not generated, so provenance does not see this edit.
+# a managed file (decision 0018), so the re-produce below adopts it, and provenance then records
+# it as an engine-owned build input (#69).
 export NUGET_PACKAGES="$SCRATCH/nuget-packages"
 python3 - "$ENGINE/NuGet.config" "$SCRATCH/package" <<'PY'
 import sys
@@ -115,24 +126,37 @@ ET.SubElement(local, "package", pattern="RulesFactory.Maps.*")
 tree.write(path, encoding="utf-8", xml_declaration=True)
 PY
 
+[ "$(cd "$ENGINE" && dotnet --version)" = "$SDK" ] || fail "global.json selected SDK $(cd "$ENGINE" && dotnet --version), not $SDK"
+
+# The engine now differs from what produce recorded in build inputs only: NuGet.config (the local
+# feed) and global.json (under the override). Re-running produce is how a record comes to cover
+# such edits (#69), and this time produce verifies, as it does by default: in its staging copy,
+# provenance matches, restore writes the lock files (locked mode forced off: there are none yet),
+# provenance.json is rewritten to record them before anything builds, and the engine's gate runs
+# as the engine's own CI runs it, with CI=true. Only then is the result committed, and it must be
+# exactly the two lock files added and provenance.json changed.
+step "re-produce, verifying: records the edited scaffold and lock files, then runs the engine's gate"
+# NuGet.config and global.json are managed files (tools/factory/ownership.py, decision 0018): a
+# re-produce refuses a hand edit to them. The edits above are deliberate, so the re-produce adopts
+# exactly the files this script edited, as an engine with a private feed would; provenance records
+# them as engine-owned, and every later recompute's re-produce reads that adoption back.
+ADOPT=(--adopt NuGet.config)
+[ "$SDK" = "$PIN" ] || ADOPT+=(--adopt global.json)
+CI=true python3 tools/factory produce --package "$PACKAGE" --corpus "$CORPUS" --name "$NAME" --out "$ENGINE" \
+  "${ADOPT[@]}" | tee "$SCRATCH/reproduce.log"
+grep -qxF "committed to $(cd "$ENGINE" && pwd -P): 2 added, 1 changed, 0 removed" "$SCRATCH/reproduce.log" \
+  || fail "re-producing should add the 2 lock files and change provenance.json only: $(grep '^committed to' "$SCRATCH/reproduce.log")"
+tail -1 "$SCRATCH/reproduce.log" | grep -q ', verified$' || fail "produce did not end verified"
+python3 - "$ENGINE/provenance.json" <<'PY'
+import json, sys
+inputs = [b["path"] for b in json.load(open(sys.argv[1], encoding="utf-8"))["buildInputs"]]
+locks = [p for p in inputs if p.endswith("packages.lock.json")]
+if len(locks) < 2:
+    print(f"provenance.json records {len(locks)} lock file(s) after restore; expected one per project", file=sys.stderr); sys.exit(1)
+print(f"ok   {len(inputs)} build input(s) recorded, {len(locks)} of them lock files")
+PY
+
 cd "$ENGINE"
-SOLUTION="$NAME.slnx"
-[ "$(dotnet --version)" = "$SDK" ] || fail "global.json selected SDK $(dotnet --version), not $SDK"
-
-# The factory writes no packages.lock.json: the first restore of a fresh engine creates them.
-# CI=true would switch on RestoreLockedMode, which cannot create them, so that first restore
-# runs with locked mode forced off. The second restore is locked: it proves the lock files the
-# first one wrote are complete and consistent with the projects. It does not prove the pinned
-# hashes were reviewed; for a fresh engine there is nothing earlier to compare them with.
-step "restore (writes packages.lock.json)"
-dotnet restore "$SOLUTION" -p:RestoreLockedMode=false
-locks=$(find . -name packages.lock.json -not -path '*/obj/*' | wc -l)
-[ "$locks" -ge 2 ] || fail "restore wrote $locks packages.lock.json file(s); expected one per project (2)"
-echo "ok   $locks lock file(s)"
-
-step "restore --locked-mode"
-dotnet restore "$SOLUTION" --locked-mode
-
 step "the restored map package is the packed .nupkg"
 python3 - "$PACKAGE" "$NUGET_PACKAGES" <<'PY'
 import base64, hashlib, json, pathlib, sys, zipfile
@@ -166,37 +190,13 @@ if bad:
 print(f"ok   {pid} {version}: restored sha512 and {seen} lock-file contentHash(es) equal the packed .nupkg")
 PY
 
-step "build, warnings as errors"
-dotnet build "$SOLUTION" --no-restore -c Release -warnaserror
-
-step "test"
-dotnet test "$SOLUTION" --no-build -c Release --logger "trx;LogFilePrefix=results" --results-directory "$SCRATCH/results"
-# A green dotnet test over zero tests is the same lie as a check with no inputs.
-python3 - "$SCRATCH/results" <<'PY'
-import pathlib, re, sys
-counters = [pathlib.Path(p).read_text(encoding="utf-8") for p in pathlib.Path(sys.argv[1]).rglob("*.trx")]
-if not counters:
-    print("dotnet test wrote no results -- nothing was proven", file=sys.stderr); sys.exit(1)
-total = passed = 0
-for text in counters:
-    match = re.search(r'<Counters total="(\d+)"[^>]*passed="(\d+)"', text)
-    if not match:
-        print("a results file has no counters", file=sys.stderr); sys.exit(1)
-    total += int(match.group(1)); passed += int(match.group(2))
-if total == 0 or passed != total:
-    print(f"{passed} of {total} tests passed -- not a pass", file=sys.stderr); sys.exit(1)
-print(f"ok   {passed} of {total} tests passed across {len(counters)} target framework run(s)")
-PY
-
-# The gate the factory ships with every engine (tools/factory/recipe/validate.sh), run the way
-# the engine's own CI runs it. The steps above do not depend on that recipe being right; this
-# one proves the recipe passes on a real engine rather than only in its unit tests.
-step "the engine's own gate: scripts/validate.sh full"
-[ -x scripts/validate.sh ] || fail "the produced engine has no executable scripts/validate.sh"
-CI=true ./scripts/validate.sh full
-
 cd "$ROOT"
-step "factory provenance recomputes"
+# The gate already ran, in the staging copy, on exactly these bytes (its locked restore proved
+# the lock files complete and consistent with the projects -- not that their hashes were
+# reviewed, since a fresh engine has nothing earlier to compare them with). Running it again here
+# would build the solution twice more to learn nothing. What remains is that the committed record
+# is true of the committed engine, every build input and lock file included.
+step "factory provenance recomputes on the committed engine"
 python3 tools/factory provenance --engine "$ENGINE" --package "$PACKAGE"
 
 printf '\nvalidate-engine.sh: PASS (SDK %s%s)\n' "$SDK" "$([ "$SDK" = "$PIN" ] || echo ", OVERRIDDEN from $PIN")"

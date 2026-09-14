@@ -1,14 +1,17 @@
 """M2 of #3: scaffold a .NET engine and generate the `*.g.cs` files that tie it to its map.
 
-Two kinds of output, and the line between them is the file name:
+Three kinds of output, one per ownership class (ownership.py holds the table, decision 0018):
 
-  * **Scaffold** -- global.json, NuGet.config, Directory.Build.props, Directory.Packages.props,
-    the solution, both project files and an empty `corpus-map.overlay.json`. Written only when
-    absent: after the first `produce` they belong to the engine, and a second `produce` must
-    not undo an edit to them (above all to the overlay, which is the engine's own file, 0015).
-    So none of them may say anything the factory's inputs decide. A re-run with a different map
-    version would leave such a file naming the old one while the code and provenance.json named
-    the new (#66).
+  * **Managed** -- global.json, NuGet.config and Directory.Build.props (`managed_files`): the
+    factory's build policy. Rewritten when the recipe version moves and the engine has not
+    edited them; a hand edit is refused unless `--adopt` or `--reset` settles it.
+  * **Engine-owned** -- Directory.Packages.props, the solution, both project files and an
+    empty `corpus-map.overlay.json` (`engine_owned`). Written only when absent: after the first
+    `produce` they belong to the engine, and a second `produce` must not undo an edit to them
+    (above all to the overlay, which is the engine's own file, 0015).
+    Neither managed nor engine-owned files may say anything the factory's inputs decide. A
+    re-run with a different map version would leave such a file naming the old one while the
+    code and provenance.json named the new (#66).
   * **Generated** -- every file named `*.g.*`: the `*.g.cs` under `Generated/`, and
     `RulesFactory.Packages.g.props` in the engine root. Rewritten on every `produce`, from the
     package map merged with the engine's overlay, and never edited by hand; provenance.json
@@ -22,14 +25,16 @@ engine may bump on its own. Because the pins now have one home, `produce` refuse
 writing anything, an engine whose own MSBuild files pin the kernel or the map again, reference a
 map package themselves, or whose Directory.Packages.props does not import the generated file.
 
-global.json's SDK version is the kernel's toolchain and stays scaffold: an engine may need to
-move it, and the SDK is not a package the build restores.
+global.json's SDK version is the kernel's toolchain and is managed, not generated: the SDK is
+not a package the build restores, and an engine that must move it adopts the file.
 
 The corpus is copied to `corpus/` on every run; intake has already proved its bytes.
 
 What the generated code states:
 
-  * `MapEntries.g.cs` -- one static per map entry, its citation verbatim, and the baseline;
+  * `MapEntries.g.cs` -- one static per map entry, its citation verbatim, and the baseline. A
+    derived entry (0012) has no citation of its own; its `Locators` are every citation it
+    rests on (see `Model._leaf_locators` for which, and in what order);
   * `Registry.g.cs` -- every entry registered with the correspondence row it matches first
     (docs/corpus-map.md, "The map and the engine agree"), and a default handler per row:
       1 `scope: out`                                  -> OutsideCurrentScope
@@ -44,7 +49,8 @@ What the generated code states:
     entry whose merged status is `implemented`**. A `mapped` entry declines even when its code
     exists (corpus-map.md, `status`), so the override is ignored until the overlay says so;
   * `CorrespondenceTests.g.cs` -- every entry is registered, in map order; every entry that
-    is not `implemented` declines with its row's reason and its own locator; every
+    is not `implemented` declines with its row's reason and its own locator, and registers
+    every locator it cites (all of a derived entry's premises); every
     `implemented` entry has a hand-written handler unless its row's default can serve.
 
 Deterministic: the output depends only on the package map (its id and version included), the
@@ -54,6 +60,8 @@ paths, no dictionary-order accidents.
 import json
 import os
 import re
+
+import ownership
 
 KERNEL_VERSION = "0.2.0"
 # The SDK rules-kernel pins (its global.json), so a produced engine builds with the kernel's
@@ -213,23 +221,57 @@ class Model:
             self.entries.append({"entry": entry, "member": member, "row": first_row(entry, by_id)})
         self.by_id = {item["entry"]["id"]: item for item in self.entries}
         for item in self.entries:
-            item["decline_locator"] = self._decline_locator(item, set())
+            item["locators"] = self._leaf_locators(item, frozenset())
 
-    def _decline_locator(self, item, seen):
-        """A located entry cites itself; a derived one (0012) cites the first passage it is derived from."""
+    def _leaf_locators(self, item, seen):
+        """Every located entry whose passage `item` rests on, as the located entries' members.
+
+        A located entry cites itself. A derived one (0012) has no passage: method.md makes its
+        sources' citations its citation, and the sources are premises that entail the fact
+        *together*, so citing only the first would say less at runtime than the map knows (#73).
+        So the set is every leaf reached through `derivedFrom`, following derived sources down
+        to located ones.
+
+        The order is depth-first, in each entry's `derivedFrom` order, and a locator reached a
+        second time (two premises sharing one) keeps its first place. That makes the order a
+        function of the map alone, and makes the first locator exactly the one the decline
+        path cited before (the first leaf of the first source), so a decline's single kernel
+        `Locator`, which the registry takes as the first of these, is unchanged.
+
+        check-map.py refuses cycles and dangling sources before a map is packaged; they are
+        refused here too, because the generator must not loop or emit a reference to nothing
+        if handed a map that skipped the check.
+        """
         entry = item["entry"]
-        locator = entry.get("locator")
-        if isinstance(locator, dict):
-            return item["member"]
+        if isinstance(entry.get("locator"), dict):
+            return [item["member"]]
         if entry["id"] in seen:
             raise GenerationError(f"derived entry {entry['id']!r} is derived, through a cycle, from itself")
         sources = entry.get("derivedFrom") or []
-        if not sources or sources[0] not in self.by_id:
+        if not sources:
             raise GenerationError(f"entry {entry['id']!r} has no locator and no derivedFrom to cite")
-        return self._decline_locator(self.by_id[sources[0]], seen | {entry["id"]})
+        found = []
+        for source in sources:
+            if source not in self.by_id:
+                raise GenerationError(f"derived entry {entry['id']!r} is derived from {source!r}, which the map has no entry for")
+            for member in self._leaf_locators(self.by_id[source], seen | {entry["id"]}):
+                if member not in found:
+                    found.append(member)
+        return found
+
+    def locator_of(self, member):
+        """The map's locator object for the located entry whose C# member is `member`."""
+        for other in self.entries:
+            if other["member"] == member and self.located(other):
+                return other["entry"]["locator"]
+        raise GenerationError(f"no located entry {member}")
 
     def located(self, item):
         return isinstance(item["entry"].get("locator"), dict)
+
+
+def locator_cs(locator):
+    return f"new SourceLocator({cs_string(locator['sourceId'])}, {cs_string(locator['citation'])})"
 
 
 def map_entries_cs(model):
@@ -256,7 +298,11 @@ def map_entries_cs(model):
              "/// <param name=\"Id\">The map entry's stable slug.</param>\n",
              "/// <param name=\"Name\">The entry's name, as the map records it.</param>\n",
              "/// <param name=\"DerivedFrom\">The entry ids it is derived from, in the map's order.</param>\n",
-             "public sealed record DerivedMapEntry(string Id, string Name, ImmutableArray<string> DerivedFrom)\n{\n",
+             "/// <param name=\"Locators\">\n",
+             "/// Its citation: the locator of every located entry it rests on, following derived sources down to\n",
+             "/// located ones, depth-first in <paramref name=\"DerivedFrom\"/> order, each locator once, at its first place.\n",
+             "/// </param>\n",
+             "public sealed record DerivedMapEntry(string Id, string Name, ImmutableArray<string> DerivedFrom, ImmutableArray<SourceLocator> Locators)\n{\n",
              "    /// <inheritdoc/>\n",
              "    public override string ToString() => $\"{Id} [derived from {string.Join(\", \", DerivedFrom)}]\";\n}\n\n",
              f"/// <summary>The {len(model.entries)} entries of {xml_text(model.package_id)} {xml_text(model.version)}, "
@@ -279,13 +325,17 @@ def map_entries_cs(model):
             lines.append(f"    public static MapEntry {item['member']} {{ get; }} = new(\n"
                          f"        {cs_string(entry['id'])},\n"
                          f"        {cs_string(entry.get('name', entry['id']))},\n"
-                         f"        new SourceLocator({cs_string(locator['sourceId'])}, {cs_string(locator['citation'])}));\n")
+                         f"        {locator_cs(locator)});\n")
         else:
             sources = ", ".join(cs_string(s) for s in entry.get("derivedFrom") or [])
+            # Literals, not references to the located statics: a static initializer runs in
+            # textual order, and a premise may come later in the map than what it entails.
+            cited = "".join(f"            {locator_cs(model.locator_of(m))},\n" for m in item["locators"])
             lines.append(f"    public static DerivedMapEntry {item['member']} {{ get; }} = new(\n"
                          f"        {cs_string(entry['id'])},\n"
                          f"        {cs_string(entry.get('name', entry['id']))},\n"
-                         f"        [{sources}]);\n")
+                         f"        [{sources}],\n"
+                         f"        [\n{cited}        ]);\n")
     lines.append("}\n")
     return "".join(lines)
 
@@ -386,8 +436,21 @@ public sealed class ImplementsAttribute(string entryId) : Attribute
 /// <param name="Id">The map entry's id.</param>
 /// <param name="Status">Its merged status.</param>
 /// <param name="Row">The first correspondence row it matches.</param>
-/// <param name="Locator">The locator its declines cite.</param>
-public sealed record RegisteredEntry(string Id, EntryStatus Status, CorrespondenceRow Row, SourceLocator Locator);
+/// <param name="Locators">
+/// Every locator the entry cites. One, its own, for a located entry. For a derived entry
+/// (rules-factory decision 0012), the locator of every located entry it rests on, following
+/// derived sources down, depth-first in <c>derivedFrom</c> order, each locator once at its first
+/// place: the premises entail the fact together, so a decline citing only the first says less
+/// than the map knows. <see cref="Registry.Citations"/> reads them for a declined entry.
+/// </param>
+public sealed record RegisteredEntry(string Id, EntryStatus Status, CorrespondenceRow Row, ImmutableArray<SourceLocator> Locators)
+{
+    /// <summary>
+    /// The locator its declines cite, the first of <see cref="Locators"/>: the kernel's
+    /// <see cref="UnresolvedResult"/> holds one, and the rest are read through <see cref="Registry.Citations"/>.
+    /// </summary>
+    public SourceLocator Locator => Locators[0];
+}
 """
 
 REGISTRY_BODY = """
@@ -403,6 +466,16 @@ REGISTRY_BODY = """
     /// <exception cref="KeyNotFoundException">The map has no such entry.</exception>
     public static RegisteredEntry Entry(string entryId) =>
         ById.TryGetValue(entryId, out var entry) ? entry : throw new KeyNotFoundException($"the map has no entry '{entryId}'");
+
+    /// <summary>
+    /// Every locator <paramref name="entryId"/> cites, for a caller holding its decline. The
+    /// kernel's <see cref="UnresolvedResult.Locator"/> is one locator, the first of these; a
+    /// derived entry rests on all of them.
+    /// </summary>
+    /// <param name="entryId">A map entry id.</param>
+    /// <returns>The entry's <see cref="RegisteredEntry.Locators"/>.</returns>
+    /// <exception cref="KeyNotFoundException">The map has no such entry.</exception>
+    public static ImmutableArray<SourceLocator> Citations(string entryId) => Entry(entryId).Locators;
 
     /// <summary>Whether a hand-written <see cref="ImplementsAttribute"/> handler exists for <paramref name="entryId"/>.</summary>
     /// <param name="entryId">A map entry id.</param>
@@ -495,7 +568,8 @@ def registry_cs(model):
         entry = item["entry"]
         row = ROWS[item["row"]][0] if item["row"] else "None"
         lines.append(f"        new({cs_string(entry['id'])}, EntryStatus.{STATUSES[entry['status']]}, "
-                     f"CorrespondenceRow.{row}, MapEntries.{item['decline_locator']}.Locator),\n")
+                     f"CorrespondenceRow.{row}, "
+                     f"[{', '.join(f'MapEntries.{m}.Locator' for m in item['locators'])}]),\n")
     lines.append("    ];\n\n")
     lines.append("    private static readonly ImmutableDictionary<string, RegisteredEntry> ById =\n"
                  "        All.ToImmutableDictionary(e => e.Id, StringComparer.Ordinal);\n")
@@ -521,18 +595,29 @@ def tests_cs(model):
     lines.append("    [Fact]\n"
                  "    public void Every_hand_written_handler_names_a_map_entry_once_with_the_handler_signature() =>\n"
                  "        Assert.All(MapOrder, id => _ = Registry.HasImplementation(id));\n\n")
-    lines.append("    private static void AssertDeclines(string entryId, UnresolvedReason reason, string sourceId, string citation)\n"
+    lines.append("    private static void AssertDeclines(string entryId, UnresolvedReason reason, params SourceLocator[] cited)\n"
                  "    {\n"
                  "        var unresolved = Registry.Resolve(entryId, RuleRequest.Empty).Match<UnresolvedResult?>(_ => null, u => u);\n"
                  "        Assert.NotNull(unresolved);\n"
                  "        Assert.Equal(reason, unresolved.Reason);\n"
-                 "        Assert.Equal(new SourceLocator(sourceId, citation), unresolved.Locator);\n"
+                 "        Assert.Equal(cited[0], unresolved.Locator);\n"
+                 "        Assert.Equal(cited, Registry.Citations(entryId));\n"
                  "    }\n")
     for item in model.entries:
         entry, row = item["entry"], item["row"]
         method = snake(entry["id"])
-        cited = _cited_locator(model, item)
+        cited = ", ".join(locator_cs(model.locator_of(m)) for m in item["locators"])
         lines.append("\n")
+        if not model.located(item):
+            # Whatever its row, a derived entry's citation is every premise, in the generator's
+            # order, and MapEntries and the Registry must both say so.
+            lines.append("    [Fact]\n"
+                         f"    public void {method}__cites_every_premise()\n"
+                         "    {\n"
+                         f"        SourceLocator[] cited = [{cited}];\n"
+                         f"        Assert.Equal(cited, MapEntries.{item['member']}.Locators);\n"
+                         f"        Assert.Equal(cited, Registry.Citations({cs_string(entry['id'])}));\n"
+                         "    }\n\n")
         if entry["status"] == "implemented":
             if row == 8:
                 lines.append("    [Fact]\n"
@@ -556,7 +641,7 @@ def tests_cs(model):
             lines.append("    [Fact]\n"
                          f"    public void {method}__declines_{reason}_row_{row}() =>\n"
                          f"        AssertDeclines({cs_string(entry['id'])}, UnresolvedReason.{reason}, "
-                         f"{cs_string(cited['sourceId'])}, {cs_string(cited['citation'])});\n")
+                         f"{cited});\n")
         else:
             raise GenerationError(f"entry {entry['id']!r} is {entry['status']!r} and matches no declining row; "
                                   f"check-map.py --phase consumer should have refused it")
@@ -564,26 +649,25 @@ def tests_cs(model):
     return "".join(lines)
 
 
-def _cited_locator(model, item):
-    member = item["decline_locator"]
-    for other in model.entries:
-        if other["member"] == member:
-            return other["entry"]["locator"]
-    raise GenerationError(f"no located entry {member}")
-
-
 
 # --- scaffold ------------------------------------------------------------------------------
 
 
-def scaffold(model):
-    name = model.name
-    packages = "\n".join(f'    <PackageVersion Include="{p}" Version="{v}" />' for p, v in TEST_PACKAGES)
+# No double hyphen in this text: it goes inside XML comments, where "--" is not allowed.
+MANAGED_NOTE = ("Managed by rules-factory (recipe {version}): `factory produce` updates this file when its\n"
+                "       recipe changes and refuses to overwrite a hand edit; adopting it makes it the engine's own.")
+
+
+def managed_files():
+    """The managed recipes (ownership.py): path -> text. Independent of the engine and the map, so
+    each recipe version is one fixed sequence of bytes."""
+    versions = {row.pattern: row.recipe for row in ownership.managed_rows("")}
     return {
         "global.json": json.dumps({"sdk": {"version": SDK_VERSION, "rollForward": "disable"}}, indent=2) + "\n",
         "NuGet.config": (
             '<?xml version="1.0" encoding="utf-8"?>\n'
-            "<!-- Restore talks to nuget.org and nothing else; packages.lock.json pins every content hash. -->\n"
+            "<!-- Restore talks to nuget.org and nothing else; packages.lock.json pins every content hash.\n"
+            f"     {MANAGED_NOTE.format(version=versions['NuGet.config'])} -->\n"
             "<configuration>\n"
             "  <packageSources>\n"
             "    <clear />\n"
@@ -597,7 +681,8 @@ def scaffold(model):
             "</configuration>\n"),
         "Directory.Build.props": (
             "<Project>\n\n"
-            "  <!-- Produced by rules-factory tools/factory. Zero-warning, deterministic builds. -->\n"
+            "  <!-- Zero-warning, deterministic builds.\n"
+            f"       {MANAGED_NOTE.format(version=versions['Directory.Build.props'])} -->\n"
             "  <PropertyGroup>\n"
             "    <TargetFrameworks>net8.0;net10.0</TargetFrameworks>\n"
             "    <LangVersion>latest</LangVersion>\n"
@@ -619,6 +704,14 @@ def scaffold(model):
             "    <RestoreLockedMode Condition=\"'$(CI)' == 'true'\">true</RestoreLockedMode>\n"
             "  </PropertyGroup>\n\n"
             "</Project>\n"),
+    }
+
+
+def engine_owned(model):
+    """The engine-owned scaffold (ownership.py): path -> text, written only when absent."""
+    name = model.name
+    packages = "\n".join(f'    <PackageVersion Include="{p}" Version="{v}" />' for p, v in TEST_PACKAGES)
+    return {
         "Directory.Packages.props": (
             "<Project>\n\n"
             "  <PropertyGroup>\n"
@@ -754,8 +847,14 @@ def refuse_split_pins(model, out):
                               f"{PACKAGES_PROPS}, which every produce rewrites, so remove them from those files")
 
 
-def produce(intake, name, out, log=None):
-    """Scaffold (when absent) and generate (always) an engine for `intake` under `out`."""
+def produce(intake, name, out, log=None, adopt=(), reset=()):
+    """Write an engine for `intake` under `out`, each file as its ownership class says.
+
+    Engine-owned files are written when absent; managed files as ownership.plan_managed decides
+    (`adopt` and `reset` are the managed paths given to --adopt and --reset); generated files
+    always. The returned model carries `managed` ({path: recipe version}) and `adopted` (managed
+    paths now engine-owned) for provenance to record. Every refusal is raised before any write.
+    """
     overlay_path = os.path.join(out, OVERLAY_NAME)
     overlay = {}
     if os.path.isfile(overlay_path):
@@ -766,14 +865,22 @@ def produce(intake, name, out, log=None):
             raise GenerationError(f"cannot read {overlay_path}: {error}")
     model = Model(intake, merge(intake.map, overlay), name)
     refuse_split_pins(model, out)
+    try:
+        managed_writes, model.managed, model.adopted, notes = ownership.plan_managed(
+            out, name, {p: t.encode("utf-8") for p, t in managed_files().items()}, adopt, reset)
+    except ownership.OwnershipError as error:
+        raise GenerationError(str(error))
     corpus_file = os.path.basename(str(intake.corpus.get("committedPath") or intake.corpus_name))
 
     written = []
-    for relative, text in scaffold(model).items():
+    for relative, text in engine_owned(model).items():
         path = os.path.join(out, *relative.split("/"))
         if not os.path.exists(path):
             _write(path, text.encode("utf-8"))
             written.append(relative)
+    for relative, data in sorted(managed_writes.items()):
+        _write(os.path.join(out, *relative.split("/")), data)
+        written.append(relative)
     _write(os.path.join(out, "corpus", corpus_file), intake.corpus_bytes)
     written.append(f"corpus/{corpus_file}")
     for relative, text in generated(model).items():
@@ -785,6 +892,8 @@ def produce(intake, name, out, log=None):
             rows[item["row"]] = rows.get(item["row"], 0) + 1
         summary = ", ".join(f"row {r}: {n}" if r else f"no row: {n}" for r, n in sorted(rows.items(), key=lambda kv: kv[0] or 0))
         print(f"--- produce: {len(model.entries)} entries registered ({summary})", file=log)
+        for note in notes:
+            print(note, file=log)
         for relative in written:
             print(f"wrote {relative}", file=log)
     return model
