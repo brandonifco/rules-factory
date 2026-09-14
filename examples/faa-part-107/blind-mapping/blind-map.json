@@ -1,0 +1,1063 @@
+{
+  "schemaVersion": 1,
+  "corpus": "cfr-14-107",
+  "baseline": {
+    "contentHash": "80f6bc4b002df9dcc60a651fec30a2dc3590081cc3e5fd431d9885c69b7ce35e",
+    "hashDerivation": "ecfr-versioner-xml"
+  },
+  "extent": {
+    "unit": "section-designation",
+    "sections": [
+      "§ 107.25",
+      "§ 107.29",
+      "§ 107.31",
+      "§ 107.33",
+      "§ 107.35",
+      "§ 107.36",
+      "§ 107.37",
+      "§ 107.39",
+      "§ 107.41",
+      "§ 107.45",
+      "§ 107.49",
+      "§ 107.51"
+    ]
+  },
+  "manifest": {
+    "schemaVersion": 1,
+    "corpora": [
+      {
+        "sourceId": "cfr-14-107",
+        "title": "Title 14, Code of Federal Regulations, Part 107",
+        "adapter": "ecfr-xml",
+        "locatorGrammar": "section-designation",
+        "contentHash": "80f6bc4b002df9dcc60a651fec30a2dc3590081cc3e5fd431d9885c69b7ce35e",
+        "hashDerivation": "ecfr-versioner-xml",
+        "asOf": "2026-01-01",
+        "boundaryPolicy": "pin-in-repo",
+        "licence": "public-domain",
+        "verification": "committed-copy",
+        "committedPath": "part107.xml",
+        "quotation": "verbatim"
+      }
+    ],
+    "references": [
+      {
+        "sourceId": "cfr-14-1.1",
+        "citation": "14 CFR 1.1",
+        "admitted": false
+      },
+      {
+        "sourceId": "cfr-49-171.8",
+        "citation": "49 CFR 171.8",
+        "admitted": false
+      },
+      {
+        "sourceId": "air-almanac",
+        "citation": "Air Almanac",
+        "admitted": false
+      }
+    ]
+  },
+  "entries": [
+    {
+      "id": "no-operation-from-moving-aircraft",
+      "name": "Operation from a moving aircraft",
+      "locator": {
+        "sourceId": "cfr-14-107",
+        "citation": "§ 107.25 introductory text, (a)"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [],
+      "evidence": "No person may operate a small unmanned aircraft system— (a) From a moving aircraft;",
+      "status": "mapped",
+      "note": "Prohibition without exception. Whether the aircraft is moving is a caller-supplied parameter. A certificate of waiver under § 107.200 may authorize deviation from this rule; the waiver rules are outside the extent, so no suspendedBy edge can be recorded."
+    },
+    {
+      "id": "no-operation-from-moving-vehicle",
+      "name": "Operation from a moving land or water-borne vehicle",
+      "locator": {
+        "sourceId": "cfr-14-107",
+        "citation": "§ 107.25(b)"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "ambiguous",
+      "ambiguity": {
+        "question": "'Sparsely populated area' is not defined in the slice or § 107.3 and no measure is stated; the corpus does not fix when an area qualifies.",
+        "fate": "unresolved",
+        "unresolvedReason": "RequiresInterpretation"
+      },
+      "dependsOn": [],
+      "evidence": "(b) From a moving land or water-borne vehicle unless the small unmanned aircraft is flown over a sparsely populated area and is not transporting another person's property for compensation or hire.",
+      "status": "mapped",
+      "note": "Both exception limbs must hold. Whether property of another is carried for compensation or hire is a parameter. Test must show: vehicle stationary (rule not engaged), moving with both limbs met, moving with each limb failing. A certificate of waiver under § 107.200 may authorize deviation from this rule; the waiver rules are outside the extent, so no suspendedBy edge can be recorded."
+    },
+    {
+      "id": "night-operation-conditions",
+      "name": "Operation at night",
+      "locator": {
+        "sourceId": "cfr-14-107",
+        "citation": "§ 107.29(a)"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [
+        "night-rpic-knowledge-currency",
+        "night-anti-collision-lighting"
+      ],
+      "definedElsewhere": {
+        "reference": "cfr-14-1.1"
+      },
+      "crossReferences": [
+        {
+          "cites": "paragraph (d) of this section",
+          "resolvedBy": "night-waiver-operation-bar"
+        }
+      ],
+      "evidence": "(a) Except as provided in paragraph (d) of this section, no person may operate a small unmanned aircraft system at night unless—",
+      "status": "mapped",
+      "note": "'Night' is not defined in § 107.3; § 107.3 defers undefined terms to § 1.1 of this chapter, which is not admitted. Both (a)(1) and (a)(2) must hold."
+    },
+    {
+      "id": "night-rpic-knowledge-currency",
+      "name": "Remote pilot knowledge test or training for night operation",
+      "locator": {
+        "sourceId": "cfr-14-107",
+        "citation": "§ 107.29(a)(1)"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "ambiguous",
+      "ambiguity": {
+        "question": "Whether 'initial' qualifies 'training' as well as 'knowledge test' is not settled, and 'as applicable' points into § 107.65, whose paragraphs name an initial aeronautical knowledge test, recurrent training and training for part 61 certificate holders; which of those satisfy (a)(1) is not fixed by the slice.",
+        "fate": "unresolved",
+        "unresolvedReason": "RequiresInterpretation"
+      },
+      "dependsOn": [],
+      "crossReferences": [
+        {
+          "cites": "§ 107.65",
+          "unmapped": "Target is in part 107 but outside this map's extent (the slice); no entry exists here."
+        }
+      ],
+      "evidence": "(1) The remote pilot in command of the small unmanned aircraft has completed an initial knowledge test or training, as applicable, under § 107.65 after April 6, 2021; and",
+      "status": "mapped",
+      "note": "Completion date is a parameter compared against April 6, 2021 (strictly after)."
+    },
+    {
+      "id": "night-anti-collision-lighting",
+      "name": "Anti-collision lighting required at night",
+      "locator": {
+        "sourceId": "cfr-14-107",
+        "citation": "§ 107.29(a)(2)"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [
+        "anti-collision-visibility-night",
+        "anti-collision-flash-rate-night"
+      ],
+      "evidence": "(2) The small unmanned aircraft has lighted anti-collision lighting visible for at least 3 statute miles that has a flash rate sufficient to avoid a collision.",
+      "status": "mapped",
+      "note": "Lighting must be lighted, meet the visibility figure, and meet the flash-rate standard. A certificate of waiver under § 107.200 may authorize deviation from this rule; the waiver rules are outside the extent, so no suspendedBy edge can be recorded."
+    },
+    {
+      "id": "anti-collision-visibility-night",
+      "name": "Anti-collision lighting visibility distance (night)",
+      "locator": {
+        "sourceId": "cfr-14-107",
+        "citation": "§ 107.29(a)(2)"
+      },
+      "kind": "value",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [],
+      "evidence": "lighted anti-collision lighting visible for at least 3 statute miles",
+      "status": "mapped",
+      "note": "Minimum 3 statute miles, inclusive."
+    },
+    {
+      "id": "anti-collision-flash-rate-night",
+      "name": "Anti-collision flash rate sufficient to avoid a collision (night)",
+      "locator": {
+        "sourceId": "cfr-14-107",
+        "citation": "§ 107.29(a)(2)"
+      },
+      "kind": "assertion",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [],
+      "evidence": "that has a flash rate sufficient to avoid a collision",
+      "status": "mapped",
+      "note": "Delegated standard; measure quoted: 'sufficient to avoid a collision'. Demand, attribute, record, never infer."
+    },
+    {
+      "id": "night-lighting-intensity-reduction",
+      "name": "Reducing anti-collision lighting intensity (night)",
+      "locator": {
+        "sourceId": "cfr-14-107",
+        "citation": "§ 107.29(a)(2)"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [
+        "night-lighting-safety-determination"
+      ],
+      "enabledBy": [
+        "night-anti-collision-lighting"
+      ],
+      "evidence": "The remote pilot in command may reduce the intensity of, but may not extinguish, the anti-collision lighting if he or she determines that, because of operating conditions, it would be in the interest of safety to do so.",
+      "status": "mapped",
+      "note": "Reduction permitted only on the determination; extinguishing is never permitted."
+    },
+    {
+      "id": "night-lighting-safety-determination",
+      "name": "Remote pilot's safety determination to reduce lighting (night)",
+      "locator": {
+        "sourceId": "cfr-14-107",
+        "citation": "§ 107.29(a)(2)"
+      },
+      "kind": "assertion",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [],
+      "evidence": "if he or she determines that, because of operating conditions, it would be in the interest of safety to do so",
+      "status": "mapped",
+      "note": "The remote pilot in command's determination is operative; measure quoted: 'because of operating conditions ... in the interest of safety'."
+    },
+    {
+      "id": "twilight-operation-lighting",
+      "name": "Operation during civil twilight",
+      "locator": {
+        "sourceId": "cfr-14-107",
+        "citation": "§ 107.29(b)"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [
+        "anti-collision-visibility-twilight",
+        "anti-collision-flash-rate-twilight"
+      ],
+      "enabledBy": [
+        "civil-twilight-morning",
+        "civil-twilight-evening",
+        "civil-twilight-alaska"
+      ],
+      "evidence": "(b) No person may operate a small unmanned aircraft system during periods of civil twilight unless the small unmanned aircraft has lighted anti-collision lighting visible for at least 3 statute miles that has a flash rate sufficient to avoid a collision.",
+      "status": "mapped",
+      "note": "Reachable only during a period that one of the civil-twilight definitions in (c) covers. A certificate of waiver under § 107.200 may authorize deviation from this rule; the waiver rules are outside the extent, so no suspendedBy edge can be recorded."
+    },
+    {
+      "id": "anti-collision-visibility-twilight",
+      "name": "Anti-collision lighting visibility distance (civil twilight)",
+      "locator": {
+        "sourceId": "cfr-14-107",
+        "citation": "§ 107.29(b)"
+      },
+      "kind": "value",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [],
+      "evidence": "lighted anti-collision lighting visible for at least 3 statute miles",
+      "status": "mapped",
+      "note": "Same figure as the night rule, stated separately in (b)."
+    },
+    {
+      "id": "anti-collision-flash-rate-twilight",
+      "name": "Anti-collision flash rate sufficient to avoid a collision (civil twilight)",
+      "locator": {
+        "sourceId": "cfr-14-107",
+        "citation": "§ 107.29(b)"
+      },
+      "kind": "assertion",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [],
+      "evidence": "that has a flash rate sufficient to avoid a collision",
+      "status": "mapped",
+      "note": "Measure quoted: 'sufficient to avoid a collision'."
+    },
+    {
+      "id": "twilight-lighting-intensity-reduction",
+      "name": "Reducing anti-collision lighting intensity (civil twilight)",
+      "locator": {
+        "sourceId": "cfr-14-107",
+        "citation": "§ 107.29(b)"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [
+        "twilight-lighting-safety-determination"
+      ],
+      "enabledBy": [
+        "twilight-operation-lighting"
+      ],
+      "evidence": "The remote pilot in command may reduce the intensity of, but may not extinguish, the anti-collision lighting if he or she determines that, because of operating conditions, it would be in the interest of safety to do so.",
+      "status": "mapped"
+    },
+    {
+      "id": "twilight-lighting-safety-determination",
+      "name": "Remote pilot's safety determination to reduce lighting (civil twilight)",
+      "locator": {
+        "sourceId": "cfr-14-107",
+        "citation": "§ 107.29(b)"
+      },
+      "kind": "assertion",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [],
+      "evidence": "if he or she determines that, because of operating conditions, it would be in the interest of safety to do so",
+      "status": "mapped",
+      "note": "Measure quoted: 'because of operating conditions ... in the interest of safety'."
+    },
+    {
+      "id": "civil-twilight-morning",
+      "name": "Morning civil twilight outside Alaska",
+      "locator": {
+        "sourceId": "cfr-14-107",
+        "citation": "§ 107.29(c), (c)(1)"
+      },
+      "kind": "value",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [],
+      "crossReferences": [
+        {
+          "cites": "paragraph (b) of this section",
+          "resolvedBy": "twilight-operation-lighting"
+        }
+      ],
+      "evidence": "(c) For purposes of paragraph (b) of this section, civil twilight refers to the following: (1) Except for Alaska, a period of time that begins 30 minutes before official sunrise and ends at official sunrise;",
+      "status": "mapped",
+      "note": "Official sunrise time and location are parameters. Boundaries: 30 minutes before sunrise through sunrise; endpoint inclusivity is not stated."
+    },
+    {
+      "id": "civil-twilight-evening",
+      "name": "Evening civil twilight outside Alaska",
+      "locator": {
+        "sourceId": "cfr-14-107",
+        "citation": "§ 107.29(c)(2)"
+      },
+      "kind": "value",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [],
+      "evidence": "(2) Except for Alaska, a period of time that begins at official sunset and ends 30 minutes after official sunset; and",
+      "status": "mapped",
+      "note": "Official sunset time is a parameter."
+    },
+    {
+      "id": "civil-twilight-alaska",
+      "name": "Civil twilight in Alaska",
+      "locator": {
+        "sourceId": "cfr-14-107",
+        "citation": "§ 107.29(c)(3)"
+      },
+      "kind": "value",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [],
+      "definedElsewhere": {
+        "reference": "air-almanac"
+      },
+      "crossReferences": [
+        {
+          "cites": "as defined in the Air Almanac",
+          "unmapped": "The Air Almanac is not an admitted corpus; see definedElsewhere."
+        }
+      ],
+      "evidence": "(3) In Alaska, the period of civil twilight as defined in the Air Almanac.",
+      "status": "mapped"
+    },
+    {
+      "id": "night-waiver-operation-bar",
+      "name": "No night operation under pre-April 21, 2021 waivers after May 17, 2021",
+      "locator": {
+        "sourceId": "cfr-14-107",
+        "citation": "§ 107.29(d)"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [],
+      "definedElsewhere": {
+        "reference": "cfr-14-1.1"
+      },
+      "crossReferences": [
+        {
+          "cites": "§ 107.200",
+          "unmapped": "Target is in part 107 but outside this map's extent (the slice); no entry exists here."
+        }
+      ],
+      "evidence": "(d) After May 17, 2021, no person may operate a small unmanned aircraft system at night in accordance with a certificate of waiver issued prior to April 21, 2021 under § 107.200.",
+      "status": "mapped",
+      "note": "Dates are parameters (operation date, waiver issue date). Still in force although every current operation date is after May 17, 2021."
+    },
+    {
+      "id": "night-waiver-termination",
+      "name": "Termination of pre-March 16, 2021 night waivers",
+      "locator": {
+        "sourceId": "cfr-14-107",
+        "citation": "§ 107.29(d)"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [],
+      "crossReferences": [
+        {
+          "cites": "§ 107.200",
+          "unmapped": "Target is in part 107 but outside this map's extent (the slice); no entry exists here."
+        },
+        {
+          "cites": "§ 107.29",
+          "resolvedBy": "night-operation-conditions"
+        }
+      ],
+      "evidence": "The certificates of waiver issued prior to March 16, 2021 under § 107.200 that authorize deviation from § 107.29 terminate on May 17, 2021.",
+      "status": "mapped",
+      "note": "Waivers issued between March 16 and April 21, 2021 are barred for night use by the first sentence but are not terminated by this one; a test should show both date bands."
+    },
+    {
+      "id": "vlos-ability",
+      "name": "Visual line of sight ability",
+      "locator": {
+        "sourceId": "cfr-14-107",
+        "citation": "§ 107.31(a), (a)(1), (a)(2), (a)(3), (a)(4)"
+      },
+      "kind": "assertion",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [],
+      "evidence": "(a) With vision that is unaided by any device other than corrective lenses, the remote pilot in command, the visual observer (if one is used), and the person manipulating the flight control of the small unmanned aircraft system must be able to see the unmanned aircraft throughout the entire flight in order to: (1) Know the unmanned aircraft's location; (2) Determine the unmanned aircraft's attitude, altitude, and direction of flight; (3) Observe the airspace for other air traffic or hazards; and (4) Determine that the unmanned aircraft does not endanger the life or property of another.",
+      "status": "mapped",
+      "note": "Being 'able to see' is measured against the four stated purposes ('in order to: ...'), so it is an assertion for each named person. 'Corrective lenses' is defined in § 107.3 (spectacles or contact lenses). A certificate of waiver under § 107.200 may authorize deviation from this rule; the waiver rules are outside the extent, so no suspendedBy edge can be recorded."
+    },
+    {
+      "id": "vlos-exercised-by",
+      "name": "Who exercises visual line of sight",
+      "locator": {
+        "sourceId": "cfr-14-107",
+        "citation": "§ 107.31(b), (b)(1), (b)(2)"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [
+        "vlos-ability"
+      ],
+      "crossReferences": [
+        {
+          "cites": "paragraph (a) of this section",
+          "resolvedBy": "vlos-ability"
+        }
+      ],
+      "evidence": "(b) Throughout the entire flight of the small unmanned aircraft, the ability described in paragraph (a) of this section must be exercised by either: (1) The remote pilot in command and the person manipulating the flight controls of the small unmanned aircraft system; or (2) A visual observer.",
+      "status": "mapped",
+      "note": "Closed disjunction; which branch was used is a parameter."
+    },
+    {
+      "id": "vo-effective-communication",
+      "name": "Effective communication with the visual observer",
+      "locator": {
+        "sourceId": "cfr-14-107",
+        "citation": "§ 107.33 introductory text, (a)"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "ambiguous",
+      "ambiguity": {
+        "question": "'Effective' communication states no measure; the corpus does not fix what communication qualifies.",
+        "fate": "unresolved",
+        "unresolvedReason": "RequiresInterpretation"
+      },
+      "dependsOn": [],
+      "evidence": "If a visual observer is used during the aircraft operation, all of the following requirements must be met: (a) The remote pilot in command, the person manipulating the flight controls of the small unmanned aircraft system, and the visual observer must maintain effective communication with each other at all times.",
+      "status": "mapped",
+      "note": "Applies only when a visual observer is used, which is a parameter, not a rule; hence no enabledBy. A certificate of waiver under § 107.200 may authorize deviation from this rule; the waiver rules are outside the extent, so no suspendedBy edge can be recorded."
+    },
+    {
+      "id": "vo-able-to-see",
+      "name": "Remote pilot ensures visual observer can see the aircraft",
+      "locator": {
+        "sourceId": "cfr-14-107",
+        "citation": "§ 107.33(b)"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [
+        "vlos-ability"
+      ],
+      "crossReferences": [
+        {
+          "cites": "§ 107.31",
+          "resolvedBy": "vlos-ability"
+        }
+      ],
+      "evidence": "(b) The remote pilot in command must ensure that the visual observer is able to see the unmanned aircraft in the manner specified in § 107.31.",
+      "status": "mapped",
+      "note": "Same visual-observer-used condition as vo-effective-communication."
+    },
+    {
+      "id": "vo-coordinated-scan-and-awareness",
+      "name": "Coordinated airspace scan and position awareness",
+      "locator": {
+        "sourceId": "cfr-14-107",
+        "citation": "§ 107.33(c), (c)(1), (c)(2)"
+      },
+      "kind": "assertion",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [],
+      "evidence": "(c) The remote pilot in command, the person manipulating the flight controls of the small unmanned aircraft system, and the visual observer must coordinate to do the following: (1) Scan the airspace where the small unmanned aircraft is operating for any potential collision hazard; and (2) Maintain awareness of the position of the small unmanned aircraft through direct visual observation.",
+      "status": "mapped",
+      "note": "Measures quoted: scan 'for any potential collision hazard'; awareness 'through direct visual observation'. Same visual-observer-used condition."
+    },
+    {
+      "id": "one-aircraft-per-person",
+      "name": "Operation of multiple small unmanned aircraft",
+      "locator": {
+        "sourceId": "cfr-14-107",
+        "citation": "§ 107.35"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [],
+      "evidence": "A person may not manipulate flight controls or act as a remote pilot in command or visual observer in the operation of more than one unmanned aircraft at the same time.",
+      "status": "mapped",
+      "note": "Counts per person across all three roles; one aircraft is allowed, two simultaneously is not. A certificate of waiver under § 107.200 may authorize deviation from this rule; the waiver rules are outside the extent, so no suspendedBy edge can be recorded."
+    },
+    {
+      "id": "no-hazardous-material",
+      "name": "Carriage of hazardous material",
+      "locator": {
+        "sourceId": "cfr-14-107",
+        "citation": "§ 107.36"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [],
+      "definedElsewhere": {
+        "reference": "cfr-49-171.8"
+      },
+      "crossReferences": [
+        {
+          "cites": "49 CFR 171.8",
+          "unmapped": "49 CFR 171.8 is not an admitted corpus; see definedElsewhere."
+        }
+      ],
+      "evidence": "A small unmanned aircraft may not carry hazardous material. For purposes of this section, the term hazardous material is defined in 49 CFR 171.8.",
+      "status": "mapped",
+      "note": "Not listed as waivable in § 107.205 (outside extent)."
+    },
+    {
+      "id": "yield-right-of-way",
+      "name": "Yielding the right of way",
+      "locator": {
+        "sourceId": "cfr-14-107",
+        "citation": "§ 107.37(a)"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [
+        "yield-meaning"
+      ],
+      "evidence": "(a) Each small unmanned aircraft must yield the right of way to all aircraft, airborne vehicles, and launch and reentry vehicles.",
+      "status": "mapped",
+      "note": "Class of the other vehicle is a parameter. A certificate of waiver under § 107.200 may authorize deviation from this rule; the waiver rules are outside the extent, so no suspendedBy edge can be recorded."
+    },
+    {
+      "id": "yield-meaning",
+      "name": "What yielding the right of way means",
+      "locator": {
+        "sourceId": "cfr-14-107",
+        "citation": "§ 107.37(a)"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "ambiguous",
+      "ambiguity": {
+        "question": "'Well clear' is not defined and no distance or measure is stated.",
+        "fate": "unresolved",
+        "unresolvedReason": "RequiresInterpretation"
+      },
+      "dependsOn": [],
+      "evidence": "Yielding the right of way means that the small unmanned aircraft must give way to the aircraft or vehicle and may not pass over, under, or ahead of it unless well clear.",
+      "status": "mapped",
+      "note": "Definition stated as conduct: give way, and no passing over, under or ahead unless well clear."
+    },
+    {
+      "id": "no-collision-hazard-proximity",
+      "name": "Operation near other aircraft",
+      "locator": {
+        "sourceId": "cfr-14-107",
+        "citation": "§ 107.37(b)"
+      },
+      "kind": "assertion",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [],
+      "evidence": "(b) No person may operate a small unmanned aircraft so close to another aircraft as to create a collision hazard.",
+      "status": "mapped",
+      "note": "Open degree 'so close' with its measure in the same constituent: 'as to create a collision hazard'. Not waivable per § 107.205 (outside extent)."
+    },
+    {
+      "id": "no-operation-over-human-beings",
+      "name": "Operation over human beings",
+      "locator": {
+        "sourceId": "cfr-14-107",
+        "citation": "§ 107.39 introductory text"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [
+        "over-human-direct-participant",
+        "over-human-sheltered",
+        "over-human-subpart-d"
+      ],
+      "evidence": "No person may operate a small unmanned aircraft over a human being unless—",
+      "status": "mapped",
+      "note": "Permitted if any one of (a), (b), (c) holds; otherwise prohibited. A certificate of waiver under § 107.200 may authorize deviation from this rule; the waiver rules are outside the extent, so no suspendedBy edge can be recorded."
+    },
+    {
+      "id": "over-human-direct-participant",
+      "name": "Exception: human being directly participating",
+      "locator": {
+        "sourceId": "cfr-14-107",
+        "citation": "§ 107.39(a)"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "ambiguous",
+      "ambiguity": {
+        "question": "'Directly participating' is not defined in the slice or § 107.3 and no measure is stated.",
+        "fate": "unresolved",
+        "unresolvedReason": "RequiresInterpretation"
+      },
+      "dependsOn": [],
+      "evidence": "(a) That human being is directly participating in the operation of the small unmanned aircraft;",
+      "status": "mapped",
+      "note": "Evaluated per human being overflown."
+    },
+    {
+      "id": "over-human-sheltered",
+      "name": "Exception: under a covered structure or inside a stationary vehicle",
+      "locator": {
+        "sourceId": "cfr-14-107",
+        "citation": "§ 107.39(b)"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [
+        "shelter-reasonable-protection"
+      ],
+      "evidence": "(b) That human being is located under a covered structure or inside a stationary vehicle that can provide reasonable protection from a falling small unmanned aircraft; or",
+      "status": "mapped",
+      "note": "Location (covered structure / stationary vehicle) is a parameter; adequacy is the assertion."
+    },
+    {
+      "id": "shelter-reasonable-protection",
+      "name": "Reasonable protection from a falling small unmanned aircraft",
+      "locator": {
+        "sourceId": "cfr-14-107",
+        "citation": "§ 107.39(b)"
+      },
+      "kind": "assertion",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [],
+      "evidence": "that can provide reasonable protection from a falling small unmanned aircraft",
+      "status": "mapped",
+      "note": "Measure quoted: 'from a falling small unmanned aircraft'. Whether 'reasonable' attaches to structure and vehicle, or only the vehicle, is read here as both."
+    },
+    {
+      "id": "over-human-subpart-d",
+      "name": "Exception: subpart D operational category",
+      "locator": {
+        "sourceId": "cfr-14-107",
+        "citation": "§ 107.39(c)"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [],
+      "crossReferences": [
+        {
+          "cites": "subpart D of this part",
+          "unmapped": "Target is in part 107 but outside this map's extent (the slice); no entry exists here."
+        }
+      ],
+      "evidence": "(c) The operation meets the requirements of at least one of the operational categories specified in subpart D of this part.",
+      "status": "mapped",
+      "note": "Cannot be evaluated inside this extent; whether an operation meets a category is outside the slice."
+    },
+    {
+      "id": "controlled-airspace-authorization",
+      "name": "Operation in certain airspace",
+      "locator": {
+        "sourceId": "cfr-14-107",
+        "citation": "§ 107.41"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [],
+      "evidence": "No person may operate a small unmanned aircraft in Class B, Class C, or Class D airspace or within the lateral boundaries of the surface area of Class E airspace designated for an airport unless that person has prior authorization from Air Traffic Control (ATC).",
+      "status": "mapped",
+      "note": "Airspace class and ATC authorization are caller-supplied parameters (airspace designations come from outside the corpus). A certificate of waiver under § 107.200 may authorize deviation from this rule; the waiver rules are outside the extent, so no suspendedBy edge can be recorded."
+    },
+    {
+      "id": "prohibited-restricted-area-permission",
+      "name": "Operation in prohibited or restricted areas",
+      "locator": {
+        "sourceId": "cfr-14-107",
+        "citation": "§ 107.45"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [],
+      "evidence": "No person may operate a small unmanned aircraft in prohibited or restricted areas unless that person has permission from the using or controlling agency, as appropriate.",
+      "status": "mapped",
+      "note": "Area status and agency permission are parameters. Not waivable per § 107.205 (outside extent)."
+    },
+    {
+      "id": "preflight-assess-environment",
+      "name": "Preflight assessment of the operating environment",
+      "locator": {
+        "sourceId": "cfr-14-107",
+        "citation": "§ 107.49 introductory text, (a), (a)(1), (a)(2), (a)(3), (a)(4)"
+      },
+      "kind": "assertion",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [],
+      "evidence": "Prior to flight, the remote pilot in command must: (a) Assess the operating environment, considering risks to persons and property in the immediate vicinity both on the surface and in the air. This assessment must include: (1) Local weather conditions; (2) Local airspace and any flight restrictions; (3) The location of persons and property on the surface; and (4) Other ground hazards.",
+      "status": "mapped",
+      "note": "Measure quoted: 'considering risks to persons and property in the immediate vicinity'; fixed content set (1)-(4). All four must be asserted."
+    },
+    {
+      "id": "preflight-brief-participants",
+      "name": "Preflight briefing of participants",
+      "locator": {
+        "sourceId": "cfr-14-107",
+        "citation": "§ 107.49(b)"
+      },
+      "kind": "assertion",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [],
+      "evidence": "(b) Ensure that all persons directly participating in the small unmanned aircraft operation are informed about the operating conditions, emergency procedures, contingency procedures, roles and responsibilities, and potential hazards;",
+      "status": "mapped",
+      "note": "Fixed set of five matters, each open-textured; asserted per matter. Timing 'Prior to flight' is in the section introductory text, outside this span."
+    },
+    {
+      "id": "preflight-control-links",
+      "name": "Preflight check of control links",
+      "locator": {
+        "sourceId": "cfr-14-107",
+        "citation": "§ 107.49(c)"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "ambiguous",
+      "ambiguity": {
+        "question": "'Working properly' states no measure.",
+        "fate": "unresolved",
+        "unresolvedReason": "RequiresInterpretation"
+      },
+      "dependsOn": [],
+      "evidence": "(c) Ensure that all control links between ground control station and the small unmanned aircraft are working properly;",
+      "status": "mapped",
+      "note": "Timing from the section introductory text: prior to flight."
+    },
+    {
+      "id": "preflight-power",
+      "name": "Preflight check of available power",
+      "locator": {
+        "sourceId": "cfr-14-107",
+        "citation": "§ 107.49(d)"
+      },
+      "kind": "assertion",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [],
+      "evidence": "(d) If the small unmanned aircraft is powered, ensure that there is enough available power for the small unmanned aircraft system to operate for the intended operational time;",
+      "status": "mapped",
+      "note": "Measure quoted: 'to operate for the intended operational time'. Whether the aircraft is powered is a parameter."
+    },
+    {
+      "id": "preflight-object-secure",
+      "name": "Preflight: attached or carried objects secure",
+      "locator": {
+        "sourceId": "cfr-14-107",
+        "citation": "§ 107.49(e)"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "ambiguous",
+      "ambiguity": {
+        "question": "'Secure' carries no measure of its own; it may be read as measured by the following 'does not adversely affect' clause, but the text joins them with 'and' as separate conditions.",
+        "fate": "unresolved",
+        "unresolvedReason": "RequiresInterpretation"
+      },
+      "dependsOn": [],
+      "evidence": "(e) Ensure that any object attached or carried by the small unmanned aircraft is secure",
+      "status": "mapped",
+      "note": "Split from preflight-object-no-adverse-effect because only that constituent states a measure."
+    },
+    {
+      "id": "preflight-object-no-adverse-effect",
+      "name": "Preflight: attached objects do not adversely affect flight",
+      "locator": {
+        "sourceId": "cfr-14-107",
+        "citation": "§ 107.49(e)"
+      },
+      "kind": "assertion",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [],
+      "evidence": "does not adversely affect the flight characteristics or controllability of the aircraft",
+      "status": "mapped",
+      "note": "Measure quoted: 'flight characteristics or controllability of the aircraft'."
+    },
+    {
+      "id": "preflight-subpart-d-aircraft",
+      "name": "Preflight: aircraft meets subpart D requirements",
+      "locator": {
+        "sourceId": "cfr-14-107",
+        "citation": "§ 107.49(f)"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [],
+      "enabledBy": [
+        "over-human-subpart-d"
+      ],
+      "crossReferences": [
+        {
+          "cites": "subpart D of this part",
+          "unmapped": "Target is in part 107 but outside this map's extent (the slice); no entry exists here."
+        },
+        {
+          "cites": "§ 107.110",
+          "unmapped": "Target is in part 107 but outside this map's extent (the slice); no entry exists here."
+        },
+        {
+          "cites": "§ 107.120(a)",
+          "unmapped": "Target is in part 107 but outside this map's extent (the slice); no entry exists here."
+        },
+        {
+          "cites": "§ 107.130(a)",
+          "unmapped": "Target is in part 107 but outside this map's extent (the slice); no entry exists here."
+        },
+        {
+          "cites": "§ 107.140",
+          "unmapped": "Target is in part 107 but outside this map's extent (the slice); no entry exists here."
+        }
+      ],
+      "evidence": "(f) If the operation will be conducted over human beings under subpart D of this part, ensure that the aircraft meets the requirements of § 107.110, § 107.120(a), § 107.130(a), or § 107.140, as applicable.",
+      "status": "mapped",
+      "note": "Reachable only for an operation relying on the subpart D exception in § 107.39(c)."
+    },
+    {
+      "id": "operating-limitations-compliance",
+      "name": "Compliance with operating limitations",
+      "locator": {
+        "sourceId": "cfr-14-107",
+        "citation": "§ 107.51 introductory text"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [
+        "groundspeed-limit",
+        "altitude-limit",
+        "min-flight-visibility",
+        "cloud-clearance"
+      ],
+      "evidence": "A remote pilot in command and the person manipulating the flight controls of the small unmanned aircraft system must comply with all of the following operating limitations when operating a small unmanned aircraft system:",
+      "status": "mapped",
+      "note": "Obligation falls on both named persons; all four limitations must hold. A certificate of waiver under § 107.200 may authorize deviation from this rule; the waiver rules are outside the extent, so no suspendedBy edge can be recorded."
+    },
+    {
+      "id": "groundspeed-limit",
+      "name": "Maximum groundspeed",
+      "locator": {
+        "sourceId": "cfr-14-107",
+        "citation": "§ 107.51(a)"
+      },
+      "kind": "value",
+      "scope": "in",
+      "clarity": "ambiguous",
+      "ambiguity": {
+        "question": "The limit is stated in two units that are not equal: 87 knots is about 100.1 miles per hour, so a groundspeed between 100 mph and 87 knots exceeds one figure and not the other.",
+        "fate": "unresolved",
+        "unresolvedReason": "RequiresInterpretation"
+      },
+      "dependsOn": [],
+      "evidence": "(a) The groundspeed of the small unmanned aircraft may not exceed 87 knots (100 miles per hour).",
+      "status": "mapped",
+      "note": "Test at exactly the limit (not exceeding) and just above in each unit."
+    },
+    {
+      "id": "max-altitude-agl",
+      "name": "Maximum altitude above ground level",
+      "locator": {
+        "sourceId": "cfr-14-107",
+        "citation": "§ 107.51(b)"
+      },
+      "kind": "value",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [],
+      "evidence": "(b) The altitude of the small unmanned aircraft cannot be higher than 400 feet above ground level,",
+      "status": "mapped",
+      "note": "400 feet AGL, inclusive."
+    },
+    {
+      "id": "altitude-limit",
+      "name": "Altitude limitation and structure exception",
+      "locator": {
+        "sourceId": "cfr-14-107",
+        "citation": "§ 107.51(b), (b)(1), (b)(2)"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [
+        "max-altitude-agl",
+        "structure-radius",
+        "structure-altitude-allowance"
+      ],
+      "evidence": "(b) The altitude of the small unmanned aircraft cannot be higher than 400 feet above ground level, unless the small unmanned aircraft: (1) Is flown within a 400-foot radius of a structure; and (2) Does not fly higher than 400 feet above the structure's immediate uppermost limit.",
+      "status": "mapped",
+      "note": "Both exception limbs must hold. Test: above 400 AGL outside radius (violation), inside radius under structure top + 400 (allowed), inside radius above structure top + 400 (violation)."
+    },
+    {
+      "id": "structure-radius",
+      "name": "Structure exception radius",
+      "locator": {
+        "sourceId": "cfr-14-107",
+        "citation": "§ 107.51(b)(1)"
+      },
+      "kind": "value",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [],
+      "evidence": "(1) Is flown within a 400-foot radius of a structure; and",
+      "status": "mapped"
+    },
+    {
+      "id": "structure-altitude-allowance",
+      "name": "Height allowed above a structure",
+      "locator": {
+        "sourceId": "cfr-14-107",
+        "citation": "§ 107.51(b)(2)"
+      },
+      "kind": "value",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [],
+      "evidence": "(2) Does not fly higher than 400 feet above the structure's immediate uppermost limit.",
+      "status": "mapped"
+    },
+    {
+      "id": "min-flight-visibility",
+      "name": "Minimum flight visibility",
+      "locator": {
+        "sourceId": "cfr-14-107",
+        "citation": "§ 107.51(c)"
+      },
+      "kind": "value",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [
+        "flight-visibility-definition"
+      ],
+      "evidence": "(c) The minimum flight visibility, as observed from the location of the control station must be no less than 3 statute miles.",
+      "status": "mapped",
+      "note": "3 statute miles inclusive, observed from the control station ('control station' defined in § 107.3). Observed visibility is a parameter."
+    },
+    {
+      "id": "flight-visibility-definition",
+      "name": "Flight visibility defined",
+      "locator": {
+        "sourceId": "cfr-14-107",
+        "citation": "§ 107.51(c)"
+      },
+      "kind": "value",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [],
+      "evidence": "For purposes of this section, flight visibility means the average slant distance from the control station at which prominent unlighted objects may be seen and identified by day and prominent lighted objects may be seen and identified by night.",
+      "status": "mapped",
+      "note": "Definition; the measured distance is a parameter. 'By night' uses 'night', not defined in the slice."
+    },
+    {
+      "id": "cloud-clearance",
+      "name": "Minimum distance from clouds",
+      "locator": {
+        "sourceId": "cfr-14-107",
+        "citation": "§ 107.51(d), (d)(1), (d)(2)"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "ambiguous",
+      "ambiguity": {
+        "question": "Read literally, 'and' requires the aircraft to be both at least 500 feet below and at least 2,000 feet horizontally from the cloud, which would bar flight above or level with a distant cloud; the corpus does not say whether the two distances apply jointly, alternatively, or by relative position, nor states any clearance above a cloud.",
+        "fate": "unresolved",
+        "unresolvedReason": "RequiresInterpretation"
+      },
+      "dependsOn": [
+        "cloud-clearance-below",
+        "cloud-clearance-horizontal"
+      ],
+      "evidence": "(d) The minimum distance of the small unmanned aircraft from clouds must be no less than: (1) 500 feet below the cloud; and (2) 2,000 feet horizontally from the cloud.",
+      "status": "mapped",
+      "note": "Test must cover positions below, beside and above a cloud."
+    },
+    {
+      "id": "cloud-clearance-below",
+      "name": "Vertical clearance below cloud",
+      "locator": {
+        "sourceId": "cfr-14-107",
+        "citation": "§ 107.51(d)(1)"
+      },
+      "kind": "value",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [],
+      "evidence": "(1) 500 feet below the cloud; and",
+      "status": "mapped"
+    },
+    {
+      "id": "cloud-clearance-horizontal",
+      "name": "Horizontal clearance from cloud",
+      "locator": {
+        "sourceId": "cfr-14-107",
+        "citation": "§ 107.51(d)(2)"
+      },
+      "kind": "value",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [],
+      "evidence": "(2) 2,000 feet horizontally from the cloud.",
+      "status": "mapped"
+    }
+  ]
+}

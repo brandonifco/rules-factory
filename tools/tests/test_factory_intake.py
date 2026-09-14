@@ -110,12 +110,12 @@ class TestAccepts(IntakeCase):
     def test_part_107(self):
         output = self.assert_passes(self.part107, PART107_XML)
         self.assertIn("ecfr-versioner-xml", output)
-        self.assertIn("40 entries", output)
+        self.assertIn("44 entries", output)
 
     def test_returns_what_later_steps_read(self):
         result = intake.intake(self.part107, PART107_XML, log=None)
         self.assertEqual(result.package_id, PART107_ID)
-        self.assertEqual(len(result.map["entries"]), 40)
+        self.assertEqual(len(result.map["entries"]), 44)
         self.assertEqual(result.corpus["sourceId"], "cfr-14-107")
         with open(PART107_XML, "rb") as handle:
             self.assertEqual(result.corpus_bytes, handle.read())
