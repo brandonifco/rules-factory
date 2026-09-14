@@ -234,7 +234,8 @@ not been vague by accident. The standard *is* the rule, chosen over a number del
 an engine that resolved it to a number would substitute its own rule for the corpus's.
 
 **So it is not a fate at all. It is `kind: assertion`, and it is its own entry.** The corpus
-named a decider; the engine's obligation is the assertion contract from Phase 3 — demand it,
+left the degree open and said what it is measured against; the engine's obligation is the
+assertion contract from Phase 3 — demand it,
 attribute it, record it alongside the outcome, never infer it. Declining with
 `RequiresInterpretation` is the wrong answer twice over: it refuses a job the corpus gave the
 engine the means to do, and it throws away whatever bounds the corpus *did* state. *"Either
@@ -247,12 +248,41 @@ defers the flash rate. The standard becomes `flash-rate-sufficient`, an assertio
 `night-operation` depends on it — the same move as `speed-limit` and `speed-within-limit`.
 Decided in [0005](decisions/0005-a-field-earns-its-place-by-being-checkable.md).
 
-**The test is a standard of conduct versus an undefined predicate.** Not whether a decider is
-named — § 107.37 writes "unless well clear" and names nobody, and neither does "a flash rate
-sufficient to avoid a collision". A delegated standard tells the subject *what to achieve*, and
-the subject asserts they achieved it. Part 107 uses "sparsely populated area" as a condition,
-defines it nowhere, and vests the judgement in nobody: that is a genuine gap, its fate is a
-runtime unresolved, and an engine does not even know what it would be demanding.
+**There is no test for recognising one. There is a procedure, and it is three gates in order.**
+Five one-sentence tests have failed, three of them after surviving a review; the last two each
+agreed with the corpus they were derived from and were refuted on the other. Decided in
+[0008](decisions/0008-recognising-a-delegated-standard-is-a-procedure-not-a-test.md), which
+carries the counts; `corpus-map.md`'s `kind: assertion` section states the same three gates, and
+the two documents say the same thing deliberately, because when they did not the maps followed
+this one and were wrong.
+
+The gates run only on an entry that is `scope: in` and normative — advice demands nothing of
+anybody, and an absent rule has no words to read; row 1 of the correspondence table disposes of
+both first.
+
+1. **A blank in the rule, or a fact the rule tests?** Does applying the corpus's words require
+   fixing a threshold, degree, value **or case** the corpus did not fix? If not, it is an ordinary
+   rule with a caller-supplied parameter, and the parameter gets no entry. *"Either thrice or four
+   times"* leaves the multiplier unfixed and is a blank; *"either wholly by moving men forward …
+   or partly by the one method and partly by the other"* states every branch and is not. "Or case"
+   is what catches a defective enumeration — `game-value`, `must-play-whole-throw` — which is a
+   gap without being an open degree.
+2. **Unsupplied by the corpus, or only to us?** → `beyondAdapter`, `definedElsewhere`, or a
+   conflict.
+3. **Whose hands?** The caller's own determination is operative **and the corpus states, in the
+   same constituent as the open term, either what the term is measured against or the set of
+   values it may take** → `kind: assertion`, and the entry must be able to quote those words from
+   its own `evidence`. A third party whose determination is a separate act → not a caller
+   assertion. Nobody → a genuine gap, its fate a runtime unresolved.
+
+**The gates do not separate § 107.37(a)'s "unless well clear" from § 107.25(b)'s "sparsely
+populated area", and nothing in the corpus does.** Both are open degrees in the `unless` clause
+of a prohibition with no measure stated in their own constituent; "well clear" appears once and
+§ 107.3 defines neither. The procedure returns a gap for both. Where the project believes such a
+term is nevertheless determinate — because practice outside the corpus fixes it — that is a
+recorded decision or a `definedElsewhere`, which are the two fates this phase is about. It is
+never a `kind`, because a map may not claim to have derived from a text what the text does not
+say. `right-of-way` currently rests on that belief without recording it, and 0008 files it.
 
 **A corpus that contradicts itself is ambiguous**, and its `question` states both readings.
 `clear` asserts the corpus determines exactly one answer, and one that states a rule twice in

@@ -103,21 +103,57 @@ split: the standard becomes its own assertion entry — `well-clear`, `reasonabl
 exactly one runtime reason, which is what makes the correspondence table below checkable.
 Decided in [0005](decisions/0005-a-field-earns-its-place-by-being-checkable.md).
 
-**The test is a standard of conduct versus an undefined predicate**, not whether a decider is
-named — "well clear" and "a flash rate sufficient" name no decider either. A delegated standard
-tells the subject what to achieve, and the subject asserts they achieved it. Part 107 uses
-"sparsely populated area" as a condition, defines it nowhere and vests it in nobody: that is a
-gap, `clarity: ambiguous`, and an engine does not even know what it would be demanding.
+**There is no test. Recognising one is a procedure, and it is three gates in order.** Five
+one-sentence tests have failed — names-a-decider, standard-of-conduct, has-a-bearer, and the two
+successors proposed to replace it, each of which agreed with the corpus it was derived from and
+was refuted on the other. Decided in
+[0008](decisions/0008-recognising-a-delegated-standard-is-a-procedure-not-a-test.md), which
+carries the counts.
 
-*"Either thrice or four times (as may have been agreed)"* is an assertion, and the engine keeps
-the bound the corpus states rather than discarding it. **The test above does not yield that
-answer, and the limit is stated here because this is where the claim is made.** That sentence is
-neither a standard of conduct anybody is told to meet nor a predicate vested in nobody: it is a
-**bounded value the corpus fixes and hands to named parties by agreement**. The ruling is
-correct and shipped — `agreed-backgammon-multiple` — and the test that purports to produce it
-has now been wrong twice, once for naming a decider and once for this. A third statement of the
-test is its own decision, not a clause bolted onto the second; until it is made, this is the
-third shape and it is decided by precedent rather than by rule.
+**It runs only on an entry that is `scope: in` and normative.** Advice is not a rule —
+`strategy-advice`'s "make points whenever you **fairly** can" is an undefined degree that demands
+nothing of anybody — and an absent rule has no words to read. Row 1 of the correspondence table
+disposes of both, before the gates. The procedure is not self-standing, and that is a real limit.
+
+1. **A blank in the rule, or a fact the rule tests?** Does applying the corpus's words require
+   fixing a threshold, degree, value **or case** the corpus did not fix? If not, the entry is an
+   ordinary `value` or `operation` and the fact is a caller-supplied parameter that **gets no
+   entry of its own**. Applying *"either thrice or four times"* requires fixing the multiplier;
+   applying *"either wholly by moving men forward … or partly by the one method and partly by the
+   other"* requires fixing nothing, because the corpus states every branch. Whether ATC authorized
+   is a fact the rule tests, not a blank. **"Or case" is load-bearing and is there for two
+   instances**: `game-value`'s three named results do not cover a reachable finish and
+   `must-play-whole-throw` does not say which die is lost when only one is playable. Neither is an
+   open degree, both are gaps, and a gate written only for undefined terms cannot see either.
+2. **Unsupplied by the corpus, or only to us?** Readable but not by this adapter →
+   `beyondAdapter`. Fixed in a corpus that was not admitted → `definedElsewhere`. Supplied twice,
+   differently → a conflict under [0007](decisions/0007-a-conflict-is-a-question-not-a-pair.md).
+3. **Whose hands?** The caller's own determination or agreement is operative **and the corpus
+   states, in the same constituent as the open term, either what the term is measured against or
+   the set of values it may take** → `kind: assertion`. A third party whose determination is a
+   separate act → not a caller assertion; `definedElsewhere` where that party's output is itself a
+   corpus. Nobody → gap, `clarity: ambiguous`, `fate: unresolved`.
+
+**Gate 3 is checkable, and that is why it is worded this way.** An entry claiming
+`kind: assertion` must quote, from its own `evidence`, either the measure — "sufficient **to avoid
+a collision**", "reasonable protection **from a falling small unmanned aircraft**", "so close **as
+to create a collision hazard**" — or the fixed set: "**either thrice or four times**". An
+assertion entry that can quote neither is a gap. The disjunction is the two arms, delegated
+standard and delegated choice, and the second has no measure and must not need one. Parties need
+not be **named**: *"(as may have been agreed)"* is an agentless passive and names nobody, which is
+what refuted two of the five tests.
+
+**What gate 3 cannot decide, stated here because this is where the claim is made.** An open degree
+in the `unless` clause of a prohibition, with no measure stated in its own constituent, no set of
+values fixed and no third party named. § 107.37(a)'s *"unless well clear"* is that shape —
+"well clear" occurs once in the corpus, § 107.3 does not define it, and "must give way" is a
+coordinate obligation rather than a measure — and so is § 107.25(b)'s *"sparsely populated
+area"*. The procedure returns a gap for both. The map records `right-of-way` as an assertion and
+`moving-vehicle-operation` as a gap, and **nothing in the corpus draws that line**; what separates
+them is aviation practice, which is in neither text. Where the project believes such a term is
+determinate, that belief is `fate: decision` with a record, or `definedElsewhere` if the practice
+is a corpus that can be admitted — never a `kind`, because a claim the corpus cannot falsify is
+the ground `surprising: true` was rejected on.
 
 ### `evidence` is the corpus's words, not the mapper's
 
