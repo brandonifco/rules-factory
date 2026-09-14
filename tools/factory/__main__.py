@@ -8,9 +8,12 @@
 
   * intake (intake.py) -- the package is a map package carrying its checker, the corpus is
     `committed-copy` and hashes to the map's baseline, and the package's own
-    `check-map.py --phase consumer` passes.
+    `check-map.py --phase consumer` passes;
+  * scaffold and generation (generate.py) -- a .NET solution on RulesKernel and the map
+    package, written once, and the `*.g.cs` files, rewritten every run from the package map
+    merged with the engine's `corpus-map.overlay.json`.
 
-Later milestones add scaffolding, generation, provenance, the backlog and `verify`.
+Later milestones add the gate recipe, provenance, the backlog and `verify`.
 
 Exit 0 when every step passed; 1 when a step refused; 2 on a usage error.
 Standard library only.
@@ -22,6 +25,7 @@ import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
+import generate  # noqa: E402
 import intake as intake_step  # noqa: E402
 
 PASCAL = re.compile(r"^[A-Z][A-Za-z0-9]*$")
@@ -32,6 +36,8 @@ def produce(args):
         raise intake_step.Usage(f"--name {args.name!r} is not a PascalCase C# identifier")
     result = intake_step.intake(args.package, args.corpus, log=sys.stdout)
     print(f"intake passed: {result.package_id} {result.version}, {len(result.map.get('entries') or [])} entries")
+    generate.produce(result, args.name, args.out, log=sys.stdout)
+    print(f"produced {args.name} in {args.out}")
     return 0
 
 
@@ -49,7 +55,7 @@ def main(argv=None):
     except intake_step.Usage as error:
         print(f"factory: {error}", file=sys.stderr)
         return 2
-    except intake_step.Refused as error:
+    except (intake_step.Refused, generate.GenerationError) as error:
         print(f"factory: REFUSED -- {error}. Nothing was produced.", file=sys.stderr)
         return 1
 
