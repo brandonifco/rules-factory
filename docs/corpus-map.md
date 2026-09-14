@@ -101,6 +101,7 @@ before either has been implemented.
 | `evidence` | One contiguous verbatim span of the corpus: the passage that *states* this rule. Not a summary of it. Absent on a derived entry, and only there. See below. |
 | `status` | Whether the engine has built this entry. Independent of `ambiguity.fate`. See below. |
 | `implementedIn` | The ruleset revision that implemented it. Set when status becomes `implemented`. |
+| `note` | Prose explanation: why the entry is shaped this way, and what a test must demonstrate. **Never a claim a test could carry** — a consequence the mapper proved is a test the entry names. See below. |
 
 ### `kind: assertion`
 
@@ -258,6 +259,19 @@ explanation. A field for them would fail the test 0005 sets: it would name a dis
 without becoming checkable. The whole-table rule survives the move intact — **where the corpus
 prints a finite table, the note requires the whole table and never a sample** — and so does the
 rule that a span must cover every case the entry claims, not one of them.
+
+**`note` is explanation, never a claim a test could carry.** It says why an entry is shaped the
+way it is, what a test must demonstrate, where a span was corrected — reading aids for the next
+mapper and the implementer. It is not where a mapper records something they *proved* about the
+rule. *"The adopted opening throw can never be doublets"* is a claim about the engine's answers
+that a test can assert and that will silently become false if the opening rule changes; written
+in `note` it rots, and nothing notices. Such a consequence is discharged as a test named for what
+it proves, and the entry names the test — the rule 0005's rail E already set for a surprising
+reading, extended to every derived consequence
+([#16](https://github.com/brandonifco/rules-factory/issues/16),
+[method.md Phase 6](method.md#phase-6--implement)). The test for whether a sentence belongs in
+`note`: if a test could fail because the sentence became false, the sentence is the test's, not
+the note's. What cannot be reduced to a test is lost, and that cost is accepted.
 
 **A `scope: out` entry quotes too, and so does an absent one.** An out-of-scope verdict is a
 verdict about a passage, and a passage nobody can locate is a verdict about nothing:

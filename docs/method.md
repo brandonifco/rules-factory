@@ -423,6 +423,30 @@ the tests derive their expectations from the corpus — never from the implement
 expectation computed the same way as the thing it checks can only confirm that the code does
 what it does.
 
+**A derived consequence is discharged as a test, and the entry names the test.** A mapper
+working an entry often proves something the entry does not say: that `must-play-whole-throw`
+declines in exactly one shape of throw, that the adopted opening throw can never be doublets
+because a tie is thrown again, that `bearing-off-highest` is the opposite of what a modern
+player expects. That reasoning is not stored as prose in the map. It becomes **a test named for
+what it proves** — one that constructs the case and fails if the consequence stops holding —
+and the entry names that test. No field holds the reasoning itself. Decided on
+[#16](https://github.com/brandonifco/rules-factory/issues/16), for the reason
+[0005](decisions/0005-a-field-earns-its-place-by-being-checkable.md)'s rail E and
+[0004](decisions/0004-adapter-reach-is-a-property-of-the-entry.md) already gave: prose about a
+claim cannot be shown to have gone wrong, and a test can. "This branch is unreachable" will
+silently become false the day the opening rule changes; as a sentence it rots, as a test it
+fails.
+
+This is different from a derived *entry*
+([0012](decisions/0012-a-fact-the-corpus-implies-is-a-derived-entry.md)). A derived entry is an
+answer the engine must give that no sentence states, and it follows from two or more rules. A
+derived consequence is a property of answers that are each stated — often of one entry alone —
+and nobody asks the engine for it; it is what a test asserts about the engine's answers.
+
+**The limit, accepted rather than hidden:** reasoning that does not reduce to a test has nowhere
+to go and is lost. Reasoning that cannot be reduced to a check is also reasoning nobody can be
+shown to have got wrong.
+
 **Preserve determinism deliberately.** Changes to random consumption, ordering, serialization
 or identity are compatibility events. An extra draw shifts every later result.
 
