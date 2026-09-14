@@ -47,6 +47,11 @@ import json
 import os
 import sys
 
+# The `schemaVersion`s this checker reads. A map in any other version is not one these checks
+# describe, so `schema` fails it rather than checking fields whose meaning may have moved; and
+# the factory refuses to intake it (0016), reading this set rather than keeping its own.
+SCHEMA_VERSIONS = (1,)
+
 KINDS = {"value", "operation", "assertion"}
 SCOPES = {"in", "out"}
 CLARITIES = {"clear", "ambiguous"}
@@ -151,6 +156,10 @@ def check_schema(ctx):
     for field in ("schemaVersion", "corpus", "baseline", "entries"):
         if field not in doc:
             bad.append(f"  X  map is missing `{field}`")
+    version = doc.get("schemaVersion")
+    if "schemaVersion" in doc and (isinstance(version, bool) or version not in SCHEMA_VERSIONS):
+        bad.append(f"  X  schemaVersion {version!r} is not one this checker reads "
+                   f"({', '.join(map(str, SCHEMA_VERSIONS))})")
     baseline = doc.get("baseline")
     if "baseline" in doc and not isinstance(baseline, dict):
         bad.append("  X  `baseline` is not an object")

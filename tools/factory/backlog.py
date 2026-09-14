@@ -37,6 +37,9 @@ import subprocess
 DIRECTORY = "backlog"
 ITEM_FILE = re.compile(r"^\d{3,}-.+\.md$")
 BUILDABLE = ("mapped", "blocked")
+# Seconds one `gh` call may take. A hung call (an auth prompt, a stalled network) is a
+# failure to report, not something to wait on forever (0016: every child process is bounded).
+GH_TIMEOUT = 120
 
 
 class BacklogError(Exception):
@@ -246,9 +249,11 @@ def emit(entries, context, out):
 
 def _gh(args, gh, stdin=None):
     try:
-        done = subprocess.run([gh] + args, input=stdin, capture_output=True, text=True)
+        done = subprocess.run([gh] + args, input=stdin, capture_output=True, text=True, timeout=GH_TIMEOUT)
     except OSError as error:
         raise BacklogError(f"cannot run {gh}: {error}")
+    except subprocess.TimeoutExpired:
+        raise BacklogError(f"`gh {' '.join(args[:2])}` did not finish in {GH_TIMEOUT} seconds")
     if done.returncode != 0:
         raise BacklogError(f"`gh {' '.join(args[:2])}` failed: {done.stderr.strip() or done.stdout.strip()}")
     return done.stdout

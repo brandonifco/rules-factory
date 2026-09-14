@@ -58,9 +58,10 @@ def git(repo, *args):
 
 
 def factory_repo(root):
-    """tools/factory, copied into a fresh git repository at `root` and committed."""
+    """tools/factory and the tools/check-map.py intake runs (0016), copied into a fresh git repository."""
     shutil.copytree(FACTORY, os.path.join(root, "tools", "factory"),
                     ignore=shutil.ignore_patterns("__pycache__", "*.pyc"))
+    shutil.copy2(os.path.join(os.path.dirname(FACTORY), "check-map.py"), os.path.join(root, "tools", "check-map.py"))
     with open(os.path.join(root, ".gitignore"), "w", encoding="utf-8") as handle:
         handle.write("__pycache__/\n*.pyc\n")
     git(root, "init", "-q")

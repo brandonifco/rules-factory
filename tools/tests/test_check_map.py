@@ -223,6 +223,9 @@ class TestSchema(MapCase):
     def test_a_baseline_without_its_derivation_fails(self):
         self.assert_catches("schema", lambda d: d["baseline"].pop("hashDerivation"))
 
+    def test_a_schema_version_this_checker_does_not_read_fails(self):
+        self.assert_catches("schema", lambda d: d.update(schemaVersion=2))
+
 
 class TestRequiredFields(MapCase):
     def test_an_entry_without_a_locator_is_not_an_entry(self):
