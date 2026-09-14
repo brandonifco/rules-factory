@@ -102,9 +102,11 @@ split: the standard becomes its own assertion entry — `well-clear`, `reasonabl
 exactly one runtime reason, which is what makes the correspondence table below checkable.
 Decided in [0005](decisions/0005-a-field-earns-its-place-by-being-checkable.md).
 
-**The test is whether the corpus names a decider**, not whether a term is undefined. Part
-107 does not define "sparsely populated area" and does not say who decides it: that is a gap,
-`clarity: ambiguous`, not an assertion. *"Either thrice or four times (as may have been
+**The test is a standard of conduct versus an undefined predicate**, not whether a decider is
+named — "well clear" and "a flash rate sufficient" name no decider either. A delegated standard
+tells the subject what to achieve, and the subject asserts they achieved it. Part 107 uses
+"sparsely populated area" as a condition, defines it nowhere and vests it in nobody: that is a
+gap, `clarity: ambiguous`, and an engine does not even know what it would be demanding. *"Either thrice or four times (as may have been
 agreed)"* names the players: an assertion, and the engine keeps the bound the corpus states
 rather than discarding it.
 
@@ -219,11 +221,14 @@ are two fields rather than one with a discriminator: each has required contents 
 against a different part of the manifest, and a merged field would be half-empty in every
 instance and checkable only after reading its own discriminator.
 
-**An elsewhere-defined *input* is not an elsewhere-defined *rule*.** `airspace-authorized`
-is fully implementable; what comes from outside is the airspace class, a fact about the
-world. That is `kind: assertion` — demanded, attributed, never inferred — and there is no
-corpus to name. Reaching for `definedElsewhere` there produces a `reference` that resolves
-to nothing.
+**An elsewhere-defined *input* is neither an elsewhere-defined rule nor an assertion.**
+`airspace-authorized` is fully implementable: § 107.41 requires authorization iff the class is
+B, C, D or the lateral surface area of E, and the entry's `evidence` is that matrix. What comes
+from outside is the airspace class — an ordinary caller-supplied parameter, like groundspeed or
+altitude. `definedElsewhere` is wrong (there is no airspace corpus to name) and so is
+`kind: assertion` (it would destroy the computable rule and make the evidence unevidenceable).
+**A parameter is not a rule, so it gets no entry at all**; the entry stays an `operation` with a
+`note` saying the input comes from outside.
 
 ### `status`
 

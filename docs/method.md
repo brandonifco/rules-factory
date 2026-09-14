@@ -225,9 +225,12 @@ defers the flash rate. The standard becomes `flash-rate-sufficient`, an assertio
 `night-operation` depends on it — the same move as `speed-limit` and `speed-within-limit`.
 Decided in [0005](decisions/0005-a-field-earns-its-place-by-being-checkable.md).
 
-**The test is whether the corpus names a decider.** Part 107 does not define "sparsely
-populated area" and does not say who decides it: that is a genuine gap, and its fate is a
-runtime unresolved. An undefined term is not a delegation.
+**The test is a standard of conduct versus an undefined predicate.** Not whether a decider is
+named — § 107.37 writes "unless well clear" and names nobody, and neither does "a flash rate
+sufficient to avoid a collision". A delegated standard tells the subject *what to achieve*, and
+the subject asserts they achieved it. Part 107 uses "sparsely populated area" as a condition,
+defines it nowhere, and vests the judgement in nobody: that is a genuine gap, its fate is a
+runtime unresolved, and an engine does not even know what it would be demanding.
 
 **A corpus that contradicts itself is ambiguous**, and its `question` states both readings.
 `clear` asserts the corpus determines exactly one answer, and one that states a rule twice in

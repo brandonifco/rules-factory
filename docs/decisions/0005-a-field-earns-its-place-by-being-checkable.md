@@ -119,8 +119,25 @@ signature.
 
 **Ruled on explicitly, because a migrator will hit it:** `moving-vehicle-operation` ("Part 107
 does not define 'sparsely populated area'") looks identical in the map and is **situation 1, a
-gap**. The FAA did not delegate the judgement to the operator; it left a term undefined. The
-test is whether the corpus names a decider.
+gap**.
+
+**Amended 2026-09-14, during the migration this decision ordered.** The draft gave the test as
+*whether the corpus names a decider*. It does not discriminate: § 107.37 writes "unless **well
+clear**" and § 107.29(a)(2) "a flash rate **sufficient** to avoid a collision" naming no decider
+at all — no more than § 107.25 does for "sparsely populated area". All three would fail the
+test as stated, and two of them are the cases this correction exists for.
+
+The test that actually separates them: **a delegated standard states a standard of conduct the
+subject must meet; a gap leaves a factual predicate undefined and vests it in nobody.** "Well
+clear" tells an operator what to achieve, and the operator asserts they achieved it. "Sparsely
+populated" tells nobody to do anything; it is a condition the corpus uses and never defines, so
+an engine does not even know what it would be demanding.
+
+This is the same failure the draft records about itself below — a right ruling with a wrong
+argument — found for the third time by someone checking rather than reading. The residual case
+is genuinely unsettled and is filed rather than waved at: a world fact an *operator could
+perfectly well assert* sits close to a gap, and `corpus-map.md` separately says facts about the
+physical world are consumed rather than derived.
 
 **A does not close [#11](https://github.com/brandonifco/rules-factory/issues/11).** #11's
 acceptance is that *every* entry that is a fact only a caller can supply is `kind: assertion`,

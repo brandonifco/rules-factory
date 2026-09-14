@@ -217,10 +217,16 @@
       },
       "kind": "operation",
       "scope": "in",
-      "clarity": "clear",
+      "clarity": "ambiguous",
       "dependsOn": [],
-      "evidence": "Vacant; own men; exactly one adversary man; two or more refused.",
-      "status": "mapped"
+      "evidence": "Vacant; own men; exactly one adversary man; two or more refused. And entry from the bar onto a point the entering player's own men hold, which is where this rule and enter-from-bar disagree.",
+      "status": "mapped",
+      "ambiguity": {
+        "question": "Three sentences later the corpus states the destinations open to a man entering from the bar as 'a vacant point or blot', omitting this rule's second arm -- a point the player's own men hold. Either this general qualification on 'the right to move' governs entry as well and the entry sentence is shorthand for it, or entry is a stated exception to it. Each reading is internally coherent and the corpus chooses neither.",
+        "fate": "decision",
+        "decision": "docs/decisions/0006-the-general-rule-governs-entry-and-full-means-adversely-full.md"
+      },
+      "note": "Decided: the general rule governs entry. The reading is observable in exactly one test -- EnterFromBarTests.Entry_is_permitted_on_a_point_the_entering_players_own_men_hold -- which fails under the other one."
     },
     {
       "id": "made-point",
@@ -263,12 +269,18 @@
       },
       "kind": "operation",
       "scope": "in",
-      "clarity": "clear",
+      "clarity": "ambiguous",
       "dependsOn": [
         "blot-hit"
       ],
-      "evidence": "Entry available and unavailable; all other men suspended while one is up.",
-      "status": "mapped"
+      "evidence": "Entry available and unavailable; all other men suspended while one is up; and entry onto a point the entering player's own men hold, which is the case the two readings differ on.",
+      "status": "mapped",
+      "ambiguity": {
+        "question": "This sentence names two destinations for an entering man, 'a vacant point or blot', where legal-destination three sentences earlier names three -- it omits a point the entering player's own men hold. Either the general qualification governs entry and this is shorthand for it, or entry is narrower than ordinary movement. Read strictly, this sentence and full-table-suspension are exact negations of one another, which is what makes both readings coherent.",
+        "fate": "decision",
+        "decision": "docs/decisions/0006-the-general-rule-governs-entry-and-full-means-adversely-full.md"
+      },
+      "note": "Decided: the general rule governs entry, so a point the entering player's own men hold is open to him. The reading is observable in EnterFromBarTests.Entry_is_permitted_on_a_point_the_entering_players_own_men_hold, which fails under the other one."
     },
     {
       "id": "full-table-suspension",
@@ -279,12 +291,18 @@
       },
       "kind": "operation",
       "scope": "in",
-      "clarity": "clear",
+      "clarity": "ambiguous",
       "dependsOn": [
         "enter-from-bar"
       ],
-      "evidence": "Six points held by two or more; the adversary throwing and moving alone.",
-      "status": "mapped"
+      "evidence": "Six points held by two or more; the adversary throwing and moving alone; and six points all occupied but one of them by the entering player's own men, which suspends nobody.",
+      "status": "mapped",
+      "ambiguity": {
+        "question": "'Completely full -- i.e., each point occupied by two or more men' is unqualified, so two of the entering player's own men satisfy it. Either 'full' means full of the adverse player's men, which is the only reading consistent with the general rule governing entry, or it means occupied by anyone, which is the exact negation of enter-from-bar's 'a vacant point or blot'. The corpus determines both readings and chooses neither.",
+        "fate": "decision",
+        "decision": "docs/decisions/0006-the-general-rule-governs-entry-and-full-means-adversely-full.md"
+      },
+      "note": "Decided: 'full' means adversely full. The reading is observable in FullTableSuspensionTests.A_point_held_by_the_entering_players_own_men_does_not_make_the_table_full, which fails under the other one. The same decision settles whether both players can be suspended at once through play: under this reading they cannot, so the engine's UnsupportedInteraction for that position answers only what a caller may assert."
     },
     {
       "id": "must-play-whole-throw",
@@ -308,7 +326,8 @@
         "question": "An unplayable part is lost and the whole must be played 'if it is possible'. The text does not say what happens when either die alone is playable but not both -- a case every modern ruleset settles explicitly.",
         "fate": "unresolved",
         "unresolvedReason": "RequiresInterpretation"
-      }
+      },
+      "note": "status and ambiguity.fate are independent (docs/decisions/0005), so an engine may implement this rule and still decline the case the question names -- which is the whole of what it declines. Read as an obligation to play a set of numbers that cannot be extended, the compulsion settles every other throw from the text: doublets are never ambiguous, and a throw with one playable die compels it. Where the entry is implemented the conformance verdict covers every case but the one named, and the declining case ships WholeThrowTests.Where_either_die_alone_can_be_played_but_not_both_the_corpus_does_not_settle_it."
     },
     {
       "id": "bearing-off-eligible",
@@ -360,7 +379,8 @@
         "bearing-off-eligible"
       ],
       "evidence": "The six-throw example; and a usable throw, which must be played forward instead.",
-      "status": "mapped"
+      "status": "mapped",
+      "note": "Clear, correct, and the opposite of what a modern player expects: a number that neither of the two fashions can deal with bears a man off the highest occupied point even where men still stand above it, which a modern ruleset refuses. Under docs/decisions/0005 the entry names the test that fails under the assumed reading: BearingOffDetailTests.A_blocked_forward_move_bears_off_from_the_highest_point_men_still_above_it. It is the one case in the suite where Hoyle's rule and the modern rule differ."
     },
     {
       "id": "bearing-off-doublets",
@@ -407,12 +427,33 @@
       },
       "kind": "operation",
       "scope": "in",
-      "clarity": "clear",
+      "clarity": "ambiguous",
       "dependsOn": [
         "win-condition"
       ],
-      "evidence": "All three: adversary bearing off; not yet bearing off; a man up or in the winner's home table.",
-      "status": "mapped"
+      "evidence": "All three: adversary bearing off; not yet bearing off; a man up or in the winner's home table. And the finish none of the three names.",
+      "status": "mapped",
+      "ambiguity": {
+        "question": "The three named results do not cover every finish. Written as predicates on the loser they are: all his men home and he has begun to bear off (a hit); he has not begun to bear off (a gammon); he has a man up or in the winner's home table (a backgammon). A loser who has borne off a man, been taken up, re-entered and run that man clear of the winner's home table answers none of them, and the corpus does not say what such a win is worth.",
+        "fate": "unresolved",
+        "unresolvedReason": "RequiresInterpretation"
+      },
+      "note": "Was recorded clarity: clear, which asserts the corpus determines one answer for every valid input, while the engine returned RequiresInterpretation citing this entry -- the live violation of the correspondence table. The gap case is reachable and not a curiosity: the winner hits a bearing-off opponent's blot from outside, which he can only do while still running, and then finishes first. The declining case ships GameValueTests.The_three_named_results_do_not_cover_every_finish. A second, smaller defect stays in clear's ledger rather than in the question: the three are not disjoint either -- a loser who has borne off nothing and has a man up answers the gammon and backgammon conditions both -- so an ordering had to be chosen, backgammon first, and clear does not record that a choice was made. See finding 4 in the engine's MAP-FINDINGS.md."
+    },
+    {
+      "id": "agreed-backgammon-multiple",
+      "name": "The multiple the players agreed a backgammon pays",
+      "locator": {
+        "sourceId": "hoyle-1909",
+        "citation": "BACKGAMMON / Bearing off the Men / p. 277"
+      },
+      "kind": "assertion",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [],
+      "evidence": "Both figures the corpus admits, thrice and four times, and a figure outside them refused.",
+      "status": "mapped",
+      "note": "'The loser pays either thrice or four times (as may have been agreed) the amount of the single stake.' The corpus names a decider -- the players -- so this is a delegated standard and not a gap, and under docs/decisions/0005 the standard is its own entry with the rule that consumes it depending on it. The engine owes it the four things an assertion is owed: demand it, attribute it, record it alongside the outcome, never infer it. The corpus also bounds it, thrice or four times and nothing else, and that bound is a rule the engine keeps; reading the delegation as an ambiguity returned RequiresInterpretation and threw it away."
     },
     {
       "id": "stake-multiplier",
@@ -423,18 +464,14 @@
       },
       "kind": "value",
       "scope": "in",
-      "clarity": "ambiguous",
+      "clarity": "clear",
       "dependsOn": [
-        "game-value"
+        "game-value",
+        "agreed-backgammon-multiple"
       ],
-      "evidence": "Single for a hit, double for a gammon; a backgammon cannot be evidenced.",
+      "evidence": "All three: the single stake for a hit, double for a gammon, and for a backgammon the agreed multiple, which does not vary what the other two pay.",
       "status": "mapped",
-      "ambiguity": {
-        "question": "A backgammon pays 'either thrice or four times (as may have been agreed)'. The corpus delegates the figure to the players.",
-        "fate": "unresolved",
-        "unresolvedReason": "RequiresInterpretation"
-      },
-      "note": "Delegated to the players, not to a referee -- the same shape as a regulation delegating judgement to a pilot. An assertion, not a gap."
+      "note": "The figures the corpus states, with the delegated one split out into agreed-backgammon-multiple under docs/decisions/0005. Nothing here is unclear: a hit pays the single stake and a gammon double, and for a backgammon the corpus names the players as the decider rather than failing to decide. Was recorded clarity: ambiguous with fate: unresolved, which its own note already contradicted -- 'an assertion, not a gap'."
     },
     {
       "id": "next-game-opening",
