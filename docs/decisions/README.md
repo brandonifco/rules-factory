@@ -13,3 +13,4 @@ kept; its number is never reused.
 | [0002](0002-boundary-policy-belongs-to-the-corpus.md) | Boundary policy belongs to the corpus, not to the repository |
 | [0003](0003-a-phase-gate-names-a-rule-not-a-condition.md) | A phase gate names a rule, not a condition |
 | [0004](0004-adapter-reach-is-a-property-of-the-entry.md) | Adapter reach is a property of the entry, recorded structurally |
+| [0005](0005-one-carrier-per-runtime-behaviour.md) | One carrier per runtime behaviour, not one per prose distinction — *proposed* |
