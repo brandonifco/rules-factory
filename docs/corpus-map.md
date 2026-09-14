@@ -611,7 +611,19 @@ clean `implemented` under the old coupling.
 `implemented` entry carries `tests`, non-empty, and every item names a test and records the
 `mutation` that turned it red — what was changed in the engine, for that test to fail. Code
 without them is `mapped`, whatever the repository contains — otherwise the map records intent
-rather than fact, and its whole value is that it records fact. **Where `fate: unresolved`
+rather than fact, and its whole value is that it records fact.
+
+**A `mapped` entry declines, even when its code exists.** Built but unproven is still `mapped`,
+and row 2 of the correspondence table holds for it as written: the engine returns
+`UnsupportedRule` for that entry until a test that has been seen to fail exists and the entry
+is `implemented`. The code stays behind the decline; it does not answer. `mapped` keeps one
+runtime meaning, so the table stays true without a list of exceptions to it. Decided on
+[#47](https://github.com/brandonifco/rules-factory/issues/47): refuse until proven.
+`check-map.py` cannot enforce this. The map records no code, so an entry that is built and
+unproven looks exactly like one that was never built. Whether the engine actually declines is
+checked in the engine, against its own runtime.
+
+**Where `fate: unresolved`
 accompanies it, the verdict covers every case except the one `ambiguity.question` names, and the
 declining case ships a test** — which is one of the tests named.
 
@@ -772,14 +784,15 @@ own, which are ordinary operations over a date the caller supplies.
 
 **In the factory, published as a versioned package; never copied into an engine**
 ([0015](decisions/0015-a-map-is-published-as-a-versioned-package.md)). Each map is a NuGet
-package, `RulesFactory.Maps.<MapName>`, carrying `corpus-map.json` and the manifest entries of
-the corpora it cites, and a version asserts one corpus baseline and one `schemaVersion`.
+package, `RulesFactory.Maps.<MapName>`, carrying `corpus-map.json`, the manifest entries of
+the corpora it cites, and the `tools/check-map.py` its consumer runs, and a version asserts one corpus baseline and one `schemaVersion`.
 
 **What a consumer owns** is an overlay of three fields per entry, `status`, `implementedIn` and
 `tests`, because those are build facts only the engine can know, and they are only true of a
 particular engine commit. The factory is canonical for everything else. The engine's gate checks
 that the overlay names only entries the package has and sets only those three fields, and runs
-`check-map.py --phase consumer` on the merge. Any other difference is drift.
+the package's own `tools/check-map.py --phase consumer` on the merge, never a copy
+([#51](https://github.com/brandonifco/rules-factory/issues/51)). Any other difference is drift.
 
 ## Open questions
 

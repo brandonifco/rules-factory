@@ -11,6 +11,12 @@ the engine runs only the checks that read its own fields). The package format, i
 and the list of which check runs where are this record's. **Widens #17's field lock from two
 fields to three** (`tests`); see *The overlay*.
 
+**Amended 2026-09-14** for [#51](https://github.com/brandonifco/rules-factory/issues/51)
+(Brandon: ship the consumer-phase checks inside the map package). The package now carries
+`tools/check-map.py`, and the engine runs `--phase consumer` from the restored package rather
+than from a copy of its own. The table in *The artifact*, the bump rule for package contents,
+rule 6 of the merge and the vendoring alternative changed; nothing else did.
+
 ## Context
 
 A vendored map goes stale without failing (#27). The backgammon map moved twice in one day and
@@ -36,7 +42,8 @@ that states the version. [`tools/pack-map.py`](../../tools/pack-map.py) builds t
 |---|---|
 | `map/corpus-map.json` | the reviewed map, **byte for byte** |
 | `map/corpus-manifest.json` | the manifest entries for the corpora the map cites. It is the manifest's own bytes when that is all the manifest declares, which is true of every map today |
-| `build/<id>.props` | one MSBuild item, `RulesFactoryMap`, pointing at the two files, with `PackageId` and `PackageVersion` as metadata. An engine's gate finds the map without knowing where NuGet extracts packages |
+| `tools/check-map.py` | the checker, **byte for byte** from the commit that was gated. It imports only the standard library, so this one file is everything `--phase consumer` needs. The engine runs the status-dependent checks from here (#51) |
+| `build/<id>.props` | one MSBuild item, `RulesFactoryMap`, pointing at the map and manifest, with `ConsumerChecker` (the path of `tools/check-map.py`), `PackageId` and `PackageVersion` as metadata. An engine's gate finds the map and its checker without knowing where NuGet extracts packages |
 | `<id>.nuspec` | id, version, and a description stating the corpus, baseline, `asOf` and `schemaVersion`. `<repository commit>` names the factory commit that was gated |
 
 The corpus text is not in the package. How a consumer verifies a corpus is
@@ -111,6 +118,11 @@ until a record lists it.
 - a manifest corpus's `adapter`, `locatorGrammar`, `licence`, `boundaryPolicy`, `verification`,
   `quotation` or `references`.
 
+**Package contents other than the map and manifest are not listed either, so they are major.**
+That includes adding `tools/check-map.py` (#51) and any later change to its bytes: a changed
+status-dependent check can fail an overlay that passed before, and a changed message cannot be
+told apart from that without a record that lists it.
+
 A correction to what a rule says is major even when the old reading was wrong. Code was built on
 the old reading, and the version bump is how its engine finds out.
 
@@ -137,7 +149,10 @@ status-dependent check can be changed.
 | `correspondence` | **publish and consumer** | Rows 2 and 5 depend on `status`, and a `declined` entry must have a runtime row |
 
 `check-map.py --phase publish` (the default) runs every check. `--phase consumer` runs the four
-status-dependent checks. **The publish gate is `tools/pack-map.py`.** It runs `check-map.py
+status-dependent checks. **The consumer runs them from the package** (`tools/check-map.py`, the
+props item's `ConsumerChecker`), so the checks an engine runs are the checks that version was
+published with, and a change to one reaches the engine as a new version rather than not at all
+(#51). **The publish gate is `tools/pack-map.py`.** It runs `check-map.py
 --phase publish` and then the locator checker for the corpus's adapter, and it writes no package
 if either fails. A map citing more than one corpus, a corpus that is not `committed-copy`, or an
 adapter with no locator checker is refused as NOT VERIFIED. No option packs a map without the
@@ -174,7 +189,8 @@ the check:
 5. **If the engine commits a materialised `corpus-map.json`, it must equal the merge as parsed
    JSON.** Computing the merge in the gate and committing only the overlay is simpler, because
    then there is no second copy to drift.
-6. **`check-map.py --phase consumer` passes on the merge.**
+6. **The package's own `tools/check-map.py --phase consumer` passes on the merge.** Not a copy:
+   a copy does not change when the factory's checks do.
 
 It is **offline**. The inputs are the restored package and a file in the engine's own repository.
 
@@ -190,11 +206,13 @@ under `map/` are identical in both.
 **Keep vendoring and add a scheduled staleness check** (#27 as filed). Rejected by the decision.
 It detects what a dependency makes visible, and it only works if someone reads its output.
 
-**Vendor or generate `check-map.py` into each engine** (#39's three routes). Not needed as filed.
-A map that fails structure never becomes a version. The engine runs four checks against its
-merge, and the nuspec's `<repository commit>` names the exact `check-map.py` that passed the
-package, so the checks the engine runs have a fixed reference. How the engine obtains that file
-is the engine's change to make, and this record does not decide it.
+**Vendor or generate `check-map.py` into each engine** (#39's three routes). Rejected. A map that
+fails structure never becomes a version, so the engine needs only the four status-dependent
+checks, and #51 found what happens when it copies them: `hoyle-backgammon` ran a hand copy that
+nothing told when `check-map.py` changed. The package carries the checker instead (#51).
+**Recording a checker version in the package for the engine gate to compare** was the other
+option on #51 and was not chosen: it detects a stale copy but still leaves the engine
+maintaining one.
 
 **`dotnet pack` over a pack-only project.** Rejected on measurement: it is not deterministic
 (above). It also ties every local pack to one SDK. `rules-kernel`'s `global.json` pins 10.0.112
@@ -226,7 +244,8 @@ passes the gate and fails at login, and nothing is published.
 
 **`hoyle-backgammon`'s migration off its vendored copy is the engine's change**, not this
 record's (#27's third to-do). The factory side is a package the engine can depend on. The first
-version is `1.0.0`.
+version was `1.0.0`. `2.0.0` is the first to carry the checker (#51): an added package file is
+not on the minor or patch list.
 
 **corpus-map.md's "Where the map lives" changes.** A map is published from the factory and
 consumed as a package. The engine owns only its overlay.
