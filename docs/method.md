@@ -128,15 +128,22 @@ reader cannot tell which happened.
 **Record what gates an entry, separately from what it depends on.** A corpus with turn
 structure has rules that only apply in a phase: bearing off begins once every man is home;
 a man on the bar suspends every other move. That is a different fact from implementation
-order, and it goes in `gatedBy`, which holds **entry ids and nothing else** — the rule that
-governs reachability, not the condition. Write the condition and you have written a second
-implementation of the rule in a format nothing executes. A gate is itself a rule the corpus
-states, so it already has an entry; if the gate you want to record has none, the finding is
-that the map is missing an entry. See
-[0003](decisions/0003-a-phase-gate-names-a-rule-not-a-condition.md).
+order, and it goes in one of two fields by direction: `enabledBy` for a rule that makes this
+one reachable, `suspendedBy` for a rule that makes it unreachable while it holds. Both hold
+**entry ids and nothing else** — the rule that governs reachability, not the condition. Write
+the condition and you have written a second implementation of the rule in a format nothing
+executes. A gate is itself a rule the corpus states, so it already has an entry; if the gate you
+want to record has none, the finding is that the map is missing an entry. See
+[0003](decisions/0003-a-phase-gate-names-a-rule-not-a-condition.md) and
+[0011](decisions/0011-a-gate-has-a-direction.md).
+
+**Ask of every gate which entries it reaches, not only the obvious ones.** A rule that suspends
+a player's whole turn reaches the throw and everything a throw leads to; the backgammon map
+recorded none of that for `full-table-suspension` through a trial, a build and a review, and
+the omission changed every later throw of a seeded game while passing every legality test.
 
 A stateless corpus will produce none of these, and that is the right outcome rather than an
-oversight. Both Part 107 maps carry `gatedBy` on no entry.
+oversight. Both Part 107 maps carry neither field on any entry.
 
 **Do not classify while walking.** A first pass that is simultaneously deciding value versus
 operation, in scope versus out, produces worse results at both. Enumerate first.
@@ -384,8 +391,9 @@ supplied most of what an issue needs:
 - **Source** — the locator, verbatim from the entry, and the `evidence` span it resolves to.
 - **Dependencies** — the entries this one depends on, which determine order. Damage after
   attack; the limit after the table it reads.
-- **Reachability** — the entries in `gatedBy`, which determine nothing about order and
-  everything about what the issue must set up. A phase-scoped rule cannot be exercised
+- **Reachability** — the entries in `enabledBy` and `suspendedBy`, which determine nothing
+  about order and everything about what the issue must set up, and what it must show does
+  not happen. A phase-scoped rule cannot be exercised
   outside its phase, so an acceptance criterion that ignores the gate is testing a situation
   the corpus does not describe.
 - **Acceptance criteria** — observable conditions, derived from what the entry claims.

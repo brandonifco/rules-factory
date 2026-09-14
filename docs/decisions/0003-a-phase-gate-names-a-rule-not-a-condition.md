@@ -2,7 +2,11 @@
 
 ## Status
 
-Accepted — 2026-09-13.
+Accepted — 2026-09-13. **Partly superseded 2026-09-14** by
+[0011](0011-a-gate-has-a-direction.md): `gatedBy` is split into `enabledBy` and
+`suspendedBy`, so the field now states direction. The polarity paragraphs below are kept as
+they were written and marked where they stand; everything else here still applies to both new
+fields.
 
 ## Context
 
@@ -105,6 +109,12 @@ phase-scoped without re-reading the corpus.
 `bearing-off-eligible`" and "gated by `enter-from-bar`" mean opposite things — permitted
 once, suspended while — and only the referenced entry's text says which. A reader who does
 not follow the id learns less than they may think they have.
+
+> **Superseded by [0011](0011-a-gate-has-a-direction.md).** The cost stopped being theoretical
+> when the build found two unrecorded gates and `move-by-pip` came to carry three, one of them
+> opening the bearing-off entries and closing this one. The paragraph above, and the sentence
+> in the Decision section saying `gatedBy` "is not meant to" state direction, no longer
+> describe the schema.
 
 **Deciding what to list required judgement the map does not record.** Filling the backgammon
 map, `bearing-off-move-or-remove` is gated by `bearing-off-eligible` and arguably also by

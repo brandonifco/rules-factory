@@ -31,7 +31,8 @@ What it cannot do, stated here rather than in a commit message:
     outside that list produces a map that passes. The list is stated in
     `POINTER_PHRASES` rather than inferred, so what the check does not cover is readable.
   * Nothing here checks that an entry is the *right* decomposition of the corpus, that a
-    `gatedBy` list is complete, or that `evidence` is sufficient. Those are review.
+    gate list (`enabledBy`, `suspendedBy`) is complete, or that `evidence` is sufficient.
+    Those are review.
 
 Usage: check-map.py <corpus-map.json> [--manifest PATH] [--repo-root PATH] [--only CHECK]
 Exit 0 only if every check that ran passed and at least one check actually checked
@@ -56,6 +57,10 @@ UNRESOLVED_REASONS = {
     "UnsupportedInteraction",
 }
 REQUIRED_ENTRY_FIELDS = ["id", "name", "locator", "kind", "scope", "clarity", "evidence", "status"]
+# The relations that hold entry ids and nothing else. `gatedBy` is not among them: 0011 split
+# it into the two gate fields, and `gates` refuses it by name.
+GATE_FIELDS = ("enabledBy", "suspendedBy")
+ID_LIST_FIELDS = ("dependsOn",) + GATE_FIELDS
 
 
 class Result:
@@ -162,7 +167,7 @@ def check_required_fields(ctx):
                 for field in ("sourceId", "citation"):
                     if not locator.get(field):
                         bad.append(f"  X  {name}: locator is missing `{field}`")
-        for field in ("dependsOn", "gatedBy"):
+        for field in ID_LIST_FIELDS:
             if field in entry and not isinstance(entry[field], list):
                 bad.append(f"  X  {name}: `{field}` is not a list of ids")
     return verdict(bad, f"{len(entries_of(ctx['map']))} entries carry every required field", "required fields are missing")
@@ -221,7 +226,7 @@ def check_unique_ids(ctx):
 
 
 def check_references(ctx):
-    """`dependsOn` and `gatedBy` hold entry ids in the same map, and nothing else.
+    """`dependsOn`, `enabledBy` and `suspendedBy` hold entry ids in the same map, and nothing else.
 
     0003: "If a proposed gate has no entry, the map is missing an entry; that is the
     finding, not a reason to write prose here."
@@ -231,7 +236,7 @@ def check_references(ctx):
         if not isinstance(entry, dict):
             continue
         name = label(entry, position)
-        for field in ("dependsOn", "gatedBy"):
+        for field in ID_LIST_FIELDS:
             for ref in entry.get(field) or []:
                 edges += 1
                 if not isinstance(ref, str):
@@ -241,14 +246,16 @@ def check_references(ctx):
                 elif ref == entry.get("id"):
                     bad.append(f"  X  {name}: {field} names itself")
     if not edges:
-        return skip("no entry names a dependsOn or gatedBy, so no reference was resolved", had_subject=False)
-    return verdict(bad, f"{edges} dependsOn/gatedBy references all resolve", "a reference names no entry")
+        return skip("no entry names a dependsOn, enabledBy or suspendedBy, so no reference was resolved",
+                    had_subject=False)
+    return verdict(bad, f"{edges} dependsOn/enabledBy/suspendedBy references all resolve",
+                   "a reference names no entry")
 
 
 def check_no_cycles(ctx):
     """`dependsOn` determines backlog order, so a cycle means no order exists.
 
-    `gatedBy` is deliberately not checked for cycles: it orders nothing (0003), and a
+    The gate fields are deliberately not checked for cycles: they order nothing (0003), and a
     mutual gate is a legitimate shape -- entry from the bar suspends other moves while
     those moves' own gate names it back.
     """
@@ -274,6 +281,52 @@ def check_no_cycles(ctx):
     if not any(by_id[node].get("dependsOn") for node in by_id):
         return skip("no entry depends on another, so acyclicity was not exercised", had_subject=False)
     return verdict(sorted(set(bad)), f"dependsOn over {len(by_id)} entries is acyclic", "dependsOn has a cycle")
+
+
+def check_gates(ctx):
+    """A gate has a direction, and the field it sits in states it (0011).
+
+    0003 recorded a gate as one undirected list, `gatedBy`, and accepted as a cost that
+    `bearing-off-eligible` (which opens a phase) and `enter-from-bar` (which closes one) looked
+    identical on the entries they gate. 0011 splits the list: `enabledBy` names the rules that
+    make this rule reachable, `suspendedBy` the rules that make it unreachable. Resolving the
+    ids is `references`' job; what is checked here is what the split adds:
+
+      * `gatedBy` is refused by name. A map still carrying it states gates with no direction,
+        which is what 0011 removed, and ignoring the field would make every gate in an
+        unmigrated map vanish from every other check without a word;
+      * no entry names one rule in both fields, because one rule cannot both open and close
+        the same entry's reachability.
+
+    What it cannot do: tell whether a gate is in the right field. A permitting rule filed under
+    `suspendedBy` resolves, is not duplicated, and passes. That is review -- what 0011 buys is
+    that the direction is written where a reviewer reads it, rather than recovered by following
+    the id.
+    """
+    bad, gated = [], 0
+    for position, entry in enumerate(entries_of(ctx["map"])):
+        if not isinstance(entry, dict):
+            continue
+        name = label(entry, position)
+        if "gatedBy" in entry:
+            bad.append(f"  X  {name}: carries `gatedBy`, which 0011 split by direction; name each "
+                       f"gate in `enabledBy` (makes this rule reachable) or `suspendedBy` (makes it "
+                       f"unreachable)")
+        lists = {field: entry.get(field) if isinstance(entry.get(field), list) else []
+                 for field in GATE_FIELDS}
+        if any(lists.values()):
+            gated += 1
+        both = {x for x in lists["enabledBy"] if isinstance(x, str)} & \
+            {x for x in lists["suspendedBy"] if isinstance(x, str)}
+        for ref in sorted(both):
+            bad.append(f"  X  {name}: names {ref!r} in both `enabledBy` and `suspendedBy`; one rule "
+                       f"cannot both open and close this one")
+    if not gated and not bad:
+        return skip("no entry carries `enabledBy` or `suspendedBy`, so no gate's direction was "
+                    "checked -- the right outcome for a stateless corpus", had_subject=False)
+    return verdict(bad, f"{gated} gated entr{'y' if gated == 1 else 'ies'}: every gate is filed by "
+                        f"direction, and none in both directions",
+                   "a gate does not state its direction")
 
 
 def check_manifest(ctx):
@@ -539,7 +592,7 @@ def check_absent(ctx):
         if "ambiguity" in entry:
             bad.append(f"  X  {name}: carries `absentFrom` and an `ambiguity` block; an absent "
                        f"rule has no words to be ambiguous about")
-        for field in ("dependsOn", "gatedBy"):
+        for field in ID_LIST_FIELDS:
             if entry.get(field):
                 bad.append(f"  X  {name}: carries `absentFrom` and a non-empty `{field}`; a rule "
                            f"the corpus does not state orders nothing and gates nothing")
@@ -548,7 +601,7 @@ def check_absent(ctx):
         if not isinstance(entry, dict):
             continue
         name = label(entry, position)
-        for field in ("dependsOn", "gatedBy"):
+        for field in ID_LIST_FIELDS:
             for ref in entry.get(field) or []:
                 if isinstance(ref, str) and ref in absent_ids:
                     bad.append(f"  X  {name}: {field} names {ref!r}, which carries `absentFrom`; "
@@ -765,6 +818,7 @@ CHECKS = [
     ("unique-ids", check_unique_ids),
     ("references", check_references),
     ("no-cycles", check_no_cycles),
+    ("gates", check_gates),
     ("manifest", check_manifest),
     ("exclusions", check_exclusions),
     ("status", check_status),

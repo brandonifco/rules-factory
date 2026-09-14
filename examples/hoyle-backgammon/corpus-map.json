@@ -164,9 +164,12 @@
       "dependsOn": [
         "opening-roll"
       ],
+      "suspendedBy": [
+        "full-table-suspension"
+      ],
       "evidence": "All subsequent throws are with both dice.",
       "status": "mapped",
-      "note": "Demonstrate that every throw after the opening roll is two dice. The evidence previously read \"the opening throw is one die and every later throw two\", which is a paraphrase of opening-roll's sentence rather than of this one; the single die is that entry's and nothing in the corpus attaches a move to it (finding 10 of the engine's MAP-FINDINGS.md, confirmed as imprecise rather than wrong)."
+      "note": "Demonstrate that every throw after the opening roll is two dice. The evidence previously read \"the opening throw is one die and every later throw two\", which is a paraphrase of opening-roll's sentence rather than of this one; the single die is that entry's and nothing in the corpus attaches a move to it (finding 10 of the engine's MAP-FINDINGS.md, confirmed as imprecise rather than wrong). Suspended by full-table-suspension (docs/decisions/0011): a wholly suspended player does not throw -- 'the adversary continuing to throw and move' -- so this rule is unreachable on his turn, and an engine that throws for him anyway consumes the generator and changes every later throw."
     },
     {
       "id": "move-by-pip",
@@ -181,12 +184,14 @@
       "dependsOn": [
         "throw-two-dice"
       ],
-      "gatedBy": [
-        "enter-from-bar"
+      "suspendedBy": [
+        "enter-from-bar",
+        "full-table-suspension",
+        "bearing-off-eligible"
       ],
       "evidence": "The number uppermost on each die entitles the player to move one man forward a corresponding number of points. Thus if he threw \"six trois,\" he is entitled to move one man six points onward, and then the same or another man {274} three points onward.",
       "status": "mapped",
-      "note": "Demonstrate a throw played on one man and on two, and the worked \"six trois\" example. The span straddles the page break and carries the {274} marker verbatim; the rule sentence is on p. 273 and the citation follows it."
+      "note": "Demonstrate a throw played on one man and on two, and the worked \"six trois\" example. The span straddles the page break and carries the {274} marker verbatim; the rule sentence is on p. 273 and the citation follows it. Suspended by three rules (docs/decisions/0011): enter-from-bar while a man is up, full-table-suspension while the player's play is altogether suspended, and bearing-off-eligible once every man is home, from which point bearing-off-move-or-remove governs every forward move and a number unusable forward bears a man off instead of being lost."
     },
     {
       "id": "direction-of-travel",
@@ -218,12 +223,13 @@
       "dependsOn": [
         "move-by-pip"
       ],
-      "gatedBy": [
-        "enter-from-bar"
+      "suspendedBy": [
+        "enter-from-bar",
+        "full-table-suspension"
       ],
       "evidence": "In the event of his throwing the same points with both dice (known as \"doublets\"), he is entitled to play the throw twice over. Suppose, for example, that he throws two aces; he may move one or more men forward to an aggregate extent of four points. If he throw double deuces, he may move to an aggregate extent of eight points; if double threes, twelve points, and so on.",
       "status": "mapped",
-      "note": "Demonstrate all three worked examples: aces to four points, deuces to eight, threes to twelve. Cited p. 273 until the span was quoted and checked; the {274} marker falls two sentences earlier."
+      "note": "Demonstrate all three worked examples: aces to four points, deuces to eight, threes to twelve. Cited p. 273 until the span was quoted and checked; the {274} marker falls two sentences earlier. Suspended by full-table-suspension as well as enter-from-bar (docs/decisions/0011): a suspended player throws no doublets to play."
     },
     {
       "id": "legal-destination",
@@ -236,6 +242,9 @@
       "scope": "in",
       "clarity": "ambiguous",
       "dependsOn": [],
+      "suspendedBy": [
+        "full-table-suspension"
+      ],
       "evidence": "The right to move is subject to a certain qualification--viz., that a man can only be played to a point which is either vacant or occupied by one or more men of the player, or by one man only of the adversary.",
       "status": "mapped",
       "ambiguity": {
@@ -244,7 +253,7 @@
         "fate": "decision",
         "decision": "docs/decisions/0006-the-general-rule-governs-entry-and-full-means-adversely-full.md"
       },
-      "note": "Decided: the general rule governs entry. The reading is observable in exactly one test -- EnterFromBarTests.Entry_is_permitted_on_a_point_the_entering_players_own_men_hold -- which fails under the other one. Demonstrate vacant, own men, exactly one adversary man, and two or more refused; and entry from the bar onto a point the entering player's own men hold, which is where this rule and enter-from-bar disagree. Cited p. 273 until the span was quoted and checked."
+      "note": "Decided: the general rule governs entry. The reading is observable in exactly one test -- EnterFromBarTests.Entry_is_permitted_on_a_point_the_entering_players_own_men_hold -- which fails under the other one. Demonstrate vacant, own men, exactly one adversary man, and two or more refused; and entry from the bar onto a point the entering player's own men hold, which is where this rule and enter-from-bar disagree. Cited p. 273 until the span was quoted and checked. Suspended by full-table-suspension (docs/decisions/0011): the qualification applies to the right to move, and a player whose play is altogether suspended has none. It is not suspended by enter-from-bar, because under docs/decisions/0006 this rule governs the entering man's destination too."
     },
     {
       "id": "made-point",
@@ -276,9 +285,12 @@
       "dependsOn": [
         "legal-destination"
       ],
+      "suspendedBy": [
+        "full-table-suspension"
+      ],
       "evidence": "A single man on a given point is known as a \"blot,\" and not only does not prevent the enemy playing to that point, but in the event of its being \"hit\"--_i.e._, reached by an adverse throw, it is \"taken up\" (placed on the bar between the two tables), and, however far advanced it may have been, has to begin its journey anew from the inner table of the adversary.",
       "status": "mapped",
-      "note": "Demonstrate that a blot hit goes to the bar and restarts from the adversary's inner table, however far advanced. Cited p. 273 until the span was quoted and checked."
+      "note": "Demonstrate that a blot hit goes to the bar and restarts from the adversary's inner table, however far advanced. Cited p. 273 until the span was quoted and checked. Suspended by full-table-suspension (docs/decisions/0011) on the suspended player's own turn: a hit is made by a move, and he makes none. His blots are still hit by the adversary, whose turn this gate does not reach."
     },
     {
       "id": "enter-from-bar",
@@ -293,6 +305,9 @@
       "dependsOn": [
         "blot-hit"
       ],
+      "suspendedBy": [
+        "full-table-suspension"
+      ],
       "evidence": "Nor can such man again start on its journey until its owner is fortunate enough to make a throw corresponding with a vacant point or blot in such table. Until he does this, the play of his other men is suspended.",
       "status": "mapped",
       "ambiguity": {
@@ -301,7 +316,7 @@
         "fate": "decision",
         "decision": "docs/decisions/0006-the-general-rule-governs-entry-and-full-means-adversely-full.md"
       },
-      "note": "Decided: the general rule governs entry, so a point the entering player's own men hold is open to him. The reading is observable in EnterFromBarTests.Entry_is_permitted_on_a_point_the_entering_players_own_men_hold, which fails under the other one. Demonstrate entry available and unavailable, all other men suspended while one is up, and entry onto a point the entering player's own men hold. Cited p. 273 until the span was quoted and checked."
+      "note": "Decided: the general rule governs entry, so a point the entering player's own men hold is open to him. The reading is observable in EnterFromBarTests.Entry_is_permitted_on_a_point_the_entering_players_own_men_hold, which fails under the other one. Demonstrate entry available and unavailable, all other men suspended while one is up, and entry onto a point the entering player's own men hold. Cited p. 273 until the span was quoted and checked. Suspended by full-table-suspension (docs/decisions/0011): a completely full table leaves no throw 'corresponding with a vacant point or blot', and the corpus does not have the player throw to find that out -- his play is altogether suspended."
     },
     {
       "id": "full-table-suspension",
@@ -325,7 +340,7 @@
         "fate": "decision",
         "decision": "docs/decisions/0006-the-general-rule-governs-entry-and-full-means-adversely-full.md"
       },
-      "note": "Decided: 'full' means adversely full. The reading is observable in FullTableSuspensionTests.A_point_held_by_the_entering_players_own_men_does_not_make_the_table_full, which fails under the other one. The same decision settles whether both players can be suspended at once through play: under this reading they cannot, so the engine's UnsupportedInteraction for that position answers only what a caller may assert. Demonstrate six points held by two or more, the adversary throwing and moving alone, and six points all occupied but one of them by the entering player's own men, which suspends nobody. Depends on made-point, which is what \"each point occupied by two or more men\" means. Cited p. 273 until the span was quoted and checked. No entry names this one in gatedBy, though a suspended player does not throw; that gate list is still owed (issue #14, finding 6)."
+      "note": "Decided: 'full' means adversely full. The reading is observable in FullTableSuspensionTests.A_point_held_by_the_entering_players_own_men_does_not_make_the_table_full, which fails under the other one. The same decision settles whether both players can be suspended at once through play: under this reading they cannot, so the engine's UnsupportedInteraction for that position answers only what a caller may assert. Demonstrate six points held by two or more, the adversary throwing and moving alone, and six points all occupied but one of them by the entering player's own men, which suspends nobody. Depends on made-point, which is what \"each point occupied by two or more men\" means. Cited p. 273 until the span was quoted and checked. It suspends seven entries, each named in that entry's suspendedBy with the judgement in its note (docs/decisions/0011)."
     },
     {
       "id": "must-play-whole-throw",
@@ -340,8 +355,9 @@
       "dependsOn": [
         "move-by-pip"
       ],
-      "gatedBy": [
-        "enter-from-bar"
+      "suspendedBy": [
+        "enter-from-bar",
+        "full-table-suspension"
       ],
       "evidence": "Any part of a throw which cannot be played is lost to the thrower, but every player is compelled to play the whole of his throw if it is possible to do so.",
       "status": "mapped",
@@ -350,7 +366,7 @@
         "fate": "unresolved",
         "unresolvedReason": "RequiresInterpretation"
       },
-      "note": "status and ambiguity.fate are independent (docs/decisions/0005), so an engine may implement this rule and still decline the case the question names -- which is the whole of what it declines. Read as an obligation to play a set of numbers that cannot be extended, the compulsion settles every other throw from the text: doublets are never ambiguous, and a throw with one playable die compels it. Demonstrate a throw fully playable, partly playable, and unplayable. Where the entry is implemented the conformance verdict covers every case but the one named, and the declining case ships WholeThrowTests.Where_either_die_alone_can_be_played_but_not_both_the_corpus_does_not_settle_it. Cited p. 273 until the span was quoted and checked; the sentence is on p. 275, two pages on."
+      "note": "status and ambiguity.fate are independent (docs/decisions/0005), so an engine may implement this rule and still decline the case the question names -- which is the whole of what it declines. Read as an obligation to play a set of numbers that cannot be extended, the compulsion settles every other throw from the text: doublets are never ambiguous, and a throw with one playable die compels it. Demonstrate a throw fully playable, partly playable, and unplayable. Where the entry is implemented the conformance verdict covers every case but the one named, and the declining case ships WholeThrowTests.Where_either_die_alone_can_be_played_but_not_both_the_corpus_does_not_settle_it. Cited p. 273 until the span was quoted and checked; the sentence is on p. 275, two pages on. Suspended by full-table-suspension as well as enter-from-bar (docs/decisions/0011): with no throw there is no whole of a throw to compel."
     },
     {
       "id": "bearing-off-eligible",
@@ -381,7 +397,7 @@
         "bearing-off-eligible",
         "legal-destination"
       ],
-      "gatedBy": [
+      "enabledBy": [
         "bearing-off-eligible"
       ],
       "evidence": "When the game has reached this stage, each throw entitles the player either to move forward a man or men (to the extent indicated by the throw) within the limits of his own table, or to remove men from the corresponding points.",
@@ -401,7 +417,7 @@
       "dependsOn": [
         "bearing-off-move-or-remove"
       ],
-      "gatedBy": [
+      "enabledBy": [
         "bearing-off-eligible"
       ],
       "evidence": "If, however, he throws a number which he cannot deal with after either of these fashions--_e.g._, a six, he is entitled to bear off a man from his highest occupied point, in this case the cinque.",
@@ -423,7 +439,7 @@
         "bearing-off-move-or-remove",
         "bearing-off-highest"
       ],
-      "gatedBy": [
+      "enabledBy": [
         "bearing-off-eligible"
       ],
       "evidence": "Doublets have, as in the earlier stage of the game, a twofold value, and may be played either wholly by moving men forward, wholly by bearing off, or partly by the one method and partly by the other, as may be desirable. Suppose, for instance, that the player, having his men as shown in the figure, throws deuces; having only three men on the deuce point, he can only bear off that number; the fourth man must be played forward, either from the cinque or quatre point.",

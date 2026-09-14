@@ -52,12 +52,14 @@ def main(a_path, b_path):
             ch.append("locator")
         if a[i].get("dependsOn") != b[i].get("dependsOn"):
             ch.append("dependsOn")
-        # gatedBy: a re-map can move a rule into or out of a phase, or change which rule
-        # gates it, with nothing else about the entry moving. Neither Part 107 map carries
-        # the field -- a stateless corpus has no phases for a rule to be scoped to -- so
-        # here this compares absent to absent on every entry. It is for corpora that do.
-        if a[i].get("gatedBy") != b[i].get("gatedBy"):
-            ch.append("gatedBy")
+        # enabledBy / suspendedBy (0011, which split 0003's gatedBy by direction): a re-map
+        # can move a rule into or out of a phase, or change which rule gates it, with nothing
+        # else about the entry moving. Neither Part 107 map carries either field -- a
+        # stateless corpus has no phases for a rule to be scoped to -- so here this compares
+        # absent to absent on every entry. It is for corpora that do.
+        for gate in ("enabledBy", "suspendedBy"):
+            if a[i].get(gate) != b[i].get(gate):
+                ch.append(gate)
         # beyondAdapter: reachability can change without the rule changing, in either
         # direction -- a better adapter is admitted, or a revision moves a rule out of prose
         # and into a figure. Compared whole, so a change of modality under the same adapter

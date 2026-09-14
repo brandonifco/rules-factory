@@ -90,8 +90,9 @@ before either has been implemented.
 | `scope` | `in` or `out`. Out is a recorded verdict with a reason, not an omission. **Decided per rule. A section has no scope of its own.** See below. |
 | `clarity` | `clear` or `ambiguous`. `clear` asserts the corpus determines exactly one answer for every valid input — so a corpus that states the rule twice, differently, is `ambiguous`. |
 | `ambiguity` | Absent when clear. Otherwise the question, its `fate`, and — where the corpus contradicts itself — the `conflict` the question belongs to. Never a carrier for a decline that is not an ambiguity. |
-| `dependsOn` | Entry ids. Determines backlog order — the sequence entries must be *implemented* in. **Not** a runtime precondition; see `gatedBy`. |
-| `gatedBy` | Entry ids. The rules that govern whether this one is reachable at runtime. Absent on an entry that always applies. Orders nothing. See below. |
+| `dependsOn` | Entry ids. Determines backlog order — the sequence entries must be *implemented* in. **Not** a runtime precondition; see the gate fields. |
+| `enabledBy` | Entry ids. The rules that make this one reachable at runtime; it does not apply until one holds. Absent on an entry no rule opens. Orders nothing. See below. |
+| `suspendedBy` | Entry ids. The rules that make this one unreachable while they hold. Absent on an entry no rule closes. Orders nothing. See below. |
 | `beyondAdapter` | Present only when the declared adapter cannot read the rule the locator cites. Names the adapter and the modality. See below. |
 | `definedElsewhere` | Present only when the rule's meaning is fixed in a corpus that was not admitted. Names the manifest `references` entry. See below. |
 | `absentFrom` | Present only when the corpus does **not** state the rule at all. Names the terms searched for. See below. |
@@ -340,37 +341,48 @@ Four rules, and `tools/check-map.py --only conflicts` enforces all four:
 
 Nothing detects a conflict the mapper never noticed: two `clarity: clear` entries stating
 incompatible rules produce a map that validates, which is the same blind spot as an incomplete
-`gatedBy` list. What these rules buy is that a *recorded* conflict cannot be half-settled.
+gate list. What these rules buy is that a *recorded* conflict cannot be half-settled.
 
-### `dependsOn` orders work; `gatedBy` does not
+### `dependsOn` orders work; `enabledBy` and `suspendedBy` do not
 
 `dependsOn` orders *implementation*. A rule that applies only in a phase — bearing off
 begins once every man is home; entry from the bar suspends every other move — has a
-**runtime precondition**, which is a different fact. `gatedBy` is where it lives. Decided in
-[0003](decisions/0003-a-phase-gate-names-a-rule-not-a-condition.md).
+**runtime precondition**, which is a different fact. The gate fields are where it lives.
+Decided in [0003](decisions/0003-a-phase-gate-names-a-rule-not-a-condition.md), and split by
+direction in [0011](decisions/0011-a-gate-has-a-direction.md).
 
 The two relations coincide often enough to be confused, and they are not derivable from each
 other. In the backgammon map, `bearing-off-doublets` has six `dependsOn` ancestors and
-exactly one of them is its gate; `move-by-pip` is gated by `enter-from-bar`, which is not
+exactly one of them is its gate; `move-by-pip` is suspended by `enter-from-bar`, which is not
 among its ancestors, and nor is `move-by-pip` among `enter-from-bar`'s. A stateless corpus
 never asks: a regulation evaluating one flight against a set of limits has no phase for a
-rule to be scoped to, and both Part 107 maps carry `gatedBy` on no entry at all.
+rule to be scoped to, and both Part 107 maps carry neither gate field on any entry.
 
-**`gatedBy` holds entry ids and nothing else.** No predicate, no state name, no threshold,
+**A gate has a direction, and the field says which.** `enabledBy` names the rules that make
+this one reachable; `suspendedBy` the rules that make it unreachable while they hold.
+Direction belongs to the edge, not to the gating rule: `bearing-off-eligible` is in
+`bearing-off-highest`'s `enabledBy` and in `move-by-pip`'s `suspendedBy`, because once every
+man is home bearing off governs every forward move. Until 0011 both were one undirected
+`gatedBy` list, and a reader had to follow each id to learn whether it opened a phase or closed
+one. `check-map.py --only gates` refuses `gatedBy` by name, and refuses an id named in both
+fields of one entry.
+
+**Both hold entry ids and nothing else.** No predicate, no state name, no threshold,
 no sentence. A gate is itself a rule the corpus states, so it already has an entry with a
 locator; if a gate you want to record has no entry, the map is missing an entry. The
-condition is the engine's to implement — the map says which rule governs reachability and
-points at where to read it.
+condition is the engine's to implement — the map says which rule governs reachability, in
+which direction, and points at where to read it.
 
-It says nothing about *direction*. `bearing-off-eligible` permits the entries it gates;
-`enter-from-bar` suspends them. Only the referenced entry's text distinguishes those, and a
-reader who does not follow the id has learned less than they may think.
-
-It is **not transitive and not inherited through `dependsOn`.** Every entry a gate reaches
+They are **not transitive and not inherited through `dependsOn`.** Every entry a gate reaches
 names it, even where a `dependsOn` ancestor names the same gate — the two relations are
-independent, so inheriting along one of them would be a guess. Expect repetition.
+independent, so inheriting along one of them would be a guess. Expect repetition:
+`full-table-suspension` is named by seven entries, each with the judgement in its `note`.
 
-It orders nothing. `dependsOn` remains the only input to backlog order.
+They order nothing. `dependsOn` remains the only input to backlog order.
+
+**What the split does not buy.** Nothing checks that a gate is complete, or that it is in the
+right field: a permitting rule filed under `suspendedBy` resolves and passes. The direction is
+written down where a reviewer reads it, which is all.
 
 ### `beyondAdapter`
 
@@ -460,8 +472,8 @@ verdict, not less, which is the right price for the failure it exists to catch.
 
 `scope: out` and `status: declined`; `beyondAdapter`, `definedElsewhere` and an `ambiguity`
 block are excluded — a rule is not both nowhere in this corpus and somewhere in it we cannot
-reach, and a rule with no words cannot be ambiguous about them. Nothing may `dependsOn` or
-`gatedBy` an absent entry: that edge can never be satisfied.
+reach, and a rule with no words cannot be ambiguous about them. Nothing may name an absent
+entry in `dependsOn`, `enabledBy` or `suspendedBy`: that edge can never be satisfied.
 
 **What it does not buy.** A term absent is not a rule absent. The corpus could state the rule
 in words nobody searched for. What the check catches is a mapper who declared an absence
@@ -668,6 +680,10 @@ Open questions are tracked as issues so they are worked rather than admired:
 - [#5](https://github.com/brandonifco/rules-factory/issues/5) — `dependsOn` conflates
   implementation order with runtime precondition. Decided:
   [0003](decisions/0003-a-phase-gate-names-a-rule-not-a-condition.md) adds `gatedBy`.
+- [#32](https://github.com/brandonifco/rules-factory/issues/32) — a gate that suspends seven
+  entries was named by none of them, and the one field could not say which way a gate points.
+  Decided: [0011](decisions/0011-a-gate-has-a-direction.md) splits `gatedBy` into `enabledBy`
+  and `suspendedBy`.
 - [#6](https://github.com/brandonifco/rules-factory/issues/6) — a standard is not a gap.
   Decided: [0005](decisions/0005-a-field-earns-its-place-by-being-checkable.md) — a delegated
   standard is `kind: assertion`, and it is an entry of its own.

@@ -45,9 +45,10 @@ is the answer to "are we learning anything, or just producing artefacts."
 - **`dependsOn` conflates implementation order with runtime precondition** — invisible in a
   stateless corpus, immediate in one with turn structure. Now `gatedBy`, which holds entry
   ids and refuses to hold a condition
-  ([0003](../docs/decisions/0003-a-phase-gate-names-a-rule-not-a-condition.md)). Six
-  backgammon entries carry it; no Part 107 entry does, which is the correct outcome for a
-  corpus with no phases.
+  ([0003](../docs/decisions/0003-a-phase-gate-names-a-rule-not-a-condition.md)), since split
+  by direction into `enabledBy` and `suspendedBy`
+  ([0011](../docs/decisions/0011-a-gate-has-a-direction.md)). Ten backgammon entries carry a
+  gate; no Part 107 entry does, which is the correct outcome for a corpus with no phases.
 - **Advice inside normative sections** — `scope` excludes an entry, not a sentence.
 - **The corpus bounds the engine, not the subject** — a 1909 text has no doubling cube, and
   "absent from the corpus" must not look like "nobody looked."

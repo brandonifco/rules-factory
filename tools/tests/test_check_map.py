@@ -78,7 +78,8 @@ def valid_map():
                   status="implemented", implementedIn={"ruleset": "demo", "version": 1}),
             entry("well-clear", kind="assertion", status="mapped"),
             entry("yield-right-of-way", kind="operation", dependsOn=["well-clear"],
-                  gatedBy=["speed-limit"], status="implemented",
+                  enabledBy=["speed-limit"], suspendedBy=["speed-within-limit"],
+                  status="implemented",
                   implementedIn={"ruleset": "demo", "version": 1}),
             entry("hazardous-material", kind="value", status="declined",
                   definedElsewhere={"reference": "other-corpus"}),
@@ -231,21 +232,53 @@ class TestReferences(MapCase):
     def test_a_dangling_depends_on_fails(self):
         self.assert_catches("references", lambda d: d["entries"][1].update(dependsOn=["no-such-entry"]))
 
-    def test_a_dangling_gated_by_fails(self):
+    def test_a_dangling_enabled_by_fails(self):
         # 0003: a gate with no entry means the map is missing an entry.
-        self.assert_catches("references", lambda d: d["entries"][3].update(gatedBy=["all-men-home"]))
+        self.assert_catches("references", lambda d: d["entries"][3].update(enabledBy=["all-men-home"]))
 
-    def test_a_gated_by_holding_a_condition_rather_than_an_id_fails(self):
-        self.assert_catches("references", lambda d: d["entries"][3].update(gatedBy=[{"allMenHome": True}]))
+    def test_a_dangling_suspended_by_fails(self):
+        self.assert_catches("references", lambda d: d["entries"][3].update(suspendedBy=["man-on-bar"]))
+
+    def test_a_gate_holding_a_condition_rather_than_an_id_fails(self):
+        self.assert_catches("references", lambda d: d["entries"][3].update(suspendedBy=[{"onBar": True}]))
 
     def test_a_map_with_no_edges_does_not_report_ok(self):
         document = valid_map()
         for item in document["entries"]:
             item["dependsOn"] = []
-            item.pop("gatedBy", None)
+            item.pop("enabledBy", None)
+            item.pop("suspendedBy", None)
         code, output = self.run_tool(document)
         self.assertEqual(self.status_of(output, "references"), "skip", output)
         self.assertEqual(self.status_of(output, "no-cycles"), "skip", output)
+        self.assertEqual(self.status_of(output, "gates"), "skip", output)
+        self.assertEqual(code, 0, output)
+
+
+class TestGates(MapCase):
+    """0011: a gate is filed by direction -- what makes a rule reachable, what suspends it."""
+
+    GATED = 3  # yield-right-of-way, in valid_map()'s order
+
+    def test_an_undirected_gated_by_is_refused(self):
+        # The field 0011 split. Left unchecked, an unmigrated map's gates would simply vanish.
+        def mutate(document):
+            gated = document["entries"][self.GATED]
+            gated["gatedBy"] = gated.pop("enabledBy") + gated.pop("suspendedBy")
+        self.assert_catches("gates", mutate)
+
+    def test_one_rule_both_enabling_and_suspending_an_entry_fails(self):
+        self.assert_catches(
+            "gates", lambda d: d["entries"][self.GATED]["suspendedBy"].append("speed-limit"))
+
+    def test_a_map_with_no_gates_does_not_report_ok(self):
+        # Both Part 107 maps: a stateless corpus has no phases, which is right, and proves nothing.
+        document = valid_map()
+        document["entries"][self.GATED].pop("enabledBy")
+        document["entries"][self.GATED].pop("suspendedBy")
+        code, output = self.run_tool(document)
+        self.assertEqual(self.status_of(output, "gates"), "skip", output)
+        self.assertIn("NOT VERIFIED", output)
         self.assertEqual(code, 0, output)
 
 
@@ -256,10 +289,10 @@ class TestNoCycles(MapCase):
         self.assert_catches("no-cycles", mutate)
 
     def test_mutual_gates_are_not_a_cycle(self):
-        # gatedBy orders nothing, so a mutual gate is legitimate and must still pass.
+        # A gate orders nothing, so a mutual gate is legitimate and must still pass.
         document = valid_map()
-        document["entries"][0]["gatedBy"] = ["speed-within-limit"]
-        document["entries"][1]["gatedBy"] = ["speed-limit"]
+        document["entries"][0]["suspendedBy"] = ["speed-within-limit"]
+        document["entries"][1]["suspendedBy"] = ["speed-limit"]
         code, output = self.run_tool(document)
         self.assertEqual(self.status_of(output, "no-cycles"), "ok", output)
         self.assertEqual(code, 0, output)
@@ -513,9 +546,13 @@ class TestAbsent(MapCase):
         self.assert_catches(
             "absent", lambda d: d["entries"][1].update(dependsOn=["doubling-cube"]))
 
-    def test_gating_on_an_absent_rule_fails(self):
+    def test_enabling_on_an_absent_rule_fails(self):
         self.assert_catches(
-            "absent", lambda d: d["entries"][3].update(gatedBy=["doubling-cube"]))
+            "absent", lambda d: d["entries"][3].update(enabledBy=["doubling-cube"]))
+
+    def test_suspending_on_an_absent_rule_fails(self):
+        self.assert_catches(
+            "absent", lambda d: d["entries"][3].update(suspendedBy=["doubling-cube"]))
 
     def test_an_absence_nobody_searched_for_fails_the_vocabulary(self):
         # An empty `searched` is the "(absent)" locator in a new spelling: a claim with
