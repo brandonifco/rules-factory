@@ -295,14 +295,94 @@ class TestGeneration(ProduceCase):
         self.assertIn('new("reasonable-protection", EntryStatus.Implemented, CorrespondenceRow.Assertion,', registry)
         self.assertIn("reasonable_protection__is_implemented_and_answers_or_demands_the_assertion", tests)
 
-    def test_a_derived_entry_declines_citing_its_first_source(self):
+    def test_a_derived_entry_cites_every_premise(self):
+        """#73: hit-pays-single-stake rests on two passages, and the runtime names both."""
         out = self.produced(package=self.hoyle, corpus=os.path.join(HOYLE, "hoyle.txt"), name="HoyleBackgammon")
         entries = self.read(out, "src/HoyleBackgammon/Generated/MapEntries.g.cs")
         registry = self.read(out, "src/HoyleBackgammon/Generated/Registry.g.cs")
+        tests = self.read(out, "tests/HoyleBackgammon.Tests/Generated/CorrespondenceTests.g.cs")
         self.assertIn("public static DerivedMapEntry HitPaysSingleStake", entries)
-        self.assertRegex(registry, r'new\("hit-pays-single-stake", EntryStatus\.Mapped, CorrespondenceRow\.NotBuilt, MapEntries\.\w+\.Locator\)')
+        both = ("MapEntries.StakeMultiplier.Locator, MapEntries.AgreedBackgammonMultiple.Locator")
+        self.assertIn(f'new("hit-pays-single-stake", EntryStatus.Mapped, CorrespondenceRow.NotBuilt, '
+                      f'[{both}]),', registry)
         self.assertNotIn("MapEntries.HitPaysSingleStake.Locator", registry)
         self.assertIn('new("inner-table-handedness", EntryStatus.Declined, CorrespondenceRow.BeyondAdapter,', registry)
+        self.assertIn("hit_pays_single_stake__cites_every_premise", tests)
+        decline = re.search(r'AssertDeclines\("hit-pays-single-stake", UnresolvedReason\.UnsupportedRule, (.*)\);', tests)
+        self.assertIsNotNone(decline)
+        self.assertEqual(decline.group(1).count("new SourceLocator("), 2)
+
+
+class TestDerivedProvenance(unittest.TestCase):
+    """#73: a derived entry's citation is every leaf locator, found recursively, in a fixed order.
+
+    Built on a synthetic map, because neither example map has a derived entry whose source is
+    itself derived, which is the case the recursion exists for.
+    """
+
+    @staticmethod
+    def located(entry_id, citation):
+        return {"id": entry_id, "name": entry_id, "kind": "value", "scope": "in", "status": "mapped",
+                "locator": {"sourceId": "corpus", "citation": citation}}
+
+    @staticmethod
+    def derived(entry_id, *sources):
+        return {"id": entry_id, "name": entry_id, "kind": "value", "scope": "in", "status": "mapped",
+                "derivedFrom": list(sources)}
+
+    def model(self, entries):
+        intake = type("Intake", (), {"package_id": "RulesFactory.Maps.Test", "version": "1.0.0"})()
+        merged = {"corpus": "corpus", "entries": entries,
+                  "baseline": {"contentHash": "sha256:0", "hashDerivation": "raw", "asOf": None}}
+        return generate.Model(intake, merged, "Test")
+
+    def citations(self, model, entry_id):
+        return [model.locator_of(m)["citation"] for m in model.by_id[entry_id]["locators"]]
+
+    def test_two_sources_one_derived_report_every_leaf_depth_first(self):
+        # `top` derives from `middle` (itself derived from b and c) and from `a`; `c` is reached
+        # twice and keeps its first place. The derived entry comes first in the map on purpose.
+        model = self.model([
+            self.derived("top", "middle", "a", "c"),
+            self.located("a", "p. 1"),
+            self.derived("middle", "b", "c"),
+            self.located("b", "p. 2"),
+            self.located("c", "p. 3"),
+        ])
+        self.assertEqual(self.citations(model, "top"), ["p. 2", "p. 3", "p. 1"])
+        self.assertEqual(self.citations(model, "middle"), ["p. 2", "p. 3"])
+
+        entries = generate.map_entries_cs(model)
+        top = entries[entries.index("DerivedMapEntry Top"):]
+        top = top[:top.index(");\n") + 3]
+        self.assertIn('["middle", "a", "c"]', top)
+        self.assertEqual(re.findall(r'new SourceLocator\("corpus", "([^"]+)"\)', top), ["p. 2", "p. 3", "p. 1"])
+
+        registry = generate.registry_cs(model)
+        self.assertIn('new("top", EntryStatus.Mapped, CorrespondenceRow.NotBuilt, '
+                      '[MapEntries.B.Locator, MapEntries.C.Locator, MapEntries.A.Locator]),', registry)
+
+        tests = generate.tests_cs(model)
+        self.assertIn("public void top__cites_every_premise()", tests)
+        self.assertIn('AssertDeclines("top", UnresolvedReason.UnsupportedRule, new SourceLocator("corpus", "p. 2"), '
+                      'new SourceLocator("corpus", "p. 3"), new SourceLocator("corpus", "p. 1"));', tests)
+
+    def test_a_located_entry_cites_itself_alone(self):
+        model = self.model([self.located("a", "p. 1")])
+        self.assertEqual(model.by_id["a"]["locators"], ["A"])
+        self.assertIn('new("a", EntryStatus.Mapped, CorrespondenceRow.NotBuilt, [MapEntries.A.Locator]),',
+                      generate.registry_cs(model))
+        tests = generate.tests_cs(model)
+        self.assertIn('AssertDeclines("a", UnresolvedReason.UnsupportedRule, new SourceLocator("corpus", "p. 1"));', tests)
+        self.assertNotIn("cites_every_premise", tests)
+
+    def test_a_cycle_is_refused(self):
+        with self.assertRaisesRegex(generate.GenerationError, "through a cycle"):
+            self.model([self.derived("x", "y", "a"), self.derived("y", "x", "a"), self.located("a", "p. 1")])
+
+    def test_a_source_the_map_lacks_is_refused_wherever_it_stands(self):
+        with self.assertRaisesRegex(generate.GenerationError, "'missing'"):
+            self.model([self.derived("x", "a", "missing"), self.located("a", "p. 1")])
 
 
 class TestRefuses(ProduceCase):
