@@ -1,8 +1,10 @@
 name: validate
 
-# This repository has one definition of "acceptable": ./scripts/validate.sh. This workflow
-# calls it and does nothing else of substance. Reimplementing the steps here would create a
-# second definition that drifts from the first.
+# This repository has two definitions of "acceptable", each a script, and this workflow calls
+# them and does nothing else of substance: ./scripts/validate.sh (the documents and the Python
+# machinery) and ./scripts/validate-engine.sh (an engine the factory produces from scratch
+# restores, builds, passes its tests and recomputes its provenance). Reimplementing either
+# script's steps here would create a second definition that drifts from the first.
 
 on:
   push:
@@ -45,3 +47,37 @@ jobs:
       # checkers' own 56 tests, every repository link, and the decision index.
       - name: Validate
         run: ./scripts/validate.sh
+
+  engine:
+    # Separate from `validate` because it needs the .NET SDK and nuget.org, and because a
+    # skipped dotnet test inside pytest is exactly what this job exists to replace.
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    env:
+      DOTNET_CLI_TELEMETRY_OPTOUT: '1'
+      DOTNET_NOLOGO: '1'
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up Python
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
+        with:
+          python-version: '3.12'
+
+      # The SDK version is not written here: the script reads it from tools/factory/generate.py,
+      # the same pin every produced global.json carries, so the two cannot disagree.
+      - name: Read the pinned SDK
+        id: pin
+        run: echo "sdk=$(./scripts/validate-engine.sh --print-sdk)" >> "$GITHUB_OUTPUT"
+
+      - name: Set up .NET
+        uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
+        with:
+          dotnet-version: ${{ steps.pin.outputs.sdk }}
+
+      # Fails, never skips, if that SDK is missing. FACTORY_DOTNET_SDK_OVERRIDE is refused here.
+      - name: Produce, build and test an engine
+        run: ./scripts/validate-engine.sh
