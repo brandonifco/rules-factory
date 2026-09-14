@@ -34,7 +34,11 @@ What it cannot do, stated here rather than in a commit message:
     gate list (`enabledBy`, `suspendedBy`) is complete, or that `evidence` is sufficient.
     Those are review.
 
+Where each check runs is stated in STATUS_DEPENDENT below (0015): every check runs before a
+map is published; the status-dependent ones run again in the engine, on its merged map.
+
 Usage: check-map.py <corpus-map.json> [--manifest PATH] [--repo-root PATH] [--only CHECK]
+                    [--phase publish|consumer]
 Exit 0 only if every check that ran passed and at least one check actually checked
 something; 1 if any check failed or skipped with subject matter; 2 on a usage error.
 """
@@ -1036,6 +1040,32 @@ def check_correspondence(ctx):
     return result
 
 
+# --- where each check runs (0015) ------------------------------------------------------
+#
+# A map is published as a package, and a map that fails any check here never becomes a
+# version (`--phase publish`, the default, runs every check). The engine consuming it does
+# not re-run them: the package's bytes are what passed. What it does run is the subset whose
+# verdict its own overlay can change. An overlay sets exactly OVERLAY_FIELDS on the entries it
+# names and nothing else (0015, from #17), so a check that reads none of them is discharged at
+# publish, and a check that reads any of them is re-run by the consumer against
+# merge(package, overlay) with `--phase consumer`.
+#
+# The split is read from here, not maintained beside it. `test_check_map.py` holds it to its
+# word both ways: every check outside STATUS_DEPENDENT gives the same verdict whatever the
+# overlay fields hold, and every check inside it can be turned by them.
+
+OVERLAY_FIELDS = ("status", "implementedIn", "tests")
+
+STATUS_DEPENDENT = {
+    "vocabulary",      # `status` is one of the closed vocabularies
+    "status",          # implementedIn exactly when implemented; tests, each with its mutation
+    "absent",          # an absentFrom entry is `status: declined`
+    "correspondence",  # rows 2 and 5 branch on status; `declined` owes a runtime row
+}
+
+PHASES = ("publish", "consumer")
+
+
 CHECKS = [
     ("schema", check_schema),
     ("required-fields", check_required_fields),
@@ -1089,9 +1119,15 @@ def main(argv=None):
     parser.add_argument("--repo-root", help="root that decision-record paths are relative to")
     parser.add_argument("--only", help="run one check: " + ", ".join(name for name, _ in CHECKS))
     parser.add_argument("--verbose", action="store_true", help="also print the row each entry matches")
+    parser.add_argument("--phase", choices=PHASES, default="publish",
+                        help="publish (default): every check, before a map may become a version. "
+                             "consumer: only the checks an overlay of " + ", ".join(OVERLAY_FIELDS)
+                             + " can change, run by an engine on merge(package, overlay) (0015)")
     args = parser.parse_args(argv)
 
     selected = CHECKS
+    if args.phase == "consumer":
+        selected = [c for c in CHECKS if c[0] in STATUS_DEPENDENT]
     if args.only:
         selected = [c for c in CHECKS if c[0] == args.only]
         if not selected:

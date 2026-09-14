@@ -58,6 +58,35 @@ check_locators() {
     examples/faa-part-107-temporal/part107-2020-01-01.xml || return 1
 }
 
+# Every map that declares a package version passes the gate its publish workflow runs, and
+# packs to the same bytes twice (0015). A map that could not be published is found here, on
+# the pull request, rather than on the tag -- after the version number was already chosen.
+check_map_packages() {
+  local settings dir out packed=0 first second
+  out="$(mktemp -d)"
+  for settings in examples/*/map-package.json; do
+    [ -e "$settings" ] || continue
+    dir="$(dirname "$settings")"
+    printf -- '--- %s\n' "$dir"
+    python3 tools/pack-map.py "$dir" --out "$out/a" >"$out/log" 2>&1 || { cat "$out/log"; rm -rf "$out"; return 1; }
+    tail -1 "$out/log"
+    python3 tools/pack-map.py "$dir" --out "$out/b" >/dev/null 2>&1 || { rm -rf "$out"; return 1; }
+    packed=$((packed + 1))
+  done
+  if [ "$packed" -eq 0 ]; then
+    echo "no map declares map-package.json -- this step proved nothing" >&2
+    rm -rf "$out"; return 1
+  fi
+  first="$(cd "$out/a" && sha256sum -- *.nupkg)"
+  second="$(cd "$out/b" && sha256sum -- *.nupkg)"
+  rm -rf "$out"
+  if [ "$first" != "$second" ]; then
+    printf 'two packs of the same inputs differ:\n%s\n%s\n' "$first" "$second" >&2
+    return 1
+  fi
+  printf '%d map package(s) gated and packed, byte-identical twice\n' "$packed"
+}
+
 # The checkers' own tests. A checker nobody has watched fail is not yet a checker, and this
 # repo has shipped two that counted work they had not done.
 check_tool_tests() {
@@ -130,6 +159,7 @@ PY
 
 run "every corpus map satisfies the schema"            check_all_maps
 run "every citation resolves in its corpus"            check_locators
+run "every map package passes its publish gate"        check_map_packages
 run "the checkers' own tests"                          check_tool_tests
 run "every repository link resolves"                   check_doc_references
 run "every decision record is indexed"                 check_decision_index

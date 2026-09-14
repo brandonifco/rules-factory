@@ -770,9 +770,16 @@ own, which are ordinary operations over a date the caller supplies.
 
 ## Where the map lives
 
-In the engine's own repository, under version control, beside the code it describes. It is
-not a factory artifact that gets discarded after a run: it changes as the engine grows, and
-its `status` fields are only true of a particular commit.
+**In the factory, published as a versioned package; never copied into an engine**
+([0015](decisions/0015-a-map-is-published-as-a-versioned-package.md)). Each map is a NuGet
+package, `RulesFactory.Maps.<MapName>`, carrying `corpus-map.json` and the manifest entries of
+the corpora it cites, and a version asserts one corpus baseline and one `schemaVersion`.
+
+**What a consumer owns** is an overlay of three fields per entry, `status`, `implementedIn` and
+`tests`, because those are build facts only the engine can know, and they are only true of a
+particular engine commit. The factory is canonical for everything else. The engine's gate checks
+that the overlay names only entries the package has and sets only those three fields, and runs
+`check-map.py --phase consumer` on the merge. Any other difference is drift.
 
 ## Open questions
 

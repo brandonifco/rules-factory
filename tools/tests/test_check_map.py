@@ -952,5 +952,112 @@ class TestDriver(MapCase):
         self.assertEqual(code, 2, out.getvalue())
 
 
+class TestPhaseSplit(MapCase):
+    """0015: the split between publish-time and consumer-side checks is read from the tool.
+
+    An overlay sets `status`, `implementedIn` and `tests` on the entries it names. A check
+    marked structural must give the same verdict whatever those hold, or the engine is
+    trusting a publish-time verdict its own overlay could have overturned. A check marked
+    status-dependent must be turnable by them, or the engine re-runs it for nothing and the
+    marking has drifted from the code.
+    """
+
+    def subject(self):
+        """valid_map plus the shapes that make the skipping checks do work."""
+        document = valid_map()
+        document["entries"].append(decided_entry())
+        for side in ("left", "right"):
+            document["entries"].append(entry(
+                f"tie-{side}", kind="operation", clarity="ambiguous",
+                ambiguity={"question": "Which side wins a tie?", "fate": "unresolved",
+                           "unresolvedReason": "RequiresInterpretation", "conflict": "tie"}))
+        return document
+
+    def overlays(self):
+        """Every way an overlay can set the three fields, applied across the whole map."""
+        def each(apply):
+            document = self.subject()
+            for position, item in enumerate(document["entries"]):
+                apply(position, item)
+            return document
+
+        def set_status(value):
+            return lambda _, item: item.__setitem__("status", value)
+
+        def strip(_, item):
+            item.pop("implementedIn", None)
+            item.pop("tests", None)
+
+        def garbage(_, item):
+            item["implementedIn"] = {"ruleset": "elsewhere", "version": 99}
+            item["tests"] = "not a list"
+
+        def implemented_bare(_, item):
+            item["status"] = "implemented"
+            item.pop("implementedIn", None)
+            item["tests"] = []
+
+        def alternate(position, item):
+            item["status"] = ("implemented", "declined", "blocked", "mapped")[position % 4]
+            if position % 2:
+                strip(position, item)
+
+        variants = [each(set_status(s)) for s in sorted(check_map.STATUSES) + ["bogus"]]
+        return variants + [each(strip), each(garbage), each(implemented_bare), each(alternate)]
+
+    def verdict_of(self, check, document):
+        with open(self.manifest_path) as handle:
+            manifest = json.load(handle)
+        ctx = {"map": document, "manifest": manifest, "manifest_path": self.manifest_path,
+               "repo_root": self.root, "verbose": False}
+        result = check(ctx)
+        return result.status, sorted(result.details)
+
+    def test_the_overlay_fields_are_the_ones_0015_names(self):
+        self.assertEqual(check_map.OVERLAY_FIELDS, ("status", "implementedIn", "tests"))
+
+    def test_every_marked_check_exists(self):
+        self.assertLessEqual(check_map.STATUS_DEPENDENT, {name for name, _ in check_map.CHECKS})
+
+    def test_a_structural_check_cannot_be_turned_by_an_overlay(self):
+        for name, check in check_map.CHECKS:
+            if name in check_map.STATUS_DEPENDENT:
+                continue
+            with self.subTest(check=name):
+                baseline = self.verdict_of(check, self.subject())
+                for variant in self.overlays():
+                    self.assertEqual(self.verdict_of(check, variant), baseline,
+                                     f"{name} reads an overlay field but is not in STATUS_DEPENDENT")
+
+    def test_a_status_dependent_check_can_be_turned_by_an_overlay(self):
+        for name, check in check_map.CHECKS:
+            if name not in check_map.STATUS_DEPENDENT:
+                continue
+            with self.subTest(check=name):
+                baseline = self.verdict_of(check, self.subject())
+                turned = [v for v in self.overlays() if self.verdict_of(check, v) != baseline]
+                self.assertTrue(turned, f"{name} is in STATUS_DEPENDENT but no overlay changes it")
+
+    def test_the_consumer_phase_runs_only_the_status_dependent_checks(self):
+        code, output = self.run_tool(valid_map(), argv=["--phase", "consumer"])
+        self.assertEqual(code, 0, output)
+        ran = set(re.findall(r"^\[(?:ok|fail|skip)\] (\S+):", output, re.M))
+        self.assertEqual(ran, check_map.STATUS_DEPENDENT, output)
+
+    def test_the_consumer_phase_fails_implemented_without_implemented_in(self):
+        # #39's acceptance case, on the consumer side: an overlay that says `implemented`
+        # and names no revision.
+        document = valid_map()
+        document["entries"][0].pop("implementedIn")
+        code, output = self.run_tool(document, argv=["--phase", "consumer"])
+        self.assertEqual(code, 1, output)
+        self.assertEqual(self.status_of(output, "status"), "fail", output)
+
+    def test_the_publish_phase_is_the_default_and_runs_every_check(self):
+        code, output = self.run_tool(valid_map(), argv=["--phase", "publish"])
+        ran = set(re.findall(r"^\[(?:ok|fail|skip)\] (\S+):", output, re.M))
+        self.assertEqual(ran, {name for name, _ in check_map.CHECKS}, output)
+
+
 if __name__ == "__main__":
     unittest.main()
