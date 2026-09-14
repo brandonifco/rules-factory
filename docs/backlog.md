@@ -12,6 +12,10 @@ Two labels on every issue: **what kind of thing it is**, and **what it blocks**.
 | `rails` | What a produced engine ships with for the team that maintains it. |
 | `evidence` | Measures whether the method works — trials, miss rates, the acceptance test. |
 | `map-data` | An error in a specific map rather than in the schema. Cheap to fix, and worth keeping separate so a pile of them is not mistaken for a design problem. |
+| `factory` | The factory's own implementation: intake, generation, the gate recipe, provenance, backlog, verify. Distinct from `enforcement`, which holds this repository's documents to their word; a `factory` defect is in what `tools/factory/` does to a produced engine. |
+
+`documentation` (GitHub's default label) is used for text that is wrong about the code, such as
+[#75](https://github.com/brandonifco/rules-factory/issues/75).
 
 ## Priority — distance from the next engine
 
@@ -38,6 +42,32 @@ Measurement and the builds themselves. These are the work, not the preconditions
 Rails especially. Deciding what every produced engine ships with, from a sample of one board
 game, is how the predecessor repository ended up encoding one team's operating model as a
 framework. Wait for a corpus that is not a game.
+
+### `review-p0`, `review-p1`, `review-p2` — findings of the September 2026 external review
+
+The factory's code was reviewed from outside in September 2026, and each finding became an
+issue. These labels carry the review's own priority, which answers a different question from the
+`p1`–`p3` scheme: not what the next engine inherits, but **how badly the factory breaks its own
+promises today**.
+
+| Label | Meaning |
+|---|---|
+| `review-p0` | Breaks the factory's trust, correspondence or refusal promise: a package that runs code, pins that disagree with provenance, a refusal that leaves output half-written. |
+| `review-p1` | The factory cannot yet prove its product or keep its relationship with it: an engine never built in CI, backlog issues matched by title, provenance blind to build inputs. |
+| `review-p2` | Policy, provenance depth, maintainability and accuracy, including this README's status. |
+
+A review issue carries a review label *instead of* a `p1`–`p3` label, and one or more category
+labels as usual (#65 is `enforcement` and `factory`). The thirteen findings are one ordered list
+(#65 to #77), P0 before P1 before P2, and each issue's first line gives its place in it:
+"Review priority P2 (11 of 13)". Findings that were not in the review's priority table are
+ordered after those that were, and the issue says so.
+
+The two schemes answer different questions, and no decision orders one against the other. What
+the labels do say: a `review-p0` or `review-p1` issue is a defect in the factory as merged, where
+`p1-next-engine` is a question to settle before the next map or engine. The acceptance test
+([#3](https://github.com/brandonifco/rules-factory/issues/3), `p2-acceptance`) runs through the
+factory, so it measures a factory with whatever review findings are still open. The review labels
+belong to that one review; work found later is labelled under the scheme above.
 
 ## The hub
 

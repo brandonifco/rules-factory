@@ -138,7 +138,8 @@ def check_provenance(args):
     return 0
 
 
-def main(argv=None):
+def build_parser():
+    """The CLI. README.md's status table is checked against this (tools/check-readme-status.py)."""
     parser = argparse.ArgumentParser(prog="factory", description="Produce a rules engine from a corpus-map package.")
     commands = parser.add_subparsers(dest="command", required=True)
     p = commands.add_parser("produce", help="intake a map package and produce an engine")
@@ -165,7 +166,11 @@ def main(argv=None):
     v = commands.add_parser("verify", help="prove an engine: provenance, restore if unlocked, then its gate")
     v.add_argument("--engine", required=True, help="the engine directory")
     v.add_argument("--package", help="the .nupkg or Id@Version (default: Id@Version from provenance.json)")
-    args = parser.parse_args(argv)
+    return parser
+
+
+def main(argv=None):
+    args = build_parser().parse_args(argv)
     try:
         if args.command == "backlog":
             if not re.match(r"^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$", args.repo):

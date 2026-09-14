@@ -1,12 +1,13 @@
 # Rules Factory
 
-The production apparatus that turns a plain-language ruleset into a deterministic rules
-engine.
+The production apparatus for deterministic rules engines built from plain-language rulesets: a
+method for mapping a ruleset, and a factory that turns the map into an engine.
 
-The engine is the product. This is the factory: it takes a corpus, a domain pack and an
-identity, and emits a repository that is already a working engine skeleton — layered
-projects, a declared rules surface, a pinned corpus, seeded decision records, agent rails,
-gates, and a decomposed backlog ready to be worked.
+The engine is the product. This is the factory: it takes a published corpus-map package, the
+corpus that map was made of, and an engine name, and writes a .NET solution on
+[`rules-kernel`](https://github.com/brandonifco/rules-kernel) whose code is tied to the map, with
+the gate that judges it, a backlog derived from the map, and a record of what it was built from.
+Making the map is not the factory's job. That is [the method](docs/method.md), done by hand.
 
 It is **not** a template you copy and diverge from. A factory keeps a relationship with what
 it produced, and every file it writes has one owner
@@ -16,29 +17,122 @@ rewritten on every run. *Managed* files (`global.json`, `NuGet.config`,
 `Directory.Build.props`) hold the factory's build policy at a recipe version. A re-run updates
 them, and refuses to overwrite a hand edit until the engine adopts the file or resets it.
 *Engine-owned* files, such as the overlay, the solution and the projects, are written once and
-then belong to the engine. Output carries provenance saying which factory version built it from
-what, and which class each file is in. The factory validates its own output before declaring
-success.
+then belong to the engine. Output carries provenance saying which factory commit built it from
+what, and which class each file is in. Unless told not to, the factory builds and tests its
+output before committing it.
 
 ## Status
 
-Design first, deliberately. This repository begins with its operating manual and the
-intermediate representation that manual produces, because those settle the questions the
-code would otherwise guess at. See [docs/method.md](docs/method.md) and
-[docs/corpus-map.md](docs/corpus-map.md).
+The manual came first, deliberately: [docs/method.md](docs/method.md) and
+[docs/corpus-map.md](docs/corpus-map.md) settled the questions the code would otherwise have
+guessed at. The method has been run by hand against real corpora, and
+[examples/](examples/README.md) logs what each trial changed.
 
-Nothing here builds anything yet. The method has been run three times by hand against real
-corpora — see [examples/](examples/README.md), which logs what each trial changed.
+The factory is now code, in standard-library Python under
+[`tools/factory/`](tools/factory/__main__.py). Its milestones, from
+[#3](https://github.com/brandonifco/rules-factory/issues/3):
+
+| Milestone | Modules | State on `main` |
+|---|---|---|
+| M1 intake | `intake.py` | merged. The package is read as data and never run ([0016](docs/decisions/0016-a-map-package-is-data-not-code.md)); the corpus must hash to the map's baseline |
+| M2 scaffold and generation | `generate.py`, `ownership.py` | merged. The registry, map entries and correspondence tests as `*.g.cs`; one ownership class per file ([0018](docs/decisions/0018-every-file-the-factory-writes-has-one-owner.md)) |
+| M3 gate recipe | `gate.py`, `recipe/` | merged. Every engine carries `scripts/validate.sh` and a CI workflow that runs it |
+| M4 provenance | `provenance.py` | merged. `provenance.json` (format 3), and a command that recomputes it |
+| M5 backlog | `backlog.py` | merged. `backlog/` files, and GitHub issues matched to them by an entry marker, never by title |
+| Verify and commit | `verify.py`, `transaction.py` | merged. `produce` verifies in a staging copy and commits only what passed |
+| Acceptance: rebuild `deckard`, and build something that is not a game | | not done ([#3](https://github.com/brandonifco/rules-factory/issues/3)) |
+
+No factory version has been tagged, so provenance records the version as
+`0.0.0-dev+<commit>`.
+
+What the CLI accepts is the table below. [`tools/check-readme-status.py`](tools/check-readme-status.py),
+run by `validate.sh`, checks it against the parser `tools/factory/__main__.py` builds: a
+subcommand or argument without a row fails, and so does a row the parser does not have, or one
+marked `not implemented` that the parser does have.
+
+<!-- factory-cli-status:begin -->
+| Command | Argument | Status | Notes |
+|---|---|---|---|
+| `produce` | — | implemented | intake, generation, gate, backlog, provenance, verify, commit |
+| `produce` | `--package` | implemented | a `.nupkg` path, or `Id@Version` |
+| `produce` | `--corpus` | implemented | the corpus file: `committed-copy`, hashing to the map's baseline |
+| `produce` | `--name` | implemented | the engine's PascalCase name |
+| `produce` | `--out` | implemented | the engine directory: created when absent, updated when it exists |
+| `produce` | `--allow-dirty` | implemented | produce from a factory with uncommitted changes, recorded as `dirty: true` |
+| `produce` | `--no-verify` | implemented | commit without building or testing; the output says so |
+| `produce` | `--adopt` | implemented | make a managed file engine-owned, keeping its edits |
+| `produce` | `--reset` | implemented | overwrite a managed or adopted file with the current recipe |
+| `produce` | domain pack | not implemented | no pack exists; provenance records `"packs": []` |
+| `produce` | agent rails | not implemented | undecided: [#1](https://github.com/brandonifco/rules-factory/issues/1), [#4](https://github.com/brandonifco/rules-factory/issues/4) |
+| `backlog` | — | implemented | synchronise `backlog/` with GitHub issues through `gh` |
+| `backlog` | `--create` | implemented | the only action; never closes or deletes an issue |
+| `backlog` | `--repo` | implemented | `owner/name` |
+| `backlog` | `--dir` | implemented | the engine directory |
+| `provenance` | — | implemented | re-produce in a scratch copy and name every field that does not match |
+| `provenance` | `--engine` | implemented | the engine directory |
+| `provenance` | `--package` | implemented | default: `Id@Version` from `provenance.json` |
+| `verify` | — | implemented | provenance, then restore if the engine has no lock files, then the engine's own gate |
+| `verify` | `--engine` | implemented | the engine directory |
+| `verify` | `--package` | implemented | default: `Id@Version` from `provenance.json` |
+<!-- factory-cli-status:end -->
+
+### What a verified `produce` proves
+
+- **The inputs.** The package is a map package with its checker inside. The map is in a schema
+  version this factory reads. The corpus is the committed copy the map was made of. The
+  factory's own `check-map.py --phase consumer` passes on the packaged map.
+- **The build.** `verify` recomputes provenance, restores (writing the lock files the first
+  time), then runs the engine's own gate, `scripts/validate.sh full`: the SDK pin, a locked
+  restore, the overlay merge and the packaged consumer checker, the corpus hash under its
+  posture, every `*.g.cs` equal to a fresh regeneration, format, and a `-warnaserror` build and
+  tests in Debug and Release, with evidence that the tests ran. A refusal or failure at any step
+  leaves `--out` as it was.
+- **The record.** `provenance.json` names the factory commit, the package and corpus hashes, the
+  kernel version, the hash of every recipe file and generated file, the managed files at their
+  recipe versions, and the bytes of every file the build reads as configuration.
+  `factory provenance` re-produces the engine and names every field that no longer matches.
+
+CI proves this on every pull request. The `validate` job runs
+[`scripts/validate.sh`](scripts/validate.sh). The `engine` job runs
+[`scripts/validate-engine.sh`](scripts/validate-engine.sh), which produces an engine from the
+`hoyle-backgammon` package on the pinned SDK and verifies it.
+
+### What it does not prove
+
+- **That the map is right.** The checks a map passes read its shape and where its citations
+  point, not whether an entry says what the corpus says. Mechanical checks caught 1 of 15
+  injected comprehension errors, and the engine's tests caught none
+  ([0014](docs/decisions/0014-a-map-is-checked-by-a-blind-second-mapping.md)). A blind second
+  mapping catches most of them, and every map in this repository must carry a review of its exact
+  bytes ([0017](docs/decisions/0017-a-map-change-carries-a-review-of-its-bytes.md)). The
+  `hoyle-backgammon` map, which the `engine` job builds from, carries a legacy exemption rather
+  than a review.
+- **That a rule is implemented.** A produced engine answers each entry that is not
+  `implemented` with a decline citing its locator. The rules themselves are hand-written
+  `[Implements]` handlers, and the backlog lists the ones still to write.
+- **What the machine did.** Provenance says the engine's source tree is the recorded one. It
+  does not record which SDK was installed, what restore fetched beyond the hashes the lock files
+  pin, environment variables, MSBuild or NuGet files outside the engine directory, or that a
+  given assembly was built from the tree. The limits are listed in
+  [`provenance.py`](tools/factory/provenance.py).
+- **Anything, under `--no-verify`.** The engine is committed without being built or tested.
+
+The generated runtime is untyped at its boundary. A `RuleRequest` holds its assertions as a
+dictionary of `object`, handlers are found by reflection and return `Resolution<object>`, and so
+a wrong domain type is found at run time rather than at compile time
+([#76](https://github.com/brandonifco/rules-factory/issues/76)).
 
 ## Where this sits
 
 | Piece | Repository | Status |
 |---|---|---|
-| Kernel — identity, provenance, resolution | [`rules-kernel`](https://github.com/brandonifco/rules-kernel) | published, 0.2.0 |
-| Corpus toolkit — adapters, locators, boundary policy | not started | |
-| Domain packs — tabletop, legal | not started | |
-| **Factory — intake, scaffold, sign, self-validate** | **this** | design |
-| Produced engines | `deckard`, `SRD_Combat` | pre-date the factory |
+| Kernel — identity, provenance, resolution | [`rules-kernel`](https://github.com/brandonifco/rules-kernel) | published; engines pin 0.2.0 |
+| Corpus maps — schema, checker, packages | this | maps of two corpora; `hoyle-backgammon` and `faa-part-107` published as packages |
+| Corpus toolkit — adapters, locators, boundary policy | none | locator checkers for two citation grammars live here; no adapters |
+| Domain packs — tabletop, legal | none | not implemented |
+| Agent rails for produced engines | none | not implemented ([#1](https://github.com/brandonifco/rules-factory/issues/1), [#4](https://github.com/brandonifco/rules-factory/issues/4)) |
+| **Factory — intake, generation, gate, backlog, provenance, verify** | **this** | implemented; acceptance test ([#3](https://github.com/brandonifco/rules-factory/issues/3)) not passed |
+| Produced engines | `deckard`, `SRD_Combat` | built by hand, before the factory |
 
 The two existing engines were built by hand. They are what the method was derived from, and
 the factory is finished when it can rebuild them.
@@ -46,18 +140,24 @@ the factory is finished when it can rebuild them.
 ## The shape of a run
 
 ```
-corpus        a ruleset, in whatever format, with its licence and boundary policy
-domain pack   the vocabulary its subject matter needs (dice; effective dates; none)
-identity      name, prefix, repository
+map package   a corpus map published as a .nupkg (0015): map, manifest, checker
+corpus        the one corpus the map cites, committed-copy, hashing to its baseline
+name          the engine's PascalCase name
         |
         v
-    the factory
+    factory produce    intake, generation, gate, backlog, provenance,
+                       verify (in a staging copy), commit to --out
         |
         v
-engine        layered projects on the kernel, corpus manifest, rules surface,
-              seeded decisions, agent rails, gates, and a backlog derived from
-              the corpus map
-provenance    factory version, corpus identity, packs, recipe hashes
+engine        a .NET solution on RulesKernel: managed build policy, engine-owned
+              projects and overlay, generated *.g.cs tied to the map, the corpus
+gate          scripts/validate.sh and the CI workflow that runs it
+backlog       backlog/NNN-<entry-id>.md, one per entry still to build, in
+              dependency order
+provenance    factory commit, map package, corpus, kernel, recipe hashes, and the
+              generated, managed, engine-owned and build-input files; "packs": []
+
+not implemented: a domain pack as input, agent rails in the output
 ```
 
 ## Why a manual before code
