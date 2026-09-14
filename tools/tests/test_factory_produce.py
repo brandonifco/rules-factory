@@ -46,6 +46,8 @@ GENERATED = (
     f"src/{NAME}/Generated/MapEntries.g.cs",
     f"src/{NAME}/Generated/Registry.g.cs",
     f"tests/{NAME}.Tests/Generated/CorrespondenceTests.g.cs",
+    f"src/{NAME}/Generated/Provenance.g.cs",
+    f"tests/{NAME}.Tests/Generated/ProvenanceTests.g.cs",
 )
 
 
@@ -84,10 +86,12 @@ class ProduceCase(unittest.TestCase):
         self.addCleanup(shutil.rmtree, self.tmp, True)
 
     def produce(self, out, package=None, corpus=PART107_XML, name=NAME):
+        # --allow-dirty: this checkout's own state is not under test here (test_factory_provenance.py
+        # runs a committed copy of the factory to test the refusal).
         buffer = io.StringIO()
         with redirect_stdout(buffer), redirect_stderr(buffer):
             code = factory.main(["produce", "--package", package or self.part107, "--corpus", corpus,
-                                 "--name", name, "--out", out])
+                                 "--name", name, "--out", out, "--allow-dirty"])
         return code, buffer.getvalue()
 
     def produced(self, out=None, **kwargs):
@@ -130,7 +134,7 @@ class TestScaffold(ProduceCase):
         files = set(tree(out))
         for expected in ("global.json", "NuGet.config", "Directory.Build.props", "Directory.Packages.props",
                          f"{NAME}.slnx", f"src/{NAME}/{NAME}.csproj", f"tests/{NAME}.Tests/{NAME}.Tests.csproj",
-                         "corpus-map.overlay.json", "corpus/part107.xml", *GENERATED):
+                         "corpus-map.overlay.json", "corpus/part107.xml", "provenance.json", *GENERATED):
             self.assertIn(expected, files)
         generated_code = {f for f in files if f.endswith(".cs")}
         self.assertEqual(generated_code, set(GENERATED), "every C# file the factory writes is *.g.cs")

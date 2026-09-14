@@ -82,7 +82,7 @@ class IntakeCase(unittest.TestCase):
         buffer = io.StringIO()
         with redirect_stdout(buffer), redirect_stderr(buffer):
             code = factory.main(["produce", "--package", package, "--corpus", corpus,
-                                 "--name", "Engine", "--out", os.path.join(self.tmp, "out")])
+                                 "--name", "Engine", "--out", os.path.join(self.tmp, "out"), "--allow-dirty"])
         return code, buffer.getvalue()
 
     def assert_passes(self, package, corpus):

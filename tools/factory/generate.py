@@ -634,6 +634,11 @@ def scaffold(model, corpus_file):
             "         one RulesFactoryMap item naming the restored map, manifest and checker. -->\n"
             f'    <PackageReference Include="{pid}" PrivateAssets="all" />\n'
             "  </ItemGroup>\n\n"
+            "  <ItemGroup>\n"
+            "    <!-- What this engine was produced from (tools/factory/provenance.py); a generated test\n"
+            "         asserts the embedded copy is the file. -->\n"
+            f'    <EmbeddedResource Include="../../provenance.json" LogicalName="{name}.provenance.json" Link="provenance.json" />\n'
+            "  </ItemGroup>\n\n"
             "</Project>\n"),
         f"tests/{name}.Tests/{name}.Tests.csproj": (
             '<Project Sdk="Microsoft.NET.Sdk">\n\n'
