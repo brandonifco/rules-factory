@@ -15,7 +15,9 @@ refusal leaves `--out` byte-identical to how it started (transaction.py, #67):
     packaged map. Nothing from the package is ever run (0016): its checker is hashed, not
     executed;
   * scaffold and generation (generate.py) -- a .NET solution on RulesKernel and the map
-    package, written once and the engine's thereafter; and the generated files, rewritten
+    package, each file in one ownership class (ownership.py): managed build policy, updated
+    with its recipe and refused when hand-edited unless `--adopt PATH` or `--reset PATH`;
+    engine-owned files, written once; and the generated files, rewritten
     every run: the `*.g.cs` from the package map merged with the engine's
     `corpus-map.overlay.json`, and `RulesFactory.Packages.g.props`, which pins RulesKernel and
     the map package at the versions given and references the map;
@@ -88,7 +90,8 @@ def produce(args):
         with provenance.Recorder(out) as recorder:
             result = intake_step.intake(args.package, args.corpus, log=sys.stdout)
             print(f"intake passed: {result.package_id} {result.version}, {len(result.map.get('entries') or [])} entries")
-            model = generate.produce(result, args.name, out, log=sys.stdout)
+            model = generate.produce(result, args.name, out, log=sys.stdout,
+                                     adopt=getattr(args, "adopt", None) or (), reset=getattr(args, "reset", None) or ())
             gate.emit(args.name, out, log=sys.stdout)
             context = {"name": args.name, "package": result.package_id, "version": result.version}
             written = backlog_step.emit([item["entry"] for item in model.entries], context, out)
@@ -147,6 +150,11 @@ def main(argv=None):
                    help="produce from a factory with uncommitted changes, recording dirty: true")
     p.add_argument("--no-verify", action="store_true",
                    help="commit the engine without `verify` (no .NET SDK here); the output says it is not verified")
+    p.add_argument("--adopt", action="append", metavar="PATH",
+                   help="make this managed file (global.json, NuGet.config, Directory.Build.props) engine-owned, "
+                        "keeping its edits; repeatable (tools/factory/ownership.py)")
+    p.add_argument("--reset", action="append", metavar="PATH",
+                   help="overwrite this managed or adopted file with the current recipe and make it managed; repeatable")
     b = commands.add_parser("backlog", help="create or update GitHub issues from an engine's backlog/ files")
     b.add_argument("--create", action="store_true", required=True, help="create missing issues and update changed ones (the only action)")
     b.add_argument("--repo", required=True, help="owner/name of the engine's repository")

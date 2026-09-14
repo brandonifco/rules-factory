@@ -3,8 +3,8 @@
 generates exactly what the correspondence table says.
 
 What is asserted here without a .NET SDK: two runs give byte-identical trees; a second run into
-the same directory leaves scaffold files (the overlay above all) alone and rewrites the
-generated ones; a re-run with a newer or older version of the map leaves nothing naming the
+the same directory leaves engine-owned files (the overlay above all) alone and rewrites the
+generated ones (managed files: test_factory_ownership.py); a re-run with a newer or older version of the map leaves nothing naming the
 version it replaced, pins included (#66); every one of Part 107's 44 entries is emitted with its citation verbatim and
 the correspondence row the table's first match gives it; the overlay moves an entry between
 rows; an overlay that breaks 0015's merge rules is refused. And produce is transactional (#67):
@@ -188,14 +188,14 @@ class TestScaffold(ProduceCase):
         os.makedirs(os.path.dirname(hand))
         with open(hand, "w", encoding="utf-8") as handle:
             handle.write("// mine\n")
-        with open(os.path.join(out, "Directory.Build.props"), "a", encoding="utf-8") as handle:
+        with open(os.path.join(out, "Directory.Packages.props"), "a", encoding="utf-8") as handle:
             handle.write("<!-- edited -->\n")
         generated_file = os.path.join(out, *GENERATED[0].split("/"))
         with open(generated_file, "w", encoding="utf-8") as handle:
             handle.write("// hand edit to a generated file\n")
         self.produced(out)
         self.assertEqual(self.read(out, f"src/{NAME}/Rules/Speed.cs"), "// mine\n")
-        self.assertTrue(self.read(out, "Directory.Build.props").endswith("<!-- edited -->\n"))
+        self.assertTrue(self.read(out, "Directory.Packages.props").endswith("<!-- edited -->\n"))
         self.assertIn("public static class MapEntries", self.read(out, GENERATED[0]))
 
 
