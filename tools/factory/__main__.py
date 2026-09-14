@@ -15,6 +15,8 @@
   * scaffold and generation (generate.py) -- a .NET solution on RulesKernel and the map
     package, written once, and the `*.g.cs` files, rewritten every run from the package map
     merged with the engine's `corpus-map.overlay.json`;
+  * the gate recipe (gate.py) -- scripts/validate.sh and the scripts and CI workflow it runs,
+    rewritten every run;
   * backlog (backlog.py) -- `backlog/NNN-<entry-id>.md`, one per entry still to build, in
     dependsOn order, and `backlog/README.md`, rewritten every run;
   * provenance (provenance.py), last -- `provenance.json` in the engine root, embedded in the
@@ -29,7 +31,7 @@ skipping any whose title the repository already has.
 re-produces the engine in a scratch copy and names every provenance field that does not match
 (exit 1), or says it matches (exit 0). `recompute_provenance` is the same, as a function.
 
-Later milestones add the gate recipe and `verify`.
+A later milestone adds `verify`.
 
 Exit 0 when every step passed; 1 when a step refused; 2 on a usage error.
 Standard library only.
@@ -44,6 +46,7 @@ import sys
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 import backlog as backlog_step  # noqa: E402
+import gate  # noqa: E402
 import generate  # noqa: E402
 import intake as intake_step  # noqa: E402
 import provenance  # noqa: E402
@@ -60,6 +63,7 @@ def produce(args):
         result = intake_step.intake(args.package, args.corpus, log=sys.stdout)
         print(f"intake passed: {result.package_id} {result.version}, {len(result.map.get('entries') or [])} entries")
         model = generate.produce(result, args.name, args.out, log=sys.stdout)
+        gate.emit(args.name, args.out, log=sys.stdout)
         context = {"name": args.name, "package": result.package_id, "version": result.version}
         written = backlog_step.emit([item["entry"] for item in model.entries], context, args.out)
         print(f"--- backlog: {len(written) - 1} item(s)")
