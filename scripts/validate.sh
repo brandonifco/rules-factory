@@ -157,6 +157,10 @@ sys.exit(1 if bad else print(f"{len(on_disk)} decision record(s), all indexed") 
 PY
 }
 
+# check-map.py ships as one file inside every map package, so it is built from tools/checkmap/
+# rather than edited (#74). A module changed without rebuilding would ship, and be judged by,
+# the checks as they were; every step after this one runs the built file.
+run "check-map.py is what tools/checkmap/ builds"      python3 tools/build-check-map.py --check
 run "every corpus map satisfies the schema"            check_all_maps
 run "every citation resolves in its corpus"            check_locators
 run "every map package passes its publish gate"        check_map_packages
