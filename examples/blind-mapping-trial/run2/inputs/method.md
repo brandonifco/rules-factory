@@ -246,7 +246,7 @@ undefined word and nothing else. Both entries are now `definedElsewhere` against
 **What the corpus supports instead:** the amendment **added a delegated standard to a rule
 that was already undecidable, for a different reason, at both dates.** That is weaker than the
 claim withdrawn, and it is the restatement
-[examples/faa-part-107-temporal](../examples/faa-part-107-temporal/README.md) carries. What
+[examples/faa-part-107-temporal](../../../faa-part-107-temporal/README.md) carries. What
 survives untouched is the reason a map is a statement about one text: under
 decision 0005 the newer entry gains an
 assertion dependency (`flash-rate-sufficient`) that has no 2020 counterpart, without the

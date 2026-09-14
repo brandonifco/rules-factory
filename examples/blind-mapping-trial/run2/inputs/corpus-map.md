@@ -653,7 +653,7 @@ its `status` fields are only true of a particular commit.
 ## Open questions
 
 Recorded rather than decided. The first trial —
-[examples/faa-part-107](../examples/faa-part-107/README.md) — answered some and sharpened
+[examples/faa-part-107](../../../faa-part-107/README.md) — answered some and sharpened
 the rest.
 
 **Granularity.** Partly answered. Twelve sections of regulation produced twenty-four
