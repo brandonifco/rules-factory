@@ -64,3 +64,6 @@ A predecessor attempt shipped the enforcement machinery and deleted the document
 producing sixty-one references to files that did not exist — several inside runtime error
 messages. The manual comes first here partly to avoid repeating that, and partly because
 writing it down is what exposes the decisions.
+
+The open work is labelled by what it is and by what it blocks; see
+[docs/backlog.md](docs/backlog.md) for the scheme and the reasoning behind the ordering.
