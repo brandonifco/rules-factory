@@ -96,6 +96,28 @@ when a rule "obviously" says something.
 reproduce the corpus. For a licensed corpus that is a legal requirement; for every corpus it
 is a discipline that keeps the map reviewable.
 
+**Quote before you summarise.** One bounded span per entry is not reproducing the corpus; it
+is what makes the citation checkable at all. `evidence` holds the contiguous verbatim passage
+that states the rule, and the mapper's summary of what a test must demonstrate goes in `note`
+beside it. Write the quote first and the summary from it — not the other way round. A mapper
+who summarises first is writing from what they remember reading, and there is then nothing in
+the entry that a tool or a reviewer can hold against the page. Thirteen of the backgammon
+map's twenty-four citations were wrong by a page or two, and survived a mapping trial, a build
+and a review, because every one of them was summarised. See
+[corpus-map.md](corpus-map.md#evidence-is-the-corpuss-words-not-the-mappers). Where a licence
+forbids the quote, the entry records that the span is withheld; it does not put a summary in
+the field and leave the citation looking verified.
+
+**A corpus that defines its own terms is stating rules, and the definitions are entries.**
+Twelve points to a table named ace through six, inner tables numbering from the far end and
+outer tables from the bar, men travelling "from the ace point in his opponent's home table
+towards the like point in his own" — these read as preamble and are load-bearing. Without them
+the entries that use the vocabulary cannot be interpreted at all, and nothing else in the map
+says a board has twenty-four points or that the course has a direction. Both were missed on the
+first pass of the second trial for the same reason: a mapper hunting for rules reads past
+vocabulary. `point-designations` and `direction-of-travel` are the instances
+([#13](https://github.com/brandonifco/rules-factory/issues/13)).
+
 **Advice is not a rule, and it is not always in its own section.** A corpus usually
 separates guidance from obligation — but not reliably, and not sentence by sentence. "It is
 always an object to do this" sits in the middle of a trial corpus's movement rules. Drop
@@ -234,8 +256,12 @@ runtime unresolved, and an engine does not even know what it would be demanding.
 
 **A corpus that contradicts itself is ambiguous**, and its `question` states both readings.
 `clear` asserts the corpus determines exactly one answer, and one that states a rule twice in
-incompatible terms does not. Where a conflict is settled by decision, every entry in the
-conflict names the same record.
+incompatible terms does not. Every entry bearing on the same contradiction carries the same
+`ambiguity.conflict` slug — the conflict is the *question*, not a pair of sentences, and an
+entry may answer it without contradicting every other member. A conflict's members share a
+fate, and where that fate is `decision` they name the same record; otherwise one side is
+settled and the other left open with nothing noticing. See
+[0007](decisions/0007-a-conflict-is-a-question-not-a-pair.md).
 
 What is never acceptable is the third option: an implementer picking a reading silently.
 That produces an engine that is reproducibly wrong, which is worse than one that is
@@ -253,7 +279,7 @@ supplied most of what an issue needs:
 
 - **Scope** — one concern. If it needs "and", it is two issues, and the map should have
   split them in Phase 3.
-- **Source** — the locator, verbatim from the entry.
+- **Source** — the locator, verbatim from the entry, and the `evidence` span it resolves to.
 - **Dependencies** — the entries this one depends on, which determine order. Damage after
   attack; the limit after the table it reads.
 - **Reachability** — the entries in `gatedBy`, which determine nothing about order and
@@ -261,8 +287,8 @@ supplied most of what an issue needs:
   outside its phase, so an acceptance criterion that ignores the gate is testing a situation
   the corpus does not describe.
 - **Acceptance criteria** — observable conditions, derived from what the entry claims.
-- **Required evidence** — what must be demonstrated. Where the corpus prints a finite table,
-  the whole table, not a sample.
+- **Required evidence** — what must be demonstrated, from the entry's `note`. Where the corpus
+  prints a finite table, the whole table, not a sample.
 
 Order the backlog by the dependency graph, not by the corpus's page order. A corpus is
 organised for a reader; a backlog is organised for a builder.

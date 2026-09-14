@@ -376,25 +376,83 @@ class TestDecisionRecords(MapCase):
 
 
 class TestConflicts(MapCase):
-    def test_a_decision_fate_makes_the_unenforceable_rule_fail_the_run(self):
-        # 0005 B requires conflicting entries to name the same record and records that
-        # nothing links them. The check never reports ok; it reports NOT VERIFIED and
-        # becomes fatal exactly when an entry could be breaking the rule.
-        code, output = self.run_tool(valid_map())
-        self.assertEqual(self.status_of(output, "conflicts"), "skip", output)
+    """0007: a conflict is a question, named by a slug, not a list of pairwise ids."""
+
+    def _map_with_conflict(self, **second):
+        """Two entries answering one contradicted question, both settled by one record."""
+        document = valid_map()
+        first = decided_entry()
+        first["ambiguity"]["conflict"] = "points-open-to-an-entering-man"
+        other = decided_entry()
+        other["id"] = "enter-from-bar"
+        other["ambiguity"] = dict(first["ambiguity"])
+        other["ambiguity"].update(second)
+        document["entries"] += [first, other]
+        return document
+
+    def test_a_well_formed_conflict_passes(self):
+        code, output = self.run_tool(self._map_with_conflict())
+        self.assertEqual(self.status_of(output, "conflicts"), "ok", output)
         self.assertEqual(code, 0, output)
 
+    def test_a_member_naming_a_different_record_fails(self):
+        # 0005 B's rule, and the whole reason 0007 exists.
+        document = self._map_with_conflict(decision="docs/decisions/0099-a-different-record.md")
+        code, output = self.run_tool(document)
+        self.assertEqual(self.status_of(output, "conflicts"), "fail", output)
+        self.assertIn("name different", output)
+        self.assertEqual(code, 1, output)
+
+    def test_members_disagreeing_on_fate_fail(self):
+        # One side settled and the other declined: the failure the rule is named for.
+        document = self._map_with_conflict(fate="unresolved",
+                                           unresolvedReason="RequiresInterpretation")
+        document["entries"][-1]["ambiguity"].pop("decision")
+        code, output = self.run_tool(document)
+        self.assertEqual(self.status_of(output, "conflicts"), "fail", output)
+        self.assertIn("disagree on `fate`", output)
+        self.assertEqual(code, 1, output)
+
+    def test_a_conflict_of_one_member_fails(self):
+        # What a typo in the slug looks like, and what deleting the other side looks like.
+        document = self._map_with_conflict()
+        document["entries"][-1]["ambiguity"]["conflict"] = "points-open-to-an-entring-man"
+        code, output = self.run_tool(document)
+        self.assertEqual(self.status_of(output, "conflicts"), "fail", output)
+        self.assertIn("only entry in conflict", output)
+        self.assertEqual(code, 1, output)
+
+    def test_a_slug_that_is_not_a_slug_fails(self):
+        document = self._map_with_conflict()
+        document["entries"][-1]["ambiguity"]["conflict"] = ["legal-destination"]
+        code, output = self.run_tool(document)
+        self.assertEqual(self.status_of(output, "conflicts"), "fail", output)
+        self.assertEqual(code, 1, output)
+
+    def test_a_conflict_declared_outside_the_ambiguity_block_fails(self):
+        # Only an ambiguous entry can be in a conflict; a `clear` entry declaring one
+        # would otherwise escape `exclusions` entirely.
+        document = self._map_with_conflict()
+        document["entries"][0]["conflict"] = "points-open-to-an-entering-man"
+        code, output = self.run_tool(document)
+        self.assertEqual(self.status_of(output, "conflicts"), "fail", output)
+        self.assertIn("belongs in the `ambiguity` block", output)
+        self.assertEqual(code, 1, output)
+
+    def test_a_decision_fate_that_is_not_a_conflict_needs_no_slug(self):
+        # A gap settled by a decision is not a contradiction. The old check fired on every
+        # `fate: decision`, which was over-broad and failed the run on this map.
         document = valid_map()
         document["entries"].append(decided_entry())
         code, output = self.run_tool(document)
         self.assertEqual(self.status_of(output, "conflicts"), "skip", output)
-        self.assertIn("no field identifies", output)
-        self.assertEqual(code, 1, output)
+        self.assertEqual(code, 0, output)
 
-    def test_the_check_never_reports_ok(self):
-        for document in (valid_map(), {**valid_map(), "entries": valid_map()["entries"] + [decided_entry()]}):
-            _, output = self.run_tool(document, argv=["--only", "conflicts"])
-            self.assertNotIn("[ok] conflicts", output, output)
+    def test_a_map_with_no_conflicts_does_not_report_ok(self):
+        code, output = self.run_tool(valid_map())
+        self.assertEqual(self.status_of(output, "conflicts"), "skip", output)
+        self.assertIn("NOT VERIFIED", output)
+        self.assertEqual(code, 0, output)
 
 
 class TestCorrespondence(MapCase):

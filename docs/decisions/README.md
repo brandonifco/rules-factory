@@ -15,3 +15,4 @@ kept; its number is never reused.
 | [0004](0004-adapter-reach-is-a-property-of-the-entry.md) | Adapter reach is a property of the entry, recorded structurally |
 | [0005](0005-a-field-earns-its-place-by-being-checkable.md) | A field earns its place by being checkable, not by naming a distinction |
 | [0006](0006-the-general-rule-governs-entry-and-full-means-adversely-full.md) | The general rule governs entry, and "full" means adversely full |
+| [0007](0007-a-conflict-is-a-question-not-a-pair.md) | A conflict is a question, not a pair |

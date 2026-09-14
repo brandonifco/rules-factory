@@ -43,12 +43,13 @@ before either has been implemented.
   "ambiguity": {
     "question": "The text does not say which side prevails when both achieve equal hits.",
     "fate": "decision",
-    "decision": "docs/decisions/0007-opposed-test-tie-break.md"
+    "decision": "docs/decisions/0099-opposed-test-tie-break.md"
   },
   "dependsOn": ["simple-test", "dice-pool-assembly"],
-  "evidence": "Both tie directions, and the boundary where one side has one more hit.",
+  "evidence": "Compare the hits scored by each side. The side with more hits prevails, and the difference is the margin.",
   "status": "implemented",
-  "implementedIn": { "ruleset": "sr6", "version": 4 }
+  "implementedIn": { "ruleset": "sr6", "version": 4 },
+  "note": "Demonstrate both tie directions, and the boundary where one side has one more hit."
 }
 ```
 
@@ -62,12 +63,12 @@ before either has been implemented.
 | `kind` | `value`, `operation` or `assertion` — a fact the corpus states, a procedure it describes, or a condition only the caller can supply. See below. |
 | `scope` | `in` or `out`. Out is a recorded verdict with a reason, not an omission. |
 | `clarity` | `clear` or `ambiguous`. `clear` asserts the corpus determines exactly one answer for every valid input — so a corpus that states the rule twice, differently, is `ambiguous`. |
-| `ambiguity` | Absent when clear. Otherwise the question, and its `fate`. Never a carrier for a decline that is not an ambiguity. |
+| `ambiguity` | Absent when clear. Otherwise the question, its `fate`, and — where the corpus contradicts itself — the `conflict` the question belongs to. Never a carrier for a decline that is not an ambiguity. |
 | `dependsOn` | Entry ids. Determines backlog order — the sequence entries must be *implemented* in. **Not** a runtime precondition; see `gatedBy`. |
 | `gatedBy` | Entry ids. The rules that govern whether this one is reachable at runtime. Absent on an entry that always applies. Orders nothing. See below. |
 | `beyondAdapter` | Present only when the declared adapter cannot read the rule the locator cites. Names the adapter and the modality. See below. |
 | `definedElsewhere` | Present only when the rule's meaning is fixed in a corpus that was not admitted. Names the manifest `references` entry. See below. |
-| `evidence` | What must be demonstrated. For a finite table: the whole table, not a sample. |
+| `evidence` | One contiguous verbatim span of the corpus: the passage that *states* this rule. Not a summary of it. See below. |
 | `status` | Whether the engine has built this entry. Independent of `ambiguity.fate`. See below. |
 | `implementedIn` | The ruleset revision that implemented it. Set when status becomes `implemented`. |
 
@@ -106,9 +107,74 @@ Decided in [0005](decisions/0005-a-field-earns-its-place-by-being-checkable.md).
 named — "well clear" and "a flash rate sufficient" name no decider either. A delegated standard
 tells the subject what to achieve, and the subject asserts they achieved it. Part 107 uses
 "sparsely populated area" as a condition, defines it nowhere and vests it in nobody: that is a
-gap, `clarity: ambiguous`, and an engine does not even know what it would be demanding. *"Either thrice or four times (as may have been
-agreed)"* names the players: an assertion, and the engine keeps the bound the corpus states
-rather than discarding it.
+gap, `clarity: ambiguous`, and an engine does not even know what it would be demanding.
+
+*"Either thrice or four times (as may have been agreed)"* is an assertion, and the engine keeps
+the bound the corpus states rather than discarding it. **The test above does not yield that
+answer, and the limit is stated here because this is where the claim is made.** That sentence is
+neither a standard of conduct anybody is told to meet nor a predicate vested in nobody: it is a
+**bounded value the corpus fixes and hands to named parties by agreement**. The ruling is
+correct and shipped — `agreed-backgammon-multiple` — and the test that purports to produce it
+has now been wrong twice, once for naming a decider and once for this. A third statement of the
+test is its own decision, not a clause bolted onto the second; until it is made, this is the
+third shape and it is decided by precedent rather than by rule.
+
+### `evidence` is the corpus's words, not the mapper's
+
+**`evidence` holds one contiguous verbatim span of the corpus: the passage that states the rule
+the entry maps.** Not a description of it, not a list of the cases a test should cover.
+
+This is the field that makes `locator` checkable. `tools/check-locators.py` finds the span in
+the corpus, walks back to the nearest page marker and compares it against the citation. Where
+`evidence` held a summary — "Both figures.", "Both elections." — nothing was findable, so
+nothing was checkable, and **thirteen of the backgammon map's citations were wrong by a page or
+two through a mapping trial, a build and a review**
+([#18](https://github.com/brandonifco/rules-factory/issues/18)). The wrong pages are not the
+point. They are the measurable symptom of a mapper who stopped reading, and quoting is the only
+part of that a check can reach.
+
+**Contiguous, and no ellipsis.** The checker matches the longest contiguous *prefix* of the
+span, so a `...` in the middle silently reduces what was verified to the words before it — a
+check reporting a pass over a fraction of what it appears to have read. `point-designations`
+was exactly this: a 118-word `evidence` of which 11 words were ever checked. Truncating a
+sentence at either end is fine; eliding its middle is not. Where the intervening text is not
+itself the rule, include it — a shorter honest span beats a longer edited one. **If the rule
+genuinely needs two separated passages, that is evidence the entry is two entries**, which is
+the granularity finding the map already rests on.
+
+**A span may straddle a page marker, and carries it verbatim.** The arrangement sentence begins
+on p. 272 and the `{273}` marker falls mid-sentence. Citing either page is honest and the
+checker accepts both; dropping the marker to make the quote read cleanly would break the match.
+
+**What must be demonstrated is a mapper's reading, and it goes in `note`.** "Both figures",
+"the worked distribution, for both the quatre and the trois", "a throw fully playable, partly
+playable, and unplayable" — these are genuinely useful and no check can read them. They are
+prose, and `note` is where prose lives, the same ruling 0004 made for `beyondAdapter`'s
+explanation. A field for them would fail the test 0005 sets: it would name a distinction
+without becoming checkable. The whole-table rule survives the move intact — **where the corpus
+prints a finite table, the note requires the whole table and never a sample** — and so does the
+rule that a span must cover every case the entry claims, not one of them.
+
+**A `scope: out` entry quotes too.** An out-of-scope verdict is a verdict about a passage, and
+a passage nobody can locate is a verdict about nothing: `strategy-advice` quotes the opening
+sentence of the section it declines, and demands nothing of the engine. The exception is a rule
+that is **absent from the corpus** — `doubling-cube`, which this 1909 text predates. There is
+nothing to quote, its citation reads `(absent)` rather than a page, and it is the one entry in
+the backgammon map with no span. `check-locators.py` skips an entry whose citation names no
+page and still counts it among the entries it checked, so its total is one larger than the
+number of citations it actually verified. Recorded here because the gate says "all 29 checked"
+and means twenty-eight.
+
+**An `evidence` a licence forbids quoting is recorded as absent, never as a summary.** Phase 2
+of [method.md](method.md) says *cite, do not copy*, and for a `never-commit` corpus a span in
+the map may be a licence problem rather than a discipline one. Then the entry says so and the
+citation is unverifiable — which the checker reports, because an unlocatable entry fails the
+run and is never counted as ok. What is not acceptable is a summary occupying the field and
+looking like evidence. No trial has produced this case; both mapped corpora are public domain.
+
+**What a verified span does not prove.** Only that the page cited is the page the quoted words
+sit on. It says nothing about whether that is the *right* passage for the entry, whether the
+entry is the right decomposition, or whether the mapper read the three sentences after it.
 
 ### `ambiguity.fate`
 
@@ -135,9 +201,44 @@ same entry.
 exactly one answer, and a corpus stating a rule twice in incompatible terms does not.
 `enter-from-bar` names two legal destinations where `legal-destination`, three sentences
 earlier, names three. The `question` states both readings; `fate` records which governs, or
-declines. Where a conflict is settled by `fate: decision`, **every entry in the conflict
-names the same decision record** — otherwise one side can be decided and the other left
-open with nothing noticing.
+declines.
+
+### `ambiguity.conflict`
+
+A slug naming the question the corpus answers twice. Entries carrying the same slug are the
+members of one conflict. Absent on an ambiguity that is a gap rather than a contradiction,
+which is most of them. Decided in
+[0007](decisions/0007-a-conflict-is-a-question-not-a-pair.md).
+
+```json
+"ambiguity": {
+  "question": "…",
+  "conflict": "points-open-to-an-entering-man",
+  "fate": "decision",
+  "decision": "docs/decisions/0006-the-general-rule-governs-entry-and-full-means-adversely-full.md"
+}
+```
+
+**A conflict is a question, not a pair.** The three backgammon entries carrying this slug do
+not each contradict each other — `enter-from-bar` and `full-table-suspension` fit together
+exactly, and both disagree with `legal-destination`. What makes them one conflict is that they
+are three answers to *which points are open to a man entering from the bar*. A list of pairwise
+ids would record edges, from which the set could be recovered only by a closure the data does
+not license.
+
+Four rules, and `tools/check-map.py --only conflicts` enforces all four:
+
+- The slug lives **inside the `ambiguity` block**, so only an `ambiguous` entry can be in a
+  conflict. A corpus that says it twice, differently, is ambiguous — that is what puts it here.
+- **A conflict has at least two members.** A slug on one entry records a contradiction with
+  nothing, and is what both a typo and a deleted counterpart look like.
+- **Every member shares a `fate`.** One question cannot be both settled and declined.
+- **Where that fate is `decision`, every entry in the conflict names the same decision
+  record** — otherwise one side can be decided and the other left open with nothing noticing.
+
+Nothing detects a conflict the mapper never noticed: two `clarity: clear` entries stating
+incompatible rules produce a map that validates, which is the same blind spot as an incomplete
+`gatedBy` list. What these rules buy is that a *recorded* conflict cannot be half-settled.
 
 ### `dependsOn` orders work; `gatedBy` does not
 
@@ -386,6 +487,13 @@ Open questions are tracked as issues so they are worked rather than admired:
 - [#7](https://github.com/brandonifco/rules-factory/issues/7) — an entry beyond the
   adapter's reach has no field to say so. Decided:
   [0004](decisions/0004-adapter-reach-is-a-property-of-the-entry.md) adds `beyondAdapter`.
+- [#25](https://github.com/brandonifco/rules-factory/issues/25) — a conflict is a relation
+  between entries and nothing records it. Decided:
+  [0007](decisions/0007-a-conflict-is-a-question-not-a-pair.md) adds `ambiguity.conflict`, and
+  rules that the relation is a grouping rather than a pair.
+- [#18](https://github.com/brandonifco/rules-factory/issues/18) — `evidence` held a summary, so
+  no citation was checkable and thirteen wrong ones survived a build. Decided above: `evidence`
+  is a contiguous verbatim span and the summary moves to `note`.
 
 **Where a decline's runtime reason lives.** Opened by 0004, answered by 0005: an entry whose
 meaning is fixed in an unadmitted corpus takes `definedElsewhere`, parallel to

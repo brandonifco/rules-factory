@@ -11,22 +11,42 @@ written to set standards.
 **Slice mapped:** the Backgammon rules — The Board and Men, Playing, Bearing off the Men.
 8,013 characters, **1.1% of a 740 KB corpus**. Hints for Play excluded as advice.
 
-**Result:** 24 entries. 5 values, 19 operations. 22 clear, 2 ambiguous. 3 declined.
+**Result, as first mapped:** 24 entries. 5 values, 19 operations. 22 clear, 2 ambiguous. 3
+declined.
+
+**Result today:** 29 entries. 8 values, 20 operations, 1 assertion. 24 clear, 5 ambiguous. 3
+declined. The difference is corrections, not a wider slice: `player-count`,
+`point-designations` and `direction-of-travel` are rules the first pass read past
+([#13](https://github.com/brandonifco/rules-factory/issues/13)); `inner-table-handedness` and
+`agreed-backgammon-multiple` were split out of entries that held two facts
+([0004](../../docs/decisions/0004-adapter-reach-is-a-property-of-the-entry.md),
+[0005](../../docs/decisions/0005-a-field-earns-its-place-by-being-checkable.md)); and
+`legal-destination`, `enter-from-bar`, `full-table-suspension` and `game-value` moved from
+`clear` to `ambiguous` under
+[0006](../../docs/decisions/0006-the-general-rule-governs-entry-and-full-means-adversely-full.md)
+and [#14](https://github.com/brandonifco/rules-factory/issues/14).
 
 ## Against the first trial
 
-| | Part 107 | Backgammon |
-|---|---|---|
-| Entries from the slice | 24 | 24 |
-| Ambiguous | 5 (21%) | 2 (8%) |
-| Slice as share of corpus | 11% | **1.1%** |
-| Locator grammar | designation — `§ 107.51(b)(2)` | **page** — `Playing / p. 273` |
-| Randomness | none at all | central |
+| | Part 107 | Backgammon (as mapped) | Backgammon (today) |
+|---|---|---|---|
+| Entries from the slice | 24 | 24 | 29 |
+| Ambiguous | 5 (21%) | 2 (8%) | 5 (17%) |
+| Slice as share of corpus | 11% | **1.1%** | 1.1% |
+| Locator grammar | designation — `§ 107.51(b)(2)` | **page** — `Playing / p. 273` | page — `Playing / p. 274` |
+| Randomness | none at all | central | central |
 
-The ambiguity rate is the finding. A regulator writes standards on purpose and expects a
-human to apply them; a games author is trying to settle every case at the table. Two genres,
-two rates, and the method should expect them to differ rather than treat a high rate as a
-mapping failure.
+The ambiguity rate was the finding, and the third column is what became of it. A regulator
+writes standards on purpose and expects a human to apply them; a games author is trying to
+settle every case at the table. That argument survives — 17% is still below 21% — but **most of
+the gap the trial reported was not a property of the genre. It was three contradictions and a
+gap nobody had noticed yet**, and 8% was a measurement of the mapper. The method should expect
+genres to differ, and should expect a low ambiguity rate on a first pass to be the least
+trustworthy number a trial produces.
+
+The locator grammar row moved too. Six entries cited `p. 273` and are on `p. 274`; thirteen
+citations in all were wrong by a page or two, and none was caught until `evidence` held a span a
+checker could find ([#18](https://github.com/brandonifco/rules-factory/issues/18)).
 
 The two locator grammars together are the strongest evidence yet for keeping citations
 opaque to the kernel. The same pipeline addressed both with no special-casing.

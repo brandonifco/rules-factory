@@ -7,15 +7,27 @@ Accepted — 2026-09-14. Settles
 [0005](0005-a-field-earns-its-place-by-being-checkable.md) classified but deliberately did not
 close.
 
+**Corrected 2026-09-14**, when `evidence` became a verbatim span and the quotations below were
+checked against the corpus for the first time. Three errors, none of which changes the
+argument: the general rule was quoted with a comma the corpus does not print ("either vacant,
+or occupied"); the *DEUCES* hint was quoted with a "play" that the elision introduced; and all
+three passages were cited to p. 273, where the `{274}` marker falls two sentences earlier.
+Recorded rather than rewritten away, because this record's whole method is reading the text
+closely and three of its own quotations were not.
+
+The conflict this record settles is named `points-open-to-an-entering-man` in the map, under
+[0007](0007-a-conflict-is-a-question-not-a-pair.md), which is what makes argument 7 below — that
+these are one conflict and not two — a fact a check can read.
+
 ## Context
 
 Hoyle's backgammon states the rule for where a man may be played twice, three sentences
-apart, and the two statements do not agree. Both are in `BACKGAMMON / Playing / p. 273`.
+apart, and the two statements do not agree. Both are in `BACKGAMMON / Playing / p. 274`.
 
 **The general rule names three cases** (`legal-destination`):
 
 > The right to move is subject to a certain qualification--viz., that a man can only be played
-> to a point which is either vacant, or occupied by one or more men of the player, or by one
+> to a point which is either vacant or occupied by one or more men of the player, or by one
 > man only of the adversary.
 
 **The entry sentence names two** (`enter-from-bar`):
@@ -82,7 +94,7 @@ not pass without a word.
 `scope: out` and non-normative — advice, not rules, and this argument is worth exactly what
 that makes it. But it is the same author describing the same game, and he recommends making
 points inside the adversary's inner table: "DOUBLE QUATRE.--Play two men from the ace to the
-cinque point in the adversary's inner table"; "DEUCES.--... play the other two from the ace to
+cinque point in the adversary's inner table"; "DEUCES.--... the other two from the ace to
 the trois point in your opponent's inner table." Under the strict reading each of those plays
 destroys one of the player's own entry squares, and under the literal reading of "full" it
 moves him toward suspending *himself*. He also writes that it is "sometimes even desirable to

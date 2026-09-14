@@ -8,12 +8,11 @@ backgammon map, and it is the gap this tool closes for everything the spec state
 
 What it cannot do, stated here rather than in a commit message:
 
-  * **A conflict is not identifiable from the data.** 0005 section B requires that where
-    entries in a conflict carry `fate: decision` they name the same record, and records in
-    the same breath that "nothing links them". No field groups a conflicting pair, so the
-    `conflicts` check reports NOT VERIFIED and never `ok`. It has subject matter -- and so
-    fails the run -- exactly when some entry carries `fate: decision`; on a map with none
-    the rule is vacuous and the skip is recorded without failing.
+  * **A conflict nobody recorded is invisible.** `ambiguity.conflict` (0007) groups the
+    entries that answer one contradicted question, and `conflicts` enforces that a group
+    has two or more members, one fate, and one decision record. Nothing detects the
+    conflict a mapper never noticed: two `clarity: clear` entries stating incompatible
+    rules pass every check here.
   * **Correspondence row 7** ("two implemented entries with no entry for their
     combination") is a fact about pairs and about interactions the map does not enumerate.
     It is not evaluated. The `correspondence` check therefore proves that every entry is
@@ -415,25 +414,64 @@ def check_decision_records(ctx):
 
 
 def check_conflicts(ctx):
-    """NOT VERIFIABLE: nothing in the map identifies a conflict.
+    """`ambiguity.conflict` groups the entries that answer one contradicted question (0007).
 
-    0005 section B: where entries in a conflict carry `fate: decision`, they must name the
-    same record -- and, in the same section, "A conflict is a property of a pair, recorded
-    on entries. Nothing links them." `enter-from-bar` and `legal-destination` state
-    incompatible readings and the data does not say they are about the same thing. No
-    field is invented here. The check reports NOT VERIFIED and fails the run whenever any
-    entry carries `fate: decision`, which is exactly when the rule could be broken.
+    0005 section B required that entries in a conflict settled by decision name the same
+    record, and conceded in the same section that nothing linked them. 0007 adds the slug
+    and rules that a conflict is a question rather than a pair, so the four rules below are
+    the whole of what it claims:
+
+      * the slug lives inside an `ambiguity` block, so only an ambiguous entry is in a
+        conflict -- `exclusions` already ties the block to `clarity: ambiguous`;
+      * a conflict has at least two members, because a slug carried alone records a
+        contradiction with nothing and is what a typo looks like;
+      * every member shares a `fate`, because one question is not both settled and declined;
+      * where that fate is `decision`, every member names the same record.
+
+    What it cannot do: detect a conflict nobody recorded. Two `clarity: clear` entries
+    stating incompatible rules pass every check in this file.
     """
-    deciders = [label(e, i) for i, e in enumerate(entries_of(ctx["map"]))
-                if isinstance(e, dict) and fate_of(e) == "decision"]
-    if not deciders:
-        return skip("no entry carries `fate: decision`, so the rule is vacuous over this map. "
-                    "It is still unenforceable: no field groups a conflicting pair.", had_subject=False)
-    return skip(
-        f"{len(deciders)} entries carry `fate: decision` ({', '.join(deciders)}) and no field "
-        f"identifies which of them are in the same conflict, so 0005 section B's rule that "
-        f"they name the same record cannot be enforced"
-    )
+    bad, groups = [], {}
+    for position, entry in enumerate(entries_of(ctx["map"])):
+        if not isinstance(entry, dict):
+            continue
+        name = label(entry, position)
+        slug = block(entry, "ambiguity").get("conflict")
+        if slug is None:
+            if "conflict" in entry:
+                bad.append(f"  X  {name}: carries `conflict` at entry level; it belongs in the "
+                           f"`ambiguity` block, because only an ambiguous entry is in a conflict")
+            continue
+        if not isinstance(slug, str) or not slug.strip():
+            bad.append(f"  X  {name}: ambiguity.conflict is {slug!r}, which is not a slug naming a question")
+            continue
+        groups.setdefault(slug, []).append((name, entry))
+
+    for slug, members in sorted(groups.items()):
+        names = [name for name, _ in members]
+        if len(members) < 2:
+            bad.append(f"  X  {names[0]}: is the only entry in conflict {slug!r}; a conflict is a "
+                       f"question the corpus answers twice, so it has at least two members")
+            continue
+        fates = {fate_of(entry) for _, entry in members}
+        if len(fates) > 1:
+            bad.append(f"  X  conflict {slug!r} ({', '.join(names)}): members disagree on `fate` "
+                       f"({', '.join(sorted(str(f) for f in fates))}); one question is not both "
+                       f"settled and declined")
+            continue
+        if fates == {"decision"}:
+            records = {block(entry, "ambiguity").get("decision") for _, entry in members}
+            if len(records) > 1:
+                bad.append(f"  X  conflict {slug!r} ({', '.join(names)}): members name different "
+                           f"decision records ({', '.join(sorted(str(r) for r in records))}); one "
+                           f"side can be decided and the other left open")
+    if not groups and not bad:
+        return skip("no entry carries `ambiguity.conflict`, so no conflict was grouped and the "
+                    "rule is vacuous over this map", had_subject=False)
+    members = sum(len(m) for m in groups.values())
+    return verdict(bad, f"{len(groups)} conflict{'' if len(groups) == 1 else 's'} over {members} "
+                        f"entries: each has two or more members, one fate, and one record",
+                   "a conflict is not well-formed")
 
 
 ROW_DESCRIPTIONS = {
