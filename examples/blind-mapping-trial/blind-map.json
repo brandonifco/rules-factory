@@ -1,0 +1,835 @@
+{
+  "schemaVersion": 1,
+  "corpus": "hoyle-1909",
+  "baseline": {
+    "contentHash": "5d505fa9f6202340eb55313b8ef607b816087a860d3d51b1bf92b5f65240645e",
+    "hashDerivation": "gutenberg-plain-text-including-boilerplate"
+  },
+  "extent": {
+    "unit": "page",
+    "from": 271,
+    "to": 280
+  },
+  "entries": [
+    {
+      "id": "players-and-men",
+      "name": "Two players, fifteen men each",
+      "locator": {
+        "sourceId": "hoyle-1909",
+        "citation": "BACKGAMMON / Backgammon / p. 271"
+      },
+      "kind": "value",
+      "scope": "in",
+      "clarity": "clear",
+      "evidence": "Backgammon is played by two persons, on a special \"board\" with thirty \"men,\" fifteen white and fifteen black (or red)",
+      "status": "mapped",
+      "note": "Two sides, fifteen men per side, thirty in all. Colour naming (white vs black or red) is presentational."
+    },
+    {
+      "id": "board-compartments",
+      "name": "The board has two equal compartments",
+      "locator": {
+        "sourceId": "hoyle-1909",
+        "citation": "BACKGAMMON / Backgammon / p. 271"
+      },
+      "kind": "value",
+      "scope": "in",
+      "clarity": "clear",
+      "crossReferences": [
+        {
+          "cites": "see Fig. 1",
+          "unmapped": "Fig. 1 is an illustration; the division into two compartments is stated in this same sentence."
+        }
+      ],
+      "evidence": "The board (see Fig. 1) is square, usually of wood, lined with leather, and is divided into two equal compartments, each with a raised wall or border.",
+      "status": "mapped",
+      "note": "Only the division into two compartments is rule-bearing; shape and materials are physical description with no engine consequence."
+    },
+    {
+      "id": "board-construction",
+      "name": "Physical construction of the board",
+      "locator": {
+        "sourceId": "hoyle-1909",
+        "citation": "BACKGAMMON / Backgammon / p. 271"
+      },
+      "kind": "value",
+      "scope": "out",
+      "clarity": "clear",
+      "evidence": "It is usually made in two portions, {272} hinged so as to fold together, and bearing on their outward surfaces the necessary squares for draughts or chess, so that the one board may answer both purposes.",
+      "status": "declined",
+      "note": "Out: describes manufacture (hinging, draughts squares on the outside). No bearing on play."
+    },
+    {
+      "id": "table-designations",
+      "name": "Inner (home) and outer tables",
+      "locator": {
+        "sourceId": "hoyle-1909",
+        "citation": "BACKGAMMON / Backgammon / p. 272"
+      },
+      "kind": "value",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [
+        "board-compartments",
+        "starting-position"
+      ],
+      "crossReferences": [
+        {
+          "cites": "as in Fig. 1",
+          "unmapped": "Fig. 1 is an illustration; only the left/right orientation depends on it, which is presentational."
+        },
+        {
+          "cites": "arrangement of the men at starting",
+          "resolvedBy": "starting-position"
+        }
+      ],
+      "evidence": "The board is so placed in use that the two compartments, known as \"tables,\" shall lie longitudinally between the players. One of these is known as the \"outer,\" the other as the \"inner\" or \"home\" table. Which of the two is for the time being the inner and which the outer table is governed by the arrangement of the men at starting. With the men placed as in Fig. 1, the right hand is the inner or home table, and the left hand consequently the outer table. The portions of the two latter nearest to each player are known as _his_ inner and outer tables respectively.",
+      "status": "mapped",
+      "note": "Four quarters: each player's inner and outer table. The definition is mutually recursive with starting-position (which is phrased in terms of inner/outer tables), but the two compartments are symmetric, so either choice yields the same game mirrored: clear. Left/right orientation is not rule-bearing."
+    },
+    {
+      "id": "point-count",
+      "name": "Twelve points to a table",
+      "locator": {
+        "sourceId": "hoyle-1909",
+        "citation": "BACKGAMMON / Backgammon / p. 272"
+      },
+      "kind": "value",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [
+        "table-designations"
+      ],
+      "evidence": "Each table is marked with twelve \"points,\" six at either end.",
+      "status": "mapped",
+      "note": "Two tables x twelve points = 24 points; six per player-quarter."
+    },
+    {
+      "id": "point-colours",
+      "name": "Alternating point colours",
+      "locator": {
+        "sourceId": "hoyle-1909",
+        "citation": "BACKGAMMON / Backgammon / p. 272"
+      },
+      "kind": "value",
+      "scope": "out",
+      "clarity": "clear",
+      "evidence": "They are alternately of black and white, black and red, or other distinctive colours.",
+      "status": "declined",
+      "note": "Out: presentational."
+    },
+    {
+      "id": "point-designations",
+      "name": "Point names ace through six",
+      "locator": {
+        "sourceId": "hoyle-1909",
+        "citation": "BACKGAMMON / Backgammon / p. 272"
+      },
+      "kind": "value",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [
+        "point-count",
+        "table-designations"
+      ],
+      "evidence": "The two points in the inner table farthest from the dividing partition or \"bar\" are known as the \"ace\" points, and those next in order as the two or \"deuce\" points, followed in succession by the three or \"trois\" points, the four or \"quatre\" points, the five or \"cinque\" points, and finally the \"six\"[65] points, next the bar. The points in the outer tables are designated in like manner, but starting in this case from the dividing partition. The ace point in the outer table is more commonly known as the \"bar\" point.",
+      "status": "mapped",
+      "note": "Whole table required: inner ace..six counted from the far end toward the bar; outer ace..six counted from the bar outward; outer ace = 'bar point'. Also defines 'bar' as the dividing partition. Demonstrate all 24 designations for both players."
+    },
+    {
+      "id": "dice-apparatus",
+      "name": "A pair of dice and dice-boxes",
+      "locator": {
+        "sourceId": "hoyle-1909",
+        "citation": "BACKGAMMON / Backgammon / p. 272"
+      },
+      "kind": "value",
+      "scope": "in",
+      "clarity": "clear",
+      "evidence": "A pair of dice (or sometimes a pair for each player) and a couple of dice-boxes complete the apparatus of the game.",
+      "status": "mapped",
+      "note": "Two dice per throw. Whether the pair is shared or per-player, and the dice-boxes, have no effect on outcomes. Number of faces is not stated here; see die-faces."
+    },
+    {
+      "id": "doubling-cube",
+      "name": "Doubling cube / doubling the stake during play",
+      "locator": {
+        "sourceId": "hoyle-1909",
+        "citation": "BACKGAMMON / Backgammon / p. 272"
+      },
+      "kind": "value",
+      "scope": "out",
+      "clarity": "clear",
+      "absentFrom": {
+        "searched": [
+          "doubling",
+          "redouble",
+          "cube",
+          "offer to double"
+        ]
+      },
+      "evidence": "A pair of dice (or sometimes a pair for each player) and a couple of dice-boxes complete the apparatus of the game.",
+      "status": "declined",
+      "note": "Absent: the apparatus list closes without a doubling device, and no in-game doubling of stakes appears in the chapter. Stake multiples that do appear (gammon, backgammon) are mapped separately."
+    },
+    {
+      "id": "starting-position",
+      "name": "Arrangement of the men at starting",
+      "locator": {
+        "sourceId": "hoyle-1909",
+        "citation": "BACKGAMMON / Backgammon / p. 272"
+      },
+      "kind": "value",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [
+        "players-and-men",
+        "point-designations"
+      ],
+      "crossReferences": [
+        {
+          "cites": "Fig. 1",
+          "unmapped": "Illustration; the arrangement is restated in words in this same span, so the plain-text adapter is not defeated."
+        }
+      ],
+      "evidence": "The men are arranged at starting as shown in {273} Fig. 1--viz., two of White's men are placed on the ace point in Black's inner table, five are placed on the six point in Black's outer table, three on the deuce point in White's outer table, and five on the six point in White's inner table. Black's men are placed in like manner on the points immediately facing these.",
+      "status": "mapped",
+      "note": "Whole arrangement: White 2 on Black's inner ace, 5 on Black's outer six, 3 on White's outer deuce, 5 on White's inner six (15 men); Black mirrored on facing points. Verify the count sums to 15 per side."
+    },
+    {
+      "id": "direction-of-travel",
+      "name": "Direction of the course",
+      "locator": {
+        "sourceId": "hoyle-1909",
+        "citation": "BACKGAMMON / Playing / p. 273"
+      },
+      "kind": "value",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [
+        "point-designations"
+      ],
+      "crossReferences": [
+        {
+          "cites": "rules to be hereafter stated",
+          "resolvedBy": "bearing-off-eligible"
+        }
+      ],
+      "evidence": "The movement of the men of each player is from the ace point in his opponent's home table towards the like point in his own, though for many purposes it suffices if he can play them into his own table, independently of their reaching any particular point therein, the object of the game being first to get all the player's men into his own inner table, and then to play them out of it again, according to certain rules to be hereafter stated.",
+      "status": "mapped",
+      "note": "Course runs opponent's inner ace -> opponent's inner six -> opponent's outer ace..six -> own outer six..ace -> own inner six..ace. The 'suffices' clause and 'object of the game' are commentary; the bearing-off rules they point to are mapped separately."
+    },
+    {
+      "id": "opening-roll",
+      "name": "Throwing for the right to begin",
+      "locator": {
+        "sourceId": "hoyle-1909",
+        "citation": "BACKGAMMON / Playing / p. 273"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [
+        "dice-apparatus",
+        "die-faces"
+      ],
+      "evidence": "The game is commenced by each player throwing on the centre of the board a single die, the higher throw of the two giving the right to begin. In the event of a tie, the players throw again. All subsequent throws are with both dice.",
+      "status": "mapped",
+      "note": "Demonstrate higher wins, tie re-throws (repeatedly), and that every later throw uses two dice. Throwing 'on the centre of the board' is physical."
+    },
+    {
+      "id": "opening-throw-election",
+      "name": "Adopting the opening dice or throwing again",
+      "locator": {
+        "sourceId": "hoyle-1909",
+        "citation": "BACKGAMMON / Playing / p. 273"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [
+        "opening-roll"
+      ],
+      "gatedBy": [
+        "opening-roll"
+      ],
+      "evidence": "The thrower of the higher number may either adopt the points shown by the two dice as his own throw, or throw again.",
+      "status": "mapped",
+      "note": "Both branches stated; the election is a caller-supplied choice, not a blank. A re-throw is with both dice (opening-roll: all subsequent throws are with both dice). Demonstrate both elections."
+    },
+    {
+      "id": "calling-the-throw",
+      "name": "Calling the throw aloud",
+      "locator": {
+        "sourceId": "hoyle-1909",
+        "citation": "BACKGAMMON / Playing / p. 273"
+      },
+      "kind": "operation",
+      "scope": "out",
+      "clarity": "clear",
+      "evidence": "After throwing, he calls the number of the throw, the higher number first, as \"six deuce,\" \"cinque trois,\" \"quatre ace,\" or as the case may be, and then proceeds to make his move in accordance with it.",
+      "status": "declined",
+      "note": "Out: table etiquette / notation with no effect on state. Useful only as naming convention for throws."
+    },
+    {
+      "id": "move-by-pip",
+      "name": "Each die moves one man its number of points",
+      "locator": {
+        "sourceId": "hoyle-1909",
+        "citation": "BACKGAMMON / Playing / p. 273"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [
+        "direction-of-travel",
+        "dice-apparatus",
+        "point-designations"
+      ],
+      "gatedBy": [
+        "other-men-suspended",
+        "full-table-suspension"
+      ],
+      "evidence": "The number uppermost on each die entitles the player to move one man forward a corresponding number of points. Thus if he threw \"six trois,\" he is entitled to move one man six points onward, and then the same or another man {274} three points onward.",
+      "status": "mapped",
+      "note": "Two moves, one per die, by the same or different men; each landing is subject to legal-destination. The example's order (six then trois) is illustrative; the text imposes no order on the dice."
+    },
+    {
+      "id": "doublets",
+      "name": "Doublets played twice over",
+      "locator": {
+        "sourceId": "hoyle-1909",
+        "citation": "BACKGAMMON / Playing / p. 274"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "ambiguous",
+      "ambiguity": {
+        "question": "\"Play the throw twice over\" implies four moves each of the die's number; \"move one or more men forward to an aggregate extent of\" eight points (double deuces) could also be read as permitting any split of the aggregate (e.g. 5+3). Which reading governs is not stated.",
+        "fate": "unresolved",
+        "unresolvedReason": "RequiresInterpretation"
+      },
+      "dependsOn": [
+        "move-by-pip"
+      ],
+      "gatedBy": [
+        "other-men-suspended",
+        "full-table-suspension"
+      ],
+      "evidence": "In the event of his throwing the same points with both dice (known as \"doublets\"), he is entitled to play the throw twice over. Suppose, for example, that he throws two aces; he may move one or more men forward to an aggregate extent of four points. If he throw double deuces, he may move to an aggregate extent of eight points; if double threes, twelve points, and so on.",
+      "status": "mapped",
+      "note": "Demonstrate aces=4, deuces=8, trois=12 aggregates and the four-unit reading; the split-aggregate case is the declining case."
+    },
+    {
+      "id": "legal-destination",
+      "name": "Points a man may be played to",
+      "locator": {
+        "sourceId": "hoyle-1909",
+        "citation": "BACKGAMMON / Playing / p. 274"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "ambiguous",
+      "ambiguity": {
+        "question": "General rule: a man may be played to a vacant point, a point held by his own men, or a single adverse man. For a man entering from the bar, enter-from-bar names only a vacant point or a blot, and full-table-suspension treats a table as closed when each point holds two or more men (of either side). Is a point in the adversary's home table held by the entering player's own men open to him?",
+        "conflict": "points-open-to-a-man-entering-from-the-bar",
+        "fate": "unresolved",
+        "unresolvedReason": "RequiresInterpretation"
+      },
+      "dependsOn": [
+        "point-designations"
+      ],
+      "evidence": "The right to move is subject to a certain qualification--viz., that a man can only be played to a point which is either vacant or occupied by one or more men of the player, or by one man only of the adversary.",
+      "status": "mapped",
+      "note": "Three open states (vacant, own men, one adverse man); closed = two or more adverse men."
+    },
+    {
+      "id": "make-point",
+      "name": "Making a point",
+      "locator": {
+        "sourceId": "hoyle-1909",
+        "citation": "BACKGAMMON / Playing / p. 274"
+      },
+      "kind": "value",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [
+        "legal-destination"
+      ],
+      "evidence": "A player getting two men on a given point is said to \"make\" such point",
+      "status": "mapped",
+      "note": "Vocabulary: a point with two or more of one player's men. Used by full-table-suspension and throughout the hints."
+    },
+    {
+      "id": "make-point-advice",
+      "name": "It is always an object to make points",
+      "locator": {
+        "sourceId": "hoyle-1909",
+        "citation": "BACKGAMMON / Playing / p. 274"
+      },
+      "kind": "operation",
+      "scope": "out",
+      "clarity": "clear",
+      "evidence": "and as he thereby secures such men from capture, and at the same time impedes the onward march of the enemy, it is always an object to do this.",
+      "status": "declined",
+      "note": "Out: advice embedded in the movement rules; demands nothing. The consequences it cites (security from capture, impeding) are already entailed by legal-destination."
+    },
+    {
+      "id": "blot",
+      "name": "Blot",
+      "locator": {
+        "sourceId": "hoyle-1909",
+        "citation": "BACKGAMMON / Playing / p. 274"
+      },
+      "kind": "value",
+      "scope": "in",
+      "clarity": "clear",
+      "evidence": "A single man on a given point is known as a \"blot,\"",
+      "status": "mapped",
+      "note": "Vocabulary: exactly one man on a point."
+    },
+    {
+      "id": "hit-blot",
+      "name": "Hitting a blot",
+      "locator": {
+        "sourceId": "hoyle-1909",
+        "citation": "BACKGAMMON / Playing / p. 274"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [
+        "blot",
+        "legal-destination",
+        "direction-of-travel"
+      ],
+      "evidence": "and not only does not prevent the enemy playing to that point, but in the event of its being \"hit\"--_i.e._, reached by an adverse throw, it is \"taken up\" (placed on the bar between the two tables), and, however far advanced it may have been, has to begin its journey anew from the inner table of the adversary.",
+      "status": "mapped",
+      "note": "An adverse man played to a blot's point sends the blot to the bar; it restarts from the opponent's inner table. 'Reached' is read as 'played to' (a landing, including the intermediate landing when one man plays both dice); passing over does not hit."
+    },
+    {
+      "id": "enter-from-bar",
+      "name": "Entering a man from the bar",
+      "locator": {
+        "sourceId": "hoyle-1909",
+        "citation": "BACKGAMMON / Playing / p. 274"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "ambiguous",
+      "ambiguity": {
+        "question": "Names only a vacant point or a blot as open to an entering man, where legal-destination also admits a point held by the player's own men.",
+        "conflict": "points-open-to-a-man-entering-from-the-bar",
+        "fate": "unresolved",
+        "unresolvedReason": "RequiresInterpretation"
+      },
+      "dependsOn": [
+        "hit-blot",
+        "legal-destination",
+        "point-designations"
+      ],
+      "gatedBy": [
+        "hit-blot",
+        "full-table-suspension"
+      ],
+      "evidence": "Nor can such man again start on its journey until its owner is fortunate enough to make a throw corresponding with a vacant point or blot in such table.",
+      "status": "mapped",
+      "note": "A die showing n enters on the adversary's inner-table point numbered n (course starts at his ace). Demonstrate entry onto vacant and blot points, and a non-entering die."
+    },
+    {
+      "id": "other-men-suspended",
+      "name": "Other men may not move while a man is on the bar",
+      "locator": {
+        "sourceId": "hoyle-1909",
+        "citation": "BACKGAMMON / Playing / p. 274"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [
+        "enter-from-bar"
+      ],
+      "gatedBy": [
+        "hit-blot"
+      ],
+      "evidence": "Until he does this, the play of his other men is suspended.",
+      "status": "mapped",
+      "note": "While any of his men is on the bar a player may move no other man. With one man entered by one die, the other die may be played by any man."
+    },
+    {
+      "id": "full-table-suspension",
+      "name": "Closed home table suspends all play",
+      "locator": {
+        "sourceId": "hoyle-1909",
+        "citation": "BACKGAMMON / Playing / p. 274"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "ambiguous",
+      "ambiguity": {
+        "question": "\"Each point occupied by two or more men\" does not say whose men; read with legal-destination, a point held by two of the entering player's own men would be open, and the table would not be \"full\" for him.",
+        "conflict": "points-open-to-a-man-entering-from-the-bar",
+        "fate": "unresolved",
+        "unresolvedReason": "RequiresInterpretation"
+      },
+      "dependsOn": [
+        "enter-from-bar",
+        "make-point"
+      ],
+      "gatedBy": [
+        "hit-blot"
+      ],
+      "evidence": "If the adverse player's home table is completely full--_i.e._, each point occupied by two or more men, his play is altogether suspended, the adversary continuing to throw and move until the course of play again throws open one or more points in his table.",
+      "status": "mapped",
+      "note": "The barred player forfeits whole turns (does not throw) while the table stays full; the adversary throws consecutively."
+    },
+    {
+      "id": "throw-part-lost",
+      "name": "Unplayable part of a throw is lost",
+      "locator": {
+        "sourceId": "hoyle-1909",
+        "citation": "BACKGAMMON / Playing / p. 275"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [
+        "move-by-pip",
+        "legal-destination"
+      ],
+      "evidence": "Any part of a throw which cannot be played is lost to the thrower",
+      "status": "mapped",
+      "note": "Demonstrate a throw fully unplayable and partly playable."
+    },
+    {
+      "id": "must-play-whole-throw",
+      "name": "Compulsion to play the whole throw",
+      "locator": {
+        "sourceId": "hoyle-1909",
+        "citation": "BACKGAMMON / Playing / p. 275"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "ambiguous",
+      "ambiguity": {
+        "question": "Where either die can be played alone but not both together, the text does not say which die must be played (or whether the player chooses).",
+        "fate": "unresolved",
+        "unresolvedReason": "RequiresInterpretation"
+      },
+      "dependsOn": [
+        "move-by-pip",
+        "doublets",
+        "throw-part-lost"
+      ],
+      "evidence": "every player is compelled to play the whole of his throw if it is possible to do so.",
+      "status": "mapped",
+      "note": "Demonstrate: a sequence playing both dice must be chosen over one playing only one; with doublets, the maximum number of units must be played. Declining case: either-but-not-both."
+    },
+    {
+      "id": "bearing-off-eligible",
+      "name": "Bearing off begins when all men are home",
+      "locator": {
+        "sourceId": "hoyle-1909",
+        "citation": "BACKGAMMON / Bearing off the men / p. 275"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "ambiguous",
+      "ambiguity": {
+        "question": "The text says when bearing off begins but not whether it is suspended if one of the player's men is subsequently hit and taken up (so that not all his men are home).",
+        "fate": "unresolved",
+        "unresolvedReason": "RequiresInterpretation"
+      },
+      "dependsOn": [
+        "table-designations",
+        "direction-of-travel"
+      ],
+      "evidence": "When either player has succeeded in getting all his men into his home table, he proceeds to \"bear them off\"--_i.e._, to remove them from the board.",
+      "status": "mapped",
+      "note": "Crossing into bear-off requires all fifteen men in the home table."
+    },
+    {
+      "id": "bearing-off-move-or-remove",
+      "name": "Each throw moves within the table or removes men",
+      "locator": {
+        "sourceId": "hoyle-1909",
+        "citation": "BACKGAMMON / Bearing off the men / p. 275"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [
+        "bearing-off-eligible",
+        "move-by-pip",
+        "legal-destination"
+      ],
+      "gatedBy": [
+        "bearing-off-eligible"
+      ],
+      "evidence": "When the game has reached this stage, each throw entitles the player either to move forward a man or men (to the extent indicated by the throw) within the limits of his own table, or to remove men from the corresponding points.",
+      "status": "mapped",
+      "note": "Worked distribution (Fig. 2, stated in words on pp. 275-276): cinque 5, quatre 3, deuce 3, ace 4; throw quatre trois. For the quatre: remove from quatre or move cinque->ace. Demonstrate the whole worked example for both the quatre and the trois."
+    },
+    {
+      "id": "bearing-off-must-play-forward",
+      "name": "No man on the thrown point: play forward",
+      "locator": {
+        "sourceId": "hoyle-1909",
+        "citation": "BACKGAMMON / Bearing off the men / p. 276"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [
+        "bearing-off-move-or-remove"
+      ],
+      "gatedBy": [
+        "bearing-off-eligible"
+      ],
+      "evidence": "In the case of the trois, he has no man on that point, and therefore _must_ play forward, either by advancing a man from the cinque to the deuce, or from the quatre to the ace point.",
+      "status": "mapped",
+      "note": "Rule stated through the worked example: with no man on the corresponding point, a forward move within the table is compulsory if one exists."
+    },
+    {
+      "id": "bearing-off-highest",
+      "name": "Bearing off from the highest occupied point",
+      "locator": {
+        "sourceId": "hoyle-1909",
+        "citation": "BACKGAMMON / Bearing off the men / p. 276"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [
+        "bearing-off-must-play-forward"
+      ],
+      "gatedBy": [
+        "bearing-off-eligible"
+      ],
+      "evidence": "If, however, he throws a number which he cannot deal with after either of these fashions--_e.g._, a six, he is entitled to bear off a man from his highest occupied point, in this case the cinque.",
+      "status": "mapped",
+      "note": "Literal condition is 'cannot deal with after either of these fashions', not 'number exceeds highest point'. Surprising case to test: men on the six point only, throw deuce, adversary holding the quatre point with two men -> no man on deuce, no forward move possible -> entitled to bear off from the six. A modern reading would forbid this."
+    },
+    {
+      "id": "bearing-off-doublets",
+      "name": "Doublets while bearing off",
+      "locator": {
+        "sourceId": "hoyle-1909",
+        "citation": "BACKGAMMON / Bearing off the men / p. 276"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [
+        "doublets",
+        "bearing-off-move-or-remove",
+        "bearing-off-must-play-forward",
+        "bearing-off-highest"
+      ],
+      "gatedBy": [
+        "bearing-off-eligible"
+      ],
+      "crossReferences": [
+        {
+          "cites": "as in the earlier stage of the game",
+          "resolvedBy": "doublets"
+        }
+      ],
+      "evidence": "Doublets have, as in the earlier stage of the game, a twofold value, and may be played either wholly by moving men forward, wholly by bearing off, or partly by the one method and partly by the other, as may be desirable.",
+      "status": "mapped",
+      "note": "All three branches stated; the mix is the player's choice. Worked example: deuces with three men on the deuce point -> three borne off, fourth played forward from cinque or quatre."
+    },
+    {
+      "id": "game-won",
+      "name": "Winning the game",
+      "locator": {
+        "sourceId": "hoyle-1909",
+        "citation": "BACKGAMMON / Bearing off the men / p. 276"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [
+        "bearing-off-move-or-remove"
+      ],
+      "gatedBy": [
+        "bearing-off-eligible"
+      ],
+      "evidence": "The player who first succeeds in removing all his men from the board wins the game",
+      "status": "mapped"
+    },
+    {
+      "id": "game-value",
+      "name": "Hit, gammon and backgammon",
+      "locator": {
+        "sourceId": "hoyle-1909",
+        "citation": "BACKGAMMON / Bearing off the men / p. 276"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "ambiguous",
+      "ambiguity": {
+        "question": "Two cases. (1) Uncovered: the loser has begun to bear off, then had a man hit, and at the finish has a man outside his home table but not on the bar or in the winner's home table - not a hit (not all home), not a gammon (has begun), not a backgammon. (2) Overlapping: a loser with a man on the bar who has not begun to bear off satisfies both gammon and backgammon; precedence is not stated. Also the hit's stake is only implied ('single stake').",
+        "fate": "unresolved",
+        "unresolvedReason": "RequiresInterpretation"
+      },
+      "dependsOn": [
+        "game-won",
+        "gammon-stake",
+        "backgammon-stake",
+        "bearing-off-eligible"
+      ],
+      "gatedBy": [
+        "game-won"
+      ],
+      "evidence": "but the _value_ of the game depends upon the stage reached by the adverse player, as follows:-- If the adversary has got all his men into his own home table, and has begun to bear off, the game of the winner is known as a \"hit.\" If the winner has borne off all his men before his adversary has begun to do the same, the game is known as a \"gammon.\" The loser is said to be \"gammoned,\" and pays double the agreed stake. If the winner has borne off all his men while the adversary has still a man or men \"up\" (_i.e._, on the bar) or in his (the winner's) home table, the game is a \"backgammon,\"",
+      "status": "mapped",
+      "note": "Demonstrate each named result, then the uncovered and overlapping finishes as declining cases."
+    },
+    {
+      "id": "gammon-stake",
+      "name": "A gammon pays double",
+      "locator": {
+        "sourceId": "hoyle-1909",
+        "citation": "BACKGAMMON / Bearing off the men / p. 276"
+      },
+      "kind": "value",
+      "scope": "in",
+      "clarity": "clear",
+      "evidence": "The loser is said to be \"gammoned,\" and pays double the agreed stake.",
+      "status": "mapped",
+      "note": "Multiplier 2 of the agreed stake; the stake itself is a caller-supplied parameter."
+    },
+    {
+      "id": "backgammon-stake",
+      "name": "Backgammon multiplier, thrice or four times as agreed",
+      "locator": {
+        "sourceId": "hoyle-1909",
+        "citation": "BACKGAMMON / Bearing off the men / p. 276"
+      },
+      "kind": "assertion",
+      "scope": "in",
+      "clarity": "clear",
+      "evidence": "and the loser pays {277} either thrice or four times (as may have been agreed) the amount of the single stake.",
+      "status": "mapped",
+      "note": "Assertion: the players' agreement fixes the multiplier from the stated set 'either thrice or four times'. Engine demands 3 or 4, attributes and records it, never defaults. Evidence straddles the p. 277 marker."
+    },
+    {
+      "id": "successive-games",
+      "name": "Who begins the next game",
+      "locator": {
+        "sourceId": "hoyle-1909",
+        "citation": "BACKGAMMON / Bearing off the men / p. 277"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [
+        "game-value",
+        "opening-roll"
+      ],
+      "gatedBy": [
+        "game-won"
+      ],
+      "crossReferences": [
+        {
+          "cites": "as at starting",
+          "resolvedBy": "opening-roll"
+        }
+      ],
+      "evidence": "Where several games are played in succession, the winner of a \"hit\" throws first in the game next following. After a gammon or backgammon, the players throw again for the right to begin, as at starting.",
+      "status": "mapped",
+      "note": "Demonstrate hit -> winner throws first (two dice, no opening single-die throw); gammon and backgammon -> opening-roll."
+    },
+    {
+      "id": "strategy-advice",
+      "name": "General principles of play",
+      "locator": {
+        "sourceId": "hoyle-1909",
+        "citation": "BACKGAMMON / Hints for play / p. 277"
+      },
+      "kind": "operation",
+      "scope": "out",
+      "clarity": "clear",
+      "evidence": "A leading principle is to \"make points\" whenever you fairly can, especially in or close to your home table.",
+      "status": "declined",
+      "note": "Out: advice. Demands nothing of the engine."
+    },
+    {
+      "id": "die-faces",
+      "name": "A die has six faces",
+      "locator": {
+        "sourceId": "hoyle-1909",
+        "citation": "BACKGAMMON / Hints for play / p. 277"
+      },
+      "kind": "value",
+      "scope": "in",
+      "clarity": "clear",
+      "evidence": "We will go _seriatim_ through all the possible throws.",
+      "status": "mapped",
+      "note": "In scope despite sitting in the advice section. The enumeration that follows (pp. 278-280) lists 21 distinct throws: aces, deuce ace, deuces, trois ace, trois deuce, double trois, quatre ace, quatre deuce, quatre trois, double quatre, cinque ace, cinque deuce, cinque trois, cinque quatre, double cinque, six ace, six deuce, six trois, six quatre, six cinque, sixes. n(n+1)/2 = 21 gives n = 6, faces ace..six. Require the whole enumeration, not a sample."
+    },
+    {
+      "id": "rubber",
+      "name": "Games in a rubber",
+      "locator": {
+        "sourceId": "hoyle-1909",
+        "citation": "BACKGAMMON / Hints for play / p. 278"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "ambiguous",
+      "ambiguity": {
+        "question": "A rubber is mentioned only in passing inside advice. The text implies a gammon counts as two games and that a player down one hit loses the rubber on losing the next game, but never states how many games win a rubber, how a backgammon is reckoned, or whether the stated case generalises.",
+        "fate": "unresolved",
+        "unresolvedReason": "RequiresInterpretation"
+      },
+      "dependsOn": [
+        "game-value"
+      ],
+      "evidence": "This case often arises where the player has already lost the first hit of a rubber, in which case, if he loses the next game, he has lost the rubber also; but if he can secure a gammon (reckoning as a double game), he becomes the winner of the rubber.",
+      "status": "mapped",
+      "note": "Stated as a consequence inside advice; the rule it presupposes (rubber length) is not stated anywhere in the chapter."
+    },
+    {
+      "id": "opening-throw-advice",
+      "name": "Recommended plays for each opening throw",
+      "locator": {
+        "sourceId": "hoyle-1909",
+        "citation": "BACKGAMMON / Hints for play / p. 278"
+      },
+      "kind": "operation",
+      "scope": "out",
+      "clarity": "clear",
+      "crossReferences": [
+        {
+          "cites": "above-mentioned table",
+          "unmapped": "Internal pointer within advice to the table named earlier in the same paragraph."
+        }
+      ],
+      "evidence": "TROIS DEUCE.--The approved play is to carry two men from the five in your adversary's outer table to the quatre and cinque points in your own outer table. This, of course, makes two blots. To avoid this, some, for a hit, play one man from the same {279} point to the _deuce_ point in the above-mentioned table, but the bolder play is to be preferred.",
+      "status": "declined",
+      "note": "Out: the whole per-throw opening advice (pp. 277-280, aces through sixes) is declined as advice; this span quotes one representative paragraph. The enumeration's rule content (die faces) is mapped in die-faces."
+    },
+    {
+      "id": "opening-throw-ranking",
+      "name": "Ranking of opening throws",
+      "locator": {
+        "sourceId": "hoyle-1909",
+        "citation": "BACKGAMMON / Hints for play / p. 280"
+      },
+      "kind": "value",
+      "scope": "out",
+      "clarity": "clear",
+      "crossReferences": [
+        {
+          "cites": "Of the above throws",
+          "unmapped": "Points at the opening-throw advice, which is declined."
+        }
+      ],
+      "evidence": "Of the above throws (at the outset of the game), double aces are reckoned the best, and double sixes next best. Double trois comes third, followed by trois ace and six ace.",
+      "status": "declined",
+      "note": "Out: advice."
+    }
+  ]
+}
