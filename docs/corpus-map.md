@@ -303,7 +303,7 @@ the rule — and are represented two different ways. Part 107's `civil-twilight-
 `hazardous-material` are the instances.
 
 **Nothing yet uses `kind: assertion`.** It was added after the first trial and argued for at
-length above, and no entry in any of the three maps carries it — all 71 entries across them
+length above, and no entry in any of the three maps carries it — all 75 entries across them
 are `value` or `operation`. The Part 107 entries the first trial identified, such as
 `visual-line-of-sight` and `preflight-actions`, are still `operation` with an explanatory
 `note`, which is exactly what that trial reported as wrong. Either the maps are behind the

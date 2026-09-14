@@ -179,7 +179,7 @@
         "sourceId": "hoyle-1909",
         "citation": "BACKGAMMON / Playing / p. 273"
       },
-      "kind": "rule",
+      "kind": "operation",
       "scope": "in",
       "clarity": "clear",
       "dependsOn": [
