@@ -14,9 +14,10 @@ in-process) is rolled back; a commit whose rollback also failed is rolled back b
 and a copy of that half-committed engine is refused, naming the journal.
 
 What is not: that the produced solution builds and its generated tests pass. That needs the
-SDK the kernel pins and nuget.org, so it is not a unit test here: scripts/validate-engine.sh
-produces the backgammon engine from scratch and restores, builds (`-warnaserror`) and tests it,
-and CI's `engine` job runs that script with the pinned SDK installed.
+SDK the kernel pins and nuget.org, so it is not a unit test here, and produce runs with
+`--no-verify`: scripts/validate-engine.sh produces the backgammon engine from scratch and runs
+`factory verify` on it (restore, build `-warnaserror`, test, the engine's gate), and CI's `engine`
+job runs that script with the pinned SDK installed. verify's own logic is test_factory_verify.py's.
 
 Run: python3 -m unittest discover -s tools/tests
 """
@@ -109,7 +110,9 @@ class ProduceCase(unittest.TestCase):
         buffer = io.StringIO()
         with redirect_stdout(buffer), redirect_stderr(buffer):
             code = factory.main(["produce", "--package", package or self.part107, "--corpus", corpus,
-                                 "--name", name, "--out", out, "--allow-dirty"])
+                                 "--name", name, "--out", out, "--allow-dirty",
+                                 # nor is building it: no SDK assumed (test_factory_verify.py)
+                                 "--no-verify"])
         return code, buffer.getvalue()
 
     def produced(self, out=None, **kwargs):

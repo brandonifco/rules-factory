@@ -2,7 +2,7 @@
 """The rules factory (#3): produce a .NET engine from a published corpus-map package.
 
   python3 tools/factory produce --package <nupkg path | Id@Version> --corpus <file>
-                                --name <PascalName> --out <dir>
+                                --name <PascalName> --out <dir> [--no-verify]
   python3 tools/factory backlog --create --repo <owner/name> --dir <engine dir>
 
 `produce` runs, in order, and stops at the first refusal. Every step writes into a staging copy
@@ -26,6 +26,13 @@ refusal leaves `--out` byte-identical to how it started (transaction.py, #67):
   * provenance (provenance.py), last -- `provenance.json` in the engine root, embedded in the
     engine. Before anything else, a factory whose git working tree is dirty is refused unless
     `--allow-dirty`;
+  * verify (verify.py), in the staging copy, before anything is committed -- the engine is
+    proven, as below, so a failure leaves `--out` as it was and only a verified engine is ever
+    committed. The lock files restore writes are committed with it (bin/ and obj/ never are).
+    When restore writes lock files there, provenance.json is rewritten before the gate builds
+    to record them as build inputs (#69), so what is committed is what the gate tested.
+    `--no-verify` skips it, for a machine without the SDK the engine pins, and the output and
+    the final line say the engine was committed unverified;
   * commit (transaction.py) -- the files the steps added, changed or removed are put in place
     in `--out`, journaled and rolled back on failure (a fresh `--out` is one rename).
 
@@ -38,7 +45,13 @@ issue is created, updated, or left unchanged. It never closes or deletes an issu
 re-produces the engine in a scratch copy and names every provenance field that does not match
 (exit 1), or says it matches (exit 0). `recompute_provenance` is the same, as a function.
 
-A later milestone adds `verify`.
+  python3 tools/factory verify --engine <dir> [--package <nupkg path | Id@Version>]
+
+runs the stages that make an engine acceptable and names the first that fails: provenance
+recomputes; `dotnet restore` writes the lock files if the engine has none; and the engine's own
+gate (`scripts/validate.sh full`: locked restore, -warnaserror build and tests in Debug and
+Release, format, regeneration, posture, ...) passes. `dotnet` is `$FACTORY_DOTNET` when set.
+See verify.py.
 
 Exit 0 when every step passed; 1 when a step refused; 2 on a usage error.
 Standard library only.
@@ -58,6 +71,7 @@ import generate  # noqa: E402
 import intake as intake_step  # noqa: E402
 import provenance  # noqa: E402
 import transaction  # noqa: E402
+import verify as verify_step  # noqa: E402
 
 PASCAL = re.compile(r"^[A-Z][A-Za-z0-9]*$")
 
@@ -85,8 +99,19 @@ def produce(args):
         provenance.write(out, document)
         print(f"wrote {provenance.FILE_NAME}: factory {state['version']}{' (dirty)' if state['dirty'] else ''}, "
               f"{len(document['generated'])} generated files")
-        stage.commit()
-    print(f"produced {args.name} in {args.out}")
+        if args.no_verify:
+            print("verification SKIPPED (--no-verify): the engine was not built or tested")
+        else:
+            def record_lock_files():
+                provenance.write(out, provenance.build(state, result, model, recorder))
+                print(f"rewrote {provenance.FILE_NAME}: the lock files restore wrote are build inputs")
+            verify_step.verify_staged(out, recompute_provenance, args.package, log=sys.stdout,
+                                      after_restore=record_lock_files)
+        added, _, _ = stage.commit()
+    locks = [path for path in added if path.endswith("/packages.lock.json") or path == "packages.lock.json"]
+    if locks:
+        print(f"added {len(locks)} packages.lock.json file(s) written by restore: review and commit them")
+    print(f"produced {args.name} in {args.out}, {'NOT VERIFIED' if args.no_verify else 'verified'}")
     return document
 
 
@@ -94,7 +119,8 @@ def recompute_provenance(engine_dir, package=None):
     """Every provenance field of `engine_dir` that re-producing does not reproduce; [] when all match."""
     def produce_into(spec, corpus, name, out):
         with contextlib.redirect_stdout(io.StringIO()):
-            return produce(argparse.Namespace(package=spec, corpus=corpus, name=name, out=out, allow_dirty=True))
+            return produce(argparse.Namespace(package=spec, corpus=corpus, name=name, out=out, allow_dirty=True,
+                                              no_verify=True))
     return provenance.recompute(engine_dir, produce_into, package)
 
 
@@ -119,6 +145,8 @@ def main(argv=None):
     p.add_argument("--out", required=True, help="directory the engine is written to")
     p.add_argument("--allow-dirty", action="store_true",
                    help="produce from a factory with uncommitted changes, recording dirty: true")
+    p.add_argument("--no-verify", action="store_true",
+                   help="commit the engine without `verify` (no .NET SDK here); the output says it is not verified")
     b = commands.add_parser("backlog", help="create or update GitHub issues from an engine's backlog/ files")
     b.add_argument("--create", action="store_true", required=True, help="create missing issues and update changed ones (the only action)")
     b.add_argument("--repo", required=True, help="owner/name of the engine's repository")
@@ -126,6 +154,9 @@ def main(argv=None):
     r = commands.add_parser("provenance", help="recompute an engine's provenance.json and report mismatches")
     r.add_argument("--engine", required=True, help="the engine directory")
     r.add_argument("--package", help="the .nupkg or Id@Version (default: Id@Version from provenance.json)")
+    v = commands.add_parser("verify", help="prove an engine: provenance, restore if unlocked, then its gate")
+    v.add_argument("--engine", required=True, help="the engine directory")
+    v.add_argument("--package", help="the .nupkg or Id@Version (default: Id@Version from provenance.json)")
     args = parser.parse_args(argv)
     try:
         if args.command == "backlog":
@@ -135,6 +166,10 @@ def main(argv=None):
             return 0
         if args.command == "provenance":
             return check_provenance(args)
+        if args.command == "verify":
+            verify_step.verify(args.engine, recompute_provenance, args.package, log=sys.stdout)
+            print(f"verify {args.engine}: PASS")
+            return 0
         produce(args)
         return 0
     except intake_step.Usage as error:
@@ -142,6 +177,11 @@ def main(argv=None):
         return 2
     except (intake_step.Refused, generate.GenerationError, backlog_step.BacklogError) as error:
         print(f"factory: REFUSED -- {error}. Nothing was produced.", file=sys.stderr)
+        return 1
+    except verify_step.Failed as error:
+        # In produce, verify runs in the staging copy, which is discarded: --out is untouched.
+        nothing = " Nothing was produced." if args.command == "produce" else ""
+        print(f"factory: verify FAILED at stage {error.stage} -- {error.message}.{nothing}", file=sys.stderr)
         return 1
     except transaction.CommitError as error:
         if error.rolled_back:

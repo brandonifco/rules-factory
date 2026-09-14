@@ -63,7 +63,8 @@ def produce(package, out):
     buffer = io.StringIO()
     with redirect_stdout(buffer), redirect_stderr(buffer):
         code = factory.main(["produce", "--package", package, "--corpus", PART107_XML, "--name", NAME, "--out", out,
-                             "--allow-dirty"])  # this checkout's state is not under test here
+                             "--allow-dirty",  # this checkout's state is not under test here
+                             "--no-verify"])  # nor is building it: no SDK assumed (test_factory_verify.py)
     if code != 0:
         raise AssertionError(buffer.getvalue())
 
