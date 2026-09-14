@@ -179,14 +179,18 @@ is ambiguous, and **the implementer does not resolve it.** See Phase 4.
 Be suspicious of "clear". Totality is the claim that needs justifying; ambiguity is the
 default. An entry marked clear should be able to say *why* it is total.
 
-**Clarity belongs to a version of the corpus, not to a rule, and it does not only improve.**
-In the third trial, a flat prohibition on night flight — perfectly clear and trivially
-implementable — was amended into a conditional permission turning on "a flash rate
-sufficient to avoid a collision", which states no rate. The rule became more permissive and
-less determinate at once, so an engine that could answer completely against the older text
-must decline against the newer one, without the engine changing at all. Re-mapping a revised
-corpus must re-ask this question of every entry it touches rather than carrying the previous
-verdict forward.
+**An amendment can change what an entry *is*, not only what it says.** In the third trial, a
+flat prohibition on night flight — perfectly clear and trivially implementable — was amended
+into a conditional permission turning on "a flash rate sufficient to avoid a collision", which
+states no rate. The rule became more permissive and less determinate at once.
+
+Under [0005](decisions/0005-a-field-earns-its-place-by-being-checkable.md) that is not a
+change in `clarity`: the newer text delegates the judgement, so the entry gains an assertion
+dependency it did not have. An engine that computed an answer against the older text must
+**demand an input** against the newer one, without the engine changing at all. That is still a
+change no engine can make on its own, and still the reason a map is a statement about one
+text. Re-mapping a revised corpus re-asks `kind`, `clarity` and the dependency graph of every
+entry it touches rather than carrying the previous verdict forward.
 
 ## Phase 4 — Decide the ambiguities
 
@@ -202,14 +206,33 @@ the right fate when the engine must produce an answer and a defensible one exist
 the right fate when no reading is defensible enough to bake in, or when the ambiguity is the
 caller's to resolve rather than the engine's.
 
-**A standard is not a gap, and must not be resolved as one.** "Well clear", "reasonable
-protection", "a flash rate sufficient to avoid a collision" — a regulator who writes these
-has not been vague by accident. The standard *is* the rule, chosen over a number
-deliberately, and an engine that resolved it to a number would have substituted its own rule
-for the corpus's. Such an entry is ambiguous to the engine and settled in the corpus, and its
-fate is almost always a runtime unresolved rather than a recorded decision. Record which it
-is; the difference matters to anyone later wondering whether the corpus can be read more
-precisely.
+**A standard is not a gap, and it is not an ambiguity either.** "Well clear", "reasonable
+protection", "a flash rate sufficient to avoid a collision" — a regulator who writes these has
+not been vague by accident. The standard *is* the rule, chosen over a number deliberately, and
+an engine that resolved it to a number would substitute its own rule for the corpus's.
+
+**So it is not a fate at all. It is `kind: assertion`, and it is its own entry.** The corpus
+named a decider; the engine's obligation is the assertion contract from Phase 3 — demand it,
+attribute it, record it alongside the outcome, never infer it. Declining with
+`RequiresInterpretation` is the wrong answer twice over: it refuses a job the corpus gave the
+engine the means to do, and it throws away whatever bounds the corpus *did* state. *"Either
+thrice or four times (as may have been agreed)"* is the clearest case — read as an ambiguity,
+the engine discards the rule that the multiplier is three or four and nothing else.
+
+Because `kind` is entry-level, split the standard out rather than reclassifying the rule that
+consumes it: `night-operation` states a computable rule about training and lighting *and*
+defers the flash rate. The standard becomes `flash-rate-sufficient`, an assertion, and
+`night-operation` depends on it — the same move as `speed-limit` and `speed-within-limit`.
+Decided in [0005](decisions/0005-a-field-earns-its-place-by-being-checkable.md).
+
+**The test is whether the corpus names a decider.** Part 107 does not define "sparsely
+populated area" and does not say who decides it: that is a genuine gap, and its fate is a
+runtime unresolved. An undefined term is not a delegation.
+
+**A corpus that contradicts itself is ambiguous**, and its `question` states both readings.
+`clear` asserts the corpus determines exactly one answer, and one that states a rule twice in
+incompatible terms does not. Where a conflict is settled by decision, every entry in the
+conflict names the same record.
 
 What is never acceptable is the third option: an implementer picking a reading silently.
 That produces an engine that is reproducibly wrong, which is worse than one that is

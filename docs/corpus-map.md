@@ -61,13 +61,14 @@ before either has been implemented.
 | `locator` | Corpus id plus a citation in that corpus's grammar. **Required.** An entry without one is not an entry. |
 | `kind` | `value`, `operation` or `assertion` — a fact the corpus states, a procedure it describes, or a condition only the caller can supply. See below. |
 | `scope` | `in` or `out`. Out is a recorded verdict with a reason, not an omission. |
-| `clarity` | `clear` or `ambiguous`. `clear` asserts the corpus determines exactly one answer for every valid input. |
-| `ambiguity` | Absent when clear. Otherwise the question, and its `fate`. |
+| `clarity` | `clear` or `ambiguous`. `clear` asserts the corpus determines exactly one answer for every valid input — so a corpus that states the rule twice, differently, is `ambiguous`. |
+| `ambiguity` | Absent when clear. Otherwise the question, and its `fate`. Never a carrier for a decline that is not an ambiguity. |
 | `dependsOn` | Entry ids. Determines backlog order — the sequence entries must be *implemented* in. **Not** a runtime precondition; see `gatedBy`. |
 | `gatedBy` | Entry ids. The rules that govern whether this one is reachable at runtime. Absent on an entry that always applies. Orders nothing. See below. |
 | `beyondAdapter` | Present only when the declared adapter cannot read the rule the locator cites. Names the adapter and the modality. See below. |
+| `definedElsewhere` | Present only when the rule's meaning is fixed in a corpus that was not admitted. Names the manifest `references` entry. See below. |
 | `evidence` | What must be demonstrated. For a finite table: the whole table, not a sample. |
-| `status` | See below. |
+| `status` | Whether the engine has built this entry. Independent of `ambiguity.fate`. See below. |
 | `implementedIn` | The ruleset revision that implemented it. Set when status becomes `implemented`. |
 
 ### `kind: assertion`
@@ -90,6 +91,23 @@ delegates ("if the pilot determines it would be in the interest of safety") is n
 ambiguous — the corpus is entirely clear about who decides. And facts about the physical
 world are consumed, not derived.
 
+**A delegated judgement is an assertion, and it is an entry of its own.** `kind` is
+entry-level, so classifying a whole entry by one of its clauses destroys the rest of it.
+`night-operation` states a computable rule about training and lighting *and* defers the flash
+rate to the operator; `over-human-beings` defers a judgement *and* defers to a subpart the map
+does not cover, which is a different runtime reason entirely. Split them the way
+`speed-limit` (value) and `speed-within-limit` (operation, `dependsOn: [speed-limit]`) are
+split: the standard becomes its own assertion entry — `well-clear`, `reasonable-protection`,
+`flash-rate-sufficient` — and the rule that consumes it depends on it. Every entry then has
+exactly one runtime reason, which is what makes the correspondence table below checkable.
+Decided in [0005](decisions/0005-a-field-earns-its-place-by-being-checkable.md).
+
+**The test is whether the corpus names a decider**, not whether a term is undefined. Part
+107 does not define "sparsely populated area" and does not say who decides it: that is a gap,
+`clarity: ambiguous`, not an assertion. *"Either thrice or four times (as may have been
+agreed)"* names the players: an assertion, and the engine keeps the bound the corpus states
+rather than discarding it.
+
 ### `ambiguity.fate`
 
 `decision` — the project rules on what the passage means, records it, and implements as
@@ -105,11 +123,19 @@ field exists to prevent.
 present when the fate is `unresolved`. It is the field that ties an entry to the
 correspondence table below.
 
-Both Part 107 maps also use the `ambiguity` block to carry a decline that is **not** an
-ambiguity — `civil-twilight-alaska` and `hazardous-material` are `clarity: clear` and carry
-one, because their meaning is defined in a corpus that was not admitted. The block is
-specified as absent when clear, and those four entries contradict that. Recorded here rather
-than quietly reconciled; see the open questions.
+**The block is never a general decline carrier.** A rule defined in an unadmitted corpus
+takes `definedElsewhere`; a rule the adapter cannot read takes `beyondAdapter`. No entry
+carries either of those *and* an `ambiguity` block — that is a checkable exclusion, and it is
+what keeps two rows of the correspondence table from firing with different answers on the
+same entry.
+
+**A corpus that contradicts itself is ambiguous.** `clear` asserts the corpus determines
+exactly one answer, and a corpus stating a rule twice in incompatible terms does not.
+`enter-from-bar` names two legal destinations where `legal-destination`, three sentences
+earlier, names three. The `question` states both readings; `fate` records which governs, or
+declines. Where a conflict is settled by `fate: decision`, **every entry in the conflict
+names the same decision record** — otherwise one side can be decided and the other left
+open with nothing noticing.
 
 ### `dependsOn` orders work; `gatedBy` does not
 
@@ -174,33 +200,90 @@ corpora were text end to end — and the field does not detect it. It records a 
 recognised. An adapter that silently drops a table produces an entry nobody writes, and no
 field can help with an entry that does not exist.
 
+### `definedElsewhere`
+
+The rule is stated here and its *meaning* is fixed in a corpus that was not admitted. Added
+in [0005](decisions/0005-a-field-earns-its-place-by-being-checkable.md).
+
+```json
+"definedElsewhere": { "reference": "cfr-49-171" }
+```
+
+`reference` must resolve to an entry in the manifest's `references`, exactly as
+`beyondAdapter`'s `adapter` must resolve in the manifest. Part 107's `hazardous-material`
+defers to 49 CFR 171.8 and `civil-twilight-alaska` to the Air Almanac; both previously
+carried the reason in an `ambiguity` block, on entries that are not ambiguous.
+
+It shares a runtime reason with `beyondAdapter` and shares nothing else, which is why they
+are two fields rather than one with a discriminator: each has required contents that resolve
+against a different part of the manifest, and a merged field would be half-empty in every
+instance and checkable only after reading its own discriminator.
+
+**An elsewhere-defined *input* is not an elsewhere-defined *rule*.** `airspace-authorized`
+is fully implementable; what comes from outside is the airspace class, a fact about the
+world. That is `kind: assertion` — demanded, attributed, never inferred — and there is no
+corpus to name. Reaching for `definedElsewhere` there produces a `reference` that resolves
+to nothing.
+
 ### `status`
 
 ```
 mapped       enumerated and classified; not yet worked
 blocked      a dependency is unmet
 implemented  in the engine, with a recorded conformance verdict
-declined     scope is out, the ambiguity's fate is unresolved, or the entry is
-             beyond the adapter's reach
+declined     no implemented path at all: scope is out, the rule is unreadable,
+             or nothing about it was built
 ```
+
+`status` answers **has the engine built this entry**. `ambiguity.fate` answers **what happens
+at runtime when the declining case is reached**. They were coupled and are not
+([0005](decisions/0005-a-field-earns-its-place-by-being-checkable.md)):
+`implemented` with `fate: unresolved` is legal and means *built, and declines the stated
+case*. `must-play-whole-throw` is the instance — the engine implements the compulsion and
+declines only where two maximal plays are incomparable, which is neither `declined` nor a
+clean `implemented` under the old coupling.
 
 `implemented` requires the verdict. Code without one is `mapped`, whatever the repository
 contains — otherwise the map records intent rather than fact, and its whole value is that it
-records fact.
+records fact. **Where `fate: unresolved` accompanies it, the verdict covers every case except
+the one `ambiguity.question` names, and the declining case ships a test.**
+
+The cost of decoupling, stated where the claim is: after it, `fate: unresolved` means the
+engine declines for *at least one* input, not for every input, and nothing distinguishes an
+entry that declines one shape of throw from one that declines everything. The totality claim
+is weaker than it was.
+
+**An entry whose correct reading is surprising names the test that proves it.** Not a field —
+a flag saying "this is surprising" is unfalsifiable. `bearing-off-highest` is clear, correct,
+and the opposite of what a modern player expects, and the useful artifact is the one test in
+the suite that fails under the reading a reasonable person would have implemented. The entry
+names it in `note`.
 
 ## The map and the engine agree, or the map is wrong
 
 The map's classifications correspond exactly to the kernel's closed `UnresolvedReason`
 vocabulary. This is the property that makes the map load-bearing rather than documentation:
 
-| A map entry that is… | At runtime the engine returns… |
-|---|---|
-| `status: mapped` — read, not built | `UnsupportedRule` |
-| `scope: out` | `OutsideCurrentScope` |
-| `ambiguity.fate: unresolved` | `RequiresInterpretation` |
-| an `operation` whose `value` dependency is unimplemented | `MissingRulesData` |
-| carries `beyondAdapter` | `MissingRulesData` |
-| two implemented entries with no entry for their combination | `UnsupportedInteraction` |
+**Rows are checked in order and the first match wins.** Not-in-scope and not-built dominate;
+the rest describe what a *built* entry returns. Without an order, every `status: mapped` entry
+carrying `fate: unresolved` matches two rows — eleven entries across the three maps today —
+and the invariant is unwritable in either direction.
+
+| # | A map entry that is… | At runtime the engine returns… |
+|---|---|---|
+| 1 | `scope: out` | `OutsideCurrentScope` |
+| 2 | `status: mapped` or `blocked` — read, not built | `UnsupportedRule` |
+| 3 | carries `definedElsewhere` | `MissingRulesData` |
+| 4 | carries `beyondAdapter` | `MissingRulesData` |
+| 5 | an `operation` whose `value` dependency is unimplemented | `MissingRulesData` |
+| 6 | `ambiguity.fate: unresolved` | `RequiresInterpretation` |
+| 7 | two implemented entries with no entry for their combination | `UnsupportedInteraction` |
+| 8 | `kind: assertion` | **nothing — the engine demands the value and proceeds** |
+
+Row 8 is the one that is easy to get wrong. An assertion is not a failure to resolve; it is a
+parameter. An engine returning `RequiresInterpretation` where the corpus named a decider is
+declining a job the corpus gave it the means to do — and it discards whatever bounds the
+corpus *did* state, which is what reading `stake-multiplier` as an ambiguity costs.
 
 So an engine's honest answer about what it cannot do should be derivable from its map, and
 an unresolved result that does not correspond to a map entry means something was implemented
@@ -290,24 +373,32 @@ Open questions are tracked as issues so they are worked rather than admired:
   implementation order with runtime precondition. Decided:
   [0003](decisions/0003-a-phase-gate-names-a-rule-not-a-condition.md) adds `gatedBy`.
 - [#6](https://github.com/brandonifco/rules-factory/issues/6) — a standard is not a gap.
-  Both available fates imply the corpus failed to say something, and sometimes it did not.
+  Decided: [0005](decisions/0005-a-field-earns-its-place-by-being-checkable.md) — a delegated
+  standard is `kind: assertion`, and it is an entry of its own.
+- [#24](https://github.com/brandonifco/rules-factory/issues/24) — six reasons an entry is not
+  a plain rule, and three fields carrying them. Decided:
+  [0005](decisions/0005-a-field-earns-its-place-by-being-checkable.md).
 - [#7](https://github.com/brandonifco/rules-factory/issues/7) — an entry beyond the
   adapter's reach has no field to say so. Decided:
   [0004](decisions/0004-adapter-reach-is-a-property-of-the-entry.md) adds `beyondAdapter`.
 
-**Where a decline's runtime reason lives.** Opened by 0004 rather than answered by it. An
-entry beyond the adapter's reach now records its reason structurally; an entry whose meaning
-is defined in an unadmitted corpus still records the same reason in an `ambiguity` block, on
-an entry that is not ambiguous. The two are the same kind of fact — the engine cannot see
-the rule — and are represented two different ways. Part 107's `civil-twilight-alaska` and
-`hazardous-material` are the instances.
+**Where a decline's runtime reason lives.** Opened by 0004, answered by 0005: an entry whose
+meaning is fixed in an unadmitted corpus takes `definedElsewhere`, parallel to
+`beyondAdapter`, and the `ambiguity` block is no longer a general decline carrier.
 
-**Nothing yet uses `kind: assertion`.** It was added after the first trial and argued for at
-length above, and no entry in any of the three maps carries it — all 75 entries across them
-are `value` or `operation`. The Part 107 entries the first trial identified, such as
-`visual-line-of-sight` and `preflight-actions`, are still `operation` with an explanatory
-`note`, which is exactly what that trial reported as wrong. Either the maps are behind the
-schema or the category is narrower than the trial claimed, and which is not settled here.
+**`kind: assertion` is partly adopted.** 0005 settles that the maps were behind the schema,
+not that the category was too wide, and reclassifies the delegated standards. What it does
+**not** cover is the other half of
+[#11](https://github.com/brandonifco/rules-factory/issues/11): facts a *person* asserts —
+`visual-line-of-sight`, `preflight-actions`, `visual-observer-conditions` — which the first
+trial named and which are still `operation` with an explanatory `note`. Those are a different
+argument from a delegated standard and are not decided here.
+
+**How the maps got this way is worth recording**, because it was not carelessness.
+[method.md](method.md) contradicted itself: Phase 3 said a delegated judgement is an
+assertion and Phase 4 said its fate is "almost always a runtime unresolved", naming three of
+the four entries. A mapper following Phase 4 produced exactly what the maps contained. A
+schema is only as good as the procedure that cites it.
 
 **Who writes it.** The ambition is that an agent produces a first draft from the corpus and
 a human reviews the decomposition. Whether the first draft is good enough to be worth

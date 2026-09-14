@@ -2,9 +2,9 @@
 
 ## Status
 
-Proposed — 2026-09-14. Revised the same day after adversarial review, which found the four
-substantive moves sound and the argument for three of them wrong. The revision is recorded
-rather than rewritten away: see *What the first draft got wrong* at the end.
+Accepted — 2026-09-14. Revised before acceptance after adversarial review, which found the
+four substantive moves sound and the argument for three of them wrong. The revision is
+recorded rather than rewritten away: see *What the first draft got wrong* at the end.
 
 ## Context
 
