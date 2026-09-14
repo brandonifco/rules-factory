@@ -206,6 +206,8 @@ def parts(inputs, commit):
         f"    <version>{version}</version>\n"
         "    <authors>Brandon</authors>\n"
         '    <license type="expression">Apache-2.0</license>\n'
+        # nuget.org rejects a license expression without the matching licenseUrl (for old clients).
+        "    <licenseUrl>https://licenses.nuget.org/Apache-2.0</licenseUrl>\n"
         f"    <projectUrl>{PROJECT_URL}</projectUrl>\n"
         f"    <description>{xml_escape(description(inputs))}</description>\n"
         f"    <tags>rules-factory corpus-map {xml_escape(inputs['map'].get('corpus'))}</tags>\n"
