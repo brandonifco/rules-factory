@@ -36,13 +36,24 @@ one corpus draws nothing, the other cannot be modelled without dice.
 
 ## What this corpus broke
 
-### 1. A rule can live in an image
+### 1. A rule can live in an image — and the rule we said did, does not
 
-The starting arrangement — without which no game can begin — is stated as *"with the men
-placed as in Fig. 1."* It is fully determined in the corpus. It is unreachable by a
-plain-text adapter.
+> **Corrected 2026-09-13.** This section originally said the starting arrangement is stated
+> as *"with the men placed as in Fig. 1."* That was a misreading, and it is the single worst
+> error this trial produced. The arrangement is stated in prose on p. 273, completely, and
+> over-determined three further ways. The sentence quoted is real but belongs to a different
+> paragraph about a different fact. See the amendment to
+> [0004](../../docs/decisions/0004-adapter-reach-is-a-property-of-the-entry.md) and
+> [#12](https://github.com/brandonifco/rules-factory/issues/12).
 
-This is `MissingRulesData` of a kind the first trial did not produce. There the missing data
+What survives is the finding, on a different entry. The **handedness of a physical board** —
+which compartment is the inner table — is stated once and only as a reference to the figure:
+
+> Which of the two is for the time being the inner and which the outer table is governed by
+> the arrangement of the men at starting. **With the men placed as in Fig. 1, the right hand
+> is the inner or home table**, and the left hand consequently the outer table.
+
+That is `MissingRulesData` of a kind the first trial did not produce. There the missing data
 lived in **another corpus** (49 CFR 171.8, the Air Almanac). Here it lives in **another
 modality of the same corpus**.
 
@@ -51,9 +62,14 @@ help: there is nothing to reference. What determines reachability is the **adapt
 the map had no way to say "this entry is beyond what the declared adapter can read."
 
 *Resolved.* [0004](../../docs/decisions/0004-adapter-reach-is-a-property-of-the-entry.md)
-adds `beyondAdapter`, and `starting-position` carries
-`{ "adapter": "plain-text", "modality": "illustration" }`. It no longer carries an
-`ambiguity` block, because nothing about it was ambiguous.
+adds `beyondAdapter`, now carried by `inner-table-handedness`, split out of `board-tables`.
+
+**Two things this trial got wrong about its own best finding, both worth keeping.** The
+instance is inert — an engine that models positions player-relatively never asks for the
+handedness, so the field's only confirmed use is one nothing consumes. And the original
+entry said *"Cannot be evidenced from this corpus"* about a rule the corpus states four
+times over, which no field on a map could have caught, because it is a fact about where a
+human stopped reading.
 
 ### 2. `dependsOn` conflates two different orderings
 
