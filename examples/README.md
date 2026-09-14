@@ -148,3 +148,52 @@ Findings: [#12](https://github.com/brandonifco/rules-factory/issues/12) ·
 [#14](https://github.com/brandonifco/rules-factory/issues/14) ·
 [#15](https://github.com/brandonifco/rules-factory/issues/15) ·
 [#16](https://github.com/brandonifco/rules-factory/issues/16)
+
+### Trial 4, reviewed: two independent passes, and what they caught
+
+The build's own 16 findings were then checked by two reviewers who had not written anything —
+one verifying the findings against the corpus, one running 66 source mutations against the
+engine.
+
+**The verification reversed the trial's headline.** Trial 2's best finding — *a rule can live
+in an image* — rested on a sentence quoted from the wrong paragraph. The starting arrangement
+is stated in prose, completely, and over-determined three further ways; a mapper had written
+*"Cannot be evidenced from this corpus"* about it, and a decision record, a trial report and an
+engine's architecture were all built on top. The finding survives on a different entry —
+`inner-table-handedness`, which really is stated only in Fig. 1 — so `beyondAdapter` keeps one
+instance, and that instance is one no engine ever consumes.
+
+It also found **13 wrong page citations out of 24**, which had passed a mapping trial, a build
+and a review. They were invisible because `evidence` holds a summary of what the evidence shows
+rather than the corpus's words, so no citation was checkable at all
+([#18](https://github.com/brandonifco/rules-factory/issues/18), which ships the checker), and
+four unmapped rules including the only statement in the corpus of how many faces a die has
+([#20](https://github.com/brandonifco/rules-factory/issues/20)).
+
+**The mutation pass killed 47 of 66 and left two rule holes.** Entering from the bar with two
+or more men up, and bearing off from the highest point when a forward move is blocked — the
+one case in this corpus where Hoyle's rule and the modern rule disagree. Both could be
+replaced with the wrong rule and all 157 tests stayed green. The determinism was real but
+largely unasserted: the replay identity's ruleset id, version, schema version, hash derivation
+and generator could each be changed without a single test noticing, and the list a replay
+indexes into is pinned by nothing at all
+([#22](https://github.com/brandonifco/rules-factory/issues/22)).
+
+All five merge blockers are closed; the engine is rebased onto the corrected map and the gate
+is green at 334 results.
+
+**What the two passes say about the method.** Every finding of consequence came from something
+*executing* — a build, a mutation, a page-marker comparison. None came from reading. Three of
+the four biggest are the same failure in different clothes: a human stopped reading, and no
+field on a map can detect that. The one countermeasure that worked is the cheap mechanical one
+— compare what an entry claims against the corpus itself — which is why
+[#18](https://github.com/brandonifco/rules-factory/issues/18) matters more than its size
+suggests.
+
+Further findings: [#17](https://github.com/brandonifco/rules-factory/issues/17) ·
+[#18](https://github.com/brandonifco/rules-factory/issues/18) ·
+[#19](https://github.com/brandonifco/rules-factory/issues/19) ·
+[#20](https://github.com/brandonifco/rules-factory/issues/20) ·
+[#21](https://github.com/brandonifco/rules-factory/issues/21) ·
+[#22](https://github.com/brandonifco/rules-factory/issues/22) ·
+[#23](https://github.com/brandonifco/rules-factory/issues/23)
