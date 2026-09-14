@@ -1,0 +1,638 @@
+#!/usr/bin/env python3
+"""Validate a corpus map against docs/corpus-map.md and docs/decisions/0005.
+
+`schema/` is empty and nothing has ever validated these maps. That is how
+`kind: "rule"` -- outside the closed vocabulary -- shipped in both copies of the
+backgammon map, and it is the gap this tool closes for everything the spec states
+*structurally*. It does not read the corpus: `check-locators.py` does that.
+
+What it cannot do, stated here rather than in a commit message:
+
+  * **A conflict is not identifiable from the data.** 0005 section B requires that where
+    entries in a conflict carry `fate: decision` they name the same record, and records in
+    the same breath that "nothing links them". No field groups a conflicting pair, so the
+    `conflicts` check reports NOT VERIFIED and never `ok`. It has subject matter -- and so
+    fails the run -- exactly when some entry carries `fate: decision`; on a map with none
+    the rule is vacuous and the skip is recorded without failing.
+  * **Correspondence row 7** ("two implemented entries with no entry for their
+    combination") is a fact about pairs and about interactions the map does not enumerate.
+    It is not evaluated. The `correspondence` check therefore proves that every entry is
+    reachable by rows 1-6 and 8, not by all eight.
+  * Rows 1-8 are not exhaustive by design: a built, clear, unambiguous rule matches no row
+    because the engine simply answers. Unmatched entries are reported; an unmatched entry
+    is a **failure** only when `status: declined`, which asserts no implemented path at all
+    and therefore owes a runtime reason.
+  * Nothing here checks that an entry is the *right* decomposition of the corpus, that a
+    `gatedBy` list is complete, or that `evidence` is sufficient. Those are review.
+
+Usage: check-map.py <corpus-map.json> [--manifest PATH] [--repo-root PATH] [--only CHECK]
+Exit 0 only if every check that ran passed and at least one check actually checked
+something; 1 if any check failed or skipped with subject matter; 2 on a usage error.
+"""
+import argparse
+import json
+import os
+import sys
+
+KINDS = {"value", "operation", "assertion"}
+SCOPES = {"in", "out"}
+CLARITIES = {"clear", "ambiguous"}
+STATUSES = {"mapped", "blocked", "implemented", "declined"}
+FATES = {"decision", "unresolved"}
+# The kernel's closed UnresolvedReason vocabulary, as the correspondence table names it.
+UNRESOLVED_REASONS = {
+    "OutsideCurrentScope",
+    "UnsupportedRule",
+    "MissingRulesData",
+    "RequiresInterpretation",
+    "UnsupportedInteraction",
+}
+REQUIRED_ENTRY_FIELDS = ["id", "name", "locator", "kind", "scope", "clarity", "evidence", "status"]
+
+
+class Result:
+    """One check's verdict. `skip` never becomes `ok`; it fails the run if it had work."""
+
+    def __init__(self, status, summary, details=None, had_subject=True):
+        self.status = status  # "ok" | "fail" | "skip"
+        self.summary = summary
+        self.details = details or []
+        self.had_subject = had_subject
+
+    @property
+    def fatal(self):
+        return self.status == "fail" or (self.status == "skip" and self.had_subject)
+
+
+def ok(summary, details=None):
+    return Result("ok", summary, details)
+
+
+def fail(details, summary):
+    return Result("fail", summary, details)
+
+
+def skip(summary, had_subject=True):
+    return Result("skip", "NOT VERIFIED -- " + summary, had_subject=had_subject)
+
+
+def verdict(details, ok_summary, fail_summary):
+    return fail(details, fail_summary) if details else ok(ok_summary)
+
+
+# --- helpers -------------------------------------------------------------------------
+
+
+def entries_of(doc):
+    value = doc.get("entries")
+    return value if isinstance(value, list) else []
+
+
+def index(doc):
+    return {e.get("id"): e for e in entries_of(doc) if isinstance(e, dict) and isinstance(e.get("id"), str)}
+
+
+def label(entry, position):
+    got = entry.get("id") if isinstance(entry, dict) else None
+    return got if isinstance(got, str) else f"entry[{position}]"
+
+
+def block(entry, name):
+    value = entry.get(name)
+    return value if isinstance(value, dict) else {}
+
+
+def fate_of(entry):
+    return block(entry, "ambiguity").get("fate")
+
+
+# --- checks --------------------------------------------------------------------------
+
+
+def check_schema(ctx):
+    """The map's own envelope: the stamp naming the baseline it was built against."""
+    doc, bad = ctx["map"], []
+    if not isinstance(doc, dict):
+        return fail(["  X  top level is not an object"], "the map is not an object")
+    for field in ("schemaVersion", "corpus", "baseline", "entries"):
+        if field not in doc:
+            bad.append(f"  X  map is missing `{field}`")
+    baseline = doc.get("baseline")
+    if "baseline" in doc and not isinstance(baseline, dict):
+        bad.append("  X  `baseline` is not an object")
+    elif isinstance(baseline, dict):
+        for field in ("contentHash", "hashDerivation"):
+            if not baseline.get(field):
+                bad.append(f"  X  baseline is missing `{field}`: a digest without its derivation does not say what it covers")
+    if "entries" in doc and not isinstance(doc.get("entries"), list):
+        bad.append("  X  `entries` is not a list")
+    elif not entries_of(doc) and isinstance(doc.get("entries"), list):
+        bad.append("  X  `entries` is empty: there is nothing to check")
+    return verdict(bad, "map envelope and baseline stamp present", "the map envelope is incomplete")
+
+
+def check_required_fields(ctx):
+    """Every field the spec's table marks required, and `locator` above all.
+
+    "An entry without one is not an entry" (corpus-map.md), so a missing or malformed
+    locator is reported as its own line rather than folded into a field list.
+    """
+    bad = []
+    for position, entry in enumerate(entries_of(ctx["map"])):
+        if not isinstance(entry, dict):
+            bad.append(f"  X  entry[{position}] is not an object")
+            continue
+        name = label(entry, position)
+        for field in REQUIRED_ENTRY_FIELDS:
+            if field not in entry:
+                bad.append(f"  X  {name}: missing required field `{field}`")
+        if "locator" in entry:
+            locator = entry.get("locator")
+            if not isinstance(locator, dict):
+                bad.append(f"  X  {name}: `locator` is not an object")
+            else:
+                for field in ("sourceId", "citation"):
+                    if not locator.get(field):
+                        bad.append(f"  X  {name}: locator is missing `{field}`")
+        for field in ("dependsOn", "gatedBy"):
+            if field in entry and not isinstance(entry[field], list):
+                bad.append(f"  X  {name}: `{field}` is not a list of ids")
+    return verdict(bad, f"{len(entries_of(ctx['map']))} entries carry every required field", "required fields are missing")
+
+
+def check_vocabulary(ctx):
+    """The five closed vocabularies, plus the kernel's UnresolvedReason enum.
+
+    `beyondAdapter.modality` is deliberately open (0004) and is only checked for presence.
+    """
+    bad = []
+    closed = [("kind", KINDS), ("scope", SCOPES), ("clarity", CLARITIES), ("status", STATUSES)]
+    for position, entry in enumerate(entries_of(ctx["map"])):
+        if not isinstance(entry, dict):
+            continue
+        name = label(entry, position)
+        for field, allowed in closed:
+            if field in entry and entry[field] not in allowed:
+                bad.append(f"  X  {name}: {field} is {entry[field]!r}, outside {{{', '.join(sorted(allowed))}}}")
+        ambiguity = block(entry, "ambiguity")
+        if "fate" in ambiguity and ambiguity["fate"] not in FATES:
+            bad.append(f"  X  {name}: ambiguity.fate is {ambiguity['fate']!r}, outside {{decision, unresolved}}")
+        reason = ambiguity.get("unresolvedReason")
+        if reason is not None and reason not in UNRESOLVED_REASONS:
+            bad.append(f"  X  {name}: unresolvedReason is {reason!r}, outside the kernel's UnresolvedReason vocabulary")
+        if "beyondAdapter" in entry:
+            for field in ("adapter", "modality"):
+                if not block(entry, "beyondAdapter").get(field):
+                    bad.append(f"  X  {name}: beyondAdapter is missing `{field}`")
+        if "definedElsewhere" in entry and not block(entry, "definedElsewhere").get("reference"):
+            bad.append(f"  X  {name}: definedElsewhere is missing `reference`")
+    return verdict(bad, "every closed vocabulary holds only its stated values", "a field is outside its closed vocabulary")
+
+
+def check_unique_ids(ctx):
+    """Ids are referenced by dependsOn, by issues, and by the engine's own citations."""
+    seen, bad = {}, []
+    for position, entry in enumerate(entries_of(ctx["map"])):
+        if not isinstance(entry, dict):
+            continue
+        entry_id = entry.get("id")
+        if not isinstance(entry_id, str):
+            bad.append(f"  X  entry[{position}]: `id` is not a string")
+        elif entry_id in seen:
+            bad.append(f"  X  {entry_id}: id used by entry[{seen[entry_id]}] as well")
+        else:
+            seen[entry_id] = position
+    return verdict(bad, f"{len(seen)} ids, all distinct", "an id is duplicated or missing")
+
+
+def check_references(ctx):
+    """`dependsOn` and `gatedBy` hold entry ids in the same map, and nothing else.
+
+    0003: "If a proposed gate has no entry, the map is missing an entry; that is the
+    finding, not a reason to write prose here."
+    """
+    by_id, bad, edges = index(ctx["map"]), [], 0
+    for position, entry in enumerate(entries_of(ctx["map"])):
+        if not isinstance(entry, dict):
+            continue
+        name = label(entry, position)
+        for field in ("dependsOn", "gatedBy"):
+            for ref in entry.get(field) or []:
+                edges += 1
+                if not isinstance(ref, str):
+                    bad.append(f"  X  {name}: {field} holds {ref!r}, which is not an id")
+                elif ref not in by_id:
+                    bad.append(f"  X  {name}: {field} names {ref!r}, which is not an entry in this map")
+                elif ref == entry.get("id"):
+                    bad.append(f"  X  {name}: {field} names itself")
+    if not edges:
+        return skip("no entry names a dependsOn or gatedBy, so no reference was resolved", had_subject=False)
+    return verdict(bad, f"{edges} dependsOn/gatedBy references all resolve", "a reference names no entry")
+
+
+def check_no_cycles(ctx):
+    """`dependsOn` determines backlog order, so a cycle means no order exists.
+
+    `gatedBy` is deliberately not checked for cycles: it orders nothing (0003), and a
+    mutual gate is a legitimate shape -- entry from the bar suspends other moves while
+    those moves' own gate names it back.
+    """
+    by_id = index(ctx["map"])
+    colour, bad = {}, []
+
+    def walk(node, trail):
+        colour[node] = "open"
+        for dep in by_id.get(node, {}).get("dependsOn") or []:
+            if not isinstance(dep, str) or dep not in by_id:
+                continue
+            if colour.get(dep) == "open":
+                cycle = trail[trail.index(dep):] if dep in trail else [dep]
+                bad.append("  X  dependsOn cycle: " + " -> ".join(cycle + [dep]))
+            elif dep not in colour:
+                walk(dep, trail + [dep])
+        colour[node] = "closed"
+
+    sys.setrecursionlimit(max(sys.getrecursionlimit(), 10000))
+    for node in by_id:
+        if node not in colour:
+            walk(node, [node])
+    if not any(by_id[node].get("dependsOn") for node in by_id):
+        return skip("no entry depends on another, so acyclicity was not exercised", had_subject=False)
+    return verdict(sorted(set(bad)), f"dependsOn over {len(by_id)} entries is acyclic", "dependsOn has a cycle")
+
+
+def check_manifest(ctx):
+    """Everything that resolves against the manifest rather than against the map.
+
+    The map's `corpus` and baseline stamp, every `locator.sourceId`, `beyondAdapter.adapter`
+    against the adapter declared for that source (0004), and `definedElsewhere.reference`
+    against that source's `references` (0005).
+    """
+    manifest = ctx["manifest"]
+    if manifest is None:
+        return skip(
+            "no manifest was given or found beside the map, so no sourceId, adapter or "
+            "reference was resolved. Pass --manifest."
+        )
+    corpora = {c.get("sourceId"): c for c in manifest.get("corpora") or [] if isinstance(c, dict)}
+    if not corpora:
+        return skip("the manifest declares no corpora, so nothing could be resolved against it")
+
+    doc, bad, checked = ctx["map"], [], 0
+    corpus_id = doc.get("corpus")
+    declared = corpora.get(corpus_id)
+    if declared is None:
+        bad.append(f"  X  map: corpus {corpus_id!r} is not declared in the manifest")
+    else:
+        checked += 1
+        baseline = doc.get("baseline") if isinstance(doc.get("baseline"), dict) else {}
+        for field in ("contentHash", "hashDerivation"):
+            if baseline.get(field) and declared.get(field) and baseline[field] != declared[field]:
+                bad.append(
+                    f"  X  map: baseline {field} {baseline[field]!r} does not match the manifest's "
+                    f"{declared[field]!r} for {corpus_id}"
+                )
+
+    for position, entry in enumerate(entries_of(doc)):
+        if not isinstance(entry, dict):
+            continue
+        name = label(entry, position)
+        source_id = block(entry, "locator").get("sourceId")
+        source = corpora.get(source_id)
+        if source_id is not None:
+            checked += 1
+            if source is None:
+                bad.append(f"  X  {name}: locator.sourceId {source_id!r} is not declared in the manifest")
+        if "beyondAdapter" in entry:
+            checked += 1
+            adapter = block(entry, "beyondAdapter").get("adapter")
+            if source is None:
+                bad.append(f"  X  {name}: beyondAdapter names adapter {adapter!r}, but its source is not in the manifest")
+            elif adapter != source.get("adapter"):
+                bad.append(
+                    f"  X  {name}: beyondAdapter.adapter is {adapter!r}, but {source_id} declares "
+                    f"{source.get('adapter')!r}"
+                )
+        if "definedElsewhere" in entry:
+            checked += 1
+            reference = block(entry, "definedElsewhere").get("reference")
+            known = {r.get("sourceId") for r in (source or {}).get("references") or [] if isinstance(r, dict)}
+            if source is None:
+                bad.append(f"  X  {name}: definedElsewhere names {reference!r}, but its source is not in the manifest")
+            elif reference not in known:
+                bad.append(
+                    f"  X  {name}: definedElsewhere.reference {reference!r} is not in {source_id}'s "
+                    f"`references`; an elsewhere-defined *input* is kind: assertion, not this field"
+                )
+    if not checked:
+        return skip("no entry carried anything that resolves against the manifest")
+    return verdict(bad, f"{checked} manifest resolutions all succeed", "something does not resolve in the manifest")
+
+
+def check_exclusions(ctx):
+    """The `ambiguity` block is not a general decline carrier (0005 D).
+
+    Three rules: no entry carries `definedElsewhere` or `beyondAdapter` alongside an
+    `ambiguity` block; `ambiguity` is present exactly when `clarity: ambiguous`; and the
+    block's own contents -- `question`, `fate`, `decision` when the fate is `decision`,
+    `unresolvedReason` when it is `unresolved`.
+    """
+    bad = []
+    for position, entry in enumerate(entries_of(ctx["map"])):
+        if not isinstance(entry, dict):
+            continue
+        name = label(entry, position)
+        has_ambiguity = "ambiguity" in entry
+        for field in ("definedElsewhere", "beyondAdapter"):
+            if field in entry and has_ambiguity:
+                bad.append(f"  X  {name}: carries `{field}` and an `ambiguity` block; two correspondence rows would fire")
+        if entry.get("clarity") == "clear" and has_ambiguity:
+            bad.append(f"  X  {name}: clarity is `clear` but an `ambiguity` block is present")
+        if entry.get("clarity") == "ambiguous" and not has_ambiguity:
+            bad.append(f"  X  {name}: clarity is `ambiguous` but no `ambiguity` block states the question")
+        if has_ambiguity:
+            ambiguity = block(entry, "ambiguity")
+            if not isinstance(entry.get("ambiguity"), dict):
+                bad.append(f"  X  {name}: `ambiguity` is not an object")
+                continue
+            if not ambiguity.get("question"):
+                bad.append(f"  X  {name}: ambiguity has no `question`")
+            if not ambiguity.get("fate"):
+                bad.append(f"  X  {name}: ambiguity has no `fate`; there is no third value and no absent one")
+            if ambiguity.get("fate") == "decision" and not ambiguity.get("decision"):
+                bad.append(f"  X  {name}: fate is `decision` but no record is named")
+            if ambiguity.get("fate") == "unresolved" and not ambiguity.get("unresolvedReason"):
+                bad.append(f"  X  {name}: fate is `unresolved` but no `unresolvedReason` ties it to the correspondence table")
+            if ambiguity.get("fate") == "decision" and ambiguity.get("unresolvedReason"):
+                bad.append(f"  X  {name}: fate is `decision`, so there is no runtime unresolved reason to name")
+    return verdict(bad, "ambiguity blocks are present exactly where clarity says, and carry nothing else's job",
+                   "an ambiguity block is misused")
+
+
+def check_status(ctx):
+    """`implementedIn` is set when status becomes `implemented`, and only then."""
+    bad, implemented = [], 0
+    for position, entry in enumerate(entries_of(ctx["map"])):
+        if not isinstance(entry, dict):
+            continue
+        name = label(entry, position)
+        if entry.get("status") == "implemented":
+            implemented += 1
+            if not entry.get("implementedIn"):
+                bad.append(f"  X  {name}: status is `implemented` but no `implementedIn` names the ruleset revision")
+        elif entry.get("implementedIn"):
+            bad.append(f"  X  {name}: carries `implementedIn` while status is {entry.get('status')!r}")
+    carriers = sum(1 for e in entries_of(ctx["map"]) if isinstance(e, dict) and e.get("implementedIn"))
+    if not bad and not implemented and not carriers:
+        return skip("no entry is `implemented` and none carries `implementedIn`, so the rule that "
+                    "one accompanies the other was not exercised", had_subject=False)
+    return verdict(bad, f"{implemented} implemented entries all name their revision", "status and implementedIn disagree")
+
+
+def check_decision_records(ctx):
+    """A `fate: decision` that names a record means the record exists.
+
+    "Never cite a document you have not written." Paths are resolved against the repository
+    root; without one the check reports NOT VERIFIED rather than passing.
+    """
+    named = [
+        (label(e, i), block(e, "ambiguity").get("decision"))
+        for i, e in enumerate(entries_of(ctx["map"]))
+        if isinstance(e, dict) and fate_of(e) == "decision"
+    ]
+    if not named:
+        return skip("no entry carries `fate: decision`, so no record was named to resolve", had_subject=False)
+    root = ctx["repo_root"]
+    if root is None or not os.path.isdir(root):
+        return skip(f"no repository root ({root!r}) to resolve a decision record path against")
+    bad = []
+    for name, path in named:
+        if not path:
+            continue  # reported by `exclusions`
+        if not os.path.isfile(os.path.join(root, path)):
+            bad.append(f"  X  {name}: names decision record {path!r}, which does not exist under {root}")
+    return verdict(bad, f"{len(named)} named decision records all exist", "a decision record does not exist")
+
+
+def check_conflicts(ctx):
+    """NOT VERIFIABLE: nothing in the map identifies a conflict.
+
+    0005 section B: where entries in a conflict carry `fate: decision`, they must name the
+    same record -- and, in the same section, "A conflict is a property of a pair, recorded
+    on entries. Nothing links them." `enter-from-bar` and `legal-destination` state
+    incompatible readings and the data does not say they are about the same thing. No
+    field is invented here. The check reports NOT VERIFIED and fails the run whenever any
+    entry carries `fate: decision`, which is exactly when the rule could be broken.
+    """
+    deciders = [label(e, i) for i, e in enumerate(entries_of(ctx["map"]))
+                if isinstance(e, dict) and fate_of(e) == "decision"]
+    if not deciders:
+        return skip("no entry carries `fate: decision`, so the rule is vacuous over this map. "
+                    "It is still unenforceable: no field groups a conflicting pair.", had_subject=False)
+    return skip(
+        f"{len(deciders)} entries carry `fate: decision` ({', '.join(deciders)}) and no field "
+        f"identifies which of them are in the same conflict, so 0005 section B's rule that "
+        f"they name the same record cannot be enforced"
+    )
+
+
+ROW_DESCRIPTIONS = {
+    1: "scope: out -> OutsideCurrentScope",
+    2: "status mapped/blocked -> UnsupportedRule",
+    3: "definedElsewhere -> MissingRulesData",
+    4: "beyondAdapter -> MissingRulesData",
+    5: "operation with an unimplemented value dependency -> MissingRulesData",
+    6: "fate: unresolved -> RequiresInterpretation",
+    8: "kind: assertion -> nothing; the engine demands the value",
+}
+
+
+def matched_rows(entry, by_id):
+    """Every correspondence row whose predicate holds, ignoring precedence.
+
+    Row 7 is absent: "two implemented entries with no entry for their combination" is a
+    fact about a pair and about an interaction the map does not enumerate.
+    """
+    rows = []
+    if entry.get("scope") == "out":
+        rows.append(1)
+    if entry.get("status") in ("mapped", "blocked"):
+        rows.append(2)
+    if "definedElsewhere" in entry:
+        rows.append(3)
+    if "beyondAdapter" in entry:
+        rows.append(4)
+    if entry.get("kind") == "operation":
+        for dep in entry.get("dependsOn") or []:
+            target = by_id.get(dep) if isinstance(dep, str) else None
+            if isinstance(target, dict) and target.get("kind") == "value" and target.get("status") != "implemented":
+                rows.append(5)
+                break
+    if fate_of(entry) == "unresolved":
+        rows.append(6)
+    if entry.get("kind") == "assertion":
+        rows.append(8)
+    return rows
+
+
+def check_correspondence(ctx):
+    """Every entry is reachable by some correspondence row, or is a plain computable rule.
+
+    Rows are checked in order and the first match wins, so matching two is not itself an
+    error -- 0005 notes that `status: mapped` with `fate: unresolved` matches rows 2 and 6
+    on eleven entries today and is exactly what precedence is for. What is reported:
+
+      * an entry matching no row at all. A failure when `status: declined`, which claims no
+        implemented path and therefore owes a runtime reason; informational otherwise,
+        because a built clear rule matches no row by design.
+      * two specific unordered overlaps that precedence hides but that are data errors:
+        `definedElsewhere` together with `beyondAdapter` (rows 3 and 4 both fire with the
+        same runtime reason from contradictory evidence), and a `kind: assertion` that also
+        declines (row 8 says an assertion is a parameter, not a failure to resolve).
+    """
+    by_id, bad, notes, matched = index(ctx["map"]), [], [], 0
+    for position, entry in enumerate(entries_of(ctx["map"])):
+        if not isinstance(entry, dict):
+            continue
+        name = label(entry, position)
+        rows = matched_rows(entry, by_id)
+        if rows:
+            matched += 1
+            first = rows[0]
+            notes.append(f"  .  {name}: row {first} ({ROW_DESCRIPTIONS[first]})")
+        elif entry.get("status") == "declined":
+            bad.append(f"  X  {name}: status is `declined` -- no implemented path at all -- and no "
+                       f"correspondence row says what the engine returns instead")
+        else:
+            notes.append(f"  .  {name}: matches no row; the engine answers it (status "
+                         f"{entry.get('status')!r}, clarity {entry.get('clarity')!r})")
+        if 3 in rows and 4 in rows:
+            bad.append(f"  X  {name}: carries both `definedElsewhere` and `beyondAdapter`; the rule is "
+                       f"either here and unreadable or defined in a corpus not admitted, not both")
+        if 8 in rows and (3 in rows or 4 in rows or 6 in rows):
+            others = [r for r in rows if r in (3, 4, 6)]
+            bad.append(f"  X  {name}: is `kind: assertion` and also matches row(s) {others}; an assertion "
+                       f"is a parameter the engine demands, not a decline")
+    total = len([e for e in entries_of(ctx["map"]) if isinstance(e, dict)])
+    if not total:
+        return skip("there are no entries to place in the table")
+    result = verdict(bad, f"{matched} of {total} entries match a row; the rest are plainly computable "
+                          f"(row 7 is not evaluated)",
+                     "an entry cannot be placed in the correspondence table")
+    if ctx["verbose"]:
+        result.details = result.details + notes
+    return result
+
+
+CHECKS = [
+    ("schema", check_schema),
+    ("required-fields", check_required_fields),
+    ("vocabulary", check_vocabulary),
+    ("unique-ids", check_unique_ids),
+    ("references", check_references),
+    ("no-cycles", check_no_cycles),
+    ("manifest", check_manifest),
+    ("exclusions", check_exclusions),
+    ("status", check_status),
+    ("decision-records", check_decision_records),
+    ("conflicts", check_conflicts),
+    ("correspondence", check_correspondence),
+]
+
+
+# --- driver --------------------------------------------------------------------------
+
+
+def find_manifest(map_path):
+    """The manifest beside the map, when there is exactly one candidate."""
+    directory = os.path.dirname(os.path.abspath(map_path)) or "."
+    candidates = sorted(
+        os.path.join(directory, n)
+        for n in os.listdir(directory)
+        if n.startswith("corpus-manifest") and n.endswith(".json")
+    )
+    return candidates[0] if len(candidates) == 1 else None
+
+
+def find_repo_root(start):
+    directory = os.path.dirname(os.path.abspath(start))
+    while True:
+        if os.path.isdir(os.path.join(directory, "docs", "decisions")) or os.path.isdir(os.path.join(directory, ".git")):
+            return directory
+        parent = os.path.dirname(directory)
+        if parent == directory:
+            return None
+        directory = parent
+
+
+def main(argv=None):
+    parser = argparse.ArgumentParser(description="Validate a corpus map against docs/corpus-map.md.")
+    parser.add_argument("map_path")
+    parser.add_argument("--manifest", help="corpus manifest; found beside the map when unambiguous")
+    parser.add_argument("--repo-root", help="root that decision-record paths are relative to")
+    parser.add_argument("--only", help="run one check: " + ", ".join(name for name, _ in CHECKS))
+    parser.add_argument("--verbose", action="store_true", help="also print the row each entry matches")
+    args = parser.parse_args(argv)
+
+    selected = CHECKS
+    if args.only:
+        selected = [c for c in CHECKS if c[0] == args.only]
+        if not selected:
+            print(f"unknown check {args.only!r}; known: {', '.join(n for n, _ in CHECKS)}", file=sys.stderr)
+            return 2
+    try:
+        with open(args.map_path, encoding="utf-8") as handle:
+            document = json.load(handle)
+    except (OSError, ValueError) as error:
+        print(f"cannot read map {args.map_path}: {error}", file=sys.stderr)
+        return 2
+
+    manifest_path = args.manifest or find_manifest(args.map_path)
+    manifest = None
+    if manifest_path:
+        try:
+            with open(manifest_path, encoding="utf-8") as handle:
+                manifest = json.load(handle)
+        except (OSError, ValueError) as error:
+            print(f"cannot read manifest {manifest_path}: {error}", file=sys.stderr)
+            return 2
+
+    ctx = {
+        "map": document,
+        "manifest": manifest,
+        "repo_root": args.repo_root or find_repo_root(args.map_path),
+        "verbose": args.verbose,
+    }
+
+    print(f"{args.map_path} ({len(entries_of(document))} entries"
+          + (f", manifest {os.path.basename(manifest_path)}" if manifest_path else ", no manifest") + ")")
+    failed = skipped = passed = fatal = 0
+    for name, check in selected:
+        try:
+            result = check(ctx)
+        except Exception as error:  # a check that crashes has proved nothing
+            result = skip(f"the check raised {type(error).__name__}: {error}")
+        print(f"[{result.status}] {name}: {result.summary}")
+        for line in result.details:
+            print(line)
+        if result.status == "fail":
+            failed += 1
+        elif result.status == "skip":
+            skipped += 1
+        else:
+            passed += 1
+        if result.fatal:
+            fatal += 1
+
+    print(f"\n{passed} ok, {failed} failed, {skipped} not verified")
+    if fatal:
+        return 1
+    if not passed:
+        # Nothing failed and nothing passed: every check declined to prove anything.
+        print("nothing was actually checked; this is not a pass", file=sys.stderr)
+        return 1
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())
