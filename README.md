@@ -109,7 +109,7 @@ CI proves this on every pull request. The `validate` job runs
   than a review.
 - **That a rule is implemented.** A produced engine answers each entry that is not
   `implemented` with a decline citing its locator. The rules themselves are hand-written
-  `[Implements]` handlers, and the backlog lists the ones still to write.
+  handlers, and the backlog lists the ones still to write.
 - **What the machine did.** Provenance says the engine's source tree is the recorded one. It
   does not record which SDK was installed, what restore fetched beyond the hashes the lock files
   pin, environment variables, MSBuild or NuGet files outside the engine directory, or that a
@@ -117,10 +117,14 @@ CI proves this on every pull request. The `validate` job runs
   [`provenance.py`](tools/factory/provenance.py).
 - **Anything, under `--no-verify`.** The engine is committed without being built or tested.
 
-The generated runtime is untyped at its boundary. A `RuleRequest` holds its assertions as a
-dictionary of `object`, handlers are found by reflection and return `Resolution<object>`, and so
-a wrong domain type is found at run time rather than at compile time
-([#76](https://github.com/brandonifco/rules-factory/issues/76)).
+The generated runtime is typed by entry, and no further than the map declares
+([#76](https://github.com/brandonifco/rules-factory/issues/76)). Each entry has its own request
+type and typed entry point, so a request for one entry does not compile against another. Each
+entry's handler is a generated partial method, so an `implemented` entry whose handler is
+missing or has the wrong signature fails the build. The map names no inputs, outputs or units,
+though, so assertion values and results are still `object`. A wrong domain value inside them is
+found at run time, not at compile time. The string-keyed `Registry` and reflection-discovered
+`[Implements]` handlers remain, as the shared dispatch and a runtime cross-check.
 
 ## Where this sits
 

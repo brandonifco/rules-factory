@@ -40,6 +40,8 @@ import os
 import re
 import subprocess
 
+import generate
+
 DIRECTORY = "backlog"
 ITEM_FILE = re.compile(r"^\d{3,}-.+\.md$")
 BUILDABLE = ("mapped", "blocked")
@@ -176,7 +178,9 @@ def _criteria(entry, by_id):
         elif ambiguity.get("fate") == "decision":
             out.append(f"The engine follows the recorded decision `{ambiguity.get('decision')}`, "
                        "and a test goes red under the reading it rejected.")
-    out.append(f"A hand-written handler carries `[Implements(\"{eid}\")]`.")
+    out.append(f"A hand-written handler implements `Handlers.{generate.pascal(eid)}`, the partial method "
+               "`Generated/Contracts.g.cs` declares for this entry, with exactly its signature: once the entry "
+               "is `implemented`, a missing or mis-typed handler does not build (#76).")
     out.append(f"`corpus-map.overlay.json` sets `{eid}` to `status: implemented`, with `implementedIn` "
                "and `tests`: every test named with its recorded `mutation` -- the change to the engine "
                "that turned that test red.")

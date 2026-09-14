@@ -62,7 +62,7 @@ written path the table does not classify.
 |---|---|---|---|
 | `provenance.json` | generated |  | The record of this run, written last, from the run itself. |
 | `RulesFactory.Packages.g.props` | generated |  | The kernel and map pins and the map reference are facts about the inputs (#66). |
-| `src/{name}/Generated/*.g.cs` | generated |  | The map, registry and embedded provenance, from merge(package, overlay). |
+| `src/{name}/Generated/*.g.cs` | generated |  | The map, registry, typed contracts and embedded provenance, from merge(package, overlay). |
 | `tests/{name}.Tests/Generated/*.g.cs` | generated |  | The correspondence and provenance tests, from the same merge. |
 | `corpus/*` | generated |  | The corpus copy intake proved against the map's baseline. |
 | `backlog/*.md` | generated |  | The entries still to build, from the merge. GitHub issues are synced from it, not the reverse. |

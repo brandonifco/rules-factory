@@ -64,7 +64,7 @@ TABLE = (
     Row("RulesFactory.Packages.g.props", GENERATED, None,
         "the kernel and map pins and the map reference: facts about the inputs (#66)"),
     Row("src/{name}/Generated/*.g.cs", GENERATED, None,
-        "the map, registry and embedded provenance, from merge(package, overlay)"),
+        "the map, registry, typed contracts and embedded provenance, from merge(package, overlay)"),
     Row("tests/{name}.Tests/Generated/*.g.cs", GENERATED, None,
         "the correspondence and provenance tests, from the same merge"),
     Row("corpus/*", GENERATED, None,

@@ -45,13 +45,62 @@ What the generated code states:
       8 `kind: assertion`                             -> no decline: the value is demanded of the caller
       no row (a built, clear rule)                    -> nothing; a hand-written handler must answer.
     Row 7 is a fact about pairs of entries and has no single-entry handler.
-    A hand-written `[Implements("entry-id")]` method replaces the default -- **only for an
-    entry whose merged status is `implemented`**. A `mapped` entry declines even when its code
-    exists (corpus-map.md, `status`), so the override is ignored until the overlay says so;
+    A hand-written handler (the typed partial method below, or an `[Implements("entry-id")]`
+    method) replaces the default -- **only for an entry whose merged status is `implemented`**.
+    A `mapped` entry declines even when its code exists (corpus-map.md, `status`), so the
+    override is ignored until the overlay says so;
+  * `Contracts.g.cs` and `Requests.g.cs` -- the typed contract over that registry (#76), below;
   * `CorrespondenceTests.g.cs` -- every entry is registered, in map order; every entry that
-    is not `implemented` declines with its row's reason and its own locator, and registers
-    every locator it cites (all of a derived entry's premises); every
-    `implemented` entry has a hand-written handler unless its row's default can serve.
+    is not `implemented` declines with its row's reason and its own locator, through the
+    dictionary dispatch and through its typed entry point alike, and registers every locator it
+    cites (all of a derived entry's premises); every `implemented` entry has a hand-written
+    handler unless its row's default can serve.
+
+The typed contract (#76). The registry dispatches on a string id and a `RuleRequest` that is a
+dictionary of assertion values, and it stays: it is the one mechanism every entry shares, and the
+correspondence tests read it. Over it, each entry gets
+
+  * a request type of its own, `{Engine}.Requests.{Member}Request`, and a typed entry point,
+    `EntryPoints.{Member}`, a `RuleEntry<{Member}Request, TOutput>`. Handing one entry's request to
+    another entry does not compile. (`EntryPoints`, not `Rules`: an engine's hand-written code
+    commonly lives in a `{Engine}.Rules` namespace, which a class of that name would collide with);
+  * a handler declaration, a partial method of `Handlers`, whose implementation is the
+    hand-written code. For an entry whose merged status is `implemented` and whose row is not 8
+    (the entries a correspondence test already requires a handler for) it is an extended partial
+    method, `internal static partial Resolution<TOutput> {Member}({Member}Request request)`, so a
+    missing implementation is CS8795 and one with another return type CS8817 or parameter
+    CS0759: build errors, and the engine builds with warnings as errors, so a nullability
+    mismatch (CS8826 and kin) is one too. Every other entry gets an optional hook,
+    `static partial void {Member}({Member}Request request, ref Resolution<TOutput>? resolution)`,
+    which may stay unimplemented and, when implemented with the wrong signature, is CS0759. An
+    entry moving to `implemented` turns its hook into the required form, and the build names the
+    handler to change.
+
+What the types are is decided in one place, `contract()`, and the rule is: **a type comes from
+the map where the map declares one, and is `object` where it does not.** Today the map declares
+none. No field of an entry names an input, an output, a unit or a value type (docs/corpus-map.md,
+"Fields"), and that is deliberate: *a parameter is not a rule, so it gets no entry at all*, and
+`dependsOn` is explicitly not a runtime input. So what the generator can type is what the map does
+say. Which entry a request belongs to is always known, and becomes the request's nominal type. A
+`kind: assertion` entry is resolved from the caller's value for it (row 8), so its request has an
+`Asserting(value)` constructor. The value and every output are `object`, because nothing in the
+map says otherwise. A map field that did declare a type would change `contract()` and nothing
+else.
+
+Why partial methods rather than a Roslyn analyzer or source generator. An analyzer could check
+`[Implements]` methods where they stand, but it is a compiled netstandard2.0 assembly referencing
+Microsoft.CodeAnalysis: the factory writes source and runs no compiler, so the analyzer would have
+to be a package of its own, versioned and restored and locked alongside the kernel, pinned to a
+Roslyn the engine's SDK may not load, and its diagnostics would be the factory's code running
+inside every engine build. A generated partial declaration costs nothing of that: it is ordinary
+C# the regeneration gate already compares byte for byte, and the C# compiler itself refuses a
+missing or mis-typed handler.
+
+`[Implements]` is kept, and is the migrating part. Reflection still discovers it, as the runtime
+cross-check it was: it names a map entry, has the untyped signature, and appears once, and now
+also that the same entry has no typed handler as well. It can still answer an entry whose handler
+is optional. An engine whose `implemented` entry was answered only by an `[Implements]` method no
+longer builds until the required partial method exists (it may simply call the old method).
 
 Deterministic: the output depends only on the package map (its id and version included), the
 overlay, the corpus, the engine name and the factory's own pins. No timestamps, no machine
@@ -86,7 +135,11 @@ ROWS = {
     8: ("Assertion", None),
 }
 STATUSES = {"mapped": "Mapped", "blocked": "Blocked", "implemented": "Implemented", "declined": "Declined"}
-RESERVED_MEMBERS = {"SourceId", "Baseline", "Entry", "Derived", "Equals", "ReferenceEquals", "GetHashCode", "ToString"}
+# Names an entry's member may not take: members of MapEntries, EntryPoints and Handlers, the classes
+# themselves (a member may not share its class's name), and the Requests namespace the
+# generated code qualifies.
+RESERVED_MEMBERS = {"SourceId", "Baseline", "Entry", "Derived", "Equals", "ReferenceEquals", "GetHashCode", "ToString",
+                    "MapEntries", "EntryPoints", "Handlers", "Requests", "Dispatch", "Has", "Hooked"}
 
 
 class GenerationError(Exception):
@@ -270,6 +323,28 @@ class Model:
         return isinstance(item["entry"].get("locator"), dict)
 
 
+def contract(model, item):
+    """The typed contract of one entry: its request type, output type and handler form.
+
+    The one place a type is decided (see the module docstring): from the map where it declares
+    one, `object` where it does not, and today it declares none. The request type is nominal, one
+    per entry, because which entry is being resolved is the one thing always known; it carries an
+    `Asserting` constructor on a `kind: assertion` entry, whose value is what row 8 resolves to.
+
+    `required` is the handler a correspondence test already demands: an `implemented` entry not
+    on row 8. It becomes a partial method the build cannot complete without; every other entry
+    gets an optional hook.
+    """
+    entry = item["entry"]
+    return {
+        "request": f"{item['member']}Request",
+        "request_cs": f"global::{model.name}.Requests.{item['member']}Request",
+        "output": "object",
+        "asserts": entry.get("kind") == "assertion",
+        "required": entry.get("status") == "implemented" and item["row"] != 8,
+    }
+
+
 def locator_cs(locator):
     return f"new SourceLocator({cs_string(locator['sourceId'])}, {cs_string(locator['citation'])})"
 
@@ -420,9 +495,12 @@ public sealed class AssertionRequiredException : ArgumentException
 }
 
 /// <summary>
-/// Marks a hand-written handler for a map entry. The method must be static, take one
-/// <see cref="RuleRequest"/> and return <c>Resolution&lt;object&gt;</c>. It answers only once
-/// the entry's merged status is <c>implemented</c>; until then the entry declines as its row says.
+/// Marks an untyped hand-written handler for a map entry. The method must be static, take one
+/// <see cref="RuleRequest"/> and return <c>Resolution&lt;object&gt;</c>, and it is checked only at
+/// runtime. It answers only once the entry's merged status is <c>implemented</c>; until then the
+/// entry declines as its row says. Prefer the typed partial method <see cref="Handlers"/> declares
+/// for the entry, which the compiler checks; an entry that has both is refused, and an
+/// <c>implemented</c> entry whose row has no default needs the typed one to build at all.
 /// </summary>
 /// <param name="entryId">The map entry this method implements.</param>
 [AttributeUsage(AttributeTargets.Method, AllowMultiple = true, Inherited = false)]
@@ -477,14 +555,20 @@ REGISTRY_BODY = """
     /// <exception cref="KeyNotFoundException">The map has no such entry.</exception>
     public static ImmutableArray<SourceLocator> Citations(string entryId) => Entry(entryId).Locators;
 
-    /// <summary>Whether a hand-written <see cref="ImplementsAttribute"/> handler exists for <paramref name="entryId"/>.</summary>
+    /// <summary>
+    /// Whether a hand-written handler exists for <paramref name="entryId"/>: a typed partial method
+    /// of <see cref="Handlers"/>, or an <see cref="ImplementsAttribute"/> method.
+    /// </summary>
     /// <param name="entryId">A map entry id.</param>
     /// <returns>True when one exists, whether or not the entry's status lets it answer.</returns>
-    public static bool HasImplementation(string entryId) => Implementations.Value.ContainsKey(entryId);
+    /// <exception cref="InvalidOperationException">An <see cref="ImplementsAttribute"/> method is malformed or duplicates a handler.</exception>
+    public static bool HasImplementation(string entryId) => Implementations.Value.ContainsKey(entryId) || Handlers.Has(entryId);
 
     /// <summary>
     /// Resolves <paramref name="entryId"/>: through its hand-written handler when the entry is
-    /// <c>implemented</c> and has one, otherwise through the default its correspondence row fixes.
+    /// <c>implemented</c> and has one (the typed handler first, which answers unless an optional
+    /// hook leaves the resolution null), otherwise through the default its correspondence row fixes.
+    /// The typed entry points in <see cref="EntryPoints"/> resolve through here.
     /// </summary>
     /// <param name="entryId">A map entry id.</param>
     /// <param name="request">What the caller asserts.</param>
@@ -493,9 +577,20 @@ REGISTRY_BODY = """
     {
         ArgumentNullException.ThrowIfNull(request);
         var entry = Entry(entryId);
-        if (entry.Status == EntryStatus.Implemented && Implementations.Value.TryGetValue(entryId, out var handler))
+        // Discovery runs on the first resolve whatever answers it, so a malformed or duplicate
+        // [Implements] handler is refused even for an entry a typed handler answers.
+        var untyped = Implementations.Value;
+        if (entry.Status == EntryStatus.Implemented)
         {
-            return handler(request);
+            if (Handlers.Dispatch(entryId, request) is { } typed)
+            {
+                return typed;
+            }
+
+            if (untyped.TryGetValue(entryId, out var handler))
+            {
+                return handler(request);
+            }
         }
 
         return Default(entry, request);
@@ -543,6 +638,11 @@ REGISTRY_BODY = """
                         throw new InvalidOperationException($"'{implements.EntryId}' has more than one [Implements] handler; {where} is the second");
                     }
 
+                    if (Handlers.Has(implements.EntryId))
+                    {
+                        throw new InvalidOperationException($"'{implements.EntryId}' has a typed handler in Handlers and an [Implements] handler, {where}; keep one");
+                    }
+
                     found.Add(implements.EntryId, method.CreateDelegate<Func<RuleRequest, Resolution<object>>>());
                 }
             }
@@ -578,6 +678,158 @@ def registry_cs(model):
     return "".join(lines)
 
 
+CONTRACTS_SUPPORT = """
+/// <summary>A request for one map entry; each entry has its own type (<c>Requests</c> namespace).</summary>
+public interface IEntryRequest
+{
+    /// <summary>The map entry this request resolves.</summary>
+    string EntryId { get; }
+
+    /// <summary>What the caller asserts, as the registry's dictionary dispatch reads it.</summary>
+    RuleRequest Assertions { get; }
+}
+
+/// <summary>
+/// The typed entry point of one map entry. <typeparamref name="TInput"/> is the entry's own
+/// request type, so a request for another entry does not compile. <typeparamref name="TOutput"/>
+/// is the type the map declares for the entry's value, and <c>object</c> where it declares none.
+/// </summary>
+/// <typeparam name="TInput">The entry's request type.</typeparam>
+/// <typeparam name="TOutput">The entry's value type.</typeparam>
+public sealed class RuleEntry<TInput, TOutput>
+    where TInput : IEntryRequest
+{
+    private readonly Func<TInput, Resolution<TOutput>> resolve;
+
+    internal RuleEntry(string id, Func<TInput, Resolution<TOutput>> resolve)
+    {
+        Id = id;
+        this.resolve = resolve;
+    }
+
+    /// <summary>The map entry's id.</summary>
+    public string Id { get; }
+
+    /// <summary>The entry as the registry holds it: status, row and citations.</summary>
+    public RegisteredEntry Registered => Registry.Entry(Id);
+
+    /// <summary>Resolves the entry, exactly as <see cref="Registry.Resolve"/> does for its id.</summary>
+    /// <param name="request">The entry's request.</param>
+    /// <returns>The resolution.</returns>
+    public Resolution<TOutput> Resolve(TInput request)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+        return resolve(request);
+    }
+}
+"""
+
+
+def contracts_cs(model):
+    """`Contracts.g.cs`: the typed entry points (`EntryPoints`) and the handler declarations (`Handlers`)."""
+    lines = [model.header,
+             "using System.Reflection;\n",
+             "using RulesKernel.Resolution;\n\n",
+             f"namespace {model.name};\n",
+             CONTRACTS_SUPPORT,
+             "\n/// <summary>The typed entry point of every map entry, in the map's order.</summary>\n",
+             "public static class EntryPoints\n{\n"]
+    for index, item in enumerate(model.entries):
+        entry, c = item["entry"], contract(model, item)
+        lines.append("\n" if index else "")
+        lines.append(f"    /// <summary>{xml_text(entry.get('name', entry['id']))} (<c>{xml_text(entry['id'])}</c>).</summary>\n"
+                     f"    public static RuleEntry<{c['request_cs']}, {c['output']}> {item['member']} {{ get; }} =\n"
+                     f"        new({cs_string(entry['id'])}, request => Registry.Resolve({cs_string(entry['id'])}, request.Assertions));\n")
+    lines.append("}\n\n")
+    lines.append(
+        "/// <summary>\n"
+        "/// The hand-written handler of every map entry, declared as partial methods the engine implements\n"
+        "/// in a file of its own. An <c>implemented</c> entry whose correspondence row has no default must\n"
+        "/// have one, with exactly the declared signature, or the engine does not build. Every other entry's\n"
+        "/// hook may stay unimplemented; implemented, it answers once the entry is <c>implemented</c>, and a\n"
+        "/// resolution it leaves null falls through to the row's default.\n"
+        "/// </summary>\n"
+        "internal static partial class Handlers\n{\n")
+    hooks = []
+    for item in model.entries:
+        entry, c = item["entry"], contract(model, item)
+        summary = f"    /// <summary>{xml_text(entry.get('name', entry['id']))} (<c>{xml_text(entry['id'])}</c>)"
+        if c["required"]:
+            lines.append(f"{summary}: required, the entry is implemented.</summary>\n"
+                         f"    internal static partial Resolution<{c['output']}> {item['member']}({c['request_cs']} request);\n\n")
+        else:
+            hooks.append(item)
+            lines.append(f"{summary}: optional.</summary>\n"
+                         f"    static partial void {item['member']}({c['request_cs']} request, ref Resolution<{c['output']}>? resolution);\n\n")
+    lines.append("    /// <summary>The typed handler's resolution of <paramref name=\"entryId\"/>, or null when it has none or leaves it null.</summary>\n"
+                 "    internal static Resolution<object>? Dispatch(string entryId, RuleRequest request)\n"
+                 "    {\n"
+                 "        Resolution<object>? resolution = null;\n")
+    if model.entries:
+        lines.append("        switch (entryId)\n        {\n")
+        for item in model.entries:
+            c = contract(model, item)
+            lines.append(f"            case {cs_string(item['entry']['id'])}:\n")
+            if c["required"]:
+                lines.append(f"                resolution = {item['member']}(new(request));\n")
+            else:
+                lines.append(f"                {item['member']}(new(request), ref resolution);\n")
+            lines.append("                break;\n")
+        lines.append("        }\n\n")
+    else:
+        lines.append("        _ = entryId;\n        _ = request;\n")
+    lines.append("        return resolution;\n    }\n\n")
+    lines.append("    /// <summary>Whether <paramref name=\"entryId\"/> has a typed handler: always when it is required, and an\n"
+                 "    /// optional hook when the engine implemented it (an unimplemented partial method is not compiled).</summary>\n"
+                 "    internal static bool Has(string entryId) => entryId switch\n    {\n")
+    for item in model.entries:
+        c = contract(model, item)
+        if c["required"]:
+            lines.append(f"        {cs_string(item['entry']['id'])} => true,\n")
+        else:
+            lines.append(f"        {cs_string(item['entry']['id'])} => Hooked({cs_string(item['member'])}, typeof({c['request_cs']})),\n")
+    lines.append("        _ => false,\n    };\n\n")
+    lines.append("    private static bool Hooked(string name, Type request) =>\n"
+                 "        typeof(Handlers).GetMethod(name, BindingFlags.NonPublic | BindingFlags.Static, [request, typeof(Resolution<object>).MakeByRefType()]) is not null;\n")
+    lines.append("}\n")
+    return "".join(lines)
+
+
+def requests_cs(model):
+    """`Requests.g.cs`: one request type per entry, in a namespace of their own."""
+    lines = [model.header,
+             f"namespace {model.name}.Requests;\n"]
+    for item in model.entries:
+        entry, c = item["entry"], contract(model, item)
+        eid = cs_string(entry["id"])
+        lines.append(
+            "\n"
+            f"/// <summary>A request to resolve {xml_text(entry.get('name', entry['id']))} (<c>{xml_text(entry['id'])}</c>).</summary>\n"
+            f"public sealed class {c['request']} : IEntryRequest\n{{\n"
+            f"    /// <summary>A request for <c>{xml_text(entry['id'])}</c> carrying <paramref name=\"assertions\"/>.</summary>\n"
+            "    /// <param name=\"assertions\">What the caller asserts.</param>\n"
+            f"    public {c['request']}(RuleRequest assertions)\n"
+            "    {\n"
+            "        ArgumentNullException.ThrowIfNull(assertions);\n"
+            "        Assertions = assertions;\n"
+            "    }\n\n"
+            "    /// <summary>A request asserting nothing.</summary>\n"
+            f"    public static {c['request']} Empty {{ get; }} = new(RuleRequest.Empty);\n\n")
+        if c["asserts"]:
+            lines.append(
+                "    /// <summary>A request asserting <paramref name=\"value\"/> for this assertion entry, which is what it resolves to.</summary>\n"
+                "    /// <param name=\"value\">The caller's value.</param>\n"
+                "    /// <returns>The request.</returns>\n"
+                f"    public static {c['request']} Asserting({c['output']} value) => new(RuleRequest.Empty.Assert({eid}, value));\n\n")
+        lines.append(
+            "    /// <inheritdoc/>\n"
+            f"    public string EntryId => {eid};\n\n"
+            "    /// <inheritdoc/>\n"
+            "    public RuleRequest Assertions { get; }\n"
+            "}\n")
+    return "".join(lines)
+
+
 def tests_cs(model):
     lines = [model.header,
              "using RulesKernel.Provenance;\n",
@@ -595,12 +847,21 @@ def tests_cs(model):
     lines.append("    [Fact]\n"
                  "    public void Every_hand_written_handler_names_a_map_entry_once_with_the_handler_signature() =>\n"
                  "        Assert.All(MapOrder, id => _ = Registry.HasImplementation(id));\n\n")
-    lines.append("    private static void AssertDeclines(string entryId, UnresolvedReason reason, params SourceLocator[] cited)\n"
+    lines.append("    [Fact]\n"
+                 "    public void Every_map_entry_has_a_typed_entry_point_in_map_order() =>\n"
+                 "        Assert.Equal(MapOrder, new string[]\n"
+                 "        {\n"
+                 + "".join(f"            EntryPoints.{item['member']}.Id,\n" for item in model.entries) +
+                 "        });\n\n")
+    lines.append("    private static void AssertDeclines(string entryId, UnresolvedReason reason, Resolution<object> typed, params SourceLocator[] cited)\n"
                  "    {\n"
-                 "        var unresolved = Registry.Resolve(entryId, RuleRequest.Empty).Match<UnresolvedResult?>(_ => null, u => u);\n"
-                 "        Assert.NotNull(unresolved);\n"
-                 "        Assert.Equal(reason, unresolved.Reason);\n"
-                 "        Assert.Equal(cited[0], unresolved.Locator);\n"
+                 "        foreach (var resolution in new[] { Registry.Resolve(entryId, RuleRequest.Empty), typed })\n"
+                 "        {\n"
+                 "            var unresolved = resolution.Match<UnresolvedResult?>(_ => null, u => u);\n"
+                 "            Assert.NotNull(unresolved);\n"
+                 "            Assert.Equal(reason, unresolved.Reason);\n"
+                 "            Assert.Equal(cited[0], unresolved.Locator);\n"
+                 "        }\n\n"
                  "        Assert.Equal(cited, Registry.Citations(entryId));\n"
                  "    }\n")
     for item in model.entries:
@@ -629,6 +890,8 @@ def tests_cs(model):
                              f"        var resolved = Registry.Resolve({cs_string(entry['id'])}, RuleRequest.Empty.Assert({cs_string(entry['id'])}, value))"
                              ".Match<object?>(v => v, _ => null);\n"
                              "        Assert.Same(value, resolved);\n"
+                             f"        var typed = EntryPoints.{item['member']}.Resolve({contract(model, item)['request_cs']}.Asserting(value)).Match<object?>(v => v, _ => null);\n"
+                             "        Assert.Same(value, typed);\n"
                              f"        Assert.Throws<AssertionRequiredException>(() => Registry.Resolve({cs_string(entry['id'])}, RuleRequest.Empty));\n"
                              "    }\n")
             else:
@@ -641,6 +904,7 @@ def tests_cs(model):
             lines.append("    [Fact]\n"
                          f"    public void {method}__declines_{reason}_row_{row}() =>\n"
                          f"        AssertDeclines({cs_string(entry['id'])}, UnresolvedReason.{reason}, "
+                         f"EntryPoints.{item['member']}.Resolve({contract(model, item)['request_cs']}.Empty), "
                          f"{cited});\n")
         else:
             raise GenerationError(f"entry {entry['id']!r} is {entry['status']!r} and matches no declining row; "
@@ -792,6 +1056,8 @@ def generated(model):
         PACKAGES_PROPS: packages_props(model),
         f"src/{name}/Generated/MapEntries.g.cs": map_entries_cs(model),
         f"src/{name}/Generated/Registry.g.cs": registry_cs(model),
+        f"src/{name}/Generated/Contracts.g.cs": contracts_cs(model),
+        f"src/{name}/Generated/Requests.g.cs": requests_cs(model),
         f"tests/{name}.Tests/Generated/CorrespondenceTests.g.cs": tests_cs(model),
     }
 

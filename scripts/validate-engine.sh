@@ -199,4 +199,38 @@ cd "$ROOT"
 step "factory provenance recomputes on the committed engine"
 python3 tools/factory provenance --engine "$ENGINE" --package "$PACKAGE"
 
+# #76: the typed contract is only a contract if the compiler enforces it, and the Python test that
+# shows so (tools/tests/test_factory_gate.py) skips without an SDK, as in this repository's
+# validate job. So here, on a scratch copy of the committed engine: mark one entry implemented,
+# regenerate, and build the engine project with a hand-written handler of the declared type
+# (builds), none (CS8795) and one of another return type (CS8817).
+step "a missing or mis-typed handler for an implemented entry is a build error"
+TYPED="$SCRATCH/typed"
+cp -R "$ENGINE" "$TYPED"
+rm -rf "$TYPED"/src/*/bin "$TYPED"/src/*/obj "$TYPED"/tests/*/bin "$TYPED"/tests/*/obj
+cat > "$TYPED/corpus-map.overlay.json" <<'JSON'
+{"player-count": {"status": "implemented", "implementedIn": {"ruleset": "scratch", "version": 1},
+                  "tests": [{"test": "CorrespondenceTests.player_count__is_implemented_so_a_hand_written_handler_answers_it",
+                             "mutation": "scratch"}]}}
+JSON
+python3 tools/factory produce --package "$PACKAGE" --corpus "$CORPUS" --name "$NAME" --out "$TYPED" --no-verify >/dev/null
+grep -qF 'internal static partial Resolution<object> PlayerCount(' "$TYPED/src/$NAME/Generated/Contracts.g.cs" \
+  || fail "the implemented entry player-count has no required handler declaration in Contracts.g.cs"
+typed_build() {
+  printf 'using RulesKernel.Resolution;\n\nnamespace %s;\n\ninternal static partial class Handlers\n{\n%s\n}\n' "$NAME" "$1" \
+    > "$TYPED/src/$NAME/PlayerCount.cs"
+  (cd "$TYPED" && dotnet build "src/$NAME/$NAME.csproj" -f net10.0 -warnaserror -nologo 2>&1)
+}
+HANDLER='    internal static partial Resolution<object> PlayerCount(Requests.PlayerCountRequest request) => Resolution<object>.FromValue(2);\n'
+typed_build "$(printf "$HANDLER")" > "$SCRATCH/typed.log" || { tail -30 "$SCRATCH/typed.log"; fail "the handler of the declared type does not build"; }
+echo "ok   the handler of the declared type builds"
+for mutation in "missing|CS8795|" "another return type|CS8817|$(printf "$HANDLER" | sed 's/Resolution<object>/Resolution<int>/g')"; do
+  label="${mutation%%|*}"; rest="${mutation#*|}"; code="${rest%%|*}"; handler="${rest#*|}"
+  if typed_build "$handler" > "$SCRATCH/typed.log"; then
+    fail "a handler with $label built; the typed contract is not enforced"
+  fi
+  grep -q "error $code:" "$SCRATCH/typed.log" || { tail -30 "$SCRATCH/typed.log"; fail "a handler with $label failed to build without error $code"; }
+  echo "ok   a handler with $label: error $code"
+done
+
 printf '\nvalidate-engine.sh: PASS (SDK %s%s)\n' "$SDK" "$([ "$SDK" = "$PIN" ] || echo ", OVERRIDDEN from $PIN")"

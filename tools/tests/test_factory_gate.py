@@ -173,7 +173,7 @@ class TestGeneratedFilesMatchARegeneration(GateCase):
     def test_passes_on_fresh_output(self):
         code, output = self.regenerate(self.engine())
         self.assertEqual(code, 0, output)
-        self.assertIn("6 generated file(s) match", output)
+        self.assertIn("8 generated file(s) match", output)
 
     def test_fails_on_a_changed_citation(self):
         engine = self.engine()
@@ -449,22 +449,61 @@ class TestValidateShWithDotnet(GateCase):
         self.assertEqual(code, 0, output[-4000:])
         self.assertIn("validate.sh full: PASS\n", output)
 
-    def test_passes_with_an_implemented_entry_whose_tests_ran(self):
-        engine = self.copy()
-        os.makedirs(os.path.join(engine, "src", NAME, "Rules"))
-        with open(os.path.join(engine, "src", NAME, "Rules", "Speed.cs"), "w", encoding="utf-8") as handle:
-            handle.write("using RulesKernel.Resolution;\n\nnamespace FaaPart107.Rules;\n\n"
-                         "internal static class Speed\n{\n"
-                         "    [Implements(\"speed-limit\")]\n"
-                         "    private static Resolution<object> Limit(RuleRequest request) =>\n"
-                         "        Resolution<object>.FromValue(87);\n}\n")
+    def implement_speed_limit(self, engine, handler):
+        """Mark speed-limit implemented, re-produce, and put `handler` in a hand-written file."""
         test = "CorrespondenceTests.speed_limit__is_implemented_so_a_hand_written_handler_answers_it"
         write_json(os.path.join(engine, "corpus-map.overlay.json"), {"speed-limit": {
             "status": "implemented", "implementedIn": IMPLEMENTED_IN, "tests": [{"test": test, "mutation": "m"}]}})
         produce(self.nupkg, engine)
+        with open(os.path.join(engine, "src", NAME, "Speed.cs"), "w", encoding="utf-8") as handle:
+            handle.write("using RulesKernel.Resolution;\n\nnamespace FaaPart107;\n\n"
+                         "internal static partial class Handlers\n{\n" + handler + "}\n")
+
+    def build(self, engine):
+        """One target framework of the engine project, warnings as errors, as the gate builds it."""
+        env = {k: v for k, v in os.environ.items() if k not in ("CI", "MSBUILDNOINPROCNODE")}
+        env["NUGET_PACKAGES"] = self.packages
+        completed = subprocess.run(["dotnet", "build", os.path.join("src", NAME, f"{NAME}.csproj"), "-f", "net10.0",
+                                    "-warnaserror", "-nologo"], cwd=engine, stdout=subprocess.PIPE,
+                                   stderr=subprocess.STDOUT, text=True, env=env, timeout=900)
+        return completed.returncode, completed.stdout
+
+    def test_passes_with_an_implemented_entry_whose_tests_ran(self):
+        engine = self.copy()
+        self.implement_speed_limit(engine, "    internal static partial Resolution<object> SpeedLimit("
+                                           "Requests.SpeedLimitRequest request) =>\n"
+                                           "        Resolution<object>.FromValue(87);\n")
         code, output = self.validate(engine, "full")
         self.assertEqual(code, 0, output[-4000:])
         self.assertIn("1 test(s) named by 1 implemented entries, every one found and executed in all 2", output)
+
+    def test_a_missing_or_mis_typed_handler_or_request_is_a_build_error(self):
+        """#76: what reflection used to refuse at runtime, or never checked, the compiler refuses."""
+        engine = self.copy()
+        good = "    internal static partial Resolution<object> SpeedLimit(Requests.SpeedLimitRequest request) => Resolution<object>.FromValue(87);\n"
+        cases = {
+            "the typed handler builds": (good, None),
+            "a missing handler": ("", "error CS8795: Partial method 'Handlers.SpeedLimit(SpeedLimitRequest)' must have an implementation part"),
+            "another return type": (good.replace("Resolution<object>", "Resolution<int>"),
+                                    "error CS8817: Both partial method declarations must have the same return type"),
+            "another parameter type": (good.replace("Requests.SpeedLimitRequest", "RuleRequest"),
+                                       "error CS0759: No defining declaration found for implementing declaration of partial method 'Handlers.SpeedLimit(RuleRequest)'"),
+            "an optional hook with another entry's request": (
+                good + "    static partial void AltitudeLimit(Requests.SpeedLimitRequest request, ref Resolution<object>? resolution) { }\n",
+                "error CS0759: No defining declaration found for implementing declaration of partial method 'Handlers.AltitudeLimit(SpeedLimitRequest, ref Resolution<object>?)'"),
+            "a typed entry point handed another entry's request": (
+                good + "    internal static Resolution<object> Call() => EntryPoints.SpeedLimit.Resolve(Requests.AltitudeLimitRequest.Empty);\n",
+                "error CS1503: Argument 1: cannot convert from 'FaaPart107.Requests.AltitudeLimitRequest' to 'FaaPart107.Requests.SpeedLimitRequest'"),
+        }
+        for label, (handler, expected) in cases.items():
+            with self.subTest(label):
+                self.implement_speed_limit(engine, handler)
+                code, output = self.build(engine)
+                if expected is None:
+                    self.assertEqual(code, 0, output[-4000:])
+                else:
+                    self.assertNotEqual(code, 0, output[-4000:])
+                    self.assertIn(expected, output)
 
     def test_fails_on_a_changed_citation_in_a_generated_file(self):
         engine = self.copy()
@@ -481,7 +520,13 @@ class TestValidateShWithDotnet(GateCase):
         engine = self.copy()
         write_json(os.path.join(engine, "corpus-map.overlay.json"),
                    {"speed-limit": {"status": "implemented", "implementedIn": IMPLEMENTED_IN}})
-        produce(self.nupkg, engine)  # regenerated, so only the claim itself is wrong
+        # Regenerated, and given the typed handler an implemented entry now needs to build (#76),
+        # so only the claim itself is wrong.
+        produce(self.nupkg, engine)
+        with open(os.path.join(engine, "src", NAME, "Speed.cs"), "w", encoding="utf-8") as handle:
+            handle.write("using RulesKernel.Resolution;\n\nnamespace FaaPart107;\n\ninternal static partial class Handlers\n{\n"
+                         "    internal static partial Resolution<object> SpeedLimit(Requests.SpeedLimitRequest request) =>\n"
+                         "        Resolution<object>.FromValue(87);\n}\n")
         self.assertFailsAt(self.validate(engine, "full"),
                            "packaged check-map.py --phase consumer passes on the merged map",
                            "every test an implemented entry names exists and ran (Debug)")

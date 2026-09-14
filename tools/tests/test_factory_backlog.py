@@ -135,7 +135,7 @@ class BacklogCase(unittest.TestCase):
                         self.assertEqual(blocks[2 * i], source["locator"]["citation"].encode("utf-8"))
                         self.assertEqual(blocks[2 * i + 1], source["evidence"].encode("utf-8"))
                     self.assertEqual(blocks[-1], entry["note"].encode("utf-8"))
-                    self.assertIn(f'[Implements("{entry["id"]}")]'.encode(), data)
+                    self.assertIn(f'`Handlers.{factory.generate.pascal(entry["id"])}`'.encode(), data)
                     self.assertIn(b"mutation", data)
                     self.assertTrue(data.startswith(f"# {entry['id']}: ".encode()))
 
