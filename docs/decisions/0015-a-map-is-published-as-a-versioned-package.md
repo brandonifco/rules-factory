@@ -249,7 +249,11 @@ passes the gate and fails at login, and nothing is published.
 **`hoyle-backgammon`'s migration off its vendored copy is the engine's change**, not this
 record's (#27's third to-do). The factory side is a package the engine can depend on. The first
 version was `1.0.0`. `2.0.0` is the first to carry the checker (#51): an added package file is
-not on the minor or patch list.
+not on the minor or patch list. `3.0.0` changes only the checker's bytes (#79's
+`SCHEMA_VERSIONS`, and #87's build of `tools/check-map.py` from `tools/checkmap/` with a generated
+header); the map and manifest are unchanged, and a changed package file is not on the minor or
+patch list either. `faa-part-107`'s first version was `1.0.0`; `2.0.0` is the same checker change,
+with its map and manifest unchanged.
 
 **corpus-map.md's "Where the map lives" changes.** A map is published from the factory and
 consumed as a package. The engine owns only its overlay.
