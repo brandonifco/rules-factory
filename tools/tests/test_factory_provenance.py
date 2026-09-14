@@ -121,7 +121,9 @@ class ProvenanceCase(unittest.TestCase):
     def produce(self, out=None, repo=None, package=None, corpus=PART107_XML, name=NAME, extra=()):
         out = out or os.path.join(self.tmp, "engine")
         code, output = self.factory("produce", "--package", package or self.part107, "--corpus", corpus,
-                                    "--name", name, "--out", out, *extra, repo=repo)
+                                    "--name", name, "--out", out, *extra,
+                                    "--no-verify",  # building is TestEmbeddedCopyBuilds's (and verify's) job
+                                    repo=repo)
         return code, output, out
 
     def produced(self, **kwargs):

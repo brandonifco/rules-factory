@@ -93,7 +93,8 @@ class BacklogCase(unittest.TestCase):
         nupkg, corpus, name = cls.packages[key]
         return run(["produce", "--package", nupkg, "--corpus", corpus, "--name", name, "--out", out,
                     # this checkout's own git state is not under test here (test_factory_provenance.py)
-                    "--allow-dirty"])
+                    "--allow-dirty",
+                    "--no-verify"])  # no .NET SDK assumed; test_factory_verify.py covers verify
 
     def items(self, key):
         return {n: b for n, b in backlog_files(self.engines[key]).items() if n != "README.md"}
