@@ -10,40 +10,51 @@ pinned twice.
 **Slice:** the same twelve sections both times, mapped independently against each text.
 
 **Result:** 44 sections → 61. Of the twelve mapped, **eight unchanged, four changed, none
-removed.** 23 entries in 2020, 24 in 2026.
+removed.** 24 entries in 2020, 26 in 2026 — 23 and 24 as first mapped, before
+[0005](../../docs/decisions/0005-a-field-earns-its-place-by-being-checkable.md) split the
+delegated standards into entries of their own.
 
 ```
 2020-01-01  ->  2026-01-01
 
+  ADDED    flash-rate-sufficient
   ADDED    subpart-d-categories
-  CHANGED  night-operation: name, clarity, evidence, dependsOn, ambiguity
-             clarity clear -> ambiguous
-  CHANGED  anti-collision-lighting: name, evidence, note, locator
+  CHANGED  night-operation: name, evidence, note, dependsOn
+  CHANGED  anti-collision-lighting: name, evidence, note, locator, dependsOn
+  CHANGED  over-human-beings: note, dependsOn
   CHANGED  preflight-actions: note
+  CHANGED  reasonable-protection: note
   CHANGED  single-aircraft: evidence, note
 ```
 
 ## The finding worth the trial
 
-**An amendment introduced an ambiguity.**
+**An amendment turned a rule the engine computes into one that demands a caller's
+assertion.**
 
 In 2020, § 107.29 was titled *Daylight operation* and said: "No person may operate a small
 unmanned aircraft system during night." A flat prohibition — perfectly clear, trivially
-implementable, `clarity: clear`.
+implementable, and total: given the time, the engine answers.
 
 By 2026 it is titled *Operation at night* and permits night flight subject to training and
 "lighted anti-collision lighting visible for at least 3 statute miles **that has a flash rate
-sufficient to avoid a collision**." That clause states no rate. `clarity: ambiguous`,
-`RequiresInterpretation`.
+sufficient to avoid a collision**." That clause states no rate, and it is not meant to: the
+regulator wrote a standard where a number would have gone. The rule is still clear and still
+implementable — but the engine can no longer answer from the flight alone. It must **demand
+an assertion**, attribute it, and record it with the outcome.
 
-The rule became more permissive and less determinate at the same time. An engine built
-against the older text could answer the question completely; one built against the newer
-text cannot, and must decline.
+That is what the map now says. The 2026 map gains an entry the 2020 map has no counterpart
+for — `flash-rate-sufficient`, `kind: assertion` — and the differ reports it as an addition
+rather than as a change of `clarity` on `night-operation`.
 
-This is the first evidence that **`clarity` is a property of a corpus version, not of a
-rule** — and that the direction of travel is not always toward precision. A map is a
-statement about one text, and an engine's honesty about what it cannot answer can change
-without the engine changing at all.
+**As first mapped, this was recorded as an amendment introducing an ambiguity**, and read as
+the first evidence that `clarity` is a property of a corpus version rather than of a rule.
+0005 rejected that reading: a delegated standard is not a defect in the text, so `clarity`
+does not move, and under the corrected classification that finding has zero instances in any
+map. What survives is the stronger half, and it did not need `clarity` to carry it — the
+direction of travel is not always toward precision, a map is a statement about one text, and
+an engine's honesty about what it cannot answer alone can change without the engine changing
+at all.
 
 ## Three more, smaller
 
@@ -106,6 +117,13 @@ finding. A diff that abbreviates what it compares is not a diff.
 
 Recorded rather than quietly fixed, because it is the same failure that has recurred
 throughout this project: a check whose fidelity is lower than its apparent confidence.
+
+That change is now beyond the differ's reach to miss, for a reason worth naming. § 107.39(c)
+used to be recorded as a second sentence inside an `ambiguity.question` — prose, which only a
+full-text comparison could catch. Under 0005 the two causes are two entries, and the deferral
+is a `dependsOn` edge to `subpart-d-categories`. The differ reports it as a dependency change,
+which is what a structural fact should look like to a diff. `definedElsewhere` is compared
+whole for the same reason, alongside `beyondAdapter`.
 
 ## Cost
 

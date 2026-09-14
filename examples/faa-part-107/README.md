@@ -11,7 +11,13 @@ designation.
 readable in one sitting. The engine this would produce answers one question: *may this
 flight operate?*
 
-**Result:** 24 entries. 6 values, 18 operations. 19 clear, 5 ambiguous. 3 declined.
+**Result as mapped:** 24 entries. 6 values, 18 operations. 19 clear, 5 ambiguous. 3 declined.
+
+**Result as it stands**, after
+[0005](../../docs/decisions/0005-a-field-earns-its-place-by-being-checkable.md) landed
+findings 1–4 in the map itself: 26 entries. 6 values, 16 operations, 4 assertions. 25 clear,
+1 ambiguous. 3 declined. The two extra entries are the delegated standards, split out of the
+rules that consume them; the four ambiguities that went away were never gaps in the text.
 
 Chosen deliberately to stress the parts of the design that tabletop corpora flatter: no
 dice, no pages, no printing, and effective dates that bite.
@@ -36,7 +42,8 @@ the corpus states, three operations that compare against them. Splitting the fig
 the comparison is not bureaucracy — the altitude limit has three distinct figures inside one
 paragraph, and a single "400 feet" entry would have lost two of them.
 
-**Ratio.** Twelve sections produced twenty-four entries, almost exactly 2:1. Useful for
+**Ratio.** Twelve sections produced twenty-four entries, almost exactly 2:1 — twenty-six once
+0005 split the two delegated standards out, which moves the ratio very little. Useful for
 estimating: this slice is 1/5 of the part, so the whole is roughly 120 entries.
 
 ## What broke
@@ -91,6 +98,21 @@ said exactly what it meant, and what it meant is not computable. I used
 `RequiresInterpretation` for four entries here and flagged each, but the method should
 distinguish a *gap* from a *standard*.
 
+**Settled by [0005](../../docs/decisions/0005-a-field-earns-its-place-by-being-checkable.md).**
+A delegated standard is `kind: assertion`, and because `kind` is entry-level it is an entry of
+its own wherever the rule around it computes something. All four are now in the map that way:
+`well clear` and `so close as to create a collision hazard` are the whole of § 107.37(a) and
+(b), so those entries are assertions themselves; `reasonable protection` and `flash rate
+sufficient` are one clause of a rule that still computes, so they became
+`reasonable-protection` and `flash-rate-sufficient` and the rules depend on them.
+
+The test the decision gives is whether the corpus names a decider. Taken literally it is thin
+against this text — § 107.37 writes "unless well clear" without saying who judges it, and so
+does § 107.29(a)(2) of the flash rate. What actually separates those four from § 107.25 is
+that each states a **standard the operator must meet**, where "sparsely populated area" is an
+undefined factual predicate vested in nobody. `moving-vehicle-operation` stays a gap on either
+reading.
+
 ### 4. External corpora are pervasive, and the manifest cannot describe one it has not admitted
 
 Three of twelve sections defer their meaning elsewhere: § 107.36 defines hazardous material
@@ -104,6 +126,14 @@ and not admitted", so the reason an entry is declined lives only in that entry's
 A quarter of the sections in this slice needed it. A `references` list in the manifest, with
 admitted and unadmitted corpora distinguished, would make the boundary of the engine
 inspectable instead of inferred.
+
+**Both halves have since landed.** The manifest carries `references`, and
+[0005](../../docs/decisions/0005-a-field-earns-its-place-by-being-checkable.md) added
+`definedElsewhere`, which names one of them from the entry: `hazardous-material` →
+`cfr-49-171`, `civil-twilight-alaska` → `air-almanac`. The reason no longer lives in prose,
+and neither entry carries an `ambiguity` block, because neither is ambiguous. The third
+deferral, § 107.39(c) to subpart D, is not an unadmitted corpus at all — it is this corpus,
+out of scope, and it is `subpart-d-categories`.
 
 ### 5. Temporal handling covers one of two temporal things
 

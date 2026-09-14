@@ -235,11 +235,10 @@
       "dependsOn": [],
       "evidence": "Cannot be evidenced from this corpus.",
       "status": "declined",
-      "ambiguity": {
-        "question": "The corpus defines Alaskan civil twilight by reference to the Air Almanac, a corpus this map has not admitted.",
-        "fate": "unresolved",
-        "unresolvedReason": "MissingRulesData"
-      }
+      "definedElsewhere": {
+        "reference": "air-almanac"
+      },
+      "note": "§ 107.29(c)(3) fixes the meaning of Alaskan civil twilight in the Air Almanac, which this map has not admitted. Not an ambiguity: the corpus is clear, and the text that would settle it is elsewhere."
     },
     {
       "id": "hazardous-material",
@@ -254,11 +253,10 @@
       "dependsOn": [],
       "evidence": "Cannot be evidenced from this corpus.",
       "status": "declined",
-      "ambiguity": {
-        "question": "'Hazardous material' is defined by reference to 49 CFR 171.8, a corpus this map has not admitted.",
-        "fate": "unresolved",
-        "unresolvedReason": "MissingRulesData"
-      }
+      "definedElsewhere": {
+        "reference": "cfr-49-171"
+      },
+      "note": "§ 107.36 states the prohibition here and fixes the meaning of 'hazardous material' in 49 CFR 171.8, which this map has not admitted. Not an ambiguity: the corpus says exactly what it means and says where."
     },
     {
       "id": "right-of-way",
@@ -267,17 +265,13 @@
         "sourceId": "cfr-14-107",
         "citation": "\u00a7 107.37(a)"
       },
-      "kind": "operation",
+      "kind": "assertion",
       "scope": "in",
-      "clarity": "ambiguous",
+      "clarity": "clear",
       "dependsOn": [],
-      "evidence": "Cannot be evidenced without a reading of 'well clear'.",
+      "evidence": "The assertion demanded for each of passing over, under and ahead of another aircraft; asserted and withheld; attributed to whoever made it and recorded with the outcome; and never defaulted to true when absent.",
       "status": "mapped",
-      "ambiguity": {
-        "question": "'Well clear' is not defined in this part, and the yielding obligation turns on it.",
-        "fate": "unresolved",
-        "unresolvedReason": "RequiresInterpretation"
-      }
+      "note": "The duty runs to every aircraft, airborne vehicle, and launch and reentry vehicle without exception, so nothing here is computed: the entry is the standard 'well clear' and nothing else, and is reclassified in place rather than split. Whether the aircraft gave way is the caller's to assert."
     },
     {
       "id": "collision-hazard-proximity",
@@ -286,17 +280,28 @@
         "sourceId": "cfr-14-107",
         "citation": "\u00a7 107.37(b)"
       },
-      "kind": "operation",
+      "kind": "assertion",
       "scope": "in",
-      "clarity": "ambiguous",
+      "clarity": "clear",
       "dependsOn": [],
-      "evidence": "Cannot be evidenced.",
+      "evidence": "The assertion asserted and withheld, attributed and recorded with the outcome, and never defaulted to true when absent.",
       "status": "mapped",
-      "ambiguity": {
-        "question": "A hazard judgement with no stated threshold. Not a gap in the corpus; the corpus deliberately states a standard rather than a number.",
-        "fate": "unresolved",
-        "unresolvedReason": "RequiresInterpretation"
-      }
+      "note": "The corpus states a standard rather than a distance, deliberately, and § 107.37(b) is that sentence and nothing else — so the entry is reclassified in place rather than split. An engine that resolved it to a number would substitute its own rule for the corpus's."
+    },
+    {
+      "id": "reasonable-protection",
+      "name": "A covered structure or stationary vehicle provides reasonable protection from a falling small unmanned aircraft",
+      "locator": {
+        "sourceId": "cfr-14-107",
+        "citation": "\u00a7 107.39(b)"
+      },
+      "kind": "assertion",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [],
+      "evidence": "The assertion asserted and withheld for each of a covered structure and a stationary vehicle, attributed and recorded with the outcome, and never defaulted to true when absent.",
+      "status": "mapped",
+      "note": "The standard qualifies the covered-structure exception; the exception itself is computable once it is asserted. Split out rather than reclassifying over-human-beings, which states a further case that needs no judgement."
     },
     {
       "id": "over-human-beings",
@@ -307,15 +312,13 @@
       },
       "kind": "operation",
       "scope": "in",
-      "clarity": "ambiguous",
-      "dependsOn": [],
+      "clarity": "clear",
+      "dependsOn": [
+        "reasonable-protection"
+      ],
       "evidence": "The participating-person case, the covered-structure case, and a plain overflight with neither.",
       "status": "mapped",
-      "ambiguity": {
-        "question": "'Reasonable protection from a falling small unmanned aircraft' is a judgement. There is no third exception in this version.",
-        "fate": "unresolved",
-        "unresolvedReason": "RequiresInterpretation"
-      }
+      "note": "One cause, not two: this version states only the participating-person and covered-structure exceptions. There is no subpart D at this date and nothing to defer to."
     },
     {
       "id": "anti-collision-lighting",

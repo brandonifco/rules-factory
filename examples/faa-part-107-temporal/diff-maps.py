@@ -64,6 +64,12 @@ def main(a_path, b_path):
         # shows up too.
         if a[i].get("beyondAdapter") != b[i].get("beyondAdapter"):
             ch.append("beyondAdapter")
+        # definedElsewhere: the other decline carrier, and it moves for its own reasons -- a
+        # revision can define a term it used to borrow, or start borrowing one it used to
+        # define, with nothing else about the entry changing. Compared whole, like
+        # beyondAdapter: a change of reference under the same field is a change.
+        if a[i].get("definedElsewhere") != b[i].get("definedElsewhere"):
+            ch.append("definedElsewhere")
         if amb(a[i]) != amb(b[i]):
             ch.append("ambiguity")
         if ch:
