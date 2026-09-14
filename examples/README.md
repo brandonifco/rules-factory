@@ -123,3 +123,28 @@ queue, and this project archived its predecessor partly for having one.
 - [#9](https://github.com/brandonifco/rules-factory/issues/9) — whether a **wrong** map is
   caught downstream. Every finding so far surfaced during mapping, which is the cheap place,
   and that is encouraging rather than evidence.
+
+## Trial 4 — building from a map
+
+The first run that goes *downstream* of a map rather than producing one:
+`hoyle-backgammon`, an engine built from trial 2's map, on the kernel packages.
+
+157 tests, `validate.sh full` green, nine source mutations each turning the suite red. It
+produced **16 findings against the map**, 11 of them the map being wrong.
+
+Logged here because it is a different kind of trial and answers a different question. Mapping
+trials ask *can this corpus be decomposed*. A build asks *was the decomposition right*, and
+it finds a class of defect mapping cannot: relations that are only missed once something
+needs them, entries whose `clarity: clear` survives until a case reaches it, and — the
+sharpest one — a missing gate whose absence is invisible to every legality test and changes
+every subsequent dice throw.
+
+What it did **not** establish is a miss rate. These were unknown errors found in earnest, not
+injected ones, so nothing says how many were missed. That is [#9](https://github.com/brandonifco/rules-factory/issues/9),
+now much cheaper to run because a real engine exists to run it against.
+
+Findings: [#12](https://github.com/brandonifco/rules-factory/issues/12) ·
+[#13](https://github.com/brandonifco/rules-factory/issues/13) ·
+[#14](https://github.com/brandonifco/rules-factory/issues/14) ·
+[#15](https://github.com/brandonifco/rules-factory/issues/15) ·
+[#16](https://github.com/brandonifco/rules-factory/issues/16)
