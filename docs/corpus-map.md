@@ -697,6 +697,16 @@ an unresolved result that does not correspond to a map entry means something was
 without being mapped. That is a checkable invariant, and it is the first thing the factory
 should enforce once it exists.
 
+**The map declares no types, and the engine's typed contract says only what the map does.** No
+field names an entry's inputs, outputs, units or value type: a parameter is not a rule and gets
+no entry, and `dependsOn` is not a runtime input. So the factory's generated contract
+([#76](https://github.com/brandonifco/rules-factory/issues/76), `tools/factory/generate.py`) types
+what the map fixes and nothing more. Each entry has a request type of its own, so a request for
+one entry cannot be handed to another. An assertion's request carries the caller's value, which
+is what row 8 resolves to. Each entry's handler is a declared method, so an `implemented` entry
+that needs one (any not on row 8) and lacks it does not build. The value itself, and every output, is `object` until a field
+declares otherwise.
+
 ## The corpus manifest
 
 Beside the entries, the corpora they cite:

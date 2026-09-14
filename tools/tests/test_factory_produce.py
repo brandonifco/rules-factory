@@ -54,6 +54,8 @@ GENERATED = (
     f"src/{NAME}/Generated/MapEntries.g.cs",
     f"src/{NAME}/Generated/Registry.g.cs",
     f"tests/{NAME}.Tests/Generated/CorrespondenceTests.g.cs",
+    f"src/{NAME}/Generated/Contracts.g.cs",
+    f"src/{NAME}/Generated/Requests.g.cs",
     f"src/{NAME}/Generated/Provenance.g.cs",
     f"tests/{NAME}.Tests/Generated/ProvenanceTests.g.cs",
 )
@@ -298,6 +300,72 @@ class TestGeneration(ProduceCase):
         self.assertIn('new("reasonable-protection", EntryStatus.Implemented, CorrespondenceRow.Assertion,', registry)
         self.assertIn("reasonable_protection__is_implemented_and_answers_or_demands_the_assertion", tests)
 
+        # #76: the handler a correspondence test demands becomes one the build demands. Row 5 has
+        # a default, but an implemented entry off row 8 still needs a handler, so it is required;
+        # an implemented assertion keeps its optional hook, because row 8's default can answer.
+        contracts = self.read(out, GENERATED[3])
+        self.assertIn("    internal static partial Resolution<object> SpeedWithinLimit("
+                      "global::FaaPart107.Requests.SpeedWithinLimitRequest request);\n", contracts)
+        self.assertIn("                resolution = SpeedWithinLimit(new(request));\n", contracts)
+        self.assertIn('        "speed-within-limit" => true,\n', contracts)
+        self.assertIn("    static partial void ReasonableProtection(global::FaaPart107.Requests.ReasonableProtectionRequest request, "
+                      "ref Resolution<object>? resolution);\n", contracts)
+        self.assertEqual(contracts.count("internal static partial Resolution<"), 1)
+
+    def test_every_entry_has_a_typed_contract(self):
+        """#76: a request type, a typed entry point and a handler declaration per entry, all `object`
+        where the map declares no type, which today is everywhere."""
+        out = self.produced()
+        contracts = self.read(out, GENERATED[3])
+        requests = self.read(out, GENERATED[4])
+        tests = self.read(out, GENERATED[2])
+        self.assertIn("public sealed class RuleEntry<TInput, TOutput>\n    where TInput : IEntryRequest\n", contracts)
+        self.assertIn("internal static partial class Handlers\n", contracts)
+        self.assertIn(f"namespace {NAME}.Requests;\n", requests)
+        for entry in self.map["entries"]:
+            member = generate.pascal(entry["id"])
+            request = f"global::{NAME}.Requests.{member}Request"
+            with self.subTest(entry["id"]):
+                self.assertIn(f"    public static RuleEntry<{request}, object> {member} {{ get; }} =\n"
+                              f'        new("{entry["id"]}", request => Registry.Resolve("{entry["id"]}", request.Assertions));\n',
+                              contracts)
+                # Nothing is implemented in the package map, so every handler is an optional hook.
+                self.assertIn(f"    static partial void {member}({request} request, ref Resolution<object>? resolution);\n", contracts)
+                self.assertIn(f'        "{entry["id"]}" => Hooked("{member}", typeof({request})),\n', contracts)
+                self.assertIn(f"public sealed class {member}Request : IEntryRequest\n", requests)
+                self.assertIn(f'    public string EntryId => "{entry["id"]}";\n', requests)
+                self.assertIn(f"            EntryPoints.{member}.Id,\n", tests)
+                asserting = f"    public static {member}Request Asserting(object value) => " \
+                            f'new(RuleRequest.Empty.Assert("{entry["id"]}", value));\n'
+                if entry["kind"] == "assertion":
+                    self.assertIn(asserting, requests)
+                else:
+                    self.assertNotIn(asserting, requests)
+        self.assertNotIn("internal static partial Resolution<", contracts)
+        # Every decline is proved through the typed entry point as well as the dictionary.
+        self.assertEqual(tests.count("AssertDeclines(\""), len(self.map["entries"]))
+        self.assertEqual(len(re.findall(r'AssertDeclines\("[a-z0-9-]+", UnresolvedReason\.\w+, EntryPoints\.\w+\.Resolve\(', tests)),
+                         len(self.map["entries"]))
+
+    def test_the_contract_types_what_the_map_declares_and_object_elsewhere(self):
+        intake = type("Intake", (), {"package_id": "RulesFactory.Maps.Test", "version": "1.0.0"})()
+        entries = [
+            {"id": "a-value", "name": "v", "kind": "value", "scope": "in", "status": "implemented",
+             "locator": {"sourceId": "corpus", "citation": "p. 1"}},
+            {"id": "an-assertion", "name": "a", "kind": "assertion", "scope": "in", "status": "implemented",
+             "locator": {"sourceId": "corpus", "citation": "p. 2"}},
+            {"id": "entry-points", "name": "e", "kind": "operation", "scope": "in", "status": "mapped",
+             "locator": {"sourceId": "corpus", "citation": "p. 3"}},
+        ]
+        model = generate.Model(intake, {"corpus": "corpus", "entries": entries,
+                                        "baseline": {"contentHash": "sha256:0", "hashDerivation": "raw", "asOf": None}}, "Test")
+        value, assertion, reserved = (generate.contract(model, item) for item in model.entries)
+        self.assertEqual((value["output"], value["asserts"], value["required"]), ("object", False, True))
+        self.assertEqual((assertion["output"], assertion["asserts"], assertion["required"]), ("object", True, False))
+        # A member may not take the name of a class the generated code declares around it.
+        self.assertEqual(reserved["request_cs"], "global::Test.Requests.EntryPointsEntryRequest")
+        self.assertFalse(reserved["required"])
+
     def test_a_derived_entry_cites_every_premise(self):
         """#73: hit-pays-single-stake rests on two passages, and the runtime names both."""
         out = self.produced(package=self.hoyle, corpus=os.path.join(HOYLE, "hoyle.txt"), name="HoyleBackgammon")
@@ -367,7 +435,8 @@ class TestDerivedProvenance(unittest.TestCase):
 
         tests = generate.tests_cs(model)
         self.assertIn("public void top__cites_every_premise()", tests)
-        self.assertIn('AssertDeclines("top", UnresolvedReason.UnsupportedRule, new SourceLocator("corpus", "p. 2"), '
+        self.assertIn('AssertDeclines("top", UnresolvedReason.UnsupportedRule, EntryPoints.Top.Resolve(global::Test.Requests.TopRequest.Empty), '
+                      'new SourceLocator("corpus", "p. 2"), '
                       'new SourceLocator("corpus", "p. 3"), new SourceLocator("corpus", "p. 1"));', tests)
 
     def test_a_located_entry_cites_itself_alone(self):
@@ -376,7 +445,8 @@ class TestDerivedProvenance(unittest.TestCase):
         self.assertIn('new("a", EntryStatus.Mapped, CorrespondenceRow.NotBuilt, [MapEntries.A.Locator]),',
                       generate.registry_cs(model))
         tests = generate.tests_cs(model)
-        self.assertIn('AssertDeclines("a", UnresolvedReason.UnsupportedRule, new SourceLocator("corpus", "p. 1"));', tests)
+        self.assertIn('AssertDeclines("a", UnresolvedReason.UnsupportedRule, EntryPoints.A.Resolve(global::Test.Requests.ARequest.Empty), '
+                      'new SourceLocator("corpus", "p. 1"));', tests)
         self.assertNotIn("cites_every_premise", tests)
 
     def test_a_cycle_is_refused(self):
