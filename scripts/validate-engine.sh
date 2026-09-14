@@ -16,10 +16,10 @@
 # a package published on nuget.org (restore resolves it, and RulesKernel, from there).
 #
 # Local runs only: FACTORY_DOTNET_SDK_OVERRIDE=<version> rewrites the scratch engine's
-# global.json to that SDK, for a machine that lacks the pinned one. global.json is write-once
-# scaffold, not a generated file, so provenance is unaffected -- but the build then proves the
-# engine on a toolchain the kernel does not pin. CI never sets it, and this script refuses it
-# when CI=true.
+# global.json to that SDK, for a machine that lacks the pinned one. global.json is a build input
+# provenance records (#69), so the edit is recorded by the re-produce below, like the NuGet.config
+# edit -- and the build then proves the engine on a toolchain the kernel does not pin. CI never
+# sets it, and this script refuses it when CI=true.
 set -euo pipefail
 
 cd "$(dirname "$0")/.."
@@ -98,7 +98,8 @@ fi
 # packages folder (nothing cached from an earlier restore can stand in) and a local feed holding
 # the packed map, with source mapping that resolves RulesFactory.Maps.* from that feed alone.
 # Everything else (RulesKernel, the test packages) still comes from nuget.org. NuGet.config is
-# write-once scaffold, not generated, so provenance does not see this edit.
+# write-once scaffold, so produce leaves the edit alone, but it is a build input provenance
+# records (#69): the re-produce after restore records it.
 export NUGET_PACKAGES="$SCRATCH/nuget-packages"
 python3 - "$ENGINE/NuGet.config" "$SCRATCH/package" <<'PY'
 import sys
@@ -164,6 +165,26 @@ if seen == 0:
 if bad:
     sys.exit(1)
 print(f"ok   {pid} {version}: restored sha512 and {seen} lock-file contentHash(es) equal the packed .nupkg")
+PY
+
+# The engine now differs from what produce recorded in build inputs only: NuGet.config (the local
+# feed), global.json (under the override), and the lock files restore wrote. That is the life of
+# a real engine too (produce, `validate.sh lock`, commit), and re-running produce is how its record
+# comes to cover them. So produce runs again, before the build embeds provenance.json: it must
+# change provenance.json and nothing else, and the final recompute then holds the engine to its
+# lock files as well as to the edited scaffold.
+step "re-produce: provenance records the build inputs as restored"
+(cd "$ROOT" && python3 tools/factory produce --package "$PACKAGE" --corpus "$CORPUS" --name "$NAME" --out "$ENGINE") \
+  | tee "$SCRATCH/reproduce.log" | tail -2
+grep -qxF "committed to $(cd "$ENGINE" && pwd -P): 0 added, 1 changed, 0 removed" "$SCRATCH/reproduce.log" \
+  || fail "re-producing changed more than provenance.json: $(grep '^committed to' "$SCRATCH/reproduce.log")"
+python3 - provenance.json <<'PY'
+import json, sys
+inputs = [b["path"] for b in json.load(open(sys.argv[1], encoding="utf-8"))["buildInputs"]]
+locks = [p for p in inputs if p.endswith("packages.lock.json")]
+if len(locks) < 2:
+    print(f"provenance.json records {len(locks)} lock file(s) after restore; expected one per project", file=sys.stderr); sys.exit(1)
+print(f"ok   {len(inputs)} build input(s) recorded, {len(locks)} of them lock files")
 PY
 
 step "build, warnings as errors"
