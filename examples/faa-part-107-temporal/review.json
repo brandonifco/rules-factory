@@ -1,0 +1,14 @@
+{
+  "about": "The review of each map's exact bytes (docs/decisions/0017-a-map-change-carries-a-review-of-its-bytes.md). tools/check-map-review.py fails any map whose sha256 is not the one recorded here.",
+  "reviews": {
+    "corpus-map-2020-01-01.json": {
+      "sha256": "6ceb108a5e2bfe76f275a79cefc4e04b46bb0f173650b17d5f37d776f3ec4edf",
+      "method": "exemption",
+      "exemption": {
+        "kind": "legacy",
+        "issue": "#3",
+        "reason": "Grandfathered, not reviewed: this map predates the review gate and has never been blind-mapped. examples/faa-part-107/blind-mapping/ reviewed the 2026-01-01 map against the 2026 text; this map was last changed in 5d09898, before those corrections, and nothing compared it with a second reading of the 2020-01-01 text. A blind second mapping is still owed before it is used for the regulation target under #3."
+      }
+    }
+  }
+}
