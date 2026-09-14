@@ -75,6 +75,10 @@ before either has been implemented.
   "evidence": "Compare the hits scored by each side. The side with more hits prevails, and the difference is the margin.",
   "status": "implemented",
   "implementedIn": { "ruleset": "sr6", "version": 4 },
+  "tests": [
+    { "test": "OpposedTestTieTests.A_tie_goes_to_the_defender",
+      "mutation": "Awarded ties to the attacker; this test went red." }
+  ],
   "note": "Demonstrate both tie directions, and the boundary where one side has one more hit."
 }
 ```
@@ -101,6 +105,7 @@ before either has been implemented.
 | `evidence` | One contiguous verbatim span of the corpus: the passage that *states* this rule. Not a summary of it. Absent on a derived entry, and only there. See below. |
 | `status` | Whether the engine has built this entry. Independent of `ambiguity.fate`. See below. |
 | `implementedIn` | The ruleset revision that implemented it. Set when status becomes `implemented`. |
+| `tests` | The tests that prove the entry, each `{ "test", "mutation" }`: the test's name, and the recorded change to the engine that turned it red. **Required, non-empty, when status is `implemented`.** See `status`. |
 | `note` | Prose explanation: why the entry is shaped this way, and what a test must demonstrate. **Never a claim a test could carry** — a consequence the mapper proved is a test the entry names. See below. |
 
 ### `kind: assertion`
@@ -586,7 +591,7 @@ is true.
 ```
 mapped       enumerated and classified; not yet worked
 blocked      a dependency is unmet
-implemented  in the engine, with a recorded conformance verdict
+implemented  in the engine, naming the tests that prove it, each shown to fail
 declined     no implemented path at all: scope is out, the rule is unreadable,
              or nothing about it was built
 ```
@@ -599,10 +604,36 @@ case*. `must-play-whole-throw` is the instance — the engine implements the com
 declines only where two maximal plays are incomparable, which is neither `declined` nor a
 clean `implemented` under the old coupling.
 
-`implemented` requires the verdict. Code without one is `mapped`, whatever the repository
-contains — otherwise the map records intent rather than fact, and its whole value is that it
-records fact. **Where `fate: unresolved` accompanies it, the verdict covers every case except
-the one `ambiguity.question` names, and the declining case ships a test.**
+`implemented` requires the verdict, and the verdict is **the tests the entry names**. An
+`implemented` entry carries `tests`, non-empty, and every item names a test and records the
+`mutation` that turned it red — what was changed in the engine, for that test to fail. Code
+without them is `mapped`, whatever the repository contains — otherwise the map records intent
+rather than fact, and its whole value is that it records fact. **Where `fate: unresolved`
+accompanies it, the verdict covers every case except the one `ambiguity.question` names, and the
+declining case ships a test** — which is one of the tests named.
+
+```json
+"tests": [
+  { "test": "WholeThrowTests.Where_either_die_alone_can_be_played_but_not_both_the_throw_declines",
+    "mutation": "Let the engine play the higher die when only one of two is playable; this test went red." }
+]
+```
+
+Decided on [#2](https://github.com/brandonifco/rules-factory/issues/2). Until then `implemented`
+was a word someone typed: 26 backgammon entries claimed it in the engine's copy with nothing
+behind any of them. Every real defect this project has found in its own checks was found by
+mutation — five tests that could not fail, a checker counting an entry it had not checked — and
+none by reading. This makes that practice the schema. The same answer as rail E below and as a
+derived consequence (#16): **the artifact is the test.**
+
+`check-map.py --only status` enforces what a map alone can show: `tests` is present and
+non-empty on every `implemented` entry, and wherever it appears each item has a non-blank `test`,
+a non-blank `mutation`, and no test is named twice. **What it cannot show:** that a named test
+exists or ran. That is the engine gate's check, against the engine's own suite. And a recorded
+mutation proves *one* way of breaking the rule is caught — an entry can name one weak test with
+one easy mutation and pass. What is removed is the state of claiming conformance with nothing
+behind it. The mutation is recorded, not re-run; whether a gate ever re-runs them is a separate
+decision.
 
 The cost of decoupling, stated where the claim is: after it, `fate: unresolved` means the
 engine declines for *at least one* input, not for every input, and nothing distinguishes an
@@ -613,7 +644,7 @@ is weaker than it was.
 a flag saying "this is surprising" is unfalsifiable. `bearing-off-highest` is clear, correct,
 and the opposite of what a modern player expects, and the useful artifact is the one test in
 the suite that fails under the reading a reasonable person would have implemented. The entry
-names it in `note`.
+names it in `note` while it is `mapped`, and among its `tests` once it is `implemented`.
 
 ## The map and the engine agree, or the map is wrong
 

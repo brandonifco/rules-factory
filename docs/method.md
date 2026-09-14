@@ -429,7 +429,8 @@ declines in exactly one shape of throw, that the adopted opening throw can never
 because a tie is thrown again, that `bearing-off-highest` is the opposite of what a modern
 player expects. That reasoning is not stored as prose in the map. It becomes **a test named for
 what it proves** — one that constructs the case and fails if the consequence stops holding —
-and the entry names that test. No field holds the reasoning itself. Decided on
+and the entry names that test — among its `tests`, with the mutation that turned it red, once
+the entry is `implemented`. No field holds the reasoning itself. Decided on
 [#16](https://github.com/brandonifco/rules-factory/issues/16), for the reason
 [0005](decisions/0005-a-field-earns-its-place-by-being-checkable.md)'s rail E and
 [0004](decisions/0004-adapter-reach-is-a-property-of-the-entry.md) already gave: prose about a
@@ -496,7 +497,10 @@ has to judge — which is the work, and is not automatable by either diff alone.
 
 ## Phase 8 — Close the entry
 
-The entry's status advances, and it records which ruleset revision implemented it. That is
+The entry's status advances, and it records which ruleset revision implemented it **and the
+tests that prove it, each with the mutation that was recorded turning it red**. An entry that
+cannot name a test that has been seen to fail does not advance to `implemented`; it stays
+`mapped`, whatever code exists ([#2](https://github.com/brandonifco/rules-factory/issues/2)). That is
 what makes the map a live artifact rather than a plan: at any moment it says what the engine
 covers, what it deliberately does not, and what it cannot yet answer — which is the same
 question `UnresolvedReason` answers at runtime, from the other side.

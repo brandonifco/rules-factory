@@ -525,24 +525,67 @@ def check_exclusions(ctx):
                    "an ambiguity block is misused")
 
 
+def tests_problems(name, tests):
+    """What is wrong with a `tests` list, as report lines. Empty when it is well-formed."""
+    if not isinstance(tests, list):
+        return [f"  X  {name}: `tests` is not a list"]
+    bad, seen = [], set()
+    for position, item in enumerate(tests):
+        if not isinstance(item, dict):
+            bad.append(f"  X  {name}: tests[{position}] is not an object naming a test and its mutation")
+            continue
+        test, mutation = item.get("test"), item.get("mutation")
+        if not isinstance(test, str) or not test.strip():
+            bad.append(f"  X  {name}: tests[{position}] names no `test`")
+        elif test in seen:
+            bad.append(f"  X  {name}: names test {test!r} twice")
+        else:
+            seen.add(test)
+        if not isinstance(mutation, str) or not mutation.strip():
+            bad.append(f"  X  {name}: tests[{position}] ({test!r}) records no `mutation`; a test "
+                       f"nobody has seen go red is not evidence")
+    return bad
+
+
 def check_status(ctx):
-    """`implementedIn` is set when status becomes `implemented`, and only then."""
+    """`implemented` is a claim with its evidence attached (#2), not a word someone typed.
+
+    Two rules:
+
+      * `implementedIn` is set when status becomes `implemented`, and only then;
+      * an `implemented` entry names the tests that prove it in `tests`, non-empty, and every
+        test carries the `mutation` that was recorded turning it red. Without them the entry is
+        `mapped`, whatever the repository contains. Wherever `tests` appears, its shape is held
+        to the same rule.
+
+    What it cannot do: this file never sees an engine, so a named test that does not exist, or
+    exists and never ran, passes here. That is the engine gate's check. And a recorded mutation
+    proves one way of breaking the rule is caught, not that the test is good.
+    """
     bad, implemented = [], 0
     for position, entry in enumerate(entries_of(ctx["map"])):
         if not isinstance(entry, dict):
             continue
         name = label(entry, position)
+        if "tests" in entry:
+            bad.extend(tests_problems(name, entry["tests"]))
         if entry.get("status") == "implemented":
             implemented += 1
             if not entry.get("implementedIn"):
                 bad.append(f"  X  {name}: status is `implemented` but no `implementedIn` names the ruleset revision")
+            if not entry.get("tests"):
+                bad.append(f"  X  {name}: status is `implemented` but `tests` names no test that proves "
+                           f"it; without one the entry is `mapped`")
         elif entry.get("implementedIn"):
             bad.append(f"  X  {name}: carries `implementedIn` while status is {entry.get('status')!r}")
-    carriers = sum(1 for e in entries_of(ctx["map"]) if isinstance(e, dict) and e.get("implementedIn"))
+    carriers = sum(1 for e in entries_of(ctx["map"])
+                   if isinstance(e, dict) and (e.get("implementedIn") or "tests" in e))
     if not bad and not implemented and not carriers:
-        return skip("no entry is `implemented` and none carries `implementedIn`, so the rule that "
-                    "one accompanies the other was not exercised", had_subject=False)
-    return verdict(bad, f"{implemented} implemented entries all name their revision", "status and implementedIn disagree")
+        return skip("no entry is `implemented` and none carries `implementedIn` or `tests`, so the "
+                    "rules that accompany an implemented claim were not exercised", had_subject=False)
+    return verdict(bad, f"{implemented} implemented entries all name their revision and the tests, "
+                        f"each with a recorded mutation, that prove them",
+                   "an implemented claim is missing its revision or its tests")
 
 
 def check_decision_records(ctx):

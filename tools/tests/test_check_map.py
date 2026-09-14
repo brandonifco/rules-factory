@@ -65,6 +65,12 @@ def entry(entry_id, **overrides):
     return base
 
 
+def proof(*names):
+    """#2: the tests an implemented entry names, each with the mutation recorded turning it red."""
+    return [{"test": name, "mutation": f"Inverted the comparison {name} asserts; it went red."}
+            for name in names]
+
+
 def valid_map():
     """A map exercising every shape the spec describes, and nothing the spec forbids."""
     return {
@@ -73,14 +79,17 @@ def valid_map():
         "baseline": {"contentHash": "a" * 64, "hashDerivation": "demo-plain-text"},
         "entries": [
             entry("speed-limit", kind="value", status="implemented",
-                  implementedIn={"ruleset": "demo", "version": 1}),
+                  implementedIn={"ruleset": "demo", "version": 1},
+                  tests=proof("SpeedLimitTests.The_limit_is_87_knots")),
             entry("speed-within-limit", kind="operation", dependsOn=["speed-limit"],
-                  status="implemented", implementedIn={"ruleset": "demo", "version": 1}),
+                  status="implemented", implementedIn={"ruleset": "demo", "version": 1},
+                  tests=proof("SpeedTests.At_the_limit_is_permitted", "SpeedTests.Above_the_limit_is_refused")),
             entry("well-clear", kind="assertion", status="mapped"),
             entry("yield-right-of-way", kind="operation", dependsOn=["well-clear"],
                   enabledBy=["speed-limit"], suspendedBy=["speed-within-limit"],
                   status="implemented",
-                  implementedIn={"ruleset": "demo", "version": 1}),
+                  implementedIn={"ruleset": "demo", "version": 1},
+                  tests=proof("RightOfWayTests.Passing_over_is_refused")),
             entry("hazardous-material", kind="value", status="declined",
                   definedElsewhere={"reference": "other-corpus"}),
             entry("inner-table-handedness", kind="value", status="declined",
@@ -88,6 +97,7 @@ def valid_map():
             entry("subpart-d-categories", scope="out", status="declined"),
             entry("must-play-whole-throw", kind="operation", clarity="ambiguous",
                   status="implemented", implementedIn={"ruleset": "demo", "version": 1},
+                  tests=proof("WholeThrowTests.Either_die_alone_but_not_both_declines"),
                   ambiguity={
                       "question": "The text does not say what happens when only one die is playable.",
                       "fate": "unresolved",
@@ -448,12 +458,43 @@ class TestStatus(MapCase):
     def test_implemented_in_on_an_unbuilt_entry_fails(self):
         self.assert_catches("status", lambda d: d["entries"][2].update(implementedIn={"ruleset": "demo", "version": 1}))
 
+    def test_implemented_naming_no_tests_fails(self):
+        # #2: `implemented` stops being a word someone typed. Without tests it is `mapped`.
+        self.assert_catches("status", lambda d: d["entries"][0].pop("tests"))
+
+    def test_implemented_with_an_empty_tests_list_fails(self):
+        self.assert_catches("status", lambda d: d["entries"][0].update(tests=[]))
+
+    def test_a_test_with_no_recorded_mutation_fails(self):
+        # A test nobody has seen go red is the class of test this repository keeps finding.
+        self.assert_catches("status", lambda d: d["entries"][1]["tests"][1].pop("mutation"))
+
+    def test_a_blank_mutation_fails(self):
+        self.assert_catches("status", lambda d: d["entries"][1]["tests"][0].update(mutation="  "))
+
+    def test_a_tests_item_naming_no_test_fails(self):
+        self.assert_catches("status", lambda d: d["entries"][1]["tests"][0].pop("test"))
+
+    def test_a_test_named_twice_fails(self):
+        def mutate(document):
+            tests = document["entries"][1]["tests"]
+            tests[1]["test"] = tests[0]["test"]
+        self.assert_catches("status", mutate)
+
+    def test_a_bare_test_name_without_its_mutation_fails(self):
+        self.assert_catches("status", lambda d: d["entries"][0].update(tests=["SpeedLimitTests.The_limit_is_87_knots"]))
+
+    def test_malformed_tests_on_an_unbuilt_entry_still_fail(self):
+        # The shape holds wherever the field appears, not only where it is required.
+        self.assert_catches("status", lambda d: d["entries"][2].update(tests=[{"test": "WellClearTests.X"}]))
+
     def test_a_map_with_nothing_built_does_not_report_ok(self):
         # All three example maps are in this state. Reporting `ok` would be a gate
         # trusted for proving something it never looked at.
         document = valid_map()
         for item in document["entries"]:
             item.pop("implementedIn", None)
+            item.pop("tests", None)
             if item["status"] == "implemented":
                 item["status"] = "mapped"
         code, output = self.run_tool(document)
