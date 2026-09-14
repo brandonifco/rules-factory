@@ -5,8 +5,11 @@ Asserted: one `backlog/NNN-<id>.md` per in-scope, unbuilt entry that is neither
 `definedElsewhere` nor `beyondAdapter` (derived entries included), for Part 107 and backgammon;
 every file comes after every file for its `dependsOn`; its locator citation and evidence are the
 map's bytes; links resolve; two runs give identical bytes and a stale item is removed; a cycle
-is refused; `--create` against a stubbed `gh` creates each issue once and skips titles that
-already exist. No real repository is touched.
+is refused. `--create` against a stubbed `gh` (`FACTORY_GH`) finds issues by the entry marker
+under each item's title: it creates each issue once, updates it when the entry is renamed or
+its dependencies change, writes nothing on a second run, adopts a legacy title-only issue,
+refuses a duplicate marker before any write, and reports without touching an issue whose entry
+left the backlog. No real repository is touched.
 
 Run: python3 -m unittest discover -s tools/tests
 """
@@ -182,18 +185,42 @@ issues = json.load(open(state)) if os.path.exists(state) else []
 args = sys.argv[1:]
 with open(state + ".calls", "a") as log:
     log.write(json.dumps(args) + "\n")
+def save():
+    json.dump(issues, open(state, "w"))
 if args[:2] == ["issue", "list"]:
     assert args[args.index("--repo") + 1] == "example/engine"
-    print(json.dumps([{{"title": t}} for t, _ in issues]))
+    assert args[args.index("--state") + 1] == "all"
+    assert args[args.index("--json") + 1] == "number,title,body"
+    print(json.dumps(issues[:int(args[args.index("--limit") + 1])]))
 elif args[:2] == ["issue", "create"]:
-    title = args[args.index("--title") + 1]
     assert args[args.index("--body-file") + 1] == "-"
-    issues.append([title, sys.stdin.read()])
-    json.dump(issues, open(state, "w"))
-    print("https://github.com/example/engine/issues/%d" % len(issues))
+    number = max([i["number"] for i in issues] + [0]) + 1
+    issues.append({{"number": number, "title": args[args.index("--title") + 1], "body": sys.stdin.read()}})
+    save()
+    print("https://github.com/example/engine/issues/%d" % number)
+elif args[:2] == ["issue", "edit"]:
+    assert args[args.index("--body-file") + 1] == "-"
+    (issue,) = [i for i in issues if i["number"] == int(args[2])]
+    issue["title"] = args[args.index("--title") + 1]
+    issue["body"] = sys.stdin.read()
+    save()
+    print("https://github.com/example/engine/issues/%d" % issue["number"])
 else:
     sys.exit("unexpected gh call: %r" % args)
 '''
+
+CONTEXT = {"name": "Engine", "package": "Pkg", "version": "1.0.0"}
+
+
+def entries():
+    return [
+        {"id": "first", "name": "First", "kind": "value", "scope": "in", "clarity": "clear",
+         "dependsOn": [], "status": "mapped", "locator": {"sourceId": "s", "citation": "p. 1"},
+         "evidence": "One.", "note": "n"},
+        {"id": "second", "name": "Second", "kind": "operation", "scope": "in", "clarity": "clear",
+         "dependsOn": ["first"], "status": "mapped", "locator": {"sourceId": "s", "citation": "p. 2"},
+         "evidence": "Two.", "note": "n"},
+    ]
 
 
 class CreateCase(unittest.TestCase):
@@ -201,15 +228,7 @@ class CreateCase(unittest.TestCase):
         self.tmp = tempfile.mkdtemp()
         self.addCleanup(shutil.rmtree, self.tmp, True)
         self.engine = os.path.join(self.tmp, "engine")
-        entries = [
-            {"id": "first", "name": "First", "kind": "value", "scope": "in", "clarity": "clear",
-             "dependsOn": [], "status": "mapped", "locator": {"sourceId": "s", "citation": "p. 1"},
-             "evidence": "One.", "note": "n"},
-            {"id": "second", "name": "Second", "kind": "operation", "scope": "in", "clarity": "clear",
-             "dependsOn": ["first"], "status": "mapped", "locator": {"sourceId": "s", "citation": "p. 2"},
-             "evidence": "Two.", "note": "n"},
-        ]
-        backlog.emit(entries, {"name": "Engine", "package": "Pkg", "version": "1.0.0"}, self.engine)
+        self.emit(entries())
         self.state = os.path.join(self.tmp, "issues.json")
         self.gh = os.path.join(self.tmp, "gh")
         with open(self.gh, "w", encoding="utf-8") as handle:
@@ -220,6 +239,9 @@ class CreateCase(unittest.TestCase):
         self.addCleanup(os.environ.pop, "GH_STUB_STATE", None)
         self.addCleanup(os.environ.pop, "FACTORY_GH", None)
 
+    def emit(self, listed):
+        backlog.emit(listed, CONTEXT, self.engine)
+
     def create(self):
         return run(["backlog", "--create", "--repo", "example/engine", "--dir", self.engine])
 
@@ -227,24 +249,126 @@ class CreateCase(unittest.TestCase):
         with open(self.state, encoding="utf-8") as handle:
             return json.load(handle)
 
-    def test_creates_in_order_then_is_idempotent(self):
+    def seed(self, issues):
+        with open(self.state, "w", encoding="utf-8") as handle:
+            json.dump([{"number": n, "title": t, "body": b} for n, t, b in issues], handle)
+
+    def writes(self):
+        """The create and edit calls the stub has seen, then forgets them."""
+        calls = self.state + ".calls"
+        if not os.path.exists(calls):
+            return []
+        with open(calls, encoding="utf-8") as handle:
+            seen = [json.loads(line) for line in handle]
+        os.remove(calls)
+        return [c[:2] + c[2:3] * (c[1] == "edit") for c in seen if c[:2] != ["issue", "list"]]
+
+    def body(self, name):
+        with open(os.path.join(self.engine, "backlog", name), encoding="utf-8") as handle:
+            return handle.read().partition("\n")[2].lstrip("\n")
+
+    def test_every_item_carries_its_markers_under_the_title(self):
+        body = self.body("002-second.md")
+        self.assertTrue(body.startswith("<!-- rules-factory-entry: second -->\n"
+                                        "<!-- rules-factory-engine: Engine; map: Pkg -->\n"), body)
+        self.assertEqual(backlog.entry_of(body), "second")
+        self.assertIsNone(backlog.entry_of("quoted:\n<!-- rules-factory-entry: second -->\n"))
+
+    def test_creates_in_order_then_a_second_run_writes_nothing(self):
         code, log = self.create()
         self.assertEqual(code, 0, log)
-        self.assertEqual([t for t, _ in self.issues()], ["first: First", "second: Second"])
-        self.assertIn("(001-first.md)", self.issues()[1][1])
-        self.assertFalse(self.issues()[0][1].startswith("# "))
+        self.assertEqual([i["title"] for i in self.issues()], ["first: First", "second: Second"])
+        self.assertIn("(001-first.md)", self.issues()[1]["body"])
+        self.assertFalse(self.issues()[0]["body"].startswith("# "))
+        self.assertEqual(self.writes(), [["issue", "create"], ["issue", "create"]])
         code, log = self.create()
         self.assertEqual(code, 0, log)
-        self.assertIn("0 created, 2 already existed", log)
+        self.assertIn("0 created, 0 updated, 0 adopted, 2 unchanged, 0 not in the backlog", log)
+        self.assertEqual(self.writes(), [])
         self.assertEqual(len(self.issues()), 2)
 
-    def test_skips_a_title_that_already_exists(self):
-        with open(self.state, "w", encoding="utf-8") as handle:
-            json.dump([["first: First", "made by hand"]], handle)
+    def test_renaming_an_entry_updates_its_issue_and_creates_none(self):
+        self.create()
+        self.writes()
+        renamed = entries()
+        renamed[0]["name"] = "The First"
+        self.emit(renamed)
         code, log = self.create()
         self.assertEqual(code, 0, log)
-        self.assertEqual([t for t, _ in self.issues()], ["first: First", "second: Second"])
-        self.assertIn("1 created, 1 already existed", log)
+        self.assertEqual([i["title"] for i in self.issues()], ["first: The First", "second: Second"])
+        self.assertEqual(self.writes(), [["issue", "edit", "1"]])
+        self.assertIn("updated   #1 first: The First", log)
+        self.assertEqual(self.create()[0], 0)
+        self.assertEqual(self.writes(), [])
+
+    def test_changing_dependencies_updates_the_body(self):
+        self.create()
+        self.writes()
+        changed = entries()
+        changed[1]["dependsOn"] = []
+        self.emit(changed)
+        code, log = self.create()
+        self.assertEqual(code, 0, log)
+        self.assertEqual(self.writes(), [["issue", "edit", "2"]])
+        self.assertNotIn("(001-first.md)", self.issues()[1]["body"])
+        self.assertEqual(self.issues()[1]["body"], self.body("002-second.md"))
+        self.assertIn("0 created, 1 updated, 0 adopted, 1 unchanged", log)
+
+    def test_line_endings_and_trailing_space_github_adds_are_not_a_change(self):
+        first, second = self.body("001-first.md"), self.body("002-second.md")
+        self.seed([(7, "first: First", first.replace("\n", "\r\n").rstrip()), (8, "second: Second", second)])
+        code, log = self.create()
+        self.assertEqual(code, 0, log)
+        self.assertEqual(self.writes(), [])
+
+    def test_a_duplicate_marker_refuses_before_any_write(self):
+        first = self.body("001-first.md")
+        self.seed([(3, "first: First", first), (5, "copy", first)])
+        code, log = self.create()
+        self.assertEqual(code, 1, log)
+        self.assertIn("first on #3, #5", log)
+        self.assertEqual(self.writes(), [])
+        self.assertEqual(len(self.issues()), 2)
+
+    def test_a_legacy_title_only_issue_is_adopted(self):
+        self.seed([(4, "first: First", "made by hand"), (9, "unrelated", "text")])
+        code, log = self.create()
+        self.assertEqual(code, 0, log)
+        self.assertEqual(self.writes(), [["issue", "edit", "4"], ["issue", "create"]])
+        self.assertEqual([(i["number"], i["title"]) for i in self.issues()],
+                         [(4, "first: First"), (9, "unrelated"), (10, "second: Second")])
+        self.assertEqual(backlog.entry_of(self.issues()[0]["body"]), "first")
+        self.assertIn("0 updated, 1 adopted", log)
+        self.assertEqual(self.create()[0], 0)
+        self.assertEqual(self.writes(), [])
+
+    def test_two_legacy_issues_with_the_title_refuse(self):
+        self.seed([(1, "second: Second", "a"), (2, "second: Second", "b")])
+        code, log = self.create()
+        self.assertEqual(code, 1, log)
+        self.assertIn("#1, #2", log)
+        self.assertEqual(self.writes(), [])
+
+    def test_an_issue_whose_entry_left_the_backlog_is_reported_and_left_alone(self):
+        self.create()
+        self.writes()
+        self.emit(entries()[:1])
+        code, log = self.create()
+        self.assertEqual(code, 0, log)
+        self.assertIn("not in backlog #2 second: Second -- left as it is", log)
+        self.assertIn("1 not in the backlog", log)
+        # "item 1 of 2" became "item 1 of 1"; the issue that left is not written.
+        self.assertEqual(self.writes(), [["issue", "edit", "1"]])
+        self.assertEqual([i["title"] for i in self.issues()], ["first: First", "second: Second"])
+
+    def test_a_listing_that_reaches_the_limit_refuses(self):
+        self.addCleanup(setattr, backlog, "LIST_LIMIT", backlog.LIST_LIMIT)
+        backlog.LIST_LIMIT = 2
+        self.seed([(1, "a", ""), (2, "b", ""), (3, "c", "")])
+        code, log = self.create()
+        self.assertEqual(code, 1, log)
+        self.assertIn("at least 2 issues", log)
+        self.assertEqual(self.writes(), [])
 
     def test_a_failing_gh_is_a_refusal(self):
         os.environ["FACTORY_GH"] = os.path.join(self.tmp, "no-such-gh")

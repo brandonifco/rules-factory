@@ -25,8 +25,9 @@
     engine. Before anything else, a factory whose git working tree is dirty is refused unless
     `--allow-dirty`.
 
-`backlog --create` turns those files into GitHub issues through `gh` (or `$FACTORY_GH`),
-skipping any whose title the repository already has.
+`backlog --create` synchronises those files with GitHub issues through `gh` (or `$FACTORY_GH`):
+each file is matched to its issue by the entry marker in its body, never by title, and the
+issue is created, updated, or left unchanged. It never closes or deletes an issue.
 
   python3 tools/factory provenance --engine <dir> [--package <nupkg path | Id@Version>]
 
@@ -108,8 +109,8 @@ def main(argv=None):
     p.add_argument("--out", required=True, help="directory the engine is written to")
     p.add_argument("--allow-dirty", action="store_true",
                    help="produce from a factory with uncommitted changes, recording dirty: true")
-    b = commands.add_parser("backlog", help="create GitHub issues from an engine's backlog/ files")
-    b.add_argument("--create", action="store_true", required=True, help="create the issues (the only action)")
+    b = commands.add_parser("backlog", help="create or update GitHub issues from an engine's backlog/ files")
+    b.add_argument("--create", action="store_true", required=True, help="create missing issues and update changed ones (the only action)")
     b.add_argument("--repo", required=True, help="owner/name of the engine's repository")
     b.add_argument("--dir", required=True, help="the engine directory `produce` wrote")
     r = commands.add_parser("provenance", help="recompute an engine's provenance.json and report mismatches")
