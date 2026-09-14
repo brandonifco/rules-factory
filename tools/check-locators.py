@@ -82,11 +82,20 @@ def main():
         print("no page markers found; nothing to check", file=sys.stderr)
         return 2
 
-    bad = unlocatable = 0
+    bad = unlocatable = uncited = 0
     for entry in entries:
         citation = entry.get("locator", {}).get("citation", "")
         claimed = re.search(args.page_re, citation)
         if not claimed:
+            # A citation naming no page cannot be compared to one. Counted separately rather
+            # than skipped silently: folding it into the verified total was this tool's own
+            # version of the defect it exists to catch -- a count that grew when nothing had
+            # been checked.
+            uncited += 1
+            print(f"  -  {entry['id']}: citation names no page, so nothing can be compared. "
+                  f"An entry for a rule the corpus does not contain is a real thing to record "
+                  f"-- see issue #29 -- and the schema has no way to say it, so this fails "
+                  f"rather than passing on a citation nobody checked.")
             continue
         span, coverage = probe(normalise(entry.get("evidence", "")), corpus)
         if span is None:
@@ -101,9 +110,10 @@ def main():
             print(f"  X  {entry['id']}: cited p. {claimed.group(1)}, evidence is on {found}{partial}")
 
     total = len(entries)
-    checked = total - unlocatable
+    checked = total - unlocatable - uncited
     if bad:
-        print(f"\n{bad} of {total} entries cite the wrong page ({unlocatable} unlocatable)")
+        print(f"\n{bad} of {total} entries cite the wrong page "
+              f"({unlocatable} unlocatable, {uncited} citing no page)")
         return 1
     if checked == 0:
         print(
@@ -114,7 +124,8 @@ def main():
         )
         return 1
     if checked < total:
-        print(f"\n{checked} of {total} citations verified; {unlocatable} could not be checked")
+        print(f"\n{checked} of {total} citations verified; {unlocatable} unlocatable, "
+              f"{uncited} citing no page")
         return 1
     print(f"locators ok (all {total} checked)")
     return 0
