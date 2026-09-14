@@ -85,7 +85,7 @@ before either has been implemented.
 |---|---|
 | `id` | Stable slug. Referenced by `dependsOn`, by issues, and by the engine's own citations. Never reused. |
 | `name` | What the rule is called, in the corpus's language where it has one. |
-| `locator` | Corpus id plus a citation in that corpus's grammar. **Required.** An entry without one is not an entry. |
+| `locator` | Corpus id plus a citation in that corpus's grammar. **Required**, except on a derived entry, which must not carry one. An entry without one is not an entry. |
 | `kind` | `value`, `operation` or `assertion` — a fact the corpus states, a procedure it describes, or a condition only the caller can supply. See below. |
 | `scope` | `in` or `out`. Out is a recorded verdict with a reason, not an omission. **Decided per rule. A section has no scope of its own.** See below. |
 | `clarity` | `clear` or `ambiguous`. `clear` asserts the corpus determines exactly one answer for every valid input — so a corpus that states the rule twice, differently, is `ambiguous`. |
@@ -96,8 +96,9 @@ before either has been implemented.
 | `beyondAdapter` | Present only when the declared adapter cannot read the rule the locator cites. Names the adapter and the modality. See below. |
 | `definedElsewhere` | Present only when the rule's meaning is fixed in a corpus that was not admitted. Names the manifest `references` entry. See below. |
 | `absentFrom` | Present only when the corpus does **not** state the rule at all. Names the terms searched for. See below. |
+| `derivedFrom` | Present only when no sentence states the fact and two or more in-scope entries entail it. Entry ids. The entry then carries no `locator` and no `evidence`. See below. |
 | `crossReferences` | The pointers this entry's `evidence` makes, each resolved to an entry or to a recorded reason there is none. See below. |
-| `evidence` | One contiguous verbatim span of the corpus: the passage that *states* this rule. Not a summary of it. See below. |
+| `evidence` | One contiguous verbatim span of the corpus: the passage that *states* this rule. Not a summary of it. Absent on a derived entry, and only there. See below. |
 | `status` | Whether the engine has built this entry. Independent of `ambiguity.fate`. See below. |
 | `implementedIn` | The ruleset revision that implemented it. Set when status becomes `implemented`. |
 
@@ -480,6 +481,44 @@ in words nobody searched for. What the check catches is a mapper who declared an
 without looking — which is what [#29](https://github.com/brandonifco/rules-factory/issues/29)
 was.
 
+### `derivedFrom`
+
+A fact the corpus entails and never states. Added in
+[0012](decisions/0012-a-fact-the-corpus-implies-is-a-derived-entry.md).
+
+```json
+{ "id": "hit-pays-single-stake", "kind": "value", "scope": "in", "clarity": "clear",
+  "derivedFrom": ["stake-multiplier", "agreed-backgammon-multiple"], "dependsOn": ["game-value"],
+  "status": "mapped", "note": "…" }
+```
+
+Hoyle says a gammon pays *"double the agreed stake"* and a backgammon *"thrice or four times …
+the amount of the single stake"*, and never says what a hit pays. That it pays the single stake
+is one step of arithmetic over two stated rules. It used to sit inside `stake-multiplier`,
+`clear`, with nothing to quote.
+
+It is the fourth relation between entries and none of the other three: `dependsOn` orders
+implementation, the gate fields govern reachability, `crossReferences` records a pointer the
+corpus makes. `derivedFrom` says **this fact is entailed by those facts**, and orders nothing.
+
+**A derived entry cites nothing.** No sentence contains its fact, so it has no `locator` and no
+`evidence`, and its sources' located spans are its citation. That is what keeps `evidence` one
+thing — a verbatim span — everywhere it appears. `kind` keeps its ordinary value; there is no
+`kind: derived`, because the field already says it.
+
+`check-map.py --only derived` enforces the shape: at least two sources, each an entry in this
+map, not the entry itself, `scope: in`, no circular derivation, and none of `locator`,
+`evidence`, `crossReferences`, `absentFrom`, `beyondAdapter` or `definedElsewhere` on the derived
+entry. `check-locators.py` names derived entries and does not locate them.
+
+**One source is not a derivation.** A fact that follows from a single entry is that entry's
+consequence, and it is discharged as a test the entry names (see
+[method.md](method.md#phase-6--implement)), not as an entry.
+
+**What it does not buy.** Nothing checks that the sources entail the fact. The check proves the
+reading names what it rests on and that those are rules the map covers; the entailment is in
+`note`, and is review.
+
 ### `scope` is decided per rule. A section has no scope of its own
 
 A section is a unit of the corpus's **layout**; `scope` is a judgement about a **rule**. There
@@ -684,6 +723,10 @@ Open questions are tracked as issues so they are worked rather than admired:
   entries was named by none of them, and the one field could not say which way a gate points.
   Decided: [0011](decisions/0011-a-gate-has-a-direction.md) splits `gatedBy` into `enabledBy`
   and `suspendedBy`.
+- [#31](https://github.com/brandonifco/rules-factory/issues/31) — an entry claimed a rate the
+  corpus implies and never states. Decided:
+  [0012](decisions/0012-a-fact-the-corpus-implies-is-a-derived-entry.md) adds `derivedFrom`; a
+  derived entry cites nothing.
 - [#6](https://github.com/brandonifco/rules-factory/issues/6) — a standard is not a gap.
   Decided: [0005](decisions/0005-a-field-earns-its-place-by-being-checkable.md) — a delegated
   standard is `kind: assertion`, and it is an entry of its own.

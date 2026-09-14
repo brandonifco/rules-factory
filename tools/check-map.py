@@ -57,6 +57,11 @@ UNRESOLVED_REASONS = {
     "UnsupportedInteraction",
 }
 REQUIRED_ENTRY_FIELDS = ["id", "name", "locator", "kind", "scope", "clarity", "evidence", "status"]
+# A derived entry (0012) cites nothing: no sentence contains its fact, so it has no passage
+# to locate or quote. Its sources' locators and evidence are its citation.
+CITING_FIELDS = ("locator", "evidence")
+# What only a passage can carry, and so what a derived entry may not.
+PASSAGE_FIELDS = CITING_FIELDS + ("crossReferences", "absentFrom", "beyondAdapter", "definedElsewhere")
 # The relations that hold entry ids and nothing else. `gatedBy` is not among them: 0011 split
 # it into the two gate fields, and `gates` refuses it by name.
 GATE_FIELDS = ("enabledBy", "suspendedBy")
@@ -156,10 +161,13 @@ def check_required_fields(ctx):
             bad.append(f"  X  entry[{position}] is not an object")
             continue
         name = label(entry, position)
+        derived = "derivedFrom" in entry
         for field in REQUIRED_ENTRY_FIELDS:
+            if derived and field in CITING_FIELDS:
+                continue  # `derived` refuses them instead: a derived entry cites nothing
             if field not in entry:
                 bad.append(f"  X  {name}: missing required field `{field}`")
-        if "locator" in entry:
+        if "locator" in entry and not derived:
             locator = entry.get("locator")
             if not isinstance(locator, dict):
                 bad.append(f"  X  {name}: `locator` is not an object")
@@ -327,6 +335,86 @@ def check_gates(ctx):
     return verdict(bad, f"{gated} gated entr{'y' if gated == 1 else 'ies'}: every gate is filed by "
                         f"direction, and none in both directions",
                    "a gate does not state its direction")
+
+
+def check_derived(ctx):
+    """A derived entry is a fact the corpus entails and never states (0012).
+
+    `stake-multiplier`'s span states what a gammon and a backgammon pay, both as multiples of
+    a single stake, and never what a hit pays. That a hit pays the single stake is read off
+    the other two. 0012 gives the fact its own entry and a fourth relation, `derivedFrom`: not
+    implementation order (`dependsOn`), not reachability (the gate fields), not a pointer the
+    corpus makes (`crossReferences`), but *this fact is entailed by those facts*.
+
+      * `derivedFrom` is a list of at least two ids. A consequence of one entry is that
+        entry's, and 0012 discharges it as a test the entry names, not as an entry;
+      * every source resolves in this map, is not the entry itself, and is `scope: in` -- a
+        fact cannot be derived from a rule the engine does not cover, or from an absence;
+      * no derivation is circular, following `derivedFrom` through derived sources;
+      * a derived entry cites nothing: no `locator`, no `evidence`, and nothing only a passage
+        carries (`crossReferences`, `absentFrom`, `beyondAdapter`, `definedElsewhere`). No
+        sentence contains its fact, so `evidence` keeps one meaning -- a verbatim span -- on
+        every entry that has it, and the derived entry's citation is its sources'.
+
+    What it cannot do: tell whether the sources actually entail the fact. That a hit pays one
+    stake *follows* from the two payouts is the mapper's reading, written in `note`; this check
+    proves only that the reading names what it rests on and that those are rules the map
+    covers.
+    """
+    by_id, bad, carriers = index(ctx["map"]), [], []
+    for position, entry in enumerate(entries_of(ctx["map"])):
+        if not isinstance(entry, dict) or "derivedFrom" not in entry:
+            continue
+        name = label(entry, position)
+        carriers.append(name)
+        sources = entry.get("derivedFrom")
+        if not isinstance(sources, list) or any(not isinstance(s, str) for s in sources):
+            bad.append(f"  X  {name}: `derivedFrom` is not a list of entry ids")
+            continue
+        if len(set(sources)) < 2:
+            bad.append(f"  X  {name}: `derivedFrom` names {len(set(sources))} source(s); a fact "
+                       f"that follows from one entry is that entry's consequence, and is a test "
+                       f"that entry names (0012), not an entry")
+        for ref in sources:
+            target = by_id.get(ref)
+            if target is None:
+                bad.append(f"  X  {name}: derivedFrom names {ref!r}, which is not an entry in this map")
+            elif ref == entry.get("id"):
+                bad.append(f"  X  {name}: derivedFrom names itself")
+            elif target.get("scope") != "in":
+                bad.append(f"  X  {name}: derivedFrom names {ref!r}, which is scope "
+                           f"{target.get('scope')!r}; a fact is not derived from a rule the engine "
+                           f"does not cover")
+        for field in PASSAGE_FIELDS:
+            if field in entry:
+                bad.append(f"  X  {name}: is derived and carries `{field}`; no sentence states a "
+                           f"derived fact, so it cites nothing and its sources are its citation")
+
+    colour = {}
+
+    def walk(node, trail):
+        colour[node] = "open"
+        sources = by_id.get(node, {}).get("derivedFrom")
+        for ref in sources if isinstance(sources, list) else []:
+            if not isinstance(ref, str) or ref not in by_id or ref == node:
+                continue
+            if colour.get(ref) == "open":
+                bad.append("  X  derivedFrom cycle: " + " -> ".join(trail[trail.index(ref):] + [ref]))
+            elif ref not in colour:
+                walk(ref, trail + [ref])
+        colour[node] = "closed"
+
+    for node, entry in by_id.items():
+        if "derivedFrom" in entry and node not in colour:
+            walk(node, [node])
+
+    if not carriers:
+        return skip("no entry carries `derivedFrom`, so no derivation was checked", had_subject=False)
+    return verdict(sorted(set(bad), key=bad.index),
+                   f"{len(carriers)} derived entr{'y' if len(carriers) == 1 else 'ies'} "
+                   f"({', '.join(sorted(carriers))}): each derives from two or more in-scope "
+                   f"entries and cites nothing itself",
+                   "a derived entry is not well-formed")
 
 
 def check_manifest(ctx):
@@ -819,6 +907,7 @@ CHECKS = [
     ("references", check_references),
     ("no-cycles", check_no_cycles),
     ("gates", check_gates),
+    ("derived", check_derived),
     ("manifest", check_manifest),
     ("exclusions", check_exclusions),
     ("status", check_status),

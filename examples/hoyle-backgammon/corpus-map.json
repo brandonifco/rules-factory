@@ -505,7 +505,7 @@
     },
     {
       "id": "stake-multiplier",
-      "name": "What each result pays",
+      "name": "What a gammon and a backgammon pay",
       "locator": {
         "sourceId": "hoyle-1909",
         "citation": "BACKGAMMON / Bearing off the Men / p. 276"
@@ -519,7 +519,23 @@
       ],
       "evidence": "The loser is said to be \"gammoned,\" and pays double the agreed stake. If the winner has borne off all his men while the adversary has still a man or men \"up\" (_i.e._, on the bar) or in his (the winner's) home table, the game is a \"backgammon,\" and the loser pays {277} either thrice or four times (as may have been agreed) the amount of the single stake.",
       "status": "mapped",
-      "note": "The figures the corpus states, with the delegated one split out into agreed-backgammon-multiple under docs/decisions/0005. Nothing here is unclear: a gammon pays double and for a backgammon the corpus names the players as the decider rather than failing to decide. Was recorded clarity: ambiguous with fate: unresolved, which its own note already contradicted -- 'an assertion, not a gap'. Demonstrate all three: the single stake for a hit, double for a gammon, and for a backgammon the agreed multiple, which does not vary what the other two pay. Limit stated where the claim is: the quoted span states the multiples for a gammon and a backgammon and never states what a hit pays. That it pays the single stake is read off the other two, which are given as multiples of exactly that -- an inference, not a sentence, and the only part of this entry the span does not carry. Cited p. 275 until the span was quoted and checked."
+      "note": "The figures the corpus states, with the delegated one split out into agreed-backgammon-multiple under docs/decisions/0005. Nothing here is unclear: a gammon pays double and for a backgammon the corpus names the players as the decider rather than failing to decide. Was recorded clarity: ambiguous with fate: unresolved, which its own note already contradicted -- 'an assertion, not a gap'. Demonstrate both: double the stake for a gammon, and for a backgammon the agreed multiple of the single stake. What a hit pays is not here: the span never states it, and it is hit-pays-single-stake, derived from this entry and agreed-backgammon-multiple (docs/decisions/0012). Cited p. 275 until the span was quoted and checked."
+    },
+    {
+      "id": "hit-pays-single-stake",
+      "name": "What a hit pays",
+      "kind": "value",
+      "scope": "in",
+      "clarity": "clear",
+      "derivedFrom": [
+        "stake-multiplier",
+        "agreed-backgammon-multiple"
+      ],
+      "dependsOn": [
+        "game-value"
+      ],
+      "status": "mapped",
+      "note": "Derived, not stated (docs/decisions/0012). No sentence in the corpus says what a hit pays. A gammon pays \"double the agreed stake\" and a backgammon \"thrice or four times ... the amount of the single stake\": both are given as multiples of one stake, and a hit, the least of the three results game-value names, is the single stake they are multiples of. That is one step of arithmetic over two stated rules, so the entry cites nothing and names the two it rests on; their spans are its evidence. Clear because both sources are and they fix the unit between them; the agreed multiple does not vary it. Depends on game-value for what a hit is. Demonstrate that a hit pays exactly the single stake, under either agreed backgammon multiple."
     },
     {
       "id": "next-game-opening",

@@ -156,6 +156,33 @@ class TestLocators(LocatorCase):
         self.assertEqual(code, 1, output)
 
 
+class TestDerived(LocatorCase):
+    """0012: a derived entry cites nothing, so it is left out of locating -- by name."""
+
+    def _with_derived(self):
+        document = valid_map()
+        derived = entry("hit-pays-single-stake", "", "",
+                        derivedFrom=["player-count", "legal-destination"])
+        derived.pop("locator")
+        derived.pop("evidence")
+        document["entries"].append(derived)
+        return document
+
+    def test_a_derived_entry_is_not_located_and_is_named(self):
+        code, output = self.run_tool(self._with_derived())
+        self.assertEqual(self.status_of(output, "locators"), "ok", output)
+        self.assertIn("1 derived entry (hit-pays-single-stake) not located", output)
+        self.assertEqual(code, 0, output)
+
+    def test_the_exemption_is_the_field_and_nothing_else(self):
+        # Without `derivedFrom` the same entry is an uncited one, and fails like any other.
+        document = self._with_derived()
+        document["entries"][-1].pop("derivedFrom")
+        code, output = self.run_tool(document)
+        self.assertEqual(self.status_of(output, "locators"), "fail", output)
+        self.assertEqual(code, 1, output)
+
+
 class TestAbsence(LocatorCase):
     def test_a_term_the_corpus_actually_contains_fails_the_absence(self):
         # The only check in the repository that goes red by *finding* something.

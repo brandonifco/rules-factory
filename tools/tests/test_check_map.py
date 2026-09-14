@@ -104,8 +104,17 @@ def valid_map():
                   evidence="After a gammon the players throw again for the right to begin, "
                            "as at starting.",
                   crossReferences=[{"cites": "as at starting", "resolvedBy": "speed-limit"}]),
+            derived_entry("hit-pays-single-stake", ["speed-limit", "speed-within-limit"]),
         ],
     }
+
+
+def derived_entry(entry_id, sources, **overrides):
+    """0012: a fact the corpus entails and never states. It cites nothing."""
+    base = entry(entry_id, derivedFrom=list(sources), **overrides)
+    base.pop("locator")
+    base.pop("evidence")
+    return base
 
 
 def decided_entry():
@@ -295,6 +304,74 @@ class TestNoCycles(MapCase):
         document["entries"][1]["suspendedBy"] = ["speed-limit"]
         code, output = self.run_tool(document)
         self.assertEqual(self.status_of(output, "no-cycles"), "ok", output)
+        self.assertEqual(code, 0, output)
+
+
+class TestDerived(MapCase):
+    """0012: `derivedFrom` -- this fact is entailed by those facts, and no sentence states it."""
+
+    DERIVED = 10  # hit-pays-single-stake, in valid_map()'s order
+
+    def test_a_derived_entry_needs_no_locator_or_evidence(self):
+        # The fixture's derived entry carries neither, and required-fields must not demand them.
+        code, output = self.run_tool(valid_map())
+        self.assertEqual(self.status_of(output, "required-fields"), "ok", output)
+        self.assertEqual(self.status_of(output, "derived"), "ok", output)
+
+    def test_an_entry_without_derived_from_still_needs_its_locator(self):
+        # The exemption is keyed on the field, so removing it makes the entry an ordinary one.
+        self.assert_catches("required-fields", lambda d: d["entries"][self.DERIVED].pop("derivedFrom"))
+
+    def test_a_derived_entry_that_quotes_a_span_fails(self):
+        # `evidence` keeps one meaning: a verbatim span. A derived fact has none to quote.
+        self.assert_catches(
+            "derived", lambda d: d["entries"][self.DERIVED].update(evidence="A gammon pays double."))
+
+    def test_a_derived_entry_that_cites_a_passage_fails(self):
+        self.assert_catches(
+            "derived", lambda d: d["entries"][self.DERIVED].update(
+                locator={"sourceId": "demo-corpus", "citation": "Part One / p. 1"}))
+
+    def test_a_derived_entry_carrying_a_cross_reference_fails(self):
+        self.assert_catches(
+            "derived", lambda d: d["entries"][self.DERIVED].update(
+                crossReferences=[{"cites": "as at starting", "resolvedBy": "speed-limit"}]))
+
+    def test_a_source_that_is_not_an_entry_fails(self):
+        self.assert_catches(
+            "derived", lambda d: d["entries"][self.DERIVED]["derivedFrom"].append("no-such-entry"))
+
+    def test_a_source_out_of_scope_fails(self):
+        self.assert_catches(
+            "derived", lambda d: d["entries"][self.DERIVED]["derivedFrom"].append("subpart-d-categories"))
+
+    def test_deriving_from_an_absent_rule_fails(self):
+        # An absence is scope: out, so the scope rule is what refuses it.
+        self.assert_catches(
+            "derived", lambda d: d["entries"][self.DERIVED]["derivedFrom"].append("doubling-cube"))
+
+    def test_a_derivation_from_one_source_fails(self):
+        # A consequence of one entry is that entry's, discharged as a test it names.
+        self.assert_catches(
+            "derived", lambda d: d["entries"][self.DERIVED].update(derivedFrom=["speed-limit"]))
+
+    def test_a_derivation_naming_itself_fails(self):
+        self.assert_catches(
+            "derived", lambda d: d["entries"][self.DERIVED]["derivedFrom"].append("hit-pays-single-stake"))
+
+    def test_a_circular_derivation_fails(self):
+        def mutate(document):
+            document["entries"].append(
+                derived_entry("gammon-pays-double", ["hit-pays-single-stake", "speed-limit"]))
+            document["entries"][self.DERIVED]["derivedFrom"] = ["gammon-pays-double", "speed-limit"]
+        self.assert_catches("derived", mutate)
+
+    def test_a_map_with_no_derived_entries_does_not_report_ok(self):
+        document = valid_map()
+        document["entries"].pop(self.DERIVED)
+        code, output = self.run_tool(document)
+        self.assertEqual(self.status_of(output, "derived"), "skip", output)
+        self.assertIn("NOT VERIFIED", output)
         self.assertEqual(code, 0, output)
 
 

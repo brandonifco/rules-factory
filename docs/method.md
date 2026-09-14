@@ -92,6 +92,13 @@ slices small enough to hold, never the whole corpus at once.
 rule that makes the map trustworthy, because it is the one an agent is most tempted to skip
 when a rule "obviously" says something.
 
+**The one exception is a fact no sentence states.** Where two or more rules the corpus does
+state entail an answer the engine must give — a hit pays the single stake, because a gammon and
+a backgammon are both paid as multiples of it — that answer is its own entry, carrying
+`derivedFrom` and no locator or quote: its sources' citations are its citation. Do not put the
+inference inside one of the source entries, where it passes as stated. See
+[0012](decisions/0012-a-fact-the-corpus-implies-is-a-derived-entry.md).
+
 **Cite, do not copy.** The map records where a rule lives and what it is called. It does not
 reproduce the corpus. For a licensed corpus that is a legal requirement; for every corpus it
 is a discipline that keeps the map reviewable.
