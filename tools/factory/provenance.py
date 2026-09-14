@@ -25,14 +25,19 @@ The fields, and where each comes from:
   * `kernel` -- the RulesKernel version the engine references.
   * `packs` -- `[]`: no rule packs exist yet, and the empty list says so rather than omitting it.
   * `recipes` -- every file under `tools/factory/` (the factory's templates are its Python
-    modules), `__pycache__` and `*.pyc` excluded, each with its SHA-256, sorted by
+    modules), `__pycache__` and `*.pyc` excluded, and `tools/check-map.py` beside it (the
+    checker intake runs decides whether there is any output, so it is factory code too, and a
+    factory without it is refused), each with its SHA-256, sorted by
     repository-relative POSIX path in ascending byte order; and `digest`, the SHA-256 of the
     UTF-8 text made of one line `<sha256>  <path>\\n` per file in that order (`sha256sum` format).
   * `generated` -- `[{path, sha256}]`, sorted by path, for every file `produce` wrote on this
     run under the engine directory, except `provenance.json` itself and the write-once scaffold
     (generate.scaffold): scaffold files belong to the engine after the first run and a second
     run leaves them alone, so hashing them would make an engine's own edits (its overlay above
-    all) look like tampering, and would make a fresh run and a re-run disagree. The list is not
+    all) look like tampering, and would make a fresh run and a re-run disagree. Leaving them out
+    is only safe because no scaffold file says anything the inputs decide: the kernel and map
+    pins and the map's PackageReference live in the generated `RulesFactory.Packages.g.props`,
+    which is listed here like any `*.g.cs` (#66). The list is not
     hard-coded: `Recorder` notes every path opened for writing (or renamed into place) while
     `produce` runs, so a later step's output is picked up without touching this module.
     Writes made by a child process are not seen; no step makes any.
@@ -44,7 +49,8 @@ Deterministic: no timestamps, no machine paths; two runs from the same inputs ar
 the same package and the engine's committed corpus, and returns every mismatch as a line naming
 the field (`map.nupkgSha256`, `corpus.contentHash`, `recipes.files[tools/factory/generate.py]`,
 `generated[src/X/Generated/MapEntries.g.cs]`, ...). It also hashes each recorded generated file
-on disk, so a hand edit to a generated file is caught even though re-producing would undo it.
+on disk, so a hand edit to a generated file (a pin in RulesFactory.Packages.g.props included) is
+caught even though re-producing would undo it.
 An empty list means the record is true of the engine and the factory running the check.
 
 Standard library only.
@@ -87,8 +93,8 @@ def sha256_file(path):
 def _git(factory_dir, *args):
     try:
         done = subprocess.run(["git", "-C", factory_dir, *args], stdout=subprocess.PIPE,
-                              stderr=subprocess.PIPE, text=True)
-    except OSError as error:
+                              stderr=subprocess.PIPE, text=True, timeout=60)
+    except (OSError, subprocess.TimeoutExpired) as error:
         raise intake_step.Refused(f"cannot run git to identify the factory: {error}")
     if done.returncode != 0:
         raise intake_step.Refused(f"the factory at {factory_dir} is not a git checkout whose commit can be "
@@ -116,8 +122,19 @@ def require_clean(state, allow_dirty):
                                   f"pass --allow-dirty to produce anyway and record dirty: true")
 
 
+# Factory code outside tools/factory that decides the output, relative to tools/factory's parent.
+RECIPES_BESIDE = ("check-map.py",)
+
+
 def recipes(factory_dir, top):
     files = []
+    for name in RECIPES_BESIDE:
+        path = os.path.join(os.path.dirname(os.path.abspath(factory_dir)), name)
+        if not os.path.isfile(path):
+            raise intake_step.Refused(f"the factory has no {path}, so provenance could not name the checker "
+                                      f"intake runs")
+        files.append({"path": os.path.relpath(os.path.realpath(path), top).replace(os.sep, "/"),
+                      "sha256": sha256_file(path)})
     for directory, dirs, names in os.walk(factory_dir):
         dirs[:] = [d for d in dirs if d != "__pycache__"]
         for name in names:
@@ -249,7 +266,7 @@ def emit(model, out):
 
 def build(state, result, model, recorder, factory_dir=FACTORY_DIR):
     corpus = result.corpus
-    write_once = set(generate.scaffold(model, "").keys())
+    write_once = set(generate.scaffold(model).keys())
     generated_files = []
     for relative in sorted(recorder.paths, key=lambda p: p.encode("utf-8")):
         if relative == FILE_NAME or relative in write_once:

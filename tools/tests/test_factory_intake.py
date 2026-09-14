@@ -13,6 +13,10 @@ Each refusal starts from a package that passes and changes exactly one thing, an
 non-zero exit -- a refusal test that also fails on the unchanged package proves nothing, so
 the unchanged package is asserted to pass first.
 
+The package's own checker is never run (0016): the consumer-phase checks are the factory's
+tools/check-map.py, and TestPackageIsData replaces the packaged checker with a script that
+leaves a sentinel file and lies about the verdict, and asserts intake ignores it both ways.
+
 Run: python3 -m unittest discover -s tools/tests
 """
 import importlib.util
@@ -78,6 +82,15 @@ class IntakeCase(unittest.TestCase):
         self.tmp = tempfile.mkdtemp()
         self.addCleanup(shutil.rmtree, self.tmp, True)
 
+    def map_with(self, status=None, **top):
+        """Hoyle's packaged map, as bytes, with top-level fields set and entry 0's status changed."""
+        with zipfile.ZipFile(self.hoyle) as archive:
+            document = json.loads(archive.read("map/corpus-map.json"))
+        document.update(top)
+        if status is not None:
+            document["entries"][0]["status"] = status
+        return json.dumps(document).encode("utf-8")
+
     def produce(self, package, corpus):
         buffer = io.StringIO()
         with redirect_stdout(buffer), redirect_stderr(buffer):
@@ -105,7 +118,8 @@ class TestAccepts(IntakeCase):
         output = self.assert_passes(self.hoyle, HOYLE_TEXT)
         self.assertIn(f"{HOYLE_ID} {HOYLE_VERSION}", output)
         self.assertIn("gutenberg-plain-text-including-boilerplate", output)
-        self.assertIn("--phase consumer", output)
+        self.assertIn("the factory's check-map.py --phase consumer", output)
+        self.assertIn("map schemaVersion 1", output)
 
     def test_part_107(self):
         output = self.assert_passes(self.part107, PART107_XML)
@@ -174,13 +188,53 @@ class TestRefuses(IntakeCase):
         })
         self.assert_refused(package, HOYLE_TEXT, "no way to compute hashDerivation 'work-text-only'")
 
-    def test_a_map_its_own_consumer_checks_fail(self):
-        with zipfile.ZipFile(self.hoyle) as archive:
-            document = json.loads(archive.read("map/corpus-map.json"))
-        document["entries"][0]["status"] = "finished"
+    def test_a_map_the_consumer_checks_fail(self):
         package = rewrite(self.hoyle, os.path.join(self.tmp, "status.nupkg"),
-                          {"map/corpus-map.json": json.dumps(document).encode("utf-8")})
-        self.assert_refused(package, HOYLE_TEXT, "check-map.py --phase consumer exited 1")
+                          {"map/corpus-map.json": self.map_with(status="finished")})
+        self.assert_refused(package, HOYLE_TEXT, "factory's check-map.py --phase consumer exited 1",
+                            "[fail] vocabulary")
+
+    def test_a_schema_version_the_factory_does_not_read(self):
+        package = rewrite(self.hoyle, os.path.join(self.tmp, "schema.nupkg"),
+                          {"map/corpus-map.json": self.map_with(schemaVersion=2)})
+        self.assert_refused(package, HOYLE_TEXT, "schemaVersion 2",
+                            "reads schemaVersion " + ", ".join(map(str, intake.checker().SCHEMA_VERSIONS)))
+
+
+class TestPackageIsData(IntakeCase):
+    """0016: nothing from a package runs. Its checker is a hostile script here, and it never fires.
+
+    The script writes a sentinel file at import time, so importing it would fire it as surely
+    as running it, and then either exits 0 (claiming every map passes) or 1 (claiming every map
+    fails). Intake must decide on the map's merits both ways, and the sentinel must not exist.
+    """
+
+    def hostile(self, name, exit_code, **map_changes):
+        self.sentinel = os.path.join(self.tmp, "package-code-ran")
+        script = (f"import sys\nopen({self.sentinel!r}, 'w').write('ran')\n"
+                  f"print('everything passes')\nsys.exit({exit_code})\n").encode("utf-8")
+        self.script = script
+        replace = {"tools/check-map.py": script}
+        if map_changes:
+            replace["map/corpus-map.json"] = self.map_with(**map_changes)
+        return rewrite(self.hoyle, os.path.join(self.tmp, name), replace)
+
+    def test_a_checker_that_refuses_everything_does_not_refuse_a_good_map(self):
+        package = self.hostile("fails.nupkg", 1)
+        self.assert_passes(package, HOYLE_TEXT)
+        self.assertFalse(os.path.exists(self.sentinel), "the package's checker ran")
+
+    def test_a_checker_that_passes_everything_does_not_pass_a_bad_map(self):
+        package = self.hostile("passes.nupkg", 0, status="finished")
+        self.assert_refused(package, HOYLE_TEXT, "factory's check-map.py --phase consumer exited 1")
+        self.assertFalse(os.path.exists(self.sentinel), "the package's checker ran")
+
+    def test_its_bytes_are_still_what_provenance_hashes(self):
+        package = self.hostile("hashed.nupkg", 0)
+        result = intake.intake(package, HOYLE_TEXT, log=None)
+        self.assertEqual(result.checker_raw, self.script)
+        self.assertEqual(result.part_paths["checker"], "tools/check-map.py")
+        self.assertFalse(os.path.exists(self.sentinel), "the package's checker ran")
 
 
 if __name__ == "__main__":
