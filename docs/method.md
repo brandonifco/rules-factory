@@ -549,6 +549,40 @@ what makes the map a live artifact rather than a plan: at any moment it says wha
 covers, what it deliberately does not, and what it cannot yet answer — which is the same
 question `UnresolvedReason` answers at runtime, from the other side.
 
+## What an engine owes its map's source, over time
+
+An engine does not own its map. The factory publishes it as a versioned package
+([0015](decisions/0015-a-map-is-published-as-a-versioned-package.md)), and the engine
+**references it and never copies it**, the way it references `rules-kernel`. A copy that goes
+stale does not fail, and it keeps passing indefinitely
+([#27](https://github.com/brandonifco/rules-factory/issues/27)). A dependency that falls behind
+is visible to every tool that already exists. What the engine owes follows from that:
+
+1. **It depends on one exact version and can prove which one.** It references the package at an
+   exact version and restores with a lock file in locked mode, so the bytes it builds against are
+   pinned by hash rather than by memory.
+2. **It writes only its overlay: `status`, `implementedIn` and `tests`.** These are the build
+   facts, and only the engine can know them. Every other field belongs to the map's source. An
+   engine that disagrees with an entry's content has a finding to file against the factory. It
+   does not get to correct its own copy, because it has no copy.
+3. **Its gate merges the overlay offline and checks the result.** Every overlay key names an
+   entry in the package, and only the three fields are set. `check-map.py --phase consumer`
+   passes on the merge. The structural checks were run before the version existed, and an overlay
+   cannot change their verdict, so the engine does not repeat them.
+4. **It moves when the source moves, and the version number says how hard that is.** A patch
+   changes prose only. A minor adds entries or corrects citations, so the overlay still merges and
+   new entries are `mapped`, which is `UnsupportedRule` until built. **A major means an entry the
+   engine may have implemented now says something different, or is gone.** Every `implemented`
+   claim on an entry the major changed goes back through Phase 7 before it stays `implemented`.
+   The merge check fails outright on a removed or renamed entry, which is the intent.
+5. **It reports back what only it can see.** Building an engine is the most thorough reading the
+   map will get. The backgammon map moved twice in one day because of what its engine found. An
+   engine that notices a wrong entry files it upstream and waits for a version. That way the next
+   engine built from the same map gets the correction too.
+
+What the engine does not owe: a copy of the structural checker, or a scheduled job that watches
+the factory. The package makes both unnecessary.
+
 ## What this method refuses to do
 
 **It does not resolve ambiguity by implementation.** Phase 4 is not optional.

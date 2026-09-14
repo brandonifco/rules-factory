@@ -1,0 +1,165 @@
+name: publish-map
+
+# Publishes one corpus map to nuget.org as a versioned package (docs/decisions/0015).
+#
+# Modelled on brandonifco/rules-kernel's publish.yml, and deliberately the same in the parts
+# that matter: triggered by a tag, the tag must agree with a version in a reviewed file,
+# nuget.org rather than GitHub Packages (a map exists to be consumed by engines in other
+# repositories, which must restore it without a credential), and Trusted Publishing -- a
+# short-lived OIDC token exchanged for an API key valid for minutes, so there is no stored
+# secret to leak or rotate.
+#
+# The tag is `map/<map-directory>/v<version>`, e.g. `map/hoyle-backgammon/v1.0.0`, and the
+# version must equal `version` in examples/<map-directory>/map-package.json. One tag, one
+# map, one package: maps version independently, because a correction to one corpus's map
+# says nothing about another's.
+#
+# A published version can be unlisted and never deleted, so nothing is pushed unless the
+# gate passed. The gate is tools/pack-map.py, which refuses to write a package at all unless
+# check-map.py (every check, --phase publish) and the corpus's locator checker pass; there
+# is no flag that packs without gating. It is proven to refuse trial 5's dependsOn cycle in
+# tools/tests/test_pack_map.py.
+#
+# `id-token: write` is granted only to the `publish` job. The `gate` job, which runs the
+# whole of validate.sh, never holds it. `publish` re-packs from its own checkout (the jobs
+# share no filesystem) and refuses to push unless the bytes it built hash identically to the
+# bytes `gate` built and checked -- pack-map.py is deterministic, so any difference means the
+# two jobs did not pack the same thing.
+
+on:
+  push:
+    tags: ["map/*/v*"]
+  # For retrying a publish that failed after the gate passed (a transient OIDC or nuget.org
+  # failure). Launch it with the tag selected as the ref; a branch is refused below.
+  workflow_dispatch: {}
+
+concurrency:
+  group: publish-map-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  gate:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    outputs:
+      map: ${{ steps.tag.outputs.map }}
+      sha256: ${{ steps.pack.outputs.sha256 }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up Python
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
+        with:
+          python-version: '3.12'
+
+      - name: Require a map tag
+        id: tag
+        env:
+          REF_TYPE: ${{ github.ref_type }}
+          REF_NAME: ${{ github.ref_name }}
+        run: |
+          if [[ "$REF_TYPE" != "tag" ]]; then
+            echo "::error::publish-map must run from a tag map/<map>/vX.Y.Z, not a $REF_TYPE"
+            exit 1
+          fi
+          if [[ ! "$REF_NAME" =~ ^map/([a-z0-9]+(-[a-z0-9]+)*)/v[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?$ ]]; then
+            echo "::error::'$REF_NAME' is not of the form map/<map-directory>/vX.Y.Z"
+            exit 1
+          fi
+          map="${BASH_REMATCH[1]}"
+          if [[ ! -f "examples/$map/map-package.json" ]]; then
+            echo "::error::examples/$map/map-package.json does not exist; $map is not a publishable map"
+            exit 1
+          fi
+          echo "map=$map" >> "$GITHUB_OUTPUT"
+
+      - name: Install pytest
+        run: python3 -m pip install --quiet --disable-pip-version-check pytest
+
+      # The repository's one definition of acceptable, over every map, before any one of them
+      # is published.
+      - name: Validate
+        run: ./scripts/validate.sh
+
+      # The gate proper for this map. pack-map.py checks the tag against map-package.json,
+      # runs check-map.py --phase publish and the locator checker, and writes nothing if any
+      # of them fails.
+      - name: Gate and pack
+        id: pack
+        env:
+          MAP: ${{ steps.tag.outputs.map }}
+          REF_NAME: ${{ github.ref_name }}
+        run: |
+          set -o pipefail  # without it, tee would turn a refused pack into a green step
+          python3 tools/pack-map.py "examples/$MAP" --out artifacts --tag "$REF_NAME" --commit "$GITHUB_SHA" | tee pack.log
+          echo "sha256=$(sed -n 's/^sha256 //p' pack.log)" >> "$GITHUB_OUTPUT"
+
+  publish:
+    needs: gate
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      # Required to mint the OIDC token Trusted Publishing exchanges for a short-lived API key.
+      # This job only; `gate`, where validate.sh runs, never has it.
+      id-token: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up Python
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
+        with:
+          python-version: '3.12'
+
+      - name: Re-pack, and require the bytes the gate checked
+        env:
+          MAP: ${{ needs.gate.outputs.map }}
+          EXPECTED: ${{ needs.gate.outputs.sha256 }}
+          REF_NAME: ${{ github.ref_name }}
+        run: |
+          if [[ -z "$EXPECTED" ]]; then
+            echo "::error::the gate job reported no package digest"
+            exit 1
+          fi
+          set -o pipefail  # without it, tee would turn a refused pack into a green step
+          python3 tools/pack-map.py "examples/$MAP" --out artifacts --tag "$REF_NAME" --commit "$GITHUB_SHA" | tee pack.log
+          actual="$(sed -n 's/^sha256 //p' pack.log)"
+          if [[ "$actual" != "$EXPECTED" ]]; then
+            echo "::error::re-packed $actual, but the gate checked $EXPECTED; refusing to push bytes the gate did not see"
+            exit 1
+          fi
+          ls -l artifacts
+
+      # Only `dotnet nuget push` needs the SDK; the package is built by pack-map.py above.
+      # Pinned to the release rules-kernel's publish job uses, a version known to install.
+      - name: Set up .NET
+        uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
+        with:
+          dotnet-version: '10.0.112'
+
+      - name: Exchange the OIDC token for a short-lived API key
+        id: login
+        uses: NuGet/login@8d196754b4036150537f80ac539e15c2f1028841 # v1
+        with:
+          user: brandonifco
+
+      # No --skip-duplicate: a version is immutable, and a tag re-pushed over a version that
+      # already exists is a mistake to be told about, not a success.
+      - name: Push to nuget.org
+        env:
+          NUGET_API_KEY: ${{ steps.login.outputs.NUGET_API_KEY }}
+        run: |
+          dotnet nuget push artifacts/*.nupkg \
+            --source https://api.nuget.org/v3/index.json \
+            --api-key "$NUGET_API_KEY"

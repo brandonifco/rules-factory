@@ -1,0 +1,320 @@
+#!/usr/bin/env python3
+"""Build the NuGet package for one map, and refuse to if the map fails its publish gate.
+
+0015 publishes each map as a versioned package on nuget.org, so a map that fails a check
+must never become a version anyone can depend on: a published version can be unlisted and
+never deleted. This tool is therefore the gate and the packer in one step. There is no
+flag that packs without gating, because a package built without its gate is the artifact
+0015 exists to prevent.
+
+The gate, in order:
+
+  * `check-map.py --phase publish` -- every check, structural and status-dependent;
+  * the locator checker for the corpus's adapter -- every citation resolves in the
+    committed corpus, every absence is searched for, every page of the extent is reached.
+    An adapter with no checker here, a corpus that is not `committed-copy`, or a map citing
+    more than one corpus is refused as NOT VERIFIED: none of those is a pass.
+
+The package, and why it is byte-for-byte deterministic:
+
+  * id `RulesFactory.Maps.<MapName>` from the map's directory name (`hoyle-backgammon` ->
+    `RulesFactory.Maps.HoyleBackgammon`); version from `map-package.json` beside the map;
+  * `map/corpus-map.json` -- the reviewed file's bytes, verbatim;
+  * `map/corpus-manifest.json` -- the manifest's bytes verbatim when it declares exactly the
+    corpora the map cites, otherwise only those corpora;
+  * `build/<id>.props` -- one `RulesFactoryMap` item, so an engine finds the files without
+    knowing where NuGet extracts packages;
+  * the nuspec and the OPC parts NuGet requires.
+
+Entries are stored uncompressed with a fixed timestamp and fixed attributes, in a fixed
+order, and the core-properties part is named from a digest of the content rather than a
+random GUID. `dotnet pack` does none of that (measured: two packs of the same project a
+second apart differed in every timestamp, in the psmdcp name, and it stamps the NuGet
+client version into the package), which is why this is a script and not a pack project:
+the bytes depend on the inputs and nothing else, so the publish job can rebuild them and
+prove they are the bytes the gate job checked.
+
+What it cannot do: tell whether the version number is the right one. 0015 says what counts
+as a major, minor or patch change; nothing here compares against the previous published
+version. The tag-to-version check only proves the tag and the reviewed file agree.
+
+Usage: pack-map.py <map-dir> --out DIR [--tag map/<name>/vX.Y.Z] [--commit SHA]
+Exit 0 when the gate passed and the package was written; 1 when the gate refused it;
+2 on a usage error.
+"""
+import argparse
+import hashlib
+import json
+import os
+import re
+import subprocess
+import sys
+import zipfile
+
+TOOLS = os.path.dirname(os.path.abspath(__file__))
+REPO = os.path.dirname(TOOLS)
+PROJECT_URL = "https://github.com/brandonifco/rules-factory"
+
+# The locator checker for each adapter. A corpus whose adapter is not here cannot have its
+# citations checked, and a map whose citations cannot be checked is not published.
+LOCATOR_CHECKERS = {
+    "plain-text": os.path.join(REPO, "tools", "check-locators.py"),
+    "ecfr-xml": os.path.join(REPO, "examples", "faa-part-107", "check-locators-section.py"),
+}
+
+MAP_NAME = re.compile(r"^[a-z0-9]+(?:-[a-z0-9]+)*$")
+SEMVER = re.compile(r"^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-[0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*)?$")
+ZIP_TIME = (2000, 1, 1, 0, 0, 0)
+
+
+class Refused(Exception):
+    """The gate did not pass. Nothing is written."""
+
+
+class Usage(Exception):
+    """The inputs are not a packable map at all."""
+
+
+def package_id(map_name):
+    return "RulesFactory.Maps." + "".join(part.capitalize() for part in map_name.split("-"))
+
+
+def tag_for(map_name, version):
+    return f"map/{map_name}/v{version}"
+
+
+def only_one(directory, prefix):
+    found = sorted(n for n in os.listdir(directory) if n.startswith(prefix) and n.endswith(".json"))
+    if len(found) != 1:
+        raise Usage(f"{directory}: expected exactly one {prefix}*.json, found {found or 'none'}")
+    return os.path.join(directory, found[0])
+
+
+def load(path):
+    try:
+        with open(path, "rb") as handle:
+            raw = handle.read()
+        return raw, json.loads(raw.decode("utf-8"))
+    except (OSError, ValueError) as error:
+        raise Usage(f"cannot read {path}: {error}")
+
+
+def read_inputs(map_dir):
+    map_dir = os.path.abspath(map_dir)
+    if not os.path.isdir(map_dir):
+        raise Usage(f"{map_dir} is not a directory")
+    name = os.path.basename(map_dir)
+    if not MAP_NAME.match(name):
+        raise Usage(f"map directory {name!r} is not lower-case kebab-case, so it names no package id")
+    map_path = only_one(map_dir, "corpus-map")
+    manifest_path = only_one(map_dir, "corpus-manifest")
+    version_path = os.path.join(map_dir, "map-package.json")
+    _, settings = load(version_path)
+    version = settings.get("version") if isinstance(settings, dict) else None
+    if not isinstance(version, str) or not SEMVER.match(version):
+        raise Usage(f"{version_path}: `version` is {version!r}, which is not MAJOR.MINOR.PATCH")
+    map_raw, document = load(map_path)
+    manifest_raw, manifest = load(manifest_path)
+    return {
+        "dir": map_dir, "name": name, "version": version, "id": package_id(name),
+        "map_path": map_path, "map_raw": map_raw, "map": document,
+        "manifest_path": manifest_path, "manifest_raw": manifest_raw, "manifest": manifest,
+    }
+
+
+def cited_corpora(document):
+    cited = {document.get("corpus")} if isinstance(document, dict) else set()
+    for item in document.get("entries") or [] if isinstance(document, dict) else []:
+        locator = item.get("locator") if isinstance(item, dict) else None
+        if isinstance(locator, dict) and locator.get("sourceId"):
+            cited.add(locator["sourceId"])
+    return {c for c in cited if isinstance(c, str)}
+
+
+def run_step(what, argv):
+    print(f"--- gate: {what}", flush=True)
+    completed = subprocess.run(argv, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
+    print(completed.stdout, end="" if completed.stdout.endswith("\n") else "\n", flush=True)
+    if completed.returncode != 0:
+        raise Refused(f"{what} exited {completed.returncode}")
+
+
+def gate(inputs, repo_root):
+    run_step("check-map.py --phase publish", [
+        sys.executable, os.path.join(TOOLS, "check-map.py"), inputs["map_path"],
+        "--manifest", inputs["manifest_path"], "--repo-root", repo_root, "--phase", "publish"])
+
+    corpora = {c.get("sourceId"): c for c in inputs["manifest"].get("corpora") or [] if isinstance(c, dict)}
+    cited = cited_corpora(inputs["map"])
+    if len(cited) != 1:
+        raise Refused(f"NOT VERIFIED -- the map cites {sorted(cited)}; every locator checker reads "
+                      f"exactly one corpus, so these citations cannot all be checked")
+    source_id = next(iter(cited))
+    corpus = corpora.get(source_id)
+    if corpus is None:
+        raise Refused(f"the map cites {source_id!r}, which the manifest does not declare")
+    if corpus.get("verification") != "committed-copy":
+        raise Refused(f"NOT VERIFIED -- {source_id} is {corpus.get('verification')!r}, not "
+                      f"`committed-copy`, so no publish job can read the corpus to check a citation")
+    checker = LOCATOR_CHECKERS.get(corpus.get("adapter"))
+    if checker is None:
+        raise Refused(f"NOT VERIFIED -- no locator checker for adapter {corpus.get('adapter')!r}; "
+                      f"known: {', '.join(sorted(LOCATOR_CHECKERS))}")
+    text = os.path.join(os.path.dirname(inputs["manifest_path"]), str(corpus.get("committedPath")))
+    run_step(f"{os.path.relpath(checker, REPO)} ({corpus.get('adapter')})",
+             [sys.executable, checker, inputs["map_path"], text])
+
+
+def packaged_manifest(inputs):
+    """The manifest entries for the corpora this map cites -- verbatim when that is all of it."""
+    manifest = inputs["manifest"]
+    cited = cited_corpora(inputs["map"])
+    corpora = [c for c in manifest.get("corpora") or [] if isinstance(c, dict)]
+    if {c.get("sourceId") for c in corpora} == cited and len(corpora) == len(cited):
+        return inputs["manifest_raw"]
+    narrowed = dict(manifest, corpora=[c for c in corpora if c.get("sourceId") in cited])
+    return (json.dumps(narrowed, indent=2, ensure_ascii=False) + "\n").encode("utf-8")
+
+
+def xml_escape(text):
+    return (str(text).replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+            .replace('"', "&quot;"))
+
+
+def description(inputs):
+    document = inputs["map"]
+    baseline = document.get("baseline") or {}
+    as_of = baseline.get("asOf")
+    return (f"Corpus map {inputs['name']} ({len(document.get('entries') or [])} entries), true of corpus "
+            f"{document.get('corpus')} at baseline {baseline.get('hashDerivation')}:"
+            f"{baseline.get('contentHash')}"
+            + (f" as of {as_of}" if as_of else " (timeless: no asOf)")
+            + f", schemaVersion {document.get('schemaVersion')}. Carries corpus-map.json and the "
+              f"manifest entry of the corpus it cites. Published by rules-factory; see "
+              f"docs/decisions/0015 for what a version asserts and what a consumer may overlay.")
+
+
+def parts(inputs, commit):
+    pid, version = inputs["id"], inputs["version"]
+    repository = (f'    <repository type="git" url="{PROJECT_URL}.git"'
+                  + (f' commit="{xml_escape(commit)}"' if commit else "") + " />\n")
+    nuspec = (
+        '<?xml version="1.0" encoding="utf-8"?>\n'
+        '<package xmlns="http://schemas.microsoft.com/packaging/2013/05/nuspec.xsd">\n'
+        "  <metadata>\n"
+        f"    <id>{pid}</id>\n"
+        f"    <version>{version}</version>\n"
+        "    <authors>Brandon</authors>\n"
+        '    <license type="expression">Apache-2.0</license>\n'
+        f"    <projectUrl>{PROJECT_URL}</projectUrl>\n"
+        f"    <description>{xml_escape(description(inputs))}</description>\n"
+        f"    <tags>rules-factory corpus-map {xml_escape(inputs['map'].get('corpus'))}</tags>\n"
+        + repository +
+        "  </metadata>\n"
+        "</package>\n"
+    ).encode("utf-8")
+    props = (
+        "<Project>\n"
+        "  <!-- Generated by rules-factory tools/pack-map.py. The map this package carries, for an\n"
+        "       engine's gate to merge its overlay onto (docs/decisions/0015). -->\n"
+        "  <ItemGroup>\n"
+        f'    <RulesFactoryMap Include="$(MSBuildThisFileDirectory)../map/corpus-map.json"\n'
+        f'                     Manifest="$(MSBuildThisFileDirectory)../map/corpus-manifest.json"\n'
+        f'                     PackageId="{pid}"\n'
+        f'                     PackageVersion="{version}" />\n'
+        "  </ItemGroup>\n"
+        "</Project>\n"
+    ).encode("utf-8")
+    content = [
+        (f"{pid}.nuspec", nuspec),
+        ("map/corpus-map.json", inputs["map_raw"]),
+        ("map/corpus-manifest.json", packaged_manifest(inputs)),
+        (f"build/{pid}.props", props),
+    ]
+    digest = hashlib.sha256()
+    for path, data in content:
+        digest.update(path.encode("utf-8") + b"\0" + hashlib.sha256(data).digest())
+    core_name = f"package/services/metadata/core-properties/{digest.hexdigest()[:32]}.psmdcp"
+    core = (
+        '<?xml version="1.0" encoding="utf-8"?>\n'
+        '<coreProperties xmlns:dc="http://purl.org/dc/elements/1.1/" '
+        'xmlns:dcterms="http://purl.org/dc/terms/" '
+        'xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" '
+        'xmlns="http://schemas.openxmlformats.org/package/2006/metadata/core-properties">\n'
+        "  <dc:creator>Brandon</dc:creator>\n"
+        f"  <dc:description>{xml_escape(description(inputs))}</dc:description>\n"
+        f"  <dc:identifier>{pid}</dc:identifier>\n"
+        f"  <version>{version}</version>\n"
+        f"  <keywords>rules-factory corpus-map {xml_escape(inputs['map'].get('corpus'))}</keywords>\n"
+        "  <lastModifiedBy>rules-factory tools/pack-map.py</lastModifiedBy>\n"
+        "</coreProperties>\n"
+    ).encode("utf-8")
+    rels = (
+        '<?xml version="1.0" encoding="utf-8"?>\n'
+        '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">\n'
+        f'  <Relationship Type="http://schemas.microsoft.com/packaging/2010/07/manifest" '
+        f'Target="/{pid}.nuspec" Id="Rnuspec" />\n'
+        f'  <Relationship Type="http://schemas.openxmlformats.org/package/2006/relationships/'
+        f'metadata/core-properties" Target="/{core_name}" Id="Rcore" />\n'
+        "</Relationships>\n"
+    ).encode("utf-8")
+    types = (
+        '<?xml version="1.0" encoding="utf-8"?>\n'
+        '<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">\n'
+        '  <Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml" />\n'
+        '  <Default Extension="psmdcp" ContentType="application/vnd.openxmlformats-package.core-properties+xml" />\n'
+        '  <Default Extension="nuspec" ContentType="application/octet" />\n'
+        '  <Default Extension="json" ContentType="application/octet" />\n'
+        '  <Default Extension="props" ContentType="application/octet" />\n'
+        "</Types>\n"
+    ).encode("utf-8")
+    return [("_rels/.rels", rels)] + content + [(core_name, core), ("[Content_Types].xml", types)]
+
+
+def write_package(inputs, out_dir, commit):
+    os.makedirs(out_dir, exist_ok=True)
+    path = os.path.join(out_dir, f"{inputs['id']}.{inputs['version']}.nupkg")
+    temporary = path + ".partial"
+    with zipfile.ZipFile(temporary, "w", compression=zipfile.ZIP_STORED) as archive:
+        for name, data in parts(inputs, commit):
+            info = zipfile.ZipInfo(name, date_time=ZIP_TIME)
+            info.create_system = 3
+            info.external_attr = 0o100644 << 16
+            info.compress_type = zipfile.ZIP_STORED
+            archive.writestr(info, data)
+    os.replace(temporary, path)
+    return path
+
+
+def main(argv=None):
+    parser = argparse.ArgumentParser(description="Gate and pack one corpus map as a NuGet package (0015).")
+    parser.add_argument("map_dir")
+    parser.add_argument("--out", required=True, help="directory the .nupkg is written to")
+    parser.add_argument("--tag", help="the pushed tag; must be map/<map-dir-name>/v<version>")
+    parser.add_argument("--commit", help="commit recorded in the nuspec's <repository>")
+    parser.add_argument("--repo-root", default=REPO, help="root decision-record paths resolve against")
+    args = parser.parse_args(argv)
+
+    try:
+        inputs = read_inputs(args.map_dir)
+        if args.tag is not None and args.tag != tag_for(inputs["name"], inputs["version"]):
+            raise Usage(f"tag {args.tag!r} does not match {tag_for(inputs['name'], inputs['version'])!r} "
+                        f"from map-package.json; bump the version in a reviewed commit, then tag that commit")
+        print(f"{inputs['id']} {inputs['version']} from {inputs['map_path']}")
+        gate(inputs, args.repo_root)
+    except Usage as error:
+        print(f"pack-map: {error}", file=sys.stderr)
+        return 2
+    except Refused as error:
+        print(f"pack-map: REFUSED -- {error}. No package was written.", file=sys.stderr)
+        return 1
+
+    path = write_package(inputs, args.out, args.commit)
+    with open(path, "rb") as handle:
+        sha = hashlib.sha256(handle.read()).hexdigest()
+    print(f"packed {path}\nsha256 {sha}")
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

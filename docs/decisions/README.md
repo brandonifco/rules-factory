@@ -23,3 +23,4 @@ kept; its number is never reused.
 | [0012](0012-a-fact-the-corpus-implies-is-a-derived-entry.md) | A fact the corpus implies and never states is a derived entry, and it cites nothing |
 | [0013](0013-verification-posture-belongs-to-the-corpus.md) | How a corpus is verified, and whether a map may quote it, belong to the corpus too (extends 0002) |
 | [0014](0014-a-map-is-checked-by-a-blind-second-mapping.md) | A map is checked by a blind second mapping, and every disagreement is resolved against the corpus before it is used |
+| [0015](0015-a-map-is-published-as-a-versioned-package.md) | A map is published as a versioned package, checked before it can be a version, and overlaid by its engine on three fields |
