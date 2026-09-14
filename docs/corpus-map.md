@@ -218,14 +218,14 @@ comparison against it: one paragraph of § 107.51 holds three distinct figures, 
 entry would have lost two of them. The dependency graph remains the arbiter for the harder
 cases.
 
-**Runtime preconditions.** A phase condition is not `dependsOn`, and has no field. Does it
-need one, or does it belong to the engine rather than the map? Undecided; found in the
-second trial, invisible in the first.
+Open questions are tracked as issues so they are worked rather than admired:
 
-**A standard versus a gap.** New, and unresolved. "Well clear" and "reasonable protection"
-are ambiguous to an engine and entirely settled in the corpus. Both available fates imply
-the corpus failed to say something, and it did not. Whether this needs a third fate or only
-better prose is undecided.
+- [#5](https://github.com/brandonifco/rules-factory/issues/5) — `dependsOn` conflates
+  implementation order with runtime precondition. Found in trial 2, invisible in trial 1.
+- [#6](https://github.com/brandonifco/rules-factory/issues/6) — a standard is not a gap.
+  Both available fates imply the corpus failed to say something, and sometimes it did not.
+- [#7](https://github.com/brandonifco/rules-factory/issues/7) — an entry beyond the
+  adapter's reach has no field to say so.
 
 **Who writes it.** The ambition is that an agent produces a first draft from the corpus and
 a human reviews the decomposition. Whether the first draft is good enough to be worth

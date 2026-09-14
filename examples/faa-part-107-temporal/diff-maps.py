@@ -10,6 +10,13 @@ import json, sys, pathlib
 
 FIELDS = ["name", "kind", "scope", "clarity", "status", "evidence", "note"]
 
+
+def _short(v, n=60):
+    """Abbreviate for display only. Comparison always uses the full value."""
+    if v is None:
+        return None
+    return tuple(x[:n] + "…" if isinstance(x, str) and len(x) > n else x for x in v)
+
 def load(p):
     d = json.loads(pathlib.Path(p).read_text())
     b = d.get("baseline", {})
@@ -17,8 +24,15 @@ def load(p):
     return label, {e["id"]: e for e in d["entries"]}
 
 def amb(e):
+    """The ambiguity, compared in full.
+
+    This truncated the question to 60 characters, for readable output. A real change to an
+    entry -- where a later text added a third exception and the earlier note said there was
+    none -- differed only after that cutoff, and the diff reported nothing. Abbreviate when
+    printing; never when comparing.
+    """
     a = e.get("ambiguity")
-    return None if a is None else (a.get("fate"), a.get("unresolvedReason"), a.get("question", "")[:60])
+    return None if a is None else (a.get("fate"), a.get("unresolvedReason"), a.get("question", ""))
 
 def main(a_path, b_path):
     a_date, a = load(a_path); b_date, b = load(b_path)
@@ -45,7 +59,7 @@ def main(a_path, b_path):
             if "clarity" in ch:
                 print(f"             clarity {a[i]['clarity']} -> {b[i]['clarity']}")
             if "ambiguity" in ch:
-                print(f"             ambiguity {amb(a[i])} -> {amb(b[i])}")
+                print(f"             ambiguity {_short(amb(a[i]))} -> {_short(amb(b[i]))}")
             if "name" in ch:
                 print(f"             name {a[i]['name']!r}")
                 print(f"               -> {b[i]['name']!r}")

@@ -107,8 +107,11 @@ Characters of slice is better: both trials produced ~24 entries from ~8,000 char
 
 ## What has not been tried
 
-- A corpus with **cross-references inside itself** — "except as provided in § 107.200".
-  Both trials had outward references; neither had a dense internal graph.
-- A corpus where **the map is wrong** and the error is caught downstream. Every finding so
-  far surfaced during mapping, which is the cheap place. Nothing has yet tested whether a
-  bad map is caught at all.
+Tracked as issues, not listed here — a markdown backlog outside the tracker is a second
+queue, and this project archived its predecessor partly for having one.
+
+- [#8](https://github.com/brandonifco/rules-factory/issues/8) — a corpus with a dense
+  internal cross-reference graph. All three trials had outward references only.
+- [#9](https://github.com/brandonifco/rules-factory/issues/9) — whether a **wrong** map is
+  caught downstream. Every finding so far surfaced during mapping, which is the cheap place,
+  and that is encouraging rather than evidence.
