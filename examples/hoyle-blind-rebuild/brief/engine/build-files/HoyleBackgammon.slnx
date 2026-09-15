@@ -1,0 +1,6 @@
+<Solution>
+  <Project Path="src/Tabletop.Dice/Tabletop.Dice.csproj" />
+  <Project Path="src/HoyleBackgammon/HoyleBackgammon.csproj" />
+  <Project Path="tests/Tabletop.Dice.Tests/Tabletop.Dice.Tests.csproj" />
+  <Project Path="tests/HoyleBackgammon.Tests/HoyleBackgammon.Tests.csproj" />
+</Solution>

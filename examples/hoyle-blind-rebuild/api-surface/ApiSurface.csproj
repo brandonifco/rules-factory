@@ -1,0 +1,16 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- Prints the public surface of a compiled engine: signatures, constant values and public XML
+       documentation, never a method body. It reads metadata by reflection and IL is never
+       disassembled, so the output cannot contain code. Run by build-brief.py over the frozen
+       target's build (README.md, "The API contract"). No package references. -->
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <InvariantGlobalization>true</InvariantGlobalization>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+  </PropertyGroup>
+
+</Project>

@@ -1,0 +1,262 @@
+{
+  "player-count": {
+    "status": "implemented",
+    "implementedIn": {
+      "ruleset": "hoyle-1909-backgammon",
+      "version": 6
+    }
+  },
+  "men-count": {
+    "status": "implemented",
+    "implementedIn": {
+      "ruleset": "hoyle-1909-backgammon",
+      "version": 6
+    }
+  },
+  "board-tables": {
+    "status": "implemented",
+    "implementedIn": {
+      "ruleset": "hoyle-1909-backgammon",
+      "version": 6
+    }
+  },
+  "point-designations": {
+    "status": "implemented",
+    "implementedIn": {
+      "ruleset": "hoyle-1909-backgammon",
+      "version": 6
+    }
+  },
+  "starting-position": {
+    "status": "implemented",
+    "implementedIn": {
+      "ruleset": "hoyle-1909-backgammon",
+      "version": 6
+    }
+  },
+  "opening-roll": {
+    "status": "implemented",
+    "implementedIn": {
+      "ruleset": "hoyle-1909-backgammon",
+      "version": 6
+    }
+  },
+  "opening-thrower-option": {
+    "status": "implemented",
+    "implementedIn": {
+      "ruleset": "hoyle-1909-backgammon",
+      "version": 6
+    }
+  },
+  "throw-two-dice": {
+    "status": "implemented",
+    "implementedIn": {
+      "ruleset": "hoyle-1909-backgammon",
+      "version": 6
+    }
+  },
+  "move-by-pip": {
+    "status": "implemented",
+    "implementedIn": {
+      "ruleset": "hoyle-1909-backgammon",
+      "version": 6
+    }
+  },
+  "direction-of-travel": {
+    "status": "implemented",
+    "implementedIn": {
+      "ruleset": "hoyle-1909-backgammon",
+      "version": 6
+    }
+  },
+  "doublets": {
+    "status": "implemented",
+    "implementedIn": {
+      "ruleset": "hoyle-1909-backgammon",
+      "version": 6
+    }
+  },
+  "legal-destination": {
+    "status": "implemented",
+    "implementedIn": {
+      "ruleset": "hoyle-1909-backgammon",
+      "version": 6
+    }
+  },
+  "made-point": {
+    "status": "implemented",
+    "implementedIn": {
+      "ruleset": "hoyle-1909-backgammon",
+      "version": 6
+    }
+  },
+  "blot-hit": {
+    "status": "implemented",
+    "implementedIn": {
+      "ruleset": "hoyle-1909-backgammon",
+      "version": 6
+    }
+  },
+  "enter-from-bar": {
+    "status": "implemented",
+    "implementedIn": {
+      "ruleset": "hoyle-1909-backgammon",
+      "version": 6
+    }
+  },
+  "full-table-suspension": {
+    "status": "implemented",
+    "implementedIn": {
+      "ruleset": "hoyle-1909-backgammon",
+      "version": 6
+    }
+  },
+  "must-play-whole-throw": {
+    "status": "implemented",
+    "implementedIn": {
+      "ruleset": "hoyle-1909-backgammon",
+      "version": 6
+    },
+    "rulings": [
+      {
+        "id": "must-play-whole-throw/1",
+        "span": "An unplayable part is lost and the whole must be played 'if it is possible'. The text does not say what happens when either die alone is playable but not both -- a case every modern ruleset settles explicitly.",
+        "answer": "Where either number alone can be played but not both, the higher number must be played.",
+        "ruledBy": "Brandon",
+        "ruledOn": "2026-09-15",
+        "record": "docs/decisions/0010-owner-rulings-are-ruleset-version-six.md"
+      },
+      {
+        "id": "must-play-whole-throw/2",
+        "span": "Nor does it say what a play of the whole throw is: the position the numbers reach, or the moves in the order they are made. Where two orders use the same numbers and reach the same position, the text does not say whether they are one play or two, which matters where the rule that permits a move differs between the orders (with the last man outside on the eight point and deuce-ace thrown, 8/6 6/5 and 8/7 7/5 both leave that man on the five point, but the first plays the ace after every man is home and the second does not; see bearing-off-eligible's question).",
+        "answer": "One play: orders of the same numbers that reach the same position are offered once, crediting the rules of the first order found.",
+        "ruledBy": "Brandon",
+        "ruledOn": "2026-09-15",
+        "record": "docs/decisions/0009-owner-rulings-are-ruleset-version-five.md"
+      }
+    ],
+    "declines": []
+  },
+  "bearing-off-eligible": {
+    "status": "implemented",
+    "implementedIn": {
+      "ruleset": "hoyle-1909-backgammon",
+      "version": 6
+    },
+    "rulings": [
+      {
+        "id": "bearing-off-eligible/1",
+        "span": "The stage begins 'when either player has succeeded in getting all his men into his home table', and the chapter never says whether it lasts. If one of his men is hit after he has begun to bear off and then re-enters, the text does not say whether he may go on bearing off the men still at home or must first bring every man home again.",
+        "answer": "No: a player whose man is hit after he has begun to bear off may not bear off again until every man is back in his home table.",
+        "ruledBy": "Brandon",
+        "ruledOn": "2026-09-15",
+        "record": "docs/decisions/0010-owner-rulings-are-ruleset-version-six.md"
+      },
+      {
+        "id": "bearing-off-eligible/2",
+        "span": "Nor does it say when within a throw the stage begins. If a man played with the first number of a throw is the last to come home, the text does not say whether the number left is played under this stage ('each throw entitles the player either to move forward a man or men ... or to remove men'), or as an ordinary move because the throw began before the stage was reached. On the first reading, with his last man outside on the nine point and six-trois thrown, 9/3 then bearing that man off with the trois is a legal play, and so is 9/6 then bearing him off with the six; on the second reading neither is. The quatre-trois example weighs both numbers against a distribution already home, so it does not decide the case.",
+        "answer": "Yes: once a player's first number brings his last man home, the number left bears off.",
+        "ruledBy": "Brandon",
+        "ruledOn": "2026-09-15",
+        "record": "docs/decisions/0009-owner-rulings-are-ruleset-version-five.md"
+      }
+    ],
+    "declines": []
+  },
+  "bearing-off-move-or-remove": {
+    "status": "implemented",
+    "implementedIn": {
+      "ruleset": "hoyle-1909-backgammon",
+      "version": 6
+    }
+  },
+  "bearing-off-highest": {
+    "status": "implemented",
+    "implementedIn": {
+      "ruleset": "hoyle-1909-backgammon",
+      "version": 6
+    }
+  },
+  "bearing-off-doublets": {
+    "status": "implemented",
+    "implementedIn": {
+      "ruleset": "hoyle-1909-backgammon",
+      "version": 6
+    }
+  },
+  "win-condition": {
+    "status": "implemented",
+    "implementedIn": {
+      "ruleset": "hoyle-1909-backgammon",
+      "version": 6
+    }
+  },
+  "game-value": {
+    "status": "implemented",
+    "implementedIn": {
+      "ruleset": "hoyle-1909-backgammon",
+      "version": 6
+    },
+    "rulings": [
+      {
+        "id": "game-value/1",
+        "span": "The three named results do not cover every finish. Written as predicates on the loser they are: all his men home and he has begun to bear off (a hit); he has not begun to bear off (a gammon); he has a man up or in the winner's home table (a backgammon). A loser who has borne off a man, been taken up, re-entered and run that man clear of the winner's home table but not yet back into his own answers none of them, and the corpus does not say what such a win is worth.",
+        "answer": "A single game (a hit): a loser who has borne off a man, has none on the bar or in the winner's home table, and is not all home loses a hit.",
+        "ruledBy": "Brandon",
+        "ruledOn": "2026-09-15",
+        "record": "docs/decisions/0010-owner-rulings-are-ruleset-version-six.md"
+      },
+      {
+        "id": "game-value/2",
+        "span": "Nor are they disjoint, in two cases. A loser who has borne off nothing answers 'before his adversary has begun to do the same' (a gammon); if he also has a man up, or a man in the winner's home table, he answers 'a man or men \"up\" (_i.e._, on the bar) or in his (the winner's) home table' (a backgammon) as well. The corpus does not say which result he suffers in either case.",
+        "answer": "A backgammon, never also a gammon: a loser who has borne off nothing and has a man on the bar or in the winner's home table is backgammoned.",
+        "ruledBy": "Brandon",
+        "ruledOn": "2026-09-15",
+        "record": "docs/decisions/0010-owner-rulings-are-ruleset-version-six.md"
+      }
+    ],
+    "declines": []
+  },
+  "agreed-backgammon-multiple": {
+    "status": "implemented",
+    "implementedIn": {
+      "ruleset": "hoyle-1909-backgammon",
+      "version": 6
+    }
+  },
+  "stake-multiplier": {
+    "status": "implemented",
+    "implementedIn": {
+      "ruleset": "hoyle-1909-backgammon",
+      "version": 6
+    }
+  },
+  "hit-pays-single-stake": {
+    "status": "implemented",
+    "implementedIn": {
+      "ruleset": "hoyle-1909-backgammon",
+      "version": 6
+    }
+  },
+  "next-game-opening": {
+    "status": "implemented",
+    "implementedIn": {
+      "ruleset": "hoyle-1909-backgammon",
+      "version": 6
+    }
+  },
+  "die-faces": {
+    "status": "implemented",
+    "implementedIn": {
+      "ruleset": "hoyle-1909-backgammon",
+      "version": 6
+    }
+  },
+  "rubber-scoring": {
+    "status": "implemented",
+    "implementedIn": {
+      "ruleset": "hoyle-1909-backgammon",
+      "version": 6
+    }
+  }
+}
