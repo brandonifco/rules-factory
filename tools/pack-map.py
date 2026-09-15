@@ -39,7 +39,19 @@ The package, and why it is byte-for-byte deterministic:
     only the standard library, so it is the whole of what that phase needs;
   * `build/<id>.props` -- one `RulesFactoryMap` item, so an engine finds the files (the
     checker included, as `ConsumerChecker`) without knowing where NuGet extracts packages;
+  * `LICENCE.txt` -- the package's licence, which the nuspec names with `<license type="file">`
+    (0023). The map quotes its corpus verbatim, so the package cannot be under the factory's
+    Apache-2.0 alone: the file gives the corpus's terms for the quotations, in the words of the
+    map's own terms file, and Apache-2.0 (this repository's LICENSE, verbatim) for the rest;
   * the nuspec and the OPC parts NuGet requires.
+
+The licence (0023). `map-package.json` names the map's corpus terms file, `licence.corpusTerms`, a
+.txt file beside it. The corpus's terms are the manifest's `licence` field, which 0015 already makes
+a reviewed, major-versioned fact of the corpus; the terms file writes them out for a reader (the
+SRD's attribution statement, what "public domain" means for this text) and must restate that field
+verbatim, whitespace aside, for every corpus the map cites. A map with no terms file, a terms file
+that does not restate the manifest, or a cited corpus with no `licence` is refused and nothing is
+written. Nothing defaults to Apache-2.0.
 
 Entries are stored uncompressed with a fixed timestamp and fixed attributes, in a fixed
 order, and the core-properties part is named from a digest of the content rather than a
@@ -92,6 +104,14 @@ LOCATOR_CHECKERS = {
 MAP_NAME = re.compile(r"^[a-z0-9]+(?:-[a-z0-9]+)*$")
 SEMVER = re.compile(r"^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-[0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*)?$")
 ZIP_TIME = (2000, 1, 1, 0, 0, 0)
+# The package's licence file (0023), and this repository's own licence, which covers the factory's
+# work inside the package.
+LICENCE_IN_PACKAGE = "LICENCE.txt"
+FACTORY_LICENCE = os.path.join(REPO, "LICENSE")
+# nuget.org requires this licenseUrl beside `<license type="file">`, for clients that predate the
+# element; the expression form needs https://licenses.nuget.org/<expression> instead (#50).
+FILE_LICENCE_URL = "https://aka.ms/deprecateLicenseUrl"
+TERMS_NAME = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]*\.txt$")
 
 
 class Refused(Exception):
@@ -147,12 +167,93 @@ def read_inputs(map_dir):
             checker_raw = handle.read()
     except OSError as error:
         raise Usage(f"cannot read the consumer-phase checker {CHECKER}: {error}")
+    try:
+        with open(FACTORY_LICENCE, "rb") as handle:
+            factory_licence_raw = handle.read()
+    except OSError as error:
+        raise Usage(f"cannot read the factory's own licence {FACTORY_LICENCE}: {error}")
     return {
         "dir": map_dir, "name": name, "version": version, "id": package_id(name),
+        "settings_path": version_path, "settings": settings,
         "map_path": map_path, "map_raw": map_raw, "map": document,
         "manifest_path": manifest_path, "manifest_raw": manifest_raw, "manifest": manifest,
-        "checker_raw": checker_raw,
+        "checker_raw": checker_raw, "factory_licence_raw": factory_licence_raw,
     }
+
+
+def squash(text):
+    return " ".join(text.split())
+
+
+def corpus_terms(inputs):
+    """(terms file name, its bytes), once they are shown to state the cited corpus's licence (0023).
+
+    Raises Refused when map-package.json declares no terms file, the file is missing or not UTF-8,
+    a cited corpus has no `licence`, or the file does not restate that `licence` verbatim. There is
+    no default: a package whose licence was not declared is not packed.
+    """
+    where = inputs["settings_path"]
+    licence = inputs["settings"].get("licence")
+    terms = licence.get("corpusTerms") if isinstance(licence, dict) else None
+    if not isinstance(terms, str) or not terms:
+        raise Refused(f"{where} declares no `licence.corpusTerms`. The package quotes its corpus, so its "
+                      f"licence follows the corpus and is never assumed (docs/decisions/0023); name a .txt "
+                      f"file beside it that states the corpus's terms")
+    if not TERMS_NAME.match(terms):
+        raise Refused(f"{where}: `licence.corpusTerms` is {terms!r}; it must name a .txt file in the map "
+                      f"directory, with no path")
+    path = os.path.join(inputs["dir"], terms)
+    try:
+        with open(path, "rb") as handle:
+            raw = handle.read()
+        text = raw.decode("utf-8")
+    except (OSError, UnicodeDecodeError) as error:
+        raise Refused(f"cannot read the corpus terms {path} as UTF-8 text: {error}")
+    corpora = {c.get("sourceId"): c for c in inputs["manifest"].get("corpora") or [] if isinstance(c, dict)}
+    for source_id in sorted(cited_corpora(inputs["map"])):
+        stated = (corpora.get(source_id) or {}).get("licence")
+        if not isinstance(stated, str) or not stated.strip():
+            raise Refused(f"the manifest gives {source_id} no `licence`, so the terms its quotations would "
+                          f"travel under are unknown")
+        if squash(stated) not in squash(text):
+            raise Refused(f"{terms} does not restate {source_id}'s manifest `licence` verbatim ({stated!r}). "
+                          f"The manifest is the source of truth for a corpus's terms, and the package's "
+                          f"licence file must carry them (docs/decisions/0023)")
+    return terms, raw
+
+
+def licence_file(inputs):
+    """The package's LICENCE.txt: the corpus's terms for the quotations, Apache-2.0 for the rest."""
+    terms, terms_raw = inputs["corpus_terms"]
+    cited = ", ".join(sorted(cited_corpora(inputs["map"])))
+    head = (
+        f"{inputs['id']} {inputs['version']} -- licence\n"
+        "\n"
+        "This package holds material under two sets of terms. Neither replaces the other.\n"
+        "\n"
+        "1. The corpus text it quotes. The `evidence` quotations in map/corpus-map.json, and any\n"
+        f"   other verbatim text of corpus {cited} in map/corpus-map.json or\n"
+        "   map/corpus-manifest.json, are that corpus's text, excerpted verbatim from the corpus file\n"
+        "   the manifest identifies by its contentHash. They are under the corpus's terms, part A\n"
+        "   below. rules-factory does not relicense them, and Apache-2.0 does not apply to them.\n"
+        "\n"
+        "2. Everything else. tools/check-map.py, build/*.props, and map/corpus-map.json and\n"
+        "   map/corpus-manifest.json apart from the corpus text they quote (the entries' structure,\n"
+        "   ids, names, notes, relations and questions) are the work of rules-factory\n"
+        "   (https://github.com/brandonifco/rules-factory), licensed under the Apache License,\n"
+        "   Version 2.0, part B below.\n"
+        "\n"
+        f"===== A. Terms of the corpus text ({terms}, beside the map in rules-factory) =====\n"
+        "\n"
+    ).encode("utf-8")
+    middle = (
+        "\n"
+        "===== B. Apache License, Version 2.0 (rules-factory's LICENSE) =====\n"
+        "\n"
+    ).encode("utf-8")
+    if not terms_raw.endswith(b"\n"):
+        terms_raw += b"\n"
+    return head + terms_raw + middle + inputs["factory_licence_raw"]
 
 
 def cited_corpora(document):
@@ -259,7 +360,9 @@ def description(inputs):
             + f", schemaVersion {document.get('schemaVersion')}. Carries corpus-map.json, the "
               f"manifest entry of the corpus it cites, and tools/check-map.py for an engine's "
               f"--phase consumer checks. Published by rules-factory; see "
-              f"docs/decisions/0015 for what a version asserts and what a consumer may overlay.")
+              f"docs/decisions/0015 for what a version asserts and what a consumer may overlay. "
+              f"Licence: {LICENCE_IN_PACKAGE}. The map quotes its corpus verbatim, and those quotations "
+              f"are under the corpus's own terms, not Apache-2.0 (docs/decisions/0023).")
 
 
 def parts(inputs, commit):
@@ -274,9 +377,11 @@ def parts(inputs, commit):
         f"    <id>{pid}</id>\n"
         f"    <version>{version}</version>\n"
         "    <authors>Brandon</authors>\n"
-        '    <license type="expression">Apache-2.0</license>\n'
-        # nuget.org rejects a license expression without the matching licenseUrl (for old clients).
-        "    <licenseUrl>https://licenses.nuget.org/Apache-2.0</licenseUrl>\n"
+        # A file, not an SPDX expression (0023): no expression says which parts are under which
+        # terms, carries an attribution statement, or names a public-domain corpus.
+        f'    <license type="file">{LICENCE_IN_PACKAGE}</license>\n'
+        # nuget.org rejects a licence without the licenseUrl old clients read (#50).
+        f"    <licenseUrl>{FILE_LICENCE_URL}</licenseUrl>\n"
         f"    <projectUrl>{PROJECT_URL}</projectUrl>\n"
         f"    <description>{xml_escape(description(inputs))}</description>\n"
         f"    <tags>rules-factory corpus-map {xml_escape(inputs['map'].get('corpus'))}{marker}</tags>\n"
@@ -304,6 +409,7 @@ def parts(inputs, commit):
         ("map/corpus-manifest.json", packaged_manifest(inputs)),
         (CHECKER_IN_PACKAGE, inputs["checker_raw"]),
         (f"build/{pid}.props", props),
+        (LICENCE_IN_PACKAGE, licence_file(inputs)),
     ]
     digest = hashlib.sha256()
     for path, data in content:
@@ -341,6 +447,7 @@ def parts(inputs, commit):
         '  <Default Extension="json" ContentType="application/octet" />\n'
         '  <Default Extension="props" ContentType="application/octet" />\n'
         '  <Default Extension="py" ContentType="application/octet" />\n'
+        '  <Default Extension="txt" ContentType="application/octet" />\n'
         "</Types>\n"
     ).encode("utf-8")
     return [("_rels/.rels", rels)] + content + [(core_name, core), ("[Content_Types].xml", types)]
@@ -384,6 +491,7 @@ def main(argv=None):
                 raise Refused(f"{licensed_copy.FLAG} never publishes, and --tag is the publish path (0022)")
             operator = licensed_copy.authorise()
         print(f"{inputs['id']} {inputs['version']} from {inputs['map_path']}")
+        inputs["corpus_terms"] = corpus_terms(inputs)
         if gate(inputs, args.repo_root, operator):
             inputs["exception_operator"] = operator
     except Usage as error:

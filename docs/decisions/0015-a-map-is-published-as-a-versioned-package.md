@@ -22,6 +22,12 @@ rule 6 of the merge and the vendoring alternative changed; nothing else did.
 allowlisted operator, into a package marked unpublishable. Publishing a `local-copy` map stays
 refused, and `publish-map.yml` now refuses one, and a marked package, on its own account.
 
+**Amended by [0023](0023-a-map-package-is-licensed-as-its-corpus-and-the-factory-are.md)**
+(#106): the package carries `LICENCE.txt`, the nuspec names it with `<license type="file">`
+instead of the `Apache-2.0` expression, and `map-package.json` names the map's corpus terms file,
+which must restate the manifest's `licence`. The next versions of `hoyle-backgammon` and
+`faa-part-107` are major for it.
+
 **Amended by [0016](0016-a-map-package-is-data-not-code.md)** (#65): the packaged checker is for
 the engine's build only. The factory's intake never runs it; it checks a package with its own
 `tools/check-map.py` and refuses a `schemaVersion` that checker does not read.
@@ -53,6 +59,7 @@ that states the version. [`tools/pack-map.py`](../../tools/pack-map.py) builds t
 | `map/corpus-manifest.json` | the manifest entries for the corpora the map cites. It is the manifest's own bytes when that is all the manifest declares, which is true of every map today |
 | `tools/check-map.py` | the checker, **byte for byte** from the commit that was gated. It imports only the standard library, so this one file is everything `--phase consumer` needs. The engine runs the status-dependent checks from here (#51) |
 | `build/<id>.props` | one MSBuild item, `RulesFactoryMap`, pointing at the map and manifest, with `ConsumerChecker` (the path of `tools/check-map.py`), `PackageId` and `PackageVersion` as metadata. An engine's gate finds the map and its checker without knowing where NuGet extracts packages |
+| `LICENCE.txt` | the package's licence (0023): the corpus's terms for the quoted text, from the map's corpus terms file, and Apache-2.0 for the rest. The nuspec names it with `<license type="file">` |
 | `<id>.nuspec` | id, version, and a description stating the corpus, baseline, `asOf` and `schemaVersion`. `<repository commit>` names the factory commit that was gated |
 
 The corpus text is not in the package. How a consumer verifies a corpus is

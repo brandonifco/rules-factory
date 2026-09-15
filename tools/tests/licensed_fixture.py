@@ -6,7 +6,7 @@ point is to exercise what the factory does with a corpus it may not commit, not 
 `write(root)` lays out, under `root`:
 
   * `synthetic-licensed/` -- a packable map directory (corpus-map.json, corpus-manifest.json,
-    map-package.json) whose manifest declares the corpus `never-commit`, `local-copy` with
+    map-package.json and the corpus terms file it names, 0023) whose manifest declares the corpus `never-commit`, `local-copy` with
     `envVar` ENV_VAR, and holds no corpus file;
   * `licensed-copy/synthetic.txt` -- the corpus, outside the map directory, as an operator's
     licensed copy would be.
@@ -118,7 +118,10 @@ def write(root):
     os.makedirs(map_dir)
     _dump(os.path.join(map_dir, "corpus-map.json"), map_document())
     _dump(os.path.join(map_dir, "corpus-manifest.json"), manifest_document())
-    _dump(os.path.join(map_dir, "map-package.json"), {"version": VERSION})
+    _dump(os.path.join(map_dir, "map-package.json"),
+          {"version": VERSION, "licence": {"corpusTerms": "CORPUS-LICENCE.txt"}})
+    with open(os.path.join(map_dir, "CORPUS-LICENCE.txt"), "w", encoding="utf-8") as handle:
+        handle.write(manifest_document()["corpora"][0]["licence"] + "\n")
     corpus_dir = os.path.join(root, "licensed-copy")
     os.makedirs(corpus_dir)
     corpus = os.path.join(corpus_dir, "synthetic.txt")

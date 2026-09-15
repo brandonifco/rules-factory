@@ -91,8 +91,11 @@ def pack_version(map_dir, version, root):
     """`map_dir` packed as `version`: a copy under `root` whose map-package.json says so."""
     copy = os.path.join(root, f"v{version}", os.path.basename(map_dir))
     shutil.copytree(map_dir, copy)
-    with open(os.path.join(copy, "map-package.json"), "w", encoding="utf-8") as handle:
-        json.dump({"version": version}, handle)
+    settings_path = os.path.join(copy, "map-package.json")
+    with open(settings_path, encoding="utf-8") as handle:
+        settings = json.load(handle)
+    with open(settings_path, "w", encoding="utf-8") as handle:
+        json.dump(dict(settings, version=version), handle)
     return pack(copy, os.path.join(root, f"v{version}", "out"))
 
 

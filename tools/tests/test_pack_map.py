@@ -47,7 +47,8 @@ class PackCase(unittest.TestCase):
         self.addCleanup(shutil.rmtree, self.tmp, True)
         self.map_dir = os.path.join(self.tmp, "hoyle-backgammon")
         os.makedirs(self.map_dir)
-        for name in ("corpus-map.json", "corpus-manifest.json", "hoyle.txt", "map-package.json"):
+        for name in ("corpus-map.json", "corpus-manifest.json", "hoyle.txt", "map-package.json",
+                     "CORPUS-LICENCE.txt"):
             shutil.copy(os.path.join(HOYLE, name), self.map_dir)
         self.out = os.path.join(self.tmp, "out")
 
@@ -92,7 +93,7 @@ class TestPacksTheExample(PackCase):
                 sorted(n for n in names if not n.endswith(".psmdcp")),
                 sorted(["_rels/.rels", "[Content_Types].xml", f"{PACKAGE}.nuspec",
                         "map/corpus-map.json", "map/corpus-manifest.json", "tools/check-map.py",
-                        f"build/{PACKAGE}.props"]))
+                        f"build/{PACKAGE}.props", "LICENCE.txt"]))
             self.assertEqual(len([n for n in names if n.endswith(".psmdcp")]), 1, names)
             with open(os.path.join(HOYLE, "corpus-map.json"), "rb") as handle:
                 self.assertEqual(archive.read("map/corpus-map.json"), handle.read())
@@ -101,7 +102,6 @@ class TestPacksTheExample(PackCase):
             nuspec = archive.read(f"{PACKAGE}.nuspec").decode("utf-8")
             self.assertIn(f"<id>{PACKAGE}</id>", nuspec)
             self.assertIn(f"<version>{VERSION}</version>", nuspec)
-            self.assertIn("<licenseUrl>https://licenses.nuget.org/Apache-2.0</licenseUrl>", nuspec)
             self.assertIn("schemaVersion 1", nuspec)
             self.assertIn("5d505fa9f6202340eb55313b8ef607b816087a860d3d51b1bf92b5f65240645e", nuspec)
 
@@ -233,6 +233,163 @@ class TestRefuses(PackCase):
             json.dump({"version": "1.0"}, handle)
         code, output = self.pack()
         self.assert_refused(code, output, expect_code=2)
+
+
+def nuspec_and_licence(nupkg, package):
+    with zipfile.ZipFile(nupkg) as archive:
+        return (archive.read(f"{package}.nuspec").decode("utf-8"),
+                archive.read("LICENCE.txt").decode("utf-8"),
+                archive.read("[Content_Types].xml").decode("utf-8"))
+
+
+class TestLicence(PackCase):
+    """0023: the package's licence follows its corpus, is declared, and travels in the package."""
+
+    def write_settings(self, settings):
+        with open(os.path.join(self.map_dir, "map-package.json"), "w", encoding="utf-8") as handle:
+            json.dump(settings, handle)
+
+    def test_the_nuspec_names_the_packaged_licence_file_and_no_expression(self):
+        code, output = self.pack()
+        self.assertEqual(code, 0, output)
+        nuspec, licence, types = nuspec_and_licence(os.path.join(self.out, NUPKG), PACKAGE)
+        self.assertIn('<license type="file">LICENCE.txt</license>', nuspec)
+        # nuget.org's required companion to a licence file (#50 found the expression's).
+        self.assertIn("<licenseUrl>https://aka.ms/deprecateLicenseUrl</licenseUrl>", nuspec)
+        self.assertNotIn('type="expression"', nuspec)
+        self.assertNotIn("licenses.nuget.org", nuspec)
+        self.assertIn('Extension="txt"', types)
+
+    def test_a_public_domain_corpus_is_stated_as_such_and_not_as_apache_or_cc0(self):
+        code, output = self.pack()
+        self.assertEqual(code, 0, output)
+        _, licence, _ = nuspec_and_licence(os.path.join(self.out, NUPKG), PACKAGE)
+        with open(os.path.join(HOYLE, "CORPUS-LICENCE.txt"), encoding="utf-8") as handle:
+            terms = handle.read()
+        self.assertIn(terms, licence)
+        self.assertIn("public-domain-underlying-work; Project Gutenberg trademark terms apply to the edition",
+                      licence)
+        self.assertIn("Apache-2.0 does not apply to them", licence)
+        part_a = licence.split("===== A.")[1].split("===== B.")[0]
+        self.assertNotIn("Apache", part_a)
+        self.assertIn("not placed under CC0", part_a)
+
+    def test_the_factory_code_is_under_the_repositorys_own_apache_licence_verbatim(self):
+        code, output = self.pack()
+        self.assertEqual(code, 0, output)
+        _, licence, _ = nuspec_and_licence(os.path.join(self.out, NUPKG), PACKAGE)
+        with open(os.path.join(REPO, "LICENSE"), encoding="utf-8") as handle:
+            self.assertTrue(licence.endswith(handle.read()))
+        self.assertIn("tools/check-map.py", licence.split("===== A.")[0])
+
+    def test_part_107_packs_with_its_us_government_terms(self):
+        part107 = os.path.join(REPO, "examples", "faa-part-107")
+        inputs = pack_map.read_inputs(part107)
+        inputs["corpus_terms"] = pack_map.corpus_terms(inputs)
+        licence = pack_map.licence_file(inputs).decode("utf-8")
+        self.assertIn("public-domain-us-government", licence)
+        self.assertIn("17 U.S.C. 105", licence)
+
+    def test_no_licence_declared_is_refused_and_nothing_defaults(self):
+        self.write_settings({"version": VERSION})
+        code, output = self.pack("--tag", TAG)
+        self.assert_refused(code, output)
+        self.assertIn("licence.corpusTerms", output)
+
+    def test_a_missing_terms_file_is_refused(self):
+        os.remove(os.path.join(self.map_dir, "CORPUS-LICENCE.txt"))
+        code, output = self.pack()
+        self.assert_refused(code, output)
+
+    def test_a_terms_path_outside_the_map_directory_is_refused(self):
+        self.write_settings({"version": VERSION, "licence": {"corpusTerms": "../LICENSE.txt"}})
+        code, output = self.pack()
+        self.assert_refused(code, output)
+
+    def test_terms_that_do_not_restate_the_manifest_licence_are_refused(self):
+        with open(os.path.join(self.map_dir, "CORPUS-LICENCE.txt"), "w", encoding="utf-8") as handle:
+            handle.write("Apache-2.0\n")
+        code, output = self.pack()
+        self.assert_refused(code, output)
+        self.assertIn("does not restate hoyle-1909", output)
+
+    def test_a_changed_manifest_licence_is_refused_until_the_terms_follow_it(self):
+        self.edit("corpus-manifest.json", lambda m: m["corpora"][0].__setitem__("licence", "CC-BY-4.0"))
+        code, output = self.pack()
+        self.assert_refused(code, output)
+
+    def test_a_corpus_with_no_licence_is_refused(self):
+        self.edit("corpus-manifest.json", lambda m: m["corpora"][0].pop("licence"))
+        code, output = self.pack()
+        self.assert_refused(code, output)
+        self.assertIn("no `licence`", output)
+
+    def test_a_licence_change_changes_the_bytes_and_repacking_does_not(self):
+        self.assertEqual(self.pack()[0], 0)
+        with open(os.path.join(self.out, NUPKG), "rb") as handle:
+            before = handle.read()
+        with open(os.path.join(self.map_dir, "CORPUS-LICENCE.txt"), "a", encoding="utf-8") as handle:
+            handle.write("\nA clarification.\n")
+        again = os.path.join(self.tmp, "again")
+        self.assertEqual(self.pack(out=again)[0], 0)
+        with open(os.path.join(again, NUPKG), "rb") as handle:
+            self.assertNotEqual(handle.read(), before)
+
+
+class TestSrdAttribution(unittest.TestCase):
+    """The SRD 5.2.1 map quotes CC-BY-4.0 text: its package carries WotC's statement word for word."""
+
+    SRD = os.path.join(REPO, "examples", "srd-52-combat")
+    PACKAGE = "RulesFactory.Maps.Srd52Combat"
+    STATEMENT = ("This work includes material from the System Reference Document 5.2.1 (“SRD 5.2.1”) by "
+                 "Wizards of the Coast LLC, available at https://www.dndbeyond.com/srd. The SRD 5.2.1 is "
+                 "licensed under the Creative Commons Attribution 4.0 International License, available at "
+                 "https://creativecommons.org/licenses/by/4.0/legalcode.")
+
+    @classmethod
+    def setUpClass(cls):
+        cls.tmp = tempfile.mkdtemp()
+        cls.map_dir = os.path.join(cls.tmp, "srd-52-combat")
+        os.makedirs(cls.map_dir)
+        for name in ("corpus-map.json", "corpus-manifest.json", "srd-5.2.1.txt", "map-package.json",
+                     "CORPUS-LICENCE.txt"):
+            shutil.copy(os.path.join(cls.SRD, name), cls.map_dir)
+        with open(os.path.join(cls.SRD, "map-package.json"), encoding="utf-8") as handle:
+            version = json.load(handle)["version"]
+        cls.nupkg = f"{cls.PACKAGE}.{version}.nupkg"
+        cls.digests, cls.outputs = [], []
+        for out in ("a", "b"):
+            buffer = io.StringIO()
+            with redirect_stdout(buffer), redirect_stderr(buffer):
+                code = pack_map.main([cls.map_dir, "--out", os.path.join(cls.tmp, out)])
+            cls.outputs.append((code, buffer.getvalue()))
+            if code == 0:
+                with open(os.path.join(cls.tmp, out, cls.nupkg), "rb") as handle:
+                    cls.digests.append(hashlib.sha256(handle.read()).hexdigest())
+
+    @classmethod
+    def tearDownClass(cls):
+        shutil.rmtree(cls.tmp, True)
+
+    def test_the_srd_map_packs_twice_to_the_same_bytes(self):
+        for code, output in self.outputs:
+            self.assertEqual(code, 0, output)
+        self.assertEqual(len(set(self.digests)), 1, self.digests)
+
+    def test_the_attribution_statement_is_embedded_verbatim_in_the_licence_file(self):
+        self.assertEqual(self.outputs[0][0], 0, self.outputs[0][1])
+        nuspec, licence, _ = nuspec_and_licence(os.path.join(self.tmp, "a", self.nupkg), self.PACKAGE)
+        self.assertIn(self.STATEMENT, licence)
+        self.assertIn("CC-BY-4.0", licence)
+        self.assertIn('<license type="file">LICENCE.txt</license>', nuspec)
+        # Its terms ask for no other attribution to Wizards: the nuspec itself names none.
+        self.assertNotIn("Wizards", nuspec)
+
+    def test_the_statement_the_test_holds_is_the_one_on_the_corpus_legal_page(self):
+        with open(os.path.join(self.SRD, "srd-5.2.1.txt"), encoding="utf-8") as handle:
+            page_one = handle.read(4000)
+        self.assertIn(pack_map.squash(self.STATEMENT).replace("4.0/legalcode", "4.0/ legalcode"),
+                      pack_map.squash(page_one))
 
 
 class TestPackageId(unittest.TestCase):
