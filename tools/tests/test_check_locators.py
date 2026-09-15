@@ -401,5 +401,117 @@ class TestSectionCoverage(SectionCase):
         self.assertEqual(code, 1, output)
 
 
+# --- examples/srd-52-combat/check-locators-pdf-text.py: page-marked PDF text ----------------
+
+PDF_TEXT_TOOL = os.path.join(os.path.dirname(os.path.dirname(HERE)),
+                             "examples", "srd-52-combat", "check-locators-pdf-text.py")
+_pdf_text_spec = importlib.util.spec_from_file_location("check_locators_pdf_text", PDF_TEXT_TOOL)
+check_locators_pdf_text = importlib.util.module_from_spec(_pdf_text_spec)
+_pdf_text_spec.loader.exec_module(check_locators_pdf_text)
+
+# The shape pdftotext gives: a {N} marker line per physical page, headings as lines of their own,
+# a folio and running header left mid-page, and one sentence repeated on a later page.
+PDF_TEXT_CORPUS = """{1}
+Widgets
+A widget is played by two persons.
+Tokens
+Each token moves once per round,
+1
+
+Demo Reference Document
+
+and never twice.
+{2}
+Rounds
+The winner of a round moves first.
+{3}
+Glossary
+Each token moves once per round,
+"""
+
+
+def pdf_text_map():
+    return {
+        "schemaVersion": 1,
+        "corpus": "demo-pdf",
+        "baseline": {"contentHash": "c" * 64, "hashDerivation": "demo-pdftotext"},
+        "extent": {"unit": "page", "from": 1, "to": 2},
+        "entries": [
+            entry("players", "Widgets / p. 1", "A widget is played by two persons."),
+            entry("token-moves", "Widgets / Tokens / p. 1",
+                  "Each token moves once per round, 1 Demo Reference Document and never twice."),
+            entry("winner-first", "Widgets / Rounds / p. 2", "The winner of a round moves first."),
+        ],
+    }
+
+
+class TestPdfTextLocators(unittest.TestCase):
+    def setUp(self):
+        self.root = tempfile.mkdtemp()
+        self.corpus_path = os.path.join(self.root, "corpus.txt")
+        self.write_corpus(PDF_TEXT_CORPUS)
+
+    def write_corpus(self, text):
+        with open(self.corpus_path, "w", encoding="utf-8") as handle:
+            handle.write(text)
+
+    def run_tool(self, document):
+        path = os.path.join(self.root, "corpus-map.json")
+        with open(path, "w", encoding="utf-8") as handle:
+            json.dump(document, handle)
+        out = io.StringIO()
+        with redirect_stdout(out), redirect_stderr(out):
+            code = check_locators_pdf_text.main([path, self.corpus_path])
+        return code, out.getvalue()
+
+    def test_a_map_that_agrees_passes(self):
+        code, output = self.run_tool(pdf_text_map())
+        self.assertEqual(code, 0, output)
+        self.assertIn("[ok] locators", output)
+        self.assertIn("[ok] coverage", output)
+
+    def test_a_wrong_page_fails(self):
+        document = pdf_text_map()
+        document["entries"][2]["locator"]["citation"] = "Widgets / Rounds / p. 1"
+        code, output = self.run_tool(document)
+        self.assertEqual(code, 1, output)
+        self.assertIn("winner-first: cited p. 1, evidence is on p. 2", output)
+
+    def test_a_quote_matching_only_as_a_prefix_fails(self):
+        # tools/check-locators.py would accept the first five words; this checker requires all.
+        document = pdf_text_map()
+        document["entries"][0]["evidence"] = "A widget is played by two persons and a referee."
+        code, output = self.run_tool(document)
+        self.assertEqual(code, 1, output)
+        self.assertIn("players: evidence does not occur", output)
+
+    def test_a_repeated_quote_is_checked_at_every_occurrence(self):
+        document = pdf_text_map()
+        document["entries"][1]["evidence"] = "Each token moves once per round,"
+        code, output = self.run_tool(document)
+        self.assertEqual(code, 1, output)
+        self.assertIn("occurrence 2 of 2) is on p. 3", output)
+
+    def test_a_heading_not_near_the_quote_fails(self):
+        document = pdf_text_map()
+        document["entries"][0]["locator"]["citation"] = "Glossary / p. 1"
+        code, output = self.run_tool(document)
+        self.assertEqual(code, 1, output)
+        self.assertIn("heading 'Glossary' does not occur", output)
+
+    def test_a_page_the_extent_claims_and_no_quote_reaches_fails(self):
+        document = pdf_text_map()
+        document["entries"].pop(2)
+        code, output = self.run_tool(document)
+        self.assertEqual(code, 1, output)
+        self.assertIn("p. 2: inside the declared extent", output)
+
+    def test_markers_out_of_sequence_are_a_usage_error(self):
+        self.write_corpus(PDF_TEXT_CORPUS.replace("{2}", "{4}"))
+        code, output = self.run_tool(pdf_text_map())
+        self.assertEqual(code, 2, output)
+        self.assertIn("page marker 4 where 2 was expected", output)
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -1,0 +1,1716 @@
+{
+  "schemaVersion": 1,
+  "corpus": "srd-5.2.1",
+  "baseline": {
+    "contentHash": "c55926cb77bc7ea09096fc652db1411d763eae89d430c52221ed8709a075b100",
+    "hashDerivation": "srd-5.2.1-pdftotext-24.02.0-page-marked"
+  },
+  "extent": {
+    "unit": "page",
+    "from": 13,
+    "to": 16
+  },
+  "entries": [
+    {
+      "id": "combat-rounds",
+      "name": "Combat is a cycle of rounds, each participant taking a turn in each",
+      "locator": {
+        "sourceId": "srd-5.2.1",
+        "citation": "Combat / The Order of Combat / p. 13"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [],
+      "evidence": "The game organizes combat into a cycle of rounds and turns. A round represents about 6 seconds in the game world. During a round, each participant in a battle takes a turn.",
+      "status": "mapped",
+      "note": "The structure every later entry sits in: rounds, and one turn per participant per round. The middle sentence is round-duration's, quoted here because the span is contiguous. Demonstrate that no participant takes two turns in a round and none takes none."
+    },
+    {
+      "id": "round-duration",
+      "name": "A round represents about 6 seconds",
+      "locator": {
+        "sourceId": "srd-5.2.1",
+        "citation": "Combat / The Order of Combat / p. 13"
+      },
+      "kind": "value",
+      "scope": "in",
+      "clarity": "ambiguous",
+      "ambiguity": {
+        "question": "“About 6 seconds” does not fix a conversion between rounds and game-world time. Is a round exactly 6 seconds wherever a rule needs one (a duration in minutes, a travel distance per minute), or only approximately, and then what does a rule stated in seconds or minutes last in rounds? No sentence in the extent says; the word “about” leaves the value open and no measure or set of values is stated.",
+        "fate": "unresolved",
+        "unresolvedReason": "RequiresInterpretation"
+      },
+      "dependsOn": [],
+      "evidence": "The game organizes combat into a cycle of rounds and turns. A round represents about 6 seconds in the game world. During a round, each participant in a battle takes a turn.",
+      "status": "mapped",
+      "note": "Split from combat-rounds so that the rule it cannot fix does not decline the rule it does. Nothing in the extent converts seconds to rounds; durations elsewhere in the corpus (spells, the Rules Glossary) may, and are outside the slice."
+    },
+    {
+      "id": "next-round",
+      "name": "The fight continues to the next round if neither side is defeated",
+      "locator": {
+        "sourceId": "srd-5.2.1",
+        "citation": "Combat / The Order of Combat / p. 13"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "ambiguous",
+      "ambiguity": {
+        "question": "p. 13 says the fight continues to the next round if neither side is defeated; p. 14 (Ending Combat) says combat can also end when both sides agree to end it, which is a case where neither side is defeated. When both sides agree and neither is defeated, does another round begin (p. 13) or does combat end (p. 14)?",
+        "conflict": "does-combat-end-without-a-defeat",
+        "fate": "unresolved",
+        "unresolvedReason": "RequiresInterpretation"
+      },
+      "dependsOn": [
+        "combat-rounds",
+        "initiative-roll",
+        "side-defeated"
+      ],
+      "evidence": "The order of turns is determined at the beginning of combat when everyone rolls Initiative. Once everyone has taken a turn, the fight continues to the next round if neither side is defeated.",
+      "status": "mapped",
+      "note": "Read with combat-end. Taken alone this sentence would be clear: after the last turn of a round, another round follows unless a side is defeated. It is ambiguous only because p. 14 gives a second way combat ends. The likelier reading is that Ending Combat, the specific rule, governs; that is a Phase 4 decision, not a mapper's, so it is recorded as unresolved."
+    },
+    {
+      "id": "combat-steps",
+      "name": "Combat step by step: establish positions, roll Initiative, take turns",
+      "locator": {
+        "sourceId": "srd-5.2.1",
+        "citation": "Combat / Combat Step by Step / p. 13"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [
+        "combat-rounds",
+        "initiative-roll",
+        "initiative-order"
+      ],
+      "crossReferences": [
+        {
+          "cites": "Given the adventurers’ marching order",
+          "unmapped": "Marching order is set in “Exploration” (p. 12), outside the extent. It is one source of the positions the caller supplies, not a rule this map needs."
+        }
+      ],
+      "evidence": "Combat unfolds in these steps: 1: Establish Positions. The Game Master determines where all the characters and monsters are located. Given the adventurers’ marching order or their stated positions in the room or other location, the GM figures out where the adversaries are—how far away and in what direction. 2: Roll Initiative. Everyone involved in the combat encounter rolls Initiative, determining the order of combatants’ turns. 3: Take Turns. Each participant in the battle takes a turn in Initiative order. When everyone involved in the combat has had a turn, the round ends. Repeat this step until the fighting stops.",
+      "status": "mapped",
+      "note": "The three steps in order. Positions are facts the later rules test (range, reach, cover, adjacency), so under 0010 they are caller-supplied parameters and get no entry: that the GM is the person who supplies them decides nothing, and step 1 is not an assertion. “Until the fighting stops” names no rule of its own; when fighting stops is next-round and combat-end, which conflict. Demonstrate step order: no turn is taken before Initiative is rolled."
+    },
+    {
+      "id": "initiative-roll",
+      "name": "Every participant rolls Initiative, a Dexterity check",
+      "locator": {
+        "sourceId": "srd-5.2.1",
+        "citation": "Combat / Initiative / p. 13"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [
+        "ability-checks"
+      ],
+      "suspendedBy": [
+        "initiative-score-option"
+      ],
+      "crossReferences": [
+        {
+          "cites": "they make a Dexterity check",
+          "resolvedBy": "ability-checks"
+        }
+      ],
+      "evidence": "When combat starts, every participant rolls Initiative; they make a Dexterity check that determines their place in the Initiative order.",
+      "status": "mapped",
+      "note": "A draw: the manifest's randomness is seeded because of rolls like this one. The Dexterity check itself is ability-checks, outside the extent. Gated by initiative-score-option (Rules Glossary, p. 184), under which the GM may use Initiative scores instead of rolling; whether the GM has done so is the caller's to state (0021)."
+    },
+    {
+      "id": "group-initiative",
+      "name": "The GM makes one Initiative roll for a group of identical creatures",
+      "locator": {
+        "sourceId": "srd-5.2.1",
+        "citation": "Combat / Initiative / p. 13"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "ambiguous",
+      "ambiguity": {
+        "question": "What makes creatures a “group of identical creatures”? The corpus does not say whether identical means the same stat block, whether every identical monster in the combat forms one group or the GM may divide them into several, or whether a monster with no identical companion is its own group of one. No measure or set of values is stated, so it is a gap, not a delegated choice.",
+        "fate": "unresolved",
+        "unresolvedReason": "RequiresInterpretation"
+      },
+      "dependsOn": [
+        "initiative-roll"
+      ],
+      "evidence": "The GM rolls for monsters. For a group of identical creatures, the GM makes a single roll, so each member of the group has the same Initiative.",
+      "status": "mapped",
+      "note": "The draw count matters to a seeded engine: one roll per group, not per creature, and a replay depends on it."
+    },
+    {
+      "id": "surprised",
+      "name": "Whether a combatant is surprised by combat starting",
+      "locator": {
+        "sourceId": "srd-5.2.1",
+        "citation": "Combat / Initiative / p. 13"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "ambiguous",
+      "ambiguity": {
+        "question": "When is a combatant surprised? The only instance given is an example (an ambusher hidden from a foe unaware that combat is starting), which states a sufficient case and not a definition: a foe who is aware of the ambusher but not that combat is starting, or unaware of a visible attacker, is not decided. No measure or set of values is stated.",
+        "fate": "unresolved",
+        "unresolvedReason": "RequiresInterpretation"
+      },
+      "dependsOn": [],
+      "crossReferences": [
+        {
+          "cites": "If a combatant is surprised",
+          "resolvedBy": "surprise-glossary"
+        }
+      ],
+      "evidence": "Surprise. If a combatant is surprised by combat starting, that combatant has Disadvantage on their Initiative roll. For example, if an ambusher starts combat while hidden from a foe who is unaware that combat is starting, that foe is surprised.",
+      "status": "mapped",
+      "note": "The gap split out of surprise-disadvantage. The Rules Glossary's “Surprise” entry (surprise-glossary, p. 189) restates the rule as “caught unawares by the start of combat”, which is a second undefined phrase rather than a measure, and is outside the extent. The schema has no field for a term defined in the same corpus outside the slice: definedElsewhere names an unadmitted corpus, so it is recorded here and in the README."
+    },
+    {
+      "id": "surprise-disadvantage",
+      "name": "A surprised combatant has Disadvantage on Initiative",
+      "locator": {
+        "sourceId": "srd-5.2.1",
+        "citation": "Combat / Initiative / p. 13"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [
+        "surprised",
+        "initiative-roll",
+        "advantage-disadvantage"
+      ],
+      "evidence": "Surprise. If a combatant is surprised by combat starting, that combatant has Disadvantage on their Initiative roll. For example, if an ambusher starts combat while hidden from a foe who is unaware that combat is starting, that foe is surprised.",
+      "status": "mapped",
+      "note": "The computable half: given that a combatant is surprised, their Initiative roll has Disadvantage and nothing else follows (no lost turn; see surprise-round). Disadvantage is advantage-disadvantage, outside the extent."
+    },
+    {
+      "id": "initiative-order",
+      "name": "Combatants act from highest to lowest Initiative, in the same order every round",
+      "locator": {
+        "sourceId": "srd-5.2.1",
+        "citation": "Combat / Initiative / p. 13"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [
+        "initiative-roll"
+      ],
+      "evidence": "Initiative Order. A combatant’s check total is called their Initiative count, or Initiative for short. The GM ranks the combatants, from highest to lowest Initiative. This is the order in which they act during each round. The Initiative order remains the same from round to round.",
+      "status": "mapped",
+      "note": "Descending order by check total, fixed for the whole combat. Ties are initiative-ties. The order is a list a replay indexes into (method.md, Phase 6), so the engine owes a test pinning it."
+    },
+    {
+      "id": "initiative-ties",
+      "name": "The GM orders tied monsters, the players tied characters, the GM a mixed tie",
+      "locator": {
+        "sourceId": "srd-5.2.1",
+        "citation": "Combat / Initiative / p. 13"
+      },
+      "kind": "assertion",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [
+        "initiative-order"
+      ],
+      "evidence": "Ties. If a tie occurs, the GM decides the order among tied monsters, and the players decide the order among tied characters. The GM decides the 13 System Reference Document 5.2.1 order if the tie is between a monster and a player character.",
+      "status": "mapped",
+      "note": "An assertion under gate 3: the decider's own determination is operative and the corpus fixes the set of values, “the order among tied” combatants, which is the orderings of exactly those combatants and nothing else. The engine demands the order, attributes it (to the GM or to the players, which the map has no field to record), records it and never infers it. The span carries “13 System Reference Document 5.2.1” mid-sentence: the printed folio and running header, which pdftotext emits between the page's two columns (README, findings). Not stated: how the players decide if they disagree, and who orders a tie among characters that are not player characters."
+    },
+    {
+      "id": "turn-move-and-action",
+      "name": "On your turn, move up to your Speed and take one action, in either order",
+      "locator": {
+        "sourceId": "srd-5.2.1",
+        "citation": "Combat / Your Turn / p. 13"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [
+        "actions-table",
+        "move-up-to-speed"
+      ],
+      "evidence": "On your turn, you can move a distance up to your Speed and take one action. You decide whether to move first or take your action first.",
+      "status": "mapped",
+      "note": "The turn budget: one action and a move, ordered by the acting creature. What the actions are is actions-table, outside the extent. move-up-to-speed restates the movement half on p. 14 in the same terms. That the acting creature decides the order is a choice the caller makes on its turn, as every choice of play is; it is not given an assertion entry because it is not an open term the corpus bounds, only a move."
+    },
+    {
+      "id": "action-options",
+      "name": "Action options come from the Actions table, character features and stat blocks",
+      "locator": {
+        "sourceId": "srd-5.2.1",
+        "citation": "Combat / Your Turn / p. 13"
+      },
+      "kind": "operation",
+      "scope": "out",
+      "clarity": "clear",
+      "dependsOn": [],
+      "crossReferences": [
+        {
+          "cites": "listed in “Actions” earlier in “Playing the Game.”",
+          "resolvedBy": "actions-table"
+        },
+        {
+          "cites": "“Movement and Position” later in “Playing the Game” gives the rules for movement.",
+          "resolvedBy": "move-up-to-speed"
+        }
+      ],
+      "evidence": "The main actions you can take are listed in “Actions” earlier in “Playing the Game.” A character’s features and a monster’s stat block also provide action options. “Movement and Position” later in “Playing the Game” gives the rules for movement.",
+      "status": "declined",
+      "note": "Declined: the actions themselves are on pp. 9–10 and features and stat blocks are in “Classes” and elsewhere, all outside the extent. The sentence is pointers and nothing else."
+    },
+    {
+      "id": "brief-or-extended-communication",
+      "name": "Where brief communication ends and extended communication begins",
+      "locator": {
+        "sourceId": "srd-5.2.1",
+        "citation": "Combat / Your Turn / p. 13"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "ambiguous",
+      "ambiguity": {
+        "question": "The corpus gives brief communication (utterances and gestures) and extended communication (a detailed explanation, an attempt to persuade a foe) examples each, and no measure between them. Is a two-sentence warning brief? No measure or set of values is stated, so this is a gap, not a delegated standard.",
+        "fate": "unresolved",
+        "unresolvedReason": "RequiresInterpretation"
+      },
+      "dependsOn": [],
+      "evidence": "Communicating. You can communicate however you are able—through brief utterances and gestures—as you take your turn. Doing so uses neither your action nor your move. Extended communication, such as a detailed explanation of something or an attempt to persuade a foe, requires an action.",
+      "status": "mapped",
+      "note": "The gap split out of communication-cost."
+    },
+    {
+      "id": "communication-cost",
+      "name": "Brief communication is free; extended communication takes an action",
+      "locator": {
+        "sourceId": "srd-5.2.1",
+        "citation": "Combat / Your Turn / p. 13"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [
+        "brief-or-extended-communication",
+        "actions-table"
+      ],
+      "suspendedBy": [
+        "gm-requires-action"
+      ],
+      "evidence": "Communicating. You can communicate however you are able—through brief utterances and gestures—as you take your turn. Doing so uses neither your action nor your move. Extended communication, such as a detailed explanation of something or an attempt to persuade a foe, requires an action.",
+      "status": "mapped",
+      "note": "Given the classification, the cost: none, or one action. The next sentence in the corpus (“The Influence action is the main way you try to influence a monster.”) is a pointer to actions-table and is not quoted. Suspended by gm-requires-action if “any of these activities” on p. 14 reaches communication; see that entry."
+    },
+    {
+      "id": "free-object-interaction",
+      "name": "One free object interaction per turn; a second needs the Utilize action",
+      "locator": {
+        "sourceId": "srd-5.2.1",
+        "citation": "Combat / Your Turn / p. 13"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [
+        "actions-table"
+      ],
+      "suspendedBy": [
+        "gm-requires-action"
+      ],
+      "crossReferences": [
+        {
+          "cites": "as stated in their descriptions",
+          "unmapped": "Magic items (p. 204 onward) and other special objects are outside the extent; the item's own description is the rule."
+        }
+      ],
+      "evidence": "Interacting with Things. You can interact with one object or feature of the environment for free, during either your move or action. For example, you could open a door during your move as you stride toward a foe. If you want to interact with a second object, you need to take the Utilize action. Some magic items and other special objects always require an action to use, as stated in their descriptions.",
+      "status": "mapped",
+      "note": "“Time-Limited Object Interactions” on p. 11 states the same rule (“one free interaction per turn”), outside the extent and consistent with this one. Demonstrate the first interaction free during the move, the first during the action, and the second requiring Utilize."
+    },
+    {
+      "id": "gm-requires-action",
+      "name": "The GM may require an action for an activity needing special care or presenting an unusual obstacle",
+      "locator": {
+        "sourceId": "srd-5.2.1",
+        "citation": "Combat / Your Turn / p. 14"
+      },
+      "kind": "assertion",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [
+        "actions-table"
+      ],
+      "crossReferences": [
+        {
+          "cites": "any of these activities",
+          "resolvedBy": "free-object-interaction"
+        },
+        {
+          "cites": "any of these activities",
+          "resolvedBy": "communication-cost"
+        }
+      ],
+      "evidence": "The GM might require you to use an action for any of these activities when it needs special care or when it presents an unusual obstacle. For instance, the GM might require you to take the Utilize action to open a stuck door or turn a crank to lower a drawbridge.",
+      "status": "mapped",
+      "note": "An assertion under gate 3: the GM's own determination is operative, and the corpus states in the same constituent what it is measured against, “when it needs special care or when it presents an unusual obstacle”. The measure is itself open, which gate 3 does not ask about (0010). A gate, in suspendedBy, on the free interaction and on free communication. The span sits on p. 14 after a page break and after the “Playing on a Grid” sidebar that pdftotext places between it and the paragraph it continues."
+    },
+    {
+      "id": "doing-nothing",
+      "name": "You can forgo moving, acting, or doing anything on your turn",
+      "locator": {
+        "sourceId": "srd-5.2.1",
+        "citation": "Combat / Your Turn / p. 14"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [
+        "turn-move-and-action"
+      ],
+      "evidence": "Doing Nothing on Your Turn. You can forgo moving, taking an action, or doing anything at all on your turn. If you can’t decide what to do, consider taking the defensive Dodge action or the Ready action to delay acting.",
+      "status": "mapped",
+      "note": "The first sentence is the rule. The second is advice (“consider taking”) and is dropped; it states nothing an engine does, and in particular it does not create a delay rule. The span includes it because it is contiguous."
+    },
+    {
+      "id": "side-defeated",
+      "name": "When a side is defeated",
+      "locator": {
+        "sourceId": "srd-5.2.1",
+        "citation": "Combat / Ending Combat / p. 14"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "ambiguous",
+      "ambiguity": {
+        "question": "“Defeated, which can mean the creatures are killed or knocked out or have surrendered or fled” lists what defeat can mean without saying it is exhaustive, or whether every creature on a side must be in one of those states. Nor does the extent say who is on which side. No measure or set of values is stated.",
+        "fate": "unresolved",
+        "unresolvedReason": "RequiresInterpretation"
+      },
+      "dependsOn": [],
+      "evidence": "Combat ends when one side or the other is defeated, which can mean the creatures are killed or knocked out or have surrendered or fled. Combat can also end when both sides agree to end it.",
+      "status": "mapped",
+      "note": "The gap split out of combat-end."
+    },
+    {
+      "id": "sides-agree-to-end",
+      "name": "Both sides agree to end combat",
+      "locator": {
+        "sourceId": "srd-5.2.1",
+        "citation": "Combat / Ending Combat / p. 14"
+      },
+      "kind": "assertion",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [],
+      "evidence": "Combat ends when one side or the other is defeated, which can mean the creatures are killed or knocked out or have surrendered or fled. Combat can also end when both sides agree to end it.",
+      "status": "mapped",
+      "note": "An assertion under gate 3, the delegated-choice arm: the parties' own agreement is operative and the set of values is fixed (to end combat, or not). Parties need not be named (0008). The engine demands the agreement of both sides and never infers it from, for example, a surrender, which is side-defeated."
+    },
+    {
+      "id": "combat-end",
+      "name": "Combat ends on a defeat or by agreement",
+      "locator": {
+        "sourceId": "srd-5.2.1",
+        "citation": "Combat / Ending Combat / p. 14"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "ambiguous",
+      "ambiguity": {
+        "question": "p. 14 says combat can end when both sides agree to end it; p. 13 says the fight continues to the next round if neither side is defeated. When both sides agree and neither is defeated, does combat end (p. 14) or does another round begin (p. 13)?",
+        "conflict": "does-combat-end-without-a-defeat",
+        "fate": "unresolved",
+        "unresolvedReason": "RequiresInterpretation"
+      },
+      "dependsOn": [
+        "side-defeated",
+        "sides-agree-to-end"
+      ],
+      "evidence": "Combat ends when one side or the other is defeated, which can mean the creatures are killed or knocked out or have surrendered or fled. Combat can also end when both sides agree to end it.",
+      "status": "mapped",
+      "note": "The operation that consumes side-defeated and sides-agree-to-end. In conflict with next-round."
+    },
+    {
+      "id": "grid-play",
+      "name": "The grid rules apply when playing on a square grid",
+      "locator": {
+        "sourceId": "srd-5.2.1",
+        "citation": "Combat / Playing on a Grid / p. 13"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [],
+      "evidence": "If you play using a square grid and miniatures or other tokens, follow these rules.",
+      "status": "mapped",
+      "note": "The rule that opens the grid entries, in their enabledBy. Whether the table uses a grid is a caller-supplied parameter and gets no entry (0010). Off the grid, distances are in feet and none of the grid entries is reachable."
+    },
+    {
+      "id": "grid-square-size",
+      "name": "Each square represents 5 feet",
+      "locator": {
+        "sourceId": "srd-5.2.1",
+        "citation": "Combat / Playing on a Grid / p. 13"
+      },
+      "kind": "value",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [],
+      "enabledBy": [
+        "grid-play"
+      ],
+      "evidence": "Squares. Each square represents 5 feet.",
+      "status": "mapped"
+    },
+    {
+      "id": "grid-speed-in-squares",
+      "name": "Speed in squares is Speed divided by 5",
+      "locator": {
+        "sourceId": "srd-5.2.1",
+        "citation": "Combat / Playing on a Grid / p. 13"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "ambiguous",
+      "ambiguity": {
+        "question": "Dividing by 5 is exact only for a multiple of 5 feet. The corpus does not say what a distance that is not one becomes in squares: half of a 25-foot Speed, rounded down, is 12 feet of movement to mount (mounting-cost), and 12 feet is not a whole number of 5-foot segments. Round down, round up, or keep the remainder?",
+        "fate": "unresolved",
+        "unresolvedReason": "RequiresInterpretation"
+      },
+      "dependsOn": [
+        "grid-square-size"
+      ],
+      "enabledBy": [
+        "grid-play"
+      ],
+      "evidence": "Speed. Rather than moving foot by foot, move square by square on the grid, using your Speed in 5-foot segments. You can translate your Speed into squares by dividing it by 5. For example, a Speed of 30 feet translates into 6 squares.",
+      "status": "mapped",
+      "note": "The next sentence (“If you use a grid often, consider writing your Speed in squares on your character sheet.”) is advice and is not mapped."
+    },
+    {
+      "id": "grid-entering-square",
+      "name": "Entering a square costs 1 square, or 2 for Difficult Terrain",
+      "locator": {
+        "sourceId": "srd-5.2.1",
+        "citation": "Combat / Playing on a Grid / p. 13"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [
+        "grid-speed-in-squares",
+        "difficult-terrain-cost"
+      ],
+      "enabledBy": [
+        "grid-play"
+      ],
+      "crossReferences": [
+        {
+          "cites": "Other effects might make a square cost even more.",
+          "unmapped": "Names no rule; the effects are wherever they are stated (spells, the Rules Glossary), outside the extent."
+        }
+      ],
+      "evidence": "Entering a Square. To enter a square, you must have enough movement left to pay for entering. It costs 1 square of movement to enter an unoccupied square that’s adjacent to your space (orthogonally or diagonally adjacent). A square of Difficult Terrain costs 2 squares to enter. Other effects might make a square cost even more.",
+      "status": "mapped",
+      "note": "A diagonal step costs the same as an orthogonal one; demonstrate it. An occupied square is Difficult Terrain unless the occupant is Tiny or an ally (creature-space-difficult-terrain), so it costs 2. The grid form of difficult-terrain-cost."
+    },
+    {
+      "id": "grid-corners",
+      "name": "Diagonal movement can't cross the corner of a space-filling feature",
+      "locator": {
+        "sourceId": "srd-5.2.1",
+        "citation": "Combat / Playing on a Grid / p. 13"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [
+        "grid-entering-square"
+      ],
+      "enabledBy": [
+        "grid-play"
+      ],
+      "evidence": "Corners. Diagonal movement can’t cross the corner of a wall, a large tree, or another terrain feature that fills its space.",
+      "status": "mapped",
+      "note": "Whether a feature fills its space is a fact of the map the caller supplies, not a blank in the rule."
+    },
+    {
+      "id": "grid-range",
+      "name": "Range on a grid counts squares by the shortest route",
+      "locator": {
+        "sourceId": "srd-5.2.1",
+        "citation": "Combat / Playing on a Grid / p. 13"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "ambiguous",
+      "ambiguity": {
+        "question": "“Count by the shortest route” does not say whether the route may pass through walls and other features that block movement (grid-corners), and for a creature occupying several squares the corpus does not say which adjacent square counting starts from, beyond implying the one giving the shortest count.",
+        "fate": "unresolved",
+        "unresolvedReason": "RequiresInterpretation"
+      },
+      "dependsOn": [
+        "grid-square-size"
+      ],
+      "enabledBy": [
+        "grid-play"
+      ],
+      "evidence": "Ranges. To determine the range on a grid between two things—whether creatures or objects— count squares from a square adjacent to one of them and stop counting in the space of the other one. Count by the shortest route.",
+      "status": "mapped"
+    },
+    {
+      "id": "move-up-to-speed",
+      "name": "You can move up to your Speed, or not at all",
+      "locator": {
+        "sourceId": "srd-5.2.1",
+        "citation": "Combat / Movement and Position / p. 14"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [
+        "speed-and-size-sources"
+      ],
+      "evidence": "On your turn, you can move a distance equal to your Speed or less. Or you can decide not to move.",
+      "status": "mapped",
+      "note": "Restates turn-move-and-action's movement half, in agreement. Speed is a parameter (speed-and-size-sources)."
+    },
+    {
+      "id": "movement-modes",
+      "name": "Climbing, crawling, jumping and swimming combine with regular movement",
+      "locator": {
+        "sourceId": "srd-5.2.1",
+        "citation": "Combat / Movement and Position / p. 14"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [
+        "move-up-to-speed",
+        "movement-modes-glossary"
+      ],
+      "crossReferences": [
+        {
+          "cites": "(each explained in “Rules Glossary”)",
+          "resolvedBy": "movement-modes-glossary"
+        }
+      ],
+      "evidence": "Your movement can include climbing, crawling, jumping, and swimming (each explained in “Rules Glossary”). These different modes of movement can be combined with your regular movement, or they can constitute your entire move.",
+      "status": "mapped",
+      "note": "What each mode costs is in the Rules Glossary, outside the extent (movement-modes-glossary). In the slice: one move may mix modes and all of them draw on the same Speed."
+    },
+    {
+      "id": "movement-deduction",
+      "name": "Each part of a move is deducted from Speed until it is used up",
+      "locator": {
+        "sourceId": "srd-5.2.1",
+        "citation": "Combat / Movement and Position / p. 14"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [
+        "move-up-to-speed"
+      ],
+      "evidence": "However you’re moving with your Speed, you deduct the distance of each part of your move from it until it is used up or until you are done moving, whichever comes first.",
+      "status": "mapped"
+    },
+    {
+      "id": "speed-and-size-sources",
+      "name": "Speed comes from character creation or the stat block",
+      "locator": {
+        "sourceId": "srd-5.2.1",
+        "citation": "Combat / Movement and Position / p. 14"
+      },
+      "kind": "value",
+      "scope": "out",
+      "clarity": "clear",
+      "dependsOn": [],
+      "crossReferences": [
+        {
+          "cites": "See “Rules Glossary” for more about Speed",
+          "unmapped": "“Rules Glossary” (pp. 176–191) is outside this map's extent, which is the Combat section of “Playing the Game”, pp. 13–16."
+        }
+      ],
+      "evidence": "A character’s Speed is determined during character creation. A monster’s Speed is noted in the monster’s stat block. See “Rules Glossary” for more about Speed as well as about special speeds, such as a Climb Speed, Fly Speed, or Swim Speed.",
+      "status": "declined",
+      "note": "Declined: Speed is a value from character creation (p. 19 onward) or a stat block, both outside the extent, and reaches the engine as a caller-supplied parameter. Size is the same (“A character’s size is determined by species, and a monster’s size is specified in the monster’s stat block”, p. 14). The entry exists so the in-scope entries that consume Speed can name where it comes from."
+    },
+    {
+      "id": "difficult-terrain-cost",
+      "name": "Every foot in Difficult Terrain costs 1 extra foot, without stacking",
+      "locator": {
+        "sourceId": "srd-5.2.1",
+        "citation": "Combat / Difficult Terrain / p. 14"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [
+        "movement-deduction"
+      ],
+      "evidence": "Every foot of movement in Difficult Terrain costs 1 extra foot, even if multiple things in a space count as Difficult Terrain.",
+      "status": "mapped",
+      "note": "Whether a space is Difficult Terrain is a parameter: the preceding paragraph gives examples (“Low furniture, rubble, undergrowth, steep stairs, snow, and shallow bogs”) and no definition, and the classification is a fact about the scene the rule tests. Demonstrate that two sources of Difficult Terrain in one space still cost 1 extra foot, not 2."
+    },
+    {
+      "id": "break-up-move",
+      "name": "A move can be split around actions, Bonus Actions and Reactions",
+      "locator": {
+        "sourceId": "srd-5.2.1",
+        "citation": "Combat / Breaking Up Your Move / p. 14"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [
+        "movement-deduction",
+        "bonus-actions",
+        "reactions"
+      ],
+      "evidence": "You can break up your move, using some of its movement before and after any action, Bonus Action, or Reaction you take on the same turn.",
+      "status": "mapped",
+      "note": "The example that follows (Speed 30: 10 feet, an action, 20 feet) is a demonstration the note owes: the movement left after the action is what remains, not a fresh Speed."
+    },
+    {
+      "id": "dropping-prone",
+      "name": "You can drop Prone for free, unless your Speed is 0",
+      "locator": {
+        "sourceId": "srd-5.2.1",
+        "citation": "Combat / Dropping Prone / p. 14"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [
+        "prone-condition"
+      ],
+      "crossReferences": [
+        {
+          "cites": "(see “Rules Glossary”)",
+          "resolvedBy": "prone-condition"
+        }
+      ],
+      "evidence": "On your turn, you can give yourself the Prone condition (see “Rules Glossary”) without using an action or any of your Speed, but you can’t do so if your Speed is 0.",
+      "status": "mapped",
+      "note": "The Prone condition's effects are prone-condition, outside the extent."
+    },
+    {
+      "id": "size-categories",
+      "name": "Size categories, ordered from Tiny to Gargantuan",
+      "locator": {
+        "sourceId": "srd-5.2.1",
+        "citation": "Combat / Creature Size / p. 14"
+      },
+      "kind": "value",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [],
+      "crossReferences": [
+        {
+          "cites": "as shown on the Creature Size and Space table",
+          "resolvedBy": "creature-size-space"
+        }
+      ],
+      "evidence": "A creature belongs to a size category, which determines the width of the square space the creature occupies on a map, as shown on the Creature Size and Space table. That table lists the sizes from smallest (Tiny) to largest (Gargantuan).",
+      "status": "mapped",
+      "note": "The order is load-bearing: “two sizes larger or smaller” (moving-through-creatures), “at least one size larger” (mount-eligibility) and “of a larger size” (ending-turn-in-occupied-space) all count steps along it. The order is the table's row order, which this sentence says runs from smallest to largest."
+    },
+    {
+      "id": "creature-size-space",
+      "name": "The Creature Size and Space table",
+      "locator": {
+        "sourceId": "srd-5.2.1",
+        "citation": "Combat / Creature Size / p. 14"
+      },
+      "kind": "value",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [
+        "size-categories"
+      ],
+      "evidence": "Creature Size and Space Size Space (Feet) Space (Squares) Tiny 2½ by 2½ feet 4 per square Small 5 by 5 feet 1 square Medium 5 by 5 feet 1 square Large 10 by 10 feet 4 squares (2 by 2) Huge 15 by 15 feet 9 squares (3 by 3) Gargantuan 20 by 20 feet 16 squares (4 by 4)",
+      "status": "mapped",
+      "note": "The whole table, all six rows, never a sample. pdftotext emits it one cell per line, and in this table row order and cell order survive, which the Cover table's do not (cover-bonuses). “4 per square” for Tiny is four Tiny creatures to a square, not four squares."
+    },
+    {
+      "id": "moving-through-creatures",
+      "name": "Whose space you can pass through",
+      "locator": {
+        "sourceId": "srd-5.2.1",
+        "citation": "Combat / Moving around Other Creatures / p. 14"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "ambiguous",
+      "ambiguity": {
+        "question": "Does “a creature that is two sizes larger or smaller than you” mean exactly two sizes, or two or more? Read literally, a Medium creature can pass through a Huge creature's space and not a Gargantuan one's. And the sentence permits passage through four kinds of space without saying that every other creature's space is impassable, though that is the evident reading.",
+        "fate": "unresolved",
+        "unresolvedReason": "RequiresInterpretation"
+      },
+      "dependsOn": [
+        "size-categories",
+        "incapacitated-condition"
+      ],
+      "crossReferences": [
+        {
+          "cites": "(see “Rules Glossary”)",
+          "resolvedBy": "incapacitated-condition"
+        }
+      ],
+      "evidence": "During your move, you can pass through the space of an ally, a creature that has the Incapacitated condition (see “Rules Glossary”), a Tiny creature, or a creature that is two sizes larger or smaller than you.",
+      "status": "mapped",
+      "note": "Whether a creature is an ally is a parameter; the extent does not define it."
+    },
+    {
+      "id": "creature-space-difficult-terrain",
+      "name": "Another creature's space is Difficult Terrain unless it is Tiny or an ally",
+      "locator": {
+        "sourceId": "srd-5.2.1",
+        "citation": "Combat / Moving around Other Creatures / p. 14"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [
+        "difficult-terrain-cost",
+        "moving-through-creatures"
+      ],
+      "evidence": "Another creature’s space is Difficult Terrain for you unless that creature is Tiny or your ally.",
+      "status": "mapped"
+    },
+    {
+      "id": "no-willing-end-in-occupied-space",
+      "name": "You can't willingly end a move in another creature's space",
+      "locator": {
+        "sourceId": "srd-5.2.1",
+        "citation": "Combat / Moving around Other Creatures / p. 14"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [
+        "moving-through-creatures"
+      ],
+      "evidence": "You can’t willingly end a move in a space occupied by another creature.",
+      "status": "mapped",
+      "note": "“Willingly” is a fact the rule tests: a move the creature chose, as against one it was made to take. Parameter, no entry."
+    },
+    {
+      "id": "ending-turn-in-occupied-space",
+      "name": "Ending a turn in another creature's space leaves you Prone",
+      "locator": {
+        "sourceId": "srd-5.2.1",
+        "citation": "Combat / Moving around Other Creatures / p. 14"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [
+        "size-categories",
+        "prone-condition"
+      ],
+      "crossReferences": [
+        {
+          "cites": "(see “Rules Glossary”)",
+          "resolvedBy": "prone-condition"
+        }
+      ],
+      "evidence": "If you somehow end a turn in a space with another creature, you have the Prone condition (see “Rules Glossary”) unless you are Tiny or are of a larger size than the other creature.",
+      "status": "mapped",
+      "note": "The prohibition is on ending a move, the consequence on ending a turn; a creature pushed into a space mid-turn that leaves before the turn ends is not Prone. Demonstrate that a creature exactly one size larger is not Prone, and a same-size creature is."
+    },
+    {
+      "id": "attack-sources",
+      "name": "The Attack action and some other actions make an attack",
+      "locator": {
+        "sourceId": "srd-5.2.1",
+        "citation": "Combat / Making an Attack / p. 14"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [
+        "actions-table",
+        "bonus-actions",
+        "reactions"
+      ],
+      "evidence": "When you take the Attack action, you make an attack. Some other actions, Bonus Actions, and Reactions also let you make an attack.",
+      "status": "mapped"
+    },
+    {
+      "id": "attack-structure",
+      "name": "An attack is three steps: choose a target, determine modifiers, resolve",
+      "locator": {
+        "sourceId": "srd-5.2.1",
+        "citation": "Combat / Making an Attack / p. 15"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [
+        "attack-target",
+        "attack-modifiers",
+        "attack-resolution"
+      ],
+      "crossReferences": [
+        {
+          "cites": "(see the next section)",
+          "resolvedBy": "cover-degree"
+        },
+        {
+          "cites": "as detailed earlier in “Playing the Game.”",
+          "resolvedBy": "attack-rolls"
+        }
+      ],
+      "evidence": "or make an attack roll as part of a spell, an attack has the following structure: 1: Choose a Target. Pick a target within your attack’s range: a creature, an object, or a location. 2: Determine Modifiers. The GM determines whether the target has Cover (see the next section) and whether you have Advantage or Disadvantage against the target. In addition, spells, special abilities, and other effects can apply penalties or bonuses to your attack roll. 3: Resolve the Attack. Make the attack roll, as detailed earlier in “Playing the Game.” On a hit, you roll damage unless the particular attack has rules that specify otherwise. Some attacks cause special effects in addition to or instead of damage.",
+      "status": "mapped",
+      "note": "The order of the three steps. The span starts mid-sentence: the sentence begins on p. 14 (“Whether you strike with a Melee weapon, fire a Ranged weapon,”) and pdftotext places the whole “Unseen Attackers and Targets” sidebar and the page marker between its halves, so no contiguous span holds the sentence (README, findings). Each step is its own entry."
+    },
+    {
+      "id": "attack-target",
+      "name": "Choose a target within range: a creature, an object, or a location",
+      "locator": {
+        "sourceId": "srd-5.2.1",
+        "citation": "Combat / Making an Attack / p. 15"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [
+        "single-range",
+        "normal-and-long-range",
+        "melee-within-reach"
+      ],
+      "evidence": "1: Choose a Target. Pick a target within your attack’s range: a creature, an object, or a location.",
+      "status": "mapped",
+      "note": "The set of target kinds is closed at three. A location is a legal target; wrong-location-misses is what attacking an empty one does."
+    },
+    {
+      "id": "attack-modifiers",
+      "name": "Determine Cover, Advantage or Disadvantage, and other modifiers",
+      "locator": {
+        "sourceId": "srd-5.2.1",
+        "citation": "Combat / Making an Attack / p. 15"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [
+        "cover-degree",
+        "advantage-disadvantage"
+      ],
+      "crossReferences": [
+        {
+          "cites": "(see the next section)",
+          "resolvedBy": "cover-degree"
+        },
+        {
+          "cites": "spells, special abilities, and other effects can apply penalties or bonuses",
+          "unmapped": "Spells (p. 104 onward), features and other effects are outside the extent; each states its own modifier."
+        }
+      ],
+      "evidence": "2: Determine Modifiers. The GM determines whether the target has Cover (see the next section) and whether you have Advantage or Disadvantage against the target. In addition, spells, special abilities, and other effects can apply penalties or bonuses to your attack roll.",
+      "status": "mapped",
+      "note": "“The GM determines” is not an assertion here. The corpus says how Cover is determined (the Cover table's “Offered By” column) and when Advantage or Disadvantage applies (unseen-target-disadvantage and the rest), so what the GM supplies is the facts those rules test, and 0010 rules that whose fact it is decides nothing. The SRD says “the GM determines” of many computable rules; see the README."
+    },
+    {
+      "id": "attack-resolution",
+      "name": "Make the attack roll; on a hit, roll damage unless the attack says otherwise",
+      "locator": {
+        "sourceId": "srd-5.2.1",
+        "citation": "Combat / Making an Attack / p. 15"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [
+        "attack-rolls",
+        "damage-and-healing"
+      ],
+      "crossReferences": [
+        {
+          "cites": "as detailed earlier in “Playing the Game.”",
+          "resolvedBy": "attack-rolls"
+        }
+      ],
+      "evidence": "3: Resolve the Attack. Make the attack roll, as detailed earlier in “Playing the Game.” On a hit, you roll damage unless the particular attack has rules that specify otherwise. Some attacks cause special effects in addition to or instead of damage.",
+      "status": "mapped",
+      "note": "The roll is attack-rolls (p. 7) and damage is damage-and-healing (p. 16), both outside the extent. In the slice: damage is rolled on a hit and only on a hit, unless the attack's own rules say otherwise."
+    },
+    {
+      "id": "flanking",
+      "name": "Flanking",
+      "locator": {
+        "sourceId": "srd-5.2.1",
+        "citation": "Combat / Making an Attack / p. 15"
+      },
+      "kind": "operation",
+      "scope": "out",
+      "clarity": "clear",
+      "dependsOn": [],
+      "absentFrom": {
+        "searched": [
+          "flank"
+        ]
+      },
+      "evidence": "2: Determine Modifiers. The GM determines whether the target has Cover (see the next section) and whether you have Advantage or Disadvantage against the target. In addition, spells, special abilities, and other effects can apply penalties or bonuses to your attack roll.",
+      "status": "declined",
+      "note": "Absent. A rule granting Advantage for attacking a foe from opposite sides is widely played (it is an optional rule outside the SRD) and this corpus does not state it; the step that lists an attack's modifiers is where it would be, and it names Cover and Advantage or Disadvantage only. The word does not occur anywhere in the 364-page extraction either, though the check is bounded by the extent."
+    },
+    {
+      "id": "unseen-target-disadvantage",
+      "name": "Attacking a target you can't see has Disadvantage",
+      "locator": {
+        "sourceId": "srd-5.2.1",
+        "citation": "Combat / Unseen Attackers and Targets / p. 14"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [
+        "advantage-disadvantage"
+      ],
+      "evidence": "When you make an attack roll against a target you can’t see, you have Disadvantage on the roll. This is true whether you’re guessing the target’s location or targeting a creature you can hear but not see.",
+      "status": "mapped",
+      "note": "A sidebar. pdftotext places it on p. 14 between the halves of the sentence that introduces an attack's structure. Whether the attacker can see the target is a parameter (vision rules are in “Exploration”, p. 11, outside the extent)."
+    },
+    {
+      "id": "wrong-location-misses",
+      "name": "Attacking a location the target isn't in misses",
+      "locator": {
+        "sourceId": "srd-5.2.1",
+        "citation": "Combat / Unseen Attackers and Targets / p. 14"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "ambiguous",
+      "ambiguity": {
+        "question": "When the target is not in the location attacked, is an attack roll still made (and then disregarded), or is none made? The corpus says only “you miss”. To a seeded engine the difference is a draw, and it changes every later draw of the game; an implementer choosing either silently is the failure Phase 4 exists to prevent.",
+        "fate": "unresolved",
+        "unresolvedReason": "RequiresInterpretation"
+      },
+      "dependsOn": [
+        "attack-target"
+      ],
+      "evidence": "If the target isn’t in the location you targeted, you miss.",
+      "status": "mapped",
+      "note": "The miss is certain whatever the roll. What is not stated is whether the roll is made."
+    },
+    {
+      "id": "unseen-attacker-advantage",
+      "name": "Attacking a creature that can't see you has Advantage",
+      "locator": {
+        "sourceId": "srd-5.2.1",
+        "citation": "Combat / Unseen Attackers and Targets / p. 14"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [
+        "advantage-disadvantage"
+      ],
+      "evidence": "When a creature can’t see you, you have Advantage on attack rolls against it.",
+      "status": "mapped"
+    },
+    {
+      "id": "hidden-attacker-revealed",
+      "name": "Attacking while hidden gives away your location",
+      "locator": {
+        "sourceId": "srd-5.2.1",
+        "citation": "Combat / Unseen Attackers and Targets / p. 14"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [
+        "actions-table"
+      ],
+      "evidence": "If you are hidden when you make an attack roll, you give away your location when the attack hits or misses.",
+      "status": "mapped",
+      "note": "Being hidden is the Hide action's (actions-table) and the Rules Glossary's, outside the extent."
+    },
+    {
+      "id": "cover-origin",
+      "name": "Cover counts only against an attack from its far side",
+      "locator": {
+        "sourceId": "srd-5.2.1",
+        "citation": "Combat / Cover / p. 15"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [],
+      "evidence": "A target can benefit from cover only when an attack or other effect originates on the opposite side of the cover.",
+      "status": "mapped",
+      "note": "Which side an attack originates on is geometry the caller supplies."
+    },
+    {
+      "id": "cover-no-stacking",
+      "name": "Only the most protective degree of cover applies",
+      "locator": {
+        "sourceId": "srd-5.2.1",
+        "citation": "Combat / Cover / p. 15"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [
+        "cover-degree"
+      ],
+      "evidence": "If a target is behind multiple sources of cover, only the most protective degree of cover applies; the degrees aren’t added together. For example, if a target is behind a creature that gives Half Cover and a tree trunk that gives Three-Quarters Cover, the target has Three-Quarters Cover.",
+      "status": "mapped",
+      "note": "Demonstrate the corpus's own example: Half and Three-Quarters give Three-Quarters, not +7."
+    },
+    {
+      "id": "cover-bonuses",
+      "name": "Half Cover gives +2, Three-Quarters Cover +5, to AC and Dexterity saving throws",
+      "locator": {
+        "sourceId": "srd-5.2.1",
+        "citation": "Combat / Cover / p. 15"
+      },
+      "kind": "value",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [],
+      "evidence": "Degree Benefit to Target Offered By … Half +2 bonus to AC and Dexterity saving throws Another creature or an object that covers at least half of the target Three+5 bonus to AC Quarters and Dexterity saving throws An object that covers at least three-quarters of the target Total An object that covers the whole target Can’t be targeted directly",
+      "status": "mapped",
+      "note": "The whole table, never a sample, and transcribed from the printed page, not from this span. The span is the table as pdftotext emits it, and it is not the table as printed: the Three-Quarters row's label is split across its cell break, so the extraction reads “Three+5 bonus to AC Quarters and Dexterity saving throws”, and the Total row's two cells come out in the opposite order to the printed columns (“An object that covers the whole target” before “Can’t be targeted directly”). The quote is verbatim of the extraction, which is what the checker can hold it to; that the printed row reads Three-Quarters / +5 bonus to AC and Dexterity saving throws was read from the rendered page (README, findings). The Total row is total-cover."
+    },
+    {
+      "id": "cover-degree",
+      "name": "The degree of cover an obstacle gives",
+      "locator": {
+        "sourceId": "srd-5.2.1",
+        "citation": "Combat / Cover / p. 15"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "ambiguous",
+      "ambiguity": {
+        "question": "The “Offered By” column states lower bounds that overlap: an object covering three-quarters of a target also covers at least half of it. For a single source, does it give the most protective degree it qualifies for? cover-no-stacking says so only of multiple sources. And “Another creature” gives Half Cover however much of the target it covers; whether a creature can ever give more is not stated.",
+        "fate": "unresolved",
+        "unresolvedReason": "RequiresInterpretation"
+      },
+      "dependsOn": [],
+      "evidence": "Degree Benefit to Target Offered By … Half +2 bonus to AC and Dexterity saving throws Another creature or an object that covers at least half of the target Three+5 bonus to AC Quarters and Dexterity saving throws An object that covers at least three-quarters of the target Total An object that covers the whole target Can’t be targeted directly",
+      "status": "mapped",
+      "note": "The “Offered By” column. The fraction of a target an object covers is a parameter. Same span as cover-bonuses; see that entry for how the extraction garbles the table."
+    },
+    {
+      "id": "total-cover",
+      "name": "A target with Total Cover can't be targeted directly",
+      "locator": {
+        "sourceId": "srd-5.2.1",
+        "citation": "Combat / Cover / p. 15"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "ambiguous",
+      "ambiguity": {
+        "question": "“Can’t be targeted directly” does not say what indirect targeting is. An area effect whose point of origin is elsewhere is the evident case, and the rules for it are in “Spells” (outside the extent); within the slice, the word “directly” is not defined and no measure is stated.",
+        "fate": "unresolved",
+        "unresolvedReason": "RequiresInterpretation"
+      },
+      "dependsOn": [
+        "cover-degree"
+      ],
+      "evidence": "Degree Benefit to Target Offered By … Half +2 bonus to AC and Dexterity saving throws Another creature or an object that covers at least half of the target Three+5 bonus to AC Quarters and Dexterity saving throws An object that covers at least three-quarters of the target Total An object that covers the whole target Can’t be targeted directly",
+      "status": "mapped",
+      "note": "Same span as cover-bonuses."
+    },
+    {
+      "id": "single-range",
+      "name": "A ranged attack can't target beyond its range",
+      "locator": {
+        "sourceId": "srd-5.2.1",
+        "citation": "Combat / Range / p. 15"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [],
+      "evidence": "You can make ranged attacks only against targets within a specified range. If a ranged attack, such as one made with a spell, has a single range, you can’t attack a target beyond this range.",
+      "status": "mapped",
+      "note": "Whether an attack is ranged is stated by the weapon or spell (“When you make a ranged attack, you fire a bow, hurl an axe, or otherwise send projectiles to strike a foe at a distance.”), outside the extent; it is a parameter here."
+    },
+    {
+      "id": "normal-and-long-range",
+      "name": "Beyond normal range has Disadvantage; beyond long range is impossible",
+      "locator": {
+        "sourceId": "srd-5.2.1",
+        "citation": "Combat / Range / p. 15"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [
+        "advantage-disadvantage"
+      ],
+      "evidence": "Some ranged attacks, such as those made with a Longbow, have two ranges. The smaller number is the normal range, and the larger number is the long range. Your attack roll has Disadvantage when your target is beyond normal range, and you can’t attack a target beyond long range.",
+      "status": "mapped",
+      "note": "Demonstrate a target at exactly the normal range (no Disadvantage: “beyond” is strict), just beyond it, at exactly the long range, and beyond it."
+    },
+    {
+      "id": "ranged-in-close-combat",
+      "name": "A ranged attack within 5 feet of a seeing, capable enemy has Disadvantage",
+      "locator": {
+        "sourceId": "srd-5.2.1",
+        "citation": "Combat / Ranged Attacks in Close Combat / p. 15"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [
+        "advantage-disadvantage",
+        "incapacitated-condition"
+      ],
+      "crossReferences": [
+        {
+          "cites": "(see “Rules Glossary”)",
+          "resolvedBy": "incapacitated-condition"
+        }
+      ],
+      "evidence": "When you make a ranged attack roll with a weapon, a spell, or some other means, you have Disadvantage on the roll if you are within 5 feet of an enemy who can see you and doesn’t have the Incapacitated condition (see “Rules Glossary”).",
+      "status": "mapped",
+      "note": "Whether a creature is an enemy, and whether it can see the attacker, are parameters."
+    },
+    {
+      "id": "melee-within-reach",
+      "name": "A melee attack targets something within your reach",
+      "locator": {
+        "sourceId": "srd-5.2.1",
+        "citation": "Combat / Melee Attacks / p. 15"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [
+        "reach"
+      ],
+      "evidence": "A melee attack allows you to attack a target within your reach.",
+      "status": "mapped",
+      "note": "The next sentence (“A melee attack typically uses a handheld weapon…”) is description; “typically” states no rule. The printed page hyphenates “hand-held” across a line, and the extraction joins it as “handheld”; nothing on the page says which is the word (README, findings)."
+    },
+    {
+      "id": "reach",
+      "name": "A creature's reach is 5 feet unless its description says otherwise",
+      "locator": {
+        "sourceId": "srd-5.2.1",
+        "citation": "Combat / Reach / p. 15"
+      },
+      "kind": "value",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [],
+      "crossReferences": [
+        {
+          "cites": "as noted in their descriptions",
+          "unmapped": "Stat blocks and the Reach weapon property (“Equipment”, p. 89 onward) are outside the extent; a greater reach reaches the engine as a parameter."
+        }
+      ],
+      "evidence": "A creature has a 5-foot reach and can thus attack targets within 5 feet when making a melee attack. Certain creatures have melee attacks with a reach greater than 5 feet, as noted in their descriptions.",
+      "status": "mapped"
+    },
+    {
+      "id": "opportunity-attack",
+      "name": "Making an Opportunity Attack when a seen creature leaves your reach",
+      "locator": {
+        "sourceId": "srd-5.2.1",
+        "citation": "Combat / Opportunity Attacks / p. 15"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [
+        "melee-within-reach",
+        "reactions",
+        "attack-structure"
+      ],
+      "suspendedBy": [
+        "opportunity-attack-avoidance",
+        "reactions"
+      ],
+      "evidence": "Making an Opportunity Attack. You can make an Opportunity Attack when a creature that you can see leaves your reach. To make the attack, take a Reaction to make one melee attack with a weapon or an Unarmed Strike against that creature. The attack occurs right before it leaves your reach.",
+      "status": "mapped",
+      "note": "Timing is stated: before the creature leaves reach, which is the case reactions' default (“immediately after its trigger unless the Reaction’s description says otherwise”, p. 10) allows. The Rules Glossary restates the trigger with a list of the ways of leaving (opportunity-attacks-glossary), consistent with this entry and opportunity-attack-avoidance read together. Suspended by opportunity-attack-avoidance, and by reactions while a Reaction has already been taken since the start of the attacker's last turn."
+    },
+    {
+      "id": "opportunity-attack-avoidance",
+      "name": "Disengage, teleporting and involuntary movement don't provoke",
+      "locator": {
+        "sourceId": "srd-5.2.1",
+        "citation": "Combat / Opportunity Attacks / p. 15"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [
+        "actions-table"
+      ],
+      "evidence": "Avoiding Opportunity Attacks. You can avoid provoking an Opportunity Attack by taking the Disengage action. You also don’t provoke an Opportunity Attack when you Teleport or when you are moved without using your movement, action, Bonus Action, or Reaction. For example, you don’t provoke an Opportunity Attack if an explosion hurls you out of a foe’s reach or if you fall past an enemy.",
+      "status": "mapped",
+      "note": "Disengage is actions-table and Teleport is defined in the Rules Glossary, both outside the extent. Demonstrate both of the corpus's examples (hurled by an explosion, falling past an enemy)."
+    },
+    {
+      "id": "mount-eligibility",
+      "name": "A willing creature at least one size larger, with appropriate anatomy, can be a mount",
+      "locator": {
+        "sourceId": "srd-5.2.1",
+        "citation": "Combat / Mounted Combat / p. 15"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [
+        "size-categories",
+        "appropriate-anatomy"
+      ],
+      "evidence": "A willing creature that is at least one size larger than a rider and that has an appropriate anatomy can serve as a mount, using the following rules.",
+      "status": "mapped",
+      "note": "The rule that opens the mounted-combat entries. “Willing” is a parameter. “Appropriate anatomy” is the gap appropriate-anatomy."
+    },
+    {
+      "id": "appropriate-anatomy",
+      "name": "What anatomy is appropriate for a mount",
+      "locator": {
+        "sourceId": "srd-5.2.1",
+        "citation": "Combat / Mounted Combat / p. 15"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "ambiguous",
+      "ambiguity": {
+        "question": "“An appropriate anatomy” states no measure and no set of values, and names nobody who decides. Is a Large spider an appropriate mount for a Medium rider? The corpus does not say.",
+        "fate": "unresolved",
+        "unresolvedReason": "RequiresInterpretation"
+      },
+      "dependsOn": [],
+      "evidence": "A willing creature that is at least one size larger than a rider and that has an appropriate anatomy can serve as a mount, using the following rules.",
+      "status": "mapped",
+      "note": "The gap split out of mount-eligibility."
+    },
+    {
+      "id": "mounting-cost",
+      "name": "Mounting or dismounting costs half your Speed, rounded down",
+      "locator": {
+        "sourceId": "srd-5.2.1",
+        "citation": "Combat / Mounting and Dismounting / p. 15"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "ambiguous",
+      "ambiguity": {
+        "question": "Can you mount or dismount with less movement left than the cost? The grid rules require “enough movement left to pay for entering” a square; this rule states a cost and no such requirement, and does not say whether the cost can take movement below zero or must be refused.",
+        "fate": "unresolved",
+        "unresolvedReason": "RequiresInterpretation"
+      },
+      "dependsOn": [
+        "movement-deduction"
+      ],
+      "enabledBy": [
+        "mount-eligibility"
+      ],
+      "evidence": "During your move, you can mount a creature that is within 5 feet of you or dismount. Doing so costs an amount of movement equal to half your Speed (round down). For example, if your Speed is 30 feet, you spend 15 feet of movement to mount a horse.",
+      "status": "mapped",
+      "note": "Demonstrate an odd Speed (25 feet costs 12). On a grid see grid-speed-in-squares."
+    },
+    {
+      "id": "mount-control-requires-training",
+      "name": "You can control a mount only if it is trained to accept a rider",
+      "locator": {
+        "sourceId": "srd-5.2.1",
+        "citation": "Combat / Controlling a Mount / p. 16"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [],
+      "enabledBy": [
+        "mount-eligibility"
+      ],
+      "evidence": "You can control a mount only if it has been trained to accept a rider. Domesticated horses, mules, and similar creatures have such training.",
+      "status": "mapped",
+      "note": "Whether a creature is trained is a parameter; the second sentence gives instances, not a definition, and “similar creatures” is not decided here."
+    },
+    {
+      "id": "controlled-mount-turn",
+      "name": "A controlled mount shares your Initiative and can only Dash, Disengage or Dodge",
+      "locator": {
+        "sourceId": "srd-5.2.1",
+        "citation": "Combat / Controlling a Mount / p. 16"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [
+        "initiative-order",
+        "actions-table"
+      ],
+      "enabledBy": [
+        "mount-control-requires-training"
+      ],
+      "evidence": "The Initiative of a controlled mount changes to match yours when you mount it. It moves on your turn as you direct it, and it has only three action options during that turn: Dash, Disengage, and Dodge. A controlled mount can move and act even on the turn that you mount it.",
+      "status": "mapped",
+      "note": "The three actions are a closed set. The mount leaves its own place in initiative-order and acts on the rider's turn. Dash, Disengage and Dodge are actions-table."
+    },
+    {
+      "id": "independent-mount",
+      "name": "An independent mount keeps its Initiative and acts as it likes",
+      "locator": {
+        "sourceId": "srd-5.2.1",
+        "citation": "Combat / Controlling a Mount / p. 16"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "ambiguous",
+      "ambiguity": {
+        "question": "What makes a mount independent rather than controlled? The corpus defines it as one that “ignores your control” without saying whether an untrained mount is always independent, whether a trained mount may be, or who decides. And “moves and acts as it likes” names no decider for its choices.",
+        "fate": "unresolved",
+        "unresolvedReason": "RequiresInterpretation"
+      },
+      "dependsOn": [
+        "initiative-order"
+      ],
+      "enabledBy": [
+        "mount-eligibility"
+      ],
+      "evidence": "In contrast, an independent mount—one that lets you ride but ignores your control—retains its place in the Initiative order and moves and acts as it likes.",
+      "status": "mapped"
+    },
+    {
+      "id": "falling-off",
+      "name": "A DC 10 Dexterity save or fall off Prone when moved, knocked Prone, or the mount is",
+      "locator": {
+        "sourceId": "srd-5.2.1",
+        "citation": "Combat / Falling Off / p. 16"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "ambiguous",
+      "ambiguity": {
+        "question": "Who chooses the unoccupied space within 5 feet of the mount the rider lands in, and what happens if there is none? The corpus states neither.",
+        "fate": "unresolved",
+        "unresolvedReason": "RequiresInterpretation"
+      },
+      "dependsOn": [
+        "saving-throws",
+        "prone-condition"
+      ],
+      "enabledBy": [
+        "mount-eligibility"
+      ],
+      "crossReferences": [
+        {
+          "cites": "(see “Rules Glossary”)",
+          "resolvedBy": "prone-condition"
+        }
+      ],
+      "evidence": "If an effect is about to move your mount against its will while you’re on it, you must succeed on a DC 10 Dexterity saving throw or fall off, landing with the Prone condition (see “Rules Glossary”) in an unoccupied space within 5 feet of the mount. While mounted, you must make the same save if you’re knocked Prone or the mount is.",
+      "status": "mapped",
+      "note": "The save is saving-throws, outside the extent."
+    },
+    {
+      "id": "underwater-melee",
+      "name": "Underwater, a melee weapon attack without a Swim Speed has Disadvantage unless Piercing",
+      "locator": {
+        "sourceId": "srd-5.2.1",
+        "citation": "Combat / Impeded Weapons / p. 16"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [
+        "advantage-disadvantage"
+      ],
+      "evidence": "When making a melee attack roll with a weapon underwater, a creature that lacks a Swim Speed has Disadvantage on the attack roll unless the weapon deals Piercing damage.",
+      "status": "mapped",
+      "note": "Whether the fight is underwater, the attacker's Swim Speed and the weapon's damage type are parameters. Demonstrate all four combinations of Swim Speed and Piercing."
+    },
+    {
+      "id": "underwater-ranged",
+      "name": "Underwater, a ranged weapon attack misses beyond normal range and has Disadvantage within it",
+      "locator": {
+        "sourceId": "srd-5.2.1",
+        "citation": "Combat / Impeded Weapons / p. 16"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [
+        "normal-and-long-range",
+        "advantage-disadvantage"
+      ],
+      "evidence": "A ranged attack roll with a weapon underwater automatically misses a target beyond the weapon’s normal range, and the attack roll has Disadvantage against a target within normal range.",
+      "status": "mapped",
+      "note": "Applies whether or not the attacker has a Swim Speed. Replaces the long-range band of normal-and-long-range with an automatic miss."
+    },
+    {
+      "id": "underwater-fire-resistance",
+      "name": "Anything underwater has Resistance to Fire damage",
+      "locator": {
+        "sourceId": "srd-5.2.1",
+        "citation": "Combat / Fire Resistance / p. 16"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [
+        "damage-and-healing"
+      ],
+      "crossReferences": [
+        {
+          "cites": "(explained in “Damage and Healing”)",
+          "resolvedBy": "damage-and-healing"
+        }
+      ],
+      "evidence": "Anything underwater has Resistance to Fire damage (explained in “Damage and Healing”).",
+      "status": "mapped",
+      "note": "Resistance is in “Damage and Healing” (p. 17), outside the extent."
+    },
+    {
+      "id": "surprise-round",
+      "name": "Surprised combatants lose their first turn",
+      "locator": {
+        "sourceId": "srd-5.2.1",
+        "citation": "Combat / Initiative / p. 13"
+      },
+      "kind": "operation",
+      "scope": "out",
+      "clarity": "clear",
+      "dependsOn": [],
+      "absentFrom": {
+        "searched": [
+          "surprise round",
+          "first turn of the combat",
+          "can’t take a reaction until"
+        ]
+      },
+      "evidence": "Surprise. If a combatant is surprised by combat starting, that combatant has Disadvantage on their Initiative roll. For example, if an ambusher starts combat while hidden from a foe who is unaware that combat is starting, that foe is surprised.",
+      "status": "declined",
+      "note": "Absent. Earlier fifth-edition rules made a surprised creature unable to move or act on its first turn; this text's only consequence of surprise is Disadvantage on Initiative (surprise-disadvantage), stated where the other rule would be."
+    },
+    {
+      "id": "actions-table",
+      "name": "The game's main actions",
+      "locator": {
+        "sourceId": "srd-5.2.1",
+        "citation": "Playing the Game / Actions / p. 9"
+      },
+      "kind": "operation",
+      "scope": "out",
+      "clarity": "clear",
+      "dependsOn": [],
+      "crossReferences": [
+        {
+          "cites": "defined in more detail in “Rules Glossary.”",
+          "unmapped": "“Rules Glossary” (pp. 176–191) is outside this map's extent, which is the Combat section of “Playing the Game”, pp. 13–16."
+        }
+      ],
+      "evidence": "When you do something other than moving or communicating, you typically take an action. The Action table lists the game’s main actions, which are defined in more detail in “Rules Glossary.”",
+      "status": "declined",
+      "note": "Declined: Attack, Dash, Disengage, Dodge, Help, Hide, Influence, Magic, Ready, Search, Study and Utilize are on pp. 9–10 and in the Rules Glossary, outside the extent. In-scope entries name it where they consume an action."
+    },
+    {
+      "id": "bonus-actions",
+      "name": "One Bonus Action per turn, only when a feature grants one",
+      "locator": {
+        "sourceId": "srd-5.2.1",
+        "citation": "Playing the Game / Bonus Actions / p. 10"
+      },
+      "kind": "operation",
+      "scope": "out",
+      "clarity": "clear",
+      "dependsOn": [],
+      "evidence": "You can take only one Bonus Action on your turn, so you must choose which Bonus Action to use if you have more than one available.",
+      "status": "declined",
+      "note": "Declined: outside the extent (p. 10)."
+    },
+    {
+      "id": "reactions",
+      "name": "One Reaction until the start of your next turn",
+      "locator": {
+        "sourceId": "srd-5.2.1",
+        "citation": "Playing the Game / Reactions / p. 10"
+      },
+      "kind": "operation",
+      "scope": "out",
+      "clarity": "clear",
+      "dependsOn": [],
+      "evidence": "When you take a Reaction, you can’t take another one until the start of your next turn. If the reaction interrupts another creature’s turn, that creature can continue its turn right after the Reaction.",
+      "status": "declined",
+      "note": "Declined: outside the extent (p. 10). A gate outside the slice (0021): opportunity-attack names it in suspendedBy, and whether the attacker's Reaction is already spent is the caller's to state."
+    },
+    {
+      "id": "attack-rolls",
+      "name": "An attack roll hits if it equals or exceeds the target's AC",
+      "locator": {
+        "sourceId": "srd-5.2.1",
+        "citation": "Playing the Game / Attack Rolls / p. 7"
+      },
+      "kind": "operation",
+      "scope": "out",
+      "clarity": "clear",
+      "dependsOn": [],
+      "evidence": "An attack roll determines whether an attack hits a target. An attack roll hits if the roll equals or exceeds the target’s Armor Class.",
+      "status": "declined",
+      "note": "Declined: outside the extent (p. 7)."
+    },
+    {
+      "id": "advantage-disadvantage",
+      "name": "Advantage and Disadvantage",
+      "locator": {
+        "sourceId": "srd-5.2.1",
+        "citation": "Playing the Game / Advantage/Disadvantage / p. 7"
+      },
+      "kind": "operation",
+      "scope": "out",
+      "clarity": "clear",
+      "dependsOn": [],
+      "evidence": "Sometimes a D20 Test is modified by Advantage or Disadvantage.",
+      "status": "declined",
+      "note": "Declined: how Advantage and Disadvantage resolve is on pp. 7–8, outside the extent. Eight in-scope entries grant one or the other and name this entry."
+    },
+    {
+      "id": "saving-throws",
+      "name": "Saving throws",
+      "locator": {
+        "sourceId": "srd-5.2.1",
+        "citation": "Playing the Game / Saving Throws / p. 7"
+      },
+      "kind": "operation",
+      "scope": "out",
+      "clarity": "clear",
+      "dependsOn": [],
+      "evidence": "A saving throw—also called a save—represents an attempt to evade or resist a threat, such as a fiery explosion, a blast of poisonous gas, or a spell trying to invade your mind.",
+      "status": "declined",
+      "note": "Declined: outside the extent (p. 7)."
+    },
+    {
+      "id": "ability-checks",
+      "name": "Ability checks, named for the ability they use",
+      "locator": {
+        "sourceId": "srd-5.2.1",
+        "citation": "Playing the Game / Ability Checks / p. 6"
+      },
+      "kind": "operation",
+      "scope": "out",
+      "clarity": "clear",
+      "dependsOn": [],
+      "evidence": "An ability check is named for the ability modifier it uses: a Strength check, an Intelligence check, and so on.",
+      "status": "declined",
+      "note": "Declined: outside the extent (p. 6). Initiative is a Dexterity check."
+    },
+    {
+      "id": "prone-condition",
+      "name": "The Prone condition",
+      "locator": {
+        "sourceId": "srd-5.2.1",
+        "citation": "Rules Glossary / Prone [Condition] / p. 186"
+      },
+      "kind": "operation",
+      "scope": "out",
+      "clarity": "clear",
+      "dependsOn": [],
+      "evidence": "While you have the Prone condition, you experience the following effects.",
+      "status": "declined",
+      "note": "Declined: the condition's effects are in the Rules Glossary, outside the extent. Three in-scope entries impose it."
+    },
+    {
+      "id": "incapacitated-condition",
+      "name": "The Incapacitated condition",
+      "locator": {
+        "sourceId": "srd-5.2.1",
+        "citation": "Rules Glossary / Incapacitated [Condition] / p. 184"
+      },
+      "kind": "operation",
+      "scope": "out",
+      "clarity": "clear",
+      "dependsOn": [],
+      "evidence": "While you have the Incapacitated condition, you experience the following effects.",
+      "status": "declined",
+      "note": "Declined: outside the extent. The glossary entry also gives Disadvantage on Initiative to a creature Incapacitated when it rolls (under the heading “Surprised.”), a second Initiative modifier outside the slice that initiative-roll does not name; see the README."
+    },
+    {
+      "id": "movement-modes-glossary",
+      "name": "Climbing, crawling, jumping and swimming costs",
+      "locator": {
+        "sourceId": "srd-5.2.1",
+        "citation": "Rules Glossary / Climbing / p. 178"
+      },
+      "kind": "operation",
+      "scope": "out",
+      "clarity": "clear",
+      "dependsOn": [],
+      "evidence": "While you’re climbing, each foot of movement costs 1 extra foot (2 extra feet in Difficult Terrain).",
+      "status": "declined",
+      "note": "Declined: the four modes are separate Rules Glossary entries, outside the extent. Climbing is quoted as the one that also names Difficult Terrain; Crawling, Jumping and Swimming are declined with it."
+    },
+    {
+      "id": "initiative-score-option",
+      "name": "The GM may use Initiative scores instead of rolling",
+      "locator": {
+        "sourceId": "srd-5.2.1",
+        "citation": "Rules Glossary / Initiative / p. 184"
+      },
+      "kind": "operation",
+      "scope": "out",
+      "clarity": "clear",
+      "dependsOn": [],
+      "evidence": "Sometimes a GM might have combatants use their Initiative scores instead of rolling Initiative. Your Initiative score equals 10 plus your Dexterity modifier.",
+      "status": "declined",
+      "note": "Declined: outside the extent. A gate outside the slice (0021): initiative-roll names it in suspendedBy. Whether the GM has chosen it is the caller's to state, and when it holds no Initiative is drawn, which changes every later draw of a seeded game."
+    },
+    {
+      "id": "surprise-glossary",
+      "name": "Surprise, in the Rules Glossary",
+      "locator": {
+        "sourceId": "srd-5.2.1",
+        "citation": "Rules Glossary / Surprise / p. 189"
+      },
+      "kind": "operation",
+      "scope": "out",
+      "clarity": "clear",
+      "dependsOn": [],
+      "evidence": "If a creature is caught unawares by the start of combat, that creature is surprised, which causes it to have Disadvantage on its Initiative roll.",
+      "status": "declined",
+      "note": "Declined: outside the extent. It restates surprise-disadvantage and gives surprised a second undefined phrase (“caught unawares”). Recorded so that the in-slice gap can point at it."
+    },
+    {
+      "id": "opportunity-attacks-glossary",
+      "name": "Opportunity Attacks, in the Rules Glossary",
+      "locator": {
+        "sourceId": "srd-5.2.1",
+        "citation": "Rules Glossary / Opportunity Attacks / p. 185"
+      },
+      "kind": "operation",
+      "scope": "out",
+      "clarity": "clear",
+      "dependsOn": [],
+      "evidence": "You can make an Opportunity Attack when a creature that you can see leaves your reach using its action, its Bonus Action, its Reaction, or one of its speeds.",
+      "status": "declined",
+      "note": "Declined: outside the extent. It restates opportunity-attack with the ways of leaving listed, which is what opportunity-attack-avoidance's second sentence excludes. Read together the two passages agree; no conflict is recorded."
+    },
+    {
+      "id": "damage-and-healing",
+      "name": "Damage and Healing",
+      "locator": {
+        "sourceId": "srd-5.2.1",
+        "citation": "Damage and Healing / p. 16"
+      },
+      "kind": "operation",
+      "scope": "out",
+      "clarity": "clear",
+      "dependsOn": [],
+      "evidence": "Injury and death are frequent threats, as detailed in the following rules.",
+      "status": "declined",
+      "note": "Declined: “Damage and Healing” begins on p. 16, inside the page extent, and is a separate section of “Playing the Game”, not part of “Combat”. A page extent cannot say where on a page a slice ends; see the README. Nothing in it is mapped."
+    }
+  ]
+}

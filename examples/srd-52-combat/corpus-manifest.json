@@ -1,0 +1,28 @@
+{
+  "schemaVersion": 1,
+  "corpora": [
+    {
+      "sourceId": "srd-5.2.1",
+      "title": "System Reference Document 5.2.1 (Wizards of the Coast)",
+      "edition": "5.2.1, the English PDF on the official SRD page, last modified 2025-05-01",
+      "adapter": "pdftotext-page-marked",
+      "locatorGrammar": "heading-path-and-printed-page",
+      "contentHash": "c55926cb77bc7ea09096fc652db1411d763eae89d430c52221ed8709a075b100",
+      "hashDerivation": "srd-5.2.1-pdftotext-24.02.0-page-marked",
+      "boundaryPolicy": "pin-in-repo",
+      "licence": "CC-BY-4.0. Attribution required: This work includes material from the System Reference Document 5.2.1 (“SRD 5.2.1”) by Wizards of the Coast LLC, available at https://www.dndbeyond.com/srd. The SRD 5.2.1 is licensed under the Creative Commons Attribution 4.0 International License, available at https://creativecommons.org/licenses/by/4.0/legalcode.",
+      "verification": "committed-copy",
+      "committedPath": "srd-5.2.1.txt",
+      "quotation": "verbatim",
+      "randomness": "seeded",
+      "retrievedFrom": "https://media.dndbeyond.com/compendium-images/srd/5.2/SRD_CC_v5.2.1.pdf",
+      "sourcePdf": {
+        "committedPath": "SRD_CC_v5.2.1.pdf",
+        "bytes": 6031375,
+        "sha256": "8974902d109d6e63672d7c490bde9ccf052410503d9cfa768237154fbc5e3d87",
+        "retrieved": "2026-09-14"
+      },
+      "references": []
+    }
+  ]
+}

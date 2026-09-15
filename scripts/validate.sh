@@ -51,9 +51,10 @@ check_map_reviews() {
   python3 tools/check-map-review.py
 }
 
-# A citation is a promise. Two grammars, two checkers: page markers for a Gutenberg text,
-# containment in the section tree for eCFR XML. Neither generalises to the other, and
-# pointing one at the wrong corpus exits 2 rather than passing.
+# A citation is a promise. Three grammars, three checkers: page markers for a Gutenberg text,
+# containment in the section tree for eCFR XML, and page markers over PDF-extracted text held
+# exactly. None generalises to the others, and pointing one at the wrong corpus exits 2 rather
+# than passing.
 check_locators() {
   python3 tools/check-locators.py \
     examples/hoyle-backgammon/corpus-map.json \
@@ -63,6 +64,13 @@ check_locators() {
   python3 examples/faa-part-107/check-locators-section.py \
     examples/faa-part-107-temporal/corpus-map-2020-01-01.json \
     examples/faa-part-107-temporal/part107-2020-01-01.xml || return 1
+  # A third grammar: page markers over text extracted from a PDF. extract.py first holds the
+  # committed text to the manifest's contentHash and the committed PDF to sourcePdf.sha256, and
+  # re-derives the text from the PDF where the pinned pdftotext is installed (NOT VERIFIED,
+  # printed, where it is not). The locator checker then holds each quote to the text.
+  python3 examples/srd-52-combat/extract.py --check || return 1
+  python3 examples/srd-52-combat/check-locators-pdf-text.py \
+    examples/srd-52-combat/corpus-map.json examples/srd-52-combat/srd-5.2.1.txt || return 1
 }
 
 # Every map that declares a package version passes the gate its publish workflow runs, and
