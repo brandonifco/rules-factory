@@ -41,6 +41,8 @@ MANIFEST = {
             "locatorGrammar": "printed-page",
             "contentHash": "a" * 64,
             "hashDerivation": "demo-plain-text",
+            # 0024: the committed text is derived from a published file, and quotes are of it.
+            "quotedText": {"derivation": "demo-plain-text", "extractedFrom": "demo.pdf"},
             "boundaryPolicy": "pin-in-repo",
             "licence": "public-domain",
             # 0013: how the baseline is verified, and whether a map may quote the corpus.
@@ -136,7 +138,11 @@ def valid_map():
             entry("next-game-opening", kind="operation", dependsOn=["speed-limit"],
                   evidence="After a gammon the players throw again for the right to begin, "
                            "as at starting.",
-                  crossReferences=[{"cites": "as at starting", "resolvedBy": "speed-limit"}]),
+                  crossReferences=[{"cites": "as at starting", "resolvedBy": "speed-limit"}],
+                  # 0024: the extraction garbles the passage, and the page reads otherwise.
+                  extraction={"defect": "split-by-sidebar",
+                              "renderedReading": "After a gammon the players throw again for the "
+                                                 "right to begin, as at starting, whoever won."}),
             derived_entry("hit-pays-single-stake", ["speed-limit", "speed-within-limit"]),
         ],
     }
@@ -275,6 +281,28 @@ class TestExtent(MapCase):
         self.assertEqual(self.status_of(output, "extent"), "fail", output)
         self.assertEqual(code, 1, output)
         return output
+
+    def test_a_page_extent_may_end_before_a_heading(self):
+        # 0024: the SRD combat chapter ends halfway down p. 16, where "Damage and Healing" begins.
+        document = valid_map()
+        document["extent"]["endsBefore"] = "Damage and Healing"
+        code, output = self.run_tool(document)
+        self.assertEqual(self.status_of(output, "extent"), "ok", output)
+        self.assertIn("ending before the heading 'Damage and Healing' on p. 1", output)
+        self.assertEqual(code, 0, output)
+
+    def test_an_empty_ends_before_fails(self):
+        self.assert_catches("extent", lambda d: d["extent"].update(endsBefore=""))
+
+    def test_an_ends_before_that_is_not_one_line_fails(self):
+        self.assert_catches("extent", lambda d: d["extent"].update(endsBefore="Damage\nand Healing"))
+
+    def test_an_ends_before_that_is_not_text_fails(self):
+        self.assert_catches("extent", lambda d: d["extent"].update(endsBefore=16))
+
+    def test_starts_after_is_not_a_field_of_a_page_extent(self):
+        # No real case needs it (0024), so it is refused like any other unknown field.
+        self.assert_catches("extent", lambda d: d["extent"].update(startsAfter="Combat"))
 
     def test_a_page_extent_that_is_not_a_range_fails(self):
         self.assert_catches("extent", lambda d: d["extent"].update({"from": 4, "to": 1}))
@@ -566,6 +594,89 @@ class TestManifest(MapCase):
         self.assertEqual(self.status_of(output, "manifest"), "skip", output)
         self.assertIn("NOT VERIFIED", output)
         self.assertEqual(code, 1, output)
+
+
+class TestExtraction(MapCase):
+    """0024: quotes of an extraction are declared so, and a garbled one declares its defect."""
+
+    GARBLED = 9  # next-game-opening, in valid_map()'s order
+
+    def manifest_without(self, mutate):
+        manifest = json.loads(json.dumps(MANIFEST))
+        mutate(manifest["corpora"][0])
+        self.write_manifest(manifest)
+
+    def test_the_fixture_declaration_and_defect_pass(self):
+        code, output = self.run_tool(valid_map())
+        self.assertEqual(self.status_of(output, "extraction"), "ok", output)
+        self.assertIn("1 renderedReading not verified here", output)
+
+    def test_a_defect_outside_the_closed_list_fails(self):
+        self.assert_catches("extraction", lambda d: d["entries"][self.GARBLED]["extraction"]
+                            .update(defect="joined-hyphenation"))
+
+    def test_a_defect_without_a_rendered_reading_fails(self):
+        self.assert_catches("extraction", lambda d: d["entries"][self.GARBLED]["extraction"]
+                            .pop("renderedReading"))
+
+    def test_a_rendered_reading_that_is_the_evidence_fails(self):
+        def mutate(document):
+            garbled = document["entries"][self.GARBLED]
+            garbled["extraction"]["renderedReading"] = "  " + garbled["evidence"].replace(" ", "\n")
+        self.assert_catches("extraction", mutate)
+
+    def test_an_unknown_field_of_extraction_fails(self):
+        self.assert_catches("extraction", lambda d: d["entries"][self.GARBLED]["extraction"]
+                            .update(checkedBy="a person"))
+
+    def test_an_extraction_that_is_not_an_object_fails(self):
+        self.assert_catches("extraction", lambda d: d["entries"][self.GARBLED]
+                            .update(extraction="interleaved-table"))
+
+    def test_extraction_beside_beyond_adapter_fails(self):
+        self.assert_catches("extraction", lambda d: d["entries"][self.GARBLED].update(
+            beyondAdapter={"adapter": "plain-text", "modality": "table"}))
+
+    def test_a_defect_on_a_corpus_not_declaring_quoted_text_fails(self):
+        code, output = self.run_tool(valid_map())
+        self.assertEqual(code, 0, output)
+        self.manifest_without(lambda corpus: corpus.pop("quotedText"))
+        code, output = self.run_tool(valid_map())
+        self.assertEqual(self.status_of(output, "extraction"), "fail", output)
+        self.assertIn("declares no `quotedText`", output)
+
+    def test_quoted_text_naming_another_derivation_fails(self):
+        self.manifest_without(lambda corpus: corpus["quotedText"].update(derivation="pdf-bytes"))
+        code, output = self.run_tool(valid_map())
+        self.assertEqual(self.status_of(output, "extraction"), "fail", output)
+        self.assertIn("not the corpus's hashDerivation", output)
+
+    def test_quoted_text_naming_nothing_extracted_fails(self):
+        self.manifest_without(lambda corpus: corpus["quotedText"].pop("extractedFrom"))
+        code, output = self.run_tool(valid_map())
+        self.assertEqual(self.status_of(output, "extraction"), "fail", output)
+        self.assertIn("names no `extractedFrom`", output)
+
+    def test_quoted_text_that_is_not_an_object_fails(self):
+        self.manifest_without(lambda corpus: corpus.update(quotedText="the pdftotext output"))
+        code, output = self.run_tool(valid_map())
+        self.assertEqual(self.status_of(output, "extraction"), "fail", output)
+
+    def test_an_unknown_field_of_quoted_text_fails(self):
+        self.manifest_without(lambda corpus: corpus["quotedText"].update(normalised=True))
+        code, output = self.run_tool(valid_map())
+        self.assertEqual(self.status_of(output, "extraction"), "fail", output)
+
+    def test_a_derived_entry_carrying_extraction_fails(self):
+        self.assert_catches("derived", lambda d: d["entries"][10].update(
+            extraction={"defect": "interleaved-table", "renderedReading": "Half | +2"}))
+
+    def test_nothing_declared_skips_without_failing_the_run(self):
+        document = valid_map()
+        document["entries"][self.GARBLED].pop("extraction")
+        self.manifest_without(lambda corpus: corpus.pop("quotedText"))
+        code, output = self.run_tool(document)
+        self.assertEqual(self.status_of(output, "extraction"), "skip", output)
 
 
 class TestPostures(MapCase):

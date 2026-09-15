@@ -5,6 +5,7 @@ from .schema import check_required_fields, check_schema, check_unique_ids, check
 from .extent import check_extent
 from .relations import check_derived, check_gates, check_no_cycles, check_references
 from .manifest import check_manifest, check_postures
+from .extraction import check_extraction
 from .ambiguity import check_conflicts, check_decision_records, check_exclusions
 from .status import check_absent, check_status
 from .crossrefs import check_cross_references
@@ -49,6 +50,7 @@ CHECKS = [
     ("derived", check_derived),
     ("manifest", check_manifest),
     ("postures", check_postures),
+    ("extraction", check_extraction),
     ("exclusions", check_exclusions),
     ("status", check_status),
     ("decision-records", check_decision_records),

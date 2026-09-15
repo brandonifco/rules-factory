@@ -1,0 +1,19 @@
+{
+  "about": "Independent verdict (0017) on #113 and #114 (docs/decisions/0024). The change adds structure and no rule's meaning: extent.endsBefore \"Damage and Healing\"; extraction {defect, renderedReading} on six entries (cover-bonuses, cover-degree and total-cover interleaved-table; initiative-ties and initiative-ties-uncovered interrupted-by-page-furniture; attack-structure split-by-sidebar); and note sentences on cover-bonuses and damage-and-healing that pointed at the README for what these fields now carry. The shape of every one of those is checked by check-map.py (extent, extraction) and against the text by check-locators-pdf-text.py (extent-end, extraction). The one thing no check verifies is renderedReading, which asserts what the printed page says, table values included. That is what this verdict covers, and only that. The reviewer was a separate agent context. It was given only: pdftoppm renders of pp. 13, 14 and 15 of SRD_CC_v5.2.1.pdf at 110 dpi, a 200 dpi crop of the p. 15 Cover table, and proposed-readings.json (the three distinct renderedReading values, the entries carrying each, and where on the page each passage is). It was told not to read the text extraction or the repository, and to transcribe each passage from the image before comparing. It did not see the map, the extraction, the defects or this change's reasoning. One round. `sha256` is the map these readings are in. `verdicts` is the reviewer's output, unedited.",
+  "sha256": "ba27dd0e0d58de6c9a815ff87732aaa2baee6e3cfe6254742082328ca288edd4",
+  "reviewer": "independent reviewer, separate context",
+  "read": [
+    "page-013.png",
+    "page-014.png",
+    "page-015.png",
+    "cover-table-200dpi-015.png",
+    "proposed-readings.json"
+  ],
+  "summary": "Round 1: 3 of 3 readings agree (6 entries), 0 disagree.",
+  "verdicts": [
+    {"entries": ["initiative-ties", "initiative-ties-uncovered"], "page": 13, "verdict": "agree", "reading_from_page": "Ties. If a tie occurs, the GM decides the order among tied monsters, and the players decide the order among tied characters. The GM decides the order if the tie is between a monster and a player character.", "differences": [], "reason": "The paragraph starts at the bottom of the left column and ends at the top of the right column. The proposal matches it word for word."},
+    {"entries": ["attack-structure"], "page": "14 and 15", "verdict": "agree", "reading_from_page": "Whether you strike with a Melee weapon, fire a Ranged weapon, or make an attack roll as part of a spell, an attack has the following structure:", "differences": [], "reason": "The sentence starts at the end of p. 14's right column and finishes at the top of p. 15's left column. It matches the proposal exactly, including the capitals in Melee and Ranged and the final colon."},
+    {"entries": ["cover-bonuses", "cover-degree", "total-cover"], "page": 15, "verdict": "agree", "reading_from_page": "Degree | Benefit to Target | Offered By …\nHalf | +2 bonus to AC and Dexterity saving throws | Another creature or an object that covers at least half of the target\nThree-Quarters | +5 bonus to AC and Dexterity saving throws | An object that covers at least three-quarters of the target\nTotal | Can’t be targeted directly | An object that covers the whole target", "differences": [], "reason": "Every cell matches the printed table in its row and column. \"Three-/Quarters\" breaks at the word's own hyphen, so the hyphen belongs to the word, and the \"three-quarters\" in the Offered By cell is hyphenated mid-line as printed."}
+  ],
+  "reviewerSummary": "All three proposed readings match the printed pages word for word and value for value."
+}

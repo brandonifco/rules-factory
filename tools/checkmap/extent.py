@@ -36,13 +36,19 @@ def cited_section(citation):
 
 
 def _page_extent(extent, bad):
-    for field in sorted(set(extent) - {"unit", "from", "to"}):
-        bad.append(f"  X  extent: `{field}` is not a field of a page extent (unit, from, to)")
+    for field in sorted(set(extent) - {"unit", "from", "to", "endsBefore"}):
+        bad.append(f"  X  extent: `{field}` is not a field of a page extent (unit, from, to, endsBefore)")
     first, last = extent.get("from"), extent.get("to")
     if not all(isinstance(v, int) and not isinstance(v, bool) for v in (first, last)):
         bad.append(f"  X  extent: a page extent names integer `from` and `to`; got {first!r}..{last!r}")
     elif last < first:
         bad.append(f"  X  extent: `to` {last} is before `from` {first}")
+    if "endsBefore" in extent:
+        heading = extent.get("endsBefore")
+        if not isinstance(heading, str) or not heading.strip() or "\n" in heading \
+                or heading != heading.strip():
+            bad.append(f"  X  extent: endsBefore is {heading!r}; it names one heading on page `to`, "
+                       f"as a single line of text with no surrounding whitespace (0024)")
 
 
 def _section_extent(extent, bad):
@@ -72,7 +78,10 @@ def check_extent(ctx):
     """The declared extent has the shape of its unit, and every section cited lies inside it.
 
     A `page` extent is a range, `{unit, from, to}`. Whether every page of it is reached is
-    `check-locators.py`'s `coverage`, which reads the corpus.
+    `check-locators.py`'s `coverage`, which reads the corpus. It may also name `endsBefore`, a
+    heading on page `to` at which the slice stops (0024). Only its shape is checked here. That
+    the heading is a line on that page, and that no in-scope quote lies at or after it, need the
+    corpus's lines, and the page-marked PDF text checker is what reads them.
 
     A `section-designation` extent is a list, `{unit, sections: ["§ 107.25", ...]}` (0020):
     CFR sections are not contiguous in what a mapper reads, so a range would claim the sections
@@ -100,7 +109,9 @@ def check_extent(ctx):
                     "the declared extent is in no unit a map may use")
     if unit == "page":
         _page_extent(extent, bad)
-        return verdict(bad, f"page extent {extent.get('from')}-{extent.get('to')} is well formed; "
+        end = (f", ending before the heading {extent['endsBefore']!r} on p. {extent.get('to')}"
+               if isinstance(extent.get("endsBefore"), str) else "")
+        return verdict(bad, f"page extent {extent.get('from')}-{extent.get('to')}{end} is well formed; "
                             f"whether each page is reached is check-locators' `coverage`",
                        "the declared extent is malformed")
 

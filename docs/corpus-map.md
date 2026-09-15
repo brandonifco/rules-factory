@@ -55,11 +55,22 @@ citations run 271–277, and the throw enumeration that #20 is about is on 278�
 
 ```json
 "extent": { "unit": "page", "from": 271, "to": 280 }
+"extent": { "unit": "page", "from": 13, "to": 16, "endsBefore": "Damage and Healing" }
 "extent": { "unit": "section-designation", "sections": ["§ 107.25", "§ 107.29", "§ 107.31"] }
 ```
 
 - **`page`** — a range of printed pages, `from` ≤ `to`, for a corpus with page markers in its
   text. `check-locators.py`'s `coverage` names every page in it no verified quote reaches.
+  **It may end before a heading on its last page**, `"endsBefore": "Damage and Healing"`
+  ([0024](decisions/0024-a-quote-is-of-the-extraction-and-a-page-extent-can-end-at-a-heading.md),
+  [#114](https://github.com/brandonifco/rules-factory/issues/114)): the SRD combat chapter ends
+  halfway down p. 16, and a whole-page range claims the section after it. `check-map.py` checks
+  that it is one line of text. `check-locators-pdf-text.py`'s `extent-end` requires the heading
+  to occur exactly once as a line on page `to` and fails any `scope: in` quote on that page at or
+  after it, or running across it. `absence` searches only up to the heading, and a quote after it
+  does not reach the page for `coverage`. "After" is in the extraction's reading order.
+  `check-locators.py` collapses lines, cannot find the heading, and reports such an extent NOT
+  VERIFIED. There is no `startsAfter`; no map has needed one.
 - **`section-designation`** — a **list** of sections, each a bare designation (`§ 107.25`, never
   `§ 107.25(a)`), for a corpus cited by section. A list and not a range, because what a mapper
   reads of a CFR part is not contiguous: the Part 107 slice is twelve sections of subpart B and
@@ -166,6 +177,7 @@ before either has been implemented.
 | `enabledBy` | Entry ids. The rules that make this one reachable at runtime; it does not apply until one holds. Absent on an entry no rule opens. Orders nothing. See below. |
 | `suspendedBy` | Entry ids. The rules that make this one unreachable while they hold. Absent on an entry no rule closes. Orders nothing. See below. |
 | `beyondAdapter` | Present only when the declared adapter cannot read the rule the locator cites. Names the adapter and the modality. See below. |
+| `extraction` | Present only when the corpus text is an extraction (`quotedText` in the manifest) and it garbles this entry's passage. Names the defect and the passage as read from the rendered page. See below. |
 | `definedElsewhere` | Present only when the rule's meaning is fixed in a corpus that was not admitted. Names the manifest `references` entry. See below. |
 | `absentFrom` | Present only when the corpus does **not** state the rule at all. Names the terms searched for. See below. |
 | `derivedFrom` | Present only when no sentence states the fact and two or more in-scope entries entail it. Entry ids. The entry then carries no `locator` and no `evidence`. See below. |
@@ -522,6 +534,42 @@ loses exactly the tables a rules engine most needs. No trial has produced that �
 corpora were text end to end — and the field does not detect it. It records a limit a human
 recognised. An adapter that silently drops a table produces an entry nobody writes, and no
 field can help with an entry that does not exist.
+
+### `extraction`
+
+The rule is readable, and the extraction the corpus is quoted from reads it wrongly. Decided in
+[0024](decisions/0024-a-quote-is-of-the-extraction-and-a-page-extent-can-end-at-a-heading.md)
+([#113](https://github.com/brandonifco/rules-factory/issues/113)).
+
+```json
+"extraction": { "defect": "interrupted-by-page-furniture",
+                "renderedReading": "The GM decides the order if the tie is between a monster and a player character." }
+```
+
+**`evidence` stays verbatim of the extraction**, because that is what a checker can hold it to,
+and the manifest says so with `quotedText` (below). Where the extraction differs from the page in
+a way that changes what the passage says, the entry declares it. `defect` is closed, with the
+three values trial 7's SRD map gave:
+
+- `interrupted-by-page-furniture` — a folio or running header sits inside the quote
+  (`initiative-ties`);
+- `split-by-sidebar` — a sidebar lies between a sentence's halves, so the quote begins or ends
+  mid-sentence (`attack-structure`);
+- `interleaved-table` — a table's cells come out out of order (`cover-bonuses`).
+
+`renderedReading` is the passage as read from the rendered page, and must differ from `evidence`.
+`check-map.py --only extraction` refuses the field on a corpus with no `quotedText`, beside
+`beyondAdapter`, under `quotation: withheld`, and on a derived entry.
+`check-locators-pdf-text.py`'s `extraction` tests each declared defect at every occurrence of the
+quote: a folio line inside it, a fragment, three or more blank-line-separated blocks. It fails a
+quote that runs across a folio line and does not declare the furniture. **It prints every
+`renderedReading` NOT VERIFIED.** Nothing reads the page. A reviewer does, and a map change that
+adds or alters a rendered reading carries a review of it (0017).
+
+**What it does not buy.** The tests show that a declared defect has its shape. They cannot show
+that cells are out of order or that the text between two halves is a sidebar. An undeclared
+interleaved table passes. A joined line-end hyphen or a space after a line-end dash changes no
+word of a rule, so neither is a defect. Both are covered by `quotedText`.
 
 ### `definedElsewhere`
 
@@ -892,6 +940,20 @@ declares it from the rules. Nothing infers it, and a missing value is a failure,
 `evidence` on an entry whose corpus is `withheld`. It hashes nothing; verifying the bytes and
 reporting the posture in force is an engine gate's job.
 
+**`quotedText`** says what a quote is verbatim of when the committed text is derived from what
+was published
+([0024](decisions/0024-a-quote-is-of-the-extraction-and-a-page-extent-can-end-at-a-heading.md)):
+
+```json
+"quotedText": { "derivation": "srd-5.2.1-pdftotext-24.02.0-page-marked", "extractedFrom": "SRD_CC_v5.2.1.pdf" }
+```
+
+`derivation` must be the corpus's `hashDerivation`, since quotes are held to the bytes
+`contentHash` covers and to no others. `extractedFrom` names the published file. It need not be
+beside the manifest, since a map package does not carry it; the derivation's own check holds the
+text to it. A corpus without it is quoted as published, and
+none of its entries may carry `extraction`.
+
 `references` lists corpora this one defers to — a regulation citing another title, a
 rulebook citing a supplement — each marked admitted or not. Those references are the
 boundary of any engine built from the corpus, and naming them makes that boundary
@@ -1002,6 +1064,13 @@ Open questions are tracked as issues so they are worked rather than admired:
   — a `section-designation` extent is a list of sections and every locator cites inside it;
   "introductory text" is in the grammar and means the lead-in only; the manifest is never inline;
   and `definedElsewhere` alone answers a pointer to an unadmitted corpus.
+- [#113](https://github.com/brandonifco/rules-factory/issues/113),
+  [#114](https://github.com/brandonifco/rules-factory/issues/114) — in the first PDF, a quote is
+  verbatim of the extraction and not of the page, and a page extent could not end mid-page.
+  Decided:
+  [0024](decisions/0024-a-quote-is-of-the-extraction-and-a-page-extent-can-end-at-a-heading.md)
+  — the manifest declares `quotedText`, an entry the extraction garbles declares `extraction`
+  with its rendered reading (printed as not verified), and a page extent may name `endsBefore`.
 
 **Where a decline's runtime reason lives.** Opened by 0004, answered by 0005: an entry whose
 meaning is fixed in an unadmitted corpus takes `definedElsewhere`, parallel to
