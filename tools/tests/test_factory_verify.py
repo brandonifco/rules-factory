@@ -465,5 +465,126 @@ class TestRelock(VerifyCase):
         self.assertEqual(before, self.locks())
 
 
+def nuget_lock(pins, transitive=False, extra=None):
+    """A packages.lock.json in NuGet's shape resolving `pins` ({id: version}) in two frameworks."""
+    kind = "CentralTransitive" if transitive else "Direct"
+    packages = {package: {"type": kind, "requested": f"[{version}, )", "resolved": version, "contentHash": "x=="}
+                for package, version in pins.items()}
+    packages.update(extra or {})
+    return json.dumps({"version": 2, "dependencies": {"net10.0": packages, "net8.0": packages}}, indent=2) + "\n"
+
+
+class TestStaleLocks(unittest.TestCase):
+    """`stale_locks`: which lock-file entries disagree with the generated pins."""
+
+    PINS = {"ruleskernel": "0.2.0", "rulesfactory.maps.hoylebackgammon": "[5.0.0]"}
+
+    def engine(self, locks):
+        root = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, root, True)
+        for relative, text in locks.items():
+            path = os.path.join(root, *relative.split("/"))
+            os.makedirs(os.path.dirname(path), exist_ok=True)
+            with open(path, "w", encoding="utf-8") as handle:
+                handle.write(text)
+        return root
+
+    def test_agreeing_direct_and_transitive_entries_are_not_stale(self):
+        root = self.engine({
+            "src/E/packages.lock.json": nuget_lock({"RulesKernel": "0.2.0", "RulesFactory.Maps.HoyleBackgammon": "5.0.0"}),
+            "tests/E.Tests/packages.lock.json": nuget_lock({"RulesKernel": "0.2.0"}, transitive=True),
+        })
+        self.assertEqual(verify_step.stale_locks(root, self.PINS), [])
+
+    def test_disagreeing_entries_name_file_package_and_both_versions(self):
+        root = self.engine({
+            "src/E/packages.lock.json": nuget_lock({"RulesKernel": "0.2.0", "RulesFactory.Maps.HoyleBackgammon": "4.0.0"}),
+            "tests/E.Tests/packages.lock.json": nuget_lock({"RulesKernel": "0.1.0"}, transitive=True),
+        })
+        self.assertEqual(verify_step.stale_locks(root, self.PINS), [
+            ("src/E/packages.lock.json", "RulesFactory.Maps.HoyleBackgammon", "4.0.0", "[5.0.0]"),
+            ("tests/E.Tests/packages.lock.json", "RulesKernel", "0.1.0", "0.2.0"),
+        ])
+
+    def test_packages_outside_the_pin_set_are_ignored(self):
+        other = {"xunit": {"type": "Direct", "requested": "[2.9.0, )", "resolved": "2.9.0"},
+                 "RulesKernel.Randomness": {"type": "Direct", "resolved": "0.1.0"}}
+        root = self.engine({"src/E/packages.lock.json": nuget_lock({"RulesKernel": "0.2.0"}, extra=other)})
+        self.assertEqual(verify_step.stale_locks(root, self.PINS), [])
+
+    def test_versions_compare_as_nuget_normalises_them(self):
+        root = self.engine({"src/E/packages.lock.json": nuget_lock({"RulesKernel": "0.2", "RulesFactory.Maps.HoyleBackgammon": "5.0.0.0"})})
+        self.assertEqual(verify_step.stale_locks(root, self.PINS), [])
+
+    def test_an_unreadable_lock_file_is_reported(self):
+        root = self.engine({"src/E/packages.lock.json": "{ not json"})
+        ((path, package, _, _),) = verify_step.stale_locks(root, self.PINS)
+        self.assertEqual((path, package), ("src/E/packages.lock.json", "(unreadable)"))
+
+    def test_no_lock_files_is_nothing_stale(self):
+        self.assertEqual(verify_step.stale_locks(self.engine({}), self.PINS), [])
+
+
+class TestNoVerifyStaleLocks(VerifyCase):
+    """--no-verify cannot re-lock, so it refuses lock files the generated pins have moved past."""
+
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        cls.nupkg_bumped = pack_version(HOYLE, "6.0.0", cls.shared)
+        cls.kernel = verify_step.read_pins(cls.base)["ruleskernel"]
+        cls.map_id = f"RulesFactory.Maps.{NAME}"
+        assert cls.map_id.lower() in verify_step.read_pins(cls.base)
+
+    def write_locks(self, map_version):
+        pins = {"RulesKernel": self.kernel, self.map_id: map_version}
+        for relative, text in ((f"src/{NAME}/packages.lock.json", nuget_lock(pins)),
+                               (f"tests/{NAME}.Tests/packages.lock.json", nuget_lock(pins, transitive=True))):
+            with open(os.path.join(self.engine, *relative.split("/")), "w", encoding="utf-8") as handle:
+                handle.write(text)
+
+    def produce_bumped(self, *extra):
+        return run(["produce", "--package", self.nupkg_bumped, "--corpus", CORPUS, "--name", NAME,
+                    "--out", self.engine, "--allow-dirty", *extra])
+
+    def test_stale_lock_files_are_refused_and_the_engine_is_byte_identical(self):
+        self.write_locks("5.0.0")
+        before = snapshot(self.engine)
+        code, output = self.produce_bumped("--no-verify")
+        self.assertEqual(code, 1, output)
+        self.assertIn("REFUSED -- --no-verify cannot re-lock", output)
+        for project in (f"src/{NAME}", f"tests/{NAME}.Tests"):
+            self.assertIn(f"{project}/packages.lock.json: {self.map_id} locked at 5.0.0, pinned at [6.0.0]", output)
+        self.assertIn("produce without --no-verify", output)
+        self.assertIn("scripts/validate.sh lock", output)
+        self.assertIn("Nothing was produced.", output)
+        self.assertEqual(before, snapshot(self.engine))
+        self.assertEqual([n for n in os.listdir(self.tmp) if ".factory-produce-" in n], [])
+
+    def test_lock_files_already_re_locked_are_committed_unverified(self):
+        self.write_locks("6.0.0")
+        before = snapshot(self.engine)
+        code, output = self.produce_bumped("--no-verify")
+        self.assertEqual(code, 0, output)
+        self.assertEqual(output.splitlines()[-1], f"produced {NAME} in {self.engine}, NOT VERIFIED")
+        self.assertEqual(verify_step.read_pins(self.engine)[self.map_id.lower()], "[6.0.0]")
+        after = snapshot(self.engine)
+        for relative in (f"src/{NAME}/packages.lock.json", f"tests/{NAME}.Tests/packages.lock.json"):
+            self.assertEqual(before[relative.replace("/", os.sep)], after[relative.replace("/", os.sep)])
+
+    def test_an_engine_without_lock_files_is_unaffected(self):
+        code, output = self.produce_bumped("--no-verify")
+        self.assertEqual(code, 0, output)
+        self.assertEqual(verify_step.read_pins(self.engine)[self.map_id.lower()], "[6.0.0]")
+
+    def test_the_verify_path_still_re_locks_stale_lock_files(self):
+        self.write_locks("5.0.0")
+        with mock.patch.dict(os.environ, self.env):
+            code, output = self.produce_bumped()
+        self.assertEqual(code, 0, output)
+        self.assertIn("the generated pins changed, so this restore re-locks the 2 lock file(s)", output)
+        self.assertEqual(output.splitlines()[-1], f"produced {NAME} in {self.engine}, verified")
+
+
 if __name__ == "__main__":
     unittest.main()

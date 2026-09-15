@@ -67,6 +67,20 @@ This is the one case where `produce` rewrites files the ownership table (ownersh
 copy and is committed only when the gate passes, and the commit lists the lock files as changed,
 for the engine to review.
 
+`--no-verify` cannot re-lock: re-locking needs dotnet, which it skips. Committing the new pins
+beside lock files that still resolve the old versions would fail the engine's locked restore in CI
+and record the stale lock hashes in provenance.json. So a `--no-verify` produce, after generation
+in the staging copy and before the commit, compares every committed packages.lock.json with the
+generated pins (`stale_locks`): for each package id the pin set names (RulesKernel,
+RulesKernel.Randomness, RulesFactory.Maps.*), every entry, direct or transitive, must resolve the
+pinned version (an exact pin's version, or a minimum pin's lower bound). Any that does not refuses
+the run, naming each lock file, package, locked and pinned version, and `--out` is unchanged. The
+way on is `produce` without `--no-verify`, which re-locks, or re-locking first (`scripts/validate.sh
+lock`) and running `--no-verify` again with the updated lock files in place, which then agree and
+commit. Packages outside the pin set are not compared, and an engine with no lock files is not
+affected. The re-produce inside `recompute` is a `--no-verify` produce too, and skips the check:
+it is comparing records, and a stale lock file there is the gate's to fail, or the relock's to fix.
+
 Standalone `verify` never re-locks. It has no earlier pin set to compare with, and it runs on the
 engine in place, outside any transaction, so a relock there would silently rewrite engine-owned
 files and leave them unrecorded. An engine whose pins moved outside `produce` fails the gate's
@@ -84,6 +98,7 @@ a usage error (the engine directory does not exist).
 Standard library only.
 """
 import glob
+import json
 import os
 import re
 import shutil
@@ -140,6 +155,67 @@ def pins_changed(before, after):
     No readable props before the run counts as changed (module docstring).
     """
     return before is None or before != after
+
+
+def _normal_version(version):
+    """A NuGet version in the form NuGet writes it: at least three numeric parts, a zero fourth
+    dropped, leading zeros and build metadata dropped, case-insensitive. Unparseable text is kept."""
+    text = str(version).strip().split("+", 1)[0]
+    core, dash, label = text.partition("-")
+    parts = core.split(".")
+    if not all(part.isdigit() for part in parts) or not 1 <= len(parts) <= 4:
+        return text.lower()
+    parts = [str(int(part)) for part in parts] + ["0"] * (3 - len(parts))
+    if len(parts) == 4 and parts[3] == "0":
+        parts = parts[:3]
+    return ".".join(parts) + (dash + label).lower()
+
+
+def pinned_version(pin):
+    """The version a PackageVersion pin resolves to when nothing else constrains it: the version
+    itself (`0.2.0`, a minimum, of which restore takes the lowest), or an exact or ranged form's
+    lower bound (`[5.0.0]`, `[1.0, 2.0)`)."""
+    text = str(pin).strip()
+    if text[:1] in "[(":
+        text = text[1:].rstrip("])").split(",", 1)[0]
+    return _normal_version(text)
+
+
+def stale_locks(engine_dir, pinned):
+    """Where the engine's lock files disagree with the pin set `pinned` (a `pins` result).
+
+    Returns [(lock file relative to `engine_dir`, package id, locked version, pinned version)], []
+    when every lock file agrees. A lock file is JSON, `dependencies` -> target framework -> package
+    id -> `resolved`; every entry for a pinned id counts, Direct, Transitive or CentralTransitive.
+    Packages the pin set does not name are ignored. A lock file that cannot be read as that shape
+    is reported with the package `(unreadable)`, since nothing shows it agrees.
+    """
+    wanted = {package.lower(): (package, version) for package, version in (pinned or {}).items()}
+    found = []
+    for path in lock_files(engine_dir):
+        relative = os.path.relpath(path, engine_dir).replace(os.sep, "/")
+        try:
+            with open(path, encoding="utf-8") as handle:
+                document = json.load(handle)
+            frameworks = document.get("dependencies") or {}
+            if not isinstance(frameworks, dict):
+                raise ValueError("`dependencies` is not an object")
+        except (OSError, UnicodeDecodeError, ValueError, AttributeError) as error:
+            found.append((relative, "(unreadable)", str(error), "a lock file NuGet can read"))
+            continue
+        seen = set()
+        for packages in frameworks.values():
+            if not isinstance(packages, dict):
+                continue
+            for package, entry in packages.items():
+                pin = wanted.get(str(package).lower())
+                if pin is None or not isinstance(entry, dict) or "resolved" not in entry:
+                    continue
+                locked, expected = str(entry["resolved"]), pin[1]
+                if _normal_version(locked) != pinned_version(expected) and (package.lower(), locked) not in seen:
+                    seen.add((package.lower(), locked))
+                    found.append((relative, package, locked, expected))
+    return found
 
 
 def dotnet_command():
