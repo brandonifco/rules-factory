@@ -2,14 +2,16 @@
 """Classify every difference between a from-scratch produce and a committed engine (#3).
 
   classify.py --factory <factory checkout> --engine <engine clone> --name <Name>
-              --bare <produce into an empty dir> --seeded <produce into a dir holding only the overlay>
+              --bare <produce into an empty dir> --seeded <produce into a dir holding only the overlay and its rulings' records>
 
 Ownership is read from the factory checkout's own tools/factory/ownership.py (decision 0018), the
 table the engine was produced under, never restated here. Two produces are compared with the
 engine, because the generated files are a function of merge(package map, engine overlay):
 
   * **seeded** -- an empty directory holding only the engine's corpus-map.overlay.json, the one
-    engine-owned file generation reads (generate.py). Against the engine, every generated file
+    engine-owned file generation reads (generate.py), and the decision records its owner's rulings
+    name, which the merge requires to exist and provenance hashes (decision 0027). Those records are
+    the engine's own files and compare identical. Against the engine, every generated file
     must be byte-identical, every managed file identical, and provenance.json may differ only in
     `buildInputs` and `engineOwned`, each differing item explained below. Every other difference
     must be an engine-owned row of the table, or a file that matches no row (the engine's own
