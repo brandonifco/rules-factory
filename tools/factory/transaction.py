@@ -14,9 +14,13 @@ mutation set too, so they are never touched. Symlinks are followed when copying 
 is not copied, and not counted as removed), so no step can write through a link to outside the
 staging copy.
 
-The mutation set. Right after the copy, each staged file's size, mode and SHA-256 is noted. After
-the steps, a file is added when it is new, changed when its bytes or mode differ from what was
-copied, and removed when it was copied and is gone. Removal is not a concept invented here:
+The mutation set. Right after the copy, each staged file's size, executable bit and SHA-256 is
+noted. After the steps, a file is added when it is new, changed when its bytes or executable bit
+differ from what was copied, and removed when it was copied and is gone. The executable bit is the
+only part of a mode git tracks, and the only part compared: the gate recipe writes 0644 and 0755,
+and a clone made under umask 002 has 0664 and 0775, so comparing whole modes counted files git
+sees as unchanged as changed. A file whose other mode bits alone differ is left as it is in
+`--out`. Removal is not a concept invented here:
 backlog.py deletes item files that are no longer in the backlog, and nothing else deletes
 anything. Comparing against the snapshot rather than against `--out` at commit time means a
 file someone edits in `--out` while `produce` runs is not reverted; and before committing, every
@@ -90,7 +94,7 @@ def _signature(path):
     with open(path, "rb") as handle:
         for block in iter(lambda: handle.read(1 << 20), b""):
             digest.update(block)
-    return info.st_size, stat.S_IMODE(info.st_mode), digest.hexdigest()
+    return info.st_size, bool(info.st_mode & stat.S_IXUSR), digest.hexdigest()
 
 
 def _native(root, relative):
