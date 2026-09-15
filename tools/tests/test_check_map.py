@@ -12,6 +12,7 @@ example maps are mid-migration.
 
 Run: python3 -m unittest discover -s tools/tests
 """
+import glob
 import importlib.util
 import io
 import json
@@ -589,6 +590,36 @@ class TestManifest(MapCase):
 
     def test_a_baseline_disagreeing_with_the_manifest_fails(self):
         self.assert_catches("manifest", lambda d: d["baseline"].update(contentHash="b" * 64))
+
+    def test_a_defined_elsewhere_naming_the_maps_own_corpus_fails(self):
+        # 0026, #115: the SRD's Rules Glossary is the same corpus as its combat chapter. A term
+        # defined there is a `scope: out` entry, not a reference to a corpus that was not admitted.
+        manifest = json.loads(json.dumps(MANIFEST))
+        manifest["corpora"][0]["references"].append({"sourceId": "demo-corpus", "admitted": False})
+        self.write_manifest(manifest)
+        document = valid_map()
+        document["entries"][4]["definedElsewhere"] = {"reference": "demo-corpus"}
+        code, output = self.run_tool(document)
+        self.assertEqual(self.status_of(output, "manifest"), "fail", output)
+        self.assertIn("a corpus that was admitted", output)
+        self.assertIn("`scope: out` entry", output)
+        self.assertEqual(code, 1, output)
+
+    def test_a_defined_elsewhere_naming_a_reference_marked_admitted_fails(self):
+        manifest = json.loads(json.dumps(MANIFEST))
+        manifest["corpora"][0]["references"][0]["admitted"] = True
+        self.write_manifest(manifest)
+        code, output = self.run_tool(valid_map())
+        self.assertEqual(self.status_of(output, "manifest"), "fail", output)
+        self.assertIn("a corpus that was admitted", output)
+        self.assertEqual(code, 1, output)
+
+    def test_a_defined_elsewhere_naming_a_reference_not_admitted_passes(self):
+        # The other way: the fixture's hazardous-material names `other-corpus`, admitted: false.
+        code, output = self.run_tool(valid_map())
+        self.assertEqual(self.status_of(output, "manifest"), "ok", output)
+        self.assertNotIn("a corpus that was admitted", output)
+        self.assertEqual(code, 0, output)
 
     def test_without_a_manifest_the_check_skips_and_fails_the_run(self):
         os.remove(self.manifest_path)
@@ -1284,7 +1315,17 @@ class TestCrossReferences(MapCase):
         self.assertEqual(
             check_map.pointers_in("Except as provided in paragraph (d) of this section, no "
                                   "person may operate at night."),
-            ["except as provided in"],
+            ["Except as provided in"],
+        )
+
+    def test_matches_only_whitespace_separates_are_one_pointer(self):
+        # A corpus's own "paragraph (d) of this section" follows the built-in "except as provided
+        # in"; one pointer, one declaration.
+        patterns = check_map.BUILT_IN_PATTERNS + [re.compile(r"paragraph \([a-z]\) of this section", re.I)]
+        self.assertEqual(
+            check_map.pointers_in("Except as provided in paragraph (d) of this section, no person "
+                                  "may operate; see paragraph (b) of this section.", patterns),
+            ["Except as provided in paragraph (d) of this section", "paragraph (b) of this section"],
         )
 
     def test_a_declaration_not_anchored_in_the_evidence_fails(self):
@@ -1381,7 +1422,21 @@ class TestCrossReferences(MapCase):
         self.assertEqual(self.status_of(output, "cross-references"), "ok", output)
         self.assertEqual(code, 0, output)
 
-    def test_a_map_whose_corpus_points_nowhere_does_not_report_ok(self):
+    def test_a_corpus_with_no_phrases_on_which_the_built_in_list_finds_nothing_fails(self):
+        # #116: the SRD's 22 cross-references were never checked, because the built-in list
+        # found no pointer in its text and said nothing about it. A silent zero is the defect.
+        document = valid_map()
+        document["entries"].pop(self.POINTER)
+        code, output = self.run_tool(document)
+        self.assertEqual(self.status_of(output, "cross-references"), "fail", output)
+        self.assertIn("manifest demo-corpus: the built-in pointer phrases detect no pointer", output)
+        self.assertEqual(code, 1, output)
+
+    def test_a_corpus_declaring_no_pointers_with_a_reason_is_not_verified_rather_than_failed(self):
+        manifest = json.loads(json.dumps(MANIFEST))
+        manifest["corpora"][0].update(pointerPhrases=[],
+                                      pointerPhrasesReason="A list of rules that never refers to another.")
+        self.write_manifest(manifest)
         document = valid_map()
         document["entries"].pop(self.POINTER)
         code, output = self.run_tool(document)
@@ -1389,12 +1444,155 @@ class TestCrossReferences(MapCase):
         self.assertIn("NOT VERIFIED", output)
         self.assertEqual(code, 0, output)
 
-    def test_the_phrase_list_is_what_the_check_covers_and_nothing_more(self):
-        # Stated as a test because it is the check's limit: a page marker falling inside a
-        # pointer phrase hides it, which is `starting-position`'s "as shown in {273} Fig. 1".
+    def test_an_empty_phrase_list_without_a_reason_fails(self):
+        manifest = json.loads(json.dumps(MANIFEST))
+        manifest["corpora"][0]["pointerPhrases"] = []
+        self.write_manifest(manifest)
+        code, output = self.run_tool(valid_map())
+        self.assertEqual(self.status_of(output, "cross-references"), "fail", output)
+        self.assertIn("`pointerPhrasesReason` does not say why", output)
+        self.assertEqual(code, 1, output)
+
+    def test_a_reason_beside_a_non_empty_phrase_list_fails(self):
+        manifest = json.loads(json.dumps(MANIFEST))
+        manifest["corpora"][0].update(pointerPhrases=["as at starting"], pointerPhrasesReason="Unread.")
+        self.write_manifest(manifest)
+        code, output = self.run_tool(valid_map())
+        self.assertEqual(self.status_of(output, "cross-references"), "fail", output)
+        self.assertIn("beside a non-empty `pointerPhrases`", output)
+        self.assertEqual(code, 1, output)
+
+    def test_a_reason_with_no_phrase_list_fails(self):
+        manifest = json.loads(json.dumps(MANIFEST))
+        manifest["corpora"][0]["pointerPhrasesReason"] = "Nothing points anywhere."
+        self.write_manifest(manifest)
+        code, output = self.run_tool(valid_map())
+        self.assertEqual(self.status_of(output, "cross-references"), "fail", output)
+        self.assertEqual(code, 1, output)
+
+    def test_a_malformed_phrase_is_refused(self):
+        for bad, expect in (({"regex": "(unclosed"}, "does not compile"),
+                            ({"regex": "x*"}, "matches the empty string"),
+                            ({"pattern": "see"}, "an item is a literal phrase"),
+                            (7, "an item is a literal phrase"),
+                            ("   ", "an item is a literal phrase")):
+            with self.subTest(phrase=bad):
+                manifest = json.loads(json.dumps(MANIFEST))
+                manifest["corpora"][0]["pointerPhrases"] = [bad]
+                self.write_manifest(manifest)
+                code, output = self.run_tool(valid_map())
+                self.assertEqual(self.status_of(output, "cross-references"), "fail", output)
+                self.assertIn(expect, output)
+                self.assertEqual(code, 1, output)
+
+    def with_declared_phrases(self, phrases, evidence, references=None):
+        manifest = json.loads(json.dumps(MANIFEST))
+        manifest["corpora"][0]["pointerPhrases"] = phrases
+        self.write_manifest(manifest)
+        document = valid_map()
+        item = document["entries"][0]
+        item["evidence"] = evidence
+        if references is not None:
+            item["crossReferences"] = references
+        return self.run_tool(document)
+
+    def test_a_declared_literal_phrase_makes_a_pointer_that_must_be_answered(self):
+        evidence = "Each square represents 5 feet (see the next section)."
+        code, output = self.with_declared_phrases(["see the next section"], evidence)
+        self.assertEqual(self.status_of(output, "cross-references"), "fail", output)
+        self.assertIn("'see the next section' and no `crossReferences` item claims it", output)
+        code, output = self.with_declared_phrases(
+            ["see the next section"], evidence,
+            [{"cites": "(see the next section)", "resolvedBy": "speed-within-limit"}])
+        self.assertEqual(self.status_of(output, "cross-references"), "ok", output)
+        self.assertIn("demo-corpus: 2 pointers in 10 quoted spans (built-in and 1 declared phrase)", output)
+        self.assertEqual(code, 0, output)
+
+    def test_a_declared_regex_finds_what_the_built_in_list_cannot(self):
+        # The built-in list's limit, `starting-position`'s "as shown in {273} Fig. 1", where a page
+        # marker falls inside the phrase: still a limit of the list, and a corpus's own phrase
+        # reaches it.
         self.assertEqual(check_map.pointers_in("The men are arranged as shown in {273} Fig. 1"), [])
         self.assertEqual(check_map.pointers_in("The men are arranged as shown in Fig. 1"),
                          ["shown in Fig."])
+        evidence = "The men are arranged as shown in {273} Fig. 1"
+        phrases = [{"regex": r"\bshown in (?:\{\d+\}\s*)?Fig\."}]
+        code, output = self.with_declared_phrases(phrases, evidence)
+        self.assertEqual(self.status_of(output, "cross-references"), "fail", output)
+        self.assertIn("'shown in {273} Fig.'", output)
+        code, output = self.with_declared_phrases(
+            phrases, evidence, [{"cites": "as shown in {273} Fig. 1", "unmapped": "An illustration."}])
+        self.assertEqual(self.status_of(output, "cross-references"), "ok", output)
+        self.assertEqual(code, 0, output)
+
+    def test_a_phrase_one_corpus_declares_does_not_apply_to_another(self):
+        # Pointer phrases are per corpus: the SRD's "(see ...)" is not a CFR pointer.
+        manifest = json.loads(json.dumps(MANIFEST))
+        manifest["corpora"].append(dict(MANIFEST["corpora"][0], sourceId="second-corpus",
+                                        pointerPhrases=["see the next section"], references=[]))
+        self.write_manifest(manifest)
+        document = valid_map()
+        document["entries"][0]["evidence"] = "Each square represents 5 feet (see the next section)."
+        code, output = self.run_tool(document)
+        self.assertEqual(self.status_of(output, "cross-references"), "ok", output)
+        document["entries"][0]["locator"]["sourceId"] = "second-corpus"
+        code, output = self.run_tool(document)
+        self.assertEqual(self.status_of(output, "cross-references"), "fail", output)
+        self.assertIn("speed-limit: `evidence` says 'see the next section'", output)
+        self.assertEqual(code, 1, output)
+
+    def test_a_declaration_that_only_partly_covers_a_pointer_does_not_claim_it(self):
+        code, output = self.with_declared_phrases(
+            [{"regex": r"paragraph \([a-z]\) of this section"}],
+            "Except as provided in paragraph (d) of this section, no person may operate.",
+            [{"cites": "Except as provided in", "resolvedBy": "speed-within-limit"}])
+        self.assertEqual(self.status_of(output, "cross-references"), "fail", output)
+        self.assertIn("'Except as provided in paragraph (d) of this section'", output)
+        self.assertEqual(code, 1, output)
+
+    def test_a_pointer_naming_the_entrys_defined_elsewhere_reference_is_answered_by_it(self):
+        # hazardous-material's "defined in 49 CFR 171.8": definedElsewhere answers it (#62), so a
+        # detected pointer naming that reference needs no crossReferences item.
+        manifest = json.loads(json.dumps(MANIFEST))
+        manifest["corpora"][0]["references"] = [
+            {"sourceId": "cfr-49-171", "citation": "§ 171.8", "admitted": False}]
+        manifest["corpora"][0]["pointerPhrases"] = [{"regex": r"\b\d+ CFR \d+(?:\.\d+)?"}]
+        self.write_manifest(manifest)
+        document = valid_map()
+        item = document["entries"][self.DEFINED_ELSEWHERE]
+        item["definedElsewhere"] = {"reference": "cfr-49-171"}
+        item["evidence"] = "The term hazardous material is defined in 49 CFR 171.8."
+        code, output = self.run_tool(document)
+        self.assertEqual(self.status_of(output, "cross-references"), "ok", output)
+        self.assertEqual(code, 0, output)
+        # The other way: a pointer to a different designation is not the reference's to answer.
+        item["evidence"] = "The term hazardous material is defined in 49 CFR 172.101."
+        code, output = self.run_tool(document)
+        self.assertEqual(self.status_of(output, "cross-references"), "fail", output)
+        self.assertIn("'49 CFR 172.101'", output)
+        self.assertEqual(code, 1, output)
+
+    def test_without_a_manifest_the_zero_is_not_judged(self):
+        os.remove(self.manifest_path)
+        document = valid_map()
+        document["entries"].pop(self.POINTER)
+        code, output = self.run_tool(document, ["--only", "cross-references"])
+        self.assertEqual(self.status_of(output, "cross-references"), "skip", output)
+        self.assertNotIn("detect no pointer", output)
+
+    def test_every_example_corpus_reports_the_pointers_it_detected(self):
+        # #116 on the committed maps: every corpus declares its phrases, and the SRD's declared
+        # cross-references are now on pointers the check detects.
+        root = os.path.dirname(os.path.dirname(HERE))
+        for path in sorted(glob.glob(os.path.join(root, "examples", "*", "corpus-map*.json"))):
+            with self.subTest(map=os.path.relpath(path, root)):
+                out, err = io.StringIO(), io.StringIO()
+                with redirect_stdout(out), redirect_stderr(err):
+                    code = check_map.main([path, "--only", "cross-references"])
+                output = out.getvalue() + err.getvalue()
+                self.assertEqual(code, 0, output)
+                self.assertRegex(output, r"\[ok\] cross-references: [\w.-]+: [1-9]\d* pointers? in ")
+                self.assertIn("declared phrase", output)
 
 
 class TestCorrespondence(MapCase):

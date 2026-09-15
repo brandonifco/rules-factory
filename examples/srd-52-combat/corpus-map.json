@@ -100,21 +100,37 @@
         "citation": "Combat / Initiative / p. 13"
       },
       "kind": "operation",
-      "draws": {
-        "dice": "d20",
-        "count": "one per participant not in a group of identical creatures, whose roll is group-initiative's; two d20s for a roll with Advantage or Disadvantage; none while initiative-score-option holds"
-      },
       "scope": "in",
       "clarity": "clear",
       "dependsOn": [
-        "ability-checks"
+        "ability-checks",
+        "incapacitated-condition",
+        "invisible-condition"
       ],
       "suspendedBy": [
         "initiative-score-option"
       ],
+      "crossReferences": [
+        {
+          "cites": "rolls Initiative",
+          "resolvedBy": "initiative-score-option"
+        },
+        {
+          "cites": "rolls Initiative",
+          "resolvedBy": "incapacitated-condition"
+        },
+        {
+          "cites": "rolls Initiative",
+          "resolvedBy": "invisible-condition"
+        }
+      ],
       "evidence": "When combat starts, every participant rolls Initiative; they make a Dexterity check that determines their place in the Initiative order.",
       "status": "mapped",
-      "note": "A draw: the manifest's randomness is seeded because of rolls like this one. The Dexterity check itself is ability-checks, outside the extent. Gated by initiative-score-option (Rules Glossary, p. 184), under which the GM may use Initiative scores instead of rolling; whether the GM has done so is the caller's to state (0021). The Dexterity check is a D20 Test, and “the game uses a d20 roll to determine success or failure. These rolls are called D20 Tests, and they come in three kinds: ability checks, saving throws, and attack rolls” (Playing the Game / D20 Tests / p. 6), which is where draws names its die (0025)."
+      "note": "A draw: the manifest's randomness is seeded because of rolls like this one. The Dexterity check itself is ability-checks, outside the extent. Gated by initiative-score-option (Rules Glossary, p. 184), under which the GM may use Initiative scores instead of rolling; whether the GM has done so is the caller's to state (0021). The Rules Glossary also modifies the roll, twice on p. 184: a creature Incapacitated when it rolls Initiative has Disadvantage (incapacitated-condition), and a creature Invisible when it rolls has Advantage (invisible-condition). The engine cannot roll Initiative correctly without them, so dependsOn names both; all three glossary passages are named in crossReferences, anchored on the term (0026). The Dexterity check is a D20 Test, and “the game uses a d20 roll to determine success or failure. These rolls are called D20 Tests, and they come in three kinds: ability checks, saving throws, and attack rolls” (Playing the Game / D20 Tests / p. 6), which is where draws names its die (0025).",
+      "draws": {
+        "dice": "d20",
+        "count": "one per participant not in a group of identical creatures, whose roll is group-initiative's; two d20s for a roll with Advantage or Disadvantage, but one for a roll with both, because they cancel (advantage-disadvantage; both are reachable once invisible-condition gives Advantage); none while initiative-score-option holds"
+      }
     },
     {
       "id": "group-initiative",
@@ -126,7 +142,7 @@
       "kind": "operation",
       "draws": {
         "dice": "d20",
-        "count": "one per group of identical creatures, two d20s for a roll with Advantage or Disadvantage; how many groups there are, and so how many rolls, is the unsettled question"
+        "count": "one per group of identical creatures, two d20s for a roll with Advantage or Disadvantage, but one for a roll with both, because they cancel; how many groups there are, and so how many rolls, is the unsettled question"
       },
       "scope": "in",
       "clarity": "ambiguous",
@@ -158,10 +174,18 @@
         "fate": "unresolved",
         "unresolvedReason": "RequiresInterpretation"
       },
-      "dependsOn": [],
+      "dependsOn": [
+        "surprise-glossary"
+      ],
+      "crossReferences": [
+        {
+          "cites": "surprised",
+          "resolvedBy": "surprise-glossary"
+        }
+      ],
       "evidence": "Surprise. If a combatant is surprised by combat starting, that combatant has Disadvantage on their Initiative roll. For example, if an ambusher starts combat while hidden from a foe who is unaware that combat is starting, that foe is surprised.",
       "status": "mapped",
-      "note": "The gap split out of surprise-disadvantage. The Rules Glossary's “Surprise” entry (surprise-glossary, p. 189, reached by no pointer in the slice) restates the rule as “caught unawares by the start of combat”, which is a second undefined phrase rather than a measure, and is outside the extent. The schema has no field for a term defined in the same corpus outside the slice: definedElsewhere names an unadmitted corpus, so it is recorded here and in the README."
+      "note": "The gap split out of surprise-disadvantage. The Rules Glossary’s “Surprise” entry (surprise-glossary, p. 189, outside the extent) is the corpus’s only statement of what makes a creature surprised (the “Surprised.” and “Surprise.” headings under Incapacitated and Invisible, p. 184, give Initiative effects, not the condition): “caught unawares by the start of combat”. That is a second undefined phrase rather than a measure, so the gap stays open. No words in the slice point at it, so the crossReferences item is anchored on the term itself, and dependsOn names it because the condition this entry is about is stated there and not here (0026)."
     },
     {
       "id": "surprise-disadvantage",
@@ -176,11 +200,18 @@
       "dependsOn": [
         "surprised",
         "initiative-roll",
-        "advantage-disadvantage"
+        "advantage-disadvantage",
+        "initiative-score-option"
+      ],
+      "crossReferences": [
+        {
+          "cites": "Disadvantage on their Initiative roll",
+          "resolvedBy": "initiative-score-option"
+        }
       ],
       "evidence": "Surprise. If a combatant is surprised by combat starting, that combatant has Disadvantage on their Initiative roll. For example, if an ambusher starts combat while hidden from a foe who is unaware that combat is starting, that foe is surprised.",
       "status": "mapped",
-      "note": "The computable half: given that a combatant is surprised, their Initiative roll has Disadvantage and nothing else follows (no lost turn; see surprise-round). Disadvantage is advantage-disadvantage, outside the extent."
+      "note": "The computable half: given that a combatant is surprised, their Initiative roll has Disadvantage and nothing else follows (no lost turn; see surprise-round). Disadvantage is advantage-disadvantage, outside the extent. Where the GM uses Initiative scores (initiative-score-option, Rules Glossary, p. 184) there is no roll, and the glossary turns Disadvantage into 5 off the score; the rule cannot be resolved in that case without the passage, so dependsOn names it (0026)."
     },
     {
       "id": "initiative-order",
@@ -695,14 +726,22 @@
       "scope": "in",
       "clarity": "ambiguous",
       "ambiguity": {
-        "question": "The slice gives Difficult Terrain only by examples (“Low furniture, rubble, undergrowth, steep stairs, snow, and shallow bogs”) and, in “Moving around Other Creatures”, one case (another creature's space). What else counts is not stated. The Rules Glossary's list (p. 181, outside the extent) ends “or something similar”, which leaves the same question open. No measure or set of values is stated and nobody is named to decide, so it is a gap, as surprised is.",
+        "question": "What counts as Difficult Terrain is stated twice, differently. The slice gives only examples (“Low furniture, rubble, undergrowth, steep stairs, snow, and shallow bogs”) and, in “Moving around Other Creatures”, one case (another creature's space). The Rules Glossary's list (difficult-terrain-glossary, p. 181, outside the extent) gives some cases with a measure (“A slope of 20 degrees or more”, “Liquid that’s between shin- and waist-deep”, “A narrow opening sized for a creature one size smaller than you”), qualifies others (“Heavy snow”, where the slice says “snow”; “Furniture that is sized for creatures of your size or larger”, where the slice says “Low furniture”, and the two decide low furniture sized for smaller creatures differently), and ends “or something similar”. Which list governs where they differ, and what else is “similar”, is not stated, and nobody is named to decide, so it is a gap, as surprised is.",
         "fate": "unresolved",
         "unresolvedReason": "RequiresInterpretation"
       },
-      "dependsOn": [],
+      "dependsOn": [
+        "difficult-terrain-glossary"
+      ],
+      "crossReferences": [
+        {
+          "cites": "Difficult Terrain",
+          "resolvedBy": "difficult-terrain-glossary"
+        }
+      ],
       "evidence": "Combatants are often slowed down by Difficult Terrain. Low furniture, rubble, undergrowth, steep stairs, snow, and shallow bogs are examples of Difficult Terrain.",
       "status": "mapped",
-      "note": "The gap split out of difficult-terrain-cost. The first mapping called the classification a parameter; the blind second mapping read it as a term the corpus gives only by examples, and the corpus does not settle it (blind-mapping/resolutions.json)."
+      "note": "The gap split out of difficult-terrain-cost. The first mapping called the classification a parameter; the blind second mapping read it as a term the corpus gives only by examples, and the corpus does not settle it (blind-mapping/resolutions.json). The glossary’s list is the corpus’s fuller statement of the term, so dependsOn names difficult-terrain-glossary, and crossReferences anchors it on the term (0026)."
     },
     {
       "id": "difficult-terrain-cost",
@@ -1042,6 +1081,12 @@
           "flank"
         ]
       },
+      "crossReferences": [
+        {
+          "cites": "(see the next section)",
+          "resolvedBy": "cover-degree"
+        }
+      ],
       "evidence": "2: Determine Modifiers. The GM determines whether the target has Cover (see the next section) and whether you have Advantage or Disadvantage against the target. In addition, spells, special abilities, and other effects can apply penalties or bonuses to your attack roll.",
       "status": "declined",
       "note": "Absent. A rule granting Advantage for attacking a foe from opposite sides is widely played (it is an optional rule outside the SRD) and this corpus does not state it; the step that lists an attack's modifiers is where it would be, and it names Cover and Advantage or Disadvantage only. The word does not occur anywhere in the 364-page extraction either, though the check is bounded by the extent."
@@ -1140,11 +1185,18 @@
       "scope": "in",
       "clarity": "clear",
       "dependsOn": [
-        "cover-degree"
+        "cover-degree",
+        "cover-glossary"
+      ],
+      "crossReferences": [
+        {
+          "cites": "only the most protective degree of cover applies",
+          "resolvedBy": "cover-glossary"
+        }
       ],
       "evidence": "If a target is behind multiple sources of cover, only the most protective degree of cover applies; the degrees aren’t added together. For example, if a target is behind a creature that gives Half Cover and a tree trunk that gives Three-Quarters Cover, the target has Three-Quarters Cover.",
       "status": "mapped",
-      "note": "Demonstrate the corpus's own example: Half and Three-Quarters give Three-Quarters, not +7."
+      "note": "Demonstrate the corpus's own example: Half and Three-Quarters give Three-Quarters, not +7. The Rules Glossary's “Cover” (cover-glossary, p. 179) says it of a target “behind more than one degree of cover”, which also decides one object that qualifies for two degrees; dependsOn names it (0026)."
     },
     {
       "id": "cover-bonuses",
@@ -1187,7 +1239,7 @@
         "renderedReading": "Degree | Benefit to Target | Offered By …\nHalf | +2 bonus to AC and Dexterity saving throws | Another creature or an object that covers at least half of the target\nThree-Quarters | +5 bonus to AC and Dexterity saving throws | An object that covers at least three-quarters of the target\nTotal | Can’t be targeted directly | An object that covers the whole target"
       },
       "status": "mapped",
-      "note": "The “Offered By” column. The fraction of a target an object covers is a parameter. Same span as cover-bonuses; see that entry for how the extraction garbles the table. Two parts of the first mapping's question are settled by the corpus: a target that qualifies for two degrees gets the most protective (“If behind more than one degree of cover, a target benefits only from the most protective degree”, Rules Glossary, “Cover”, p. 179), and a creature never gives more than Half Cover, because the Three-Quarters and Total rows name only an object. The blind second mapping asked the attachment question that remains (blind-mapping/resolutions.json)."
+      "note": "The “Offered By” column. The fraction of a target an object covers is a parameter. Same span as cover-bonuses; see that entry for how the extraction garbles the table. Two parts of the first mapping's question are settled by the corpus: a target that qualifies for two degrees gets the most protective (“If behind more than one degree of cover, a target benefits only from the most protective degree”, cover-glossary, Rules Glossary, “Cover”, p. 179, which cover-no-stacking depends on), and a creature never gives more than Half Cover, because the Three-Quarters and Total rows name only an object. The blind second mapping asked the attachment question that remains (blind-mapping/resolutions.json)."
     },
     {
       "id": "total-cover",
@@ -1321,16 +1373,23 @@
       "dependsOn": [
         "melee-within-reach",
         "reactions",
-        "attack-structure"
+        "attack-structure",
+        "opportunity-attacks-glossary"
       ],
       "suspendedBy": [
         "opportunity-attack-avoidance",
         "reactions",
         "incapacitated-condition"
       ],
+      "crossReferences": [
+        {
+          "cites": "Opportunity Attack",
+          "resolvedBy": "opportunity-attacks-glossary"
+        }
+      ],
       "evidence": "Making an Opportunity Attack. You can make an Opportunity Attack when a creature that you can see leaves your reach. To make the attack, take a Reaction to make one melee attack with a weapon or an Unarmed Strike against that creature. The attack occurs right before it leaves your reach.",
       "status": "mapped",
-      "note": "Timing is stated: before the creature leaves reach, which is the case reactions' default (“immediately after its trigger unless the Reaction’s description says otherwise”, p. 10) allows. The Rules Glossary restates the trigger with a list of the ways of leaving (opportunity-attacks-glossary), consistent with this entry and opportunity-attack-avoidance read together. Suspended by opportunity-attack-avoidance, and by reactions while a Reaction has already been taken since the start of the attacker's last turn. Also suspended by incapacitated-condition: the attack is made with a Reaction, which an Incapacitated creature cannot take (blind-mapping/resolutions.json)."
+      "note": "Timing is stated: before the creature leaves reach, which is the case reactions' default (“immediately after its trigger unless the Reaction’s description says otherwise”, p. 10) allows. The Rules Glossary restates the trigger and says how the creature leaves: “using its action, its Bonus Action, its Reaction, or one of its speeds” (opportunity-attacks-glossary, p. 185). That decides a case the slice leaves open, a creature that leaves reach without doing any of those, for instance because the attacker moved away, so dependsOn names it as well as crossReferences, anchored on the term (0026). Teleporting with an action is not a conflict between the two: the glossary's “Teleportation” (p. 190) says “teleportation never provokes Opportunity Attacks”, as opportunity-attack-avoidance does. Suspended by opportunity-attack-avoidance, and by reactions while a Reaction has already been taken since the start of the attacker's last turn. Also suspended by incapacitated-condition: the attack is made with a Reaction, which an Incapacitated creature cannot take (blind-mapping/resolutions.json)."
     },
     {
       "id": "opportunity-attack-avoidance",
@@ -1343,11 +1402,18 @@
       "scope": "in",
       "clarity": "clear",
       "dependsOn": [
-        "actions-table"
+        "actions-table",
+        "disengage-action"
+      ],
+      "crossReferences": [
+        {
+          "cites": "Disengage",
+          "resolvedBy": "disengage-action"
+        }
       ],
       "evidence": "Avoiding Opportunity Attacks. You can avoid provoking an Opportunity Attack by taking the Disengage action. You also don’t provoke an Opportunity Attack when you Teleport or when you are moved without using your movement, action, Bonus Action, or Reaction. For example, you don’t provoke an Opportunity Attack if an explosion hurls you out of a foe’s reach or if you fall past an enemy.",
       "status": "mapped",
-      "note": "Disengage is actions-table and Teleport is defined in the Rules Glossary, both outside the extent. Demonstrate both of the corpus's examples (hurled by an explosion, falling past an enemy)."
+      "note": "Disengage is actions-table and Teleport is defined in the Rules Glossary, both outside the extent. The glossary's Disengage (disengage-action, p. 181) limits the protection to “your movement” and to “the rest of the current turn”, which the slice's sentence does not, so dependsOn names it (0026). Demonstrate both of the corpus's examples (hurled by an explosion, falling past an enemy)."
     },
     {
       "id": "mount-eligibility",
@@ -1748,9 +1814,54 @@
       "scope": "out",
       "clarity": "clear",
       "dependsOn": [],
-      "evidence": "While you have the Incapacitated condition, you experience the following effects. Inactive. You can’t take any action, Bonus Action, or Reaction.",
+      "evidence": "While you have the Incapacitated condition, you experience the following effects. Inactive. You can’t take any action, Bonus Action, or Reaction. No Concentration. Your Concentration is broken. Speechless. You can’t speak. Surprised. If you’re Incapacitated when you roll Initiative, you have Disadvantage on the roll.",
       "status": "declined",
-      "note": "Declined: outside the extent. A gate outside the slice (0021) on attack-sources and opportunity-attack, which consist wholly of an action, Bonus Action or Reaction. It reaches only part of turn-move-and-action, communication-cost, free-object-interaction and opportunity-attack-avoidance (the action, not the move or the free parts), and an entry-level gate cannot say that, so none of them names it. The glossary entry also gives Disadvantage on Initiative to a creature Incapacitated when it rolls (under the heading “Surprised.”), a second Initiative modifier outside the slice that initiative-roll does not name; see the README."
+      "note": "Declined: outside the extent. A gate outside the slice (0021) on attack-sources and opportunity-attack, which consist wholly of an action, Bonus Action or Reaction. It reaches only part of turn-move-and-action, communication-cost, free-object-interaction and opportunity-attack-avoidance (the action, not the move or the free parts), and an entry-level gate cannot say that, so none of them names it. The glossary entry also gives Disadvantage on Initiative to a creature Incapacitated when it rolls (under the heading “Surprised.”), an Initiative modifier outside the slice (invisible-condition is another); the span runs to it, and initiative-roll names this entry in dependsOn and crossReferences (0026)."
+    },
+    {
+      "id": "invisible-condition",
+      "name": "The Invisible condition",
+      "locator": {
+        "sourceId": "srd-5.2.1",
+        "citation": "Rules Glossary / Invisible [Condition] / p. 184"
+      },
+      "kind": "operation",
+      "scope": "out",
+      "clarity": "clear",
+      "dependsOn": [],
+      "evidence": "While you have the Invisible condition, you experience the following effects. Surprise. If you’re Invisible when you roll Initiative, you have Advantage on the roll.",
+      "status": "declined",
+      "note": "Declined: outside the extent. Quoted to its first effect, the Advantage on Initiative a creature Invisible when it rolls has (under the heading “Surprise.”), which modifies initiative-roll; initiative-roll names it in dependsOn and crossReferences (0026). Its other effects (Concealed, Attacks Affected) are outside the slice and not recorded here. Added after the independent verdict on #115 found it missing."
+    },
+    {
+      "id": "cover-glossary",
+      "name": "Only the most protective degree of cover, in the Rules Glossary",
+      "locator": {
+        "sourceId": "srd-5.2.1",
+        "citation": "Rules Glossary / Cover / p. 179"
+      },
+      "kind": "operation",
+      "scope": "out",
+      "clarity": "clear",
+      "dependsOn": [],
+      "evidence": "If behind more than one degree of cover, a target benefits only from the most protective degree.",
+      "status": "declined",
+      "note": "Declined: outside the extent. It decides a case cover-no-stacking does not: the slice's rule is for a target “behind multiple sources of cover”, and a single object covering three-quarters of a target also “covers at least half” of it, so it qualifies for two degrees from one source. cover-no-stacking names it in dependsOn and crossReferences (0026). Found by the independent verdict on #115."
+    },
+    {
+      "id": "disengage-action",
+      "name": "Disengage, in the Rules Glossary",
+      "locator": {
+        "sourceId": "srd-5.2.1",
+        "citation": "Rules Glossary / Disengage [Action] / p. 181"
+      },
+      "kind": "operation",
+      "scope": "out",
+      "clarity": "clear",
+      "dependsOn": [],
+      "evidence": "If you take the Disengage action, your movement doesn’t provoke Opportunity Attacks for the rest of the current turn.",
+      "status": "declined",
+      "note": "Declined: outside the extent. It decides two cases opportunity-attack-avoidance's “You can avoid provoking an Opportunity Attack by taking the Disengage action” leaves open: how long the protection lasts (the rest of the current turn) and what it covers (your movement, not leaving reach by an action or Reaction). opportunity-attack-avoidance names it in dependsOn and crossReferences (0026). Found by the independent verdict on #115."
     },
     {
       "id": "movement-modes-glossary",
@@ -1768,6 +1879,21 @@
       "note": "Declined: the four modes are separate Rules Glossary entries, outside the extent. Climbing is quoted as the one that also names Difficult Terrain; Crawling, Jumping and Swimming are declined with it."
     },
     {
+      "id": "difficult-terrain-glossary",
+      "name": "What counts as Difficult Terrain, in the Rules Glossary",
+      "locator": {
+        "sourceId": "srd-5.2.1",
+        "citation": "Rules Glossary / Difficult Terrain / p. 181"
+      },
+      "kind": "operation",
+      "scope": "out",
+      "clarity": "clear",
+      "dependsOn": [],
+      "evidence": "A space is Difficult Terrain if the space contains any of the following or something similar: • A creature that isn’t Tiny or your ally • Furniture that is sized for creatures of your size or larger • Heavy snow, ice, rubble, or undergrowth • Liquid that’s between shin- and waist-deep • A narrow opening sized for a creature one size smaller than you • A slope of 20 degrees or more",
+      "status": "declined",
+      "note": "Declined: outside the extent. The glossary’s list of what makes a space Difficult Terrain, which names cases the slice’s examples do not (a narrow opening, a slope, liquid by depth) and ends “or something similar”. difficult-terrain names it in crossReferences and dependsOn (0026)."
+    },
+    {
       "id": "initiative-score-option",
       "name": "The GM may use Initiative scores instead of rolling",
       "locator": {
@@ -1778,9 +1904,9 @@
       "scope": "out",
       "clarity": "clear",
       "dependsOn": [],
-      "evidence": "Sometimes a GM might have combatants use their Initiative scores instead of rolling Initiative. Your Initiative score equals 10 plus your Dexterity modifier.",
+      "evidence": "Sometimes a GM might have combatants use their Initiative scores instead of rolling Initiative. Your Initiative score equals 10 plus your Dexterity modifier. If you have Advantage on Initiative rolls, increase your Initiative score by 5. If you have Disadvantage on those rolls, decrease that score by 5.",
       "status": "declined",
-      "note": "Declined: outside the extent. A gate outside the slice (0021): initiative-roll names it in suspendedBy. Whether the GM has chosen it is the caller's to state, and when it holds no Initiative is drawn, which changes every later draw of a seeded game."
+      "note": "Declined: outside the extent. A gate outside the slice (0021): initiative-roll names it in suspendedBy. Whether the GM has chosen it is the caller's to state, and when it holds no Initiative is drawn, which changes every later draw of a seeded game. The span runs to the score's adjustment for Advantage and Disadvantage, because that is how surprise-disadvantage and the Incapacitated and Invisible modifiers apply when no roll is made; surprise-disadvantage names this entry in dependsOn and crossReferences (0026)."
     },
     {
       "id": "surprise-glossary",
@@ -1795,7 +1921,7 @@
       "dependsOn": [],
       "evidence": "If a creature is caught unawares by the start of combat, that creature is surprised, which causes it to have Disadvantage on its Initiative roll.",
       "status": "declined",
-      "note": "Declined: outside the extent. It restates surprise-disadvantage and gives surprised a second undefined phrase (“caught unawares”). Recorded so that the in-slice gap can point at it."
+      "note": "Declined: outside the extent. It restates surprise-disadvantage and gives surprised a second undefined phrase (“caught unawares”). surprised names it in crossReferences and dependsOn (0026)."
     },
     {
       "id": "opportunity-attacks-glossary",
@@ -1810,7 +1936,7 @@
       "dependsOn": [],
       "evidence": "You can make an Opportunity Attack when a creature that you can see leaves your reach using its action, its Bonus Action, its Reaction, or one of its speeds.",
       "status": "declined",
-      "note": "Declined: outside the extent. It restates opportunity-attack with the ways of leaving listed, which is what opportunity-attack-avoidance's second sentence excludes. Read together the two passages agree; no conflict is recorded."
+      "note": "Declined: outside the extent. It restates opportunity-attack and names how the creature leaves reach, using its action, Bonus Action, Reaction or one of its speeds. That is the complement of opportunity-attack-avoidance's “moved without using your movement, action, Bonus Action, or Reaction”, and it also decides the case the slice leaves open, a creature that leaves reach without using any of them. Teleportation is excluded by both (opportunity-attack-avoidance, and the glossary's “Teleportation”, p. 190: “teleportation never provokes Opportunity Attacks”), so no conflict is recorded. opportunity-attack names it in crossReferences and dependsOn (0026)."
     },
     {
       "id": "damage-and-healing",

@@ -270,7 +270,14 @@ with opposite verdicts is the correct shape, not a conflict.
 
 **Follow every cross-reference the corpus makes.** *"Except as provided in paragraph (d)"* is a
 reference, and a reference is an entry or a recorded reason there is none. Declare it in
-`crossReferences`, quoting the words that make it.
+`crossReferences`, quoting the words that make it. Before mapping, write the words this corpus
+points with into its manifest's `pointerPhrases`, taken from its text, so the check can see the
+pointers you did not notice
+([0026](decisions/0026-a-meaning-the-same-corpus-gives-elsewhere-is-an-entry-and-a-corpus-declares-its-pointers.md)).
+A term the same corpus defines outside your slice, such as a glossary entry, is a `scope: out`
+entry quoting the definition. Declare it in `crossReferences` anchored on the term, and add it to
+`dependsOn` when the rule cannot be resolved in some case without it. It is never
+`definedElsewhere`, which is for a corpus that was not admitted.
 
 ### Clear or ambiguous
 

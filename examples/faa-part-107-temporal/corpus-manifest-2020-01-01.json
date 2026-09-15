@@ -16,6 +16,15 @@
       "quotation": "verbatim",
       "randomness": "none",
       "retrievedFrom": "https://www.ecfr.gov/api/versioner/v1/full/2020-01-01/title-14.xml?part=107",
+      "pointerPhrases": [
+        { "regex": "§§?\\s?\\d+\\.\\d+(?:\\([a-z0-9]+\\))*" },
+        { "regex": "\\bSection \\d+\\.\\d+(?:\\([a-z0-9]+\\))*" },
+        { "regex": "\\bparagraphs? \\([a-z0-9]+\\)(?:\\([a-z0-9]+\\))*(?:(?:,| and| or| through) \\([a-z0-9]+\\)(?:\\([a-z0-9]+\\))*)* of this section" },
+        { "regex": "\\bsubpart [A-Z] of this part" },
+        { "regex": "\\bparts? \\d+(?: (?:and|or) \\d+)? of this chapter" },
+        { "regex": "\\b\\d+ (?:CFR|U\\.S\\.C\\.) (?:part )?\\d+(?:\\.\\d+)?" },
+        "as defined in the Air Almanac"
+      ],
       "references": [
         {
           "sourceId": "cfr-14-1",

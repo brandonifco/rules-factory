@@ -1,0 +1,219 @@
+{
+  "about": "Independent verdict (0017) on #115 and #116 (docs/decisions/0026) for the SRD combat map: the Rules Glossary passages recorded as scope: out entries and named by the in-scope rules they modify, and the pointer phrases the manifest declares. The reviewer was a separate agent context given only: the extracted text of pp. 13-16, 179, 181, 184, 185, 189 and 190 (179 and 190 from round 2); a JSON before/after of every changed or added entry, the manifest's pointerPhrases, and an id/citation index of all entries; and the decision record. `sha256` is the final map. `verdicts` is the reviewer's final file, unedited. `rounds` keeps each earlier round's disagreements and how they were resolved.",
+  "sha256": "228de0dbdfb0900a098ae611a2c72c1142254980ce3c57d66474bc3b4f834ec1",
+  "reviewer": "independent reviewer, separate context",
+  "read": [
+    "corpus-pages.txt",
+    "diff.json",
+    "0026-a-meaning-the-same-corpus-gives-elsewhere-is-an-entry-and-a-corpus-declares-its-pointers.md"
+  ],
+  "summary": "Round 1: 8 agree, 5 disagree. Round 2: 15 agree, 1 disagree. Round 3: 18 agree, 0 disagree. Round 4: 17 agree, 1 disagree. Round 5 (final bytes): 19 agree, 0 disagree.",
+  "verdicts": [
+    {
+      "entry": "initiative-roll",
+      "verdict": "agree",
+      "citation": "p. 181: \"Advantage and Disadvantage on the same roll cancel each other.\" p. 184: \"If you’re Invisible when you roll Initiative, you have Advantage on the roll.\"",
+      "reason": "Round-4 finding fixed. draws.count now reads \"two d20s for a roll with Advantage or Disadvantage, but one for a roll with both, because they cancel\", which matches p. 181. The rest of the entry (dependsOn, the three crossReferences, and the note including the D20 Tests sentence) is as agreed in rounds 3-4."
+    },
+    {
+      "entry": "group-initiative",
+      "verdict": "agree",
+      "citation": "p. 13: \"For a group of identical creatures, the GM makes a single roll, so each member of the group has the same Initiative.\" p. 181: \"Advantage and Disadvantage on the same roll cancel each other.\"",
+      "reason": "Only draws.count differs from before, with the same cancellation clause, which is correct against p. 181. The note, dependsOn [initiative-roll], the ambiguity and its affectsDraws: true are unchanged. The Incapacitated and Invisible modifiers reach this roll through dependsOn initiative-roll, so no further edge is needed. affectsDraws sits on the ambiguity whose unsettled point (how many groups) changes the draw count, consistent with the author's account of the field. That account also explains its absence from surprise-disadvantage and the condition entries, whose draw effects are settled."
+    },
+    {
+      "entry": "surprised",
+      "verdict": "agree",
+      "citation": "p. 189: \"If a creature is caught unawares by the start of combat, that creature is surprised\".",
+      "reason": "Unchanged from round 4, as the author states. Agreed in rounds 2-4."
+    },
+    {
+      "entry": "surprise-disadvantage",
+      "verdict": "agree",
+      "citation": "p. 184: \"If you have Disadvantage on those rolls, decrease that score by 5.\"",
+      "reason": "Unchanged from round 4. No affectsDraws is correct under the field's stated meaning: the entry is clear, with no ambiguity."
+    },
+    {
+      "entry": "difficult-terrain",
+      "verdict": "agree",
+      "citation": "p. 181 list; p. 14 examples.",
+      "reason": "Unchanged from round 4."
+    },
+    {
+      "entry": "flanking",
+      "verdict": "agree",
+      "citation": "p. 15: \"(see the next section)\".",
+      "reason": "Unchanged from round 4."
+    },
+    {
+      "entry": "cover-no-stacking",
+      "verdict": "agree",
+      "citation": "p. 179: \"If behind more than one degree of cover, a target benefits only from the most protective degree.\"",
+      "reason": "Unchanged from round 4."
+    },
+    {
+      "entry": "cover-degree",
+      "verdict": "agree",
+      "citation": "p. 179 as above.",
+      "reason": "Unchanged from round 4."
+    },
+    {
+      "entry": "opportunity-attack",
+      "verdict": "agree",
+      "citation": "p. 185; p. 190: \"teleportation never provokes Opportunity Attacks\".",
+      "reason": "Unchanged from round 4."
+    },
+    {
+      "entry": "opportunity-attack-avoidance",
+      "verdict": "agree",
+      "citation": "p. 181: \"your movement doesn’t provoke Opportunity Attacks for the rest of the current turn.\"",
+      "reason": "Unchanged from round 4. The round-3 suggestion (say that the glossary governs on scope) remains optional."
+    },
+    {
+      "entry": "incapacitated-condition",
+      "verdict": "agree",
+      "citation": "p. 184 Incapacitated evidence, verbatim.",
+      "reason": "Unchanged from round 4."
+    },
+    {
+      "entry": "invisible-condition",
+      "verdict": "agree",
+      "citation": "p. 184: \"Surprise. If you’re Invisible when you roll Initiative, you have Advantage on the roll.\"",
+      "reason": "Unchanged from round 4. Its draw interaction is now handled in initiative-roll's count."
+    },
+    {
+      "entry": "cover-glossary",
+      "verdict": "agree",
+      "citation": "p. 179, verbatim.",
+      "reason": "Unchanged from round 4."
+    },
+    {
+      "entry": "disengage-action",
+      "verdict": "agree",
+      "citation": "p. 181, Disengage [Action], verbatim.",
+      "reason": "Unchanged from round 4."
+    },
+    {
+      "entry": "difficult-terrain-glossary",
+      "verdict": "agree",
+      "citation": "p. 181 list, verbatim.",
+      "reason": "Unchanged from round 4."
+    },
+    {
+      "entry": "initiative-score-option",
+      "verdict": "agree",
+      "citation": "p. 184 score adjustment, verbatim.",
+      "reason": "Unchanged from round 4."
+    },
+    {
+      "entry": "surprise-glossary",
+      "verdict": "agree",
+      "citation": "p. 189, verbatim.",
+      "reason": "Unchanged from round 4."
+    },
+    {
+      "entry": "opportunity-attacks-glossary",
+      "verdict": "agree",
+      "citation": "p. 185, verbatim.",
+      "reason": "Unchanged from round 4."
+    },
+    {
+      "entry": "manifest pointerPhrases",
+      "verdict": "agree",
+      "citation": "The same seven patterns as rounds 1-4.",
+      "reason": "Unchanged. The new draws text is not evidence and contains no corpus pointer."
+    }
+  ],
+  "rounds": [
+    {
+      "round": 1,
+      "summary": "8 agree, 5 disagree",
+      "read": [
+        "corpus-pages.txt",
+        "diff.json",
+        "0024-a-meaning-the-same-corpus-gives-elsewhere-is-an-entry-and-a-corpus-declares-its-pointers.md"
+      ],
+      "verdicts": [
+        {
+          "entry": "initiative-roll",
+          "verdict": "disagree",
+          "citation": "p. 184, Incapacitated [Condition]: \"Surprised. If you’re Incapacitated when you roll Initiative, you have Disadvantage on the roll.\" Same page, Invisible [Condition]: \"Surprise. If you’re Invisible when you roll Initiative, you have Advantage on the roll.\" p. 13: \"every participant rolls Initiative; they make a Dexterity check\".",
+          "reason": "Evidence unchanged and verbatim. Both crossReferences are anchored on \"rolls Initiative\", which is in the evidence, and they resolve correctly. The incapacitated-condition dependsOn edge is right under 0024 § 2. But the same test requires a second edge that is missing. The Invisible condition, on the same glossary page and in the same form, modifies the roll: an Invisible creature has Advantage on it. The engine cannot roll Initiative correctly for an Invisible combatant without that passage, exactly as the note argues for Incapacitated. No entry records it (the index has no invisible-condition entry), so the map has neither the scope:out entry nor the dependsOn/crossReferences item. The note's \"The Rules Glossary also modifies the roll: a creature Incapacitated...\" reads as the complete list, and it is not."
+        },
+        {
+          "entry": "difficult-terrain",
+          "verdict": "disagree",
+          "citation": "p. 181: \"• Liquid that’s between shin- and waist-deep • A narrow opening sized for a creature one size smaller than you • A slope of 20 degrees or more\"; \"• Furniture that is sized for creatures of your size or larger\". p. 14: \"Low furniture, rubble, undergrowth, steep stairs, snow, and shallow bogs are examples\".",
+          "reason": "The cites and resolvedBy are correct, and the dependsOn edge matches 0024 § 2. The rewritten ambiguity.question now lists the glossary's cases, then keeps \"No measure or set of values is stated\". That is false against p. 181, which states measures for three cases: 20 degrees, shin- to waist-deep, and one size smaller than you. The gap that remains is the open tail (\"or something similar\") and the unmeasured items, and the question should say that instead. The question also presents the glossary only as adding to the slice or qualifying it (\"Heavy snow\"). It does not record that the glossary replaces \"Low furniture\" with a size-relative test (\"sized for creatures of your size or larger\"), and the two can decide differently: low furniture sized for smaller creatures is Difficult Terrain by p. 14's example but not by p. 181's list. That is a tension, not a qualification."
+        },
+        {
+          "entry": "cover-degree",
+          "verdict": "disagree",
+          "citation": "p. 15: \"If a target is behind multiple sources of cover, only the most protective degree of cover applies; the degrees aren’t added together.\" Table: Half is \"Another creature or an object that covers at least half of the target\", Three-Quarters is \"An object that covers at least three-quarters of the target\". (The p. 179 wording \"If behind more than one degree of cover, a target benefits only from the most protective degree\" is quoted from the before-note in diff.json. p. 179 is not in corpus-pages.txt.)",
+          "reason": "The note now credits the settlement \"a target that qualifies for two degrees gets the most protective\" to cover-no-stacking (p. 15). p. 15 states it only for a target \"behind multiple sources of cover\". A single object covering three-quarters of a target qualifies for two degrees, since it also covers \"at least half\", but it is one source, so the slice's sentence does not decide that case. The glossary wording the old note quoted (\"more than one degree of cover\") does. The swap therefore credits the slice with more than it states, and the glossary becomes the ground for part of the settlement without being named by dependsOn or crossReferences, the shape 0024 § 1-2 exists to prevent. p. 179 is not among the provided pages, so its wording could not be checked against the authority."
+        },
+        {
+          "entry": "opportunity-attack",
+          "verdict": "disagree",
+          "citation": "p. 15: \"You also don’t provoke an Opportunity Attack when you Teleport or when you are moved without using your movement, action, Bonus Action, or Reaction.\"; \"You can make an Opportunity Attack when a creature that you can see leaves your reach.\" p. 185: \"when a creature that you can see leaves your reach using its action, its Bonus Action, its Reaction, or one of its speeds.\"",
+          "reason": "The cites and resolvedBy are correct. The new claim that justifies omitting dependsOn, \"the two passages in the slice decide every case the glossary’s list does\", does not hold in two cases. (1) A creature that leaves reach by teleporting with its action or Bonus Action: the glossary's list covers it (it leaves \"using its action, its Bonus Action\") and so it provokes, but the slice exempts it (\"when you Teleport\"). The two decide that case oppositely, which is an unrecorded conflict, not a redundancy. (2) A creature that leaves reach without moving at all, because the reacher moves away or its reach shrinks: the slice's trigger (\"leaves your reach\") and its avoidance clause (about being \"moved\") do not settle it, and the glossary's \"using its ... speeds\" does (no attack). Either a dependsOn edge on opportunity-attacks-glossary (case 2) or a recorded conflict/ambiguity (case 1) is required. The note's retained sentence \"consistent with this entry and opportunity-attack-avoidance read together\" is also false for case 1."
+        },
+        {
+          "entry": "opportunity-attacks-glossary",
+          "verdict": "disagree",
+          "citation": "p. 185: \"leaves your reach using its action, its Bonus Action, its Reaction, or one of its speeds\". p. 15: \"You also don’t provoke an Opportunity Attack when you Teleport\".",
+          "reason": "The evidence is verbatim, and the appended sentence (\"opportunity-attack names it in crossReferences\") is true. But the changed note keeps \"Read together the two passages agree; no conflict is recorded\" and \"which is what opportunity-attack-avoidance's second sentence excludes\". Neither holds: the glossary's list includes leaving reach by a Teleport made with an action or Bonus Action, which the avoidance sentence excludes without regard to what powered it. The glossary list and the slice's exclusion are therefore not complements, and a conflict exists that should be recorded (see opportunity-attack)."
+        }
+      ],
+      "resolution": "Five disagreements, all acted on: invisible-condition added and named by initiative-roll; difficult-terrain's question rewritten (measured glossary cases, the Low furniture divergence); cover-glossary added and named by cover-no-stacking, cover-degree's note corrected; opportunity-attack now depends on opportunity-attacks-glossary, which decides the not-moving case. The teleport conflict was not taken: p. 190 'teleportation never provokes Opportunity Attacks' agrees with the slice, and both notes now say so."
+    },
+    {
+      "round": 2,
+      "summary": "15 agree, 1 disagree",
+      "read": [
+        "corpus-pages.txt",
+        "diff.json",
+        "0025-a-meaning-the-same-corpus-gives-elsewhere-is-an-entry-and-a-corpus-declares-its-pointers.md"
+      ],
+      "verdicts": [
+        {
+          "entry": "opportunity-attack",
+          "verdict": "disagree",
+          "citation": "p. 15: \"You can avoid provoking an Opportunity Attack by taking the Disengage action.\" p. 181, Disengage [Action]: \"If you take the Disengage action, your movement doesn’t provoke Opportunity Attacks for the rest of the current turn.\" p. 190: \"teleportation never provokes Opportunity Attacks.\"",
+          "reason": "The new edge on opportunity-attacks-glossary is right for the not-moving case, and p. 190 resolves the teleport case, as the note now says verbatim. But the same test exposes a further missing passage. opportunity-attack is suspendedBy opportunity-attack-avoidance, and the slice's Disengage sentence has no duration and no restriction to movement. The glossary's Disengage entry (p. 181, which was already in the pages) limits it to \"your movement\" and to \"the rest of the current turn\". Two cases cannot be resolved from the slice and are decided only by the glossary: a creature that took Disengage on its previous turn and leaves reach now, and a creature that has taken Disengage and leaves reach using its Reaction or action rather than its movement (both of which the p. 185 trigger counts). Whether the Opportunity Attack is suspended in either case depends on p. 181. The map has no Disengage glossary entry, and neither opportunity-attack nor opportunity-attack-avoidance names one. By 0025 § 2 the passage should be a scope:out entry named by dependsOn and crossReferences, on opportunity-attack-avoidance (anchored on \"Disengage\") at least. This also contradicts the record's § 2 claim that every recorded glossary relation is now checked."
+        }
+      ],
+      "resolution": "One disagreement, acted on: disengage-action (p. 181) added, named by opportunity-attack-avoidance in dependsOn and crossReferences. The two minor note points were fixed; the decision record stopped claiming the glossary relations were complete."
+    },
+    {
+      "round": 3,
+      "summary": "18 agree, 0 disagree",
+      "read": [
+        "corpus-pages.txt",
+        "diff.json",
+        "0025-a-meaning-the-same-corpus-gives-elsewhere-is-an-entry-and-a-corpus-declares-its-pointers.md"
+      ],
+      "verdicts": [],
+      "resolution": "No disagreement. #117/#118 then merged into main (assertedBy, draws); the same edits were re-applied on top and the decision record renumbered 0026, so round 4 re-read the result."
+    },
+    {
+      "round": 4,
+      "summary": "17 agree, 1 disagree",
+      "read": [
+        "corpus-pages.txt",
+        "diff.json",
+        "0026-a-meaning-the-same-corpus-gives-elsewhere-is-an-entry-and-a-corpus-declares-its-pointers.md"
+      ],
+      "verdicts": [
+        {
+          "entry": "initiative-roll",
+          "verdict": "disagree",
+          "citation": "p. 181, Disadvantage: \"A roll can’t be affected by more than one Disadvantage, and Advantage and Disadvantage on the same roll cancel each other.\" p. 184: \"If you’re Invisible when you roll Initiative, you have Advantage on the roll.\" p. 13: \"that combatant has Disadvantage on their Initiative roll\". after.draws.count: \"two d20s for a roll with Advantage or Disadvantage\".",
+          "reason": "The round-3 content is intact: dependsOn [ability-checks, incapacitated-condition, invisible-condition], the three crossReferences, the note with 0025 renumbered to 0026, and the other change's D20 Tests sentence kept. `draws` is byte-identical to before, and only key order moved. The interaction the author asked about is real, though. Before this change the map gave Initiative no source of Advantage, so `draws` saying \"two d20s for a roll with Advantage or Disadvantage\" was never tested against a roll that has both. invisible-condition now makes that reachable: an Invisible combatant who is also surprised (surprise-disadvantage) or Incapacitated has both, and p. 181 says they \"cancel each other\", so one d20 is drawn. Read literally, the count now states two d20s for that case, which is wrong for a seeded game. Fix: qualify the count, e.g. \"two d20s for a roll with Advantage or Disadvantage but not both (they cancel, advantage-disadvantage)\"."
+        }
+      ],
+      "resolution": "One disagreement, acted on: initiative-roll's draws.count said two d20s with Advantage or Disadvantage, and invisible-condition makes both reachable on one roll, which cancel; the count (and group-initiative's, the same flaw) now says one d20 for a roll with both."
+    }
+  ],
+  "caveat": "Round 3 caveat, not a disagreement: opportunity-attack-avoidance's note takes the glossary's Disengage ('your movement doesn't provoke') as governing over p. 15's unqualified 'You can avoid provoking an Opportunity Attack by taking the Disengage action'. The reviewer accepted it as the natural reading and suggested the note say so explicitly. Left for a later change, so as not to alter the reviewed bytes."
+}

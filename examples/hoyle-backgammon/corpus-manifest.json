@@ -15,6 +15,10 @@
       "quotation": "verbatim",
       "randomness": "seeded",
       "retrievedFrom": "https://www.gutenberg.org/ebooks/39445.txt.utf-8",
+      "pointerPhrases": [
+        { "regex": "\\bshown in (?:\\{\\d+\\}\\s*)?Fig\\." },
+        "as in the earlier stage of the game"
+      ],
       "references": []
     }
   ]

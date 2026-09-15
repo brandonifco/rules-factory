@@ -343,6 +343,10 @@
         {
           "cites": "Except as provided in paragraph (d) of this section",
           "resolvedBy": "night-waiver-bar"
+        },
+        {
+          "cites": "under \u00a7 107.65",
+          "resolvedBy": "knowledge-recency"
         }
       ],
       "status": "declined",
@@ -358,7 +362,9 @@
       "kind": "operation",
       "scope": "in",
       "clarity": "ambiguous",
-      "dependsOn": [],
+      "dependsOn": [
+        "knowledge-recency"
+      ],
       "evidence": "(1) The remote pilot in command of the small unmanned aircraft has completed an initial knowledge test or training, as applicable, under \u00a7 107.65 after April 6, 2021; and",
       "ambiguity": {
         "question": "Whether \"initial\" qualifies \"training\" as well as \"knowledge test\" is not settled, and \"as applicable, under \u00a7 107.65\" points at a section that names an initial aeronautical knowledge test (a), recurrent training (b) and training for part 61 certificate holders (c) without saying which satisfies \u00a7 107.29(a)(1); \u00a7 107.65(d) also treats some completions before April 6, 2021 as compliant with (b) or (c).",
@@ -368,11 +374,48 @@
       "crossReferences": [
         {
           "cites": "under \u00a7 107.65",
-          "unmapped": "\u00a7 107.65 is in subpart C, outside this map's slice of twelve subpart B sections; no entry names it."
+          "resolvedBy": "knowledge-recency"
         }
       ],
       "status": "mapped",
       "note": "The completion date against April 6, 2021 is computable once the qualifying completion is known; which completion qualifies is not. Split out of night-operation, which called the training condition computable, by the blind second mapping (blind-mapping/ (0014))."
+    },
+    {
+      "id": "knowledge-recency",
+      "name": "Aeronautical knowledge recency",
+      "locator": {
+        "sourceId": "cfr-14-107",
+        "citation": "\u00a7 107.65"
+      },
+      "kind": "operation",
+      "scope": "out",
+      "clarity": "clear",
+      "dependsOn": [],
+      "evidence": "A person may not exercise the privileges of a remote pilot in command with small UAS rating unless that person has accomplished one of the following in a manner acceptable to the Administrator within the previous 24 calendar months: (a) Passed an initial aeronautical knowledge test covering the areas of knowledge specified in \u00a7 107.73; (b) Completed recurrent training covering the areas of knowledge specified in \u00a7 107.73; or (c) If a person holds a pilot certificate (other than a student pilot certificate) issued under part 61 of this chapter and meets the flight review requirements specified in \u00a7 61.56, completed training covering the areas of knowledge specified in \u00a7 107.74. (d) A person who has passed a recurrent aeronautical knowledge test in a manner acceptable to the Administrator or who has satisfied the training requirement of paragraph (c) of this section prior to April 6, 2021 within the previous 24 calendar months is considered to be in compliance with the requirement of paragraph (b) or (c) of this section, as applicable.",
+      "crossReferences": [
+        {
+          "cites": "specified in \u00a7 107.73",
+          "unmapped": "\u00a7 107.73 is outside this map's slice of twelve subpart B sections, and not needed to decline this one; no entry names it."
+        },
+        {
+          "cites": "issued under part 61 of this chapter and meets the flight review requirements specified in \u00a7 61.56",
+          "unmapped": "14 CFR part 61 is a corpus that was not admitted. This entry is scope: out and works nothing under (c), so there is no meaning of an in-scope rule for definedElsewhere to route; an out-of-scope entry answers its pointers into an unadmitted corpus here (0026, section 4)."
+        },
+        {
+          "cites": "specified in \u00a7 107.74",
+          "unmapped": "\u00a7 107.74 is outside this map's slice of twelve subpart B sections, and not needed to decline this one; no entry names it."
+        },
+        {
+          "cites": "paragraph (c) of this section",
+          "unmapped": "Paragraph (c) is quoted in this entry's own evidence."
+        },
+        {
+          "cites": "paragraph (b) or (c) of this section",
+          "unmapped": "Paragraphs (b) and (c) are quoted in this entry's own evidence."
+        }
+      ],
+      "status": "declined",
+      "note": "Out of scope: this map reads twelve sections of subpart B, and \u00a7 107.65 is not among them. It is an entry rather than an omission because \u00a7 107.29(a)(1) points at it (\"as applicable, under \u00a7 107.65\"), and which of (a)-(c), with (d)'s pre-2021 completions, satisfies that is night-training-completed's open question, which depends on this entry (0026). Nothing under the section is worked. The evidence is the whole section, so that the out-of-scope verdict covers each way of accomplishing recency. Added after the independent verdict on #116 found the pointer answered by an unmapped reason where 0026 asks for an entry."
     },
     {
       "id": "night-waiver-termination",
@@ -442,6 +485,16 @@
         "waivable-regulations"
       ],
       "evidence": "(b) No person may operate a small unmanned aircraft system during periods of civil twilight unless the small unmanned aircraft has lighted anti-collision lighting visible for at least 3 statute miles that has a flash rate sufficient to avoid a collision. The remote pilot in command may reduce the intensity of, but may not extinguish, the anti-collision lighting if he or she determines that, because of operating conditions, it would be in the interest of safety to do so. (c) For purposes of paragraph (b) of this section, civil twilight refers to the following: (1) Except for Alaska, a period of time that begins 30 minutes before official sunrise and ends at official sunrise; (2) Except for Alaska, a period of time that begins at official sunset and ends 30 minutes after official sunset; and (3) In Alaska, the period of civil twilight as defined in the Air Almanac.",
+      "crossReferences": [
+        {
+          "cites": "paragraph (b) of this section",
+          "unmapped": "Paragraph (b) is quoted in this entry's own evidence: (c) defines civil twilight for (b), and no other entry states (b) whole."
+        },
+        {
+          "cites": "as defined in the Air Almanac",
+          "resolvedBy": "civil-twilight-alaska"
+        }
+      ],
       "status": "mapped",
       "note": "Inside and outside each twilight window, with and without lighting. Alaska is a separate entry: the corpus defers the definition elsewhere."
     },
@@ -626,6 +679,16 @@
       "clarity": "clear",
       "dependsOn": [],
       "evidence": "This subpart prescribes the eligibility and operating requirements for civil small unmanned aircraft to operate over human beings or over moving vehicles in the United States, in addition to those operations permitted by \u00a7 107.39(a) and (b).",
+      "crossReferences": [
+        {
+          "cites": "\u00a7 107.39(a) and (b)",
+          "resolvedBy": "direct-participation"
+        },
+        {
+          "cites": "\u00a7 107.39(a) and (b)",
+          "resolvedBy": "reasonable-protection"
+        }
+      ],
       "status": "declined",
       "note": "Out of scope for this trial, which maps subpart B only. Reachable from \u00a7 107.39(c), so an engine must be able to say OutsideCurrentScope rather than simply lacking it. Nothing under the subpart is worked; the evidence is the subpart's own applicability sentence, which is what makes the citation checkable at all."
     },

@@ -180,7 +180,7 @@ before either has been implemented.
 | `suspendedBy` | Entry ids. The rules that make this one unreachable while they hold. Absent on an entry no rule closes. Orders nothing. See below. |
 | `beyondAdapter` | Present only when the declared adapter cannot read the rule the locator cites. Names the adapter and the modality. See below. |
 | `extraction` | Present only when the corpus text is an extraction (`quotedText` in the manifest) and it garbles this entry's passage. Names the defect and the passage as read from the rendered page. See below. |
-| `definedElsewhere` | Present only when the rule's meaning is fixed in a corpus that was not admitted. Names the manifest `references` entry. See below. |
+| `definedElsewhere` | Present only when the rule's meaning is fixed in a corpus that was not admitted. Names the manifest `references` entry. Never the map's own corpus: a meaning given elsewhere in it is a `scope: out` entry (0026). See below. |
 | `absentFrom` | Present only when the corpus does **not** state the rule at all. Names the terms searched for. See below. |
 | `derivedFrom` | Present only when no sentence states the fact and two or more in-scope entries entail it. Entry ids. The entry then carries no `locator` and no `evidence`. See below. |
 | `crossReferences` | The pointers this entry's `evidence` makes, each resolved to an entry or to a recorded reason there is none. See below. |
@@ -657,6 +657,19 @@ answers it a second time, as prose, and `check-map.py --only cross-references` r
 *other* pointers: `night-waiver-bar` routes "at night" to § 1.1 and answers "under § 107.200" as
 a cross-reference, because § 107.200 is a different passage.
 
+**It never names the corpus the map was made of.** Decided in
+[0026](decisions/0026-a-meaning-the-same-corpus-gives-elsewhere-is-an-entry-and-a-corpus-declares-its-pointers.md)
+([#115](https://github.com/brandonifco/rules-factory/issues/115)). The SRD's Rules Glossary is the
+same admitted corpus as its combat chapter, and it says when a creature is surprised. A meaning the
+same corpus gives outside the slice is a **`scope: out` entry** citing and quoting that passage,
+checked by the locator checker like any entry. The in-scope entry names it in `crossReferences`
+(see below). Where the passage **modifies** the rule, meaning the engine cannot resolve the rule
+in some case without it, the entry names it in `dependsOn` too: `initiative-roll` depends on
+`incapacitated-condition`, whose glossary text gives Disadvantage on Initiative. Where the slice
+already decides every case the passage does, the
+cross-reference is enough. `check-map.py --only manifest` refuses a `definedElsewhere` naming a
+corpus the manifest declares, or a reference marked `admitted: true`.
+
 **An elsewhere-defined *input* is neither an elsewhere-defined rule nor an assertion.**
 `airspace-authorized` is fully implementable: § 107.41 requires authorization iff the class is
 B, C, D or the lateral surface area of E, and the entry's `evidence` is that matrix. What comes
@@ -771,11 +784,28 @@ in either Part 107 map ([#28](https://github.com/brandonifco/rules-factory/issue
 detected it, because a cross-reference was a sentence inside an `evidence` span and no field
 made a mapper answer it.
 
-`check-map.py --only cross-references` reads a closed list of pointer phrases out of each
-entry's `evidence` and requires each to be claimed by a declaration whose `cites` appears
-**verbatim in that same evidence** — the answer is anchored in the corpus's words rather than
-asserted beside them — and resolved by exactly one of `resolvedBy` (an entry id in this map) or
-`unmapped` (a reason there is none).
+`check-map.py --only cross-references` reads pointer phrases out of each entry's `evidence` and
+requires each pointer to lie inside a declaration whose `cites` appears **verbatim in that same
+evidence** — the answer is anchored in the corpus's words rather than asserted beside them — and
+resolved by exactly one of `resolvedBy` (an entry id in this map) or `unmapped` (a reason there is
+none).
+
+**The phrases are per corpus.** Decided in
+[0026](decisions/0026-a-meaning-the-same-corpus-gives-elsewhere-is-an-entry-and-a-corpus-declares-its-pointers.md)
+([#116](https://github.com/brandonifco/rules-factory/issues/116)). A short built-in list, written
+from CFR and Hoyle wording, is read for every corpus. Each manifest corpus adds the words its own
+text points with, as `pointerPhrases` (see [the manifest](#the-corpus-manifest)). Matches that
+overlap, or that only whitespace separates, are one pointer. A pointer naming the entry's own
+`definedElsewhere` reference is answered by that field. The check prints, for each corpus, how many
+pointers it detected in the spans the map quotes and how many declarations sit on one, and it
+**fails a corpus that declares no `pointerPhrases` and on which the built-in list detects nothing**.
+That silent zero is how the SRD map's 22 declared cross-references went unchecked.
+
+**A term defined elsewhere in the same corpus is declared here, anchored on the term.** Where the
+chapter uses a word the corpus defines outside the slice and no words point at the definition,
+`cites` quotes the term as the evidence uses it, and `resolvedBy` names the `scope: out` entry
+that quotes the definition: `{ "cites": "surprised", "resolvedBy": "surprise-glossary" }`. See
+`definedElsewhere` above for when `dependsOn` names it too.
 
 What an *"except as provided in"* clause obliges a mapper to do is therefore: **follow it, and
 produce either an entry or a sentence saying why there is none.** Not a judgement about whether
@@ -788,11 +818,12 @@ the reference by the designation in the manifest reference's `citation` (`§ 171
 "49 CFR 171.8") or by its `sourceId` read as words (`air-almanac` in "the Air Almanac"), and by
 nothing else, so an item naming it some other way passes.
 
-**Two limits.** The phrase list is closed and short: `starting-position` quotes *"as shown in
-{273} Fig. 1"* and the page marker falling inside the phrase hides it, so a corpus that points
-somewhere in other words passes. And `unmapped` is prose, the carrier 0003 and 0004 both
-rejected — what is checked is that a mapper was made to write one and anchored it, not that it
-is true.
+**Three limits.** Detection is still a list, now the corpus's own. A corpus that points in words
+its phrases do not cover passes. The built-in list alone missed *"as shown in {273} Fig. 1"*
+because the page marker fell inside the phrase, and Hoyle's own regex reaches it. `unmapped` is
+prose, the carrier 0003 and 0004 both rejected. What is checked is that a mapper was made to write
+one and anchored it, not that it is true. And a term-anchored item is checked for its anchor and
+its target, not for whether the target defines the term.
 
 ### `status`
 
@@ -1029,6 +1060,28 @@ admitted.
 ]
 ```
 
+`pointerPhrases` lists the words this corpus points at another of its passages with
+([0026](decisions/0026-a-meaning-the-same-corpus-gives-elsewhere-is-an-entry-and-a-corpus-declares-its-pointers.md)).
+An item is a literal phrase or `{"regex": "..."}`. Both match case-insensitively, and a literal
+matches across any run of whitespace. `check-map.py --only cross-references` reads them, in addition
+to its built-in list, for entries citing this corpus and no other. Derive them from the corpus's
+text rather than from memory. Two of the SRD's, which came from searching its 364 pages for "see",
+"explained in" and "later in", and one of Hoyle's:
+
+```json
+"pointerPhrases": [
+  { "regex": "\\(see [^)]+\\)" },
+  { "regex": "“[^”]+” (?:earlier|later) in “[^”]+”" },
+  "as in the earlier stage of the game"
+]
+```
+
+Omitting it is allowed only while the built-in list detects at least one pointer in the spans the
+map quotes. A corpus on which it detects none fails. A corpus that really points at nothing
+declares `"pointerPhrases": []` with `pointerPhrasesReason`, a sentence saying why. The reason is
+refused anywhere else, and so are a regex that does not compile and a regex that matches the empty
+string.
+
 `asOf` is present only for a corpus that is revised over time. Absent means timeless, never
 unknown. It pins which text is in force and nothing more — a rule may carry dates of its
 own, which are ordinary operations over a date the caller supplies.
@@ -1132,6 +1185,14 @@ Open questions are tracked as issues so they are worked rather than admired:
   [0024](decisions/0024-a-quote-is-of-the-extraction-and-a-page-extent-can-end-at-a-heading.md)
   — the manifest declares `quotedText`, an entry the extraction garbles declares `extraction`
   with its rendered reading (printed as not verified), and a page extent may name `endsBefore`.
+- [#115](https://github.com/brandonifco/rules-factory/issues/115),
+  [#116](https://github.com/brandonifco/rules-factory/issues/116) — trial 7 found no field for a
+  term the same corpus defines outside the slice, and a pointer phrase list that detected none of
+  the SRD's pointers. Decided:
+  [0026](decisions/0026-a-meaning-the-same-corpus-gives-elsewhere-is-an-entry-and-a-corpus-declares-its-pointers.md)
+  — a `scope: out` entry named by `crossReferences`, and by `dependsOn` where it modifies the rule;
+  `definedElsewhere` never names an admitted corpus; each corpus declares its `pointerPhrases`, and
+  a corpus on which nothing is detected and nothing is declared fails.
 
 - [#117](https://github.com/brandonifco/rules-factory/issues/117),
   [#118](https://github.com/brandonifco/rules-factory/issues/118) — an assertion named nobody who
