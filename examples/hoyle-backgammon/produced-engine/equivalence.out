@@ -1,13 +1,13 @@
 
-==> engine https://github.com/brandonifco/hoyle-backgammon at 522e7daeb348ada7724c5163394896e477910e64
-engine commit    522e7daeb348ada7724c5163394896e477910e64
+==> engine https://github.com/brandonifco/hoyle-backgammon at 2ab3cdcc35283fb0b7d9e1c9a52dd5bf670c70fc
+engine commit    2ab3cdcc35283fb0b7d9e1c9a52dd5bf670c70fc
 engine name      HoyleBackgammon
-package          RulesFactory.Maps.HoyleBackgammon@4.0.0
-factory recorded 0.2.1 at b910e2f1480886ac17f2a11579234e97fc1dcdbc
+package          RulesFactory.Maps.HoyleBackgammon@6.0.0
+factory recorded 0.4.1 at 02ea62af2cad24439a5bcdf14df30ad9e887997b
 corpus           corpus/hoyle.txt sha256 5d505fa9f6202340eb55313b8ef607b816087a860d3d51b1bf92b5f65240645e
 
-==> factory at factory/v0.2.1
-factory commit   b910e2f1480886ac17f2a11579234e97fc1dcdbc
+==> factory at factory/v0.4.1
+factory commit   02ea62af2cad24439a5bcdf14df30ad9e887997b
 
 ==> produce from scratch into an empty directory (bare)
 produced HoyleBackgammon in $WORK/bare, NOT VERIFIED
@@ -16,7 +16,7 @@ produced HoyleBackgammon in $WORK/bare, NOT VERIFIED
 produced HoyleBackgammon in $WORK/seeded, NOT VERIFIED
 
 ==> classify every difference by the factory's ownership table
-seeded produce vs engine: 112 path(s)
+seeded produce vs engine: 115 path(s)
      4  engine-owned differs
           Directory.Packages.props
           HoyleBackgammon.slnx
@@ -31,15 +31,14 @@ seeded produce vs engine: 112 path(s)
           provenance.json
     18  generated identical
      3  managed identical
-    83  unlisted only-engine
+    86  unlisted only-engine
   unlisted only-engine, by top directory:
-           1  .github/workflows
            1  .gitignore
            1  LICENSE
            1  MAP-FINDINGS.md
            1  README.md
-           5  docs/decisions
-          44  src/HoyleBackgammon
+           8  docs/decisions
+          45  src/HoyleBackgammon
            5  src/Tabletop.Dice
           21  tests/HoyleBackgammon.Tests
            3  tests/Tabletop.Dice.Tests
@@ -48,7 +47,7 @@ provenance.json (generated), seeded produce vs engine:
     Directory.Packages.props: engine-owned, the engine changed it from what produce writes first (cc050d75bad8 -> b2cc3b4934d1 = its bytes)
     HoyleBackgammon.slnx: engine-owned, the engine changed it from what produce writes first (82db17a283f5 -> 225327ace7d3 = its bytes)
     src/HoyleBackgammon/HoyleBackgammon.csproj: engine-owned, the engine changed it from what produce writes first (5e6ed31edb9d -> b2d7e7db89db = its bytes)
-    src/HoyleBackgammon/packages.lock.json: engine-owned, added by the engine (sha256 4032648a5d4d = its bytes)
+    src/HoyleBackgammon/packages.lock.json: engine-owned, added by the engine (sha256 e013a1af3c62 = its bytes)
     src/Tabletop.Dice/Tabletop.Dice.csproj: unlisted, added by the engine (sha256 34ac7deb88fd = its bytes)
     src/Tabletop.Dice/packages.lock.json: unlisted, added by the engine (sha256 68f6544d80f2 = its bytes)
     tests/HoyleBackgammon.Tests/HoyleBackgammon.Tests.csproj: engine-owned, the engine changed it from what produce writes first (2b88e1557930 -> c73f5d12e636 = its bytes)
