@@ -89,37 +89,6 @@ jobs:
       - name: Validate
         run: ./scripts/validate.sh
 
-      # Decision 0022: a map of a licensed local-copy corpus is never published, whoever asks and
-      # whatever flag exists. pack-map.py refuses one too (NOT VERIFIED without the licensed-copy
-      # exception, and the exception refuses --tag and CI); this step says so on its own account,
-      # so a change to the packer cannot open the path. tools/tests/test_licensed_copy.py runs it.
-      - name: Refuse a local-copy map
-        env:
-          MAP: ${{ steps.tag.outputs.map }}
-        run: |
-          python3 - "examples/$MAP" <<'PY'
-          import glob, json, os, sys
-          manifests = sorted(glob.glob(os.path.join(sys.argv[1], "corpus-manifest*.json")))
-          if not manifests:
-              print(f"::error::{sys.argv[1]} has no corpus manifest, so its corpora's postures cannot be read")
-              sys.exit(1)
-          local = []
-          for path in manifests:
-              with open(path, encoding="utf-8") as handle:
-                  document = json.load(handle)
-              corpora = document.get("corpora") if isinstance(document, dict) else None
-              if not isinstance(corpora, list) or not corpora:
-                  print(f"::error::{path} declares no corpora, so their postures cannot be read")
-                  sys.exit(1)
-              local += [str(c.get("sourceId")) for c in corpora
-                        if not isinstance(c, dict) or c.get("verification") != "committed-copy"]
-          if local:
-              print(f"::error::{sys.argv[1]} cites corpora that are not committed-copy ({', '.join(local)}); "
-                    f"a map of a licensed local-copy corpus is never published (docs/decisions/0022)")
-              sys.exit(1)
-          print(f"every corpus {sys.argv[1]} declares is committed-copy")
-          PY
-
       # The gate proper for this map. pack-map.py checks the tag against map-package.json,
       # runs check-map.py --phase publish and the locator checker, and writes nothing if any
       # of them fails.
@@ -171,29 +140,6 @@ jobs:
             exit 1
           fi
           ls -l artifacts
-
-      # Decision 0022: a package built under the licensed-copy exception carries the nuspec tag
-      # `licensed-copy-exception`. None can be built here (pack-map.py refuses the flag in CI and
-      # with --tag), and none is pushed if one somehow is. tools/tests/test_licensed_copy.py runs it.
-      - name: Refuse a package built under the licensed-copy exception
-        run: |
-          python3 - artifacts <<'PY'
-          import glob, os, re, sys, zipfile
-          packages = sorted(glob.glob(os.path.join(sys.argv[1], "*.nupkg")))
-          if not packages:
-              print("::error::no package to examine")
-              sys.exit(1)
-          for path in packages:
-              with zipfile.ZipFile(path) as archive:
-                  nuspecs = [n for n in archive.namelist() if "/" not in n and n.endswith(".nuspec")]
-                  text = "".join(archive.read(n).decode("utf-8", "replace") for n in nuspecs)
-              tags = " ".join(re.findall(r"<tags>(.*?)</tags>", text, re.S)).split()
-              if not nuspecs or "licensed-copy-exception" in tags or "licensed-copy-exception" in text:
-                  print(f"::error::{path} was built under the licensed-copy exception, or has no nuspec to show it "
-                        f"was not; it is never published (docs/decisions/0022)")
-                  sys.exit(1)
-          print(f"{len(packages)} package(s) carry no licensed-copy-exception marker")
-          PY
 
       # Only `dotnet nuget push` needs the SDK; the package is built by pack-map.py above.
       # Pinned to the release rules-kernel's publish job uses, a version known to install.

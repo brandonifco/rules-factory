@@ -41,7 +41,7 @@ The factory is now code, in standard-library Python under
 | M5 backlog | `backlog.py` | merged. `backlog/` files, and GitHub issues matched to them by an entry marker, never by title |
 | Verify and commit | `verify.py`, `transaction.py` | merged. `produce` verifies in a staging copy and commits only what passed |
 | Acceptance: an engine the factory produced | | [`hoyle-backgammon`](https://github.com/brandonifco/hoyle-backgammon) is produced by `factory/v0.2.1` from `RulesFactory.Maps.HoyleBackgammon` 4.0.0. A from-scratch produce differs from it only in engine-owned files, and `factory provenance` matches it ([evidence](examples/hoyle-backgammon/produced-engine/EVIDENCE.md)). Not yet ticked on [#3](https://github.com/brandonifco/rules-factory/issues/3) |
-| Acceptance: rebuild `deckard`, and build something that is not a game | | not done ([#3](https://github.com/brandonifco/rules-factory/issues/3)) |
+| Acceptance: rebuild an engine blind, and build something that is not a game | | not done ([#3](https://github.com/brandonifco/rules-factory/issues/3)); criterion 1 is a blind rebuild of `hoyle-backgammon`, since the factory admits no licensed corpus ([0028](docs/decisions/0028-the-factory-admits-only-corpora-whose-licence-permits-publishing-them.md)) |
 
 Factory versions are tagged `factory/vX.Y.Z`. Provenance records the tag's version for a tagged
 commit (`0.2.1` at `factory/v0.2.1`), and `0.0.0-dev+<commit>` for any other commit.
@@ -56,39 +56,35 @@ marked `not implemented` that the parser does have.
 |---|---|---|---|
 | `produce` | — | implemented | intake, generation, gate, backlog, provenance, verify, commit |
 | `produce` | `--package` | implemented | a `.nupkg` path, or `Id@Version` |
-| `produce` | `--corpus` | implemented | the corpus file: `committed-copy`, hashing to the map's baseline |
+| `produce` | `--corpus` | implemented | the corpus file: `committed-copy`, public domain or openly licensed ([0028](docs/decisions/0028-the-factory-admits-only-corpora-whose-licence-permits-publishing-them.md)), hashing to the map's baseline |
 | `produce` | `--name` | implemented | the engine's PascalCase name |
 | `produce` | `--out` | implemented | the engine directory: created when absent, updated when it exists |
 | `produce` | `--allow-dirty` | implemented | produce from a factory with uncommitted changes, recorded as `dirty: true` |
 | `produce` | `--no-verify` | implemented | commit without building or testing; the output says so |
 | `produce` | `--adopt` | implemented | make a managed file engine-owned, keeping its edits |
 | `produce` | `--reset` | implemented | overwrite a managed or adopted file with the current recipe |
-| `produce` | `--licensed-copy-exception` | implemented | an allowlisted operator (`gh api user`), outside CI, produces from a licensed `local-copy` corpus; no corpus bytes enter the engine ([0022](docs/decisions/0022-a-licensed-copy-is-used-locally-by-a-named-operator-and-never-published.md)) |
 | `produce` | domain pack | not implemented | no pack exists; provenance records `"packs": []` |
 | `produce` | agent rails | not implemented | undecided: [#1](https://github.com/brandonifco/rules-factory/issues/1), [#4](https://github.com/brandonifco/rules-factory/issues/4) |
 | `backlog` | — | implemented | synchronise `backlog/` with GitHub issues through `gh` |
 | `backlog` | `--create` | implemented | the only action; never closes or deletes an issue |
 | `backlog` | `--repo` | implemented | `owner/name` |
 | `backlog` | `--dir` | implemented | the engine directory |
-| `backlog` | `--package` | implemented | the map package the bodies are checked against: each carries the attribution the corpus licence requires (0023), and for a licensed `local-copy` engine, no issue quotes the corpus (0022) |
+| `backlog` | `--package` | implemented | the map package the bodies are checked against: each carries the attribution the corpus licence requires (0023) |
 | `provenance` | — | implemented | re-produce in a scratch copy and name every field that does not match |
 | `provenance` | `--engine` | implemented | the engine directory |
 | `provenance` | `--package` | implemented | default: `Id@Version` from `provenance.json` |
-| `provenance` | `--licensed-copy-exception` | implemented | re-produce a `local-copy` engine from the file its manifest's `envVar` names (0022) |
 | `verify` | — | implemented | provenance, then restore if the engine has no lock files, then the engine's own gate |
 | `verify` | `--engine` | implemented | the engine directory |
 | `verify` | `--package` | implemented | default: `Id@Version` from `provenance.json` |
-| `verify` | `--licensed-copy-exception` | implemented | verify a `local-copy` engine; the output says `verified locally under the licensed-copy exception by <login>` (0022) |
 <!-- factory-cli-status:end -->
 
 ### What a verified `produce` proves
 
 - **The inputs.** The package is a map package with its checker inside. The map is in a schema
-  version this factory reads. The corpus is the committed copy the map was made of (or, under
-  the licensed-copy exception of
-  [0022](docs/decisions/0022-a-licensed-copy-is-used-locally-by-a-named-operator-and-never-published.md),
-  an allowlisted operator's local copy, and the output says so). The
-  factory's own `check-map.py --phase consumer` passes on the packaged map.
+  version this factory reads. The corpus is public domain or openly licensed
+  ([0028](docs/decisions/0028-the-factory-admits-only-corpora-whose-licence-permits-publishing-them.md)),
+  and is the committed copy the map was made of. The factory's own `check-map.py --phase consumer`
+  passes on the packaged map.
 - **The build.** `verify` recomputes provenance, restores (writing the lock files the first
   time, and re-locking them when the run changed the generated pins, as a map version bump
   does), then runs the engine's own gate, `scripts/validate.sh full`: the SDK pin, a locked
@@ -166,7 +162,8 @@ found at run time, not at compile time. The string-keyed `Registry` and reflecti
 `hoyle-backgammon` was built by hand first and is now produced by the factory. Its generated
 files, managed files and provenance are the factory's output. Its rules code, tests and extra
 projects are engine-owned. `deckard` and `SRD_Combat` are still built by hand. They are what the
-method was derived from, and the factory is finished when it can rebuild them.
+method was derived from. `deckard`'s corpus is commercial, so it stays hand-built and outside the
+factory ([0028](docs/decisions/0028-the-factory-admits-only-corpora-whose-licence-permits-publishing-them.md)).
 
 ## The shape of a run
 

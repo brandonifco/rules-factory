@@ -9,7 +9,12 @@ Accepted — 2026-09-14. Decided by Brandon on
 is declared per corpus on the same ground. **Extended** by
 [0022](0022-a-licensed-copy-is-used-locally-by-a-named-operator-and-never-published.md): a named
 operator holding the licensed copy may pack and produce from a `local-copy` corpus on their own
-machine; everyone else, CI included, is still told `NOT VERIFIED`.
+machine; everyone else, CI included, is still told `NOT VERIFIED`. **Partly superseded 2026-09-15**
+by [0028](0028-the-factory-admits-only-corpora-whose-licence-permits-publishing-them.md): 0022 is withdrawn, and the factory
+admits only a corpus whose licence is public domain or open. The postures and `quotation` below
+are still how a manifest describes a corpus, and `check-map.py` and every engine's gate still
+check them; the factory produces from and publishes none that is licensed. The last consequence,
+which exists only for a licensed corpus, is marked where it stands.
 
 ## Context
 
@@ -111,6 +116,10 @@ the wrong bytes passes it.
 tests. The first licensed corpus will find what they miss — at minimum, that a map with no spans
 has no `extent` coverage and no located citations, so `check-locators.py` fails it by design and
 the posture that says so has to be read before that failure is.
+
+> **Superseded by [0028](0028-the-factory-admits-only-corpora-whose-licence-permits-publishing-them.md).** The factory maps no
+> corpus whose licence does not permit publishing its map, so the question below is never asked of
+> one it admits.
 
 **The map of a `never-commit` corpus may itself be unpublishable.** Where `quotation: withheld`,
 `name`, `note` and `ambiguity.question` still paraphrase the corpus, and nothing here measures

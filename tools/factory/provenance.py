@@ -22,13 +22,6 @@ The fields, and where each comes from:
   * `corpus` -- sourceId, contentHash, hashDerivation and asOf of the one corpus, with
     `recomputed: true`: intake derived contentHash from the corpus bytes under
     hashDerivation and it matched; it was not copied from the map.
-  * `licensedCopyException` -- present only when the corpus is a licensed `local-copy` one that
-    intake admitted under the licensed-copy exception (decision 0022): `{operator, corpus}`, the
-    allowlisted GitHub login `gh` was authenticated as and the corpus's sourceId. Absent otherwise,
-    so no other record changes. Such an engine has no `corpus/` file (its bytes are never
-    committed), so recompute re-produces from the file the manifest's `envVar` names, and only
-    under the exception: the field is compared like any other, so a different operator, or a
-    re-produce without the exception, is a named mismatch.
   * `kernel` -- the RulesKernel version the engine references.
   * `packs` -- `[]`: no rule packs exist yet, and the empty list says so rather than omitting it.
   * `recipes` -- every file under `tools/factory/` (the factory's templates are its Python
@@ -422,8 +415,6 @@ def build(state, result, model, recorder, factory_dir=FACTORY_DIR):
             "asOf": corpus.get("asOf"),
             "recomputed": True,
         },
-        **({"licensedCopyException": {"operator": result.licensed_copy_operator, "corpus": corpus["sourceId"]}}
-           if getattr(result, "licensed_copy_operator", None) else {}),
         "kernel": {"packageId": "RulesKernel", "version": generate.KERNEL_VERSION},
         "packs": [],
         "recipes": recipes(factory_dir, state["_top"]),
@@ -495,8 +486,7 @@ def recompute(engine_dir, produce_into, package=None):
     """Every way `engine_dir/provenance.json` is not what re-producing gives; [] when it is.
 
     `produce_into(package, corpus, name, out)` runs the whole of `produce` with --allow-dirty and
-    returns the provenance document it wrote (raising intake.Refused or GenerationError). `corpus`
-    is None for an engine recorded under the licensed-copy exception (0022), which holds none.
+    returns the provenance document it wrote (raising intake.Refused or GenerationError).
     """
     path = os.path.join(engine_dir, FILE_NAME)
     try:
@@ -542,18 +532,13 @@ def recompute(engine_dir, produce_into, package=None):
 
     corpus = recorded.get("corpus") or {}
     corpus_files = [g["path"] for g in recorded.get("generated") or [] if str(g.get("path", "")).startswith("corpus/")]
-    # Decision 0022: an engine produced under the licensed-copy exception holds no corpus; the
-    # re-produce below reads the local copy from the manifest's envVar (intake), under the exception.
-    local_copy = "licensedCopyException" in recorded
-    if len(corpus_files) != (0 if local_copy else 1):
-        return mismatches + [f"generated: names {len(corpus_files)} corpus/ files; "
-                             + ("a licensed local-copy corpus is never committed (0022)" if local_copy
-                                else "exactly one is the corpus")]
-    corpus_path = os.path.join(engine_dir, *corpus_files[0].split("/")) if corpus_files else None
+    if len(corpus_files) != 1:
+        return mismatches + [f"generated: names {len(corpus_files)} corpus/ files; exactly one is the corpus"]
+    corpus_path = os.path.join(engine_dir, *corpus_files[0].split("/"))
     derive = intake_step.HASH_DERIVATIONS.get(corpus.get("hashDerivation"))
     if derive is None:
         mismatches.append(f"corpus.hashDerivation: {corpus.get('hashDerivation')!r} cannot be computed")
-    elif corpus_path is not None and os.path.isfile(corpus_path):
+    elif os.path.isfile(corpus_path):
         with open(corpus_path, "rb") as handle:
             actual = derive(handle.read())
         if actual != corpus.get("contentHash"):
@@ -567,8 +552,7 @@ def recompute(engine_dir, produce_into, package=None):
         copy = os.path.join(scratch, "engine")
         shutil.copytree(engine_dir, copy, ignore=COPY_IGNORE)
         try:
-            corpus_copy = os.path.join(copy, *corpus_files[0].split("/")) if corpus_files else None
-            actual = produce_into(spec, corpus_copy, name, copy)
+            actual = produce_into(spec, os.path.join(copy, *corpus_files[0].split("/")), name, copy)
         except (intake_step.Refused, intake_step.Usage, generate.GenerationError) as error:
             return mismatches + [f"produce refused to re-produce the engine, so nothing else was compared: {error}"]
     if isinstance(recorded_inputs, list) and isinstance(actual.get("buildInputs"), list):

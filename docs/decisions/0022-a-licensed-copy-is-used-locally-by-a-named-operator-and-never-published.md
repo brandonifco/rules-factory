@@ -8,6 +8,13 @@ Accepted — 2026-09-14. Decided by Brandon on
 [0015](0015-a-map-is-published-as-a-versioned-package.md)**. Blocks criterion 1 of
 [#3](https://github.com/brandonifco/rules-factory/issues/3).
 
+**Superseded 2026-09-15** by [0028](0028-the-factory-admits-only-corpora-whose-licence-permits-publishing-them.md), and withdrawn in
+full: the factory admits no licensed corpus, so there is no exception to make. The flag, the
+allowlist, `licensed_copy.py`, the marked package, the publish-workflow guards, the withheld backlog
+and the `licensedCopyException` provenance field are removed. The record below is kept as it was
+written, except that its links to the two deleted files are now plain names, and describes nothing
+the factory now does.
+
 ## Context
 
 Criterion 1 of #3 rebuilds `deckard` from its corpus, and that corpus is licensed: `never-commit`,
@@ -41,9 +48,9 @@ All three, or the exception is refused:
    never read, because anyone can set it.
 
 **The allowlist is
-[`tools/factory/licensed-copy-operators.json`](../../tools/factory/licensed-copy-operators.json)**,
+`tools/factory/licensed-copy-operators.json`**,
 a committed list of logins holding `brandonifco` only. It changes only by pull request. It sits
-beside [`licensed_copy.py`](../../tools/factory/licensed_copy.py), the one module that reads it,
+beside `licensed_copy.py`, the one module that reads it,
 so it is also among the recipe files every engine's `provenance.json` hashes: an engine records
 the allowlist it was produced under.
 

@@ -10,9 +10,9 @@ of `--out`, and the result is committed to `--out` only after the last step pass
 refusal leaves `--out` byte-identical to how it started (transaction.py, #67):
 
   * intake (intake.py) -- the package is a map package carrying its checker, the map's
-    `schemaVersion` is one the factory reads, the corpus is `committed-copy` and hashes to the
-    map's baseline, and the factory's own `tools/check-map.py --phase consumer` passes on the
-    packaged map. Nothing from the package is ever run (0016): its checker is hashed, not
+    `schemaVersion` is one the factory reads, the corpus's licence is public domain or open
+    (decision 0028), the corpus is `committed-copy` and hashes to the map's baseline, and the
+    factory's own `tools/check-map.py --phase consumer` passes on the packaged map. Nothing from the package is ever run (0016): its checker is hashed, not
     executed;
   * scaffold and generation (generate.py) -- a .NET solution on RulesKernel and the map
     package, each file in one ownership class (ownership.py): managed build policy, updated
@@ -50,7 +50,7 @@ each file is matched to its issue by the entry marker in its body, never by titl
 issue is created, updated, or left unchanged. It never closes or deletes an issue. Before any
 call it reads the map package provenance.json records (`--package`, or Id@Version from the NuGet
 global packages folder): when the corpus's licence requires attribution, a body without the
-statement is refused (decision 0023); for a licensed local-copy corpus, a body quoting it (0022).
+statement is refused (decision 0023).
 
   python3 tools/factory provenance --engine <dir> [--package <nupkg path | Id@Version>]
 
@@ -69,21 +69,12 @@ global.json's pin, without changing global.json or what provenance checks, and v
 say so in a WARNING and on their last line.
 See verify.py.
 
-`produce`, `verify` and `provenance` take `--licensed-copy-exception` (decision 0022, #105):
-outside CI, and only when `gh api user` (or `$FACTORY_GH`) is authenticated as a login in
-tools/factory/licensed-copy-operators.json, intake admits a licensed `local-copy` corpus, hashing
-the local file (`--corpus`, or for a re-produce the manifest's `envVar`) against the baseline. No
-corpus bytes are copied into the engine, provenance records `licensedCopyException`, and every
-line that would say verified says `verified locally under the licensed-copy exception by <login>`.
-Without the flag nothing differs. See licensed_copy.py.
-
 Exit 0 when every step passed; 1 when a step refused; 2 on a usage error.
 Standard library only.
 """
 import argparse
 import contextlib
 import io
-import json
 import os
 import re
 import shlex
@@ -95,7 +86,6 @@ import backlog as backlog_step  # noqa: E402
 import gate  # noqa: E402
 import generate  # noqa: E402
 import intake as intake_step  # noqa: E402
-import licensed_copy  # noqa: E402
 import provenance  # noqa: E402
 import transaction  # noqa: E402
 import verify as verify_step  # noqa: E402
@@ -115,19 +105,15 @@ def produce(args):
         # The pins the engine had before this run: the staging copy is still --out as it was.
         pins_before = verify_step.read_pins(out)
         with provenance.Recorder(out) as recorder:
-            result = intake_step.intake(args.package, args.corpus, log=sys.stdout,
-                                        licensed_copy_operator=getattr(args, "licensed_copy_operator", None))
+            result = intake_step.intake(args.package, args.corpus, log=sys.stdout)
             print(f"intake passed: {result.package_id} {result.version}, {len(result.map.get('entries') or [])} entries")
             model = generate.produce(result, args.name, out, log=sys.stdout,
                                      adopt=getattr(args, "adopt", None) or (), reset=getattr(args, "reset", None) or ())
             gate.emit(args.name, out, log=sys.stdout)
             context = {"name": args.name, "package": result.package_id, "version": result.version}
-            if result.corpus.get("verification") == "local-copy":
-                context["localCopy"] = True  # decision 0022: the backlog quotes nothing from the corpus
-            else:
-                credit = backlog_step.attribution(result.corpus)  # decision 0023: quotations carry their attribution
-                if credit:
-                    context["attribution"] = credit
+            credit = backlog_step.attribution(result.corpus)  # decision 0023: quotations carry their attribution
+            if credit:
+                context["attribution"] = credit
             written = backlog_step.emit([item["entry"] for item in model.entries], context, out)
             print(f"--- backlog: {len(written) - 1} item(s)")
             provenance.emit(model, out)
@@ -152,9 +138,8 @@ def produce(args):
             # #94: a run that moved the generated pins re-locks (verify.py). The lock files are
             # engine-owned, and this is the one case produce rewrites them (ownership.py, 0018).
             relock = verify_step.pins_changed(pins_before, verify_step.read_pins(out))
-            overridden = verify_step.verify_staged(out, lambda engine, package: recompute_provenance(
-                                          engine, package, getattr(args, "licensed_copy_operator", None)),
-                                      args.package, log=sys.stdout, after_restore=record_lock_files, relock=relock)
+            overridden = verify_step.verify_staged(out, recompute_provenance, args.package, log=sys.stdout,
+                                                   after_restore=record_lock_files, relock=relock)
         added, changed, _ = stage.commit()
 
     def is_lock(path):
@@ -166,7 +151,7 @@ def produce(args):
     if relocked:
         print(f"re-locked {len(relocked)} packages.lock.json file(s) because the generated pins changed: "
               f"review and commit them")
-    print(f"produced {args.name} in {args.out}, {'NOT VERIFIED' if args.no_verify else verified(document)}"
+    print(f"produced {args.name} in {args.out}, {'NOT VERIFIED' if args.no_verify else 'verified'}"
           f"{overridden_suffix(overridden, verify_step.pinned_sdk(args.out), 'lock files re-locked' if args.no_verify else '')}")
     return document
 
@@ -238,51 +223,27 @@ def produce_command(args, override):
             argv += [flag, value]
     if getattr(args, "allow_dirty", False):
         argv.append("--allow-dirty")
-    if getattr(args, "licensed_copy_exception", False):
-        argv.append(licensed_copy.FLAG)
     argv.append("--no-verify")
     return (f"{verify_step.SDK_OVERRIDE}={shlex.quote(override)} " if override else "") + shlex.join(argv)
 
 
-def verified(document):
-    """How a verified engine is described: plainly, or under the licensed-copy exception (0022)."""
-    exception = document.get("licensedCopyException") if isinstance(document, dict) else None
-    if isinstance(exception, dict) and exception.get("operator"):
-        return licensed_copy.attestation(exception["operator"])
-    return "verified"
-
-
-def recorded_provenance(engine_dir):
-    try:
-        with open(os.path.join(engine_dir, provenance.FILE_NAME), encoding="utf-8") as handle:
-            return json.load(handle)
-    except (OSError, ValueError):
-        return None
-
-
-def recompute_provenance(engine_dir, package=None, licensed_copy_operator=None):
-    """Every provenance field of `engine_dir` that re-producing does not reproduce; [] when all match.
-
-    `licensed_copy_operator` is the login main() established for --licensed-copy-exception, or None.
-    """
+def recompute_provenance(engine_dir, package=None):
+    """Every provenance field of `engine_dir` that re-producing does not reproduce; [] when all match."""
     def produce_into(spec, corpus, name, out):
         with contextlib.redirect_stdout(io.StringIO()):
             return produce(argparse.Namespace(package=spec, corpus=corpus, name=name, out=out, allow_dirty=True,
-                                              no_verify=True, check_locks=False,
-                                              licensed_copy_operator=licensed_copy_operator))
+                                              no_verify=True, check_locks=False))
     return provenance.recompute(engine_dir, produce_into, package)
 
 
 def check_provenance(args):
-    mismatches = recompute_provenance(args.engine, args.package, args.licensed_copy_operator)
+    mismatches = recompute_provenance(args.engine, args.package)
     for line in mismatches:
         print(f"MISMATCH {line}")
     if mismatches:
         print(f"provenance of {args.engine}: {len(mismatches)} mismatch(es)")
         return 1
-    document = recorded_provenance(args.engine)
-    suffix = "" if verified(document) == "verified" else f", {verified(document)}"
-    print(f"provenance of {args.engine}: every field matches{suffix}")
+    print(f"provenance of {args.engine}: every field matches")
     return 0
 
 
@@ -304,34 +265,25 @@ def build_parser():
                         "keeping its edits; repeatable (tools/factory/ownership.py)")
     p.add_argument("--reset", action="append", metavar="PATH",
                    help="overwrite this managed or adopted file with the current recipe and make it managed; repeatable")
-    exception_help = ("an allowlisted operator (gh api user) uses a licensed local-copy corpus on their own machine; "
-                      "refused in CI (decision 0022)")
-    p.add_argument(licensed_copy.FLAG, dest="licensed_copy_exception", action="store_true", help=exception_help)
     b = commands.add_parser("backlog", help="create or update GitHub issues from an engine's backlog/ files")
     b.add_argument("--create", action="store_true", required=True, help="create missing issues and update changed ones (the only action)")
     b.add_argument("--repo", required=True, help="owner/name of the engine's repository")
     b.add_argument("--dir", required=True, help="the engine directory `produce` wrote")
     b.add_argument("--package", help="the .nupkg whose manifest and map the bodies are checked against: the corpus "
-                                      "licence's attribution (decision 0023), and for a licensed local-copy corpus, "
-                                      "no quoted text (0022) (default: Id@Version from provenance.json, from the "
+                                      "licence's attribution (decision 0023) (default: Id@Version from provenance.json, from the "
                                       "NuGet global packages folder)")
     r = commands.add_parser("provenance", help="recompute an engine's provenance.json and report mismatches")
     r.add_argument("--engine", required=True, help="the engine directory")
     r.add_argument("--package", help="the .nupkg or Id@Version (default: Id@Version from provenance.json)")
-    r.add_argument(licensed_copy.FLAG, dest="licensed_copy_exception", action="store_true", help=exception_help)
     v = commands.add_parser("verify", help="prove an engine: provenance, restore if unlocked, then its gate")
     v.add_argument("--engine", required=True, help="the engine directory")
     v.add_argument("--package", help="the .nupkg or Id@Version (default: Id@Version from provenance.json)")
-    v.add_argument(licensed_copy.FLAG, dest="licensed_copy_exception", action="store_true", help=exception_help)
     return parser
 
 
 def main(argv=None):
     args = build_parser().parse_args(argv)
     try:
-        # Decision 0022: the identity is established once, before anything is read, and only when asked.
-        args.licensed_copy_operator = (licensed_copy.authorise() if getattr(args, "licensed_copy_exception", False)
-                                       else None)
         if args.command == "backlog":
             if not re.match(r"^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$", args.repo):
                 raise intake_step.Usage(f"--repo {args.repo!r} is not owner/name")
@@ -341,19 +293,15 @@ def main(argv=None):
         if args.command == "provenance":
             return check_provenance(args)
         if args.command == "verify":
-            overridden = verify_step.verify(args.engine, lambda engine, package: recompute_provenance(
-                engine, package, args.licensed_copy_operator), args.package, log=sys.stdout)
-            document = recorded_provenance(args.engine)
-            print(f"verify {args.engine}: PASS" + ("" if verified(document) == "verified"
-                                                   else f", {verified(document)}")
-                  + overridden_suffix(overridden, verify_step.pinned_sdk(args.engine)))
+            overridden = verify_step.verify(args.engine, recompute_provenance, args.package, log=sys.stdout)
+            print(f"verify {args.engine}: PASS" + overridden_suffix(overridden, verify_step.pinned_sdk(args.engine)))
             return 0
         produce(args)
         return 0
     except intake_step.Usage as error:
         print(f"factory: {error}", file=sys.stderr)
         return 2
-    except (intake_step.Refused, generate.GenerationError, backlog_step.BacklogError, licensed_copy.Refused) as error:
+    except (intake_step.Refused, generate.GenerationError, backlog_step.BacklogError) as error:
         print(f"factory: REFUSED -- {error}. Nothing was produced.", file=sys.stderr)
         return 1
     except verify_step.Failed as error:
