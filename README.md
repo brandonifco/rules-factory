@@ -40,10 +40,11 @@ The factory is now code, in standard-library Python under
 | M4 provenance | `provenance.py` | merged. `provenance.json` (format 3), and a command that recomputes it |
 | M5 backlog | `backlog.py` | merged. `backlog/` files, and GitHub issues matched to them by an entry marker, never by title |
 | Verify and commit | `verify.py`, `transaction.py` | merged. `produce` verifies in a staging copy and commits only what passed |
+| Acceptance: an engine the factory produced | | [`hoyle-backgammon`](https://github.com/brandonifco/hoyle-backgammon) is produced by `factory/v0.2.1` from `RulesFactory.Maps.HoyleBackgammon` 4.0.0. A from-scratch produce differs from it only in engine-owned files, and `factory provenance` matches it ([evidence](examples/hoyle-backgammon/produced-engine/EVIDENCE.md)). Not yet ticked on [#3](https://github.com/brandonifco/rules-factory/issues/3) |
 | Acceptance: rebuild `deckard`, and build something that is not a game | | not done ([#3](https://github.com/brandonifco/rules-factory/issues/3)) |
 
-No factory version has been tagged, so provenance records the version as
-`0.0.0-dev+<commit>`.
+Factory versions are tagged `factory/vX.Y.Z`. Provenance records the tag's version for a tagged
+commit (`0.2.1` at `factory/v0.2.1`), and `0.0.0-dev+<commit>` for any other commit.
 
 What the CLI accepts is the table below. [`tools/check-readme-status.py`](tools/check-readme-status.py),
 run by `validate.sh`, checks it against the parser `tools/factory/__main__.py` builds: a
@@ -140,10 +141,13 @@ found at run time, not at compile time. The string-keyed `Registry` and reflecti
 | Domain packs — tabletop, legal | none | not implemented |
 | Agent rails for produced engines | none | not implemented ([#1](https://github.com/brandonifco/rules-factory/issues/1), [#4](https://github.com/brandonifco/rules-factory/issues/4)) |
 | **Factory — intake, generation, gate, backlog, provenance, verify** | **this** | implemented; acceptance test ([#3](https://github.com/brandonifco/rules-factory/issues/3)) not passed |
-| Produced engines | `deckard`, `SRD_Combat` | built by hand, before the factory |
+| Produced engines | [`hoyle-backgammon`](https://github.com/brandonifco/hoyle-backgammon) | produced by the factory (`factory/v0.2.1`, map 4.0.0), with hand-written rule handlers ([evidence](examples/hoyle-backgammon/produced-engine/EVIDENCE.md)) |
+| Hand-built engines | `deckard`, `SRD_Combat` | built by hand, before the factory |
 
-The two existing engines were built by hand. They are what the method was derived from, and
-the factory is finished when it can rebuild them.
+`hoyle-backgammon` was built by hand first and is now produced by the factory. Its generated
+files, managed files and provenance are the factory's output. Its rules code, tests and extra
+projects are engine-owned. `deckard` and `SRD_Combat` are still built by hand. They are what the
+method was derived from, and the factory is finished when it can rebuild them.
 
 ## The shape of a run
 
