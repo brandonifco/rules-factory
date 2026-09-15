@@ -274,6 +274,23 @@ the gammon and backgammon conditions overlap (#102); a correction to what the ma
 `faa-part-107`'s first version was `1.0.0`; `2.0.0` is the same checker change
 and the same `randomness` field (0019). Its map also changed: the section-designation `extent` and
 introductory-text citation (0020) and the waiver gate (#61, 0021).
+`srd-52-combat`'s first version was `1.0.0`, carrying its `LICENCE.txt` from the start (0023).
+
+Each package's next version is one major bump for everything merged since its last publish; the
+checker's bytes changed in all three (0024, 0025, 0026), which is major on its own.
+- `hoyle-backgammon` `5.0.0`: the packaged `LICENCE.txt` and `map-package.json`'s `licence`
+  (0023, #110); `assertedBy` on `agreed-backgammon-multiple` and `draws` on `opening-roll` and
+  `throw-two-dice` (0025, #120); the manifest's `pointerPhrases` (0026, #121).
+- `faa-part-107` `3.0.0`: the packaged `LICENCE.txt` and `map-package.json`'s `licence` (0023,
+  #110); `assertedBy` on its ten assertions (0025, #120); the manifest's `pointerPhrases`, the new
+  `scope: out` entry `knowledge-recency` (§ 107.65) with `night-training-completed` depending on
+  it, and `crossReferences` changed on four entries (0026, #121). 47 entries.
+- `srd-52-combat` `2.0.0`: the manifest's `quotedText`, the extent's `endsBefore` and `extraction`
+  on six entries (0024, #119); `assertedBy` on three assertions and `draws` on four operations
+  (0025, #120); the manifest's `pointerPhrases`, four new `scope: out` glossary entries
+  (`difficult-terrain-glossary`, `invisible-condition`, `cover-glossary`, `disengage-action`), two
+  existing ones' evidence extended, and `crossReferences`/`dependsOn` added on in-scope entries
+  (0026, #121). 95 entries.
 
 **corpus-map.md's "Where the map lives" changes.** A map is published from the factory and
 consumed as a package. The engine owns only its overlay.

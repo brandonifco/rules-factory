@@ -3,10 +3,10 @@
 
 The packages are built here with tools/pack-map.py from examples/, not downloaded: the tests
 need no network, and pack-map.py is deterministic, so `examples/hoyle-backgammon` packs to
-RulesFactory.Maps.HoyleBackgammon 4.0.0 with the map, manifest, checker and props that
+RulesFactory.Maps.HoyleBackgammon 5.0.0 with the map, manifest, checker and props that
 nuget.org serves (their bytes were compared against the published 2.0.0 package when this test
 was written; the published package adds only nuget.org's signature, and later versions differ
-from 2.0.0 in the checker's bytes and, from #95 and #102, the map's). When that published package is in the NuGet global
+from 2.0.0 in the checker's bytes and, from #95, #102, 0025 and 0026, the map's; from 0023, the packaged licence). When that published package is in the NuGet global
 packages folder it is also run through intake, and that test says it was skipped otherwise.
 
 Each refusal starts from a package that passes and changes exactly one thing, and asserts a
@@ -44,7 +44,7 @@ intake = factory.intake_step
 
 HOYLE_TEXT = os.path.join(REPO, "examples", "hoyle-backgammon", "hoyle.txt")
 PART107_XML = os.path.join(REPO, "examples", "faa-part-107", "part107.xml")
-HOYLE_ID, HOYLE_VERSION = "RulesFactory.Maps.HoyleBackgammon", "4.0.0"
+HOYLE_ID, HOYLE_VERSION = "RulesFactory.Maps.HoyleBackgammon", "5.0.0"
 PART107_ID = "RulesFactory.Maps.FaaPart107"
 
 
