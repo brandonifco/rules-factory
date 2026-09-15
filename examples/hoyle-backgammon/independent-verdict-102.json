@@ -1,0 +1,57 @@
+{
+  "about": "Independent verdict (0017) on #102, the engine's finding 17: game-value's ambiguity question named the man-up case of the gammon/backgammon overlap and not the man in the winner's home table. game-value is the only entry changed; win-condition, blot-hit, the bearing-off entries, stake-multiplier, agreed-backgammon-multiple, hit-pays-single-stake and next-game-opening were scanned for the same 'up' versus 'up or in the winner's home table' gap and none has it. The reviewer was a separate agent context. It was given only: the corpus text of 'Bearing off the Men' (hoyle.txt, through the {277} marker); corpus-map.md's example entry, its Fields table and its ambiguity.fate section; and a JSON before/after of game-value. It saw the author's reasoning only in the map's own notes and, from round 2, in the author's responses. `sha256` is the final map. `verdicts` is the reviewer's final output, unedited. `rounds` keeps the earlier rounds and how each disagreement was resolved.",
+  "sha256": "82b135bfa760df7b9157abff2ce882f8f8b9d57189f0803baeec74c7f2ace0a8",
+  "reviewer": "independent reviewer, separate context",
+  "read": [
+    "corpus-p276.txt (hoyle.txt, 'BEARING OFF THE MEN.' through 'the amount of the single stake.')",
+    "corpus-map-ambiguity.md (corpus-map.md: An entry, Fields, ambiguity.fate)",
+    "diff.json (game-value before and after)",
+    "diff.json (round 2)",
+    "diff.json (round 3)"
+  ],
+  "summary": "Round 1: 3 agree, 1 disagree (ambiguity.question: 'begun to bear off' may mean reaching the all-home stage, leaving a hit/gammon case unnamed). Round 2: 4 agree; the reviewer withdrew the disagreement on the corpus's gloss of bearing off as removal, and the author took a nit narrowing the gap case. Round 3 (final bytes, after the author took a second nit recording that reading in the note): 4 agree, 0 disagree.",
+  "verdicts": [
+    {"entry": "game-value", "field": "ambiguity.question", "verdict": "agree", "citation": "\"he proceeds to \"bear them off\"--_i.e._, to remove them from the board\"; \"has got all his men into his own home table, and has begun to bear off\"", "reason": "The question has not changed since round 2. It names the one gap, a man outside both home tables after a man has been removed, and the two gammon/backgammon overlaps. It names nothing the corpus settles, since a loser with all men home and none removed is a gammon."},
+    {"entry": "game-value", "field": "note", "verdict": "agree", "citation": "\"he proceeds to \"bear them off\"--_i.e._, to remove them from the board\" (before the {276} marker, so printed p. 275)", "reason": "Each quotation in the new sentence matches the corpus exactly, and the gloss does come before the {276} marker, so 'p. 275' is right. The reasoning it records holds: removal is the defined meaning, and the conjunct would otherwise be redundant. The rest of the note is unchanged from round 2."},
+    {"entry": "game-value", "field": "evidence", "verdict": "agree", "citation": "corpus paragraphs beginning \"If the adversary has got all his men\" through \"the amount of the single stake.\"", "reason": "The span has not changed and matches the corpus once whitespace is normalized, the {277} marker included. It contains all three conditions the question quotes."},
+    {"entry": "game-value", "field": "clarity/fate", "verdict": "agree", "citation": "Schema doc, `clarity`: \"`clear` asserts the corpus determines exactly one answer for every valid input\"; `ambiguity.fate`: \"`unresolved` -- the engine declines at runtime and returns `RequiresInterpretation`\"", "reason": "The question names inputs with no answer and inputs with two, so `ambiguous` is required. `unresolved` with RequiresInterpretation is valid for such an entry."}
+  ],
+  "nits": [
+    "These verdicts cover the bytes of diff.json in the review directory. I was given no map file, so I could not check the quoted map sha256 (82b135bf...).",
+    "The note's '(#102, independent verdict)' points to this review, a project record the corpus cannot confirm."
+  ],
+  "rounds": [
+    {
+      "round": 1,
+      "sha256": "01e494243529b8d47faf871638e1c27b303e84167501f04cc183f950991162ce",
+      "verdicts": [
+        {"entry": "game-value", "field": "ambiguity.question", "verdict": "disagree", "citation": "\"If the adversary has got all his men into his own home table, and has begun to bear off\" / \"before his adversary has begun to do the same\"; cf. \"When the game has reached this stage, each throw entitles the player either to move forward a man or men ... or to remove men\"", "reason": "The claims that are there are true and the quotations are verbatim. The gap is real: a man re-entered and outside both the winner's home table and his own matches no result. The two gammon/backgammon overlaps are right, and neither hit/gammon ('has begun' vs 'before ... has begun') nor hit/backgammon (all home vs up or in the winner's table) can overlap, so the list of gaps and overlaps is otherwise complete. But the question quietly reads 'begun to bear off' as 'has removed a man', and the corpus does not settle that: the text calls the whole all-home stage bearing off, where a throw may move a man forward instead of removing one. So a loser with all his men home and none yet removed could be a hit or a gammon, and the question does not name this undetermined case."},
+        {"entry": "game-value", "field": "note", "verdict": "agree", "citation": "\"while the adversary has still a man or men \"up\" (_i.e._, on the bar) or in his (the winner's) home table\"", "reason": "The note says the man in the winner's home table sits beside the man up in the backgammon condition, which is true of the text. The two overlap cases it lists match the question. What it asks a test to demonstrate is explanation, not a claim a test could carry. Its other claims point to project records (#102, finding 17, blot-hit's wording) that the corpus here cannot check, and nothing in them contradicts the text."},
+        {"entry": "game-value", "field": "evidence", "verdict": "agree", "citation": "corpus paragraphs beginning \"If the adversary has got all his men\" through \"the amount of the single stake.\"", "reason": "The span is unchanged. It matches the corpus word for word, the {277} marker included, and it contains all three conditions the question quotes, so it is enough for the gap and both overlaps."},
+        {"entry": "game-value", "field": "clarity/fate", "verdict": "agree", "citation": "Schema doc, `clarity`: \"`clear` asserts the corpus determines exactly one answer for every valid input\"; `ambiguity.fate`: \"`unresolved` -- the engine declines at runtime and returns `RequiresInterpretation`\"", "reason": "The question names inputs with no answer and inputs with two, so the entry cannot be `clear`. `unresolved` with unresolvedReason RequiresInterpretation is a valid fate for such an entry, and no decision record is claimed."}
+      ],
+      "nits": [
+        "The evidence spans three corpus paragraphs, and the blank lines between them are collapsed to single spaces. That is fine if the schema's 'verbatim' tolerates normalized whitespace, but it is worth confirming.",
+        "The question's gap example says the man was 'run clear of the winner's home table'. More exactly, the man has to be outside both the winner's home table and the loser's own home table, since once he is back home the loser is a hit.",
+        "If the reading of 'begun to bear off' is added to the question, the sentence that defines the bearing-off stage is outside the current evidence span. The ambiguity would then need a second locator/evidence or a crossReference.",
+        "The note's 'the finding's own stated reason ... is false' is correct against the text: a loser can have borne off a man and then been taken up."
+      ],
+      "resolution": "Disagreement answered with evidence and not by a change: the corpus glosses the term, 'he proceeds to \"bear them off\"--_i.e._, to remove them from the board', and the hit condition's 'and has begun to bear off' would add nothing to 'has got all his men into his own home table' if reaching the stage were enough. So a loser home with none removed is a gammon, and the case is settled. Nit 1: tools/check-locators.py normalizes whitespace before matching. Nit 2 taken: the gap case now reads 'run that man clear of the winner's home table but not yet back into his own'. Nit 3 is moot, since the reading is not ambiguous."
+    },
+    {
+      "round": 2,
+      "sha256": "e336ce6ad940e6f76b6233b3c172c56ff82046cde3da46c3484efedef2259171",
+      "verdicts": [
+        {"entry": "game-value", "field": "ambiguity.question", "verdict": "agree", "citation": "\"he proceeds to \"bear them off\"--_i.e._, to remove them from the board\"; \"has got all his men into his own home table, and has begun to bear off\"", "reason": "I withdraw my round-1 disagreement. The corpus defines bearing off as removal with its own i.e. gloss, and the hit condition's second conjunct would add nothing if reaching the all-home stage were enough. So a loser with all men home and none removed has not begun to bear off: he is a gammon, and that case is settled. With that reading the question is complete and names nothing the corpus settles. It gives the single gap, now correctly limited to a man outside both home tables, and the two gammon/backgammon overlaps; hit/gammon and hit/backgammon cannot overlap."},
+        {"entry": "game-value", "field": "note", "verdict": "agree", "citation": "\"while the adversary has still a man or men \"up\" (_i.e._, on the bar) or in his (the winner's) home table\"", "reason": "The note has not changed since round 1. Its claims about the corpus are true, and the two overlap cases it asks a test to show match the question. Its references to project records (#102, finding 17, blot-hit's wording) cannot be checked against this corpus, and nothing in them contradicts it."},
+        {"entry": "game-value", "field": "evidence", "verdict": "agree", "citation": "corpus paragraphs beginning \"If the adversary has got all his men\" through \"the amount of the single stake.\"", "reason": "The span has not changed and matches the corpus verbatim, the {277} marker included. It holds all three conditions the question quotes."},
+        {"entry": "game-value", "field": "clarity/fate", "verdict": "agree", "citation": "Schema doc, `clarity`: \"`clear` asserts the corpus determines exactly one answer for every valid input\"; `ambiguity.fate`: \"`unresolved` -- the engine declines at runtime and returns `RequiresInterpretation`\"", "reason": "The question still names inputs with no answer and inputs with two, so `ambiguous` is required. `unresolved` with RequiresInterpretation is valid for such an entry."}
+      ],
+      "nits": [
+        "The evidence spans three corpus paragraphs, and the blank lines between them are collapsed to single spaces. Worth confirming that the schema's 'verbatim' tolerates normalized whitespace.",
+        "The meaning of 'begun to bear off' as removal rests on a gloss outside the evidence span. The note could cite it in one clause, so a later reader does not reopen the question of whether a loser with all men home and none removed is a hit."
+      ],
+      "resolution": "No disagreement. Nit 2 taken: one sentence appended to game-value's note recording why 'begun to bear off' means removal, with both quotations. Round 3 reviewed those bytes."
+    }
+  ]
+}

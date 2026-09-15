@@ -371,7 +371,7 @@ class TestRelock(VerifyCase):
     @classmethod
     def setUpClass(cls):
         super().setUpClass()
-        cls.nupkg_v4 = pack_version(HOYLE, "4.0.0", cls.shared)
+        cls.nupkg_bumped = pack_version(HOYLE, "5.0.0", cls.shared)
 
     def produce_verified(self, package, **env):
         with mock.patch.dict(os.environ, {**self.env, **env}):
@@ -395,7 +395,7 @@ class TestRelock(VerifyCase):
         before = self.locks()
         os.remove(self.log)
 
-        code, output = self.produce_verified(self.nupkg_v4)
+        code, output = self.produce_verified(self.nupkg_bumped)
         self.assertEqual(code, 0, output)
         self.assertEqual(self.dotnet_calls(), ["restore --force-evaluate", "restore --locked-mode", "build", "test"])
         self.assertIn("the generated pins changed, so this restore re-locks the 2 lock file(s)", output)
@@ -406,12 +406,12 @@ class TestRelock(VerifyCase):
         after = self.locks()
         for relative in after:
             self.assertNotEqual(before[relative], after[relative])
-            self.assertIn("[4.0.0]", after[relative])
+            self.assertIn("[5.0.0]", after[relative])
         recorded = self.recorded_locks()
         self.assertEqual(sorted(recorded), sorted(after))
         for relative, text in after.items():
             self.assertEqual(recorded[relative], hashlib.sha256(text.encode("utf-8")).hexdigest())
-        code, recomputed = run(["provenance", "--engine", self.engine, "--package", self.nupkg_v4])
+        code, recomputed = run(["provenance", "--engine", self.engine, "--package", self.nupkg_bumped])
         self.assertEqual(code, 0, recomputed)
 
     def test_unchanged_pins_do_not_re_lock_even_when_the_props_bytes_change(self):
@@ -432,7 +432,7 @@ class TestRelock(VerifyCase):
         code, output = self.produce_verified(self.nupkg)
         self.assertEqual(code, 0, output)
         before = snapshot(self.engine)
-        code, output = self.produce_verified(self.nupkg_v4, FAKE_DOTNET_FAIL="restore")
+        code, output = self.produce_verified(self.nupkg_bumped, FAKE_DOTNET_FAIL="restore")
         self.assertEqual(code, 1, output)
         self.assertIn("verify FAILED at stage restore", output)
         self.assertEqual(before, snapshot(self.engine))
@@ -442,7 +442,7 @@ class TestRelock(VerifyCase):
         code, output = self.produce_verified(self.nupkg)
         self.assertEqual(code, 0, output)
         with mock.patch.object(verify_step, "pins_changed", return_value=False):
-            code, output = self.produce_verified(self.nupkg_v4)
+            code, output = self.produce_verified(self.nupkg_bumped)
         self.assertEqual(code, 1, output)
         self.assertIn("is not consistent with the project's package versions", output)
         self.assertIn("verify FAILED at stage gate", output)
@@ -454,7 +454,7 @@ class TestRelock(VerifyCase):
         with open(props, encoding="utf-8") as handle:
             text = handle.read()
         with open(props, "w", encoding="utf-8") as handle:
-            handle.write(text.replace("[3.0.0]", "[4.0.0]"))
+            handle.write(text.replace("[4.0.0]", "[5.0.0]"))
         before = self.locks()
         os.remove(self.log)
         with mock.patch.dict(os.environ, self.env):

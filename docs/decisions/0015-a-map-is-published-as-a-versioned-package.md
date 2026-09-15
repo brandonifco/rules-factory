@@ -249,11 +249,18 @@ passes the gate and fails at login, and nothing is published.
 **`hoyle-backgammon`'s migration off its vendored copy is the engine's change**, not this
 record's (#27's third to-do). The factory side is a package the engine can depend on. The first
 version was `1.0.0`. `2.0.0` is the first to carry the checker (#51): an added package file is
-not on the minor or patch list. `3.0.0` changes only the checker's bytes (#79's
-`SCHEMA_VERSIONS`, and #87's build of `tools/check-map.py` from `tools/checkmap/` with a generated
-header); the map and manifest are unchanged, and a changed package file is not on the minor or
-patch list either. `faa-part-107`'s first version was `1.0.0`; `2.0.0` is the same checker change,
-with its map and manifest unchanged.
+not on the minor or patch list. `3.0.0` changes three things, each major on its own:
+- the checker's bytes (#79's `SCHEMA_VERSIONS`, and #87's build of `tools/check-map.py` from
+  `tools/checkmap/` with a generated header), and a changed package file is not on the minor or
+  patch list;
+- the manifest's `randomness` field (0019);
+- the map, corrected by the blind second mapping (#95).
+
+`4.0.0` corrects `game-value`'s ambiguity question to name both cases where
+the gammon and backgammon conditions overlap (#102); a correction to what the map says is major.
+`faa-part-107`'s first version was `1.0.0`; `2.0.0` is the same checker change
+and the same `randomness` field (0019). Its map also changed: the section-designation `extent` and
+introductory-text citation (0020) and the waiver gate (#61, 0021).
 
 **corpus-map.md's "Where the map lives" changes.** A map is published from the factory and
 consumed as a package. The engine owns only its overlay.
