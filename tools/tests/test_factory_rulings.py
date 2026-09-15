@@ -12,7 +12,13 @@ What is asserted here, without a .NET SDK:
   * the gate: `map-overlay.py merge` refuses the same overlays, passes the worked example without
     carrying `rulings` or `declines` into the merged map, and prints the rulings; `engine-gate.py
     regenerate` passes; an engine with no rulings generates exactly what it did before;
-  * provenance: an edited decision record is a mismatch until the engine is produced again.
+  * provenance: an edited decision record is a mismatch until the engine is produced again;
+  * a licensed local-copy corpus (0027 as amended 2026-09-15), on licensed_fixture.py's invented map:
+    a span is offsets and a hash of the normalised question, checked and covering it as a quotation
+    is; a quotation is refused there (and the object form for a committed-copy corpus); no message
+    repeats the question's words; any committed string or decision record carrying 15 consecutive
+    words of the map's text is refused, and 14 are not; the posture comes from the manifest, and an
+    unknown one refuses any ruling; `locate` and its command line give the span object.
 
 That `Rulings.g.cs` compiles, warning-free, beside an engine's own use of it, is
 scripts/validate-engine.sh's to show, on the SDK the kernel pins.
@@ -43,6 +49,8 @@ RULINGS_CS = f"src/{NAME}/Generated/Rulings.g.cs"
 RECORD = "docs/decisions/0009-owner-rulings-are-ruleset-version-five.md"
 
 sys.path.insert(0, FACTORY)
+sys.path.insert(0, HERE)
+import licensed_fixture  # noqa: E402
 import rulings  # noqa: E402
 
 _spec = importlib.util.spec_from_file_location("factory_main_rulings", os.path.join(FACTORY, "__main__.py"))
@@ -114,7 +122,7 @@ class TestProblems(unittest.TestCase):
         write_record(self.root)
 
     def check(self, overlay, root="engine", package=None):
-        return rulings.problems(package or MAP, overlay, self.root if root == "engine" else root)
+        return rulings.problems(package or MAP, overlay, self.root if root == "engine" else root, False)
 
     def refused(self, change, *expected):
         overlay = worked_example()
@@ -235,7 +243,7 @@ class TestProblems(unittest.TestCase):
     def test_the_record_is_not_looked_for_without_a_root(self):
         overlay = worked_example()
         overlay["bearing-off-eligible"]["rulings"][0]["record"] = "docs/decisions/0010-missing.md"
-        self.assertEqual(rulings.problems(MAP, overlay, None), [])
+        self.assertEqual(rulings.problems(MAP, overlay, None, False), [])
 
     def test_rulings_without_declines(self):
         self.refused(lambda item: item.pop("declines"), "names rulings and no `declines`")
@@ -289,6 +297,191 @@ class TestProblems(unittest.TestCase):
         (line,) = rulings.describe(overlay)
         self.assertIn("owner's ruling bearing-off-eligible/2 on bearing-off-eligible, not the corpus", line)
         self.assertIn("ruled by Brandon on 2026-09-15", line)
+
+
+LICENSED_MAP = licensed_fixture.map_document()
+LICENSED_ENTRY = "occupied-square"
+LICENSED_QUESTION = next(e for e in LICENSED_MAP["entries"] if e["id"] == LICENSED_ENTRY)["ambiguity"]["question"]
+OWN_PART = LICENSED_QUESTION[:LICENSED_QUESTION.index(" or only")]
+OPPOSING_PART = LICENSED_QUESTION[LICENSED_QUESTION.index("or only"):]
+OWN_TEST = "OccupiedSquareTests.The_owner_rules_a_captains_own_pawn_blocks_the_square"
+OPPOSING_TEST = "OccupiedSquareTests.An_opposing_pawn_square_is_the_case_the_corpus_does_not_settle"
+EVIDENCE = "A captain moves one pawn per turn, and never onto a square another pawn occupies."
+
+
+def licensed_example():
+    """A local-copy engine's overlay item: a ruling on the question's first part and a decline of the rest,
+    each named by offsets and hash."""
+    return {LICENSED_ENTRY: {
+        "status": "implemented",
+        "tests": [{"test": OWN_TEST, "mutation": "m1"}, {"test": OPPOSING_TEST, "mutation": "m2"}],
+        "rulings": [{
+            "id": f"{LICENSED_ENTRY}/own-pawn",
+            "span": rulings.locate(LICENSED_QUESTION, OWN_PART),
+            "answer": "Yes: a pawn of the moving side blocks the move as well.",
+            "ruledBy": "Brandon",
+            "ruledOn": "2026-09-15",
+            "record": RECORD,
+            "tests": [OWN_TEST],
+        }],
+        "declines": [{"span": rulings.locate(LICENSED_QUESTION, OPPOSING_PART), "tests": [OPPOSING_TEST]}],
+    }}
+
+
+class TestLicensedCorpus(unittest.TestCase):
+    """0027 as amended: a licensed local-copy corpus's question is named by offsets and hash, never quoted."""
+
+    def setUp(self):
+        self.root = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, self.root, True)
+        write_record(self.root)
+
+    def check(self, overlay, local_copy=True, package=None):
+        return rulings.problems(package or LICENSED_MAP, overlay, self.root, local_copy)
+
+    def refused(self, change, *expected):
+        overlay = licensed_example()
+        change(overlay[LICENSED_ENTRY])
+        found = self.check(overlay)
+        self.assertTrue(found, "the overlay was accepted")
+        text = "\n".join(found)
+        for fragment in expected:
+            self.assertIn(fragment, text)
+        self.assert_quotes_nothing(text)
+        return text
+
+    def assert_quotes_nothing(self, text):
+        for part in (OWN_PART, OPPOSING_PART, "another pawn occupies", "opposing pawn"):
+            self.assertNotIn(part, text)
+
+    def ruling(self, item):
+        return item["rulings"][0]
+
+    def test_the_example_passes_and_its_spans_cover_the_normalised_question(self):
+        self.assertEqual(self.check(licensed_example()), [])
+        item = licensed_example()[LICENSED_ENTRY]
+        own, opposing = self.ruling(item)["span"], item["declines"][0]["span"]
+        self.assertEqual((own["start"], opposing["end"]), (0, len(rulings.normalise(LICENSED_QUESTION))))
+        self.assertEqual(len(own["sha256"]), 64)
+
+    def test_normalising_ignores_how_the_question_is_wrapped(self):
+        package = copy.deepcopy(LICENSED_MAP)
+        entry = next(e for e in package["entries"] if e["id"] == LICENSED_ENTRY)
+        entry["ambiguity"]["question"] = "  " + LICENSED_QUESTION.replace(" ", "\n   ", 3) + "\n"
+        self.assertEqual(self.check(licensed_example(), package=package), [])
+
+    def test_a_quotation_is_refused_and_the_message_gives_the_object_to_write(self):
+        found = "\n".join(self.check({LICENSED_ENTRY: dict(licensed_example()[LICENSED_ENTRY], declines=[
+            {"span": OPPOSING_PART, "tests": [OPPOSING_TEST]}])}))
+        self.assertIn("`span` quotes the question, and the corpus is a licensed local-copy corpus", found)
+        self.assertIn(json.dumps(rulings.locate(LICENSED_QUESTION, OPPOSING_PART)), found)
+        self.assert_quotes_nothing(found)
+
+    def test_an_object_span_is_refused_for_a_committed_copy_corpus(self):
+        overlay = worked_example()
+        overlay["bearing-off-eligible"]["declines"][0]["span"] = rulings.locate(QUESTION, FIRST_PART)
+        found = "\n".join(rulings.problems(MAP, overlay, None, False))
+        self.assertIn("`span` is offsets and a hash, and the corpus is not a local-copy corpus", found)
+
+    def test_a_question_the_map_rewrote(self):
+        package = copy.deepcopy(LICENSED_MAP)
+        entry = next(e for e in package["entries"] if e["id"] == LICENSED_ENTRY)
+        entry["ambiguity"]["question"] = LICENSED_QUESTION.replace("moving captain's", "other captain's")
+        found = "\n".join(self.check(licensed_example(), package=package))
+        self.assertIn(f"ruling '{LICENSED_ENTRY}/own-pawn': span [0, ", found)
+        self.assertIn("If the map rewrote the question", found)
+        self.assert_quotes_nothing(found)
+
+    def test_a_malformed_span_object(self):
+        self.refused(lambda item: self.ruling(item)["span"].pop("sha256"), "must be an object of exactly start, end, sha256")
+        self.refused(lambda item: self.ruling(item)["span"].update(note="x"), "must be an object of exactly")
+        self.refused(lambda item: self.ruling(item)["span"].update(sha256="ABC"), "not 64 lower-case hexadecimal")
+        for start, end in ((5, 5), (-1, 10), (0, 10_000), (True, 10), ("0", 10)):
+            with self.subTest(start=start, end=end):
+                self.refused(lambda item: self.ruling(item)["span"].update(start=start, end=end),
+                             "not a non-empty range inside the normalised question")
+
+    def test_a_span_that_begins_or_ends_on_a_space(self):
+        def widen(item):
+            span = self.ruling(item)["span"]
+            normal = rulings.normalise(LICENSED_QUESTION)
+            span.update(end=span["end"] + 1, sha256=rulings._sha256(normal[span["start"]:span["end"] + 1]))
+        self.refused(widen, "begins or ends on a space")
+
+    def test_an_uncovered_part_is_named_by_offsets(self):
+        def shorten(item):
+            normal = rulings.normalise(LICENSED_QUESTION)
+            item["declines"][0]["span"] = rulings.locate(LICENSED_QUESTION, normal[normal.index("or only"):-1])
+        text = self.refused(shorten, "leave characters [")
+        self.assertIn("of the normalised question unquoted", text)
+        self.refused(lambda item: item.update(declines=[]), "leave characters [")
+
+    def test_overlapping_spans(self):
+        self.refused(lambda item: item["declines"][0].update(span=rulings.locate(LICENSED_QUESTION, "occupies, or only")),
+                     "quote overlapping spans")
+
+    def test_fifteen_words_of_the_maps_text_are_refused_in_any_committed_field(self):
+        fifteen = " ".join(EVIDENCE.split()[:15])
+        self.assertEqual(len(rulings._words(fifteen)), 15)
+        self.refused(lambda item: self.ruling(item).update(answer=f"Yes, since {fifteen.lower()}"),
+                     "`answer` carries 15 or more consecutive words of the map's text, from its word 3")
+        self.refused(lambda item: self.ruling(item).update(ruledBy=fifteen), "`ruledBy` carries 15 or more")
+        test = "OccupiedSquareTests." + "_".join(rulings._words(fifteen))
+
+        def named(item):
+            item["tests"].append({"test": test, "mutation": "m3"})
+            item["declines"][0]["tests"] = [test]
+        self.refused(named, "decline 1: test 1 carries 15 or more")
+
+    def test_fourteen_words_are_not(self):
+        fourteen = " ".join(EVIDENCE.split()[1:15])
+        overlay = licensed_example()
+        self.ruling(overlay[LICENSED_ENTRY]).update(answer=f"Yes: {fourteen}")
+        self.assertEqual(self.check(overlay), [])
+
+    def test_the_decision_record_may_not_quote_the_map_either(self):
+        write_record(self.root, text="# 0009\n\nThe book asks: " + LICENSED_QUESTION + "\n")
+        found = "\n".join(self.check(licensed_example()))
+        self.assertIn(f"its decision record {RECORD} carries 15 or more consecutive words", found)
+        self.assert_quotes_nothing(found)
+
+    def test_a_committed_copy_corpus_may_quote(self):
+        overlay = worked_example()
+        overlay["bearing-off-eligible"]["rulings"][0]["answer"] = " ".join(SECOND_PART.split()[:40])
+        write_record(self.root, text=QUESTION)
+        self.assertEqual(rulings.problems(MAP, overlay, self.root, False), [])
+
+    def test_an_unknown_posture_refuses_any_ruling(self):
+        found = rulings.problems(LICENSED_MAP, licensed_example(), self.root, None)
+        self.assertEqual(len(found), 1)
+        self.assertIn("verification posture was not given", found[0])
+        self.assertEqual(rulings.problems(LICENSED_MAP, {LICENSED_ENTRY: {"status": "mapped"}}, self.root, None), [])
+
+    def test_posture_reads_the_manifest(self):
+        self.assertEqual(rulings.posture(licensed_fixture.manifest_document(), LICENSED_MAP), (True, None))
+        with open(os.path.join(HOYLE, "corpus-manifest.json"), encoding="utf-8") as handle:
+            self.assertEqual(rulings.posture(json.load(handle), MAP), (False, None))
+        local, problem = rulings.posture({"corpora": []}, LICENSED_MAP)
+        self.assertIsNone(local)
+        self.assertIn("0 times, not once", problem)
+
+    def test_locate_and_label(self):
+        self.assertIsNone(rulings.locate(LICENSED_QUESTION, "pawn"), "occurs more than once")
+        self.assertIsNone(rulings.locate(LICENSED_QUESTION, "not in it"))
+        span = rulings.locate(LICENSED_QUESTION, "  or only an opposing\npawn's square? ")
+        self.assertEqual(span, rulings.locate(LICENSED_QUESTION, OPPOSING_PART))
+        self.assertEqual(rulings.label(span), f"sha256:{span['sha256']} [{span['start']}, {span['end']})")
+        self.assertEqual(rulings.label("quoted"), "quoted")
+        package = os.path.join(self.root, "map.json")
+        with open(package, "w", encoding="utf-8") as handle:
+            json.dump(LICENSED_MAP, handle)
+        command = [sys.executable, os.path.join(FACTORY, "rulings.py"), "locate", "--map", package, "--entry", LICENSED_ENTRY]
+        done = subprocess.run(command, input=OPPOSING_PART, capture_output=True, text=True)
+        self.assertEqual(done.returncode, 0, done.stderr)
+        self.assertEqual(json.loads(done.stdout), span)
+        done = subprocess.run(command, input="pawn", capture_output=True, text=True)
+        self.assertEqual(done.returncode, 1)
+        self.assertNotIn("pawn", done.stderr)
 
 
 class ProducedCase(unittest.TestCase):
@@ -426,8 +619,10 @@ class TestGate(ProducedCase):
         with open(self.package_map, "w", encoding="utf-8") as handle:
             json.dump(MAP, handle)
 
-    def merge(self):
+    def merge(self, manifest=True):
+        args = TestProduce.package_args(self)
         return self.script("map-overlay.py", "merge", "--package-map", self.package_map,
+                           *(("--package-manifest", args[3]) if manifest else ()),
                            "--overlay", os.path.join(self.out, "corpus-map.overlay.json"), "--out", self.merged)
 
     def test_the_worked_example_merges_without_its_rulings_and_is_reported(self):

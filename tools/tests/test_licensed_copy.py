@@ -28,7 +28,12 @@ Asserted:
     `gh` call a body that does, one without the notice, or when the map cannot be found; a
     committed-copy engine (hoyle-backgammon) is byte-identical with the flag and without, and still
     quotes its evidence;
-  * pack-map.py hashes the local copy first, so a wrong edition does not pack.
+  * pack-map.py hashes the local copy first, so a wrong edition does not pack;
+  * an owner's ruling on the licensed corpus (0027 as amended 2026-09-15) is produced, verified and
+    recomputed with its span named by offsets and hash: no engine file carries a word of the
+    question, and the engine's own merge step accepts it given the package manifest and refuses it
+    without; a span quoting the question is refused before anything is written, and so is an answer
+    carrying fifteen words of the map.
 
 pack-map.py runs in-process here, so the fixture's derivation can be added to intake's for it.
 
@@ -61,6 +66,8 @@ sys.path.insert(0, HERE)
 import licensed_fixture as fixture  # noqa: E402
 from test_factory_verify import FAKE_DOTNET, FAKE_GATE  # noqa: E402
 from test_factory_backlog import STUB as ISSUE_STUB  # noqa: E402
+from test_factory_rulings import (EVIDENCE, OPPOSING_PART, OWN_PART, licensed_example,  # noqa: E402
+                                  write_record)
 
 _spec = importlib.util.spec_from_file_location("factory_main_licensed", os.path.join(FACTORY, "__main__.py"))
 factory = importlib.util.module_from_spec(_spec)
@@ -603,6 +610,67 @@ class TestFactory(FactoryCase):
                                     licensed_copy.FLAG, **{fixture.ENV_VAR: changed})
         self.assertEqual(code, 1, output)
         self.assertIn(f"is not {fixture.SOURCE_ID} at the map's baseline", output)
+
+
+class TestRulings(FactoryCase):
+    """0027 as amended: a ruling on a licensed corpus names its part of the question without its words."""
+
+    def with_overlay(self, overlay):
+        os.makedirs(self.engine, exist_ok=True)
+        write_record(self.engine)
+        with open(os.path.join(self.engine, "corpus-map.overlay.json"), "w", encoding="utf-8") as handle:
+            json.dump(overlay, handle, indent=2)
+
+    def test_a_ruling_is_produced_and_verified_and_no_engine_file_carries_the_question(self):
+        overlay = licensed_example()
+        self.with_overlay(overlay)
+        output = self.produced()
+        self.assertIn("--- owner's ruling occupied-square/own-pawn on occupied-square, not the corpus", output)
+        span = overlay["occupied-square"]["rulings"][0]["span"]
+        (ruling,) = self.record()["rulings"]
+        self.assertEqual(set(ruling), {"id", "entry", "span", "answer", "ruledBy", "ruledOn", "record", "recordSha256"})
+        self.assertEqual(ruling["span"], span)
+        with open(os.path.join(self.engine, "src", fixture.ENGINE, "Generated", "Rulings.g.cs"), encoding="utf-8") as handle:
+            generated = handle.read()
+        self.assertIn(f'"sha256:{span["sha256"]} [{span["start"]}, {span["end"]})",', generated)
+        self.assertIn("named without its words", generated)
+        for directory, _, names in os.walk(self.engine):
+            for name in names:
+                path = os.path.join(directory, name)
+                with open(path, "rb") as handle:
+                    flat = " ".join(handle.read().decode("utf-8", "replace").split())
+                for part in (OWN_PART, OPPOSING_PART, "another pawn occupies"):
+                    self.assertNotIn(part, flat, path)
+
+        code, output = self.factory("provenance", "--engine", self.engine, "--package", self.nupkg, licensed_copy.FLAG)
+        self.assertEqual(code, 0, output)
+        with zipfile.ZipFile(self.nupkg) as archive:
+            for part in ("corpus-map.json", "corpus-manifest.json"):
+                with open(os.path.join(self.tmp, part), "wb") as handle:
+                    handle.write(archive.read(f"map/{part}"))
+        merge = [sys.executable, os.path.join(self.engine, "scripts", "map-overlay.py"), "merge",
+                 "--package-map", os.path.join(self.tmp, "corpus-map.json"),
+                 "--overlay", os.path.join(self.engine, "corpus-map.overlay.json"), "--out", os.path.join(self.tmp, "m.json")]
+        done = subprocess.run(merge + ["--package-manifest", os.path.join(self.tmp, "corpus-manifest.json")],
+                              capture_output=True, text=True)
+        self.assertEqual(done.returncode, 0, done.stderr)
+        done = subprocess.run(merge, capture_output=True, text=True)
+        self.assertEqual(done.returncode, 1, "without the manifest the posture is unknown, and a ruling is refused")
+        self.assertIn("verification posture was not given", done.stderr)
+
+    def test_a_quoted_span_or_a_quoting_answer_is_refused_before_anything_is_written(self):
+        quoted = licensed_example()
+        quoted["occupied-square"]["rulings"][0]["span"] = OWN_PART
+        quoting = licensed_example()
+        quoting["occupied-square"]["rulings"][0]["answer"] = EVIDENCE
+        for overlay, expected in ((quoted, "`span` quotes the question"), (quoting, "`answer` carries 15 or more")):
+            with self.subTest(expected):
+                shutil.rmtree(self.engine, True)
+                self.with_overlay(overlay)
+                code, output = self.produce(licensed_copy.FLAG)
+                self.assertEqual(code, 1, output)
+                self.assertIn(expected, output)
+                self.assertFalse(os.path.exists(os.path.join(self.engine, "provenance.json")))
 
 
 if __name__ == "__main__":

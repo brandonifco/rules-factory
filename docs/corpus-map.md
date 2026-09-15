@@ -875,7 +875,9 @@ quotes the part of `question` it answers and names the tests that show it. Each 
 part the engine still declines and names the test that shows the decline. Between them, the quoted
 spans cover the whole question. `declines: []` declares the question fully ruled, and then no
 declining test is owed. Neither key is merged into the map. The factory checks both against the
-map on every `produce` and in the engine's gate.
+map on every `produce` and in the engine's gate. For a licensed `local-copy` corpus a span quotes
+nothing: it is character offsets into the whitespace-normalised question and the hash of the text
+between them, since an engine commits its overlay (0027 as amended, after 0022).
 
 ```json
 "tests": [

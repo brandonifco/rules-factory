@@ -121,7 +121,7 @@ print("\n".join(fields))
     PACKAGE_MANIFEST="${MAP_FIELDS[3]}"; CONSUMER_CHECKER="${MAP_FIELDS[4]}"
     MERGED="$SCRATCH/corpus-map.json"
     if run "merge($PACKAGE_ID@$PACKAGE_VERSION, corpus-map.overlay.json) obeys 0015" \
-        python3 scripts/map-overlay.py merge --package-map "$PACKAGE_MAP" \
+        python3 scripts/map-overlay.py merge --package-map "$PACKAGE_MAP" --package-manifest "$PACKAGE_MANIFEST" \
           --overlay corpus-map.overlay.json --out "$MERGED"; then
       MAP_OK=1
       # 0015 rule 6: the checks the overlay can change, from the restored package's own checker.

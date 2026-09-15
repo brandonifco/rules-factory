@@ -268,12 +268,19 @@ def regenerate(args):
     declared, problem = declared_randomness(args.package_manifest, args.package_map)
     if problem:
         return report([problem], "")
+    # Whether a ruling's span may quote the question (a local-copy corpus's may not, decision 0027 as
+    # amended), from the same restored manifest.
+    local_copy, problem = rulings.posture(json.loads(pathlib.Path(args.package_manifest).read_text(encoding="utf-8")),
+                                          package)
+    if problem:
+        return report([problem], "")
     overlay_path = ROOT / OVERLAY
     overlay = json.loads(overlay_path.read_text(encoding="utf-8")) if overlay_path.is_file() else {}
     try:
         model = generate.Model(types.SimpleNamespace(package_id=args.package_id, version=args.package_version,
                                                      randomness=declared),
-                               generate.merge(package, overlay, root=str(ROOT)), args.name, rulings.collect(overlay))
+                               generate.merge(package, overlay, root=str(ROOT), local_copy=local_copy), args.name,
+                               rulings.collect(overlay))
         expected = {**generate.generated(model), **provenance.embedding(model)}
     except generate.GenerationError as error:
         return report([f"the generator refuses merge(package, overlay): {error}"], "")

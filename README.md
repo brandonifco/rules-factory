@@ -124,7 +124,9 @@ CI proves this on every pull request. The `validate` job runs
   ([0027](docs/decisions/0027-an-owners-ruling-is-held-by-the-engine-and-checked-by-the-factory.md)).
   A ruling lives in the overlay, never in the map, beside `declines` for the parts still declined.
   The factory checks that the rulings and declines quote the map's current question and between
-  them cover it, name tests the entry names, and name decision records the engine commits.
+  them cover it, name tests the entry names, and name decision records the engine commits. For a
+  licensed `local-copy` corpus a span names its part by offsets and a hash instead of quoting it,
+  and no committed field or decision record may carry fifteen words of the map.
   `produce`, the gate and `provenance.json` report which answers are the owner's, and
   `Rulings.g.cs` carries them into the engine. What no check reads is whether the engine actually
   declines or rules as the overlay says. The named tests are held only to having run.

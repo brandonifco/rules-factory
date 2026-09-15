@@ -13,6 +13,13 @@ answered by a ruling. Changes no map field and no check in `check-map.py`.
 those rulings. It does, and it names them. See *Amendment — a derived result names its inputs'
 rulings* below. No check, field or generated file changes.
 
+**Amended 2026-09-15, again** ([#141](https://github.com/brandonifco/rules-factory/issues/141)),
+decided by Brandon: § 2's `span` quoted the question into three committed files, which
+[0022](0022-a-licensed-copy-is-used-locally-by-a-named-operator-and-never-published.md) forbids for
+a licensed `local-copy` corpus. For such a corpus a span is offsets and a hash, and nothing committed
+may carry fifteen words of the map. See *Amendment — a licensed corpus's question is named, never
+quoted* below. A committed-copy corpus's overlay, generated files and provenance are unchanged.
+
 ## Amendment — a derived result names its inputs' rulings
 
 § 4 asks every result that relies on a ruling to name it, and gives a play as the pattern. It is
@@ -37,6 +44,83 @@ its own.
 As with the rest of § 4, nothing checks this (§ 7). An input that reaches the derivation as a bare
 value, with its rulings dropped on the way, is the engine's to avoid. In that engine, the stake and the
 next game's opener take a bare `GameValue`, and its record 0010 says so.
+
+## Amendment — a licensed corpus's question is named, never quoted
+
+§ 2 names a part of the question by quoting it, and § 4 and § 5 carry the quotation on. It lands in
+`corpus-map.overlay.json`, as `OwnerRuling.Span` in `Rulings.g.cs`, and under `rulings[].span` in
+`provenance.json`. An engine commits all three. For a `local-copy` corpus, 0022 withholds
+`ambiguity.question` from everything the factory writes into the engine, since a question is written
+about the passage and often quotes it. Nothing refused a quoted span, so the first ruling on a
+licensed corpus would have committed its question. The deckard rebuild (#3, criterion 1) is that
+case: Brandon adopts as his own rulings the decisions its book leaves open.
+
+**For a corpus whose manifest says `verification: local-copy`, a ruling or decline names its span
+without its words.**
+
+```json
+"rulings": [
+  {
+    "id": "occupied-square/own-pawn",
+    "span": { "start": 0, "end": 94, "sha256": "<64 hex digits>" },
+    "answer": "Yes: a pawn of the moving side blocks the move as well.",
+    "ruledBy": "Brandon",
+    "ruledOn": "2026-09-15",
+    "record": "docs/decisions/0003-own-pawns-block.md",
+    "tests": ["OccupiedSquareTests.The_owner_rules_a_captains_own_pawn_blocks_the_square"]
+  }
+],
+"declines": [ { "span": { "start": 95, "end": 129, "sha256": "<64 hex digits>" }, "tests": ["…"] } ]
+```
+
+(The entry is `tools/tests/licensed_fixture.py`'s, whose corpus is invented.)
+
+- **The question is normalised first**: every run of whitespace becomes one space, with none at
+  either end. `start` and `end` are character offsets into that string, end exclusive, and `sha256`
+  is the SHA-256 of the UTF-8 of the text between them. A span begins and ends on a character of the
+  question's words, not on a space.
+- **The checks are § 5's, on the normalised question.** The factory holds each span to the map
+  wherever it has the map: on every `produce`, in the gate's merge and regeneration steps, and so in
+  `factory verify` on the operator's machine. A span's text must hash to its `sha256`. Spans may not
+  overlap, and together they cover the question, whitespace aside. `declines: []` still declares the
+  question fully ruled. A question the map rewrote moves the offsets or changes the hash, and § 6
+  applies as before. What cannot run without the map, an engine's CI (0022), cannot check this either,
+  and says NOT VERIFIED already.
+- **Committed files hold only** the span's offsets and hash, and the ruling's `id`, `answer`,
+  `ruledBy`, `ruledOn`, `record` and `tests`. The overlay and provenance carry the span object as
+  written. `OwnerRuling.Span` carries `sha256:<hex> [start, end)`, and its documentation says the
+  part is named without its words.
+- **`answer` stays, in the owner's own words.** So do the other strings. The factory refuses a
+  ruling or decline whose `id`, `answer`, `ruledBy`, `record` or any test name, or whose decision
+  record's text, carries **fifteen or more consecutive words** of any string the map holds for an
+  entry: its `evidence`, its `note`, its `ambiguity.question`, or any other. Words are compared
+  case-folded, split on everything that is not a letter or digit, so a test name's underscores
+  separate words as spaces do.
+- **A message never repeats the words.** A gap is named by its offsets, a mismatch by its hash, and a
+  field that quotes by its name and the word it begins at. A quoted span is refused with the span
+  object that would replace it. `python3 scripts/factory/rulings.py locate --map M --entry ID` prints
+  the object for text typed on stdin, so the operator never writes the question into the engine to
+  learn its offsets.
+- **The posture is the package manifest's.** `produce` reads it from intake. The gate reads it from the
+  restored package, as it reads `randomness` (0019), and `map-overlay.py` takes `--package-manifest`.
+  Where the posture is not given, any ruling or decline is refused, because which rule applies is
+  unknown.
+- **A committed-copy corpus is unchanged.** Its spans stay verbatim quotations, a span object is
+  refused there, and no word count applies. `hoyle-backgammon`'s six rulings need no change.
+
+**Not checked.** A span hash covers a few words. A short span's hash could be recovered by guessing
+the words, so the hash is a check that the span still matches, not a way to keep it secret. Fifteen
+words is a threshold for quotation, not a measure of paraphrase: an answer can follow the book's
+wording closely in fourteen-word pieces, and nothing measures how closely. That was 0022's caveat
+for the backlog too. And `mutation` strings, which the overlay also commits, are outside this
+record's fields and are not examined.
+
+**Rejected.** *Keep the verbatim span and trust the operator.* That breaks 0022 in three files on the
+first ruling. *Withhold spans from the generated and provenance files only.* The overlay is committed
+too, and a withheld span leaves nothing that § 6 can hold to a rewritten question. *A hash of the
+whole question per ruling.* It names no part, and § 2's alternative already rejected it for that
+reason. Offsets and a span hash keep coverage, which is what makes every change to the question come
+back to the owner.
 
 ## Context
 

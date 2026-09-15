@@ -86,7 +86,9 @@ The fields, and where each comes from:
     draw, through that package, pinned at the kernel's version).
   * `rulings` -- present only when the overlay holds an owner's ruling (decision 0027), so no other
     record changes: `[{id, entry, span, answer, ruledBy, ruledOn, record, recordSha256}]` in overlay
-    order, which answers in the engine are its owner's and not the corpus's. `recordSha256` hashes
+    order, which answers in the engine are its owner's and not the corpus's. For a licensed
+    `local-copy` corpus `span` is the overlay's `{start, end, sha256}`, never the question's words
+    (0027 as amended, rulings.py). `recordSha256` hashes
     the decision record as it stood when `produce` ran, so a record edited since is a mismatch named
     `rulings` until the engine is produced again.
 

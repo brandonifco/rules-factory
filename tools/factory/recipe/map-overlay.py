@@ -11,7 +11,9 @@ know. Every other byte of meaning is the package's. Beside them an item may hold
 `rulings` and the `declines` that go with them (rules-factory decision 0027): answers the owner,
 not the corpus, gives to part of an unresolved question. They are checked against the package map
 by scripts/factory/rulings.py, the factory's own, and never merged: the map says only what the
-corpus says.
+corpus says. Whether a ruling's span quotes the question, or names it by offsets and hash because
+the corpus is a licensed local-copy corpus (0027 as amended 2026-09-15), is read from the package
+manifest, so an overlay with rulings or declines needs `--package-manifest`.
 
 merge(package, overlay), as 0015 defines it -- each rule is also a failure below:
 
@@ -34,8 +36,8 @@ merge(package, overlay), as 0015 defines it -- each rule is also a failure below
 Where the overlay's fields land inside an entry is serialisation, not meaning: they are placed,
 in the order status, implementedIn, tests, where upstream's `status` was.
 
-  map-overlay.py merge --package-map P --overlay O --out corpus-map.json
-  map-overlay.py check --package-map P --overlay O [--map corpus-map.json]
+  map-overlay.py merge --package-map P [--package-manifest M] --overlay O --out corpus-map.json
+  map-overlay.py check --package-map P [--package-manifest M] --overlay O [--map corpus-map.json]
 
 Standard library only, and scripts/factory/rulings.py.
 """
@@ -58,9 +60,9 @@ def serialise(document):
     return json.dumps(document, indent=2, ensure_ascii=False) + "\n"
 
 
-def merge(package, overlay, root=None):
+def merge(package, overlay, root=None, local_copy=None):
     """merge(package, overlay), and every way the overlay breaks rules 1 and 2. `root` is the engine
-    directory the owner's decision records are looked for in."""
+    directory the owner's decision records are looked for in; `local_copy` is rulings.posture's."""
     problems = []
     if not isinstance(overlay, dict):
         return None, ["the overlay is not an object of entry id -> owned fields"]
@@ -80,7 +82,7 @@ def merge(package, overlay, root=None):
                                 f"{', '.join(OWNED)} (and its owner's {' and '.join(rulings.KEYS)}), "
                                 f"and every other field is the package's")
     problems += [f"owner's rulings (rules-factory decision 0027): {p}"
-                 for p in rulings.problems(package, overlay, root)]
+                 for p in rulings.problems(package, overlay, root, local_copy)]
     if problems:
         return None, problems
 
@@ -113,10 +115,12 @@ def main(argv=None):
     sub = parser.add_subparsers(dest="command", required=True)
     m = sub.add_parser("merge", help="write the merge; exit 1 when the overlay breaks a rule")
     m.add_argument("--package-map", required=True)
+    m.add_argument("--package-manifest")
     m.add_argument("--overlay", required=True)
     m.add_argument("--out", required=True)
     c = sub.add_parser("check", help="check the overlay, and a committed materialised map if given")
     c.add_argument("--package-map", required=True)
+    c.add_argument("--package-manifest")
     c.add_argument("--overlay", required=True)
     c.add_argument("--map")
     args = parser.parse_args(argv)
@@ -124,10 +128,18 @@ def main(argv=None):
     try:
         package = load(args.package_map)
         overlay = load(args.overlay)
+        manifest = load(args.package_manifest) if args.package_manifest else None
     except (OSError, ValueError) as error:
         print(f"error: {error}", file=sys.stderr)
         return 1
-    merged, problems = merge(package, overlay, root=str(pathlib.Path(args.overlay).resolve().parent))
+    local_copy = None
+    if manifest is not None:
+        local_copy, problem = rulings.posture(manifest, package)
+        if problem:
+            print(f"error: {problem}", file=sys.stderr)
+            return 1
+    merged, problems = merge(package, overlay, root=str(pathlib.Path(args.overlay).resolve().parent),
+                             local_copy=local_copy)
 
     if merged is not None and args.command == "check" and args.map:
         committed = load(args.map)

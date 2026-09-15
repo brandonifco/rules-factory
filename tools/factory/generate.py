@@ -60,7 +60,8 @@ What the generated code states:
   * `Rulings.g.cs` -- only when the overlay holds an owner's ruling (decision 0027, rulings.py):
     `OwnerRuling` and `OwnerRulings`, one static per ruling and `All`, from the overlay's id, entry,
     span, answer, ruledBy, ruledOn and record, so an engine surfaces a ruling without restating
-    it. Both are partial. The merge refuses a ruling that breaks 0027 before anything is written,
+    it. For a licensed `local-copy` corpus the span is `sha256:<hex> [start, end)` of the normalised
+    question (`rulings.label`), and no word of the question is written. Both are partial. The merge refuses a ruling that breaks 0027 before anything is written,
     and a produce with no rulings removes the file;
   * `CorrespondenceTests.g.cs` -- every entry is registered, in map order; every entry that
     is not `implemented` declines with its row's reason and its own locator, through the
@@ -173,10 +174,12 @@ class GenerationError(Exception):
 # --- the overlay ---------------------------------------------------------------------------
 
 
-def merge(document, overlay, root=None):
+def merge(document, overlay, root=None, local_copy=None):
     """merge(package, overlay) per 0015 rules 1-4; refuses on rules 1 and 2, and on an owner's ruling
     or a decline that breaks decision 0027 (rulings.py; `root`, the engine directory, lets it check
-    that each ruling's decision record is a file). A ruling never reaches the merge: the map is data."""
+    that each ruling's decision record is a file; `local_copy`, whether the corpus is a `local-copy`
+    one, decides whether a span quotes the question or names it by offsets and hash, and None refuses
+    any ruling). A ruling never reaches the merge: the map is data."""
     if not isinstance(overlay, dict):
         raise GenerationError(f"{OVERLAY_NAME} is not an object of entry id -> {', '.join(OWNED)}")
     ids = [e.get("id") for e in document.get("entries") or []]
@@ -189,7 +192,7 @@ def merge(document, overlay, root=None):
         if extra:
             raise GenerationError(f"{OVERLAY_NAME} item {entry_id!r} sets {extra}; an engine owns only {', '.join(OWNED)}, "
                                   f"and keeps its owner's {' and '.join(rulings_step.KEYS)} beside them (0027)")
-    problems = rulings_step.problems(document, overlay, root)
+    problems = rulings_step.problems(document, overlay, root, local_copy)
     if problems:
         raise GenerationError(f"{OVERLAY_NAME} breaks decision 0027: " + "; ".join(problems))
     merged = dict(document)
@@ -955,7 +958,10 @@ def rulings_cs(model):
              "/// </summary>\n",
              "/// <param name=\"Id\">A stable id, <c>&lt;entry id&gt;/&lt;slug&gt;</c>.</param>\n",
              "/// <param name=\"EntryId\">The map entry whose <c>ambiguity.question</c> it answers part of.</param>\n",
-             "/// <param name=\"Span\">The part of that question it answers, quoted verbatim from the map.</param>\n",
+             ("/// <param name=\"Span\">The part of that question it answers, named without its words: <c>sha256:&lt;hex&gt; [start, end)</c>\n"
+              "/// of the whitespace-normalised question, since the corpus is a licensed local-copy corpus.</param>\n"
+              if model.rulings and isinstance(model.rulings[0]["span"], dict) else
+              "/// <param name=\"Span\">The part of that question it answers, quoted verbatim from the map.</param>\n"),
              "/// <param name=\"Answer\">The ruling, stated briefly.</param>\n",
              "/// <param name=\"RuledBy\">Who ruled.</param>\n",
              "/// <param name=\"RuledOn\">When.</param>\n",
@@ -970,7 +976,7 @@ def rulings_cs(model):
                      f"    public static OwnerRuling {ruling['member']} {{ get; }} = new(\n"
                      f"        {cs_string(ruling['id'])},\n"
                      f"        {cs_string(ruling['entry'])},\n"
-                     f"        {cs_string(ruling['span'])},\n"
+                     f"        {cs_string(rulings_step.label(ruling['span']))},\n"
                      f"        {cs_string(ruling['answer'])},\n"
                      f"        {cs_string(ruling['ruledBy'])},\n"
                      f"        new DateOnly({year}, {month}, {day}),\n"
@@ -1292,7 +1298,9 @@ def produce(intake, name, out, log=None, adopt=(), reset=()):
                 overlay = json.load(handle)
         except (OSError, ValueError) as error:
             raise GenerationError(f"cannot read {overlay_path}: {error}")
-    model = Model(intake, merge(intake.map, overlay, root=out), name, rulings_step.collect(overlay))
+    withheld = intake.corpus.get("verification") == rulings_step.LOCAL_COPY
+    model = Model(intake, merge(intake.map, overlay, root=out, local_copy=withheld), name,
+                  rulings_step.collect(overlay))
     refuse_split_pins(model, out)
     try:
         managed_writes, model.managed, model.adopted, notes = ownership.plan_managed(
