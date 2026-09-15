@@ -306,15 +306,28 @@ class TestExtent(MapCase):
         self.assert_section_catches(
             lambda d: d["entries"][0]["locator"].update(citation="Part One / p. 1"))
 
-    def test_a_subpart_citation_is_named_and_not_placed(self):
-        # Part 107's subpart-d-categories cites "subpart D". Nothing here reads the corpus to
-        # learn which sections the subpart holds, so it is named rather than counted inside.
+    def test_an_in_scope_entry_citing_a_subpart_outside_the_extent_fails(self):
+        # speed-limit is scope: in.
+        self.assert_section_catches(
+            lambda d: d["entries"][0]["locator"].update(citation="subpart D"))
+
+    def test_an_out_of_scope_entry_may_cite_beyond_the_extent_and_is_reported(self):
+        # Part 107's subpart-d-categories cites "subpart D", and #61's waiver entries cite
+        # §§ 107.200 and 107.205: recording what lies beyond the slice is what scope: out is for.
         document = self.section_map()
-        document["entries"][6]["locator"]["citation"] = "subpart D"
+        document["entries"][6]["locator"]["citation"] = "subpart D"   # subpart-d-categories
+        document["entries"][8]["locator"]["citation"] = "§ 1.200"     # doubling-cube
         code, output = self.run_tool(document)
         self.assertEqual(self.status_of(output, "extent"), "ok", output)
-        self.assertIn("subpart-d-categories (subpart D)", output)
+        self.assertIn("2 out-of-scope citations beyond the extent, neither passed nor failed: "
+                      "subpart-d-categories (subpart D), doubling-cube (§ 1.200)", output)
         self.assertEqual(code, 0, output)
+
+    def test_the_same_citation_fails_once_the_entry_is_in_scope(self):
+        def mutate(document):
+            document["entries"][6]["locator"]["citation"] = "§ 1.200"
+            document["entries"][6]["scope"] = "in"
+        self.assert_section_catches(mutate)
 
     def test_a_map_declaring_no_extent_is_not_refused_here(self):
         # The omission is refused by the locator checkers' `coverage`, which have the corpus.

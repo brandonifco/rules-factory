@@ -36,8 +36,11 @@ The blind mapper read the same documents as every mapper and had to invent four 
 
 1. **A `section-designation` extent is a list of sections.**
    `{ "unit": "section-designation", "sections": ["§ 107.25", ...] }`, each item a bare section.
-   `check-map.py --only extent` checks the shape of both units and refuses a locator citing a
-   section outside the list, reading the section with the locator checker's own expressions.
+   `check-map.py --only extent` checks the shape of both units and refuses a `scope: in` entry
+   whose locator cites outside the list (a section not listed, or a whole subpart), reading the
+   citation with the locator checker's own expressions. A `scope: out` entry may cite beyond
+   the extent, because recording what lies beyond the slice is what an out-of-scope entry is
+   for; the check names it in its summary and neither passes nor fails it.
    `check-locators-section.py` gains `coverage`: every listed section is reached by a verified
    quote, and a map with no extent fails, as `check-locators.py` already does for pages. The
    Part 107 map and the 2020 temporal map declare the twelve subpart B sections they read.
@@ -87,10 +90,12 @@ citation names the same paragraph more precisely; no entry's meaning moves. `rev
 map keeps its `legacy` exemption with the new digest: `non-semantic` names a reviewed map it
 departs from, and that map has none. The 0017 table describes the maps as they were then.
 
-**A subpart citation is not placed.** `subpart-d-categories` cites `subpart D` and quotes
-§ 107.100, outside the twelve sections. `check-map.py` cannot learn what a subpart holds without
-the corpus, so it names the entry rather than failing or counting it. Whether a declined deferral
-target belongs inside the extent is not decided here.
+**An out-of-scope entry is how a map records what lies beyond its extent.**
+`subpart-d-categories` cites `subpart D` and quotes § 107.100, outside the twelve sections; it is
+`scope: out`, so it is reported and passes. #61's waiver entries citing §§ 107.200 and 107.205
+will be too. The cost: an out-of-scope entry's citation is not bounded by the extent, so a typo
+in one (`§ 107.52` for `§ 107.51`) is reported rather than refused, and the locator checker is
+what catches it.
 
 **The grammar lives in two files.** `check-map.py` is standard-library and ships alone (0015), so
 it cannot import the section checker. It copies the two expressions it needs, and

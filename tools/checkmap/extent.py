@@ -76,13 +76,14 @@ def check_extent(ctx):
 
     A `section-designation` extent is a list, `{unit, sections: ["§ 107.25", ...]}` (0020):
     CFR sections are not contiguous in what a mapper reads, so a range would claim the sections
-    between. Every entry's locator names a section in that list, parsed by the locator grammar.
-    Whether every listed section is reached is `check-locators-section.py`'s `coverage`.
+    between. Whether every listed section is reached is `check-locators-section.py`'s `coverage`.
 
-    What it cannot do. A citation naming a whole subpart names no section, and nothing here reads
-    the corpus to learn which sections the subpart holds, so such an entry is not placed; it is
-    named in the summary rather than counted as inside. A derived entry cites nothing and is
-    not placed either (0012). A map declaring no extent is not refused here: `coverage`, which
+    Every `scope: in` entry's locator names a section in that list, parsed by the locator
+    grammar; a section outside it, or a whole subpart, fails. A `scope: out` entry may cite
+    beyond the extent, because recording what lies beyond the slice is what an out-of-scope entry
+    is for (Part 107's `subpart-d-categories`). Such an entry is named in the summary as an
+    out-of-scope citation beyond the extent, and neither passes nor fails. A derived entry cites
+    nothing and is not placed (0012). A map declaring no extent is not refused here: `coverage`, which
     has the corpus, is where an undeclared extent fails.
     """
     doc = ctx["map"]
@@ -106,7 +107,7 @@ def check_extent(ctx):
     numbers = _section_extent(extent, bad)
     if numbers is None or bad:
         return fail(bad, "the declared extent is malformed")
-    placed, unplaced = 0, []
+    placed, beyond = 0, []
     for position, entry in enumerate(entries_of(doc)):
         if not isinstance(entry, dict) or "derivedFrom" in entry or "locator" not in entry:
             continue
@@ -116,15 +117,19 @@ def check_extent(ctx):
         if cited is None:
             bad.append(f"  X  {name}: citation {citation!r} names no section or subpart, so it "
                        f"cannot be placed inside the extent")
-        elif cited[0] == "subpart":
-            unplaced.append(f"{name} ({citation})")
-        elif cited[1] not in numbers:
-            bad.append(f"  X  {name}: cites § {cited[1]}, which is outside the declared extent "
-                       f"({len(numbers)} sections); a map cites only what it claims to have read")
-        else:
+            continue
+        inside = cited[0] == "section" and cited[1] in numbers
+        if inside:
             placed += 1
-    aside = (f"; {len(unplaced)} cite{'s' if len(unplaced) == 1 else ''} a subpart, which names no "
-             f"section and is not placed: {', '.join(unplaced)}") if unplaced else ""
+        elif entry.get("scope") == "out":
+            beyond.append(f"{name} ({citation})")
+        else:
+            where = f"§ {cited[1]}" if cited[0] == "section" else f"subpart {cited[1]}"
+            bad.append(f"  X  {name}: cites {where}, outside the declared extent "
+                       f"({len(numbers)} sections), and is not `scope: out`; an in-scope rule is "
+                       f"cited inside what the map claims to have read")
+    aside = (f"; {len(beyond)} out-of-scope citation{'' if len(beyond) == 1 else 's'} beyond the "
+             f"extent, neither passed nor failed: {', '.join(beyond)}") if beyond else ""
     return verdict(bad, f"{len(numbers)} sections declared; {placed} locators each name one of "
                         f"them{aside}",
                    "a locator cites a section outside the declared extent")

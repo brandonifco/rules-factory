@@ -64,20 +64,22 @@ citations run 271–277, and the throw enumeration that #20 is about is on 278�
   `§ 107.25(a)`), for a corpus cited by section. A list and not a range, because what a mapper
   reads of a CFR part is not contiguous: the Part 107 slice is twelve sections of subpart B and
   skips § 107.27, .43 and .47 between them, and a range would claim them. Not a subpart, for the
-  same reason. `check-map.py --only extent` refuses a malformed list and **any entry whose
-  locator cites a section not in it** — the citation is parsed by the locator grammar below —
-  and `check-locators-section.py`'s `coverage` names every listed section no verified quote
-  reaches.
+  same reason. `check-map.py --only extent` refuses a malformed list and **any `scope: in`
+  entry whose locator cites outside it**, a section not listed or a whole subpart; the citation
+  is parsed by the locator grammar below. `check-locators-section.py`'s `coverage` names every
+  listed section no verified quote reaches.
 
 `check-map.py` checks each unit's shape and refuses a unit outside the two. A map with no extent
 passes `check-map.py` and fails both locator checkers, which are where what was read can be
 compared with the text.
 
-**What the section list does not buy.** A citation naming a whole subpart (`subpart D`) names no
-section, and `check-map.py` does not read the corpus to learn which sections the subpart holds,
-so it names such an entry and does not place it. Part 107's `subpart-d-categories` is that entry:
-it quotes § 107.100, outside the twelve sections, to decline subpart D. And nothing sizes the
-list, exactly as nothing sizes a page range.
+**A `scope: out` entry may cite beyond the extent.** Recording what lies beyond the slice is what
+an out-of-scope entry is for: Part 107's `subpart-d-categories` cites `subpart D` and quotes
+§ 107.100 to decline the subpart an in-scope rule defers to. `check-map.py` names each such entry
+in its summary as an out-of-scope citation beyond the extent, and neither passes nor fails it. An
+in-scope rule is cited inside what the map claims to have read, or the check fails.
+
+**What the section list does not buy.** Nothing sizes it, exactly as nothing sizes a page range.
 
 ### Citing a section in the `section-designation` grammar
 
