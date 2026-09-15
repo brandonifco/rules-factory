@@ -557,6 +557,18 @@ class TestProduce(ProducedCase):
         with open(os.path.join(self.out, "provenance.json"), encoding="utf-8") as handle:
             self.assertNotIn("rulings", json.load(handle))
 
+    def test_what_is_generated_does_not_say_every_unresolved_entry_declines(self):
+        """0027: an implemented entry declines only the parts no ruling answers, and with `declines: []` none."""
+        code, output = self.produce()
+        self.assertEqual(code, 0, output)
+        registry = " ".join(self.read(f"src/{NAME}/Generated/Registry.g.cs").replace("///", "").split())
+        self.assertIn("Row 6, <c>ambiguity.fate: unresolved</c>: RequiresInterpretation, the default.", registry)
+        self.assertIn("an entry whose overlay says <c>declines: []</c> declines none.", registry)
+        (item,) = [name for name in os.listdir(os.path.join(self.out, "backlog")) if name.endswith("-game-value.md")]
+        text = " ".join(self.read(f"backlog/{item}").split())
+        self.assertIn("the engine declines with `RequiresInterpretation`", text)
+        self.assertIn("`declines: []` declares every part ruled, and then no test declines.", text)
+
     def test_withdrawing_the_last_ruling_removes_the_registry(self):
         self.with_overlay(worked_example())
         self.assertEqual(self.produce()[0], 0)

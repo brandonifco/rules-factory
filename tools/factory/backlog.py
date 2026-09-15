@@ -277,7 +277,10 @@ def _criteria(entry, by_id):
         if ambiguity.get("fate") == "unresolved":
             reason = ambiguity.get("unresolvedReason") or "RequiresInterpretation"
             out.append(f"Where the answer turns on the question above, the engine declines with `{reason}` "
-                       "citing this entry's locator; it does not choose a reading.")
+                       "citing this entry's locator; it does not choose a reading. The one exception is the "
+                       "engine owner's ruling (rules-factory decision 0027): the overlay's `rulings` name the parts "
+                       "the owner answered, and `declines` the parts still declined, each with its test. "
+                       "`declines: []` declares every part ruled, and then no test declines.")
         elif ambiguity.get("fate") == "decision":
             out.append(f"The engine follows the recorded decision `{ambiguity.get('decision')}`, "
                        "and a test goes red under the reading it rejected.")

@@ -48,7 +48,10 @@ What the generated code states:
       2 `status: mapped` or `blocked`                 -> UnsupportedRule (#47: refuse until proven)
       3 `definedElsewhere`, 4 `beyondAdapter`,
       5 an operation on an unimplemented value        -> MissingRulesData
-      6 `ambiguity.fate: unresolved`                  -> RequiresInterpretation
+      6 `ambiguity.fate: unresolved`                  -> RequiresInterpretation (the default only: an
+                                                         implemented entry's handler declines just the
+                                                         parts its owner has not ruled on, and with
+                                                         `declines: []` none, decision 0027)
       8 `kind: assertion`                             -> no decline: the value is demanded of the caller
       no row (a built, clear rule)                    -> nothing; a hand-written handler must answer.
     Row 7 is a fact about pairs of entries and has no single-entry handler.
@@ -513,7 +516,11 @@ public enum CorrespondenceRow
     BeyondAdapter = 4,
     /// <summary>Row 5, an operation whose value dependency is unimplemented: MissingRulesData.</summary>
     ValueDependencyUnimplemented = 5,
-    /// <summary>Row 6, <c>ambiguity.fate: unresolved</c>: RequiresInterpretation.</summary>
+    /// <summary>
+    /// Row 6, <c>ambiguity.fate: unresolved</c>: RequiresInterpretation, the default. Once the entry is
+    /// <c>implemented</c> its handler answers instead, and declines only the parts of the question its owner has
+    /// not ruled on (rules-factory decision 0027); an entry whose overlay says <c>declines: []</c> declines none.
+    /// </summary>
     UnresolvedAmbiguity = 6,
     /// <summary>Row 8, <c>kind: assertion</c>: nothing; the engine demands the value.</summary>
     Assertion = 8,

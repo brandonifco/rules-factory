@@ -120,7 +120,8 @@ CI proves this on every pull request. The `validate` job runs
   `implemented` with a decline citing its locator. The rules themselves are hand-written
   handlers, and the backlog lists the ones still to write.
 - **That an engine declines what its map leaves open.** An `implemented` entry whose question is
-  `unresolved` must decline the question, unless the engine's owner has ruled on it
+  `unresolved` must decline the question, except the parts the engine's owner has ruled on, and
+  nothing at all once the overlay declares every part ruled with `declines: []`
   ([0027](docs/decisions/0027-an-owners-ruling-is-held-by-the-engine-and-checked-by-the-factory.md)).
   A ruling lives in the overlay, never in the map, beside `declines` for the parts still declined.
   The factory checks that the rulings and declines quote the map's current question and between

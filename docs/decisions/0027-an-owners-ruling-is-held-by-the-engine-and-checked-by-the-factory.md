@@ -360,6 +360,12 @@ the registry and nothing more.
   engine's repository.
 - **A map version that rewords an open question now costs an engine with rulings a re-confirmation.**
   That cost is intended. The owner ruled on words, and when the words change the owner decides again.
+- **Correspondence row 6 holds only where an engine still declines** (said 2026-09-15, #141). An
+  `implemented` entry returns `RequiresInterpretation` for the parts its overlay `declines`, and for
+  none once it says `declines: []`. The map-to-runtime table in corpus-map.md, the generated
+  `CorrespondenceRow` documentation and a backlog item's acceptance criteria said every `unresolved`
+  entry declines, and now say this. The generated correspondence tests assert a decline only for an
+  entry that is not `implemented`, so they already allowed it.
 - **The totality loss 0005 C recorded is partly repaid.** For an entry with `rulings` or `declines`,
   the overlay now says which parts of its question decline and which the owner answered. For every
   other `implemented` unresolved entry, nothing distinguishes one that declines a single shape from

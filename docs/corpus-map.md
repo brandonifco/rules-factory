@@ -906,7 +906,8 @@ The cost of decoupling, stated where the claim is: after it, `fate: unresolved` 
 engine declines for *at least one* input, not for every input, and nothing distinguishes an
 entry that declines one shape of throw from one that declines everything. The totality claim
 is weaker than it was. An engine whose overlay carries `rulings` or `declines` for the entry
-(0027) now says which parts of the question it declines and which its owner answered. Every
+(0027) now says which parts of the question it declines and which its owner answered, and one
+whose overlay says `declines: []` declines for no input at all. Every
 other engine says neither, and what the factory can check stops at the quoted words, not at
 whether the engine's split matches the question's real parts.
 
@@ -933,7 +934,7 @@ and the invariant is unwritable in either direction.
 | 3 | carries `definedElsewhere` | `MissingRulesData` |
 | 4 | carries `beyondAdapter` | `MissingRulesData` |
 | 5 | an `operation` whose `value` dependency is unimplemented | `MissingRulesData` |
-| 6 | `ambiguity.fate: unresolved` | `RequiresInterpretation` |
+| 6 | `ambiguity.fate: unresolved` | `RequiresInterpretation`, for the parts of the question no owner's ruling answers (below) |
 | 7 | two implemented entries with no entry for their combination | `UnsupportedInteraction` |
 | 8 | `kind: assertion` | **nothing — the engine demands the value and proceeds** |
 
@@ -946,6 +947,14 @@ A gate that is `scope: out` adds no row either. The table classifies an entry by
 An entry suspended by an out-of-scope gate answers by its own row while the caller states that the
 gate does not hold, and `OutsideCurrentScope`, citing the gate, while the caller states that it holds
 ([0021](decisions/0021-a-gate-outside-the-slice-is-held-by-the-caller.md)).
+
+Row 6 holds for an `implemented` entry only where its engine still declines. An owner's ruling
+([0027](decisions/0027-an-owners-ruling-is-held-by-the-engine-and-checked-by-the-factory.md))
+answers part of the question, and the entry returns `RequiresInterpretation` only for the parts its
+overlay `declines`. An overlay with `declines: []` declares the whole question ruled, and that
+entry never returns it. The map still says `unresolved` in both cases, because the corpus still
+does not settle the question. So an engine's `RequiresInterpretation` results are derivable from
+its map and its overlay together, not from its map alone.
 
 Row 8 is the one that is easy to get wrong. An assertion is not a failure to resolve; it is a
 parameter. An engine returning `RequiresInterpretation` where the corpus named a decider is
