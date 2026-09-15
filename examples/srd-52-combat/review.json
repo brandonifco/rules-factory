@@ -2,27 +2,34 @@
   "about": "The review of each map's exact bytes (docs/decisions/0017-a-map-change-carries-a-review-of-its-bytes.md). tools/check-map-review.py fails any map whose sha256 is not the one recorded here.",
   "reviews": {
     "corpus-map.json": {
-      "sha256": "8f5bb33c99ba928a731307401690d4b1953340eb112a23ca0517da2b1a23052b",
+      "sha256": "228de0dbdfb0900a098ae611a2c72c1142254980ce3c57d66474bc3b4f834ec1",
       "method": "independent-verdict",
-      "verdict": "independent-verdict-117-118.json",
-      "previousSha256": "ba27dd0e0d58de6c9a815ff87732aaa2baee6e3cfe6254742082328ca288edd4",
-      "note": "#117 and #118 (docs/decisions/0025) added assertedBy to initiative-ties, gm-requires-action and sides-agree-to-end; draws to initiative-roll, group-initiative (with ambiguity.affectsDraws), attack-resolution and falling-off, each note quoting where the corpus names the die; and reconciled the initiative-ties and sides-agree-to-end notes. No other entry changed. It is a semantic change, so it carries an independent verdict and not an exemption. The verdict file names these bytes and records three rounds, the third on the map rebased onto #119. previousReview is #119's review (previousSha256), unchanged.",
+      "verdict": "independent-verdict-115-116.json",
+      "previousSha256": "8f5bb33c99ba928a731307401690d4b1953340eb112a23ca0517da2b1a23052b",
+      "note": "#115 and #116 (docs/decisions/0026), on the map #117/#118 left (previousSha256). Five scope: out entries are added for Rules Glossary passages that modify in-slice rules (difficult-terrain-glossary, invisible-condition, cover-glossary, disengage-action) or the evidence of two existing ones is extended to the modifying sentence (incapacitated-condition, initiative-score-option); in-scope entries name them in crossReferences and dependsOn; flanking answers the pointer the SRD's new pointerPhrases detected. It changes relations and notes, so it carries an independent verdict. The reviewer saw only the corpus pages involved, a before/after of every changed entry, and the decision record; five rounds are recorded in the verdict file, the last two on the bytes re-applied after #117/#118 merged. previousReview is that earlier map's review, unchanged.",
       "previousReview": {
-        "sha256": "ba27dd0e0d58de6c9a815ff87732aaa2baee6e3cfe6254742082328ca288edd4",
+        "sha256": "8f5bb33c99ba928a731307401690d4b1953340eb112a23ca0517da2b1a23052b",
         "method": "independent-verdict",
-        "verdict": "independent-verdict-113-114.json",
-        "previousSha256": "c4017935b1bd8e658701c254ad4e4213429c808f275014d2966226dbd3113937",
-        "note": "#113 and #114 (docs/decisions/0024), on the map the blind second mapping left (previousSha256). extent gains endsBefore \"Damage and Healing\"; six entries gain extraction {defect, renderedReading}; two notes stop pointing at the README for what those fields now carry. No entry's kind, scope, clarity, ambiguity, gates, evidence or citation changes. Everything but renderedReading is structure a check verifies (check-map.py extent and extraction; check-locators-pdf-text.py extent-end and extraction). renderedReading asserts what the printed page says, table values included, and nothing verifies it, so this is an independent verdict and not a non-semantic exemption: a reviewer in a separate context read the three distinct readings against renders of pp. 13-15 alone and agreed with all three. previousReview is that earlier map's review, unchanged.",
+        "verdict": "independent-verdict-117-118.json",
+        "previousSha256": "ba27dd0e0d58de6c9a815ff87732aaa2baee6e3cfe6254742082328ca288edd4",
+        "note": "#117 and #118 (docs/decisions/0025) added assertedBy to initiative-ties, gm-requires-action and sides-agree-to-end; draws to initiative-roll, group-initiative (with ambiguity.affectsDraws), attack-resolution and falling-off, each note quoting where the corpus names the die; and reconciled the initiative-ties and sides-agree-to-end notes. No other entry changed. It is a semantic change, so it carries an independent verdict and not an exemption. The verdict file names these bytes and records three rounds, the third on the map rebased onto #119. previousReview is #119's review (previousSha256), unchanged.",
         "previousReview": {
-          "sha256": "c4017935b1bd8e658701c254ad4e4213429c808f275014d2966226dbd3113937",
-          "method": "blind-second-mapping",
-          "comparison": "blind-mapping/results.json",
-          "resolutions": "blind-mapping/resolutions.json",
-          "compared": {
-            "commit": "5216c6280c559387eee8ffb51d5a4aa2344300a4",
-            "sha256": "80013e6129f1b1edaf46fa9ea4925367a01d2228a4621a94e3e1024ce1785619"
-          },
-          "note": "Issue #106, step 3. compare.py read the map at 5216c62 (86 entries), the bytes the legacy exemption covered, and exits 1 unless each of its 259 flags has a row in resolutions.json. The map was corrected to those rows (21 blind-right, 11 corpus-does-not-settle; 91 entries) in the same commit that replaced the exemption with this review. sha256 is the corrected map; compared.sha256 is the map before correction. The blind mapper worked from docs with the SRD's name, combat vocabulary and the backgammon examples removed (blind-mapping/REDACTIONS.md), and from the corpus text and renders of pp. 13-16; what could not be ruled out, including that the mapper model knows this game, is in blind-mapping/README.md, Limits."
+          "sha256": "ba27dd0e0d58de6c9a815ff87732aaa2baee6e3cfe6254742082328ca288edd4",
+          "method": "independent-verdict",
+          "verdict": "independent-verdict-113-114.json",
+          "previousSha256": "c4017935b1bd8e658701c254ad4e4213429c808f275014d2966226dbd3113937",
+          "note": "#113 and #114 (docs/decisions/0024), on the map the blind second mapping left (previousSha256). extent gains endsBefore \"Damage and Healing\"; six entries gain extraction {defect, renderedReading}; two notes stop pointing at the README for what those fields now carry. No entry's kind, scope, clarity, ambiguity, gates, evidence or citation changes. Everything but renderedReading is structure a check verifies (check-map.py extent and extraction; check-locators-pdf-text.py extent-end and extraction). renderedReading asserts what the printed page says, table values included, and nothing verifies it, so this is an independent verdict and not a non-semantic exemption: a reviewer in a separate context read the three distinct readings against renders of pp. 13-15 alone and agreed with all three. previousReview is that earlier map's review, unchanged.",
+          "previousReview": {
+            "sha256": "c4017935b1bd8e658701c254ad4e4213429c808f275014d2966226dbd3113937",
+            "method": "blind-second-mapping",
+            "comparison": "blind-mapping/results.json",
+            "resolutions": "blind-mapping/resolutions.json",
+            "compared": {
+              "commit": "5216c6280c559387eee8ffb51d5a4aa2344300a4",
+              "sha256": "80013e6129f1b1edaf46fa9ea4925367a01d2228a4621a94e3e1024ce1785619"
+            },
+            "note": "Issue #106, step 3. compare.py read the map at 5216c62 (86 entries), the bytes the legacy exemption covered, and exits 1 unless each of its 259 flags has a row in resolutions.json. The map was corrected to those rows (21 blind-right, 11 corpus-does-not-settle; 91 entries) in the same commit that replaced the exemption with this review. sha256 is the corrected map; compared.sha256 is the map before correction. The blind mapper worked from docs with the SRD's name, combat vocabulary and the backgammon examples removed (blind-mapping/REDACTIONS.md), and from the corpus text and renders of pp. 13-16; what could not be ruled out, including that the mapper model knows this game, is in blind-mapping/README.md, Limits."
+          }
         }
       }
     }

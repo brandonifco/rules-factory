@@ -101,6 +101,9 @@ def manifest_document():
             "envVar": ENV_VAR,
             "quotation": "verbatim",
             "randomness": "none",
+            # 0026: the two invented sentences point at nothing, so the zero is declared, not silent.
+            "pointerPhrases": [],
+            "pointerPhrasesReason": "The corpus is two invented sentences, and neither refers to another passage.",
             "references": [],
         }],
     }

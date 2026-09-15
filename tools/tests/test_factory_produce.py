@@ -5,7 +5,7 @@ generates exactly what the correspondence table says.
 What is asserted here without a .NET SDK: two runs give byte-identical trees; a second run into
 the same directory leaves engine-owned files (the overlay above all) alone and rewrites the
 generated ones (managed files: test_factory_ownership.py); a re-run with a newer or older version of the map leaves nothing naming the
-version it replaced, pins included (#66); every one of Part 107's 46 entries is emitted with its citation verbatim and
+version it replaced, pins included (#66); every one of Part 107's 47 entries is emitted with its citation verbatim and
 the correspondence row the table's first match gives it; the overlay moves an entry between
 rows; an overlay that breaks 0015's merge rules is refused. And produce is transactional (#67):
 a refusal after generation and backlog wrote leaves an existing engine byte-identical (modes
@@ -264,7 +264,7 @@ class TestGeneration(ProduceCase):
         entries = self.read(out, GENERATED[0])
         registry = self.read(out, GENERATED[1])
         tests = self.read(out, GENERATED[2])
-        self.assertEqual(len(self.map["entries"]), 46)
+        self.assertEqual(len(self.map["entries"]), 47)
         for entry in self.map["entries"]:
             literal = generate.cs_string(entry["locator"]["citation"])
             self.assertIn(f'new SourceLocator("cfr-14-107", {literal})', entries, entry["id"])
@@ -272,14 +272,15 @@ class TestGeneration(ProduceCase):
             self.assertIn(f'        "{entry["id"]}",\n', tests)
         self.assertIn('contentHash: "80f6bc4b002df9dcc60a651fec30a2dc3590081cc3e5fd431d9885c69b7ce35e"', entries)
         self.assertIn("asOf: new DateOnly(2026, 1, 1)", entries)
-        self.assertEqual(registry.count("MapEntries."), 46)
+        self.assertEqual(registry.count("MapEntries."), 47)
 
     def test_rows_follow_the_table_first_match(self):
         out = self.produced()
         tests = self.read(out, GENERATED[2])
         declines = dict(re.findall(r'AssertDeclines\("([a-z0-9-]+)", UnresolvedReason\.(\w+),', tests))
-        self.assertEqual(len(declines), 46, "every mapped, declined or out-of-scope entry declines")
+        self.assertEqual(len(declines), 47, "every mapped, declined or out-of-scope entry declines")
         self.assertEqual(declines["subpart-d-categories"], "OutsideCurrentScope")
+        self.assertEqual(declines["knowledge-recency"], "OutsideCurrentScope")
         for defined_elsewhere in ("night-operation", "civil-twilight-alaska", "hazardous-material"):
             self.assertEqual(declines[defined_elsewhere], "MissingRulesData")
         # mapped wins over the ambiguity (row 2 before row 6) and over the assertion (row 2 before 8)

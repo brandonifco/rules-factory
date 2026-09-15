@@ -30,9 +30,11 @@ What it cannot do, stated here rather than in a commit message:
     the fields it contradicts, and that nothing depends on a rule that does not exist. The
     claim itself is falsified by `check-locators.py`, which searches the text.
   * **A cross-reference nobody noticed is invisible.** `cross-references` reads the
-    pointer phrases it knows about and no others; a corpus that points somewhere in words
-    outside that list produces a map that passes. The list is stated in
-    `POINTER_PHRASES` rather than inferred, so what the check does not cover is readable.
+    pointer phrases in `POINTER_PHRASES` and those the corpus declares as `pointerPhrases` in
+    its manifest (0026), and no others; a corpus that points somewhere in words outside both
+    produces a map that passes. What it does refuse is a silent zero: a corpus that declares
+    no phrases and on which the built-in list detects nothing fails, and each corpus's count
+    is printed.
   * Nothing here checks that an entry is the *right* decomposition of the corpus, that a
     gate list (`enabledBy`, `suspendedBy`) is complete, or that `evidence` is sufficient.
     Those are review.

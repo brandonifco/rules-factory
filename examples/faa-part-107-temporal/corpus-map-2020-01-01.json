@@ -270,6 +270,16 @@
         "anti-collision-lighting"
       ],
       "evidence": "(b) No person may operate a small unmanned aircraft system during periods of civil twilight unless the small unmanned aircraft has lighted anti-collision lighting visible for at least 3 statute miles. The remote pilot in command may reduce the intensity of the anti-collision lighting if he or she determines that, because of operating conditions, it would be in the interest of safety to do so. (c) For purposes of paragraph (b) of this section, civil twilight refers to the following: (1) Except for Alaska, a period of time that begins 30 minutes before official sunrise and ends at official sunrise; (2) Except for Alaska, a period of time that begins at official sunset and ends 30 minutes after official sunset; and (3) In Alaska, the period of civil twilight as defined in the Air Almanac.",
+      "crossReferences": [
+        {
+          "cites": "paragraph (b) of this section",
+          "unmapped": "Paragraph (b) is quoted in this entry's own evidence: (c) defines civil twilight for (b), and no other entry states (b) whole."
+        },
+        {
+          "cites": "as defined in the Air Almanac",
+          "resolvedBy": "civil-twilight-alaska"
+        }
+      ],
       "status": "mapped",
       "note": "Inside and outside each twilight window, with and without lighting. Alaska is a separate entry: the corpus defers the definition elsewhere."
     },
@@ -469,6 +479,12 @@
         "unaided-visual-contact"
       ],
       "evidence": "(a) With vision that is unaided by any device other than corrective lenses, the remote pilot in command, the visual observer (if one is used), and the person manipulating the flight control of the small unmanned aircraft system must be able to see the unmanned aircraft throughout the entire flight in order to: (1) Know the unmanned aircraft's location; (2) Determine the unmanned aircraft's attitude, altitude, and direction of flight; (3) Observe the airspace for other air traffic or hazards; and (4) Determine that the unmanned aircraft does not endanger the life or property of another. (b) Throughout the entire flight of the small unmanned aircraft, the ability described in paragraph (a) of this section must be exercised by either: (1) The remote pilot in command and the person manipulating the flight controls of the small unmanned aircraft system; or (2) A visual observer.",
+      "crossReferences": [
+        {
+          "cites": "the ability described in paragraph (a) of this section",
+          "resolvedBy": "unaided-visual-contact"
+        }
+      ],
       "status": "mapped",
       "note": "(b) states the two permitted combinations and the evidence covers both: the remote pilot in command together with the person manipulating the flight controls, or a visual observer \u2014 and neither. Given the assertion, that is a membership test against a fixed pair of combinations, which is computable, and it is what survives the split. The note this replaces said \"whether anyone could in fact see the aircraft is not computable. The engine demands the assertion and records who made it\" while the entry stayed kind: operation, so the assertion it described was recorded nowhere. It is unaided-visual-contact, and this entry depends on it (0010)."
     },
@@ -508,6 +524,12 @@
         "observer-coordination"
       ],
       "evidence": "If a visual observer is used during the aircraft operation, all of the following requirements must be met: (a) The remote pilot in command, the person manipulating the flight controls of the small unmanned aircraft system, and the visual observer must maintain effective communication with each other at all times. (b) The remote pilot in command must ensure that the visual observer is able to see the unmanned aircraft in the manner specified in \u00a7 107.31. (c) The remote pilot in command, the person manipulating the flight controls of the small unmanned aircraft system, and the visual observer must coordinate to do the following: (1) Scan the airspace where the small unmanned aircraft is operating for any potential collision hazard; and (2) Maintain awareness of the position of the small unmanned aircraft through direct visual observation.",
+      "crossReferences": [
+        {
+          "cites": "in the manner specified in \u00a7 107.31",
+          "resolvedBy": "visual-line-of-sight"
+        }
+      ],
       "status": "mapped",
       "note": "What survives the split is (b) and the condition of application: if a visual observer is used, the remote pilot in command must ensure the observer can see the aircraft in the manner \u00a7 107.31 specifies \u2014 computable once unaided-visual-contact is asserted, reached through visual-line-of-sight. (a) is effective-communication, a gap; (c) is observer-coordination, an assertion. The section's three requirements do not share one verdict, which is what 0010 decides. \u00a7 107.33(b)'s \"in the manner specified in \u00a7 107.31\" is a cross-reference the corpus makes in words outside check-map.py's closed pointer list, so nothing demands a declaration for it; it is answered by the dependsOn edge and named here so the omission is readable."
     },

@@ -1,0 +1,140 @@
+{
+  "about": "Independent verdict (0017) on #116 (docs/decisions/0026) for the Part 107 map: the crossReferences answering the pointers the CFR's declared pointerPhrases detected, and knowledge-recency (§ 107.65). The reviewer was a separate agent context given only: the text of §§ 107.29, 107.31, 107.39, 107.65 and 107.100 and subpart D's heading; a JSON before/after of every changed or added entry, the manifest's pointerPhrases, and an id/citation index of all entries; and the decision record. `sha256` is the final map. `verdicts` is the reviewer's final file, unedited. `rounds` keeps each earlier round's disagreements and how they were resolved.",
+  "sha256": "3b31c40cdce16df8d0f76acedd8e9f2cc63df0262863754bdf11a4e7807a2087",
+  "reviewer": "independent reviewer, separate context",
+  "read": [
+    "corpus-sections.txt",
+    "diff.json",
+    "0026-a-meaning-the-same-corpus-gives-elsewhere-is-an-entry-and-a-corpus-declares-its-pointers.md"
+  ],
+  "summary": "Round 1: 6 agree, 1 disagree. Round 2: 11 agree, 1 disagree. Round 3: 13 agree, 0 disagree. Round 4 (final bytes): 13 agree, 0 disagree.",
+  "verdicts": [
+    {
+      "entry": "night-operation",
+      "verdict": "agree",
+      "citation": "§ 107.29(a): \"Except as provided in paragraph (d) of this section ... under § 107.65 after April 6, 2021\"",
+      "reason": "Round 4 rebase check: diff.json's before is main after #117/#118. Field by field, after differs from before only in the change round 3 agreed (crossReferences gains the item for under § 107.65, resolved to knowledge-recency). No key present in before is dropped or altered. None of these entries carries assertedBy on main, so the merge had nothing to lose. Evidence, dependsOn and note are unchanged. Both detected pointers are answered (paragraph (d) by night-waiver-bar, § 107.65 by knowledge-recency), and \"at night\" is carried by definedElsewhere. No dependsOn edge to knowledge-recency is needed here, because the training limb is reached through night-training-completed, which carries it."
+    },
+    {
+      "entry": "night-operation: under § 107.65",
+      "verdict": "agree",
+      "citation": "§ 107.29(a)(1): \"under § 107.65\"; § 107.65 heading: \"Aeronautical knowledge recency.\"",
+      "reason": "The cites are verbatim. resolvedBy names knowledge-recency, whose index citation is § 107.65, exactly the section the words point at. It is a scope: out entry quoting that section, which is the shape 0026 § 1 asks for. This answers the round 1 disagreement."
+    },
+    {
+      "entry": "night-training-completed",
+      "verdict": "agree",
+      "citation": "§ 107.29(a)(1): \"has completed an initial knowledge test or training, as applicable, under § 107.65 after April 6, 2021; and\"; § 107.65(d): \"... prior to April 6, 2021 ... is considered to be in compliance with the requirement of paragraph (b) or (c) of this section, as applicable.\"",
+      "reason": "Round 4 rebase check: diff.json's before is main after #117/#118. Field by field, after differs from before only in the change round 3 agreed (the crossReferences item now resolves to knowledge-recency, and dependsOn goes from [] to [knowledge-recency]). No key present in before is dropped or altered. None of these entries carries assertedBy on main, so the merge had nothing to lose. Evidence is verbatim and unchanged. Its only pointer, \"under § 107.65\", is answered. The new dependsOn knowledge-recency passes 0026 § 2's test: the entry cannot resolve which completion qualifies without § 107.65's list (a)-(c) and (d)'s pre-2021 rule, which its ambiguity question describes accurately against the corpus. An in-scope entry depending on a declined scope: out entry is the shape 0026 § 2 accepts (over-human-beings → subpart-d-categories). The subpart C claim is gone from this entry, since the old unmapped item was replaced."
+    },
+    {
+      "entry": "night-training-completed: under § 107.65",
+      "verdict": "agree",
+      "citation": "§ 107.29(a)(1): \"as applicable, under § 107.65\"",
+      "reason": "The cites are verbatim. resolvedBy is knowledge-recency (§ 107.65), which is correct."
+    },
+    {
+      "entry": "knowledge-recency",
+      "verdict": "agree",
+      "citation": "§ 107.65, whole section: \"A person may not exercise the privileges of a remote pilot in command with small UAS rating unless ... (a) Passed an initial aeronautical knowledge test ... (d) ... as applicable.\"",
+      "reason": "Round 4 rebase check: diff.json's before is main after #117/#118. Field by field, after differs from before only in the change round 3 agreed (a new entry, identical to round 3 except that the decision number changes from 0025 to 0026 in the part 61 reason and in the note, following the renumbering). No key present in before is dropped or altered. None of these entries carries assertedBy on main, so the merge had nothing to lose. I compared the evidence to corpus-sections.txt paragraph by paragraph. The intro and (a)-(d) are verbatim, and the amendment note is correctly excluded. The locator \"§ 107.65\" matches, and scope out, status declined, and dependsOn [] fit an entry outside the slice that is not worked. The note no longer claims subpart C, and its claims hold: the pointer from § 107.29(a)(1) and the open question lives in night-training-completed. The declared phrases detect seven pointers in the evidence: § 107.73 twice, \"part 61 of this chapter\", \"§ 61.56\", \"§ 107.74\", \"paragraph (c) of this section\", and \"paragraph (b) or (c) of this section\". All seven lie wholly inside an occurrence of some item's cites (the \"specified in § 107.73\" cites occurs at both places). None is left unanswered. That count matches 0026 § 5's 31 → 38. Declarations 31 → 36 is the five new items. The part 61 pointer's answer now follows 0026 § 4's stated exception. The rest of the entry is unchanged from round 2. 0026 § 5 now says \"5 items answer the 7 pointers detected in it\", which fixes round 3's wording note."
+    },
+    {
+      "entry": "knowledge-recency: specified in § 107.73",
+      "verdict": "agree",
+      "citation": "§ 107.65(a) and (b): \"covering the areas of knowledge specified in § 107.73\"",
+      "reason": "The cites are verbatim and claim both occurrences. The unmapped reason is true: no entry in the index cites § 107.73, and § 107.73 is not among the twelve sections. \"Not needed to decline this one\" is sound. 0026 § 1 obliges an entry for a meaning an in-scope rule needs, and this pointer is two hops from the slice, inside a declined entry that works nothing."
+    },
+    {
+      "entry": "knowledge-recency: issued under part 61 of this chapter and meets the flight review requirements specified in § 61.56",
+      "verdict": "agree",
+      "citation": "§ 107.65(c): \"issued under part 61 of this chapter and meets the flight review requirements specified in § 61.56\"; 0026 § 4 What claims it: \"A `scope: out` entry quoted only to decline a section works no rule, so `definedElsewhere` has no meaning to route and would put a `MissingRulesData` reading beside `OutsideCurrentScope`. It answers its pointers into an unadmitted corpus with `unmapped`, naming that corpus.\"",
+      "reason": "Round 2's disagreement is answered by its second fix: the exception is now stated where § 4 states the rule, and it names this entry as the instance. The item satisfies the exception's conditions. knowledge-recency is scope: out, status declined, and dependsOn [], and its note says \"Nothing under the section is worked\". It carries no definedElsewhere. The unmapped reason names the corpus (\"14 CFR part 61 is a corpus that was not admitted\"), and that is true. The cites are verbatim and cover both detected pointers (\"part 61 of this chapter\", \"§ 61.56\"). The rationale is sound: a MissingRulesData reading on an entry the runtime already returns as OutsideCurrentScope would misstate why the map has no answer. The exception is narrow (only entries quoted to decline a section), so the in-scope rule is untouched. civil-twilight-alaska and night-operation still answer through definedElsewhere."
+    },
+    {
+      "entry": "knowledge-recency: specified in § 107.74",
+      "verdict": "agree",
+      "citation": "§ 107.65(c): \"completed training covering the areas of knowledge specified in § 107.74.\"",
+      "reason": "The cites are verbatim. The unmapped reason is true: no entry in the index cites § 107.74, and it is not in the slice. The same reasoning as § 107.73 applies."
+    },
+    {
+      "entry": "knowledge-recency: paragraph (c) of this section",
+      "verdict": "agree",
+      "citation": "§ 107.65(d): \"has satisfied the training requirement of paragraph (c) of this section prior to April 6, 2021\"",
+      "reason": "The cites are verbatim. (c) is quoted in this entry's own evidence, so a self-pointer answered by an unmapped reason is permitted, and the reason is true."
+    },
+    {
+      "entry": "knowledge-recency: paragraph (b) or (c) of this section",
+      "verdict": "agree",
+      "citation": "§ 107.65(d): \"in compliance with the requirement of paragraph (b) or (c) of this section, as applicable.\"",
+      "reason": "The cites are verbatim, and the regex matches the whole \"(b) or (c)\" form. Both paragraphs are in this entry's own evidence, so the unmapped reason is true and permitted."
+    },
+    {
+      "entry": "civil-twilight-operation",
+      "verdict": "agree",
+      "citation": "§ 107.29(c): \"For purposes of paragraph (b) of this section\"; § 107.29(c)(3): \"as defined in the Air Almanac.\"",
+      "reason": "Round 4 rebase check: diff.json's before is main after #117/#118. Field by field, after differs from before only in the change round 3 agreed (crossReferences added). No key present in before is dropped or altered. None of these entries carries assertedBy on main, so the merge had nothing to lose. Unchanged from round 1, and the round 1 agreements stand. The self-pointer to (b) is answered by an unmapped reason, and the Air Almanac pointer resolves to civil-twilight-alaska (§ 107.29(c)(3)). No pointer is unanswered."
+    },
+    {
+      "entry": "subpart-d-categories",
+      "verdict": "agree",
+      "citation": "§ 107.100: \"in addition to those operations permitted by § 107.39(a) and (b).\"",
+      "reason": "Round 4 rebase check: diff.json's before is main after #117/#118. Field by field, after differs from before only in the change round 3 agreed (crossReferences added). No key present in before is dropped or altered. None of these entries carries assertedBy on main, so the merge had nothing to lose. Unchanged from round 1. The cites are verbatim, and the pointer resolves to direct-participation (§ 107.39(a)) and reasonable-protection (§ 107.39(b)), matching § 107.39's limbs. No other pointer is present."
+    },
+    {
+      "entry": "manifest pointerPhrases",
+      "verdict": "agree",
+      "citation": "Newly exercised in § 107.65: \"§ 107.73\", \"§ 61.56\", \"§ 107.74\" (regex 1); \"part 61 of this chapter\" (regex 5); \"paragraph (c) of this section\", \"paragraph (b) or (c) of this section\" (regex 3)",
+      "reason": "Unchanged from round 3 (the same seven items). The phrases are unchanged. On the new evidence every match is a real pointer, and the only over-detections are self-references inside the same section, answered as such. Round 1's noted limits still stand but are not errors in these bytes: a list citation is caught only at its first element, and an Oxford-comma paragraph list would not match."
+    }
+  ],
+  "rounds": [
+    {
+      "round": 1,
+      "summary": "6 agree, 1 disagree",
+      "read": [
+        "corpus-sections.txt",
+        "diff.json",
+        "0024-a-meaning-the-same-corpus-gives-elsewhere-is-an-entry-and-a-corpus-declares-its-pointers.md"
+      ],
+      "verdicts": [
+        {
+          "entry": "night-operation: under § 107.65",
+          "verdict": "disagree",
+          "citation": "§ 107.29(a)(1): \"has completed an initial knowledge test or training, as applicable, under § 107.65\"; § 107.65(a)-(c): \"Passed an initial aeronautical knowledge test ...; (b) Completed recurrent training ...; or (c) ... completed training covering the areas of knowledge specified in § 107.74.\" 0024 § 1: \"The passage is recorded as a scope: out entry that cites it with the corpus's own locator and quotes it ... The in-scope entry names it with a crossReferences item whose resolvedBy is that entry.\"",
+          "reason": "The cites are verbatim in the evidence, and \"no entry names it\" is true of the index, since no entry cites § 107.65. But the pointer goes to the same admitted corpus (cfr-14-107), outside the slice. The passage it points at is the one that says what \"knowledge test or training, as applicable\" means. The corpus puts it in the file under review, and night-operation's own note calls which training qualifies night-training-completed's open question. That is exactly the case 0024 § 1 (and 0021 for a rule outside the slice) says is answered by a scope: out entry quoting § 107.65, named by resolvedBy. The map already does this for its other out-of-slice targets: waiver-policy for § 107.200, waivable-regulations for § 107.205, subpart-d-categories for subpart D. An unmapped reason that records the gap the decision was written to close is not an acceptable answer under the decision this change applies. Two smaller points. First, \"§ 107.65 is in subpart C\" is not stated anywhere in the corpus text supplied, so the review file cannot check it (it matches the eCFR's structure). Second, \"night-training-completed answers the same pointer\" cannot be checked from the index, which gives only that entry's citation, § 107.29(a)(1). Fix: add a scope: out entry for § 107.65 (evidence quoted from § 107.65), and resolve this pointer and night-training-completed's to it. Weigh whether night-training-completed should also dependsOn it, under 0024 § 2."
+        }
+      ],
+      "resolution": "One disagreement, acted on: § 107.65 is in the admitted corpus, so night-operation's pointer gets a scope: out entry (knowledge-recency) rather than an unmapped reason; night-training-completed's pointer resolves to it too and it depends on it."
+    },
+    {
+      "round": 2,
+      "summary": "11 agree, 1 disagree",
+      "read": [
+        "corpus-sections.txt",
+        "diff.json",
+        "0025-a-meaning-the-same-corpus-gives-elsewhere-is-an-entry-and-a-corpus-declares-its-pointers.md"
+      ],
+      "verdicts": [
+        {
+          "entry": "knowledge-recency: issued under part 61 of this chapter and meets the flight review requirements specified in § 61.56",
+          "verdict": "disagree",
+          "citation": "§ 107.65(c): \"If a person holds a pilot certificate (other than a student pilot certificate) issued under part 61 of this chapter and meets the flight review requirements specified in § 61.56, completed training ...\"; 0025 header: \"§ 4** (`definedElsewhere` alone answers a pointer to an unadmitted corpus)\"; 0025 § 4: \"A pointer whose words name the entry's own `definedElsewhere` reference is claimed by that field, which 0020 § 4 made the only place it is answered.\"",
+          "reason": "The cites are verbatim, and the reason's first clause, that 14 CFR part 61 is not admitted, is true. But the rule these reviews apply is that a pointer into a corpus that was not admitted is answered on the entry that carries definedElsewhere for it, not by a crossReferences item. 0020 § 4, restated in 0025, makes definedElsewhere the only place it is answered. This item answers exactly such a pointer with an unmapped reason, and its own words (\"no reference is declared for it\") record the omission rather than justify it. \"Does not work (c)\" does not help. The same is true of § 107.73 and § 107.74, and for those the unmapped route is legitimate only because they are in the admitted corpus. Fix: give knowledge-recency definedElsewhere {\"reference\": <the 14 CFR part 61 reference, declared in the manifest as not admitted>} and drop this item, so the field claims both \"part 61 of this chapter\" and \"§ 61.56\". Alternatively, if the author holds that a declined scope: out entry should carry no definedElsewhere (for example, because it would add a MissingRulesData reading to an entry whose runtime row is OutsideCurrentScope), 0025 must say that exception where § 4 states the rule. As written, the item contradicts the record it applies."
+        }
+      ],
+      "resolution": "One disagreement (the round-2 summary line said 11/1; its file held 12/1): the part 61 pointer on knowledge-recency. Resolved by the reviewer's second option: 0026 § 4 now states that a scope: out entry quoted only to decline a section answers pointers into an unadmitted corpus with unmapped, and the item's reason says so."
+    },
+    {
+      "round": 3,
+      "summary": "13 agree, 0 disagree",
+      "read": [
+        "corpus-sections.txt",
+        "diff.json",
+        "0025-a-meaning-the-same-corpus-gives-elsewhere-is-an-entry-and-a-corpus-declares-its-pointers.md"
+      ],
+      "verdicts": [],
+      "resolution": "No disagreement. #117/#118 then merged into main (assertedBy); the same edits were re-applied on top and the decision record renumbered 0026, so round 4 re-read the result."
+    }
+  ]
+}

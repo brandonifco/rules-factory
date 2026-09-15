@@ -100,23 +100,26 @@ of p. 13 to the end of "Underwater Combat" on p. 16, ending before the "Damage a
 
 ## The map
 
-**91 entries**: 70 in scope, 21 out. The blind second mapping added five and changed eighteen;
-[blind-mapping/README.md](blind-mapping/README.md) lists each change.
+**95 entries**: 70 in scope, 25 out. The blind second mapping added five and changed eighteen;
+[blind-mapping/README.md](blind-mapping/README.md) lists each change. The fixes for findings 3 and 4
+([0026](../../docs/decisions/0026-a-meaning-the-same-corpus-gives-elsewhere-is-an-entry-and-a-corpus-declares-its-pointers.md))
+added four more, `difficult-terrain-glossary`, `invisible-condition`, `cover-glossary` and `disengage-action`, and connected the glossary entries to the rules they
+modify.
 
 | | in scope | out of scope |
 |---|---:|---:|
-| operation | 61 | 20 |
+| operation | 61 | 24 |
 | value | 6 | 1 |
 | assertion | 3 | 0 |
-| clear | 51 | 21 |
+| clear | 51 | 25 |
 | ambiguous | **19 (27%)** | 0 |
-| status | 70 `mapped` | 21 `declined` |
+| status | 70 `mapped` | 25 `declined` |
 
-- **Out of scope, 21.** 16 decline rules outside the extent that in-scope entries depend on, gate on or
+- **Out of scope, 25.** 20 decline rules outside the extent that in-scope entries depend on, gate on or
   restate: the Actions table, Bonus Actions, Reactions, attack rolls, Advantage/Disadvantage, saving
-  throws, ability checks, Round Down, Prone, Incapacitated, the movement modes, the Initiative-score
-  option, Damage Rolls, Resistance, and the Glossary's restatements of Surprise and Opportunity
-  Attacks. 3 decline pointer passages inside the extent (`action-options`, `speed-and-size-sources`,
+  throws, ability checks, Round Down, Prone, Incapacitated, Invisible, the movement modes, the Initiative-score
+  option, Damage Rolls, Resistance, and the Glossary's statements of Surprise, Opportunity
+  Attacks, Difficult Terrain, Cover and Disengage. 3 decline pointer passages inside the extent (`action-options`, `speed-and-size-sources`,
   `damage-and-healing`). **2 are absences** (`absentFrom`): `flanking` and a `surprise-round` in
   which the surprised lose their first turn. The corpus states neither.
 - **Gates, 15 entries.** Five grid rules are `enabledBy: grid-play`. Five mount rules are enabled
@@ -131,7 +134,9 @@ of p. 13 to the end of "Underwater Combat" on p. 16, ending before the "Damage a
   round "if neither side is defeated". p. 14 says combat can also end "when both sides agree".
   Both members are `unresolved`. The likelier reading, that the specific rule governs, is a
   Phase 4 decision and is not taken here.
-- **22 `crossReferences`**, 16 resolved to entries and 6 `unmapped` with a reason.
+- **32 `crossReferences`**, 26 resolved to entries and 6 `unmapped` with a reason. 19 sit on a
+  pointer the check detects with the SRD's `pointerPhrases`. 9 are anchored on a glossary term
+  (0026), and 4 are pointers the mapper declared in words no phrase covers.
 - **No derived entries.** No fact was needed that two stated rules entail and none states.
 
 **Assertions, 3.** `initiative-ties` (the GM or the players decide "the order among tied"
@@ -238,6 +243,15 @@ modifier rather than a gate (Incapacitated's Initiative penalty), no field conne
 `initiative-roll` at all, and the connection is only in a note. This is issue #8's "dense internal
 cross-reference graph", and the schema's answer to it is still scope-out entries one at a time.
 
+**Fixed by [0026](../../docs/decisions/0026-a-meaning-the-same-corpus-gives-elsewhere-is-an-entry-and-a-corpus-declares-its-pointers.md)
+([#115](https://github.com/brandonifco/rules-factory/issues/115)).** The `scope: out` entry stays,
+and the in-scope entry names it: in `crossReferences`, anchored on the term (`surprised`,
+`Opportunity Attack`, `rolls Initiative`, `Difficult Terrain`), and in `dependsOn` where the rule
+cannot be resolved without it. That covers `surprised`, `initiative-roll` (Incapacitated),
+`surprise-disadvantage` (the score's -5 under the Initiative-score option) and `difficult-terrain`.
+`opportunity-attack` has the cross-reference only, because the slice decides every case the
+glossary does. `definedElsewhere` naming an admitted corpus is now refused.
+
 ### 4. `crossReferences` detects none of this corpus's pointers
 
 `check-map.py --only cross-references` reads a closed phrase list, written from CFR and Hoyle
@@ -246,6 +260,12 @@ wording ("except as provided in", "as in Fig."). The SRD points with `(see "Rule
 Healing")` and `as noted in their descriptions`. The check found **0 pointers**. The 25 declarations
 are the mapper's own, anchored in the evidence and resolved, and nothing obliged them. Extending the
 phrase list is a checker change and is not made here.
+
+**Fixed by [0026](../../docs/decisions/0026-a-meaning-the-same-corpus-gives-elsewhere-is-an-entry-and-a-corpus-declares-its-pointers.md)
+([#116](https://github.com/brandonifco/rules-factory/issues/116)).** The manifest declares the SRD's
+`pointerPhrases`, derived from its text, and the check now detects 19 pointers in the map's quoted
+spans. It found one that nobody had declared: `flanking` quotes "(see the next section)". A corpus
+that declares no phrases, and on which the built-in list detects nothing, now fails.
 
 ### 5. "The GM determines" usually is not an assertion, and 0010 is what says so
 
@@ -318,5 +338,6 @@ one that is wrong on a literal reading. 0007 handled it without strain.
   quotes and Apache-2.0 for the factory's work. The expression `Apache-2.0 AND CC-BY-4.0` was
   considered and not used, because it cannot say which part is under which terms or carry the
   statement.
-- The pointer phrase list (finding 4) and a same-corpus-outside-extent relation (finding 3) are
-  candidate issues.
+- The pointer phrase list (finding 4) and a same-corpus-outside-extent relation (finding 3) became
+  #116 and #115, both decided in
+  [0026](../../docs/decisions/0026-a-meaning-the-same-corpus-gives-elsewhere-is-an-entry-and-a-corpus-declares-its-pointers.md).

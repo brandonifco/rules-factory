@@ -26,6 +26,15 @@
         "sha256": "8974902d109d6e63672d7c490bde9ccf052410503d9cfa768237154fbc5e3d87",
         "retrieved": "2026-09-14"
       },
+      "pointerPhrases": [
+        { "regex": "\\(see [^)]+\\)" },
+        { "regex": "\\bsee (?:also )?“[^”]+”" },
+        { "regex": "\\b(?:explained|described|detailed|defined|listed|noted|stated)(?: in more detail)?(?: earlier| later| below| above)? in “[^”]+”" },
+        { "regex": "“[^”]+” (?:earlier|later) in “[^”]+”" },
+        { "regex": "\\b(?:explained|described|detailed|listed|noted|stated) in (?:their|its) (?:descriptions?|stat blocks?)\\b" },
+        { "regex": "\\b(?:shown|listed|detailed) (?:in|on) the [A-Z][^.;:“”]*? table\\b" },
+        { "regex": "\\bthe (?:next|previous|following) section\\b" }
+      ],
       "references": []
     }
   ]

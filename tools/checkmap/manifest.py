@@ -14,6 +14,11 @@ def check_manifest(ctx):
     The map's `corpus` and baseline stamp, every `locator.sourceId`, `beyondAdapter.adapter`
     against the adapter declared for that source (0004), and `definedElsewhere.reference`
     against that source's `references` (0005).
+
+    `definedElsewhere` names a corpus that was not admitted, so a reference to a corpus the
+    manifest declares, or to a reference marked `admitted: true`, is refused (0026, #115): the
+    SRD's Rules Glossary is the same corpus as its combat chapter, and a term defined there is a
+    `scope: out` entry the in-scope entry names, not a reference.
     """
     manifest = ctx["manifest"]
     if manifest is None:
@@ -63,9 +68,19 @@ def check_manifest(ctx):
         if "definedElsewhere" in entry:
             checked += 1
             reference = block(entry, "definedElsewhere").get("reference")
-            known = {r.get("sourceId") for r in (source or {}).get("references") or [] if isinstance(r, dict)}
+            declared_references = [r for r in (source or {}).get("references") or [] if isinstance(r, dict)]
+            known = {r.get("sourceId") for r in declared_references}
+            admitted = reference in corpora or any(
+                r.get("sourceId") == reference and r.get("admitted") is True for r in declared_references)
             if source is None:
                 bad.append(f"  X  {name}: definedElsewhere names {reference!r}, but its source is not in the manifest")
+            elif admitted:
+                bad.append(
+                    f"  X  {name}: definedElsewhere names {reference!r}, a corpus that was admitted; it "
+                    f"answers only a corpus that was not. A meaning the same corpus gives outside the "
+                    f"slice is a `scope: out` entry quoting that passage, named by this entry's "
+                    f"`crossReferences` (and `dependsOn`, where it modifies the rule) (0026, #115)"
+                )
             elif reference not in known:
                 bad.append(
                     f"  X  {name}: definedElsewhere.reference {reference!r} is not in {source_id}'s "

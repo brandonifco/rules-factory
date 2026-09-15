@@ -29,7 +29,9 @@ questions. [0021](../../docs/decisions/0021-a-gate-outside-the-slice-is-held-by-
 then recorded waivers ([#61](https://github.com/brandonifco/rules-factory/issues/61)). Two
 `scope: out` entries cite §§ 107.200 and 107.205, and 27 entries name the waiver list in
 `suspendedBy`: **46 entries. 6 values, 30 operations, 10 assertions. 36 clear, 10 ambiguous. 6
-declined.** The delegated standards are entries split
+declined.** [0026](../../docs/decisions/0026-a-meaning-the-same-corpus-gives-elsewhere-is-an-entry-and-a-corpus-declares-its-pointers.md)
+added `knowledge-recency` (§ 107.65, `scope: out`), the target of § 107.29(a)(1)'s "under § 107.65",
+once the CFR's declared pointer phrases made the check see it: 47 entries, 31 operations, 7 declined. The delegated standards are entries split
 out of the rules that consume them; so are the gaps the sweep below found. `right-of-way`
 stopped being an assertion, `night-operation` stopped being a rule this map could claim to
 have derived from the text it admitted, and the four entries #11 had been open over since
