@@ -19,7 +19,13 @@ The recipe is the factory's, not the engine's, so it is rewritten on every `prod
     table engine-gate.py's posture recomputes a baseline with), verbatim,
     so the gate can regenerate without the factory. Every file written here is in
     provenance.json's `generated`, which is what ties these bytes to a factory version;
-  * `.github/workflows/validate.yml` -- runs `validate.sh full` and nothing else.
+  * `.github/workflows/validate.yml` -- runs `validate.sh full` and nothing else. For an engine of a
+    licensed `local-copy` corpus (decisions 0022 and 0028) it is `recipe/validate-local-copy.yml`
+    instead: no runner can restore that engine's map, so CI runs what needs no licensed input (the
+    SDK pin, lock files present, nothing licensed committed, whitespace formatting, and the projects
+    that do not depend on the map) and reports NOT VERIFIED as a passing job of its own, never as
+    a failure and never as verified. `validate.sh full` stays the one definition of acceptable, run
+    on the operator's machine. Every other engine's workflow is byte-identical to what it was.
 
 Lock files are not written here: they need a restore, and `produce` runs no dotnet. The emitted
 `Directory.Build.props` (generate.py) turns lock files on and CI restores in locked mode;
@@ -45,11 +51,17 @@ FILES = {
     ".github/workflows/validate.yml": (os.path.join(RECIPE, "validate.yml"), False),
 }
 
+# Decision 0028: the workflow of an engine whose corpus is licensed local-copy.
+LOCAL_COPY_WORKFLOW = os.path.join(RECIPE, "validate-local-copy.yml")
 
-def files(name):
-    """The recipe for engine `name`: published path -> (bytes, executable)."""
+
+def files(name, local_copy=False):
+    """The recipe for engine `name`: published path -> (bytes, executable). `local_copy` is whether the
+    engine's corpus is a licensed local-copy one (0028), which changes the CI workflow and nothing else."""
     out = {}
     for relative, (source, executable) in FILES.items():
+        if local_copy and relative == ".github/workflows/validate.yml":
+            source = LOCAL_COPY_WORKFLOW
         with open(source, "rb") as handle:
             data = handle.read()
         if relative == "scripts/validate.sh":
@@ -58,8 +70,8 @@ def files(name):
     return out
 
 
-def emit(name, out, log=None):
-    for relative, (data, executable) in files(name).items():
+def emit(name, out, log=None, local_copy=False):
+    for relative, (data, executable) in files(name, local_copy).items():
         path = os.path.join(out, *relative.split("/"))
         os.makedirs(os.path.dirname(path), exist_ok=True)
         with open(path, "wb") as handle:

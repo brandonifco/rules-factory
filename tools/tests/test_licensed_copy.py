@@ -28,7 +28,13 @@ Asserted:
     `gh` call a body that does, one without the notice, or when the map cannot be found; a
     committed-copy engine (hoyle-backgammon) is byte-identical with the flag and without, and still
     quotes its evidence;
-  * pack-map.py hashes the local copy first, so a wrong edition does not pack.
+  * pack-map.py hashes the local copy first, so a wrong edition does not pack;
+  * where the map comes from (0028) -- `produce` seeds the global packages folder with the package
+    provenance records before anything restores; `verify` and `provenance` with no `--package` take it
+    from `$RULES_FACTORY_LOCAL_MAP_FEED` when the folder lacks it, and are refused naming the variable
+    when neither has it; a committed-copy engine never seeds; a local-copy engine's workflow is
+    recipe/validate-local-copy.yml and a committed-copy one's is recipe/validate.yml. The seeding
+    itself is test_local_map.py's (the fake dotnet cannot extract a package, so it is recorded here).
 
 pack-map.py runs in-process here, so the fixture's derivation can be added to intake's for it.
 
@@ -366,10 +372,24 @@ class FactoryCase(Case):
             self.gate_env.append(env)
             return real_run(stage, [sys.executable, self.fake_gate], cwd, log, env)
 
-        for patcher in (mock.patch.object(verify_step, "_run", run_with_fake_gate), fixture.derivation(intake)):
+        # The fake dotnet cannot extract a package, so seeding the global packages folder (0028) is
+        # recorded here, in order with the gate, and test_local_map.py tests the seeding itself.
+        self.events = []
+
+        def record_seed(nupkg, package_id, version, expected_sha256, dotnet="dotnet"):
+            self.events.append(("seed", nupkg, package_id, version, expected_sha256))
+            return f"seeded {package_id} {version}"
+
+        def gate_after_seed(stage, argv, cwd, log, env=None):
+            self.events.append((stage,))
+            return run_with_fake_gate(stage, argv, cwd, log, env)
+
+        for patcher in (mock.patch.object(verify_step, "_run", gate_after_seed), fixture.derivation(intake),
+                        mock.patch.object(factory.local_map, "seed", record_seed)):
             patcher.start()
             self.addCleanup(patcher.stop)
-        self.dotnet = {"FACTORY_DOTNET": fake, "FAKE_DOTNET_LOG": os.path.join(self.tmp, "dotnet.log")}
+        self.dotnet = {"FACTORY_DOTNET": fake, "FAKE_DOTNET_LOG": os.path.join(self.tmp, "dotnet.log"),
+                       "NUGET_PACKAGES": os.path.join(self.tmp, "nuget-packages")}
         self.engine = os.path.join(self.tmp, "engine")
 
     def factory(self, *argv, login=OPERATOR, **extra):
@@ -603,6 +623,79 @@ class TestFactory(FactoryCase):
                                     licensed_copy.FLAG, **{fixture.ENV_VAR: changed})
         self.assertEqual(code, 1, output)
         self.assertIn(f"is not {fixture.SOURCE_ID} at the map's baseline", output)
+
+    # --- decision 0028: the map comes from the operator's feed, and CI says NOT VERIFIED --------------
+
+    def feed(self):
+        """A feed directory holding the packed map, outside any git work tree (the temp directory)."""
+        directory = os.path.join(self.tmp, "feed")
+        os.makedirs(directory, exist_ok=True)
+        shutil.copy(self.nupkg, directory)
+        return directory
+
+    def test_produce_seeds_the_packed_map_before_anything_restores(self):
+        self.produced()
+        stages = [event[0] for event in self.events]
+        self.assertEqual(stages[0], "seed", stages)
+        self.assertLess(stages.index("seed"), stages.index("restore"))
+        (seed,) = [event for event in self.events if event[0] == "seed"]
+        self.assertEqual(seed[1:], (self.nupkg, fixture.PACKAGE_ID, fixture.VERSION, self.record()["map"]["nupkgSha256"]))
+
+    def test_a_local_copy_engine_gets_the_not_verified_workflow_and_a_committed_copy_one_does_not(self):
+        self.produced()
+        with open(os.path.join(self.engine, ".github", "workflows", "validate.yml"), "rb") as handle:
+            emitted = handle.read()
+        with open(os.path.join(FACTORY, "recipe", "validate-local-copy.yml"), "rb") as handle:
+            self.assertEqual(emitted, handle.read())
+        self.assertIn(".github/workflows/validate.yml", {g["path"] for g in self.record()["generated"]})
+        with open(os.path.join(FACTORY, "recipe", "validate.yml"), "rb") as handle:
+            plain = handle.read()
+        self.assertEqual(factory.gate.files("HoyleBackgammon")[".github/workflows/validate.yml"][0], plain)
+        self.assertEqual(factory.gate.files("HoyleBackgammon", local_copy=True)[".github/workflows/validate.yml"][0],
+                         emitted)
+        self.events.clear()
+        code, output = self.factory("provenance", "--engine", self.engine, "--package", self.nupkg, licensed_copy.FLAG)
+        self.assertEqual(code, 0, output)
+        self.assertEqual(self.events, [], "provenance reads the package and never restores it")
+
+    def test_verify_without_package_reads_the_feed_when_the_global_packages_folder_lacks_it(self):
+        self.produced()
+        self.events.clear()
+        code, output = self.factory("verify", "--engine", self.engine, licensed_copy.FLAG,
+                                    RULES_FACTORY_LOCAL_MAP_FEED=self.feed())
+        self.assertEqual(code, 0, output)
+        (seed,) = [event for event in self.events if event[0] == "seed"]
+        self.assertEqual(seed[1:], (os.path.join(self.tmp, "feed", os.path.basename(self.nupkg)), fixture.PACKAGE_ID,
+                                    fixture.VERSION, self.record()["map"]["nupkgSha256"]))
+        self.assertEqual([e[0] for e in self.events][0], "seed")
+        code, output = self.factory("provenance", "--engine", self.engine, licensed_copy.FLAG,
+                                    RULES_FACTORY_LOCAL_MAP_FEED=self.feed())
+        self.assertEqual(code, 0, output)
+
+    def test_verify_without_a_feed_or_a_cached_package_is_refused_naming_the_variable(self):
+        self.produced()
+        for command in ("verify", "provenance"):
+            with self.subTest(command=command):
+                code, output = self.factory(command, "--engine", self.engine, licensed_copy.FLAG)
+                self.assertEqual(code, 1, output)
+                self.assertIn("$RULES_FACTORY_LOCAL_MAP_FEED is not set", output)
+                empty = os.path.join(self.tmp, "empty-feed")
+                os.makedirs(empty, exist_ok=True)
+                code, output = self.factory(command, "--engine", self.engine, licensed_copy.FLAG,
+                                            RULES_FACTORY_LOCAL_MAP_FEED=empty)
+                self.assertEqual(code, 1, output)
+                self.assertIn(f"holds no {fixture.PACKAGE_ID}.{fixture.VERSION}.nupkg", output)
+
+    def test_a_committed_copy_engine_never_seeds_or_needs_a_feed(self):
+        hoyle_pack = os.path.join(self.tmp, "hoyle-package")
+        subprocess.run([sys.executable, PACK, HOYLE, "--out", hoyle_pack], check=True, capture_output=True)
+        (name,) = os.listdir(hoyle_pack)
+        code, output = self.factory("produce", "--package", os.path.join(hoyle_pack, name), "--corpus",
+                                    os.path.join(HOYLE, "hoyle.txt"), "--name", "HoyleBackgammon", "--out", self.engine,
+                                    "--allow-dirty", licensed_copy.FLAG)
+        self.assertEqual(code, 0, output)
+        self.assertNotIn("seed", [e[0] for e in self.events])
+        self.assertNotIn("--- local map", output)
 
 
 if __name__ == "__main__":

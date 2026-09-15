@@ -26,7 +26,9 @@
 #
 # The engine is produced from the hoyle-backgammon example: a small map, a non-RPG domain, and
 # a package published on nuget.org (restore resolves it, and RulesKernel, from there). Last, every
-# other example map with a map-package.json is produced and verified once, gate and all (#106).
+# other example map with a map-package.json is produced and verified once, gate and all (#106). And an
+# engine of the synthetic licensed fixture is produced and verified with its map restored from a local
+# feed, and its emitted CI checks run as a runner would, with no map anywhere (#142, decision 0028).
 #
 # Local runs only: FACTORY_DOTNET_SDK_OVERRIDE=<version> rewrites the scratch engine's
 # global.json to that SDK, for a machine that lacks the pinned one. global.json is a managed file
@@ -603,5 +605,90 @@ PY
   echo "ok   $example_name ($dir): verified, its gate recomputed the $example_source baseline"
 done
 [ "$examples" -ge 2 ] || fail "found $examples packable example map(s); this step proved nothing beyond the engine above"
+
+# #142, decision 0028: a map of a licensed local-copy corpus is never published, so its engine's map
+# package reaches restore only from the operator's own feed ($RULES_FACTORY_LOCAL_MAP_FEED), through
+# the NuGet global packages folder, with the managed NuGet.config left as it is. And its CI cannot
+# restore the map at all, so it gets a workflow that runs what needs no licensed input and says NOT
+# VERIFIED. Proven here with the real dotnet on the synthetic licensed fixture (tools/tests/
+# licensed_fixture.py: invented text, no licensed text anywhere), under the one raw-bytes derivation the
+# vendored gate already knows, since the gate's own process cannot have a test derivation patched in.
+#
+# The licensed-copy exception refuses CI and needs an allowlisted `gh` login, so these commands run with
+# CI and GITHUB_ACTIONS unset and the fixture's fake `gh`, exactly as tools/tests/test_licensed_copy.py
+# runs them. That is a test of the machinery on invented text, not a use of the exception.
+step "a licensed-copy engine restores its map from the operator's feed, verifies, and its CI says NOT VERIFIED"
+LICENSED="$SCRATCH/licensed"
+mkdir -p "$LICENSED/feed" "$LICENSED/gh"
+read -r LICENSED_MAP LICENSED_CORPUS <<<"$(python3 tools/tests/licensed_fixture.py "$LICENSED/fixture" gutenberg-plain-text-including-boilerplate)"
+LICENSED_GH="$(python3 -c 'import sys; sys.path.insert(0, "tools/tests"); import licensed_fixture as f; print(f.fake_gh(sys.argv[1]))' "$LICENSED/gh")"
+LICENSED_ENGINE="$LICENSED/engine"
+LICENSED_PACKAGES="$LICENSED/nuget-packages"
+licensed() {
+  env -u CI -u GITHUB_ACTIONS FACTORY_GH="$LICENSED_GH" FAKE_GH_LOG="$LICENSED/gh/log" FAKE_GH_LOGIN=brandonifco \
+    RULES_FACTORY_TEST_SYNTHETIC_LICENSED="$LICENSED_CORPUS" RULES_FACTORY_LOCAL_MAP_FEED="$LICENSED/feed" \
+    NUGET_PACKAGES="$LICENSED_PACKAGES" "$@"
+}
+licensed python3 tools/pack-map.py "$LICENSED_MAP" --out "$LICENSED/feed" --licensed-copy-exception | tail -1
+LICENSED_PACKAGE="$LICENSED/feed/RulesFactory.Maps.SyntheticLicensed.1.0.0.nupkg"
+[ -f "$LICENSED_PACKAGE" ] || fail "pack-map.py --licensed-copy-exception wrote no $LICENSED_PACKAGE"
+
+# Id@Version, not the path: produce finds the package in the feed, since nuget.org never has it.
+licensed python3 tools/factory produce --package RulesFactory.Maps.SyntheticLicensed@1.0.0 --corpus "$LICENSED_CORPUS" \
+  --name SyntheticLicensed --out "$LICENSED_ENGINE" --licensed-copy-exception > "$LICENSED/produce.log" 2>&1 \
+  || { tail -60 "$LICENSED/produce.log"; fail "producing the licensed-copy engine from the operator's feed failed"; }
+grep -qF -- "--- local map: put RulesFactory.Maps.SyntheticLicensed 1.0.0 from $LICENSED_PACKAGE in the NuGet global packages folder" "$LICENSED/produce.log" \
+  || { tail -60 "$LICENSED/produce.log"; fail "produce did not put the map from the feed into the global packages folder"; }
+grep -qF "verified: synthetic-licensed-rules (local-copy, never-commit): local copy at \$RULES_FACTORY_TEST_SYNTHETIC_LICENSED hashes to the pinned baseline" "$LICENSED/produce.log" \
+  || { tail -60 "$LICENSED/produce.log"; fail "the licensed-copy engine's gate did not verify the local copy"; }
+grep -q "^produced SyntheticLicensed in .*, verified locally under the licensed-copy exception by brandonifco" "$LICENSED/produce.log" \
+  || { tail -40 "$LICENSED/produce.log"; fail "producing the licensed-copy engine did not end verified under the exception"; }
+(cd "$LICENSED_ENGINE" && NUGET_PACKAGES="$LICENSED_PACKAGES" check_restored_package "$LICENSED_PACKAGE")
+[ ! -e "$LICENSED_ENGINE/corpus" ] || fail "the licensed-copy engine has a corpus/ directory"
+python3 -B - "$LICENSED_ENGINE/NuGet.config" <<'PY' || fail "the licensed-copy engine's NuGet.config is not the managed recipe"
+import sys
+sys.path.insert(0, "tools/factory")
+import generate
+sys.exit(open(sys.argv[1], encoding="utf-8").read() != generate.managed_files()["NuGet.config"])
+PY
+cmp -s "$LICENSED_ENGINE/.github/workflows/validate.yml" tools/factory/recipe/validate-local-copy.yml \
+  || fail "the licensed-copy engine's CI workflow is not recipe/validate-local-copy.yml"
+echo "ok   restored from the feed, verified under the exception; managed NuGet.config, no corpus, the NOT VERIFIED workflow"
+
+# The global packages folder cleared: verify, given no --package, finds the map in the feed again.
+rm -rf "$LICENSED_PACKAGES"
+licensed python3 tools/factory verify --engine "$LICENSED_ENGINE" --licensed-copy-exception > "$LICENSED/verify.log" 2>&1 \
+  || { tail -60 "$LICENSED/verify.log"; fail "verify of the licensed-copy engine, with the packages folder cleared, failed"; }
+grep -q "^verify .*: PASS, verified locally under the licensed-copy exception by brandonifco" "$LICENSED/verify.log" \
+  || { tail -40 "$LICENSED/verify.log"; fail "verify did not pass under the exception"; }
+echo "ok   with the packages folder cleared, verify reads the feed, restores the map again and passes"
+
+# The engine's CI, as a runner has it: CI=true, no feed, no local copy, an empty packages folder. The full
+# gate fails at its locked restore (why the workflow does not run it), and every step of the emitted
+# `checks` job, read from the workflow and run, passes and says NOT VERIFIED.
+LICENSED_CI="$LICENSED/ci"
+cp -R "$LICENSED_ENGINE" "$LICENSED_CI"
+rm -rf "$LICENSED_CI"/src/*/bin "$LICENSED_CI"/src/*/obj "$LICENSED_CI"/tests/*/bin "$LICENSED_CI"/tests/*/obj
+repin_sdk "$LICENSED_CI"
+git -C "$LICENSED_CI" init -q && git -C "$LICENSED_CI" add -A
+ci_env=(env -u RULES_FACTORY_LOCAL_MAP_FEED -u RULES_FACTORY_TEST_SYNTHETIC_LICENSED CI=true
+        NUGET_PACKAGES="$LICENSED/ci-packages" GITHUB_OUTPUT="$LICENSED/ci-output" GITHUB_STEP_SUMMARY="$LICENSED/ci-summary")
+if (cd "$LICENSED_CI" && "${ci_env[@]}" ./scripts/validate.sh full) > "$LICENSED/ci-full.log" 2>&1; then
+  fail "the full gate passed on a runner with no map package; it cannot have restored the map"
+fi
+grep -q "FAIL dotnet restore --locked-mode" "$LICENSED/ci-full.log" \
+  || { tail -40 "$LICENSED/ci-full.log"; fail "without the map, the full gate did not fail at its locked restore"; }
+python3 tools/tests/workflow_steps.py "$LICENSED_CI/.github/workflows/validate.yml" checks "$LICENSED/ci-steps" \
+  "steps.sdk.outputs.version=$SDK" || fail "cannot read the checks job of the licensed-copy workflow"
+for script in "$LICENSED"/ci-steps/*.sh; do
+  name="$(cat "${script%.sh}.name")"
+  (cd "$LICENSED_CI" && "${ci_env[@]}" bash --noprofile --norc -eo pipefail "$script") > "$LICENSED/ci-step.log" 2>&1 \
+    || { tail -40 "$LICENSED/ci-step.log"; fail "the licensed-copy CI step '$name' failed with no licensed input"; }
+  echo "ok   CI step: $name"
+done
+grep -qF "NOT VERIFIED: licensed map not available in CI" "$LICENSED/ci-summary" \
+  || fail "the licensed-copy CI did not write NOT VERIFIED to the run summary"
+[ ! -e "$LICENSED/ci-packages/rulesfactory.maps.syntheticlicensed" ] || fail "the CI steps restored the map from somewhere"
+echo "ok   without the map, the full gate fails at restore, and every CI check passes and says NOT VERIFIED"
 
 printf '\nvalidate-engine.sh: PASS (SDK %s%s)\n' "$SDK" "$([ "$SDK" = "$PIN" ] || echo ", OVERRIDDEN from $PIN")"

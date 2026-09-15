@@ -75,7 +75,11 @@ tools/factory/licensed-copy-operators.json, intake admits a licensed `local-copy
 the local file (`--corpus`, or for a re-produce the manifest's `envVar`) against the baseline. No
 corpus bytes are copied into the engine, provenance records `licensedCopyException`, and every
 line that would say verified says `verified locally under the licensed-copy exception by <login>`.
-Without the flag nothing differs. See licensed_copy.py.
+Without the flag nothing differs. See licensed_copy.py. Such a map is never on nuget.org (decision
+0028, local_map.py): `Id@Version` not in the NuGet global packages folder is read from
+`$RULES_FACTORY_LOCAL_MAP_FEED`, and before anything restores the global packages folder is seeded
+with exactly the package provenance records. The engine's NuGet.config is unchanged, and its CI
+workflow runs what needs no licensed input and says NOT VERIFIED.
 
 Exit 0 when every step passed; 1 when a step refused; 2 on a usage error.
 Standard library only.
@@ -96,6 +100,7 @@ import gate  # noqa: E402
 import generate  # noqa: E402
 import intake as intake_step  # noqa: E402
 import licensed_copy  # noqa: E402
+import local_map  # noqa: E402
 import provenance  # noqa: E402
 import transaction  # noqa: E402
 import verify as verify_step  # noqa: E402
@@ -117,10 +122,13 @@ def produce(args):
         with provenance.Recorder(out) as recorder:
             result = intake_step.intake(args.package, args.corpus, log=sys.stdout,
                                         licensed_copy_operator=getattr(args, "licensed_copy_operator", None))
+            args.intake_result = result
             print(f"intake passed: {result.package_id} {result.version}, {len(result.map.get('entries') or [])} entries")
             model = generate.produce(result, args.name, out, log=sys.stdout,
                                      adopt=getattr(args, "adopt", None) or (), reset=getattr(args, "reset", None) or ())
-            gate.emit(args.name, out, log=sys.stdout)
+            # Decision 0028: a local-copy engine's CI cannot restore its map, so it gets the workflow that
+            # runs what needs no licensed input and says NOT VERIFIED.
+            gate.emit(args.name, out, log=sys.stdout, local_copy=is_local_copy(result))
             context = {"name": args.name, "package": result.package_id, "version": result.version}
             if result.corpus.get("verification") == "local-copy":
                 context["localCopy"] = True  # decision 0022: the backlog quotes nothing from the corpus
@@ -152,6 +160,8 @@ def produce(args):
             # #94: a run that moved the generated pins re-locks (verify.py). The lock files are
             # engine-owned, and this is the one case produce rewrites them (ownership.py, 0018).
             relock = verify_step.pins_changed(pins_before, verify_step.read_pins(out))
+            if is_local_copy(result):
+                seed_local_map(args.package, result.package_id, result.version, result.nupkg_sha256)
             overridden = verify_step.verify_staged(out, lambda engine, package: recompute_provenance(
                                           engine, package, getattr(args, "licensed_copy_operator", None)),
                                       args.package, log=sys.stdout, after_restore=record_lock_files, relock=relock)
@@ -169,6 +179,19 @@ def produce(args):
     print(f"produced {args.name} in {args.out}, {'NOT VERIFIED' if args.no_verify else verified(document)}"
           f"{overridden_suffix(overridden, verify_step.pinned_sdk(args.out), 'lock files re-locked' if args.no_verify else '')}")
     return document
+
+
+def is_local_copy(result):
+    """Whether intake admitted a licensed local-copy corpus under the exception (0022)."""
+    return getattr(result, "licensed_copy_operator", None) is not None
+
+
+def seed_local_map(spec, package_id, version, nupkg_sha256):
+    """Before a licensed-copy engine restores, the NuGet global packages folder holds its map (0028).
+
+    `spec` is the package `main` resolved (local_map.resolve): a file, or Id@Version already there."""
+    nupkg = intake_step.resolve_package(spec, None) if not os.path.isfile(spec) else spec
+    print(f"--- local map: {local_map.seed(nupkg, package_id, version, nupkg_sha256, verify_step.dotnet_command())}")
 
 
 def overridden_suffix(overridden, pinned, what=""):
@@ -200,6 +223,9 @@ def relock_stale_locks(out, args, record_lock_files):
     refused = (f"--no-verify must re-lock the lock files that disagree with the generated pins in "
                f"{verify_step.PACKAGES_PROPS} ({lines}), and ")
     try:
+        result = getattr(args, "intake_result", None)
+        if is_local_copy(result):
+            seed_local_map(args.package, result.package_id, result.version, result.nupkg_sha256)
         verify_step.relock(out, sys.stdout)
     except verify_step.Failed as error:
         if not error.sdk_missing:
@@ -338,9 +364,23 @@ def main(argv=None):
             backlog_step.create(args.repo, args.dir, log=sys.stdout, gh=os.environ.get("FACTORY_GH", "gh"),
                                 package=args.package)
             return 0
+        if args.licensed_copy_operator is not None and args.command in ("produce", "verify", "provenance"):
+            # Decision 0028: a licensed-copy map is never on nuget.org; read it from where the operator put it.
+            # Before intake, produce cannot know the corpus is local-copy, so it only looks; an engine that
+            # records the exception must find it.
+            record = recorded_provenance(args.engine) if args.command != "produce" else None
+            if args.command == "produce":
+                args.package = local_map.resolve(args.package, strict=False)
+            elif isinstance(record, dict) and "licensedCopyException" in record:
+                args.package = local_map.resolve(args.package, record)
         if args.command == "provenance":
             return check_provenance(args)
         if args.command == "verify":
+            record = recorded_provenance(args.engine)
+            if args.licensed_copy_operator is not None and isinstance(record, dict) and "licensedCopyException" in record:
+                source = record.get("map") or {}
+                seed_local_map(args.package or f"{source.get('packageId')}@{source.get('version')}",
+                               source.get("packageId"), source.get("version"), source.get("nupkgSha256"))
             overridden = verify_step.verify(args.engine, lambda engine, package: recompute_provenance(
                 engine, package, args.licensed_copy_operator), args.package, log=sys.stdout)
             document = recorded_provenance(args.engine)

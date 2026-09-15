@@ -196,8 +196,8 @@ class TestTheTable(OwnershipCase):
     def test_an_unclassified_output_is_refused(self):
         real = gate.files
 
-        def with_stray(name):
-            return {**real(name), "scripts/stray.txt": (b"x", False)}
+        def with_stray(name, local_copy=False):
+            return {**real(name, local_copy), "scripts/stray.txt": (b"x", False)}
 
         with mock.patch.object(gate, "files", with_stray):
             code, output = self.produce()

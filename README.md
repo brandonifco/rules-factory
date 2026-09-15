@@ -63,7 +63,7 @@ marked `not implemented` that the parser does have.
 | `produce` | `--no-verify` | implemented | commit without building or testing; the output says so |
 | `produce` | `--adopt` | implemented | make a managed file engine-owned, keeping its edits |
 | `produce` | `--reset` | implemented | overwrite a managed or adopted file with the current recipe |
-| `produce` | `--licensed-copy-exception` | implemented | an allowlisted operator (`gh api user`), outside CI, produces from a licensed `local-copy` corpus; no corpus bytes enter the engine ([0022](docs/decisions/0022-a-licensed-copy-is-used-locally-by-a-named-operator-and-never-published.md)) |
+| `produce` | `--licensed-copy-exception` | implemented | an allowlisted operator (`gh api user`), outside CI, produces from a licensed `local-copy` corpus; no corpus bytes enter the engine ([0022](docs/decisions/0022-a-licensed-copy-is-used-locally-by-a-named-operator-and-never-published.md)); the map is restored from `$RULES_FACTORY_LOCAL_MAP_FEED` through the NuGet global packages folder, and the engine's CI says NOT VERIFIED ([0028](docs/decisions/0028-a-licensed-copy-map-is-restored-from-the-operators-feed-and-its-engines-ci-says-not-verified.md)) |
 | `produce` | domain pack | not implemented | no pack exists; provenance records `"packs": []` |
 | `produce` | agent rails | not implemented | undecided: [#1](https://github.com/brandonifco/rules-factory/issues/1), [#4](https://github.com/brandonifco/rules-factory/issues/4) |
 | `backlog` | — | implemented | synchronise `backlog/` with GitHub issues through `gh` |
@@ -78,7 +78,7 @@ marked `not implemented` that the parser does have.
 | `verify` | — | implemented | provenance, then restore if the engine has no lock files, then the engine's own gate |
 | `verify` | `--engine` | implemented | the engine directory |
 | `verify` | `--package` | implemented | default: `Id@Version` from `provenance.json` |
-| `verify` | `--licensed-copy-exception` | implemented | verify a `local-copy` engine; the output says `verified locally under the licensed-copy exception by <login>` (0022) |
+| `verify` | `--licensed-copy-exception` | implemented | verify a `local-copy` engine; the output says `verified locally under the licensed-copy exception by <login>` (0022); without `--package`, the map comes from the global packages folder or `$RULES_FACTORY_LOCAL_MAP_FEED` (0028) |
 <!-- factory-cli-status:end -->
 
 ### What a verified `produce` proves

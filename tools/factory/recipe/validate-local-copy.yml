@@ -1,0 +1,127 @@
+name: validate
+
+# Emitted by rules-factory tools/factory (the gate recipe, #3), for an engine of a licensed
+# `local-copy` corpus (rules-factory decisions 0022 and 0028). Rewritten by every `factory produce`.
+#
+# This engine's one definition of "acceptable" is still ./scripts/validate.sh full, and it runs on
+# the operator's machine only: its map package is never published, so no runner can restore it, and
+# nothing that needs the map (the merge, posture, regeneration, the engine and its tests) can run
+# here. `factory verify --licensed-copy-exception` is where this engine is verified.
+#
+# So CI runs what needs no licensed input, and says NOT VERIFIED rather than failing: the `checks`
+# job fails on a real defect, and the `not-verified` job always passes and says so in its name, an
+# annotation and the run summary. A green run here never means the engine was verified.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+concurrency:
+  group: validate-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+permissions:
+  contents: read
+
+jobs:
+  checks:
+    name: checks that need no licensed input
+    # A fixed release, not ubuntu-latest: that alias moves, and the toolchain under it with it.
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    env:
+      CI: "true"
+      DOTNET_NOLOGO: "1"
+      DOTNET_CLI_TELEMETRY_OPTOUT: "1"
+      PYTHONDONTWRITEBYTECODE: "1"
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Read the pinned SDK version
+        id: sdk
+        run: echo "version=$(python3 -c 'import json;print(json.load(open("global.json"))["sdk"]["version"])')" >> "$GITHUB_OUTPUT"
+
+      - name: Set up .NET
+        uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
+        with:
+          dotnet-version: ${{ steps.sdk.outputs.version }}
+
+      - name: SDK pin
+        run: |
+          roll="$(python3 -c 'import json;print(json.load(open("global.json"))["sdk"].get("rollForward",""))')"
+          [ "$roll" = "disable" ] || { echo "global.json rollForward is '$roll', expected 'disable'"; exit 1; }
+          actual="$(dotnet --version)"
+          [ "$actual" = "${{ steps.sdk.outputs.version }}" ] || { echo "global.json pins ${{ steps.sdk.outputs.version }}, dotnet --version reports $actual"; exit 1; }
+          echo "ok   SDK $actual (rollForward=disable)"
+
+      - name: Every project has a packages.lock.json
+        run: python3 scripts/engine-gate.py lock-files
+
+      - name: No corpus bytes and no map package are committed
+        run: |
+          committed="$(git ls-files -- 'corpus/*' '*.nupkg')"
+          if [ -n "$committed" ]; then
+            printf 'a licensed local-copy corpus and its map package are never committed (rules-factory 0022):\n%s\n' "$committed"
+            exit 1
+          fi
+          echo "ok   nothing under corpus/, and no .nupkg, is committed"
+
+      - name: Whitespace formatting (dotnet format whitespace; the full format needs the restored map)
+        run: dotnet format whitespace --folder --verify-no-changes .
+
+      - name: Projects that do not depend on the map (locked restore, build -warnaserror, test, Release)
+        run: |
+          python3 - <<'PY'
+          import glob, os, re, subprocess, sys, xml.etree.ElementTree as ET
+          (solution,) = glob.glob("*.slnx")
+          engine = os.path.normpath(os.path.join("src", solution[:-5], solution[:-5] + ".csproj"))
+          projects = sorted(os.path.normpath(p) for p in glob.glob("**/*.csproj", recursive=True)
+                            if not {"bin", "obj"} & set(p.split(os.sep)))
+          def references(project):
+              root = ET.parse(project).getroot()
+              return [os.path.normpath(os.path.join(os.path.dirname(project), r.get("Include").replace("\\", "/")))
+                      for r in root.iter("ProjectReference") if r.get("Include")]
+          def needs_map(project, seen=()):
+              return project == engine or any(needs_map(r, seen + (project,)) for r in references(project) if r not in seen)
+          independent = [p for p in projects if not needs_map(p)]
+          print(f"{len(projects)} project(s); {len(projects) - len(independent)} need the licensed map and are NOT VERIFIED here")
+          if not independent:
+              print("no project is independent of the map, so nothing is built here")
+              sys.exit(0)
+          for project in independent:
+              text = open(project, encoding="utf-8").read()
+              steps = [["restore", project, "--locked-mode"], ["build", project, "-c", "Release", "--no-restore", "-warnaserror"]]
+              if re.search(r"<IsTestProject>\s*true\s*</IsTestProject>", text) or "Microsoft.NET.Test.Sdk" in text:
+                  steps.append(["test", project, "-c", "Release", "--no-build"])
+              for argv in steps:
+                  print(f"--- dotnet {' '.join(argv)}", flush=True)
+                  if subprocess.run(["dotnet", *argv]).returncode != 0:
+                      sys.exit(f"FAIL dotnet {' '.join(argv)}")
+              print(f"ok   {project}")
+          PY
+
+      - name: Say what was not verified
+        if: always()
+        run: |
+          {
+            echo "### NOT VERIFIED: licensed map not available in CI"
+            echo
+            echo "This engine's corpus is licensed (\`local-copy\`), and its map package is never published (rules-factory decision 0022)."
+            echo "The merge, corpus posture, regeneration check, full format, and the build and tests of every project that needs the map did not run here."
+            echo "The engine is verified only on the operator's machine, by \`factory verify --licensed-copy-exception\` (decision 0028)."
+          } >> "$GITHUB_STEP_SUMMARY"
+
+  not-verified:
+    name: "NOT VERIFIED: licensed map not available in CI"
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: NOT VERIFIED
+        run: |
+          echo "::warning title=NOT VERIFIED::licensed map not available in CI. ./scripts/validate.sh full runs only on the operator's machine (rules-factory decisions 0022 and 0028)."
+          echo "NOT VERIFIED: licensed map not available in CI"

@@ -8,6 +8,13 @@ Accepted — 2026-09-14. Decided by Brandon on
 [0015](0015-a-map-is-published-as-a-versioned-package.md)**. Blocks criterion 1 of
 [#3](https://github.com/brandonifco/rules-factory/issues/3).
 
+**Extended by [0028](0028-a-licensed-copy-map-is-restored-from-the-operators-feed-and-its-engines-ci-says-not-verified.md)**
+(#142): this record never said how an engine restores a map package that is never published, or
+what its CI runs when no runner can restore it. Under 0028 the operator's feed seeds the NuGet
+global packages folder, and the engine's workflow runs what needs no licensed input and says NOT
+VERIFIED. *An engine's CI cannot verify its corpus*, below, still holds, and the full verify is
+the operator's alone.
+
 ## Context
 
 Criterion 1 of #3 rebuilds `deckard` from its corpus, and that corpus is licensed: `never-commit`,
