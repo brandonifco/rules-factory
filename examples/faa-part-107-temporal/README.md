@@ -49,7 +49,7 @@ $ python3 examples/faa-part-107-temporal/diff-maps.py \
                -> 'Anti-collision lighting is fitted and visible for 3 statute miles'
   CHANGED  civil-twilight-alaska: suspendedBy
              suspendedBy ['waivable-regulations'] -> None
-  CHANGED  civil-twilight-operation: evidence, dependsOn, crossReferences
+  CHANGED  civil-twilight-operation: evidence, note
   CHANGED  civil-twilight-window: suspendedBy
              suspendedBy ['waivable-regulations'] -> None
   CHANGED  cloud-clearance: clarity, note, ambiguity
@@ -73,7 +73,6 @@ $ python3 examples/faa-part-107-temporal/diff-maps.py \
              ambiguity None -> ('unresolved', 'RequiresInterpretation', 'The limit is printed in two units that are not equal — 87 kn…')
   CHANGED  speed-within-limit: note
   CHANGED  sufficient-available-power: evidence
-  CHANGED  visual-observer-conditions: note
   CHANGED  waivable-regulations: evidence, note, crossReferences
   CHANGED  waiver-policy: note
   CHANGED  weather-minimums-met: note
@@ -84,7 +83,7 @@ More entries report an `evidence` change than before, and that is a consequence 
 that `evidence` holds the corpus's own words, **any rewording of a mapped passage moves it**.
 A summary of what a passage shows survives a rewrite of the passage; a quote does not. That
 makes the field a text-diff of the mapped slice, which is more than it was and worth knowing
-before reading the output — `civil-twilight-operation`, for instance, changes only because
+before reading the output — `civil-twilight-operation`'s evidence, for instance, changes only because
 § 107.29(b) gained the flash-rate clause and the extinguish bound.
 
 Both maps' citations are checked against the corpus by
@@ -183,6 +182,22 @@ disagreement was withdrawn in round 2 once the reviewer had the method's rule th
 into a corpus not admitted is answered by `definedElsewhere`, which here lives on
 `civil-twilight-alaska`. Round 2, on the final bytes: 29 of 29 entries, 4 of 4 cross-references,
 and completeness agree.
+
+**A missing edge, found in the 2026 map first.** The 2026 map's blind second mapping gave
+`civil-twilight-operation` a `dependsOn` edge to `civil-twilight-alaska`, because § 107.29(c)(1)
+and (c)(2) begin "Except for Alaska" and so, in Alaska, only (c)(3) defines civil twilight. § 107.29(c)
+reads the same word for word at 2020, and this map lacked the edge while its own Air Almanac
+cross-reference already named that entry. [#130](https://github.com/brandonifco/rules-factory/pull/130)
+adds it and says why in the note, along with why "paragraph (b) of this section" resolves to
+`anti-collision-lighting`. The 2026 map's other (b) fix, in `faa-part-107` 4.0.0, was already
+here from the waivers pass. At 2020, (b) is one paragraph with no flash-rate clause, so nothing
+else carries over. The diff now reports `civil-twilight-operation` as `evidence, note`. A reviewer
+in a separate context, given only § 107.29 at 2020 and a before/after, agreed on the edge, both
+cross-references and completeness over two rounds:
+[independent-verdict-130.json](independent-verdict-130.json). The `legacy` exemption stands. This
+is the same finding from the other side. A correction to one date's map does not reach the other
+by itself, and the differ had been printing the missing edge as a `dependsOn` change in a text
+where § 107.29(c) did not change.
 
 ## The finding worth the trial, withdrawn and replaced
 

@@ -11,6 +11,30 @@ Accepted — 2026-09-15. Records the fixes for
 **[0021](0021-a-gate-outside-the-slice-is-held-by-the-caller.md)** (a rule outside the slice is
 named by a `scope: out` entry). Adds no entry field. Adds two optional manifest keys.
 
+**Amended 2026-09-15**: the example in the last *Limits* bullet of *Consequences* is no longer
+true of either Part 107 map. See *Amendment — the (b) pointer resolves* below. The limit, the
+decision and the § 5 table, which records what #116 found and did, are unchanged.
+
+## Amendment — the (b) pointer resolves
+
+The last *Limits* bullet says Part 107's `paragraph (b) of this section` "fires on a self-reference
+inside `civil-twilight-operation`, and the answer is an `unmapped` reason that says so". The reason
+#116 wrote was "no other entry states (b) whole", and it was false at both dates:
+`anti-collision-lighting` quotes all of § 107.29(b).
+
+- **2020-01-01 map.** [#124](https://github.com/brandonifco/rules-factory/pull/124) changed the
+  item to `resolvedBy: anti-collision-lighting`, which cites § 107.29(b) and quotes it whole.
+  [#130](https://github.com/brandonifco/rules-factory/pull/130) wrote the reason into the entry's
+  note, and added the `dependsOn` edge to `civil-twilight-alaska` the map lacked.
+- **2026-01-01 map.** [#126](https://github.com/brandonifco/rules-factory/issues/126)
+  (`faa-part-107` 4.0.0) made the same change: `anti-collision-lighting` cites § 107.29(a)(2) and
+  (b) and quotes all of (b) as amended.
+
+No Part 107 item is now answered by an `unmapped` reason for that phrase. The limit the bullet
+states still holds. The built-in list's rule against self-references (0009) is not enforced on a
+corpus's own phrases, and the phrase still fires on words the entry's own evidence quotes. It is
+answered here by the entry that states (b), not by a reason.
+
 ## Context
 
 **#115.** The SRD's Rules Glossary is the same admitted corpus as the combat chapter the map
