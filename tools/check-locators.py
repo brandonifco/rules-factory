@@ -275,6 +275,14 @@ def main(argv=None):
         ("absence", check_absence(entries, extent)),
         ("coverage", check_coverage(document, reached)),
     ]
+    if isinstance(declared, dict) and "endsBefore" in declared:
+        # 0024: this checker collapses the corpus's lines, so it cannot find a heading line, and
+        # its absence and coverage above ran over the whole last page. Refuse rather than pass.
+        results.append(("extent-end", skip(
+            f"the extent ends before the heading {declared.get('endsBefore')!r}, and this checker "
+            f"reads whitespace-collapsed text with no lines to find it in; absence and coverage "
+            f"above ran over the whole of p. {declared.get('to')}. The page-marked PDF text checker "
+            f"reads endsBefore")))
     passed = failed = skipped = fatal = 0
     for name, result in results:
         print(f"[{result.status}] {name}: {result.summary}")

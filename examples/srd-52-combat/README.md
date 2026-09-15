@@ -95,7 +95,8 @@ quote. `absence` and `coverage` are Hoyle's checks, loaded from that file and ru
 failing cases are in `tools/tests/test_check_locators.py`.
 
 **`extent`: pages 13–16**, the "Combat" section of "Playing the Game", from the heading at the top
-of p. 13 to the end of "Underwater Combat" on p. 16.
+of p. 13 to the end of "Underwater Combat" on p. 16, ending before the "Damage and Healing" heading
+(`endsBefore`, 0024).
 
 ## The map
 
@@ -194,6 +195,21 @@ What this means for the method: "`evidence` is the corpus's words" now has to sa
 For a PDF it is the committed derivation's words, and the gap between the derivation and the page
 is checked by nothing except a person looking. That is recorded here and not decided.
 
+**Decided since, in
+[0024](../../docs/decisions/0024-a-quote-is-of-the-extraction-and-a-page-extent-can-end-at-a-heading.md)
+([#113](https://github.com/brandonifco/rules-factory/issues/113)).** Quotes stay verbatim of the
+extraction, and the manifest says so: `quotedText` names the derivation and the PDF. Six entries
+now carry `extraction`: `initiative-ties` and `initiative-ties-uncovered`
+(`interrupted-by-page-furniture`), `attack-structure` (`split-by-sidebar`), and `cover-bonuses`,
+`cover-degree` and `total-cover` (`interleaved-table`). Each names its `renderedReading`, the
+passage as read from the page. `check-locators-pdf-text.py` tests that each declared defect has
+its shape, fails a folio inside an undeclared quote, and prints every rendered reading NOT
+VERIFIED. A reviewer in a separate context read the three distinct readings against renders of
+pp. 13–15 and agreed with all three (`independent-verdict-113-114.json`). The joined hyphen and
+the spaced dash are not defects, because neither changes a word of a rule. `free-object-interaction`
+and `gm-requires-action` get no field, because the sidebar falls between their quotes and not
+inside either.
+
 ### 2. A page extent cannot say where a chapter ends on a page
 
 "Combat" ends halfway down p. 16. "Damage and Healing" begins beside it and is not in this slice.
@@ -202,6 +218,12 @@ The `page` unit covers whole pages. So `coverage` is satisfied for p. 16 by comb
 that section explicitly, so the half-page is not silently claimed as read. 0020 gave sections a list
 because a range claims too much. For a page grammar a page is the smallest unit there is, and the
 same over-claim happens inside a single page.
+
+**Decided since, in 0024 ([#114](https://github.com/brandonifco/rules-factory/issues/114)).** The
+extent is now `{"unit": "page", "from": 13, "to": 16, "endsBefore": "Damage and Healing"}`.
+`check-locators-pdf-text.py`'s `extent-end` requires that heading as a line on p. 16 and fails
+any in-scope quote at or after it. `absence` stops at it, and p. 16 is covered only by quotes
+before it. `damage-and-healing` and `damage-rolls` quote beyond it, as `scope: out` entries may.
 
 ### 3. A term defined in the same corpus, outside the slice, has no field
 

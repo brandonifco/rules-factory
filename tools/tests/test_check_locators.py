@@ -424,9 +424,23 @@ and never twice.
 {2}
 Rounds
 The winner of a round moves first.
+
+Scoring
+
+A game is scored when it ends.
 {3}
 Glossary
 Each token moves once per round,
+
+Score
+
+Win
+
+One point
+
+Gammon
+
+Two points
 """
 
 
@@ -439,7 +453,10 @@ def pdf_text_map():
         "entries": [
             entry("players", "Widgets / p. 1", "A widget is played by two persons."),
             entry("token-moves", "Widgets / Tokens / p. 1",
-                  "Each token moves once per round, 1 Demo Reference Document and never twice."),
+                  "Each token moves once per round, 1 Demo Reference Document and never twice.",
+                  # 0024: the folio and running header sit mid-sentence, and the entry says so.
+                  extraction={"defect": "interrupted-by-page-furniture",
+                              "renderedReading": "Each token moves once per round, and never twice."}),
             entry("winner-first", "Widgets / Rounds / p. 2", "The winner of a round moves first."),
         ],
     }
@@ -511,6 +528,189 @@ class TestPdfTextLocators(unittest.TestCase):
         code, output = self.run_tool(pdf_text_map())
         self.assertEqual(code, 2, output)
         self.assertIn("page marker 4 where 2 was expected", output)
+
+    def status_of(self, output, check):
+        found = re.search(rf"^\[(ok|fail|skip)\] {re.escape(check)}:", output, re.M)
+        self.assertIsNotNone(found, f"check {check!r} did not report at all:\n{output}")
+        return found.group(1)
+
+    def assert_catches(self, check, mutate, base=pdf_text_map):
+        code, output = self.run_tool(base())
+        self.assertEqual(self.status_of(output, check), "ok", output)
+        self.assertEqual(code, 0, output)
+        document = base()
+        mutate(document)
+        code, output = self.run_tool(document)
+        self.assertEqual(self.status_of(output, check), "fail", output)
+        self.assertEqual(code, 1, output)
+        return output
+
+
+def ending_map():
+    """pdf_text_map with an extent that stops at the "Scoring" heading on its last page (0024)."""
+    document = pdf_text_map()
+    document["extent"]["endsBefore"] = "Scoring"
+    return document
+
+
+def scoring(**overrides):
+    return entry("scoring", "Scoring / p. 2", "A game is scored when it ends.", **overrides)
+
+
+class TestPdfTextExtentEnd(TestPdfTextLocators):
+    """0024: a page extent ending before a heading on its last page."""
+
+    def test_an_extent_ending_before_a_heading_passes(self):
+        code, output = self.run_tool(ending_map())
+        self.assertEqual(code, 0, output)
+        self.assertIn("[ok] extent-end: the extent ends before 'Scoring', a line on p. 2", output)
+
+    def test_without_ends_before_the_check_has_nothing_to_hold(self):
+        code, output = self.run_tool(pdf_text_map())
+        self.assertEqual(self.status_of(output, "extent-end"), "skip", output)
+        self.assertEqual(code, 0, output)
+
+    def test_an_in_scope_quote_after_the_heading_fails(self):
+        output = self.assert_catches("extent-end", lambda d: d["entries"].append(scoring()),
+                                     base=ending_map)
+        self.assertIn("scoring: is scope: in, and its quote lies after the heading 'Scoring'", output)
+
+    def test_an_in_scope_quote_running_across_the_heading_fails(self):
+        output = self.assert_catches("extent-end", lambda d: d["entries"].append(entry(
+            "rounds-and-scoring", "Widgets / Rounds / p. 2",
+            "The winner of a round moves first. Scoring A game is scored when it ends.")),
+            base=ending_map)
+        self.assertIn("its quote runs across the heading", output)
+
+    def test_an_out_of_scope_quote_after_the_heading_is_named_and_passes(self):
+        document = ending_map()
+        document["entries"].append(scoring(scope="out", status="declined"))
+        code, output = self.run_tool(document)
+        self.assertEqual(self.status_of(output, "extent-end"), "ok", output)
+        self.assertIn("1 out-of-scope quote beyond it, neither passed nor failed: scoring", output)
+        self.assertEqual(code, 0, output)
+
+    def test_a_heading_not_on_the_last_page_fails(self):
+        output = self.assert_catches("extent-end", lambda d: d["extent"].update(endsBefore="Glossary"),
+                                     base=ending_map)
+        self.assertIn("does not occur as a line of its own on p. 2", output)
+
+    def test_a_heading_only_inside_a_sentence_fails(self):
+        self.assert_catches("extent-end", lambda d: d["extent"].update(endsBefore="a round"),
+                            base=ending_map)
+
+    def test_a_heading_twice_on_the_last_page_fails(self):
+        code, output = self.run_tool(ending_map())
+        self.assertEqual(code, 0, output)
+        self.write_corpus(PDF_TEXT_CORPUS.replace("Rounds\n", "Scoring\nRounds\n"))
+        code, output = self.run_tool(ending_map())
+        self.assertEqual(self.status_of(output, "extent-end"), "fail", output)
+        self.assertIn("occurs 2 times as a line on p. 2", output)
+
+    def test_a_quote_after_the_heading_does_not_cover_the_last_page(self):
+        def only_scoring_on_the_last_page(document):
+            document["entries"].pop(2)
+            document["entries"].append(scoring(scope="out", status="declined"))
+        document = pdf_text_map()
+        only_scoring_on_the_last_page(document)
+        code, output = self.run_tool(document)
+        self.assertEqual(self.status_of(output, "coverage"), "ok", output)
+        document = ending_map()
+        only_scoring_on_the_last_page(document)
+        code, output = self.run_tool(document)
+        self.assertEqual(self.status_of(output, "coverage"), "fail", output)
+        self.assertIn("p. 2: inside the declared extent", output)
+
+    def test_absence_is_searched_only_up_to_the_heading(self):
+        def absent(document):
+            document["entries"].append(entry("scoring-rule", "Widgets / Rounds / p. 2",
+                                             "The winner of a round moves first.", scope="out",
+                                             status="declined", absentFrom={"searched": ["scored"]}))
+        document = ending_map()
+        absent(document)
+        code, output = self.run_tool(document)
+        self.assertEqual(self.status_of(output, "absence"), "ok", output)
+        document = pdf_text_map()
+        absent(document)
+        code, output = self.run_tool(document)
+        self.assertEqual(self.status_of(output, "absence"), "fail", output)
+
+    def test_the_page_checker_refuses_an_extent_it_cannot_end(self):
+        # tools/check-locators.py collapses lines, so it cannot find the heading; it says so.
+        path = os.path.join(self.root, "hoyle-like.json")
+        document = valid_map()
+        document["extent"]["endsBefore"] = "Scoring"
+        with open(path, "w", encoding="utf-8") as handle:
+            json.dump(document, handle)
+        corpus = os.path.join(self.root, "hoyle-like.txt")
+        with open(corpus, "w", encoding="utf-8") as handle:
+            handle.write(CORPUS)
+        out = io.StringIO()
+        with redirect_stdout(out), redirect_stderr(out):
+            code = check_locators.main([path, corpus])
+        self.assertIn("[skip] extent-end: NOT VERIFIED", out.getvalue())
+        self.assertEqual(code, 1, out.getvalue())
+
+
+def table_entry(**overrides):
+    return entry("score-table", "Glossary / p. 3", "Score Win One point Gammon Two points",
+                 scope="out", status="declined",
+                 extraction={"defect": "interleaved-table",
+                             "renderedReading": "Score | Win: One point | Gammon: Two points"},
+                 **overrides)
+
+
+class TestPdfTextExtraction(TestPdfTextLocators):
+    """0024: a declared extraction defect has its shape, and a folio in a quote is declared."""
+
+    def test_declared_defects_pass_and_their_readings_are_printed_unverified(self):
+        document = pdf_text_map()
+        document["entries"].append(table_entry())
+        code, output = self.run_tool(document)
+        self.assertEqual(self.status_of(output, "extraction"), "ok", output)
+        self.assertIn("token-moves: interrupted-by-page-furniture; renderedReading NOT VERIFIED", output)
+        self.assertIn("'Each token moves once per round, and never twice.'", output)
+        self.assertIn("score-table: interleaved-table; renderedReading NOT VERIFIED", output)
+        self.assertEqual(code, 0, output)
+
+    def test_a_folio_inside_an_undeclared_quote_fails(self):
+        output = self.assert_catches("extraction", lambda d: d["entries"][1].pop("extraction"))
+        self.assertIn("token-moves: its quote runs across the folio line '1'", output)
+
+    def test_a_folio_inside_a_quote_declaring_another_defect_fails(self):
+        output = self.assert_catches("extraction", lambda d: d["entries"][1]["extraction"]
+                                     .update(defect="interleaved-table"))
+        self.assertIn("does not declare extraction.defect interrupted-by-page-furniture", output)
+
+    def test_page_furniture_declared_where_there_is_none_fails(self):
+        output = self.assert_catches("extraction", lambda d: d["entries"][0].update(extraction={
+            "defect": "interrupted-by-page-furniture", "renderedReading": "A widget is played by two."}))
+        self.assertIn("runs across no folio line", output)
+
+    def test_an_interleaved_table_declared_on_one_block_fails(self):
+        output = self.assert_catches("extraction", lambda d: d["entries"][2].update(extraction={
+            "defect": "interleaved-table", "renderedReading": "The winner moves first."}))
+        self.assertIn("fewer than the 3 a table's cells give", output)
+
+    def test_a_split_sentence_declared_on_a_whole_sentence_fails(self):
+        output = self.assert_catches("extraction", lambda d: d["entries"][2].update(extraction={
+            "defect": "split-by-sidebar", "renderedReading": "The winner of each round moves first."}))
+        self.assertIn("begins and ends on a sentence boundary", output)
+
+    def test_a_split_sentence_declared_on_a_fragment_passes(self):
+        document = pdf_text_map()
+        document["entries"].append(entry("never-twice", "Widgets / Tokens / p. 1", "and never twice.",
+                                         extraction={"defect": "split-by-sidebar",
+                                                     "renderedReading": "Each token moves once per "
+                                                                        "round, and never twice."}))
+        code, output = self.run_tool(document)
+        self.assertEqual(self.status_of(output, "extraction"), "ok", output)
+        self.assertEqual(code, 0, output)
+
+    def test_a_defect_this_checker_has_no_test_for_fails(self):
+        output = self.assert_catches("extraction", lambda d: d["entries"][1]["extraction"]
+                                     .update(defect="joined-hyphenation"))
+        self.assertIn("is not a defect this checker has a test for", output)
 
 
 if __name__ == "__main__":

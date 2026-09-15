@@ -80,6 +80,14 @@ a rules engine most needs, and it will lose them without complaint: the adapter 
 the text is missing a column, and nothing says so. `beyondAdapter` records a limit a human
 recognised. It does not find one nobody recognised.
 
+The first PDF, the SRD 5.2.1, lost no table. It **garbled** one: pdftotext interleaved the Cover
+table's cells, dropped a folio into a sentence and put a sidebar between a sentence's halves. When
+the text is an extraction, the manifest says quotes are of it (`quotedText`), the quote stays
+verbatim of the extraction, and an entry whose passage it garbles carries `extraction`, naming the
+defect and the passage as read from the rendered page. Read the page for every table you map from
+an extraction. The checker prints that reading as not verified, so a reviewer has to read the page
+too ([0024](decisions/0024-a-quote-is-of-the-extraction-and-a-page-extent-can-end-at-a-heading.md)).
+
 **Record what it defers to.** A corpus routinely defines its own terms by reference to
 another — a regulation citing a different title, a rulebook citing a supplement, a statute
 citing a schedule. Those references are the boundary of any engine built from it, and the

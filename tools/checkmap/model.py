@@ -33,7 +33,8 @@ REQUIRED_ENTRY_FIELDS = ["id", "name", "locator", "kind", "scope", "clarity", "e
 # to locate or quote. Its sources' locators and evidence are its citation.
 CITING_FIELDS = ("locator", "evidence")
 # What only a passage can carry, and so what a derived entry may not.
-PASSAGE_FIELDS = CITING_FIELDS + ("crossReferences", "absentFrom", "beyondAdapter", "definedElsewhere")
+PASSAGE_FIELDS = CITING_FIELDS + ("crossReferences", "absentFrom", "beyondAdapter", "definedElsewhere",
+                                  "extraction")
 # The relations that hold entry ids and nothing else. `gatedBy` is not among them: 0011 split
 # it into the two gate fields, and `gates` refuses it by name.
 GATE_FIELDS = ("enabledBy", "suspendedBy")

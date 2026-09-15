@@ -8,7 +8,8 @@
   "extent": {
     "unit": "page",
     "from": 13,
-    "to": 16
+    "to": 16,
+    "endsBefore": "Damage and Healing"
   },
   "entries": [
     {
@@ -203,6 +204,10 @@
         "initiative-order"
       ],
       "evidence": "Ties. If a tie occurs, the GM decides the order among tied monsters, and the players decide the order among tied characters. The GM decides the 13 System Reference Document 5.2.1 order if the tie is between a monster and a player character.",
+      "extraction": {
+        "defect": "interrupted-by-page-furniture",
+        "renderedReading": "Ties. If a tie occurs, the GM decides the order among tied monsters, and the players decide the order among tied characters. The GM decides the order if the tie is between a monster and a player character."
+      },
       "status": "mapped",
       "note": "An assertion under gate 3: the decider's own determination is operative and the corpus fixes the set of values, “the order among tied” combatants, which is the orderings of exactly those combatants and nothing else. The engine demands the order, attributes it (to the GM or to the players, which the map has no field to record), records it and never infers it. The span carries “13 System Reference Document 5.2.1” mid-sentence: the printed folio and running header, which pdftotext emits between the page's two columns (README, findings). The cases it does not assign are initiative-ties-uncovered."
     },
@@ -226,6 +231,10 @@
         "initiative-ties"
       ],
       "evidence": "Ties. If a tie occurs, the GM decides the order among tied monsters, and the players decide the order among tied characters. The GM decides the 13 System Reference Document 5.2.1 order if the tie is between a monster and a player character.",
+      "extraction": {
+        "defect": "interrupted-by-page-furniture",
+        "renderedReading": "Ties. If a tie occurs, the GM decides the order among tied monsters, and the players decide the order among tied characters. The GM decides the order if the tie is between a monster and a player character."
+      },
       "status": "mapped",
       "note": "The gap split out of initiative-ties, which stays an assertion for the cases it assigns. The first mapping named both cases in initiative-ties' note and left the entry clear; the blind second mapping asked them as a question (blind-mapping/resolutions.json). The span carries the p. 13 folio mid-sentence, as initiative-ties' does."
     },
@@ -910,6 +919,10 @@
         }
       ],
       "evidence": "or make an attack roll as part of a spell, an attack has the following structure: 1: Choose a Target. Pick a target within your attack’s range: a creature, an object, or a location. 2: Determine Modifiers. The GM determines whether the target has Cover (see the next section) and whether you have Advantage or Disadvantage against the target. In addition, spells, special abilities, and other effects can apply penalties or bonuses to your attack roll. 3: Resolve the Attack. Make the attack roll, as detailed earlier in “Playing the Game.” On a hit, you roll damage unless the particular attack has rules that specify otherwise. Some attacks cause special effects in addition to or instead of damage.",
+      "extraction": {
+        "defect": "split-by-sidebar",
+        "renderedReading": "Whether you strike with a Melee weapon, fire a Ranged weapon, or make an attack roll as part of a spell, an attack has the following structure:"
+      },
       "status": "mapped",
       "note": "The order of the three steps. The span starts mid-sentence: the sentence begins on p. 14 (“Whether you strike with a Melee weapon, fire a Ranged weapon,”) and pdftotext places the whole “Unseen Attackers and Targets” sidebar and the page marker between its halves, so no contiguous span holds the sentence (README, findings). Each step is its own entry."
     },
@@ -1116,8 +1129,12 @@
       "clarity": "clear",
       "dependsOn": [],
       "evidence": "Degree Benefit to Target Offered By … Half +2 bonus to AC and Dexterity saving throws Another creature or an object that covers at least half of the target Three+5 bonus to AC Quarters and Dexterity saving throws An object that covers at least three-quarters of the target Total An object that covers the whole target Can’t be targeted directly",
+      "extraction": {
+        "defect": "interleaved-table",
+        "renderedReading": "Degree | Benefit to Target | Offered By …\nHalf | +2 bonus to AC and Dexterity saving throws | Another creature or an object that covers at least half of the target\nThree-Quarters | +5 bonus to AC and Dexterity saving throws | An object that covers at least three-quarters of the target\nTotal | Can’t be targeted directly | An object that covers the whole target"
+      },
       "status": "mapped",
-      "note": "The whole table, never a sample, and transcribed from the printed page, not from this span. The span is the table as pdftotext emits it, and it is not the table as printed: the Three-Quarters row's label is split across its cell break, so the extraction reads “Three+5 bonus to AC Quarters and Dexterity saving throws”, and the Total row's two cells come out in the opposite order to the printed columns (“An object that covers the whole target” before “Can’t be targeted directly”). The quote is verbatim of the extraction, which is what the checker can hold it to; that the printed row reads Three-Quarters / +5 bonus to AC and Dexterity saving throws was read from the rendered page (README, findings). The Total row is total-cover."
+      "note": "The whole table, never a sample, and transcribed from the printed page, not from this span. The span is the table as pdftotext emits it, and it is not the table as printed: the Three-Quarters row's label is split across its cell break, so the extraction reads “Three+5 bonus to AC Quarters and Dexterity saving throws”, and the Total row's two cells come out in the opposite order to the printed columns (“An object that covers the whole target” before “Can’t be targeted directly”). The quote is verbatim of the extraction, which is what the checker can hold it to; that the printed row reads Three-Quarters / +5 bonus to AC and Dexterity saving throws was read from the rendered page, and the whole table as read is extraction.renderedReading (docs/decisions/0024), which no check verifies. The Total row is total-cover."
     },
     {
       "id": "cover-degree",
@@ -1136,6 +1153,10 @@
       },
       "dependsOn": [],
       "evidence": "Degree Benefit to Target Offered By … Half +2 bonus to AC and Dexterity saving throws Another creature or an object that covers at least half of the target Three+5 bonus to AC Quarters and Dexterity saving throws An object that covers at least three-quarters of the target Total An object that covers the whole target Can’t be targeted directly",
+      "extraction": {
+        "defect": "interleaved-table",
+        "renderedReading": "Degree | Benefit to Target | Offered By …\nHalf | +2 bonus to AC and Dexterity saving throws | Another creature or an object that covers at least half of the target\nThree-Quarters | +5 bonus to AC and Dexterity saving throws | An object that covers at least three-quarters of the target\nTotal | Can’t be targeted directly | An object that covers the whole target"
+      },
       "status": "mapped",
       "note": "The “Offered By” column. The fraction of a target an object covers is a parameter. Same span as cover-bonuses; see that entry for how the extraction garbles the table. Two parts of the first mapping's question are settled by the corpus: a target that qualifies for two degrees gets the most protective (“If behind more than one degree of cover, a target benefits only from the most protective degree”, Rules Glossary, “Cover”, p. 179), and a creature never gives more than Half Cover, because the Three-Quarters and Total rows name only an object. The blind second mapping asked the attachment question that remains (blind-mapping/resolutions.json)."
     },
@@ -1158,6 +1179,10 @@
         "cover-degree"
       ],
       "evidence": "Degree Benefit to Target Offered By … Half +2 bonus to AC and Dexterity saving throws Another creature or an object that covers at least half of the target Three+5 bonus to AC Quarters and Dexterity saving throws An object that covers at least three-quarters of the target Total An object that covers the whole target Can’t be targeted directly",
+      "extraction": {
+        "defect": "interleaved-table",
+        "renderedReading": "Degree | Benefit to Target | Offered By …\nHalf | +2 bonus to AC and Dexterity saving throws | Another creature or an object that covers at least half of the target\nThree-Quarters | +5 bonus to AC and Dexterity saving throws | An object that covers at least three-quarters of the target\nTotal | Can’t be targeted directly | An object that covers the whole target"
+      },
       "status": "mapped",
       "note": "Same span as cover-bonuses."
     },
@@ -1767,7 +1792,7 @@
       "dependsOn": [],
       "evidence": "Injury and death are frequent threats, as detailed in the following rules.",
       "status": "declined",
-      "note": "Declined: “Damage and Healing” begins on p. 16, inside the page extent, and is a separate section of “Playing the Game”, not part of “Combat”. A page extent cannot say where on a page a slice ends; see the README. Nothing in it is mapped; damage-rolls and resistance decline the two of its rules the slice uses."
+      "note": "Declined: “Damage and Healing” begins on p. 16, inside the page extent, and is a separate section of “Playing the Game”, not part of “Combat”. The extent ends before its heading (extent.endsBefore, docs/decisions/0024), so this entry quotes beyond the extent, as a scope: out entry may (0020). Nothing in it is mapped; damage-rolls and resistance decline the two of its rules the slice uses."
     },
     {
       "id": "damage-rolls",
