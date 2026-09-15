@@ -34,14 +34,26 @@ def amb(e):
     a = e.get("ambiguity")
     return None if a is None else (a.get("fate"), a.get("unresolvedReason"), a.get("question", ""))
 
+def gates(before, after):
+    """Print each gate field that differs, with its values. An added or removed entry is
+    compared against nothing, so a gate it carries is printed too: an entry a later text
+    added can be the only place a gate moved."""
+    for gate in ("enabledBy", "suspendedBy"):
+        x = None if before is None else before.get(gate)
+        y = None if after is None else after.get(gate)
+        if x != y:
+            print(f"             {gate} {x} -> {y}")
+
 def main(a_path, b_path):
     a_date, a = load(a_path); b_date, b = load(b_path)
     print(f"{a_date}  ->  {b_date}\n")
 
     for i in sorted(set(b) - set(a)):
         print(f"  ADDED    {i}  ({b[i]['name']})")
+        gates(None, b[i])
     for i in sorted(set(a) - set(b)):
         print(f"  REMOVED  {i}  ({a[i]['name']})")
+        gates(a[i], None)
 
     for i in sorted(set(a) & set(b)):
         ch = []
@@ -54,9 +66,9 @@ def main(a_path, b_path):
             ch.append("dependsOn")
         # enabledBy / suspendedBy (0011, which split 0003's gatedBy by direction): a re-map
         # can move a rule into or out of a phase, or change which rule gates it, with nothing
-        # else about the entry moving. Neither Part 107 map carries either field -- a
-        # stateless corpus has no phases for a rule to be scoped to -- so here this compares
-        # absent to absent on every entry. It is for corpora that do.
+        # else about the entry moving. Both Part 107 maps carry suspendedBy since 0021: an
+        # amendment to the waiver list (§ 107.205) moves which rules a waiver reaches, and
+        # the values are printed below, because "suspendedBy" alone does not say which way.
         for gate in ("enabledBy", "suspendedBy"):
             if a[i].get(gate) != b[i].get(gate):
                 ch.append(gate)
@@ -90,6 +102,8 @@ def main(a_path, b_path):
                 print(f"             clarity {a[i]['clarity']} -> {b[i]['clarity']}")
             if "ambiguity" in ch:
                 print(f"             ambiguity {_short(amb(a[i]))} -> {_short(amb(b[i]))}")
+            if "enabledBy" in ch or "suspendedBy" in ch:
+                gates(a[i], b[i])
             if "name" in ch:
                 print(f"             name {a[i]['name']!r}")
                 print(f"               -> {b[i]['name']!r}")

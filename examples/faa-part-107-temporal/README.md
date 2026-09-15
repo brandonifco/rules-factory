@@ -10,7 +10,7 @@ pinned twice.
 **Slice:** the same twelve sections both times, mapped independently against each text.
 
 **Result:** 44 sections → 61. Of the twelve mapped, **eight unchanged, four changed, none
-removed.** 37 entries in 2020, 40 in 2026 — 23 and 24 as first mapped, before
+removed.** 39 entries in 2020, 47 in 2026 — 23 and 24 as first mapped, before
 [0005](../../docs/decisions/0005-a-field-earns-its-place-by-being-checkable.md) split the
 delegated standards into entries of their own,
 [#26](https://github.com/brandonifco/rules-factory/issues/26) added the fifth,
@@ -22,24 +22,61 @@ five assertions and three gaps, one paragraph that splits into one of each, and 
 that turned out to be part of another entry's measure — and gave § 107.29(d) the entry
 [#28](https://github.com/brandonifco/rules-factory/issues/28) asked for. **The entry count has
 grown by more than half over four passes and the corpus has not moved once.** What keeps being
-re-mapped is the map.
+re-mapped is the map. Since then the 2026 map gained five entries from its
+[blind second mapping](../faa-part-107/blind-mapping/) and #116, and both maps gained the two
+`scope: out` waiver entries of
+[0021](../../docs/decisions/0021-a-gate-outside-the-slice-is-held-by-the-caller.md) — the 2020
+map a pass later, read from its own text: see [waivers at two dates](#waivers-at-two-dates).
 
 ```
+$ python3 examples/faa-part-107-temporal/diff-maps.py \
+      examples/faa-part-107-temporal/corpus-map-2020-01-01.json examples/faa-part-107/corpus-map.json
 2020-01-01  ->  2026-01-01
 
-  ADDED    flash-rate-sufficient
-  ADDED    night-waiver-termination
-  ADDED    subpart-d-categories
+  ADDED    flash-rate-sufficient  (The anti-collision lighting has a flash rate sufficient to avoid a collision)
+             suspendedBy None -> ['waivable-regulations']
+  ADDED    knowledge-recency  (Aeronautical knowledge recency)
+  ADDED    moving-aircraft-operation  (Operation from a moving aircraft)
+             suspendedBy None -> ['waivable-regulations']
+  ADDED    night-training-completed  (The remote pilot in command has completed the knowledge test or training for night operation)
+  ADDED    night-waiver-bar  (No night operation after May 17, 2021 under a waiver issued before April 21, 2021)
+  ADDED    night-waiver-termination  (Termination of night waivers issued before March 16, 2021)
+  ADDED    operating-limitations  (The operating limitations are complied with)
+             suspendedBy None -> ['waivable-regulations']
+  ADDED    subpart-d-categories  (Operational categories for flight over human beings)
   CHANGED  anti-collision-lighting: name, evidence, note, locator, dependsOn
-  CHANGED  civil-twilight-operation: evidence
+             name 'Anti-collision lighting during civil twilight'
+               -> 'Anti-collision lighting is fitted and visible for 3 statute miles'
+  CHANGED  civil-twilight-alaska: suspendedBy
+             suspendedBy ['waivable-regulations'] -> None
+  CHANGED  civil-twilight-operation: evidence, dependsOn, crossReferences
+  CHANGED  civil-twilight-window: suspendedBy
+             suspendedBy ['waivable-regulations'] -> None
+  CHANGED  cloud-clearance: clarity, note, ambiguity
+             clarity clear -> ambiguous
+             ambiguity None -> ('unresolved', 'RequiresInterpretation', 'The two minimums are joined by "and" and no clearance above …')
   CHANGED  direct-participation: evidence
   CHANGED  intensity-reduction-in-interest-of-safety: evidence, note, locator
-  CHANGED  night-operation: name, evidence, note, dependsOn, crossReferences
-  CHANGED  over-human-beings: evidence, note, dependsOn
-  CHANGED  preflight-actions: evidence, note, dependsOn
+  CHANGED  moving-vehicle-operation: name, evidence, note
+             name 'Operation from a moving vehicle or aircraft'
+               -> 'Operation from a moving land or water-borne vehicle'
+  CHANGED  night-operation: name, evidence, note, dependsOn, suspendedBy, crossReferences
+             suspendedBy ['waivable-regulations'] -> None
+             name 'Night operation is prohibited'
+               -> 'Operation at night'
+  CHANGED  over-human-beings: evidence, note, dependsOn, crossReferences
+  CHANGED  preflight-actions: evidence, note, dependsOn, crossReferences
   CHANGED  reasonable-protection: evidence, note
   CHANGED  single-aircraft: evidence, note
+  CHANGED  speed-limit: clarity, note, ambiguity
+             clarity clear -> ambiguous
+             ambiguity None -> ('unresolved', 'RequiresInterpretation', 'The limit is printed in two units that are not equal — 87 kn…')
+  CHANGED  speed-within-limit: note
   CHANGED  sufficient-available-power: evidence
+  CHANGED  visual-observer-conditions: note
+  CHANGED  waivable-regulations: evidence, note, crossReferences
+  CHANGED  waiver-policy: note
+  CHANGED  weather-minimums-met: note
 ```
 
 More entries report an `evidence` change than before, and that is a consequence of
@@ -60,8 +97,92 @@ a different tool and not a flag on the shipped one:
 $ python3 examples/faa-part-107/check-locators-section.py \
       examples/faa-part-107-temporal/corpus-map-2020-01-01.json \
       examples/faa-part-107-temporal/part107-2020-01-01.xml
-locators ok (all 37 checked against the section tree)
+locators ok (all 39 checked against the section tree); coverage ok (all 12 sections of the declared extent are reached)
 ```
+
+## Waivers at two dates
+
+[0021](../../docs/decisions/0021-a-gate-outside-the-slice-is-held-by-the-caller.md) recorded
+waivers in the 2026 map and left this one alone, because its § 107.205 is a different list.
+It is now recorded from the 2020-01-01 text, not copied from the 2026 map: the same two
+`scope: out` entries, `waiver-policy` (§ 107.200) and `waivable-regulations` (§ 107.205), and
+`suspendedBy: [waivable-regulations]` on every entry whose locator states a regulation the 2020
+list names. § 107.200 reads the same at both dates. At 2020 it sits in "Subpart D - Waivers";
+the amendment made subpart D the operational categories and moved waivers to subpart E.
+
+§ 107.205 differs in two items. At 2020, (b) is **"Section 107.29 - Daylight operation"**, the
+whole section; at 2026 it is "Section 107.29(a)(2) and (b)", the lighting only. And 2020 has
+no (j): § 107.145 does not occur anywhere in the 2020 part.
+
+Both maps now have **27 suspended entries**, and they are not the same 27. With the new gate
+printing in [diff-maps.py](diff-maps.py) (it used to print only the field name, which does not
+say which way an edge moved), the waiver lines of its output, names dropped, are:
+
+```
+  ADDED    flash-rate-sufficient
+             suspendedBy None -> ['waivable-regulations']
+  ADDED    moving-aircraft-operation
+             suspendedBy None -> ['waivable-regulations']
+  ADDED    operating-limitations
+             suspendedBy None -> ['waivable-regulations']
+  CHANGED  civil-twilight-alaska: suspendedBy
+             suspendedBy ['waivable-regulations'] -> None
+  CHANGED  civil-twilight-window: suspendedBy
+             suspendedBy ['waivable-regulations'] -> None
+  CHANGED  night-operation: name, evidence, note, dependsOn, suspendedBy, crossReferences
+             suspendedBy ['waivable-regulations'] -> None
+  CHANGED  waivable-regulations: evidence, note, crossReferences
+```
+
+Read against the two texts, the six lines are three different kinds of difference, and only
+one kind is the amendment:
+
+| entry | waivable in 2020 | in 2026 | why |
+|---|---|---|---|
+| `night-operation` | yes | no | **the amendment.** 2020 lists § 107.29 whole, so a waiver reaches the night prohibition itself. 2026 lists only (a)(2) and (b), so a waiver reaches night lighting and (a)(1)'s training condition still applies. |
+| `civil-twilight-window`, `civil-twilight-alaska` | yes | no | **the amendment.** § 107.29(c) is inside the listed section at 2020 and outside the listed paragraphs at 2026. |
+| `flash-rate-sufficient` | — | yes | **the amendment**, but of § 107.29 rather than § 107.205: the flash-rate clause does not exist at 2020. |
+| `moving-aircraft-operation` | — | yes | **the map.** § 107.25 is listed whole at both dates; the 2026 blind second mapping split `moving-vehicle-operation` in two, and the 2020 `moving-vehicle-operation`, which is suspended, still states both limbs. |
+| `operating-limitations` | — | yes | **the map.** § 107.51 is listed whole at both dates; only the 2026 map has an entry for its introductory text. The 2020 map's missing entry is recorded as an `unmapped` item on `waivable-regulations` and left to the blind second mapping it owes. |
+| § 107.205(j), § 107.145 | — | listed | **the amendment**, and invisible to the differ: (j) suspends nothing in scope at 2026, so no entry's edge moves. It shows only as `waivable-regulations: evidence`. |
+
+So the same count hides a narrowing: **a 2020 waiver of § 107.29 lifted the night ban, and a
+2026 one cannot.** What replaced it is a conditional permission (§ 107.29(a)(1)-(2)) whose
+lighting half is waivable and whose training half is not. And half of what the differ reports
+as a change in the waiver set is the two maps having been read to different depths — the
+finding this trial keeps making, now about a gate rather than an entry.
+
+**Four cross-references reviewed.** #116 (0026) added four `crossReferences` to this map, taken
+from the 2026 map's answers to the same words, and nobody read them against the 2020 text.
+Three hold: `visual-line-of-sight` "the ability described in paragraph (a) of this section" →
+`unaided-visual-contact`, `visual-observer-conditions` "in the manner specified in § 107.31" →
+`visual-line-of-sight`, and `civil-twilight-operation` "as defined in the Air Almanac" →
+`civil-twilight-alaska`. One did not: `civil-twilight-operation`'s "paragraph (b) of this
+section" was `unmapped` because "no other entry states (b) whole", and at 2020
+`anti-collision-lighting` cites § 107.29(b) and quotes all of it. It now resolves to
+`anti-collision-lighting`. `visual-observer-conditions`' note still said its pointer was outside
+the checker's list and nothing demanded a declaration; that stopped being true with 0026, and
+the sentence is replaced.
+
+**Checked against every rule added since.** The map was last changed by 0026, which is the newest
+checker change, so every rule — 0020's extent and introductory-text grammar, 0024's extraction
+rules, 0025's `assertedBy` and draws, 0026's declared pointer phrases — already runs on it, and
+nothing in `tools/checkmap/` or `check-locators-section.py` names this map, a date or an
+exemption. The six checks that report NOT VERIFIED on it report the same on the reviewed 2026
+map, each because no entry carries the field it reads (`derivedFrom`, `extraction`, `implemented`,
+`fate: decision`, `ambiguity.conflict`, `absentFrom`). `gates` was a seventh until this change.
+
+**Review.** The map's `legacy` exemption stands: none of this is a blind second mapping. The
+change itself was read by a reviewer in a separate context, given only the 2020 text of the
+eleven sections involved and a before/after of the 29 entries changed or added; the verdict is
+[independent-verdict-2020-waivers.json](independent-verdict-2020-waivers.json), and `review.json`'s
+exemption names it and the digest it covers. Round 1: all 29 entries agreed; one cross-reference
+disagreed (the Air Almanac one, as circular) and five nits. Two nits were adopted — the unmapped
+`Section 107.51` item and a proviso sentence that claimed more than the text — and the
+disagreement was withdrawn in round 2 once the reviewer had the method's rule that a pointer
+into a corpus not admitted is answered by `definedElsewhere`, which here lives on
+`civil-twilight-alaska`. Round 2, on the final bytes: 29 of 29 entries, 4 of 4 cross-references,
+and completeness agree.
 
 ## The finding worth the trial, withdrawn and replaced
 

@@ -35,6 +35,9 @@
       "scope": "in",
       "clarity": "clear",
       "dependsOn": [],
+      "suspendedBy": [
+        "waivable-regulations"
+      ],
       "evidence": "(a) The groundspeed of the small unmanned aircraft may not exceed 87 knots (100 miles per hour).",
       "status": "mapped",
       "note": "The single figure, both units as printed: 87 knots / 100 mph."
@@ -50,6 +53,9 @@
       "scope": "in",
       "clarity": "clear",
       "dependsOn": [],
+      "suspendedBy": [
+        "waivable-regulations"
+      ],
       "evidence": "(b) The altitude of the small unmanned aircraft cannot be higher than 400 feet above ground level, unless the small unmanned aircraft: (1) Is flown within a 400-foot radius of a structure; and (2) Does not fly higher than 400 feet above the structure's immediate uppermost limit.",
       "status": "mapped",
       "note": "400 feet, and the 400-foot structure radius and 400-foot above-structure allowance as three distinct figures."
@@ -65,6 +71,9 @@
       "scope": "in",
       "clarity": "clear",
       "dependsOn": [],
+      "suspendedBy": [
+        "waivable-regulations"
+      ],
       "evidence": "(c) The minimum flight visibility, as observed from the location of the control station must be no less than 3 statute miles. For purposes of this section, flight visibility means the average slant distance from the control station at which prominent unlighted objects may be seen and identified by day and prominent lighted objects may be seen and identified by night.",
       "status": "mapped",
       "note": "3 statute miles, plus the section's own definition of flight visibility, which is a definition and not a threshold. The figure is fixed and this entry states it, which is why it stays clear; the definition it quotes turns on 'prominent', which the corpus never fixes, and that is prominent-objects \u2014 carried by the entry that applies the definition rather than by the one that states the figure."
@@ -80,6 +89,9 @@
       "scope": "in",
       "clarity": "clear",
       "dependsOn": [],
+      "suspendedBy": [
+        "waivable-regulations"
+      ],
       "evidence": "(d) The minimum distance of the small unmanned aircraft from clouds must be no less than: (1) 500 feet below the cloud; and (2) 2,000 feet horizontally from the cloud.",
       "status": "mapped",
       "note": "Both figures: 500 ft below, 2,000 ft horizontal. A single combined value would lose the distinction."
@@ -95,6 +107,9 @@
       "scope": "in",
       "clarity": "clear",
       "dependsOn": [],
+      "suspendedBy": [
+        "waivable-regulations"
+      ],
       "evidence": "(1) Except for Alaska, a period of time that begins 30 minutes before official sunrise and ends at official sunrise; (2) Except for Alaska, a period of time that begins at official sunset and ends 30 minutes after official sunset;",
       "status": "mapped",
       "note": "Both windows: 30 minutes before official sunrise to sunrise, and sunset to 30 minutes after."
@@ -112,6 +127,9 @@
       "dependsOn": [
         "speed-limit"
       ],
+      "suspendedBy": [
+        "waivable-regulations"
+      ],
       "evidence": "(a) The groundspeed of the small unmanned aircraft may not exceed 87 knots (100 miles per hour).",
       "status": "mapped",
       "note": "At, just below and just above 87 knots. The printed mph figure is a rounding of the knots figure; test which one governs."
@@ -128,6 +146,9 @@
       "clarity": "clear",
       "dependsOn": [
         "altitude-limit"
+      ],
+      "suspendedBy": [
+        "waivable-regulations"
       ],
       "evidence": "(b) The altitude of the small unmanned aircraft cannot be higher than 400 feet above ground level, unless the small unmanned aircraft: (1) Is flown within a 400-foot radius of a structure; and (2) Does not fly higher than 400 feet above the structure's immediate uppermost limit.",
       "status": "mapped",
@@ -148,6 +169,9 @@
         "cloud-clearance",
         "prominent-objects"
       ],
+      "suspendedBy": [
+        "waivable-regulations"
+      ],
       "evidence": "(c) The minimum flight visibility, as observed from the location of the control station must be no less than 3 statute miles. For purposes of this section, flight visibility means the average slant distance from the control station at which prominent unlighted objects may be seen and identified by day and prominent lighted objects may be seen and identified by night. (d) The minimum distance of the small unmanned aircraft from clouds must be no less than: (1) 500 feet below the cloud; and (2) 2,000 feet horizontally from the cloud.",
       "status": "mapped",
       "note": "Each minimum independently, and the case where one passes and the other fails. The cloud-clearance half is fully computable from two stated figures. The visibility half is not: the quantity to be compared against 3 statute miles is the section's own 'flight visibility', whose definiens turns on which objects are 'prominent', and the corpus fixes no degree of prominence. That term is prominent-objects, split out rather than reclassifying this entry \u2014 classifying the whole entry by one of its clauses would have thrown away the 500-foot and 2,000-foot figures (0005)."
@@ -163,6 +187,9 @@
       "scope": "in",
       "clarity": "ambiguous",
       "dependsOn": [],
+      "suspendedBy": [
+        "waivable-regulations"
+      ],
       "evidence": "For purposes of this section, flight visibility means the average slant distance from the control station at which prominent unlighted objects may be seen and identified by day and prominent lighted objects may be seen and identified by night.",
       "status": "mapped",
       "ambiguity": {
@@ -183,6 +210,9 @@
       "scope": "in",
       "clarity": "clear",
       "dependsOn": [],
+      "suspendedBy": [
+        "waivable-regulations"
+      ],
       "evidence": "A person may not operate or act as a remote pilot in command or visual observer in the operation of more than one unmanned aircraft at the same time.",
       "status": "mapped",
       "note": "One aircraft; two aircraft; and the same person acting as visual observer for a second. The prohibition binds three roles \u2014 operating, acting as remote pilot in command, acting as visual observer \u2014 and the evidence covers each. This wording bars a person who may 'operate'; the later wording bars one who may 'manipulate flight controls'."
@@ -198,6 +228,9 @@
       "scope": "in",
       "clarity": "clear",
       "dependsOn": [],
+      "suspendedBy": [
+        "waivable-regulations"
+      ],
       "evidence": "No person may operate a small unmanned aircraft in Class B, Class C, or Class D airspace or within the lateral boundaries of the surface area of Class E airspace designated for an airport unless that person has prior authorization from Air Traffic Control (ATC).",
       "status": "mapped",
       "note": "Each of Class B, C, D and the lateral surface area of Class E, with and without authorization; and Class G, which needs none. The airspace class is an input. Determining it from a position requires a corpus this map has not admitted."
@@ -228,6 +261,9 @@
       "scope": "in",
       "clarity": "ambiguous",
       "dependsOn": [],
+      "suspendedBy": [
+        "waivable-regulations"
+      ],
       "evidence": "No person may operate a small unmanned aircraft system\u2014 (a) From a moving aircraft; or (b) From a moving land or water-borne vehicle unless the small unmanned aircraft is flown over a sparsely populated area and is not transporting another person's property for compensation or hire.",
       "status": "mapped",
       "ambiguity": {
@@ -248,6 +284,9 @@
       "scope": "in",
       "clarity": "clear",
       "dependsOn": [],
+      "suspendedBy": [
+        "waivable-regulations"
+      ],
       "evidence": "(a) No person may operate a small unmanned aircraft system during night.",
       "status": "declined",
       "definedElsewhere": {
@@ -269,11 +308,14 @@
         "civil-twilight-window",
         "anti-collision-lighting"
       ],
+      "suspendedBy": [
+        "waivable-regulations"
+      ],
       "evidence": "(b) No person may operate a small unmanned aircraft system during periods of civil twilight unless the small unmanned aircraft has lighted anti-collision lighting visible for at least 3 statute miles. The remote pilot in command may reduce the intensity of the anti-collision lighting if he or she determines that, because of operating conditions, it would be in the interest of safety to do so. (c) For purposes of paragraph (b) of this section, civil twilight refers to the following: (1) Except for Alaska, a period of time that begins 30 minutes before official sunrise and ends at official sunrise; (2) Except for Alaska, a period of time that begins at official sunset and ends 30 minutes after official sunset; and (3) In Alaska, the period of civil twilight as defined in the Air Almanac.",
       "crossReferences": [
         {
           "cites": "paragraph (b) of this section",
-          "unmapped": "Paragraph (b) is quoted in this entry's own evidence: (c) defines civil twilight for (b), and no other entry states (b) whole."
+          "resolvedBy": "anti-collision-lighting"
         },
         {
           "cites": "as defined in the Air Almanac",
@@ -294,6 +336,9 @@
       "scope": "in",
       "clarity": "clear",
       "dependsOn": [],
+      "suspendedBy": [
+        "waivable-regulations"
+      ],
       "evidence": "(3) In Alaska, the period of civil twilight as defined in the Air Almanac.",
       "status": "declined",
       "definedElsewhere": {
@@ -332,6 +377,9 @@
       "dependsOn": [
         "well-clear"
       ],
+      "suspendedBy": [
+        "waivable-regulations"
+      ],
       "evidence": "(a) Each small unmanned aircraft must yield the right of way to all aircraft, airborne vehicles, and launch and reentry vehicles. Yielding the right of way means that the small unmanned aircraft must give way to the aircraft or vehicle and may not pass over, under, or ahead of it unless well clear.",
       "status": "mapped",
       "note": "Two enumerations, both computable: three protected kinds \u2014 aircraft, airborne vehicles, launch and reentry vehicles \u2014 and three prohibited relative positions \u2014 over, under, ahead. An engine told the object is none of the three, or that the manoeuvre is none of the three, decides the case without the open term at all, and the evidence covers each. The note this replaces said \"nothing here is computed\", which its own evidence contradicts (#34). What is not computed is the exception \"unless well clear\", which is well-clear and is a gap rather than an assertion: 0008 \u00a7 2 attacked the purpose clause at this joint and it gave way, so gate 3's first branch does not fire here."
@@ -347,6 +395,9 @@
       "scope": "in",
       "clarity": "ambiguous",
       "dependsOn": [],
+      "suspendedBy": [
+        "waivable-regulations"
+      ],
       "evidence": "Yielding the right of way means that the small unmanned aircraft must give way to the aircraft or vehicle and may not pass over, under, or ahead of it unless well clear.",
       "status": "mapped",
       "ambiguity": {
@@ -388,6 +439,9 @@
       "scope": "in",
       "clarity": "clear",
       "dependsOn": [],
+      "suspendedBy": [
+        "waivable-regulations"
+      ],
       "evidence": "(b) Located under a covered structure or inside a stationary vehicle that can provide reasonable protection from a falling small unmanned aircraft.",
       "status": "mapped",
       "note": "The standard qualifies the covered-structure exception; the exception itself is computable once it is asserted. The assertion is asserted and withheld for each of a covered structure and a stationary vehicle, attributed and recorded with the outcome, and never defaulted to true when absent. Split out rather than reclassifying over-human-beings, which states a further case that needs no judgement. Who asserts it: \u00a7 107.39 names the subject of the prohibition, \"No person may operate a small unmanned aircraft over a human being\", and the human being protected, and nobody whose determination settles the protection, so assertedBy is the caller (0025)."
@@ -406,6 +460,9 @@
         "direct-participation",
         "reasonable-protection"
       ],
+      "suspendedBy": [
+        "waivable-regulations"
+      ],
       "evidence": "No person may operate a small unmanned aircraft over a human being unless that human being is: (a) Directly participating in the operation of the small unmanned aircraft; or (b) Located under a covered structure or inside a stationary vehicle that can provide reasonable protection from a falling small unmanned aircraft.",
       "status": "mapped",
       "note": "Two causes, not one: the two exceptions this version states go opposite ways. (a) is direct-participation, a gap \u2014 \"directly participating\" is undefined and the exception turns entirely on it; (b) is reasonable-protection, an assertion, because \"from a falling small unmanned aircraft\" states the measure in the same constituent (0010). There is no subpart D of operational categories at this date and nothing to defer to. The evidence is the whole section, including both limbs of (b) \u2014 a covered structure and a stationary vehicle. The note this replaces said \"One cause, not two\", counting runtime reasons before (a)'s term had been read."
@@ -421,6 +478,9 @@
       "scope": "in",
       "clarity": "ambiguous",
       "dependsOn": [],
+      "suspendedBy": [
+        "waivable-regulations"
+      ],
       "evidence": "(a) Directly participating in the operation of the small unmanned aircraft; or",
       "status": "mapped",
       "ambiguity": {
@@ -444,6 +504,9 @@
       "scope": "in",
       "clarity": "clear",
       "dependsOn": [],
+      "suspendedBy": [
+        "waivable-regulations"
+      ],
       "evidence": "The remote pilot in command may reduce the intensity of the anti-collision lighting if he or she determines that, because of operating conditions, it would be in the interest of safety to do so.",
       "status": "mapped",
       "note": "The corpus delegates the judgement and names its decider in the same breath: \"if he or she determines\". At this date the clause sits in \u00a7 107.29(b) alone and it grants the permission without bounding it: there is no \"but may not extinguish\". Amendment 107-8 both repeats the clause into \u00a7 107.29(a)(2) and adds that bound, so the consuming rule gains a computable constraint the earlier text does not state. This is the example method.md and corpus-map.md both cite for kind: assertion, and it had no entry of its own until #26."
@@ -461,6 +524,9 @@
       "dependsOn": [
         "intensity-reduction-in-interest-of-safety"
       ],
+      "suspendedBy": [
+        "waivable-regulations"
+      ],
       "evidence": "(b) No person may operate a small unmanned aircraft system during periods of civil twilight unless the small unmanned aircraft has lighted anti-collision lighting visible for at least 3 statute miles. The remote pilot in command may reduce the intensity of the anti-collision lighting if he or she determines that, because of operating conditions, it would be in the interest of safety to do so.",
       "status": "mapped",
       "note": "Fitted and unfitted, for civil twilight only \u2014 this version requires no lighting at night, because it forbids night operation outright. Visible for at least 3 statute miles. Whether reducing the intensity is in the interest of safety is the remote pilot in command's determination and is its own entry, intensity-reduction-in-interest-of-safety. This version states no flash-rate requirement, so there is no flash-rate-sufficient entry."
@@ -477,6 +543,9 @@
       "clarity": "clear",
       "dependsOn": [
         "unaided-visual-contact"
+      ],
+      "suspendedBy": [
+        "waivable-regulations"
       ],
       "evidence": "(a) With vision that is unaided by any device other than corrective lenses, the remote pilot in command, the visual observer (if one is used), and the person manipulating the flight control of the small unmanned aircraft system must be able to see the unmanned aircraft throughout the entire flight in order to: (1) Know the unmanned aircraft's location; (2) Determine the unmanned aircraft's attitude, altitude, and direction of flight; (3) Observe the airspace for other air traffic or hazards; and (4) Determine that the unmanned aircraft does not endanger the life or property of another. (b) Throughout the entire flight of the small unmanned aircraft, the ability described in paragraph (a) of this section must be exercised by either: (1) The remote pilot in command and the person manipulating the flight controls of the small unmanned aircraft system; or (2) A visual observer.",
       "crossReferences": [
@@ -504,6 +573,9 @@
       "scope": "in",
       "clarity": "clear",
       "dependsOn": [],
+      "suspendedBy": [
+        "waivable-regulations"
+      ],
       "evidence": "(a) With vision that is unaided by any device other than corrective lenses, the remote pilot in command, the visual observer (if one is used), and the person manipulating the flight control of the small unmanned aircraft system must be able to see the unmanned aircraft throughout the entire flight in order to: (1) Know the unmanned aircraft's location; (2) Determine the unmanned aircraft's attitude, altitude, and direction of flight; (3) Observe the airspace for other air traffic or hazards; and (4) Determine that the unmanned aircraft does not endanger the life or property of another.",
       "status": "mapped",
       "note": "Gate 3's first arm fires on the plainest measure in this corpus. \u00a7 107.31(a) states an open ability \u2014 \"must be able to see the unmanned aircraft throughout the entire flight\" \u2014 and fixes what it is measured against in the same constituent, with \"in order to:\" and four enumerated purposes. That is the \"sufficient to avoid a collision\" construction with four adjuncts instead of one. \u00a7 107.31(a)(4)'s \"endanger the life or property of another\" sits inside that measure and is not a second open term: \u00a7 107.31 does not prohibit endangering, it requires the ability to see well enough to determine. The assertion is asserted and withheld for each named person, attributed and recorded with the outcome, and never defaulted to true when absent; the corpus states no distance, so no figure is evidenced. Split out of visual-line-of-sight, which keeps \u00a7 107.31(b)'s two permitted combinations \u2014 0005's rule that a standard is its own entry and the rule that consumes it depends on it. Decided in 0010."
@@ -523,6 +595,9 @@
         "effective-communication",
         "observer-coordination"
       ],
+      "suspendedBy": [
+        "waivable-regulations"
+      ],
       "evidence": "If a visual observer is used during the aircraft operation, all of the following requirements must be met: (a) The remote pilot in command, the person manipulating the flight controls of the small unmanned aircraft system, and the visual observer must maintain effective communication with each other at all times. (b) The remote pilot in command must ensure that the visual observer is able to see the unmanned aircraft in the manner specified in \u00a7 107.31. (c) The remote pilot in command, the person manipulating the flight controls of the small unmanned aircraft system, and the visual observer must coordinate to do the following: (1) Scan the airspace where the small unmanned aircraft is operating for any potential collision hazard; and (2) Maintain awareness of the position of the small unmanned aircraft through direct visual observation.",
       "crossReferences": [
         {
@@ -531,7 +606,7 @@
         }
       ],
       "status": "mapped",
-      "note": "What survives the split is (b) and the condition of application: if a visual observer is used, the remote pilot in command must ensure the observer can see the aircraft in the manner \u00a7 107.31 specifies \u2014 computable once unaided-visual-contact is asserted, reached through visual-line-of-sight. (a) is effective-communication, a gap; (c) is observer-coordination, an assertion. The section's three requirements do not share one verdict, which is what 0010 decides. \u00a7 107.33(b)'s \"in the manner specified in \u00a7 107.31\" is a cross-reference the corpus makes in words outside check-map.py's closed pointer list, so nothing demands a declaration for it; it is answered by the dependsOn edge and named here so the omission is readable."
+      "note": "What survives the split is (b) and the condition of application: if a visual observer is used, the remote pilot in command must ensure the observer can see the aircraft in the manner \u00a7 107.31 specifies \u2014 computable once unaided-visual-contact is asserted, reached through visual-line-of-sight. (a) is effective-communication, a gap; (c) is observer-coordination, an assertion. The section's three requirements do not share one verdict, which is what 0010 decides. \u00a7 107.33(b)'s \"in the manner specified in \u00a7 107.31\" is declared in crossReferences and resolves to visual-line-of-sight, the entry that states \u00a7 107.31 whole; it is the same edge as dependsOn. An earlier sentence here said the words were outside check-map.py's pointer list and nothing demanded a declaration; the manifest's pointerPhrases now detect \"\u00a7 107.31\" (0026), so that was no longer true."
     },
     {
       "id": "effective-communication",
@@ -544,6 +619,9 @@
       "scope": "in",
       "clarity": "ambiguous",
       "dependsOn": [],
+      "suspendedBy": [
+        "waivable-regulations"
+      ],
       "evidence": "(a) The remote pilot in command, the person manipulating the flight controls of the small unmanned aircraft system, and the visual observer must maintain effective communication with each other at all times.",
       "status": "mapped",
       "ambiguity": {
@@ -569,6 +647,9 @@
       "scope": "in",
       "clarity": "clear",
       "dependsOn": [],
+      "suspendedBy": [
+        "waivable-regulations"
+      ],
       "evidence": "(c) The remote pilot in command, the person manipulating the flight controls of the small unmanned aircraft system, and the visual observer must coordinate to do the following: (1) Scan the airspace where the small unmanned aircraft is operating for any potential collision hazard; and (2) Maintain awareness of the position of the small unmanned aircraft through direct visual observation.",
       "status": "mapped",
       "note": "Gate 3's first arm fires: \"must coordinate\" is followed in the same constituent by \"to do the following:\" and a closed two-item enumeration \u2014 scan the airspace for any potential collision hazard, and maintain awareness of the position through direct visual observation. The infinitival adjunct states what the coordination is for exactly as \"to avoid a collision\" states what the flash rate is for. \"Maintain awareness\" is inside that enumeration and is not a second open term, and \"through direct visual observation\" fixes its means. The assertion is asserted and withheld, attributed to the three named persons and recorded with the outcome, and never defaulted to true when absent. Split out of visual-observer-conditions (0010)."
@@ -708,6 +789,102 @@
       "evidence": "does not adversely affect the flight characteristics or controllability of the aircraft",
       "status": "mapped",
       "note": "\"Adversely affect\" states what it is measured against in its own constituent and enumerates it: the flight characteristics or controllability of the aircraft. Gate 3's first arm fires. Split from attached-object-secure, whose conjunct states no measure (0010). Who asserts it is named in \u00a7 107.49's lead-in, \"Prior to flight, the remote pilot in command must:\" (assertedBy, 0025)."
+    },
+    {
+      "id": "waiver-policy",
+      "name": "Certificate of waiver: issuance, and deviation under it",
+      "locator": {
+        "sourceId": "cfr-14-107",
+        "citation": "\u00a7 107.200"
+      },
+      "kind": "operation",
+      "scope": "out",
+      "clarity": "clear",
+      "dependsOn": [],
+      "evidence": "(a) The Administrator may issue a certificate of waiver authorizing a deviation from any regulation specified in \u00a7 107.205 if the Administrator finds that a proposed small UAS operation can safely be conducted under the terms of that certificate of waiver. (b) A request for a certificate of waiver must contain a complete description of the proposed operation and justification that establishes that the operation can safely be conducted under the terms of a certificate of waiver. (c) The Administrator may prescribe additional limitations that the Administrator considers necessary. (d) A person who receives a certificate of waiver issued under this section: (1) May deviate from the regulations of this part to the extent specified in the certificate of waiver; and (2) Must comply with any conditions or limitations that are specified in the certificate of waiver.",
+      "crossReferences": [
+        {
+          "cites": "specified in \u00a7 107.205",
+          "resolvedBy": "waivable-regulations"
+        }
+      ],
+      "status": "declined",
+      "note": "Out of scope: this map reads twelve sections of subpart B, and \u00a7 107.200 is in subpart D, which at this date is \"Subpart D - Waivers\" (the operational categories the 2026 text puts in subpart D did not exist yet, and waivers moved to subpart E). It is an entry rather than an omission because rules inside the slice reach it through \u00a7 107.205, which lists the regulations a certificate issued pursuant to it may authorize deviation from (waivable-regulations, which (a) points at: \"specified in \u00a7 107.205\"). Unlike the 2026 map, no rule in the slice names \u00a7 107.200 itself: \u00a7 107.29 has no paragraph (d) at this date, so there is no night-waiver-bar or night-waiver-termination. Nothing under the section is worked: whether to issue is the Administrator's finding under (a), and what a holder may do is \"to the extent specified in the certificate of waiver\" under (d), subject to conditions and limitations the certificate states and the corpus does not. The evidence is the whole section, so that the out-of-scope verdict covers the finding, the request, the additional limitations and the holder's deviation alike. The text is identical to \u00a7 107.200 at 2026-01-01 (#61, 0021)."
+    },
+    {
+      "id": "waivable-regulations",
+      "name": "Regulations a certificate of waiver may authorize deviation from",
+      "locator": {
+        "sourceId": "cfr-14-107",
+        "citation": "\u00a7 107.205"
+      },
+      "kind": "operation",
+      "scope": "out",
+      "clarity": "clear",
+      "dependsOn": [
+        "waiver-policy"
+      ],
+      "evidence": "A certificate of waiver issued pursuant to \u00a7 107.200 may authorize a deviation from the following regulations of this part: (a) Section 107.25 - Operation from a moving vehicle or aircraft. However, no waiver of this provision will be issued to allow the carriage of property of another by aircraft for compensation or hire. (b) Section 107.29 - Daylight operation. (c) Section 107.31 - Visual line of sight aircraft operation. However, no waiver of this provision will be issued to allow the carriage of property of another by aircraft for compensation or hire. (d) Section 107.33 - Visual observer. (e) Section 107.35 - Operation of multiple small unmanned aircraft systems. (f) Section 107.37(a) - Yielding the right of way. (g) Section 107.39 - Operation over people. (h) Section 107.41 - Operation in certain airspace. (i) Section 107.51 - Operating limitations for small unmanned aircraft.",
+      "crossReferences": [
+        {
+          "cites": "pursuant to \u00a7 107.200",
+          "resolvedBy": "waiver-policy"
+        },
+        {
+          "cites": "Section 107.25",
+          "resolvedBy": "moving-vehicle-operation"
+        },
+        {
+          "cites": "Section 107.29",
+          "resolvedBy": "night-operation"
+        },
+        {
+          "cites": "Section 107.29",
+          "resolvedBy": "civil-twilight-operation"
+        },
+        {
+          "cites": "Section 107.31",
+          "resolvedBy": "visual-line-of-sight"
+        },
+        {
+          "cites": "Section 107.33",
+          "resolvedBy": "visual-observer-conditions"
+        },
+        {
+          "cites": "Section 107.35",
+          "resolvedBy": "single-aircraft"
+        },
+        {
+          "cites": "Section 107.37(a)",
+          "resolvedBy": "right-of-way"
+        },
+        {
+          "cites": "Section 107.39",
+          "resolvedBy": "over-human-beings"
+        },
+        {
+          "cites": "Section 107.41",
+          "resolvedBy": "airspace-authorized"
+        },
+        {
+          "cites": "Section 107.51",
+          "resolvedBy": "speed-within-limit"
+        },
+        {
+          "cites": "Section 107.51",
+          "resolvedBy": "altitude-within-limit"
+        },
+        {
+          "cites": "Section 107.51",
+          "resolvedBy": "weather-minimums-met"
+        },
+        {
+          "cites": "Section 107.51",
+          "unmapped": "\u00a7 107.51's introductory text, \"must comply with all of the following operating limitations\", has no entry in this map, so the three items above state (a) to (d) and not the sentence that binds them together. It is the gap the 2026 map's blind second mapping closed with operating-limitations, and it is left to the blind second mapping this map owes."
+        }
+      ],
+      "status": "declined",
+      "note": "Out of scope for the same reason as waiver-policy, and the gate every waivable rule in this map names in suspendedBy: a rule a certificate of waiver authorizes deviation from is unreachable while the waiver is held. The map records the edge and not the condition (0003); whether a waiver is held and what it authorizes deviation from is a fact about an instrument the Administrator issued, which the caller states and the engine never infers in either direction (0021). The list is read from the 2020-01-01 text, not carried from the 2026 map, and differs from it in two places: (b) lists \"Section 107.29\" whole rather than \"Section 107.29(a)(2) and (b)\", and there is no (j), because \u00a7 107.145 did not exist. The item separator at this date is \" - \", not an em dash. The edges follow the list paragraph by paragraph, judged by what each entry's locator states: (a) \u00a7 107.25 \u2014 moving-vehicle-operation, which at this date states both limbs of the section. (b) \u00a7 107.29, the whole section \u2014 night-operation ((a)), anti-collision-lighting and intensity-reduction-in-interest-of-safety ((b)), civil-twilight-operation ((b)-(c)), civil-twilight-window ((c)(1)-(2)) and civil-twilight-alaska ((c)(3)); the definitional values are included because the listed regulation is the section that states them, as for \u00a7 107.51. night-operation is the entry the 2026 map leaves out, and here it is the plainest edge: the rule is \"No person may operate a small unmanned aircraft system during night\" and the waiver list names its section. That it declines on its own account (definedElsewhere, \u00a7 1.1) does not change what suspends it. (c) \u00a7 107.31 \u2014 visual-line-of-sight, unaided-visual-contact. (d) \u00a7 107.33 \u2014 visual-observer-conditions, effective-communication, observer-coordination. (e) \u00a7 107.35 \u2014 single-aircraft. (f) \u00a7 107.37(a) \u2014 right-of-way, well-clear; not collision-hazard-proximity, which is (b). (g) \u00a7 107.39 \u2014 over-human-beings, direct-participation, reasonable-protection. (h) \u00a7 107.41 \u2014 airspace-authorized. (i) \u00a7 107.51, the whole section \u2014 speed-limit, altitude-limit, visibility-minimum, cloud-clearance, speed-within-limit, altitude-within-limit, weather-minimums-met, prominent-objects. Not suspended: restricted-area-permitted (\u00a7 107.45), hazardous-material (\u00a7 107.36), collision-hazard-proximity (\u00a7 107.37(b)) and the seven \u00a7 107.49 entries; none is listed. Each \"Section 107.xx\" pointer resolves to the entry at the level of the listed regulation: the whole section or paragraph where one entry states it. \"Section 107.29\" is declared twice, to night-operation and civil-twilight-operation, because no one entry states the whole section and those two together do. \"Section 107.51\" is declared four times: to speed-within-limit, altitude-within-limit and weather-minimums-met, which together state (a) to (d), and once unmapped, because this map has no entry for \u00a7 107.51's introductory text (the 2026 map's operating-limitations, which only its blind second mapping found); that gap is left to the blind second mapping this map owes. The edges above reach further than those resolutions, to every entry inside the listed regulation. The provisos in (a) and (c), \"no waiver of this provision will be issued to allow the carriage of property of another by aircraft for compensation or hire\", bound what the Administrator will issue, and are not evaluated. They do not amend \u00a7 107.25(b) or \u00a7 107.31; they mean no waiver of either will be issued that allows that carriage, so the edges on moving-vehicle-operation, visual-line-of-sight and unaided-visual-contact reach further than an issued waiver can. That costs a decline, not a wrong answer: a holder deviates only \"to the extent specified in the certificate of waiver\" (\u00a7 107.200(d)(1)), and while the caller states a waiver is held the entry answers OutsideCurrentScope rather than a verdict. No suspended entry's own note repeats this judgement; it is recorded here, once."
     }
   ]
 }

@@ -1,0 +1,260 @@
+{
+  "about": "Independent verdict (0017) on the 2020-01-01 map's waivers and cross-references: the scope: out entries waiver-policy (§ 107.200) and waivable-regulations (§ 107.205), suspendedBy: [waivable-regulations] on 27 entries, and a review of the four crossReferences #116 (0026) added without reading the 2020 text. The reviewer was a separate agent context. It was given only: the 2020-01-01 corpus text of §§ 107.25, 107.29, 107.31, 107.33, 107.35, 107.37, 107.39, 107.41, 107.51, 107.200 and 107.205, extracted from part107-2020-01-01.xml; a JSON before/after of the 29 entries changed or added, with an id/citation/scope/status/suspendedBy index of all 39; and a one-paragraph statement of what suspendedBy, scope: out and crossReferences mean. It saw no schema doc, decision record, the 2026 map or the repository, and the author's reasoning only in the entries' notes and, in round 2, the author's responses. This is not a blind second mapping and does not discharge the map's legacy exemption; review.json keeps that exemption and names this file. `sha256` is the final map. `verdicts`, `crossReferences`, `completeness` and `nits` are the reviewer's round-2 file, unedited. `rounds` keeps round 1 and how each point was resolved.",
+  "sha256": "ab6e909fa6b538e8d85a1652657e557b4f864ecabc4a4e4f4cdd2591c5b48629",
+  "reviewer": "independent reviewer, separate context",
+  "read": [
+    "/tmp/claude-1000/-home-brandon-rules-factory/97719f1c-86a9-4aa5-a29d-28cde1248f55/scratchpad/review/corpus-2020-excerpt.txt",
+    "/tmp/claude-1000/-home-brandon-rules-factory/97719f1c-86a9-4aa5-a29d-28cde1248f55/scratchpad/review/diff.json",
+    "round-2 message from the author (agent abcc52e3b33aaa379)"
+  ],
+  "summary": "Round 1: entries 29 agree, 0 disagree; cross-references 3 agree, 1 disagree; completeness agree; 5 nits. Round 2 (final bytes): entries 29 agree, 0 disagree; cross-references 4 agree, 0 disagree; completeness agree.",
+  "verdicts": [
+    {
+      "entry": "speed-limit",
+      "verdict": "agree",
+      "citation": "(i) Section 107.51 - Operating limitations for small unmanned aircraft.",
+      "reason": "§ 107.51(a) is inside a section listed whole; a value the section states counts."
+    },
+    {
+      "entry": "altitude-limit",
+      "verdict": "agree",
+      "citation": "(i) Section 107.51 - Operating limitations for small unmanned aircraft.",
+      "reason": "§ 107.51(b) is inside a section listed whole."
+    },
+    {
+      "entry": "visibility-minimum",
+      "verdict": "agree",
+      "citation": "(i) Section 107.51 - Operating limitations for small unmanned aircraft.",
+      "reason": "§ 107.51(c), including its 'For purposes of this section, flight visibility means' definition, is inside a section listed whole."
+    },
+    {
+      "entry": "cloud-clearance",
+      "verdict": "agree",
+      "citation": "(i) Section 107.51 - Operating limitations for small unmanned aircraft.",
+      "reason": "§ 107.51(d) is inside a section listed whole."
+    },
+    {
+      "entry": "civil-twilight-window",
+      "verdict": "agree",
+      "citation": "(b) Section 107.29 - Daylight operation.",
+      "reason": "The 2020 list names § 107.29 whole, not particular paragraphs, so the (c)(1)-(2) definitional values are inside the listed regulation."
+    },
+    {
+      "entry": "speed-within-limit",
+      "verdict": "agree",
+      "citation": "(i) Section 107.51 - Operating limitations for small unmanned aircraft.",
+      "reason": "§ 107.51(a) is inside a section listed whole."
+    },
+    {
+      "entry": "altitude-within-limit",
+      "verdict": "agree",
+      "citation": "(i) Section 107.51 - Operating limitations for small unmanned aircraft.",
+      "reason": "§ 107.51(b) is inside a section listed whole."
+    },
+    {
+      "entry": "weather-minimums-met",
+      "verdict": "agree",
+      "citation": "(i) Section 107.51 - Operating limitations for small unmanned aircraft.",
+      "reason": "§ 107.51(c)-(d) is inside a section listed whole."
+    },
+    {
+      "entry": "prominent-objects",
+      "verdict": "agree",
+      "citation": "(i) Section 107.51 - Operating limitations for small unmanned aircraft.",
+      "reason": "The term sits in § 107.51(c)'s definition, inside a section listed whole."
+    },
+    {
+      "entry": "single-aircraft",
+      "verdict": "agree",
+      "citation": "(e) Section 107.35 - Operation of multiple small unmanned aircraft systems.",
+      "reason": "§ 107.35 is listed whole. The list heading says 'systems' where the section heading does not; that does not change which section is meant."
+    },
+    {
+      "entry": "airspace-authorized",
+      "verdict": "agree",
+      "citation": "(h) Section 107.41 - Operation in certain airspace.",
+      "reason": "§ 107.41 is listed whole."
+    },
+    {
+      "entry": "moving-vehicle-operation",
+      "verdict": "agree",
+      "citation": "(a) Section 107.25 - Operation from a moving vehicle or aircraft. However, no waiver of this provision will be issued to allow the carriage of property of another by aircraft for compensation or hire.",
+      "reason": "§ 107.25 is listed. The proviso limits what the Administrator will issue. It does not remove the section from the list, so the edge is right."
+    },
+    {
+      "entry": "night-operation",
+      "verdict": "agree",
+      "citation": "(b) Section 107.29 - Daylight operation.",
+      "reason": "§ 107.29(a) 'No person may operate a small unmanned aircraft system during night.' is inside the listed section. Being declined for definedElsewhere does not affect the edge."
+    },
+    {
+      "entry": "civil-twilight-operation",
+      "verdict": "agree",
+      "citation": "(b) Section 107.29 - Daylight operation.; (c) For purposes of paragraph (b) of this section",
+      "reason": "Both changes are right. suspendedBy is correct because § 107.29 is listed whole. The change of 'paragraph (b) of this section' from unmapped to resolvedBy anti-collision-lighting is also correct: that entry is exactly § 107.29(b) with the whole paragraph as evidence, and the old unmapped reason was false. My round-1 disagreement on the Air Almanac pointer is withdrawn; see crossReferences."
+    },
+    {
+      "entry": "civil-twilight-alaska",
+      "verdict": "agree",
+      "citation": "(b) Section 107.29 - Daylight operation.",
+      "reason": "§ 107.29(c)(3) is inside the listed section."
+    },
+    {
+      "entry": "right-of-way",
+      "verdict": "agree",
+      "citation": "(f) Section 107.37(a) - Yielding the right of way.",
+      "reason": "This is exactly the listed paragraph. It is paragraph-precise: (b) is not listed."
+    },
+    {
+      "entry": "well-clear",
+      "verdict": "agree",
+      "citation": "(f) Section 107.37(a) - Yielding the right of way.",
+      "reason": "'unless well clear' is in § 107.37(a), the listed paragraph."
+    },
+    {
+      "entry": "reasonable-protection",
+      "verdict": "agree",
+      "citation": "(g) Section 107.39 - Operation over people.",
+      "reason": "§ 107.39(b) is inside a section listed whole."
+    },
+    {
+      "entry": "over-human-beings",
+      "verdict": "agree",
+      "citation": "(g) Section 107.39 - Operation over people.",
+      "reason": "§ 107.39 is listed whole."
+    },
+    {
+      "entry": "direct-participation",
+      "verdict": "agree",
+      "citation": "(g) Section 107.39 - Operation over people.",
+      "reason": "§ 107.39(a) is inside a section listed whole."
+    },
+    {
+      "entry": "intensity-reduction-in-interest-of-safety",
+      "verdict": "agree",
+      "citation": "(b) Section 107.29 - Daylight operation.",
+      "reason": "The permission is in § 107.29(b), inside the listed section."
+    },
+    {
+      "entry": "anti-collision-lighting",
+      "verdict": "agree",
+      "citation": "(b) Section 107.29 - Daylight operation.",
+      "reason": "§ 107.29(b) is inside the listed section."
+    },
+    {
+      "entry": "visual-line-of-sight",
+      "verdict": "agree",
+      "citation": "(c) Section 107.31 - Visual line of sight aircraft operation.",
+      "reason": "§ 107.31 is listed. The proviso limits issuance only."
+    },
+    {
+      "entry": "unaided-visual-contact",
+      "verdict": "agree",
+      "citation": "(c) Section 107.31 - Visual line of sight aircraft operation.",
+      "reason": "§ 107.31(a) is inside the listed section."
+    },
+    {
+      "entry": "visual-observer-conditions",
+      "verdict": "agree",
+      "citation": "(d) Section 107.33 - Visual observer.",
+      "reason": "§ 107.33 is listed whole. The note is true of the text shown: the cross-reference is declared, and visual-line-of-sight has citation § 107.31 and is also in dependsOn. The pointerPhrases (0026) claim concerns tooling, not the corpus."
+    },
+    {
+      "entry": "effective-communication",
+      "verdict": "agree",
+      "citation": "(d) Section 107.33 - Visual observer.",
+      "reason": "§ 107.33(a) is inside a section listed whole."
+    },
+    {
+      "entry": "observer-coordination",
+      "verdict": "agree",
+      "citation": "(d) Section 107.33 - Visual observer.",
+      "reason": "§ 107.33(c) is inside a section listed whole."
+    },
+    {
+      "entry": "waiver-policy",
+      "verdict": "agree",
+      "citation": "(a) The Administrator may issue a certificate of waiver authorizing a deviation from any regulation specified in § 107.205",
+      "reason": "The evidence is all of § 107.200 (a)-(d)(2), verbatim. 'specified in § 107.205' appears in it and resolves to waivable-regulations. scope out with status declined is right. The note's claims that depend on text outside the excerpt (the subpart D heading, no other paragraph naming § 107.200, identity with 2026) were verified by the author against the full 2020 XML. I have not verified them myself, and nothing in the excerpt contradicts them."
+    },
+    {
+      "entry": "waivable-regulations",
+      "verdict": "agree",
+      "citation": "A certificate of waiver issued pursuant to § 107.200 may authorize a deviation from the following regulations of this part: (a) ... (i) Section 107.51 - Operating limitations for small unmanned aircraft.",
+      "reason": "The evidence is all of § 107.205, verbatim; this was re-checked mechanically against the excerpt. Every cites string appears in the evidence. The resolutions are at the level of the listed regulation. 'Section 107.51' is now declared four times: three resolvedBy entries covering (a)-(d), plus an unmapped item for the introductory text. That reason is true of the text: 'must comply with all of the following operating limitations' is not stated by any entry in the index. This closes round-1 nit 1. The revised proviso passage is accurate: it quotes 'no waiver of this provision will be issued to allow the carriage of property of another by aircraft for compensation or hire', says the proviso bounds issuance and does not amend § 107.25(b) or § 107.31, and names the moving-vehicle-operation, visual-line-of-sight and unaided-visual-contact edges. This closes round-1 nit 4. The remaining 2020 claims in the note are true of the text shown."
+    }
+  ],
+  "crossReferences": [
+    {
+      "entry": "civil-twilight-operation",
+      "cites": "paragraph (b) of this section",
+      "verdict": "agree",
+      "reason": "The pointer in '(c) For purposes of paragraph (b) of this section' targets § 107.29(b). anti-collision-lighting's citation is exactly § 107.29(b), and its evidence is the whole paragraph, both sentences, verbatim. That is resolution at the level of the thing pointed to, and the old unmapped reason ('no other entry states (b) whole') was untrue."
+    },
+    {
+      "entry": "civil-twilight-operation",
+      "cites": "as defined in the Air Almanac",
+      "verdict": "agree",
+      "reason": "Withdrawn on reconsideration. The author supplied the method's rule, 'A pointer into a corpus that was not admitted is `definedElsewhere`'s, not this field's.' I did not have that rule in round 1. My round-1 objection was that civil-twilight-alaska does not state the Air Almanac's definition, and that is still true. But under this rule no entry could ever state that definition. The method answers such a pointer with definedElsewhere, and definedElsewhere declines a whole entry, so the Alaska clause (c)(3) has to live in its own entry: civil-twilight-alaska, which carries definedElsewhere: air-almanac and whose evidence is exactly '(3) In Alaska, the period of civil twilight as defined in the Air Almanac.' Pointing at that entry points at the thing that answers the pointer. My proposed unmapped would assert that no entry answers it, which would be false. civil-twilight-operation keeps its computable (b) and (c)(1)-(2) cases undeclined. Residual point, a nit: read literally, 'not this field's' could mean the pointer should not be declared in crossReferences at all."
+    },
+    {
+      "entry": "visual-line-of-sight",
+      "cites": "the ability described in paragraph (a) of this section",
+      "verdict": "agree",
+      "reason": "The words appear in § 107.31(b) as quoted in the evidence. The target is § 107.31(a), and unaided-visual-contact's citation is § 107.31(a) with the whole of (a) verbatim as evidence, including the ability 'must be able to see the unmanned aircraft throughout the entire flight in order to:' and its four purposes. This resolves at paragraph level."
+    },
+    {
+      "entry": "visual-observer-conditions",
+      "cites": "in the manner specified in § 107.31",
+      "verdict": "agree",
+      "reason": "The pointer names the whole section, '§ 107.31', with no paragraph. visual-line-of-sight is the entry whose citation is § 107.31 and whose evidence is (a) and (b) whole, so it resolves at the level the words point to. One could argue the 'manner' of seeing is really specified in (a) alone ('With vision that is unaided by any device other than corrective lenses ... throughout the entire flight'). But the text cites the section, not (a), and visual-line-of-sight reaches unaided-visual-contact through dependsOn. Not a defect."
+    }
+  ],
+  "completeness": {
+    "verdict": "agree",
+    "reason": "Re-checked against the regenerated index, which lists 39 entries; the edges are unchanged from round 1. Every entry whose citation falls in §§ 107.25, 107.29, 107.31, 107.33, 107.35, 107.37(a), 107.39, 107.41 or 107.51 carries waivable-regulations, and the index lists 27 such entries. The entries without it are restricted-area-permitted (§ 107.45), hazardous-material (§ 107.36), collision-hazard-proximity (§ 107.37(b)), the seven § 107.49 entries, waiver-policy (§ 107.200) and waivable-regulations itself (§ 107.205). None of those is on the 2020 list, which ends '(i) Section 107.51'. The only paragraph-precision boundary in the 2020 list, '(f) Section 107.37(a)', is handled correctly: right-of-way and well-clear carry the edge and collision-hazard-proximity does not. No entry is missing the edge and none has it wrongly."
+  },
+  "nits": [
+    "civil-twilight-operation, 'as defined in the Air Almanac': the method rule as quoted says such a pointer 'is `definedElsewhere`'s, not this field's'. Read literally, the pointer should not appear in crossReferences at all, not even as resolvedBy. If the pointer checker does not demand a declaration for these words, dropping it would match the rule more closely. If it does demand one, resolving to civil-twilight-alaska is acceptable. Either way, resolvedBy here means 'the entry that answers the pointer', not 'the entry that states the target'. That is a reading of the field wider than the convention I was given, and worth saying once in the schema doc or the entry note.",
+    "Round-1 nit 2 (claims in the notes that need text outside the excerpt): accepted as verified by the author against the full 2020 XML. I have not verified them independently.",
+    "Round-1 nit 3 ('issued under this section', 'the regulations of this part'): I accept the author's answer. The pointer vocabulary is declared by the corpus manifest, which I was not given, and it does not include these phrases. No objection remains that I can ground in the text.",
+    "Round-1 nit 5 (§ 107.205(e) heading says 'systems', § 107.35's does not): not adopted. I agree it affects no edge.",
+    "sha256: I recorded the value the author supplied for the map. I could not verify it, because I was not given the map file. The regenerated diff.json I read hashes to e2c7057a8f00452d42c5f7d8d1aad4eec2fb8a0383a4cee16487c63cd938fd39."
+  ],
+  "rounds": [
+    {
+      "round": 1,
+      "sha256": "6de4d9869205ce05fc60c3d67763758747ced27185e94937eba949e7fe96b8f6",
+      "summary": "Entries: 29 agree, 0 disagree. Cross-references: 3 agree, 1 disagree (civil-twilight-operation 'as defined in the Air Almanac'). Completeness: agree.",
+      "disagreements": [
+        {
+          "entry": "civil-twilight-operation",
+          "cites": "as defined in the Air Almanac",
+          "verdict": "disagree",
+          "reason": "The words point at the Air Almanac's definition of civil twilight, a document outside the corpus. They do not point at a paragraph of Part 107. resolvedBy must name 'the entry id that states what is pointed at', and civil-twilight-alaska does not state that definition. Its evidence is just the same pointer sentence, '(3) In Alaska, the period of civil twilight as defined in the Air Almanac.', and its own note says 'Nothing beyond the quoted sentence can be evidenced from this corpus' and records definedElsewhere: air-almanac. Resolving to it is circular: the entry holding the pointer is offered as its target. The declaration should be unmapped, with a true reason such as: the Air Almanac is not admitted to this map; civil-twilight-alaska records the deferral as definedElsewhere air-almanac. civil-twilight-operation can keep its dependsOn on civil-twilight-alaska if wanted; it currently depends only on civil-twilight-window and anti-collision-lighting."
+        }
+      ],
+      "nits": [
+        "waivable-regulations declares 'Section 107.51' as resolvedBy three times (speed-within-limit, altitude-within-limit, weather-minimums-met). Even together those do not state the whole target. No entry states § 107.51's introductory text, 'A remote pilot in command and the person manipulating the flight controls of the small unmanned aircraft system must comply with all of the following operating limitations', which is what binds persons to (a)-(d). The note admits the gap. As declared, the three resolvedBy edges claim more coverage than the map has.",
+        "Several claims in the notes cannot be checked against the 2020 excerpt and rely on material outside it. waiver-policy says § 107.200 'is in subpart D, which at this date is \"Subpart D - Waivers\"' (no subpart headings are in the excerpt), that 'no rule in the slice names § 107.200 itself' (§§ 107.36, 107.45 and 107.49 are not in the excerpt), and that 'The text is identical to § 107.200 at 2026-01-01'. waivable-regulations says 'there is no (j), because § 107.145 did not exist' (the absence of (j) is visible; the reason is not) and makes comparisons with the 2026 list. None of these is contradicted by the text shown.",
+        "waiver-policy's evidence contains 'issued under this section' ((d)) and 'the regulations of this part' ((d)(1)), and waivable-regulations' evidence contains 'the following regulations of this part'. Both are pointers in words: one to the section itself, one to Part 107 as a whole. Neither is declared. Whether the pointer vocabulary covers 'this section' and 'this part' is outside the schema given, but under the stated convention ('each pointer the evidence makes in words') they arguably need a resolvedBy or unmapped declaration.",
+        "waivable-regulations' note says a § 107.25 waiver 'never lifts (b)'s \"not transporting another person's property for compensation or hire\"'. That is stronger than the text. The proviso, 'no waiver of this provision will be issued to allow the carriage of property of another by aircraft for compensation or hire', limits issuance and does not amend (b). The note's conclusion, a decline rather than a wrong answer, still holds. The same proviso also attaches to (c) § 107.31, and the note mentions it only in passing.",
+        "In § 107.205(e) the list heading reads 'Operation of multiple small unmanned aircraft systems', while § 107.35's heading reads 'Operation of multiple small unmanned aircraft.' This has no effect on the edge, but the note's statement that 'The list is read from the 2020-01-01 text' could record the difference."
+      ],
+      "resolutions": [
+        "Air Almanac cross-reference (disagree): disputed. The method's rule is that a pointer into a corpus that was not admitted is answered by definedElsewhere, which declines a whole entry, so the Alaska clause is its own entry and the pointer resolves to it. The reviewer withdrew in round 2, noting that resolvedBy there means 'the entry that answers the pointer'. It stays declared because check-map.py detects the pointer on civil-twilight-operation, which carries no definedElsewhere, and fails an undeclared one.",
+        "Nit 1 (Section 107.51 overclaims): adopted. A fourth 'Section 107.51' item, unmapped, records that § 107.51's introductory text has no entry.",
+        "Nit 2 (claims outside the excerpt): verified by the author against the full 2020 XML ('107.145' occurs 0 times; only § 107.205's lead-in names § 107.200; the enclosing heading is 'Subpart D - Waivers'; waiver-policy's evidence is identical to the 2026 map's). No change.",
+        "Nit 3 ('this section', 'this part'): not adopted. They are not among the corpus's declared pointer phrases, as for the reviewed 2026 entries. Accepted in round 2.",
+        "Nit 4 ('never lifts'): adopted. The note quotes the proviso, says it bounds issuance without amending § 107.25(b) or § 107.31, and names the (c) edges.",
+        "Nit 5 (§ 107.205(e) heading says 'systems'): not adopted; affects no edge. Accepted in round 2."
+      ]
+    },
+    {
+      "round": 2,
+      "sha256": "ab6e909fa6b538e8d85a1652657e557b4f864ecabc4a4e4f4cdd2591c5b48629",
+      "diffSha256": "e2c7057a8f00452d42c5f7d8d1aad4eec2fb8a0383a4cee16487c63cd938fd39",
+      "summary": "Entries: 29 agree, 0 disagree. Cross-references: 4 agree, 0 disagree (round-1 Air Almanac disagreement withdrawn). Completeness: agree."
+    }
+  ]
+}
