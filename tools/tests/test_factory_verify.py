@@ -700,6 +700,8 @@ class TestNoVerifyStaleLocks(VerifyCase):
         for relative in self.LOCKS:
             self.assertIn(f"{relative}: {self.map_id} locked at 6.0.0, pinned at [7.0.0]", output)
         self.assertIn("Nothing was produced.", output)
+        self.assertNotIn("re-locks them", output)
+        self.assertNotIn("--no-verify: re-locked", output)
         self.assertEqual(before, snapshot(self.engine))
         self.assertEqual([n for n in os.listdir(self.tmp) if ".factory-produce-" in n], [])
 
@@ -709,7 +711,7 @@ class TestNoVerifyStaleLocks(VerifyCase):
         self.assertEqual(code, 0, output)
         self.assertEqual(self.dotnet_calls(), ["--version", "restore --force-evaluate"], "restore only: no build, no test")
         self.assertEqual(self.gate_calls, [])
-        self.assertIn("so restore re-locks them", output)
+        self.assertIn(f"--no-verify: re-locked the lock files that disagreed with the generated pins", output)
         self.assertIn("verification SKIPPED (--no-verify)", output)
         self.assertEqual(output.splitlines()[-1], f"produced {NAME} in {self.engine}, NOT VERIFIED")
         self.assertEqual(verify_step.stale_locks(self.engine, verify_step.read_pins(self.engine)), [])
@@ -751,6 +753,15 @@ class TestNoVerifyStaleLocks(VerifyCase):
         self.assert_refused_unchanged(before, code, output)
         self.assertIn(f"no .NET SDK can run here", output)
         self.assertIn(f"install the .NET SDK {verify_step.pinned_sdk(self.engine)}, then run `{self.command()}`", output)
+
+    def test_without_any_sdk_nothing_before_the_refusal_says_restore_re_locks(self):
+        """No SDK runs, so no restore runs: the lock files are named by the refusal alone."""
+        self.write_locks("6.0.0")
+        code, output = self.produce_bumped("--no-verify", **{**self.env, "FACTORY_DOTNET": os.path.join(self.tmp, "no", "dotnet")})
+        self.assertEqual(code, 1, output)
+        (refusal,) = [line for line in output.splitlines() if "locked at 6.0.0" in line]
+        self.assertIn("REFUSED -- --no-verify must re-lock", refusal)
+        self.assertNotIn("--- relock", output)
 
     def test_without_the_pinned_sdk_the_refusal_names_the_override_at_an_installed_one(self):
         self.write_locks("6.0.0")

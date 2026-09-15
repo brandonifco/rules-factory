@@ -190,8 +190,9 @@ def relock_stale_locks(out, args, record_lock_files):
     if not stale:
         return None
     lines = describe_stale(stale)
-    print(f"--no-verify: the lock files disagree with the generated pins in {verify_step.PACKAGES_PROPS} "
-          f"({lines}), so restore re-locks them")
+    # Nothing is announced before the relock runs: a run with no SDK is refused before any restore,
+    # and a line saying restore re-locks them would be false there. `relock` prints its own line once
+    # an SDK runs, and this function prints what it re-locked once they agree.
     override, sdk = verify_step.sdk_override(), verify_step.pinned_sdk(out)
     overridden = override if override is not None and override != sdk else None
     if overridden:
@@ -217,6 +218,8 @@ def relock_stale_locks(out, args, record_lock_files):
     if still:
         raise intake_step.Refused(f"{refused}after re-locking they still disagree ({describe_stale(still)}), so "
                                   f"nothing is committed")
+    print(f"--no-verify: re-locked the lock files that disagreed with the generated pins in "
+          f"{verify_step.PACKAGES_PROPS} ({lines})")
     record_lock_files()
     return overridden
 
