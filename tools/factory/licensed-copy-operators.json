@@ -1,0 +1,5 @@
+{
+  "decision": "docs/decisions/0022-a-licensed-copy-is-used-locally-by-a-named-operator-and-never-published.md",
+  "rule": "GitHub logins that may pass --licensed-copy-exception. Matched against `gh api user`, never git config. Changed only by pull request. A guardrail against accidental use and distribution, not a security boundary.",
+  "operators": ["brandonifco"]
+}
