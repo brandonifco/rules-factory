@@ -288,11 +288,13 @@ one that is wrong on a literal reading. 0007 handled it without strain.
 - **Step 3 (blind second mapping):** done, in [blind-mapping/](blind-mapping/README.md). The mapper
   had no README and no SRD-derived example, and got the rendered pages 13–16 beside the text, because
   of finding 1.
-- **Step 4 (publish):** `pack-map.py` writes `<license type="expression">Apache-2.0</license>` for
-  every map, and no nuspec field carries the CC-BY attribution. The map quotes CC-BY text, so the
-  package needs the attribution statement: at least in `<description>` or a packaged
-  `NOTICE`/readme, and probably a licence expression covering both (`Apache-2.0 AND CC-BY-4.0`).
-  Nuspec has a `<copyright>` element, but the SRD's terms ask for its statement and no other
-  attribution, so the statement's exact wording should go where it is carried. Not changed here.
+- **Step 4 (publish):** `pack-map.py` wrote `<license type="expression">Apache-2.0</license>` for
+  every map, and no nuspec field carried the CC-BY attribution. Fixed by
+  [0023](../../docs/decisions/0023-a-map-package-is-licensed-as-its-corpus-and-the-factory-are.md):
+  the package carries `LICENCE.txt`, named by `<license type="file">`, with
+  [CORPUS-LICENCE.txt](CORPUS-LICENCE.txt) (CC-BY-4.0 and the statement word for word) for the
+  quotes and Apache-2.0 for the factory's work. The expression `Apache-2.0 AND CC-BY-4.0` was
+  considered and not used, because it cannot say which part is under which terms or carry the
+  statement.
 - The pointer phrase list (finding 4) and a same-corpus-outside-extent relation (finding 3) are
   candidate issues.

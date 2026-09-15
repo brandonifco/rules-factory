@@ -173,7 +173,7 @@ class TestPackMap(Case):
             contents = b"".join(archive.read(n) for n in names)
         self.assertEqual([n for n in names if "core-properties" not in n], [
             "_rels/.rels", f"{fixture.PACKAGE_ID}.nuspec", "map/corpus-map.json", "map/corpus-manifest.json",
-            "tools/check-map.py", f"build/{fixture.PACKAGE_ID}.props", "[Content_Types].xml"])
+            "tools/check-map.py", f"build/{fixture.PACKAGE_ID}.props", "LICENCE.txt", "[Content_Types].xml"])
         self.assertRegex(nuspec, r"<tags>[^<]*\blicensed-copy-exception</tags>")
         self.assertIn(f"NOT PUBLISHABLE: built locally under the licensed-copy exception by {OPERATOR}", nuspec)
         self.assertNotIn(fixture.corpus_bytes(), contents, "the package carries no corpus")
