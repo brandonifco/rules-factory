@@ -31,9 +31,8 @@ map package themselves, or whose Directory.Packages.props does not import the ge
 global.json's SDK version is the kernel's toolchain and is managed, not generated: the SDK is
 not a package the build restores, and an engine that must move it adopts the file.
 
-The corpus is copied to `corpus/` on every run; intake has already proved its bytes. A licensed
-`local-copy` corpus produced under the licensed-copy exception (decision 0022) is not: its bytes
-are never written into the engine, and an engine whose `corpus/` already holds files is refused.
+The corpus is copied to `corpus/` on every run; intake has already proved its bytes, and that its
+licence permits committing them (decision 0028).
 
 What the generated code states:
 
@@ -1300,15 +1299,6 @@ def produce(intake, name, out, log=None, adopt=(), reset=()):
     except ownership.OwnershipError as error:
         raise GenerationError(str(error))
     corpus_file = os.path.basename(str(intake.corpus.get("committedPath") or intake.corpus_name))
-    # A licensed local-copy corpus (decision 0022) is never copied: its bytes may not be committed
-    # anywhere, and the engine's gate reads it from the manifest's envVar instead. corpus/ holding
-    # anything then is refused rather than left in place to be committed.
-    local_copy = getattr(intake, "licensed_copy_operator", None) is not None
-    corpus_dir = os.path.join(out, "corpus")
-    if local_copy and os.path.isdir(corpus_dir) and os.listdir(corpus_dir):
-        raise GenerationError(f"{intake.corpus.get('sourceId')} is a licensed local-copy corpus, and the engine has "
-                              f"files under corpus/ ({', '.join(sorted(os.listdir(corpus_dir)))}); corpus bytes of a "
-                              f"licensed corpus are never committed (0022), so remove them")
 
     written = []
     for relative, text in engine_owned(model).items():
@@ -1319,9 +1309,8 @@ def produce(intake, name, out, log=None, adopt=(), reset=()):
     for relative, data in sorted(managed_writes.items()):
         _write(os.path.join(out, *relative.split("/")), data)
         written.append(relative)
-    if not local_copy:
-        _write(os.path.join(out, "corpus", corpus_file), intake.corpus_bytes)
-        written.append(f"corpus/{corpus_file}")
+    _write(os.path.join(out, "corpus", corpus_file), intake.corpus_bytes)
+    written.append(f"corpus/{corpus_file}")
     for relative, text in generated(model).items():
         _write(os.path.join(out, *relative.split("/")), text.encode("utf-8"))
         written.append(relative)

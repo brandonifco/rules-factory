@@ -21,6 +21,9 @@ rule 6 of the merge and the vendoring alternative changed; nothing else did.
 (#105): `pack-map.py --licensed-copy-exception` packs a `local-copy` map locally for an
 allowlisted operator, into a package marked unpublishable. Publishing a `local-copy` map stays
 refused, and `publish-map.yml` now refuses one, and a marked package, on its own account.
+**Superseded 2026-09-15** by [0028](0028-the-factory-admits-only-corpora-whose-licence-permits-publishing-them.md): 0022 is
+withdrawn, the flag and both `publish-map.yml` guards are removed, and `pack-map.py` refuses a corpus
+whose licence is not public domain or open before any check runs.
 
 **Amended by [0023](0023-a-map-package-is-licensed-as-its-corpus-and-the-factory-are.md)**
 (#106): the package carries `LICENCE.txt`, the nuspec names it with `<license type="file">`
@@ -248,6 +251,10 @@ to check that the major/minor/patch rule was followed. The rule is written above
 mechanical enough to check with a map differ: every field is assigned a class and anything
 unlisted is major. That check is follow-up. Until it exists, the version in `map-package.json`
 is a reviewed claim.
+
+> **Superseded by [0028](0028-the-factory-admits-only-corpora-whose-licence-permits-publishing-them.md).** The first licensed
+> corpus's question is answered the other way: the factory admits no licensed corpus, so there is no
+> licensed map to pack or publish.
 
 **A licensed corpus's map cannot be published from CI yet.** A `local-copy` corpus's citations
 cannot be read by a publish job, so the gate refuses the map as NOT VERIFIED. This is intentional

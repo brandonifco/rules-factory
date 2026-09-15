@@ -7,6 +7,10 @@ Accepted — 2026-09-15. Decided by Brandon on [#106](https://github.com/brandon
 **Amends [0015](0015-a-map-is-published-as-a-versioned-package.md)**: the package gains
 `LICENCE.txt`, and its nuspec licence changes.
 
+**Partly superseded 2026-09-15** by [0028](0028-the-factory-admits-only-corpora-whose-licence-permits-publishing-them.md): the two
+passages about a licensed `local-copy` corpus (0022, withdrawn) are marked where they stand. The
+licence files and the attribution are unchanged, and are what an open licence still needs.
+
 ## Context
 
 `tools/pack-map.py` wrote `<license type="expression">Apache-2.0</license>` into every map package
@@ -83,12 +87,15 @@ SRD engine's issues carried CC-BY text with no attribution.
   `gh`. It reads the map package `provenance.json` records (`--package`, or `Id@Version` from the
   NuGet global packages folder, never downloaded) and refuses a package whose map or manifest is not
   the one recorded, or a package it cannot find. So `--create` now needs the package at hand for every
-  produced engine, not only a licensed local-copy one (0022): whether a body needs an attribution is the
-  package's to say, not the body's.
+  produced engine, not only a licensed local-copy one (0022, superseded by 0028): whether a body needs
+  an attribution is the package's to say, not the body's.
 - **Public-domain corpora get nothing extra.** Their terms require no notice, and a line naming them
   would change every existing backlog and issue for no obligation. The `hoyle-backgammon` and
   `faa-part-107` backlogs are byte-identical to before.
-- **A licensed `local-copy` corpus (0022)** quotes nothing in its backlog, so its items carry no
+- > **Superseded by [0028](0028-the-factory-admits-only-corpora-whose-licence-permits-publishing-them.md).** No licensed corpus is
+  > admitted, so the bullet below describes nothing the factory produces.
+
+  **A licensed `local-copy` corpus (0022)** quotes nothing in its backlog, so its items carry no
   attribution section.
 
 ### Versions
@@ -138,5 +145,8 @@ terms, and the SRD asks for its statement and no other attribution.
 - `publish-map.yml` assumed nothing about the licence: it gates, re-packs and compares digests. It
   is unchanged. The first push with a licence file is the real test of nuget.org's acceptance of
   `type="file"` with this `licenseUrl`, as #50's first publish was for the expression.
-- A licensed `local-copy` map (0022) needs a terms file too. Such a package is never published, so
+- > **Superseded by [0028](0028-the-factory-admits-only-corpora-whose-licence-permits-publishing-them.md).** No licensed map is
+  > packed, so the bullet below no longer applies.
+
+  A licensed `local-copy` map (0022) needs a terms file too. Such a package is never published, so
   its terms file only documents what the operator holds.
