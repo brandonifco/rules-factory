@@ -27,6 +27,11 @@ set -euo pipefail
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$REPO_ROOT"
 
+# The gate imports the factory scripts it ships (scripts/factory/*.py). Writing their bytecode would
+# leave scripts/factory/__pycache__ in the engine tree, which is neither generated nor engine-owned;
+# `factory verify` already sets this for the same reason.
+export PYTHONDONTWRITEBYTECODE=1
+
 MODE="${1:-full}"
 case "$MODE" in full|fast|lock) ;; *) echo "usage: $0 [full|fast|lock]" >&2; exit 2 ;; esac
 NAME="@NAME@"
