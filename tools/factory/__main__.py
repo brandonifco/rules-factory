@@ -36,7 +36,11 @@ refusal leaves `--out` byte-identical to how it started (transaction.py, #67):
     When the run changed the generated pins (a map version bump) and lock files exist, verify
     re-locks them first (#94); that is the one case produce rewrites engine-owned files.
     `--no-verify` skips it, for a machine without the SDK the engine pins, and the output and
-    the final line say the engine was committed unverified;
+    the final line say the engine was committed unverified. Skipping it skips the relock too, so
+    a `--no-verify` run whose committed lock files resolve a pinned package (RulesKernel,
+    RulesKernel.Randomness, the map) at another version than the generated pins is refused,
+    naming each lock file, package and both versions: produce without `--no-verify`, or re-lock
+    first (`scripts/validate.sh lock`) and run again. Lock files that agree are committed as they are;
   * commit (transaction.py) -- the files the steps added, changed or removed are put in place
     in `--out`, journaled and rolled back on failure (a fresh `--out` is one rename).
 
@@ -128,6 +132,10 @@ def produce(args):
         print(f"wrote {provenance.FILE_NAME}: factory {state['version']}{' (dirty)' if state['dirty'] else ''}, "
               f"{len(document['generated'])} generated files")
         if args.no_verify:
+            # No dotnet, so no relock: refuse lock files that resolve other versions than the pins
+            # just generated, rather than commit the two disagreeing (verify.py, `stale_locks`).
+            if getattr(args, "check_locks", True):
+                refuse_stale_locks(out)
             print("verification SKIPPED (--no-verify): the engine was not built or tested")
         else:
             def record_lock_files():
@@ -154,6 +162,20 @@ def produce(args):
     return document
 
 
+def refuse_stale_locks(out):
+    """Refuse a --no-verify produce whose lock files disagree with the generated pins (verify.py)."""
+    stale = verify_step.stale_locks(out, verify_step.read_pins(out))
+    if not stale:
+        return
+    lines = "; ".join(f"{path}: {package} locked at {locked}, pinned at {pinned}"
+                      for path, package, locked, pinned in stale)
+    raise intake_step.Refused(
+        f"--no-verify cannot re-lock, and the lock files disagree with the generated pins in "
+        f"{verify_step.PACKAGES_PROPS} ({lines}); either produce without --no-verify, which re-locks, or "
+        f"re-lock and put the updated lock files in place first (e.g. `scripts/validate.sh lock`), then run "
+        f"this again")
+
+
 def verified(document):
     """How a verified engine is described: plainly, or under the licensed-copy exception (0022)."""
     exception = document.get("licensedCopyException") if isinstance(document, dict) else None
@@ -178,7 +200,8 @@ def recompute_provenance(engine_dir, package=None, licensed_copy_operator=None):
     def produce_into(spec, corpus, name, out):
         with contextlib.redirect_stdout(io.StringIO()):
             return produce(argparse.Namespace(package=spec, corpus=corpus, name=name, out=out, allow_dirty=True,
-                                              no_verify=True, licensed_copy_operator=licensed_copy_operator))
+                                              no_verify=True, check_locks=False,
+                                              licensed_copy_operator=licensed_copy_operator))
     return provenance.recompute(engine_dir, produce_into, package)
 
 
