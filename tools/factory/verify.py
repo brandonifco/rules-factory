@@ -23,7 +23,8 @@ Stages, in order, each named in the output; the first that fails stops the run:
      `produce` itself runs no dotnet): `dotnet restore` with RestoreLockedMode forced off, so
      that CI=true in the environment cannot make a first restore impossible, which writes the
      lock files (the scaffold's Directory.Build.props turns them on). An engine that already has
-     lock files skips this stage; the gate's locked restore holds it to them.
+     lock files skips this stage; the gate's locked restore holds it to them -- except in a
+     `produce` whose generated pins changed (below), where this stage re-locks them.
   3. gate -- the engine's own `scripts/validate.sh full` (gate.py): SDK pin, locked restore, the
      randomness the corpus declares (0019), the 0015 merge and the packaged consumer checker, corpus posture, every `*.g.cs`
      equal to a fresh regeneration, format, and a -warnaserror build and tests in Debug and
@@ -47,6 +48,31 @@ the committed engine -- exactly what the gate tested -- is held to its lock file
 Standalone `verify` writes nothing but what restore writes, and so leaves an unrecorded engine's
 lock files unclaimed.
 
+Changed pins re-lock (#94). `produce` rewrites RulesFactory.Packages.g.props every run, and a map
+version bump (or a new kernel pin) changes the versions it pins. Lock files resolved against the
+old pins then fail the gate's locked restore, so a verified bump could never be committed. So
+`produce` compares the resolved pin set of the staged props -- every `PackageVersion` Include and
+Version, `pins` below -- with the one the engine had before the run (`pins_changed`), and passes
+`relock=True` when they differ. If lock files exist, stage 2 then runs `dotnet restore
+--force-evaluate` with locked mode off, `after_restore` records the rewritten lock files in
+provenance.json, and the gate's locked restore proves them. The pin set, not the file's bytes, is
+the signal: a change to the props' comments or layout moves no package, and must not turn the
+gate's proof of the committed lock files into a rewrite of them. An existing engine without a
+readable props counts as changed, since nothing shows its lock files were resolved against these
+pins. With the pins unchanged nothing differs from before: no relock, and the gate's locked
+restore holds the engine to its committed lock files.
+
+This is the one case where `produce` rewrites files the ownership table (ownership.py, decision
+0018) calls engine-owned: it is the factory's input that moved, the rewrite happens in the staging
+copy and is committed only when the gate passes, and the commit lists the lock files as changed,
+for the engine to review.
+
+Standalone `verify` never re-locks. It has no earlier pin set to compare with, and it runs on the
+engine in place, outside any transaction, so a relock there would silently rewrite engine-owned
+files and leave them unrecorded. An engine whose pins moved outside `produce` fails the gate's
+locked restore; it re-locks itself with `scripts/validate.sh lock`, reviews and commits the result,
+or runs `produce` again.
+
 `dotnet` is `$FACTORY_DOTNET` when set, else `dotnet` on PATH; a test substitutes a fake the way
 `$FACTORY_GH` substitutes `gh` for `backlog --create`. The gate is a shell script that runs
 `dotnet` from PATH, so when `$FACTORY_DOTNET` names a path its directory is put first on the
@@ -59,6 +85,7 @@ Standard library only.
 """
 import glob
 import os
+import re
 import shutil
 import subprocess
 import sys
@@ -83,6 +110,36 @@ class Failed(Exception):
         super().__init__(f"{stage}: {message}")
         self.stage = stage
         self.message = message
+
+
+PACKAGES_PROPS = "RulesFactory.Packages.g.props"
+PACKAGE_VERSION = re.compile(r'<PackageVersion\b(?=[^>]*\bInclude="([^"]*)")(?=[^>]*\bVersion="([^"]*)")[^>]*>')
+
+
+def pins(text):
+    """The resolved pin set of a RulesFactory.Packages.g.props text: {package id, lower case: version}.
+
+    Comments are dropped first, so a commented-out pin pins nothing.
+    """
+    text = re.sub(r"<!--.*?-->", "", text, flags=re.S)
+    return {package.lower(): version.strip() for package, version in PACKAGE_VERSION.findall(text)}
+
+
+def read_pins(engine_dir):
+    """`pins` of the engine's RulesFactory.Packages.g.props; None when it is absent or unreadable."""
+    try:
+        with open(os.path.join(engine_dir, PACKAGES_PROPS), encoding="utf-8") as handle:
+            return pins(handle.read())
+    except (OSError, UnicodeDecodeError):
+        return None
+
+
+def pins_changed(before, after):
+    """Whether a produce moved the generated pins; `before` and `after` are `read_pins` results.
+
+    No readable props before the run counts as changed (module docstring).
+    """
+    return before is None or before != after
 
 
 def dotnet_command():
@@ -135,26 +192,27 @@ def solution(engine_dir):
     return os.path.basename(found[0])
 
 
-def verify_staged(root, recompute, package=None, log=None, after_restore=None):
+def verify_staged(root, recompute, package=None, log=None, after_restore=None, relock=False):
     """`verify` on produce's staging copy, then delete the build output it left there.
 
     The staging copy never holds bin/ or obj/ before this (transaction.py does not copy them), so
     every one found afterwards is verify's own and nothing of the engine's is deleted.
     """
-    verify(root, recompute, package, log, after_restore)
+    verify(root, recompute, package, log, after_restore, relock)
     for directory, dirs, _ in os.walk(root):
         for name in [d for d in dirs if d in BUILD_OUTPUT]:
             shutil.rmtree(os.path.join(directory, name))
         dirs[:] = [d for d in dirs if d not in BUILD_OUTPUT]
 
 
-def verify(engine_dir, recompute, package=None, log=None, after_restore=None):
+def verify(engine_dir, recompute, package=None, log=None, after_restore=None, relock=False):
     """Run every stage on `engine_dir`, raising Failed at the first that fails.
 
     `recompute(engine_dir, package)` returns provenance mismatches (__main__.recompute_provenance);
     it is passed in because it re-runs produce, which lives in __main__ and calls this module.
     `after_restore()`, when given, runs after a restore that wrote the lock files and before the
-    gate (produce uses it to record them in provenance.json, above).
+    gate (produce uses it to record them in provenance.json, above). `relock` is produce's alone,
+    passed when the generated pins changed: existing lock files are then re-locked, not skipped.
     """
     log = log or sys.stdout
     if not os.path.isdir(engine_dir):
@@ -177,19 +235,25 @@ def verify(engine_dir, recompute, package=None, log=None, after_restore=None):
 
     dotnet = dotnet_command()
     locks = lock_files(engine_dir)
-    if locks:
+    if locks and not relock:
         stage("restore", f" -- skipped: {len(locks)} lock file(s) present; the gate's locked restore holds the "
                          f"engine to them")
     else:
         sln = solution(engine_dir)
-        stage("restore", " -- no packages.lock.json yet, so this restore writes them")
-        if _run("restore", [dotnet, "restore", sln, "-p:RestoreLockedMode=false"], engine_dir, log) != 0:
+        argv = [dotnet, "restore", sln, "-p:RestoreLockedMode=false"]
+        if locks:
+            stage("restore", f" -- the generated pins changed, so this restore re-locks the {len(locks)} lock "
+                             f"file(s)")
+            argv.append("--force-evaluate")
+        else:
+            stage("restore", " -- no packages.lock.json yet, so this restore writes them")
+        if _run("restore", argv, engine_dir, log) != 0:
             raise Failed("restore", "dotnet restore failed")
         written = lock_files(engine_dir)
         if not written:
             raise Failed("restore", "dotnet restore wrote no packages.lock.json, so the gate's locked restore "
                                     "cannot run")
-        ok("restore", f"{len(written)} lock file(s) written")
+        ok("restore", f"{len(written)} lock file(s) {'re-locked' if locks else 'written'}")
         if after_restore is not None:
             after_restore()
 

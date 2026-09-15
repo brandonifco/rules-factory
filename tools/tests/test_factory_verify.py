@@ -14,6 +14,7 @@ gate builds, and that produce calls verify unless `--no-verify`.
 
 Run: python3 -m unittest discover -s tools/tests
 """
+import hashlib
 import importlib.util
 import io
 import json
@@ -27,7 +28,7 @@ from contextlib import redirect_stderr, redirect_stdout
 from unittest import mock
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from test_factory_produce import snapshot  # noqa: E402  (#67's TestTransactional helper)
+from test_factory_produce import pack_version, snapshot  # noqa: E402  (#67's TestTransactional helper)
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 TOOLS = os.path.dirname(HERE)
@@ -44,7 +45,7 @@ _spec.loader.exec_module(factory)
 verify_step = factory.verify_step
 
 FAKE_DOTNET = r'''#!/usr/bin/env python3
-import json, os, sys
+import json, os, re, sys
 args = sys.argv[1:]
 command = args[0] if args else ""
 note = ""
@@ -59,6 +60,12 @@ if command == os.environ.get("FAKE_DOTNET_FAIL"):
     print(f"error: fake {command} failure")
     sys.exit(1)
 projects = [d for d, _, names in os.walk(".") if any(n.endswith(".csproj") for n in names)]
+# A lock file records the pins it was resolved against, and a locked restore refuses one that
+# records other pins than RulesFactory.Packages.g.props now has, as NuGet refuses a stale lock file.
+pins = []
+if os.path.exists("RulesFactory.Packages.g.props"):
+    with open("RulesFactory.Packages.g.props", encoding="utf-8") as handle:
+        pins = sorted("%s=%s" % pin for pin in re.findall(r'<PackageVersion Include="([^"]+)" Version="([^"]+)"', handle.read()))
 if command == "restore":
     for project in projects:
         lock = os.path.join(project, "packages.lock.json")
@@ -66,9 +73,14 @@ if command == "restore":
             if not os.path.exists(lock):
                 print(f"error: {lock} is missing and restore is locked")
                 sys.exit(1)
+            with open(lock, encoding="utf-8") as handle:
+                recorded = json.load(handle).get("pins")
+            if recorded is not None and recorded != pins:
+                print(f"error: {lock} is not consistent with the project's package versions and restore is locked")
+                sys.exit(1)
         else:
             with open(lock, "w", encoding="utf-8") as handle:
-                handle.write('{"version": 1, "dependencies": {}}\n')
+                handle.write(json.dumps({"version": 1, "pins": pins, "dependencies": {}}) + "\n")
 if command == "build":
     for project in projects:
         for sub in ("obj", os.path.join("bin", "Release")):
@@ -159,7 +171,8 @@ class VerifyCase(unittest.TestCase):
             return handle.read().splitlines()
 
     def dotnet_calls(self):
-        return [line.split(" ")[0] + (" --locked-mode" if "--locked-mode" in line else "")
+        return [line.split(" ")[0] + "".join(f" {flag}" for flag in ("--locked-mode", "--force-evaluate")
+                                             if flag in line.split(" "))
                 for line in self.dotnet_lines()]
 
 
@@ -323,6 +336,133 @@ class TestProduce(VerifyCase):
         spy.assert_not_called()
         self.assertIn("verification SKIPPED (--no-verify)", output)
         self.assertEqual(output.splitlines()[-1], f"produced {NAME} in {out}, NOT VERIFIED")
+
+
+class TestPins(unittest.TestCase):
+    """The relock signal (#94): the resolved pin set, not the bytes of the props."""
+
+    PROPS = ('<Project>\n  <!-- <PackageVersion Include="Old" Version="0.0.1" /> -->\n  <ItemGroup>\n'
+             '    <PackageVersion Include="RulesKernel" Version="0.2.0" />\n'
+             '    <PackageVersion Version="[3.0.0]" Include="RulesFactory.Maps.HoyleBackgammon" />\n'
+             '  </ItemGroup>\n</Project>\n')
+
+    def test_pins_are_every_package_version_outside_comments(self):
+        self.assertEqual(verify_step.pins(self.PROPS),
+                         {"ruleskernel": "0.2.0", "rulesfactory.maps.hoylebackgammon": "[3.0.0]"})
+
+    def test_a_version_change_is_a_change_and_layout_is_not(self):
+        before = verify_step.pins(self.PROPS)
+        self.assertTrue(verify_step.pins_changed(before, verify_step.pins(self.PROPS.replace("[3.0.0]", "[4.0.0]"))))
+        self.assertTrue(verify_step.pins_changed(before, verify_step.pins(self.PROPS.replace("0.2.0", "0.3.0"))))
+        self.assertTrue(verify_step.pins_changed(
+            before, verify_step.pins(self.PROPS.replace("  </ItemGroup>", '    <PackageVersion Include="X" Version="1" />\n  </ItemGroup>'))))
+        relaid = self.PROPS.replace("<!-- <PackageVersion", "<!-- a new comment --><!-- <PackageVersion").replace("\n    <", "\n\n      <")
+        self.assertFalse(verify_step.pins_changed(before, verify_step.pins(relaid)))
+
+    def test_no_props_before_the_run_counts_as_changed(self):
+        self.assertTrue(verify_step.pins_changed(None, verify_step.pins(self.PROPS)))
+        with tempfile.TemporaryDirectory() as empty:
+            self.assertIsNone(verify_step.read_pins(empty))
+
+
+class TestRelock(VerifyCase):
+    """#94: a produce that moves the generated pins re-locks before the gate; nothing else re-locks."""
+
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        cls.nupkg_v4 = pack_version(HOYLE, "4.0.0", cls.shared)
+
+    def produce_verified(self, package, **env):
+        with mock.patch.dict(os.environ, {**self.env, **env}):
+            return run(["produce", "--package", package, "--corpus", CORPUS, "--name", NAME, "--out", self.engine,
+                        "--allow-dirty"])
+
+    def locks(self):
+        found = {}
+        for relative in (f"src/{NAME}/packages.lock.json", f"tests/{NAME}.Tests/packages.lock.json"):
+            with open(os.path.join(self.engine, *relative.split("/")), encoding="utf-8") as handle:
+                found[relative] = handle.read()
+        return found
+
+    def recorded_locks(self):
+        with open(os.path.join(self.engine, "provenance.json"), encoding="utf-8") as handle:
+            return {i["path"]: i["sha256"] for i in json.load(handle)["buildInputs"] if i["path"].endswith(".lock.json")}
+
+    def test_a_map_version_bump_re_locks_records_and_commits_verified(self):
+        code, output = self.produce_verified(self.nupkg)
+        self.assertEqual(code, 0, output)
+        before = self.locks()
+        os.remove(self.log)
+
+        code, output = self.produce_verified(self.nupkg_v4)
+        self.assertEqual(code, 0, output)
+        self.assertEqual(self.dotnet_calls(), ["restore --force-evaluate", "restore --locked-mode", "build", "test"])
+        self.assertIn("the generated pins changed, so this restore re-locks the 2 lock file(s)", output)
+        self.assertIn("ok   restore: 2 lock file(s) re-locked", output)
+        self.assertLess(output.index("rewrote provenance.json"), output.index("] gate"))
+        self.assertIn("re-locked 2 packages.lock.json file(s) because the generated pins changed", output)
+        self.assertEqual(output.splitlines()[-1], f"produced {NAME} in {self.engine}, verified")
+        after = self.locks()
+        for relative in after:
+            self.assertNotEqual(before[relative], after[relative])
+            self.assertIn("[4.0.0]", after[relative])
+        recorded = self.recorded_locks()
+        self.assertEqual(sorted(recorded), sorted(after))
+        for relative, text in after.items():
+            self.assertEqual(recorded[relative], hashlib.sha256(text.encode("utf-8")).hexdigest())
+        code, recomputed = run(["provenance", "--engine", self.engine, "--package", self.nupkg_v4])
+        self.assertEqual(code, 0, recomputed)
+
+    def test_unchanged_pins_do_not_re_lock_even_when_the_props_bytes_change(self):
+        code, output = self.produce_verified(self.nupkg)
+        self.assertEqual(code, 0, output)
+        before = self.locks()
+        os.remove(self.log)
+        real =factory.generate.packages_props
+        with mock.patch.object(factory.generate, "packages_props", lambda model: real(model) + "<!-- relaid -->\n"):
+            code, output = self.produce_verified(self.nupkg)
+        self.assertEqual(code, 0, output)
+        self.assertIn("restore -- skipped: 2 lock file(s) present", output)
+        self.assertEqual(self.dotnet_calls(), ["restore --locked-mode", "build", "test"])
+        self.assertEqual(before, self.locks())
+        self.assertNotIn("re-locked", output)
+
+    def test_a_failed_relock_leaves_the_engine_byte_identical(self):
+        code, output = self.produce_verified(self.nupkg)
+        self.assertEqual(code, 0, output)
+        before = snapshot(self.engine)
+        code, output = self.produce_verified(self.nupkg_v4, FAKE_DOTNET_FAIL="restore")
+        self.assertEqual(code, 1, output)
+        self.assertIn("verify FAILED at stage restore", output)
+        self.assertEqual(before, snapshot(self.engine))
+
+    def test_without_the_relock_the_bumped_gate_fails_its_locked_restore(self):
+        """The defect #94 names, shown on the fake: stale lock files cannot pass the gate."""
+        code, output = self.produce_verified(self.nupkg)
+        self.assertEqual(code, 0, output)
+        with mock.patch.object(verify_step, "pins_changed", return_value=False):
+            code, output = self.produce_verified(self.nupkg_v4)
+        self.assertEqual(code, 1, output)
+        self.assertIn("is not consistent with the project's package versions", output)
+        self.assertIn("verify FAILED at stage gate", output)
+
+    def test_standalone_verify_never_re_locks(self):
+        code, output = self.produce_verified(self.nupkg)
+        self.assertEqual(code, 0, output)
+        props = os.path.join(self.engine, verify_step.PACKAGES_PROPS)
+        with open(props, encoding="utf-8") as handle:
+            text = handle.read()
+        with open(props, "w", encoding="utf-8") as handle:
+            handle.write(text.replace("[3.0.0]", "[4.0.0]"))
+        before = self.locks()
+        os.remove(self.log)
+        with mock.patch.dict(os.environ, self.env):
+            with self.assertRaises(verify_step.Failed) as failure:
+                verify_step.verify(self.engine, lambda engine, package: [], log=io.StringIO())
+        self.assertEqual(failure.exception.stage, "gate")
+        self.assertEqual(self.dotnet_calls(), ["restore --locked-mode"])
+        self.assertEqual(before, self.locks())
 
 
 if __name__ == "__main__":

@@ -36,8 +36,13 @@ none does.
 Anything `produce` writes must match exactly one row; provenance.build refuses a written path
 that matches none, so a new output cannot ship unclassified. The lock files are the one output
 not written by Python: verify's first restore (verify.py) writes them in the staging copy when
-none exist, and produce commits them. They are engine-owned: no later produce rewrites them, and
-the engine relocks (`scripts/validate.sh lock`) and commits them itself. Files the engine adds itself (its
+none exist, and produce commits them. They are engine-owned: the engine relocks
+(`scripts/validate.sh lock`) and commits them itself, and a later produce leaves them alone, with
+one exception (#94, decision 0018's amendment): a produce that changes the generated pins in
+RulesFactory.Packages.g.props (a map version bump) re-locks every existing lock file in its
+staging copy before the gate, because lock files resolved against the old pins cannot pass the
+gate's locked restore. The rewrite is the consequence of the factory's input moving, is recorded
+in provenance.json, and is committed only if the gate passes. Files the engine adds itself (its
 hand-written code, lock files) match no row and are not the factory's to classify.
 
 Standard library only; vendored into every engine as scripts/factory/ownership.py because
@@ -89,7 +94,8 @@ TABLE = (
     Row("tests/{name}.Tests/{name}.Tests.csproj", ENGINE_OWNED, None, "the engine adds test references"),
     Row("corpus-map.overlay.json", ENGINE_OWNED, None, "the engine's three fields per entry (0015)"),
     Row("src/{name}/packages.lock.json", ENGINE_OWNED, None,
-        "written by verify's first restore when absent, then reviewed, committed and relocked by the engine"),
+        "written by verify's first restore when absent, then reviewed, committed and relocked by the engine; "
+        "re-locked by a produce that changes the generated pins (#94)"),
     Row("tests/{name}.Tests/packages.lock.json", ENGINE_OWNED, None, "the same, for the test project"),
 )
 
