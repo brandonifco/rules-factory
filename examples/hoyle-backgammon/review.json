@@ -2,13 +2,15 @@
   "about": "The review of each map's exact bytes (docs/decisions/0017-a-map-change-carries-a-review-of-its-bytes.md). tools/check-map-review.py fails any map whose sha256 is not the one recorded here.",
   "reviews": {
     "corpus-map.json": {
-      "sha256": "3b2a09e43c0a47398001c1cb87c1cf36ad825ff9e77343a97f9c290da60d906a",
-      "method": "exemption",
-      "exemption": {
-        "kind": "legacy",
-        "issue": "#3",
-        "reason": "Grandfathered, not reviewed: this map predates the review gate and has had no blind second mapping under 0014. Trial 6 (examples/blind-mapping-trial/) compared a blind map with it at ecc53b8, but as a measurement of the method rather than a review of the map: its mapper worked from docs that still carried backgammon examples (0014, run 1), its 71 flags have no row-per-disagreement record, and #42 corrected only the flags scored B, in 32c5a69, which produced these bytes. A blind second mapping is still owed before this map is used as the board-game reference target under #3."
-      }
+      "sha256": "12597958f530f01347e212967975f8902f44533de5b5c9c4723149da684826d7",
+      "method": "blind-second-mapping",
+      "comparison": "blind-mapping/results.json",
+      "resolutions": "blind-mapping/resolutions.json",
+      "compared": {
+        "commit": "32c5a69ce85413a047cb7856a8a2b8cd88ee8691",
+        "sha256": "3b2a09e43c0a47398001c1cb87c1cf36ad825ff9e77343a97f9c290da60d906a"
+      },
+      "note": "Issue #95. compare.py read the map at 32c5a69 (32 entries), the bytes the legacy exemption covered, and exits 1 unless each of its 127 flags has a row in resolutions.json. The map was corrected to those rows (18 blind-right, 5 corpus-does-not-settle; 33 entries) in the same commit that replaced the exemption with this review. sha256 is the corrected map; compared.sha256 is the map before correction. The blind mapper worked from docs with every backgammon example removed (blind-mapping/REDACTIONS.md); what could not be ruled out is in blind-mapping/README.md, Limits."
     }
   }
 }
