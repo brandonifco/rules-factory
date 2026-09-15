@@ -487,6 +487,9 @@ supplied most of what an issue needs:
   not happen. A phase-scoped rule cannot be exercised
   outside its phase, so an acceptance criterion that ignores the gate is testing a situation
   the corpus does not describe.
+- **Cross-references** — each pointer the evidence makes (`crossReferences`), with the entry it
+  resolves to or the reason there is none. A pointer that comes to resolve differently changes
+  the issue, even when nothing else about the entry did.
 - **Acceptance criteria** — observable conditions, derived from what the entry claims.
 - **Required evidence** — what must be demonstrated, from the entry's `note`. Where the corpus
   prints a finite table, the whole table, not a sample.

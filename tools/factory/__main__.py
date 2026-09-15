@@ -36,11 +36,12 @@ refusal leaves `--out` byte-identical to how it started (transaction.py, #67):
     When the run changed the generated pins (a map version bump) and lock files exist, verify
     re-locks them first (#94); that is the one case produce rewrites engine-owned files.
     `--no-verify` skips it, for a machine without the SDK the engine pins, and the output and
-    the final line say the engine was committed unverified. Skipping it skips the relock too, so
-    a `--no-verify` run whose committed lock files resolve a pinned package (RulesKernel,
-    RulesKernel.Randomness, the map) at another version than the generated pins is refused,
-    naming each lock file, package and both versions: produce without `--no-verify`, or re-lock
-    first (`scripts/validate.sh lock`) and run again. Lock files that agree are committed as they are;
+    the final line say the engine was committed unverified. A `--no-verify` run whose committed lock
+    files resolve a pinned package (RulesKernel, RulesKernel.Randomness, the map) at another version
+    than the generated pins re-locks them with `dotnet restore` alone, on the pinned SDK or
+    `FACTORY_DOTNET_SDK_OVERRIDE`, and records them. When no SDK can run, restore fails, or the lock
+    files still disagree, it is refused, naming each lock file, package and both versions, and the
+    command that works. Lock files that agree are committed as they are;
   * commit (transaction.py) -- the files the steps added, changed or removed are put in place
     in `--out`, journaled and rolled back on failure (a fresh `--out` is one rename).
 
@@ -63,6 +64,9 @@ recomputes; `dotnet restore` writes the lock files if the engine has none (stand
 never re-locks existing ones; only produce does, when it changed the pins); and the engine's own
 gate (`scripts/validate.sh full`: locked restore, -warnaserror build and tests in Debug and
 Release, format, regeneration, posture, ...) passes. `dotnet` is `$FACTORY_DOTNET` when set.
+Outside CI, `FACTORY_DOTNET_SDK_OVERRIDE=<version>` runs restore and the gate on that SDK instead of
+global.json's pin, without changing global.json or what provenance checks, and verify and produce
+say so in a WARNING and on their last line.
 See verify.py.
 
 `produce`, `verify` and `provenance` take `--licensed-copy-exception` (decision 0022, #105):
@@ -82,6 +86,7 @@ import io
 import json
 import os
 import re
+import shlex
 import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -131,20 +136,23 @@ def produce(args):
         provenance.write(out, document)
         print(f"wrote {provenance.FILE_NAME}: factory {state['version']}{' (dirty)' if state['dirty'] else ''}, "
               f"{len(document['generated'])} generated files")
+        overridden = None
+
+        def record_lock_files():
+            provenance.write(out, provenance.build(state, result, model, recorder))
+            print(f"rewrote {provenance.FILE_NAME}: the lock files restore wrote are build inputs")
         if args.no_verify:
-            # No dotnet, so no relock: refuse lock files that resolve other versions than the pins
-            # just generated, rather than commit the two disagreeing (verify.py, `stale_locks`).
+            # Nothing is built or tested, but lock files that resolve other versions than the pins just
+            # generated are never committed: restore alone re-locks them, or the run is refused
+            # (verify.py, `stale_locks`, `relock`).
             if getattr(args, "check_locks", True):
-                refuse_stale_locks(out)
+                overridden = relock_stale_locks(out, args, record_lock_files)
             print("verification SKIPPED (--no-verify): the engine was not built or tested")
         else:
-            def record_lock_files():
-                provenance.write(out, provenance.build(state, result, model, recorder))
-                print(f"rewrote {provenance.FILE_NAME}: the lock files restore wrote are build inputs")
             # #94: a run that moved the generated pins re-locks (verify.py). The lock files are
             # engine-owned, and this is the one case produce rewrites them (ownership.py, 0018).
             relock = verify_step.pins_changed(pins_before, verify_step.read_pins(out))
-            verify_step.verify_staged(out, lambda engine, package: recompute_provenance(
+            overridden = verify_step.verify_staged(out, lambda engine, package: recompute_provenance(
                                           engine, package, getattr(args, "licensed_copy_operator", None)),
                                       args.package, log=sys.stdout, after_restore=record_lock_files, relock=relock)
         added, changed, _ = stage.commit()
@@ -158,22 +166,79 @@ def produce(args):
     if relocked:
         print(f"re-locked {len(relocked)} packages.lock.json file(s) because the generated pins changed: "
               f"review and commit them")
-    print(f"produced {args.name} in {args.out}, {'NOT VERIFIED' if args.no_verify else verified(document)}")
+    print(f"produced {args.name} in {args.out}, {'NOT VERIFIED' if args.no_verify else verified(document)}"
+          f"{overridden_suffix(overridden, verify_step.pinned_sdk(args.out), 'lock files re-locked' if args.no_verify else '')}")
     return document
 
 
-def refuse_stale_locks(out):
-    """Refuse a --no-verify produce whose lock files disagree with the generated pins (verify.py)."""
-    stale = verify_step.stale_locks(out, verify_step.read_pins(out))
+def overridden_suffix(overridden, pinned, what=""):
+    """What the last line adds when dotnet ran on $FACTORY_DOTNET_SDK_OVERRIDE (verify.py); `what` names
+    what ran, where the line does not already say (a --no-verify produce's relock)."""
+    if not overridden:
+        return ""
+    return f"{', ' + what if what else ''} on SDK {overridden} by {verify_step.SDK_OVERRIDE}, not the pinned {pinned}"
+
+
+def relock_stale_locks(out, args, record_lock_files):
+    """A --no-verify produce's lock files, made to agree with the generated pins (verify.py).
+
+    Nothing happens when they agree. Otherwise they are re-locked (`verify.relock`), compared again
+    and recorded; a relock that cannot run, fails, or leaves them disagreeing is refused, naming the
+    command that works. Returns the SDK override the relock ran on, or None."""
+    pinned = verify_step.read_pins(out)
+    stale = verify_step.stale_locks(out, pinned)
     if not stale:
-        return
-    lines = "; ".join(f"{path}: {package} locked at {locked}, pinned at {pinned}"
-                      for path, package, locked, pinned in stale)
-    raise intake_step.Refused(
-        f"--no-verify cannot re-lock, and the lock files disagree with the generated pins in "
-        f"{verify_step.PACKAGES_PROPS} ({lines}); either produce without --no-verify, which re-locks, or "
-        f"re-lock and put the updated lock files in place first (e.g. `scripts/validate.sh lock`), then run "
-        f"this again")
+        return None
+    lines = describe_stale(stale)
+    print(f"--no-verify: the lock files disagree with the generated pins in {verify_step.PACKAGES_PROPS} "
+          f"({lines}), so restore re-locks them")
+    override, sdk = verify_step.sdk_override(), verify_step.pinned_sdk(out)
+    overridden = override if override is not None and override != sdk else None
+    if overridden:
+        print(verify_step.override_warning(overridden, sdk))
+    refused = (f"--no-verify must re-lock the lock files that disagree with the generated pins in "
+               f"{verify_step.PACKAGES_PROPS} ({lines}), and ")
+    try:
+        verify_step.relock(out, sys.stdout)
+    except verify_step.Failed as error:
+        if not error.sdk_missing:
+            raise intake_step.Refused(f"{refused}the re-lock failed: {error.message}. Fix what restore reports, "
+                                      f"then run `{produce_command(args, override)}`")
+        installed = [version for version in verify_step.installed_sdks() if version != override]
+        if installed:
+            how = (f"the SDK {override or sdk} that {verify_step.SDK_OVERRIDE if override else 'global.json'} "
+                   f"selects is not installed ({error.message}); with one that is, run "
+                   f"`{produce_command(args, installed[-1])}`")
+        else:
+            how = (f"no .NET SDK can run here ({error.message}); install the .NET SDK {sdk}, then run "
+                   f"`{produce_command(args, None)}`")
+        raise intake_step.Refused(refused + how)
+    still = verify_step.stale_locks(out, pinned)
+    if still:
+        raise intake_step.Refused(f"{refused}after re-locking they still disagree ({describe_stale(still)}), so "
+                                  f"nothing is committed")
+    record_lock_files()
+    return overridden
+
+
+def describe_stale(stale):
+    return "; ".join(f"{path}: {package} locked at {locked}, pinned at {version}"
+                     for path, package, locked, version in stale)
+
+
+def produce_command(args, override):
+    """The --no-verify produce command `args` describes, run under `override` when given."""
+    argv = ["python3", "tools/factory", "produce", "--package", args.package, "--corpus", args.corpus,
+            "--name", args.name, "--out", args.out]
+    for flag, values in (("--adopt", getattr(args, "adopt", None)), ("--reset", getattr(args, "reset", None))):
+        for value in values or ():
+            argv += [flag, value]
+    if getattr(args, "allow_dirty", False):
+        argv.append("--allow-dirty")
+    if getattr(args, "licensed_copy_exception", False):
+        argv.append(licensed_copy.FLAG)
+    argv.append("--no-verify")
+    return (f"{verify_step.SDK_OVERRIDE}={shlex.quote(override)} " if override else "") + shlex.join(argv)
 
 
 def verified(document):
@@ -273,11 +338,12 @@ def main(argv=None):
         if args.command == "provenance":
             return check_provenance(args)
         if args.command == "verify":
-            verify_step.verify(args.engine, lambda engine, package: recompute_provenance(
+            overridden = verify_step.verify(args.engine, lambda engine, package: recompute_provenance(
                 engine, package, args.licensed_copy_operator), args.package, log=sys.stdout)
             document = recorded_provenance(args.engine)
             print(f"verify {args.engine}: PASS" + ("" if verified(document) == "verified"
-                                                   else f", {verified(document)}"))
+                                                   else f", {verified(document)}")
+                  + overridden_suffix(overridden, verify_step.pinned_sdk(args.engine)))
             return 0
         produce(args)
         return 0

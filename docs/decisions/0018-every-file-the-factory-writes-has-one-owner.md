@@ -36,11 +36,14 @@ only when the gate passes, and `produce` names them as changed, for the engine t
   runs on the engine in place, outside a transaction, so a relock there would rewrite engine-owned
   files silently and leave them unrecorded. An engine whose pins moved some other way fails the
   gate's locked restore. It re-locks with `scripts/validate.sh lock`, or runs `produce` again.
-- **`produce --no-verify` cannot re-lock, so it refuses stale lock files.** Re-locking needs
-  dotnet, which `--no-verify` skips, so it never rewrites lock files; instead, before committing,
-  it refuses when any committed lock file resolves a pinned package at a version other than the
-  generated pins, naming each file, package and both versions. Lock files re-locked beforehand
-  (`scripts/validate.sh lock`) agree and are committed as they are.
+- **`produce --no-verify` never commits stale lock files.** Before committing, it checks whether
+  any committed lock file resolves a pinned package at a version other than the generated pins.
+  When one does, it re-locks them in the staging copy with `dotnet restore --force-evaluate`
+  alone, on the pinned SDK or `FACTORY_DOTNET_SDK_OVERRIDE`, checks again, and records them; nothing
+  is built or tested. It refuses, naming each file, package and both versions, when no SDK can
+  run, restore fails, or they still disagree, and the refusal names the command that works: the
+  same produce under the override at an installed SDK, or, with none, after installing the pinned
+  one. Lock files that already agree are committed as they are.
 
 ## Context
 
