@@ -32,7 +32,10 @@
 # global.json to that SDK, for a machine that lacks the pinned one. global.json is a managed file
 # (decision 0018), so the re-produce below adopts it, like the NuGet.config edit, and provenance
 # records it -- and the build then proves the engine on a toolchain the kernel does not pin. CI never
-# sets it, and this script refuses it when CI=true.
+# sets it, and this script refuses it when CI=true. The variable is read, refused and re-pinned by
+# the functions `factory verify` uses for the same override (tools/factory/verify.py), so the two
+# cannot drift; the verifying produces below run with it unset, since CI=true refuses it and each
+# engine they verify already pins $SDK in its adopted global.json.
 set -euo pipefail
 
 cd "$(dirname "$0")/.."
@@ -62,14 +65,21 @@ if [ "${1:-}" = "--print-sdk" ]; then
 fi
 [ $# -eq 0 ] || { echo "usage: $0 [--print-sdk]" >&2; exit 2; }
 
+# The SDK override, through tools/factory/verify.py: $1 is Python run with `verify` imported, the rest its sys.argv[1:].
+override_py() {
+  python3 -B -c "import sys; sys.path.insert(0, '$ROOT/tools/factory'); import verify
+$1" "${@:2}"
+}
+
 PIN="$(sdk_pin)"
 [ -n "$PIN" ] || fail "could not read SDK_VERSION from tools/factory/generate.py"
-SDK="$PIN"
-if [ -n "${FACTORY_DOTNET_SDK_OVERRIDE:-}" ]; then
-  [ "${CI:-}" != "true" ] || fail "FACTORY_DOTNET_SDK_OVERRIDE is for local runs only and is refused when CI=true"
-  SDK="$FACTORY_DOTNET_SDK_OVERRIDE"
-  printf 'WARNING: FACTORY_DOTNET_SDK_OVERRIDE=%s replaces the pinned SDK %s; this run does not prove the pinned toolchain\n' "$SDK" "$PIN" >&2
-fi
+OVERRIDE="$(override_py '
+try:
+    print(verify.sdk_override() or "")
+except verify.intake_step.Usage as error:
+    sys.exit(str(error))')" || fail "the SDK override was refused (above)"
+SDK="${OVERRIDE:-$PIN}"
+[ -z "$OVERRIDE" ] || override_py 'print(verify.override_warning(sys.argv[1], sys.argv[2]))' "$SDK" "$PIN" >&2
 
 step "the .NET SDK $SDK is installed"
 command -v dotnet >/dev/null || fail "no dotnet on PATH; install the .NET SDK $SDK (the version tools/factory/generate.py pins)"
@@ -80,14 +90,18 @@ echo "ok   SDK $SDK"
 # Local runs only (FACTORY_DOTNET_SDK_OVERRIDE): re-pin a scratch engine's global.json ($1/global.json) to $SDK.
 repin_sdk() {
   [ "$SDK" != "$PIN" ] || return 0
-  python3 - "$1/global.json" "$SDK" <<'PY'
-import json, sys
-with open(sys.argv[1], encoding="utf-8") as handle:
-    document = json.load(handle)
-document["sdk"]["version"] = sys.argv[2]
-with open(sys.argv[1], "w", encoding="utf-8") as handle:
-    handle.write(json.dumps(document, indent=2) + "\n")
-PY
+  override_py '
+path, version = sys.argv[1], sys.argv[2]
+with open(path, encoding="utf-8") as handle:
+    text = verify.repin(handle.read(), version)
+with open(path, "w", encoding="utf-8") as handle:
+    handle.write(text)' "$1/global.json" "$SDK"
+}
+
+# A verifying produce, as CI runs one (CI=true). FACTORY_DOTNET_SDK_OVERRIDE is unset for it: CI=true
+# refuses the override, and the engine it verifies already pins $SDK in its adopted global.json.
+verified_produce() {
+  env -u FACTORY_DOTNET_SDK_OVERRIDE CI=true python3 tools/factory produce "$@"
 }
 
 # A scratch engine's NuGet.config ($1) gains a local folder feed ($2), the only source of RulesFactory.Maps.*.
@@ -157,7 +171,7 @@ step "re-produce, verifying: records the edited scaffold and lock files, then ru
 # them as engine-owned, and every later recompute's re-produce reads that adoption back.
 ADOPT=(--adopt NuGet.config)
 [ "$SDK" = "$PIN" ] || ADOPT+=(--adopt global.json)
-CI=true python3 tools/factory produce --package "$PACKAGE" --corpus "$CORPUS" --name "$NAME" --out "$ENGINE" \
+verified_produce --package "$PACKAGE" --corpus "$CORPUS" --name "$NAME" --out "$ENGINE" \
   "${ADOPT[@]}" | tee "$SCRATCH/reproduce.log"
 grep -qxF "committed to $(cd "$ENGINE" && pwd -P): 2 added, 1 changed, 0 removed" "$SCRATCH/reproduce.log" \
   || fail "re-producing should add the 2 lock files and change provenance.json only: $(grep '^committed to' "$SCRATCH/reproduce.log")"
@@ -388,7 +402,7 @@ own_files() {
     "tests/$NAME.Tests/packages.lock.json" -type f -print0 | sort -z | xargs -0 sha256sum)
 }
 own_files > "$SCRATCH/own-before.txt"
-CI=true python3 tools/factory produce --package "$PACKAGE" --corpus "$CORPUS" --name "$NAME" --out "$ENGINE" \
+verified_produce --package "$PACKAGE" --corpus "$CORPUS" --name "$NAME" --out "$ENGINE" \
   | tee "$SCRATCH/extra.log"
 tail -1 "$SCRATCH/extra.log" | grep -q ', verified$' || fail "re-producing into an engine with its own projects did not end verified"
 grep -qxF "committed to $(cd "$ENGINE" && pwd -P): 0 added, 1 changed, 0 removed" "$SCRATCH/extra.log" \
@@ -423,7 +437,7 @@ shopt -u nullglob
 [ "${#bumped[@]}" -eq 1 ] || fail "expected one .nupkg at version $BUMPED from pack-map.py, found ${#bumped[@]}"
 PACKAGE_BUMPED="${bumped[0]}"
 sha256sum "$ENGINE"/src/*/packages.lock.json "$ENGINE"/tests/*/packages.lock.json > "$SCRATCH/locks-before.txt"
-CI=true python3 tools/factory produce --package "$PACKAGE_BUMPED" --corpus "$CORPUS" --name "$NAME" --out "$ENGINE" \
+verified_produce --package "$PACKAGE_BUMPED" --corpus "$CORPUS" --name "$NAME" --out "$ENGINE" \
   | tee "$SCRATCH/bump.log"
 tail -1 "$SCRATCH/bump.log" | grep -q ', verified$' || fail "the map version bump did not commit verified"
 grep -q "the generated pins changed, so this restore re-locks the 4 lock file(s)" "$SCRATCH/bump.log" \
@@ -496,7 +510,7 @@ PY
   add_local_feed "$example_engine/NuGet.config" "$feed"
   example_adopt=(--adopt NuGet.config)
   [ "$SDK" = "$PIN" ] || example_adopt+=(--adopt global.json)
-  CI=true python3 tools/factory produce --package "$example_package" --corpus "$example_corpus" --name "$example_name" \
+  verified_produce --package "$example_package" --corpus "$example_corpus" --name "$example_name" \
     --out "$example_engine" "${example_adopt[@]}" > "$SCRATCH/example-$slug.log" 2>&1 \
     || { tail -60 "$SCRATCH/example-$slug.log"; fail "$example_name, produced from $dir, did not pass verify (its gate's output is above)"; }
   tail -1 "$SCRATCH/example-$slug.log" | grep -q ', verified$' \

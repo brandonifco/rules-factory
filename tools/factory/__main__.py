@@ -63,6 +63,9 @@ recomputes; `dotnet restore` writes the lock files if the engine has none (stand
 never re-locks existing ones; only produce does, when it changed the pins); and the engine's own
 gate (`scripts/validate.sh full`: locked restore, -warnaserror build and tests in Debug and
 Release, format, regeneration, posture, ...) passes. `dotnet` is `$FACTORY_DOTNET` when set.
+Outside CI, `FACTORY_DOTNET_SDK_OVERRIDE=<version>` runs restore and the gate on that SDK instead of
+global.json's pin, without changing global.json or what provenance checks, and verify and produce
+say so in a WARNING and on their last line.
 See verify.py.
 
 `produce`, `verify` and `provenance` take `--licensed-copy-exception` (decision 0022, #105):
@@ -131,6 +134,7 @@ def produce(args):
         provenance.write(out, document)
         print(f"wrote {provenance.FILE_NAME}: factory {state['version']}{' (dirty)' if state['dirty'] else ''}, "
               f"{len(document['generated'])} generated files")
+        overridden = None
         if args.no_verify:
             # No dotnet, so no relock: refuse lock files that resolve other versions than the pins
             # just generated, rather than commit the two disagreeing (verify.py, `stale_locks`).
@@ -144,7 +148,7 @@ def produce(args):
             # #94: a run that moved the generated pins re-locks (verify.py). The lock files are
             # engine-owned, and this is the one case produce rewrites them (ownership.py, 0018).
             relock = verify_step.pins_changed(pins_before, verify_step.read_pins(out))
-            verify_step.verify_staged(out, lambda engine, package: recompute_provenance(
+            overridden = verify_step.verify_staged(out, lambda engine, package: recompute_provenance(
                                           engine, package, getattr(args, "licensed_copy_operator", None)),
                                       args.package, log=sys.stdout, after_restore=record_lock_files, relock=relock)
         added, changed, _ = stage.commit()
@@ -158,8 +162,16 @@ def produce(args):
     if relocked:
         print(f"re-locked {len(relocked)} packages.lock.json file(s) because the generated pins changed: "
               f"review and commit them")
-    print(f"produced {args.name} in {args.out}, {'NOT VERIFIED' if args.no_verify else verified(document)}")
+    print(f"produced {args.name} in {args.out}, {'NOT VERIFIED' if args.no_verify else verified(document)}"
+          f"{overridden_suffix(overridden, verify_step.pinned_sdk(args.out))}")
     return document
+
+
+def overridden_suffix(overridden, pinned):
+    """What the last line adds when restore and the gate ran on $FACTORY_DOTNET_SDK_OVERRIDE (verify.py)."""
+    if not overridden:
+        return ""
+    return f" on SDK {overridden} by {verify_step.SDK_OVERRIDE}, not the pinned {pinned}"
 
 
 def refuse_stale_locks(out):
@@ -273,11 +285,12 @@ def main(argv=None):
         if args.command == "provenance":
             return check_provenance(args)
         if args.command == "verify":
-            verify_step.verify(args.engine, lambda engine, package: recompute_provenance(
+            overridden = verify_step.verify(args.engine, lambda engine, package: recompute_provenance(
                 engine, package, args.licensed_copy_operator), args.package, log=sys.stdout)
             document = recorded_provenance(args.engine)
             print(f"verify {args.engine}: PASS" + ("" if verified(document) == "verified"
-                                                   else f", {verified(document)}"))
+                                                   else f", {verified(document)}")
+                  + overridden_suffix(overridden, verify_step.pinned_sdk(args.engine)))
             return 0
         produce(args)
         return 0

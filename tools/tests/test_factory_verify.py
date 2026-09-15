@@ -55,6 +55,12 @@ if command == "build" and os.path.exists("provenance.json"):
     note = " locks-recorded=%d" % sum(1 for i in inputs if i["path"].endswith("packages.lock.json"))
 with open(os.environ["FAKE_DOTNET_LOG"], "a", encoding="utf-8") as log:
     log.write(" ".join(args) + note + "\n")
+# Which SDK each call would run on: the version the global.json it starts beside pins.
+if os.environ.get("FAKE_DOTNET_SDK_LOG") and os.path.exists("global.json"):
+    with open("global.json", encoding="utf-8") as handle:
+        sdk = json.load(handle)["sdk"]["version"]
+    with open(os.environ["FAKE_DOTNET_SDK_LOG"], "a", encoding="utf-8") as log:
+        log.write("%s %s\n" % (command, sdk))
 print(f"fake dotnet {command}")
 if command == os.environ.get("FAKE_DOTNET_FAIL"):
     print(f"error: fake {command} failure")
@@ -336,6 +342,104 @@ class TestProduce(VerifyCase):
         spy.assert_not_called()
         self.assertIn("verification SKIPPED (--no-verify)", output)
         self.assertEqual(output.splitlines()[-1], f"produced {NAME} in {out}, NOT VERIFIED")
+
+
+class TestSdkOverride(VerifyCase):
+    """FACTORY_DOTNET_SDK_OVERRIDE: restore and the gate run on another SDK; global.json and provenance do not move."""
+
+    OTHER = "10.0.1"
+
+    def setUp(self):
+        super().setUp()
+        self.sdk_log = os.path.join(self.tmp, "sdk.log")
+        self.env["FAKE_DOTNET_SDK_LOG"] = self.sdk_log
+        self.pinned = verify_step.pinned_sdk(self.engine)
+        assert self.pinned and self.pinned != self.OTHER
+
+    def sdks(self):
+        if not os.path.exists(self.sdk_log):
+            return []
+        with open(self.sdk_log, encoding="utf-8") as handle:
+            return handle.read().splitlines()
+
+    def global_json(self, engine=None):
+        with open(os.path.join(engine or self.engine, "global.json"), "rb") as handle:
+            return handle.read()
+
+    def test_restore_and_the_gate_run_on_the_override_and_global_json_is_put_back(self):
+        before = self.global_json()
+        code, output = self.verify(FACTORY_DOTNET_SDK_OVERRIDE=self.OTHER, CI="")
+        self.assertEqual(code, 0, output)
+        self.assertEqual(self.sdks(), [f"restore {self.OTHER}", f"restore {self.OTHER}", f"build {self.OTHER}",
+                                       f"test {self.OTHER}"])
+        self.assertEqual(before, self.global_json(), "global.json is byte-identical after verify")
+        self.assertIn(f"WARNING: FACTORY_DOTNET_SDK_OVERRIDE={self.OTHER} replaces the pinned SDK {self.pinned}; "
+                      "this run does not prove the pinned toolchain", output)
+        self.assertLess(output.index("ok   provenance"), output.index("WARNING: FACTORY_DOTNET_SDK_OVERRIDE"))
+        self.assertEqual(output.splitlines()[-1], f"verify {self.engine}: PASS on SDK {self.OTHER} by "
+                                                  f"FACTORY_DOTNET_SDK_OVERRIDE, not the pinned {self.pinned}")
+        code, recomputed = run(["provenance", "--engine", self.engine, "--package", self.nupkg])
+        self.assertEqual(code, 0, recomputed)
+
+    def test_without_the_override_nothing_changes(self):
+        code, output = self.verify(FACTORY_DOTNET_SDK_OVERRIDE="")
+        self.assertEqual(code, 0, output)
+        self.assertEqual(set(line.split(" ")[1] for line in self.sdks()), {self.pinned})
+        self.assertNotIn("WARNING", output)
+        self.assertEqual(output.splitlines()[-1], f"verify {self.engine}: PASS")
+
+    def test_an_engine_that_already_pins_the_override_is_left_alone(self):
+        code, output = self.verify(FACTORY_DOTNET_SDK_OVERRIDE=self.pinned, CI="")
+        self.assertEqual(code, 0, output)
+        self.assertNotIn("WARNING", output)
+        self.assertEqual(output.splitlines()[-1], f"verify {self.engine}: PASS")
+
+    def test_a_failing_gate_still_puts_global_json_back(self):
+        before = self.global_json()
+        code, output = self.verify(FACTORY_DOTNET_SDK_OVERRIDE=self.OTHER, CI="", FAKE_DOTNET_FAIL="build")
+        self.assertEqual(code, 1, output)
+        self.assertIn("verify FAILED at stage gate", output)
+        self.assertIn(f"build {self.OTHER}", self.sdks())
+        self.assertEqual(before, self.global_json())
+
+    def test_the_override_is_refused_in_ci_before_anything_runs(self):
+        before = self.global_json()
+        code, output = self.verify(FACTORY_DOTNET_SDK_OVERRIDE=self.OTHER, CI="true")
+        self.assertEqual(code, 2, output)
+        self.assertIn("FACTORY_DOTNET_SDK_OVERRIDE is for local runs only and is refused when CI=true", output)
+        self.assertNotIn("] provenance", output)
+        self.assertEqual(self.dotnet_calls(), [])
+        self.assertEqual(before, self.global_json())
+
+    def test_a_hand_edited_global_json_still_fails_provenance(self):
+        """The override is not a way past stage 1: the committed pin is what provenance checks."""
+        text = verify_step.repin(self.global_json().decode("utf-8"), self.OTHER)
+        with open(os.path.join(self.engine, "global.json"), "w", encoding="utf-8") as handle:
+            handle.write(text)
+        code, output = self.verify(FACTORY_DOTNET_SDK_OVERRIDE=self.OTHER, CI="")
+        self.assertEqual(code, 1, output)
+        self.assertIn("MISMATCH managed[global.json]", output)
+        self.assertEqual(self.dotnet_calls(), [])
+
+    def test_produce_verifies_on_the_override_and_commits_and_records_the_pinned_global_json(self):
+        out = os.path.join(self.tmp, "fresh")
+        with mock.patch.dict(os.environ, {**self.env, "FACTORY_DOTNET_SDK_OVERRIDE": self.OTHER, "CI": ""}):
+            code, output = self.produce_into(out)
+        self.assertEqual(code, 0, output)
+        self.assertEqual(self.sdks(), [f"restore {self.OTHER}", f"restore {self.OTHER}", f"build {self.OTHER}",
+                                       f"test {self.OTHER}"])
+        self.assertEqual(self.global_json(out), self.global_json(), "the committed global.json pins the kernel's SDK")
+        self.assertEqual(output.splitlines()[-1], f"produced {NAME} in {out}, verified on SDK {self.OTHER} by "
+                                                  f"FACTORY_DOTNET_SDK_OVERRIDE, not the pinned {self.pinned}")
+        # after_restore rewrote provenance.json while global.json was the pinned file, so it recomputes.
+        code, recomputed = run(["provenance", "--engine", out, "--package", self.nupkg])
+        self.assertEqual(code, 0, recomputed)
+
+    def test_repin_writes_global_json_as_generate_does(self):
+        text = factory.generate.managed_files()["global.json"]
+        self.assertEqual(verify_step.repin(text, factory.generate.SDK_VERSION), text)
+        self.assertEqual(json.loads(verify_step.repin(text, self.OTHER))["sdk"],
+                         {"version": self.OTHER, "rollForward": "disable"})
 
 
 class TestPins(unittest.TestCase):
