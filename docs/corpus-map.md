@@ -1063,6 +1063,31 @@ beside the manifest, since a map package does not carry it; the derivation's own
 text to it. A corpus without it is quoted as published, and
 none of its entries may carry `extraction`.
 
+**`derivedText`** and **`sourcePdf`** describe a text derived from a PDF whose printed page
+numbers are not its PDF page numbers, for only the printed pages the map needs
+([0028](decisions/0028-a-pdf-text-is-derived-for-declared-printed-pages-and-marked-with-them.md)):
+
+```json
+"hashDerivation": "pdftotext-24.02.0-printed-page-marked",
+"quotedText": { "derivation": "pdftotext-24.02.0-printed-page-marked", "extractedFrom": "the core rulebook PDF" },
+"sourcePdf": { "sha256": "…64 hex…", "bytes": 12216214, "envVar": "CORE_RULES_PDF" },
+"derivedText": { "extractor": "pdftotext", "extractorVersion": "24.02.0", "pdfPageOffset": 1,
+                 "printedPages": [ { "from": 35, "to": 36 }, { "from": 44, "to": 44 } ] }
+```
+
+`pdfPageOffset` is k in "PDF page = printed page + k". `tools/extract-pdf-pages.py --write` reads
+PDF page P + k for each printed page P, marks it `{P}`, and begins the text with a header line naming
+the pages and the offset. `contentHash` covers that text, and `sourcePdf.sha256` the PDF, so a quote is
+held to hashed bytes and the printing is still identified. A citation cites the printed page, `p. 35`.
+The tool refuses a PDF with another digest, a pdftotext other than 24.02.0, a page without its printed
+folio as a line, and an output path inside a git work tree. `--check` holds a text to `contentHash`
+and its header to `derivedText`, and re-derives it where the PDF and the pinned pdftotext are present.
+`check-map.py --only extraction` requires the whole declaration together: this `hashDerivation` if
+and only if `derivedText`, the pinned extractor, an integer offset, ascending disjoint ranges,
+`quotedText`, and a `sourcePdf.sha256` that is not the `contentHash`. `check-locators-pdf-text.py`
+requires the text's markers to be exactly the pages its header declares, and refuses an `extent`
+claiming a page the text does not hold.
+
 `references` lists corpora this one defers to — a regulation citing another title, a
 rulebook citing a supplement — each marked admitted or not. Those references are the
 boundary of any engine built from the corpus, and naming them makes that boundary

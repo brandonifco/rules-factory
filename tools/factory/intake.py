@@ -94,6 +94,12 @@ HASH_DERIVATIONS = {
     # here because the committed file is the derivation's output; the PDF's own digest is the
     # manifest's `sourcePdf.sha256`, and `extract.py --check` holds the two together.
     "srd-5.2.1-pdftotext-24.02.0-page-marked": _sha256_of_bytes,
+    # The same, for a PDF whose printed pages are not its PDF pages (0028): tools/extract-pdf-pages.py
+    # derives only the printed pages the manifest's `derivedText` declares, each marked `{P}` with
+    # its printed number under a header naming the pages and the PDF-page offset. SHA-256 over
+    # that text; the PDF's own digest is `sourcePdf.sha256`, and `extract-pdf-pages.py --check`
+    # holds the two together.
+    "pdftotext-24.02.0-printed-page-marked": _sha256_of_bytes,
 }
 
 # What a manifest may declare as a corpus's `randomness` (decision 0019). `seeded`: an engine may

@@ -2,10 +2,13 @@
 """Check a map's citations against a page-marked text extracted from a PDF (adapter
 `pdftotext-page-marked`, locator grammar `heading-path-and-printed-page`).
 
-The corpus this reads is `srd-5.2.1.txt`, which `extract.py` derives from the committed SRD 5.2.1
+It reads two derivations. `srd-5.2.1.txt`, which `extract.py` derives from the committed SRD 5.2.1
 PDF: pdftotext's text for each physical page, each preceded by a `{N}` marker line, where physical
-page N is printed page N. A citation reads `Combat / Making an Attack / p. 15`: a path of the
-corpus's own headings, then the printed page.
+page N is printed page N, and the markers run 1, 2, 3, ... And a text `tools/extract-pdf-pages.py`
+derives (`pdftotext-24.02.0-printed-page-marked`, 0028): only the printed pages its manifest
+declares, each marker the printed page, under a first line naming those pages and the PDF-page
+offset. The markers must be exactly the pages that line declares. Either way a citation reads
+`Combat / Making an Attack / p. 15`: a path of the corpus's own headings, then the printed page.
 
 It is `tools/check-locators.py`'s page-marker idea with three differences, each stricter:
 
@@ -57,7 +60,8 @@ interleaved table or split sentence passes.
 
 Usage: check-locators-pdf-text.py <corpus-map.json> <srd-5.2.1.txt>
 Exit 0 if every entry was located on its cited page and the other checks passed; 1 otherwise; 2 on
-a usage error (including a corpus with no page markers, or markers out of sequence).
+a usage error (including a corpus with no page markers, markers out of sequence or not the pages a
+header declares, and an extent claiming a page the text does not hold).
 """
 import importlib.util
 import json
@@ -68,6 +72,9 @@ import sys
 HERE = os.path.dirname(os.path.abspath(__file__))
 PAGE_CHECKER = os.path.join(os.path.dirname(os.path.dirname(HERE)), "tools", "check-locators.py")
 MARKER = re.compile(r"^\{(\d+)\}$", re.M)
+# The first line of a text tools/extract-pdf-pages.py derived (0028): its printed pages and offset.
+HEADER = re.compile(r"\A\{(?P<derivation>[^\s{}]+) pages=(?P<pages>\d+(?:-\d+)?(?:,\d+(?:-\d+)?)*) "
+                    r"offset=(?P<offset>[+-]\d+)\}\n")
 PAGE = re.compile(r"\bp\.\s*(\d+)\s*$")
 FOLIO_LINE = re.compile(r"^[ \t]*(\d+)[ \t]*$", re.M)
 BLOCK_BREAK = re.compile(r"\n[ \t]*\n")
@@ -82,14 +89,51 @@ def load_page_checker():
     return module
 
 
+def declared_pages(corpus):
+    """The printed pages a derived text's header declares, in order, or None when it has none.
+
+    `tools/extract-pdf-pages.py` begins its text `{<derivation> pages=35-36,44 offset=+1}` (0028):
+    a bounded page set, marked in printed page numbers. A text with no header, the SRD's, holds
+    every page from 1.
+    """
+    header = HEADER.match(corpus)
+    if header is None:
+        return None
+    pages = []
+    for span in header.group("pages").split(","):
+        first, _, last = span.partition("-")
+        first, last = int(first), int(last or first)
+        if last < first or (pages and first <= pages[-1]):
+            raise ValueError(f"the header declares pages {header.group('pages')}, which are not in "
+                             f"ascending order")
+        pages.extend(range(first, last + 1))
+    return pages
+
+
 def page_starts(corpus):
-    """[(offset, page)] for every marker, which must run 1, 2, 3, ... with no gap."""
+    """[(offset, page)] for every marker.
+
+    Without a header the markers must run 1, 2, 3, ... with no gap. With one, they must be exactly
+    the printed pages it declares, in its order: a page missing, or one it does not declare, is
+    refused rather than read.
+    """
     starts = [(m.start(), int(m.group(1))) for m in MARKER.finditer(corpus)]
     if not starts:
         raise ValueError("no {N} page markers; this is not a page-marked extraction")
-    for expected, (_, number) in enumerate(starts, 1):
-        if number != expected:
-            raise ValueError(f"page marker {number} where {expected} was expected; markers must be consecutive")
+    declared = declared_pages(corpus)
+    if declared is None:
+        for expected, (_, number) in enumerate(starts, 1):
+            if number != expected:
+                raise ValueError(f"page marker {number} where {expected} was expected; markers must be consecutive")
+        return starts
+    found = [number for _, number in starts]
+    if found != declared:
+        missing = sorted(set(declared) - set(found))
+        extra = sorted(set(found) - set(declared))
+        raise ValueError(f"the page markers are {found[:8]}{'...' if len(found) > 8 else ''}, not the printed "
+                         f"pages the header declares" + (f"; missing {missing}" if missing else "")
+                         + (f"; undeclared {extra}" if extra else "")
+                         + ("" if missing or extra else "; out of order"))
     return starts
 
 
@@ -118,20 +162,34 @@ def pages_touched(span, starts):
     return {p for p in touched if p is not None}
 
 
+def heading_window_page(cited, starts):
+    """The page whose start the heading search begins at: cited-1 when the text holds it, else cited."""
+    held = {number for _, number in starts}
+    return cited - 1 if cited - 1 in held else cited
+
+
 def heading_near(heading, cited, span_start, corpus, starts):
-    """The heading occurs as a whole line from the start of page cited-1 up to the quote."""
-    first = max(1, cited - 1)
+    """The heading occurs as a whole line from the start of page cited-1 up to the quote.
+
+    A derived text of a bounded page set (0028) may not hold page cited-1; the search then begins
+    at the cited page's own start.
+    """
+    first = heading_window_page(cited, starts)
     begin = next((offset for offset, number in starts if number == first), 0)
     window = corpus[begin:span_start]
     return re.search(r"^[ \t]*" + re.escape(heading) + r"[ \t]*$", window, re.M) is not None
 
 
 def page_bounds(page, corpus, starts):
-    """(start, end) offsets of physical page `page`, or (None, None) when there is no such page."""
+    """(start, end) offsets of page `page`, or (None, None) when the text holds no such page.
+
+    The page ends where the next marker begins, which is page + 1 in a text holding every page and
+    may be a later page in a derived text of a bounded page set (0028).
+    """
     begin = next((offset for offset, number in starts if number == page), None)
     if begin is None:
         return None, None
-    return begin, next((offset for offset, number in starts if number == page + 1), len(corpus))
+    return begin, next((offset for offset, _ in starts if offset > begin), len(corpus))
 
 
 def page_extent(document):
@@ -205,7 +263,7 @@ def check_locators(page_checker, entries, corpus, starts, reached, end=None):
                 bad.append(f"  X  {name}: cited p. {cited}, evidence{where} is on {found}")
             elif not heading_near(heading, cited, span[0], corpus, starts):
                 bad.append(f"  X  {name}: heading {heading!r} does not occur as a line between the start "
-                           f"of p. {max(1, cited - 1)} and the quote")
+                           f"of p. {heading_window_page(cited, starts)} and the quote")
     aside = (f"; {len(derived)} derived entr{'y' if len(derived) == 1 else 'ies'} not located, because a "
              f"derived entry cites nothing") if derived else ""
     if not located:
@@ -337,13 +395,19 @@ def main(argv=None):
         with open(corpus_path, encoding="utf-8") as handle:
             corpus = handle.read()
         starts = page_starts(corpus)
+        declared = page_extent(document)
+        if declared is not None:
+            held = {number for _, number in starts}
+            unheld = [p for p in range(declared["from"], declared["to"] + 1) if p not in held]
+            if unheld:
+                raise ValueError(f"the extent claims p. {', '.join(map(str, unheld))}, which the text does "
+                                 f"not hold; derive the pages the extent claims")
     except (OSError, ValueError) as error:
         print(f"cannot check {map_path} against {corpus_path}: {error}", file=sys.stderr)
         return 2
 
     page_checker = load_page_checker()
     entries = [e for e in document.get("entries") or [] if isinstance(e, dict)]
-    declared = page_extent(document)
     boundary, problem = extent_end(declared, corpus, starts)
     extent = None
     if declared is not None:

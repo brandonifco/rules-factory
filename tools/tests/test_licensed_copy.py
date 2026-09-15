@@ -34,6 +34,7 @@ pack-map.py runs in-process here, so the fixture's derivation can be added to in
 
 Run: python3 -m unittest discover -s tools/tests
 """
+import hashlib
 import importlib.util
 import io
 import json
@@ -177,6 +178,39 @@ class TestPackMap(Case):
         self.assertRegex(nuspec, r"<tags>[^<]*\blicensed-copy-exception</tags>")
         self.assertIn(f"NOT PUBLISHABLE: built locally under the licensed-copy exception by {OPERATOR}", nuspec)
         self.assertNotIn(fixture.corpus_bytes(), contents, "the package carries no corpus")
+
+    def test_a_printed_page_pdf_text_packs_under_its_own_derivation(self):
+        # 0028 (#139): the local copy is a text derived for two printed pages of a book whose PDF
+        # pages are one ahead. intake's real derivation hashes it, and the PDF text checker reads
+        # its printed-page markers. The two sentences are the fixture's invented ones.
+        derivation = "pdftotext-24.02.0-printed-page-marked"
+        document, manifest = fixture.map_document(), fixture.manifest_document()
+        sentences = [document["entries"][0]["evidence"], document["entries"][1]["evidence"]]
+        text = (f"{{{derivation} pages=35-36 offset=+1}}\n{{35}}\nSkirmish\n{sentences[0]}\n\n35\n"
+                f"{{36}}\nSkirmish\n{sentences[1]}\n\n36\n").encode("utf-8")
+        digest = hashlib.sha256(text).hexdigest()
+        for entry, page in zip(document["entries"], (35, 36, 36)):
+            entry["locator"]["citation"] = f"Skirmish / p. {page}"
+        document["baseline"] = {"contentHash": digest, "hashDerivation": derivation}
+        document["extent"] = {"unit": "page", "from": 35, "to": 36}
+        manifest["corpora"][0].update(
+            adapter="pdftotext-page-marked", locatorGrammar="heading-path-and-printed-page",
+            contentHash=digest, hashDerivation=derivation,
+            quotedText={"derivation": derivation, "extractedFrom": "the licensed PDF"},
+            sourcePdf={"sha256": "e" * 64, "bytes": 4096, "envVar": "RULES_FACTORY_TEST_SYNTHETIC_PDF"},
+            derivedText={"extractor": "pdftotext", "extractorVersion": "24.02.0", "pdfPageOffset": 1,
+                         "printedPages": [{"from": 35, "to": 36}]})
+        for name, value in (("corpus-map.json", document), ("corpus-manifest.json", manifest)):
+            with open(os.path.join(self.map_dir, name), "w", encoding="utf-8") as handle:
+                json.dump(value, handle, indent=2)
+        with open(self.corpus, "wb") as handle:
+            handle.write(text)
+        code, output, out = self.pack(licensed_copy.FLAG)
+        self.assertEqual(code, 0, output)
+        self.assertIn(f"hashes to the manifest's contentHash ({derivation})", output)
+        self.assertIn("[ok] locators: all 3 citations verified", output)
+        self.assertIn("[ok] coverage: all 2 pages of the declared extent (35-36)", output)
+        self.assertEqual(len(self.packages(out)), 1)
 
     def test_without_the_flag_the_refusal_is_unchanged(self):
         code, output, out = self.pack()

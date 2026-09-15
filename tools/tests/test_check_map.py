@@ -700,6 +700,68 @@ class TestExtraction(MapCase):
         code, output = self.run_tool(valid_map())
         self.assertEqual(self.status_of(output, "extraction"), "fail", output)
 
+    # 0028: a text derived for the printed pages the manifest declares names its derivation whole.
+    def printed_page_derivation(self, corpus):
+        corpus.update(hashDerivation="pdftotext-24.02.0-printed-page-marked",
+                      sourcePdf={"sha256": "b" * 64, "bytes": 1024, "envVar": "DEMO_PDF"},
+                      derivedText={"extractor": "pdftotext", "extractorVersion": "24.02.0",
+                                   "pdfPageOffset": 1,
+                                   "printedPages": [{"from": 35, "to": 36}, {"from": 44, "to": 44}]})
+        corpus["quotedText"]["derivation"] = "pdftotext-24.02.0-printed-page-marked"
+
+    def assert_derivation_catches(self, mutate, expected):
+        self.manifest_without(self.printed_page_derivation)
+        code, output = self.run_tool(valid_map())
+        self.assertEqual(self.status_of(output, "extraction"), "ok", output)
+        self.assertIn("1 printed-page derivation well formed", output)
+
+        def both(corpus):
+            self.printed_page_derivation(corpus)
+            mutate(corpus)
+        self.manifest_without(both)
+        code, output = self.run_tool(valid_map())
+        self.assertEqual(self.status_of(output, "extraction"), "fail", output)
+        self.assertIn(expected, output)
+
+    def test_a_printed_page_derivation_without_derived_text_fails(self):
+        self.assert_derivation_catches(lambda c: c.pop("derivedText"), "declares no `derivedText`")
+
+    def test_derived_text_under_another_derivation_fails(self):
+        def mutate(corpus):
+            corpus["hashDerivation"] = corpus["quotedText"]["derivation"] = "demo-plain-text"
+        self.assert_derivation_catches(mutate, "the derivation that field describes")
+
+    def test_derived_text_without_quoted_text_fails(self):
+        self.assert_derivation_catches(lambda c: c.pop("quotedText"), "and no `quotedText`")
+
+    def test_another_extractor_version_fails(self):
+        self.assert_derivation_catches(lambda c: c["derivedText"].update(extractorVersion="25.01.0"),
+                                       "is pinned to pdftotext 24.02.0")
+
+    def test_an_offset_that_is_not_an_integer_fails(self):
+        self.assert_derivation_catches(lambda c: c["derivedText"].update(pdfPageOffset="+1"),
+                                       "pdfPageOffset is '+1'")
+
+    def test_overlapping_page_ranges_fail(self):
+        self.assert_derivation_catches(lambda c: c["derivedText"]["printedPages"].append({"from": 44, "to": 45}),
+                                       "list them ascending and disjoint")
+
+    def test_a_page_before_the_pdf_starts_fails(self):
+        def mutate(corpus):
+            corpus["derivedText"]["pdfPageOffset"] = -40
+        self.assert_derivation_catches(mutate, "on pages the PDF has")
+
+    def test_an_unknown_field_of_derived_text_fails(self):
+        self.assert_derivation_catches(lambda c: c["derivedText"].update(wholeBook=True),
+                                       "`wholeBook` is not a field of derivedText")
+
+    def test_a_source_pdf_digest_that_is_the_content_hash_fails(self):
+        self.assert_derivation_catches(lambda c: c["sourcePdf"].update(sha256=c["contentHash"]),
+                                       "the PDF's digest is a different fact")
+
+    def test_derived_text_without_a_source_pdf_fails(self):
+        self.assert_derivation_catches(lambda c: c.pop("sourcePdf"), "and no `sourcePdf` object")
+
     def test_a_derived_entry_carrying_extraction_fails(self):
         self.assert_catches("derived", lambda d: d["entries"][10].update(
             extraction={"defect": "interleaved-table", "renderedReading": "Half | +2"}))

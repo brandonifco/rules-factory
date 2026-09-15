@@ -95,6 +95,11 @@ EXCEPTION_TAG = "licensed-copy-exception"
 
 # The locator checker for each adapter. A corpus whose adapter is not here cannot have its
 # citations checked, and a map whose citations cannot be checked is not published.
+#
+# `pdftotext-page-marked` reads both page-marked PDF derivations: the SRD's, every page from 1, and
+# `pdftotext-24.02.0-printed-page-marked` (tools/extract-pdf-pages.py, 0028), the printed pages a
+# manifest declares, marked with their printed numbers. The checker tells them apart by the latter's
+# header line and holds the markers to it; the hash step before it holds the text to contentHash.
 LOCATOR_CHECKERS = {
     "plain-text": os.path.join(REPO, "tools", "check-locators.py"),
     "ecfr-xml": os.path.join(REPO, "examples", "faa-part-107", "check-locators-section.py"),
