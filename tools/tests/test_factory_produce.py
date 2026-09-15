@@ -170,7 +170,7 @@ class TestScaffold(ProduceCase):
         self.assertEqual(json.loads(self.read(out, "global.json"))["sdk"], {"version": "10.0.112", "rollForward": "disable"})
         packages = self.read(out, PACKAGES_PROPS)
         self.assertIn('<PackageVersion Include="RulesKernel" Version="0.2.0" />', packages)
-        self.assertIn(f'<PackageVersion Include="{MAP_ID}" Version="[3.0.0]" />', packages)
+        self.assertIn(f'<PackageVersion Include="{MAP_ID}" Version="[4.0.0]" />', packages)
         self.assertIn(f"<ItemGroup Condition=\"'$(MSBuildProjectName)' == '{NAME}'\">", packages)
         self.assertIn(f'<PackageReference Include="{MAP_ID}" PrivateAssets="all" />', packages)
         central = self.read(out, "Directory.Packages.props")
@@ -210,8 +210,10 @@ class TestMapVersionChange(ProduceCase):
     @classmethod
     def setUpClass(cls):
         super().setUpClass()
-        cls.v1 = pack_version(PART107, "4.0.0", os.path.join(cls.shared, "versions"))
-        cls.v2 = pack_version(PART107, "5.0.0", os.path.join(cls.shared, "versions"))
+        # Both above the map's real version, and not 6.0.0: the emitted validate.yml pins
+        # actions/setup-dotnet "# v6.0.0", which assert_names_only would read as a stale pin.
+        cls.v1 = pack_version(PART107, "5.0.0", os.path.join(cls.shared, "versions"))
+        cls.v2 = pack_version(PART107, "7.0.0", os.path.join(cls.shared, "versions"))
 
     def assert_names_only(self, out, now, before):
         files = tree(out)
@@ -238,15 +240,15 @@ class TestMapVersionChange(ProduceCase):
 
     def test_upgrade(self):
         out = self.produced(package=self.v1)
-        self.assert_names_only(out, "4.0.0", "5.0.0")
+        self.assert_names_only(out, "5.0.0", "7.0.0")
         self.produced(out, package=self.v2)
-        self.assert_names_only(out, "5.0.0", "4.0.0")
+        self.assert_names_only(out, "7.0.0", "5.0.0")
         self.assert_same_as_fresh(out, self.v2)
 
     def test_downgrade(self):
         out = self.produced(package=self.v2)
         self.produced(out, package=self.v1)
-        self.assert_names_only(out, "4.0.0", "5.0.0")
+        self.assert_names_only(out, "5.0.0", "7.0.0")
         self.assert_same_as_fresh(out, self.v1)
 
     def test_engine_owned_scaffold_edits_survive_a_version_change(self):
@@ -255,7 +257,7 @@ class TestMapVersionChange(ProduceCase):
             handle.write("<!-- edited -->\n")
         self.produced(out, package=self.v2)
         self.assertTrue(self.read(out, "Directory.Packages.props").endswith("<!-- edited -->\n"))
-        self.assert_names_only(out, "5.0.0", "4.0.0")
+        self.assert_names_only(out, "7.0.0", "5.0.0")
 
 
 class TestGeneration(ProduceCase):
@@ -537,7 +539,7 @@ class TestRefuses(ProduceCase):
         output = self.split_pin("Directory.Packages.props", (
             "<Project>\n  <ItemGroup>\n"
             f'    <PackageVersion Include="RulesKernel" Version="0.2.0" />\n'
-            f'    <PackageVersion Include="{MAP_ID}" Version="[3.0.0]" />\n'
+            f'    <PackageVersion Include="{MAP_ID}" Version="[4.0.0]" />\n'
             "  </ItemGroup>\n</Project>\n"))
         self.assertIn("Directory.Packages.props pins RulesKernel", output)
         self.assertIn(f"Directory.Packages.props pins {MAP_ID}", output)
@@ -574,8 +576,8 @@ class TestTransactional(ProduceCase):
     @classmethod
     def setUpClass(cls):
         super().setUpClass()
-        cls.v1 = pack_version(PART107, "4.0.0", os.path.join(cls.shared, "versions"))
-        cls.v2 = pack_version(PART107, "5.0.0", os.path.join(cls.shared, "versions"))
+        cls.v1 = pack_version(PART107, "5.0.0", os.path.join(cls.shared, "versions"))
+        cls.v2 = pack_version(PART107, "7.0.0", os.path.join(cls.shared, "versions"))
 
     def existing(self):
         """A v1 engine with a stale backlog item (a v2 run would change, add and remove files)."""

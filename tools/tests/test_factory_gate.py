@@ -14,7 +14,7 @@ Two layers:
     when RULES_FACTORY_SKIP_DOTNET is set): the emitted `scripts/validate.sh` itself passes on
     fresh output and fails on each of those mutations. The engine is a scratch copy: its
     global.json is re-pinned to the SDK installed here, and its NuGet.config gains a local folder
-    feed holding the map package packed by tools/pack-map.py (Part 107 3.0.0 is not on
+    feed holding the map package packed by tools/pack-map.py (Part 107 4.0.0 is not on
     nuget.org until it is tagged) and the user's global packages folder as a read-only fallback. Packages restore
     into a scratch NUGET_PACKAGES, so an unpublished map package never enters the user's cache.
 
@@ -133,7 +133,7 @@ class GateCase(unittest.TestCase):
     def regenerate(self, engine):
         return self.script(engine, "engine-gate.py", "regenerate", "--package-map", self.package_map,
                            "--package-manifest", self.package_manifest,
-                           "--package-id", PACKAGE_ID, "--package-version", "3.0.0", "--name", NAME)
+                           "--package-id", PACKAGE_ID, "--package-version", "4.0.0", "--name", NAME)
 
     def merge(self, engine):
         merged = os.path.join(self.tmp, "merged.json")
@@ -365,7 +365,7 @@ class TestRandomnessNone(GateCase):
         self.assertIn("declares randomness None", output)
         code, output = self.script(engine, "engine-gate.py", "regenerate", "--package-map", self.package_map,
                                    "--package-manifest", path, "--package-id", PACKAGE_ID,
-                                   "--package-version", "3.0.0", "--name", NAME)
+                                   "--package-version", "4.0.0", "--name", NAME)
         self.assertEqual(code, 1, output)
 
 
@@ -727,7 +727,7 @@ class TestValidateShWithDotnet(GateCase):
         engine = self.copy()
         write_json(os.path.join(engine, "corpus-map.overlay.json"), {"no-such-entry": {"status": "mapped"}})
         self.assertFailsAt(self.validate(engine, "full"),
-                           f"merge({PACKAGE_ID}@3.0.0, corpus-map.overlay.json) obeys 0015")
+                           f"merge({PACKAGE_ID}@4.0.0, corpus-map.overlay.json) obeys 0015")
 
     def test_fails_on_implemented_without_tests(self):
         engine = self.copy()
