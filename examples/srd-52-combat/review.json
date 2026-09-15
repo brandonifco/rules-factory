@@ -2,13 +2,15 @@
   "about": "The review of each map's exact bytes (docs/decisions/0017-a-map-change-carries-a-review-of-its-bytes.md). tools/check-map-review.py fails any map whose sha256 is not the one recorded here.",
   "reviews": {
     "corpus-map.json": {
-      "sha256": "80013e6129f1b1edaf46fa9ea4925367a01d2228a4621a94e3e1024ce1785619",
-      "method": "exemption",
-      "exemption": {
-        "kind": "legacy",
-        "issue": "#106",
-        "reason": "Not reviewed. This is the first mapping of the SRD 5.2.1 combat chapter (trial 5, steps 1-2 of #106), written by one mapper and checked only mechanically: check-map.py --phase publish and check-locators-pdf-text.py pass, which prove a quote is on its cited page and never that an entry says what the quote says (0014). The kind is `legacy` because it is the only exemption kind that names an issue tracking a missing review; the map does not predate the gate. A blind second mapping is step 3 of #106 and is owed before this map is used or published: pack-map.py gates and packs it on every pull request, and nothing should be tagged from it until this exemption is replaced by a blind-second-mapping review."
-      }
+      "sha256": "c4017935b1bd8e658701c254ad4e4213429c808f275014d2966226dbd3113937",
+      "method": "blind-second-mapping",
+      "comparison": "blind-mapping/results.json",
+      "resolutions": "blind-mapping/resolutions.json",
+      "compared": {
+        "commit": "5216c6280c559387eee8ffb51d5a4aa2344300a4",
+        "sha256": "80013e6129f1b1edaf46fa9ea4925367a01d2228a4621a94e3e1024ce1785619"
+      },
+      "note": "Issue #106, step 3. compare.py read the map at 5216c62 (86 entries), the bytes the legacy exemption covered, and exits 1 unless each of its 259 flags has a row in resolutions.json. The map was corrected to those rows (21 blind-right, 11 corpus-does-not-settle; 91 entries) in the same commit that replaced the exemption with this review. sha256 is the corrected map; compared.sha256 is the map before correction. The blind mapper worked from docs with the SRD's name, combat vocabulary and the backgammon examples removed (blind-mapping/REDACTIONS.md), and from the corpus text and renders of pp. 13-16; what could not be ruled out, including that the mapper model knows this game, is in blind-mapping/README.md, Limits."
     }
   }
 }

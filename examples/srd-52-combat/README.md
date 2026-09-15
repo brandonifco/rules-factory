@@ -1,14 +1,20 @@
-# Trial 5: the method by hand, against the SRD 5.2.1 combat chapter
+# Trial 7: the method by hand, against the SRD 5.2.1 combat chapter
 
-Fifth run of [the method](../../docs/method.md), and the first against a PDF. Chosen
+A run of [the method](../../docs/method.md), and the first against a PDF. Chosen
 ([#106](https://github.com/brandonifco/rules-factory/issues/106)) to stress what the earlier
 corpora did not: a real PDF, so an adapter and page locators over extracted text; actions,
 reactions and turn structure as gates; many rules left to the Game Master; and dense pointers into
 conditions and spellcasting outside the slice.
 
-**Status: steps 1 and 2 of #106 only.** The corpus is admitted and a first map is written. The map
-has **not** had a blind second mapping (0014), and its `review.json` says so: a `legacy` exemption
-naming #106. Nothing here should be used, tagged or published until step 3 replaces it.
+**Status: steps 1–3 of #106.** The corpus is admitted, a first map is written, and the map has had
+a blind second mapping (0014): [blind-mapping/](blind-mapping/README.md) compared a map written by
+a mapper who had not seen this one, resolved all 259 flags against the corpus, and corrected the
+map to them. `review.json` records that as a `blind-second-mapping` review naming the corrected
+bytes. The package (step 4) and the engine (step 5) are still to come. The counts below are the
+corrected map's; the first map had 86 entries, 17 of them ambiguous.
+
+The trial was numbered 5 in #106 and in the pull request that admitted the corpus. Trials 5 and 6
+were already the injection trial and the blind-mapping trial (0014, 0015), so it is trial 7.
 
 > This work includes material from the System Reference Document 5.2.1 ("SRD 5.2.1") by Wizards of
 > the Coast LLC, available at https://www.dndbeyond.com/srd. The SRD 5.2.1 is licensed under the
@@ -93,35 +99,38 @@ of p. 13 to the end of "Underwater Combat" on p. 16.
 
 ## The map
 
-**86 entries**: 68 in scope, 18 out.
+**91 entries**: 70 in scope, 21 out. The blind second mapping added five and changed eighteen;
+[blind-mapping/README.md](blind-mapping/README.md) lists each change.
 
 | | in scope | out of scope |
 |---|---:|---:|
-| operation | 59 | 17 |
+| operation | 61 | 20 |
 | value | 6 | 1 |
 | assertion | 3 | 0 |
-| clear | 51 | 18 |
-| ambiguous | **17 (25%)** | 0 |
-| status | 68 `mapped` | 18 `declined` |
+| clear | 51 | 21 |
+| ambiguous | **19 (27%)** | 0 |
+| status | 70 `mapped` | 21 `declined` |
 
-- **Out of scope, 18.** 13 decline rules outside the extent that in-scope entries depend on, gate on or
+- **Out of scope, 21.** 16 decline rules outside the extent that in-scope entries depend on, gate on or
   restate: the Actions table, Bonus Actions, Reactions, attack rolls, Advantage/Disadvantage, saving
-  throws, ability checks, Prone, Incapacitated, the movement modes, the Initiative-score option,
-  and the Glossary's restatements of Surprise and Opportunity Attacks. 3 decline pointer passages
-  inside the extent (`action-options`, `speed-and-size-sources`, `damage-and-healing`). **2 are
-  absences** (`absentFrom`): `flanking` and a `surprise-round` in which the surprised lose their
-  first turn. The corpus states neither.
-- **Gates, 14 entries.** Five grid rules are `enabledBy: grid-play`. Five mount rules are enabled
-  by `mount-eligibility` or `mount-control-requires-training`. `opportunity-attack` is
-  `suspendedBy` `opportunity-attack-avoidance` and by `reactions`, a gate outside the slice (0021).
-  `initiative-roll` is suspended by `initiative-score-option` (Rules Glossary, p. 184), also outside
-  the slice. `free-object-interaction` and `communication-cost` are suspended by the assertion
+  throws, ability checks, Round Down, Prone, Incapacitated, the movement modes, the Initiative-score
+  option, Damage Rolls, Resistance, and the Glossary's restatements of Surprise and Opportunity
+  Attacks. 3 decline pointer passages inside the extent (`action-options`, `speed-and-size-sources`,
+  `damage-and-healing`). **2 are absences** (`absentFrom`): `flanking` and a `surprise-round` in
+  which the surprised lose their first turn. The corpus states neither.
+- **Gates, 15 entries.** Five grid rules are `enabledBy: grid-play`. Five mount rules are enabled
+  by `mount-eligibility` or `mount-control-requires-training`, and four of them also by
+  `mounting-cost`, the rule that puts a rider on a mount. `opportunity-attack` is `suspendedBy`
+  `opportunity-attack-avoidance`, and by `reactions` and `incapacitated-condition`, gates outside the
+  slice (0021). `attack-sources` is suspended by `incapacitated-condition` too. `initiative-roll` is
+  suspended by `initiative-score-option` (Rules Glossary, p. 184), also outside the slice.
+  `free-object-interaction` and `communication-cost` are suspended by the assertion
   `gm-requires-action`.
 - **One conflict**, `does-combat-end-without-a-defeat`. p. 13 says the fight goes on to the next
   round "if neither side is defeated". p. 14 says combat can also end "when both sides agree".
   Both members are `unresolved`. The likelier reading, that the specific rule governs, is a
   Phase 4 decision and is not taken here.
-- **25 `crossReferences`**, 18 resolved to entries and 7 `unmapped` with a reason.
+- **22 `crossReferences`**, 16 resolved to entries and 6 `unmapped` with a reason.
 - **No derived entries.** No fact was needed that two stated rules entail and none states.
 
 **Assertions, 3.** `initiative-ties` (the GM or the players decide "the order among tied"
@@ -129,19 +138,24 @@ combatants, which is a fixed set). `gm-requires-action` ("when it needs special 
 presents an unusual obstacle", a stated measure). `sides-agree-to-end` (an agreement whose only
 value is to end combat).
 
-**Ambiguous, 17.** Two are the conflict below. Seven are "or case" gaps (gate 1), where the words
+**Ambiguous, 19.** Two are the conflict above. Five are "or case" gaps (gate 1), where the words
 are clear and a reachable case is not covered: whether "two sizes larger or smaller" means exactly
-two (`moving-through-creatures`); what a distance that is not a multiple of 5 feet is in squares
-(`grid-speed-in-squares`); what the shortest route may pass through (`grid-range`); whether an
-attack on an empty location still rolls (`wrong-location-misses`); which degree one object gives
-when it meets two rows of the Cover table (`cover-degree`); whether you can mount with less
-movement left than the cost (`mounting-cost`); and who picks the space you fall into
-(`falling-off`). Eight are open terms with no measure: `round-duration` ("about 6 seconds"),
-`group-initiative`, `surprised`, `brief-or-extended-communication`, `side-defeated`, `total-cover`
-("directly"), `appropriate-anatomy` and `independent-mount`.
+two (`moving-through-creatures`); what the shortest route may pass through (`grid-range`); what
+entering a square occupied by an ally or a Tiny creature costs (`grid-entering-square`); who picks
+the space you fall into (`falling-off`); and the Initiative ties the tie rule does not assign
+(`initiative-ties-uncovered`). Two turn on what words attach to: whether "that covers at least half"
+qualifies "another creature" (`cover-degree`), and whether "any of these activities" reaches
+communication (`communication-cost`). Ten are open terms with no measure: `round-duration` ("about
+6 seconds"), `group-initiative`, `surprised`, `difficult-terrain`, `brief-or-extended-communication`,
+`side-defeated`, `total-cover` ("directly"), `appropriate-anatomy`,
+`mount-control-requires-training` ("similar creatures") and `independent-mount`.
+
+Three questions the first map asked are answered by the corpus and are no longer ambiguous:
+`grid-speed-in-squares` (the general Round Down rule, p. 5), `wrong-location-misses` (the roll is
+made) and `mounting-cost` (movement cannot go below zero).
 
 Calibration: the slice is ~15,000 characters of extracted text, twice the earlier trials' ~8,000,
-and produced 68 in-scope entries against their ~24. The rate per character is higher. The SRD
+and produced 68 in-scope entries against their ~24 (70 after the blind second mapping). The rate per character is higher. The SRD
 packs a rule into nearly every sentence.
 
 ## Findings: where the method and schema did not fit
@@ -231,7 +245,10 @@ roles at the table, and the method's "caller" is one.
 whether, or how often, a die is rolled. `wrong-location-misses`: "you miss", but is an attack roll
 still made? `group-initiative`: one roll per group, but what is a group? `initiative-score-option`:
 no roll at all when the GM chooses it. A seeded engine that guesses changes every later draw of a
-replay. Two of the three are ambiguous and one is a gate the caller holds. The method's replay
+replay. The first map recorded two of the three as ambiguous and one as a gate the caller holds.
+The blind second mapping answered the first from the corpus: the preceding sentence gives the roll
+Disadvantage "whether you're guessing the target's location", so the roll is made. The point stands
+for `group-initiative`. The method's replay
 guidance (Phase 6, "preserve determinism") assumes the corpus fixes the draws. Here it sometimes
 does not, and the only place that shows is `ambiguity.question`.
 
@@ -257,19 +274,20 @@ one that is wrong on a literal reading. 0007 handled it without strain.
 - **Package directory name.** `pack-map.py` requires lower-case kebab-case without dots, so the
   map's directory is `srd-52-combat`, not `srd-5.2-combat`. That gives exactly
   `RulesFactory.Maps.Srd52Combat` under 0015's rule.
-- **The trial number is taken.** #106 calls this trial 5, but "trial 5" already names the
+- **The trial number was taken.** #106 called this trial 5, but "trial 5" already names the
   injection trial ([../injection-trial/](../injection-trial/README.md), cited so in 0014 and 0015),
-  and "trial 6" names [the blind-mapping trial](../blind-mapping-trial/README.md). This README keeps
-  #106's number and the collision is left for whoever settles the log's numbering.
+  and "trial 6" names [the blind-mapping trial](../blind-mapping-trial/README.md). Step 3 renumbered
+  it trial 7 here, in the trial log and in #106's title.
 - **No exemption kind means "review pending".** `legacy` is defined as "the map predates this
-  gate", which is not true of a new map. It is the only kind that names a tracking issue, so it is
-  used, and its reason says the kind is a misfit.
+  gate", which is not true of a new map. It is the only kind that names a tracking issue, so it was
+  used between steps 2 and 3, with a reason saying the kind was a misfit. Step 3 replaced it with a
+  `blind-second-mapping` review.
 
 ## Follow-ups for later steps
 
-- **Step 3 (blind second mapping):** the redacted docs must drop this README and every
-  SRD-derived example. The blind mapper should get `srd-5.2.1.txt` pages 13–16 *and* the rendered
-  pages, because of finding 1.
+- **Step 3 (blind second mapping):** done, in [blind-mapping/](blind-mapping/README.md). The mapper
+  had no README and no SRD-derived example, and got the rendered pages 13–16 beside the text, because
+  of finding 1.
 - **Step 4 (publish):** `pack-map.py` writes `<license type="expression">Apache-2.0</license>` for
   every map, and no nuspec field carries the CC-BY attribution. The map quotes CC-BY text, so the
   package needs the attribution statement: at least in `<description>` or a packaged

@@ -1,0 +1,124 @@
+# Redactions
+
+Source: docs/method.md and docs/corpus-map.md at the commit named in README.md. Every edit below matched exactly once (whitespace-insensitive).
+
+## Content edits
+
+- method.md L68: adapter-illustration example
+- method.md L105: derived-entry example (hit pays single stake)
+- method.md L120: count of wrong backgammon citations
+- method.md L128: definitions paragraph: board vocabulary quotes, entry ids point-designations / direction-of-travel, #13
+- method.md L135: advice example quoting the corpus ("It is always an object to do this")
+- method.md L142: phase-gate examples (bearing off / man on the bar)
+- method.md L153: gate-reach example naming full-table-suspension
+- method.md L218: scope example (1909 text has no doubling cube)
+- method.md L243: per-rule scope example (Hints for Play / die faces, #20)
+- method.md L351: delegated-choice example quoting the corpus ("thrice or four times (as may have been agreed)")
+- method.md L376: gate 1 examples (thrice or four times; wholly/partly play; game-value, must-play-whole-throw)
+- method.md L476: derived-consequence examples (must-play-whole-throw, opening throw never doublets, bearing-off-highest)
+- method.md L486: derived-consequence rot example (the opening rule changes)
+- method.md L503: replay-list example (chosen play among the legal plays)
+- method.md L506: replay-list rule naming hoyle-backgammon LegalPlays.For
+- method.md L597: engine feedback example (backgammon map moved twice)
+- corpus-map.md L57: page-extent example 271-280 (the backgammon chapter)
+- corpus-map.md L49: extent paragraph: backgammon citations 271-277 and throw enumeration on 278-280 (#20)
+- corpus-map.md L239: gate-scope sentence quoting strategy-advice ("make points whenever you fairly can")
+- corpus-map.md L246: gate 1 examples (thrice or four times; wholly/partly; game-value and must-play-whole-throw verdicts)
+- corpus-map.md L264: gate 3 fixed-set example and agentless passive quoting the corpus
+- corpus-map.md L306: count of wrong backgammon citations
+- corpus-map.md L314: ellipsis example naming point-designations and its word count
+- corpus-map.md L321: page-straddle example (arrangement sentence p. 272, {273} marker)
+- corpus-map.md L325: note examples (quatre and trois; throw fully/partly/unplayable)
+- corpus-map.md L336: note-claim example (opening throw never doublets)
+- corpus-map.md L348: out/absent examples (strategy-advice, doubling-cube, 29 checked)
+- corpus-map.md L392: self-contradiction example (enter-from-bar vs legal-destination)
+- corpus-map.md L406: conflict JSON example (points-open-to-an-entering-man, decision 0006)
+- corpus-map.md L412: conflict paragraph naming enter-from-bar / full-table-suspension / legal-destination
+- corpus-map.md L435: phase-gate examples (bearing off / entry from the bar)
+- corpus-map.md L442: dependsOn vs gates example (bearing-off-doublets, move-by-pip, enter-from-bar)
+- corpus-map.md L451: direction example (bearing-off-eligible in enabledBy / suspendedBy)
+- corpus-map.md L467: repetition example (full-table-suspension named by seven entries)
+- corpus-map.md L504: beyondAdapter modality: 'the one observed case'
+- corpus-map.md L507: beyondAdapter locator example (men placed as in Fig. 1)
+- corpus-map.md L516: beyondAdapter general case (the one illustration; both corpora text)
+- corpus-map.md L563: absentFrom example terms (doubling, doubling cube, redouble, offer to double)
+- corpus-map.md L573: absentFrom extent example ("doubling" not in Hoyle's backgammon chapter)
+- corpus-map.md L578: absentFrom locator example (doubling-cube cites apparatus sentence)
+- corpus-map.md L598: derivedFrom example (hit-pays-single-stake, gammon/backgammon stake quotes)
+- corpus-map.md L635: per-rule scope instance (Hints for Play, die-faces, strategy-advice)
+- corpus-map.md L648: crossReferences JSON example (as at starting / opening-roll; as in Fig. 1)
+- corpus-map.md L675: crossReferences limit example (starting-position quotes as shown in {273} Fig. 1)
+- corpus-map.md L695: status decoupling instance (must-play-whole-throw)
+- corpus-map.md L720: tests JSON example (WholeThrowTests)
+- corpus-map.md L726: 26 backgammon entries claimed implemented
+- corpus-map.md L743: one shape of throw
+- corpus-map.md L747: surprising reading example (bearing-off-highest)
+- corpus-map.md L759: count of mapped/unresolved entries across three maps
+- corpus-map.md L786: row 8 example (stake-multiplier as ambiguity)
+- corpus-map.md L934: #32 summary (gate suspending seven entries)
+- corpus-map.md L942: #31 summary (rate the corpus implies)
+- corpus-map.md L964: #18 summary (thirteen wrong citations)
+- corpus-map.md L130: entry example: an RPG opposed test (dice pool, hits, attacker/defender tie)
+- corpus-map.md L137: entry example: tie question in hits
+- corpus-map.md L141: entry example: dependsOn, evidence and ruleset of the RPG example
+- corpus-map.md L146: entry example: tie test (defender / attacker)
+- corpus-map.md L149: entry example note (one more hit)
+- method.md L33: corpus id example names this corpus (srd-5.2.1)
+- method.md L54: boundary-policy example names a CC-BY SRD
+- method.md L176: value examples: a creature's statistics
+- method.md L182: operation examples: how damage applies
+- method.md L201: 0010 example: whether a person was under cover (Cover is a rule in this slice)
+- method.md L448: dependency example: damage after attack
+- corpus-map.md L851: boundary-policy history names the SRD
+- corpus-map.md L970: #20 summary (number of faces on a die)
+
+## Links made plain text
+
+Every markdown link not to method.md or corpus-map.md (decision records, issues, example directories) was replaced by its link text; the mapper has none of those files.
+
+-  (1)
+- ../examples/faa-part-107-temporal/README.md (1)
+- ../examples/faa-part-107/README.md (1)
+- decisions/0003-a-phase-gate-names-a-rule-not-a-condition.md (3)
+- decisions/0004-adapter-reach-is-a-property-of-the-entry.md (4)
+- decisions/0005-a-field-earns-its-place-by-being-checkable.md (8)
+- decisions/0007-a-conflict-is-a-question-not-a-pair.md (4)
+- decisions/0008-recognising-a-delegated-standard-is-a-procedure-not-a-test.md (2)
+- decisions/0009-absence-is-a-verdict-with-evidence.md (7)
+- decisions/0010-whose-fact-it-is-does-not-decide-the-kind.md (7)
+- decisions/0011-a-gate-has-a-direction.md (3)
+- decisions/0012-a-fact-the-corpus-implies-is-a-derived-entry.md (4)
+- decisions/0013-verification-posture-belongs-to-the-corpus.md (4)
+- decisions/0014-a-map-is-checked-by-a-blind-second-mapping.md (1)
+- decisions/0015-a-map-is-published-as-a-versioned-package.md (2)
+- decisions/0017-a-map-change-carries-a-review-of-its-bytes.md (1)
+- decisions/0019-randomness-is-declared-by-the-corpus.md (1)
+- decisions/0020-a-section-citation-names-its-lead-in-and-a-section-map-lists-its-extent.md (2)
+- decisions/0021-a-gate-outside-the-slice-is-held-by-the-caller.md (4)
+- decisions/0022-a-licensed-copy-is-used-locally-by-a-named-operator-and-never-published.md (1)
+- https://github.com/brandonifco/rules-factory/issues/11 (4)
+- https://github.com/brandonifco/rules-factory/issues/15 (1)
+- https://github.com/brandonifco/rules-factory/issues/16 (2)
+- https://github.com/brandonifco/rules-factory/issues/18 (2)
+- https://github.com/brandonifco/rules-factory/issues/2 (2)
+- https://github.com/brandonifco/rules-factory/issues/20 (1)
+- https://github.com/brandonifco/rules-factory/issues/24 (1)
+- https://github.com/brandonifco/rules-factory/issues/25 (1)
+- https://github.com/brandonifco/rules-factory/issues/27 (1)
+- https://github.com/brandonifco/rules-factory/issues/28 (2)
+- https://github.com/brandonifco/rules-factory/issues/29 (2)
+- https://github.com/brandonifco/rules-factory/issues/31 (1)
+- https://github.com/brandonifco/rules-factory/issues/32 (1)
+- https://github.com/brandonifco/rules-factory/issues/33 (1)
+- https://github.com/brandonifco/rules-factory/issues/47 (2)
+- https://github.com/brandonifco/rules-factory/issues/5 (1)
+- https://github.com/brandonifco/rules-factory/issues/51 (2)
+- https://github.com/brandonifco/rules-factory/issues/58 (2)
+- https://github.com/brandonifco/rules-factory/issues/59 (2)
+- https://github.com/brandonifco/rules-factory/issues/6 (1)
+- https://github.com/brandonifco/rules-factory/issues/60 (2)
+- https://github.com/brandonifco/rules-factory/issues/61 (1)
+- https://github.com/brandonifco/rules-factory/issues/62 (3)
+- https://github.com/brandonifco/rules-factory/issues/7 (1)
+- https://github.com/brandonifco/rules-factory/issues/76 (1)
+- https://github.com/brandonifco/rules-factory/issues/93 (1)
