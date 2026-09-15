@@ -869,6 +869,11 @@ answered per corpus for the same reason ([0013](decisions/0013-verification-post
   committed; a holder of a legal copy points `envVar` at it, and everyone else — every CI run
   included — is told `NOT VERIFIED` with the reason, never `ok`. A `never-commit` corpus is
   always `local-copy`; a `pin-in-repo` corpus that commits only a derivation may be too.
+  The factory refuses a `local-copy` corpus at every step, with one exception: an operator on
+  the committed allowlist, identified by `gh api user` and passing `--licensed-copy-exception`
+  outside CI, may pack its map into a local, unpublishable package and produce, verify and
+  recompute an engine from the file `envVar` names. A `local-copy` map is never published
+  ([0022](decisions/0022-a-licensed-copy-is-used-locally-by-a-named-operator-and-never-published.md)).
 - **`quotation`** — whether a map may carry verbatim spans of the corpus. `verbatim`, or
   `withheld` where the licence forbids it: since `evidence` became a span, a map carries a few
   hundred sentences of its corpus, and for a licensed corpus **the map is itself the

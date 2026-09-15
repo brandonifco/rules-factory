@@ -15,7 +15,13 @@ refusal rather than a warning:
      any other version is refused, naming the versions that would be accepted.
   3. **The corpus is verifiable here.** The map cites exactly one corpus, the manifest declares
      it, and its `verification` is `committed-copy` (0013). A `local-copy` corpus is NOT
-     VERIFIED: an engine produced from it could not re-derive its own baseline in CI.
+     VERIFIED: an engine produced from it could not re-derive its own baseline in CI --
+     except under the licensed-copy exception (0022), when the caller has established an
+     allowlisted operator (licensed_copy.py, which this module never imports, since it is vendored
+     into engines) and passes that login. The local file is then hashed exactly as step 4 says:
+     the one given on the command line, or, when none is (provenance's recompute, whose engine
+     holds no corpus), the file the manifest's `envVar` names. The result says the exception was
+     used (`licensed_copy_operator`), and generation copies no corpus bytes into the engine.
   4. **The corpus file is the baseline.** The map's `baseline` agrees with the manifest, and
      the file given on the command line hashes to `contentHash` under `hashDerivation`. A
      derivation this module does not know is refused -- a digest computed the wrong way is
@@ -210,7 +216,13 @@ def _json(label, raw):
 # --- the corpus --------------------------------------------------------------------------
 
 
-def verify_corpus(document, manifest, corpus_path):
+def verify_corpus(document, manifest, corpus_path, licensed_copy_operator=None):
+    """(corpus, bytes, path) once the corpus is proved to be the map's baseline.
+
+    `licensed_copy_operator` is an allowlisted login when the caller established the exception
+    (0022), else None. It admits a `local-copy` corpus and nothing else; `corpus_path` None then
+    means the file `envVar` names.
+    """
     if not isinstance(document, dict) or not isinstance(manifest, dict):
         raise Refused("the packaged map or manifest is not a JSON object")
     source_id = document.get("corpus")
@@ -227,7 +239,8 @@ def verify_corpus(document, manifest, corpus_path):
     corpus = corpora[0]
 
     posture = corpus.get("verification")
-    if posture != "committed-copy":
+    excepted = licensed_copy_operator is not None and posture == "local-copy"
+    if posture != "committed-copy" and not excepted:
         raise Refused(f"NOT VERIFIED -- {source_id} is {posture!r}, not `committed-copy` (0013): an engine "
                       f"produced from it could not re-derive its baseline wherever it is built")
 
@@ -249,6 +262,12 @@ def verify_corpus(document, manifest, corpus_path):
     if derive is None:
         raise Refused(f"NOT VERIFIED -- no way to compute hashDerivation {derivation!r}; known: "
                       f"{', '.join(sorted(HASH_DERIVATIONS))}")
+    if corpus_path is None:
+        variable = corpus.get("envVar")
+        corpus_path = os.environ.get(variable) if excepted and isinstance(variable, str) and variable else None
+        if not corpus_path:
+            raise Refused(f"NOT VERIFIED -- no corpus file was given, and {source_id} names no local copy here "
+                          f"(${variable} is not set)" if excepted else "no corpus file was given")
     try:
         with open(corpus_path, "rb") as handle:
             corpus_bytes = handle.read()
@@ -258,7 +277,7 @@ def verify_corpus(document, manifest, corpus_path):
     if actual != corpus.get("contentHash"):
         raise Refused(f"{corpus_path} is not {source_id} at the map's baseline: {derivation} gives {actual}, "
                       f"the map was made of {corpus.get('contentHash')}")
-    return corpus, corpus_bytes
+    return corpus, corpus_bytes, corpus_path
 
 
 # --- the factory's checker ---------------------------------------------------------------
@@ -334,7 +353,7 @@ def run_consumer_checks(parts, log=None):
 # --- the whole of intake -----------------------------------------------------------------
 
 
-def intake(package_spec, corpus_path, log=None):
+def intake(package_spec, corpus_path, log=None, licensed_copy_operator=None):
     with tempfile.TemporaryDirectory(prefix="factory-download-") as downloads:
         nupkg = resolve_package(package_spec, downloads, log)
         package_id, version, parts = read_package(nupkg)
@@ -345,8 +364,11 @@ def intake(package_spec, corpus_path, log=None):
     manifest = _json("manifest", parts["manifest"][1])
     schema_version = check_contract(document)
     _note(log, f"map schemaVersion {schema_version}: read by this factory's check-map.py")
-    corpus, corpus_bytes = verify_corpus(document, manifest, corpus_path)
-    _note(log, f"corpus {corpus['sourceId']}: {corpus['hashDerivation']} {corpus['contentHash']} matches {corpus_path}")
+    corpus, corpus_bytes, corpus_path = verify_corpus(document, manifest, corpus_path, licensed_copy_operator)
+    excepted = licensed_copy_operator is not None and corpus.get("verification") == "local-copy"
+    _note(log, f"corpus {corpus['sourceId']}: {corpus['hashDerivation']} {corpus['contentHash']} matches {corpus_path}"
+               + (f" (local-copy, under the licensed-copy exception for {licensed_copy_operator}; its bytes "
+                  f"are not copied into the engine)" if excepted else ""))
     _note(log, f"corpus {corpus['sourceId']}: randomness {corpus['randomness']} (0019)")
     _note(log, "--- intake: the factory's check-map.py --phase consumer (the package's checker is not run)")
     run_consumer_checks(parts, log)
@@ -358,4 +380,6 @@ def intake(package_spec, corpus_path, log=None):
         part_paths={label: path for label, (path, _) in parts.items()},
         corpus=corpus, corpus_bytes=corpus_bytes, corpus_name=os.path.basename(corpus_path),
         randomness=corpus["randomness"],
+        # The login the exception was used for (0022), or None: set only for a local-copy corpus.
+        licensed_copy_operator=licensed_copy_operator if excepted else None,
     )
