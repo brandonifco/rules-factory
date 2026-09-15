@@ -67,19 +67,26 @@ This is the one case where `produce` rewrites files the ownership table (ownersh
 copy and is committed only when the gate passes, and the commit lists the lock files as changed,
 for the engine to review.
 
-`--no-verify` cannot re-lock: re-locking needs dotnet, which it skips. Committing the new pins
-beside lock files that still resolve the old versions would fail the engine's locked restore in CI
-and record the stale lock hashes in provenance.json. So a `--no-verify` produce, after generation
-in the staging copy and before the commit, compares every committed packages.lock.json with the
+`--no-verify` builds and tests nothing, but a `--no-verify` produce must not commit the new pins
+beside lock files that still resolve the old versions either: that would fail the engine's locked
+restore in CI and record the stale lock hashes in provenance.json. So, after generation in the
+staging copy and before the commit, it compares every committed packages.lock.json with the
 generated pins (`stale_locks`): for each package id the pin set names (RulesKernel,
 RulesKernel.Randomness, RulesFactory.Maps.*), every entry, direct or transitive, must resolve the
-pinned version (an exact pin's version, or a minimum pin's lower bound). Any that does not refuses
-the run, naming each lock file, package, locked and pinned version, and `--out` is unchanged. The
-way on is `produce` without `--no-verify`, which re-locks, or re-locking first (`scripts/validate.sh
-lock`) and running `--no-verify` again with the updated lock files in place, which then agree and
-commit. Packages outside the pin set are not compared, and an engine with no lock files is not
-affected. The re-produce inside `recompute` is a `--no-verify` produce too, and skips the check:
-it is comparing records, and a stale lock file there is the gate's to fail, or the relock's to fix.
+pinned version (an exact pin's version, or a minimum pin's lower bound). When any does not, it
+re-locks them in the staging copy (`relock`): `dotnet --version` shows that the SDK global.json (or
+`FACTORY_DOTNET_SDK_OVERRIDE`) selects can run, then `dotnet restore --force-evaluate` with locked
+mode off, on that SDK. It then compares again, and records the re-locked files in provenance.json.
+The re-lock builds nothing, and it is the only dotnet a `--no-verify` run starts. The run is
+refused, naming each lock file, package, locked and pinned version, and `--out` is unchanged, when
+no SDK can run (the refusal names the exact command that works: the same produce under
+`FACTORY_DOTNET_SDK_OVERRIDE` at an SDK `dotnet --list-sdks` shows, or, with none, after installing
+the pinned one), when restore fails, or when the lock files still disagree afterwards. So a
+`--no-verify` produce never commits stale lock files. Packages outside the pin set are not
+compared, lock files that already agree are committed as they are, and an engine with no lock
+files is not affected. The re-produce inside `recompute` is a `--no-verify` produce too, and skips
+the check: it is comparing records, and a stale lock file there is the gate's to fail, or the
+relock's to fix.
 
 Standalone `verify` never re-locks. It has no earlier pin set to compare with, and it runs on the
 engine in place, outside any transaction, so a relock there would silently rewrite engine-owned
@@ -113,6 +120,7 @@ Standard library only.
 """
 import contextlib
 import glob
+import io
 import json
 import os
 import re
@@ -135,6 +143,8 @@ TIMEOUTS = {"restore": 900, "gate": 3600}
 
 class Failed(Exception):
     """A stage failed. `stage` names it; the message says why."""
+
+    sdk_missing = False  # `relock` only: no SDK could run, as opposed to restore failing
 
     def __init__(self, stage, message):
         super().__init__(f"{stage}: {message}")
@@ -297,6 +307,45 @@ def overridden_sdk(engine_dir, stage):
     finally:
         with open(path, "wb") as handle:
             handle.write(original)
+
+
+def installed_sdks():
+    """The SDK versions `dotnet --list-sdks` names, in its order (newest last); [] when dotnet cannot say."""
+    try:
+        done = subprocess.run([dotnet_command(), "--list-sdks"], capture_output=True, text=True, timeout=60)
+    except (OSError, subprocess.SubprocessError):
+        return []
+    if done.returncode != 0:
+        return []
+    return [line.split()[0] for line in done.stdout.splitlines() if line.strip()]
+
+
+def relock(engine_dir, log):
+    """Re-lock the engine's lock files against its generated pins, for a `--no-verify` produce.
+
+    Runs `dotnet --version`, then `dotnet restore <sln> --force-evaluate -p:RestoreLockedMode=false`,
+    on the SDK global.json pins or `$FACTORY_DOTNET_SDK_OVERRIDE` names (`overridden_sdk`). Raises
+    Failed("restore"), with `sdk_missing` set when no SDK could run, and unset when restore failed.
+    """
+    dotnet = dotnet_command()
+    with overridden_sdk(engine_dir, "restore"):
+        probe = io.StringIO()
+        try:
+            code = _run("restore", [dotnet, "--version"], engine_dir, probe)
+        except Failed as error:
+            error.sdk_missing = True
+            raise
+        if code != 0:
+            error = Failed("restore", f"`dotnet --version` found no SDK global.json selects "
+                                      f"({' '.join(probe.getvalue().split())[:300]})")
+            error.sdk_missing = True
+            raise error
+        sdk = (probe.getvalue().strip().splitlines() or ["?"])[-1]
+        print(f"--- relock: dotnet restore --force-evaluate on SDK {sdk}; nothing is built or tested", file=log)
+        code = _run("restore", [dotnet, "restore", solution(engine_dir), "-p:RestoreLockedMode=false",
+                                "--force-evaluate"], engine_dir, log)
+    if code != 0:
+        raise Failed("restore", "dotnet restore failed (its output is above)")
 
 
 def dotnet_command():
