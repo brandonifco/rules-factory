@@ -306,6 +306,7 @@
       "clarity": "clear",
       "dependsOn": [
         "civil-twilight-window",
+        "civil-twilight-alaska",
         "anti-collision-lighting"
       ],
       "suspendedBy": [
@@ -323,7 +324,7 @@
         }
       ],
       "status": "mapped",
-      "note": "Inside and outside each twilight window, with and without lighting. Alaska is a separate entry: the corpus defers the definition elsewhere."
+      "note": "Inside and outside each twilight window, with and without lighting. Alaska is a separate entry: the corpus defers the definition elsewhere. civil-twilight-alaska is in dependsOn because (c)(3) is part of the definition of civil twilight this entry's rule turns on: (c)(1) and (c)(2) each begin \"Except for Alaska\", so in Alaska only (c)(3) defines the period, and an Alaskan operation's case resolves only through civil-twilight-alaska, which defers it to the Air Almanac. This map lacked the edge while its own \"as defined in the Air Almanac\" crossReference already resolved to that entry; the 2026 map's blind second mapping added the edge for the same words (examples/faa-part-107/blind-mapping/ (0014)), and \u00a7 107.29(c) reads the same at both dates. (c)'s \"paragraph (b) of this section\" resolves to anti-collision-lighting, whose locator cites \u00a7 107.29(b) and whose evidence quotes all of (b) as it stands at this date, both sentences; intensity-reduction-in-interest-of-safety quotes the second, and this date has no flash-rate clause. The pointer resolves to where (b) is stated; the rule that uses (c)'s definition is this entry's, and anti-collision-lighting does not depend on it."
     },
     {
       "id": "civil-twilight-alaska",
