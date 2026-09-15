@@ -4,14 +4,15 @@
 #   examples/hoyle-backgammon/produced-engine/equivalence.sh <engine sha> [factory ref]
 #
 # Clones brandonifco/hoyle-backgammon at <engine sha> ($ENGINE_REPO overrides the URL), checks out
-# the factory at [factory ref] (default factory/v0.5.0) in a scratch git worktree, and requires that
+# the factory at [factory ref] (default factory/v0.6.0) in a scratch git worktree, and requires that
 # ref to be the commit the engine's provenance.json names. Then, with the package and engine name
 # that provenance.json records and the engine's own corpus copy:
 #
 #   1. produces the engine from scratch into an empty directory ("bare");
 #   2. produces it again into an empty directory holding only the engine's corpus-map.overlay.json
 #      ("seeded"), the one engine-owned file generation reads, since the generated files are
-#      merge(package map, overlay);
+#      merge(package map, overlay), and the decision record each owner's ruling in it names, which
+#      the merge requires to be a file in the engine and provenance hashes (decision 0027);
 #   3. classifies every difference with that factory's own ownership table (classify.py): every
 #      generated file byte-identical, every managed file identical, provenance.json differing only
 #      in buildInputs and engineOwned with each item explained, everything else engine-owned;
@@ -29,11 +30,11 @@
 set -euo pipefail
 
 if [ "$#" -lt 1 ] || [ "$#" -gt 2 ]; then
-  echo "usage: $0 <engine sha> [factory ref, default factory/v0.5.0]" >&2
+  echo "usage: $0 <engine sha> [factory ref, default factory/v0.6.0]" >&2
   exit 2
 fi
 ENGINE_SHA="$1"
-FACTORY_REF="${2:-factory/v0.5.0}"
+FACTORY_REF="${2:-factory/v0.6.0}"
 ENGINE_REPO="${ENGINE_REPO:-https://github.com/brandonifco/hoyle-backgammon}"
 
 HERE="$(cd "$(dirname "$0")" && pwd)"
@@ -98,9 +99,22 @@ step "produce from scratch into an empty directory (bare)"
 mkdir "$WORK/bare"
 produce "$WORK/bare"
 
-step "produce into an empty directory holding only the engine's overlay (seeded)"
+step "produce into an empty directory holding only the engine's overlay and its rulings' records (seeded)"
 mkdir "$WORK/seeded"
 cp "$WORK/engine/corpus-map.overlay.json" "$WORK/seeded/"
+# An owner's ruling names its decision record, and the merge refuses a record that is not a file
+# (decision 0027, rulings.py). The records are the engine's own files; copy exactly those.
+python3 - "$WORK/engine" "$WORK/seeded" <<'PY'
+import json, os, shutil, sys
+engine, seeded = sys.argv[1:]
+overlay = json.load(open(os.path.join(engine, "corpus-map.overlay.json")))
+records = sorted({r["record"] for item in overlay.values() if isinstance(item, dict)
+                  for r in item.get("rulings") or [] if isinstance(r, dict) and "record" in r})
+for record in records:
+    os.makedirs(os.path.dirname(os.path.join(seeded, record)), exist_ok=True)
+    shutil.copyfile(os.path.join(engine, record), os.path.join(seeded, record))
+    print(f"seeded with     {record}")
+PY
 produce "$WORK/seeded"
 
 status=0

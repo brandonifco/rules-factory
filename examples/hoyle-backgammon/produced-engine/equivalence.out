@@ -1,22 +1,24 @@
 
-==> engine https://github.com/brandonifco/hoyle-backgammon at 56685020cc7d976beb7b8b6ebdb70d2f15ed1161
-engine commit    56685020cc7d976beb7b8b6ebdb70d2f15ed1161
+==> engine https://github.com/brandonifco/hoyle-backgammon at dab64e080fab5b7c11f6aeaa7d48cd208abc43d5
+engine commit    dab64e080fab5b7c11f6aeaa7d48cd208abc43d5
 engine name      HoyleBackgammon
 package          RulesFactory.Maps.HoyleBackgammon@6.0.0
-factory recorded 0.5.0 at 5bdd77f2b4b0a5e628c1f4b2dd5c476025785184
+factory recorded 0.6.0 at ec6294a008a4983fc8b3c406e29657b9bb88c06d
 corpus           corpus/hoyle.txt sha256 5d505fa9f6202340eb55313b8ef607b816087a860d3d51b1bf92b5f65240645e
 
-==> factory at factory/v0.5.0
-factory commit   5bdd77f2b4b0a5e628c1f4b2dd5c476025785184
+==> factory at factory/v0.6.0
+factory commit   ec6294a008a4983fc8b3c406e29657b9bb88c06d
 
 ==> produce from scratch into an empty directory (bare)
 produced HoyleBackgammon in $WORK/bare, NOT VERIFIED
 
-==> produce into an empty directory holding only the engine's overlay (seeded)
+==> produce into an empty directory holding only the engine's overlay and its rulings' records (seeded)
+seeded with     docs/decisions/0009-owner-rulings-are-ruleset-version-five.md
+seeded with     docs/decisions/0010-owner-rulings-are-ruleset-version-six.md
 produced HoyleBackgammon in $WORK/seeded, NOT VERIFIED
 
 ==> classify every difference by the factory's ownership table
-seeded produce vs engine: 117 path(s)
+seeded produce vs engine: 120 path(s)
      4  engine-owned differs
           Directory.Packages.props
           HoyleBackgammon.slnx
@@ -29,15 +31,16 @@ seeded produce vs engine: 117 path(s)
           tests/HoyleBackgammon.Tests/packages.lock.json
      1  generated differs
           provenance.json
-    18  generated identical
+    20  generated identical
      3  managed identical
-    88  unlisted only-engine
+     2  unlisted identical
+    87  unlisted only-engine
   unlisted only-engine, by top directory:
            1  .gitignore
            1  LICENSE
            1  MAP-FINDINGS.md
            1  README.md
-           9  docs/decisions
+           8  docs/decisions
           46  src/HoyleBackgammon
            5  src/Tabletop.Dice
           21  tests/HoyleBackgammon.Tests
@@ -68,6 +71,7 @@ provenance.json (generated), seeded produce vs engine:
   field provenanceFormat: identical
   field randomness: identical
   field recipes: identical
+  field rulings: identical
 bare produce vs engine: generated files that differ, and whether the overlay alone explains them
   only-bare   backlog/001-player-count.md: absent once seeded with the overlay: not a backlog item
   only-bare   backlog/002-men-count.md: absent once seeded with the overlay: not a backlog item
@@ -101,8 +105,9 @@ bare produce vs engine: generated files that differ, and whether the overlay alo
   differs     backlog/README.md: identical once seeded with the overlay
   differs     src/HoyleBackgammon/Generated/Contracts.g.cs: identical once seeded with the overlay
   differs     src/HoyleBackgammon/Generated/Registry.g.cs: identical once seeded with the overlay
+  only-engine src/HoyleBackgammon/Generated/Rulings.g.cs: identical once seeded with the overlay
   differs     tests/HoyleBackgammon.Tests/Generated/CorrespondenceTests.g.cs: identical once seeded with the overlay
-  33 generated file(s) differ in the bare produce, all explained by the overlay
+  34 generated file(s) differ in the bare produce, all explained by the overlay
 
 no generated or managed difference: every difference is engine-owned
 
