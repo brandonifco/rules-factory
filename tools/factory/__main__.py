@@ -87,6 +87,7 @@ import json
 import os
 import re
 import shlex
+import subprocess
 import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -166,9 +167,35 @@ def produce(args):
     if relocked:
         print(f"re-locked {len(relocked)} packages.lock.json file(s) because the generated pins changed: "
               f"review and commit them")
+    for line in ruling_record_notes(document, args.out):
+        print(line)
     print(f"produced {args.name} in {args.out}, {'NOT VERIFIED' if args.no_verify else verified(document)}"
           f"{overridden_suffix(overridden, verify_step.pinned_sdk(args.out), 'lock files re-locked' if args.no_verify else '')}")
     return document
+
+
+def ruling_record_notes(document, engine_dir):
+    """One line per decision record a ruling names (0027): provenance.json has just hashed it, so an edit
+    after this produce leaves `recordSha256` stale, and nothing says so until `factory verify`. A WARNING
+    when git reports the record uncommitted in `engine_dir`, which is when such an edit usually follows."""
+    lines, seen = [], set()
+    for ruling in (document.get("rulings") if isinstance(document, dict) else None) or []:
+        record = ruling.get("record")
+        if record in seen:
+            continue
+        seen.add(record)
+        ids = ", ".join(r.get("id") for r in document["rulings"] if r.get("record") == record)
+        try:
+            done = subprocess.run(["git", "status", "--porcelain", "--", record], cwd=engine_dir, capture_output=True,
+                                  text=True, timeout=30)
+            pending = done.returncode == 0 and bool(done.stdout.strip())
+        except (OSError, subprocess.SubprocessError):
+            pending = False
+        lines.append(f"{'WARNING' if pending else 'note'}: provenance.json hashes the decision record {record} "
+                     f"({ids}) as it stands now{', with changes git has not committed' if pending else ''}. Commit "
+                     f"it exactly so: an edit after this produce leaves rulings[...].recordSha256 stale, and "
+                     f"`factory verify` fails until `factory produce` runs again")
+    return lines
 
 
 def overridden_suffix(overridden, pinned, what=""):

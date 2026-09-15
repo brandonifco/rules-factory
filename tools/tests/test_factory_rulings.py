@@ -579,6 +579,19 @@ class TestProduce(ProducedCase):
         self.assertIn("breaks decision 0027", output)
         self.assertFalse(os.path.exists(os.path.join(self.out, "provenance.json")))
 
+    def test_produce_says_the_record_is_hashed_now_and_warns_when_it_is_uncommitted(self):
+        self.with_overlay(worked_example())
+        code, output = self.produce()
+        self.assertEqual(code, 0, output)
+        self.assertIn(f"note: provenance.json hashes the decision record {RECORD} (bearing-off-eligible/2) as it "
+                      "stands now. Commit it exactly so", output)
+        self.assertLess(output.index(f"hashes the decision record {RECORD}"), output.index(f"produced {NAME} in"))
+        subprocess.run(["git", "init", "-q", self.out], check=True)
+        code, output = self.produce()
+        self.assertEqual(code, 0, output)
+        self.assertIn(f"WARNING: provenance.json hashes the decision record {RECORD} (bearing-off-eligible/2) as it "
+                      "stands now, with changes git has not committed", output)
+
     def test_a_missing_record_is_refused(self):
         self.with_overlay(worked_example(), record=False)
         code, output = self.produce()
@@ -591,7 +604,9 @@ class TestProduce(ProducedCase):
         write_record(self.out, text="# 0009\n\nBrandon ruled, and the record changed.\n")
         code, output = self.run_factory("provenance", "--engine", self.out, "--package", self.nupkg)
         self.assertEqual(code, 1, output)
-        self.assertIn("MISMATCH rulings:", output)
+        self.assertIn("MISMATCH rulings[bearing-off-eligible/2].recordSha256: recorded ", output)
+        self.assertIn(f"the decision record {RECORD} was edited after `factory produce` hashed it. If the edit is "
+                      "meant, run `factory produce` again", output)
         self.assertEqual(self.produce()[0], 0)
         code, output = self.run_factory("provenance", "--engine", self.out, "--package", self.nupkg)
         self.assertEqual(code, 0, output)

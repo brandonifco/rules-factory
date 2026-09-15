@@ -90,7 +90,8 @@ The fields, and where each comes from:
     `local-copy` corpus `span` is the overlay's `{start, end, sha256}`, never the question's words
     (0027 as amended, rulings.py). `recordSha256` hashes
     the decision record as it stood when `produce` ran, so a record edited since is a mismatch named
-    `rulings` until the engine is produced again.
+    `rulings[<id>].recordSha256`, which says to produce again, until the engine is produced again.
+    `produce` prints a line for each record it hashed, a WARNING when git has not committed it.
 
 Deterministic: no timestamps, no machine paths; two runs from the same inputs are identical.
 
@@ -453,10 +454,14 @@ def write(out, document):
 # --- recompute -------------------------------------------------------------------------------
 
 
+def _key(item):
+    return str(item.get("path", item.get("role", item.get("id"))))
+
+
 def _keyed(items):
-    """A list of objects keyed by path (or role) compares by that key, not by position."""
-    if items and all(isinstance(i, dict) and ("path" in i or "role" in i) for i in items):
-        return {str(i.get("path", i.get("role"))): {k: v for k, v in i.items() if k not in ("path",)} for i in items}
+    """A list of objects keyed by path (or role, or a ruling's id) compares by that key, not by position."""
+    if items and all(isinstance(i, dict) and ("path" in i or "role" in i or "id" in i) for i in items):
+        return {_key(i): {k: v for k, v in i.items() if k not in ("path",)} for i in items}
     return None
 
 
@@ -484,8 +489,7 @@ def diff(recorded, actual, field=""):
                     out.append(f"{name}: not recorded, recomputed {json.dumps(right[key])}")
                 else:
                     out.extend(diff(left[key], right[key], name))
-            if [str(i.get("path", i.get("role"))) for i in recorded] != [str(i.get("path", i.get("role"))) for i in actual] \
-                    and set(left) == set(right):
+            if [_key(i) for i in recorded] != [_key(i) for i in actual] and set(left) == set(right):
                 out.append(f"{field}: recorded in a different order")
             return out
     if recorded != actual:
@@ -578,7 +582,14 @@ def recompute(engine_dir, produce_into, package=None):
         # engineOwned names the lock files too; the same no-claim rule applies to it (#72).
         if isinstance(actual.get("engineOwned"), list):
             actual["engineOwned"] = claimed(recorded_inputs, actual["engineOwned"])
+    records = {r.get("id"): r.get("record") for r in recorded.get("rulings") or [] if isinstance(r, dict)}
     for line in diff(recorded, actual):
+        match = re.match(r"^rulings\[(.+)\]\.recordSha256: ", line)
+        if match:
+            # 0027: the record is hashed when produce runs, so an edit since is stale here, not wrong.
+            line += (f" -- the decision record {records.get(match.group(1))} was edited after `factory produce` hashed "
+                     "it. If the edit is meant, run `factory produce` again, which re-hashes it, and commit "
+                     "provenance.json with the record; otherwise restore the record")
         if line not in mismatches:
             mismatches.append(line)
     return mismatches
