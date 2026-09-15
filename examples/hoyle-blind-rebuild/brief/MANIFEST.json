@@ -1,0 +1,467 @@
+{
+  "target": "rules-factory examples/hoyle-blind-rebuild/TARGET.json (not part of the brief)",
+  "factory": {
+    "tag": "factory/v0.7.0",
+    "commit": "069780809543a66d5556d713e337d850ef405b41"
+  },
+  "map": {
+    "packageId": "RulesFactory.Maps.HoyleBackgammon",
+    "version": "6.0.0",
+    "nupkgSha256": "50f0381718d77ccf96ebe652db2235ba11ec079707a9bd4a8c5ad049e4e053a8"
+  },
+  "apiContractRawSha256": "a463fdcda47286cebb9b6317cc4b80adadb6acf4b047efc257365fe74ff12d32",
+  "files": [
+    {
+      "path": "README.md",
+      "sha256": "8a657f594e1fd649fe4db8bebb943b112780c85e0a79589018e289f65b00e854"
+    },
+    {
+      "path": "engine/api-contract.md",
+      "sha256": "5ac207e0eb04600b0ae5c4bc617efeac69ac05337ccbe1a3ce3aa86d06f96326"
+    },
+    {
+      "path": "engine/build-files/Directory.Packages.props",
+      "sha256": "b2cc3b4934d1bc9843a91f2e25e31f76d4e9f04d3b675b0ec73ba4d3eba386c5"
+    },
+    {
+      "path": "engine/build-files/HoyleBackgammon.slnx",
+      "sha256": "225327ace7d30798173f78662594a0fb1c3a85e88fa48863a89a846445a4abcd"
+    },
+    {
+      "path": "engine/build-files/src/HoyleBackgammon/HoyleBackgammon.csproj",
+      "sha256": "b2d7e7db89db6ee9682db2efe870890c571989941715e7deffc0596bd18bc967"
+    },
+    {
+      "path": "engine/build-files/src/Tabletop.Dice/Tabletop.Dice.csproj",
+      "sha256": "34ac7deb88fd184a1583a2da1b850f3685d8dd9ef08915dbf48c9253790b1947"
+    },
+    {
+      "path": "engine/conventions.md",
+      "sha256": "36925e12d08dfab5a7f8f09c42e279983f1d94cb437a77477f6ee5b2699806f4"
+    },
+    {
+      "path": "engine/decisions/0001-the-dice-pack-is-its-own-project.md",
+      "sha256": "342ca1d8c40d342d6d4e77edb6cccec4fc78b87ef4ee3a7d9685fe372d2e2663"
+    },
+    {
+      "path": "engine/decisions/0002-a-game-begins-from-an-asserted-position.md",
+      "sha256": "13b426354f06ca0a8b964158667b50fc28eb1903391814102e42efb9eea8a84a"
+    },
+    {
+      "path": "engine/decisions/0003-the-engine-derives-the-starting-position.md",
+      "sha256": "cefadc4bdde160e6cde6e8cb30cb3431f73c3cb6c4b2f1f5e7c37cac118db2b1"
+    },
+    {
+      "path": "engine/decisions/0004-map-3-0-0-is-ruleset-version-two.md",
+      "sha256": "d78518844144ee65be45ff79f6b192754668c4ecf619eb9891193747dcc05e2b"
+    },
+    {
+      "path": "engine/decisions/0005-map-4-0-0-is-ruleset-version-three.md",
+      "sha256": "d84b289fdf7f39c5c91b82e368030235dcfada3aab28159669f3ca577a2a5eb5"
+    },
+    {
+      "path": "engine/decisions/0006-a-game-record-carries-its-identity-and-serialises-itself.md",
+      "sha256": "a9df3ae41e73e90485614643fbd5ff4dac3cba3bfd3e8ad5806a5352e95f107e"
+    },
+    {
+      "path": "engine/decisions/0007-an-equivalent-order-is-offered-once-until-the-map-says-otherwise.md",
+      "sha256": "70bf8054d373766faf193aea56eca4cf6bc6aa9ce73c0ec7e49a746487bb04f7"
+    },
+    {
+      "path": "engine/decisions/0008-map-6-0-0-is-ruleset-version-four.md",
+      "sha256": "b6d04a1969cb3f39bc0fb598ea0b9d05a7d26a64c2f70760445a8b76bfd9c6f6"
+    },
+    {
+      "path": "engine/decisions/0009-owner-rulings-are-ruleset-version-five.md",
+      "sha256": "eb73ce04779d5495f5f2e8feb24468520981fe73e5117cde5f1098a73438424f"
+    },
+    {
+      "path": "engine/decisions/0010-owner-rulings-are-ruleset-version-six.md",
+      "sha256": "3b45fcc3d276fdaa61dd94fe407c2dc46abd6c62fb3fa2dfbfa655d1fbbbfdc1"
+    },
+    {
+      "path": "engine/overlay-skeleton.json",
+      "sha256": "73a8b8383557606f30402d6572b60806abd247c01c89b75596a594a01d75971a"
+    },
+    {
+      "path": "inputs/corpus/hoyle.txt",
+      "sha256": "5d505fa9f6202340eb55313b8ef607b816087a860d3d51b1bf92b5f65240645e"
+    },
+    {
+      "path": "inputs/factory-docs/README.md",
+      "sha256": "5f5fa48abd2bc6d2c096a999676939b5f1247419b517099750dccd81c3002032"
+    },
+    {
+      "path": "inputs/factory-docs/docs/backlog.md",
+      "sha256": "9fb15f02705dcc041a9fa95616cef9875632eeb714ddec1b2be3d878923eb7fc"
+    },
+    {
+      "path": "inputs/factory-docs/docs/corpus-map.md",
+      "sha256": "62402e6f5b8e7906911c04a22bcc2fd06298eabed2313e3791ab6cb2b9e5503e"
+    },
+    {
+      "path": "inputs/factory-docs/docs/decisions/0001-the-corpus-map-is-the-interface.md",
+      "sha256": "344928013101f49bbd19b009315bea709d9721bdfb111ffb9766cc6b8d57146e"
+    },
+    {
+      "path": "inputs/factory-docs/docs/decisions/0002-boundary-policy-belongs-to-the-corpus.md",
+      "sha256": "9802063c8769ead4e2ba01acaa9c4cc44dac7a5c7acf930de46624e278ca08ce"
+    },
+    {
+      "path": "inputs/factory-docs/docs/decisions/0003-a-phase-gate-names-a-rule-not-a-condition.md",
+      "sha256": "893be41820c7945aac572a596fa8715d3ca0e387fe15007b2796dd34b8d00ac9"
+    },
+    {
+      "path": "inputs/factory-docs/docs/decisions/0004-adapter-reach-is-a-property-of-the-entry.md",
+      "sha256": "6eca3f360bf9b3fac3bc22fc7fb78a239bbd9472fedd45d7950dd0f0f21a6f73"
+    },
+    {
+      "path": "inputs/factory-docs/docs/decisions/0005-a-field-earns-its-place-by-being-checkable.md",
+      "sha256": "45a83968f5c8bc18a0bfdf94fd1447a7b483252a822232982bca6c042d582f42"
+    },
+    {
+      "path": "inputs/factory-docs/docs/decisions/0006-the-general-rule-governs-entry-and-full-means-adversely-full.md",
+      "sha256": "494268b3a4a584ea6dcadaeffe4cdf7f5b12411c7b7f244b593777f7cbce9dfe"
+    },
+    {
+      "path": "inputs/factory-docs/docs/decisions/0007-a-conflict-is-a-question-not-a-pair.md",
+      "sha256": "67ad9ce94eae6d80e80f0540e3aeef85cbae4bbb2bba43352dd12be9752cee5c"
+    },
+    {
+      "path": "inputs/factory-docs/docs/decisions/0008-recognising-a-delegated-standard-is-a-procedure-not-a-test.md",
+      "sha256": "143cef4fc1bb8b8abbce437a9e55153653d7db91f8b45ce12bdf434bb62897ae"
+    },
+    {
+      "path": "inputs/factory-docs/docs/decisions/0009-absence-is-a-verdict-with-evidence.md",
+      "sha256": "a8c6d2f3c6fe4cd55a0a10a75ce22920a7a9befdd6181b85de2c80e50cc7dff6"
+    },
+    {
+      "path": "inputs/factory-docs/docs/decisions/0010-whose-fact-it-is-does-not-decide-the-kind.md",
+      "sha256": "04970d45a3e0e21476d10bcbb2eaa79ebe59684ade0e6f025f25800242467060"
+    },
+    {
+      "path": "inputs/factory-docs/docs/decisions/0011-a-gate-has-a-direction.md",
+      "sha256": "20bc499ca32fec7f7f52cfaa219e1e39505554a655b8733648ef53a53711f273"
+    },
+    {
+      "path": "inputs/factory-docs/docs/decisions/0012-a-fact-the-corpus-implies-is-a-derived-entry.md",
+      "sha256": "29432ddc6362a64c76947b24cd2c793772e95d21a55ea8ba0dd196b5f4326874"
+    },
+    {
+      "path": "inputs/factory-docs/docs/decisions/0013-verification-posture-belongs-to-the-corpus.md",
+      "sha256": "59b589e08d6329087ea41317a27abc95eb34fdd769219bec8c61ad913e3706bf"
+    },
+    {
+      "path": "inputs/factory-docs/docs/decisions/0014-a-map-is-checked-by-a-blind-second-mapping.md",
+      "sha256": "7725f764ae7d6b4f381d82062cc1b51da3501041ed71d1fb2a58992682b3960a"
+    },
+    {
+      "path": "inputs/factory-docs/docs/decisions/0015-a-map-is-published-as-a-versioned-package.md",
+      "sha256": "547676cb2512bb9d8ab8a6e470bdb2b80264521fcfc2a4b0d364bb3666693403"
+    },
+    {
+      "path": "inputs/factory-docs/docs/decisions/0016-a-map-package-is-data-not-code.md",
+      "sha256": "e6e6efb98615d8870f7855b012fb38ead4abe61a73847527b6a183c022dcee88"
+    },
+    {
+      "path": "inputs/factory-docs/docs/decisions/0017-a-map-change-carries-a-review-of-its-bytes.md",
+      "sha256": "53de66cd1e57bca175d96a608357086015f5d50d2ab0e0f9bd5d07632b7b76d0"
+    },
+    {
+      "path": "inputs/factory-docs/docs/decisions/0018-every-file-the-factory-writes-has-one-owner.md",
+      "sha256": "9937409374af89c0114b95dd890cdad0b62ece2f22541a8698c747e0edd5b298"
+    },
+    {
+      "path": "inputs/factory-docs/docs/decisions/0019-randomness-is-declared-by-the-corpus.md",
+      "sha256": "b6a417c974f7c7a9b700b16441cd92f6497b371cd71b559dddf1acdefccd8fd3"
+    },
+    {
+      "path": "inputs/factory-docs/docs/decisions/0020-a-section-citation-names-its-lead-in-and-a-section-map-lists-its-extent.md",
+      "sha256": "0a4684757b32adda3fc37aba66797ad18ad6445cf86d2f5c7c9d84716cde72d7"
+    },
+    {
+      "path": "inputs/factory-docs/docs/decisions/0021-a-gate-outside-the-slice-is-held-by-the-caller.md",
+      "sha256": "b961c4ae6f36e41b2b933fb915cf054e73bb1b8c4e2f887c2bf51f968578dc07"
+    },
+    {
+      "path": "inputs/factory-docs/docs/decisions/0022-a-licensed-copy-is-used-locally-by-a-named-operator-and-never-published.md",
+      "sha256": "ca9bcccb81692251c845aaecc54b4ef13d129ab819370f4a12266a9097299886"
+    },
+    {
+      "path": "inputs/factory-docs/docs/decisions/0023-a-map-package-is-licensed-as-its-corpus-and-the-factory-are.md",
+      "sha256": "aea29ca588e410d00c4fb3c9c579139b4ea21952f6dc8bbfd1abbbf4e5e0dbe7"
+    },
+    {
+      "path": "inputs/factory-docs/docs/decisions/0024-a-quote-is-of-the-extraction-and-a-page-extent-can-end-at-a-heading.md",
+      "sha256": "bed237c274bb0e9ef07e62f6c4d4f8e7a11043c4f6e3e9b959abb6b3291f1501"
+    },
+    {
+      "path": "inputs/factory-docs/docs/decisions/0025-an-assertion-names-who-asserts-it-and-an-operation-names-what-it-draws.md",
+      "sha256": "c3fa92eda5d9e167cf4897dc7271d9713f2ccf774b86705ba2e6d0ef71c572f1"
+    },
+    {
+      "path": "inputs/factory-docs/docs/decisions/0026-a-meaning-the-same-corpus-gives-elsewhere-is-an-entry-and-a-corpus-declares-its-pointers.md",
+      "sha256": "356a13e04ca36a3357ce725e30e0db6ae85e2f4b459114ee6cba732e4cd84bca"
+    },
+    {
+      "path": "inputs/factory-docs/docs/decisions/0027-an-owners-ruling-is-held-by-the-engine-and-checked-by-the-factory.md",
+      "sha256": "d7b65181e74d1b32f5f31bd72beae12d2eee7a0fe22802eaf9339cf7548ec1fb"
+    },
+    {
+      "path": "inputs/factory-docs/docs/decisions/README.md",
+      "sha256": "8e1eb0c7c49edf9f8f45787009c1537ac6d0982f7feeb6e6b3e887c7972803d4"
+    },
+    {
+      "path": "inputs/factory-docs/docs/method.md",
+      "sha256": "6b8d34f126efdb12a68ea45b2856188dd31df8a8716b01d0c71df5027cf46e82"
+    },
+    {
+      "path": "inputs/factory/GET-FACTORY.sh",
+      "sha256": "bab01055b0ffc547f970df477f311cbc218e69a38d221f6854f1de41a9e96543"
+    },
+    {
+      "path": "inputs/map/rulesfactory.maps.hoylebackgammon.6.0.0.nupkg",
+      "sha256": "50f0381718d77ccf96ebe652db2235ba11ec079707a9bd4a8c5ad049e4e053a8"
+    }
+  ],
+  "redactions": [
+    {
+      "path": "inputs/factory-docs/docs/corpus-map.md",
+      "unit": "block",
+      "index": 309,
+      "reasons": "test-name",
+      "removedSha256": "1d1810edd96459884f7473c4dac91c31763dab4d56dcd6cee261158a3f0e0b54"
+    },
+    {
+      "path": "inputs/factory-docs/docs/decisions/0006-the-general-rule-governs-entry-and-full-means-adversely-full.md",
+      "unit": "block",
+      "index": 76,
+      "reasons": "test-name",
+      "removedSha256": "534683d2444e68b8dadf9320432dc622605da4c70eb52224aa7767455052bd67"
+    },
+    {
+      "path": "inputs/factory-docs/docs/decisions/0006-the-general-rule-governs-entry-and-full-means-adversely-full.md",
+      "unit": "block",
+      "index": 82,
+      "reasons": "test-name",
+      "removedSha256": "ec23962c968ce1dc4c80b0d92f4f611b17843a1fa52f94a69fbddb395c26a191"
+    },
+    {
+      "path": "inputs/factory-docs/docs/decisions/0027-an-owners-ruling-is-held-by-the-engine-and-checked-by-the-factory.md",
+      "unit": "block",
+      "index": 24,
+      "reasons": "test-name",
+      "removedSha256": "96a7d7cc02ba09328fffb6939aba2dd8aa1706460479987f625ac1b0618f5b9d"
+    },
+    {
+      "path": "engine/api-contract.md",
+      "unit": "line",
+      "index": 558,
+      "reasons": "test-name",
+      "removedSha256": "49f4f963df5098d16dcf66a4b30061010b477a25d9331927765366c9185c92ec"
+    },
+    {
+      "path": "engine/decisions/0001-the-dice-pack-is-its-own-project.md",
+      "unit": "block",
+      "index": 16,
+      "reasons": "test-name",
+      "removedSha256": "2229046bbc6fdafafc292e3b239878a362f409404a2a0b697233309fa03375c8"
+    },
+    {
+      "path": "engine/decisions/0004-map-3-0-0-is-ruleset-version-two.md",
+      "unit": "block",
+      "index": 6,
+      "reasons": "test-name",
+      "removedSha256": "f4703b5832d7148a43899ed549d5d0a63eff2c407ec3471c73d453d97681f3dd"
+    },
+    {
+      "path": "engine/decisions/0005-map-4-0-0-is-ruleset-version-three.md",
+      "unit": "block",
+      "index": 26,
+      "reasons": "test-name",
+      "removedSha256": "102d95e0d1e070cecc5957704454869043634c59553540ad030013e7feae2b93"
+    },
+    {
+      "path": "engine/decisions/0006-a-game-record-carries-its-identity-and-serialises-itself.md",
+      "unit": "block",
+      "index": 6,
+      "reasons": "test-name",
+      "removedSha256": "710118561e0f51c5717dae98090fab873ab18c65e09184153ba50bc8dd8a5fac"
+    },
+    {
+      "path": "engine/decisions/0006-a-game-record-carries-its-identity-and-serialises-itself.md",
+      "unit": "block",
+      "index": 27,
+      "reasons": "test-name",
+      "removedSha256": "2c2cb2dbc77e5bdc378267572639822e842463d832ab7dee36ae851c37a8ed84"
+    },
+    {
+      "path": "engine/decisions/0006-a-game-record-carries-its-identity-and-serialises-itself.md",
+      "unit": "block",
+      "index": 35,
+      "reasons": "test-name",
+      "removedSha256": "bdc21287d60585548c8212a76a4bf2bff28e328b992d8b1bd1448d1aeea1f31b"
+    },
+    {
+      "path": "engine/decisions/0007-an-equivalent-order-is-offered-once-until-the-map-says-otherwise.md",
+      "unit": "block",
+      "index": 35,
+      "reasons": "test-name",
+      "removedSha256": "554ca4b635ef194125fcf0f8d2bf1edf404a3af4b8db629ba2531fafac7047c6"
+    },
+    {
+      "path": "engine/decisions/0008-map-6-0-0-is-ruleset-version-four.md",
+      "unit": "block",
+      "index": 39,
+      "reasons": "test-literal",
+      "removedSha256": "0fc14030938622559ea71d5eb7b9a97742c39b345d032fe45342d26482744e24"
+    },
+    {
+      "path": "engine/decisions/0008-map-6-0-0-is-ruleset-version-four.md",
+      "unit": "block",
+      "index": 40,
+      "reasons": "test-literal, test-name",
+      "removedSha256": "e68a10e420de4a51b7d69da126e3ccb0aaa710ea5f1a6a15505e09fe36826147"
+    },
+    {
+      "path": "engine/decisions/0008-map-6-0-0-is-ruleset-version-four.md",
+      "unit": "block",
+      "index": 41,
+      "reasons": "test-name",
+      "removedSha256": "09ee0976997afcc2df99abed02be55c565246e65296c7ef528acd86c540c63c5"
+    },
+    {
+      "path": "engine/decisions/0008-map-6-0-0-is-ruleset-version-four.md",
+      "unit": "block",
+      "index": 42,
+      "reasons": "test-name",
+      "removedSha256": "e01448c67fa3bed0cd8d53bd2d220dbe85b0da416d0f41f70a902074fe0a6fb8"
+    },
+    {
+      "path": "engine/decisions/0009-owner-rulings-are-ruleset-version-five.md",
+      "unit": "block",
+      "index": 13,
+      "reasons": "test-literal",
+      "removedSha256": "35511252cac9294e39242e9346f8db28074d645f66810d8714cd5525f68f4cc9"
+    },
+    {
+      "path": "engine/decisions/0009-owner-rulings-are-ruleset-version-five.md",
+      "unit": "block",
+      "index": 32,
+      "reasons": "test-name",
+      "removedSha256": "72079bce2d48902d546cb4b878b2dc717e25982ee3b6fecf2b6d31debcdfdc61"
+    },
+    {
+      "path": "engine/decisions/0009-owner-rulings-are-ruleset-version-five.md",
+      "unit": "block",
+      "index": 52,
+      "reasons": "test-literal",
+      "removedSha256": "154b893cd35a613c6bd75e63b155c484135d59d4dc11cbeaffe6bc767088223d"
+    },
+    {
+      "path": "engine/decisions/0009-owner-rulings-are-ruleset-version-five.md",
+      "unit": "block",
+      "index": 53,
+      "reasons": "test-literal, test-name",
+      "removedSha256": "cd3732deb0060722931acd9ee832ac75503a1b4a44899776ad111ab283796373"
+    },
+    {
+      "path": "engine/decisions/0009-owner-rulings-are-ruleset-version-five.md",
+      "unit": "block",
+      "index": 54,
+      "reasons": "test-name",
+      "removedSha256": "da3a49744d142e701e84d5d39abdab6080c95b40103d3a4df88cfd198614e9c3"
+    },
+    {
+      "path": "engine/decisions/0009-owner-rulings-are-ruleset-version-five.md",
+      "unit": "block",
+      "index": 55,
+      "reasons": "test-name",
+      "removedSha256": "d80e70573aed30fb3b250499fcd554001d444129366554c8e356c9a539b20797"
+    },
+    {
+      "path": "engine/decisions/0010-owner-rulings-are-ruleset-version-six.md",
+      "unit": "block",
+      "index": 39,
+      "reasons": "test-name",
+      "removedSha256": "f0dc7d4824169b4ea51bf1e38c2a0b764e6d79e64291b4b8377cc90fabd0cce1"
+    },
+    {
+      "path": "engine/decisions/0010-owner-rulings-are-ruleset-version-six.md",
+      "unit": "block",
+      "index": 44,
+      "reasons": "test-literal",
+      "removedSha256": "487c9bdf3c61d05a1089e34da694d99f933a3a857ced9e5b63f561bd90389da0"
+    },
+    {
+      "path": "engine/decisions/0010-owner-rulings-are-ruleset-version-six.md",
+      "unit": "block",
+      "index": 50,
+      "reasons": "test-literal, test-name",
+      "removedSha256": "480f9f7039497a2c1486cddd1ee1bd5d4d15f9069c0aeb3769344e002a84f0d8"
+    },
+    {
+      "path": "engine/decisions/0010-owner-rulings-are-ruleset-version-six.md",
+      "unit": "block",
+      "index": 51,
+      "reasons": "test-literal, test-name",
+      "removedSha256": "1833ec7f379cb3a67dd5edf278bffef286c5e55435fd851a41fdeda2581319e6"
+    }
+  ],
+  "disclosures": [
+    {
+      "file": "engine/build-files/src/HoyleBackgammon/HoyleBackgammon.csproj",
+      "kind": "test-name",
+      "nameSha256": "37fa3afe75397a9e5f1b732eae4c40ff96100188b0ac1b04fed5b2bfde91aa86",
+      "count": 1
+    },
+    {
+      "file": "inputs/map/rulesfactory.maps.hoylebackgammon.6.0.0.nupkg!map/corpus-map.json",
+      "kind": "test-name",
+      "nameSha256": "2f2182465727a76532a2b6d23edd4e4681107cc583d7efacab5d8f63ee16ecd7",
+      "count": 1
+    },
+    {
+      "file": "inputs/map/rulesfactory.maps.hoylebackgammon.6.0.0.nupkg!map/corpus-map.json",
+      "kind": "test-name",
+      "nameSha256": "6e8e03c1fd93356d63d3b4731baaa9efb100ac9496a718fb7f5248ce1b0e772b",
+      "count": 1
+    },
+    {
+      "file": "inputs/map/rulesfactory.maps.hoylebackgammon.6.0.0.nupkg!map/corpus-map.json",
+      "kind": "test-name",
+      "nameSha256": "4924da473c50fa027cc114473175e8633666be6154ec3694d401b2bbe63a49ee",
+      "count": 1
+    },
+    {
+      "file": "inputs/map/rulesfactory.maps.hoylebackgammon.6.0.0.nupkg!map/corpus-map.json",
+      "kind": "test-name",
+      "nameSha256": "546d1777dd2510fb595f685cb9f5d053a4ff4029a0fd212c5a335f1292b93dee",
+      "count": 2
+    },
+    {
+      "file": "inputs/map/rulesfactory.maps.hoylebackgammon.6.0.0.nupkg!map/corpus-map.json",
+      "kind": "test-name",
+      "nameSha256": "df3a4202f734e440873ee2b243fdf318031e9bb068893e395b12a2eb5242debc",
+      "count": 2
+    },
+    {
+      "file": "inputs/map/rulesfactory.maps.hoylebackgammon.6.0.0.nupkg!map/corpus-map.json",
+      "kind": "test-name",
+      "nameSha256": "4609387fb80f60734d42aac16e9cf84449b5e33cd6eb89b811595f181ace4310",
+      "count": 1
+    },
+    {
+      "file": "inputs/map/rulesfactory.maps.hoylebackgammon.6.0.0.nupkg!map/corpus-map.json",
+      "kind": "test-name",
+      "nameSha256": "69f1899dcfe71b39cb62e9e475438fd693e717c4bcdf38ff8144d3c4e1b96cbd",
+      "count": 1
+    },
+    {
+      "file": "inputs/map/rulesfactory.maps.hoylebackgammon.6.0.0.nupkg!map/corpus-map.json",
+      "kind": "test-name",
+      "nameSha256": "b7077f297cb6aa2ec505030c4b9f5ceab66e66e1cab57eb7bf6acf7a8d0bc27d",
+      "count": 1
+    }
+  ]
+}
