@@ -33,6 +33,14 @@ its reason, also JSON-quoted. An entry with none (a derived entry always) says `
 pointer that moves from `unmapped` to `resolvedBy`, or to another entry, changes the issue body and
 `backlog --create` updates it, even when nothing else about the entry changed.
 
+**Links.** An item names another item (in its dependencies, reachability and cross-references) as a
+link to that item's file, `[`<entry-id>`](NNN-<entry-id>.md)`, which resolves in the repository and
+not inside a GitHub issue. So `create` rewrites each such link in the body it sends as `#<n>`, the
+issue of the item it names, when that item has one (`link_issues`); a link to an item with no issue
+yet stays a file link. The files are never rewritten. Issues are matched by their marker, never by
+file or issue number, so the two numberings need not agree: in a repository with an issue made
+before its backlog, item file 025 is issue #26, and nothing depends on that.
+
 **Identity.** Under the title, every item carries `<!-- rules-factory-entry: <entry-id> -->`
 and `<!-- rules-factory-engine: <Name>; map: <package id> -->`. The entry id is the one thing
 about an item the map never changes, so it is what ties a file to its issue: a title or a body
@@ -397,6 +405,23 @@ def entry_of(body):
     return found.group(1) if found else None
 
 
+ITEM_LINK = re.compile(r"\[`([^`\n]+)`\]\((\d{3,}-[^()\s]+\.md)\)")
+ISSUE_URL = re.compile(r"/issues/(\d+)\s*\Z")
+
+
+def link_issues(body, files, numbers):
+    """`body` with each link to an item file (`_relation`'s `[`id`](NNN-id.md)`) as `#<n>`.
+
+    `files` maps each backlog file name to its entry id, `numbers` each entry id to its issue number.
+    A link whose file is not an item of that entry, or whose entry has no issue, is left as it is."""
+    def replace(found):
+        eid = files.get(found.group(2))
+        if eid != found.group(1) or eid not in numbers:
+            return found.group(0)
+        return f"#{numbers[eid]}"
+    return ITEM_LINK.sub(replace, body)
+
+
 def _read_items(directory, names):
     """[(file name, entry id, title, body)] from the backlog files, refusing one without a marker."""
     out, seen = [], {}
@@ -559,6 +584,12 @@ def create(repo, engine_dir, log, gh="gh", package=None):
     is exactly the file's title was made before markers existed; it is `adopted` -- edited to
     carry the marker -- rather than duplicated. So a second run in a row writes nothing.
 
+    Bodies are compared and sent with their item links as issue references (`link_issues`). An issue's
+    number is known only once it exists, so the issues to create are created first, in build order,
+    each linking the items that already have issues; then, in build order, every other issue whose
+    title or body differs is edited, and a created issue that links an item created after it is
+    edited to link it too (`linked`, counted with `created`).
+
     Everything is decided before the first write. The same entry marker on two issues, or two
     unmarked issues with an adoptable title, is a refusal naming them: which one is the item
     is not the factory's to guess. An issue whose entry is no longer in the backlog (built,
@@ -595,9 +626,7 @@ def create(repo, engine_dir, log, gh="gh", package=None):
     for name, eid, issue_title, body in files:
         found = by_marker.get(eid)
         if found:
-            issue = found[0]
-            same = issue["title"] == issue_title and _normal(issue["body"]) == _normal(body)
-            action = "unchanged" if same else "updated"
+            issue, action = found[0], "matched"
         else:
             legacy = unmarked.get(issue_title) or []
             if len(legacy) > 1:
@@ -605,14 +634,37 @@ def create(repo, engine_dir, log, gh="gh", package=None):
                                    + ", ".join(f"#{i['number']}" for i in legacy))
             issue = legacy[0] if legacy else None
             action = "adopted" if issue else "created"
-        plan.append((action, issue, issue_title, body))
+        plan.append((action, issue, eid, issue_title, body))
+    item_files = {name: eid for name, eid, _, _ in files}
+    numbers = {eid: issue["number"] for _, issue, eid, _, _ in plan if issue is not None}
 
     counts = {"created": 0, "updated": 0, "adopted": 0, "unchanged": 0}
-    for action, issue, issue_title, body in plan:
+    sent = {}
+    for action, _, eid, issue_title, body in plan:
+        if action != "created":
+            continue
+        sent[eid] = link_issues(body, item_files, numbers)
+        made = _gh(["issue", "create", "--repo", repo, "--title", issue_title, "--body-file", "-"], gh,
+                   stdin=sent[eid])
+        number = ISSUE_URL.search(made.strip())
+        if not number:
+            raise BacklogError(f"`gh issue create` made {issue_title!r} but printed no issue URL ({made.strip()!r}), "
+                               f"so the issues linking it cannot name it; run `factory backlog --create` again")
+        numbers[eid] = int(number.group(1))
+        print(f"created   {issue_title}", file=log)
+        counts["created"] += 1
+    for action, issue, eid, issue_title, body in plan:
+        body = link_issues(body, item_files, numbers)
         if action == "created":
-            _gh(["issue", "create", "--repo", repo, "--title", issue_title, "--body-file", "-"], gh, stdin=body)
-            print(f"created   {issue_title}", file=log)
-        elif action in ("updated", "adopted"):
+            if _normal(sent[eid]) != _normal(body):
+                _gh(["issue", "edit", str(numbers[eid]), "--repo", repo, "--title", issue_title,
+                     "--body-file", "-"], gh, stdin=body)
+                print(f"linked    #{numbers[eid]} {issue_title}", file=log)
+            continue
+        if action == "matched":
+            same = issue["title"] == issue_title and _normal(issue["body"]) == _normal(body)
+            action = "unchanged" if same else "updated"
+        if action in ("updated", "adopted"):
             _gh(["issue", "edit", str(issue["number"]), "--repo", repo, "--title", issue_title,
                  "--body-file", "-"], gh, stdin=body)
             print(f"{action:<9} #{issue['number']} {issue_title}", file=log)
