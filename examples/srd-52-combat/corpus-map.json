@@ -100,6 +100,10 @@
         "citation": "Combat / Initiative / p. 13"
       },
       "kind": "operation",
+      "draws": {
+        "dice": "d20",
+        "count": "one per participant not in a group of identical creatures, whose roll is group-initiative's; two d20s for a roll with Advantage or Disadvantage; none while initiative-score-option holds"
+      },
       "scope": "in",
       "clarity": "clear",
       "dependsOn": [
@@ -110,7 +114,7 @@
       ],
       "evidence": "When combat starts, every participant rolls Initiative; they make a Dexterity check that determines their place in the Initiative order.",
       "status": "mapped",
-      "note": "A draw: the manifest's randomness is seeded because of rolls like this one. The Dexterity check itself is ability-checks, outside the extent. Gated by initiative-score-option (Rules Glossary, p. 184), under which the GM may use Initiative scores instead of rolling; whether the GM has done so is the caller's to state (0021)."
+      "note": "A draw: the manifest's randomness is seeded because of rolls like this one. The Dexterity check itself is ability-checks, outside the extent. Gated by initiative-score-option (Rules Glossary, p. 184), under which the GM may use Initiative scores instead of rolling; whether the GM has done so is the caller's to state (0021). The Dexterity check is a D20 Test, and “the game uses a d20 roll to determine success or failure. These rolls are called D20 Tests, and they come in three kinds: ability checks, saving throws, and attack rolls” (Playing the Game / D20 Tests / p. 6), which is where draws names its die (0025)."
     },
     {
       "id": "group-initiative",
@@ -120,19 +124,24 @@
         "citation": "Combat / Initiative / p. 13"
       },
       "kind": "operation",
+      "draws": {
+        "dice": "d20",
+        "count": "one per group of identical creatures, two d20s for a roll with Advantage or Disadvantage; how many groups there are, and so how many rolls, is the unsettled question"
+      },
       "scope": "in",
       "clarity": "ambiguous",
       "ambiguity": {
         "question": "What makes creatures a “group of identical creatures”? The corpus does not say whether identical means the same stat block, whether every identical monster in the combat forms one group or the GM may divide them into several, or whether a monster with no identical companion is its own group of one. No measure or set of values is stated, so it is a gap, not a delegated choice.",
         "fate": "unresolved",
-        "unresolvedReason": "RequiresInterpretation"
+        "unresolvedReason": "RequiresInterpretation",
+        "affectsDraws": true
       },
       "dependsOn": [
         "initiative-roll"
       ],
       "evidence": "The GM rolls for monsters. For a group of identical creatures, the GM makes a single roll, so each member of the group has the same Initiative.",
       "status": "mapped",
-      "note": "The draw count matters to a seeded engine: one roll per group, not per creature, and a replay depends on it."
+      "note": "The draw count matters to a seeded engine: one roll per group, not per creature, and a replay depends on it. The roll is a D20 Test: “the game uses a d20 roll to determine success or failure. These rolls are called D20 Tests, and they come in three kinds: ability checks, saving throws, and attack rolls” (Playing the Game / D20 Tests / p. 6) (0025)."
     },
     {
       "id": "surprised",
@@ -198,6 +207,10 @@
         "citation": "Combat / Initiative / p. 13"
       },
       "kind": "assertion",
+      "assertedBy": [
+        "GM",
+        "players"
+      ],
       "scope": "in",
       "clarity": "clear",
       "dependsOn": [
@@ -209,7 +222,7 @@
         "renderedReading": "Ties. If a tie occurs, the GM decides the order among tied monsters, and the players decide the order among tied characters. The GM decides the order if the tie is between a monster and a player character."
       },
       "status": "mapped",
-      "note": "An assertion under gate 3: the decider's own determination is operative and the corpus fixes the set of values, “the order among tied” combatants, which is the orderings of exactly those combatants and nothing else. The engine demands the order, attributes it (to the GM or to the players, which the map has no field to record), records it and never infers it. The span carries “13 System Reference Document 5.2.1” mid-sentence: the printed folio and running header, which pdftotext emits between the page's two columns (README, findings). The cases it does not assign are initiative-ties-uncovered."
+      "note": "An assertion under gate 3: the decider's own determination is operative and the corpus fixes the set of values, “the order among tied” combatants, which is the orderings of exactly those combatants and nothing else. The engine demands the order, attributes it (to the GM or to the players, as assertedBy records, 0025), records it and never infers it. The span carries “13 System Reference Document 5.2.1” mid-sentence: the printed folio and running header, which pdftotext emits between the page's two columns (README, findings). The cases it does not assign are initiative-ties-uncovered."
     },
     {
       "id": "initiative-ties-uncovered",
@@ -361,6 +374,9 @@
         "citation": "Combat / Your Turn / p. 14"
       },
       "kind": "assertion",
+      "assertedBy": [
+        "GM"
+      ],
       "scope": "in",
       "clarity": "clear",
       "dependsOn": [
@@ -425,12 +441,15 @@
         "citation": "Combat / Ending Combat / p. 14"
       },
       "kind": "assertion",
+      "assertedBy": [
+        "both sides"
+      ],
       "scope": "in",
       "clarity": "clear",
       "dependsOn": [],
       "evidence": "Combat ends when one side or the other is defeated, which can mean the creatures are killed or knocked out or have surrendered or fled. Combat can also end when both sides agree to end it.",
       "status": "mapped",
-      "note": "An assertion under gate 3, the delegated-choice arm: the parties' own agreement is operative and the set of values is fixed (to end combat, or not). Parties need not be named (0008). The engine demands the agreement of both sides and never infers it from, for example, a surrender, which is side-defeated."
+      "note": "An assertion under gate 3, the delegated-choice arm: the parties' own agreement is operative and the set of values is fixed (to end combat, or not). The parties are named here, “both sides”, which is what assertedBy records, though gate 3 would not need them to be (0008). The engine demands the agreement of both sides and never infers it from, for example, a surrender, which is side-defeated."
     },
     {
       "id": "combat-end",
@@ -981,6 +1000,16 @@
         "citation": "Combat / Making an Attack / p. 15"
       },
       "kind": "operation",
+      "draws": [
+        {
+          "dice": "d20",
+          "count": "one attack roll; two d20s with Advantage or Disadvantage"
+        },
+        {
+          "dice": "damage dice",
+          "count": "the attack's own damage dice, on a hit only, unless the attack's rules say otherwise"
+        }
+      ],
       "scope": "in",
       "clarity": "clear",
       "dependsOn": [
@@ -995,7 +1024,7 @@
       ],
       "evidence": "3: Resolve the Attack. Make the attack roll, as detailed earlier in “Playing the Game.” On a hit, you roll damage unless the particular attack has rules that specify otherwise. Some attacks cause special effects in addition to or instead of damage.",
       "status": "mapped",
-      "note": "The roll is attack-rolls (p. 7) and damage is damage-rolls (p. 16), both outside the slice. In the slice: damage is rolled on a hit and only on a hit, unless the attack's own rules say otherwise."
+      "note": "The roll is attack-rolls (p. 7) and damage is damage-rolls (p. 16), both outside the slice. In the slice: damage is rolled on a hit and only on a hit, unless the attack's own rules say otherwise. The attack roll is a D20 Test, “the game uses a d20 roll to determine success or failure. These rolls are called D20 Tests, and they come in three kinds: ability checks, saving throws, and attack rolls” (Playing the Game / D20 Tests / p. 6); the damage roll is damage-rolls', “You roll the damage dice, add any modifiers, and deal the damage to your target” (Damage and Healing / Damage Rolls / p. 16). That is where draws names both (0025)."
     },
     {
       "id": "flanking",
@@ -1458,6 +1487,10 @@
         "citation": "Combat / Falling Off / p. 16"
       },
       "kind": "operation",
+      "draws": {
+        "dice": "d20",
+        "count": "one Dexterity saving throw each time the rule applies"
+      },
       "scope": "in",
       "clarity": "ambiguous",
       "ambiguity": {
@@ -1481,7 +1514,7 @@
       ],
       "evidence": "If an effect is about to move your mount against its will while you’re on it, you must succeed on a DC 10 Dexterity saving throw or fall off, landing with the Prone condition (see “Rules Glossary”) in an unoccupied space within 5 feet of the mount. While mounted, you must make the same save if you’re knocked Prone or the mount is.",
       "status": "mapped",
-      "note": "The save is saving-throws, outside the extent. enabledBy mounting-cost as well as mount-eligibility: a rider falls off only after mounting (blind-mapping/resolutions.json)."
+      "note": "The save is saving-throws, outside the extent. enabledBy mounting-cost as well as mount-eligibility: a rider falls off only after mounting (blind-mapping/resolutions.json). The save is a D20 Test: “the game uses a d20 roll to determine success or failure. These rolls are called D20 Tests, and they come in three kinds: ability checks, saving throws, and attack rolls” (Playing the Game / D20 Tests / p. 6) (0025)."
     },
     {
       "id": "underwater-melee",

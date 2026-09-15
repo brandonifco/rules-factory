@@ -1,0 +1,160 @@
+{
+  "about": "Independent verdict (0017) on #117 and #118 (docs/decisions/0025): assertedBy on every assertion entry, draws on the operations that throw. The reviewer was a separate agent context. It was given only the corpus passages listed in `read`, fields.md, a JSON before/after of every changed entry, and every entry's id, kind, scope, clarity, evidence and ambiguity question after the change, for judging omissions. It saw the author's reasoning only in the map's own notes and, in round 2, in the author's responses. `sha256` is the final map. `verdicts` is the reviewer's final output, unedited. `rounds` keeps round 1 and how each point was resolved.",
+  "sha256": "6cf722b6532d1a333a830783365f7b28840219a1ae4b9b099688262896005078",
+  "reviewer": "independent reviewer, separate context",
+  "read": [
+    "hoyle-corpus-pp271-277.txt (hoyle.txt, {271} through the end of 'Bearing off the Men')",
+    "fields.md (a neutral statement of assertedBy, draws and ambiguity.affectsDraws, written for the reviewer)",
+    "hoyle-diff.json (changed entries, before and after; rewritten for round 2)",
+    "hoyle-all-entries.json"
+  ],
+  "summary": "Round 1: All four changed fields match the corpus. Two entries lack what the definition requires: full-table-suspension's ambiguity changes whether a throw happens, and next-game-opening's gammon/backgammon branch repeats the opening single-die throw. Round 2 (final bytes): All changed fields in the final diff match the corpus. I accept both declines: fields.md limits draws and affectsDraws to draws the entry's own resolution makes, and full-table-suspension and next-game-opening only gate or refer to throws owned by throw-two-dice and opening-roll.",
+  "verdicts": [
+    {
+      "entry": "opening-roll",
+      "field": "draws",
+      "verdict": "agree",
+      "citation": "each player throwing on the centre of the board a single die ... In the event of a tie, the players throw again.",
+      "reason": "\"die\" appears in the evidence. One die each, and one each again after every tie, is what the sentence says."
+    },
+    {
+      "entry": "throw-two-dice",
+      "field": "draws",
+      "verdict": "agree",
+      "citation": "All subsequent throws are with both dice.",
+      "reason": "Both dice means two draws per throw. \"dice\" appears in the evidence. Now that opening-thrower-option has no draws, the opening re-throw is counted once, here."
+    },
+    {
+      "entry": "agreed-backgammon-multiple",
+      "field": "assertedBy",
+      "verdict": "agree",
+      "citation": "either thrice or four times (as may have been agreed)",
+      "reason": "The passive names no one who agrees, and no party appears in the evidence, so the value is [\"caller\"]."
+    },
+    {
+      "entry": "agreed-backgammon-multiple",
+      "field": "note",
+      "verdict": "agree",
+      "citation": "(as may have been agreed)",
+      "reason": "The quote is verbatim. \"vests the choice between them in an agreement\" and \"the parties to that agreement, whom the sentence does not name\" are both accurate and no longer credit the players."
+    }
+  ],
+  "omissions": [],
+  "nits": [
+    "agreed-backgammon-multiple's name, \"The multiple the players agreed a backgammon pays\", still names the players, which the corpus does not do. The note was fixed but the name was not.",
+    "With draws removed, next-game-opening's gammon branch is counted only through opening-roll. Check that next-game-opening has a dependsOn or enabledBy link to opening-roll (not visible in the files given), or an engine may not see that the draws happen there."
+  ],
+  "rounds": [
+    {
+      "round": 1,
+      "sha256": null,
+      "bytesNote": "The round-1 bytes were not retained; they differ from the final bytes by exactly the changes listed in resolutions.",
+      "verdicts": [
+        {
+          "entry": "opening-roll",
+          "field": "draws",
+          "verdict": "agree",
+          "citation": "each player throwing on the centre of the board a single die ... In the event of a tie, the players throw again.",
+          "reason": "\"die\" appears in the evidence. One throw each, and again after each tie, is exactly what the sentence says; the count has no upper limit."
+        },
+        {
+          "entry": "opening-thrower-option",
+          "field": "draws",
+          "verdict": "agree",
+          "citation": "may either adopt the points shown by the two dice as his own throw, or throw again.",
+          "reason": "Adopting draws nothing. Throwing again is a later throw, and \"All subsequent throws are with both dice\" makes that two dice. \"dice\" appears in the evidence."
+        },
+        {
+          "entry": "throw-two-dice",
+          "field": "draws",
+          "verdict": "agree",
+          "citation": "All subsequent throws are with both dice.",
+          "reason": "Both dice means two draws per throw. \"dice\" appears in the evidence."
+        },
+        {
+          "entry": "agreed-backgammon-multiple",
+          "field": "assertedBy",
+          "verdict": "agree",
+          "citation": "either thrice or four times (as may have been agreed)",
+          "reason": "The clause is passive and names no one who agrees, and the evidence names no party, so the value is [\"caller\"]. The pages never say the players agree, here or at \"the agreed stake\"."
+        },
+        {
+          "entry": "agreed-backgammon-multiple",
+          "field": "note",
+          "verdict": "agree",
+          "citation": "(as may have been agreed)",
+          "reason": "The quote is verbatim, and the claim that the sentence names nobody is accurate."
+        }
+      ],
+      "omissions": [
+        {
+          "entry": "full-table-suspension",
+          "field": "ambiguity.affectsDraws (and draws)",
+          "verdict": "missing",
+          "citation": "his play is altogether suspended, the adversary continuing to throw and move",
+          "reason": "The open point (full of the adversary's men only, or of anyone's men) decides whether the suspended player throws that turn. That changes the draw count: two dice per turn he throws, none while he is suspended. throw-two-dice's own note says throwing for him \"consumes the generator\"."
+        },
+        {
+          "entry": "next-game-opening",
+          "field": "draws",
+          "verdict": "missing",
+          "citation": "After a gammon or backgammon, the players throw again for the right to begin, as at starting.",
+          "reason": "This entry's own resolution draws in the gammon/backgammon branch: one die per player, repeated on ties, as in opening-roll. The hit branch draws nothing here. opening-thrower-option records its throw-again branch in the same way, so this one should be recorded too."
+        }
+      ],
+      "nits": [
+        "opening-thrower-option's two draws for throwing again may also be counted by throw-two-dice's count of 2. The count could say the re-throw is the throw-two-dice throw, not an extra one, so an engine does not draw four.",
+        "agreed-backgammon-multiple's note still says the corpus \"vests the choice between them in the players, by agreement\". The new sentence contradicts that, so the earlier claim could be softened.",
+        "opening-roll's count covers the players' single dice but does not say the tie re-throw is also one die each. \"as at starting\" and \"throw again\" imply it, but it is not stated."
+      ],
+      "summary": "All four changed fields match the corpus. Two entries lack what the definition requires: full-table-suspension's ambiguity changes whether a throw happens, and next-game-opening's gammon/backgammon branch repeats the opening single-die throw.",
+      "resolutions": [
+        "full-table-suspension affectsDraws (omission): declined. draws and affectsDraws describe draws an entry's own resolution makes; the suspension gates throw-two-dice, which its suspendedBy edge records. The reviewer accepted in round 2.",
+        "next-game-opening draws (omission): declined. \"as at starting\" is resolved by opening-roll, whose draws they are. The reviewer accepted in round 2.",
+        "opening-thrower-option draws (nit, double counting): taken. draws removed; \"or throw again\" is a throw-two-dice throw.",
+        "agreed-backgammon-multiple note (nit): taken. \"vests the choice between them in the players, by agreement\" became \"in an agreement\", and the added sentence names the parties to that agreement as unnamed."
+      ]
+    },
+    {
+      "round": 2,
+      "sha256": "6cf722b6532d1a333a830783365f7b28840219a1ae4b9b099688262896005078",
+      "verdicts": [
+        {
+          "entry": "opening-roll",
+          "field": "draws",
+          "verdict": "agree",
+          "citation": "each player throwing on the centre of the board a single die ... In the event of a tie, the players throw again.",
+          "reason": "\"die\" appears in the evidence. One die each, and one each again after every tie, is what the sentence says."
+        },
+        {
+          "entry": "throw-two-dice",
+          "field": "draws",
+          "verdict": "agree",
+          "citation": "All subsequent throws are with both dice.",
+          "reason": "Both dice means two draws per throw. \"dice\" appears in the evidence. Now that opening-thrower-option has no draws, the opening re-throw is counted once, here."
+        },
+        {
+          "entry": "agreed-backgammon-multiple",
+          "field": "assertedBy",
+          "verdict": "agree",
+          "citation": "either thrice or four times (as may have been agreed)",
+          "reason": "The passive names no one who agrees, and no party appears in the evidence, so the value is [\"caller\"]."
+        },
+        {
+          "entry": "agreed-backgammon-multiple",
+          "field": "note",
+          "verdict": "agree",
+          "citation": "(as may have been agreed)",
+          "reason": "The quote is verbatim. \"vests the choice between them in an agreement\" and \"the parties to that agreement, whom the sentence does not name\" are both accurate and no longer credit the players."
+        }
+      ],
+      "omissions": [],
+      "nits": [
+        "agreed-backgammon-multiple's name, \"The multiple the players agreed a backgammon pays\", still names the players, which the corpus does not do. The note was fixed but the name was not.",
+        "With draws removed, next-game-opening's gammon branch is counted only through opening-roll. Check that next-game-opening has a dependsOn or enabledBy link to opening-roll (not visible in the files given), or an engine may not see that the draws happen there."
+      ],
+      "summary": "All changed fields in the final diff match the corpus. I accept both declines: fields.md limits draws and affectsDraws to draws the entry's own resolution makes, and full-table-suspension and next-game-opening only gate or refer to throws owned by throw-two-dice and opening-roll."
+    }
+  ],
+  "rebase": "After round 2 the change was rebased onto #119 and its decision record renumbered from 0024 to 0025; the only difference between the bytes the reviewer read in round 2 and `sha256` is that number in the notes."
+}

@@ -1,0 +1,829 @@
+{
+  "about": "Independent verdict (0017) on #117 and #118 (docs/decisions/0025): assertedBy on every assertion entry, in both the 2026-01-01 map and the 2020-01-01 map (examples/faa-part-107-temporal), which one reviewer read together. The reviewer was a separate agent context. It was given only the corpus passages listed in `read`, fields.md, a JSON before/after of every changed entry, and every entry's id, kind, scope, clarity, evidence and ambiguity question after the change, for judging omissions. It saw the author's reasoning only in the map's own notes and, in round 2, in the author's responses. `sha256` is the final map. `verdicts` is the reviewer's final output, unedited. `rounds` keeps round 1 and how each point was resolved.",
+  "sha256": "ca9d6ea23f4ffb3918c48f31577286e3d414febca3414e79368ffe65688b5d40",
+  "reviewer": "independent reviewer, separate context",
+  "read": [
+    "p107-corpus-2026.txt (part107.xml, §§ 107.29, .31, .33, .37, .39, .49, tags stripped)",
+    "p107-corpus-2020.txt (part107-2020-01-01.xml, the same sections)",
+    "fields.md (a neutral statement of assertedBy, draws and ambiguity.affectsDraws, written for the reviewer)",
+    "p107-diff.json and temporal-diff.json (changed entries, before and after; rewritten for round 2)",
+    "p107-all-entries.json and temporal-all-entries.json"
+  ],
+  "summary": "Round 1: Every assertedBy value in both maps is supported by the text, including the lead-in cases, and caller is right in all three places it is used. There are no omissions and no draws. One accuracy problem: the 2026 flash-rate-sufficient note says § 107.29(a) and (b) name only the subject of the prohibition, but both paragraphs also name the remote pilot in command. Round 2 (final bytes): In the final version of both maps every assertedBy value and every new note is supported by the text, with verbatim quotations. The round-1 disagreement on the flash-rate-sufficient note is fixed, and there are no omissions.",
+  "verdicts": [
+    {
+      "map": "2026",
+      "entry": "collision-hazard-proximity",
+      "field": "assertedBy",
+      "verdict": "agree",
+      "citation": "(b) No person may operate a small unmanned aircraft so close to another aircraft as to create a collision hazard.",
+      "reason": "Nobody is named as deciding whether there is a hazard. Unchanged since round 1."
+    },
+    {
+      "map": "2026",
+      "entry": "collision-hazard-proximity",
+      "field": "note",
+      "verdict": "agree",
+      "citation": "No person",
+      "reason": "The quotation is verbatim, and 'names only' is accurate for § 107.37(b)."
+    },
+    {
+      "map": "2026",
+      "entry": "reasonable-protection",
+      "field": "assertedBy",
+      "verdict": "agree",
+      "citation": "No person may operate a small unmanned aircraft over a human being unless—",
+      "reason": "Nobody is named as deciding whether there is protection."
+    },
+    {
+      "map": "2026",
+      "entry": "reasonable-protection",
+      "field": "note",
+      "verdict": "agree",
+      "citation": "(b) That human being is located under a covered structure",
+      "reason": "The quotation is verbatim. The note now accounts for the human being protected, and the statement about § 107.39 is accurate."
+    },
+    {
+      "map": "2026",
+      "entry": "flash-rate-sufficient",
+      "field": "assertedBy",
+      "verdict": "agree",
+      "citation": "has a flash rate sufficient to avoid a collision",
+      "reason": "Nobody is named as deciding the flash rate."
+    },
+    {
+      "map": "2026",
+      "entry": "flash-rate-sufficient",
+      "field": "note",
+      "verdict": "agree",
+      "citation": "The remote pilot in command may reduce the intensity of, but may not extinguish, the anti-collision lighting if he or she determines",
+      "reason": "The round-1 problem is fixed. The note now accounts for the remote pilot in command. The only thing that pilot 'determines' is intensity; (a)(1) names the pilot only as having completed training, which is not a determination. 'no person may operate' is verbatim from (a)."
+    },
+    {
+      "map": "2026",
+      "entry": "intensity-reduction-in-interest-of-safety",
+      "field": "assertedBy",
+      "verdict": "agree",
+      "citation": "The remote pilot in command may reduce the intensity of, but may not extinguish, the anti-collision lighting if he or she determines",
+      "reason": "The text names the decider, and the name is in the evidence."
+    },
+    {
+      "map": "2026",
+      "entry": "unaided-visual-contact",
+      "field": "assertedBy",
+      "verdict": "agree",
+      "citation": "the remote pilot in command, the visual observer (if one is used), and the person manipulating the flight control of the small unmanned aircraft system must be able to see",
+      "reason": "All three names appear verbatim in the evidence."
+    },
+    {
+      "map": "2026",
+      "entry": "observer-coordination",
+      "field": "assertedBy",
+      "verdict": "agree",
+      "citation": "The remote pilot in command, the person manipulating the flight controls of the small unmanned aircraft system, and the visual observer must coordinate",
+      "reason": "All three names appear verbatim in the evidence."
+    },
+    {
+      "map": "2026",
+      "entry": "preflight-risk-assessment",
+      "field": "assertedBy",
+      "verdict": "agree",
+      "citation": "Prior to flight, the remote pilot in command must:",
+      "reason": "The lead-in governs (a)."
+    },
+    {
+      "map": "2026",
+      "entry": "preflight-risk-assessment",
+      "field": "note",
+      "verdict": "agree",
+      "citation": "Prior to flight, the remote pilot in command must:",
+      "reason": "The quotation is verbatim."
+    },
+    {
+      "map": "2026",
+      "entry": "participant-briefing",
+      "field": "assertedBy",
+      "verdict": "agree",
+      "citation": "Prior to flight, the remote pilot in command must:",
+      "reason": "The lead-in governs (b)."
+    },
+    {
+      "map": "2026",
+      "entry": "participant-briefing",
+      "field": "note",
+      "verdict": "agree",
+      "citation": "Prior to flight, the remote pilot in command must:",
+      "reason": "The quotation is verbatim."
+    },
+    {
+      "map": "2026",
+      "entry": "sufficient-available-power",
+      "field": "assertedBy",
+      "verdict": "agree",
+      "citation": "Prior to flight, the remote pilot in command must:",
+      "reason": "The lead-in governs (d)."
+    },
+    {
+      "map": "2026",
+      "entry": "sufficient-available-power",
+      "field": "note",
+      "verdict": "agree",
+      "citation": "Prior to flight, the remote pilot in command must:",
+      "reason": "The quotation is verbatim."
+    },
+    {
+      "map": "2026",
+      "entry": "attached-object-no-adverse-effect",
+      "field": "assertedBy",
+      "verdict": "agree",
+      "citation": "Prior to flight, the remote pilot in command must:",
+      "reason": "The lead-in governs (e)."
+    },
+    {
+      "map": "2026",
+      "entry": "attached-object-no-adverse-effect",
+      "field": "note",
+      "verdict": "agree",
+      "citation": "Prior to flight, the remote pilot in command must:",
+      "reason": "The quotation is verbatim."
+    },
+    {
+      "map": "2020",
+      "entry": "collision-hazard-proximity",
+      "field": "assertedBy",
+      "verdict": "agree",
+      "citation": "(b) No person may operate a small unmanned aircraft so close to another aircraft as to create a collision hazard.",
+      "reason": "Nobody is named as deciding."
+    },
+    {
+      "map": "2020",
+      "entry": "collision-hazard-proximity",
+      "field": "note",
+      "verdict": "agree",
+      "citation": "No person",
+      "reason": "The quotation is verbatim."
+    },
+    {
+      "map": "2020",
+      "entry": "reasonable-protection",
+      "field": "assertedBy",
+      "verdict": "agree",
+      "citation": "No person may operate a small unmanned aircraft over a human being unless that human being is:",
+      "reason": "Nobody is named as deciding."
+    },
+    {
+      "map": "2020",
+      "entry": "reasonable-protection",
+      "field": "note",
+      "verdict": "agree",
+      "citation": "No person may operate a small unmanned aircraft over a human being",
+      "reason": "The quotation is verbatim from the 2020 lead-in, and the note now accounts for the human being."
+    },
+    {
+      "map": "2020",
+      "entry": "intensity-reduction-in-interest-of-safety",
+      "field": "assertedBy",
+      "verdict": "agree",
+      "citation": "The remote pilot in command may reduce the intensity of the anti-collision lighting if he or she determines",
+      "reason": "The text names the decider."
+    },
+    {
+      "map": "2020",
+      "entry": "unaided-visual-contact",
+      "field": "assertedBy",
+      "verdict": "agree",
+      "citation": "the remote pilot in command, the visual observer (if one is used), and the person manipulating the flight control",
+      "reason": "All three names are verbatim in the evidence."
+    },
+    {
+      "map": "2020",
+      "entry": "observer-coordination",
+      "field": "assertedBy",
+      "verdict": "agree",
+      "citation": "The remote pilot in command, the person manipulating the flight controls of the small unmanned aircraft system, and the visual observer must coordinate",
+      "reason": "All three names are verbatim in the evidence."
+    },
+    {
+      "map": "2020",
+      "entry": "preflight-risk-assessment",
+      "field": "assertedBy",
+      "verdict": "agree",
+      "citation": "Prior to flight, the remote pilot in command must:",
+      "reason": "The lead-in governs (a)."
+    },
+    {
+      "map": "2020",
+      "entry": "preflight-risk-assessment",
+      "field": "note",
+      "verdict": "agree",
+      "citation": "Prior to flight, the remote pilot in command must:",
+      "reason": "The quotation is verbatim."
+    },
+    {
+      "map": "2020",
+      "entry": "participant-briefing",
+      "field": "assertedBy",
+      "verdict": "agree",
+      "citation": "Prior to flight, the remote pilot in command must:",
+      "reason": "The lead-in governs (b)."
+    },
+    {
+      "map": "2020",
+      "entry": "participant-briefing",
+      "field": "note",
+      "verdict": "agree",
+      "citation": "Prior to flight, the remote pilot in command must:",
+      "reason": "The quotation is verbatim."
+    },
+    {
+      "map": "2020",
+      "entry": "sufficient-available-power",
+      "field": "assertedBy",
+      "verdict": "agree",
+      "citation": "Prior to flight, the remote pilot in command must:",
+      "reason": "The lead-in governs (d)."
+    },
+    {
+      "map": "2020",
+      "entry": "sufficient-available-power",
+      "field": "note",
+      "verdict": "agree",
+      "citation": "Prior to flight, the remote pilot in command must:",
+      "reason": "The quotation is verbatim."
+    },
+    {
+      "map": "2020",
+      "entry": "attached-object-no-adverse-effect",
+      "field": "assertedBy",
+      "verdict": "agree",
+      "citation": "Prior to flight, the remote pilot in command must:",
+      "reason": "The lead-in governs (e)."
+    },
+    {
+      "map": "2020",
+      "entry": "attached-object-no-adverse-effect",
+      "field": "note",
+      "verdict": "agree",
+      "citation": "Prior to flight, the remote pilot in command must:",
+      "reason": "The quotation is verbatim."
+    }
+  ],
+  "omissions": [],
+  "nits": [
+    "Only note and assertedBy changed in either diff; every other field is byte-identical before and after. Every assertion in both maps (10 in 2026, 9 in 2020) carries assertedBy, and no entry carries draws.",
+    "'flight control' versus 'flight controls', and the fact that assertedBy lists who holds the duty rather than who decides (with § 107.31(b) setting out alternatives): the author has left these as limits to record in the decision record. I have no further objection."
+  ],
+  "rounds": [
+    {
+      "round": 1,
+      "sha256": null,
+      "bytesNote": "The round-1 bytes were not retained; they differ from the final bytes by exactly the changes listed in resolutions.",
+      "verdicts": [
+        {
+          "map": "2026",
+          "entry": "collision-hazard-proximity",
+          "field": "assertedBy",
+          "verdict": "agree",
+          "citation": "(b) No person may operate a small unmanned aircraft so close to another aircraft as to create a collision hazard.",
+          "reason": "The only party named is the one the prohibition applies to. Nobody is named as deciding whether there is a hazard, so caller is right."
+        },
+        {
+          "map": "2026",
+          "entry": "collision-hazard-proximity",
+          "field": "note",
+          "verdict": "agree",
+          "citation": "No person",
+          "reason": "The quotation is verbatim and the claim about § 107.37(b) is accurate."
+        },
+        {
+          "map": "2026",
+          "entry": "reasonable-protection",
+          "field": "assertedBy",
+          "verdict": "agree",
+          "citation": "No person may operate a small unmanned aircraft over a human being unless—",
+          "reason": "No part of § 107.39 names anyone who decides whether there is reasonable protection."
+        },
+        {
+          "map": "2026",
+          "entry": "reasonable-protection",
+          "field": "note",
+          "verdict": "agree",
+          "citation": "No person may operate a small unmanned aircraft over a human being",
+          "reason": "The quotation is verbatim. 'Names only the subject' ignores 'That human being', but that person does not decide anything (see nits)."
+        },
+        {
+          "map": "2026",
+          "entry": "flash-rate-sufficient",
+          "field": "assertedBy",
+          "verdict": "agree",
+          "citation": "has a flash rate sufficient to avoid a collision",
+          "reason": "Nobody is named as deciding the flash rate. The pilot's 'determines' in the same paragraphs covers only reducing intensity."
+        },
+        {
+          "map": "2026",
+          "entry": "flash-rate-sufficient",
+          "field": "note",
+          "verdict": "disagree",
+          "citation": "(1) The remote pilot in command of the small unmanned aircraft has completed an initial knowledge test ... The remote pilot in command may reduce the intensity of ... if he or she determines",
+          "reason": "The note says (a) and (b) 'name only the subject of the prohibition'. They also name the remote pilot in command twice, once as the one who determines something. The conclusion still holds, since the pilot's judgement is not about flash rate, but the stated premise is false. The quotation 'no person may operate' is verbatim from (a)."
+        },
+        {
+          "map": "2026",
+          "entry": "intensity-reduction-in-interest-of-safety",
+          "field": "assertedBy",
+          "verdict": "agree",
+          "citation": "The remote pilot in command may reduce the intensity of, but may not extinguish, the anti-collision lighting if he or she determines",
+          "reason": "The text names the decider outright, and the name appears in the evidence."
+        },
+        {
+          "map": "2026",
+          "entry": "unaided-visual-contact",
+          "field": "assertedBy",
+          "verdict": "agree",
+          "citation": "the remote pilot in command, the visual observer (if one is used), and the person manipulating the flight control of the small unmanned aircraft system must be able to see",
+          "reason": "The three named persons hold the ability. All three names appear verbatim in the evidence, including the singular 'flight control'."
+        },
+        {
+          "map": "2026",
+          "entry": "observer-coordination",
+          "field": "assertedBy",
+          "verdict": "agree",
+          "citation": "The remote pilot in command, the person manipulating the flight controls of the small unmanned aircraft system, and the visual observer must coordinate",
+          "reason": "The three named persons appear verbatim in the evidence."
+        },
+        {
+          "map": "2026",
+          "entry": "preflight-risk-assessment",
+          "field": "assertedBy",
+          "verdict": "agree",
+          "citation": "Prior to flight, the remote pilot in command must: (a) Assess the operating environment",
+          "reason": "The section's lead-in names who must carry out (a)."
+        },
+        {
+          "map": "2026",
+          "entry": "preflight-risk-assessment",
+          "field": "note",
+          "verdict": "agree",
+          "citation": "Prior to flight, the remote pilot in command must:",
+          "reason": "The quotation is verbatim, so the value is supported through a quoted span."
+        },
+        {
+          "map": "2026",
+          "entry": "participant-briefing",
+          "field": "assertedBy",
+          "verdict": "agree",
+          "citation": "Prior to flight, the remote pilot in command must: ... (b) Ensure that all persons directly participating",
+          "reason": "The lead-in governs (b)."
+        },
+        {
+          "map": "2026",
+          "entry": "participant-briefing",
+          "field": "note",
+          "verdict": "agree",
+          "citation": "Prior to flight, the remote pilot in command must:",
+          "reason": "The quotation is verbatim."
+        },
+        {
+          "map": "2026",
+          "entry": "sufficient-available-power",
+          "field": "assertedBy",
+          "verdict": "agree",
+          "citation": "Prior to flight, the remote pilot in command must: ... (d) If the small unmanned aircraft is powered, ensure that there is enough available power",
+          "reason": "The lead-in governs (d)."
+        },
+        {
+          "map": "2026",
+          "entry": "sufficient-available-power",
+          "field": "note",
+          "verdict": "agree",
+          "citation": "Prior to flight, the remote pilot in command must:",
+          "reason": "The quotation is verbatim."
+        },
+        {
+          "map": "2026",
+          "entry": "attached-object-no-adverse-effect",
+          "field": "assertedBy",
+          "verdict": "agree",
+          "citation": "Prior to flight, the remote pilot in command must: ... (e) Ensure that any object attached or carried ... does not adversely affect",
+          "reason": "The lead-in governs (e)."
+        },
+        {
+          "map": "2026",
+          "entry": "attached-object-no-adverse-effect",
+          "field": "note",
+          "verdict": "agree",
+          "citation": "Prior to flight, the remote pilot in command must:",
+          "reason": "The quotation is verbatim."
+        },
+        {
+          "map": "2020",
+          "entry": "collision-hazard-proximity",
+          "field": "assertedBy",
+          "verdict": "agree",
+          "citation": "(b) No person may operate a small unmanned aircraft so close to another aircraft as to create a collision hazard.",
+          "reason": "The text is identical to 2026, and nobody is named as deciding."
+        },
+        {
+          "map": "2020",
+          "entry": "collision-hazard-proximity",
+          "field": "note",
+          "verdict": "agree",
+          "citation": "No person",
+          "reason": "The quotation is verbatim."
+        },
+        {
+          "map": "2020",
+          "entry": "reasonable-protection",
+          "field": "assertedBy",
+          "verdict": "agree",
+          "citation": "No person may operate a small unmanned aircraft over a human being unless that human being is:",
+          "reason": "Nobody is named as deciding whether there is protection."
+        },
+        {
+          "map": "2020",
+          "entry": "reasonable-protection",
+          "field": "note",
+          "verdict": "agree",
+          "citation": "No person may operate a small unmanned aircraft over a human being",
+          "reason": "The quotation is verbatim in the 2020 lead-in."
+        },
+        {
+          "map": "2020",
+          "entry": "intensity-reduction-in-interest-of-safety",
+          "field": "assertedBy",
+          "verdict": "agree",
+          "citation": "The remote pilot in command may reduce the intensity of the anti-collision lighting if he or she determines",
+          "reason": "The text names the decider, and the name is in the evidence."
+        },
+        {
+          "map": "2020",
+          "entry": "unaided-visual-contact",
+          "field": "assertedBy",
+          "verdict": "agree",
+          "citation": "the remote pilot in command, the visual observer (if one is used), and the person manipulating the flight control of the small unmanned aircraft system must be able to see",
+          "reason": "The text is identical to 2026."
+        },
+        {
+          "map": "2020",
+          "entry": "observer-coordination",
+          "field": "assertedBy",
+          "verdict": "agree",
+          "citation": "The remote pilot in command, the person manipulating the flight controls of the small unmanned aircraft system, and the visual observer must coordinate",
+          "reason": "The text is identical to 2026."
+        },
+        {
+          "map": "2020",
+          "entry": "preflight-risk-assessment",
+          "field": "assertedBy",
+          "verdict": "agree",
+          "citation": "Prior to flight, the remote pilot in command must:",
+          "reason": "The lead-in governs (a)."
+        },
+        {
+          "map": "2020",
+          "entry": "preflight-risk-assessment",
+          "field": "note",
+          "verdict": "agree",
+          "citation": "Prior to flight, the remote pilot in command must:",
+          "reason": "The quotation is verbatim."
+        },
+        {
+          "map": "2020",
+          "entry": "participant-briefing",
+          "field": "assertedBy",
+          "verdict": "agree",
+          "citation": "Prior to flight, the remote pilot in command must:",
+          "reason": "The lead-in governs (b)."
+        },
+        {
+          "map": "2020",
+          "entry": "participant-briefing",
+          "field": "note",
+          "verdict": "agree",
+          "citation": "Prior to flight, the remote pilot in command must:",
+          "reason": "The quotation is verbatim."
+        },
+        {
+          "map": "2020",
+          "entry": "sufficient-available-power",
+          "field": "assertedBy",
+          "verdict": "agree",
+          "citation": "Prior to flight, the remote pilot in command must:",
+          "reason": "The lead-in governs (d)."
+        },
+        {
+          "map": "2020",
+          "entry": "sufficient-available-power",
+          "field": "note",
+          "verdict": "agree",
+          "citation": "Prior to flight, the remote pilot in command must:",
+          "reason": "The quotation is verbatim."
+        },
+        {
+          "map": "2020",
+          "entry": "attached-object-no-adverse-effect",
+          "field": "assertedBy",
+          "verdict": "agree",
+          "citation": "Prior to flight, the remote pilot in command must:",
+          "reason": "The lead-in governs (e)."
+        },
+        {
+          "map": "2020",
+          "entry": "attached-object-no-adverse-effect",
+          "field": "note",
+          "verdict": "agree",
+          "citation": "Prior to flight, the remote pilot in command must:",
+          "reason": "The quotation is verbatim."
+        }
+      ],
+      "omissions": [],
+      "nits": [
+        "Every assertion entry in both maps (10 in 2026, 9 in 2020) is in the diff and now carries assertedBy. No entry carries draws. The all-entries files do not include the assertedBy or draws fields, so for entries outside the diff their absence was confirmed only from the diffs. That is sufficient here because no assertion entry falls outside the diff.",
+        "reasonable-protection (both maps): '§ 107.39 names only the subject of the prohibition' leaves out 'That human being'. Suggested wording: 'names no one who decides the protection'.",
+        "unaided-visual-contact and observer-coordination (both maps): assertedBy lists who holds the ability or duty ('must be able to see', 'must coordinate'). The text never says those persons decide whether it is met. This matches how the § 107.49 lead-in is treated, but it is an inference, and neither note says so.",
+        "The same person is spelled 'person manipulating the flight control' in one entry and 'person manipulating the flight controls' in another. Both are verbatim from their evidence, but an engine matching attributions across entries would treat them as two different parties.",
+        "unaided-visual-contact: § 107.31(b) lets the ability be exercised by either the pilot plus the controls person or a visual observer alone. assertedBy lists all three together with no indication that they are alternatives.",
+        "flash-rate-sufficient (2026): the note's quotation 'no person may operate' is lowercase, so it is verbatim from (a) only. (b) has 'No person may operate'."
+      ],
+      "summary": "Every assertedBy value in both maps is supported by the text, including the lead-in cases, and caller is right in all three places it is used. There are no omissions and no draws. One accuracy problem: the 2026 flash-rate-sufficient note says § 107.29(a) and (b) name only the subject of the prohibition, but both paragraphs also name the remote pilot in command.",
+      "resolutions": [
+        "flash-rate-sufficient note (disagree, 2026): taken. The note now accounts for the remote pilot in command § 107.29 names, whose determination is only about intensity.",
+        "reasonable-protection note (nit, both maps): taken. The note accounts for the human being protected.",
+        "flight control / flight controls, duty-bearer versus decider, § 107.31(b) alternatives (nits): left in the maps as verbatim; recorded as limits in docs/decisions/0025."
+      ]
+    },
+    {
+      "round": 2,
+      "sha256": "ca9d6ea23f4ffb3918c48f31577286e3d414febca3414e79368ffe65688b5d40",
+      "verdicts": [
+        {
+          "map": "2026",
+          "entry": "collision-hazard-proximity",
+          "field": "assertedBy",
+          "verdict": "agree",
+          "citation": "(b) No person may operate a small unmanned aircraft so close to another aircraft as to create a collision hazard.",
+          "reason": "Nobody is named as deciding whether there is a hazard. Unchanged since round 1."
+        },
+        {
+          "map": "2026",
+          "entry": "collision-hazard-proximity",
+          "field": "note",
+          "verdict": "agree",
+          "citation": "No person",
+          "reason": "The quotation is verbatim, and 'names only' is accurate for § 107.37(b)."
+        },
+        {
+          "map": "2026",
+          "entry": "reasonable-protection",
+          "field": "assertedBy",
+          "verdict": "agree",
+          "citation": "No person may operate a small unmanned aircraft over a human being unless—",
+          "reason": "Nobody is named as deciding whether there is protection."
+        },
+        {
+          "map": "2026",
+          "entry": "reasonable-protection",
+          "field": "note",
+          "verdict": "agree",
+          "citation": "(b) That human being is located under a covered structure",
+          "reason": "The quotation is verbatim. The note now accounts for the human being protected, and the statement about § 107.39 is accurate."
+        },
+        {
+          "map": "2026",
+          "entry": "flash-rate-sufficient",
+          "field": "assertedBy",
+          "verdict": "agree",
+          "citation": "has a flash rate sufficient to avoid a collision",
+          "reason": "Nobody is named as deciding the flash rate."
+        },
+        {
+          "map": "2026",
+          "entry": "flash-rate-sufficient",
+          "field": "note",
+          "verdict": "agree",
+          "citation": "The remote pilot in command may reduce the intensity of, but may not extinguish, the anti-collision lighting if he or she determines",
+          "reason": "The round-1 problem is fixed. The note now accounts for the remote pilot in command. The only thing that pilot 'determines' is intensity; (a)(1) names the pilot only as having completed training, which is not a determination. 'no person may operate' is verbatim from (a)."
+        },
+        {
+          "map": "2026",
+          "entry": "intensity-reduction-in-interest-of-safety",
+          "field": "assertedBy",
+          "verdict": "agree",
+          "citation": "The remote pilot in command may reduce the intensity of, but may not extinguish, the anti-collision lighting if he or she determines",
+          "reason": "The text names the decider, and the name is in the evidence."
+        },
+        {
+          "map": "2026",
+          "entry": "unaided-visual-contact",
+          "field": "assertedBy",
+          "verdict": "agree",
+          "citation": "the remote pilot in command, the visual observer (if one is used), and the person manipulating the flight control of the small unmanned aircraft system must be able to see",
+          "reason": "All three names appear verbatim in the evidence."
+        },
+        {
+          "map": "2026",
+          "entry": "observer-coordination",
+          "field": "assertedBy",
+          "verdict": "agree",
+          "citation": "The remote pilot in command, the person manipulating the flight controls of the small unmanned aircraft system, and the visual observer must coordinate",
+          "reason": "All three names appear verbatim in the evidence."
+        },
+        {
+          "map": "2026",
+          "entry": "preflight-risk-assessment",
+          "field": "assertedBy",
+          "verdict": "agree",
+          "citation": "Prior to flight, the remote pilot in command must:",
+          "reason": "The lead-in governs (a)."
+        },
+        {
+          "map": "2026",
+          "entry": "preflight-risk-assessment",
+          "field": "note",
+          "verdict": "agree",
+          "citation": "Prior to flight, the remote pilot in command must:",
+          "reason": "The quotation is verbatim."
+        },
+        {
+          "map": "2026",
+          "entry": "participant-briefing",
+          "field": "assertedBy",
+          "verdict": "agree",
+          "citation": "Prior to flight, the remote pilot in command must:",
+          "reason": "The lead-in governs (b)."
+        },
+        {
+          "map": "2026",
+          "entry": "participant-briefing",
+          "field": "note",
+          "verdict": "agree",
+          "citation": "Prior to flight, the remote pilot in command must:",
+          "reason": "The quotation is verbatim."
+        },
+        {
+          "map": "2026",
+          "entry": "sufficient-available-power",
+          "field": "assertedBy",
+          "verdict": "agree",
+          "citation": "Prior to flight, the remote pilot in command must:",
+          "reason": "The lead-in governs (d)."
+        },
+        {
+          "map": "2026",
+          "entry": "sufficient-available-power",
+          "field": "note",
+          "verdict": "agree",
+          "citation": "Prior to flight, the remote pilot in command must:",
+          "reason": "The quotation is verbatim."
+        },
+        {
+          "map": "2026",
+          "entry": "attached-object-no-adverse-effect",
+          "field": "assertedBy",
+          "verdict": "agree",
+          "citation": "Prior to flight, the remote pilot in command must:",
+          "reason": "The lead-in governs (e)."
+        },
+        {
+          "map": "2026",
+          "entry": "attached-object-no-adverse-effect",
+          "field": "note",
+          "verdict": "agree",
+          "citation": "Prior to flight, the remote pilot in command must:",
+          "reason": "The quotation is verbatim."
+        },
+        {
+          "map": "2020",
+          "entry": "collision-hazard-proximity",
+          "field": "assertedBy",
+          "verdict": "agree",
+          "citation": "(b) No person may operate a small unmanned aircraft so close to another aircraft as to create a collision hazard.",
+          "reason": "Nobody is named as deciding."
+        },
+        {
+          "map": "2020",
+          "entry": "collision-hazard-proximity",
+          "field": "note",
+          "verdict": "agree",
+          "citation": "No person",
+          "reason": "The quotation is verbatim."
+        },
+        {
+          "map": "2020",
+          "entry": "reasonable-protection",
+          "field": "assertedBy",
+          "verdict": "agree",
+          "citation": "No person may operate a small unmanned aircraft over a human being unless that human being is:",
+          "reason": "Nobody is named as deciding."
+        },
+        {
+          "map": "2020",
+          "entry": "reasonable-protection",
+          "field": "note",
+          "verdict": "agree",
+          "citation": "No person may operate a small unmanned aircraft over a human being",
+          "reason": "The quotation is verbatim from the 2020 lead-in, and the note now accounts for the human being."
+        },
+        {
+          "map": "2020",
+          "entry": "intensity-reduction-in-interest-of-safety",
+          "field": "assertedBy",
+          "verdict": "agree",
+          "citation": "The remote pilot in command may reduce the intensity of the anti-collision lighting if he or she determines",
+          "reason": "The text names the decider."
+        },
+        {
+          "map": "2020",
+          "entry": "unaided-visual-contact",
+          "field": "assertedBy",
+          "verdict": "agree",
+          "citation": "the remote pilot in command, the visual observer (if one is used), and the person manipulating the flight control",
+          "reason": "All three names are verbatim in the evidence."
+        },
+        {
+          "map": "2020",
+          "entry": "observer-coordination",
+          "field": "assertedBy",
+          "verdict": "agree",
+          "citation": "The remote pilot in command, the person manipulating the flight controls of the small unmanned aircraft system, and the visual observer must coordinate",
+          "reason": "All three names are verbatim in the evidence."
+        },
+        {
+          "map": "2020",
+          "entry": "preflight-risk-assessment",
+          "field": "assertedBy",
+          "verdict": "agree",
+          "citation": "Prior to flight, the remote pilot in command must:",
+          "reason": "The lead-in governs (a)."
+        },
+        {
+          "map": "2020",
+          "entry": "preflight-risk-assessment",
+          "field": "note",
+          "verdict": "agree",
+          "citation": "Prior to flight, the remote pilot in command must:",
+          "reason": "The quotation is verbatim."
+        },
+        {
+          "map": "2020",
+          "entry": "participant-briefing",
+          "field": "assertedBy",
+          "verdict": "agree",
+          "citation": "Prior to flight, the remote pilot in command must:",
+          "reason": "The lead-in governs (b)."
+        },
+        {
+          "map": "2020",
+          "entry": "participant-briefing",
+          "field": "note",
+          "verdict": "agree",
+          "citation": "Prior to flight, the remote pilot in command must:",
+          "reason": "The quotation is verbatim."
+        },
+        {
+          "map": "2020",
+          "entry": "sufficient-available-power",
+          "field": "assertedBy",
+          "verdict": "agree",
+          "citation": "Prior to flight, the remote pilot in command must:",
+          "reason": "The lead-in governs (d)."
+        },
+        {
+          "map": "2020",
+          "entry": "sufficient-available-power",
+          "field": "note",
+          "verdict": "agree",
+          "citation": "Prior to flight, the remote pilot in command must:",
+          "reason": "The quotation is verbatim."
+        },
+        {
+          "map": "2020",
+          "entry": "attached-object-no-adverse-effect",
+          "field": "assertedBy",
+          "verdict": "agree",
+          "citation": "Prior to flight, the remote pilot in command must:",
+          "reason": "The lead-in governs (e)."
+        },
+        {
+          "map": "2020",
+          "entry": "attached-object-no-adverse-effect",
+          "field": "note",
+          "verdict": "agree",
+          "citation": "Prior to flight, the remote pilot in command must:",
+          "reason": "The quotation is verbatim."
+        }
+      ],
+      "omissions": [],
+      "nits": [
+        "Only note and assertedBy changed in either diff; every other field is byte-identical before and after. Every assertion in both maps (10 in 2026, 9 in 2020) carries assertedBy, and no entry carries draws.",
+        "'flight control' versus 'flight controls', and the fact that assertedBy lists who holds the duty rather than who decides (with § 107.31(b) setting out alternatives): the author has left these as limits to record in the decision record. I have no further objection."
+      ],
+      "summary": "In the final version of both maps every assertedBy value and every new note is supported by the text, with verbatim quotations. The round-1 disagreement on the flash-rate-sufficient note is fixed, and there are no omissions."
+    }
+  ],
+  "maps": {
+    "corpus-map.json": "ca9d6ea23f4ffb3918c48f31577286e3d414febca3414e79368ffe65688b5d40",
+    "../faa-part-107-temporal/corpus-map-2020-01-01.json": "032d4c3adc1c8eb0fa3e5b5c6d35c36a873b5f7b0158da2af9e94c110daf435c"
+  },
+  "rebase": "After round 2 the change was rebased onto #119 and its decision record renumbered from 0024 to 0025; the only difference between the bytes the reviewer read in round 2 and `sha256` is that number in the notes."
+}

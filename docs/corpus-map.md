@@ -170,9 +170,11 @@ before either has been implemented.
 | `name` | What the rule is called, in the corpus's language where it has one. |
 | `locator` | Corpus id plus a citation in that corpus's grammar. **Required**, except on a derived entry, which must not carry one. An entry without one is not an entry. |
 | `kind` | `value`, `operation` or `assertion` — a fact the corpus states, a procedure it describes, or a condition only the caller can supply. See below. |
+| `assertedBy` | On every `kind: assertion` entry, and only there. Who the corpus says supplies or decides the fact, in its words, or `["caller"]` with the reason in `note` where it names nobody. See below. |
+| `draws` | Present only on an in-scope `operation` of a `randomness: seeded` corpus whose own resolution draws: `{dice, count}` or a list of them. See below. |
 | `scope` | `in` or `out`. Out is a recorded verdict with a reason, not an omission. **Decided per rule. A section has no scope of its own.** See below. |
 | `clarity` | `clear` or `ambiguous`. `clear` asserts the corpus determines exactly one answer for every valid input — so a corpus that states the rule twice, differently, is `ambiguous`. |
-| `ambiguity` | Absent when clear. Otherwise the question, its `fate`, and — where the corpus contradicts itself — the `conflict` the question belongs to. Never a carrier for a decline that is not an ambiguity. |
+| `ambiguity` | Absent when clear. Otherwise the question, its `fate`, where the corpus contradicts itself the `conflict` the question belongs to, and `affectsDraws: true` where the unsettled point changes the entry's draw count. Never a carrier for a decline that is not an ambiguity. |
 | `dependsOn` | Entry ids. Determines backlog order — the sequence entries must be *implemented* in. **Not** a runtime precondition; see the gate fields. |
 | `enabledBy` | Entry ids. The rules that make this one reachable at runtime; it does not apply until one holds. Absent on an entry no rule opens. Orders nothing. See below. |
 | `suspendedBy` | Entry ids. The rules that make this one unreachable while they hold. Absent on an entry no rule closes. Orders nothing. See below. |
@@ -308,6 +310,63 @@ assessment is measured against and that measure carries *"immediate vicinity"*; 
 fixes five briefing topics, each open-textured. Gate 3 asks whether a measure is *stated*, not
 whether it is *determinate*, so both fire and both are assertions. Named by 0010 with two
 instances per map, and filed rather than decided.
+
+### `assertedBy` — who asserts it
+
+**An assertion names who the corpus lets assert it, in the corpus's words.** Decided in
+[0025](decisions/0025-an-assertion-names-who-asserts-it-and-an-operation-names-what-it-draws.md)
+([#117](https://github.com/brandonifco/rules-factory/issues/117)). *Attribute it* is the second
+thing an engine owes an assertion, and until 0025 the map did not say to whom, so the SRD engine
+checked `initiative-ties`' deciders against its own reading.
+
+```json
+"kind": "assertion",
+"assertedBy": ["GM", "players"]
+```
+
+A non-empty list, on every `kind: assertion` entry and on no other. **Each value is anchored**: it
+appears, ignoring case and spacing, as a whole word or phrase in the entry's `evidence`, or inside a
+span the entry's `note` quotes from the corpus. The second route is for a party named outside the
+span, such as § 107.49's lead-in, *"Prior to flight, the remote pilot in command must:"*, which governs
+four assertion entries. **Where the corpus names nobody**, the value is `["caller"]`, alone, and `note`
+says why. *"(as may have been agreed)"* names nobody, and neither does § 107.37(b)'s *"No person may
+operate"*, which names only the subject of a prohibition. `check-map.py --only asserted-by`
+enforces all of it. The generated `MapEntry` and `RegisteredEntry` carry the list as `AssertedBy`, so
+an engine checks an attribution against the map.
+
+**What it does not buy.** `check-map.py` reads no corpus, so it cannot tell a quote in `note` from a
+sentence in quotation marks. `tools/tests/test_map_anchors.py` holds the example maps' quotes to their
+committed corpora. An anchor proves the word is there, not that it names the right party. And a list
+of who must *be able to see* (§ 107.31(a)) does not say that § 107.31(b) lets some of them do it
+instead of others.
+
+### `draws` — what an operation draws
+
+**An operation whose own resolution draws random values says how many draws of what.** Decided in
+[0025](decisions/0025-an-assertion-names-who-asserts-it-and-an-operation-names-what-it-draws.md)
+([#118](https://github.com/brandonifco/rules-factory/issues/118)). Under `randomness: seeded`, one
+extra or missing draw changes every later one, so the count is part of what a replay means.
+
+```json
+"draws": { "dice": "d20", "count": "one per participant not in a group of identical creatures, …" }
+"draws": [ { "dice": "d20", "count": "one attack roll; …" },
+           { "dice": "damage dice", "count": "the attack's own damage dice, on a hit only, …" } ]
+```
+
+- `dice` names what is rolled, anchored as `assertedBy` is. The SRD's Initiative evidence says only "a Dexterity check", so the note quotes p. 6's *"the game uses a d20 roll"*. Hoyle has no notation, and its dice are `die` and `dice`.
+- `count` is a positive number, or a short statement.
+- Only an in-scope `operation` carries it. It is refused under `randomness: none`.
+- **A draw belongs to the entry whose own resolution makes it.** A gate, a dependency or a cross-reference that leads to a roll does not declare it: `full-table-suspension` suspends `throw-two-dice`, `attack-structure` depends on `attack-resolution`, and `next-game-opening`'s *"as at starting"* is `opening-roll`'s throw. Otherwise one d20 is declared three times. The count may name the other entry, so a draw is counted once.
+
+**`ambiguity.affectsDraws: true`** marks an ambiguity whose unsettled point changes how many draws
+*this entry* makes. `group-initiative` does not say what a group is, and so does not say how many
+rolls there are. Such an entry must declare `draws`, and its `count` may name the alternatives.
+`check-map.py --only draws` enforces the shape, the anchor, the kind, the corpus's randomness and
+this requirement.
+
+**What it does not buy.** An operation that rolls and omits `draws` passes. The field is required only
+where a mapper has recorded that the count is unsettled, which is the same blind spot as an
+unrecorded conflict. `count` is prose that nothing reads.
 
 ### `evidence` is the corpus's words, not the mapper's
 
@@ -854,7 +913,7 @@ no entry, and `dependsOn` is not a runtime input. So the factory's generated con
 ([#76](https://github.com/brandonifco/rules-factory/issues/76), `tools/factory/generate.py`) types
 what the map fixes and nothing more. Each entry has a request type of its own, so a request for
 one entry cannot be handed to another. An assertion's request carries the caller's value, which
-is what row 8 resolves to. The request type is partial, so what the map leaves unnamed, an
+is what row 8 resolves to, and its generated entry carries `AssertedBy`, who may assert it (0025). The request type is partial, so what the map leaves unnamed, an
 operation's inputs, the engine declares on it in its own code
 ([#93](https://github.com/brandonifco/rules-factory/issues/93)), and the typed entry point passes
 that request, inputs included, to the handler. Each entry's handler is a declared method, so an `implemented` entry
@@ -933,7 +992,9 @@ answered per corpus for the same reason ([0013](decisions/0013-verification-post
 chance. `none`: a conforming engine draws no random value, and its gate refuses
 `RulesKernel.Randomness`. `seeded`: it may draw, only through the kernel's seeded, replayable
 source; the factory pins that package at the kernel's version and references nothing. A person
-declares it from the rules. Nothing infers it, and a missing value is a failure, never `none`.
+declares it from the rules. Nothing infers it, and a missing value is a failure, never `none`. Which
+entries draw, and how many of what, is the map's `draws` field, which is refused under `none`
+([0025](decisions/0025-an-assertion-names-who-asserts-it-and-an-operation-names-what-it-draws.md)).
 
 `check-map.py --only postures` requires all three on every admitted corpus, refuses a `never-commit`
 `committed-copy`, a `local-copy` with no `envVar`, a `committedPath` that is not a file, and any
@@ -1071,6 +1132,12 @@ Open questions are tracked as issues so they are worked rather than admired:
   [0024](decisions/0024-a-quote-is-of-the-extraction-and-a-page-extent-can-end-at-a-heading.md)
   — the manifest declares `quotedText`, an entry the extraction garbles declares `extraction`
   with its rendered reading (printed as not verified), and a page extent may name `endsBefore`.
+
+- [#117](https://github.com/brandonifco/rules-factory/issues/117),
+  [#118](https://github.com/brandonifco/rules-factory/issues/118) — an assertion named nobody who
+  may make it, and an ambiguous draw count changes a replay. Decided:
+  [0025](decisions/0025-an-assertion-names-who-asserts-it-and-an-operation-names-what-it-draws.md)
+  adds `assertedBy`, `draws` and `ambiguity.affectsDraws`, each anchored in the corpus's words.
 
 **Where a decline's runtime reason lives.** Opened by 0004, answered by 0005: an entry whose
 meaning is fixed in an unadmitted corpus takes `definedElsewhere`, parallel to

@@ -191,7 +191,11 @@ sample — a table is exactly the kind of thing where a spot check passes and th
 is still wrong.
 
 A procedure is an operation: how a test resolves, how damage applies, how a limit is
-computed. Operations live in the `Rules` layer and consume values.
+computed. Operations live in the `Rules` layer and consume values. **In a corpus that draws
+random values, an operation whose own resolution rolls says what it draws and how many times**
+(`draws`). The draw goes on the entry that makes the roll, not on the gates and cross-references that
+lead to it, so that each draw is counted once
+([0025](decisions/0025-an-assertion-names-who-asserts-it-and-an-operation-names-what-it-draws.md)).
 
 An **assertion** is neither: an **open term the corpus deliberately delegated, having said
 what it is measured against or what set of values it may take**. A regulation requiring that a
@@ -201,6 +205,13 @@ and binding rule that no computation settles. What an engine owes an assertion i
 it, attribute it to whoever made it, record it with the outcome, and never infer it.** An
 engine that quietly defaults an unasserted condition to true has substituted its own
 judgement for the person's.
+
+**Say whom it is attributed to.** Every assertion entry carries `assertedBy`: the party the corpus
+names as supplying or deciding the fact, in the corpus's words, found in the evidence or in a span the
+note quotes, such as a section's lead-in. Where the corpus names nobody, as with *"(as may have been
+agreed)"*, the value is `caller` and the note says so. Do not supply a party the text does not name
+because it is the obvious one. See
+[0025](decisions/0025-an-assertion-names-who-asserts-it-and-an-operation-names-what-it-draws.md).
 
 *Judgement the corpus deliberately delegates* looks ambiguous and is not. "If the pilot
 determines it would be in the interest of safety" is not a defect in the text — the corpus
@@ -439,6 +450,11 @@ entry may answer it without contradicting every other member. A conflict's membe
 fate, and where that fate is `decision` they name the same record; otherwise one side is
 settled and the other left open with nothing noticing. See
 [0007](decisions/0007-a-conflict-is-a-question-not-a-pair.md).
+
+**Ask whether the unsettled point changes a draw count.** Under `randomness: seeded`, an engine that
+rolls once where another rolls three times is replaying a different game, not just giving a different
+answer. What counts as a group for a group Initiative roll is the instance. Mark such an ambiguity
+`affectsDraws: true`, and let the entry's `draws` name the alternatives (0025).
 
 What is never acceptable is the third option: an implementer picking a reading silently.
 That produces an engine that is reproducibly wrong, which is worse than one that is

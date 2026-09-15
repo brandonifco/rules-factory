@@ -1,0 +1,488 @@
+{
+  "about": "Independent verdict (0017) on #117 and #118 (docs/decisions/0025): assertedBy on every assertion entry, draws on the operations that roll, and ambiguity.affectsDraws. The reviewer was a separate agent context. It was given only the corpus passages listed in `read`, fields.md, a JSON before/after of every changed entry, and every entry's id, kind, scope, clarity, evidence and ambiguity question after the change, for judging omissions. It saw the author's reasoning only in the map's own notes and, in round 2, in the author's responses. `sha256` is the final map. `verdicts` is the reviewer's final output, unedited. `rounds` keeps round 1 and how each point was resolved.",
+  "sha256": "8f5bb33c99ba928a731307401690d4b1953340eb112a23ca0517da2b1a23052b",
+  "reviewer": "independent reviewer, separate context",
+  "read": [
+    "srd-corpus-combat-pp13-16.txt (srd-5.2.1.txt, the Combat chapter)",
+    "srd-corpus-d20-tests-p6.txt (srd-5.2.1.txt, 'D20 Tests', quoted by the changed notes)",
+    "srd-corpus-damage-rolls-p16.txt (srd-5.2.1.txt, 'Damage Rolls', quoted by attack-resolution's note)",
+    "fields.md (a neutral statement of assertedBy, draws and ambiguity.affectsDraws, written for the reviewer)",
+    "srd-diff.json (changed entries, before and after; rewritten for round 2)",
+    "srd-all-entries.json",
+    "srd-diff.json (round 3: rebased before/after)"
+  ],
+  "summary": "Round 1: The assertedBy values and the new quotations are all correct. Two draws are wrong: group-initiative's count leaves out Disadvantage, and wrong-location-misses declares a roll its evidence doesn't state and would count the same d20 twice. opportunity-attack and attack-structure are missing draws. Round 2 (final bytes): All changed fields in the final diff agree with the corpus, and both corrections (wrong-location-misses, group-initiative) are made properly. I accept the declines on opportunity-attack and attack-structure: both make an attack under the structure whose roll attack-resolution declares, so declaring it on them would count the same d20 more than once. Round 3 (after rebase, final bytes): Every changed field matches what I agreed in round 2, apart from the 0024-to-0025 renumbering. The extraction field on initiative-ties is identical in before and after and names the same GM and players, so it does not affect assertedBy.",
+  "verdicts": [
+    {
+      "entry": "initiative-roll",
+      "field": "draws",
+      "verdict": "agree",
+      "citation": "When combat starts, every participant rolls Initiative; they make a Dexterity check",
+      "reason": "Byte-identical to round 2."
+    },
+    {
+      "entry": "initiative-roll",
+      "field": "note",
+      "verdict": "agree",
+      "citation": "the game uses a d20 roll to determine success or failure. These rolls are called D20 Tests, and they come in three kinds: ability checks, saving throws, and attack rolls",
+      "reason": "Same as round 2 except (0024) now reads (0025). The quotation is still verbatim."
+    },
+    {
+      "entry": "group-initiative",
+      "field": "draws",
+      "verdict": "agree",
+      "citation": "For a group of identical creatures, the GM makes a single roll",
+      "reason": "Byte-identical to round 2."
+    },
+    {
+      "entry": "group-initiative",
+      "field": "ambiguity.affectsDraws",
+      "verdict": "agree",
+      "citation": "For a group of identical creatures, the GM makes a single roll",
+      "reason": "Unchanged since round 2: true. The question and fate are untouched."
+    },
+    {
+      "entry": "group-initiative",
+      "field": "note",
+      "verdict": "agree",
+      "citation": "the game uses a d20 roll to determine success or failure",
+      "reason": "The only change since round 2 is 0024 to 0025."
+    },
+    {
+      "entry": "initiative-ties",
+      "field": "assertedBy",
+      "verdict": "agree",
+      "citation": "the GM decides the order among tied monsters, and the players decide the order among tied characters",
+      "reason": "Unchanged. The added extraction field is the same in before and after, so it is not part of this change. Its renderedReading only removes the folio and header ('13 System Reference Document 5.2.1'). It names the same deciders, GM and players, so it has no bearing on assertedBy."
+    },
+    {
+      "entry": "initiative-ties",
+      "field": "note",
+      "verdict": "agree",
+      "citation": "the GM decides ... the players decide",
+      "reason": "The only change since round 2 is 0024 to 0025."
+    },
+    {
+      "entry": "gm-requires-action",
+      "field": "assertedBy",
+      "verdict": "agree",
+      "citation": "The GM might require you to use an action",
+      "reason": "Unchanged."
+    },
+    {
+      "entry": "sides-agree-to-end",
+      "field": "assertedBy",
+      "verdict": "agree",
+      "citation": "Combat can also end when both sides agree to end it.",
+      "reason": "Unchanged."
+    },
+    {
+      "entry": "sides-agree-to-end",
+      "field": "note",
+      "verdict": "agree",
+      "citation": "both sides agree to end it",
+      "reason": "Byte-identical to round 2. It never contained 0024."
+    },
+    {
+      "entry": "attack-resolution",
+      "field": "draws",
+      "verdict": "agree",
+      "citation": "Make the attack roll ... On a hit, you roll damage",
+      "reason": "Byte-identical to round 2."
+    },
+    {
+      "entry": "attack-resolution",
+      "field": "note",
+      "verdict": "agree",
+      "citation": "You roll the damage dice, add any modifiers, and deal the damage to your target",
+      "reason": "The only change since round 2 is 0024 to 0025."
+    },
+    {
+      "entry": "falling-off",
+      "field": "draws",
+      "verdict": "agree",
+      "citation": "you must succeed on a DC 10 Dexterity saving throw",
+      "reason": "Byte-identical to round 2."
+    },
+    {
+      "entry": "falling-off",
+      "field": "note",
+      "verdict": "agree",
+      "citation": "they come in three kinds: ability checks, saving throws, and attack rolls",
+      "reason": "The only change since round 2 is 0024 to 0025."
+    }
+  ],
+  "omissions": [],
+  "nits": [
+    "The initiative-ties note still explains the folio carried mid-span. It could now point to the extraction field's renderedReading, but that is outside this change.",
+    "The round-2 nit stands: falling-off's count has no Advantage/Disadvantage clause, unlike the other counts."
+  ],
+  "rounds": [
+    {
+      "round": 1,
+      "sha256": null,
+      "bytesNote": "The round-1 bytes were not retained; they differ from the final bytes by exactly the changes listed in resolutions.",
+      "verdicts": [
+        {
+          "entry": "initiative-roll",
+          "field": "draws",
+          "verdict": "agree",
+          "citation": "the game uses a d20 roll to determine success or failure. These rolls are called D20 Tests, and they come in three kinds: ability checks, saving throws, and attack rolls",
+          "reason": "The Dexterity check is an ability check, so it is a d20 roll, one per participant. The note quotes the span, so 'd20' is properly sourced. p. 6 supports the Advantage/Disadvantage case: 'you roll two d20s'."
+        },
+        {
+          "entry": "initiative-roll",
+          "field": "note",
+          "verdict": "agree",
+          "citation": "When the outcome of an action is uncertain, the game uses a d20 roll to determine success or failure. These rolls are called D20 Tests, and they come in three kinds: ability checks, saving throws, and attack rolls.",
+          "reason": "The quotation is verbatim and correctly cited to p. 6."
+        },
+        {
+          "entry": "group-initiative",
+          "field": "draws",
+          "verdict": "disagree",
+          "citation": "that combatant has Disadvantage on their Initiative roll ... If the roll has Advantage or Disadvantage ... you roll two d20s",
+          "reason": "'One per group' leaves out the second d20 when a group is surprised. initiative-roll's count includes that case; this one does not. The d20 die and the one-roll-per-group basis are correct ('the GM makes a single roll')."
+        },
+        {
+          "entry": "group-initiative",
+          "field": "ambiguity.affectsDraws",
+          "verdict": "agree",
+          "citation": "For a group of identical creatures, the GM makes a single roll",
+          "reason": "If the GM may split identical monsters into several groups, the number of rolls changes."
+        },
+        {
+          "entry": "group-initiative",
+          "field": "note",
+          "verdict": "agree",
+          "citation": "the game uses a d20 roll to determine success or failure",
+          "reason": "The quotation is verbatim."
+        },
+        {
+          "entry": "initiative-ties",
+          "field": "assertedBy",
+          "verdict": "agree",
+          "citation": "the GM decides the order among tied monsters, and the players decide the order among tied characters",
+          "reason": "Both parties are named in the evidence."
+        },
+        {
+          "entry": "initiative-ties",
+          "field": "note",
+          "verdict": "agree",
+          "citation": "the GM decides ... the players decide",
+          "reason": "The note now points to assertedBy, which is accurate."
+        },
+        {
+          "entry": "gm-requires-action",
+          "field": "assertedBy",
+          "verdict": "agree",
+          "citation": "The GM might require you to use an action",
+          "reason": "The GM is named in the evidence."
+        },
+        {
+          "entry": "sides-agree-to-end",
+          "field": "assertedBy",
+          "verdict": "agree",
+          "citation": "Combat can also end when both sides agree to end it.",
+          "reason": "'both sides' appears in the evidence as a whole phrase."
+        },
+        {
+          "entry": "attack-resolution",
+          "field": "draws",
+          "verdict": "agree",
+          "citation": "Make the attack roll ... On a hit, you roll damage unless the particular attack has rules that specify otherwise.",
+          "reason": "Both rolls are made by this entry's own resolution. 'damage dice' is sourced from the p. 16 span the note quotes. The damage roll is correctly limited to a hit."
+        },
+        {
+          "entry": "attack-resolution",
+          "field": "note",
+          "verdict": "agree",
+          "citation": "You roll the damage dice, add any modifiers, and deal the damage to your target",
+          "reason": "Both quotations are verbatim and correctly cited."
+        },
+        {
+          "entry": "wrong-location-misses",
+          "field": "draws",
+          "verdict": "disagree",
+          "citation": "If the target isn’t in the location you targeted, you miss. / When you make an attack roll against a target you can’t see, you have Disadvantage on the roll.",
+          "reason": "The evidence states no roll, only the miss. The attack roll belongs to attack-resolution, so declaring it here as well risks counting the same draw twice. Even if it stays, the count is wrong: guessing a location means the target is unseen, which gives Disadvantage and two d20s, not one."
+        },
+        {
+          "entry": "wrong-location-misses",
+          "field": "note",
+          "verdict": "agree",
+          "citation": "the game uses a d20 roll to determine success or failure",
+          "reason": "The added quotation is verbatim."
+        },
+        {
+          "entry": "falling-off",
+          "field": "draws",
+          "verdict": "agree",
+          "citation": "you must succeed on a DC 10 Dexterity saving throw ... you must make the same save if you’re knocked Prone or the mount is",
+          "reason": "The save is a D20 Test, so one d20 each time a trigger occurs."
+        },
+        {
+          "entry": "falling-off",
+          "field": "note",
+          "verdict": "agree",
+          "citation": "they come in three kinds: ability checks, saving throws, and attack rolls",
+          "reason": "The quotation is verbatim."
+        }
+      ],
+      "omissions": [
+        {
+          "entry": "opportunity-attack",
+          "field": "draws",
+          "verdict": "missing",
+          "citation": "take a Reaction to make one melee attack with a weapon or an Unarmed Strike against that creature",
+          "reason": "The entry's own resolution makes one attack: a d20 attack roll, plus damage dice on a hit. If wrong-location-misses gets draws, this entry should have them too."
+        },
+        {
+          "entry": "attack-structure",
+          "field": "draws",
+          "verdict": "missing",
+          "citation": "Make the attack roll, as detailed earlier in “Playing the Game.” On a hit, you roll damage",
+          "reason": "Its evidence contains the same rolls as attack-resolution. It needs either the same draws or a note saying it routes to attack-resolution."
+        }
+      ],
+      "nits": [
+        "initiative-roll count names the group-initiative exception, whose group count is unsettled. It should say the count also depends on that question, and that it is zero draws when initiative-score-option applies.",
+        "sides-agree-to-end note still says 'Parties need not be named (0008)', but assertedBy now names 'both sides'. The note should be reconciled.",
+        "falling-off count could say what happens when two triggers occur at once (the mount is knocked Prone and moved): one save or two.",
+        "The 'two d20s with Advantage or Disadvantage' span is used in counts but no note quotes it. That is allowed, but quoting it would make the counts traceable.",
+        "surprised's ambiguity (who is surprised) changes whether an Initiative roll uses one or two d20s. Under the definition it is not that entry's own draw count, so affectsDraws is not required, but a note would help.",
+        "attack-resolution's second draw does not cover special effects that roll dice ('in addition to or instead of damage')."
+      ],
+      "summary": "The assertedBy values and the new quotations are all correct. Two draws are wrong: group-initiative's count leaves out Disadvantage, and wrong-location-misses declares a roll its evidence doesn't state and would count the same d20 twice. opportunity-attack and attack-structure are missing draws.",
+      "resolutions": [
+        "wrong-location-misses draws (disagree): taken. draws and its added note quote removed; the roll is attack-resolution's.",
+        "group-initiative draws (disagree, Disadvantage omitted): taken. The count names two d20s for a roll with Advantage or Disadvantage.",
+        "opportunity-attack and attack-structure draws (omissions): declined. Both make an attack whose roll attack-resolution declares. The reviewer accepted in round 2.",
+        "initiative-roll count (nit): taken. It leaves grouped creatures to group-initiative and states none while initiative-score-option holds.",
+        "sides-agree-to-end note (nit): taken. The note says the parties are named here, which assertedBy records."
+      ]
+    },
+    {
+      "round": 2,
+      "sha256": null,
+      "verdicts": [
+        {
+          "entry": "initiative-roll",
+          "field": "draws",
+          "verdict": "agree",
+          "citation": "When combat starts, every participant rolls Initiative; they make a Dexterity check ... For a group of identical creatures, the GM makes a single roll ... you roll two d20s",
+          "reason": "Participants in a group of identical creatures are now left to group-initiative, so the group roll isn't counted twice. Advantage/Disadvantage and initiative-score-option (the GM uses Initiative scores instead of rolling, so no draw) are both covered."
+        },
+        {
+          "entry": "initiative-roll",
+          "field": "note",
+          "verdict": "agree",
+          "citation": "the game uses a d20 roll to determine success or failure. These rolls are called D20 Tests, and they come in three kinds: ability checks, saving throws, and attack rolls",
+          "reason": "The quotation is verbatim, and a Dexterity check is an ability check."
+        },
+        {
+          "entry": "group-initiative",
+          "field": "draws",
+          "verdict": "agree",
+          "citation": "the GM makes a single roll ... that combatant has Disadvantage on their Initiative roll ... you roll two d20s",
+          "reason": "One roll per group, with the second d20 for Advantage or Disadvantage now included."
+        },
+        {
+          "entry": "group-initiative",
+          "field": "ambiguity.affectsDraws",
+          "verdict": "agree",
+          "citation": "For a group of identical creatures, the GM makes a single roll",
+          "reason": "How many groups there are sets how many rolls are made."
+        },
+        {
+          "entry": "group-initiative",
+          "field": "note",
+          "verdict": "agree",
+          "citation": "the game uses a d20 roll to determine success or failure",
+          "reason": "The quotation is verbatim."
+        },
+        {
+          "entry": "initiative-ties",
+          "field": "assertedBy",
+          "verdict": "agree",
+          "citation": "the GM decides the order among tied monsters, and the players decide the order among tied characters",
+          "reason": "Both parties are named in the evidence."
+        },
+        {
+          "entry": "initiative-ties",
+          "field": "note",
+          "verdict": "agree",
+          "citation": "the GM decides ... the players decide",
+          "reason": "The note accurately points to assertedBy."
+        },
+        {
+          "entry": "gm-requires-action",
+          "field": "assertedBy",
+          "verdict": "agree",
+          "citation": "The GM might require you to use an action",
+          "reason": "The GM is named in the evidence."
+        },
+        {
+          "entry": "sides-agree-to-end",
+          "field": "assertedBy",
+          "verdict": "agree",
+          "citation": "Combat can also end when both sides agree to end it.",
+          "reason": "'both sides' appears in the evidence as a phrase."
+        },
+        {
+          "entry": "sides-agree-to-end",
+          "field": "note",
+          "verdict": "agree",
+          "citation": "both sides agree to end it",
+          "reason": "The quoted words are verbatim, and the note is now consistent with assertedBy."
+        },
+        {
+          "entry": "attack-resolution",
+          "field": "draws",
+          "verdict": "agree",
+          "citation": "Make the attack roll ... On a hit, you roll damage unless the particular attack has rules that specify otherwise.",
+          "reason": "Both rolls are made by this entry's own resolution. The dice are sourced from the spans the note quotes."
+        },
+        {
+          "entry": "attack-resolution",
+          "field": "note",
+          "verdict": "agree",
+          "citation": "You roll the damage dice, add any modifiers, and deal the damage to your target",
+          "reason": "Both quotations are verbatim."
+        },
+        {
+          "entry": "falling-off",
+          "field": "draws",
+          "verdict": "agree",
+          "citation": "you must succeed on a DC 10 Dexterity saving throw ... you must make the same save",
+          "reason": "One d20 save each time a trigger occurs."
+        },
+        {
+          "entry": "falling-off",
+          "field": "note",
+          "verdict": "agree",
+          "citation": "they come in three kinds: ability checks, saving throws, and attack rolls",
+          "reason": "The quotation is verbatim."
+        }
+      ],
+      "omissions": [],
+      "nits": [
+        "falling-off's count, 'one Dexterity saving throw each time the rule applies', has no Advantage/Disadvantage clause, while the Initiative and attack counts have one. Adding it would make the counts consistent.",
+        "group-initiative's note says 'one roll per group' while its count says a roll can be two d20s. That is consistent, but 'roll' and 'draw' could be told apart explicitly."
+      ],
+      "summary": "All changed fields in the final diff agree with the corpus, and both corrections (wrong-location-misses, group-initiative) are made properly. I accept the declines on opportunity-attack and attack-structure: both make an attack under the structure whose roll attack-resolution declares, so declaring it on them would count the same d20 more than once.",
+      "bytesNote": "Round 2's bytes were those of the map before the rebase onto #119; they are not retained, and differ from round 3's by #119's own reviewed change and the renumbering."
+    },
+    {
+      "round": 3,
+      "sha256": "8f5bb33c99ba928a731307401690d4b1953340eb112a23ca0517da2b1a23052b",
+      "verdicts": [
+        {
+          "entry": "initiative-roll",
+          "field": "draws",
+          "verdict": "agree",
+          "citation": "When combat starts, every participant rolls Initiative; they make a Dexterity check",
+          "reason": "Byte-identical to round 2."
+        },
+        {
+          "entry": "initiative-roll",
+          "field": "note",
+          "verdict": "agree",
+          "citation": "the game uses a d20 roll to determine success or failure. These rolls are called D20 Tests, and they come in three kinds: ability checks, saving throws, and attack rolls",
+          "reason": "Same as round 2 except (0024) now reads (0025). The quotation is still verbatim."
+        },
+        {
+          "entry": "group-initiative",
+          "field": "draws",
+          "verdict": "agree",
+          "citation": "For a group of identical creatures, the GM makes a single roll",
+          "reason": "Byte-identical to round 2."
+        },
+        {
+          "entry": "group-initiative",
+          "field": "ambiguity.affectsDraws",
+          "verdict": "agree",
+          "citation": "For a group of identical creatures, the GM makes a single roll",
+          "reason": "Unchanged since round 2: true. The question and fate are untouched."
+        },
+        {
+          "entry": "group-initiative",
+          "field": "note",
+          "verdict": "agree",
+          "citation": "the game uses a d20 roll to determine success or failure",
+          "reason": "The only change since round 2 is 0024 to 0025."
+        },
+        {
+          "entry": "initiative-ties",
+          "field": "assertedBy",
+          "verdict": "agree",
+          "citation": "the GM decides the order among tied monsters, and the players decide the order among tied characters",
+          "reason": "Unchanged. The added extraction field is the same in before and after, so it is not part of this change. Its renderedReading only removes the folio and header ('13 System Reference Document 5.2.1'). It names the same deciders, GM and players, so it has no bearing on assertedBy."
+        },
+        {
+          "entry": "initiative-ties",
+          "field": "note",
+          "verdict": "agree",
+          "citation": "the GM decides ... the players decide",
+          "reason": "The only change since round 2 is 0024 to 0025."
+        },
+        {
+          "entry": "gm-requires-action",
+          "field": "assertedBy",
+          "verdict": "agree",
+          "citation": "The GM might require you to use an action",
+          "reason": "Unchanged."
+        },
+        {
+          "entry": "sides-agree-to-end",
+          "field": "assertedBy",
+          "verdict": "agree",
+          "citation": "Combat can also end when both sides agree to end it.",
+          "reason": "Unchanged."
+        },
+        {
+          "entry": "sides-agree-to-end",
+          "field": "note",
+          "verdict": "agree",
+          "citation": "both sides agree to end it",
+          "reason": "Byte-identical to round 2. It never contained 0024."
+        },
+        {
+          "entry": "attack-resolution",
+          "field": "draws",
+          "verdict": "agree",
+          "citation": "Make the attack roll ... On a hit, you roll damage",
+          "reason": "Byte-identical to round 2."
+        },
+        {
+          "entry": "attack-resolution",
+          "field": "note",
+          "verdict": "agree",
+          "citation": "You roll the damage dice, add any modifiers, and deal the damage to your target",
+          "reason": "The only change since round 2 is 0024 to 0025."
+        },
+        {
+          "entry": "falling-off",
+          "field": "draws",
+          "verdict": "agree",
+          "citation": "you must succeed on a DC 10 Dexterity saving throw",
+          "reason": "Byte-identical to round 2."
+        },
+        {
+          "entry": "falling-off",
+          "field": "note",
+          "verdict": "agree",
+          "citation": "they come in three kinds: ability checks, saving throws, and attack rolls",
+          "reason": "The only change since round 2 is 0024 to 0025."
+        }
+      ],
+      "omissions": [],
+      "nits": [
+        "The initiative-ties note still explains the folio carried mid-span. It could now point to the extraction field's renderedReading, but that is outside this change.",
+        "The round-2 nit stands: falling-off's count has no Advantage/Disadvantage clause, unlike the other counts."
+      ],
+      "summary": "Every changed field matches what I agreed in round 2, apart from the 0024-to-0025 renumbering. The extraction field on initiative-ties is identical in before and after and names the same GM and players, so it does not affect assertedBy.",
+      "context": "After rebasing onto #119 (which added `extraction` to six entries, initiative-ties among them, and took decision 0024), this change's record became 0025. The reviewer re-read a before/after whose `before` is the rebased map without this change."
+    }
+  ]
+}

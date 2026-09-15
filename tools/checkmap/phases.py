@@ -8,6 +8,7 @@ from .manifest import check_manifest, check_postures
 from .extraction import check_extraction
 from .ambiguity import check_conflicts, check_decision_records, check_exclusions
 from .status import check_absent, check_status
+from .inputs import check_asserted_by, check_draws
 from .crossrefs import check_cross_references
 from .correspondence import check_correspondence
 
@@ -56,6 +57,8 @@ CHECKS = [
     ("decision-records", check_decision_records),
     ("conflicts", check_conflicts),
     ("absent", check_absent),
+    ("asserted-by", check_asserted_by),
+    ("draws", check_draws),
     ("cross-references", check_cross_references),
     ("correspondence", check_correspondence),
 ]

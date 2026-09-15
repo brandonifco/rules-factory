@@ -468,6 +468,23 @@ class TestDerivedProvenance(unittest.TestCase):
                       'new SourceLocator("corpus", "p. 1"));', tests)
         self.assertNotIn("cites_every_premise", tests)
 
+    def test_an_assertion_carries_who_asserts_it_and_nothing_else_does(self):
+        """0025: assertedBy is exposed on the generated MapEntry and RegisteredEntry, additively."""
+        assertion = dict(self.located("ties", "p. 13"), kind="assertion", assertedBy=["GM", "players"])
+        model = self.model([assertion, self.located("a", "p. 1")])
+        entries = generate.map_entries_cs(model)
+        self.assertIn("public sealed record MapEntry(string Id, string Name, SourceLocator Locator)\n", entries)
+        self.assertIn("public ImmutableArray<string> AssertedBy { get; init; } = [];", entries)
+        self.assertIn('new SourceLocator("corpus", "p. 13")) { AssertedBy = ["GM", "players"] };', entries)
+        self.assertIn('new SourceLocator("corpus", "p. 1"));', entries)
+        registry = generate.registry_cs(model)
+        self.assertIn("public sealed record RegisteredEntry(string Id, EntryStatus Status, CorrespondenceRow Row, "
+                      "ImmutableArray<SourceLocator> Locators)\n", registry)
+        self.assertIn("public ImmutableArray<string> AssertedBy { get; init; } = [];", registry)
+        self.assertIn('new("ties", EntryStatus.Mapped, CorrespondenceRow.NotBuilt, [MapEntries.Ties.Locator]) '
+                      '{ AssertedBy = ["GM", "players"] },', registry)
+        self.assertIn('new("a", EntryStatus.Mapped, CorrespondenceRow.NotBuilt, [MapEntries.A.Locator]),', registry)
+
     def test_a_cycle_is_refused(self):
         with self.assertRaisesRegex(generate.GenerationError, "through a cycle"):
             self.model([self.derived("x", "y", "a"), self.derived("y", "x", "a"), self.located("a", "p. 1")])
