@@ -125,8 +125,9 @@ CI proves this on every pull request. The `validate` job runs
   given assembly was built from the tree. The limits are listed in
   [`provenance.py`](tools/factory/provenance.py).
 - **Anything, under `--no-verify`.** The engine is committed without being built or tested. Lock
-  files the generated pins have moved past are re-locked by `dotnet restore` alone, or the run is
-  refused; they are never committed stale.
+  files the generated pins have moved past, in the version they resolve or the range they record
+  as requested, are re-locked by `dotnet restore` alone, or the run is refused; they are never
+  committed stale.
 
 The generated runtime is typed by entry, and no further than the map declares
 ([#76](https://github.com/brandonifco/rules-factory/issues/76)). Each entry has its own request

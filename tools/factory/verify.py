@@ -73,9 +73,12 @@ restore in CI and record the stale lock hashes in provenance.json. So, after gen
 staging copy and before the commit, it compares every committed packages.lock.json with the
 generated pins (`stale_locks`): for each package id the pin set names (RulesKernel,
 RulesKernel.Randomness, RulesFactory.Maps.*), every entry, direct or transitive, must resolve the
-pinned version (an exact pin's version, or a minimum pin's lower bound). When any does not, it
-re-locks them in the staging copy (`relock`): `dotnet --version` shows that the SDK global.json (or
-`FACTORY_DOTNET_SDK_OVERRIDE`) selects can run, then `dotnet restore --force-evaluate` with locked
+pinned version (an exact pin's version, or a minimum pin's lower bound), and every entry that
+records a `requested` range must record the range the pin requests (`[0.2.0, )` for `0.2.0`,
+`[5.0.0, 5.0.0]` for `[5.0.0]`): a pin that changes form but not version, `0.5.0` to `[0.5.0]`,
+leaves `resolved` as it was and `requested` stale, and NuGet's locked restore refuses that lock
+file just the same. When any entry disagrees, it re-locks them in the staging copy (`relock`):
+`dotnet --version` shows that the SDK global.json (or `FACTORY_DOTNET_SDK_OVERRIDE`) selects can run, then `dotnet restore --force-evaluate` with locked
 mode off, on that SDK. It then compares again, and records the re-locked files in provenance.json.
 The re-lock builds nothing, and it is the only dotnet a `--no-verify` run starts. The run is
 refused, naming each lock file, package, locked and pinned version, and `--out` is unchanged, when
@@ -206,14 +209,35 @@ def pinned_version(pin):
     return _normal_version(text)
 
 
+def _range(text):
+    """A NuGet version range as (lower inclusive, lower, upper, upper inclusive), versions as
+    `_normal_version` writes them and None for an open bound: `0.2.0` is a minimum, `[5.0.0]` exact,
+    `[1.0, 2.0)` a range. NuGet records `requested` in the bracketed form (`[0.2.0, )`,
+    `[5.0.0, 5.0.0]`); both forms of one range compare equal."""
+    text = str(text).strip()
+    if text[:1] not in "[(" or text[-1:] not in "])":
+        return (True, _normal_version(text), None, False)
+    inner = text[1:-1]
+    if "," not in inner:
+        version = _normal_version(inner)
+        return (True, version, version, True)
+    lower, upper = (part.strip() for part in inner.split(",", 1))
+    return (text[0] == "[", _normal_version(lower) if lower else None,
+            _normal_version(upper) if upper else None, text[-1] == "]")
+
+
 def stale_locks(engine_dir, pinned):
     """Where the engine's lock files disagree with the pin set `pinned` (a `pins` result).
 
     Returns [(lock file relative to `engine_dir`, package id, locked version, pinned version)], []
     when every lock file agrees. A lock file is JSON, `dependencies` -> target framework -> package
-    id -> `resolved`; every entry for a pinned id counts, Direct, Transitive or CentralTransitive.
-    Packages the pin set does not name are ignored. A lock file that cannot be read as that shape
-    is reported with the package `(unreadable)`, since nothing shows it agrees.
+    id -> `resolved` and, for a Direct or CentralTransitive entry, `requested`; every entry for a
+    pinned id counts, Direct, Transitive or CentralTransitive. An entry disagrees when it resolves
+    another version than the pin, or when it resolves the pinned version but records another range
+    than the pin requests (`_range`): a locked restore refuses either. The locked version
+    reported is then the recorded range. Packages the pin set does not name are ignored. A lock
+    file that cannot be read as that shape is reported with the package `(unreadable)`, since
+    nothing shows it agrees.
     """
     wanted = {package.lower(): (package, version) for package, version in (pinned or {}).items()}
     found = []
@@ -237,7 +261,14 @@ def stale_locks(engine_dir, pinned):
                 if pin is None or not isinstance(entry, dict) or "resolved" not in entry:
                     continue
                 locked, expected = str(entry["resolved"]), pin[1]
-                if _normal_version(locked) != pinned_version(expected) and (package.lower(), locked) not in seen:
+                if _normal_version(locked) == pinned_version(expected) and "requested" in entry:
+                    # The version agrees, and the range the pin requests must too.
+                    locked = str(entry["requested"])
+                    if _range(locked) == _range(expected):
+                        continue
+                elif _normal_version(locked) == pinned_version(expected):
+                    continue
+                if (package.lower(), locked) not in seen:
                     seen.add((package.lower(), locked))
                     found.append((relative, package, locked, expected))
     return found

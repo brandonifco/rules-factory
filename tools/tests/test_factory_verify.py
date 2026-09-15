@@ -576,10 +576,18 @@ class TestRelock(VerifyCase):
         self.assertEqual(before, self.locks())
 
 
-def nuget_lock(pins, transitive=False, extra=None):
-    """A packages.lock.json in NuGet's shape resolving `pins` ({id: version}) in two frameworks."""
+def nuget_lock(pins, transitive=False, extra=None, requested=None):
+    """A packages.lock.json in NuGet's shape resolving `pins` ({id: version}) in two frameworks.
+
+    Each entry records the range the generated props request, as NuGet writes it: exact for a map
+    (`[5.0.0, 5.0.0]`), a minimum otherwise (`[0.2.0, )`); `requested` ({id: range}) overrides it."""
     kind = "CentralTransitive" if transitive else "Direct"
-    packages = {package: {"type": kind, "requested": f"[{version}, )", "resolved": version, "contentHash": "x=="}
+
+    def recorded(package, version):
+        if package in (requested or {}):
+            return requested[package]
+        return f"[{version}, {version}]" if package.startswith("RulesFactory.Maps.") else f"[{version}, )"
+    packages = {package: {"type": kind, "requested": recorded(package, version), "resolved": version, "contentHash": "x=="}
                 for package, version in pins.items()}
     packages.update(extra or {})
     return json.dumps({"version": 2, "dependencies": {"net10.0": packages, "net8.0": packages}}, indent=2) + "\n"
@@ -617,6 +625,26 @@ class TestStaleLocks(unittest.TestCase):
             ("tests/E.Tests/packages.lock.json", "RulesKernel", "0.1.0", "0.2.0"),
         ])
 
+    def test_a_stale_requested_range_is_stale_though_the_version_agrees(self):
+        """A pin that changes form but not version leaves `resolved` agreeing; the range still disagrees."""
+        root = self.engine({
+            "src/E/packages.lock.json": nuget_lock({"RulesKernel": "0.2.0", "RulesFactory.Maps.HoyleBackgammon": "5.0.0"},
+                                                   requested={"RulesKernel": "[0.2.0, 0.2.0]",
+                                                              "RulesFactory.Maps.HoyleBackgammon": "[5.0.0, )"}),
+        })
+        self.assertEqual(verify_step.stale_locks(root, self.PINS), [
+            ("src/E/packages.lock.json", "RulesKernel", "[0.2.0, 0.2.0]", "0.2.0"),
+            ("src/E/packages.lock.json", "RulesFactory.Maps.HoyleBackgammon", "[5.0.0, )", "[5.0.0]"),
+        ])
+
+    def test_ranges_compare_as_nuget_writes_them(self):
+        root = self.engine({
+            "src/E/packages.lock.json": nuget_lock({"RulesKernel": "0.2.0", "RulesFactory.Maps.HoyleBackgammon": "5.0.0"},
+                                                   requested={"RulesKernel": "[0.2, )",
+                                                              "RulesFactory.Maps.HoyleBackgammon": "[5.0.0.0,5.0.0]"}),
+        })
+        self.assertEqual(verify_step.stale_locks(root, self.PINS), [])
+
     def test_packages_outside_the_pin_set_are_ignored(self):
         other = {"xunit": {"type": "Direct", "requested": "[2.9.0, )", "resolved": "2.9.0"},
                  "RulesKernel.Randomness": {"type": "Direct", "resolved": "0.1.0"}}
@@ -649,9 +677,10 @@ class TestNoVerifyStaleLocks(VerifyCase):
 
     LOCKS = (f"src/{NAME}/packages.lock.json", f"tests/{NAME}.Tests/packages.lock.json")
 
-    def write_locks(self, map_version):
+    def write_locks(self, map_version, requested=None):
         pins = {"RulesKernel": self.kernel, self.map_id: map_version}
-        for relative, text in zip(self.LOCKS, (nuget_lock(pins), nuget_lock(pins, transitive=True))):
+        for relative, text in zip(self.LOCKS, (nuget_lock(pins, requested=requested),
+                                               nuget_lock(pins, transitive=True, requested=requested))):
             with open(os.path.join(self.engine, *relative.split("/")), "w", encoding="utf-8") as handle:
                 handle.write(text)
 
@@ -759,6 +788,24 @@ class TestNoVerifyStaleLocks(VerifyCase):
         after = snapshot(self.engine)
         for relative in self.LOCKS:
             self.assertEqual(before[relative.replace("/", os.sep)], after[relative.replace("/", os.sep)])
+
+    def test_lock_files_whose_requested_range_alone_is_stale_are_re_locked(self):
+        """The version agrees with the pin, the range does not: a locked restore refuses it, so it re-locks."""
+        self.write_locks("7.0.0", requested={self.map_id: "[7.0.0, )"})
+        code, output = self.produce_bumped("--no-verify", **self.env)
+        self.assertEqual(code, 0, output)
+        self.assertEqual(self.dotnet_calls(), ["--version", "restore --force-evaluate"])
+        self.assertIn(f"{self.LOCKS[0]}: {self.map_id} locked at [7.0.0, ), pinned at [7.0.0]", output)
+        self.assertEqual(verify_step.stale_locks(self.engine, verify_step.read_pins(self.engine)), [])
+
+    def test_lock_files_whose_requested_range_a_relock_leaves_stale_are_never_committed(self):
+        self.write_locks("7.0.0", requested={self.map_id: "[7.0.0, )"})
+        before = snapshot(self.engine)
+        with mock.patch.object(verify_step, "relock", lambda engine, log: None):
+            code, output = self.produce_bumped("--no-verify", **self.env)
+        self.assertEqual(code, 1, output)
+        self.assertIn("after re-locking they still disagree", output)
+        self.assertEqual(before, snapshot(self.engine))
 
     def test_an_engine_without_lock_files_is_unaffected(self):
         code, output = self.produce_bumped("--no-verify", **self.env)
