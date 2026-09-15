@@ -1,0 +1,132 @@
+{
+  "about": "Independent verdict (0017) on #130 for the 2020-01-01 Part 107 map: civil-twilight-operation gains dependsOn civil-twilight-alaska, which the map lacked while the 2026 map's blind second mapping had added it for the same words of § 107.29(c), and its note now says why and why \"paragraph (b) of this section\" resolves to anti-collision-lighting (that crossReference was set in #124 and is unchanged here, and was re-judged against the 2020 text). The reviewer was a separate agent context given only: the 2020-01-01 text of § 107.29, extracted from part107-2020-01-01.xml; a JSON before/after of the changed entry, the unchanged entries it references (civil-twilight-window, civil-twilight-alaska, anti-collision-lighting, intensity-reduction-in-interest-of-safety, night-operation), and an id/citation/kind/scope/status/dependsOn index of all 39 entries; and a one-paragraph statement of what evidence, dependsOn, crossReferences, definedElsewhere and note mean. It saw no schema doc, decision record, the 2026 map or the repository. This is not a blind second mapping and does not discharge the map's legacy exemption; review.json keeps that exemption and names this file. `sha256` is the final map. `verdicts`, `crossReferences`, `dependsOn`, `completeness` and `nits` are the reviewer's round-2 file, unedited. `rounds` keeps round 1 and how each point was resolved.",
+  "sha256": "5380e939b26b61851015c10715c9810fcd95e30902cf258c92138673aa027cc0",
+  "previousSha256": "ab6e909fa6b538e8d85a1652657e557b4f864ecabc4a4e4f4cdd2591c5b48629",
+  "reviewer": "independent reviewer, separate context",
+  "read": [
+    "corpus-2020-excerpt.txt",
+    "diff.json",
+    "round-2 message from the author"
+  ],
+  "summary": "Round 1: entry 1 agree, 0 disagree; crossReferences 2 agree; dependsOn 3 agree (1 changed, 2 unchanged); completeness agree; 5 nits, one of them a mildly overstated claim in the note. Round 2 (final bytes): entry 1 agree; crossReferences 2 agree; dependsOn 3 agree; completeness agree; 2 optional nits. On paragraph (b): at this date (b) is one paragraph of two sentences with no flash-rate clause, anti-collision-lighting cites and quotes it whole, and nothing about (b) needs different handling.",
+  "verdicts": [
+    {
+      "entry": "civil-twilight-operation",
+      "verdict": "agree",
+      "citation": "§ 107.29(c): \"For purposes of paragraph (b) of this section, civil twilight refers to the following: (1) Except for Alaska, ... (2) Except for Alaska, ... (3) In Alaska, the period of civil twilight as defined in the Air Almanac.\"",
+      "reason": "I re-read the final bytes. Apart from the note, the after entry is the same as in round 1: locator, evidence, dependsOn, crossReferences and status. The referenced entries I re-read are also unchanged, though I did not re-read the 39-entry index. All factual claims in the note that I can check hold against the 2020 excerpt and the supplied entries. (1) The note now names civil-twilight-alaska explicitly. (2) (c)(1) and (c)(2) each begin \"Except for Alaska\": true. (3) In Alaska only (c)(3) defines the period: true. (4) \"an Alaskan operation's case resolves only through civil-twilight-alaska, which defers it to the Air Almanac\": true, since that entry is declined with definedElsewhere air-almanac. The round-1 overstatement is gone. (5) \"This map lacked the edge while its own 'as defined in the Air Almanac' crossReference already resolved to that entry\": true, the before entry has that crossReference and lacks the edge. (6) anti-collision-lighting's locator cites § 107.29(b) and its evidence quotes both sentences of (b): true. (7) intensity-reduction-in-interest-of-safety quotes the second sentence: true. (8) This date has no flash-rate clause: true. (9) anti-collision-lighting does not depend on (c): true of the map, its only dependsOn is intensity-reduction-in-interest-of-safety. I cannot check two provenance claims and do not judge them: that the 2026 map's blind second mapping added the edge (examples/faa-part-107/blind-mapping/ (0014)), and that § 107.29(c) reads the same at both dates. Also unchecked: suspendedBy waivable-regulations, because § 107.205 is not in the excerpt."
+    }
+  ],
+  "crossReferences": [
+    {
+      "entry": "civil-twilight-operation",
+      "cites": "paragraph (b) of this section",
+      "verdict": "agree",
+      "reason": "At 2020, (b) is one paragraph of two sentences with no flash-rate clause. anti-collision-lighting is the entry located at § 107.29(b) whose evidence quotes all of it, so it is the right target. intensity-reduction-in-interest-of-safety covers only the second sentence."
+    },
+    {
+      "entry": "civil-twilight-operation",
+      "cites": "as defined in the Air Almanac",
+      "verdict": "agree",
+      "reason": "civil-twilight-alaska states (c)(3) and records the deferral as definedElsewhere air-almanac, so the pointer resolves in the map to that entry."
+    }
+  ],
+  "dependsOn": [
+    {
+      "entry": "civil-twilight-operation",
+      "target": "civil-twilight-alaska",
+      "verdict": "agree",
+      "reason": "(b) turns on \"during periods of civil twilight\", which (c) defines \"For purposes of paragraph (b) of this section\". For Alaska, (c)(1) and (c)(2) are excluded (\"Except for Alaska\"), and only (c)(3) applies: \"In Alaska, the period of civil twilight as defined in the Air Almanac.\" The engine needs that entry to handle the Alaskan case, even though the entry only carries a deferral."
+    },
+    {
+      "entry": "civil-twilight-operation",
+      "target": "civil-twilight-window",
+      "verdict": "agree",
+      "reason": "Unchanged. (c)(1)-(2) define the period outside Alaska."
+    },
+    {
+      "entry": "civil-twilight-operation",
+      "target": "anti-collision-lighting",
+      "verdict": "agree",
+      "reason": "Unchanged. The lighting condition in (b) is stated by that entry."
+    }
+  ],
+  "completeness": {
+    "verdict": "agree",
+    "reason": "No dependsOn edge or crossReference is missing or wrong for this entry at 2020. Both pointer phrases in the evidence are answered, both definition entries for \"civil twilight\" are in dependsOn, and intensity-reduction-in-interest-of-safety is reached through anti-collision-lighting. Nothing about paragraph (b) at this date needs different handling. The round-1 remark that anti-collision-lighting's own text says \"during periods of civil twilight\" is outside this change and is recorded, as the author says; it is not a defect in this entry."
+  },
+  "nits": [
+    "The note now says \"Alaska is a separate entry\" and, in the next sentence, names civil-twilight-alaska. It could name the entry in the first sentence too, but this is optional.",
+    "Declining nit 4 (keeping \"(c)'s \\\"paragraph (b) of this section\\\"\" to match the later-date map) is reasonable. I cannot check the claim that the later map uses that wording."
+  ],
+  "reviewedDiffSha256": "1bc38f0d1bdc45cf8bfd4c0ec37fcad2cb14c3cfa65a2bd7999304c6f69ed5a4",
+  "rounds": [
+    {
+      "round": 1,
+      "mapSha256": "6a9a166aecb1e152477f50cbe038574bd3457567732794c0ed758704c3944651",
+      "file": {
+        "verdicts": [
+          {
+            "entry": "civil-twilight-operation",
+            "verdict": "agree",
+            "citation": "§ 107.29(c): \"For purposes of paragraph (b) of this section, civil twilight refers to the following: (1) Except for Alaska, ... (2) Except for Alaska, ... (3) In Alaska, the period of civil twilight as defined in the Air Almanac.\"",
+            "reason": "The after entry is correct as a whole. The locator (§ 107.29(b)-(c)) and the evidence (a verbatim quote of (b) and (c) in the 2020 excerpt) are right, and the three dependsOn targets cover the whole of (c) plus the lighting condition in (b). I checked each factual claim in the new note against the excerpt and the entries supplied. (1) (c)(1) and (c)(2) each begin \"Except for Alaska\": true. (2) In Alaska only (c)(3) defines the period: true. (3) anti-collision-lighting's locator cites § 107.29(b) and its evidence quotes all of (b), both sentences: true. (4) intensity-reduction-in-interest-of-safety quotes the second sentence: true. (5) This date has no flash-rate clause: true, since (b) has no flash-rate wording. (6) anti-collision-lighting does not depend on civil-twilight-alaska or civil-twilight-window: true, its dependsOn is only intensity-reduction-in-interest-of-safety. (7) Alaska is a separate entry and the corpus defers the definition elsewhere: true, (c)(3) points to the Air Almanac and civil-twilight-alaska has definedElsewhere air-almanac. One claim is mildly overstated. The note says that \"without civil-twilight-alaska the entry cannot say whether an Alaskan operation is in civil twilight\". But civil-twilight-alaska is status declined, so even with the edge the engine cannot compute Alaskan twilight. It can only learn that the period is defined in a text that was not admitted, and must be told the answer. The edge is still right as implementation order, but the wording implies the dependency makes the Alaskan case resolvable. I cannot check three provenance claims and do not judge them: that the 2026 map's blind second mapping added this edge (examples/faa-part-107/blind-mapping/ (0014)), that § 107.29(c) reads the same at both dates, and that suspendedBy waivable-regulations is correct (§ 107.205 is not in the excerpt)."
+          }
+        ],
+        "crossReferences": [
+          {
+            "entry": "civil-twilight-operation",
+            "cites": "paragraph (b) of this section",
+            "verdict": "agree",
+            "reason": "In the 2020 text, (b) is a single paragraph of two sentences: the lighting condition on operating during civil twilight, and the pilot's permission to reduce intensity. anti-collision-lighting is the entry whose locator is § 107.29(b) and whose evidence quotes all of (b), so it is the right place for the pointer. intensity-reduction-in-interest-of-safety states only the second sentence, so it would be a partial target. Unlike later versions, 2020 has no split of (b) and no flash-rate clause, so nothing about (b) at this date needs different handling. civil-twilight-operation's own evidence also quotes (b), but pointing to the entry dedicated to (b) is the better choice."
+          },
+          {
+            "entry": "civil-twilight-operation",
+            "cites": "as defined in the Air Almanac",
+            "verdict": "agree",
+            "reason": "(c)(3) sends the Alaskan meaning outside the corpus. civil-twilight-alaska is the map entry that states (c)(3) and carries definedElsewhere air-almanac. Resolving to that entry, rather than marking the pointer unmapped, is right because the map does state what the words point at, and that entry records the deferral."
+          }
+        ],
+        "dependsOn": [
+          {
+            "entry": "civil-twilight-operation",
+            "target": "civil-twilight-alaska",
+            "verdict": "agree",
+            "reason": "The rule in (b) turns on \"during periods of civil twilight\", which (c) defines \"For purposes of paragraph (b) of this section\". For an operation in Alaska, (c)(1) and (c)(2) do not apply (\"Except for Alaska\"), and (c)(3) \"In Alaska, the period of civil twilight as defined in the Air Almanac\" is the only definition. So the engine cannot resolve the Alaskan case without the entry for (c)(3), which makes the edge correct as implementation order. Before this change the map already had a crossReference to this entry but no matching dependsOn edge, which was inconsistent. Caveat: the target is declined, so this edge carries a deferral, not a computable value."
+          },
+          {
+            "entry": "civil-twilight-operation",
+            "target": "civil-twilight-window",
+            "verdict": "agree",
+            "reason": "Unchanged. (c)(1)-(2) define the period outside Alaska, which the rule needs."
+          },
+          {
+            "entry": "civil-twilight-operation",
+            "target": "anti-collision-lighting",
+            "verdict": "agree",
+            "reason": "Unchanged. The \"unless ... lighted anti-collision lighting visible for at least 3 statute miles\" condition in (b) is stated by that entry."
+          }
+        ],
+        "completeness": {
+          "verdict": "agree",
+          "reason": "Each pointer phrase in the evidence is answered: \"paragraph (b) of this section\" and \"as defined in the Air Almanac\". The defined term \"civil twilight\" is covered by the dependsOn edges to both definition entries. No direct edge to intensity-reduction-in-interest-of-safety is needed, because it is reached through anti-collision-lighting. For paragraph (b) at 2020 there is nothing to handle differently: it is one paragraph with no flash-rate clause and no cross-paragraph repetition of the intensity clause. One open design point, not a defect in this change: anti-collision-lighting's own text also says \"during periods of civil twilight\". The map treats the twilight test as belonging only to civil-twilight-operation, and anti-collision-lighting's note (\"for civil twilight only\") fits that split, so the note's claim that anti-collision-lighting does not depend on (c) is accurate about the map. Whether that split is right is outside this change. \"official sunrise\" and \"official sunset\" are not defined in the excerpt. That bears on civil-twilight-window's clarity, not on this entry's edges."
+        },
+        "nits": [
+          "Soften \"without civil-twilight-alaska the entry cannot say whether an Alaskan operation is in civil twilight\". Even with the edge, the entry cannot compute it, because civil-twilight-alaska is declined and the Air Almanac is not admitted. Suggested wording: \"the Alaskan case resolves only through civil-twilight-alaska, which defers it to the Air Almanac\".",
+          "\"It is in dependsOn\" follows a sentence about Alaska as a separate entry, so \"It\" is ambiguous. Name civil-twilight-alaska explicitly.",
+          "\"This map lacked the edge\" could also mention that the map already had the (c)(3) crossReference to civil-twilight-alaska, so the missing edge was an inconsistency inside this entry.",
+          "\"(c)'s \\\"paragraph (b) of this section\\\"\" is correct but awkward. \"The pointer in (c), 'paragraph (b) of this section',\" reads more clearly.",
+          "The dependsOn order (window, alaska, lighting) puts civil-twilight-alaska between the two twilight and lighting targets. That is fine, but grouping it next to civil-twilight-window matches the (c)(1)-(3) order, which the change does."
+        ]
+      },
+      "resolution": [
+        "Nit 1 (\"without civil-twilight-alaska the entry cannot say whether an Alaskan operation is in civil twilight\" overstates, since civil-twilight-alaska is declined): adopted. The note now says the Alaskan case \"resolves only through civil-twilight-alaska, which defers it to the Air Almanac\".",
+        "Nit 2 (ambiguous \"It is in dependsOn\"): adopted; the note names civil-twilight-alaska.",
+        "Nit 3 (the map already had the Air Almanac crossReference to civil-twilight-alaska, so the missing edge was an inconsistency inside the entry): adopted; the note says so.",
+        "Nit 4 (\"(c)'s \\\"paragraph (b) of this section\\\"\" reads awkwardly): not adopted, to keep the wording of the same explanation in the 2026 map's entry. The reviewer found that reasonable in round 2.",
+        "Nit 5 (dependsOn order): no change asked; the order already follows (c)(1)-(3).",
+        "Completeness remark (anti-collision-lighting's own evidence also says \"during periods of civil twilight\", and the map puts the twilight test only on civil-twilight-operation): outside this change, recorded here and not acted on. The 2026 map makes the same split."
+      ]
+    }
+  ]
+}
