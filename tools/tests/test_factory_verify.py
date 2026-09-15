@@ -371,7 +371,7 @@ class TestRelock(VerifyCase):
     @classmethod
     def setUpClass(cls):
         super().setUpClass()
-        cls.nupkg_bumped = pack_version(HOYLE, "5.0.0", cls.shared)
+        cls.nupkg_bumped = pack_version(HOYLE, "6.0.0", cls.shared)
 
     def produce_verified(self, package, **env):
         with mock.patch.dict(os.environ, {**self.env, **env}):
@@ -406,7 +406,7 @@ class TestRelock(VerifyCase):
         after = self.locks()
         for relative in after:
             self.assertNotEqual(before[relative], after[relative])
-            self.assertIn("[5.0.0]", after[relative])
+            self.assertIn("[6.0.0]", after[relative])
         recorded = self.recorded_locks()
         self.assertEqual(sorted(recorded), sorted(after))
         for relative, text in after.items():
@@ -454,7 +454,7 @@ class TestRelock(VerifyCase):
         with open(props, encoding="utf-8") as handle:
             text = handle.read()
         with open(props, "w", encoding="utf-8") as handle:
-            handle.write(text.replace("[4.0.0]", "[5.0.0]"))
+            handle.write(text.replace("[5.0.0]", "[6.0.0]"))
         before = self.locks()
         os.remove(self.log)
         with mock.patch.dict(os.environ, self.env):

@@ -473,7 +473,7 @@ class TestAttribution(unittest.TestCase):
             self.assertEqual(text.count(SRD_STATEMENT), 1, name)
             self.assertIn(backlog.ATTRIBUTION_HEADING, text, name)
             self.assertIn("CC-BY-4.0", text, name)
-            self.assertIn("`LICENCE.txt` inside RulesFactory.Maps.Srd52Combat 1.0.0", text, name)
+            self.assertIn("`LICENCE.txt` inside RulesFactory.Maps.Srd52Combat 2.0.0", text, name)
         with zipfile.ZipFile(self.nupkg["srd"][0]) as archive:
             self.assertIn("LICENCE.txt", archive.namelist(), "the pointer names a file the package carries")
 
