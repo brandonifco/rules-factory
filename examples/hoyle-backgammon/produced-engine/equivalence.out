@@ -1,6 +1,6 @@
 
-==> engine https://github.com/brandonifco/hoyle-backgammon at caa5e704e1b4f9d64572a2cfe6c7a4648733d05c
-engine commit    caa5e704e1b4f9d64572a2cfe6c7a4648733d05c
+==> engine https://github.com/brandonifco/hoyle-backgammon at 522e7daeb348ada7724c5163394896e477910e64
+engine commit    522e7daeb348ada7724c5163394896e477910e64
 engine name      HoyleBackgammon
 package          RulesFactory.Maps.HoyleBackgammon@4.0.0
 factory recorded 0.2.1 at b910e2f1480886ac17f2a11579234e97fc1dcdbc
@@ -16,7 +16,7 @@ produced HoyleBackgammon in $WORK/bare, NOT VERIFIED
 produced HoyleBackgammon in $WORK/seeded, NOT VERIFIED
 
 ==> classify every difference by the factory's ownership table
-seeded produce vs engine: 111 path(s)
+seeded produce vs engine: 112 path(s)
      4  engine-owned differs
           Directory.Packages.props
           HoyleBackgammon.slnx
@@ -31,7 +31,7 @@ seeded produce vs engine: 111 path(s)
           provenance.json
     18  generated identical
      3  managed identical
-    82  unlisted only-engine
+    83  unlisted only-engine
   unlisted only-engine, by top directory:
            1  .github/workflows
            1  .gitignore
@@ -41,7 +41,7 @@ seeded produce vs engine: 111 path(s)
            5  docs/decisions
           44  src/HoyleBackgammon
            5  src/Tabletop.Dice
-          20  tests/HoyleBackgammon.Tests
+          21  tests/HoyleBackgammon.Tests
            3  tests/Tabletop.Dice.Tests
 provenance.json (generated), seeded produce vs engine:
   field buildInputs: differs, explained item by item:
