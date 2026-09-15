@@ -703,7 +703,10 @@ no entry, and `dependsOn` is not a runtime input. So the factory's generated con
 ([#76](https://github.com/brandonifco/rules-factory/issues/76), `tools/factory/generate.py`) types
 what the map fixes and nothing more. Each entry has a request type of its own, so a request for
 one entry cannot be handed to another. An assertion's request carries the caller's value, which
-is what row 8 resolves to. Each entry's handler is a declared method, so an `implemented` entry
+is what row 8 resolves to. The request type is partial, so what the map leaves unnamed, an
+operation's inputs, the engine declares on it in its own code
+([#93](https://github.com/brandonifco/rules-factory/issues/93)), and the typed entry point passes
+that request, inputs included, to the handler. Each entry's handler is a declared method, so an `implemented` entry
 that needs one (any not on row 8) and lacks it does not build. The value itself, and every output, is `object` until a field
 declares otherwise.
 

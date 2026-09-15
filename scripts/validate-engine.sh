@@ -233,4 +233,49 @@ for mutation in "missing|CS8795|" "another return type|CS8817|$(printf "$HANDLER
   echo "ok   a handler with $label: error $code"
 done
 
+# #93: a typed request carries the engine's inputs to its handler. On the same scratch copy, an
+# engine-side partial declares an input on PlayerCountRequest, the handler answers with it, and a
+# test outside the generated code resolves through EntryPoints (the value arrives) and through the
+# dictionary dispatch (a request rebuilt from assertions, so the input is at its default). The
+# generated correspondence tests run beside it, so the dispatch change keeps them passing.
+step "an engine-declared request input reaches its handler through EntryPoints"
+cat > "$TYPED/src/$NAME/PlayerCountRequest.cs" <<CS
+namespace $NAME.Requests;
+
+public sealed partial class PlayerCountRequest
+{
+    /// <summary>An engine-declared input: the players at the table.</summary>
+    public int Players { get; init; }
+}
+CS
+typed_build '    internal static partial Resolution<object> PlayerCount(Requests.PlayerCountRequest request) => Resolution<object>.FromValue(request.Players);' \
+  > "$SCRATCH/typed.log" || { tail -30 "$SCRATCH/typed.log"; fail "a request partial with an input property does not build"; }
+cat > "$TYPED/tests/$NAME.Tests/TypedInputTests.cs" <<CS
+using RulesKernel.Resolution;
+using Xunit;
+
+namespace $NAME.Tests;
+
+public sealed class TypedInputTests
+{
+    [Fact]
+    public void an_engine_declared_input_reaches_the_handler_through_EntryPoints()
+    {
+        var typed = EntryPoints.PlayerCount.Resolve(new Requests.PlayerCountRequest { Players = 4 });
+        Assert.Equal(4, typed.Match<object?>(v => v, _ => null));
+        var generic = Registry.Resolve(new Requests.PlayerCountRequest(RuleRequest.Empty) { Players = 3 });
+        Assert.Equal(3, generic.Match<object?>(v => v, _ => null));
+        var dictionary = Registry.Resolve("player-count", RuleRequest.Empty);
+        Assert.Equal(0, dictionary.Match<object?>(v => v, _ => null));
+    }
+}
+CS
+(cd "$TYPED" && dotnet test "tests/$NAME.Tests/$NAME.Tests.csproj" -f net10.0 -warnaserror -nologo \
+   --results-directory "$SCRATCH/typed-results" --logger "trx;LogFileName=typed.trx" --filter "FullyQualifiedName~$NAME.Tests.TypedInputTests|FullyQualifiedName~$NAME.Tests.CorrespondenceTests" 2>&1) \
+  > "$SCRATCH/typed.log" || { tail -40 "$SCRATCH/typed.log"; fail "the engine-declared input did not reach its handler, or a correspondence test failed"; }
+# A filter matching nothing also exits 0, so the test must be in the results, and have passed.
+grep -Eq 'testName="[^"]*TypedInputTests\.an_engine_declared_input_reaches_the_handler_through_EntryPoints"[^>]*outcome="Passed"' \
+  "$SCRATCH/typed-results/typed.trx" || fail "TypedInputTests did not run and pass: $(grep -E 'Passed!|Failed!' "$SCRATCH/typed.log")"
+echo "ok   an input set on PlayerCountRequest arrives through EntryPoints; the dictionary dispatch still resolves"
+
 printf '\nvalidate-engine.sh: PASS (SDK %s%s)\n' "$SDK" "$([ "$SDK" = "$PIN" ] || echo ", OVERRIDDEN from $PIN")"

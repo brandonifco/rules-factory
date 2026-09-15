@@ -122,7 +122,10 @@ The generated runtime is typed by entry, and no further than the map declares
 type and typed entry point, so a request for one entry does not compile against another. Each
 entry's handler is a generated partial method, so an `implemented` entry whose handler is
 missing or has the wrong signature fails the build. The map names no inputs, outputs or units,
-though, so assertion values and results are still `object`. A wrong domain value inside them is
+though. An engine declares an entry's inputs itself, as properties on the entry's partial request
+type, and the typed entry point hands that request to the handler
+([#93](https://github.com/brandonifco/rules-factory/issues/93)). Assertion values and results
+are still `object`. A wrong domain value inside them is
 found at run time, not at compile time. The string-keyed `Registry` and reflection-discovered
 `[Implements]` handlers remain, as the shared dispatch and a runtime cross-check.
 
