@@ -149,6 +149,38 @@ class BacklogCase(unittest.TestCase):
         (inner,) = [b for n, b in items.items() if n.endswith("-bearing-off-move-or-remove.md")]
         self.assertIn(b"## Reachability", inner)
 
+    def test_cross_references_are_carried_in_map_order(self):
+        for key in CASES:
+            by_id = {e["id"]: e for e in self.maps[key]["entries"]}
+            files = {n.split("-", 1)[1][:-3]: n for n in self.items(key)}
+            carried = 0
+            for name, data in self.items(key).items():
+                entry = by_id[name.split("-", 1)[1][:-3]]
+                text = data.decode("utf-8")
+                with self.subTest(f"{key}/{name}"):
+                    section = text.split("## Cross-references\n\n", 1)[1].split("\n## ", 1)[0]
+                    lines = [line for line in section.splitlines() if line.startswith("- ")]
+                    references = entry.get("crossReferences") or []
+                    if not references:
+                        self.assertEqual(lines, ["- none"])
+                        continue
+                    self.assertEqual(len(lines), len(references))
+                    for line, item in zip(lines, references):
+                        head = f"- `cites` {json.dumps(item['cites'], ensure_ascii=False)} -- "
+                        if "resolvedBy" in item:
+                            target = item["resolvedBy"]
+                            link = (f"[`{target}`]({files[target]})" if target in files
+                                    else f"`{target}` -- no backlog item (")
+                            self.assertTrue(line.startswith(head + "`resolvedBy` " + link), line)
+                        else:
+                            self.assertEqual(line, head + f"`unmapped`: {json.dumps(item['unmapped'], ensure_ascii=False)}")
+                        carried += 1
+            with self.subTest(key):
+                self.assertGreater(carried, 0, f"no {key} item carries a cross-reference; the check examined nothing")
+        (twilight,) = [b for n, b in self.items("part107").items() if n.endswith("-civil-twilight-operation.md")]
+        self.assertRegex(twilight.decode(), r'- `cites` "paragraph \(b\) of this section" -- `resolvedBy` '
+                                            r'\[`anti-collision-lighting`\]\(\d{3}-anti-collision-lighting\.md\)\n')
+
     def test_links_resolve_and_readme_lists_order(self):
         for key in CASES:
             with self.subTest(key):
@@ -223,6 +255,42 @@ def entries():
          "dependsOn": ["first"], "status": "mapped", "locator": {"sourceId": "s", "citation": "p. 2"},
          "evidence": "Two.", "note": "n"},
     ]
+
+
+class TestCrossReferencesRendered(unittest.TestCase):
+    """The Cross-references section, rendered alone: deterministic, and quoting nothing of a local-copy corpus (0022)."""
+
+    CITES = "except as provided in paragraph (d) of this section"
+    REASON = "Paragraph (d) of this section is outside the slice mapped here."
+
+    def listed(self):
+        listed = entries()
+        listed[1]["crossReferences"] = [{"cites": self.CITES, "resolvedBy": "first"},
+                                        {"cites": 'as in "Fig. 1"', "unmapped": self.REASON}]
+        return listed
+
+    def test_rendering_is_deterministic_and_exact(self):
+        first = backlog.render(self.listed(), CONTEXT)
+        self.assertEqual(first, backlog.render(self.listed(), CONTEXT))
+        self.assertIn("## Cross-references\n\n`crossReferences` -- each pointer the evidence makes, and the entry or "
+                      "the recorded reason it resolves to:\n\n"
+                      f'- `cites` "{self.CITES}" -- `resolvedBy` [`first`](001-first.md)\n'
+                      f'- `cites` "as in \\"Fig. 1\\"" -- `unmapped`: "{self.REASON}"\n\n## Acceptance criteria',
+                      first["002-second.md"])
+        self.assertIn("## Cross-references\n\n`crossReferences` -- each pointer the evidence makes, and the entry or "
+                      "the recorded reason it resolves to:\n\n- none\n\n", first["001-first.md"])
+
+    def test_a_local_copy_corpus_keeps_the_resolution_and_withholds_the_words(self):
+        body = backlog.render(self.listed(), {**CONTEXT, "localCopy": True})["002-second.md"]
+        section = body.split("## Cross-references\n\n", 1)[1].split("\n## ", 1)[0]
+        self.assertIn("- `cites` (withheld) -- `resolvedBy` [`first`](001-first.md)\n", section)
+        self.assertIn("- `cites` (withheld) -- `unmapped`: (withheld)\n", section)
+        self.assertIn(backlog.WITHHELD, section)
+        self.assertNotIn("paragraph (d)", body)
+        self.assertNotIn("outside the slice", body)
+        strings = backlog.quoted_strings({"entries": self.listed()})
+        self.assertIn(self.CITES, strings)
+        self.assertIn(self.REASON, strings)
 
 
 class CreateCase(unittest.TestCase):
@@ -314,6 +382,26 @@ class CreateCase(unittest.TestCase):
         self.assertEqual(self.writes(), [["issue", "edit", "2"]])
         self.assertNotIn("(001-first.md)", self.issues()[1]["body"])
         self.assertEqual(self.issues()[1]["body"], self.body("002-second.md"))
+        self.assertIn("0 created, 1 updated, 0 adopted, 1 unchanged", log)
+
+    def test_a_cross_reference_resolved_where_it_was_unmapped_updates_the_body(self):
+        """FaaPart107 4.0.0's "paragraph (b)": only the resolution moves, and the issue must show it."""
+        before = entries()
+        before[1]["crossReferences"] = [{"cites": "as in paragraph (b)", "unmapped": "Nothing maps (b) yet."}]
+        self.emit(before)
+        self.create()
+        self.writes()
+        self.assertIn('- `cites` "as in paragraph (b)" -- `unmapped`: "Nothing maps (b) yet."\n',
+                      self.issues()[1]["body"])
+        after = entries()
+        after[1]["crossReferences"] = [{"cites": "as in paragraph (b)", "resolvedBy": "first"}]
+        self.emit(after)
+        code, log = self.create()
+        self.assertEqual(code, 0, log)
+        self.assertEqual(self.writes(), [["issue", "edit", "2"]])
+        self.assertIn('- `cites` "as in paragraph (b)" -- `resolvedBy` [`first`](001-first.md)\n',
+                      self.issues()[1]["body"])
+        self.assertNotIn("unmapped", self.issues()[1]["body"])
         self.assertIn("0 created, 1 updated, 0 adopted, 1 unchanged", log)
 
     def test_line_endings_and_trailing_space_github_adds_are_not_a_change(self):

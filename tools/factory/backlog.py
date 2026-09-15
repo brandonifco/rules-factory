@@ -3,7 +3,7 @@
 docs/method.md, "Phase 5 -- Generate the backlog": each entry becomes one issue carrying its
 scope, its source (the locator verbatim and the `evidence` it resolves to), its dependencies
 (which order it), its reachability (`enabledBy` / `suspendedBy`, which order nothing), its
-acceptance criteria and its required evidence (from `note`). The backlog is ordered by the
+cross-references, its acceptance criteria and its required evidence (from `note`). The backlog is ordered by the
 dependency graph, not by the corpus's page order.
 
 **Which entries become items.** Read from the map merged with the engine's overlay:
@@ -26,6 +26,13 @@ not itself an item. File names are `NNN-<entry-id>.md`, NNN zero-padded (at leas
 digits). The title is `<entry-id>: <name>`, which does not move when the order does -- but it
 does move when the entry is renamed, so nothing keys on it.
 
+**Cross-references.** Every item has a "Cross-references" section listing the entry's
+`crossReferences` in map order, each as its `cites` (JSON-quoted, so its bytes are exact) and how it
+resolves: `resolvedBy`, linked to that entry's item or saying why it has none, or `unmapped` with
+its reason, also JSON-quoted. An entry with none (a derived entry always) says `none`. So a
+pointer that moves from `unmapped` to `resolvedBy`, or to another entry, changes the issue body and
+`backlog --create` updates it, even when nothing else about the entry changed.
+
 **Identity.** Under the title, every item carries `<!-- rules-factory-entry: <entry-id> -->`
 and `<!-- rules-factory-engine: <Name>; map: <package id> -->`. The entry id is the one thing
 about an item the map never changes, so it is what ties a file to its issue: a title or a body
@@ -36,7 +43,8 @@ lookup does not use it, since an engine's issues live in that engine's repositor
 is `local-copy` (`localCopy`, set by `produce` from the manifest), an item carries the entry's id,
 name, structural fields and locator citation, and never the corpus's words: `evidence`, the entry's
 `note` and `ambiguity.question` (both may quote the corpus, and nothing measures how closely) are
-each replaced by WITHHELD, which points at the citation in the operator's licensed copy.
+each replaced by WITHHELD, as are a cross-reference's `cites` (the corpus's words) and `unmapped`
+reason (which may paraphrase them), its `resolvedBy` kept, which points at the citation in the operator's licensed copy.
 `create` on an engine whose provenance.json records `licensedCopyException` refuses before any
 write unless every body carries that replacement and none contains any of those strings from the
 map package the provenance names (`quoted_strings`). A committed-copy corpus renders exactly as before.
@@ -216,6 +224,22 @@ def _relation(ids, files, by_id):
     return "".join(lines)
 
 
+def _cross_references(entry, files, by_id, withhold=False):
+    """The entry's `crossReferences`, one line each in map order; `- none` without any."""
+    references = [item for item in entry.get("crossReferences") or [] if isinstance(item, dict)]
+    if not references:
+        return "- none\n"
+    lines = []
+    for item in references:
+        head = "- `cites` (withheld)" if withhold else f"- `cites` {json.dumps(item.get('cites'), ensure_ascii=False)}"
+        if "resolvedBy" in item:
+            lines.append(f"{head} -- `resolvedBy` " + _relation([item["resolvedBy"]], files, by_id)[2:])
+        else:
+            reason = "(withheld)" if withhold else json.dumps(item.get("unmapped"), ensure_ascii=False)
+            lines.append(f"{head} -- `unmapped`: {reason}\n")
+    return "".join(lines) + (f"\n{WITHHELD}" if withhold else "")
+
+
 def _criteria(entry, by_id):
     eid = entry["id"]
     out = []
@@ -298,6 +322,9 @@ def item_markdown(position, total, file_name, entry, files, by_id, context):
                  + _relation(entry.get("enabledBy") or [], files, by_id)
                  + "\n`suspendedBy` -- what the tests must show does not happen:\n\n"
                  + _relation(entry.get("suspendedBy") or [], files, by_id) + "\n")
+    parts.append("## Cross-references\n\n`crossReferences` -- each pointer the evidence makes, and the entry "
+                 "or the recorded reason it resolves to:\n\n"
+                 + _cross_references(entry, files, by_id, withhold) + "\n")
     parts.append("## Acceptance criteria\n\n" + _criteria(entry, by_id) + "\n")
     if withhold:
         parts.append("## Required evidence\n\nThe entry's `note`:\n\n" + WITHHELD)
@@ -412,13 +439,16 @@ def _normalised(text):
 
 
 def quoted_strings(document):
-    """Every string in the map that holds or may paraphrase corpus text: evidence, note, ambiguity.question."""
+    """Every string in the map that holds or may paraphrase corpus text: evidence, note, ambiguity.question,
+    and each cross-reference's cites and unmapped reason."""
     found = set()
     for entry in document.get("entries") or [] if isinstance(document, dict) else []:
         if not isinstance(entry, dict):
             continue
         ambiguity = entry.get("ambiguity") if isinstance(entry.get("ambiguity"), dict) else {}
-        for text in (entry.get("evidence"), entry.get("note"), ambiguity.get("question")):
+        references = [item for item in entry.get("crossReferences") or [] if isinstance(item, dict)]
+        for text in (entry.get("evidence"), entry.get("note"), ambiguity.get("question"),
+                     *(item.get(key) for item in references for key in ("cites", "unmapped"))):
             if isinstance(text, str) and len(_normalised(text)) >= QUOTE_MINIMUM:
                 found.add(_normalised(text))
     return sorted(found)

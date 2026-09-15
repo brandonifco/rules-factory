@@ -67,25 +67,46 @@ This is the one case where `produce` rewrites files the ownership table (ownersh
 copy and is committed only when the gate passes, and the commit lists the lock files as changed,
 for the engine to review.
 
-`--no-verify` cannot re-lock: re-locking needs dotnet, which it skips. Committing the new pins
-beside lock files that still resolve the old versions would fail the engine's locked restore in CI
-and record the stale lock hashes in provenance.json. So a `--no-verify` produce, after generation
-in the staging copy and before the commit, compares every committed packages.lock.json with the
+`--no-verify` builds and tests nothing, but a `--no-verify` produce must not commit the new pins
+beside lock files that still resolve the old versions either: that would fail the engine's locked
+restore in CI and record the stale lock hashes in provenance.json. So, after generation in the
+staging copy and before the commit, it compares every committed packages.lock.json with the
 generated pins (`stale_locks`): for each package id the pin set names (RulesKernel,
 RulesKernel.Randomness, RulesFactory.Maps.*), every entry, direct or transitive, must resolve the
-pinned version (an exact pin's version, or a minimum pin's lower bound). Any that does not refuses
-the run, naming each lock file, package, locked and pinned version, and `--out` is unchanged. The
-way on is `produce` without `--no-verify`, which re-locks, or re-locking first (`scripts/validate.sh
-lock`) and running `--no-verify` again with the updated lock files in place, which then agree and
-commit. Packages outside the pin set are not compared, and an engine with no lock files is not
-affected. The re-produce inside `recompute` is a `--no-verify` produce too, and skips the check:
-it is comparing records, and a stale lock file there is the gate's to fail, or the relock's to fix.
+pinned version (an exact pin's version, or a minimum pin's lower bound). When any does not, it
+re-locks them in the staging copy (`relock`): `dotnet --version` shows that the SDK global.json (or
+`FACTORY_DOTNET_SDK_OVERRIDE`) selects can run, then `dotnet restore --force-evaluate` with locked
+mode off, on that SDK. It then compares again, and records the re-locked files in provenance.json.
+The re-lock builds nothing, and it is the only dotnet a `--no-verify` run starts. The run is
+refused, naming each lock file, package, locked and pinned version, and `--out` is unchanged, when
+no SDK can run (the refusal names the exact command that works: the same produce under
+`FACTORY_DOTNET_SDK_OVERRIDE` at an SDK `dotnet --list-sdks` shows, or, with none, after installing
+the pinned one), when restore fails, or when the lock files still disagree afterwards. So a
+`--no-verify` produce never commits stale lock files. Packages outside the pin set are not
+compared, lock files that already agree are committed as they are, and an engine with no lock
+files is not affected. The re-produce inside `recompute` is a `--no-verify` produce too, and skips
+the check: it is comparing records, and a stale lock file there is the gate's to fail, or the
+relock's to fix.
 
 Standalone `verify` never re-locks. It has no earlier pin set to compare with, and it runs on the
 engine in place, outside any transaction, so a relock there would silently rewrite engine-owned
 files and leave them unrecorded. An engine whose pins moved outside `produce` fails the gate's
 locked restore; it re-locks itself with `scripts/validate.sh lock`, reviews and commits the result,
 or runs `produce` again.
+
+The SDK override. The engine's global.json pins the SDK the kernel pins, with roll-forward disabled,
+and the gate's first step holds `dotnet --version` to it. A machine without that exact SDK cannot
+restore or run the gate, and editing global.json to the SDK it has fails stage 1 instead: global.json
+is a managed file (decision 0018) whose hash provenance records. So, for local runs only,
+`FACTORY_DOTNET_SDK_OVERRIDE=<version>` (`sdk_override`) -- the variable scripts/validate-engine.sh
+reads, through the same functions -- lets verify run the dotnet stages on another SDK without
+touching what provenance checks: stage 1 runs on global.json as it is, and only around `dotnet
+restore` and the gate (`overridden_sdk`) is global.json rewritten to the override (`repin`), its
+original bytes put back as each finishes, pass or fail, so `after_restore` records, and produce
+commits, the pinned file. verify prints a WARNING that the run does not prove the pinned toolchain,
+and so does the line that ends it. An engine whose global.json already pins the override version
+(scripts/validate-engine.sh adopts such a copy) is left alone. The override is refused when CI=true,
+where a green run must mean the pinned SDK.
 
 `dotnet` is `$FACTORY_DOTNET` when set, else `dotnet` on PATH; a test substitutes a fake the way
 `$FACTORY_GH` substitutes `gh` for `backlog --create`. The gate is a shell script that runs
@@ -97,7 +118,9 @@ a usage error (the engine directory does not exist).
 
 Standard library only.
 """
+import contextlib
 import glob
+import io
 import json
 import os
 import re
@@ -120,6 +143,8 @@ TIMEOUTS = {"restore": 900, "gate": 3600}
 
 class Failed(Exception):
     """A stage failed. `stage` names it; the message says why."""
+
+    sdk_missing = False  # `relock` only: no SDK could run, as opposed to restore failing
 
     def __init__(self, stage, message):
         super().__init__(f"{stage}: {message}")
@@ -218,6 +243,111 @@ def stale_locks(engine_dir, pinned):
     return found
 
 
+SDK_OVERRIDE = "FACTORY_DOTNET_SDK_OVERRIDE"
+GLOBAL_JSON = "global.json"
+
+
+def sdk_override(environ=None):
+    """The SDK version `$FACTORY_DOTNET_SDK_OVERRIDE` names, or None when it is unset or empty.
+
+    Refused (a usage error) when CI=true: CI proves the pinned toolchain or fails."""
+    environ = os.environ if environ is None else environ
+    version = (environ.get(SDK_OVERRIDE) or "").strip()
+    if not version:
+        return None
+    if environ.get("CI") == "true":
+        raise intake_step.Usage(f"{SDK_OVERRIDE} is for local runs only and is refused when CI=true")
+    return version
+
+
+def override_warning(version, pinned):
+    """The one warning every use of the override prints."""
+    return (f"WARNING: {SDK_OVERRIDE}={version} replaces the pinned SDK {pinned}; "
+            f"this run does not prove the pinned toolchain")
+
+
+def repin(text, version):
+    """global.json text with its SDK version set to `version`, laid out as generate.py writes it."""
+    document = json.loads(text)
+    document["sdk"]["version"] = version
+    return json.dumps(document, indent=2) + "\n"
+
+
+def pinned_sdk(engine_dir):
+    """The SDK version the engine's global.json pins; None when it has none readable."""
+    try:
+        with open(os.path.join(engine_dir, GLOBAL_JSON), encoding="utf-8") as handle:
+            return str(json.load(handle)["sdk"]["version"])
+    except (OSError, UnicodeDecodeError, ValueError, KeyError, TypeError):
+        return None
+
+
+@contextlib.contextmanager
+def overridden_sdk(engine_dir, stage):
+    """Within the block, the engine's global.json pins `sdk_override()`; its bytes are put back after.
+
+    Nothing happens without an override, or when global.json already pins it. A global.json that
+    cannot be read or rewritten fails `stage`."""
+    version = sdk_override()
+    pinned = pinned_sdk(engine_dir)
+    if version is None or pinned == version:
+        yield
+        return
+    path = os.path.join(engine_dir, GLOBAL_JSON)
+    try:
+        with open(path, "rb") as handle:
+            original = handle.read()
+        replaced = repin(original.decode("utf-8"), version)
+    except (OSError, UnicodeDecodeError, ValueError, KeyError, TypeError) as error:
+        raise Failed(stage, f"{SDK_OVERRIDE} is set, and {path} cannot be read as a global.json to re-pin: {error}")
+    with open(path, "w", encoding="utf-8") as handle:
+        handle.write(replaced)
+    try:
+        yield
+    finally:
+        with open(path, "wb") as handle:
+            handle.write(original)
+
+
+def installed_sdks():
+    """The SDK versions `dotnet --list-sdks` names, in its order (newest last); [] when dotnet cannot say."""
+    try:
+        done = subprocess.run([dotnet_command(), "--list-sdks"], capture_output=True, text=True, timeout=60)
+    except (OSError, subprocess.SubprocessError):
+        return []
+    if done.returncode != 0:
+        return []
+    return [line.split()[0] for line in done.stdout.splitlines() if line.strip()]
+
+
+def relock(engine_dir, log):
+    """Re-lock the engine's lock files against its generated pins, for a `--no-verify` produce.
+
+    Runs `dotnet --version`, then `dotnet restore <sln> --force-evaluate -p:RestoreLockedMode=false`,
+    on the SDK global.json pins or `$FACTORY_DOTNET_SDK_OVERRIDE` names (`overridden_sdk`). Raises
+    Failed("restore"), with `sdk_missing` set when no SDK could run, and unset when restore failed.
+    """
+    dotnet = dotnet_command()
+    with overridden_sdk(engine_dir, "restore"):
+        probe = io.StringIO()
+        try:
+            code = _run("restore", [dotnet, "--version"], engine_dir, probe)
+        except Failed as error:
+            error.sdk_missing = True
+            raise
+        if code != 0:
+            error = Failed("restore", f"`dotnet --version` found no SDK global.json selects "
+                                      f"({' '.join(probe.getvalue().split())[:300]})")
+            error.sdk_missing = True
+            raise error
+        sdk = (probe.getvalue().strip().splitlines() or ["?"])[-1]
+        print(f"--- relock: dotnet restore --force-evaluate on SDK {sdk}; nothing is built or tested", file=log)
+        code = _run("restore", [dotnet, "restore", solution(engine_dir), "-p:RestoreLockedMode=false",
+                                "--force-evaluate"], engine_dir, log)
+    if code != 0:
+        raise Failed("restore", "dotnet restore failed (its output is above)")
+
+
 def dotnet_command():
     return os.environ.get("FACTORY_DOTNET") or "dotnet"
 
@@ -274,11 +404,12 @@ def verify_staged(root, recompute, package=None, log=None, after_restore=None, r
     The staging copy never holds bin/ or obj/ before this (transaction.py does not copy them), so
     every one found afterwards is verify's own and nothing of the engine's is deleted.
     """
-    verify(root, recompute, package, log, after_restore, relock)
+    overridden = verify(root, recompute, package, log, after_restore, relock)
     for directory, dirs, _ in os.walk(root):
         for name in [d for d in dirs if d in BUILD_OUTPUT]:
             shutil.rmtree(os.path.join(directory, name))
         dirs[:] = [d for d in dirs if d not in BUILD_OUTPUT]
+    return overridden
 
 
 def verify(engine_dir, recompute, package=None, log=None, after_restore=None, relock=False):
@@ -289,6 +420,9 @@ def verify(engine_dir, recompute, package=None, log=None, after_restore=None, re
     `after_restore()`, when given, runs after a restore that wrote the lock files and before the
     gate (produce uses it to record them in provenance.json, above). `relock` is produce's alone,
     passed when the generated pins changed: existing lock files are then re-locked, not skipped.
+
+    Returns the SDK version `$FACTORY_DOTNET_SDK_OVERRIDE` put in place of global.json's pin for
+    restore and the gate, or None when they ran on the pinned SDK (module docstring).
     """
     log = log or sys.stdout
     if not os.path.isdir(engine_dir):
@@ -301,6 +435,7 @@ def verify(engine_dir, recompute, package=None, log=None, after_restore=None, re
     def ok(name, detail):
         print(f"ok   {name}: {detail}", file=log)
 
+    override = sdk_override()  # refused under CI=true before anything runs
     stage("provenance")
     mismatches = recompute(engine_dir, package)
     for line in mismatches:
@@ -308,6 +443,13 @@ def verify(engine_dir, recompute, package=None, log=None, after_restore=None, re
     if mismatches:
         raise Failed("provenance", f"{len(mismatches)} provenance field(s) do not match what re-producing gives")
     ok("provenance", "every field matches")
+
+    pinned = pinned_sdk(engine_dir)
+    overridden = override if override is not None and override != pinned else None
+    if overridden:
+        print(f"{override_warning(overridden, pinned)}. global.json is re-pinned to {overridden} only while "
+              f"dotnet restore and the gate run, and put back byte for byte after each; provenance was checked "
+              f"on the pinned file", file=log)
 
     dotnet = dotnet_command()
     locks = lock_files(engine_dir)
@@ -323,7 +465,9 @@ def verify(engine_dir, recompute, package=None, log=None, after_restore=None, re
             argv.append("--force-evaluate")
         else:
             stage("restore", " -- no packages.lock.json yet, so this restore writes them")
-        if _run("restore", argv, engine_dir, log) != 0:
+        with overridden_sdk(engine_dir, "restore"):
+            code = _run("restore", argv, engine_dir, log)
+        if code != 0:
             raise Failed("restore", "dotnet restore failed")
         written = lock_files(engine_dir)
         if not written:
@@ -343,6 +487,10 @@ def verify(engine_dir, recompute, package=None, log=None, after_restore=None, re
     env = {**os.environ, "PYTHONDONTWRITEBYTECODE": "1"}
     if os.sep in dotnet:
         env["PATH"] = os.path.dirname(os.path.abspath(dotnet)) + os.pathsep + env.get("PATH", "")
-    if _run("gate", ["bash", gate, "full"], engine_dir, log, env) != 0:
+    with overridden_sdk(engine_dir, "gate"):
+        code = _run("gate", ["bash", gate, "full"], engine_dir, log, env)
+    if code != 0:
         raise Failed("gate", f"{GATE} full failed; its output above names the step")
-    ok("gate", f"{GATE} full passed")
+    ok("gate", f"{GATE} full passed" + (f" on SDK {overridden} ({SDK_OVERRIDE}), not the pinned {pinned}"
+                                         if overridden else ""))
+    return overridden

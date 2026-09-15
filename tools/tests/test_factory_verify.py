@@ -55,6 +55,19 @@ if command == "build" and os.path.exists("provenance.json"):
     note = " locks-recorded=%d" % sum(1 for i in inputs if i["path"].endswith("packages.lock.json"))
 with open(os.environ["FAKE_DOTNET_LOG"], "a", encoding="utf-8") as log:
     log.write(" ".join(args) + note + "\n")
+# Which SDK each call would run on: the version the global.json it starts beside pins.
+if os.environ.get("FAKE_DOTNET_SDK_LOG") and os.path.exists("global.json"):
+    with open("global.json", encoding="utf-8") as handle:
+        sdk = json.load(handle)["sdk"]["version"]
+    with open(os.environ["FAKE_DOTNET_SDK_LOG"], "a", encoding="utf-8") as log:
+        log.write("%s %s\n" % (command, sdk))
+if command == "--list-sdks":
+    for sdk in os.environ.get("FAKE_DOTNET_SDKS", "").split():
+        print("%s [/usr/share/dotnet/sdk]" % sdk)
+    sys.exit(0)
+if command == "--version" and os.environ.get("FAKE_DOTNET_FAIL") != "--version":
+    print(os.environ.get("FAKE_DOTNET_VERSION", "10.0.0"))
+    sys.exit(0)
 print(f"fake dotnet {command}")
 if command == os.environ.get("FAKE_DOTNET_FAIL"):
     print(f"error: fake {command} failure")
@@ -338,6 +351,104 @@ class TestProduce(VerifyCase):
         self.assertEqual(output.splitlines()[-1], f"produced {NAME} in {out}, NOT VERIFIED")
 
 
+class TestSdkOverride(VerifyCase):
+    """FACTORY_DOTNET_SDK_OVERRIDE: restore and the gate run on another SDK; global.json and provenance do not move."""
+
+    OTHER = "10.0.1"
+
+    def setUp(self):
+        super().setUp()
+        self.sdk_log = os.path.join(self.tmp, "sdk.log")
+        self.env["FAKE_DOTNET_SDK_LOG"] = self.sdk_log
+        self.pinned = verify_step.pinned_sdk(self.engine)
+        assert self.pinned and self.pinned != self.OTHER
+
+    def sdks(self):
+        if not os.path.exists(self.sdk_log):
+            return []
+        with open(self.sdk_log, encoding="utf-8") as handle:
+            return handle.read().splitlines()
+
+    def global_json(self, engine=None):
+        with open(os.path.join(engine or self.engine, "global.json"), "rb") as handle:
+            return handle.read()
+
+    def test_restore_and_the_gate_run_on_the_override_and_global_json_is_put_back(self):
+        before = self.global_json()
+        code, output = self.verify(FACTORY_DOTNET_SDK_OVERRIDE=self.OTHER, CI="")
+        self.assertEqual(code, 0, output)
+        self.assertEqual(self.sdks(), [f"restore {self.OTHER}", f"restore {self.OTHER}", f"build {self.OTHER}",
+                                       f"test {self.OTHER}"])
+        self.assertEqual(before, self.global_json(), "global.json is byte-identical after verify")
+        self.assertIn(f"WARNING: FACTORY_DOTNET_SDK_OVERRIDE={self.OTHER} replaces the pinned SDK {self.pinned}; "
+                      "this run does not prove the pinned toolchain", output)
+        self.assertLess(output.index("ok   provenance"), output.index("WARNING: FACTORY_DOTNET_SDK_OVERRIDE"))
+        self.assertEqual(output.splitlines()[-1], f"verify {self.engine}: PASS on SDK {self.OTHER} by "
+                                                  f"FACTORY_DOTNET_SDK_OVERRIDE, not the pinned {self.pinned}")
+        code, recomputed = run(["provenance", "--engine", self.engine, "--package", self.nupkg])
+        self.assertEqual(code, 0, recomputed)
+
+    def test_without_the_override_nothing_changes(self):
+        code, output = self.verify(FACTORY_DOTNET_SDK_OVERRIDE="")
+        self.assertEqual(code, 0, output)
+        self.assertEqual(set(line.split(" ")[1] for line in self.sdks()), {self.pinned})
+        self.assertNotIn("WARNING", output)
+        self.assertEqual(output.splitlines()[-1], f"verify {self.engine}: PASS")
+
+    def test_an_engine_that_already_pins_the_override_is_left_alone(self):
+        code, output = self.verify(FACTORY_DOTNET_SDK_OVERRIDE=self.pinned, CI="")
+        self.assertEqual(code, 0, output)
+        self.assertNotIn("WARNING", output)
+        self.assertEqual(output.splitlines()[-1], f"verify {self.engine}: PASS")
+
+    def test_a_failing_gate_still_puts_global_json_back(self):
+        before = self.global_json()
+        code, output = self.verify(FACTORY_DOTNET_SDK_OVERRIDE=self.OTHER, CI="", FAKE_DOTNET_FAIL="build")
+        self.assertEqual(code, 1, output)
+        self.assertIn("verify FAILED at stage gate", output)
+        self.assertIn(f"build {self.OTHER}", self.sdks())
+        self.assertEqual(before, self.global_json())
+
+    def test_the_override_is_refused_in_ci_before_anything_runs(self):
+        before = self.global_json()
+        code, output = self.verify(FACTORY_DOTNET_SDK_OVERRIDE=self.OTHER, CI="true")
+        self.assertEqual(code, 2, output)
+        self.assertIn("FACTORY_DOTNET_SDK_OVERRIDE is for local runs only and is refused when CI=true", output)
+        self.assertNotIn("] provenance", output)
+        self.assertEqual(self.dotnet_calls(), [])
+        self.assertEqual(before, self.global_json())
+
+    def test_a_hand_edited_global_json_still_fails_provenance(self):
+        """The override is not a way past stage 1: the committed pin is what provenance checks."""
+        text = verify_step.repin(self.global_json().decode("utf-8"), self.OTHER)
+        with open(os.path.join(self.engine, "global.json"), "w", encoding="utf-8") as handle:
+            handle.write(text)
+        code, output = self.verify(FACTORY_DOTNET_SDK_OVERRIDE=self.OTHER, CI="")
+        self.assertEqual(code, 1, output)
+        self.assertIn("MISMATCH managed[global.json]", output)
+        self.assertEqual(self.dotnet_calls(), [])
+
+    def test_produce_verifies_on_the_override_and_commits_and_records_the_pinned_global_json(self):
+        out = os.path.join(self.tmp, "fresh")
+        with mock.patch.dict(os.environ, {**self.env, "FACTORY_DOTNET_SDK_OVERRIDE": self.OTHER, "CI": ""}):
+            code, output = self.produce_into(out)
+        self.assertEqual(code, 0, output)
+        self.assertEqual(self.sdks(), [f"restore {self.OTHER}", f"restore {self.OTHER}", f"build {self.OTHER}",
+                                       f"test {self.OTHER}"])
+        self.assertEqual(self.global_json(out), self.global_json(), "the committed global.json pins the kernel's SDK")
+        self.assertEqual(output.splitlines()[-1], f"produced {NAME} in {out}, verified on SDK {self.OTHER} by "
+                                                  f"FACTORY_DOTNET_SDK_OVERRIDE, not the pinned {self.pinned}")
+        # after_restore rewrote provenance.json while global.json was the pinned file, so it recomputes.
+        code, recomputed = run(["provenance", "--engine", out, "--package", self.nupkg])
+        self.assertEqual(code, 0, recomputed)
+
+    def test_repin_writes_global_json_as_generate_does(self):
+        text = factory.generate.managed_files()["global.json"]
+        self.assertEqual(verify_step.repin(text, factory.generate.SDK_VERSION), text)
+        self.assertEqual(json.loads(verify_step.repin(text, self.OTHER))["sdk"],
+                         {"version": self.OTHER, "rollForward": "disable"})
+
+
 class TestPins(unittest.TestCase):
     """The relock signal (#94): the resolved pin set, not the bytes of the props."""
 
@@ -526,7 +637,7 @@ class TestStaleLocks(unittest.TestCase):
 
 
 class TestNoVerifyStaleLocks(VerifyCase):
-    """--no-verify cannot re-lock, so it refuses lock files the generated pins have moved past."""
+    """--no-verify builds nothing, but re-locks lock files the generated pins have moved past, or refuses."""
 
     @classmethod
     def setUpClass(cls):
@@ -536,51 +647,128 @@ class TestNoVerifyStaleLocks(VerifyCase):
         cls.map_id = f"RulesFactory.Maps.{NAME}"
         assert cls.map_id.lower() in verify_step.read_pins(cls.base)
 
+    LOCKS = (f"src/{NAME}/packages.lock.json", f"tests/{NAME}.Tests/packages.lock.json")
+
     def write_locks(self, map_version):
         pins = {"RulesKernel": self.kernel, self.map_id: map_version}
-        for relative, text in ((f"src/{NAME}/packages.lock.json", nuget_lock(pins)),
-                               (f"tests/{NAME}.Tests/packages.lock.json", nuget_lock(pins, transitive=True))):
+        for relative, text in zip(self.LOCKS, (nuget_lock(pins), nuget_lock(pins, transitive=True))):
             with open(os.path.join(self.engine, *relative.split("/")), "w", encoding="utf-8") as handle:
                 handle.write(text)
 
-    def produce_bumped(self, *extra):
-        return run(["produce", "--package", self.nupkg_bumped, "--corpus", CORPUS, "--name", NAME,
-                    "--out", self.engine, "--allow-dirty", *extra])
+    def produce_bumped(self, *extra, **env):
+        with mock.patch.dict(os.environ, {"CI": "", "FACTORY_DOTNET_SDK_OVERRIDE": "", **env}):
+            return run(["produce", "--package", self.nupkg_bumped, "--corpus", CORPUS, "--name", NAME,
+                        "--out", self.engine, "--allow-dirty", *extra])
 
-    def test_stale_lock_files_are_refused_and_the_engine_is_byte_identical(self):
-        self.write_locks("6.0.0")
-        before = snapshot(self.engine)
-        code, output = self.produce_bumped("--no-verify")
+    def command(self, override=None):
+        return ((f"FACTORY_DOTNET_SDK_OVERRIDE={override} " if override else "")
+                + f"python3 tools/factory produce --package {self.nupkg_bumped} --corpus {CORPUS} --name {NAME} "
+                  f"--out {self.engine} --allow-dirty --no-verify")
+
+    def assert_refused_unchanged(self, before, code, output):
         self.assertEqual(code, 1, output)
-        self.assertIn("REFUSED -- --no-verify cannot re-lock", output)
-        for project in (f"src/{NAME}", f"tests/{NAME}.Tests"):
-            self.assertIn(f"{project}/packages.lock.json: {self.map_id} locked at 6.0.0, pinned at [7.0.0]", output)
-        self.assertIn("produce without --no-verify", output)
-        self.assertIn("scripts/validate.sh lock", output)
+        self.assertIn("REFUSED -- --no-verify must re-lock the lock files that disagree with the generated pins", output)
+        for relative in self.LOCKS:
+            self.assertIn(f"{relative}: {self.map_id} locked at 6.0.0, pinned at [7.0.0]", output)
         self.assertIn("Nothing was produced.", output)
         self.assertEqual(before, snapshot(self.engine))
         self.assertEqual([n for n in os.listdir(self.tmp) if ".factory-produce-" in n], [])
 
+    def test_stale_lock_files_are_re_locked_recorded_and_committed_unverified(self):
+        self.write_locks("6.0.0")
+        code, output = self.produce_bumped("--no-verify", **self.env)
+        self.assertEqual(code, 0, output)
+        self.assertEqual(self.dotnet_calls(), ["--version", "restore --force-evaluate"], "restore only: no build, no test")
+        self.assertEqual(self.gate_calls, [])
+        self.assertIn("so restore re-locks them", output)
+        self.assertIn("verification SKIPPED (--no-verify)", output)
+        self.assertEqual(output.splitlines()[-1], f"produced {NAME} in {self.engine}, NOT VERIFIED")
+        self.assertEqual(verify_step.stale_locks(self.engine, verify_step.read_pins(self.engine)), [])
+        with open(os.path.join(self.engine, "provenance.json"), encoding="utf-8") as handle:
+            recorded = {i["path"]: i["sha256"] for i in json.load(handle)["buildInputs"]
+                        if i["path"].endswith("packages.lock.json")}
+        self.assertEqual(sorted(recorded), sorted(self.LOCKS))
+        for relative in self.LOCKS:
+            with open(os.path.join(self.engine, *relative.split("/")), "rb") as handle:
+                data = handle.read()
+            self.assertIn(b"[7.0.0]", data)
+            self.assertEqual(recorded[relative], hashlib.sha256(data).hexdigest())
+        for directory, dirs, _ in os.walk(self.engine):
+            self.assertFalse({"bin", "obj"} & set(dirs), directory)
+        code, recomputed = run(["provenance", "--engine", self.engine, "--package", self.nupkg_bumped])
+        self.assertEqual(code, 0, recomputed)
+
+    def test_the_relock_runs_on_the_sdk_override_and_commits_the_pinned_global_json(self):
+        self.write_locks("6.0.0")
+        sdk_log = os.path.join(self.tmp, "sdk.log")
+        with open(os.path.join(self.engine, "global.json"), "rb") as handle:
+            pinned_bytes = handle.read()
+        pinned = verify_step.pinned_sdk(self.engine)
+        code, output = self.produce_bumped("--no-verify", FACTORY_DOTNET_SDK_OVERRIDE="10.0.1",
+                                           FAKE_DOTNET_SDK_LOG=sdk_log, **self.env)
+        self.assertEqual(code, 0, output)
+        with open(sdk_log, encoding="utf-8") as handle:
+            self.assertEqual(handle.read().splitlines(), ["--version 10.0.1", "restore 10.0.1"])
+        with open(os.path.join(self.engine, "global.json"), "rb") as handle:
+            self.assertEqual(handle.read(), pinned_bytes)
+        self.assertIn(f"WARNING: FACTORY_DOTNET_SDK_OVERRIDE=10.0.1 replaces the pinned SDK {pinned}", output)
+        self.assertEqual(output.splitlines()[-1], f"produced {NAME} in {self.engine}, NOT VERIFIED, lock files "
+                                                  f"re-locked on SDK 10.0.1 by FACTORY_DOTNET_SDK_OVERRIDE, not the pinned {pinned}")
+
+    def test_without_any_sdk_the_refusal_names_the_pinned_sdk_and_the_command(self):
+        self.write_locks("6.0.0")
+        before = snapshot(self.engine)
+        code, output = self.produce_bumped("--no-verify", **{**self.env, "FACTORY_DOTNET": os.path.join(self.tmp, "no", "dotnet")})
+        self.assert_refused_unchanged(before, code, output)
+        self.assertIn(f"no .NET SDK can run here", output)
+        self.assertIn(f"install the .NET SDK {verify_step.pinned_sdk(self.engine)}, then run `{self.command()}`", output)
+
+    def test_without_the_pinned_sdk_the_refusal_names_the_override_at_an_installed_one(self):
+        self.write_locks("6.0.0")
+        before = snapshot(self.engine)
+        code, output = self.produce_bumped("--no-verify", FAKE_DOTNET_FAIL="--version",
+                                           FAKE_DOTNET_SDKS="8.0.100 10.0.111", **self.env)
+        self.assert_refused_unchanged(before, code, output)
+        self.assertEqual(self.dotnet_calls(), ["--version", "--list-sdks"])
+        self.assertIn(f"with one that is, run `{self.command('10.0.111')}`", output)
+
+    def test_a_failing_relock_is_refused(self):
+        self.write_locks("6.0.0")
+        before = snapshot(self.engine)
+        code, output = self.produce_bumped("--no-verify", FAKE_DOTNET_FAIL="restore", **self.env)
+        self.assert_refused_unchanged(before, code, output)
+        self.assertIn("the re-lock failed: dotnet restore failed", output)
+
+    def test_lock_files_a_relock_leaves_stale_are_never_committed(self):
+        """#123's guarantee: whatever the relock did, stale lock files are refused, not committed."""
+        self.write_locks("6.0.0")
+        before = snapshot(self.engine)
+        with mock.patch.object(verify_step, "relock", lambda engine, log: None):
+            code, output = self.produce_bumped("--no-verify", **self.env)
+        self.assert_refused_unchanged(before, code, output)
+        self.assertIn("after re-locking they still disagree", output)
+
     def test_lock_files_already_re_locked_are_committed_unverified(self):
         self.write_locks("7.0.0")
         before = snapshot(self.engine)
-        code, output = self.produce_bumped("--no-verify")
+        code, output = self.produce_bumped("--no-verify", **self.env)
         self.assertEqual(code, 0, output)
+        self.assertEqual(self.dotnet_calls(), [], "lock files that agree need no dotnet")
         self.assertEqual(output.splitlines()[-1], f"produced {NAME} in {self.engine}, NOT VERIFIED")
         self.assertEqual(verify_step.read_pins(self.engine)[self.map_id.lower()], "[7.0.0]")
         after = snapshot(self.engine)
-        for relative in (f"src/{NAME}/packages.lock.json", f"tests/{NAME}.Tests/packages.lock.json"):
+        for relative in self.LOCKS:
             self.assertEqual(before[relative.replace("/", os.sep)], after[relative.replace("/", os.sep)])
 
     def test_an_engine_without_lock_files_is_unaffected(self):
-        code, output = self.produce_bumped("--no-verify")
+        code, output = self.produce_bumped("--no-verify", **self.env)
         self.assertEqual(code, 0, output)
+        self.assertEqual(self.dotnet_calls(), [])
         self.assertEqual(verify_step.read_pins(self.engine)[self.map_id.lower()], "[7.0.0]")
 
     def test_the_verify_path_still_re_locks_stale_lock_files(self):
         self.write_locks("6.0.0")
-        with mock.patch.dict(os.environ, self.env):
-            code, output = self.produce_bumped()
+        code, output = self.produce_bumped(**self.env)
         self.assertEqual(code, 0, output)
         self.assertIn("the generated pins changed, so this restore re-locks the 2 lock file(s)", output)
         self.assertEqual(output.splitlines()[-1], f"produced {NAME} in {self.engine}, verified")
