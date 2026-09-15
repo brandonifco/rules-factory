@@ -7,15 +7,21 @@ produce`; do not edit it here.
 rules-factory decision 0015 publishes a map as a NuGet package, which the engine references and
 never copies. What the engine owns is corpus-map.overlay.json,
 `{ "<entry id>": { "status", "implementedIn", "tests" } }`: the build facts only the engine can
-know. Every other byte of meaning is the package's.
+know. Every other byte of meaning is the package's. Beside them an item may hold its owner's
+`rulings` and the `declines` that go with them (rules-factory decision 0027): answers the owner,
+not the corpus, gives to part of an unresolved question. They are checked against the package map
+by scripts/factory/rulings.py, the factory's own, and never merged: the map says only what the
+corpus says.
 
 merge(package, overlay), as 0015 defines it -- each rule is also a failure below:
 
   1. every overlay key names an entry in the package map;
-  2. every overlay item sets `status`, and holds no key outside the three;
+  2. every overlay item sets `status`, and holds no key outside the three and `rulings` and
+     `declines`, which break none of 0027's rules (the decision record each ruling names is looked
+     for beside the overlay, in the engine root);
   3. for a named entry, the three fields come from the overlay alone: they are removed from the
      upstream entry, then the ones the overlay item carries are set. Every other field is
-     upstream's;
+     upstream's, and `rulings` and `declines` are not carried into the merge;
   4. an entry the overlay does not name is upstream's verbatim, and so are the entry order and
      the top-level fields;
   5. if the engine commits a materialised corpus-map.json, it equals the merge as parsed JSON
@@ -31,12 +37,15 @@ in the order status, implementedIn, tests, where upstream's `status` was.
   map-overlay.py merge --package-map P --overlay O --out corpus-map.json
   map-overlay.py check --package-map P --overlay O [--map corpus-map.json]
 
-Standard library only.
+Standard library only, and scripts/factory/rulings.py.
 """
 import argparse
 import json
 import pathlib
 import sys
+
+sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent / "factory"))
+import rulings  # noqa: E402  (vendored by `factory produce`, rules-factory decision 0027)
 
 OWNED = ("status", "implementedIn", "tests")
 
@@ -49,8 +58,9 @@ def serialise(document):
     return json.dumps(document, indent=2, ensure_ascii=False) + "\n"
 
 
-def merge(package, overlay):
-    """merge(package, overlay), and every way the overlay breaks rules 1 and 2."""
+def merge(package, overlay, root=None):
+    """merge(package, overlay), and every way the overlay breaks rules 1 and 2. `root` is the engine
+    directory the owner's decision records are looked for in."""
     problems = []
     if not isinstance(overlay, dict):
         return None, ["the overlay is not an object of entry id -> owned fields"]
@@ -65,9 +75,12 @@ def merge(package, overlay):
         if "status" not in item:
             problems.append(f"overlay item {entry_id!r} does not set status")
         for key in item:
-            if key not in OWNED:
+            if key not in OWNED and key not in rulings.KEYS:
                 problems.append(f"overlay item {entry_id!r} sets {key!r}; an engine owns only "
-                                f"{', '.join(OWNED)}, and every other field is the package's")
+                                f"{', '.join(OWNED)} (and its owner's {' and '.join(rulings.KEYS)}), "
+                                f"and every other field is the package's")
+    problems += [f"owner's rulings (rules-factory decision 0027): {p}"
+                 for p in rulings.problems(package, overlay, root)]
     if problems:
         return None, problems
 
@@ -114,7 +127,7 @@ def main(argv=None):
     except (OSError, ValueError) as error:
         print(f"error: {error}", file=sys.stderr)
         return 1
-    merged, problems = merge(package, overlay)
+    merged, problems = merge(package, overlay, root=str(pathlib.Path(args.overlay).resolve().parent))
 
     if merged is not None and args.command == "check" and args.map:
         committed = load(args.map)
@@ -133,6 +146,8 @@ def main(argv=None):
         pathlib.Path(args.out).write_text(serialise(merged), encoding="utf-8")
     print(f"     merge(package, {pathlib.Path(args.overlay).name}): {len(overlay)} of "
           f"{len(package.get('entries', []))} entries overlaid on {', '.join(OWNED)} only")
+    for line in rulings.describe(overlay):
+        print(f"     {line}")
     return 0
 
 

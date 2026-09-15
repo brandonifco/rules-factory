@@ -52,7 +52,7 @@ MAP_ENTRIES = f"src/{NAME}/Generated/MapEntries.g.cs"
 REGISTRY = f"src/{NAME}/Generated/Registry.g.cs"
 RECIPE = ("scripts/validate.sh", "scripts/map-overlay.py", "scripts/engine-gate.py",
           "scripts/factory/generate.py", "scripts/factory/intake.py", "scripts/factory/ownership.py",
-          "scripts/factory/provenance.py", ".github/workflows/validate.yml")
+          "scripts/factory/provenance.py", "scripts/factory/rulings.py", ".github/workflows/validate.yml")
 IMPLEMENTED_IN = {"ruleset": "faa-part-107", "version": 1}
 
 
@@ -156,7 +156,7 @@ class TestRecipeIsEmitted(GateCase):
         self.assertIn("export PYTHONDONTWRITEBYTECODE=1", gate.split("MODE=")[0],
                       "run by hand, the gate leaves no scripts/factory/__pycache__ in the engine")
         subprocess.run(["bash", "-n", os.path.join(engine, "scripts", "validate.sh")], check=True)
-        for module in ("generate.py", "intake.py", "ownership.py", "provenance.py"):
+        for module in ("generate.py", "intake.py", "ownership.py", "provenance.py", "rulings.py"):
             with open(os.path.join(FACTORY, module), "rb") as a, \
                     open(os.path.join(engine, "scripts", "factory", module), "rb") as b:
                 self.assertEqual(a.read(), b.read(), "the gate regenerates with the factory's own generator")

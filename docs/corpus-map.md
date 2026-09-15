@@ -452,6 +452,13 @@ when no reading is defensible enough to bake in, or when the choice belongs to t
 There is no third value. An implementer choosing a reading silently is the failure this
 field exists to prevent.
 
+**An owner's ruling is not a fate, and it is not in the map.** The owner of one engine may answer
+part of an `unresolved` question for that engine. The answer lives in the engine's overlay as a
+`ruling` that quotes the part it answers from `question`, and the map still says `unresolved`,
+because the corpus still does not settle it. The engine names the ruling on every result that
+relies on it. See [0027](decisions/0027-an-owners-ruling-is-held-by-the-engine-and-checked-by-the-factory.md)
+and `status` below.
+
 `ambiguity.unresolvedReason` names the `UnresolvedReason` the engine will return, and is
 present when the fate is `unresolved`. It is the field that ties an entry to the
 correspondence table below.
@@ -861,7 +868,14 @@ checked in the engine, against its own runtime.
 
 **Where `fate: unresolved`
 accompanies it, the verdict covers every case except the one `ambiguity.question` names, and the
-declining case ships a test** — which is one of the tests named.
+declining case ships a test** — which is one of the tests named. **Or the engine's owner has ruled
+on part or all of that case** ([0027](decisions/0027-an-owners-ruling-is-held-by-the-engine-and-checked-by-the-factory.md)).
+Then the engine's overlay item carries `rulings` and `declines` beside its `tests`. Each ruling
+quotes the part of `question` it answers and names the tests that show it. Each decline quotes a
+part the engine still declines and names the test that shows the decline. Between them, the quoted
+spans cover the whole question. `declines: []` declares the question fully ruled, and then no
+declining test is owed. Neither key is merged into the map. The factory checks both against the
+map on every `produce` and in the engine's gate.
 
 ```json
 "tests": [
@@ -889,7 +903,10 @@ decision.
 The cost of decoupling, stated where the claim is: after it, `fate: unresolved` means the
 engine declines for *at least one* input, not for every input, and nothing distinguishes an
 entry that declines one shape of throw from one that declines everything. The totality claim
-is weaker than it was.
+is weaker than it was. An engine whose overlay carries `rulings` or `declines` for the entry
+(0027) now says which parts of the question it declines and which its owner answered. Every
+other engine says neither, and what the factory can check stops at the quoted words, not at
+whether the engine's split matches the question's real parts.
 
 **An entry whose correct reading is surprising names the test that proves it.** Not a field —
 a flag saying "this is surprising" is unfalsifiable. `bearing-off-highest` is clear, correct,

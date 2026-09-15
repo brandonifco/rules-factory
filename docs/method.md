@@ -463,6 +463,15 @@ rolls once where another rolls three times is replaying a different game, not ju
 answer. What counts as a group for a group Initiative roll is the instance. Mark such an ambiguity
 `affectsDraws: true`, and let the entry's `draws` name the alternatives (0025).
 
+**An engine's owner may rule where the map stays unresolved.** That is not a third fate, and it
+is not a map change. The corpus still does not settle the question, so the map still says
+`unresolved`. One engine's owner answers part of it for that engine. The answer goes in the
+engine's overlay, with the words of the question it answers, who ruled, when, the engine's
+decision record, and the tests that show it. Every result that relies on the answer says so. The
+parts not ruled on still decline. The factory refuses a ruling that no longer matches the map's
+question. Decided in
+[0027](decisions/0027-an-owners-ruling-is-held-by-the-engine-and-checked-by-the-factory.md).
+
 What is never acceptable is the third option: an implementer picking a reading silently.
 That produces an engine that is reproducibly wrong, which is worse than one that is
 unreliable, because nothing signals the guess.
@@ -620,7 +629,11 @@ is visible to every tool that already exists. What the engine owes follows from 
 2. **It writes only its overlay: `status`, `implementedIn` and `tests`.** These are the build
    facts, and only the engine can know them. Every other field belongs to the map's source. An
    engine that disagrees with an entry's content has a finding to file against the factory. It
-   does not get to correct its own copy, because it has no copy.
+   does not get to correct its own copy, because it has no copy. Beside those three fields, the
+   overlay holds the engine owner's `rulings` on unresolved questions, and the `declines` that
+   say which parts of those questions still decline
+   ([0027](decisions/0027-an-owners-ruling-is-held-by-the-engine-and-checked-by-the-factory.md)).
+   They are the engine's and never the map's, so they are checked and never merged.
 3. **Its gate merges the overlay offline and checks the result.** Every overlay key names an
    entry in the package, and only the three fields are set. The package's own
    `tools/check-map.py --phase consumer` passes on the merge. The engine runs the checker it
@@ -633,7 +646,9 @@ is visible to every tool that already exists. What the engine owes follows from 
    new entries are `mapped`, which is `UnsupportedRule` until built. **A major means an entry the
    engine may have implemented now says something different, or is gone.** Every `implemented`
    claim on an entry the major changed goes back through Phase 7 before it stays `implemented`.
-   The merge check fails outright on a removed or renamed entry, which is the intent.
+   The merge check fails outright on a removed or renamed entry, which is the intent. It also fails
+   on a ruling whose question the new version settled or reworded, of whatever size the version is.
+   The owner confirms the ruling against the new words, or the engine withdraws it.
 5. **It reports back what only it can see.** Building an engine is the most thorough reading the
    map will get. The backgammon map moved twice in one day because of what its engine found. An
    engine that notices a wrong entry files it upstream and waits for a version. That way the next

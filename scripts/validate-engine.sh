@@ -333,6 +333,88 @@ grep -Eq 'testName="[^"]*TypedInputTests\.an_engine_declared_input_reaches_the_h
   "$SCRATCH/typed-results/typed.trx" || fail "TypedInputTests did not run and pass: $(grep -E 'Passed!|Failed!' "$SCRATCH/typed.log")"
 echo "ok   an input set on PlayerCountRequest arrives through EntryPoints; the dictionary dispatch still resolves"
 
+# Decision 0027: an owner's ruling on part of an unresolved question lives in the overlay, and the factory
+# generates Rulings.g.cs from it. The Python tests (tools/tests/test_factory_rulings.py) show what is
+# generated and refused; only a build shows it compiles warning-free beside an engine's own partial members
+# and a handler that surfaces it. On the same scratch copy: bearing-off-eligible is implemented with a
+# ruling on its second part and a decline of its first, produce accepts it and says whose answer it is, and
+# a test outside the generated code resolves the entry and finds the ruling on the answer.
+step "an owner's ruling in the overlay generates a registry the engine surfaces"
+mkdir -p "$TYPED/docs/decisions"
+printf '# 0001: a scratch ruling\n\nThe owner ruled; this record holds it.\n' > "$TYPED/docs/decisions/0001-scratch-ruling.md"
+cat > "$TYPED/corpus-map.overlay.json" <<'JSON'
+{"player-count": {"status": "implemented", "implementedIn": {"ruleset": "scratch", "version": 1},
+                  "tests": [{"test": "CorrespondenceTests.player_count__is_implemented_so_a_hand_written_handler_answers_it",
+                             "mutation": "scratch"}]},
+ "bearing-off-eligible": {"status": "implemented", "implementedIn": {"ruleset": "scratch", "version": 1},
+                          "tests": [{"test": "RulingsTests.the_generated_ruling_is_surfaced_on_the_answer", "mutation": "scratch"},
+                                    {"test": "CorrespondenceTests.bearing_off_eligible__is_implemented_so_a_hand_written_handler_answers_it",
+                                     "mutation": "scratch"}],
+                          "rulings": [{"id": "bearing-off-eligible/2",
+                                       "span": "Nor does it say when within a throw the stage begins. If a man played with the first number of a throw is the last to come home, the text does not say whether the number left is played under this stage ('each throw entitles the player either to move forward a man or men ... or to remove men'), or as an ordinary move because the throw began before the stage was reached. On the first reading, with his last man outside on the nine point and six-trois thrown, 9/3 then bearing that man off with the trois is a legal play, and so is 9/6 then bearing him off with the six; on the second reading neither is. The quatre-trois example weighs both numbers against a distribution already home, so it does not decide the case.",
+                                       "answer": "The number left after the last man comes home bears off.",
+                                       "ruledBy": "the owner", "ruledOn": "2026-09-15",
+                                       "record": "docs/decisions/0001-scratch-ruling.md",
+                                       "tests": ["RulingsTests.the_generated_ruling_is_surfaced_on_the_answer"]}],
+                          "declines": [{"span": "The stage begins 'when either player has succeeded in getting all his men into his home table', and the chapter never says whether it lasts. If one of his men is hit after he has begun to bear off and then re-enters, the text does not say whether he may go on bearing off the men still at home or must first bring every man home again.",
+                                        "tests": ["CorrespondenceTests.bearing_off_eligible__is_implemented_so_a_hand_written_handler_answers_it"]}]}}
+JSON
+python3 tools/factory produce --package "$PACKAGE" --corpus "$CORPUS" --name "$NAME" --out "$TYPED" --no-verify > "$SCRATCH/ruling.log" \
+  || { tail -20 "$SCRATCH/ruling.log"; fail "produce refused an overlay with a well-formed owner's ruling"; }
+grep -qF "owner's ruling bearing-off-eligible/2 on bearing-off-eligible, not the corpus" "$SCRATCH/ruling.log" \
+  || fail "produce did not say that bearing-off-eligible/2 is the owner's answer"
+[ -f "$TYPED/src/$NAME/Generated/Rulings.g.cs" ] || fail "no Rulings.g.cs was generated for an overlay with a ruling"
+cat > "$TYPED/src/$NAME/BearingOffEligible.cs" <<CS
+using RulesKernel.Resolution;
+
+namespace $NAME;
+
+internal static partial class Handlers
+{
+    internal static partial Resolution<object> BearingOffEligible(Requests.BearingOffEligibleRequest request) =>
+        Resolution<object>.FromValue(OwnerRulings.All);
+}
+
+/// <summary>An engine's own member beside the generated rulings.</summary>
+public static partial class OwnerRulings
+{
+    /// <summary>The ruling under the engine's own name.</summary>
+    public static OwnerRuling BearingOffBeginsWithinTheThrow => BearingOffEligible2;
+}
+
+/// <summary>An engine's own member on the generated record.</summary>
+public sealed partial record OwnerRuling
+{
+    /// <summary>The slug of the id, after the entry.</summary>
+    public string Part => Id[(Id.IndexOf('/', StringComparison.Ordinal) + 1)..];
+}
+CS
+cat > "$TYPED/tests/$NAME.Tests/RulingsTests.cs" <<CS
+using Xunit;
+
+namespace $NAME.Tests;
+
+public sealed class RulingsTests
+{
+    [Fact]
+    public void the_generated_ruling_is_surfaced_on_the_answer()
+    {
+        var answer = EntryPoints.BearingOffEligible.Resolve(Requests.BearingOffEligibleRequest.Empty).Match<object?>(v => v, _ => null);
+        var ruling = Assert.Single(Assert.IsAssignableFrom<IEnumerable<OwnerRuling>>(answer));
+        Assert.Same(OwnerRulings.BearingOffBeginsWithinTheThrow, ruling);
+        Assert.Equal(("bearing-off-eligible/2", "bearing-off-eligible", "the owner", new DateOnly(2026, 9, 15), "2"),
+            (ruling.Id, ruling.EntryId, ruling.RuledBy, ruling.RuledOn, ruling.Part));
+        Assert.StartsWith("Nor does it say when within a throw the stage begins.", ruling.Span, StringComparison.Ordinal);
+    }
+}
+CS
+(cd "$TYPED" && dotnet test "tests/$NAME.Tests/$NAME.Tests.csproj" -f net10.0 -warnaserror -nologo \
+   --results-directory "$SCRATCH/ruling-results" --logger "trx;LogFileName=ruling.trx" --filter "FullyQualifiedName~$NAME.Tests.RulingsTests|FullyQualifiedName~$NAME.Tests.CorrespondenceTests" 2>&1) \
+  > "$SCRATCH/ruling.log" || { tail -40 "$SCRATCH/ruling.log"; fail "the generated rulings did not build warning-free, or a test failed"; }
+grep -Eq 'testName="[^"]*RulingsTests\.the_generated_ruling_is_surfaced_on_the_answer"[^>]*outcome="Passed"' \
+  "$SCRATCH/ruling-results/ruling.trx" || fail "RulingsTests did not run and pass: $(grep -E 'Passed!|Failed!' "$SCRATCH/ruling.log")"
+echo "ok   Rulings.g.cs builds with -warnaserror beside engine partials, and the answer carries the ruling"
+
 # #94, case 1 of 2: produce into an existing engine that has projects of its own. An engine adds a
 # src project and a test project to its solution and locks them itself (a plain restore writes
 # their lock files and leaves the committed ones as they are). A re-produce with the same package

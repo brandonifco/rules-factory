@@ -262,6 +262,7 @@ def regenerate(args):
     sys.path.insert(0, str(ROOT / "scripts" / "factory"))
     import generate  # noqa: E402  (the factory's generator, vendored by produce)
     import provenance  # noqa: E402  (its generated C# that embeds provenance.json)
+    import rulings  # noqa: E402  (the owner's rulings the overlay holds, rules-factory decision 0027)
 
     package = json.loads(pathlib.Path(args.package_map).read_text(encoding="utf-8"))
     declared, problem = declared_randomness(args.package_manifest, args.package_map)
@@ -272,7 +273,7 @@ def regenerate(args):
     try:
         model = generate.Model(types.SimpleNamespace(package_id=args.package_id, version=args.package_version,
                                                      randomness=declared),
-                               generate.merge(package, overlay), args.name)
+                               generate.merge(package, overlay, root=str(ROOT)), args.name, rulings.collect(overlay))
         expected = {**generate.generated(model), **provenance.embedding(model)}
     except generate.GenerationError as error:
         return report([f"the generator refuses merge(package, overlay): {error}"], "")

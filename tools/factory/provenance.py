@@ -84,6 +84,11 @@ The fields, and where each comes from:
   * `randomness` -- the corpus's declaration in its manifest (decision 0019), as intake read it:
     `"none"` (the engine's gate refuses RulesKernel.Randomness) or `"seeded"` (the engine may
     draw, through that package, pinned at the kernel's version).
+  * `rulings` -- present only when the overlay holds an owner's ruling (decision 0027), so no other
+    record changes: `[{id, entry, span, answer, ruledBy, ruledOn, record, recordSha256}]` in overlay
+    order, which answers in the engine are its owner's and not the corpus's. `recordSha256` hashes
+    the decision record as it stood when `produce` ran, so a record edited since is a mismatch named
+    `rulings` until the engine is produced again.
 
 Deterministic: no timestamps, no machine paths; two runs from the same inputs are identical.
 
@@ -427,6 +432,10 @@ def build(state, result, model, recorder, factory_dir=FACTORY_DIR):
         "engineOwned": [{"path": path, "adopted": path in model.adopted} for path in owned],
         "buildInputs": build_inputs(root, {g["path"] for g in generated_files} | set(model.managed)),
         "randomness": result.randomness,
+        **({"rulings": [{"id": r["id"], "entry": r["entry"], "span": r["span"], "answer": r["answer"],
+                         "ruledBy": r["ruledBy"], "ruledOn": r["ruledOn"], "record": r["record"],
+                         "recordSha256": sha256_file(os.path.join(root, *r["record"].split("/")))}
+                        for r in model.rulings]} if getattr(model, "rulings", None) else {}),
     }
 
 
