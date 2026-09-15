@@ -4,7 +4,7 @@
 #   examples/hoyle-backgammon/produced-engine/equivalence.sh <engine sha> [factory ref]
 #
 # Clones brandonifco/hoyle-backgammon at <engine sha> ($ENGINE_REPO overrides the URL), checks out
-# the factory at [factory ref] (default factory/v0.4.1) in a scratch git worktree, and requires that
+# the factory at [factory ref] (default factory/v0.5.0) in a scratch git worktree, and requires that
 # ref to be the commit the engine's provenance.json names. Then, with the package and engine name
 # that provenance.json records and the engine's own corpus copy:
 #
@@ -29,11 +29,11 @@
 set -euo pipefail
 
 if [ "$#" -lt 1 ] || [ "$#" -gt 2 ]; then
-  echo "usage: $0 <engine sha> [factory ref, default factory/v0.4.1]" >&2
+  echo "usage: $0 <engine sha> [factory ref, default factory/v0.5.0]" >&2
   exit 2
 fi
 ENGINE_SHA="$1"
-FACTORY_REF="${2:-factory/v0.4.1}"
+FACTORY_REF="${2:-factory/v0.5.0}"
 ENGINE_REPO="${ENGINE_REPO:-https://github.com/brandonifco/hoyle-backgammon}"
 
 HERE="$(cd "$(dirname "$0")" && pwd)"
