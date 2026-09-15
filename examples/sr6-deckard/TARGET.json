@@ -1,0 +1,692 @@
+{
+  "$comment": "Frozen target for rebuilding deckard through the factory (#3, criterion 1). Names, hashes and locators only. Change only by a PR that says why, reviewed by Brandon. Checked by check-target.py.",
+  "targetVersion": 1,
+  "deckard": {
+    "repository": "https://github.com/brandonifco/deckard",
+    "commit": "9825f249d2566312f987bb5fcc04bfa2d2ee84ca",
+    "testsTree": "de4f9e04aec5cfea2154a335fd7377e15450ad77"
+  },
+  "slice": {
+    "book": "SR6 Core, First Printing",
+    "printedPages": [
+      "35-36",
+      "44"
+    ],
+    "pdfPage": "printed page + 1",
+    "note": "Printed page numbers only. The source PDF is pinned by sha256 in deckard .github/source-manifest.json at the commit; D1 (extent) is still open."
+  },
+  "tests": {
+    "methodCount": 110,
+    "caseCount": 324,
+    "projects": {
+      "Deckard.Core.Tests": {
+        "methodCount": 64,
+        "caseCount": 256,
+        "methods": [
+          "Deckard.Core.Tests.ArchitectureTests.Core_references_no_other_Deckard_assembly",
+          "Deckard.Core.Tests.Dice.D6ReplayTests.Capturing_mid_dice_sequence_then_restoring_reproduces_the_subsequent_dice",
+          "Deckard.Core.Tests.Dice.D6ReplayTests.Restoring_a_state_captured_immediately_before_a_rejecting_die_reproduces_the_straddling_die_and_what_follows",
+          "Deckard.Core.Tests.Dice.D6ReplayTests.The_straddle_fixture_actually_straddles",
+          "Deckard.Core.Tests.Dice.D6Tests.A_rejection_mid_pool_costs_one_extra_draw_without_disturbing_order_or_later_dice",
+          "Deckard.Core.Tests.Dice.D6Tests.No_value_outside_1_to_6_is_ever_reachable",
+          "Deckard.Core.Tests.Dice.D6Tests.Roll_disagrees_with_a_naive_modulo_mapping_on_a_sequence_landing_in_the_biased_tail",
+          "Deckard.Core.Tests.Dice.D6Tests.Roll_maps_the_first_six_raw_values_to_every_face_in_order",
+          "Deckard.Core.Tests.Dice.D6Tests.Roll_maps_the_last_accepted_group_to_every_face_in_order",
+          "Deckard.Core.Tests.Dice.D6Tests.Roll_rejects_every_one_of_the_four_biased_raw_values_and_redraws",
+          "Deckard.Core.Tests.Dice.D6Tests.Roll_throws_on_null_source",
+          "Deckard.Core.Tests.Dice.D6Tests.Roll_with_count_throws_on_negative_count",
+          "Deckard.Core.Tests.Dice.D6Tests.Roll_with_count_throws_on_null_source",
+          "Deckard.Core.Tests.Dice.D6Tests.Roll_with_zero_count_returns_an_empty_result_without_drawing",
+          "Deckard.Core.Tests.Dice.D6Tests.Rolling_N_dice_consumes_exactly_one_draw_per_die_when_none_are_rejected",
+          "Deckard.Core.Tests.Dice.D6Tests.Rolling_N_dice_returns_exactly_the_scripted_faces_in_draw_order",
+          "Deckard.Core.Tests.Dice.D6Tests.The_exact_boundary_where_acceptance_flips_is_pinned",
+          "Deckard.Core.Tests.Dice.D6Tests.The_rejected_tail_is_exactly_what_2_to_the_32_mod_6_computes_it_to_be",
+          "Deckard.Core.Tests.Dice.D6Tests.The_same_source_sequence_produces_the_same_dice_every_time",
+          "Deckard.Core.Tests.Dice.D6Tests.Uniformity_holds_over_a_large_seeded_sample",
+          "Deckard.Core.Tests.Randomness.FixedSequenceRandomSourceTests.An_empty_source_throws_on_the_very_first_draw",
+          "Deckard.Core.Tests.Randomness.FixedSequenceRandomSourceTests.Consumed_counts_exactly_the_draws_made_so_far",
+          "Deckard.Core.Tests.Randomness.FixedSequenceRandomSourceTests.NextUInt32_returns_the_supplied_values_in_order",
+          "Deckard.Core.Tests.Randomness.FixedSequenceRandomSourceTests.NextUInt32_throws_after_the_last_value_and_names_the_supplied_count",
+          "Deckard.Core.Tests.Randomness.FixedSequenceRandomSourceTests.Null_sequence_throws_ArgumentNullException",
+          "Deckard.Core.Tests.Randomness.Pcg32StateTests.Even_increment_throws_ArgumentException",
+          "Deckard.Core.Tests.Randomness.Pcg32StateTests.Odd_increment_constructs_successfully",
+          "Deckard.Core.Tests.Randomness.Pcg32Tests.Capture_mid_sequence_then_restore_resumes_rather_than_restarts",
+          "Deckard.Core.Tests.Randomness.Pcg32Tests.Different_streams_with_the_same_seed_diverge_at_the_first_value",
+          "Deckard.Core.Tests.Randomness.Pcg32Tests.FromSeed_matches_reference_post_seed_state_and_outputs",
+          "Deckard.Core.Tests.Randomness.Pcg32Tests.FromState_matches_reference_outputs_and_post_draw_state",
+          "Deckard.Core.Tests.Randomness.Pcg32Tests.FromState_throws_on_Pcg32State_constructed_with_no_arguments",
+          "Deckard.Core.Tests.Randomness.Pcg32Tests.FromState_throws_on_default_Pcg32State",
+          "Deckard.Core.Tests.Randomness.Pcg32Tests.Restoring_a_captured_state_does_not_perturb_the_original_instance",
+          "Deckard.Core.Tests.Randomness.Pcg32Tests.Rotation_step_agrees_with_BitOperations_RotateRight",
+          "Deckard.Core.Tests.Randomness.Pcg32Tests.Same_seed_and_stream_produce_identical_sequences",
+          "Deckard.Core.Tests.Replay.RandomAlgorithmIdTests.Default_bypasses_the_constructor_and_yields_a_null_name",
+          "Deckard.Core.Tests.Replay.RandomAlgorithmIdTests.Different_name_compares_unequal",
+          "Deckard.Core.Tests.Replay.RandomAlgorithmIdTests.Null_empty_or_whitespace_name_throws",
+          "Deckard.Core.Tests.Replay.RandomAlgorithmIdTests.Pinned_value_names_the_PCG32_variant",
+          "Deckard.Core.Tests.Replay.RandomAlgorithmIdTests.Same_name_compares_equal",
+          "Deckard.Core.Tests.Replay.ReplayCompatibilityIdentityTests.An_identity_differing_in_ruleset_does_not_equal_one_differing_in_schema",
+          "Deckard.Core.Tests.Replay.ReplayCompatibilityIdentityTests.Differing_only_in_random_algorithm_is_unequal",
+          "Deckard.Core.Tests.Replay.ReplayCompatibilityIdentityTests.Differing_only_in_replay_schema_is_unequal",
+          "Deckard.Core.Tests.Replay.ReplayCompatibilityIdentityTests.Differing_only_in_ruleset_is_unequal",
+          "Deckard.Core.Tests.Replay.ReplayCompatibilityIdentityTests.Differing_only_in_source_baseline_hash_is_unequal",
+          "Deckard.Core.Tests.Replay.ReplayCompatibilityIdentityTests.Differing_only_in_source_baseline_id_is_unequal",
+          "Deckard.Core.Tests.Replay.ReplayCompatibilityIdentityTests.Identical_components_compare_equal",
+          "Deckard.Core.Tests.Replay.ReplaySchemaVersionTests.Default_is_not_a_validation_gap_unlike_its_siblings",
+          "Deckard.Core.Tests.Replay.ReplaySchemaVersionTests.Different_version_compares_unequal",
+          "Deckard.Core.Tests.Replay.ReplaySchemaVersionTests.Negative_version_throws",
+          "Deckard.Core.Tests.Replay.ReplaySchemaVersionTests.Same_version_compares_equal",
+          "Deckard.Core.Tests.Replay.RulesetVersionTests.Default_bypasses_the_constructor_and_yields_a_null_id_with_zero_version",
+          "Deckard.Core.Tests.Replay.RulesetVersionTests.Different_id_compares_unequal",
+          "Deckard.Core.Tests.Replay.RulesetVersionTests.Different_version_compares_unequal",
+          "Deckard.Core.Tests.Replay.RulesetVersionTests.Negative_version_throws",
+          "Deckard.Core.Tests.Replay.RulesetVersionTests.Null_empty_or_whitespace_id_throws",
+          "Deckard.Core.Tests.Replay.RulesetVersionTests.Same_id_and_version_compare_equal",
+          "Deckard.Core.Tests.Replay.SourceBaselineIdTests.Default_bypasses_the_constructor_and_yields_null_fields",
+          "Deckard.Core.Tests.Replay.SourceBaselineIdTests.Different_source_id_compares_unequal",
+          "Deckard.Core.Tests.Replay.SourceBaselineIdTests.Null_empty_or_whitespace_hash_throws",
+          "Deckard.Core.Tests.Replay.SourceBaselineIdTests.Null_empty_or_whitespace_source_id_throws",
+          "Deckard.Core.Tests.Replay.SourceBaselineIdTests.Same_source_id_and_hash_compare_equal",
+          "Deckard.Core.Tests.Replay.SourceBaselineIdTests.Same_source_id_but_different_hash_compares_unequal"
+        ]
+      },
+      "Deckard.Data.Tests": {
+        "methodCount": 1,
+        "caseCount": 1,
+        "methods": [
+          "Deckard.Data.Tests.ArchitectureTests.Data_never_references_anything_above_Core"
+        ]
+      },
+      "Deckard.Rules.Tests": {
+        "methodCount": 45,
+        "caseCount": 67,
+        "methods": [
+          "Deckard.Rules.Tests.ArchitectureTests.Rules_never_references_anything_above_Data",
+          "Deckard.Rules.Tests.Resolution.DicePoolRollTests.A_glitch_with_at_least_one_hit_is_a_glitch_not_a_critical_glitch",
+          "Deckard.Rules.Tests.Resolution.DicePoolRollTests.All_ones_is_always_a_critical_glitch",
+          "Deckard.Rules.Tests.Resolution.DicePoolRollTests.Dice_rolled_preserves_draw_order_not_sorted_order",
+          "Deckard.Rules.Tests.Resolution.DicePoolRollTests.Exactly_half_or_fewer_ones_never_glitches",
+          "Deckard.Rules.Tests.Resolution.DicePoolRollTests.Hits_count_only_5s_and_6s_ones_count_only_1s_the_rest_count_as_neither",
+          "Deckard.Rules.Tests.Resolution.DicePoolRollTests.More_than_half_ones_always_glitches",
+          "Deckard.Rules.Tests.Resolution.DicePoolRollTests.Roll_throws_on_negative_dice_pool",
+          "Deckard.Rules.Tests.Resolution.DicePoolRollTests.Roll_throws_on_null_source",
+          "Deckard.Rules.Tests.Resolution.DicePoolRollTests.Rolling_N_dice_with_no_rejections_consumes_exactly_N_draws",
+          "Deckard.Rules.Tests.Resolution.DicePoolRollTests.Single_die_pool_of_a_1_is_a_critical_glitch",
+          "Deckard.Rules.Tests.Resolution.DicePoolRollTests.Single_die_pool_of_anything_but_a_1_never_glitches",
+          "Deckard.Rules.Tests.Resolution.DicePoolRollTests.Zero_hits_with_exactly_half_ones_is_not_a_critical_glitch",
+          "Deckard.Rules.Tests.Resolution.DicePoolRollTests.Zero_hits_without_a_glitch_is_representable",
+          "Deckard.Rules.Tests.Resolution.ExtendedTestTests.Resolve_is_explicitly_unresolved_as_an_unsupported_rule",
+          "Deckard.Rules.Tests.Resolution.OpposedTestTests.Actor_wins_outright_with_more_hits",
+          "Deckard.Rules.Tests.Resolution.OpposedTestTests.Defender_wins_with_more_hits",
+          "Deckard.Rules.Tests.Resolution.OpposedTestTests.Each_side_glitches_independently_of_who_wins",
+          "Deckard.Rules.Tests.Resolution.OpposedTestTests.Net_hits_is_the_absolute_difference_regardless_of_direction",
+          "Deckard.Rules.Tests.Resolution.OpposedTestTests.Resolve_throws_on_negative_actor_pool_without_drawing_anything",
+          "Deckard.Rules.Tests.Resolution.OpposedTestTests.Resolve_throws_on_negative_defender_pool_without_drawing_anything",
+          "Deckard.Rules.Tests.Resolution.OpposedTestTests.Resolve_throws_on_null_source",
+          "Deckard.Rules.Tests.Resolution.OpposedTestTests.The_actor_rolls_before_the_defender",
+          "Deckard.Rules.Tests.Resolution.OpposedTestTests.The_actor_wins_by_exactly_one_hit",
+          "Deckard.Rules.Tests.Resolution.OpposedTestTests.The_defender_wins_by_exactly_one_hit",
+          "Deckard.Rules.Tests.Resolution.OpposedTestTests.Ties_go_to_the_actor_with_zero_net_hits",
+          "Deckard.Rules.Tests.Resolution.SimpleTestTests.A_glitch_does_not_cancel_a_success",
+          "Deckard.Rules.Tests.Resolution.SimpleTestTests.Every_threshold_in_the_printed_guidelines_table_fails_when_hits_fall_one_short",
+          "Deckard.Rules.Tests.Resolution.SimpleTestTests.Every_threshold_in_the_printed_guidelines_table_succeeds_when_hits_meet_it",
+          "Deckard.Rules.Tests.Resolution.SimpleTestTests.Hits_exactly_at_threshold_succeeds_with_zero_net_hits",
+          "Deckard.Rules.Tests.Resolution.SimpleTestTests.One_hit_above_threshold_succeeds_with_one_net_hit",
+          "Deckard.Rules.Tests.Resolution.SimpleTestTests.One_hit_below_threshold_fails_with_zero_net_hits",
+          "Deckard.Rules.Tests.Resolution.SimpleTestTests.Resolve_consumes_exactly_one_draw_per_die_in_the_pool",
+          "Deckard.Rules.Tests.Resolution.SimpleTestTests.Resolve_throws_on_negative_dice_pool",
+          "Deckard.Rules.Tests.Resolution.SimpleTestTests.Resolve_throws_on_negative_threshold",
+          "Deckard.Rules.Tests.Resolution.SimpleTestTests.Resolve_throws_on_null_source",
+          "Deckard.Rules.Tests.Resolution.SimpleTestTests.Resolve_with_a_zero_dice_pool_consumes_no_draws",
+          "Deckard.Rules.Tests.Resolution.SimpleTestTests.Zero_hits_against_a_positive_threshold_fails",
+          "Deckard.Rules.Tests.Resolution.SimpleTestTests.Zero_threshold_always_succeeds_even_with_zero_hits",
+          "Deckard.Rules.Tests.Resolution.TeamworkTestTests.Resolve_is_explicitly_unresolved_as_an_unsupported_rule",
+          "Deckard.Rules.Tests.Resolution.UnresolvedTestResultTests.Constructor_rejects_a_blank_attempted_description",
+          "Deckard.Rules.Tests.Resolution.UnresolvedTestResultTests.Constructor_rejects_a_blank_source_locator",
+          "Deckard.Rules.Tests.Resolution.UnresolvedTestResultTests.Constructor_rejects_a_null_attempted_description",
+          "Deckard.Rules.Tests.Resolution.UnresolvedTestResultTests.Constructor_rejects_a_null_source_locator",
+          "Deckard.Rules.Tests.Resolution.UnresolvedTestResultTests.Constructor_stores_all_three_fields_as_given"
+        ]
+      }
+    },
+    "categories": {
+      "architecture": {
+        "classes": [
+          "Deckard.Core.Tests.ArchitectureTests",
+          "Deckard.Data.Tests.ArchitectureTests",
+          "Deckard.Rules.Tests.ArchitectureTests"
+        ],
+        "methodCount": 3,
+        "runVerbatim": true
+      },
+      "test-double": {
+        "classes": [
+          "Deckard.Core.Tests.Randomness.FixedSequenceRandomSourceTests"
+        ],
+        "methodCount": 5,
+        "runVerbatim": true
+      },
+      "prng-and-dice": {
+        "classes": [
+          "Deckard.Core.Tests.Dice.D6ReplayTests",
+          "Deckard.Core.Tests.Dice.D6Tests",
+          "Deckard.Core.Tests.Randomness.Pcg32StateTests",
+          "Deckard.Core.Tests.Randomness.Pcg32Tests"
+        ],
+        "methodCount": 30,
+        "runVerbatim": true
+      },
+      "replay-identity": {
+        "classes": [
+          "Deckard.Core.Tests.Replay.RandomAlgorithmIdTests",
+          "Deckard.Core.Tests.Replay.ReplayCompatibilityIdentityTests",
+          "Deckard.Core.Tests.Replay.ReplaySchemaVersionTests",
+          "Deckard.Core.Tests.Replay.RulesetVersionTests",
+          "Deckard.Core.Tests.Replay.SourceBaselineIdTests"
+        ],
+        "methodCount": 28,
+        "runVerbatim": true,
+        "note": "D5: run unmodified through a compatibility adapter that maps the kernel identity onto the four-part identity; not superseded."
+      },
+      "sr6-rules": {
+        "classes": [
+          "Deckard.Rules.Tests.Resolution.DicePoolRollTests",
+          "Deckard.Rules.Tests.Resolution.ExtendedTestTests",
+          "Deckard.Rules.Tests.Resolution.OpposedTestTests",
+          "Deckard.Rules.Tests.Resolution.SimpleTestTests",
+          "Deckard.Rules.Tests.Resolution.TeamworkTestTests",
+          "Deckard.Rules.Tests.Resolution.UnresolvedTestResultTests"
+        ],
+        "methodCount": 44,
+        "runVerbatim": true
+      }
+    }
+  },
+  "decisionRecords": [
+    {
+      "path": "docs/decisions/0001-architecture-boundaries.md",
+      "sha256": "880d4aaf68d83143f2ea07346451b6687f83323f17a4c5f3189664db6210454d"
+    },
+    {
+      "path": "docs/decisions/0002-deterministic-randomness.md",
+      "sha256": "115f4bd43589c5ac71f418d923047edfa3a3cf6bbfc0ddcd8264cec484bfd00b"
+    },
+    {
+      "path": "docs/decisions/0003-source-baseline.md",
+      "sha256": "19780479a1358351de466dd601261efb8740419841659731a66111dede1d488d"
+    },
+    {
+      "path": "docs/decisions/0004-unresolved-rule-taxonomy.md",
+      "sha256": "7f86ffec52584979444fcdb5099cd6d4baccd12a41b11e29b24ac37a7ca78bdb"
+    },
+    {
+      "path": "docs/decisions/0005-replay-compatibility-identity.md",
+      "sha256": "8248c71dacb600ccdf1afe95a1387e768478cbe3d1e4526531c42091accc58c3"
+    },
+    {
+      "path": "docs/decisions/0006-deterministic-ordering-conventions.md",
+      "sha256": "e6f9e345ae7b991bb2c367669bf569440be1b25d864acb6a369a0af769d2e670"
+    },
+    {
+      "path": "docs/decisions/0007-opposed-test-tie-break-interpretation.md",
+      "sha256": "5a378c17e8a667cfbf6e850355126165243eae139c464688343f7c76050d4e01"
+    }
+  ],
+  "codeCommentDecisions": [
+    {
+      "id": "threshold-zero-is-valid",
+      "summary": "A Simple test threshold of 0 is accepted; only a negative threshold is rejected.",
+      "locators": [
+        {
+          "path": "src/Deckard.Rules/Resolution/SimpleTest.cs",
+          "lines": "22-30",
+          "sha256": "d65fae2b29a3383bb5549ef34fc4a381e4461306198c1c40cfa19b4cce965426"
+        },
+        {
+          "path": "src/Deckard.Rules/Resolution/SimpleTest.cs",
+          "lines": "34",
+          "sha256": "f2811cb1c230f2a6c4c440ad5fdc62dd88e0920b198608acab2b846df0f865cd"
+        }
+      ],
+      "pinnedBy": [
+        "Deckard.Rules.Tests.Resolution.SimpleTestTests.Zero_threshold_always_succeeds_even_with_zero_hits"
+      ]
+    },
+    {
+      "id": "net-hits-zero-on-failure",
+      "summary": "A failed Simple test reports 0 net hits, never a negative shortfall.",
+      "locators": [
+        {
+          "path": "src/Deckard.Rules/Resolution/SimpleTest.cs",
+          "lines": "38-42",
+          "sha256": "1b6888387e2ed0775ee6f54a1396b0ebb7d1c4a005ba30aaeaa6cc30b04854b0"
+        }
+      ],
+      "pinnedBy": [
+        "Deckard.Rules.Tests.Resolution.SimpleTestTests.One_hit_below_threshold_fails_with_zero_net_hits"
+      ]
+    },
+    {
+      "id": "negative-inputs-throw",
+      "summary": "A negative pool or threshold throws ArgumentOutOfRangeException rather than returning an unresolved result.",
+      "locators": [
+        {
+          "path": "src/Deckard.Rules/Resolution/SimpleTest.cs",
+          "lines": "27-29",
+          "sha256": "9ddbcd2cbcb2bc9a597b9438213e6f56f32c4e6ddbeff3f38f1b35f6af68df86"
+        },
+        {
+          "path": "src/Deckard.Rules/Resolution/SimpleTest.cs",
+          "lines": "34",
+          "sha256": "f2811cb1c230f2a6c4c440ad5fdc62dd88e0920b198608acab2b846df0f865cd"
+        },
+        {
+          "path": "src/Deckard.Rules/Resolution/DicePoolRoll.cs",
+          "lines": "52-56",
+          "sha256": "3fc67986d2263ea2e9c6dfbb04086ed5b1c576d3f66b616b8518f913b402b63b"
+        },
+        {
+          "path": "src/Deckard.Rules/Resolution/OpposedTest.cs",
+          "lines": "57-58",
+          "sha256": "7e7a36dbec85969362a3bd9333b1b3a0b92af85e074ace5156520f9e60910ef0"
+        }
+      ],
+      "pinnedBy": [
+        "Deckard.Rules.Tests.Resolution.SimpleTestTests.Resolve_throws_on_negative_threshold",
+        "Deckard.Rules.Tests.Resolution.SimpleTestTests.Resolve_throws_on_negative_dice_pool",
+        "Deckard.Rules.Tests.Resolution.DicePoolRollTests.Roll_throws_on_negative_dice_pool",
+        "Deckard.Rules.Tests.Resolution.OpposedTestTests.Resolve_throws_on_negative_actor_pool_without_drawing_anything",
+        "Deckard.Rules.Tests.Resolution.OpposedTestTests.Resolve_throws_on_negative_defender_pool_without_drawing_anything"
+      ]
+    },
+    {
+      "id": "actor-draws-before-defender",
+      "summary": "In an Opposed test the actor's dice are drawn before the defender's.",
+      "locators": [
+        {
+          "path": "src/Deckard.Rules/Resolution/OpposedTest.cs",
+          "lines": "42-45",
+          "sha256": "ff6d2762766eecb94e79873df85b6a291cc79f7f9b1fd642cb27a4e8e967b778"
+        },
+        {
+          "path": "src/Deckard.Rules/Resolution/OpposedTest.cs",
+          "lines": "60-61",
+          "sha256": "a1f242c91d083b9d1c2925eee0b23150b20d426e4eb35c958d6572ae0c173a45"
+        }
+      ],
+      "pinnedBy": [
+        "Deckard.Rules.Tests.Resolution.OpposedTestTests.The_actor_rolls_before_the_defender"
+      ]
+    },
+    {
+      "id": "exactly-half-ones-is-not-a-glitch",
+      "summary": "A glitch needs a strict majority of ones (ones * 2 > pool); exactly half is not a glitch.",
+      "locators": [
+        {
+          "path": "src/Deckard.Rules/Resolution/DicePoolRoll.cs",
+          "lines": "74-80",
+          "sha256": "b8f7dcb48c25b6802babaf31c1f3606d65c2cdcfdafec57b0a534bc04f41d318"
+        }
+      ],
+      "pinnedBy": [
+        "Deckard.Rules.Tests.Resolution.DicePoolRollTests.Exactly_half_or_fewer_ones_never_glitches",
+        "Deckard.Rules.Tests.Resolution.DicePoolRollTests.Zero_hits_with_exactly_half_ones_is_not_a_critical_glitch"
+      ]
+    },
+    {
+      "id": "glitch-independent-of-success",
+      "summary": "Success and glitch are independent facts about a roll; a glitch never cancels a success, and each Opposed side glitches on its own.",
+      "locators": [
+        {
+          "path": "src/Deckard.Rules/Resolution/SimpleTest.cs",
+          "lines": "10-13",
+          "sha256": "86e457d2e4c3daf05232b2d174873d622ab642ffe6023aa2ce2123db190822f2"
+        }
+      ],
+      "pinnedBy": [
+        "Deckard.Rules.Tests.Resolution.SimpleTestTests.A_glitch_does_not_cancel_a_success",
+        "Deckard.Rules.Tests.Resolution.OpposedTestTests.Each_side_glitches_independently_of_who_wins"
+      ]
+    },
+    {
+      "id": "both-pools-validated-before-any-draw",
+      "summary": "An Opposed test validates both pools before drawing, so a rejected call consumes no randomness.",
+      "locators": [
+        {
+          "path": "src/Deckard.Rules/Resolution/OpposedTest.cs",
+          "lines": "48-53",
+          "sha256": "8252074c4a2e90fe02c2f1abe52ee048049d23bbd344633dd8901565ddfea633"
+        },
+        {
+          "path": "src/Deckard.Rules/Resolution/OpposedTest.cs",
+          "lines": "57-61",
+          "sha256": "e9da9f62ca3b7d956406094f27918a04340e07bdc727f74ce1b9565a579c1cef"
+        }
+      ],
+      "pinnedBy": [
+        "Deckard.Rules.Tests.Resolution.OpposedTestTests.Resolve_throws_on_negative_actor_pool_without_drawing_anything",
+        "Deckard.Rules.Tests.Resolution.OpposedTestTests.Resolve_throws_on_negative_defender_pool_without_drawing_anything"
+      ]
+    }
+  ],
+  "gates": [
+    {
+      "id": "validate.sh/SDK pin",
+      "locator": {
+        "path": "scripts/validate.sh",
+        "lines": "72",
+        "sha256": "a369602c53aea86b8496d03a3e103af47b588bf0fe0e80695e6e81522673e5a8"
+      },
+      "class": "divergent",
+      "note": "deckard pins SDK 10.0.111 with rollForward disable; the kernel and factory pin 10.0.112, same rollForward rule.",
+      "approvedBy": "D6"
+    },
+    {
+      "id": "validate.sh/Prerequisites",
+      "locator": {
+        "path": "scripts/validate.sh",
+        "lines": "126",
+        "sha256": "fa5b9bf4b2dacf9f17a772f8a695f9039e5ca8432afac40922f74a341576464d"
+      },
+      "class": "repository-process",
+      "note": "pdftotext is required only so deckard's source-boundary tooling tests cannot skip; the engine has no such tooling."
+    },
+    {
+      "id": "validate.sh/Restore",
+      "locator": {
+        "path": "scripts/validate.sh",
+        "lines": "136",
+        "sha256": "f1a697efab27523023db48dddf054d2cc2d799d824f290dca22c70ca85198660"
+      },
+      "class": "stronger",
+      "note": "The produced gate restores in locked mode against packages.lock.json."
+    },
+    {
+      "id": "validate.sh/Format",
+      "locator": {
+        "path": "scripts/validate.sh",
+        "lines": "140",
+        "sha256": "578946f0ce11d4f5d8af246e3700152ccebaf77ac284d5de7daf85cbd13bd7e5"
+      },
+      "class": "equivalent",
+      "note": "dotnet format --verify-no-changes in the produced gate."
+    },
+    {
+      "id": "validate.sh/Build + test (Debug)",
+      "locator": {
+        "path": "scripts/validate.sh",
+        "lines": "145",
+        "sha256": "51282e10187f60332bc479a305cb7f77c703653973a6d5576738080b42b912c2"
+      },
+      "class": "equivalent",
+      "note": "Build with -warnaserror and test, reading TRX to prove tests ran."
+    },
+    {
+      "id": "validate.sh/Build + test (Release)",
+      "locator": {
+        "path": "scripts/validate.sh",
+        "lines": "156",
+        "sha256": "ad8ef1855f942230dd06b27f067d63e64cacc361ce4f88760d6403b569d1c0ff"
+      },
+      "class": "equivalent",
+      "note": "Build with -warnaserror and test, reading TRX to prove tests ran."
+    },
+    {
+      "id": "validate.sh/Repository invariants",
+      "locator": {
+        "path": "scripts/validate.sh",
+        "lines": "165",
+        "sha256": "4122e31e7055ca53120dfeea80a0049990af9a25820082ae9bf8375f1f318e19"
+      },
+      "class": "composite",
+      "note": "Runs tools/repo-checks.py; each check is classified in its own repo-checks/* row."
+    },
+    {
+      "id": "validate.sh/Tooling tests",
+      "locator": {
+        "path": "scripts/validate.sh",
+        "lines": "169",
+        "sha256": "e7df709e43d18623a025bef5a02e11a66ff052cf20a31a2aff5c201074b0f499"
+      },
+      "class": "repository-process",
+      "note": "deckard's Python tooling tests (tools/tests); the engine does not depend on that tooling."
+    },
+    {
+      "id": "validate.sh/Whitespace",
+      "locator": {
+        "path": "scripts/validate.sh",
+        "lines": "190",
+        "sha256": "0b57e1dc6af1e73427102898dfc8b7ef767ce09a53cb26c2fc7960762e5d54cc"
+      },
+      "class": "carried-as-test",
+      "note": "git diff --check has no produced-gate step; carried as an engine-owned test."
+    },
+    {
+      "id": "repo-checks/text-hygiene",
+      "locator": {
+        "path": "tools/repo-checks.py",
+        "lines": "562",
+        "sha256": "51449cde290bb3128b9a422cd7d4346ea0bb4b9f8cd37d3696f87d430e40a4ea"
+      },
+      "class": "carried-as-test",
+      "note": "UTF-8, no BOM, LF, one trailing newline; dotnet format covers C# only, so an engine-owned test carries the rest."
+    },
+    {
+      "id": "repo-checks/determinism",
+      "locator": {
+        "path": "tools/repo-checks.py",
+        "lines": "563",
+        "sha256": "6c462a1c1a23bb01c392ea09bc4c91034cfdd1f30bfb505c60dc864971fb2e34"
+      },
+      "class": "carried-as-test",
+      "note": "Ambient randomness and time bans; carried as a test unless kernel analyzers are shown to cover every ban (E4)."
+    },
+    {
+      "id": "repo-checks/layering",
+      "locator": {
+        "path": "tools/repo-checks.py",
+        "lines": "564",
+        "sha256": "2c4a5c008063a14934e6c4e2da025b98f48f8fbf6605af77869abc17c17dad64"
+      },
+      "class": "carried-as-test",
+      "note": "ProjectReference graph; carried as an engine-owned test beside the randomness gate (0019)."
+    },
+    {
+      "id": "repo-checks/core-filesystem",
+      "locator": {
+        "path": "tools/repo-checks.py",
+        "lines": "565",
+        "sha256": "9ef9a10cd88f44bcf21142b29f629b90f7ded3abdc82233078065232ea369822"
+      },
+      "class": "carried-as-test",
+      "note": "No filesystem API in the Core layer; carried as an engine-owned test over the kernel-side projects."
+    },
+    {
+      "id": "repo-checks/source-boundary",
+      "locator": {
+        "path": "tools/repo-checks.py",
+        "lines": "566",
+        "sha256": "16e99c556c41ab6b43639c015c93930703540b7d40e17b2b229016eb917079d5"
+      },
+      "class": "carried-as-test",
+      "note": "No rulebook or local source path committed; the licensed-copy posture keeps corpus bytes out of produce, and a test holds later commits to it."
+    },
+    {
+      "id": "repo-checks/action-pins",
+      "locator": {
+        "path": "tools/repo-checks.py",
+        "lines": "567",
+        "sha256": "6091667cfe1540625255db65cebe39cfc672f4cb8c91b6b0537cc2b6d637d92f"
+      },
+      "class": "carried-as-test",
+      "note": "The emitted validate.yml pins actions by sha, but an engine-owned test is needed to hold any workflow the engine adds."
+    },
+    {
+      "id": "repo-checks/readonly-agents",
+      "locator": {
+        "path": "tools/repo-checks.py",
+        "lines": "568",
+        "sha256": "ebeb6a93ec3f9e955f26da4c9d0e3a38364d33e952511a3897175dcbf9f86618"
+      },
+      "class": "repository-process",
+      "note": "deckard's agent-team configuration."
+    },
+    {
+      "id": "repo-checks/phase-authority",
+      "locator": {
+        "path": "tools/repo-checks.py",
+        "lines": "569",
+        "sha256": "003acda2b745999128978cf0a3e785fb330994eb03f7f2d7f46dc5447d89b345"
+      },
+      "class": "repository-process",
+      "note": "deckard's phase statement in CLAUDE.md."
+    },
+    {
+      "id": "repo-checks/invariant-drift",
+      "locator": {
+        "path": "tools/repo-checks.py",
+        "lines": "570",
+        "sha256": "1598b9f54363097629b6f2b58a9660f35f5dd2670f761f2cb904bcb6783d9475"
+      },
+      "class": "repository-process",
+      "note": "deckard's prose restatements of its own invariants."
+    },
+    {
+      "id": "repo-checks/single-queue",
+      "locator": {
+        "path": "tools/repo-checks.py",
+        "lines": "571",
+        "sha256": "13d36527bb426ccf52727026acd6af6af04501c5d1aa51bc494dd547f1ee06e1"
+      },
+      "class": "repository-process",
+      "note": "No task backlog outside GitHub Issues."
+    },
+    {
+      "id": "workflow/build-and-test.yml",
+      "locator": {
+        "path": ".github/workflows/build-and-test.yml",
+        "lines": "1",
+        "sha256": "bf04ecb127f444b15bfbf296ab9c914051368617e4890377ef3692144b004c6a"
+      },
+      "class": "divergent",
+      "note": "deckard CI runs the full gate. A produced licensed-copy engine cannot restore its unpublished map in CI (plan G4), so its CI cannot run the gate until that is solved. Flagged, not approved.",
+      "approvedBy": null
+    },
+    {
+      "id": "workflow/pr-policy.yml",
+      "locator": {
+        "path": ".github/workflows/pr-policy.yml",
+        "lines": "1",
+        "sha256": "7114a439db84126b1b68321fc49fc117a6e1ffdd765dbd5601590c48fbb86d8b"
+      },
+      "class": "repository-process",
+      "note": "PR body policy."
+    },
+    {
+      "id": "workflow/rules-conformance-gate.yml",
+      "locator": {
+        "path": ".github/workflows/rules-conformance-gate.yml",
+        "lines": "1",
+        "sha256": "f53c5f02e67dbb67b95f272ea84999da7c9aba8aa988391d6f624c3f21b08eb6"
+      },
+      "class": "divergent",
+      "note": "A verdict recorded per head commit for rules-surface PRs; the rebuild substitutes Phase 7 verdicts plus named tests with mutations (E2). Flagged, not approved.",
+      "approvedBy": null
+    },
+    {
+      "id": "hook/primary-checkout-guard.py",
+      "locator": {
+        "path": ".claude/hooks/primary-checkout-guard.py",
+        "lines": "1",
+        "sha256": "381f9bfc69d49d39040a7d5fc3197ce385019a2ba2de649622f841a8c658ed37"
+      },
+      "class": "repository-process",
+      "note": "Local agent guard hook."
+    },
+    {
+      "id": "workflow-step/verify-poppler-pin",
+      "locator": {
+        "path": ".github/workflows/build-and-test.yml",
+        "lines": "48",
+        "sha256": "37fec6d3995ae644d84645ac22d39adb00d6cfd6e4f905632e70ce41936f8a65"
+      },
+      "class": "divergent",
+      "note": "CI checks poppler 24.02.0; the rebuild records the extractor and its version at extraction (S3a) and runs no poppler in the engine CI. Flagged, not approved.",
+      "approvedBy": null
+    },
+    {
+      "id": "build/target-frameworks",
+      "locator": {
+        "path": "Directory.Build.props",
+        "lines": "6",
+        "sha256": "e447717b128a7a3bc14e9e29e507e95254feade9fce8f5a417a71f3dbe0c1e03"
+      },
+      "class": "divergent",
+      "note": "deckard builds net10.0 only (ADR 0001); the factory emits net8.0;net10.0. Flagged, not approved.",
+      "approvedBy": null
+    },
+    {
+      "id": "script/doctor.sh",
+      "locator": {
+        "path": "scripts/doctor.sh",
+        "lines": "1",
+        "sha256": "e2b37d0fbeebd5358ba88a5ef5469cfab940c91f397b72b95107b9b6515a9ece"
+      },
+      "class": "repository-process",
+      "note": "Reports only and changes nothing."
+    },
+    {
+      "id": "tool/dispatch-agent.sh",
+      "locator": {
+        "path": "tools/dispatch-agent.sh",
+        "lines": "1",
+        "sha256": "e2b37d0fbeebd5358ba88a5ef5469cfab940c91f397b72b95107b9b6515a9ece"
+      },
+      "class": "repository-process",
+      "note": "Agent dispatch."
+    },
+    {
+      "id": "tool/review-packet.sh",
+      "locator": {
+        "path": "tools/review-packet.sh",
+        "lines": "1",
+        "sha256": "e2b37d0fbeebd5358ba88a5ef5469cfab940c91f397b72b95107b9b6515a9ece"
+      },
+      "class": "repository-process",
+      "note": "Review packets."
+    },
+    {
+      "id": "tool/record-verdict.sh",
+      "locator": {
+        "path": "tools/record-verdict.sh",
+        "lines": "1",
+        "sha256": "e2b37d0fbeebd5358ba88a5ef5469cfab940c91f397b72b95107b9b6515a9ece"
+      },
+      "class": "repository-process",
+      "note": "Records the verdict the rules-conformance-gate row reads; classified with that row."
+    }
+  ],
+  "ownerDecisions": {
+    "D5": {
+      "date": "2026-09-15",
+      "decision": "Keep deckard's 28 replay-identity tests. A compatibility adapter maps the kernel identity onto the four-part identity so all 110 methods run unmodified; none is superseded."
+    },
+    "D6": {
+      "date": "2026-09-15",
+      "decision": "The SDK pin moves to 10.0.112, the kernel pin. An approved divergence."
+    },
+    "D7": {
+      "date": "2026-09-15",
+      "decision": "Decisions the book leaves open become ADR 0027 owner rulings that name deckard's record (ADR or a codeCommentDecisions id here) as their source."
+    },
+    "D8": {
+      "date": "2026-09-15",
+      "decision": "Implementers stay blind to deckard's code, tests and code comments."
+    }
+  },
+  "openDecisions": [
+    "D1",
+    "D2",
+    "D3",
+    "D4"
+  ]
+}
