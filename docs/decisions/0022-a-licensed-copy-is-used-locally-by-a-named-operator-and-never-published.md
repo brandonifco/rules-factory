@@ -49,8 +49,9 @@ the allowlist it was produced under.
 
 ### What the exception allows
 
-- **`pack-map.py` packs a `local-copy` map into a local `.nupkg`.** The locator checker for the
-  corpus's adapter runs against the file the manifest's **`envVar`** names. That is the same
+- **`pack-map.py` packs a `local-copy` map into a local `.nupkg`.** The file the manifest's
+  **`envVar`** names must hash to the manifest's baseline, and the locator checker for the
+  corpus's adapter runs against it. That is the same
   variable an engine's gate reads (0013), so an operator sets one variable for both, and no
   second way of naming the path exists to disagree with it. Every other gate
   (`check-map.py --phase publish`, one corpus, a known adapter) is unchanged. The package has the
@@ -113,10 +114,32 @@ $VAR hashes to the pinned baseline`, and the gate knows no operator. It is the f
 **An engine's CI cannot verify its corpus.** Its `validate.yml` runs without `envVar`, so posture
 is NOT VERIFIED there, as 0013 says it must be.
 
-**The engine still quotes the map.** Its `backlog/` files carry each entry's `evidence` verbatim,
-as the map does. Under `quotation: verbatim` that is the map's quotation, not the corpus file; for
-a corpus whose licence does not permit it, `quotation: withheld` (0013) is the answer, and whether
-such an engine's repository may be public is a licence judgement this record does not make.
+**An engine of a `local-copy` corpus quotes nothing from it, and neither does any issue.** An
+engine's repository and its GitHub issues are distribution even when the map package is not. So
+whenever the corpus is `local-copy`, whatever its `quotation`:
+
+- **What the factory writes into the engine carries no corpus text.** The generated C# already
+  carried only each entry's id, name and locator citation, and provenance.json and the gate recipe
+  carry none. The `backlog/` files did: each item quoted `evidence`, the entry's `note` and
+  `ambiguity.question` verbatim. For a `local-copy` corpus each of the three is replaced by a notice
+  pointing at the citation in the licensed copy. `note` and `question` are withheld as well as
+  `evidence` because both are written about the passage and often quote words of it, and nothing
+  measures how closely. What remains is the entry id, name, structural fields (kind, clarity,
+  status, relations, ambiguity fate and reason) and the locator.
+- **`factory backlog --create` refuses before any write** for an engine whose provenance.json records
+  `licensedCopyException`, unless every body carries that notice and none contains any `evidence`,
+  `note` or `question` string (whitespace-normalised, 12 characters or more) of the map provenance
+  names. The map is read from `--package`, or `Id@Version` from the NuGet global packages folder,
+  and is never downloaded; it must hash to the map provenance recorded.
+- **The map package is unchanged.** It is local, marked NOT PUBLISHABLE, and is the operator's own
+  working copy of the map.
+
+A committed-copy corpus's engine is byte-identical to what it was: it still quotes its evidence.
+
+**`pack-map.py` hashes the local copy before packing.** Under the exception, the file `envVar`
+names must hash to the manifest's `contentHash` under its `hashDerivation` (intake's derivations),
+or the pack is refused: a wrong edition can resolve most citations and still not be the corpus the
+map was made of.
 
 **Tests use a synthetic corpus only** (`tools/tests/licensed_fixture.py`): invented text, a map
 and a manifest declaring `never-commit` and `local-copy`. No real licensed text is in the

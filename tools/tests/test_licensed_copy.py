@@ -21,7 +21,16 @@ Asserted:
     say `verified locally under the licensed-copy exception by brandonifco`, record
     `licensedCopyException`, and write no corpus bytes into the engine; each refuses without the
     flag, for a non-allowlisted login, when `gh` fails and in CI; recompute names the field when a
-    different operator re-produces, and an engine holding corpus/ files is refused.
+    different operator re-produces, and an engine holding corpus/ files is refused;
+  * no quotation leaves the machine -- no file of the local-copy engine carries any `evidence`,
+    `note` or `ambiguity.question` string of the map (backlog items carry the withheld notice and the
+    locator instead); `backlog --create` posts bodies carrying none of them, and refuses before any
+    `gh` call a body that does, one without the notice, or when the map cannot be found; a
+    committed-copy engine (hoyle-backgammon) is byte-identical with the flag and without, and still
+    quotes its evidence;
+  * pack-map.py hashes the local copy first, so a wrong edition does not pack.
+
+pack-map.py runs in-process here, so the fixture's derivation can be added to intake's for it.
 
 Run: python3 -m unittest discover -s tools/tests
 """
@@ -51,6 +60,7 @@ WORKFLOW = os.path.join(REPO, ".github", "workflows", "publish-map.yml")
 sys.path.insert(0, HERE)
 import licensed_fixture as fixture  # noqa: E402
 from test_factory_verify import FAKE_DOTNET, FAKE_GATE  # noqa: E402
+from test_factory_backlog import STUB as ISSUE_STUB  # noqa: E402
 
 _spec = importlib.util.spec_from_file_location("factory_main_licensed", os.path.join(FACTORY, "__main__.py"))
 factory = importlib.util.module_from_spec(_spec)
@@ -58,6 +68,11 @@ _spec.loader.exec_module(factory)
 licensed_copy = factory.licensed_copy
 intake = factory.intake_step
 verify_step = factory.verify_step
+backlog = factory.backlog_step
+
+_pack_spec = importlib.util.spec_from_file_location("pack_map_licensed", PACK)
+pack_map = importlib.util.module_from_spec(_pack_spec)
+_pack_spec.loader.exec_module(pack_map)
 
 OPERATOR = "brandonifco"
 ATTESTATION = f"verified locally under the licensed-copy exception by {OPERATOR}"
@@ -67,6 +82,15 @@ OLD_REFUSAL = f"NOT VERIFIED -- {fixture.SOURCE_ID} is 'local-copy', not `commit
 def clean_environ():
     """os.environ without the CI markers a GitHub runner sets, which would refuse every allowed case."""
     return {k: v for k, v in os.environ.items() if k not in ("CI", "GITHUB_ACTIONS")}
+
+
+def pack_in_process(argv, env):
+    """pack-map.py's main in this process, so the fixture's derivation can be added to intake's for it."""
+    buffer = io.StringIO()
+    with mock.patch.dict(os.environ, env, clear=True), fixture.derivation(intake), \
+            redirect_stdout(buffer), redirect_stderr(buffer):
+        code = pack_map.main(list(argv))
+    return code, buffer.getvalue()
 
 
 class Case(unittest.TestCase):
@@ -128,9 +152,9 @@ class TestIdentity(Case):
 class TestPackMap(Case):
     def pack(self, *extra, env=None, map_dir=None, out=None):
         out = out or os.path.join(self.tmp, "out")
-        done = subprocess.run([sys.executable, PACK, map_dir or self.map_dir, "--out", out, *extra],
-                              env=env if env is not None else self.env(), capture_output=True, text=True)
-        return done.returncode, done.stdout + done.stderr, out
+        code, output = pack_in_process([map_dir or self.map_dir, "--out", out, *extra],
+                                       env if env is not None else self.env())
+        return code, output, out
 
     def packages(self, out):
         return sorted(os.listdir(out)) if os.path.isdir(out) else []
@@ -139,6 +163,7 @@ class TestPackMap(Case):
         code, output, out = self.pack(licensed_copy.FLAG)
         self.assertEqual(code, 0, output)
         self.assertIn("the local copy at $" + fixture.ENV_VAR, output)
+        self.assertIn(f"the local copy at ${fixture.ENV_VAR} hashes to the manifest's contentHash", output)
         self.assertIn(self.corpus, output, "the locator checker read the file envVar names")
         self.assertIn(f"{ATTESTATION}: NOT PUBLISHABLE", output)
         (name,) = self.packages(out)
@@ -180,6 +205,11 @@ class TestPackMap(Case):
     def test_the_flag_is_refused_on_the_publish_path(self):
         self.assert_refused("--tag is the publish path", licensed_copy.FLAG, "--tag",
                             f"map/{fixture.MAP_NAME}/v{fixture.VERSION}")
+
+    def test_a_wrong_edition_of_the_local_copy_is_refused(self):
+        with open(self.corpus, "ab") as handle:
+            handle.write(b"\n{3}\nA later printing adds this page.\n")
+        self.assert_refused(f"is not {fixture.SOURCE_ID} at the manifest's baseline", licensed_copy.FLAG)
 
     def test_an_unset_env_var_is_not_verified(self):
         self.assert_refused(f"${fixture.ENV_VAR} is not set", licensed_copy.FLAG, env=self.env(**{fixture.ENV_VAR: None}))
@@ -255,8 +285,9 @@ class TestPublishWorkflow(Case):
         self.assertEqual(job, "publish")
         env = self.env()
         marked = os.path.join(self.tmp, "marked")
-        subprocess.run([sys.executable, PACK, self.map_dir, "--out", os.path.join(marked, "artifacts"),
-                        licensed_copy.FLAG], env=env, check=True, capture_output=True)
+        code, output = pack_in_process([self.map_dir, "--out", os.path.join(marked, "artifacts"),
+                                        licensed_copy.FLAG], env)
+        self.assertEqual(code, 0, output)
         code, output = self.run_step(self.MARKED, marked)
         self.assertEqual(code, 1, output)
         self.assertIn("built under the licensed-copy exception", output)
@@ -306,8 +337,8 @@ class FactoryCase(Case):
         env = {**clean_environ(), "FACTORY_GH": gh, "FAKE_GH_LOG": os.path.join(cls.shared, "gh.log"),
                "FAKE_GH_LOGIN": OPERATOR, fixture.ENV_VAR: cls.shared_corpus}
         out = os.path.join(cls.shared, "package")
-        subprocess.run([sys.executable, PACK, map_dir, "--out", out, licensed_copy.FLAG], env=env, check=True,
-                       capture_output=True)
+        code, output = pack_in_process([map_dir, "--out", out, licensed_copy.FLAG], env)
+        assert code == 0, output
         (name,) = os.listdir(out)
         cls.nupkg = os.path.join(out, name)
 
@@ -377,6 +408,116 @@ class TestFactory(FactoryCase):
                 with open(os.path.join(directory, name), "rb") as handle:
                     self.assertNotIn(corpus, handle.read(), os.path.join(directory, name))
         self.assertFalse(any(g["path"].startswith("corpus/") for g in self.record()["generated"]))
+
+    def test_no_engine_file_carries_the_corpus_text_the_map_quotes(self):
+        self.produced()
+        strings = backlog.quoted_strings(fixture.map_document())
+        self.assertEqual(len(strings), 6, "two distinct evidence spans, three notes over 12 characters, one question")
+        self.assertTrue(any("another pawn occupies" in s for s in strings))
+        examined = 0
+        for directory, _, names in os.walk(self.engine):
+            for name in names:
+                path = os.path.join(directory, name)
+                with open(path, "rb") as handle:
+                    flat = " ".join(handle.read().decode("utf-8", "replace").split())
+                examined += 1
+                for text in strings:
+                    self.assertNotIn(text, flat, path)
+        self.assertGreater(examined, 20)
+        with open(os.path.join(self.engine, "backlog", "003-occupied-square.md"), encoding="utf-8") as handle:
+            item = handle.read()
+        self.assertEqual(item.count(backlog.WITHHELD), 3, "evidence, the ambiguity question and the note")
+        self.assertIn("Skirmish / p. 2", item, "the locator is kept")
+        self.assertIn("- kind: `operation`", item, "structural fields are kept")
+        self.assertIn("Fate: `unresolved`; unresolvedReason: `RequiresInterpretation`", item)
+
+    def test_a_committed_copy_engine_is_unchanged_and_still_quotes(self):
+        hoyle_pack = os.path.join(self.tmp, "hoyle-package")
+        subprocess.run([sys.executable, PACK, HOYLE, "--out", hoyle_pack], check=True, capture_output=True)
+        (name,) = os.listdir(hoyle_pack)
+        trees = []
+        for label, extra in (("plain", ()), ("flagged", (licensed_copy.FLAG,))):
+            out = os.path.join(self.tmp, label)
+            code, output = self.factory("produce", "--package", os.path.join(hoyle_pack, name), "--corpus",
+                                        os.path.join(HOYLE, "hoyle.txt"), "--name", "HoyleBackgammon", "--out", out,
+                                        "--allow-dirty", "--no-verify", *extra)
+            self.assertEqual(code, 0, output)
+            tree = {}
+            for directory, _, names in os.walk(out):
+                for file_name in names:
+                    path = os.path.join(directory, file_name)
+                    with open(path, "rb") as handle:
+                        tree[os.path.relpath(path, out)] = handle.read()
+            trees.append(tree)
+        self.assertEqual(trees[0], trees[1], "the exception changes nothing for a committed-copy corpus")
+        with open(os.path.join(HOYLE, "corpus-map.json"), encoding="utf-8") as handle:
+            evidence = json.load(handle)["entries"][0]["evidence"]
+        backlog_text = b"".join(v for k, v in trees[0].items() if k.startswith("backlog")).decode("utf-8")
+        self.assertIn(evidence, backlog_text)
+        self.assertNotIn(backlog.WITHHELD, backlog_text)
+        self.assertIn("corpus/hoyle.txt", trees[0])
+
+    def backlog_create(self, *extra):
+        state = os.path.join(self.tmp, "issues.json")
+        stub = os.path.join(self.tmp, "issue-gh")
+        with open(stub, "w", encoding="utf-8") as handle:
+            handle.write(ISSUE_STUB.format(python=sys.executable))
+        os.chmod(stub, 0o755)
+        code, output = self.factory("backlog", "--create", "--repo", "example/engine", "--dir", self.engine, *extra,
+                                    FACTORY_GH=stub, GH_STUB_STATE=state,
+                                    NUGET_PACKAGES=os.path.join(self.tmp, "empty-nuget"))
+        issues = []
+        if os.path.exists(state):
+            with open(state, encoding="utf-8") as handle:
+                issues = json.load(handle)
+        calls = []
+        if os.path.exists(state + ".calls"):
+            with open(state + ".calls", encoding="utf-8") as handle:
+                calls = [json.loads(line) for line in handle]
+        return code, output, issues, calls
+
+    def test_backlog_create_posts_locator_only_bodies(self):
+        self.produced()
+        code, output, issues, _ = self.backlog_create("--package", self.nupkg)
+        self.assertEqual(code, 0, output)
+        self.assertIn("bodies carry no text from the corpus (6 quoted strings of the map compared)", output)
+        self.assertEqual(len(issues), 3)
+        strings = backlog.quoted_strings(fixture.map_document())
+        for issue in issues:
+            flat = " ".join((issue["title"] + " " + issue["body"]).split())
+            for text in strings:
+                self.assertNotIn(text, flat)
+            self.assertIn(backlog.WITHHELD, issue["body"])
+            self.assertIn("Skirmish / p.", issue["body"])
+
+    def test_backlog_create_refuses_a_body_carrying_corpus_text_before_any_call(self):
+        self.produced()
+        item = os.path.join(self.engine, "backlog", "002-one-pawn-per-turn.md")
+        with open(item, "a", encoding="utf-8") as handle:
+            handle.write("\nA captain moves one pawn per turn,\nand never onto a square another pawn occupies.\n")
+        code, output, issues, calls = self.backlog_create("--package", self.nupkg)
+        self.assertEqual(code, 1, output)
+        self.assertIn("002-one-pawn-per-turn.md (it contains text the map quotes", output)
+        self.assertEqual((issues, calls), ([], []), "gh was never called")
+
+    def test_backlog_create_refuses_a_body_without_the_withheld_notice(self):
+        self.produced()
+        item = os.path.join(self.engine, "backlog", "001-captain-count.md")
+        with open(item, encoding="utf-8") as handle:
+            text = handle.read()
+        with open(item, "w", encoding="utf-8") as handle:
+            handle.write(text.replace(backlog.WITHHELD, "(nothing)\n"))
+        code, output, _, calls = self.backlog_create("--package", self.nupkg)
+        self.assertEqual(code, 1, output)
+        self.assertIn("001-captain-count.md (it does not carry the withheld notice", output)
+        self.assertEqual(calls, [])
+
+    def test_backlog_create_refuses_when_the_map_cannot_be_found(self):
+        self.produced()
+        code, output, _, calls = self.backlog_create()
+        self.assertEqual(code, 1, output)
+        self.assertIn("not a local file or in the NuGet global packages folder", output)
+        self.assertEqual(calls, [])
 
     def test_verify_and_provenance_pass_under_the_exception_and_say_so(self):
         self.produced()

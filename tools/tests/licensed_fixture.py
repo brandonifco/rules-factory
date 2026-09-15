@@ -74,6 +74,13 @@ def map_document():
             _entry("one-pawn-per-turn", "One pawn moves per turn", "Skirmish / p. 2",
                    "A captain moves one pawn per turn, and never onto a square another pawn occupies.",
                    "Demonstrate that a turn moves exactly one pawn."),
+            dict(_entry("occupied-square", "A pawn never moves onto an occupied square", "Skirmish / p. 2",
+                        "A captain moves one pawn per turn, and never onto a square another pawn occupies.",
+                        "The words 'another pawn occupies' are the whole of the rule; whose pawn is not said."),
+                 kind="operation", clarity="ambiguous",
+                 ambiguity={"question": "Does 'a square another pawn occupies' include a square the moving "
+                                        "captain's own pawn occupies, or only an opposing pawn's square?",
+                            "fate": "unresolved", "unresolvedReason": "RequiresInterpretation"}),
         ],
     }
 

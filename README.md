@@ -70,6 +70,7 @@ marked `not implemented` that the parser does have.
 | `backlog` | `--create` | implemented | the only action; never closes or deletes an issue |
 | `backlog` | `--repo` | implemented | `owner/name` |
 | `backlog` | `--dir` | implemented | the engine directory |
+| `backlog` | `--package` | implemented | for a licensed `local-copy` engine: the map package the bodies are checked against, so no issue quotes the corpus (0022) |
 | `provenance` | — | implemented | re-produce in a scratch copy and name every field that does not match |
 | `provenance` | `--engine` | implemented | the engine directory |
 | `provenance` | `--package` | implemented | default: `Id@Version` from `provenance.json` |

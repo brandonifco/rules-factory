@@ -110,6 +110,8 @@ def produce(args):
                                      adopt=getattr(args, "adopt", None) or (), reset=getattr(args, "reset", None) or ())
             gate.emit(args.name, out, log=sys.stdout)
             context = {"name": args.name, "package": result.package_id, "version": result.version}
+            if result.corpus.get("verification") == "local-copy":
+                context["localCopy"] = True  # decision 0022: the backlog quotes nothing from the corpus
             written = backlog_step.emit([item["entry"] for item in model.entries], context, out)
             print(f"--- backlog: {len(written) - 1} item(s)")
             provenance.emit(model, out)
@@ -211,6 +213,9 @@ def build_parser():
     b.add_argument("--create", action="store_true", required=True, help="create missing issues and update changed ones (the only action)")
     b.add_argument("--repo", required=True, help="owner/name of the engine's repository")
     b.add_argument("--dir", required=True, help="the engine directory `produce` wrote")
+    b.add_argument("--package", help="for an engine produced from a licensed local-copy corpus (decision 0022): the "
+                                      ".nupkg whose map the bodies are checked against (default: Id@Version from "
+                                      "provenance.json, from the NuGet global packages folder)")
     r = commands.add_parser("provenance", help="recompute an engine's provenance.json and report mismatches")
     r.add_argument("--engine", required=True, help="the engine directory")
     r.add_argument("--package", help="the .nupkg or Id@Version (default: Id@Version from provenance.json)")
@@ -231,7 +236,8 @@ def main(argv=None):
         if args.command == "backlog":
             if not re.match(r"^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$", args.repo):
                 raise intake_step.Usage(f"--repo {args.repo!r} is not owner/name")
-            backlog_step.create(args.repo, args.dir, log=sys.stdout, gh=os.environ.get("FACTORY_GH", "gh"))
+            backlog_step.create(args.repo, args.dir, log=sys.stdout, gh=os.environ.get("FACTORY_GH", "gh"),
+                                package=args.package)
             return 0
         if args.command == "provenance":
             return check_provenance(args)

@@ -17,9 +17,10 @@ The gate, in order:
 
 The licensed-copy exception (0022, #105). With `--licensed-copy-exception`, and only when
 tools/factory/licensed_copy.py establishes an allowlisted operator from `gh api user` outside CI,
-a `local-copy` corpus is not refused: its locator checker runs against the file the manifest's
-`envVar` names on this machine (the variable an engine's gate reads, 0013), and every other gate
-is unchanged. The package has the same parts, and is marked: its nuspec `<tags>` carry
+a `local-copy` corpus is not refused: the file the manifest's `envVar` names on this machine (the
+variable an engine's gate reads, 0013) must hash to the manifest's `contentHash` under its
+`hashDerivation` (intake's derivations), so a wrong edition does not pack; the locator checker
+then runs against it, and every other gate is unchanged. The package has the same parts, and is marked: its nuspec `<tags>` carry
 `licensed-copy-exception` and its description begins NOT PUBLISHABLE, naming the operator. The
 exception never publishes: the flag is refused with `--tag` (the publish path) and in CI, and
 publish-map.yml refuses a `local-copy` map and a marked package on its own account. Without the
@@ -73,6 +74,7 @@ CHECKER = os.path.join(TOOLS, "check-map.py")
 CHECKER_IN_PACKAGE = "tools/check-map.py"
 PROJECT_URL = "https://github.com/brandonifco/rules-factory"
 sys.path.insert(0, os.path.join(TOOLS, "factory"))
+import intake  # noqa: E402  (its HASH_DERIVATIONS, for the local copy's baseline; standard library only)
 import licensed_copy  # noqa: E402  (standard library only; decision 0022)
 
 # The nuspec tag that marks a package built under the licensed-copy exception (0022).
@@ -205,6 +207,19 @@ def gate(inputs, repo_root, operator=None):
                           f"licensed copy is not here to check citations against; set it to the local file")
         if not os.path.isfile(text):
             raise Refused(f"NOT VERIFIED -- ${variable} is {text!r}, which is not a file")
+        # A wrong edition could still resolve most citations; only the baseline hash says it is the
+        # corpus the map was made of. Computed as intake computes it, with intake's own derivations.
+        derive = intake.HASH_DERIVATIONS.get(corpus.get("hashDerivation"))
+        if derive is None:
+            raise Refused(f"NOT VERIFIED -- no way to compute hashDerivation {corpus.get('hashDerivation')!r} "
+                          f"for the local copy; known: {', '.join(sorted(intake.HASH_DERIVATIONS))}")
+        with open(text, "rb") as handle:
+            actual = derive(handle.read())
+        if actual != corpus.get("contentHash"):
+            raise Refused(f"${variable} ({text}) is not {source_id} at the manifest's baseline: "
+                          f"{corpus.get('hashDerivation')} gives {actual}, the manifest pins {corpus.get('contentHash')}")
+        print(f"--- gate: the local copy at ${variable} hashes to the manifest's contentHash "
+              f"({corpus.get('hashDerivation')})", flush=True)
         what = f"{os.path.relpath(checker, REPO)} ({corpus.get('adapter')}, the local copy at ${variable})"
     else:
         text = os.path.join(os.path.dirname(inputs["manifest_path"]), str(corpus.get("committedPath")))
