@@ -7,7 +7,7 @@ This records a run. It does not tick the criterion.
 
 | Input | Value |
 |---|---|
-| engine | `brandonifco/hoyle-backgammon` at `2ab3cdcc35283fb0b7d9e1c9a52dd5bf670c70fc` (merge of hoyle-backgammon#15, map 6.0.0 and ruleset 4) |
+| engine | `brandonifco/hoyle-backgammon` at `5ef209790d6e72ecb8c2b82828f7c6ddf9aba190` (merge of hoyle-backgammon#16, the owner's rulings on map 6.0.0's open questions, ruleset 5) |
 | factory | `factory/v0.4.1`, commit `02ea62af2cad24439a5bcdf14df30ad9e887997b`, the commit the engine's `provenance.json` records |
 | map package | `RulesFactory.Maps.HoyleBackgammon@6.0.0`, as published |
 | corpus | the engine's `corpus/hoyle.txt`, sha256 `5d505fa9…645e` |
@@ -16,7 +16,7 @@ This records a run. It does not tick the criterion.
 Reproduce with
 
 ```
-examples/hoyle-backgammon/produced-engine/equivalence.sh 2ab3cdcc35283fb0b7d9e1c9a52dd5bf670c70fc factory/v0.4.1
+examples/hoyle-backgammon/produced-engine/equivalence.sh 5ef209790d6e72ecb8c2b82828f7c6ddf9aba190 factory/v0.4.1
 ```
 
 The full output of that command is [equivalence.out](equivalence.out). **Result: PASS.** No
@@ -42,7 +42,7 @@ This is not wired into `scripts/validate.sh` or CI. It needs the network (GitHub
 unless the package is already cached) and a published package. It does not build the engine
 either: whether the engine builds and its tests pass is the job of hoyle-backgammon's own CI.
 
-## Classification: seeded produce against the engine (115 paths)
+## Classification: seeded produce against the engine (117 paths)
 
 | Class | State | Count | Paths |
 |---|---|---:|---|
@@ -52,7 +52,7 @@ either: whether the engine builds and its tests pass is the job of hoyle-backgam
 | engine-owned | identical | 1 | `corpus-map.overlay.json` (the seed) |
 | engine-owned | differs | 4 | `Directory.Packages.props`, `HoyleBackgammon.slnx`, `src/HoyleBackgammon/HoyleBackgammon.csproj`, `tests/HoyleBackgammon.Tests/HoyleBackgammon.Tests.csproj` |
 | engine-owned | only in engine | 2 | `src/HoyleBackgammon/packages.lock.json`, `tests/HoyleBackgammon.Tests/packages.lock.json` |
-| no row (the engine's own) | only in engine | 86 | 45 `src/HoyleBackgammon` (rules code, handlers, adapter types), 5 `src/Tabletop.Dice`, 21 `tests/HoyleBackgammon.Tests`, 3 `tests/Tabletop.Dice.Tests`, 8 `docs/decisions`, `README.md`, `MAP-FINDINGS.md`, `LICENSE`, `.gitignore` |
+| no row (the engine's own) | only in engine | 88 | 46 `src/HoyleBackgammon` (rules code, handlers, adapter types), 5 `src/Tabletop.Dice`, 21 `tests/HoyleBackgammon.Tests`, 3 `tests/Tabletop.Dice.Tests`, 9 `docs/decisions`, `README.md`, `MAP-FINDINGS.md`, `LICENSE`, `.gitignore` |
 | any | only in produce | 0 | |
 
 The four engine-owned files that differ are the engine's own additions:
