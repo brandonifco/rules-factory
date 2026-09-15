@@ -1,0 +1,113 @@
+
+==> engine https://github.com/brandonifco/hoyle-backgammon at caa5e704e1b4f9d64572a2cfe6c7a4648733d05c
+engine commit    caa5e704e1b4f9d64572a2cfe6c7a4648733d05c
+engine name      HoyleBackgammon
+package          RulesFactory.Maps.HoyleBackgammon@4.0.0
+factory recorded 0.2.1 at b910e2f1480886ac17f2a11579234e97fc1dcdbc
+corpus           corpus/hoyle.txt sha256 5d505fa9f6202340eb55313b8ef607b816087a860d3d51b1bf92b5f65240645e
+
+==> factory at factory/v0.2.1
+factory commit   b910e2f1480886ac17f2a11579234e97fc1dcdbc
+
+==> produce from scratch into an empty directory (bare)
+produced HoyleBackgammon in $WORK/bare, NOT VERIFIED
+
+==> produce into an empty directory holding only the engine's overlay (seeded)
+produced HoyleBackgammon in $WORK/seeded, NOT VERIFIED
+
+==> classify every difference by the factory's ownership table
+seeded produce vs engine: 111 path(s)
+     4  engine-owned differs
+          Directory.Packages.props
+          HoyleBackgammon.slnx
+          src/HoyleBackgammon/HoyleBackgammon.csproj
+          tests/HoyleBackgammon.Tests/HoyleBackgammon.Tests.csproj
+     1  engine-owned identical
+          corpus-map.overlay.json
+     2  engine-owned only-engine
+          src/HoyleBackgammon/packages.lock.json
+          tests/HoyleBackgammon.Tests/packages.lock.json
+     1  generated differs
+          provenance.json
+    18  generated identical
+     3  managed identical
+    82  unlisted only-engine
+  unlisted only-engine, by top directory:
+           1  .github/workflows
+           1  .gitignore
+           1  LICENSE
+           1  MAP-FINDINGS.md
+           1  README.md
+           5  docs/decisions
+          44  src/HoyleBackgammon
+           5  src/Tabletop.Dice
+          20  tests/HoyleBackgammon.Tests
+           3  tests/Tabletop.Dice.Tests
+provenance.json (generated), seeded produce vs engine:
+  field buildInputs: differs, explained item by item:
+    Directory.Packages.props: engine-owned, the engine changed it from what produce writes first (cc050d75bad8 -> b2cc3b4934d1 = its bytes)
+    HoyleBackgammon.slnx: engine-owned, the engine changed it from what produce writes first (82db17a283f5 -> 225327ace7d3 = its bytes)
+    src/HoyleBackgammon/HoyleBackgammon.csproj: engine-owned, the engine changed it from what produce writes first (5e6ed31edb9d -> b2d7e7db89db = its bytes)
+    src/HoyleBackgammon/packages.lock.json: engine-owned, added by the engine (sha256 4032648a5d4d = its bytes)
+    src/Tabletop.Dice/Tabletop.Dice.csproj: unlisted, added by the engine (sha256 34ac7deb88fd = its bytes)
+    src/Tabletop.Dice/packages.lock.json: unlisted, added by the engine (sha256 68f6544d80f2 = its bytes)
+    tests/HoyleBackgammon.Tests/HoyleBackgammon.Tests.csproj: engine-owned, the engine changed it from what produce writes first (2b88e1557930 -> c73f5d12e636 = its bytes)
+    tests/HoyleBackgammon.Tests/packages.lock.json: engine-owned, added by the engine (sha256 342adea8dbf1 = its bytes)
+    tests/Tabletop.Dice.Tests/Tabletop.Dice.Tests.csproj: unlisted, added by the engine (sha256 584bfe96289c = its bytes)
+    tests/Tabletop.Dice.Tests/packages.lock.json: unlisted, added by the engine (sha256 778035cb1290 = its bytes)
+  field corpus: identical
+  field engine: identical
+  field engineOwned: differs, explained item by item:
+    src/HoyleBackgammon/packages.lock.json: engine-owned lock file, written by verify's restore; the evidence produce ran --no-verify, so it has none
+    tests/HoyleBackgammon.Tests/packages.lock.json: engine-owned lock file, written by verify's restore; the evidence produce ran --no-verify, so it has none
+  field factory: identical
+  field generated: identical
+  field kernel: identical
+  field managed: identical
+  field map: identical
+  field packs: identical
+  field provenanceFormat: identical
+  field randomness: identical
+  field recipes: identical
+bare produce vs engine: generated files that differ, and whether the overlay alone explains them
+  only-bare   backlog/001-player-count.md: absent once seeded with the overlay: not a backlog item
+  only-bare   backlog/002-men-count.md: absent once seeded with the overlay: not a backlog item
+  only-bare   backlog/003-board-tables.md: absent once seeded with the overlay: not a backlog item
+  only-bare   backlog/004-point-designations.md: absent once seeded with the overlay: not a backlog item
+  only-bare   backlog/005-starting-position.md: absent once seeded with the overlay: not a backlog item
+  only-bare   backlog/006-opening-roll.md: absent once seeded with the overlay: not a backlog item
+  only-bare   backlog/007-throw-two-dice.md: absent once seeded with the overlay: not a backlog item
+  only-bare   backlog/008-opening-thrower-option.md: absent once seeded with the overlay: not a backlog item
+  only-bare   backlog/009-direction-of-travel.md: absent once seeded with the overlay: not a backlog item
+  only-bare   backlog/010-move-by-pip.md: absent once seeded with the overlay: not a backlog item
+  only-bare   backlog/011-doublets.md: absent once seeded with the overlay: not a backlog item
+  only-bare   backlog/012-legal-destination.md: absent once seeded with the overlay: not a backlog item
+  only-bare   backlog/013-made-point.md: absent once seeded with the overlay: not a backlog item
+  only-bare   backlog/014-blot-hit.md: absent once seeded with the overlay: not a backlog item
+  only-bare   backlog/015-enter-from-bar.md: absent once seeded with the overlay: not a backlog item
+  only-bare   backlog/016-full-table-suspension.md: absent once seeded with the overlay: not a backlog item
+  only-bare   backlog/017-must-play-whole-throw.md: absent once seeded with the overlay: not a backlog item
+  only-bare   backlog/018-bearing-off-eligible.md: absent once seeded with the overlay: not a backlog item
+  only-bare   backlog/019-bearing-off-move-or-remove.md: absent once seeded with the overlay: not a backlog item
+  only-bare   backlog/020-bearing-off-highest.md: absent once seeded with the overlay: not a backlog item
+  only-bare   backlog/021-bearing-off-doublets.md: absent once seeded with the overlay: not a backlog item
+  only-bare   backlog/022-win-condition.md: absent once seeded with the overlay: not a backlog item
+  only-bare   backlog/023-game-value.md: absent once seeded with the overlay: not a backlog item
+  only-bare   backlog/024-agreed-backgammon-multiple.md: absent once seeded with the overlay: not a backlog item
+  only-bare   backlog/025-stake-multiplier.md: absent once seeded with the overlay: not a backlog item
+  only-bare   backlog/026-hit-pays-single-stake.md: absent once seeded with the overlay: not a backlog item
+  only-bare   backlog/027-next-game-opening.md: absent once seeded with the overlay: not a backlog item
+  only-bare   backlog/028-rubber-scoring.md: absent once seeded with the overlay: not a backlog item
+  only-bare   backlog/029-die-faces.md: absent once seeded with the overlay: not a backlog item
+  differs     backlog/README.md: identical once seeded with the overlay
+  differs     src/HoyleBackgammon/Generated/Contracts.g.cs: identical once seeded with the overlay
+  differs     src/HoyleBackgammon/Generated/Registry.g.cs: identical once seeded with the overlay
+  differs     tests/HoyleBackgammon.Tests/Generated/CorrespondenceTests.g.cs: identical once seeded with the overlay
+  33 generated file(s) differ in the bare produce, all explained by the overlay
+
+no generated or managed difference: every difference is engine-owned
+
+==> factory provenance --engine
+provenance of $WORK/engine: every field matches
+
+equivalence.sh: PASS
