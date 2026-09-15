@@ -1,6 +1,6 @@
 """What resolves against the corpus manifest rather than the map: source ids, adapters,
 references and the baseline stamp, and each corpus's verification posture and quotation policy
-(0013).
+(0013) and whether an engine for it may draw random values (0019).
 """
 import os
 
@@ -78,6 +78,7 @@ def check_manifest(ctx):
 
 VERIFICATION_POSTURES = {"committed-copy", "local-copy"}
 QUOTATION_POLICIES = {"verbatim", "withheld"}
+RANDOMNESS = {"none", "seeded"}
 
 
 def check_postures(ctx):
@@ -89,13 +90,16 @@ def check_postures(ctx):
     of its corpus, and for a corpus that may not be committed the map is itself the
     redistribution question.
 
-    Every admitted corpus in the manifest declares both:
+    Every admitted corpus in the manifest declares all three:
 
       * `verification`: `committed-copy` (the bytes are in this repository, at `committedPath`,
         so anyone -- CI included -- can verify the hash) or `local-copy` (they are not; a holder
         of a legal copy points `envVar` at it, and everyone else is told NOT VERIFIED, never ok);
       * `quotation`: `verbatim` (entries quote spans, as corpus-map.md requires) or `withheld`
-        (the licence forbids it, so no entry citing the corpus carries `evidence`).
+        (the licence forbids it, so no entry citing the corpus carries `evidence`);
+      * `randomness` (0019): `none` (a conforming engine draws no random value, so it may not
+        reach RulesKernel.Randomness) or `seeded` (the rules call for chance, and every draw goes
+        through the kernel's seeded, replayable source).
 
     And what follows from them:
 
@@ -115,7 +119,7 @@ def check_postures(ctx):
     corpora = corpora_of(manifest)
     if not corpora:
         return skip("no manifest, or a manifest declaring no corpora, so no corpus's verification "
-                    "posture or quotation policy was read. Pass --manifest.")
+                    "posture, quotation policy or randomness was read. Pass --manifest.")
     base = os.path.dirname(os.path.abspath(ctx["manifest_path"])) if ctx.get("manifest_path") else None
     bad = []
     for source_id, corpus in corpora.items():
@@ -129,6 +133,10 @@ def check_postures(ctx):
             bad.append(f"  X  {name}: quotation is {quotation!r}, outside "
                        f"{{{', '.join(sorted(QUOTATION_POLICIES))}}}; whether a map may quote its "
                        f"corpus is declared per corpus, never assumed")
+        if corpus.get("randomness") not in RANDOMNESS:
+            bad.append(f"  X  {name}: randomness is {corpus.get('randomness')!r}, outside "
+                       f"{{{', '.join(sorted(RANDOMNESS))}}}; whether an engine may draw random values "
+                       f"is declared per corpus, never assumed (0019)")
         if corpus.get("boundaryPolicy") == "never-commit" and posture == "committed-copy":
             bad.append(f"  X  {name}: is `never-commit` but claims `committed-copy`; bytes the "
                        f"repository may not hold cannot be verified from it")
@@ -151,6 +159,7 @@ def check_postures(ctx):
                 bad.append(f"  X  {label(entry, position)}: quotes `evidence` from "
                            f"{block(entry, 'locator').get('sourceId')}, whose quotation is `withheld`; "
                            f"the span is recorded as absent, never quoted and never summarised")
-    postures = sorted(f"{s}: {c.get('verification')}, {c.get('quotation')}" for s, c in corpora.items())
+    postures = sorted(f"{s}: {c.get('verification')}, {c.get('quotation')}, randomness {c.get('randomness')}"
+                      for s, c in corpora.items())
     return verdict(bad, f"{len(corpora)} corpus postures declared ({'; '.join(postures)})",
-                   "a corpus's verification posture or quotation policy is missing or contradicted")
+                   "a corpus's verification posture, quotation policy or randomness is missing or contradicted")

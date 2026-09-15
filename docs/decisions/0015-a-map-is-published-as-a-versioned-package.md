@@ -120,7 +120,7 @@ until a record lists it.
   `implementedIn` or `tests`;
 - `extent` narrowed;
 - a manifest corpus's `adapter`, `locatorGrammar`, `licence`, `boundaryPolicy`, `verification`,
-  `quotation` or `references`.
+  `quotation`, `randomness` ([0019](0019-randomness-is-declared-by-the-corpus.md)) or `references`.
 
 **Package contents other than the map and manifest are not listed either, so they are major.**
 That includes adding `tools/check-map.py` (#51) and any later change to its bytes: a changed

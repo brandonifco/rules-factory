@@ -7,7 +7,9 @@ Two layers:
     each non-dotnet check the gate runs -- scripts/map-overlay.py and scripts/engine-gate.py --
     passes on fresh output and fails on the mutation it exists for: a changed citation or a hand
     edit in a `*.g.cs`, an overlay key the map lacks, `implemented` without `tests`, a lock file
-    or project resolving RulesKernel.Randomness, a corpus that is not the baseline.
+    or project resolving RulesKernel.Randomness for a corpus that declares `randomness: none`, or
+    pinning it outside the generated props for one that declares `seeded` (0019), a corpus that is
+    not the baseline.
   * **With a .NET SDK** (skipped cleanly when `dotnet` is absent, as in this repository's CI, or
     when RULES_FACTORY_SKIP_DOTNET is set): the emitted `scripts/validate.sh` itself passes on
     fresh output and fails on each of those mutations. The engine is a scratch copy: its
@@ -42,6 +44,7 @@ factory = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(factory)
 
 PART107 = os.path.join(REPO, "examples", "faa-part-107")
+HOYLE = os.path.join(REPO, "examples", "hoyle-backgammon")
 PART107_XML = os.path.join(PART107, "part107.xml")
 NAME = "FaaPart107"
 PACKAGE_ID = "RulesFactory.Maps.FaaPart107"
@@ -129,6 +132,7 @@ class GateCase(unittest.TestCase):
 
     def regenerate(self, engine):
         return self.script(engine, "engine-gate.py", "regenerate", "--package-map", self.package_map,
+                           "--package-manifest", self.package_manifest,
                            "--package-id", PACKAGE_ID, "--package-version", "2.0.0", "--name", NAME)
 
     def merge(self, engine):
@@ -285,13 +289,23 @@ class TestImplementedNamesItsTests(GateCase):
         self.assertEqual(output.strip(), "2", "one test project x net8.0;net10.0")
 
 
-class TestNoRandomness(GateCase):
-    def lock(self, engine, packages):
-        for project in (f"src/{NAME}", f"tests/{NAME}.Tests"):
-            write_json(os.path.join(engine, *project.split("/"), "packages.lock.json"),
-                       {"version": 1, "dependencies": {"net8.0": {p: {"type": "Transitive"} for p in packages}}})
+def lock(engine, name, packages):
+    for project in (f"src/{name}", f"tests/{name}.Tests"):
+        write_json(os.path.join(engine, *project.split("/"), "packages.lock.json"),
+                   {"version": 1, "dependencies": {"net8.0": {p: {"type": "Transitive"} for p in packages}}})
+
+
+def add_randomness_pin(text):
+    return text.replace("  </ItemGroup>", '    <PackageVersion Include="RulesKernel.Randomness" Version="0.2.0" />\n  </ItemGroup>', 1)
+
+
+class TestRandomnessNone(GateCase):
+    """Part 107 declares `randomness: none` (0019): nothing may reach RulesKernel.Randomness."""
 
     def gate(self, engine, command):
+        if command == "randomness":
+            return self.script(engine, "engine-gate.py", "randomness", "--manifest", self.package_manifest,
+                               "--map", self.package_map)
         return self.script(engine, "engine-gate.py", command)
 
     def test_lock_files_are_required(self):
@@ -299,31 +313,160 @@ class TestNoRandomness(GateCase):
         code, output = self.gate(engine, "lock-files")
         self.assertEqual(code, 1, output)
         self.assertIn("has no packages.lock.json", output)
-        self.assertEqual(self.gate(engine, "no-randomness")[0], 1, "no lock file proves nothing")
-        self.lock(engine, ["RulesKernel"])
+        self.assertEqual(self.gate(engine, "randomness")[0], 1, "no lock file proves nothing")
+        lock(engine, NAME, ["RulesKernel"])
         self.assertEqual(self.gate(engine, "lock-files")[0], 0)
 
     def test_passes_without_randomness(self):
         engine = self.engine()
-        self.lock(engine, ["RulesKernel", PACKAGE_ID])
-        code, output = self.gate(engine, "no-randomness")
+        lock(engine, NAME, ["RulesKernel", PACKAGE_ID])
+        code, output = self.gate(engine, "randomness")
         self.assertEqual(code, 0, output)
+        self.assertIn("randomness: none", output)
+        with open(os.path.join(engine, "RulesFactory.Packages.g.props"), encoding="utf-8") as handle:
+            self.assertNotIn("RulesKernel.Randomness", handle.read(), "a none corpus gets no pin")
 
     def test_fails_when_a_lock_file_resolves_randomness(self):
         engine = self.engine()
-        self.lock(engine, ["RulesKernel", "RulesKernel.Randomness"])
-        code, output = self.gate(engine, "no-randomness")
+        lock(engine, NAME, ["RulesKernel", "RulesKernel.Randomness"])
+        code, output = self.gate(engine, "randomness")
         self.assertEqual(code, 1, output)
         self.assertIn("resolves RulesKernel.Randomness", output)
 
     def test_fails_when_a_project_references_randomness(self):
         engine = self.engine()
-        self.lock(engine, ["RulesKernel"])
-        edit(os.path.join(engine, "Directory.Packages.props"), lambda t: t.replace(
-            "  </ItemGroup>", '    <PackageVersion Include="RulesKernel.Randomness" Version="0.2.0" />\n  </ItemGroup>', 1))
-        code, output = self.gate(engine, "no-randomness")
+        lock(engine, NAME, ["RulesKernel"])
+        edit(os.path.join(engine, "Directory.Packages.props"), add_randomness_pin)
+        code, output = self.gate(engine, "randomness")
         self.assertEqual(code, 1, output)
         self.assertIn("Directory.Packages.props references RulesKernel.Randomness", output)
+
+    def test_fails_when_the_generated_props_is_edited_to_pin_randomness(self):
+        engine = self.engine()
+        lock(engine, NAME, ["RulesKernel"])
+        edit(os.path.join(engine, "RulesFactory.Packages.g.props"), add_randomness_pin)
+        code, output = self.gate(engine, "randomness")
+        self.assertEqual(code, 1, output)
+        self.assertIn("RulesFactory.Packages.g.props references RulesKernel.Randomness", output)
+        self.assertEqual(self.regenerate(engine)[0], 1, "and the regeneration names the hand edit")
+
+    def test_a_manifest_that_declares_nothing_fails_rather_than_defaulting(self):
+        engine = self.engine()
+        lock(engine, NAME, ["RulesKernel"])
+        with open(self.package_manifest, encoding="utf-8") as handle:
+            manifest = json.load(handle)
+        del manifest["corpora"][0]["randomness"]
+        path = os.path.join(self.tmp, "undeclared.json")
+        write_json(path, manifest)
+        code, output = self.script(engine, "engine-gate.py", "randomness", "--manifest", path, "--map", self.package_map)
+        self.assertEqual(code, 1, output)
+        self.assertIn("declares randomness None", output)
+        code, output = self.script(engine, "engine-gate.py", "regenerate", "--package-map", self.package_map,
+                                   "--package-manifest", path, "--package-id", PACKAGE_ID,
+                                   "--package-version", "2.0.0", "--name", NAME)
+        self.assertEqual(code, 1, output)
+
+
+class TestRandomnessSeeded(unittest.TestCase):
+    """Backgammon declares `randomness: seeded` (0019): its engine may reference the package, pinned once."""
+
+    HOYLE_NAME = "HoyleBackgammon"
+
+    @classmethod
+    def setUpClass(cls):
+        cls.shared = tempfile.mkdtemp()
+        cls.nupkg = pack(HOYLE, os.path.join(cls.shared, "feed"))
+        cls.package_map = os.path.join(cls.shared, "package-map.json")
+        cls.package_manifest = os.path.join(cls.shared, "package-manifest.json")
+        with zipfile.ZipFile(cls.nupkg) as archive:
+            with open(cls.package_map, "wb") as handle:
+                handle.write(archive.read("map/corpus-map.json"))
+            with open(cls.package_manifest, "wb") as handle:
+                handle.write(archive.read("map/corpus-manifest.json"))
+            cls.version = re.search(r"<version>([^<]+)</version>",
+                                    archive.read("RulesFactory.Maps.HoyleBackgammon.nuspec").decode("utf-8")).group(1)
+
+    @classmethod
+    def tearDownClass(cls):
+        shutil.rmtree(cls.shared, True)
+
+    def setUp(self):
+        self.tmp = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, self.tmp, True)
+
+    def engine(self):
+        out = os.path.join(self.tmp, "engine")
+        buffer = io.StringIO()
+        with redirect_stdout(buffer), redirect_stderr(buffer):
+            code = factory.main(["produce", "--package", self.nupkg, "--corpus", os.path.join(HOYLE, "hoyle.txt"),
+                                 "--name", self.HOYLE_NAME, "--out", out, "--allow-dirty", "--no-verify"])
+        self.assertEqual(code, 0, buffer.getvalue())
+        return out
+
+    def gate(self, engine, *args):
+        completed = subprocess.run([sys.executable, os.path.join(engine, "scripts", "engine-gate.py"), *args], cwd=engine,
+                                   stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
+        return completed.returncode, completed.stdout
+
+    def randomness(self, engine, manifest=None):
+        return self.gate(engine, "randomness", "--manifest", manifest or self.package_manifest, "--map", self.package_map)
+
+    def reference_randomness(self, engine):
+        edit(os.path.join(engine, "src", self.HOYLE_NAME, f"{self.HOYLE_NAME}.csproj"), lambda t: t.replace(
+            '    <PackageReference Include="RulesKernel" />',
+            '    <PackageReference Include="RulesKernel" />\n    <PackageReference Include="RulesKernel.Randomness" />', 1))
+        lock(engine, self.HOYLE_NAME, ["RulesKernel", "RulesKernel.Randomness"])
+
+    def test_the_generated_props_pins_randomness_at_the_kernel_version_and_references_nothing(self):
+        engine = self.engine()
+        with open(os.path.join(engine, "RulesFactory.Packages.g.props"), encoding="utf-8") as handle:
+            props = handle.read()
+        self.assertIn(f'<PackageVersion Include="RulesKernel.Randomness" Version="{factory.generate.KERNEL_VERSION}" />', props)
+        self.assertNotIn('<PackageReference Include="RulesKernel.Randomness"', props)
+        with open(os.path.join(engine, "provenance.json"), encoding="utf-8") as handle:
+            self.assertEqual(json.load(handle)["randomness"], "seeded")
+        code, output = self.gate(engine, "regenerate", "--package-map", self.package_map, "--package-manifest",
+                                 self.package_manifest, "--package-id", "RulesFactory.Maps.HoyleBackgammon",
+                                 "--package-version", self.version, "--name", self.HOYLE_NAME)
+        self.assertEqual(code, 0, output)
+
+    def test_an_engine_may_reference_randomness(self):
+        engine = self.engine()
+        lock(engine, self.HOYLE_NAME, ["RulesKernel"])
+        code, output = self.randomness(engine)
+        self.assertEqual(code, 0, output)
+        self.reference_randomness(engine)
+        code, output = self.randomness(engine)
+        self.assertEqual(code, 0, output)
+        self.assertIn("randomness: seeded", output)
+
+    def test_the_same_engine_fails_when_its_corpus_declares_none(self):
+        engine = self.engine()
+        self.reference_randomness(engine)
+        with open(self.package_manifest, encoding="utf-8") as handle:
+            manifest = json.load(handle)
+        manifest["corpora"][0]["randomness"] = "none"
+        path = os.path.join(self.tmp, "none.json")
+        write_json(path, manifest)
+        code, output = self.randomness(engine, path)
+        self.assertEqual(code, 1, output)
+        self.assertIn(f"src/{self.HOYLE_NAME}/{self.HOYLE_NAME}.csproj references RulesKernel.Randomness", output)
+        self.assertIn("resolves RulesKernel.Randomness", output)
+
+    def test_a_pin_or_version_of_its_own_fails(self):
+        engine = self.engine()
+        self.reference_randomness(engine)
+        edit(os.path.join(engine, "Directory.Packages.props"), add_randomness_pin)
+        code, output = self.randomness(engine)
+        self.assertEqual(code, 1, output)
+        self.assertIn("Directory.Packages.props pins RulesKernel.Randomness", output)
+        # and produce refuses it too, before writing anything (the pin has one home)
+        buffer = io.StringIO()
+        with redirect_stdout(buffer), redirect_stderr(buffer):
+            refused = factory.main(["produce", "--package", self.nupkg, "--corpus", os.path.join(HOYLE, "hoyle.txt"),
+                                    "--name", self.HOYLE_NAME, "--out", engine, "--allow-dirty", "--no-verify"])
+        self.assertNotEqual(refused, 0, buffer.getvalue())
+        self.assertIn("Directory.Packages.props pins RulesKernel.Randomness", buffer.getvalue())
 
 
 class TestCorpusPosture(GateCase):
@@ -437,7 +580,7 @@ class TestValidateShWithDotnet(GateCase):
         self.assertEqual(code, 0, output[-4000:])
         self.assertIn("validate.sh lock: PASS\n", output)
         for step in ("SDK ", "every project has a packages.lock.json", "dotnet restore --locked-mode",
-                     "no lock file or project resolves RulesKernel.Randomness", "packaged check-map.py --phase consumer",
+                     "RulesKernel.Randomness is reachable only as the corpus declares", "packaged check-map.py --phase consumer",
                      "every corpus verified", "every *.g.cs matches a fresh regeneration", "dotnet format",
                      "build Debug", "test Debug", "build Release", "test Release"):
             self.assertIn(f"ok   {step}", output)
@@ -540,12 +683,13 @@ class TestValidateShWithDotnet(GateCase):
         edit(os.path.join(engine, "src", NAME, f"{NAME}.csproj"), lambda t: t.replace(
             '    <PackageReference Include="RulesKernel" />',
             '    <PackageReference Include="RulesKernel" />\n    <PackageReference Include="RulesKernel.Randomness" />', 1))
-        # full: the committed lock files no longer agree with the projects
-        self.assertFailsAt(self.validate(engine, "full"), "dotnet restore --locked-mode",
-                           "no lock file or project resolves RulesKernel.Randomness")
-        # lock: even with lock files rewritten to agree, the randomness package is found in them
+        # full: the committed lock files no longer agree with the projects, so nothing after restore
+        # is judged -- the randomness step included, since it reads the restored package's manifest
+        self.assertFailsAt(self.validate(engine, "full"), "dotnet restore --locked-mode")
+        # lock: even with lock files rewritten to agree, Part 107 declares `randomness: none` and the
+        # package is found in them
         result = self.validate(engine, "lock")
-        self.assertFailsAt(result, "no lock file or project resolves RulesKernel.Randomness")
+        self.assertFailsAt(result, "RulesKernel.Randomness is reachable only as the corpus declares")
         self.assertIn("packages.lock.json (net8.0) resolves RulesKernel.Randomness", result[1])
         self.assertIn("ok   dotnet restore --locked-mode", result[1])
 

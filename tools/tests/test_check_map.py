@@ -47,6 +47,8 @@ MANIFEST = {
             "verification": "committed-copy",
             "committedPath": "demo.txt",
             "quotation": "verbatim",
+            # 0019: whether an engine for the corpus may draw random values.
+            "randomness": "none",
             "references": [{"sourceId": "other-corpus", "citation": "s 1", "admitted": False}],
         }
     ],
@@ -65,6 +67,7 @@ COMMERCIAL = {
     "verification": "local-copy",
     "envVar": "CORE_RULES_PDF",
     "quotation": "withheld",
+    "randomness": "seeded",
 }
 
 
@@ -455,6 +458,26 @@ class TestPostures(MapCase):
 
     def test_a_corpus_with_no_quotation_policy_fails(self):
         self.assert_manifest_catches(lambda m: m["corpora"][0].pop("quotation"))
+
+    def test_a_corpus_with_no_randomness_declared_fails(self):
+        output = self.assert_manifest_catches(lambda m: m["corpora"][0].pop("randomness"))
+        self.assertIn("randomness is None", output)
+
+    def test_randomness_outside_the_vocabulary_fails(self):
+        # `true` is not a declaration of how: 0019 names the source, seeded and replayable.
+        for value in ("dice", True, "unseeded"):
+            with self.subTest(value=value):
+                self.write_manifest(MANIFEST)
+                self.assert_manifest_catches(lambda m: m["corpora"][0].update(randomness=value))
+
+    def test_both_randomness_declarations_pass_and_are_reported(self):
+        manifest = json.loads(json.dumps(MANIFEST))
+        manifest["corpora"].append(COMMERCIAL)
+        self.write_manifest(manifest)
+        code, output = self.run_tool(valid_map())
+        self.assertEqual(self.status_of(output, "postures"), "ok", output)
+        self.assertIn("core-rules: local-copy, withheld, randomness seeded", output)
+        self.assertIn("demo-corpus: committed-copy, verbatim, randomness none", output)
 
     def test_a_committed_copy_that_is_not_committed_fails(self):
         self.assert_manifest_catches(lambda m: m["corpora"][0].update(committedPath="missing.txt"))

@@ -128,7 +128,9 @@ class TestAccepts(IntakeCase):
         self.assertIn("44 entries", output)
 
     def test_returns_what_later_steps_read(self):
+        self.assertEqual(intake.intake(self.hoyle, HOYLE_TEXT, log=None).randomness, "seeded")
         result = intake.intake(self.part107, PART107_XML, log=None)
+        self.assertEqual(result.randomness, "none")
         self.assertEqual(result.package_id, PART107_ID)
         self.assertEqual(len(result.map["entries"]), 44)
         self.assertEqual(result.corpus["sourceId"], "cfr-14-107")
@@ -167,6 +169,21 @@ class TestRefuses(IntakeCase):
         package = rewrite(self.part107, os.path.join(self.tmp, "local.nupkg"),
                           {"map/corpus-manifest.json": json.dumps(manifest).encode("utf-8")})
         self.assert_refused(package, PART107_XML, "NOT VERIFIED", "'local-copy'")
+
+    def test_a_manifest_that_does_not_declare_randomness(self):
+        """0019: a package from before the field is refused, never read as `none`."""
+        with zipfile.ZipFile(self.part107) as archive:
+            manifest = json.loads(archive.read("map/corpus-manifest.json"))
+        for value in (None, "dice", True):
+            with self.subTest(randomness=value):
+                corpus = manifest["corpora"][0]
+                if value is None:
+                    corpus.pop("randomness", None)
+                else:
+                    corpus["randomness"] = value
+                package = rewrite(self.part107, os.path.join(self.tmp, "randomness.nupkg"),
+                                  {"map/corpus-manifest.json": json.dumps(manifest).encode("utf-8")})
+                self.assert_refused(package, PART107_XML, f"cfr-14-107 declares randomness {value!r}")
 
     def test_a_package_missing_its_checker(self):
         package = rewrite(self.hoyle, os.path.join(self.tmp, "nochecker.nupkg"), {"tools/check-map.py": None})

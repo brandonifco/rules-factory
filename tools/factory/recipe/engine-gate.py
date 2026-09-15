@@ -7,10 +7,10 @@ proved its claim, 1 when it did not; `posture` also exits 3 for NOT VERIFIED. A 
 finds nothing to examine fails: a check with no inputs has proven nothing.
 
   lock-files                         every project on disk has a packages.lock.json
-  no-randomness                      nothing restores RulesKernel.Randomness
+  randomness --manifest M --map MAP  RulesKernel.Randomness is reachable only as the corpus declares
   posture --manifest M --map MAP --name N
                                      the committed corpus hashes to the baseline, under its posture
-  regenerate --package-map P --package-id ID --package-version V --name N [--write]
+  regenerate --package-map P --package-manifest M --package-id ID --package-version V --name N [--write]
                                      every *.g.cs is exactly what the factory generates
   expected-results                   test projects on disk x target frameworks
   tests-ran DIR EXPECTED             the TRX files show that many result files and >0 tests
@@ -32,7 +32,9 @@ import types
 ROOT = pathlib.Path.cwd()
 IGNORED = {"bin", "obj", ".git", "artifacts", "TestResults"}
 OVERLAY = "corpus-map.overlay.json"
-FORBIDDEN_PACKAGES = ("RulesKernel.Randomness",)
+RANDOMNESS_PACKAGE = "RulesKernel.Randomness"
+RANDOMNESS = ("none", "seeded")
+GENERATED_PROPS = "RulesFactory.Packages.g.props"
 TRX_NS = {"t": "http://microsoft.com/schemas/VisualStudio/TeamTest/2010"}
 
 
@@ -67,14 +69,52 @@ def lock_files(_args):
     return report(problems, f"{len(projects)} project(s), each with its packages.lock.json")
 
 
-def no_randomness(_args):
-    """A rule-bound engine for a corpus with no dice draws no random value: the kernel's randomness
-    package must not be reachable, directly or transitively. Lock files list every package restore
-    resolves, so they are the evidence; project files are read too, so a reference is found even
-    before a lock file records it."""
+def declared_randomness(manifest_path, map_path):
+    """The `randomness` the package manifest declares for the corpus the package map cites (0019).
+
+    Read from the restored map package, not from anything the engine commits. The package is
+    pinned to one version in the generated RulesFactory.Packages.g.props (the regenerate step holds
+    that file to a fresh regeneration) and to one content hash in the lock files (restore runs in
+    locked mode), so the engine cannot change the declaration without changing which package it is
+    built from. provenance.json records the same value, but it is a file in the engine's tree, and
+    only `factory provenance` recomputes it; a check that read it could be escaped by editing it.
+    Returns (value, problem): exactly one is None.
+    """
+    try:
+        manifest = json.loads(pathlib.Path(manifest_path).read_text(encoding="utf-8"))
+        mapped = json.loads(pathlib.Path(map_path).read_text(encoding="utf-8"))
+    except (OSError, ValueError) as error:
+        return None, f"cannot read the package manifest or map: {error}"
+    source_id = mapped.get("corpus") if isinstance(mapped, dict) else None
+    corpora = [c for c in (manifest.get("corpora") if isinstance(manifest, dict) else None) or []
+               if isinstance(c, dict) and c.get("sourceId") == source_id]
+    if len(corpora) != 1:
+        return None, f"the package manifest declares the map's corpus {source_id!r} {len(corpora)} times, not once"
+    value = corpora[0].get("randomness")
+    if isinstance(value, bool) or value not in RANDOMNESS:
+        return None, (f"{source_id} declares randomness {value!r}; it must be one of {', '.join(RANDOMNESS)} "
+                      "(rules-factory decision 0019), and nothing is assumed when it is missing")
+    return value, None
+
+
+def randomness(args):
+    """rules-factory decision 0019: whether an engine may draw random values is the corpus's to say.
+
+    `none`: a rule-bound engine for a corpus with no chance in it draws no random value, so the
+    kernel's randomness package must not be reachable, directly or transitively. Lock files list
+    every package restore resolves, so they are the evidence; project files are read too, so a
+    reference is found even before a lock file records it.
+
+    `seeded`: the engine may reference RulesKernel.Randomness, and its version has one home, the
+    generated RulesFactory.Packages.g.props, at the kernel's version. An engine-owned MSBuild file
+    that pins it again or overrides its version is refused, so the version cannot drift where no
+    regeneration looks."""
+    declared, problem = declared_randomness(args.manifest, args.map)
+    if problem:
+        return report([problem], "")
     locks = on_disk("packages.lock.json")
     problems = [] if locks else ["no packages.lock.json found, so nothing shows what restore resolves"]
-    lowered = {name.lower() for name in FORBIDDEN_PACKAGES}
+    resolved, referenced = [], []
     for lock in locks:
         try:
             document = json.loads(lock.read_text(encoding="utf-8"))
@@ -83,15 +123,30 @@ def no_randomness(_args):
             continue
         for framework, packages in (document.get("dependencies") or {}).items():
             for name in packages or {}:
-                if name.lower() in lowered:
-                    problems.append(f"{lock.relative_to(ROOT)} ({framework}) resolves {name}")
-    for project in on_disk("*.csproj") + on_disk("Directory.*.props") + on_disk("Directory.*.targets"):
+                if name.lower() == RANDOMNESS_PACKAGE.lower():
+                    resolved.append(f"{lock.relative_to(ROOT)} ({framework}) resolves {name}")
+    pattern = re.escape(RANDOMNESS_PACKAGE)
+    for project in on_disk("*.csproj") + on_disk("*.props") + on_disk("*.targets"):
+        relative = str(project.relative_to(ROOT)).replace(os.sep, "/")
         text = project.read_text(encoding="utf-8", errors="replace")
-        for name in FORBIDDEN_PACKAGES:
-            if re.search(r'Include\s*=\s*"' + re.escape(name) + r'"', text, re.IGNORECASE):
-                problems.append(f"{project.relative_to(ROOT)} references {name}")
-    return report(problems, f"{len(locks)} lock file(s) and the project files resolve no "
-                            f"{', '.join(FORBIDDEN_PACKAGES)}")
+        generated_props = relative == GENERATED_PROPS
+        if re.search(r'Include\s*=\s*"' + pattern + r'"', text, re.IGNORECASE):
+            if declared == "none" or not generated_props:
+                referenced.append(f"{relative} references {RANDOMNESS_PACKAGE}")
+        if declared == "seeded" and not generated_props:
+            if re.search(r'<PackageVersion\b[^>]*?\bInclude\s*=\s*"' + pattern + r'"', text, re.IGNORECASE):
+                problems.append(f"{relative} pins {RANDOMNESS_PACKAGE}; its version belongs in {GENERATED_PROPS}, "
+                                "at the kernel's version")
+            if re.search(r'<PackageReference\b[^>]*?\bInclude\s*=\s*"' + pattern + r'"[^>]*?\bVersion(Override)?\s*=',
+                         text, re.IGNORECASE):
+                problems.append(f"{relative} gives {RANDOMNESS_PACKAGE} a version of its own; it belongs in "
+                                f"{GENERATED_PROPS}, at the kernel's version")
+    if declared == "none":
+        problems += resolved + referenced
+        return report(problems, f"randomness: none -- {len(locks)} lock file(s) and the project files resolve no "
+                                f"{RANDOMNESS_PACKAGE}")
+    return report(problems, f"randomness: seeded -- {RANDOMNESS_PACKAGE} may be referenced, pinned only in "
+                            f"{GENERATED_PROPS} ({len(resolved)} lock-file resolution(s) of it)")
 
 
 # --- the corpus --------------------------------------------------------------------------
@@ -195,10 +250,14 @@ def regenerate(args):
     import provenance  # noqa: E402  (its generated C# that embeds provenance.json)
 
     package = json.loads(pathlib.Path(args.package_map).read_text(encoding="utf-8"))
+    declared, problem = declared_randomness(args.package_manifest, args.package_map)
+    if problem:
+        return report([problem], "")
     overlay_path = ROOT / OVERLAY
     overlay = json.loads(overlay_path.read_text(encoding="utf-8")) if overlay_path.is_file() else {}
     try:
-        model = generate.Model(types.SimpleNamespace(package_id=args.package_id, version=args.package_version),
+        model = generate.Model(types.SimpleNamespace(package_id=args.package_id, version=args.package_version,
+                                                     randomness=declared),
                                generate.merge(package, overlay), args.name)
         expected = {**generate.generated(model), **provenance.embedding(model)}
     except generate.GenerationError as error:
@@ -316,14 +375,17 @@ def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__.split("\n")[0])
     sub = parser.add_subparsers(dest="command", required=True)
     sub.add_parser("lock-files").set_defaults(run=lock_files)
-    sub.add_parser("no-randomness").set_defaults(run=no_randomness)
+    m = sub.add_parser("randomness")
+    m.add_argument("--manifest", required=True)
+    m.add_argument("--map", required=True)
+    m.set_defaults(run=randomness)
     p = sub.add_parser("posture")
     p.add_argument("--manifest", required=True)
     p.add_argument("--map", required=True)
     p.add_argument("--name", required=True)
     p.set_defaults(run=posture)
     r = sub.add_parser("regenerate")
-    for flag in ("--package-map", "--package-id", "--package-version", "--name"):
+    for flag in ("--package-map", "--package-manifest", "--package-id", "--package-version", "--name"):
         r.add_argument(flag, required=True)
     r.add_argument("--write", action="store_true")
     r.set_defaults(run=regenerate)

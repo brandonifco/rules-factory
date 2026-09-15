@@ -4,9 +4,9 @@ The recipe is the factory's, not the engine's, so it is rewritten on every `prod
 `*.g.cs` files) rather than scaffolded once. Its files are templates under `recipe/`:
 
   * `scripts/validate.sh` -- the one definition of "acceptable", generalised from
-    hoyle-backgammon's hand-built gate: SDK pin; locked restore; no RulesKernel.Randomness in any
-    lock file; merge(package map, overlay) under 0015 and the packaged
-    `check-map.py --phase consumer` on the merge; corpus hash under its declared posture (NOT
+    hoyle-backgammon's hand-built gate: SDK pin; locked restore; merge(package map, overlay)
+    under 0015 and the packaged `check-map.py --phase consumer` on the merge; RulesKernel.Randomness
+    reachable only as the packaged manifest's `randomness` declares (0019); corpus hash under its declared posture (NOT
     VERIFIED is its own outcome, never ok); every `*.g.cs` equal to a fresh regeneration;
     format; build and test in Debug and Release, with TRX evidence that the tests ran and that
     every test an implemented entry names exists and ran;

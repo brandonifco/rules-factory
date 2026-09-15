@@ -24,8 +24,8 @@ Stages, in order, each named in the output; the first that fails stops the run:
      that CI=true in the environment cannot make a first restore impossible, which writes the
      lock files (the scaffold's Directory.Build.props turns them on). An engine that already has
      lock files skips this stage; the gate's locked restore holds it to them.
-  3. gate -- the engine's own `scripts/validate.sh full` (gate.py): SDK pin, locked restore, no
-     randomness, the 0015 merge and the packaged consumer checker, corpus posture, every `*.g.cs`
+  3. gate -- the engine's own `scripts/validate.sh full` (gate.py): SDK pin, locked restore, the
+     randomness the corpus declares (0019), the 0015 merge and the packaged consumer checker, corpus posture, every `*.g.cs`
      equal to a fresh regeneration, format, and a -warnaserror build and tests in Debug and
      Release, reading the TRX files to show tests ran (zero tests fails) and that every test an
      implemented entry names exists and ran.

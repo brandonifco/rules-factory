@@ -727,7 +727,8 @@ Beside the entries, the corpora they cite:
       "licence": "public-domain",
       "verification": "committed-copy",
       "committedPath": "title26.xml",
-      "quotation": "verbatim"
+      "quotation": "verbatim",
+      "randomness": "none"
     },
     {
       "sourceId": "core-rules",
@@ -741,7 +742,8 @@ Beside the entries, the corpora they cite:
       "licence": "commercial",
       "verification": "local-copy",
       "envVar": "CORE_RULES_PDF",
-      "quotation": "withheld"
+      "quotation": "withheld",
+      "randomness": "seeded"
     }
   ]
 }
@@ -767,7 +769,14 @@ answered per corpus for the same reason ([0013](decisions/0013-verification-post
   redistribution question**. A person declares it; nothing infers it from `licence` or
   `boundaryPolicy`.
 
-`check-map.py --only postures` requires both on every admitted corpus, refuses a `never-commit`
+**`randomness`** is the same kind of fact about the engine
+([0019](decisions/0019-randomness-is-declared-by-the-corpus.md)): whether the rules call for
+chance. `none`: a conforming engine draws no random value, and its gate refuses
+`RulesKernel.Randomness`. `seeded`: it may draw, only through the kernel's seeded, replayable
+source; the factory pins that package at the kernel's version and references nothing. A person
+declares it from the rules. Nothing infers it, and a missing value is a failure, never `none`.
+
+`check-map.py --only postures` requires all three on every admitted corpus, refuses a `never-commit`
 `committed-copy`, a `local-copy` with no `envVar`, a `committedPath` that is not a file, and any
 `evidence` on an entry whose corpus is `withheld`. It hashes nothing; verifying the bytes and
 reporting the posture in force is an engine gate's job.

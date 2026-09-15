@@ -199,6 +199,29 @@ cd "$ROOT"
 step "factory provenance recomputes on the committed engine"
 python3 tools/factory provenance --engine "$ENGINE" --package "$PACKAGE"
 
+# #92 (decision 0019): hoyle-1909 declares `randomness: seeded`, so its engine may draw. On a scratch
+# copy, reference RulesKernel.Randomness (pinned only by the generated props), throw a seeded die,
+# and run the engine's own gate in lock mode, since a new reference needs new lock files: it restores
+# the package, accepts it under the corpus's declaration, and builds and tests.
+step "a seeded corpus's engine references RulesKernel.Randomness, and its gate passes"
+SEEDED="$SCRATCH/seeded"
+cp -R "$ENGINE" "$SEEDED"
+rm -rf "$SEEDED"/src/*/bin "$SEEDED"/src/*/obj "$SEEDED"/tests/*/bin "$SEEDED"/tests/*/obj
+python3 - "$SEEDED/src/$NAME/$NAME.csproj" <<'PY'
+import sys
+path, anchor = sys.argv[1], '    <PackageReference Include="RulesKernel" />\n'
+text = open(path, encoding="utf-8").read()
+assert anchor in text, f"{path} has no RulesKernel reference to add beside"
+open(path, "w", encoding="utf-8").write(text.replace(anchor, anchor + '    <PackageReference Include="RulesKernel.Randomness" />\n', 1))
+PY
+printf 'using RulesKernel.Randomness;\n\nnamespace %s;\n\ninternal static class SeededDie\n{\n    internal static int Throw(ulong seed) => UniformInt.InRange(Pcg32.FromSeed(seed, 54), 1, 6);\n}\n' "$NAME" \
+  > "$SEEDED/src/$NAME/SeededDie.cs"
+(cd "$SEEDED" && env -u CI ./scripts/validate.sh lock) > "$SCRATCH/seeded.log" 2>&1 \
+  || { tail -40 "$SCRATCH/seeded.log"; fail "the gate refused an engine of a seeded corpus that references RulesKernel.Randomness"; }
+grep -qE 'randomness: seeded -- .*\([1-9][0-9]* lock-file resolution' "$SCRATCH/seeded.log" \
+  || { tail -40 "$SCRATCH/seeded.log"; fail "the seeded engine's gate passed without a lock file resolving RulesKernel.Randomness"; }
+echo "ok   RulesKernel.Randomness restored under randomness: seeded; the engine's gate passes"
+
 # #76: the typed contract is only a contract if the compiler enforces it, and the Python test that
 # shows so (tools/tests/test_factory_gate.py) skips without an SDK, as in this repository's
 # validate job. So here, on a scratch copy of the committed engine: mark one entry implemented,
