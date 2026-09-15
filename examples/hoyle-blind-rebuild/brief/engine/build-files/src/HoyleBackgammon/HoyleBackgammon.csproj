@@ -1,0 +1,20 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <ItemGroup>
+    <PackageReference Include="RulesKernel" />
+    <PackageReference Include="RulesKernel.Randomness" />
+    <!-- The map package is referenced from RulesFactory.Packages.g.props, which `factory produce`
+         rewrites, so the reference always names the package the code was generated from. -->
+    <ProjectReference Include="../Tabletop.Dice/Tabletop.Dice.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- What this engine was produced from (rules-factory tools/factory/provenance.py); a
+         generated test asserts the embedded copy is the file. -->
+    <EmbeddedResource Include="../../provenance.json" LogicalName="HoyleBackgammon.provenance.json" Link="provenance.json" />
+  </ItemGroup>
+
+  <!-- The restored map package's RulesFactoryMap item, for the test project's CitationTests. -->
+  <Target Name="RulesFactoryMapItem" Returns="@(RulesFactoryMap)" />
+
+</Project>

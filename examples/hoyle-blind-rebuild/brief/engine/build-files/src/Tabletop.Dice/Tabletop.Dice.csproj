@@ -1,0 +1,15 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- The tabletop domain pack: dice vocabulary over the kernel's UniformInt. Deliberately
+       ruleset-agnostic. It is a separate project rather than a folder in the engine so that
+       "contains nothing about backgammon" is enforced by the reference graph rather than by
+       discipline: this project cannot see HoyleBackgammon. See docs/decisions/0001. -->
+  <PropertyGroup>
+    <RootNamespace>Tabletop.Dice</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="RulesKernel.Randomness" />
+  </ItemGroup>
+
+</Project>

@@ -1,0 +1,4 @@
+# Rebuilt from pins by build-brief.py assemble; not committed (README.md, "The brief").
+brief/inputs/
+api-surface/bin/
+api-surface/obj/

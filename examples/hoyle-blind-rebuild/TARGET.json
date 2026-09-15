@@ -1,0 +1,699 @@
+{
+  "$comment": "rules-factory#3, criterion 1 as redefined by Brandon on 2026-09-15: a blind rebuild of a public engine. Frozen before any rebuild starts. check-target.py re-derives every pinned section from git objects; changing this file takes a pull request that says why, reviewed by Brandon. This file names the target's tests, so it is not part of the brief and the implementer may not read it.",
+  "criterion": {
+    "issue": "brandonifco/rules-factory#3",
+    "redefinedOn": "2026-09-15",
+    "redefinedBy": "Brandon",
+    "replaces": "rebuilding deckard from the licensed SR6 corpus (dropped; closed PR #143)"
+  },
+  "engine": {
+    "repository": "brandonifco/hoyle-backgammon",
+    "commit": "712e8cae8f5e13fae5666441f3bb1ddd9f4c3832",
+    "testsTree": "73b6952b0025d533541e38c8bfdf3d338b17a9d3",
+    "provenanceSha256": "c171e5d35de4f1ebb935569fcbce2ee6b8005af18d313e2aeecf6dbb7538be4b",
+    "branch": "main",
+    "frozenOn": "2026-09-15",
+    "note": "main at freezing: dab64e0 (factory 0.6.0 rulings, ruleset 6, replay schema 4) plus #19, re-produced with factory 0.7.0 for RulesKernel 0.3.0; no rule or test changed in #19"
+  },
+  "tests": {
+    "targetFrameworks": [
+      "net10.0",
+      "net8.0"
+    ],
+    "methodCount": 189,
+    "caseCount": 560,
+    "casesMeasuredWith": "dotnet test -c Release on SDK 10.0.111 with global.json overridden in an exported copy (the pinned 10.0.112 is not installed on the machine that froze this); every case passed",
+    "handWrittenClasses": [
+      "AssertedPositionEntryPointTests",
+      "BearingOffDetailTests",
+      "BearingOffEligibilityTests",
+      "BearingOffSuspensionTests",
+      "BearingOffWorkedExampleTests",
+      "CitationTests",
+      "DeclineTests",
+      "DeterminismTests",
+      "DiceThrowTests",
+      "DieFacesTests",
+      "DieTests",
+      "EnterFromBarTests",
+      "EntitlementTests",
+      "FullTableSuspensionTests",
+      "GameValueEntryPointTests",
+      "GameValueTests",
+      "GeometryTests",
+      "IdentityTests",
+      "LegalDestinationTests",
+      "MapCorrespondenceTests",
+      "MoveByPipTests",
+      "MustPlayWholeThrowEntryPointTests",
+      "NextGameTests",
+      "OpeningRollTests",
+      "OpeningThrowerOptionTests",
+      "PackIsRulesetAgnosticTests",
+      "PlayEnumerationTests",
+      "PlayerCountTests",
+      "PositionTests",
+      "RubberScoringTests",
+      "SeededGameReplayTests",
+      "StakeTests",
+      "StartingPositionTests",
+      "WholeThrowTests"
+    ],
+    "generatedClasses": [
+      "CorrespondenceTests",
+      "ProvenanceTests"
+    ],
+    "projects": {
+      "HoyleBackgammon.Tests": {
+        "methodCount": 179,
+        "casesPerFramework": {
+          "net10.0": 262,
+          "net8.0": 262
+        },
+        "handWritten": [
+          "HoyleBackgammon.Tests.AssertedPositionEntryPointTests.A_request_without_a_position_is_the_callers_error_not_an_answer",
+          "HoyleBackgammon.Tests.AssertedPositionEntryPointTests.Every_entry_asked_about_an_asserted_position_answers_with_that_assertion",
+          "HoyleBackgammon.Tests.AssertedPositionEntryPointTests.Every_request_that_takes_a_position_takes_an_asserted_one_and_is_resolved_above",
+          "HoyleBackgammon.Tests.BearingOffDetailTests.A_blocked_forward_move_bears_off_from_the_highest_point_men_still_above_it",
+          "HoyleBackgammon.Tests.BearingOffDetailTests.A_forward_move_within_the_table_can_take_up_a_blot",
+          "HoyleBackgammon.Tests.BearingOffDetailTests.A_forward_move_within_the_table_is_still_subject_to_legal_destination",
+          "HoyleBackgammon.Tests.BearingOffDetailTests.Doublets_may_be_played_wholly_by_bearing_off",
+          "HoyleBackgammon.Tests.BearingOffDetailTests.The_last_man_off_wins_the_game",
+          "HoyleBackgammon.Tests.BearingOffEligibilityTests.A_man_re_entered_after_bearing_off_began_bears_off_again_only_once_every_man_is_home_naming_the_owners_ruling",
+          "HoyleBackgammon.Tests.BearingOffEligibilityTests.All_fifteen_home_begins_bearing_off",
+          "HoyleBackgammon.Tests.BearingOffEligibilityTests.Fourteen_home_and_one_out_does_not",
+          "HoyleBackgammon.Tests.BearingOffEligibilityTests.Men_already_off_the_board_are_not_outstanding",
+          "HoyleBackgammon.Tests.BearingOffEligibilityTests.The_re_entry_ruling_is_named_only_where_the_question_arises",
+          "HoyleBackgammon.Tests.BearingOffSuspensionTests.A_man_up_mid_bear_off_suspends_bearing_off_until_he_enters",
+          "HoyleBackgammon.Tests.BearingOffWorkedExampleTests.A_six_cannot_be_dealt_with_and_bears_off_from_the_cinque_point",
+          "HoyleBackgammon.Tests.BearingOffWorkedExampleTests.A_usable_number_must_be_played_forward_rather_than_off_the_highest_point",
+          "HoyleBackgammon.Tests.BearingOffWorkedExampleTests.Deuces_bear_off_three_and_the_fourth_man_is_played_forward",
+          "HoyleBackgammon.Tests.BearingOffWorkedExampleTests.For_the_quatre_he_may_remove_from_the_quatre_point_or_advance_cinque_to_ace",
+          "HoyleBackgammon.Tests.BearingOffWorkedExampleTests.For_the_trois_he_has_no_man_on_that_point_and_must_play_forward",
+          "HoyleBackgammon.Tests.CitationTests.Every_citation_names_a_page_inside_the_section_it_names_and_quoted_evidence_is_on_that_page",
+          "HoyleBackgammon.Tests.CitationTests.Every_located_entry_quotes_the_corpus_rather_than_summarising_it",
+          "HoyleBackgammon.Tests.CitationTests.The_map_the_citations_are_checked_against_is_the_one_the_engine_was_built_from",
+          "HoyleBackgammon.Tests.DeclineTests.Calling_the_throw_declines_as_outside_current_scope",
+          "HoyleBackgammon.Tests.DeclineTests.Doubling_declines_as_outside_current_scope",
+          "HoyleBackgammon.Tests.DeclineTests.Opening_advice_declines_as_outside_current_scope",
+          "HoyleBackgammon.Tests.DeclineTests.The_inner_tables_handedness_declines_as_missing_rules_data",
+          "HoyleBackgammon.Tests.DeterminismTests.A_different_seed_gives_a_different_game",
+          "HoyleBackgammon.Tests.DeterminismTests.A_finished_game_ends_with_the_winner_bearing_off_his_last_man",
+          "HoyleBackgammon.Tests.DeterminismTests.A_game_version_five_declined_finishes_and_names_the_owners_rulings_it_relied_on",
+          "HoyleBackgammon.Tests.DeterminismTests.A_game_version_four_declined_finishes_and_names_the_owners_rulings_it_relied_on",
+          "HoyleBackgammon.Tests.DeterminismTests.Every_draw_is_accounted_for_by_a_throw_of_two_dice",
+          "HoyleBackgammon.Tests.DeterminismTests.Scripted_decisions_are_consumed_in_order_and_running_out_is_an_error",
+          "HoyleBackgammon.Tests.DeterminismTests.The_recorded_game_replays_move_for_move_from_its_start_and_its_moves",
+          "HoyleBackgammon.Tests.DeterminismTests.The_same_seed_and_the_same_decisions_give_the_same_game",
+          "HoyleBackgammon.Tests.DeterminismTests.The_starting_position_travels_with_the_result_and_names_who_asserted_it",
+          "HoyleBackgammon.Tests.DeterminismTests.The_thirty_men_are_conserved_through_every_turn",
+          "HoyleBackgammon.Tests.DeterminismTests.The_winner_of_a_hit_opens_the_next_game_without_a_roll_for_the_right",
+          "HoyleBackgammon.Tests.DeterminismTests.Two_players_suspended_against_each_other_is_an_interaction_no_entry_covers",
+          "HoyleBackgammon.Tests.DieFacesTests.A_throw_shows_the_twenty_one_throws_the_corpus_names_and_no_other",
+          "HoyleBackgammon.Tests.EnterFromBarTests.A_blot_hit_begins_its_journey_anew_however_far_advanced",
+          "HoyleBackgammon.Tests.EnterFromBarTests.Entry_is_available_only_where_the_adversarys_table_is_open",
+          "HoyleBackgammon.Tests.EnterFromBarTests.Entry_is_permitted_on_a_point_the_entering_players_own_men_hold",
+          "HoyleBackgammon.Tests.EnterFromBarTests.The_second_man_up_is_still_up_when_the_first_has_entered",
+          "HoyleBackgammon.Tests.EnterFromBarTests.Two_men_up_suspends_the_others_exactly_as_one_does",
+          "HoyleBackgammon.Tests.EnterFromBarTests.While_a_man_is_up_the_play_of_his_other_men_is_suspended",
+          "HoyleBackgammon.Tests.EntitlementTests.Doublets_are_played_twice_over",
+          "HoyleBackgammon.Tests.EntitlementTests.Each_die_entitles_one_man_to_move_that_many_points",
+          "HoyleBackgammon.Tests.FullTableSuspensionTests.A_point_held_by_the_entering_players_own_men_does_not_make_the_table_full",
+          "HoyleBackgammon.Tests.FullTableSuspensionTests.A_single_man_on_one_of_the_six_points_does_not_make_the_table_full",
+          "HoyleBackgammon.Tests.FullTableSuspensionTests.Six_points_held_by_two_or_more_suspends_his_play_altogether",
+          "HoyleBackgammon.Tests.FullTableSuspensionTests.Suspension_needs_a_man_on_the_bar",
+          "HoyleBackgammon.Tests.GameValueEntryPointTests.A_finished_game_resolves_to_a_hit_a_gammon_or_a_backgammon",
+          "HoyleBackgammon.Tests.GameValueEntryPointTests.Nothing_borne_off_with_a_man_up_or_in_the_winners_home_table_is_a_backgammon_naming_the_owners_ruling",
+          "HoyleBackgammon.Tests.GameValueEntryPointTests.The_finish_no_named_result_covers_resolves_to_a_hit_naming_the_owners_ruling",
+          "HoyleBackgammon.Tests.GameValueTests.A_man_in_the_winners_home_table_before_bearing_off_is_a_backgammon_and_not_a_gammon_naming_the_owners_ruling",
+          "HoyleBackgammon.Tests.GameValueTests.A_man_in_the_winners_home_table_makes_it_a_backgammon",
+          "HoyleBackgammon.Tests.GameValueTests.A_man_one_point_short_of_the_winners_home_table_is_only_a_gammon",
+          "HoyleBackgammon.Tests.GameValueTests.A_man_up_before_bearing_off_is_a_backgammon_and_not_a_gammon_naming_the_owners_ruling",
+          "HoyleBackgammon.Tests.GameValueTests.A_man_up_makes_it_a_backgammon",
+          "HoyleBackgammon.Tests.GameValueTests.A_player_who_has_not_won_has_no_game_value",
+          "HoyleBackgammon.Tests.GameValueTests.All_the_adversarys_men_home_but_none_off_is_still_a_gammon",
+          "HoyleBackgammon.Tests.GameValueTests.Nobody_has_won_at_the_start",
+          "HoyleBackgammon.Tests.GameValueTests.The_adversary_bearing_off_makes_it_a_hit",
+          "HoyleBackgammon.Tests.GameValueTests.The_adversary_not_yet_bearing_off_makes_it_a_gammon",
+          "HoyleBackgammon.Tests.GameValueTests.The_finish_no_named_result_covers_is_a_hit_naming_the_owners_ruling",
+          "HoyleBackgammon.Tests.GeometryTests.A_mans_own_ace_point_faces_the_adversarys_ace_point",
+          "HoyleBackgammon.Tests.GeometryTests.Each_quarter_holds_six_points",
+          "HoyleBackgammon.Tests.GeometryTests.Each_table_is_marked_with_twelve_points_six_at_either_end",
+          "HoyleBackgammon.Tests.GeometryTests.Every_point_has_its_corpus_name",
+          "HoyleBackgammon.Tests.GeometryTests.The_bar_and_the_borne_off_are_not_points",
+          "HoyleBackgammon.Tests.GeometryTests.The_two_courses_run_opposite_over_one_set_of_points",
+          "HoyleBackgammon.Tests.IdentityTests.The_generator_is_named_and_is_the_kernels_pcg32",
+          "HoyleBackgammon.Tests.IdentityTests.The_pinned_corpus_is_the_gutenberg_text_including_its_boilerplate",
+          "HoyleBackgammon.Tests.IdentityTests.The_replay_schema_is_version_four",
+          "HoyleBackgammon.Tests.IdentityTests.The_ruleset_is_the_1909_backgammon_of_this_corpus_at_version_six",
+          "HoyleBackgammon.Tests.LegalDestinationTests.A_destination_off_the_board_is_not_a_permitted_point",
+          "HoyleBackgammon.Tests.LegalDestinationTests.An_adversarys_men_on_the_destination",
+          "HoyleBackgammon.Tests.LegalDestinationTests.The_players_own_men_never_refuse_him",
+          "HoyleBackgammon.Tests.MapCorrespondenceTests.Every_entry_whose_row_predicts_a_decline_has_a_hand_written_code_path_returning_it",
+          "HoyleBackgammon.Tests.MapCorrespondenceTests.Every_unresolved_result_in_the_hand_written_code_has_the_shape_this_check_reads",
+          "HoyleBackgammon.Tests.MapCorrespondenceTests.Every_unresolved_result_in_the_hand_written_code_is_the_reason_its_entrys_row_predicts",
+          "HoyleBackgammon.Tests.MapCorrespondenceTests.Nothing_inside_the_engine_calls_BeyondAdapter",
+          "HoyleBackgammon.Tests.MapCorrespondenceTests.The_entries_the_overlay_declares_fully_ruled_are_the_three_the_owner_ruled_on",
+          "HoyleBackgammon.Tests.MoveByPipTests.A_man_may_not_be_played_off_the_board_before_bearing_off_begins",
+          "HoyleBackgammon.Tests.MoveByPipTests.Six_trois_moves_one_man_six_and_then_the_same_or_another_man_three",
+          "HoyleBackgammon.Tests.MustPlayWholeThrowEntryPointTests.A_number_left_after_the_last_man_comes_home_bears_off_naming_the_owners_ruling",
+          "HoyleBackgammon.Tests.MustPlayWholeThrowEntryPointTests.A_six_trois_with_a_man_up_resolves_to_the_plays_of_the_whole_throw_each_move_citing_its_entry",
+          "HoyleBackgammon.Tests.MustPlayWholeThrowEntryPointTests.Doublets_resolve_to_the_one_play_that_goes_as_far_as_the_throw_can_each_move_citing_its_entry",
+          "HoyleBackgammon.Tests.MustPlayWholeThrowEntryPointTests.Either_die_alone_playable_but_not_both_plays_the_higher_naming_the_owners_ruling",
+          "HoyleBackgammon.Tests.MustPlayWholeThrowEntryPointTests.Two_orders_reaching_the_same_position_under_different_rules_are_one_play_naming_the_owners_ruling",
+          "HoyleBackgammon.Tests.NextGameTests.After_a_gammon_or_backgammon_the_players_throw_again_for_the_right",
+          "HoyleBackgammon.Tests.NextGameTests.The_winner_of_a_hit_throws_first_in_the_game_next_following",
+          "HoyleBackgammon.Tests.OpeningRollTests.An_adopted_opening_throw_is_never_doublets_so_it_never_entitles_four_numbers",
+          "HoyleBackgammon.Tests.OpeningRollTests.In_the_event_of_a_tie_the_players_throw_again",
+          "HoyleBackgammon.Tests.OpeningRollTests.The_deciding_pair_can_never_be_doublets",
+          "HoyleBackgammon.Tests.OpeningRollTests.The_higher_single_die_gives_the_right_to_begin",
+          "HoyleBackgammon.Tests.OpeningRollTests.The_other_player_begins_when_his_is_the_higher",
+          "HoyleBackgammon.Tests.OpeningThrowerOptionTests.An_adopted_opening_throw_entitles_two_numbers_and_a_re_thrown_doublet_four",
+          "HoyleBackgammon.Tests.OpeningThrowerOptionTests.Every_subsequent_throw_is_with_both_dice",
+          "HoyleBackgammon.Tests.OpeningThrowerOptionTests.He_may_adopt_the_points_shown_by_the_two_dice",
+          "HoyleBackgammon.Tests.OpeningThrowerOptionTests.Or_he_may_throw_again_with_both_dice",
+          "HoyleBackgammon.Tests.PlayEnumerationTests.The_plays_for_double_deuces_from_the_start_are_seventy_five_first_and_last_these",
+          "HoyleBackgammon.Tests.PlayEnumerationTests.The_plays_for_six_trois_from_the_start_are_these_fourteen_in_this_order",
+          "HoyleBackgammon.Tests.PlayEnumerationTests.The_same_throw_in_the_same_position_gives_the_same_list_every_time",
+          "HoyleBackgammon.Tests.PlayerCountTests.A_game_is_played_by_exactly_two_persons_turn_and_turn_about",
+          "HoyleBackgammon.Tests.PositionTests.A_lone_adversary_man_on_the_destination_is_taken_up_onto_the_bar",
+          "HoyleBackgammon.Tests.PositionTests.A_made_point_is_not_disturbed_by_a_man_landing_beside_it",
+          "HoyleBackgammon.Tests.PositionTests.A_side_with_the_wrong_number_of_men_is_refused",
+          "HoyleBackgammon.Tests.PositionTests.Bearing_a_man_off_puts_it_in_the_borne_off_slot",
+          "HoyleBackgammon.Tests.PositionTests.Occupied_points_read_highest_first",
+          "HoyleBackgammon.Tests.PositionTests.One_point_cannot_hold_men_of_both_sides",
+          "HoyleBackgammon.Tests.PositionTests.Thirty_men_fifteen_to_a_side",
+          "HoyleBackgammon.Tests.PositionTests.Two_men_make_a_point_and_one_is_a_blot",
+          "HoyleBackgammon.Tests.RubberScoringTests.A_rubber_scored_from_a_game_valued_by_an_owners_ruling_names_that_ruling",
+          "HoyleBackgammon.Tests.RubberScoringTests.Every_other_rubber_is_the_question_the_corpus_leaves_open",
+          "HoyleBackgammon.Tests.RubberScoringTests.Having_lost_the_first_hit_he_who_loses_the_next_game_has_lost_the_rubber",
+          "HoyleBackgammon.Tests.RubberScoringTests.Having_lost_the_first_hit_he_who_secures_a_gammon_wins_the_rubber",
+          "HoyleBackgammon.Tests.SeededGameReplayTests.A_seeded_game_replays_byte_for_byte_from_its_seed_and_its_recorded_decisions",
+          "HoyleBackgammon.Tests.SeededGameReplayTests.The_canonical_serialisation_is_rfc_8785_json_of_every_field_of_the_record",
+          "HoyleBackgammon.Tests.StakeTests.A_backgammon_pays_the_multiple_the_players_agreed",
+          "HoyleBackgammon.Tests.StakeTests.A_gammon_pays_double",
+          "HoyleBackgammon.Tests.StakeTests.A_hit_pays_the_single_stake",
+          "HoyleBackgammon.Tests.StakeTests.An_agreement_does_not_change_what_a_hit_or_a_gammon_pays",
+          "HoyleBackgammon.Tests.StakeTests.An_agreement_nobody_is_answerable_for_is_refused",
+          "HoyleBackgammon.Tests.StakeTests.An_uncited_agreement_says_so_rather_than_implying_a_source",
+          "HoyleBackgammon.Tests.StakeTests.The_agreement_is_recorded_alongside_the_outcome",
+          "HoyleBackgammon.Tests.StakeTests.The_corpus_bounds_the_agreement_to_thrice_or_four_times",
+          "HoyleBackgammon.Tests.StakeTests.The_figure_is_demanded_and_never_inferred",
+          "HoyleBackgammon.Tests.StakeTests.The_map_leaves_who_agreed_to_the_caller",
+          "HoyleBackgammon.Tests.StartingPositionTests.Blacks_men_are_placed_on_the_points_immediately_facing_Whites",
+          "HoyleBackgammon.Tests.StartingPositionTests.Nobody_is_on_the_bar_or_borne_off_at_the_start",
+          "HoyleBackgammon.Tests.StartingPositionTests.The_engine_derives_it_rather_than_needing_it_asserted",
+          "HoyleBackgammon.Tests.StartingPositionTests.The_four_points_are_the_four_the_corpus_names",
+          "HoyleBackgammon.Tests.WholeThrowTests.A_man_up_is_still_compelled_to_play_the_whole_throw",
+          "HoyleBackgammon.Tests.WholeThrowTests.A_throw_that_can_be_played_whole_must_be",
+          "HoyleBackgammon.Tests.WholeThrowTests.A_throw_with_nothing_playable_is_lost_entirely",
+          "HoyleBackgammon.Tests.WholeThrowTests.Doublets_that_cannot_be_played_four_times_are_played_as_far_as_they_go",
+          "HoyleBackgammon.Tests.WholeThrowTests.Each_die_alone_really_is_playable_in_that_position",
+          "HoyleBackgammon.Tests.WholeThrowTests.The_owners_ruling_is_named_in_exactly_one_shape_either_die_alone_playable_but_not_both",
+          "HoyleBackgammon.Tests.WholeThrowTests.Where_either_die_alone_can_be_played_but_not_both_the_higher_is_compelled_naming_the_owners_ruling",
+          "HoyleBackgammon.Tests.WholeThrowTests.Where_only_one_die_can_ever_be_played_that_die_is_compelled"
+        ],
+        "generated": [
+          "HoyleBackgammon.Tests.CorrespondenceTests.Every_hand_written_handler_names_a_map_entry_once_with_the_handler_signature",
+          "HoyleBackgammon.Tests.CorrespondenceTests.Every_map_entry_has_a_typed_entry_point_in_map_order",
+          "HoyleBackgammon.Tests.CorrespondenceTests.Every_map_entry_is_registered_in_map_order",
+          "HoyleBackgammon.Tests.CorrespondenceTests.agreed_backgammon_multiple__is_implemented_and_answers_or_demands_the_assertion",
+          "HoyleBackgammon.Tests.CorrespondenceTests.bearing_off_doublets__is_implemented_so_a_hand_written_handler_answers_it",
+          "HoyleBackgammon.Tests.CorrespondenceTests.bearing_off_eligible__is_implemented_so_a_hand_written_handler_answers_it",
+          "HoyleBackgammon.Tests.CorrespondenceTests.bearing_off_highest__is_implemented_so_a_hand_written_handler_answers_it",
+          "HoyleBackgammon.Tests.CorrespondenceTests.bearing_off_move_or_remove__is_implemented_so_a_hand_written_handler_answers_it",
+          "HoyleBackgammon.Tests.CorrespondenceTests.blot_hit__is_implemented_so_a_hand_written_handler_answers_it",
+          "HoyleBackgammon.Tests.CorrespondenceTests.board_tables__is_implemented_so_a_hand_written_handler_answers_it",
+          "HoyleBackgammon.Tests.CorrespondenceTests.calling_the_throw__declines_OutsideCurrentScope_row_1",
+          "HoyleBackgammon.Tests.CorrespondenceTests.die_faces__is_implemented_so_a_hand_written_handler_answers_it",
+          "HoyleBackgammon.Tests.CorrespondenceTests.direction_of_travel__is_implemented_so_a_hand_written_handler_answers_it",
+          "HoyleBackgammon.Tests.CorrespondenceTests.doublets__is_implemented_so_a_hand_written_handler_answers_it",
+          "HoyleBackgammon.Tests.CorrespondenceTests.doubling_cube__declines_OutsideCurrentScope_row_1",
+          "HoyleBackgammon.Tests.CorrespondenceTests.enter_from_bar__is_implemented_so_a_hand_written_handler_answers_it",
+          "HoyleBackgammon.Tests.CorrespondenceTests.full_table_suspension__is_implemented_so_a_hand_written_handler_answers_it",
+          "HoyleBackgammon.Tests.CorrespondenceTests.game_value__is_implemented_so_a_hand_written_handler_answers_it",
+          "HoyleBackgammon.Tests.CorrespondenceTests.hit_pays_single_stake__cites_every_premise",
+          "HoyleBackgammon.Tests.CorrespondenceTests.hit_pays_single_stake__is_implemented_so_a_hand_written_handler_answers_it",
+          "HoyleBackgammon.Tests.CorrespondenceTests.inner_table_handedness__declines_MissingRulesData_row_4",
+          "HoyleBackgammon.Tests.CorrespondenceTests.legal_destination__is_implemented_so_a_hand_written_handler_answers_it",
+          "HoyleBackgammon.Tests.CorrespondenceTests.made_point__is_implemented_so_a_hand_written_handler_answers_it",
+          "HoyleBackgammon.Tests.CorrespondenceTests.men_count__is_implemented_so_a_hand_written_handler_answers_it",
+          "HoyleBackgammon.Tests.CorrespondenceTests.move_by_pip__is_implemented_so_a_hand_written_handler_answers_it",
+          "HoyleBackgammon.Tests.CorrespondenceTests.must_play_whole_throw__is_implemented_so_a_hand_written_handler_answers_it",
+          "HoyleBackgammon.Tests.CorrespondenceTests.next_game_opening__is_implemented_so_a_hand_written_handler_answers_it",
+          "HoyleBackgammon.Tests.CorrespondenceTests.opening_roll__is_implemented_so_a_hand_written_handler_answers_it",
+          "HoyleBackgammon.Tests.CorrespondenceTests.opening_thrower_option__is_implemented_so_a_hand_written_handler_answers_it",
+          "HoyleBackgammon.Tests.CorrespondenceTests.player_count__is_implemented_so_a_hand_written_handler_answers_it",
+          "HoyleBackgammon.Tests.CorrespondenceTests.point_designations__is_implemented_so_a_hand_written_handler_answers_it",
+          "HoyleBackgammon.Tests.CorrespondenceTests.rubber_scoring__is_implemented_so_a_hand_written_handler_answers_it",
+          "HoyleBackgammon.Tests.CorrespondenceTests.stake_multiplier__is_implemented_so_a_hand_written_handler_answers_it",
+          "HoyleBackgammon.Tests.CorrespondenceTests.starting_position__is_implemented_so_a_hand_written_handler_answers_it",
+          "HoyleBackgammon.Tests.CorrespondenceTests.strategy_advice__declines_OutsideCurrentScope_row_1",
+          "HoyleBackgammon.Tests.CorrespondenceTests.throw_two_dice__is_implemented_so_a_hand_written_handler_answers_it",
+          "HoyleBackgammon.Tests.CorrespondenceTests.win_condition__is_implemented_so_a_hand_written_handler_answers_it",
+          "HoyleBackgammon.Tests.ProvenanceTests.The_embedded_provenance_is_byte_identical_to_provenance_json_in_the_engine_root"
+        ]
+      },
+      "Tabletop.Dice.Tests": {
+        "methodCount": 10,
+        "casesPerFramework": {
+          "net10.0": 18,
+          "net8.0": 18
+        },
+        "handWritten": [
+          "Tabletop.Dice.Tests.DiceThrowTests.A_pair_throws_its_first_die_before_its_second",
+          "Tabletop.Dice.Tests.DiceThrowTests.Higher_lower_and_doublets",
+          "Tabletop.Dice.Tests.DiceThrowTests.Throw_order_is_kept_rather_than_normalised",
+          "Tabletop.Dice.Tests.DieTests.A_default_die_refuses_to_be_thrown",
+          "Tabletop.Dice.Tests.DieTests.A_die_needs_at_least_one_face",
+          "Tabletop.Dice.Tests.DieTests.A_rejected_word_costs_a_draw_and_is_not_a_face",
+          "Tabletop.Dice.Tests.DieTests.A_throw_of_a_d6_costs_exactly_one_draw_when_the_word_is_accepted",
+          "Tabletop.Dice.Tests.DieTests.Every_face_of_a_die_is_reachable_and_none_beyond",
+          "Tabletop.Dice.Tests.DieTests.Face_is_the_raw_value_plus_one",
+          "Tabletop.Dice.Tests.PackIsRulesetAgnosticTests.No_public_name_in_the_pack_is_ruleset_vocabulary"
+        ],
+        "generated": []
+      }
+    }
+  },
+  "factory": {
+    "tag": "factory/v0.7.0",
+    "version": "0.7.0",
+    "commit": "069780809543a66d5556d713e337d850ef405b41",
+    "dirty": false,
+    "recipesDigest": "1ddbbfea919b4fde8f98fe7d7973a4d1e6472fc6825e425f57c15a7b7d17ed0a",
+    "note": "the newest factory tag on 2026-09-15, and the one the engine at this commit records; factory/v0.6.0 produced dab64e0"
+  },
+  "map": {
+    "packageId": "RulesFactory.Maps.HoyleBackgammon",
+    "version": "6.0.0",
+    "nupkgSha256": "50f0381718d77ccf96ebe652db2235ba11ec079707a9bd4a8c5ad049e4e053a8"
+  },
+  "kernel": {
+    "packageId": "RulesKernel",
+    "version": "0.3.0"
+  },
+  "corpus": {
+    "sourceId": "hoyle-1909",
+    "contentHash": "5d505fa9f6202340eb55313b8ef607b816087a860d3d51b1bf92b5f65240645e",
+    "hashDerivation": "gutenberg-plain-text-including-boilerplate",
+    "asOf": null
+  },
+  "randomness": "seeded",
+  "packs": [],
+  "identity": {
+    "ruleset": {
+      "id": "hoyle-1909-backgammon",
+      "version": 6
+    },
+    "replaySchema": 4,
+    "randomAlgorithm": "pcg_setseq_64_xsh_rr_32"
+  },
+  "replay": {
+    "seed": 20260914,
+    "canonicalJsonSha256": "24af54b1bd433e2ba9bb12f2a9e3ecc5bf660290a9d415e4eb9087dda24ba274",
+    "pinnedIn": "tests/HoyleBackgammon.Tests/EntryPointTests.cs"
+  },
+  "packagePins": {
+    "kernel": "0.3.0",
+    "randomness": "0.3.0",
+    "map": "6.0.0"
+  },
+  "generatedFiles": [
+    {
+      "path": ".github/workflows/validate.yml",
+      "sha256": "f7720e2d2a26d65bb738c77d6be6fb84a46960a3e7230a75ed27ab66ce1b0033"
+    },
+    {
+      "path": "RulesFactory.Packages.g.props",
+      "sha256": "e9e03eee983b8db3a72daf00b6e3be28d685e9139731318ee24112959202bf55"
+    },
+    {
+      "path": "backlog/README.md",
+      "sha256": "f434fe262dc257cd517491647c6e170256baedb66395fd1c8d9b5edb00337d6f"
+    },
+    {
+      "path": "corpus/hoyle.txt",
+      "sha256": "5d505fa9f6202340eb55313b8ef607b816087a860d3d51b1bf92b5f65240645e"
+    },
+    {
+      "path": "scripts/engine-gate.py",
+      "sha256": "6bdfc491088584d5dbca128692e4d3fb7182655d24f9b24c2b45e641b605ffdb"
+    },
+    {
+      "path": "scripts/factory/generate.py",
+      "sha256": "afcea250d2dbd23390f156ece985824714ac68c65e8f4551c51323397c2388bb"
+    },
+    {
+      "path": "scripts/factory/intake.py",
+      "sha256": "002730b82e965e2ef2d70d5cd51855e01e8052f940a40cb591f2c26a26a5a7b9"
+    },
+    {
+      "path": "scripts/factory/ownership.py",
+      "sha256": "799fd376c652954a4d371b329cc1bfdb8cd32c43e2eb3ed971ba028f6655240a"
+    },
+    {
+      "path": "scripts/factory/provenance.py",
+      "sha256": "715ae6898c9e370589d32f38a32b8bb8ace2b144281b19bdbcac9b6eff403f98"
+    },
+    {
+      "path": "scripts/factory/rulings.py",
+      "sha256": "cd99fde18b6c9b031e6669d36d3d2af7030afbc686c3fdd8e7c40a0fc07e5fe2"
+    },
+    {
+      "path": "scripts/map-overlay.py",
+      "sha256": "11cb78f15f1e6a1ccc8a08542d5fd59beecb30bb8e0a6c903460d6b041129714"
+    },
+    {
+      "path": "scripts/validate.sh",
+      "sha256": "60fc4ef99c57292143043dac49462e681bcbd65d361d80c326dc30787f34cf84"
+    },
+    {
+      "path": "src/HoyleBackgammon/Generated/Contracts.g.cs",
+      "sha256": "9710b3d7cfa49788847373f54a4cf3624e04e86fd8b6e1b6ed91ff29116873ef"
+    },
+    {
+      "path": "src/HoyleBackgammon/Generated/MapEntries.g.cs",
+      "sha256": "dd03bb0e1c9694128657f11e3c25d9e2b36fafe303a32ab2f53fc3191afb28d2"
+    },
+    {
+      "path": "src/HoyleBackgammon/Generated/Provenance.g.cs",
+      "sha256": "617124709f4809d38a4c6e7629f90634c9d37d95b8c271dcdbac0d1fed094c1b"
+    },
+    {
+      "path": "src/HoyleBackgammon/Generated/Registry.g.cs",
+      "sha256": "b42d05e88a1a7587a7eb65e0de1b3f8d2a7539ad9f869c6831b033cbfd775d3f"
+    },
+    {
+      "path": "src/HoyleBackgammon/Generated/Requests.g.cs",
+      "sha256": "55dcfa46e0ebf73be20ddef888d5832d6f95f6683eb1a6e63158998021f153cd"
+    },
+    {
+      "path": "src/HoyleBackgammon/Generated/Rulings.g.cs",
+      "sha256": "2370298196db795bd11cc1888f27584130e82c97aa68f408175517257d20814c"
+    },
+    {
+      "path": "tests/HoyleBackgammon.Tests/Generated/CorrespondenceTests.g.cs",
+      "sha256": "9f26e313bc924ae765fac6d9d075f7fd7b1d36aa62d21b0b31be590686e7000d"
+    },
+    {
+      "path": "tests/HoyleBackgammon.Tests/Generated/ProvenanceTests.g.cs",
+      "sha256": "4baa5271a08c6a4dc199555b08a18a6a679a1fc821b1c896599023d9c9ebdddd"
+    }
+  ],
+  "managedFiles": [
+    {
+      "path": "Directory.Build.props",
+      "recipeVersion": 2,
+      "sha256": "73c373b1457e4149eb7ab7da1aed49314536ca8945dea8022c1efbd49c7a1a8f"
+    },
+    {
+      "path": "NuGet.config",
+      "recipeVersion": 2,
+      "sha256": "e53f00efe0e550fb452b2e1d8d3b1e2f0cdd1de86628eff7d60a813ebfa1818f"
+    },
+    {
+      "path": "global.json",
+      "recipeVersion": 1,
+      "sha256": "12f1cf1c3eef038f55de570dc8f5e321f4ff5306a9281106c43cc60a1f78a371"
+    }
+  ],
+  "ownerRulings": [
+    {
+      "id": "must-play-whole-throw/1",
+      "entry": "must-play-whole-throw",
+      "span": "An unplayable part is lost and the whole must be played 'if it is possible'. The text does not say what happens when either die alone is playable but not both -- a case every modern ruleset settles explicitly.",
+      "answer": "Where either number alone can be played but not both, the higher number must be played.",
+      "ruledBy": "Brandon",
+      "ruledOn": "2026-09-15",
+      "record": "docs/decisions/0010-owner-rulings-are-ruleset-version-six.md"
+    },
+    {
+      "id": "must-play-whole-throw/2",
+      "entry": "must-play-whole-throw",
+      "span": "Nor does it say what a play of the whole throw is: the position the numbers reach, or the moves in the order they are made. Where two orders use the same numbers and reach the same position, the text does not say whether they are one play or two, which matters where the rule that permits a move differs between the orders (with the last man outside on the eight point and deuce-ace thrown, 8/6 6/5 and 8/7 7/5 both leave that man on the five point, but the first plays the ace after every man is home and the second does not; see bearing-off-eligible's question).",
+      "answer": "One play: orders of the same numbers that reach the same position are offered once, crediting the rules of the first order found.",
+      "ruledBy": "Brandon",
+      "ruledOn": "2026-09-15",
+      "record": "docs/decisions/0009-owner-rulings-are-ruleset-version-five.md"
+    },
+    {
+      "id": "bearing-off-eligible/1",
+      "entry": "bearing-off-eligible",
+      "span": "The stage begins 'when either player has succeeded in getting all his men into his home table', and the chapter never says whether it lasts. If one of his men is hit after he has begun to bear off and then re-enters, the text does not say whether he may go on bearing off the men still at home or must first bring every man home again.",
+      "answer": "No: a player whose man is hit after he has begun to bear off may not bear off again until every man is back in his home table.",
+      "ruledBy": "Brandon",
+      "ruledOn": "2026-09-15",
+      "record": "docs/decisions/0010-owner-rulings-are-ruleset-version-six.md"
+    },
+    {
+      "id": "bearing-off-eligible/2",
+      "entry": "bearing-off-eligible",
+      "span": "Nor does it say when within a throw the stage begins. If a man played with the first number of a throw is the last to come home, the text does not say whether the number left is played under this stage ('each throw entitles the player either to move forward a man or men ... or to remove men'), or as an ordinary move because the throw began before the stage was reached. On the first reading, with his last man outside on the nine point and six-trois thrown, 9/3 then bearing that man off with the trois is a legal play, and so is 9/6 then bearing him off with the six; on the second reading neither is. The quatre-trois example weighs both numbers against a distribution already home, so it does not decide the case.",
+      "answer": "Yes: once a player's first number brings his last man home, the number left bears off.",
+      "ruledBy": "Brandon",
+      "ruledOn": "2026-09-15",
+      "record": "docs/decisions/0009-owner-rulings-are-ruleset-version-five.md"
+    },
+    {
+      "id": "game-value/1",
+      "entry": "game-value",
+      "span": "The three named results do not cover every finish. Written as predicates on the loser they are: all his men home and he has begun to bear off (a hit); he has not begun to bear off (a gammon); he has a man up or in the winner's home table (a backgammon). A loser who has borne off a man, been taken up, re-entered and run that man clear of the winner's home table but not yet back into his own answers none of them, and the corpus does not say what such a win is worth.",
+      "answer": "A single game (a hit): a loser who has borne off a man, has none on the bar or in the winner's home table, and is not all home loses a hit.",
+      "ruledBy": "Brandon",
+      "ruledOn": "2026-09-15",
+      "record": "docs/decisions/0010-owner-rulings-are-ruleset-version-six.md"
+    },
+    {
+      "id": "game-value/2",
+      "entry": "game-value",
+      "span": "Nor are they disjoint, in two cases. A loser who has borne off nothing answers 'before his adversary has begun to do the same' (a gammon); if he also has a man up, or a man in the winner's home table, he answers 'a man or men \"up\" (_i.e._, on the bar) or in his (the winner's) home table' (a backgammon) as well. The corpus does not say which result he suffers in either case.",
+      "answer": "A backgammon, never also a gammon: a loser who has borne off nothing and has a man on the bar or in the winner's home table is backgammoned.",
+      "ruledBy": "Brandon",
+      "ruledOn": "2026-09-15",
+      "record": "docs/decisions/0010-owner-rulings-are-ruleset-version-six.md"
+    }
+  ],
+  "overlay": {
+    "implemented": [
+      "agreed-backgammon-multiple",
+      "bearing-off-doublets",
+      "bearing-off-eligible",
+      "bearing-off-highest",
+      "bearing-off-move-or-remove",
+      "blot-hit",
+      "board-tables",
+      "die-faces",
+      "direction-of-travel",
+      "doublets",
+      "enter-from-bar",
+      "full-table-suspension",
+      "game-value",
+      "hit-pays-single-stake",
+      "legal-destination",
+      "made-point",
+      "men-count",
+      "move-by-pip",
+      "must-play-whole-throw",
+      "next-game-opening",
+      "opening-roll",
+      "opening-thrower-option",
+      "player-count",
+      "point-designations",
+      "rubber-scoring",
+      "stake-multiplier",
+      "starting-position",
+      "throw-two-dice",
+      "win-condition"
+    ],
+    "fullyRuled": [
+      "bearing-off-eligible",
+      "game-value",
+      "must-play-whole-throw"
+    ]
+  },
+  "brief": {
+    "builder": "examples/hoyle-blind-rebuild/build-brief.py",
+    "apiContract": {
+      "rawSha256": "a463fdcda47286cebb9b6317cc4b80adadb6acf4b047efc257365fe74ff12d32",
+      "builtWith": "build-brief.py api on SDK 10.0.111 (--sdk-override), net10.0 assemblies"
+    },
+    "verbatim": [
+      {
+        "path": "HoyleBackgammon.slnx",
+        "sha256": "225327ace7d30798173f78662594a0fb1c3a85e88fa48863a89a846445a4abcd"
+      },
+      {
+        "path": "Directory.Packages.props",
+        "sha256": "b2cc3b4934d1bc9843a91f2e25e31f76d4e9f04d3b675b0ec73ba4d3eba386c5"
+      },
+      {
+        "path": "src/HoyleBackgammon/HoyleBackgammon.csproj",
+        "sha256": "b2d7e7db89db6ee9682db2efe870890c571989941715e7deffc0596bd18bc967"
+      },
+      {
+        "path": "src/Tabletop.Dice/Tabletop.Dice.csproj",
+        "sha256": "34ac7deb88fd184a1583a2da1b850f3685d8dd9ef08915dbf48c9253790b1947"
+      }
+    ],
+    "disclosureFiles": [
+      "engine/conventions.md"
+    ],
+    "disclosures": [
+      {
+        "file": "inputs/map/rulesfactory.maps.hoylebackgammon.6.0.0.nupkg!map/corpus-map.json",
+        "kind": "test-name",
+        "name": "A_blocked_forward_move_bears_off_from_the_highest_point_men_still_above_it",
+        "count": 1,
+        "why": "the published map package names it in an entry's note; the package is pinned by hash and cannot be redacted"
+      },
+      {
+        "file": "inputs/map/rulesfactory.maps.hoylebackgammon.6.0.0.nupkg!map/corpus-map.json",
+        "kind": "test-name",
+        "name": "A_point_held_by_the_entering_players_own_men_does_not_make_the_table_full",
+        "count": 1,
+        "why": "the published map package names it in an entry's note; the package is pinned by hash and cannot be redacted"
+      },
+      {
+        "file": "inputs/map/rulesfactory.maps.hoylebackgammon.6.0.0.nupkg!map/corpus-map.json",
+        "kind": "test-name",
+        "name": "BearingOffDetailTests",
+        "count": 1,
+        "why": "the published map package names it in an entry's note; the package is pinned by hash and cannot be redacted"
+      },
+      {
+        "file": "inputs/map/rulesfactory.maps.hoylebackgammon.6.0.0.nupkg!map/corpus-map.json",
+        "kind": "test-name",
+        "name": "EnterFromBarTests",
+        "count": 2,
+        "why": "the published map package names it in an entry's note; the package is pinned by hash and cannot be redacted"
+      },
+      {
+        "file": "inputs/map/rulesfactory.maps.hoylebackgammon.6.0.0.nupkg!map/corpus-map.json",
+        "kind": "test-name",
+        "name": "Entry_is_permitted_on_a_point_the_entering_players_own_men_hold",
+        "count": 2,
+        "why": "the published map package names it in an entry's note; the package is pinned by hash and cannot be redacted"
+      },
+      {
+        "file": "inputs/map/rulesfactory.maps.hoylebackgammon.6.0.0.nupkg!map/corpus-map.json",
+        "kind": "test-name",
+        "name": "FullTableSuspensionTests",
+        "count": 1,
+        "why": "the published map package names it in an entry's note; the package is pinned by hash and cannot be redacted"
+      },
+      {
+        "file": "inputs/map/rulesfactory.maps.hoylebackgammon.6.0.0.nupkg!map/corpus-map.json",
+        "kind": "test-name",
+        "name": "GameValueTests",
+        "count": 1,
+        "why": "the published map package names it in an entry's note; the package is pinned by hash and cannot be redacted"
+      },
+      {
+        "file": "inputs/map/rulesfactory.maps.hoylebackgammon.6.0.0.nupkg!map/corpus-map.json",
+        "kind": "test-name",
+        "name": "WholeThrowTests",
+        "count": 1,
+        "why": "the published map package names it in an entry's note; the package is pinned by hash and cannot be redacted"
+      },
+      {
+        "file": "engine/build-files/src/HoyleBackgammon/HoyleBackgammon.csproj",
+        "kind": "test-name",
+        "name": "CitationTests",
+        "count": 1,
+        "why": "a comment in the engine project file, which the brief hands over verbatim so the tests' project builds against it"
+      }
+    ],
+    "manifestSha256": "da6726e61c3cbb3d8c179eccde0930c61aca082d5ac6a4388789a3dc19de8dcc"
+  },
+  "equivalence": {
+    "document": "examples/hoyle-blind-rebuild/EQUIVALENCE.md",
+    "checker": "examples/hoyle-blind-rebuild/check-rebuild.py",
+    "runbook": "examples/hoyle-blind-rebuild/RUNBOOK.md",
+    "allowedShims": [],
+    "casesRequired": "all",
+    "label": "with a written interface",
+    "assistedAfterAnswers": 10,
+    "judgedIn": ".github/workflows/judge-rebuild.yml",
+    "judgedOnSdk": "10.0.112"
+  },
+  "decisions": [
+    {
+      "id": "H1",
+      "question": "Does the API contract include the engine's public XML documentation, or signatures only?",
+      "decision": "Keep api-contract.md with its documentation. A rebuild from this brief is labelled 'with a written interface'.",
+      "decidedBy": "Brandon",
+      "decidedOn": "2026-09-15"
+    },
+    {
+      "id": "H2",
+      "question": "Is conventions.md, written from the tests, allowed in the brief?",
+      "decision": "Keep conventions.md. It counts as help received, and the result carries the 'with a written interface' label.",
+      "decidedBy": "Brandon",
+      "decidedOn": "2026-09-15"
+    },
+    {
+      "id": "H3",
+      "question": "May the implementer ask questions during the rebuild?",
+      "decision": "Written questions are allowed. Every question and answer is published with the result. More than 10 answers labels the result 'assisted'.",
+      "decidedBy": "Brandon",
+      "decidedOn": "2026-09-15"
+    },
+    {
+      "id": "H4",
+      "question": "Does a rebuild that passes most but not all cases meet the criterion?",
+      "decision": "No. All 560 cases pass or it fails, and the pass count is reported either way.",
+      "decidedBy": "Brandon",
+      "decidedOn": "2026-09-15"
+    },
+    {
+      "id": "H5",
+      "question": "The published map 6.0.0 names three test methods and five test classes; accept them?",
+      "decision": "Accepted as a pinned disclosure. Future maps must not name an engine's tests.",
+      "decidedBy": "Brandon",
+      "decidedOn": "2026-09-15"
+    },
+    {
+      "id": "H6",
+      "question": "Some tests read the engine's source text; keep them?",
+      "decision": "Accepted: the tests stay unmodified and the source convention is disclosed in conventions.md.",
+      "decidedBy": "Brandon",
+      "decidedOn": "2026-09-15"
+    },
+    {
+      "id": "H7",
+      "question": "Freeze 712e8ca with factory/v0.7.0 rather than dab64e0 with factory/v0.6.0?",
+      "decision": "Accepted: 712e8ca with factory/v0.7.0.",
+      "decidedBy": "Brandon",
+      "decidedOn": "2026-09-15"
+    },
+    {
+      "id": "H8",
+      "question": "How is blindness enforced?",
+      "decision": "A fresh agent works with network restricted to NuGet, the .NET SDK, documentation and the factory, and its transcript is searched afterwards. The factory is pre-staged in the brief so no github.com access is needed. RUNBOOK.md says how, and what enforcement is available.",
+      "decidedBy": "Brandon",
+      "decidedOn": "2026-09-15"
+    },
+    {
+      "id": "H9",
+      "question": "Is mechanical, logged, block-level redaction acceptable?",
+      "decision": "Brandon reviews the 26 redactions himself, from REDACTIONS.md.",
+      "decidedBy": "Brandon",
+      "decidedOn": "2026-09-15"
+    },
+    {
+      "id": "H10",
+      "question": "May recordSha256, buildInputs and engineOwned differ, and is the copy check without a threshold acceptable?",
+      "decision": "Accepted as recommended.",
+      "decidedBy": "Brandon",
+      "decidedOn": "2026-09-15"
+    },
+    {
+      "id": "H11",
+      "question": "Where is the final judgement run?",
+      "decision": "In CI on the pinned SDK 10.0.112 (judge-rebuild.yml).",
+      "decidedBy": "Brandon",
+      "decidedOn": "2026-09-15"
+    }
+  ]
+}
