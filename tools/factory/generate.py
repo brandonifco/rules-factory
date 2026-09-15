@@ -133,7 +133,7 @@ import re
 import ownership
 import rulings as rulings_step
 
-KERNEL_VERSION = "0.2.0"
+KERNEL_VERSION = "0.3.0"
 # The SDK rules-kernel pins (its global.json), so a produced engine builds with the kernel's
 # toolchain. This is the kernel's pin, not this machine's: never substitute a local SDK here.
 SDK_VERSION = "10.0.112"
