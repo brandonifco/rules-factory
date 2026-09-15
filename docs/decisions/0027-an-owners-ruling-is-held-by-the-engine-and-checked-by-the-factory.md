@@ -9,6 +9,35 @@ merged. **Amends [0005](0005-a-field-earns-its-place-by-being-checkable.md) C** 
 `implemented` entry with `fate: unresolved` "declines the stated case": part of that case may now be
 answered by a ruling. Changes no map field and no check in `check-map.py`.
 
+**Amended 2026-09-15**: § 4 did not say whether a result computed from ruled results relies on
+those rulings. It does, and it names them. See *Amendment — a derived result names its inputs'
+rulings* below. No check, field or generated file changes.
+
+## Amendment — a derived result names its inputs' rulings
+
+§ 4 asks every result that relies on a ruling to name it, and gives a play as the pattern. It is
+silent on a result that is computed from other results, where one of those inputs rests on a ruling.
+`hoyle-backgammon` met the case on the day this record was accepted. Brandon ruled on all of
+`game-value`'s question: the finish no named result covers is a hit, and the overlaps are a
+backgammon. That engine's `rubber-scoring` scores a rubber from its games' values, and a rubber whose
+first game is a hit only by the ruling now scores where it declined before.
+
+**A result derived from ruled results relies on those rulings, and names them**, on the same terms as
+§ 4: as data the caller can read, and in any record of the result. A rubber scored from a game valued
+by a ruling names that ruling, as the game does. Where several inputs carry rulings, the derived
+result names their union, once each, in a stable order. The derivation needs no ruling of its own for
+this: the rulings are its inputs', carried through. What the derivation still does not settle, it
+still declines, and a decline names no ruling.
+
+`hoyle-backgammon` decision 0010 is the case. `GameResult.Rulings` carries the rulings a game's value
+relied on. `RubberResult.Rulings` is the union over the games a rubber was scored from, in overlay
+order. `rubber-scoring`'s overlay item carries no `rulings` or `declines`, because it has no ruling of
+its own.
+
+As with the rest of § 4, nothing checks this (§ 7). An input that reaches the derivation as a bare
+value, with its rulings dropped on the way, is the engine's to avoid. In that engine, the stake and the
+next game's opener take a bare `GameValue`, and its record 0010 says so.
+
 ## Context
 
 A map entry records a question the corpus does not settle with `ambiguity.fate: unresolved`. The
@@ -117,7 +146,8 @@ For an `implemented` entry with `fate: unresolved`:
 
 - **Every result that relies on a ruling names it**, as data the caller can read, with at least the
   ruling's id, and through it the entry, who ruled, when, and the record. A result that relies on
-  no ruling names none. `hoyle-backgammon`'s `Play.Rulings` is the pattern.
+  no ruling names none. `hoyle-backgammon`'s `Play.Rulings` is the pattern. A result computed from
+  results that rely on rulings relies on them too, and names them (amended 2026-09-15, above).
 - **A record of the result carries it too.** A replay record, a log or a serialised answer that
   would let a reader reconstruct the answer carries the rulings the answer relied on.
 - **The ruling never stands in for the corpus's authority.** Where a result cites the map entry
