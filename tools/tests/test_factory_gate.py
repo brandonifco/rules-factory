@@ -153,6 +153,8 @@ class TestRecipeIsEmitted(GateCase):
             gate = handle.read()
         self.assertIn(f'NAME="{NAME}"', gate)
         self.assertNotIn("@NAME@", gate)
+        self.assertIn("export PYTHONDONTWRITEBYTECODE=1", gate.split("MODE=")[0],
+                      "run by hand, the gate leaves no scripts/factory/__pycache__ in the engine")
         subprocess.run(["bash", "-n", os.path.join(engine, "scripts", "validate.sh")], check=True)
         for module in ("generate.py", "intake.py", "ownership.py", "provenance.py"):
             with open(os.path.join(FACTORY, module), "rb") as a, \
