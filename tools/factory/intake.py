@@ -83,6 +83,12 @@ def _sha256_of_bytes(data):
 HASH_DERIVATIONS = {
     "ecfr-versioner-xml": _sha256_of_bytes,
     "gutenberg-plain-text-including-boilerplate": _sha256_of_bytes,
+    # SHA-256 over the committed page-marked text, byte for byte -- which is *not* what was
+    # retrieved: WotC publishes a PDF, and examples/srd-52-combat/extract.py derives the text
+    # from it with pdftotext 24.02.0 and a `{N}` marker per page. The raw-bytes function is exact
+    # here because the committed file is the derivation's output; the PDF's own digest is the
+    # manifest's `sourcePdf.sha256`, and `extract.py --check` holds the two together.
+    "srd-5.2.1-pdftotext-24.02.0-page-marked": _sha256_of_bytes,
 }
 
 # What a manifest may declare as a corpus's `randomness` (decision 0019). `seeded`: an engine may

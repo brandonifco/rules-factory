@@ -86,6 +86,7 @@ EXCEPTION_TAG = "licensed-copy-exception"
 LOCATOR_CHECKERS = {
     "plain-text": os.path.join(REPO, "tools", "check-locators.py"),
     "ecfr-xml": os.path.join(REPO, "examples", "faa-part-107", "check-locators-section.py"),
+    "pdftotext-page-marked": os.path.join(REPO, "examples", "srd-52-combat", "check-locators-pdf-text.py"),
 }
 
 MAP_NAME = re.compile(r"^[a-z0-9]+(?:-[a-z0-9]+)*$")

@@ -1,0 +1,14 @@
+{
+  "about": "The review of each map's exact bytes (docs/decisions/0017-a-map-change-carries-a-review-of-its-bytes.md). tools/check-map-review.py fails any map whose sha256 is not the one recorded here.",
+  "reviews": {
+    "corpus-map.json": {
+      "sha256": "80013e6129f1b1edaf46fa9ea4925367a01d2228a4621a94e3e1024ce1785619",
+      "method": "exemption",
+      "exemption": {
+        "kind": "legacy",
+        "issue": "#106",
+        "reason": "Not reviewed. This is the first mapping of the SRD 5.2.1 combat chapter (trial 5, steps 1-2 of #106), written by one mapper and checked only mechanically: check-map.py --phase publish and check-locators-pdf-text.py pass, which prove a quote is on its cited page and never that an entry says what the quote says (0014). The kind is `legacy` because it is the only exemption kind that names an issue tracking a missing review; the map does not predate the gate. A blind second mapping is step 3 of #106 and is owed before this map is used or published: pack-map.py gates and packs it on every pull request, and nothing should be tagged from it until this exemption is replaced by a blind-second-mapping review."
+      }
+    }
+  }
+}
