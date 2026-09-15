@@ -252,7 +252,9 @@ version was `1.0.0`. `2.0.0` is the first to carry the checker (#51): an added p
 not on the minor or patch list. `3.0.0` changes only the checker's bytes (#79's
 `SCHEMA_VERSIONS`, and #87's build of `tools/check-map.py` from `tools/checkmap/` with a generated
 header); the map and manifest are unchanged, and a changed package file is not on the minor or
-patch list either. `faa-part-107`'s first version was `1.0.0`; `2.0.0` is the same checker change,
+patch list either. `4.0.0` corrects `game-value`'s ambiguity question to name both cases where
+the gammon and backgammon conditions overlap (#102); a correction to what the map says is major.
+`faa-part-107`'s first version was `1.0.0`; `2.0.0` is the same checker change,
 with its map and manifest unchanged.
 
 **corpus-map.md's "Where the map lives" changes.** A map is published from the factory and
