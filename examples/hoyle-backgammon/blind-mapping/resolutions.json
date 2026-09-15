@@ -1,0 +1,614 @@
+{
+  "None|entry|bar-man-blocks-bearing-off|no reference entry quotes this text": {
+    "verdict": "N",
+    "locator": "BACKGAMMON / Playing / p. 274",
+    "quote": "Nor can such man again start on its journey until its owner is fortunate enough to make a throw corresponding with a vacant point or blot in such table. Until he does this, the play of his other men is suspended.",
+    "reason": "Stated, not derived: a man on the bar suspends 'the play of his other men', which includes bearing off. The reference's gap was the gate, not a missing entry. Fixed through rows 11, 14 and 17: enter-from-bar added to the suspendedBy of the three bearing-off entries, which is the representation 0011 gives a stated suspension."
+  },
+  "None|entry|bear-off-example-distribution|no reference entry quotes this text": {
+    "verdict": "N",
+    "reason": "Worked example, not a rule: the Fig. 2 distribution and the quatre trois throw illustrate bearing-off-move-or-remove, whose note already requires that worked distribution as its demonstration. The blind map gives the fixture an entry of its own; the reference keeps it in a note. Neither reading of the rule differs."
+  },
+  "None|entry|board-physical-construction|no reference entry quotes this text": {
+    "verdict": "N",
+    "reason": "Physical description, not a rule: that the board is hinged and carries draughts squares on its outside has no consequence for play. The blind map declines it as scope: out; the reference has no entry. 0009 asks a verdict of a stated rule, and this states none. Page 271 is reached by player-count."
+  },
+  "None|entry|board-two-compartments|no reference entry quotes this text": {
+    "verdict": "N",
+    "reason": "Split/merge artefact: the two maps divide this text into different entries and the comparator paired fragments. 'Divided into two equal compartments' is carried by board-tables in the reference ('the two compartments, known as \"tables\"'); the blind map gives the p. 271 sentence its own entry."
+  },
+  "None|entry|hints-throw-ranking|no reference entry quotes this text": {
+    "verdict": "N",
+    "reason": "Declined advice both ways: the ranking of opening throws is advice, which the reference declines in strategy-advice as a whole and the blind map as its own entry. Page 280 is reached by die-faces."
+  },
+  "None|entry|hints-two-apart|no reference entry quotes this text": {
+    "verdict": "N",
+    "reason": "Declined advice both ways, as the ranking row: the reference declines Hints for Play's advice in strategy-advice; the blind map gives this paragraph its own out entry."
+  },
+  "None|entry|must-play-forward-no-man|no reference entry quotes this text": {
+    "verdict": "N",
+    "locator": "BACKGAMMON / Bearing off the Men / p. 276",
+    "quote": "If, however, he throws a number which he cannot deal with after either of these fashions--_e.g._, a six, he is entitled to bear off a man from his highest occupied point, in this case the cinque.",
+    "reason": "Worked example of rules the reference maps, not an extra rule: 'he has no man on that point, and therefore _must_ play forward' follows from bearing-off-move-or-remove (a man can only be removed from 'the corresponding points'), and the bar on bearing off from a lower point while a forward move exists is bearing-off-highest's condition, 'a number which he cannot deal with after either of these fashions'. The reference's bearing-off-move-or-remove note demonstrates the trois case."
+  },
+  "None|entry|object-of-game|no reference entry quotes this text": {
+    "verdict": "N",
+    "reason": "Statement of the object, restated by rules both maps carry: bearing-off-eligible and win-condition in the reference, which carry what 'first to get all the player's men into his own inner table, and then to play them out of it again' demands of an engine."
+  },
+  "agreed-backgammon-multiple|evidence|backgammon-multiplier-agreed|reference span quotes text the blind span omits": {
+    "verdict": "N",
+    "reason": "Span choice: the reference span adds 'the game is a \"backgammon,\" and' before the figures, the blind span starts at 'the loser pays'. Both support the assertion."
+  },
+  "bearing-off-doublets|dependsOn|bear-off-doublets|reference has edge to bearing-off-highest; no blind edge reaches it": {
+    "verdict": "R",
+    "locator": "BACKGAMMON / Bearing off the Men / p. 276",
+    "quote": "If, however, he throws a number which he cannot deal with after either of these fashions--_e.g._, a six, he is entitled to bear off a man from his highest occupied point, in this case the cinque.",
+    "reason": "A doublet number that neither fashion can deal with is resolved by bearing-off-highest, so bearing-off-doublets cannot be implemented without it. The blind map has no such edge; its bear-off-doublets example (deuces) never reaches that case."
+  },
+  "bearing-off-doublets|suspendedBy|bear-off-doublets|blind has edge to bar-suspends-other-men; reference has no edge to what it links to": {
+    "verdict": "B",
+    "locator": "BACKGAMMON / Playing / p. 274",
+    "quote": "Nor can such man again start on its journey until its owner is fortunate enough to make a throw corresponding with a vacant point or blot in such table. Until he does this, the play of his other men is suspended.",
+    "reason": "The suspension is of 'the play of his other men', without exception for the bearing-off stage. A player bearing off whose blot is hit has a man up and may not bear off or move until he enters. The reference named enter-from-bar in move-by-pip, doublets and must-play-whole-throw but in none of the bearing-off entries, and 0011 requires every entry a gate reaches to name it. Fixed: enter-from-bar added to bearing-off-doublets' suspendedBy."
+  },
+  "bearing-off-eligible|clarity|bearing-off-stage|differs": {
+    "verdict": "U",
+    "locator": "BACKGAMMON / Bearing off the Men / p. 275",
+    "quote": "When either player has succeeded in getting all his men into his home table, he proceeds to \"bear them off\"--_i.e._, to remove them from the board. When the game has reached this stage, each throw entitles the player either to move forward a man or men (to the extent indicated by the throw) within the limits of his own table, or to remove men from the corresponding points.",
+    "reason": "The stage is entered 'when either player has succeeded in getting all his men into his home table', and the text then speaks of 'this stage' without saying whether it lasts. If one of his men is hit after bearing off has begun, and re-enters, whether he may keep bearing off the men still at home, or must first bring every man home again, is not stated anywhere in the chapter. The reference called it clear and its note demanded 'a man hit back out mid-bear-off' as a demonstration without saying what the corpus requires. Fixed: bearing-off-eligible is ambiguous, ambiguity unresolved (RequiresInterpretation)."
+  },
+  "bearing-off-eligible|ambiguity|bearing-off-stage|present in one map only": {
+    "verdict": "U",
+    "locator": "BACKGAMMON / Bearing off the Men / p. 275",
+    "quote": "When either player has succeeded in getting all his men into his home table, he proceeds to \"bear them off\"--_i.e._, to remove them from the board. When the game has reached this stage, each throw entitles the player either to move forward a man or men (to the extent indicated by the throw) within the limits of his own table, or to remove men from the corresponding points.",
+    "reason": "Same question as the clarity row on this entry."
+  },
+  "bearing-off-highest|suspendedBy|bear-off-from-highest|blind has edge to bar-suspends-other-men; reference has no edge to what it links to": {
+    "verdict": "B",
+    "locator": "BACKGAMMON / Playing / p. 274",
+    "quote": "Nor can such man again start on its journey until its owner is fortunate enough to make a throw corresponding with a vacant point or blot in such table. Until he does this, the play of his other men is suspended.",
+    "reason": "As the bearing-off-doublets row. Fixed: enter-from-bar added to bearing-off-highest's suspendedBy."
+  },
+  "bearing-off-move-or-remove|dependsOn|bear-off-by-number|reference has edge to legal-destination; no blind edge reaches it": {
+    "verdict": "R",
+    "locator": "BACKGAMMON / Playing / p. 274",
+    "quote": "The right to move is subject to a certain qualification--viz., that a man can only be played to a point which is either vacant or occupied by one or more men of the player, or by one man only of the adversary.",
+    "reason": "A forward move inside the home table is still a move, and 'the right to move is subject to' this qualification: a made point in the home table still refuses it. The blind map reaches the same constraint only through die-movement, which bear-off-by-number depends on."
+  },
+  "bearing-off-move-or-remove|dependsOn|bear-off-by-number|blind has edge to inner-point-names; reference has no edge to what it links to": {
+    "verdict": "B",
+    "locator": "BACKGAMMON / Bearing off the Men / p. 275",
+    "quote": "When either player has succeeded in getting all his men into his home table, he proceeds to \"bear them off\"--_i.e._, to remove them from the board. When the game has reached this stage, each throw entitles the player either to move forward a man or men (to the extent indicated by the throw) within the limits of his own table, or to remove men from the corresponding points.",
+    "reason": "'Remove men from the corresponding points' names a point by the number thrown, and the numbering (ace to six from the far end of the inner table) is stated only in point-designations. The reference reached it only transitively; enter-from-bar's 'a throw corresponding with a vacant point' already carries this edge (#42). Fixed: bearing-off-move-or-remove depends on point-designations."
+  },
+  "bearing-off-move-or-remove|suspendedBy|bear-off-by-number|blind has edge to bar-suspends-other-men; reference has no edge to what it links to": {
+    "verdict": "B",
+    "locator": "BACKGAMMON / Playing / p. 274",
+    "quote": "Nor can such man again start on its journey until its owner is fortunate enough to make a throw corresponding with a vacant point or blot in such table. Until he does this, the play of his other men is suspended.",
+    "reason": "As the bearing-off-doublets row. Fixed: enter-from-bar added to bearing-off-move-or-remove's suspendedBy."
+  },
+  "blot-hit|suspendedBy|hit-blot|reference has edge to full-table-suspension; no blind edge reaches it": {
+    "verdict": "R",
+    "locator": "BACKGAMMON / Playing / p. 274",
+    "quote": "If the adverse player's home table is completely full--_i.e._, each point occupied by two or more men, his play is altogether suspended, the adversary continuing to throw and move",
+    "reason": "A hit is made by a move, and a player whose 'play is altogether suspended' makes none on his turn. The blind map suspends hit-blot by nothing."
+  },
+  "blot-hit|evidence|hit-blot|reference span quotes text the blind span omits": {
+    "verdict": "N",
+    "reason": "Split/merge artefact: the two maps divide this text into different entries and the comparator paired fragments. The blind map splits the blot definition (blot) from the hit (hit-blot); the reference quotes the whole sentence."
+  },
+  "board-tables|evidence|board-tables|reference span quotes text the blind span omits": {
+    "verdict": "N",
+    "reason": "Split/merge artefact: the two maps divide this text into different entries and the comparator paired fragments. The reference's board-tables span runs through 'his inner and outer tables'; the blind map splits the same text into board-tables, inner-table-by-arrangement, fig1-orientation and player-inner-outer-tables."
+  },
+  "calling-the-throw|kind|throw-naming|differs": {
+    "verdict": "R",
+    "locator": "BACKGAMMON / Playing / p. 273",
+    "quote": "After throwing, he calls the number of the throw, the higher number first, as \"six deuce,\" \"cinque trois,\" \"quatre ace,\" or as the case may be, and then proceeds to make his move in accordance with it.",
+    "reason": "The move is made 'in accordance with it', the throw, not with the call. The call is spoken table protocol and the corpus attaches no consequence to it, which is the reference's reason for scope: out; the blind map's own note says 'the spoken call itself has no effect on play'. The naming convention it maps is vocabulary the reference reads through point-designations where it is used (die-faces)."
+  },
+  "calling-the-throw|scope|throw-naming|differs": {
+    "verdict": "R",
+    "locator": "BACKGAMMON / Playing / p. 273",
+    "quote": "After throwing, he calls the number of the throw, the higher number first, as \"six deuce,\" \"cinque trois,\" \"quatre ace,\" or as the case may be, and then proceeds to make his move in accordance with it.",
+    "reason": "Same as the kind row: nothing an engine does depends on the call."
+  },
+  "calling-the-throw|dependsOn|throw-naming|blind has edge to inner-point-names; reference has no edge to what it links to": {
+    "verdict": "N",
+    "reason": "An edge on an entry the reference declines. It follows from the scope rows above."
+  },
+  "die-faces|dependsOn|possible-throws|reference has edge to point-designations; no blind edge reaches it": {
+    "verdict": "R",
+    "locator": "BACKGAMMON / Hints for Play / p. 277",
+    "quote": "We will go _seriatim_ through all the possible throws.",
+    "reason": "The headings that make the enumeration ('ACES', 'CINQUE TROIS') are point names, stated in point-designations; die-faces cannot be read without it. The blind map reaches the names through throw-naming, which the reference declines."
+  },
+  "die-faces|dependsOn|possible-throws|reference has edge to throw-two-dice; no blind edge reaches it": {
+    "verdict": "R",
+    "locator": "BACKGAMMON / Hints for Play / p. 277",
+    "quote": "We will go _seriatim_ through all the possible throws.",
+    "reason": "Each heading names a pair of numbers, one per die, which is 'with both dice'. The blind possible-throws depends on doublets and throw-naming and not on the two-dice rule."
+  },
+  "die-faces|dependsOn|possible-throws|blind has edge to throw-naming; reference has no edge to what it links to": {
+    "verdict": "R",
+    "locator": "BACKGAMMON / Playing / p. 273",
+    "quote": "After throwing, he calls the number of the throw, the higher number first, as \"six deuce,\" \"cinque trois,\" \"quatre ace,\" or as the case may be, and then proceeds to make his move in accordance with it.",
+    "reason": "The blind edge is to throw-naming, whose counterpart the reference declines as scope: out (rows 21-22). The reference routes the names through point-designations (row 24)."
+  },
+  "die-faces|dependsOn|possible-throws|blind has edge to doublets; reference has no edge to what it links to": {
+    "verdict": "R",
+    "locator": "BACKGAMMON / Hints for Play / p. 277",
+    "quote": "We will go _seriatim_ through all the possible throws.",
+    "reason": "The enumeration is counted from its headings, and 'ACES', 'DEUCES', 'DOUBLE TROIS' name throws whether or not anyone knows how doublets are played. How a doublet is played does not bear on how many throws there are."
+  },
+  "die-faces|evidence|possible-throws|reference span quotes text the blind span omits": {
+    "verdict": "R",
+    "locator": "BACKGAMMON / Hints for Play / p. 277",
+    "quote": "We will go _seriatim_ through all the possible throws.",
+    "reason": "The blind span is the one sentence claiming exhaustiveness; the twenty-one headings that make it a table are in its note, not its evidence. corpus-map.md requires the span to cover every case the entry claims and the whole table, which the reference's span does."
+  },
+  "direction-of-travel|kind|direction-of-movement|differs": {
+    "verdict": "N",
+    "locator": "BACKGAMMON / Playing / p. 273",
+    "quote": "The movement of the men of each player is from the ace point in his opponent's home table towards the like point in his own",
+    "reason": "Kind of a definition consumed inside a procedure. method.md calls a value a fact and an operation a procedure; this sentence reads as either the course a man travels (a fact) or the rule that moves go along it. The corpus cannot settle a layer choice, and neither map's reading of the rule differs: both say the two sides move opposite ways from the opponent's home ace point to their own."
+  },
+  "direction-of-travel|dependsOn|direction-of-movement|blind has edge to player-inner-outer-tables; reference has no edge to what it links to": {
+    "verdict": "B",
+    "locator": "BACKGAMMON / Playing / p. 273",
+    "quote": "The movement of the men of each player is from the ace point in his opponent's home table towards the like point in his own",
+    "reason": "'His opponent's home table' and 'his own' are a player's own tables, which the reference states only in board-tables ('the portions of the two latter nearest to each player are known as _his_ inner and outer tables'). The reference reached board-tables only through point-designations. Fixed: direction-of-travel depends on board-tables."
+  },
+  "doublets|clarity|doublets|differs": {
+    "verdict": "R",
+    "locator": "BACKGAMMON / Playing / p. 274",
+    "quote": "In the event of his throwing the same points with both dice (known as \"doublets\"), he is entitled to play the throw twice over.",
+    "reason": "'Play the throw twice over' fixes the unit: the throw is two numbers, played twice, so four moves of the doubled number, each of which move-by-pip says moves 'one man forward a corresponding number of points'. The examples ('one or more men forward to an aggregate extent of four points') state the total those four moves reach and do not license a different split; the rule sentence is the one the examples follow from."
+  },
+  "doublets|ambiguity|doublets|present in one map only": {
+    "verdict": "R",
+    "locator": "BACKGAMMON / Playing / p. 274",
+    "quote": "In the event of his throwing the same points with both dice (known as \"doublets\"), he is entitled to play the throw twice over.",
+    "reason": "Same as the clarity row."
+  },
+  "doubling-cube|kind|die-faces-absent|differs": {
+    "verdict": "N",
+    "reason": "Two different absences quoting the same apparatus sentence: the reference's doubling-cube (an operation absent) and the blind die-faces-absent (no sentence describes the die; the blind map fixes the throw range from the enumeration, as the reference's die-faces does). Kind differs because the absent rules differ."
+  },
+  "enter-from-bar|ambiguity.fate|bar-entry|differs": {
+    "verdict": "N",
+    "reason": "Not a disagreement about the corpus: both maps record the same conflict, whether a man may enter on a point his own men hold. The reference's fate is a recorded project decision (0006), which a blind mapper cannot have; that is Phase 4, not a reading."
+  },
+  "enter-from-bar|dependsOn|bar-entry|reference has edge to legal-destination; no blind edge reaches it": {
+    "verdict": "R",
+    "locator": "BACKGAMMON / Playing / p. 274",
+    "quote": "The right to move is subject to a certain qualification--viz., that a man can only be played to a point which is either vacant or occupied by one or more men of the player, or by one man only of the adversary.",
+    "reason": "Under decision 0006 legal-destination is the entering man's destination test, so enter-from-bar cannot be built as decided without it. The blind map's fate is unresolved and so it needs no such edge."
+  },
+  "enter-from-bar|dependsOn|bar-entry|blind has edge to direction-of-movement; reference has no edge to what it links to": {
+    "verdict": "B",
+    "locator": "BACKGAMMON / Playing / p. 274",
+    "quote": "it is \"taken up\" (placed on the bar between the two tables), and, however far advanced it may have been, has to begin its journey anew from the inner table of the adversary.",
+    "reason": "An entering man 'has to begin its journey anew from the inner table of the adversary', and a throw 'corresponding with a vacant point' is counted along that journey, whose start and direction ('from the ace point in his opponent's home table towards the like point in his own') are stated only in direction-of-travel. Fixed: enter-from-bar depends on direction-of-travel."
+  },
+  "enter-from-bar|enabledBy|bar-entry|blind has edge to hit-blot; reference has no edge to what it links to": {
+    "verdict": "B",
+    "locator": "BACKGAMMON / Playing / p. 274",
+    "quote": "it is \"taken up\" (placed on the bar between the two tables), and, however far advanced it may have been, has to begin its journey anew from the inner table of the adversary.",
+    "reason": "Entry from the bar is reachable only once a man is on the bar, and the only rule that puts one there is the hit ('taken up (placed on the bar between the two tables)'). That is a rule making this one reachable, which 0011 records as enabledBy, the shape bearing-off-move-or-remove already has with bearing-off-eligible. Fixed: enter-from-bar enabledBy blot-hit."
+  },
+  "enter-from-bar|evidence|bar-entry|reference span quotes text the blind span omits": {
+    "verdict": "N",
+    "reason": "Split/merge artefact: the two maps divide this text into different entries and the comparator paired fragments. The reference span carries 'Until he does this, the play of his other men is suspended'; the blind map gives that sentence its own entry, bar-suspends-other-men."
+  },
+  "full-table-suspension|ambiguity.fate|closed-home-table|differs": {
+    "verdict": "N",
+    "reason": "Not a disagreement about the corpus: the reference's fate is decision 0006, a project ruling the blind mapper could not have. Whether the blind entry's own question is a real one is the conflict row on this entry."
+  },
+  "full-table-suspension|ambiguity.conflict|closed-home-table|present in one map only": {
+    "verdict": "R",
+    "locator": "BACKGAMMON / Playing / p. 274",
+    "quote": "If the adverse player's home table is completely full--_i.e._, each point occupied by two or more men, his play is altogether suspended, the adversary continuing to throw and move",
+    "reason": "'Each point occupied by two or more men' does not say whose men, so two of the entering player's own men satisfy it literally, and read that way the sentence is the exact negation of 'a vacant point or blot', which makes it one answer to the entering-man question. The blind map read 'full' as adversely full without noticing that the definition does not say so. The blind map's different question, whether the suspension needs a man on the bar, is answered by the paragraph: 'his play' and 'the adverse player' continue the subject of 'such man' and 'its owner' in the two sentences before, the owner of a man taken up. The reference records that reading as its dependsOn enter-from-bar and as enabledBy blot-hit (next row)."
+  },
+  "full-table-suspension|enabledBy|closed-home-table|blind has edge to hit-blot; reference has no edge to what it links to": {
+    "verdict": "B",
+    "locator": "BACKGAMMON / Playing / p. 274",
+    "quote": "If the adverse player's home table is completely full--_i.e._, each point occupied by two or more men, his play is altogether suspended, the adversary continuing to throw and move",
+    "reason": "On the reading in the conflict row, the suspension applies to the owner of a man on the bar and so is reachable only after a hit. Fixed: full-table-suspension enabledBy blot-hit, as enter-from-bar."
+  },
+  "game-value|clarity|backgammon|differs": {
+    "verdict": "N",
+    "reason": "Split/merge artefact: the two maps divide this text into different entries and the comparator paired fragments. The gap in the three results is between the definitions, and the reference records it on game-value, which quotes all three; the blind map records it on its derived game-value-coverage (row 52)."
+  },
+  "game-value|ambiguity|backgammon|present in one map only": {
+    "verdict": "N",
+    "reason": "As the clarity row."
+  },
+  "game-value|dependsOn|backgammon|reference has edge to bearing-off-eligible; no blind edge reaches it": {
+    "verdict": "N",
+    "reason": "Split/merge artefact: the two maps divide this text into different entries and the comparator paired fragments. 'Has begun to bear off' belongs to the hit condition, which the blind map puts in game-value-hit; its backgammon entry has no need of the edge."
+  },
+  "game-value|dependsOn|backgammon|reference has edge to enter-from-bar; no blind edge reaches it": {
+    "verdict": "N",
+    "reason": "Split/merge artefact: the two maps divide this text into different entries and the comparator paired fragments. The reference's edge is for 'a man or men up'; the blind map's backgammon carries the same term through hit-blot (next row)."
+  },
+  "game-value|dependsOn|backgammon|blind has edge to hit-blot; reference has no edge to what it links to": {
+    "verdict": "B",
+    "locator": "BACKGAMMON / Playing / p. 274",
+    "quote": "it is \"taken up\" (placed on the bar between the two tables), and, however far advanced it may have been, has to begin its journey anew from the inner table of the adversary.",
+    "reason": "'A man or men \"up\" (_i.e._, on the bar)' uses the term the hit defines: a blot hit 'is \"taken up\" (placed on the bar between the two tables)'. The reference depended on enter-from-bar, which uses the bar and does not define it. Fixed: game-value depends on blot-hit (enter-from-bar kept)."
+  },
+  "game-value|dependsOn|backgammon|blind has edge to backgammon-multiplier-agreed; reference has no edge to what it links to": {
+    "verdict": "N",
+    "reason": "Merge artefact: the blind backgammon entry holds both the condition and what it pays; the reference splits payment into stake-multiplier, which depends on game-value, so game-value has no edge to the payment."
+  },
+  "game-value|enabledBy|backgammon|blind has edge to win-condition; reference has no edge to what it links to": {
+    "verdict": "B",
+    "locator": "BACKGAMMON / Bearing off the Men / p. 276",
+    "quote": "The player who first succeeds in removing all his men from the board wins the game, but the _value_ of the game depends upon the stage reached by the adverse player, as follows:--",
+    "reason": "The value of a game exists only once a player 'first succeeds in removing all his men', so win-condition is the rule that makes game-value reachable, not only one it is built after. The reference had the dependsOn and no gate. Fixed: game-value enabledBy win-condition."
+  },
+  "game-value|evidence|backgammon|reference span quotes text the blind span omits": {
+    "verdict": "N",
+    "reason": "Split/merge artefact: the two maps divide this text into different entries and the comparator paired fragments."
+  },
+  "hit-pays-single-stake|kind|game-value-coverage|differs": {
+    "verdict": "N",
+    "reason": "Different derived facts paired because they share sources: the reference derives what a hit pays; the blind map derives how the three results overlap and leave a gap. Kinds follow."
+  },
+  "hit-pays-single-stake|clarity|game-value-coverage|differs": {
+    "verdict": "R",
+    "locator": "BACKGAMMON / Bearing off the Men / p. 276",
+    "quote": "pays double the agreed stake. [...] the loser pays {277} either thrice or four times (as may have been agreed) the amount of the single stake.",
+    "reason": "A gammon pays 'double the agreed stake' and a backgammon a multiple of 'the single stake': both are stated as multiples of one stake, and the only other result, the hit, is that single stake. The blind map's game-value-hit asks what a hit pays and records it unresolved; the reference's derived entry (0012) is the reading, and it names both its sources. The blind derived entry's own question is row 52."
+  },
+  "hit-pays-single-stake|ambiguity|game-value-coverage|present in one map only": {
+    "verdict": "U",
+    "locator": "BACKGAMMON / Bearing off the Men / p. 276",
+    "quote": "If the winner has borne off all his men before his adversary has begun to do the same, the game is known as a \"gammon.\" [...] If the winner has borne off all his men while the adversary has still a man or men \"up\" (_i.e._, on the bar) or in his (the winner's) home table, the game is a \"backgammon,\"",
+    "reason": "The blind question has two parts. The gap (a loser who began bearing off, was hit, and has a man outside his home table but neither up nor in the winner's home table) is the reference's game-value question. The overlap is not: a loser who has borne off nothing and has a man up satisfies both 'before his adversary has begun to do the same' and 'a man or men up', and the corpus does not say which result he suffers. The reference's note admitted that 'an ordering had to be chosen, backgammon first, and clear does not record that a choice was made', which is an implementer's reading chosen silently. Fixed: game-value's question states the overlap as well as the gap; the note's sentence about it is removed."
+  },
+  "hit-pays-single-stake|derivedFrom|game-value-coverage|reference has edge to agreed-backgammon-multiple; no blind edge reaches it": {
+    "verdict": "N",
+    "reason": "Different derived facts, as the kind row: each derivation names the entries its own fact rests on."
+  },
+  "hit-pays-single-stake|derivedFrom|game-value-coverage|blind has edge to game-value-hit; reference has no edge to what it links to": {
+    "verdict": "N",
+    "reason": "Different derived facts, as the kind row."
+  },
+  "hit-pays-single-stake|derivedFrom|game-value-coverage|blind has edge to gammon; reference has no edge to what it links to": {
+    "verdict": "N",
+    "reason": "Different derived facts, as the kind row."
+  },
+  "inner-table-handedness|dependsOn|fig1-orientation|reference has edge to board-tables; no blind edge reaches it": {
+    "verdict": "R",
+    "locator": "BACKGAMMON / The Board and Men / p. 272",
+    "quote": "With the men placed as in Fig. 1, the right hand is the inner or home table, and the left hand consequently the outer table.",
+    "reason": "The sentence says which compartment is 'the inner or home table', which is board-tables' vocabulary; the entry cannot be implemented without it. The blind fig1-orientation has no edges."
+  },
+  "inner-table-handedness|dependsOn|fig1-orientation|reference has edge to starting-position; no blind edge reaches it": {
+    "verdict": "R",
+    "locator": "BACKGAMMON / The Board and Men / p. 272",
+    "quote": "With the men placed as in Fig. 1, the right hand is the inner or home table, and the left hand consequently the outer table.",
+    "reason": "'With the men placed as in Fig. 1': the orientation is stated against the starting arrangement."
+  },
+  "legal-destination|ambiguity.fate|landing-restriction|differs": {
+    "verdict": "N",
+    "reason": "Fate differs because the reference's is decision 0006, a project ruling; both maps record the same conflict on this entry."
+  },
+  "legal-destination|suspendedBy|landing-restriction|reference has edge to full-table-suspension; no blind edge reaches it": {
+    "verdict": "R",
+    "locator": "BACKGAMMON / Playing / p. 274",
+    "quote": "If the adverse player's home table is completely full--_i.e._, each point occupied by two or more men, his play is altogether suspended, the adversary continuing to throw and move",
+    "reason": "The qualification applies to 'the right to move', and a player whose play is altogether suspended has none."
+  },
+  "made-point|evidence|make-point|reference span quotes text the blind span omits": {
+    "verdict": "N",
+    "reason": "Span choice: the reference span carries the consequence clause ('secures such men from capture, and ... impedes the onward march of the enemy'); the blind span stops at the definition. Both support 'two men make a point'."
+  },
+  "move-by-pip|clarity|die-movement|differs": {
+    "verdict": "R",
+    "locator": "BACKGAMMON / Playing / p. 273",
+    "quote": "The number uppermost on each die entitles the player to move one man forward a corresponding number of points.",
+    "reason": "Each die's number is an entitlement of its own ('the number uppermost on each die entitles the player to move one man'), with no order stated; the 'six trois' example that follows ('Thus ...') illustrates it and does not add an order. And the compulsion 'to play the whole of his throw if it is possible' presupposes that any order that plays the whole throw is open. The blind map read the example's 'then' as a possible constraint."
+  },
+  "move-by-pip|ambiguity|die-movement|present in one map only": {
+    "verdict": "R",
+    "locator": "BACKGAMMON / Playing / p. 273",
+    "quote": "The number uppermost on each die entitles the player to move one man forward a corresponding number of points.",
+    "reason": "Same as the clarity row."
+  },
+  "move-by-pip|dependsOn|die-movement|blind has edge to landing-restriction; reference has no edge to what it links to": {
+    "verdict": "N",
+    "reason": "Direction of an equivalent edge: the blind die-movement depends on landing-restriction; the reference has legal-destination as a rule on the right to move and no edge from move-by-pip. Both maps build the move before checking where it lands (legal-destination has no dependsOn in the reference, and the blind landing-restriction has none either)."
+  },
+  "move-by-pip|suspendedBy|die-movement|reference has edge to bearing-off-eligible; no blind edge reaches it": {
+    "verdict": "R",
+    "locator": "BACKGAMMON / Bearing off the Men / p. 275",
+    "quote": "When either player has succeeded in getting all his men into his home table, he proceeds to \"bear them off\"--_i.e._, to remove them from the board. When the game has reached this stage, each throw entitles the player either to move forward a man or men (to the extent indicated by the throw) within the limits of his own table, or to remove men from the corresponding points.",
+    "reason": "Once all men are home 'each throw entitles the player either to move forward a man or men ... within the limits of his own table, or to remove men', so from that point the bearing-off rule governs every forward move and move-by-pip is closed. The blind map has no bearing-off gate on die-movement."
+  },
+  "must-play-whole-throw|dependsOn|must-play-whole-throw|blind has edge to doublets; reference has no edge to what it links to": {
+    "verdict": "B",
+    "locator": "BACKGAMMON / Playing / p. 275",
+    "quote": "Any part of a throw which cannot be played is lost to the thrower, but every player is compelled to play the whole of his throw if it is possible to do so.",
+    "reason": "'The whole of his throw' includes a doublet's four parts ('he is entitled to play the throw twice over'), so the compulsion cannot be implemented without doublets. Fixed: must-play-whole-throw depends on doublets."
+  },
+  "must-play-whole-throw|suspendedBy|must-play-whole-throw|reference has edge to enter-from-bar; no blind edge reaches it": {
+    "verdict": "B",
+    "locator": "BACKGAMMON / Playing / p. 275",
+    "quote": "Any part of a throw which cannot be played is lost to the thrower, but every player is compelled to play the whole of his throw if it is possible to do so.",
+    "reason": "'Every player is compelled to play the whole of his throw if it is possible', with no exception for a player entering from the bar. With a man up, the suspension is of 'the play of his other men', not of the throw: he must still enter with both numbers if both can enter, and play the rest once entered. The reference suspended the compulsion while a man is up and gave a reason only for full-table-suspension ('with no throw there is no whole of a throw to compel'). Fixed: enter-from-bar removed from must-play-whole-throw's suspendedBy; the note corrected."
+  },
+  "must-play-whole-throw|suspendedBy|must-play-whole-throw|reference has edge to full-table-suspension; no blind edge reaches it": {
+    "verdict": "R",
+    "locator": "BACKGAMMON / Playing / p. 274",
+    "quote": "If the adverse player's home table is completely full--_i.e._, each point occupied by two or more men, his play is altogether suspended, the adversary continuing to throw and move",
+    "reason": "A player whose play is altogether suspended does not throw ('the adversary continuing to throw and move'), so there is no throw to compel."
+  },
+  "must-play-whole-throw|evidence|must-play-whole-throw|reference span quotes text the blind span omits": {
+    "verdict": "N",
+    "reason": "Split/merge artefact: the two maps divide this text into different entries and the comparator paired fragments. The blind map splits 'Any part of a throw which cannot be played is lost' (unplayable-part-lost) from the compulsion."
+  },
+  "next-game-opening|enabledBy|next-game-first-throw|blind has edge to win-condition; reference has no edge to what it links to": {
+    "verdict": "B",
+    "locator": "BACKGAMMON / Bearing off the Men / p. 276",
+    "quote": "The player who first succeeds in removing all his men from the board wins the game, but the _value_ of the game depends upon the stage reached by the adverse player, as follows:--",
+    "reason": "The following game's opening applies only once a game has been won ('the winner of a \"hit\" throws first in the game next following'), so win-condition makes it reachable. Fixed: next-game-opening enabledBy win-condition, as game-value."
+  },
+  "opening-roll|dependsOn|first-player|blind has edge to dice; reference has no edge to what it links to": {
+    "verdict": "N",
+    "reason": "The blind edge is to its in-scope 'dice' entry, which links here only to the reference's doubling-cube absence on the same apparatus sentence. Nothing may depend on an absent entry, and the reference carries the two dice in throw-two-dice and the faces in die-faces."
+  },
+  "opening-thrower-option|dependsOn|opening-throw-choice|blind has edge to subsequent-throws-two-dice; reference has no edge to what it links to": {
+    "verdict": "B",
+    "locator": "BACKGAMMON / Playing / p. 273",
+    "quote": "The thrower of the higher number may either adopt the points shown by the two dice as his own throw, or throw again.",
+    "reason": "'Or throw again': a throw after the opening single dice, which 'All subsequent throws are with both dice' governs. Fixed: opening-thrower-option depends on throw-two-dice."
+  },
+  "opening-thrower-option|enabledBy|opening-throw-choice|blind has edge to first-player; reference has no edge to what it links to": {
+    "verdict": "B",
+    "locator": "BACKGAMMON / Playing / p. 273",
+    "quote": "The thrower of the higher number may either adopt the points shown by the two dice as his own throw, or throw again.",
+    "reason": "The option belongs to 'the thrower of the higher number', which only the opening roll produces, so opening-roll makes it reachable. Fixed: opening-thrower-option enabledBy opening-roll."
+  },
+  "point-designations|evidence|inner-point-names|reference span quotes text the blind span omits": {
+    "verdict": "N",
+    "reason": "Split/merge artefact: the two maps divide this text into different entries and the comparator paired fragments. The blind map splits point-designations into points-per-table, point-colours, inner-point-names, outer-point-names and bar-point-name."
+  },
+  "stake-multiplier|kind|backgammon|differs": {
+    "verdict": "N",
+    "reason": "Merge artefact: the blind backgammon entry holds condition and payment; the reference's stake-multiplier is the payment figures only."
+  },
+  "stake-multiplier|dependsOn|backgammon|blind has edge to win-condition; reference has no edge to what it links to": {
+    "verdict": "N",
+    "reason": "Merge artefact: the reference reaches win-condition from the payment through game-value."
+  },
+  "stake-multiplier|dependsOn|backgammon|blind has edge to hit-blot; reference has no edge to what it links to": {
+    "verdict": "N",
+    "reason": "Merge artefact: the 'up' term belongs to the condition, which is game-value's; that edge is added there (row 46)."
+  },
+  "stake-multiplier|enabledBy|backgammon|blind has edge to win-condition; reference has no edge to what it links to": {
+    "verdict": "R",
+    "locator": "BACKGAMMON / Bearing off the Men / p. 276",
+    "quote": "pays double the agreed stake. [...] the loser pays {277} either thrice or four times (as may have been agreed) the amount of the single stake.",
+    "reason": "stake-multiplier is a value, the figures a gammon and a backgammon pay; a value is not a rule that becomes reachable. The gate belongs on the operation that applies it, game-value (row 48)."
+  },
+  "stake-multiplier|evidence|backgammon|reference span quotes text the blind span omits": {
+    "verdict": "N",
+    "reason": "Split/merge artefact: the two maps divide this text into different entries and the comparator paired fragments."
+  },
+  "starting-position|dependsOn|starting-arrangement|reference has edge to board-tables; no blind edge reaches it": {
+    "verdict": "R",
+    "locator": "BACKGAMMON / The Board and Men / p. 273",
+    "quote": "two of White's men are placed on the ace point in Black's inner table, five are placed on the six point in Black's outer table, three on the deuce point in White's outer table, and five on the six point in White's inner table. Black's men are placed in like manner on the points immediately facing these.",
+    "reason": "'Black's inner table', 'White's outer table': the arrangement is written in the tables board-tables names. The blind starting-arrangement reaches them only through the point-name entries."
+  },
+  "starting-position|dependsOn|starting-arrangement|blind has edge to players-and-men; reference has no edge to what it links to": {
+    "verdict": "B",
+    "locator": "BACKGAMMON / The Board and Men / p. 273",
+    "quote": "two of White's men are placed on the ace point in Black's inner table, five are placed on the six point in Black's outer table, three on the deuce point in White's outer table, and five on the six point in White's inner table. Black's men are placed in like manner on the points immediately facing these.",
+    "reason": "The arrangement places 2 + 5 + 3 + 5 = fifteen men for White and the same for Black, so it cannot be implemented or checked without the two players and the fifteen men a side the first sentence states. Fixed: starting-position depends on player-count and men-count."
+  },
+  "strategy-advice|evidence|hints-general-principles|blind span quotes text the reference span omits": {
+    "verdict": "N",
+    "reason": "Span choice: the blind span adds the second principle (avoiding blots); both are the advice strategy-advice declines."
+  },
+  "throw-two-dice|kind|subsequent-throws-two-dice|differs": {
+    "verdict": "N",
+    "reason": "Kind of a rule both maps read the same way: 'all subsequent throws are with both dice' is a fact about the apparatus of a throw or a procedure for throwing. The corpus does not settle a layer choice, as the direction-of-travel kind row."
+  },
+  "throw-two-dice|dependsOn|subsequent-throws-two-dice|blind has edge to dice; reference has no edge to what it links to": {
+    "verdict": "N",
+    "reason": "As the opening-roll row: the blind edge is to its 'dice' entry, whose only reference link is the doubling-cube absence."
+  },
+  "throw-two-dice|suspendedBy|subsequent-throws-two-dice|reference has edge to full-table-suspension; no blind edge reaches it": {
+    "verdict": "R",
+    "locator": "BACKGAMMON / Playing / p. 274",
+    "quote": "If the adverse player's home table is completely full--_i.e._, each point occupied by two or more men, his play is altogether suspended, the adversary continuing to throw and move",
+    "reason": "The suspended player does not throw: 'the adversary continuing to throw and move'."
+  },
+  "enter-from-bar|clarity|bar-suspends-other-men|differs (blind entry links here but is not its partner)": {
+    "verdict": "N",
+    "reason": "Split artefact: the reference's ambiguity on enter-from-bar is about the entering man's destinations; the blind map's bar-suspends-other-men is the suspension sentence alone, which neither map calls ambiguous."
+  },
+  "enter-from-bar|ambiguity|bar-suspends-other-men|present in one map only (blind entry links here but is not its partner)": {
+    "verdict": "N",
+    "reason": "As the clarity row."
+  },
+  "doubling-cube|scope|dice|differs (blind entry links here but is not its partner)": {
+    "verdict": "N",
+    "reason": "Different entries on one sentence: the blind 'dice' (the apparatus, in) and the reference's doubling-cube (an absence quoting where the rule would be, out)."
+  },
+  "stake-multiplier|scope|doubling-cube-absent|differs (blind entry links here but is not its partner)": {
+    "verdict": "N",
+    "reason": "The same absence quoting a different passage: the blind doubling-cube-absent quotes the gammon stake sentence, the reference's doubling-cube the apparatus sentence (and its note names the stakes passage as the second place the rule would be). The comparator paired the blind absence with stake-multiplier because they quote the same words."
+  },
+  "game-value|clarity|gammon|differs (blind entry links here but is not its partner)": {
+    "verdict": "N",
+    "reason": "Split artefact: the gap and the overlap are between the three results, recorded on game-value (row 52); the blind gammon entry alone is clear, as each definition is."
+  },
+  "game-value|ambiguity|gammon|present in one map only (blind entry links here but is not its partner)": {
+    "verdict": "N",
+    "reason": "As the clarity row."
+  },
+  "die-faces|scope|hint-aces|differs (blind entry links here but is not its partner)": {
+    "verdict": "N",
+    "reason": "Not a disagreement about the corpus: the reference die-faces span runs the whole throw enumeration because the whole-table rule requires it, and the advice under each heading is carried only to keep that span contiguous (its note says so); strategy-advice declines the advice. The blind map declines each heading's advice as its own entry and maps the enumeration as possible-throws. Both maps put the advice out and the throw set in."
+  },
+  "die-faces|scope|hint-cinque-ace|differs (blind entry links here but is not its partner)": {
+    "verdict": "N",
+    "reason": "Not a disagreement about the corpus: the reference die-faces span runs the whole throw enumeration because the whole-table rule requires it, and the advice under each heading is carried only to keep that span contiguous (its note says so); strategy-advice declines the advice. The blind map declines each heading's advice as its own entry and maps the enumeration as possible-throws. Both maps put the advice out and the throw set in."
+  },
+  "die-faces|scope|hint-cinque-deuce|differs (blind entry links here but is not its partner)": {
+    "verdict": "N",
+    "reason": "Not a disagreement about the corpus: the reference die-faces span runs the whole throw enumeration because the whole-table rule requires it, and the advice under each heading is carried only to keep that span contiguous (its note says so); strategy-advice declines the advice. The blind map declines each heading's advice as its own entry and maps the enumeration as possible-throws. Both maps put the advice out and the throw set in."
+  },
+  "die-faces|scope|hint-cinque-quatre|differs (blind entry links here but is not its partner)": {
+    "verdict": "N",
+    "reason": "Not a disagreement about the corpus: the reference die-faces span runs the whole throw enumeration because the whole-table rule requires it, and the advice under each heading is carried only to keep that span contiguous (its note says so); strategy-advice declines the advice. The blind map declines each heading's advice as its own entry and maps the enumeration as possible-throws. Both maps put the advice out and the throw set in."
+  },
+  "die-faces|scope|hint-cinque-trois|differs (blind entry links here but is not its partner)": {
+    "verdict": "N",
+    "reason": "Not a disagreement about the corpus: the reference die-faces span runs the whole throw enumeration because the whole-table rule requires it, and the advice under each heading is carried only to keep that span contiguous (its note says so); strategy-advice declines the advice. The blind map declines each heading's advice as its own entry and maps the enumeration as possible-throws. Both maps put the advice out and the throw set in."
+  },
+  "die-faces|scope|hint-deuce-ace|differs (blind entry links here but is not its partner)": {
+    "verdict": "N",
+    "reason": "Not a disagreement about the corpus: the reference die-faces span runs the whole throw enumeration because the whole-table rule requires it, and the advice under each heading is carried only to keep that span contiguous (its note says so); strategy-advice declines the advice. The blind map declines each heading's advice as its own entry and maps the enumeration as possible-throws. Both maps put the advice out and the throw set in."
+  },
+  "die-faces|scope|hint-deuces|differs (blind entry links here but is not its partner)": {
+    "verdict": "N",
+    "reason": "Not a disagreement about the corpus: the reference die-faces span runs the whole throw enumeration because the whole-table rule requires it, and the advice under each heading is carried only to keep that span contiguous (its note says so); strategy-advice declines the advice. The blind map declines each heading's advice as its own entry and maps the enumeration as possible-throws. Both maps put the advice out and the throw set in."
+  },
+  "die-faces|scope|hint-double-cinque|differs (blind entry links here but is not its partner)": {
+    "verdict": "N",
+    "reason": "Not a disagreement about the corpus: the reference die-faces span runs the whole throw enumeration because the whole-table rule requires it, and the advice under each heading is carried only to keep that span contiguous (its note says so); strategy-advice declines the advice. The blind map declines each heading's advice as its own entry and maps the enumeration as possible-throws. Both maps put the advice out and the throw set in."
+  },
+  "die-faces|scope|hint-double-quatre|differs (blind entry links here but is not its partner)": {
+    "verdict": "N",
+    "reason": "Not a disagreement about the corpus: the reference die-faces span runs the whole throw enumeration because the whole-table rule requires it, and the advice under each heading is carried only to keep that span contiguous (its note says so); strategy-advice declines the advice. The blind map declines each heading's advice as its own entry and maps the enumeration as possible-throws. Both maps put the advice out and the throw set in."
+  },
+  "die-faces|scope|hint-double-trois|differs (blind entry links here but is not its partner)": {
+    "verdict": "N",
+    "reason": "Not a disagreement about the corpus: the reference die-faces span runs the whole throw enumeration because the whole-table rule requires it, and the advice under each heading is carried only to keep that span contiguous (its note says so); strategy-advice declines the advice. The blind map declines each heading's advice as its own entry and maps the enumeration as possible-throws. Both maps put the advice out and the throw set in."
+  },
+  "die-faces|scope|hint-quatre-ace|differs (blind entry links here but is not its partner)": {
+    "verdict": "N",
+    "reason": "Not a disagreement about the corpus: the reference die-faces span runs the whole throw enumeration because the whole-table rule requires it, and the advice under each heading is carried only to keep that span contiguous (its note says so); strategy-advice declines the advice. The blind map declines each heading's advice as its own entry and maps the enumeration as possible-throws. Both maps put the advice out and the throw set in."
+  },
+  "die-faces|scope|hint-quatre-deuce|differs (blind entry links here but is not its partner)": {
+    "verdict": "N",
+    "reason": "Not a disagreement about the corpus: the reference die-faces span runs the whole throw enumeration because the whole-table rule requires it, and the advice under each heading is carried only to keep that span contiguous (its note says so); strategy-advice declines the advice. The blind map declines each heading's advice as its own entry and maps the enumeration as possible-throws. Both maps put the advice out and the throw set in."
+  },
+  "die-faces|scope|hint-quatre-trois|differs (blind entry links here but is not its partner)": {
+    "verdict": "N",
+    "reason": "Not a disagreement about the corpus: the reference die-faces span runs the whole throw enumeration because the whole-table rule requires it, and the advice under each heading is carried only to keep that span contiguous (its note says so); strategy-advice declines the advice. The blind map declines each heading's advice as its own entry and maps the enumeration as possible-throws. Both maps put the advice out and the throw set in."
+  },
+  "die-faces|scope|hint-six-ace|differs (blind entry links here but is not its partner)": {
+    "verdict": "N",
+    "reason": "Not a disagreement about the corpus: the reference die-faces span runs the whole throw enumeration because the whole-table rule requires it, and the advice under each heading is carried only to keep that span contiguous (its note says so); strategy-advice declines the advice. The blind map declines each heading's advice as its own entry and maps the enumeration as possible-throws. Both maps put the advice out and the throw set in."
+  },
+  "die-faces|scope|hint-six-deuce|differs (blind entry links here but is not its partner)": {
+    "verdict": "N",
+    "reason": "Not a disagreement about the corpus: the reference die-faces span runs the whole throw enumeration because the whole-table rule requires it, and the advice under each heading is carried only to keep that span contiguous (its note says so); strategy-advice declines the advice. The blind map declines each heading's advice as its own entry and maps the enumeration as possible-throws. Both maps put the advice out and the throw set in."
+  },
+  "die-faces|scope|hint-six-trois-quatre-cinque|differs (blind entry links here but is not its partner)": {
+    "verdict": "N",
+    "reason": "Not a disagreement about the corpus: the reference die-faces span runs the whole throw enumeration because the whole-table rule requires it, and the advice under each heading is carried only to keep that span contiguous (its note says so); strategy-advice declines the advice. The blind map declines each heading's advice as its own entry and maps the enumeration as possible-throws. Both maps put the advice out and the throw set in."
+  },
+  "die-faces|scope|hint-sixes|differs (blind entry links here but is not its partner)": {
+    "verdict": "N",
+    "reason": "Not a disagreement about the corpus: the reference die-faces span runs the whole throw enumeration because the whole-table rule requires it, and the advice under each heading is carried only to keep that span contiguous (its note says so); strategy-advice declines the advice. The blind map declines each heading's advice as its own entry and maps the enumeration as possible-throws. Both maps put the advice out and the throw set in."
+  },
+  "die-faces|scope|hint-trois-ace|differs (blind entry links here but is not its partner)": {
+    "verdict": "N",
+    "reason": "Not a disagreement about the corpus: the reference die-faces span runs the whole throw enumeration because the whole-table rule requires it, and the advice under each heading is carried only to keep that span contiguous (its note says so); strategy-advice declines the advice. The blind map declines each heading's advice as its own entry and maps the enumeration as possible-throws. Both maps put the advice out and the throw set in."
+  },
+  "die-faces|scope|hint-trois-deuce|differs (blind entry links here but is not its partner)": {
+    "verdict": "N",
+    "reason": "Not a disagreement about the corpus: the reference die-faces span runs the whole throw enumeration because the whole-table rule requires it, and the advice under each heading is carried only to keep that span contiguous (its note says so); strategy-advice declines the advice. The blind map declines each heading's advice as its own entry and maps the enumeration as possible-throws. Both maps put the advice out and the throw set in."
+  },
+  "must-play-whole-throw|scope|irregularities-absent|differs (blind entry links here but is not its partner)": {
+    "verdict": "N",
+    "locator": "BACKGAMMON / Playing / p. 275",
+    "quote": "Any part of a throw which cannot be played is lost to the thrower, but every player is compelled to play the whole of his throw if it is possible to do so.",
+    "reason": "An absence the reference does not record: the chapter has no laws on irregular throws or misplays. 0009 separates a stated rule nobody read from a verdict; it does not require an entry for every rule a corpus lacks, and nothing in the extent points at such laws. The blind map's absence is sound; the reference is not wrong without it."
+  },
+  "must-play-whole-throw|clarity|irregularities-absent|differs (blind entry links here but is not its partner)": {
+    "verdict": "N",
+    "reason": "Paired with an absence entry quoting the same sentence; see the scope row."
+  },
+  "must-play-whole-throw|ambiguity|irregularities-absent|present in one map only (blind entry links here but is not its partner)": {
+    "verdict": "N",
+    "reason": "As the clarity row."
+  },
+  "point-designations|scope|point-colours|differs (blind entry links here but is not its partner)": {
+    "verdict": "N",
+    "reason": "Span choice: the reference quotes the colour sentence only to keep point-designations' span contiguous, and its note says the colours are not a rule; the blind map declines it as its own entry."
+  },
+  "die-faces|clarity|rubber-scoring|differs (blind entry links here but is not its partner)": {
+    "verdict": "U",
+    "locator": "BACKGAMMON / Hints for Play / p. 278",
+    "quote": "This case often arises where the player has already lost the first hit of a rubber, in which case, if he loses the next game, he has lost the rubber also; but if he can secure a gammon (reckoning as a double game), he becomes the winner of the rubber.",
+    "reason": "The sentence states two things about a rubber (having 'lost the first hit', losing 'the next game' loses the rubber; 'a gammon (reckoning as a double game)' wins it), and the chapter never defines a rubber's length or winning total, nor how a backgammon reckons. The reference carried the sentence inside die-faces' span with no verdict on it, which is the state 0009 exists to remove. Fixed: new entry rubber-scoring (p. 278), operation, scope in, ambiguous, ambiguity unresolved (RequiresInterpretation), depending on game-value and next-game-opening."
+  },
+  "die-faces|ambiguity|rubber-scoring|present in one map only (blind entry links here but is not its partner)": {
+    "verdict": "U",
+    "locator": "BACKGAMMON / Hints for Play / p. 278",
+    "quote": "This case often arises where the player has already lost the first hit of a rubber, in which case, if he loses the next game, he has lost the rubber also; but if he can secure a gammon (reckoning as a double game), he becomes the winner of the rubber.",
+    "reason": "Same as the clarity row."
+  },
+  "must-play-whole-throw|clarity|unplayable-part-lost|differs (blind entry links here but is not its partner)": {
+    "verdict": "N",
+    "reason": "Split/merge artefact: the two maps divide this text into different entries and the comparator paired fragments. The reference's ambiguity is about the compulsion's undecided case; the blind unplayable-part-lost is the first clause alone."
+  },
+  "must-play-whole-throw|ambiguity|unplayable-part-lost|present in one map only (blind entry links here but is not its partner)": {
+    "verdict": "N",
+    "reason": "As the clarity row."
+  },
+  "None|crossReferences|hints-two-apart|'[68]': declared only in the blind map": {
+    "verdict": "N",
+    "reason": "Footnote [68] points to further reading (the fuller article this chapter abridges), not to a rule the chapter defers to, and it sits in advice both maps decline. No reference entry quotes it."
+  },
+  "die-faces|crossReferences|hint-trois-deuce|'above mentioned table': declared only in the blind map": {
+    "verdict": "N",
+    "reason": "Not a disagreement about the corpus: a pointer inside declined advice, back to a point or table named earlier in the same advice. It references no rule. The reference quotes it only inside die-faces' contiguous enumeration span, where check-map.py's closed phrase list does not require a declaration."
+  },
+  "None|crossReferences|object-of-game|'according to certain rules to be hereafter stated': declared only in the blind map": {
+    "verdict": "N",
+    "reason": "'According to certain rules to be hereafter stated' points forward to the bearing-off section, which both maps map. No reference span quotes it: direction-of-travel stops before the clause, which carries the object of the game rather than a rule (row 8)."
+  },
+  "bearing-off-doublets|crossReferences|bear-off-doublets|'as in the earlier stage of the game': declared only in the blind map": {
+    "verdict": "B",
+    "locator": "BACKGAMMON / Bearing off the Men / p. 276",
+    "quote": "Doublets have, as in the earlier stage of the game, a twofold value",
+    "reason": "The reference quotes the pointer and declares nothing; 'as in the earlier stage of the game' is doublets' 'twofold value'. Fixed: crossReferences on bearing-off-doublets, resolvedBy doublets."
+  },
+  "starting-position|crossReferences|starting-arrangement|'as shown in fig 1': declared only in the blind map": {
+    "verdict": "B",
+    "locator": "BACKGAMMON / The Board and Men / p. 273",
+    "quote": "two of White's men are placed on the ace point in Black's inner table, five are placed on the six point in Black's outer table, three on the deuce point in White's outer table, and five on the six point in White's inner table. Black's men are placed in like manner on the points immediately facing these.",
+    "reason": "The reference quotes 'as shown in {273} Fig. 1' and declares nothing (corpus-map.md names this instance as one the phrase list misses). Fixed: crossReferences on starting-position, unmapped: Fig. 1 is an illustration, and the arrangement it shows is stated in full in the prose that follows 'viz.'."
+  },
+  "die-faces|crossReferences|hint-quatre-ace|'first mentioned point': declared only in the blind map": {
+    "verdict": "N",
+    "reason": "Not a disagreement about the corpus: a pointer inside declined advice, back to a point or table named earlier in the same advice. It references no rule. The reference quotes it only inside die-faces' contiguous enumeration span, where check-map.py's closed phrase list does not require a declaration."
+  },
+  "None|crossReferences|hints-throw-ranking|'of the above throws': declared only in the blind map": {
+    "verdict": "N",
+    "reason": "'Of the above throws' is inside declined advice (the ranking of opening throws) on p. 280, which no reference span quotes; it points back at the enumeration die-faces maps."
+  },
+  "die-faces|crossReferences|hint-double-quatre|'point last mentioned': declared only in the blind map": {
+    "verdict": "N",
+    "reason": "Not a disagreement about the corpus: a pointer inside declined advice, back to a point or table named earlier in the same advice. It references no rule. The reference quotes it only inside die-faces' contiguous enumeration span, where check-map.py's closed phrase list does not require a declaration."
+  },
+  "None|crossReferences|board-two-compartments|'see fig 1': declared only in the blind map": {
+    "verdict": "N",
+    "reason": "'(see Fig. 1)' is in the p. 271 description of the board's construction, which neither map treats as a rule (row 3) and no reference span quotes."
+  },
+  "None|crossReferences|bear-off-example-distribution|'see fig 2': declared only in the blind map": {
+    "verdict": "N",
+    "reason": "'(see Fig. 2)' is in the worked example after bearing-off-move-or-remove's span (row 2); no reference span quotes it, and the distribution the figure shows is written out in the same sentence."
+  }
+}

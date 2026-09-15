@@ -119,11 +119,19 @@
       "clarity": "clear",
       "dependsOn": [
         "board-tables",
-        "point-designations"
+        "point-designations",
+        "player-count",
+        "men-count"
       ],
       "evidence": "The men are arranged at starting as shown in {273} Fig. 1--viz., two of White's men are placed on the ace point in Black's inner table, five are placed on the six point in Black's outer table, three on the deuce point in White's outer table, and five on the six point in White's inner table. Black's men are placed in like manner on the points immediately facing these.",
       "status": "mapped",
-      "note": "Stated in prose and over-determined. The pips follow from the designations in point-designations: 24(2)/13(5)/8(3)/6(5), fifteen men, mirrored by pip + (25 - pip). Footnote 67 requires exactly three men on the outer deuce point for its blot to exist, and nineteen opening lines in Hints for Play are consistent with this arrangement and no other. Previously mapped beyondAdapter/declined against Fig. 1; that was a misreading of a sentence one paragraph earlier, which is about board handedness."
+      "note": "Stated in prose and over-determined. The pips follow from the designations in point-designations: 24(2)/13(5)/8(3)/6(5), fifteen men, mirrored by pip + (25 - pip). Footnote 67 requires exactly three men on the outer deuce point for its blot to exist, and nineteen opening lines in Hints for Play are consistent with this arrangement and no other. Previously mapped beyondAdapter/declined against Fig. 1; that was a misreading of a sentence one paragraph earlier, which is about board handedness. Depends on player-count and men-count: the arrangement places fifteen men for each of the two players (blind mapping).",
+      "crossReferences": [
+        {
+          "cites": "as shown in {273} Fig. 1",
+          "unmapped": "Fig. 1 is an illustration, not a passage. The arrangement it shows is stated in full in the prose after 'viz.', which is what this entry maps."
+        }
+      ]
     },
     {
       "id": "opening-roll",
@@ -151,11 +159,15 @@
       "scope": "in",
       "clarity": "clear",
       "dependsOn": [
+        "opening-roll",
+        "throw-two-dice"
+      ],
+      "enabledBy": [
         "opening-roll"
       ],
       "evidence": "The thrower of the higher number may either adopt the points shown by the two dice as his own throw, or throw again.",
       "status": "mapped",
-      "note": "Demonstrate both elections. The adopted throw can never be doublets, because a tie throws again and the two dice therefore differ - a consequence of opening-roll that is invisible from either entry alone, and that wires an adopt branch into the doublets path if it is missed."
+      "note": "Demonstrate both elections. The adopted throw can never be doublets, because a tie throws again and the two dice therefore differ - a consequence of opening-roll that is invisible from either entry alone, and that wires an adopt branch into the doublets path if it is missed. Depends on throw-two-dice ('or throw again' is a throw with both dice); enabled by opening-roll, which alone produces 'the thrower of the higher number' (blind mapping)."
     },
     {
       "id": "calling-the-throw",
@@ -226,11 +238,12 @@
       "scope": "in",
       "clarity": "clear",
       "dependsOn": [
-        "point-designations"
+        "point-designations",
+        "board-tables"
       ],
       "evidence": "The movement of the men of each player is from the ace point in his opponent's home table towards the like point in his own",
       "status": "mapped",
-      "note": "move-by-pip gives distance only. This is the sole authority for direction, and for the two players travelling opposite ways over the same twenty-four points - which is what makes a pip count, a blot and bearing off mean anything."
+      "note": "move-by-pip gives distance only. This is the sole authority for direction, and for the two players travelling opposite ways over the same twenty-four points - which is what makes a pip count, a blot and bearing off mean anything. Depends on board-tables, where a player's own home table ('his own') is stated (blind mapping)."
     },
     {
       "id": "doublets",
@@ -327,7 +340,11 @@
       "dependsOn": [
         "blot-hit",
         "legal-destination",
-        "point-designations"
+        "point-designations",
+        "direction-of-travel"
+      ],
+      "enabledBy": [
+        "blot-hit"
       ],
       "suspendedBy": [
         "full-table-suspension"
@@ -340,7 +357,7 @@
         "fate": "decision",
         "decision": "docs/decisions/0006-the-general-rule-governs-entry-and-full-means-adversely-full.md"
       },
-      "note": "Decided: the general rule governs entry, so a point the entering player's own men hold is open to him. The reading is observable in EnterFromBarTests.Entry_is_permitted_on_a_point_the_entering_players_own_men_hold, which fails under the other one. Demonstrate entry available and unavailable, all other men suspended while one is up, and entry onto a point the entering player's own men hold. Cited p. 273 until the span was quoted and checked. Suspended by full-table-suspension (docs/decisions/0011): a completely full table leaves no throw 'corresponding with a vacant point or blot', and the corpus does not have the player throw to find that out -- his play is altogether suspended. Depends on legal-destination because the decision makes that rule the entering man's destination test, so this entry cannot be built as decided without it; blot-hit reaching it first is ordering by accident, not the reason. Depends on point-designations: \"a throw corresponding with a vacant point\" names the point in the adversary's inner table that each number enters on, and the numbering is stated only there (both issue #42)."
+      "note": "Decided: the general rule governs entry, so a point the entering player's own men hold is open to him. The reading is observable in EnterFromBarTests.Entry_is_permitted_on_a_point_the_entering_players_own_men_hold, which fails under the other one. Demonstrate entry available and unavailable, all other men suspended while one is up, and entry onto a point the entering player's own men hold. Cited p. 273 until the span was quoted and checked. Suspended by full-table-suspension (docs/decisions/0011): a completely full table leaves no throw 'corresponding with a vacant point or blot', and the corpus does not have the player throw to find that out -- his play is altogether suspended. Depends on legal-destination because the decision makes that rule the entering man's destination test, so this entry cannot be built as decided without it; blot-hit reaching it first is ordering by accident, not the reason. Depends on point-designations: \"a throw corresponding with a vacant point\" names the point in the adversary's inner table that each number enters on, and the numbering is stated only there (both issue #42). Depends on direction-of-travel: the man begins 'its journey anew' and the entering point is counted along that journey. Enabled by blot-hit, the only rule that puts a man on the bar (both from the blind mapping)."
     },
     {
       "id": "full-table-suspension",
@@ -356,6 +373,9 @@
         "enter-from-bar",
         "made-point"
       ],
+      "enabledBy": [
+        "blot-hit"
+      ],
       "evidence": "If the adverse player's home table is completely full--_i.e._, each point occupied by two or more men, his play is altogether suspended, the adversary continuing to throw and move until the course of play again throws open one or more points in his table.",
       "status": "mapped",
       "ambiguity": {
@@ -364,7 +384,7 @@
         "fate": "decision",
         "decision": "docs/decisions/0006-the-general-rule-governs-entry-and-full-means-adversely-full.md"
       },
-      "note": "Decided: 'full' means adversely full. The reading is observable in FullTableSuspensionTests.A_point_held_by_the_entering_players_own_men_does_not_make_the_table_full, which fails under the other one. The same decision settles whether both players can be suspended at once through play: under this reading they cannot, so the engine's UnsupportedInteraction for that position answers only what a caller may assert. Demonstrate six points held by two or more, the adversary throwing and moving alone, and six points all occupied but one of them by the entering player's own men, which suspends nobody. Depends on made-point, which is what \"each point occupied by two or more men\" means. Cited p. 273 until the span was quoted and checked. It suspends seven entries, each named in that entry's suspendedBy with the judgement in its note (docs/decisions/0011)."
+      "note": "Decided: 'full' means adversely full. The reading is observable in FullTableSuspensionTests.A_point_held_by_the_entering_players_own_men_does_not_make_the_table_full, which fails under the other one. The same decision settles whether both players can be suspended at once through play: under this reading they cannot, so the engine's UnsupportedInteraction for that position answers only what a caller may assert. Demonstrate six points held by two or more, the adversary throwing and moving alone, and six points all occupied but one of them by the entering player's own men, which suspends nobody. Depends on made-point, which is what \"each point occupied by two or more men\" means. Cited p. 273 until the span was quoted and checked. It suspends seven entries, each named in that entry's suspendedBy with the judgement in its note (docs/decisions/0011). Enabled by blot-hit: 'his play' is the play of the owner of the man taken up, the subject of the two sentences before, so the suspension is reachable only once a man is on the bar (blind mapping)."
     },
     {
       "id": "must-play-whole-throw",
@@ -377,10 +397,10 @@
       "scope": "in",
       "clarity": "ambiguous",
       "dependsOn": [
-        "move-by-pip"
+        "move-by-pip",
+        "doublets"
       ],
       "suspendedBy": [
-        "enter-from-bar",
         "full-table-suspension"
       ],
       "evidence": "Any part of a throw which cannot be played is lost to the thrower, but every player is compelled to play the whole of his throw if it is possible to do so.",
@@ -390,7 +410,7 @@
         "fate": "unresolved",
         "unresolvedReason": "RequiresInterpretation"
       },
-      "note": "status and ambiguity.fate are independent (docs/decisions/0005), so an engine may implement this rule and still decline the case the question names -- which is the whole of what it declines. Read as an obligation to play a set of numbers that cannot be extended, the compulsion settles every other throw from the text: doublets are never ambiguous, and a throw with one playable die compels it. Demonstrate a throw fully playable, partly playable, and unplayable. Where the entry is implemented the conformance verdict covers every case but the one named, and the declining case ships WholeThrowTests.Where_either_die_alone_can_be_played_but_not_both_the_corpus_does_not_settle_it. Cited p. 273 until the span was quoted and checked; the sentence is on p. 275, two pages on. Suspended by full-table-suspension as well as enter-from-bar (docs/decisions/0011): with no throw there is no whole of a throw to compel."
+      "note": "status and ambiguity.fate are independent (docs/decisions/0005), so an engine may implement this rule and still decline the case the question names -- which is the whole of what it declines. Read as an obligation to play a set of numbers that cannot be extended, the compulsion settles every other throw from the text: doublets are never ambiguous, and a throw with one playable die compels it. Demonstrate a throw fully playable, partly playable, and unplayable. Where the entry is implemented the conformance verdict covers every case but the one named, and the declining case ships WholeThrowTests.Where_either_die_alone_can_be_played_but_not_both_the_corpus_does_not_settle_it. Cited p. 273 until the span was quoted and checked; the sentence is on p. 275, two pages on. Suspended by full-table-suspension (docs/decisions/0011): with no throw there is no whole of a throw to compel. Not suspended by enter-from-bar: a man up suspends 'the play of his other men', not the throw, and 'every player' must still play the whole throw where he can, entering first (corrected in the blind mapping). Depends on doublets: the whole of a doublet throw is four parts."
     },
     {
       "id": "bearing-off-eligible",
@@ -401,13 +421,18 @@
       },
       "kind": "operation",
       "scope": "in",
-      "clarity": "clear",
+      "clarity": "ambiguous",
       "dependsOn": [
         "board-tables"
       ],
       "evidence": "When either player has succeeded in getting all his men into his home table, he proceeds to \"bear them off\"--_i.e._, to remove them from the board.",
       "status": "mapped",
-      "note": "Demonstrate all fifteen home, fourteen home, and a man hit back out mid-bear-off. Depends on board-tables: the rule is written in \"his home table\", and which half of the board is a player's own home table is stated there and nowhere else (issue #42)."
+      "ambiguity": {
+        "question": "The stage begins 'when either player has succeeded in getting all his men into his home table', and the chapter never says whether it lasts. If one of his men is hit after he has begun to bear off and then re-enters, the text does not say whether he may go on bearing off the men still at home or must first bring every man home again.",
+        "fate": "unresolved",
+        "unresolvedReason": "RequiresInterpretation"
+      },
+      "note": "Demonstrate all fifteen home and fourteen home. A man hit back out mid-bear-off is the case the question names; it was a demonstration here, with no reading recorded, until the blind mapping. Depends on board-tables: the rule is written in \"his home table\", and which half of the board is a player's own home table is stated there and nowhere else (issue #42)."
     },
     {
       "id": "bearing-off-move-or-remove",
@@ -422,14 +447,18 @@
       "dependsOn": [
         "bearing-off-eligible",
         "legal-destination",
-        "move-by-pip"
+        "move-by-pip",
+        "point-designations"
       ],
       "enabledBy": [
         "bearing-off-eligible"
       ],
+      "suspendedBy": [
+        "enter-from-bar"
+      ],
       "evidence": "When the game has reached this stage, each throw entitles the player either to move forward a man or men (to the extent indicated by the throw) within the limits of his own table, or to remove men from the corresponding points.",
       "status": "mapped",
-      "note": "Demonstrate the worked distribution that follows this sentence, for both the quatre and the trois. The span is the sentence that states the rule; the worked example runs on across the {276} marker and is the demonstration, not the statement. Depends on move-by-pip: \"to move forward a man or men (to the extent indicated by the throw)\" is move-by-pip's forward move, one man per number, restated for this phase rather than redefined -- move-by-pip is suspended here and this rule reuses what it states (issue #42). Depends on legal-destination: a forward move inside the home table is still refused by a made point and still takes up a blot."
+      "note": "Demonstrate the worked distribution that follows this sentence, for both the quatre and the trois. The span is the sentence that states the rule; the worked example runs on across the {276} marker and is the demonstration, not the statement. Depends on move-by-pip: \"to move forward a man or men (to the extent indicated by the throw)\" is move-by-pip's forward move, one man per number, restated for this phase rather than redefined -- move-by-pip is suspended here and this rule reuses what it states (issue #42). Depends on legal-destination: a forward move inside the home table is still refused by a made point and still takes up a blot. Suspended by enter-from-bar (blind mapping, examples/hoyle-backgammon/blind-mapping/): a man up suspends 'the play of his other men', bearing off included. Depends on point-designations: 'the corresponding points' are named by the number thrown."
     },
     {
       "id": "bearing-off-highest",
@@ -447,9 +476,12 @@
       "enabledBy": [
         "bearing-off-eligible"
       ],
+      "suspendedBy": [
+        "enter-from-bar"
+      ],
       "evidence": "If, however, he throws a number which he cannot deal with after either of these fashions--_e.g._, a six, he is entitled to bear off a man from his highest occupied point, in this case the cinque.",
       "status": "mapped",
-      "note": "Clear, correct, and the opposite of what a modern player expects: a number that neither of the two fashions can deal with bears a man off the highest occupied point even where men still stand above it, which a modern ruleset refuses. Under docs/decisions/0005 the entry names the test that fails under the assumed reading: BearingOffDetailTests.A_blocked_forward_move_bears_off_from_the_highest_point_men_still_above_it. It is the one case in the suite where Hoyle's rule and the modern rule differ. Demonstrate the six-throw example, and a usable throw, which must be played forward instead. Cited p. 275 until the span was quoted and checked."
+      "note": "Clear, correct, and the opposite of what a modern player expects: a number that neither of the two fashions can deal with bears a man off the highest occupied point even where men still stand above it, which a modern ruleset refuses. Under docs/decisions/0005 the entry names the test that fails under the assumed reading: BearingOffDetailTests.A_blocked_forward_move_bears_off_from_the_highest_point_men_still_above_it. It is the one case in the suite where Hoyle's rule and the modern rule differ. Demonstrate the six-throw example, and a usable throw, which must be played forward instead. Cited p. 275 until the span was quoted and checked. Suspended by enter-from-bar (blind mapping, examples/hoyle-backgammon/blind-mapping/): a man up suspends 'the play of his other men', bearing off included."
     },
     {
       "id": "bearing-off-doublets",
@@ -469,9 +501,18 @@
       "enabledBy": [
         "bearing-off-eligible"
       ],
+      "suspendedBy": [
+        "enter-from-bar"
+      ],
       "evidence": "Doublets have, as in the earlier stage of the game, a twofold value, and may be played either wholly by moving men forward, wholly by bearing off, or partly by the one method and partly by the other, as may be desirable. Suppose, for instance, that the player, having his men as shown in the figure, throws deuces; having only three men on the deuce point, he can only bear off that number; the fourth man must be played forward, either from the cinque or quatre point.",
       "status": "mapped",
-      "note": "Demonstrate the deuces example: three borne off, the fourth played forward. Depends on bearing-off-highest, because a doublet number that neither fashion can deal with is resolved by that rule and not this one. \"As may be desirable\" is advice inside a normative sentence and is quoted because the span is contiguous, not because it is mapped. Cited p. 275 until the span was quoted and checked."
+      "note": "Demonstrate the deuces example: three borne off, the fourth played forward. Depends on bearing-off-highest, because a doublet number that neither fashion can deal with is resolved by that rule and not this one. \"As may be desirable\" is advice inside a normative sentence and is quoted because the span is contiguous, not because it is mapped. Cited p. 275 until the span was quoted and checked. Suspended by enter-from-bar (blind mapping, examples/hoyle-backgammon/blind-mapping/): a man up suspends 'the play of his other men', bearing off included.",
+      "crossReferences": [
+        {
+          "cites": "as in the earlier stage of the game",
+          "resolvedBy": "doublets"
+        }
+      ]
     },
     {
       "id": "win-condition",
@@ -504,16 +545,20 @@
       "dependsOn": [
         "win-condition",
         "bearing-off-eligible",
-        "enter-from-bar"
+        "enter-from-bar",
+        "blot-hit"
+      ],
+      "enabledBy": [
+        "win-condition"
       ],
       "evidence": "If the adversary has got all his men into his own home table, and has begun to bear off, the game of the winner is known as a \"hit.\" If the winner has borne off all his men before his adversary has begun to do the same, the game is known as a \"gammon.\" The loser is said to be \"gammoned,\" and pays double the agreed stake. If the winner has borne off all his men while the adversary has still a man or men \"up\" (_i.e._, on the bar) or in his (the winner's) home table, the game is a \"backgammon,\" and the loser pays {277} either thrice or four times (as may have been agreed) the amount of the single stake.",
       "status": "mapped",
       "ambiguity": {
-        "question": "The three named results do not cover every finish. Written as predicates on the loser they are: all his men home and he has begun to bear off (a hit); he has not begun to bear off (a gammon); he has a man up or in the winner's home table (a backgammon). A loser who has borne off a man, been taken up, re-entered and run that man clear of the winner's home table answers none of them, and the corpus does not say what such a win is worth.",
+        "question": "The three named results do not cover every finish. Written as predicates on the loser they are: all his men home and he has begun to bear off (a hit); he has not begun to bear off (a gammon); he has a man up or in the winner's home table (a backgammon). A loser who has borne off a man, been taken up, re-entered and run that man clear of the winner's home table answers none of them, and the corpus does not say what such a win is worth. Nor are they disjoint: a loser who has borne off nothing and has a man up answers both 'before his adversary has begun to do the same' (a gammon) and 'a man or men \"up\"' (a backgammon), and the corpus does not say which result he suffers.",
         "fate": "unresolved",
         "unresolvedReason": "RequiresInterpretation"
       },
-      "note": "Was recorded clarity: clear, which asserts the corpus determines one answer for every valid input, while the engine returned RequiresInterpretation citing this entry -- the live violation of the correspondence table. The gap case is reachable and not a curiosity: the winner hits a bearing-off opponent's blot from outside, which he can only do while still running, and then finishes first. Demonstrate all three results -- adversary bearing off; not yet bearing off; a man up or in the winner's home table -- and the finish none of the three names; the declining case ships GameValueTests.The_three_named_results_do_not_cover_every_finish. A second, smaller defect stays in clear's ledger rather than in the question: the three are not disjoint either -- a loser who has borne off nothing and has a man up answers the gammon and backgammon conditions both -- so an ordering had to be chosen, backgammon first, and clear does not record that a choice was made. The finding's own stated reason for the overlap, that a man up implies nothing has been borne off, is false and is not repeated here. Depends on bearing-off-eligible and enter-from-bar, whose states the three conditions are written in. See finding 4 in the engine's MAP-FINDINGS.md. Cited p. 275 until the span was quoted and checked."
+      "note": "Was recorded clarity: clear, which asserts the corpus determines one answer for every valid input, while the engine returned RequiresInterpretation citing this entry -- the live violation of the correspondence table. The gap case is reachable and not a curiosity: the winner hits a bearing-off opponent's blot from outside, which he can only do while still running, and then finishes first. Demonstrate all three results -- adversary bearing off; not yet bearing off; a man up or in the winner's home table -- and the finish none of the three names; the declining case ships GameValueTests.The_three_named_results_do_not_cover_every_finish. The overlap between the gammon and backgammon conditions has been part of the question since the blind mapping; before it, an ordering (backgammon first) had been chosen and recorded nowhere. The finding's own stated reason for the overlap, that a man up implies nothing has been borne off, is false and is not repeated here. Depends on bearing-off-eligible and enter-from-bar, whose states the three conditions are written in. See finding 4 in the engine's MAP-FINDINGS.md. Cited p. 275 until the span was quoted and checked. Depends on blot-hit, which defines 'up' ('taken up (placed on the bar ...)'); enabled by win-condition, since a game has a value only once it is won (blind mapping)."
     },
     {
       "id": "agreed-backgammon-multiple",
@@ -578,15 +623,41 @@
         "game-value",
         "opening-roll"
       ],
+      "enabledBy": [
+        "win-condition"
+      ],
       "evidence": "Where several games are played in succession, the winner of a \"hit\" throws first in the game next following. After a gammon or backgammon, the players throw again for the right to begin, as at starting.",
       "status": "mapped",
-      "note": "Demonstrate the following game's opening after a hit, after a gammon, and after a backgammon. Depends on opening-roll: \"as at starting\" is a reference to it and not a restatement. Cited p. 275 until the span was quoted and checked.",
+      "note": "Demonstrate the following game's opening after a hit, after a gammon, and after a backgammon. Depends on opening-roll: \"as at starting\" is a reference to it and not a restatement. Cited p. 275 until the span was quoted and checked. Enabled by win-condition: it applies only once a game is won (blind mapping).",
       "crossReferences": [
         {
           "cites": "as at starting",
           "resolvedBy": "opening-roll"
         }
       ]
+    },
+    {
+      "id": "rubber-scoring",
+      "name": "How games count towards a rubber",
+      "locator": {
+        "sourceId": "hoyle-1909",
+        "citation": "BACKGAMMON / Hints for Play / p. 278"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "ambiguous",
+      "dependsOn": [
+        "game-value",
+        "next-game-opening"
+      ],
+      "evidence": "This case often arises where the player has already lost the first hit of a rubber, in which case, if he loses the next game, he has lost the rubber also; but if he can secure a gammon (reckoning as a double game), he becomes the winner of the rubber.",
+      "status": "mapped",
+      "ambiguity": {
+        "question": "The chapter mentions a rubber only inside advice: a player who has 'lost the first hit of a rubber' loses it if he 'loses the next game', and wins it if he secures 'a gammon (reckoning as a double game)'. It never defines a rubber's length or winning total, and does not say how a backgammon reckons.",
+        "fate": "unresolved",
+        "unresolvedReason": "RequiresInterpretation"
+      },
+      "note": "Added by the blind mapping (examples/hoyle-backgammon/blind-mapping/): the sentence sat inside die-faces' span with no verdict on it. Scope is decided per rule (docs/decisions/0009), and this sentence states how games count, not how to play. Demonstrate the two cases it states: a lost hit followed by a lost game loses the rubber; a lost hit followed by a won gammon wins it."
     },
     {
       "id": "die-faces",

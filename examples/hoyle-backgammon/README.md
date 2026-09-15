@@ -18,8 +18,10 @@ not.
 **Result, as first mapped:** 24 entries. 5 values, 19 operations. 22 clear, 2 ambiguous. 3
 declined.
 
-**Result today:** 30 entries. 9 values, 20 operations, 1 assertion. 25 clear, 5 ambiguous. 3
-declined. The difference is corrections, not a wider slice: `player-count`,
+**Result today:** 33 entries. 10 values, 22 operations, 1 assertion. 26 clear, 7 ambiguous. 4
+declined. The blind second mapping ([blind-mapping/](blind-mapping/README.md), #95) added
+`rubber-scoring` and made `bearing-off-eligible` ambiguous, besides edges and declarations. The
+difference is corrections, not a wider slice: `player-count`,
 `point-designations` and `direction-of-travel` are rules the first pass read past
 ([#13](https://github.com/brandonifco/rules-factory/issues/13)); `inner-table-handedness` and
 `agreed-backgammon-multiple` were split out of entries that held two facts
@@ -38,17 +40,18 @@ the map had excluded wholesale
 
 | | Part 107 | Backgammon (as mapped) | Backgammon (today) |
 |---|---|---|---|
-| Entries from the slice | 24 | 24 | 29 |
-| Ambiguous | 5 (21%) | 2 (8%) | 5 (17%) |
+| Entries from the slice | 24 | 24 | 33 |
+| Ambiguous | 5 (21%) | 2 (8%) | 7 (21%) |
 | Slice as share of corpus | 11% | **1.1%** | 1.1% |
 | Locator grammar | designation — `§ 107.51(b)(2)` | **page** — `Playing / p. 273` | page — `Playing / p. 274` |
 | Randomness | none at all | central | central |
 
 The ambiguity rate was the finding, and the third column is what became of it. A regulator
 writes standards on purpose and expects a human to apply them; a games author is trying to
-settle every case at the table. That argument survives — 17% is still below 21% — but **most of
-the gap the trial reported was not a property of the genre. It was three contradictions and a
-gap nobody had noticed yet**, and 8% was a measurement of the mapper. The method should expect
+settle every case at the table. That argument did not survive: after the blind second mapping
+the two rates are equal, 21% each. **The gap the trial reported was not a property of the genre.
+It was three contradictions and four gaps nobody had noticed yet**, and 8% was a measurement of
+the mapper. The method should expect
 genres to differ, and should expect a low ambiguity rate on a first pass to be the least
 trustworthy number a trial produces.
 
