@@ -292,5 +292,11 @@ checker's bytes changed in all three (0024, 0025, 0026), which is major on its o
   existing ones' evidence extended, and `crossReferences`/`dependsOn` added on in-scope entries
   (0026, #121). 95 entries.
 
+`hoyle-backgammon` `6.0.0` adds a second part to two ambiguity questions (#125, the engine's
+finding 18): `must-play-whole-throw` asks whether two orders of a throw that reach the same position
+are one play, and `bearing-off-eligible` asks whether bearing off can begin partway through the throw
+that brings the last man home. The notes on `move-by-pip` and `bearing-off-move-or-remove` point at
+them. No clarity or fate changed; a changed question is major.
+
 **corpus-map.md's "Where the map lives" changes.** A map is published from the factory and
 consumed as a package. The engine owns only its overlay.

@@ -1,0 +1,169 @@
+{
+  "about": "Independent verdict (0017) on #125 (the engine's finding 18, brandonifco/hoyle-backgammon#14): whether a play of a throw is the position it reaches or the ordered moves, and whether bearing off can begin partway through the throw that brings the last man home. The reviewer was a separate agent context. It was given only the corpus pages listed in `read`, a short statement of the fields' meanings in its prompt, and a JSON before/after of every changed entry. It did not see the issue, the finding, the engine's decision record or the blind-mapping resolutions, and saw the author's reasoning only in the map's own notes and, in round 2, in a one-paragraph list of the nits taken. `sha256` is the final map. `verdicts` is the reviewer's final output, unedited. `rounds` keeps both rounds and how each point was resolved.",
+  "sha256": "384814cfc06a4b293ede04d11c70ceb046b82370d1487b66080a5f01c08ecc67",
+  "reviewer": "independent reviewer, separate context",
+  "read": [
+    "hoyle-pp273-276.txt (hoyle.txt from the {273} line through the {277} line)",
+    "diff.json (move-by-pip, must-play-whole-throw, bearing-off-eligible and bearing-off-move-or-remove, before and after; regenerated for round 2)"
+  ],
+  "summary": "Round 1: every changed field agrees with pp. 273-276; the pages settle neither what one play is nor whether bearing off can begin mid-throw, bearing-off-move-or-remove stays clear, and neither point is a conflict. Three nits, all taken. Round 2 (final bytes): every changed field agrees, no omissions, no nits.",
+  "verdicts": [
+    {
+      "entry": "move-by-pip",
+      "field": "note",
+      "verdict": "agree",
+      "citation": "Until he does this, the play of his other men is suspended.",
+      "reason": "This passage lifts the suspension when the man enters, not when a throw ends. So the claim that entry takes hold between a throw's numbers is fairly drawn, especially with the rule that the whole throw must be played. The other suspension (a full home table) stops the whole throw and never takes hold between numbers, so 'the one gate' is accurate. Calling the bearing-off gate open matches the text ('When the game has reached this stage, each throw'). 'and then the same or another man' supports numbers being played one after another."
+    },
+    {
+      "entry": "must-play-whole-throw",
+      "field": "ambiguity.question",
+      "verdict": "agree",
+      "citation": "every player is compelled to play the whole of his throw if it is possible to do so",
+      "reason": "The text never says whether a play is a position or a sequence of moves. The example is correct. The last man starts on the eight point. 8/6 brings him home, so the ace (6/5) is played in the bearing-off stage. 8/7 plays the ace while he is still outside, and 7/5 brings him home. Both end with the man on the five point. The question sits on the right entry."
+    },
+    {
+      "entry": "must-play-whole-throw",
+      "field": "note",
+      "verdict": "agree",
+      "citation": "Any part of a throw which cannot be played is lost to the thrower",
+      "reason": "The statement that 'whole of his throw' and 'any part of a throw' count numbers and say nothing of their order is true. The changes to 'two cases' and 'first declining case' match the two-part question."
+    },
+    {
+      "entry": "bearing-off-eligible",
+      "field": "ambiguity.question",
+      "verdict": "agree",
+      "citation": "When the game has reached this stage, each throw entitles the player either to move forward a man or men (to the extent indicated by the throw) within the limits of his own table, or to remove men from the corresponding points.",
+      "reason": "The text leaves open whether 'each throw' covers a throw during which the stage is reached. Both examples are right. 9/3 puts the man on the trois point and the trois removes him from the corresponding point. 9/6 puts him on the six point and the six removes him. On the other reading, neither second number may bear off. The quatre-trois example starts with every man already home ('the player's men are thus distributed in his table'), so it does not decide the case."
+    },
+    {
+      "entry": "bearing-off-eligible",
+      "field": "note",
+      "verdict": "agree",
+      "citation": "each throw entitles the player",
+      "reason": "Calling it a gap, not a conflict, is right. 'each die' and 'each throw' do not give incompatible answers to one question, and neither says when the stage begins within a throw."
+    },
+    {
+      "entry": "bearing-off-move-or-remove",
+      "field": "note",
+      "verdict": "agree",
+      "citation": "When the game has reached this stage, each throw",
+      "reason": "The note is accurate: this opening does not say whether a throw during which the stage is reached counts, and the question correctly belongs to the entry that enables this one. clarity stays clear because the rule decides every throw once the stage is in force, including 'bear off a man from his highest occupied point'."
+    }
+  ],
+  "omissions": [],
+  "nits": [],
+  "rounds": [
+    {
+      "round": 1,
+      "sha256": "051915ce6aca0887c1ca0a21c543c735b24b48ebcdfb78c24e96decdca6e8835",
+      "verdicts": [
+        {
+          "entry": "move-by-pip",
+          "field": "note",
+          "verdict": "agree",
+          "citation": "and then the same or another man {274} three points onward",
+          "reason": "This supports the note's claim that each number is a separate move made one after another. The note does not claim that order is free as a fact of the text; it credits that to another record. The claim that a move depends on what holds when it is made is fairly drawn from 'Until he does this, the play of his other men is suspended' read together with the rule that the whole throw must be played. The note correctly leaves the bearing-off timing question and the question of whether two orders are one play to the other entries."
+        },
+        {
+          "entry": "must-play-whole-throw",
+          "field": "ambiguity.question",
+          "verdict": "agree",
+          "citation": "every player is compelled to play the whole of his throw if it is possible to do so",
+          "reason": "The sentence counts the numbers used and never defines what a play is, so it is a real gap. The example is correct. Last man on the eight point, deuce-ace thrown: 8/6 brings every man home, so the ace (6/5) is played in the bearing-off stage. 8/7 plays the ace while a man is still outside, and 7/5 then brings him home. Both orders end in the same position, but different rules permit the ace. It belongs on this entry because the compulsion is where the whole of a throw gets counted."
+        },
+        {
+          "entry": "must-play-whole-throw",
+          "field": "note",
+          "verdict": "agree",
+          "citation": "Any part of a throw which cannot be played is lost to the thrower",
+          "reason": "The note says 'the whole of his throw' and 'any part of a throw' count numbers and say nothing of order. That is true of the text. The changes from 'the case' to 'the two cases' match the expanded question."
+        },
+        {
+          "entry": "bearing-off-eligible",
+          "field": "ambiguity.question",
+          "verdict": "agree",
+          "citation": "When the game has reached this stage, each throw entitles the player either to move forward a man or men (to the extent indicated by the throw) within the limits of his own table, or to remove men from the corresponding points.",
+          "reason": "'each throw' could mean a throw that begins once the stage is reached, or it could apply from the moment the stage is reached, so the text leaves the question open. The example is correct: last man on the nine point, six-trois thrown, 9/3 lands on the trois point, and the trois then removes him from the corresponding point. The note is also right that the quatre-trois example starts from men already home ('the player's men are thus distributed in his table'), so it cannot decide the case."
+        },
+        {
+          "entry": "bearing-off-eligible",
+          "field": "note",
+          "verdict": "agree",
+          "citation": "each throw entitles the player",
+          "reason": "Not a conflict is right. move-by-pip's 'each die' and this rule's 'each throw' do not give two incompatible answers to one question, and neither says when within a throw the stage begins. That makes it a gap."
+        },
+        {
+          "entry": "bearing-off-move-or-remove",
+          "field": "note",
+          "verdict": "agree",
+          "citation": "When the game has reached this stage, each throw",
+          "reason": "The note accurately says this opening does not settle whether the throw during which the stage is reached counts. Pointing to the enabling entry's question instead of copying it here is right. clarity stays clear because the rule itself decides every throw once the stage is in force, including the six in the example ('bear off a man from his highest occupied point')."
+        }
+      ],
+      "omissions": [],
+      "nits": [
+        "move-by-pip's note says 'which rule permits a move can depend on the moves before it in the same throw' as if the text settles it in general. The only support is the bar-entry passage, and bearing-off-eligible leaves the same question open for the bearing-off gate. Consider limiting the claim to the bar case, or saying the bar case is the only one the text decides, so the two notes do not read as contradicting each other.",
+        "The eight-point example could say outright that both orders end in the same position (one man on the five point). The question depends on that, but a reader has to work it out.",
+        "In the nine-point example, 9/6 with the trois followed by bearing off from the six point with the six raises the same timing question. Mentioning it would show the case does not depend on playing the six first."
+      ],
+      "summary": "The new claims hold up against pp. 273-276. The pages do not settle any of the three points. (1) Nothing says whether a play of a throw is the position it reaches or the moves in order. 'and then the same or another man' describes moving in sequence but never says when two plays count as the same. (2) The pages do not generally settle whether the rule that permits a move can depend on earlier moves in the same throw. The bar passage ('Until he does this') is the one place that supports it. (3) The pages do not settle whether bearing off can begin partway through the throw that brings the last man home. 'When the game has reached this stage, each throw entitles' can be read either way, and the quatre-trois example starts with every man already home. Both worked examples are correct about the board. Leaving bearing-off-move-or-remove as clear is right, because the timing question belongs to the entry that enables it. Treating both points as gaps, not conflicts, is right.",
+      "resolutions": [
+        "move-by-pip note (nit 1): taken. The claim that the rule permitting a move depends on earlier moves in the throw is limited to entry, 'the one gate the text shows taking hold between the numbers of a throw', and the bearing-off gate is called the open question.",
+        "must-play-whole-throw question (nit 2): taken. The example says both orders leave the man on the five point.",
+        "bearing-off-eligible question (nit 3): taken. The example adds 9/6 then bearing off with the six, and says neither is legal on the second reading."
+      ]
+    },
+    {
+      "round": 2,
+      "sha256": "384814cfc06a4b293ede04d11c70ceb046b82370d1487b66080a5f01c08ecc67",
+      "verdicts": [
+        {
+          "entry": "move-by-pip",
+          "field": "note",
+          "verdict": "agree",
+          "citation": "Until he does this, the play of his other men is suspended.",
+          "reason": "This passage lifts the suspension when the man enters, not when a throw ends. So the claim that entry takes hold between a throw's numbers is fairly drawn, especially with the rule that the whole throw must be played. The other suspension (a full home table) stops the whole throw and never takes hold between numbers, so 'the one gate' is accurate. Calling the bearing-off gate open matches the text ('When the game has reached this stage, each throw'). 'and then the same or another man' supports numbers being played one after another."
+        },
+        {
+          "entry": "must-play-whole-throw",
+          "field": "ambiguity.question",
+          "verdict": "agree",
+          "citation": "every player is compelled to play the whole of his throw if it is possible to do so",
+          "reason": "The text never says whether a play is a position or a sequence of moves. The example is correct. The last man starts on the eight point. 8/6 brings him home, so the ace (6/5) is played in the bearing-off stage. 8/7 plays the ace while he is still outside, and 7/5 brings him home. Both end with the man on the five point. The question sits on the right entry."
+        },
+        {
+          "entry": "must-play-whole-throw",
+          "field": "note",
+          "verdict": "agree",
+          "citation": "Any part of a throw which cannot be played is lost to the thrower",
+          "reason": "The statement that 'whole of his throw' and 'any part of a throw' count numbers and say nothing of their order is true. The changes to 'two cases' and 'first declining case' match the two-part question."
+        },
+        {
+          "entry": "bearing-off-eligible",
+          "field": "ambiguity.question",
+          "verdict": "agree",
+          "citation": "When the game has reached this stage, each throw entitles the player either to move forward a man or men (to the extent indicated by the throw) within the limits of his own table, or to remove men from the corresponding points.",
+          "reason": "The text leaves open whether 'each throw' covers a throw during which the stage is reached. Both examples are right. 9/3 puts the man on the trois point and the trois removes him from the corresponding point. 9/6 puts him on the six point and the six removes him. On the other reading, neither second number may bear off. The quatre-trois example starts with every man already home ('the player's men are thus distributed in his table'), so it does not decide the case."
+        },
+        {
+          "entry": "bearing-off-eligible",
+          "field": "note",
+          "verdict": "agree",
+          "citation": "each throw entitles the player",
+          "reason": "Calling it a gap, not a conflict, is right. 'each die' and 'each throw' do not give incompatible answers to one question, and neither says when the stage begins within a throw."
+        },
+        {
+          "entry": "bearing-off-move-or-remove",
+          "field": "note",
+          "verdict": "agree",
+          "citation": "When the game has reached this stage, each throw",
+          "reason": "The note is accurate: this opening does not say whether a throw during which the stage is reached counts, and the question correctly belongs to the entry that enables this one. clarity stays clear because the rule decides every throw once the stage is in force, including 'bear off a man from his highest occupied point'."
+        }
+      ],
+      "omissions": [],
+      "nits": [],
+      "summary": "All three nits were fixed correctly, and every changed field in the final diff holds up against pp. 273-276. move-by-pip's note now claims order-dependence only for entering from the bar, which is the one place the text shows it. It says the bearing-off gate is the open question, so it no longer clashes with bearing-off-eligible. Both worked examples are correct about the board. 8/6 6/5 and 8/7 7/5 both leave the man on the five point. 9/6 then bearing off with the six removes the man from the six point, and 9/3 then the trois removes him from the trois point. The pages still settle none of the three points: what counts as one play, whether the rule permitting a move can change partway through a throw other than on entering, and whether bearing off can begin mid-throw. bearing-off-move-or-remove should stay clear, and neither point is a conflict."
+    }
+  ]
+}

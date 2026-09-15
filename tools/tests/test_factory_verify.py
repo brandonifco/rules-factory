@@ -371,7 +371,7 @@ class TestRelock(VerifyCase):
     @classmethod
     def setUpClass(cls):
         super().setUpClass()
-        cls.nupkg_bumped = pack_version(HOYLE, "6.0.0", cls.shared)
+        cls.nupkg_bumped = pack_version(HOYLE, "7.0.0", cls.shared)
 
     def produce_verified(self, package, **env):
         with mock.patch.dict(os.environ, {**self.env, **env}):
@@ -406,7 +406,7 @@ class TestRelock(VerifyCase):
         after = self.locks()
         for relative in after:
             self.assertNotEqual(before[relative], after[relative])
-            self.assertIn("[6.0.0]", after[relative])
+            self.assertIn("[7.0.0]", after[relative])
         recorded = self.recorded_locks()
         self.assertEqual(sorted(recorded), sorted(after))
         for relative, text in after.items():
@@ -454,7 +454,7 @@ class TestRelock(VerifyCase):
         with open(props, encoding="utf-8") as handle:
             text = handle.read()
         with open(props, "w", encoding="utf-8") as handle:
-            handle.write(text.replace("[5.0.0]", "[6.0.0]"))
+            handle.write(text.replace("[6.0.0]", "[7.0.0]"))
         before = self.locks()
         os.remove(self.log)
         with mock.patch.dict(os.environ, self.env):
@@ -531,7 +531,7 @@ class TestNoVerifyStaleLocks(VerifyCase):
     @classmethod
     def setUpClass(cls):
         super().setUpClass()
-        cls.nupkg_bumped = pack_version(HOYLE, "6.0.0", cls.shared)
+        cls.nupkg_bumped = pack_version(HOYLE, "7.0.0", cls.shared)
         cls.kernel = verify_step.read_pins(cls.base)["ruleskernel"]
         cls.map_id = f"RulesFactory.Maps.{NAME}"
         assert cls.map_id.lower() in verify_step.read_pins(cls.base)
@@ -548,13 +548,13 @@ class TestNoVerifyStaleLocks(VerifyCase):
                     "--out", self.engine, "--allow-dirty", *extra])
 
     def test_stale_lock_files_are_refused_and_the_engine_is_byte_identical(self):
-        self.write_locks("5.0.0")
+        self.write_locks("6.0.0")
         before = snapshot(self.engine)
         code, output = self.produce_bumped("--no-verify")
         self.assertEqual(code, 1, output)
         self.assertIn("REFUSED -- --no-verify cannot re-lock", output)
         for project in (f"src/{NAME}", f"tests/{NAME}.Tests"):
-            self.assertIn(f"{project}/packages.lock.json: {self.map_id} locked at 5.0.0, pinned at [6.0.0]", output)
+            self.assertIn(f"{project}/packages.lock.json: {self.map_id} locked at 6.0.0, pinned at [7.0.0]", output)
         self.assertIn("produce without --no-verify", output)
         self.assertIn("scripts/validate.sh lock", output)
         self.assertIn("Nothing was produced.", output)
@@ -562,12 +562,12 @@ class TestNoVerifyStaleLocks(VerifyCase):
         self.assertEqual([n for n in os.listdir(self.tmp) if ".factory-produce-" in n], [])
 
     def test_lock_files_already_re_locked_are_committed_unverified(self):
-        self.write_locks("6.0.0")
+        self.write_locks("7.0.0")
         before = snapshot(self.engine)
         code, output = self.produce_bumped("--no-verify")
         self.assertEqual(code, 0, output)
         self.assertEqual(output.splitlines()[-1], f"produced {NAME} in {self.engine}, NOT VERIFIED")
-        self.assertEqual(verify_step.read_pins(self.engine)[self.map_id.lower()], "[6.0.0]")
+        self.assertEqual(verify_step.read_pins(self.engine)[self.map_id.lower()], "[7.0.0]")
         after = snapshot(self.engine)
         for relative in (f"src/{NAME}/packages.lock.json", f"tests/{NAME}.Tests/packages.lock.json"):
             self.assertEqual(before[relative.replace("/", os.sep)], after[relative.replace("/", os.sep)])
@@ -575,10 +575,10 @@ class TestNoVerifyStaleLocks(VerifyCase):
     def test_an_engine_without_lock_files_is_unaffected(self):
         code, output = self.produce_bumped("--no-verify")
         self.assertEqual(code, 0, output)
-        self.assertEqual(verify_step.read_pins(self.engine)[self.map_id.lower()], "[6.0.0]")
+        self.assertEqual(verify_step.read_pins(self.engine)[self.map_id.lower()], "[7.0.0]")
 
     def test_the_verify_path_still_re_locks_stale_lock_files(self):
-        self.write_locks("5.0.0")
+        self.write_locks("6.0.0")
         with mock.patch.dict(os.environ, self.env):
             code, output = self.produce_bumped()
         self.assertEqual(code, 0, output)
