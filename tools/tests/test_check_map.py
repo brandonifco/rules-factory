@@ -451,7 +451,7 @@ class TestGates(MapCase):
             "gates", lambda d: d["entries"][self.GATED]["suspendedBy"].append("speed-limit"))
 
     def test_a_map_with_no_gates_does_not_report_ok(self):
-        # Both Part 107 maps: a stateless corpus has no phases, which is right, and proves nothing.
+        # A map with no gates, like the Part 107 temporal map: nothing was checked, and it proves nothing.
         document = valid_map()
         document["entries"][self.GATED].pop("enabledBy")
         document["entries"][self.GATED].pop("suspendedBy")

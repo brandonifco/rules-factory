@@ -446,8 +446,9 @@ The two relations coincide often enough to be confused, and they are not derivab
 other. In the backgammon map, `bearing-off-doublets` has six `dependsOn` ancestors and
 exactly one of them is its gate; `move-by-pip` is suspended by `enter-from-bar`, which is not
 among its ancestors, and nor is `move-by-pip` among `enter-from-bar`'s. A stateless corpus
-never asks: a regulation evaluating one flight against a set of limits has no phase for a
-rule to be scoped to, and both Part 107 maps carry neither gate field on any entry.
+has no phase for a rule to be scoped to, but it can still have gates. A waiver is one: while a
+certificate of waiver authorizing deviation from § 107.41 is held, § 107.41 does not apply. See
+*A gate outside the slice* below.
 
 **A gate has a direction, and the field says which.** `enabledBy` names the rules that make
 this one reachable; `suspendedBy` the rules that make it unreachable while they hold.
@@ -470,6 +471,20 @@ independent, so inheriting along one of them would be a guess. Expect repetition
 `full-table-suspension` is named by seven entries, each with the judgement in its `note`.
 
 They order nothing. `dependsOn` remains the only input to backlog order.
+
+**A gate outside the slice is a `scope: out` entry, and whether it holds is the caller's to
+state.** Decided in [0021](decisions/0021-a-gate-outside-the-slice-is-held-by-the-caller.md). A gate
+field can name an out-of-scope entry the way `dependsOn` names `subpart-d-categories`. In Part 107,
+27 entries name `waivable-regulations` (§ 107.205, subpart E) in `suspendedBy`. The corpus states
+the rule and does not say whether a waiver is held. That is the Administrator's determination, a
+third party's separate act (§ 107.200(a)), and its output reaches the engine as a fact the gate
+tests. By gate 1 below, such a fact is a parameter. It is not `kind: assertion`, and it gets no entry.
+What the engine owes it is borrowed from row 8. **It demands the fact, attributes it, records it with
+the outcome, and never infers it in either direction**: defaulting to "not held" convicts a holder,
+and defaulting to "held" excuses everyone. Where the caller states the gate holds, the suspended entry
+answers `OutsideCurrentScope` and cites the gate, which is row 1 reached through the edge. Where the
+caller states it does not hold, the entry is evaluated as if it had no gate. An absent rule can never
+hold, so `absent` still refuses an edge to one.
 
 **What the split does not buy.** Nothing checks that a gate is complete, or that it is in the
 right field: a permitting rule filed under `suspendedBy` resolves and passes. The direction is
@@ -770,6 +785,11 @@ and the invariant is unwritable in either direction.
 difference in a field only the map reads rather than in a third `scope` value the engine would
 have to share. The distinction the map preserves is the mapper's, not the runtime's.
 
+A gate that is `scope: out` adds no row either. The table classifies an entry by its own fields.
+An entry suspended by an out-of-scope gate answers by its own row while the caller states that the
+gate does not hold, and `OutsideCurrentScope`, citing the gate, while the caller states that it holds
+([0021](decisions/0021-a-gate-outside-the-slice-is-held-by-the-caller.md)).
+
 Row 8 is the one that is easy to get wrong. An assertion is not a failure to resolve; it is a
 parameter. An engine returning `RequiresInterpretation` where the corpus named a decider is
 declining a job the corpus gave it the means to do — and it discards whatever bounds the
@@ -920,6 +940,10 @@ Open questions are tracked as issues so they are worked rather than admired:
   entries was named by none of them, and the one field could not say which way a gate points.
   Decided: [0011](decisions/0011-a-gate-has-a-direction.md) splits `gatedBy` into `enabledBy`
   and `suspendedBy`.
+- [#61](https://github.com/brandonifco/rules-factory/issues/61) — a waiver suspends rules from a
+  section outside the map's slice, and `suspendedBy` could not name it. Decided:
+  [0021](decisions/0021-a-gate-outside-the-slice-is-held-by-the-caller.md). The gate is a `scope: out`
+  entry, and whether it holds is a fact the caller states and the engine never infers.
 - [#31](https://github.com/brandonifco/rules-factory/issues/31) — an entry claimed a rate the
   corpus implies and never states. Decided:
   [0012](decisions/0012-a-fact-the-corpus-implies-is-a-derived-entry.md) adds `derivedFrom`; a
