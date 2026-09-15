@@ -74,7 +74,9 @@ The fields, and where each comes from:
     leaves lock files out on both sides; a record that lists any is held to all of them, so
     after that a lock file changed, removed or added is a named mismatch. Re-running `produce`
     once the lock files are written is what brings them under the record.
-  * `randomness` -- `"none"`: nothing the factory emits depends on a random source.
+  * `randomness` -- the corpus's declaration in its manifest (decision 0019), as intake read it:
+    `"none"` (the engine's gate refuses RulesKernel.Randomness) or `"seeded"` (the engine may
+    draw, through that package, pinned at the kernel's version).
 
 Deterministic: no timestamps, no machine paths; two runs from the same inputs are identical.
 
@@ -415,7 +417,7 @@ def build(state, result, model, recorder, factory_dir=FACTORY_DIR):
         "managed": managed,
         "engineOwned": [{"path": path, "adopted": path in model.adopted} for path in owned],
         "buildInputs": build_inputs(root, {g["path"] for g in generated_files} | set(model.managed)),
-        "randomness": "none",
+        "randomness": result.randomness,
     }
 
 

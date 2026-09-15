@@ -8,7 +8,8 @@
 #
 #   * the SDK is the one global.json pins, with roll-forward disabled;
 #   * restore is locked: every project has a packages.lock.json, and restore agrees with it;
-#   * nothing restores RulesKernel.Randomness -- this engine draws no random value;
+#   * RulesKernel.Randomness is reachable only as the corpus declares (rules-factory decision 0019):
+#     never under `randomness: none`, and under `seeded` pinned only in RulesFactory.Packages.g.props;
 #   * the map is the published package plus this engine's corpus-map.overlay.json, merged under
 #     rules-factory decision 0015, and the package's own check-map.py --phase consumer passes on it;
 #   * the committed corpus hashes to the baseline the engine cites, under the posture the manifest
@@ -87,9 +88,6 @@ else
   skipped "dotnet restore --locked-mode"
 fi
 
-step "No randomness"
-run "no lock file or project resolves RulesKernel.Randomness" "${GATE[@]}" no-randomness || true
-
 # The restored package's build props say where NuGet put the map, its manifest and its checker,
 # so nothing here guesses at the global packages folder.
 step "Map = merge(package, overlay)"
@@ -135,6 +133,16 @@ else
   skipped "packaged check-map.py --phase consumer passes on the merged map"
 fi
 
+# rules-factory decision 0019. The declaration is read from the restored package, which the lock
+# files pin by hash, never from a file this engine commits.
+step "Randomness"
+if [[ -n "${PACKAGE_MANIFEST:-}" ]]; then
+  run "RulesKernel.Randomness is reachable only as the corpus declares" \
+      "${GATE[@]}" randomness --manifest "$PACKAGE_MANIFEST" --map "$PACKAGE_MAP" || true
+else
+  skipped "RulesKernel.Randomness is reachable only as the corpus declares"
+fi
+
 # rules-factory decision 0013. NOT VERIFIED is its own outcome: not ok, not FAIL, named at the end.
 step "Corpus verification posture"
 if [[ "$MAP_OK" -eq 1 ]]; then
@@ -153,7 +161,7 @@ fi
 step "Generated files"
 if [[ "$RESTORED" -eq 1 && -n "${PACKAGE_MAP:-}" ]]; then
   run "every *.g.cs matches a fresh regeneration (no hand edits)" \
-      "${GATE[@]}" regenerate --package-map "$PACKAGE_MAP" --package-id "$PACKAGE_ID" \
+      "${GATE[@]}" regenerate --package-map "$PACKAGE_MAP" --package-manifest "$PACKAGE_MANIFEST" --package-id "$PACKAGE_ID" \
         --package-version "$PACKAGE_VERSION" --name "$NAME" || true
 else
   skipped "every *.g.cs matches a fresh regeneration (no hand edits)"

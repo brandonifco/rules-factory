@@ -20,7 +20,11 @@ refusal rather than a warning:
      the file given on the command line hashes to `contentHash` under `hashDerivation`. A
      derivation this module does not know is refused -- a digest computed the wrong way is
      indistinguishable from a changed corpus.
-  5. **The factory's own checker passes, in its consumer phase**, on the packaged map and
+  5. **The corpus declares whether its engine may draw random values** (0019): `randomness` is
+     `none` or `seeded`. A package whose manifest predates the field declares nothing, and is
+     refused rather than read as `none`: the answer is the corpus's, and a default would be the
+     factory's.
+  6. **The factory's own checker passes, in its consumer phase**, on the packaged map and
      manifest. Before any overlay exists this is the map exactly as published, so a failure
      here means the map does not hold under the checks its engine will run, and no engine
      should be built on it.
@@ -74,6 +78,10 @@ HASH_DERIVATIONS = {
     "ecfr-versioner-xml": _sha256_of_bytes,
     "gutenberg-plain-text-including-boilerplate": _sha256_of_bytes,
 }
+
+# What a manifest may declare as a corpus's `randomness` (decision 0019). `seeded`: an engine may
+# draw, and only through RulesKernel.Randomness's seeded, replayable source.
+RANDOMNESS = ("none", "seeded")
 
 # The factory's own checker: tools/check-map.py, one directory above this package. It is a
 # hyphenated script rather than a module, so it is loaded by path, once, on first use.
@@ -231,6 +239,11 @@ def verify_corpus(document, manifest, corpus_path):
     if baseline.get("asOf") != corpus.get("asOf"):
         raise Refused(f"the map's baseline.asOf is {baseline.get('asOf')!r} and the manifest's is {corpus.get('asOf')!r}")
 
+    randomness = corpus.get("randomness")
+    if isinstance(randomness, bool) or randomness not in RANDOMNESS:
+        raise Refused(f"{source_id} declares randomness {randomness!r}; a corpus declares `none` or `seeded` "
+                      f"(0019), and a manifest without the field is refused, not read as `none`")
+
     derivation = corpus.get("hashDerivation")
     derive = HASH_DERIVATIONS.get(derivation)
     if derive is None:
@@ -334,6 +347,7 @@ def intake(package_spec, corpus_path, log=None):
     _note(log, f"map schemaVersion {schema_version}: read by this factory's check-map.py")
     corpus, corpus_bytes = verify_corpus(document, manifest, corpus_path)
     _note(log, f"corpus {corpus['sourceId']}: {corpus['hashDerivation']} {corpus['contentHash']} matches {corpus_path}")
+    _note(log, f"corpus {corpus['sourceId']}: randomness {corpus['randomness']} (0019)")
     _note(log, "--- intake: the factory's check-map.py --phase consumer (the package's checker is not run)")
     run_consumer_checks(parts, log)
     return Intake(
@@ -343,4 +357,5 @@ def intake(package_spec, corpus_path, log=None):
         checker_raw=parts["checker"][1],  # hashed for provenance, never executed (0016)
         part_paths={label: path for label, (path, _) in parts.items()},
         corpus=corpus, corpus_bytes=corpus_bytes, corpus_name=os.path.basename(corpus_path),
+        randomness=corpus["randomness"],
     )

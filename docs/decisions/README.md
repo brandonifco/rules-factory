@@ -27,3 +27,4 @@ kept; its number is never reused.
 | [0016](0016-a-map-package-is-data-not-code.md) | A map package is data, not code: the factory checks it with its own checker and never runs the package's (amends 0015) |
 | [0017](0017-a-map-change-carries-a-review-of-its-bytes.md) | A map change carries a review of its exact bytes, and a check refuses one that does not (enforces 0014) |
 | [0018](0018-every-file-the-factory-writes-has-one-owner.md) | Every file the factory writes has one owner: generated, managed (factory policy with a recipe version, hand edits refused) or engine-owned |
+| [0019](0019-randomness-is-declared-by-the-corpus.md) | Whether an engine may draw random values is declared by the corpus: `randomness: none` or `seeded` (extends 0002 and 0013) |

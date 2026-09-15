@@ -446,6 +446,30 @@ class TestRecompute(ProvenanceCase):
                                     f"buildInputs[tests/{NAME}.Tests/packages.lock.json]: recorded, recomputed nothing",
                                     "buildInputs[extra/packages.lock.json]: not recorded")
 
+    def test_the_recorded_randomness_follows_the_manifest(self):
+        """0019: provenance records the corpus's declaration, and recompute compares it."""
+        self.assertEqual(self.record(self.produced())["randomness"], "none")
+        hoyle = pack(HOYLE, os.path.join(self.tmp, "hoyle"))
+        out = self.produced(package=hoyle, corpus=os.path.join(HOYLE, "hoyle.txt"), name="HoyleBackgammon",
+                            out=os.path.join(self.tmp, "hoyle-engine"))
+        self.assertEqual(self.record(out)["randomness"], "seeded")
+        code, output = self.recompute(out, package=hoyle)
+        self.assertEqual(code, 0, output)
+        # The same Part 107 map, its manifest declaring `seeded`: re-producing records the new value.
+        engine = self.produced()
+        copy = os.path.join(self.tmp, "seeded", "faa-part-107")
+        shutil.copytree(PART107, copy)
+        manifest_path = os.path.join(copy, "corpus-manifest.json")
+        with open(manifest_path, encoding="utf-8") as handle:
+            manifest = json.load(handle)
+        manifest["corpora"][0]["randomness"] = "seeded"
+        with open(manifest_path, "w", encoding="utf-8") as handle:
+            json.dump(manifest, handle, indent=2)
+        seeded = pack(copy, os.path.join(self.tmp, "seeded", "out"))
+        output = self.assert_recompute_names(engine, "randomness: recorded \"none\", recomputed \"seeded\"",
+                                             f"generated[{PACKAGES_PROPS}]", package=seeded)
+        self.assertIn("map.files[map/corpus-manifest.json].sha256", output)
+
     def test_a_hand_edited_record(self):
         out = self.produced()
         record = self.record(out)

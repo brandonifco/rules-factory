@@ -13,6 +13,7 @@
       "verification": "committed-copy",
       "committedPath": "hoyle.txt",
       "quotation": "verbatim",
+      "randomness": "seeded",
       "retrievedFrom": "https://www.gutenberg.org/ebooks/39445.txt.utf-8",
       "references": []
     }
