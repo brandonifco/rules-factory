@@ -2,16 +2,25 @@
   "about": "The review of each map's exact bytes (docs/decisions/0017-a-map-change-carries-a-review-of-its-bytes.md). tools/check-map-review.py fails any map whose sha256 is not the one recorded here.",
   "reviews": {
     "corpus-map.json": {
-      "sha256": "f55fef2e50573952e90cfbd34a50d4333c3feb9f2e628b0cff07363b816be02b",
-      "method": "blind-second-mapping",
-      "comparison": "blind-mapping/results.json",
-      "resolutions": "blind-mapping/resolutions.json",
-      "compared": {
-        "commit": "85e416f88552a7c80d2659b8bf7540da39d447c7",
-        "sha256": "4b9dd08b60871c241b5ffefbbfc93d60201ca94ec11d962624e22681312e7a02"
+      "sha256": "75ecd22524762ebe0caa32a8cccb1e76d5880b3812cd7d69f40629cc55e89d43",
+      "method": "exemption",
+      "exemption": {
+        "kind": "non-semantic",
+        "previousSha256": "f55fef2e50573952e90cfbd34a50d4333c3feb9f2e628b0cff07363b816be02b",
+        "reason": "Two changes for #58 and #59 (docs/decisions/0020), and no entry's meaning moves. (1) A top-level `extent` is added: {unit: section-designation, sections: § 107.25, .29, .31, .33, .35, .36, .37, .39, .41, .45, .49, .51}, the twelve subpart B sections the map README and blind-mapping/README.md already name as the slice. No entry changes. (2) operating-limitations' citation changes from \"§ 107.51\" to \"§ 107.51 introductory text\". Its evidence is unchanged and is the whole of § 107.51's undesignated lead-in and nothing else, so the citation names the same paragraph more precisely; check-locators-section.py verifies it against the lead-in only. No other citation changed: the other bare-section citations either quote a section with no designated paragraph (§§ 107.35, .36, .41, .45) or quote the lead-in together with designated paragraphs (§§ 107.25, .31, .33, .39, .49)."
       },
-      "correctedIn": "a5a4d66ed679f18752a7a24080effa2218416cd6",
-      "note": "compare.py read the map at 85e416f (40 entries) and exits 1 unless each of its 88 flags has a row in resolutions.json. The map was corrected to those rows in a5a4d66 (44 entries), and has not changed since. sha256 is the corrected map; compared.sha256 is the map before correction. The same comparator run against the corrected map raises 68 flags; those have no rows of their own (blind-mapping/README.md, Counts)."
+      "previousReview": {
+        "sha256": "f55fef2e50573952e90cfbd34a50d4333c3feb9f2e628b0cff07363b816be02b",
+        "method": "blind-second-mapping",
+        "comparison": "blind-mapping/results.json",
+        "resolutions": "blind-mapping/resolutions.json",
+        "compared": {
+          "commit": "85e416f88552a7c80d2659b8bf7540da39d447c7",
+          "sha256": "4b9dd08b60871c241b5ffefbbfc93d60201ca94ec11d962624e22681312e7a02"
+        },
+        "correctedIn": "a5a4d66ed679f18752a7a24080effa2218416cd6",
+        "note": "compare.py read the map at 85e416f (40 entries) and exits 1 unless each of its 88 flags has a row in resolutions.json. The map was corrected to those rows in a5a4d66 (44 entries). sha256 is the corrected map; compared.sha256 is the map before correction. The same comparator run against the corrected map raises 68 flags; those have no rows of their own (blind-mapping/README.md, Counts)."
+      }
     }
   }
 }

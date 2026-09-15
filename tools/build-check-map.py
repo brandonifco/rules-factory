@@ -40,7 +40,7 @@ TARGET = os.path.join(TOOLS, "check-map.py")
 
 # The modules, in the order the built file holds them. A module imports only from modules
 # before it, which the build checks, so this order is also a valid definition order.
-MODULES = ("diagnostics", "model", "schema", "relations", "manifest", "ambiguity", "status",
+MODULES = ("diagnostics", "model", "schema", "extent", "relations", "manifest", "ambiguity", "status",
            "crossrefs", "correspondence", "phases", "cli")
 
 HEADER = """#!/usr/bin/env python3

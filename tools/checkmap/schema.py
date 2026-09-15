@@ -2,16 +2,30 @@
 vocabularies, and distinct ids. What the spec states field by field, before any relation.
 """
 from .diagnostics import fail, verdict
-from .model import (CITING_FIELDS, CLARITIES, FATES, ID_LIST_FIELDS, KINDS, REQUIRED_ENTRY_FIELDS,
-                    SCHEMA_VERSIONS, SCOPES, STATUSES, UNRESOLVED_REASONS, block, entries_of, label,
-                    quotes_withheld)
+from .model import (CITING_FIELDS, CLARITIES, FATES, ID_LIST_FIELDS, KINDS, MAP_FIELDS,
+                    REQUIRED_ENTRY_FIELDS, SCHEMA_VERSIONS, SCOPES, STATUSES, UNRESOLVED_REASONS, block,
+                    entries_of, label, quotes_withheld)
 
 
 def check_schema(ctx):
-    """The map's own envelope: the stamp naming the baseline it was built against."""
+    """The map's own envelope: the stamp naming the baseline it was built against.
+
+    The envelope is closed. A top-level key outside MAP_FIELDS is refused rather than ignored:
+    the Part 107 blind mapper put its manifest inline as `manifest`, and this checker, which
+    reads the manifest from a separate file, reported "no manifest" and skipped every
+    resolution against it while the key sat there unread (#60).
+    """
     doc, bad = ctx["map"], []
     if not isinstance(doc, dict):
         return fail(["  X  top level is not an object"], "the map is not an object")
+    for field in doc:
+        if field == "manifest":
+            bad.append("  X  map carries `manifest` inline; the manifest is a separate file, "
+                       "corpus-manifest*.json beside the map or --manifest, and an inline one is "
+                       "never read")
+        elif field not in MAP_FIELDS:
+            bad.append(f"  X  map has top-level `{field}`, which is not a field of a map "
+                       f"({', '.join(MAP_FIELDS)}); an unknown field is refused, never ignored")
     for field in ("schemaVersion", "corpus", "baseline", "entries"):
         if field not in doc:
             bad.append(f"  X  map is missing `{field}`")

@@ -2,12 +2,12 @@
   "about": "The review of each map's exact bytes (docs/decisions/0017-a-map-change-carries-a-review-of-its-bytes.md). tools/check-map-review.py fails any map whose sha256 is not the one recorded here.",
   "reviews": {
     "corpus-map-2020-01-01.json": {
-      "sha256": "6ceb108a5e2bfe76f275a79cefc4e04b46bb0f173650b17d5f37d776f3ec4edf",
+      "sha256": "9cc8577cd14030c61f7027fe813bcc7c6a7697783bbcb823291de9354a8e3afe",
       "method": "exemption",
       "exemption": {
         "kind": "legacy",
         "issue": "#3",
-        "reason": "Grandfathered, not reviewed: this map predates the review gate and has never been blind-mapped. examples/faa-part-107/blind-mapping/ reviewed the 2026-01-01 map against the 2026 text; this map was last changed in 5d09898, before those corrections, and nothing compared it with a second reading of the 2020-01-01 text. A blind second mapping is still owed before it is used for the regulation target under #3."
+        "reason": "Grandfathered, not reviewed: this map predates the review gate and has never been blind-mapped. examples/faa-part-107/blind-mapping/ reviewed the 2026-01-01 map against the 2026 text; this map was last changed in substance in 5d09898, before those corrections, and nothing compared it with a second reading of the 2020-01-01 text. A blind second mapping is still owed before it is used for the regulation target under #3. Since then one structural change, alongside the 2026 map's (#58, docs/decisions/0020): a top-level `extent` naming the same twelve subpart B sections (§ 107.25, .29, .31, .33, .35, .36, .37, .39, .41, .45, .49, .51), which check-locators-section.py's coverage now requires. No entry changed; the bytes it departs from are sha256 6ceb108a5e2bfe76f275a79cefc4e04b46bb0f173650b17d5f37d776f3ec4edf. It stays `legacy` rather than `non-semantic` because non-semantic names a reviewed map it departs from, and there is none."
       }
     }
   }

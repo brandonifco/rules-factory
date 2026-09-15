@@ -151,7 +151,8 @@ class TestRefused(BuildCase):
         self.assert_refused("status.py", "`label`", "model.py defines too")
 
     def test_a_name_read_but_never_imported(self):
-        self.edit("crossrefs", "from .model import entries_of, index, label\n", "from .model import entries_of, index\n")
+        self.edit("crossrefs", "from .model import block, corpora_of, entries_of, index, label\n",
+                  "from .model import block, corpora_of, entries_of, index\n")
         self.assert_refused("crossrefs.py", "reads label")
 
 
