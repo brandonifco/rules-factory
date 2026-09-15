@@ -171,7 +171,7 @@ class TestRecord(ProvenanceCase):
         self.assertEqual(record["factory"], {"version": f"0.0.0-dev+{commit[:12]}", "commit": commit, "dirty": False})
         self.assertEqual(record["engine"], {"name": NAME})
         self.assertEqual(record["map"]["packageId"], "RulesFactory.Maps.FaaPart107")
-        self.assertEqual(record["map"]["version"], "3.0.0")
+        self.assertEqual(record["map"]["version"], "4.0.0")
         self.assertEqual(record["map"]["nupkgSha256"], sha256_file(self.part107))
         with zipfile.ZipFile(self.part107) as archive:
             expected = [{"role": role, "path": path, "sha256": hashlib.sha256(archive.read(path)).hexdigest()}
@@ -361,29 +361,29 @@ class TestRecompute(ProvenanceCase):
 
     def test_a_pin_edited_back_after_a_map_upgrade(self):
         root = os.path.join(self.tmp, "versions")
-        v1, v2 = pack_version(PART107, "4.0.0", root), pack_version(PART107, "5.0.0", root)
+        v1, v2 = pack_version(PART107, "5.0.0", root), pack_version(PART107, "7.0.0", root)
         out = self.produced(package=v1)
         self.produced(out=out, package=v2)
-        self.assertEqual(self.record(out)["map"]["version"], "5.0.0")
+        self.assertEqual(self.record(out)["map"]["version"], "7.0.0")
         code, output = self.recompute(out, package=v2)
         self.assertEqual(code, 0, output)
 
         props = pathlib.Path(out, PACKAGES_PROPS)
         text = props.read_text(encoding="utf-8")
-        pin = f'<PackageVersion Include="{MAP_ID}" Version="[5.0.0]" />'
+        pin = f'<PackageVersion Include="{MAP_ID}" Version="[7.0.0]" />'
         self.assertIn(pin, text)
-        props.write_text(text.replace(pin, pin.replace("5.0.0", "4.0.0")), encoding="utf-8")
+        props.write_text(text.replace(pin, pin.replace("7.0.0", "5.0.0")), encoding="utf-8")
         self.assert_recompute_names(out, f"generated[{PACKAGES_PROPS}].sha256", package=v2)
 
     def test_a_pin_edited_back_after_a_map_downgrade(self):
         root = os.path.join(self.tmp, "versions")
-        v1, v2 = pack_version(PART107, "4.0.0", root), pack_version(PART107, "5.0.0", root)
+        v1, v2 = pack_version(PART107, "5.0.0", root), pack_version(PART107, "7.0.0", root)
         out = self.produced(package=v2)
         self.produced(out=out, package=v1)
         code, output = self.recompute(out, package=v1)
         self.assertEqual(code, 0, output)
         props = pathlib.Path(out, PACKAGES_PROPS)
-        props.write_text(props.read_text(encoding="utf-8").replace("[4.0.0]", "[5.0.0]"), encoding="utf-8")
+        props.write_text(props.read_text(encoding="utf-8").replace("[5.0.0]", "[7.0.0]"), encoding="utf-8")
         self.assert_recompute_names(out, f"generated[{PACKAGES_PROPS}].sha256", package=v1)
 
     def test_a_changed_global_json(self):

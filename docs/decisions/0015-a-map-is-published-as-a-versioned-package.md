@@ -298,5 +298,11 @@ are one play, and `bearing-off-eligible` asks whether bearing off can begin part
 that brings the last man home. The notes on `move-by-pip` and `bearing-off-move-or-remove` point at
 them. No clarity or fate changed; a changed question is major.
 
+`faa-part-107` `4.0.0` corrects two statements in its map (#126): `civil-twilight-operation`'s
+"paragraph (b) of this section" changes from `unmapped` to `resolvedBy: anti-collision-lighting`,
+which quotes § 107.29(b) whole, and a sentence in `visual-observer-conditions`' note that said its
+pointer needed no declaration is replaced. No entry is added or removed, and no `dependsOn`,
+gate, kind, scope or status changes. A correction to what the map says is major. 47 entries.
+
 **corpus-map.md's "Where the map lives" changes.** A map is published from the factory and
 consumed as a package. The engine owns only its overlay.

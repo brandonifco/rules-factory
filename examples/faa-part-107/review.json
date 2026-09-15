@@ -2,42 +2,49 @@
   "about": "The review of each map's exact bytes (docs/decisions/0017-a-map-change-carries-a-review-of-its-bytes.md). tools/check-map-review.py fails any map whose sha256 is not the one recorded here.",
   "reviews": {
     "corpus-map.json": {
-      "sha256": "3b31c40cdce16df8d0f76acedd8e9f2cc63df0262863754bdf11a4e7807a2087",
+      "sha256": "7ee6a6352af0810e8e858f563443e67e3279b35fc89fac31df41c7e1c02ac922",
       "method": "independent-verdict",
-      "verdict": "independent-verdict-115-116.json",
-      "previousSha256": "ca9d6ea23f4ffb3918c48f31577286e3d414febca3414e79368ffe65688b5d40",
-      "note": "#116 (docs/decisions/0026), on the map #117/#118 left (previousSha256). The manifest now declares the CFR's pointerPhrases, and the check found four pointers nobody had declared. They are answered by new crossReferences on night-operation, civil-twilight-operation and subpart-d-categories, and by a new scope: out entry, knowledge-recency (§ 107.65), which night-training-completed now depends on. It changes relations, so it carries an independent verdict. The reviewer saw only §§ 107.29, .31, .39, .65 and .100, a before/after of every changed entry, and the decision record; four rounds are recorded in the verdict file, the last on the bytes re-applied after #117/#118 merged. previousReview is that earlier map's review, unchanged.",
+      "verdict": "independent-verdict-126.json",
+      "previousSha256": "3b31c40cdce16df8d0f76acedd8e9f2cc63df0262863754bdf11a4e7807a2087",
+      "note": "#126, on the map #116 left (previousSha256). Two statements in the map were false, and both are corrected against the 2026 text: civil-twilight-operation's \"paragraph (b) of this section\" was unmapped because \"no other entry states (b) whole\", but anti-collision-lighting quotes § 107.29(b) whole, so it now resolves there; and visual-observer-conditions' note said its \"§ 107.31\" pointer needed no declaration, which stopped being true with 0026. civil-twilight-operation's dependsOn civil-twilight-alaska is kept, and its note now says why. No other unmapped reason was false. It changes a relation, so it carries an independent verdict: the reviewer saw only §§ 107.29, .31, .33, .65, .200 and .205 and a before/after of the changed entries, and two rounds are recorded in the verdict file. previousReview is that earlier map's review, unchanged.",
       "previousReview": {
-        "sha256": "ca9d6ea23f4ffb3918c48f31577286e3d414febca3414e79368ffe65688b5d40",
+        "sha256": "3b31c40cdce16df8d0f76acedd8e9f2cc63df0262863754bdf11a4e7807a2087",
         "method": "independent-verdict",
-        "verdict": "independent-verdict-117.json",
-        "previousSha256": "8778afb96c13375834fd579b87a72cf4e69fb65a8e127ce3975e3f931ab253e3",
-        "note": "#117 (docs/decisions/0025) added assertedBy to all ten assertion entries and, where the party is named in § 107.49's lead-in or the corpus names nobody, a sentence to the note saying so. No other field changed. It is a semantic change, so it carries an independent verdict and not an exemption. The verdict file names these bytes and records two rounds. previousReview is the review of the map #61 left (previousSha256), unchanged.",
+        "verdict": "independent-verdict-115-116.json",
+        "previousSha256": "ca9d6ea23f4ffb3918c48f31577286e3d414febca3414e79368ffe65688b5d40",
+        "note": "#116 (docs/decisions/0026), on the map #117/#118 left (previousSha256). The manifest now declares the CFR's pointerPhrases, and the check found four pointers nobody had declared. They are answered by new crossReferences on night-operation, civil-twilight-operation and subpart-d-categories, and by a new scope: out entry, knowledge-recency (§ 107.65), which night-training-completed now depends on. It changes relations, so it carries an independent verdict. The reviewer saw only §§ 107.29, .31, .39, .65 and .100, a before/after of every changed entry, and the decision record; four rounds are recorded in the verdict file, the last on the bytes re-applied after #117/#118 merged. previousReview is that earlier map's review, unchanged.",
         "previousReview": {
-          "sha256": "8778afb96c13375834fd579b87a72cf4e69fb65a8e127ce3975e3f931ab253e3",
+          "sha256": "ca9d6ea23f4ffb3918c48f31577286e3d414febca3414e79368ffe65688b5d40",
           "method": "independent-verdict",
-          "verdict": "independent-verdict-61.json",
-          "previousSha256": "75ecd22524762ebe0caa32a8cccb1e76d5880b3812cd7d69f40629cc55e89d43",
-          "note": "#61 (docs/decisions/0021) added waiver-policy and waivable-regulations, and changed 29 entries' suspendedBy and crossReferences, on top of the map #100 left (previousSha256). It is a semantic change, so it carries an independent verdict and not an exemption. The verdict file names these bytes and records four rounds. previousReview is that earlier map's review, unchanged.",
+          "verdict": "independent-verdict-117.json",
+          "previousSha256": "8778afb96c13375834fd579b87a72cf4e69fb65a8e127ce3975e3f931ab253e3",
+          "note": "#117 (docs/decisions/0025) added assertedBy to all ten assertion entries and, where the party is named in § 107.49's lead-in or the corpus names nobody, a sentence to the note saying so. No other field changed. It is a semantic change, so it carries an independent verdict and not an exemption. The verdict file names these bytes and records two rounds. previousReview is the review of the map #61 left (previousSha256), unchanged.",
           "previousReview": {
-            "sha256": "75ecd22524762ebe0caa32a8cccb1e76d5880b3812cd7d69f40629cc55e89d43",
-            "method": "exemption",
-            "exemption": {
-              "kind": "non-semantic",
-              "previousSha256": "f55fef2e50573952e90cfbd34a50d4333c3feb9f2e628b0cff07363b816be02b",
-              "reason": "Two changes for #58 and #59 (docs/decisions/0020), and no entry's meaning moves. (1) A top-level `extent` is added: {unit: section-designation, sections: § 107.25, .29, .31, .33, .35, .36, .37, .39, .41, .45, .49, .51}, the twelve subpart B sections the map README and blind-mapping/README.md already name as the slice. No entry changes. (2) operating-limitations' citation changes from \"§ 107.51\" to \"§ 107.51 introductory text\". Its evidence is unchanged and is the whole of § 107.51's undesignated lead-in and nothing else, so the citation names the same paragraph more precisely; check-locators-section.py verifies it against the lead-in only. No other citation changed: the other bare-section citations either quote a section with no designated paragraph (§§ 107.35, .36, .41, .45) or quote the lead-in together with designated paragraphs (§§ 107.25, .31, .33, .39, .49)."
-            },
+            "sha256": "8778afb96c13375834fd579b87a72cf4e69fb65a8e127ce3975e3f931ab253e3",
+            "method": "independent-verdict",
+            "verdict": "independent-verdict-61.json",
+            "previousSha256": "75ecd22524762ebe0caa32a8cccb1e76d5880b3812cd7d69f40629cc55e89d43",
+            "note": "#61 (docs/decisions/0021) added waiver-policy and waivable-regulations, and changed 29 entries' suspendedBy and crossReferences, on top of the map #100 left (previousSha256). It is a semantic change, so it carries an independent verdict and not an exemption. The verdict file names these bytes and records four rounds. previousReview is that earlier map's review, unchanged.",
             "previousReview": {
-              "sha256": "f55fef2e50573952e90cfbd34a50d4333c3feb9f2e628b0cff07363b816be02b",
-              "method": "blind-second-mapping",
-              "comparison": "blind-mapping/results.json",
-              "resolutions": "blind-mapping/resolutions.json",
-              "compared": {
-                "commit": "85e416f88552a7c80d2659b8bf7540da39d447c7",
-                "sha256": "4b9dd08b60871c241b5ffefbbfc93d60201ca94ec11d962624e22681312e7a02"
+              "sha256": "75ecd22524762ebe0caa32a8cccb1e76d5880b3812cd7d69f40629cc55e89d43",
+              "method": "exemption",
+              "exemption": {
+                "kind": "non-semantic",
+                "previousSha256": "f55fef2e50573952e90cfbd34a50d4333c3feb9f2e628b0cff07363b816be02b",
+                "reason": "Two changes for #58 and #59 (docs/decisions/0020), and no entry's meaning moves. (1) A top-level `extent` is added: {unit: section-designation, sections: § 107.25, .29, .31, .33, .35, .36, .37, .39, .41, .45, .49, .51}, the twelve subpart B sections the map README and blind-mapping/README.md already name as the slice. No entry changes. (2) operating-limitations' citation changes from \"§ 107.51\" to \"§ 107.51 introductory text\". Its evidence is unchanged and is the whole of § 107.51's undesignated lead-in and nothing else, so the citation names the same paragraph more precisely; check-locators-section.py verifies it against the lead-in only. No other citation changed: the other bare-section citations either quote a section with no designated paragraph (§§ 107.35, .36, .41, .45) or quote the lead-in together with designated paragraphs (§§ 107.25, .31, .33, .39, .49)."
               },
-              "correctedIn": "a5a4d66ed679f18752a7a24080effa2218416cd6",
-              "note": "compare.py read the map at 85e416f (40 entries) and exits 1 unless each of its 88 flags has a row in resolutions.json. The map was corrected to those rows in a5a4d66 (44 entries). sha256 is the corrected map; compared.sha256 is the map before correction. The same comparator run against the corrected map raises 68 flags; those have no rows of their own (blind-mapping/README.md, Counts)."
+              "previousReview": {
+                "sha256": "f55fef2e50573952e90cfbd34a50d4333c3feb9f2e628b0cff07363b816be02b",
+                "method": "blind-second-mapping",
+                "comparison": "blind-mapping/results.json",
+                "resolutions": "blind-mapping/resolutions.json",
+                "compared": {
+                  "commit": "85e416f88552a7c80d2659b8bf7540da39d447c7",
+                  "sha256": "4b9dd08b60871c241b5ffefbbfc93d60201ca94ec11d962624e22681312e7a02"
+                },
+                "correctedIn": "a5a4d66ed679f18752a7a24080effa2218416cd6",
+                "note": "compare.py read the map at 85e416f (40 entries) and exits 1 unless each of its 88 flags has a row in resolutions.json. The map was corrected to those rows in a5a4d66 (44 entries). sha256 is the corrected map; compared.sha256 is the map before correction. The same comparator run against the corrected map raises 68 flags; those have no rows of their own (blind-mapping/README.md, Counts)."
+              }
             }
           }
         }

@@ -1,0 +1,209 @@
+{
+  "about": "Independent verdict (0017) on #126 for the Part 107 map: civil-twilight-operation's \"paragraph (b) of this section\" changed from unmapped to resolvedBy anti-collision-lighting, a stale sentence replaced in visual-observer-conditions' note, the dependsOn civil-twilight-operation -> civil-twilight-alaska kept, and every other unmapped reason in the map re-checked and left unchanged. The reviewer was a separate agent context given only: the 2026-01-01 text of §§ 107.29, 107.31, 107.33, 107.65, 107.200 and 107.205, extracted from part107.xml; a JSON before/after of the two changed entries, the unchanged entries they point at or whose unmapped reasons were re-checked, and an id/citation/kind/scope/status/dependsOn index of all 47 entries; and a one-paragraph statement of what crossReferences, dependsOn and note mean. It saw no schema doc, decision record, the 2020 map or the repository. `sha256` is the final map. `verdicts`, `crossReferences`, `dependsOn`, `unmappedReasons`, `completeness` and `nits` are the reviewer's round-2 file, unedited. `rounds` keeps round 1 and how each point was resolved.",
+  "sha256": "7ee6a6352af0810e8e858f563443e67e3279b35fc89fac31df41c7e1c02ac922",
+  "previousSha256": "3b31c40cdce16df8d0f76acedd8e9f2cc63df0262863754bdf11a4e7807a2087",
+  "reviewer": "independent reviewer, separate context",
+  "read": [
+    "corpus-2026-excerpt.txt",
+    "diff.json",
+    "round-2 message from the author"
+  ],
+  "summary": "Round 1: entries 2 agree, 0 disagree; crossReferences 3 agree; dependsOn 1 agree; unmapped reasons 6 still true; completeness agree; 4 nits. Round 2 (final bytes): entries 2 agree; crossReferences 3 agree; dependsOn 1 agree; unmapped reasons 6 still true; completeness agree; round-1 nits resolved or withdrawn, 1 optional nit.",
+  "verdicts": [
+    {
+      "entry": "civil-twilight-operation",
+      "verdict": "agree",
+      "citation": "§ 107.29(c): \"For purposes of paragraph (b) of this section, civil twilight refers to the following\"; § 107.29(b): \"No person may operate a small unmanned aircraft system during periods of civil twilight unless ... it would be in the interest of safety to do so.\"; source note: \"as amended by Amdt. 107-8, 86 FR 4382, Jan. 15, 2021\"",
+      "reason": "Every claim in the round-2 note holds against the text. First, anti-collision-lighting's locator is \"§ 107.29(a)(2), (b)\" and its evidence quotes both sentences of (b). Second, flash-rate-sufficient quotes (b)'s first sentence and intensity-reduction-in-interest-of-safety quotes its second. Third, the added sentence is accurate: the (b) prohibition that (c)'s definition serves is quoted in this entry, and anti-collision-lighting's dependsOn is [flash-rate-sufficient, intensity-reduction-in-interest-of-safety], with no twilight entry. Fourth, the Alaska sentence is right: (c)(3) is one of the three limbs of the definition. Fifth, the old unmapped reason was false, as the note says. \"as amended by Amendment 107-8\" is supported by the § 107.29 source note, so I withdraw that half of round-1 nit 2."
+    },
+    {
+      "entry": "visual-observer-conditions",
+      "verdict": "agree",
+      "citation": "§ 107.33(b): \"The remote pilot in command must ensure that the visual observer is able to see the unmanned aircraft in the manner specified in § 107.31.\"",
+      "reason": "Unchanged since round 1. The removed sentence (nothing demands a declaration) contradicted the declaration present in the entry. The replacement is true: visual-line-of-sight cites \"§ 107.31\" and quotes (a) and (b) entire, and the same id is in dependsOn. The pointerPhrases/(0026) clause is provenance about the checker, not a claim about the corpus."
+    }
+  ],
+  "crossReferences": [
+    {
+      "entry": "civil-twilight-operation",
+      "cites": "paragraph (b) of this section",
+      "verdict": "agree",
+      "reason": "(c) points at paragraph (b) as a whole. anti-collision-lighting is the other entry that quotes all of (b) and cites it at paragraph level; the two assertion entries quote one sentence each. The note now says the pointer resolves to where (b) is stated, not to the definition's consumer, which settles round-1 nit 1."
+    },
+    {
+      "entry": "civil-twilight-operation",
+      "cites": "as defined in the Air Almanac",
+      "verdict": "agree",
+      "reason": "The Air Almanac is not in the admitted corpus. civil-twilight-alaska quotes \"(3) In Alaska, the period of civil twilight as defined in the Air Almanac.\" and carries definedElsewhere {reference: air-almanac}."
+    },
+    {
+      "entry": "visual-observer-conditions",
+      "cites": "in the manner specified in § 107.31",
+      "verdict": "agree",
+      "reason": "The pointer is section-level. visual-line-of-sight cites § 107.31 and quotes (a), which holds the manner (\"With vision that is unaided by any device other than corrective lenses ... must be able to see the unmanned aircraft throughout the entire flight\"), and (b), which includes \"(2) A visual observer\"."
+    }
+  ],
+  "dependsOn": [
+    {
+      "entry": "civil-twilight-operation",
+      "target": "civil-twilight-alaska",
+      "verdict": "agree",
+      "reason": "(b) applies \"during periods of civil twilight\". For Alaska, (c)(1)-(2) are excluded (\"Except for Alaska\"), and only (c)(3) defines the period. So an Alaskan case cannot be resolved without civil-twilight-alaska."
+    }
+  ],
+  "unmappedReasons": [
+    {
+      "entry": "knowledge-recency",
+      "cites": "specified in § 107.73",
+      "verdict": "still true",
+      "reason": "No index entry cites § 107.73. The in-scope sections in the index are 107.25, .29, .31, .33, .35, .36, .37, .39, .41, .45, .49 and .51, which is twelve. The entry is scope out and declined."
+    },
+    {
+      "entry": "knowledge-recency",
+      "cites": "issued under part 61 of this chapter and meets the flight review requirements specified in § 61.56",
+      "verdict": "still true",
+      "reason": "Part 61 is not in the corpus or the index, and the entry is scope out and declined, so no in-scope meaning needs definedElsewhere. The 0026 citation is provenance I cannot check."
+    },
+    {
+      "entry": "knowledge-recency",
+      "cites": "specified in § 107.74",
+      "verdict": "still true",
+      "reason": "No index entry cites § 107.74, and it is outside the twelve sections."
+    },
+    {
+      "entry": "knowledge-recency",
+      "cites": "paragraph (c) of this section",
+      "verdict": "still true",
+      "reason": "§ 107.65(c) is quoted in this entry's evidence, and no other index entry cites § 107.65(c)."
+    },
+    {
+      "entry": "knowledge-recency",
+      "cites": "paragraph (b) or (c) of this section",
+      "verdict": "still true",
+      "reason": "§ 107.65(b) and (c) are quoted in this entry's evidence, and no other index entry cites either."
+    },
+    {
+      "entry": "night-waiver-termination",
+      "cites": "deviation from § 107.29",
+      "verdict": "still true",
+      "reason": "\"certificates of waiver ... that authorize deviation from § 107.29 terminate on May 17, 2021\" picks out waivers by their content; § 107.29 is not evaluated through the pointer. No index entry states § 107.29 whole anyway, since it is split across (a), (a)(1), (a)(2)/(b), (b)-(c), (c)(1)-(2), (c)(3) and (d)."
+    }
+  ],
+  "completeness": {
+    "verdict": "agree",
+    "reason": "Nothing in the given material is false or missing because of this change. Both pointer phrases in civil-twilight-operation's evidence and the one in visual-observer-conditions' evidence are declared. The unchanged-context notes stay accurate. The new sentence that anti-collision-lighting does not depend on the twilight definition matches its dependsOn. For entries outside my context, I rely on the author's reported search of all 47 entries (\"closed pointer\", \"pointer list\", \"nothing demands\", \"declaration\", \"no other entry\"), which matched only these two. I did not run that search."
+  },
+  "nits": [
+    "Round-1 nit 3 (\"(blind-mapping/ (0014))\" punctuation): withdrawn, since the author says this is the map's existing citation form, used also by night-operation and night-waiver-bar.",
+    "Round-1 nit 4 (\"(0026)\", \"pointerPhrases\"): withdrawn, since these are provenance, not corpus claims.",
+    "Optional: \"quotes all of (b) as amended by Amendment 107-8, both sentences\" could read as saying 107-8 amended both sentences. The excerpt only shows the section was amended by 107-8. Not a falsehood; leave as is if preferred."
+  ],
+  "reviewedDiffSha256": "51f2a109005dbeb1dd0955a850fd4f5eb4828c9a42727a02771b50013c9423e4",
+  "rounds": [
+    {
+      "round": 1,
+      "mapSha256": "d79f93a248269f3b5b6353fca5fb7315873be84a241afb9d577235bfe95b7c63",
+      "file": {
+        "verdicts": [
+          {
+            "entry": "civil-twilight-operation",
+            "verdict": "agree",
+            "citation": "§ 107.29(c): \"For purposes of paragraph (b) of this section, civil twilight refers to the following\"; § 107.29(b): \"No person may operate a small unmanned aircraft system during periods of civil twilight unless the small unmanned aircraft has lighted anti-collision lighting ... The remote pilot in command may reduce the intensity of, but may not extinguish, the anti-collision lighting ...\"",
+            "reason": "The old unmapped reason (\"no other entry states (b) whole\") was false: anti-collision-lighting's locator cites \"§ 107.29(a)(2), (b)\" and its evidence quotes both sentences of (b) verbatim, from \"No person may operate\" to \"in the interest of safety to do so.\" The new note's claims check out against the given text: anti-collision-lighting quotes all of (b); flash-rate-sufficient quotes (b)'s first sentence; intensity-reduction-in-interest-of-safety quotes the second sentence (identical in (a)(2) and (b)). The Alaska sentence is also right: (c)(3) \"In Alaska, the period of civil twilight as defined in the Air Almanac\" is one of the three limbs of the definition (b) turns on. The Amendment 107-8 remark is consistent with the source note \"as amended by Amdt. 107-8\" but the excerpt cannot show which words that amendment added."
+          },
+          {
+            "entry": "visual-observer-conditions",
+            "verdict": "agree",
+            "citation": "§ 107.33(b): \"The remote pilot in command must ensure that the visual observer is able to see the unmanned aircraft in the manner specified in § 107.31.\"",
+            "reason": "The removed sentence, which said nothing required a declaration, contradicted the crossReferences declaration that exists before and after the change. The replacement is true against the given material: visual-line-of-sight's locator is \"§ 107.31\" and its evidence quotes all of (a) and (b), so it \"states § 107.31 whole\"; it is also in dependsOn, so \"the same edge as dependsOn\" is accurate. The claim that pointerPhrases now detect \"§ 107.31\" (0026) is about the checker, not the corpus. I cannot verify it from what I was given, but it matches the change description."
+          }
+        ],
+        "crossReferences": [
+          {
+            "entry": "civil-twilight-operation",
+            "cites": "paragraph (b) of this section",
+            "verdict": "agree",
+            "reason": "(c) points at paragraph (b) as a whole. anti-collision-lighting quotes all of (b), including its operative \"No person may operate ... during periods of civil twilight unless\", and cites (b) at paragraph level. So it states what is pointed at, at the level pointed to. The only other entries quoting (b) quote one sentence each (flash-rate-sufficient, intensity-reduction-in-interest-of-safety), so anti-collision-lighting is the right target among other entries. See the nit about the definition's consumer."
+          },
+          {
+            "entry": "civil-twilight-operation",
+            "cites": "as defined in the Air Almanac",
+            "verdict": "agree",
+            "reason": "The Air Almanac is outside the admitted corpus. civil-twilight-alaska quotes \"(3) In Alaska, the period of civil twilight as defined in the Air Almanac.\" and carries definedElsewhere {reference: air-almanac}, which is how such a pointer is answered."
+          },
+          {
+            "entry": "visual-observer-conditions",
+            "cites": "in the manner specified in § 107.31",
+            "verdict": "agree",
+            "reason": "The pointer is to the whole section. visual-line-of-sight cites \"§ 107.31\" and quotes (a) and (b) entire. (a) holds the manner (\"With vision that is unaided by any device other than corrective lenses ... must be able to see the unmanned aircraft throughout the entire flight in order to\") and (b) says who exercises it (\"or (2) A visual observer\"). The section-level entry is the right resolution."
+          }
+        ],
+        "dependsOn": [
+          {
+            "entry": "civil-twilight-operation",
+            "target": "civil-twilight-alaska",
+            "verdict": "agree",
+            "reason": "(b) applies \"during periods of civil twilight\", and (c) defines that term for (b) through three limbs, one of them \"(3) In Alaska, the period of civil twilight as defined in the Air Almanac.\" For an Alaskan operation, (c)(1)-(2) say \"Except for Alaska\" and do not apply. Whether the prohibition applies then cannot be resolved without civil-twilight-alaska, even though that entry is declined. Removing the edge would hide an unresolvable case."
+          }
+        ],
+        "unmappedReasons": [
+          {
+            "entry": "knowledge-recency",
+            "cites": "specified in § 107.73",
+            "verdict": "still true",
+            "reason": "No entry in the 47-entry index cites § 107.73. The in-scope sections in the index are 107.25, .29, .31, .33, .35, .36, .37, .39, .41, .45, .49 and .51, which is twelve. § 107.73 is not among them, and the entry is scope: out and declined, so nothing under (a)/(b) is worked."
+          },
+          {
+            "entry": "knowledge-recency",
+            "cites": "issued under part 61 of this chapter and meets the flight review requirements specified in § 61.56",
+            "verdict": "still true",
+            "reason": "Part 61 is not in the excerpt or the index. The entry is scope \"out\" and status \"declined\", so no in-scope meaning needs routing through definedElsewhere. The reason's appeal to 0026 section 4 cannot be checked from what I was given."
+          },
+          {
+            "entry": "knowledge-recency",
+            "cites": "specified in § 107.74",
+            "verdict": "still true",
+            "reason": "No index entry cites § 107.74, and it is not one of the twelve sections."
+          },
+          {
+            "entry": "knowledge-recency",
+            "cites": "paragraph (c) of this section",
+            "verdict": "still true",
+            "reason": "(d)'s \"training requirement of paragraph (c) of this section\" points within § 107.65, whose (c) is quoted in this entry's evidence. No other index entry cites § 107.65(c), so unlike the civil-twilight case, no other entry states it."
+          },
+          {
+            "entry": "knowledge-recency",
+            "cites": "paragraph (b) or (c) of this section",
+            "verdict": "still true",
+            "reason": "§ 107.65(b) and (c) are both quoted in this entry's evidence, and no other index entry cites either."
+          },
+          {
+            "entry": "night-waiver-termination",
+            "cites": "deviation from § 107.29",
+            "verdict": "still true",
+            "reason": "\"The certificates of waiver issued prior to March 16, 2021 under § 107.200 that authorize deviation from § 107.29 terminate on May 17, 2021.\" The words describe which waivers are terminated, by their content. They do not ask for § 107.29 to be evaluated. No index entry states § 107.29 whole either: the entries split it into (a), (a)(1), (a)(2)/(b), (b)-(c), (c)(1)-(2), (c)(3) and (d). The reason neither claims nor depends on anything this change made false."
+          }
+        ],
+        "completeness": {
+          "verdict": "agree",
+          "reason": "Nothing in the material given is made false by the change. anti-collision-lighting's, flash-rate-sufficient's and intensity-reduction-in-interest-of-safety's notes describe their own content and remain accurate. civil-twilight-operation's only pointer phrases are \"paragraph (b) of this section\" and \"as defined in the Air Almanac\", and both are declared. visual-observer-conditions' only pointer is declared. One limit: the corrected visual-observer note implies the checker now detects \"§ 107.nn\" phrases. Other entries not shown to me could carry a similar stale note (for example night-operation or night-waiver-bar citing \"§ 107.65\" or \"§ 107.200\", or waivable-regulations listing sections), and I cannot check those."
+        },
+        "nits": [
+          "civil-twilight-operation: (c) defines civil twilight 'for purposes of paragraph (b)', but the entry that consumes the definition is civil-twilight-operation itself (its dependsOn holds civil-twilight-window/alaska). anti-collision-lighting quotes (b) but does not depend on the twilight definition. The resolution meets the stated rule (states (b) whole), but a sentence noting that the resolver states (b) without using (c) would head off a reader inferring anti-collision-lighting needs the twilight definition.",
+          "civil-twilight-operation note: 'as amended by Amendment 107-8' cannot be verified from the corpus text beyond the section's source note. 'cites § 107.29(b)' is slightly loose, since the locator is '§ 107.29(a)(2), (b)'.",
+          "civil-twilight-operation note: the reference '(blind-mapping/ (0014))' has odd punctuation (stray slash and space).",
+          "visual-observer-conditions note: '(0026)' and 'manifest's pointerPhrases' refer to material outside the corpus. That is fine as provenance but cannot be checked against the text."
+        ],
+        "summary": "2/2 changed entries agree; 3/3 crossReferences agree; 1/1 dependsOn agree; 6/6 unmapped reasons still true; completeness agree; 4 nits"
+      },
+      "resolution": [
+        "Nit 1 (the (b) pointer resolves to where (b) is stated, not to the entry that uses (c)'s definition): adopted. civil-twilight-operation's note now says so, and that anti-collision-lighting does not depend on the definition.",
+        "Nit 2: adopted in part. \"which cites § 107.29(b)\" became \"whose locator cites § 107.29(a)(2) and (b) and whose evidence quotes all of (b)\". \"as amended by Amendment 107-8\" was kept, since § 107.29's source note reads \"as amended by Amdt. 107-8\"; the reviewer withdrew that half.",
+        "Nit 3 (\"(blind-mapping/ (0014))\" punctuation): not adopted; it is the map's existing form (night-operation, night-waiver-bar). Withdrawn.",
+        "Nit 4 (\"(0026)\" and \"pointerPhrases\" not checkable against the corpus): not adopted; they are provenance. Withdrawn.",
+        "Completeness limit (other entries could carry the same stale claim): the author searched all 47 entries for \"closed pointer\", \"pointer list\", \"nothing demands\", \"declaration\" and \"no other entry\"; only the two changed entries matched.",
+        "Round-2 optional nit (\"as amended by Amendment 107-8, both sentences\" could read as 107-8 amending both sentences): not adopted. Comparing the 2020 text, 107-8 did change both: it added \"that has a flash rate sufficient to avoid a collision\" to the first and \"but may not extinguish,\" to the second."
+      ]
+    }
+  ]
+}
