@@ -109,7 +109,7 @@ class BacklogCase(unittest.TestCase):
                 self.assertEqual(sorted(names), [f"{i:03d}-{n.split('-', 1)[1]}" for i, n in
                                                  enumerate(sorted(names), 1)])
         self.assertEqual(len(self.items("part107")), 39)
-        self.assertEqual(len(self.items("hoyle")), 28)
+        self.assertEqual(len(self.items("hoyle")), 29)
         self.assertIn("hit-pays-single-stake", "".join(self.items("hoyle")))
 
     def test_each_file_follows_its_dependencies(self):
