@@ -12,8 +12,8 @@ Two layers:
     when RULES_FACTORY_SKIP_DOTNET is set): the emitted `scripts/validate.sh` itself passes on
     fresh output and fails on each of those mutations. The engine is a scratch copy: its
     global.json is re-pinned to the SDK installed here, and its NuGet.config gains a local folder
-    feed holding the map package packed by tools/pack-map.py (Part 107 1.0.0 is not on
-    nuget.org) and the user's global packages folder as a read-only fallback. Packages restore
+    feed holding the map package packed by tools/pack-map.py (Part 107 2.0.0 is not on
+    nuget.org until it is tagged) and the user's global packages folder as a read-only fallback. Packages restore
     into a scratch NUGET_PACKAGES, so an unpublished map package never enters the user's cache.
 
 Run: python3 -m unittest discover -s tools/tests
@@ -129,7 +129,7 @@ class GateCase(unittest.TestCase):
 
     def regenerate(self, engine):
         return self.script(engine, "engine-gate.py", "regenerate", "--package-map", self.package_map,
-                           "--package-id", PACKAGE_ID, "--package-version", "1.0.0", "--name", NAME)
+                           "--package-id", PACKAGE_ID, "--package-version", "2.0.0", "--name", NAME)
 
     def merge(self, engine):
         merged = os.path.join(self.tmp, "merged.json")
@@ -514,7 +514,7 @@ class TestValidateShWithDotnet(GateCase):
         engine = self.copy()
         write_json(os.path.join(engine, "corpus-map.overlay.json"), {"no-such-entry": {"status": "mapped"}})
         self.assertFailsAt(self.validate(engine, "full"),
-                           f"merge({PACKAGE_ID}@1.0.0, corpus-map.overlay.json) obeys 0015")
+                           f"merge({PACKAGE_ID}@2.0.0, corpus-map.overlay.json) obeys 0015")
 
     def test_fails_on_implemented_without_tests(self):
         engine = self.copy()
