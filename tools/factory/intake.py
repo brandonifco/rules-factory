@@ -76,6 +76,11 @@ FLAT_CONTAINER = "https://api.nuget.org/v3-flatcontainer"
 #
 # A derivation that needs normalisation (stripping boilerplate, canonicalising XML) gets its
 # own function here; it must never be approximated by the raw-bytes one.
+#
+# This is the only table. Every engine's gate (recipe/engine-gate.py, `posture`) imports it from
+# the copy of this file produce vendors at scripts/factory/intake.py, so a derivation admitted here
+# is one every engine's gate can recompute (#106). Keep this module importable standalone, standard
+# library only, from that directory.
 def _sha256_of_bytes(data):
     return hashlib.sha256(data).hexdigest()
 

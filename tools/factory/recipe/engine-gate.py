@@ -21,7 +21,6 @@ Run from the engine root. Standard library only.
 import argparse
 import difflib
 import glob
-import hashlib
 import json
 import os
 import pathlib
@@ -151,12 +150,24 @@ def randomness(args):
 
 # --- the corpus --------------------------------------------------------------------------
 
-# The hashDerivations this gate can recompute, as rules-factory tools/factory/intake.py knows
-# them. A declared derivation it does not know is a failure: a digest nobody re-derived is unchecked.
-DERIVATIONS = {
-    "ecfr-versioner-xml": lambda data: hashlib.sha256(data).hexdigest(),
-    "gutenberg-plain-text-including-boilerplate": lambda data: hashlib.sha256(data).hexdigest(),
-}
+def derivations():
+    """The hashDerivations this gate can recompute: intake's HASH_DERIVATIONS, from the copy of the
+    factory's intake.py that `factory produce` vendored under scripts/factory/ beside this file.
+
+    There is one table, not two. This gate once kept its own, and a derivation the factory admitted
+    (#108, the SRD's) was missing from it, so every engine of that corpus failed here (#106). The
+    vendored intake.py is already what `regenerate` imports its siblings from, and its bytes are in
+    provenance.json's `generated`. A declared derivation not in the table is a failure: a digest
+    nobody re-derived is unchecked."""
+    sys.path.insert(0, str(ROOT / "scripts" / "factory"))
+    try:
+        import intake  # noqa: E402  (the factory's intake, vendored by produce)
+    except ImportError as error:
+        return None, f"scripts/factory/intake.py cannot be imported ({error}); run `factory produce` again"
+    table = getattr(intake, "HASH_DERIVATIONS", None)
+    if not isinstance(table, dict) or not table:
+        return None, "scripts/factory/intake.py declares no HASH_DERIVATIONS; run `factory produce` again"
+    return table, None
 
 
 def posture(args):
@@ -171,6 +182,9 @@ def posture(args):
     entries_cs = ROOT / "src" / args.name / "Generated" / "MapEntries.g.cs"
     cited = re.search(r'contentHash: "([0-9a-f]{64})"', entries_cs.read_text(encoding="utf-8")) if entries_cs.is_file() else None
 
+    table, problem = derivations()
+    if problem:
+        return report([problem], "")
     problems, verified, unverified = [], [], []
     corpora = [c for c in manifest.get("corpora") or [] if isinstance(c, dict)]
     if not corpora:
@@ -180,7 +194,7 @@ def posture(args):
         kind = corpus.get("verification")
         boundary = corpus.get("boundaryPolicy")
         expected = corpus.get("contentHash")
-        derive = DERIVATIONS.get(corpus.get("hashDerivation"))
+        derive = table.get(corpus.get("hashDerivation"))
         if sid == mapped.get("corpus"):
             if (mapped.get("baseline") or {}).get("contentHash") != expected:
                 problems.append(f"{sid}: the map's baseline is {(mapped.get('baseline') or {}).get('contentHash')}, "
@@ -196,7 +210,7 @@ def posture(args):
             continue
         if derive is None:
             problems.append(f"{sid}: this gate cannot recompute hashDerivation {corpus.get('hashDerivation')!r}, "
-                            "so the baseline is unchecked")
+                            f"so the baseline is unchecked (known: {', '.join(sorted(table))})")
             continue
         if kind == "committed-copy":
             name = os.path.basename(str(corpus.get("committedPath") or ""))
