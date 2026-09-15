@@ -7,8 +7,8 @@ This records a run. It does not tick the criterion.
 
 | Input | Value |
 |---|---|
-| engine | `brandonifco/hoyle-backgammon` at `5ef209790d6e72ecb8c2b82828f7c6ddf9aba190` (merge of hoyle-backgammon#16, the owner's rulings on map 6.0.0's open questions, ruleset 5) |
-| factory | `factory/v0.4.1`, commit `02ea62af2cad24439a5bcdf14df30ad9e887997b`, the commit the engine's `provenance.json` records |
+| engine | `brandonifco/hoyle-backgammon` at `56685020cc7d976beb7b8b6ebdb70d2f15ed1161` (merge of hoyle-backgammon#17, re-produced with rules-factory 0.5.0; map 6.0.0, ruleset 5) |
+| factory | `factory/v0.5.0`, commit `5bdd77f2b4b0a5e628c1f4b2dd5c476025785184`, the commit the engine's `provenance.json` records |
 | map package | `RulesFactory.Maps.HoyleBackgammon@6.0.0`, as published |
 | corpus | the engine's `corpus/hoyle.txt`, sha256 `5d505fa9…645e` |
 | produce flags | `--no-verify` (the local SDK was 10.0.111; the kernel pins 10.0.112) |
@@ -16,7 +16,7 @@ This records a run. It does not tick the criterion.
 Reproduce with
 
 ```
-examples/hoyle-backgammon/produced-engine/equivalence.sh 5ef209790d6e72ecb8c2b82828f7c6ddf9aba190 factory/v0.4.1
+examples/hoyle-backgammon/produced-engine/equivalence.sh 56685020cc7d976beb7b8b6ebdb70d2f15ed1161 factory/v0.5.0
 ```
 
 The full output of that command is [equivalence.out](equivalence.out). **Result: PASS.** No
@@ -91,7 +91,7 @@ overlay alone explains them.
 
 ## factory provenance
 
-Run from the `factory/v0.4.1` checkout against the clone:
+Run from the `factory/v0.5.0` checkout against the clone:
 
 ```
 provenance of $WORK/engine: every field matches

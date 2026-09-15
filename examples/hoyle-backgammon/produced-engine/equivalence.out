@@ -1,13 +1,13 @@
 
-==> engine https://github.com/brandonifco/hoyle-backgammon at 5ef209790d6e72ecb8c2b82828f7c6ddf9aba190
-engine commit    5ef209790d6e72ecb8c2b82828f7c6ddf9aba190
+==> engine https://github.com/brandonifco/hoyle-backgammon at 56685020cc7d976beb7b8b6ebdb70d2f15ed1161
+engine commit    56685020cc7d976beb7b8b6ebdb70d2f15ed1161
 engine name      HoyleBackgammon
 package          RulesFactory.Maps.HoyleBackgammon@6.0.0
-factory recorded 0.4.1 at 02ea62af2cad24439a5bcdf14df30ad9e887997b
+factory recorded 0.5.0 at 5bdd77f2b4b0a5e628c1f4b2dd5c476025785184
 corpus           corpus/hoyle.txt sha256 5d505fa9f6202340eb55313b8ef607b816087a860d3d51b1bf92b5f65240645e
 
-==> factory at factory/v0.4.1
-factory commit   02ea62af2cad24439a5bcdf14df30ad9e887997b
+==> factory at factory/v0.5.0
+factory commit   5bdd77f2b4b0a5e628c1f4b2dd5c476025785184
 
 ==> produce from scratch into an empty directory (bare)
 produced HoyleBackgammon in $WORK/bare, NOT VERIFIED
