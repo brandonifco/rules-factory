@@ -63,6 +63,7 @@ marked `not implemented` that the parser does have.
 | `produce` | `--no-verify` | implemented | commit without building or testing; the output says so |
 | `produce` | `--adopt` | implemented | make a managed file engine-owned, keeping its edits |
 | `produce` | `--reset` | implemented | overwrite a managed or adopted file with the current recipe |
+| `produce` | `--licensed-copy-exception` | implemented | an allowlisted operator (`gh api user`), outside CI, produces from a licensed `local-copy` corpus; no corpus bytes enter the engine ([0022](docs/decisions/0022-a-licensed-copy-is-used-locally-by-a-named-operator-and-never-published.md)) |
 | `produce` | domain pack | not implemented | no pack exists; provenance records `"packs": []` |
 | `produce` | agent rails | not implemented | undecided: [#1](https://github.com/brandonifco/rules-factory/issues/1), [#4](https://github.com/brandonifco/rules-factory/issues/4) |
 | `backlog` | — | implemented | synchronise `backlog/` with GitHub issues through `gh` |
@@ -72,15 +73,20 @@ marked `not implemented` that the parser does have.
 | `provenance` | — | implemented | re-produce in a scratch copy and name every field that does not match |
 | `provenance` | `--engine` | implemented | the engine directory |
 | `provenance` | `--package` | implemented | default: `Id@Version` from `provenance.json` |
+| `provenance` | `--licensed-copy-exception` | implemented | re-produce a `local-copy` engine from the file its manifest's `envVar` names (0022) |
 | `verify` | — | implemented | provenance, then restore if the engine has no lock files, then the engine's own gate |
 | `verify` | `--engine` | implemented | the engine directory |
 | `verify` | `--package` | implemented | default: `Id@Version` from `provenance.json` |
+| `verify` | `--licensed-copy-exception` | implemented | verify a `local-copy` engine; the output says `verified locally under the licensed-copy exception by <login>` (0022) |
 <!-- factory-cli-status:end -->
 
 ### What a verified `produce` proves
 
 - **The inputs.** The package is a map package with its checker inside. The map is in a schema
-  version this factory reads. The corpus is the committed copy the map was made of. The
+  version this factory reads. The corpus is the committed copy the map was made of (or, under
+  the licensed-copy exception of
+  [0022](docs/decisions/0022-a-licensed-copy-is-used-locally-by-a-named-operator-and-never-published.md),
+  an allowlisted operator's local copy, and the output says so). The
   factory's own `check-map.py --phase consumer` passes on the packaged map.
 - **The build.** `verify` recomputes provenance, restores (writing the lock files the first
   time, and re-locking them when the run changed the generated pins, as a map version bump

@@ -15,6 +15,16 @@ The gate, in order:
     An adapter with no checker here, a corpus that is not `committed-copy`, or a map citing
     more than one corpus is refused as NOT VERIFIED: none of those is a pass.
 
+The licensed-copy exception (0022, #105). With `--licensed-copy-exception`, and only when
+tools/factory/licensed_copy.py establishes an allowlisted operator from `gh api user` outside CI,
+a `local-copy` corpus is not refused: its locator checker runs against the file the manifest's
+`envVar` names on this machine (the variable an engine's gate reads, 0013), and every other gate
+is unchanged. The package has the same parts, and is marked: its nuspec `<tags>` carry
+`licensed-copy-exception` and its description begins NOT PUBLISHABLE, naming the operator. The
+exception never publishes: the flag is refused with `--tag` (the publish path) and in CI, and
+publish-map.yml refuses a `local-copy` map and a marked package on its own account. Without the
+flag nothing differs, and a `local-copy` corpus is refused as it always was.
+
 The package, and why it is byte-for-byte deterministic:
 
   * id `RulesFactory.Maps.<MapName>` from the map's directory name (`hoyle-backgammon` ->
@@ -43,6 +53,7 @@ as a major, minor or patch change; nothing here compares against the previous pu
 version. The tag-to-version check only proves the tag and the reviewed file agree.
 
 Usage: pack-map.py <map-dir> --out DIR [--tag map/<name>/vX.Y.Z] [--commit SHA]
+                   [--licensed-copy-exception]
 Exit 0 when the gate passed and the package was written; 1 when the gate refused it;
 2 on a usage error.
 """
@@ -61,6 +72,12 @@ REPO = os.path.dirname(TOOLS)
 CHECKER = os.path.join(TOOLS, "check-map.py")
 CHECKER_IN_PACKAGE = "tools/check-map.py"
 PROJECT_URL = "https://github.com/brandonifco/rules-factory"
+sys.path.insert(0, os.path.join(TOOLS, "factory"))
+import licensed_copy  # noqa: E402  (standard library only; decision 0022)
+
+# The nuspec tag that marks a package built under the licensed-copy exception (0022).
+# publish-map.yml refuses a package that carries it.
+EXCEPTION_TAG = "licensed-copy-exception"
 
 # The locator checker for each adapter. A corpus whose adapter is not here cannot have its
 # citations checked, and a map whose citations cannot be checked is not published.
@@ -152,7 +169,13 @@ def run_step(what, argv):
         raise Refused(f"{what} exited {completed.returncode}")
 
 
-def gate(inputs, repo_root):
+def gate(inputs, repo_root, operator=None):
+    """Run every gate, raising Refused at the first that fails.
+
+    `operator` is the allowlisted login when the licensed-copy exception is in force (0022), else
+    None; it changes only where a `local-copy` corpus's bytes are read from. Returns the sourceId
+    the exception was used for, or None when it was not needed.
+    """
     run_step("check-map.py --phase publish", [
         sys.executable, CHECKER, inputs["map_path"],
         "--manifest", inputs["manifest_path"], "--repo-root", repo_root, "--phase", "publish"])
@@ -166,16 +189,28 @@ def gate(inputs, repo_root):
     corpus = corpora.get(source_id)
     if corpus is None:
         raise Refused(f"the map cites {source_id!r}, which the manifest does not declare")
-    if corpus.get("verification") != "committed-copy":
+    excepted = operator is not None and corpus.get("verification") == "local-copy"
+    if corpus.get("verification") != "committed-copy" and not excepted:
         raise Refused(f"NOT VERIFIED -- {source_id} is {corpus.get('verification')!r}, not "
                       f"`committed-copy`, so no publish job can read the corpus to check a citation")
     checker = LOCATOR_CHECKERS.get(corpus.get("adapter"))
     if checker is None:
         raise Refused(f"NOT VERIFIED -- no locator checker for adapter {corpus.get('adapter')!r}; "
                       f"known: {', '.join(sorted(LOCATOR_CHECKERS))}")
-    text = os.path.join(os.path.dirname(inputs["manifest_path"]), str(corpus.get("committedPath")))
-    run_step(f"{os.path.relpath(checker, REPO)} ({corpus.get('adapter')})",
-             [sys.executable, checker, inputs["map_path"], text])
+    if excepted:
+        variable = corpus.get("envVar")
+        text = os.environ.get(variable) if isinstance(variable, str) and variable else None
+        if not text:
+            raise Refused(f"NOT VERIFIED -- {source_id} is `local-copy` and ${variable} is not set, so the "
+                          f"licensed copy is not here to check citations against; set it to the local file")
+        if not os.path.isfile(text):
+            raise Refused(f"NOT VERIFIED -- ${variable} is {text!r}, which is not a file")
+        what = f"{os.path.relpath(checker, REPO)} ({corpus.get('adapter')}, the local copy at ${variable})"
+    else:
+        text = os.path.join(os.path.dirname(inputs["manifest_path"]), str(corpus.get("committedPath")))
+        what = f"{os.path.relpath(checker, REPO)} ({corpus.get('adapter')})"
+    run_step(what, [sys.executable, checker, inputs["map_path"], text])
+    return source_id if excepted else None
 
 
 def packaged_manifest(inputs):
@@ -198,7 +233,10 @@ def description(inputs):
     document = inputs["map"]
     baseline = document.get("baseline") or {}
     as_of = baseline.get("asOf")
-    return (f"Corpus map {inputs['name']} ({len(document.get('entries') or [])} entries), true of corpus "
+    operator = inputs.get("exception_operator")
+    marker = (f"NOT PUBLISHABLE: built locally under the licensed-copy exception by {operator} "
+              f"(docs/decisions/0022); its corpus is licensed. " if operator else "")
+    return (marker + f"Corpus map {inputs['name']} ({len(document.get('entries') or [])} entries), true of corpus "
             f"{document.get('corpus')} at baseline {baseline.get('hashDerivation')}:"
             f"{baseline.get('contentHash')}"
             + (f" as of {as_of}" if as_of else " (timeless: no asOf)")
@@ -210,6 +248,7 @@ def description(inputs):
 
 def parts(inputs, commit):
     pid, version = inputs["id"], inputs["version"]
+    marker = f" {EXCEPTION_TAG}" if inputs.get("exception_operator") else ""
     repository = (f'    <repository type="git" url="{PROJECT_URL}.git"'
                   + (f' commit="{xml_escape(commit)}"' if commit else "") + " />\n")
     nuspec = (
@@ -224,7 +263,7 @@ def parts(inputs, commit):
         "    <licenseUrl>https://licenses.nuget.org/Apache-2.0</licenseUrl>\n"
         f"    <projectUrl>{PROJECT_URL}</projectUrl>\n"
         f"    <description>{xml_escape(description(inputs))}</description>\n"
-        f"    <tags>rules-factory corpus-map {xml_escape(inputs['map'].get('corpus'))}</tags>\n"
+        f"    <tags>rules-factory corpus-map {xml_escape(inputs['map'].get('corpus'))}{marker}</tags>\n"
         + repository +
         "  </metadata>\n"
         "</package>\n"
@@ -264,7 +303,7 @@ def parts(inputs, commit):
         f"  <dc:description>{xml_escape(description(inputs))}</dc:description>\n"
         f"  <dc:identifier>{pid}</dc:identifier>\n"
         f"  <version>{version}</version>\n"
-        f"  <keywords>rules-factory corpus-map {xml_escape(inputs['map'].get('corpus'))}</keywords>\n"
+        f"  <keywords>rules-factory corpus-map {xml_escape(inputs['map'].get('corpus'))}{marker}</keywords>\n"
         "  <lastModifiedBy>rules-factory tools/pack-map.py</lastModifiedBy>\n"
         "</coreProperties>\n"
     ).encode("utf-8")
@@ -313,6 +352,9 @@ def main(argv=None):
     parser.add_argument("--tag", help="the pushed tag; must be map/<map-dir-name>/v<version>")
     parser.add_argument("--commit", help="commit recorded in the nuspec's <repository>")
     parser.add_argument("--repo-root", default=REPO, help="root decision-record paths resolve against")
+    parser.add_argument(licensed_copy.FLAG, dest="licensed_copy_exception", action="store_true",
+                        help="an allowlisted operator packs a local-copy map into a local package marked "
+                             "unpublishable (decision 0022); refused with --tag and in CI")
     args = parser.parse_args(argv)
 
     try:
@@ -320,19 +362,28 @@ def main(argv=None):
         if args.tag is not None and args.tag != tag_for(inputs["name"], inputs["version"]):
             raise Usage(f"tag {args.tag!r} does not match {tag_for(inputs['name'], inputs['version'])!r} "
                         f"from map-package.json; bump the version in a reviewed commit, then tag that commit")
+        operator = None
+        if args.licensed_copy_exception:
+            if args.tag is not None:
+                raise Refused(f"{licensed_copy.FLAG} never publishes, and --tag is the publish path (0022)")
+            operator = licensed_copy.authorise()
         print(f"{inputs['id']} {inputs['version']} from {inputs['map_path']}")
-        gate(inputs, args.repo_root)
+        if gate(inputs, args.repo_root, operator):
+            inputs["exception_operator"] = operator
     except Usage as error:
         print(f"pack-map: {error}", file=sys.stderr)
         return 2
-    except Refused as error:
+    except (Refused, licensed_copy.Refused) as error:
         print(f"pack-map: REFUSED -- {error}. No package was written.", file=sys.stderr)
         return 1
 
     path = write_package(inputs, args.out, args.commit)
     with open(path, "rb") as handle:
         sha = hashlib.sha256(handle.read()).hexdigest()
-    print(f"packed {path}\nsha256 {sha}")
+    print(f"packed {path}")
+    if inputs.get("exception_operator"):
+        print(f"{licensed_copy.attestation(operator)}: NOT PUBLISHABLE, tagged {EXCEPTION_TAG}")
+    print(f"sha256 {sha}")
     return 0
 
 

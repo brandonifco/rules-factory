@@ -6,7 +6,10 @@ Accepted — 2026-09-14. Decided by Brandon on
 [#15](https://github.com/brandonifco/rules-factory/issues/15) (the second half). **Extends
 [0002](0002-boundary-policy-belongs-to-the-corpus.md)**; adds no new principle. **Extended** by
 [0019](0019-randomness-is-declared-by-the-corpus.md): whether an engine may draw random values
-is declared per corpus on the same ground.
+is declared per corpus on the same ground. **Extended** by
+[0022](0022-a-licensed-copy-is-used-locally-by-a-named-operator-and-never-published.md): a named
+operator holding the licensed copy may pack and produce from a `local-copy` corpus on their own
+machine; everyone else, CI included, is still told `NOT VERIFIED`.
 
 ## Context
 

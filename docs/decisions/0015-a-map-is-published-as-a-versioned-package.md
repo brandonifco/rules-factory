@@ -17,6 +17,11 @@ fields to three** (`tests`); see *The overlay*.
 than from a copy of its own. The table in *The artifact*, the bump rule for package contents,
 rule 6 of the merge and the vendoring alternative changed; nothing else did.
 
+**Extended by [0022](0022-a-licensed-copy-is-used-locally-by-a-named-operator-and-never-published.md)**
+(#105): `pack-map.py --licensed-copy-exception` packs a `local-copy` map locally for an
+allowlisted operator, into a package marked unpublishable. Publishing a `local-copy` map stays
+refused, and `publish-map.yml` now refuses one, and a marked package, on its own account.
+
 **Amended by [0016](0016-a-map-package-is-data-not-code.md)** (#65): the packaged checker is for
 the engine's build only. The factory's intake never runs it; it checks a package with its own
 `tools/check-map.py` and refuses a `schemaVersion` that checker does not read.
@@ -240,7 +245,8 @@ is a reviewed claim.
 **A licensed corpus's map cannot be published from CI yet.** A `local-copy` corpus's citations
 cannot be read by a publish job, so the gate refuses the map as NOT VERIFIED. This is intentional
 for now. The first licensed corpus will reopen it, together with 0013's open question of whether
-such a map can be redistributed at all.
+such a map can be redistributed at all. It did (#105), and the answer for now is 0022's: packed
+locally by a named operator, never published.
 
 **Configuring Trusted Publishing on nuget.org is an account setting,** and nothing in this
 repository can do it. Until the policy exists for this repository and `publish-map.yml`, a tag
