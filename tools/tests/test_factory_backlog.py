@@ -348,7 +348,8 @@ class CreateCase(unittest.TestCase):
         code, log = self.create()
         self.assertEqual(code, 0, log)
         self.assertEqual([i["title"] for i in self.issues()], ["first: First", "second: Second"])
-        self.assertIn("(001-first.md)", self.issues()[1]["body"])
+        self.assertIn("built before this item:\n\n- #1\n", self.issues()[1]["body"])
+        self.assertNotIn(".md)", self.issues()[1]["body"])
         self.assertFalse(self.issues()[0]["body"].startswith("# "))
         self.assertEqual(self.writes(), [["issue", "create"], ["issue", "create"]])
         code, log = self.create()
@@ -380,7 +381,7 @@ class CreateCase(unittest.TestCase):
         code, log = self.create()
         self.assertEqual(code, 0, log)
         self.assertEqual(self.writes(), [["issue", "edit", "2"]])
-        self.assertNotIn("(001-first.md)", self.issues()[1]["body"])
+        self.assertNotIn("- #1\n", self.issues()[1]["body"])
         self.assertEqual(self.issues()[1]["body"], self.body("002-second.md"))
         self.assertIn("0 created, 1 updated, 0 adopted, 1 unchanged", log)
 
@@ -399,13 +400,45 @@ class CreateCase(unittest.TestCase):
         code, log = self.create()
         self.assertEqual(code, 0, log)
         self.assertEqual(self.writes(), [["issue", "edit", "2"]])
-        self.assertIn('- `cites` "as in paragraph (b)" -- `resolvedBy` [`first`](001-first.md)\n',
-                      self.issues()[1]["body"])
+        self.assertIn('- `cites` "as in paragraph (b)" -- `resolvedBy` #1\n', self.issues()[1]["body"])
         self.assertNotIn("unmapped", self.issues()[1]["body"])
         self.assertIn("0 created, 1 updated, 0 adopted, 1 unchanged", log)
 
+    def test_item_links_become_issue_references_in_bodies_and_stay_file_links_in_files(self):
+        """Matched by marker, not number: an unrelated issue #1 makes item 001 issue #2, and links say so."""
+        linked = entries()
+        linked[0]["crossReferences"] = [{"cites": "as in the second", "resolvedBy": "second"}]
+        self.emit(linked)
+        files = {name: self.body(name) for name in ("001-first.md", "002-second.md")}
+        self.seed([(1, "unrelated", "text")])
+        code, log = self.create()
+        self.assertEqual(code, 0, log)
+        # first is created before second has a number, so it is edited once second has one.
+        self.assertEqual(self.writes(), [["issue", "create"], ["issue", "create"], ["issue", "edit", "2"]])
+        self.assertIn("linked    #2 first: First", log)
+        self.assertIn("2 created, 0 updated, 0 adopted, 0 unchanged", log)
+        first, second = self.issues()[1:]
+        self.assertEqual((first["number"], second["number"]), (2, 3))
+        self.assertIn('- `cites` "as in the second" -- `resolvedBy` #3\n', first["body"])
+        self.assertIn("built before this item:\n\n- #2\n", second["body"])
+        self.assertNotIn(".md)", first["body"] + second["body"])
+        self.assertEqual(first["body"], files["001-first.md"].replace("[`second`](002-second.md)", "#3"))
+        self.assertEqual({name: self.body(name) for name in files}, files)
+        self.assertIn("[`second`](002-second.md)", files["001-first.md"])
+        code, log = self.create()
+        self.assertEqual(code, 0, log)
+        self.assertEqual(self.writes(), [])
+        self.assertIn("0 created, 0 updated, 0 adopted, 2 unchanged", log)
+
+    def test_a_link_to_an_item_without_an_issue_stays_a_file_link(self):
+        body = self.body("002-second.md")
+        self.assertEqual(backlog.link_issues(body, {"001-first.md": "first"}, {}), body)
+        self.assertEqual(backlog.link_issues(body, {"001-first.md": "other"}, {"first": 5, "other": 6}), body)
+        self.assertIn("- #5\n", backlog.link_issues(body, {"001-first.md": "first"}, {"first": 5}))
+
     def test_line_endings_and_trailing_space_github_adds_are_not_a_change(self):
         first, second = self.body("001-first.md"), self.body("002-second.md")
+        second = second.replace("[`first`](001-first.md)", "#7")
         self.seed([(7, "first: First", first.replace("\n", "\r\n").rstrip()), (8, "second: Second", second)])
         code, log = self.create()
         self.assertEqual(code, 0, log)
@@ -424,7 +457,8 @@ class CreateCase(unittest.TestCase):
         self.seed([(4, "first: First", "made by hand"), (9, "unrelated", "text")])
         code, log = self.create()
         self.assertEqual(code, 0, log)
-        self.assertEqual(self.writes(), [["issue", "edit", "4"], ["issue", "create"]])
+        # Issues to create are created first: the others' bodies link them by number.
+        self.assertEqual(self.writes(), [["issue", "create"], ["issue", "edit", "4"]])
         self.assertEqual([(i["number"], i["title"]) for i in self.issues()],
                          [(4, "first: First"), (9, "unrelated"), (10, "second: Second")])
         self.assertEqual(backlog.entry_of(self.issues()[0]["body"]), "first")

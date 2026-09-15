@@ -28,6 +28,7 @@ import json
 import os
 import re
 import shutil
+import stat
 import subprocess
 import sys
 import tempfile
@@ -648,6 +649,26 @@ class TestTransactional(ProduceCase):
         fresh = tree(self.produced(os.path.join(self.tmp, "fresh"), package=self.v2))
         self.assertEqual(fresh, tree(out))
         self.assert_no_leftovers(self.tmp)
+
+    def test_modes_git_does_not_track_are_not_counted_as_changed(self):
+        """A clone under umask 002 has 0664 and 0775 where the factory writes 0644 and 0755."""
+        out = self.produced(package=self.v1)
+        for directory, _, names in os.walk(out):
+            for name in names:
+                path = os.path.join(directory, name)
+                os.chmod(path, os.stat(path).st_mode | 0o020)
+        code, output = self.produce(out, package=self.v1)
+        self.assertEqual(code, 0, output)
+        self.assertIn(f"committed to {os.path.realpath(out)}: 0 added, 0 changed, 0 removed", output)
+
+    def test_an_executable_bit_that_differs_is_counted_as_changed(self):
+        out = self.produced(package=self.v1)
+        script = os.path.join(out, "scripts", "validate.sh")
+        os.chmod(script, 0o664)
+        code, output = self.produce(out, package=self.v1)
+        self.assertEqual(code, 0, output)
+        self.assertIn(f"committed to {os.path.realpath(out)}: 0 added, 1 changed, 0 removed", output)
+        self.assertEqual(stat.S_IMODE(os.stat(script).st_mode), 0o755)
 
     def test_a_failure_during_commit_is_rolled_back(self):
         out = self.existing()

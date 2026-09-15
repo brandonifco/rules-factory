@@ -37,13 +37,15 @@ only when the gate passes, and `produce` names them as changed, for the engine t
   files silently and leave them unrecorded. An engine whose pins moved some other way fails the
   gate's locked restore. It re-locks with `scripts/validate.sh lock`, or runs `produce` again.
 - **`produce --no-verify` never commits stale lock files.** Before committing, it checks whether
-  any committed lock file resolves a pinned package at a version other than the generated pins.
+  any committed lock file resolves a pinned package at a version other than the generated pins,
+  or records a `requested` range other than the one the pin requests (a pin that changes form but
+  not version, `0.5.0` to `[0.5.0]`, moves only the range, and a locked restore refuses that too).
   When one does, it re-locks them in the staging copy with `dotnet restore --force-evaluate`
   alone, on the pinned SDK or `FACTORY_DOTNET_SDK_OVERRIDE`, checks again, and records them; nothing
-  is built or tested. It refuses, naming each file, package and both versions, when no SDK can
-  run, restore fails, or they still disagree, and the refusal names the command that works: the
-  same produce under the override at an installed SDK, or, with none, after installing the pinned
-  one. Lock files that already agree are committed as they are.
+  is built or tested. It refuses, naming each file, package and both versions (or ranges), when
+  no SDK can run, restore fails, or they still disagree, and the refusal names the command that
+  works: the same produce under the override at an installed SDK, or, with none, after installing
+  the pinned one. Lock files that already agree are committed as they are.
 
 ## Context
 
