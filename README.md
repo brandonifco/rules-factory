@@ -82,7 +82,8 @@ marked `not implemented` that the parser does have.
   version this factory reads. The corpus is the committed copy the map was made of. The
   factory's own `check-map.py --phase consumer` passes on the packaged map.
 - **The build.** `verify` recomputes provenance, restores (writing the lock files the first
-  time), then runs the engine's own gate, `scripts/validate.sh full`: the SDK pin, a locked
+  time, and re-locking them when the run changed the generated pins, as a map version bump
+  does), then runs the engine's own gate, `scripts/validate.sh full`: the SDK pin, a locked
   restore, the overlay merge and the packaged consumer checker, the corpus hash under its
   posture, every `*.g.cs` equal to a fresh regeneration, format, and a `-warnaserror` build and
   tests in Debug and Release, with evidence that the tests ran. A refusal or failure at any step

@@ -13,6 +13,11 @@
 # feed so restore takes the very .nupkg that was packed, the sha512 check that it did, and a
 # final recompute of the committed record.
 #
+# Then two re-produces into that existing engine (#94), each verified the same way: one after the
+# engine adds a src and a test project of its own, which must stay untouched, and one with the map
+# packed at the next patch version, which changes the generated pins, so verify re-locks the lock
+# files before the gate and provenance records them.
+#
 # scripts/validate.sh proves the Python machinery. It cannot prove that what the machinery
 # writes is a .NET solution that builds, because that needs the SDK the kernel pins, and the
 # only test that tried (tools/tests/test_factory_provenance.py) skips without it. A green run
@@ -156,9 +161,9 @@ if len(locks) < 2:
 print(f"ok   {len(inputs)} build input(s) recorded, {len(locks)} of them lock files")
 PY
 
-cd "$ENGINE"
-step "the restored map package is the packed .nupkg"
-python3 - "$PACKAGE" "$NUGET_PACKAGES" <<'PY'
+# Run in the engine directory: every lock file under it must pin the package's content hash.
+check_restored_package() {
+python3 - "$1" "$NUGET_PACKAGES" <<'PY'
 import base64, hashlib, json, pathlib, sys, zipfile
 package, cache = pathlib.Path(sys.argv[1]), pathlib.Path(sys.argv[2])
 expected = base64.b64encode(hashlib.sha512(package.read_bytes()).digest()).decode("ascii")
@@ -189,8 +194,11 @@ if bad:
     sys.exit(1)
 print(f"ok   {pid} {version}: restored sha512 and {seen} lock-file contentHash(es) equal the packed .nupkg")
 PY
+}
 
-cd "$ROOT"
+step "the restored map package is the packed .nupkg"
+(cd "$ENGINE" && check_restored_package "$PACKAGE")
+
 # The gate already ran, in the staging copy, on exactly these bytes (its locked restore proved
 # the lock files complete and consistent with the projects -- not that their hashes were
 # reviewed, since a fresh engine has nothing earlier to compare them with). Running it again here
@@ -300,5 +308,135 @@ CS
 grep -Eq 'testName="[^"]*TypedInputTests\.an_engine_declared_input_reaches_the_handler_through_EntryPoints"[^>]*outcome="Passed"' \
   "$SCRATCH/typed-results/typed.trx" || fail "TypedInputTests did not run and pass: $(grep -E 'Passed!|Failed!' "$SCRATCH/typed.log")"
 echo "ok   an input set on PlayerCountRequest arrives through EntryPoints; the dictionary dispatch still resolves"
+
+# #94, case 1 of 2: produce into an existing engine that has projects of its own. An engine adds a
+# src project and a test project to its solution and locks them itself (a plain restore writes
+# their lock files and leaves the committed ones as they are). A re-produce with the same package
+# must commit verified, change provenance.json only (the new projects are build inputs it now
+# records), and leave every file of the engine's own projects byte-identical.
+step "re-produce into an engine with its own src and test projects"
+mkdir -p "$ENGINE/src/Extra" "$ENGINE/tests/Extra.Tests"
+printf '<Project Sdk="Microsoft.NET.Sdk">\n</Project>\n' > "$ENGINE/src/Extra/Extra.csproj"
+cat > "$ENGINE/src/Extra/Doubler.cs" <<'CS'
+namespace Extra;
+
+/// <summary>A project the engine added itself.</summary>
+public static class Doubler
+{
+    /// <summary>Doubles a value.</summary>
+    /// <param name="value">The value to double.</param>
+    /// <returns>Twice <paramref name="value"/>.</returns>
+    public static int Twice(int value) => value * 2;
+}
+CS
+cat > "$ENGINE/tests/Extra.Tests/Extra.Tests.csproj" <<'XML'
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <IsPackable>false</IsPackable>
+    <IsTestProject>true</IsTestProject>
+    <GenerateDocumentationFile>false</GenerateDocumentationFile>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.NET.Test.Sdk" />
+    <PackageReference Include="xunit" />
+    <PackageReference Include="xunit.runner.visualstudio" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="../../src/Extra/Extra.csproj" />
+  </ItemGroup>
+
+</Project>
+XML
+cat > "$ENGINE/tests/Extra.Tests/DoublerTests.cs" <<'CS'
+using Xunit;
+
+namespace Extra.Tests;
+
+public class DoublerTests
+{
+    [Fact]
+    public void Twice_doubles_its_argument() => Assert.Equal(4, Doubler.Twice(2));
+}
+CS
+python3 - "$ENGINE/$NAME.slnx" <<'PY'
+import sys
+path = sys.argv[1]
+text = open(path, encoding="utf-8").read()
+extra = '  <Project Path="src/Extra/Extra.csproj" />\n  <Project Path="tests/Extra.Tests/Extra.Tests.csproj" />\n'
+open(path, "w", encoding="utf-8").write(text.replace("</Solution>", extra + "</Solution>"))
+PY
+(cd "$ENGINE" && dotnet restore "$NAME.slnx" -p:RestoreLockedMode=false -nologo > "$SCRATCH/extra-lock.log") \
+  || { tail -30 "$SCRATCH/extra-lock.log"; fail "restoring the engine's own projects failed"; }
+rm -rf "$ENGINE"/src/*/obj "$ENGINE"/tests/*/obj "$ENGINE"/src/*/bin "$ENGINE"/tests/*/bin
+[ -f "$ENGINE/src/Extra/packages.lock.json" ] && [ -f "$ENGINE/tests/Extra.Tests/packages.lock.json" ] \
+  || fail "restore wrote no lock files for the engine's own projects"
+own_files() {
+  (cd "$ENGINE" && find src/Extra tests/Extra.Tests "$NAME.slnx" "src/$NAME/packages.lock.json" \
+    "tests/$NAME.Tests/packages.lock.json" -type f -print0 | sort -z | xargs -0 sha256sum)
+}
+own_files > "$SCRATCH/own-before.txt"
+CI=true python3 tools/factory produce --package "$PACKAGE" --corpus "$CORPUS" --name "$NAME" --out "$ENGINE" \
+  | tee "$SCRATCH/extra.log"
+tail -1 "$SCRATCH/extra.log" | grep -q ', verified$' || fail "re-producing into an engine with its own projects did not end verified"
+grep -qxF "committed to $(cd "$ENGINE" && pwd -P): 0 added, 1 changed, 0 removed" "$SCRATCH/extra.log" \
+  || fail "re-producing into an engine with its own projects should change provenance.json only: $(grep '^committed to' "$SCRATCH/extra.log")"
+grep -q "restore -- skipped" "$SCRATCH/extra.log" || fail "the pins did not change, yet verify did not skip its restore"
+own_files | diff "$SCRATCH/own-before.txt" - || fail "re-producing changed the engine's own projects or lock files"
+echo "ok   the engine's own projects and every lock file are byte-identical after a verified re-produce"
+
+# #94, case 2 of 2: a map version bump into a locked engine (the engine above, own projects
+# included). The same map, packed at the next patch version into the local feed, changes the pins
+# in RulesFactory.Packages.g.props, so verify must re-lock before the gate's locked restore;
+# provenance.json must record the re-locked files, the committed record must recompute, and the
+# restored package must be the newly packed one.
+step "a map version bump re-produces verified, re-locking the lock files"
+BUMP_DIR="$SCRATCH/bump/$(basename "$MAP_DIR")"
+mkdir -p "$(dirname "$BUMP_DIR")"
+cp -R "$MAP_DIR" "$BUMP_DIR"
+BUMPED="$(python3 - "$BUMP_DIR/map-package.json" <<'PY'
+import json, sys
+path = sys.argv[1]
+document = json.load(open(path, encoding="utf-8"))
+major, minor, patch = document["version"].split(".")
+document["version"] = f"{major}.{minor}.{int(patch) + 1}"
+open(path, "w", encoding="utf-8").write(json.dumps(document, indent=2) + "\n")
+print(document["version"])
+PY
+)"
+python3 tools/pack-map.py "$BUMP_DIR" --out "$SCRATCH/package" | tail -1
+shopt -s nullglob
+bumped=("$SCRATCH"/package/*."$BUMPED".nupkg)
+shopt -u nullglob
+[ "${#bumped[@]}" -eq 1 ] || fail "expected one .nupkg at version $BUMPED from pack-map.py, found ${#bumped[@]}"
+PACKAGE_BUMPED="${bumped[0]}"
+sha256sum "$ENGINE"/src/*/packages.lock.json "$ENGINE"/tests/*/packages.lock.json > "$SCRATCH/locks-before.txt"
+CI=true python3 tools/factory produce --package "$PACKAGE_BUMPED" --corpus "$CORPUS" --name "$NAME" --out "$ENGINE" \
+  | tee "$SCRATCH/bump.log"
+tail -1 "$SCRATCH/bump.log" | grep -q ', verified$' || fail "the map version bump did not commit verified"
+grep -q "the generated pins changed, so this restore re-locks the 4 lock file(s)" "$SCRATCH/bump.log" \
+  || fail "the map version bump did not re-lock the 4 lock files"
+grep -q "^re-locked [0-9]* packages.lock.json file(s) because the generated pins changed" "$SCRATCH/bump.log" \
+  || fail "produce did not report re-locked lock files"
+sha256sum "$ENGINE"/src/*/packages.lock.json "$ENGINE"/tests/*/packages.lock.json | diff -q "$SCRATCH/locks-before.txt" - >/dev/null \
+  && fail "the map version bump committed without changing any lock file"
+(cd "$ENGINE" && python3 - "$BUMPED" <<'PY'
+import hashlib, json, pathlib, sys
+record = json.loads(pathlib.Path("provenance.json").read_text(encoding="utf-8"))
+if record["map"]["version"] != sys.argv[1]:
+    print(f"provenance.json records map {record['map']['version']}, not {sys.argv[1]}", file=sys.stderr); sys.exit(1)
+recorded = {b["path"]: b["sha256"] for b in record["buildInputs"] if b["path"].endswith("packages.lock.json")}
+on_disk = {str(p).replace("\\", "/"): hashlib.sha256(p.read_bytes()).hexdigest() for p in pathlib.Path(".").rglob("packages.lock.json")
+           if not {"bin", "obj"} & set(p.parts)}
+if recorded != on_disk:
+    print(f"provenance.json records lock files {sorted(recorded)} that are not the re-locked ones on disk {sorted(on_disk)}", file=sys.stderr); sys.exit(1)
+print(f"ok   provenance.json records map {sys.argv[1]} and the {len(recorded)} re-locked lock files")
+PY
+) || fail "provenance.json does not record the bump"
+(cd "$ENGINE" && check_restored_package "$PACKAGE_BUMPED")
+step "factory provenance recomputes on the bumped engine"
+python3 tools/factory provenance --engine "$ENGINE" --package "$PACKAGE_BUMPED"
 
 printf '\nvalidate-engine.sh: PASS (SDK %s%s)\n' "$SDK" "$([ "$SDK" = "$PIN" ] || echo ", OVERRIDDEN from $PIN")"

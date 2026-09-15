@@ -33,6 +33,8 @@ refusal leaves `--out` byte-identical to how it started (transaction.py, #67):
     committed. The lock files restore writes are committed with it (bin/ and obj/ never are).
     When restore writes lock files there, provenance.json is rewritten before the gate builds
     to record them as build inputs (#69), so what is committed is what the gate tested.
+    When the run changed the generated pins (a map version bump) and lock files exist, verify
+    re-locks them first (#94); that is the one case produce rewrites engine-owned files.
     `--no-verify` skips it, for a machine without the SDK the engine pins, and the output and
     the final line say the engine was committed unverified;
   * commit (transaction.py) -- the files the steps added, changed or removed are put in place
@@ -50,7 +52,8 @@ re-produces the engine in a scratch copy and names every provenance field that d
   python3 tools/factory verify --engine <dir> [--package <nupkg path | Id@Version>]
 
 runs the stages that make an engine acceptable and names the first that fails: provenance
-recomputes; `dotnet restore` writes the lock files if the engine has none; and the engine's own
+recomputes; `dotnet restore` writes the lock files if the engine has none (standalone verify
+never re-locks existing ones; only produce does, when it changed the pins); and the engine's own
 gate (`scripts/validate.sh full`: locked restore, -warnaserror build and tests in Debug and
 Release, format, regeneration, posture, ...) passes. `dotnet` is `$FACTORY_DOTNET` when set.
 See verify.py.
@@ -87,6 +90,8 @@ def produce(args):
     # commit(), after the last step passed (transaction.py).
     with transaction.Stage(args.out, log=sys.stdout) as stage:
         out = stage.root
+        # The pins the engine had before this run: the staging copy is still --out as it was.
+        pins_before = verify_step.read_pins(out)
         with provenance.Recorder(out) as recorder:
             result = intake_step.intake(args.package, args.corpus, log=sys.stdout)
             print(f"intake passed: {result.package_id} {result.version}, {len(result.map.get('entries') or [])} entries")
@@ -108,12 +113,22 @@ def produce(args):
             def record_lock_files():
                 provenance.write(out, provenance.build(state, result, model, recorder))
                 print(f"rewrote {provenance.FILE_NAME}: the lock files restore wrote are build inputs")
+            # #94: a run that moved the generated pins re-locks (verify.py). The lock files are
+            # engine-owned, and this is the one case produce rewrites them (ownership.py, 0018).
+            relock = verify_step.pins_changed(pins_before, verify_step.read_pins(out))
             verify_step.verify_staged(out, recompute_provenance, args.package, log=sys.stdout,
-                                      after_restore=record_lock_files)
-        added, _, _ = stage.commit()
-    locks = [path for path in added if path.endswith("/packages.lock.json") or path == "packages.lock.json"]
+                                      after_restore=record_lock_files, relock=relock)
+        added, changed, _ = stage.commit()
+
+    def is_lock(path):
+        return path.endswith("/packages.lock.json") or path == "packages.lock.json"
+    locks = [path for path in added if is_lock(path)]
     if locks:
         print(f"added {len(locks)} packages.lock.json file(s) written by restore: review and commit them")
+    relocked = [path for path in changed if is_lock(path)]
+    if relocked:
+        print(f"re-locked {len(relocked)} packages.lock.json file(s) because the generated pins changed: "
+              f"review and commit them")
     print(f"produced {args.name} in {args.out}, {'NOT VERIFIED' if args.no_verify else 'verified'}")
     return document
 

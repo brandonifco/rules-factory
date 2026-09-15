@@ -6,6 +6,37 @@ Accepted — 2026-09-14. Records the fix for
 [#72](https://github.com/brandonifco/rules-factory/issues/72), finding 5 of the September 2026
 external review.
 
+**Amended 2026-09-14** for [#94](https://github.com/brandonifco/rules-factory/issues/94): a
+`produce` that changes the generated pins re-locks the engine's lock files. See
+*Amendment — changed pins re-lock* below. The lock-file rows of the table changed; nothing else
+did.
+
+## Amendment — changed pins re-lock
+
+The lock files are engine-owned, and the table said no `produce` rewrites them. That made a map
+version bump impossible to commit. `produce` rewrites `RulesFactory.Packages.g.props` with the new
+map version, lock files resolved against the old version fail the gate's locked restore, and
+`verify` commits nothing that fails its gate.
+
+So there is one exception. When a `produce` run changes the resolved pin set of
+`RulesFactory.Packages.g.props` (every `PackageVersion` id and version, compared with what the
+engine had before the run), `verify` re-locks the existing lock files in the staging copy with
+`dotnet restore --force-evaluate`. Then `produce`'s after-restore hook records the new lock files
+in `provenance.json`, and the gate's locked restore proves them. The re-locked files are committed
+only when the gate passes, and `produce` names them as changed, for the engine to review.
+
+- **Why this doesn't break ownership.** The lock files follow the pins, and the pins are a
+  generated fact about the factory's inputs. Keeping lock files that no longer match the pins
+  isn't the engine's choice to protect. It is a build that can't restore.
+- **What still holds.** When the pin set is unchanged, including when only the props' comments or
+  layout changed, nothing is re-locked, and the gate holds the engine to its committed lock files.
+  Lock files of projects the engine added are re-locked with the rest, since one restore covers
+  the solution. No other engine-owned file is touched.
+- **Standalone `factory verify` never re-locks.** It has no earlier pin set to compare with, and it
+  runs on the engine in place, outside a transaction, so a relock there would rewrite engine-owned
+  files silently and leave them unrecorded. An engine whose pins moved some other way fails the
+  gate's locked restore. It re-locks with `scripts/validate.sh lock`, or runs `produce` again.
+
 ## Context
 
 The README said the factory is not a template you copy and diverge from. The code said
@@ -79,7 +110,7 @@ written path the table does not classify.
 | `src/{name}/{name}.csproj` | engine-owned |  | The engine adds references and files. The map reference lives in the generated props. |
 | `tests/{name}.Tests/{name}.Tests.csproj` | engine-owned |  | The engine adds test references. |
 | `corpus-map.overlay.json` | engine-owned |  | The engine's three fields per entry (0015). The factory must never overwrite it. |
-| `src/{name}/packages.lock.json` | engine-owned |  | Written by `verify`'s first restore (#70) in the staging copy, only when there is no lock file yet, and committed with the engine. After that, the engine relocks (`scripts/validate.sh lock`), reviews and commits it. No `produce` rewrites it. |
+| `src/{name}/packages.lock.json` | engine-owned |  | Written by `verify`'s first restore (#70) in the staging copy, only when there is no lock file yet, and committed with the engine. After that, the engine relocks (`scripts/validate.sh lock`), reviews and commits it. A `produce` rewrites it only when that run changed the generated pins: it re-locks before the gate (#94, *Amendment* above). |
 | `tests/{name}.Tests/packages.lock.json` | engine-owned |  | The same, for the test project. |
 
 `{name}` is the engine name, and `*` matches within one path segment. Files the engine adds
