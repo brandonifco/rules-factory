@@ -2,10 +2,10 @@
 
 ## Status
 
-Proposed — 2026-09-15, on [#106](https://github.com/brandonifco/rules-factory/issues/106) (trial 7,
-the SRD 5.2.1 combat map). **Amends [0015](0015-a-map-is-published-as-a-versioned-package.md)**:
-the package gains `LICENCE.txt`, and its nuspec licence changes. Brandon should confirm it before
-the SRD map is published.
+Accepted — 2026-09-15. Decided by Brandon on [#106](https://github.com/brandonifco/rules-factory/issues/106)
+(trial 7, the SRD 5.2.1 combat map), including the wording of the three `CORPUS-LICENCE.txt` files.
+**Amends [0015](0015-a-map-is-published-as-a-versioned-package.md)**: the package gains
+`LICENCE.txt`, and its nuspec licence changes.
 
 ## Context
 
