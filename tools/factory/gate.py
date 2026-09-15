@@ -14,7 +14,8 @@ The recipe is the factory's, not the engine's, so it is rewritten on every `prod
   * `scripts/engine-gate.py` -- the gate's non-dotnet checks, one subcommand each;
   * `scripts/factory/{generate,intake,ownership,provenance}.py` -- this factory's generator and
     the modules it needs to render every `*.g.cs` (ownership.py, which generate.py imports;
-    provenance.py's embedding, which imports intake), verbatim,
+    provenance.py's embedding, which imports intake; and intake.py's HASH_DERIVATIONS, the one
+    table engine-gate.py's posture recomputes a baseline with), verbatim,
     so the gate can regenerate without the factory. Every file written here is in
     provenance.json's `generated`, which is what ties these bytes to a factory version;
   * `.github/workflows/validate.yml` -- runs `validate.sh full` and nothing else.

@@ -25,7 +25,8 @@
 # or wrong SDK is a failure, never a skip.
 #
 # The engine is produced from the hoyle-backgammon example: a small map, a non-RPG domain, and
-# a package published on nuget.org (restore resolves it, and RulesKernel, from there).
+# a package published on nuget.org (restore resolves it, and RulesKernel, from there). Last, every
+# other example map with a map-package.json is produced and verified once, gate and all (#106).
 #
 # Local runs only: FACTORY_DOTNET_SDK_OVERRIDE=<version> rewrites the scratch engine's
 # global.json to that SDK, for a machine that lacks the pinned one. global.json is a managed file
@@ -76,6 +77,37 @@ dotnet --list-sdks | awk '{print $1}' | grep -qxF "$SDK" \
   || fail "the .NET SDK $SDK is not installed (found: $(dotnet --list-sdks | awk '{print $1}' | paste -sd, -)); a produced engine cannot be built, and this check does not skip"
 echo "ok   SDK $SDK"
 
+# Local runs only (FACTORY_DOTNET_SDK_OVERRIDE): re-pin a scratch engine's global.json ($1/global.json) to $SDK.
+repin_sdk() {
+  [ "$SDK" != "$PIN" ] || return 0
+  python3 - "$1/global.json" "$SDK" <<'PY'
+import json, sys
+with open(sys.argv[1], encoding="utf-8") as handle:
+    document = json.load(handle)
+document["sdk"]["version"] = sys.argv[2]
+with open(sys.argv[1], "w", encoding="utf-8") as handle:
+    handle.write(json.dumps(document, indent=2) + "\n")
+PY
+}
+
+# A scratch engine's NuGet.config ($1) gains a local folder feed ($2), the only source of RulesFactory.Maps.*.
+add_local_feed() {
+  python3 - "$1" "$2" <<'PY'
+import sys
+import xml.etree.ElementTree as ET
+path, feed = sys.argv[1], sys.argv[2]
+tree = ET.parse(path)
+root = tree.getroot()
+sources, mapping = root.find("packageSources"), root.find("packageSourceMapping")
+if sources is None or mapping is None:
+    print(f"{path} has no packageSources or packageSourceMapping to extend", file=sys.stderr); sys.exit(1)
+ET.SubElement(sources, "add", key="local-map", value=feed)
+local = ET.SubElement(mapping, "packageSource", key="local-map")
+ET.SubElement(local, "package", pattern="RulesFactory.Maps.*")
+tree.write(path, encoding="utf-8", xml_declaration=True)
+PY
+}
+
 SCRATCH="$(mktemp -d)"
 trap 'rm -rf "$SCRATCH"' EXIT
 ENGINE="$SCRATCH/engine"
@@ -96,16 +128,7 @@ python3 tools/factory produce --package "$PACKAGE" --corpus "$CORPUS" --name "$N
 
 grep -qF "\"version\": \"$PIN\"" "$ENGINE/global.json" \
   || fail "the produced global.json does not pin $PIN: $(cat "$ENGINE/global.json")"
-if [ "$SDK" != "$PIN" ]; then
-  python3 - "$ENGINE/global.json" "$SDK" <<'PY'
-import json, sys
-with open(sys.argv[1], encoding="utf-8") as handle:
-    document = json.load(handle)
-document["sdk"]["version"] = sys.argv[2]
-with open(sys.argv[1], "w", encoding="utf-8") as handle:
-    handle.write(json.dumps(document, indent=2) + "\n")
-PY
-fi
+repin_sdk "$ENGINE"
 
 # The build must restore the very .nupkg intake read and provenance hashed, not whatever
 # nuget.org serves under the same id and version: otherwise this job proves a different package
@@ -116,20 +139,7 @@ fi
 # a managed file (decision 0018), so the re-produce below adopts it, and provenance then records
 # it as an engine-owned build input (#69).
 export NUGET_PACKAGES="$SCRATCH/nuget-packages"
-python3 - "$ENGINE/NuGet.config" "$SCRATCH/package" <<'PY'
-import sys
-import xml.etree.ElementTree as ET
-path, feed = sys.argv[1], sys.argv[2]
-tree = ET.parse(path)
-root = tree.getroot()
-sources, mapping = root.find("packageSources"), root.find("packageSourceMapping")
-if sources is None or mapping is None:
-    print(f"{path} has no packageSources or packageSourceMapping to extend", file=sys.stderr); sys.exit(1)
-ET.SubElement(sources, "add", key="local-map", value=feed)
-local = ET.SubElement(mapping, "packageSource", key="local-map")
-ET.SubElement(local, "package", pattern="RulesFactory.Maps.*")
-tree.write(path, encoding="utf-8", xml_declaration=True)
-PY
+add_local_feed "$ENGINE/NuGet.config" "$SCRATCH/package"
 
 [ "$(cd "$ENGINE" && dotnet --version)" = "$SDK" ] || fail "global.json selected SDK $(cd "$ENGINE" && dotnet --version), not $SDK"
 
@@ -438,5 +448,64 @@ PY
 (cd "$ENGINE" && check_restored_package "$PACKAGE_BUMPED")
 step "factory provenance recomputes on the bumped engine"
 python3 tools/factory provenance --engine "$ENGINE" --package "$PACKAGE_BUMPED"
+
+# #106: everything above is one map's engine, and a corpus admitted with something only its own
+# engine exercises (the SRD's hashDerivation, which the gate could not recompute) passed every check
+# here while no SRD engine could pass its gate. So every other example map that declares a package is
+# produced from scratch too, and its engine verified the way a default `produce` verifies one: restore
+# from the packed .nupkg, then the whole gate, posture (the baseline recomputed under the corpus's own
+# derivation) through build and tests. Only the scratch feed and SDK edits are shared with the engine
+# above; none of the mutations are repeated.
+step "every other packable example map produces an engine whose gate passes"
+examples=0
+for settings in examples/*/map-package.json; do
+  dir="$(dirname "$settings")"
+  examples=$((examples + 1))
+  if [ "$dir" = "$MAP_DIR" ]; then
+    echo "     $dir: produced and verified above"
+    continue
+  fi
+  slug="$(basename "$dir")"
+  feed="$SCRATCH/feeds/$slug"
+  python3 tools/pack-map.py "$dir" --out "$feed" | tail -1
+  shopt -s nullglob
+  example_packages=("$feed"/*.nupkg)
+  shopt -u nullglob
+  [ "${#example_packages[@]}" -eq 1 ] || fail "expected exactly one .nupkg from pack-map.py $dir, found ${#example_packages[@]}"
+  example_package="${example_packages[0]}"
+  # The engine name is the package id's last segment; the corpus is the committed copy the manifest names.
+  described="$(python3 - "$example_package" "$dir" <<'PY'
+import json, os, re, sys, zipfile
+package, directory = sys.argv[1], sys.argv[2]
+with zipfile.ZipFile(package) as archive:
+    (nuspec,) = [n for n in archive.namelist() if n.endswith(".nuspec") and "/" not in n]
+    package_id = re.search(r"<id>([^<]+)</id>", archive.read(nuspec).decode("utf-8")).group(1)
+    cited = json.loads(archive.read("map/corpus-map.json"))["corpus"]
+    corpora = [c for c in json.loads(archive.read("map/corpus-manifest.json"))["corpora"] if c.get("sourceId") == cited]
+if len(corpora) != 1 or corpora[0].get("verification") != "committed-copy":
+    sys.exit(f"{directory}: {cited} is not one committed-copy corpus, so CI cannot produce its engine")
+print(package_id.rsplit(".", 1)[-1], os.path.join(directory, os.path.basename(corpora[0]["committedPath"])), cited)
+PY
+)" || fail "cannot read what $example_package produces"
+  read -r example_name example_corpus example_source <<<"$described"
+  example_engine="$SCRATCH/examples/$slug"
+  python3 tools/factory produce --package "$example_package" --corpus "$example_corpus" --name "$example_name" \
+    --out "$example_engine" --no-verify > "$SCRATCH/example-$slug.log" 2>&1 \
+    || { tail -40 "$SCRATCH/example-$slug.log"; fail "producing $example_name from $dir failed"; }
+  repin_sdk "$example_engine"
+  add_local_feed "$example_engine/NuGet.config" "$feed"
+  example_adopt=(--adopt NuGet.config)
+  [ "$SDK" = "$PIN" ] || example_adopt+=(--adopt global.json)
+  CI=true python3 tools/factory produce --package "$example_package" --corpus "$example_corpus" --name "$example_name" \
+    --out "$example_engine" "${example_adopt[@]}" > "$SCRATCH/example-$slug.log" 2>&1 \
+    || { tail -60 "$SCRATCH/example-$slug.log"; fail "$example_name, produced from $dir, did not pass verify (its gate's output is above)"; }
+  tail -1 "$SCRATCH/example-$slug.log" | grep -q ', verified$' \
+    || { tail -40 "$SCRATCH/example-$slug.log"; fail "producing $example_name did not end verified"; }
+  grep -qF "verified: $example_source (committed-copy" "$SCRATCH/example-$slug.log" \
+    || { tail -60 "$SCRATCH/example-$slug.log"; fail "$example_name's gate did not recompute the $example_source baseline"; }
+  (cd "$example_engine" && check_restored_package "$example_package")
+  echo "ok   $example_name ($dir): verified, its gate recomputed the $example_source baseline"
+done
+[ "$examples" -ge 2 ] || fail "found $examples packable example map(s); this step proved nothing beyond the engine above"
 
 printf '\nvalidate-engine.sh: PASS (SDK %s%s)\n' "$SDK" "$([ "$SDK" = "$PIN" ] || echo ", OVERRIDDEN from $PIN")"

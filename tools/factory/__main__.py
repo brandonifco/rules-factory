@@ -42,7 +42,10 @@ refusal leaves `--out` byte-identical to how it started (transaction.py, #67):
 
 `backlog --create` synchronises those files with GitHub issues through `gh` (or `$FACTORY_GH`):
 each file is matched to its issue by the entry marker in its body, never by title, and the
-issue is created, updated, or left unchanged. It never closes or deletes an issue.
+issue is created, updated, or left unchanged. It never closes or deletes an issue. Before any
+call it reads the map package provenance.json records (`--package`, or Id@Version from the NuGet
+global packages folder): when the corpus's licence requires attribution, a body without the
+statement is refused (decision 0023); for a licensed local-copy corpus, a body quoting it (0022).
 
   python3 tools/factory provenance --engine <dir> [--package <nupkg path | Id@Version>]
 
@@ -112,6 +115,10 @@ def produce(args):
             context = {"name": args.name, "package": result.package_id, "version": result.version}
             if result.corpus.get("verification") == "local-copy":
                 context["localCopy"] = True  # decision 0022: the backlog quotes nothing from the corpus
+            else:
+                credit = backlog_step.attribution(result.corpus)  # decision 0023: quotations carry their attribution
+                if credit:
+                    context["attribution"] = credit
             written = backlog_step.emit([item["entry"] for item in model.entries], context, out)
             print(f"--- backlog: {len(written) - 1} item(s)")
             provenance.emit(model, out)
@@ -213,9 +220,10 @@ def build_parser():
     b.add_argument("--create", action="store_true", required=True, help="create missing issues and update changed ones (the only action)")
     b.add_argument("--repo", required=True, help="owner/name of the engine's repository")
     b.add_argument("--dir", required=True, help="the engine directory `produce` wrote")
-    b.add_argument("--package", help="for an engine produced from a licensed local-copy corpus (decision 0022): the "
-                                      ".nupkg whose map the bodies are checked against (default: Id@Version from "
-                                      "provenance.json, from the NuGet global packages folder)")
+    b.add_argument("--package", help="the .nupkg whose manifest and map the bodies are checked against: the corpus "
+                                      "licence's attribution (decision 0023), and for a licensed local-copy corpus, "
+                                      "no quoted text (0022) (default: Id@Version from provenance.json, from the "
+                                      "NuGet global packages folder)")
     r = commands.add_parser("provenance", help="recompute an engine's provenance.json and report mismatches")
     r.add_argument("--engine", required=True, help="the engine directory")
     r.add_argument("--package", help="the .nupkg or Id@Version (default: Id@Version from provenance.json)")

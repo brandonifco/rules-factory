@@ -503,6 +503,58 @@ class TestCorpusPosture(GateCase):
         code, output = self.posture(engine, path, env={"FACTORY_TEST_CORPUS": PART107_XML})
         self.assertEqual(code, 0, output)
 
+    def test_the_gate_recomputes_with_intakes_table_and_has_none_of_its_own(self):
+        """#106: the gate kept a copy of the derivation table, and the SRD's derivation was missing from it."""
+        engine = self.engine()
+        with open(os.path.join(engine, "scripts", "engine-gate.py"), encoding="utf-8") as handle:
+            own = re.search(r"(?m)^\s*[A-Z_]*DERIVATIONS\s*=.*$", handle.read())
+        self.assertIsNone(own, "the gate declares a derivation table of its own, which can drift from intake's")
+        # Take Part 107's derivation out of the vendored intake.py: the gate must stop being able to verify.
+        edit(os.path.join(engine, "scripts", "factory", "intake.py"),
+             lambda t: t.replace('    "ecfr-versioner-xml": _sha256_of_bytes,\n', "", 1))
+        code, output = self.posture(engine)
+        self.assertEqual(code, 1, output)
+        self.assertIn("cannot recompute hashDerivation 'ecfr-versioner-xml'", output)
+
+    def test_every_packable_example_maps_engine_verifies_its_baseline(self):
+        """A corpus admitted with a derivation its engine's gate cannot recompute fails here, without an SDK."""
+        maps = sorted(os.path.dirname(p) for p in
+                      (os.path.join(REPO, "examples", d, "map-package.json") for d in os.listdir(os.path.join(REPO, "examples")))
+                      if os.path.isfile(p))
+        self.assertGreaterEqual(len(maps), 3, maps)
+        for map_dir in maps:
+            with self.subTest(map=os.path.basename(map_dir)):
+                work = tempfile.mkdtemp(dir=self.tmp)
+                nupkg = pack(map_dir, os.path.join(work, "feed"))
+                with zipfile.ZipFile(nupkg) as archive:
+                    (nuspec,) = [n for n in archive.namelist() if n.endswith(".nuspec") and "/" not in n]
+                    package_id = re.search(r"<id>([^<]+)</id>", archive.read(nuspec).decode("utf-8")).group(1)
+                    files = {}
+                    for label, member in (("map", "map/corpus-map.json"), ("manifest", "map/corpus-manifest.json")):
+                        files[label] = os.path.join(work, os.path.basename(member))
+                        with open(files[label], "wb") as handle:
+                            handle.write(archive.read(member))
+                with open(files["map"], encoding="utf-8") as handle:
+                    cited = json.load(handle)["corpus"]
+                with open(files["manifest"], encoding="utf-8") as handle:
+                    (corpus,) = [c for c in json.load(handle)["corpora"] if c["sourceId"] == cited]
+                name = package_id.rsplit(".", 1)[-1]
+                engine = os.path.join(work, "engine")
+                buffer = io.StringIO()
+                with redirect_stdout(buffer), redirect_stderr(buffer):
+                    code = factory.main(["produce", "--package", nupkg, "--corpus",
+                                         os.path.join(map_dir, corpus["committedPath"]), "--name", name, "--out", engine,
+                                         "--allow-dirty", "--no-verify"])
+                self.assertEqual(code, 0, buffer.getvalue())
+                merged = os.path.join(work, "merged.json")
+                code, output = self.script(engine, "map-overlay.py", "merge", "--package-map", files["map"],
+                                           "--overlay", os.path.join(engine, "corpus-map.overlay.json"), "--out", merged)
+                self.assertEqual(code, 0, output)
+                code, output = self.script(engine, "engine-gate.py", "posture", "--manifest", files["manifest"],
+                                           "--map", merged, "--name", name)
+                self.assertEqual(code, 0, output)
+                self.assertIn(f"verified: {cited} (committed-copy", output)
+
 
 # --- the whole gate, with dotnet -------------------------------------------------------------
 

@@ -24,6 +24,7 @@ import subprocess
 import sys
 import tempfile
 import unittest
+import zipfile
 from contextlib import redirect_stdout, redirect_stderr
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -382,6 +383,145 @@ class CreateCase(unittest.TestCase):
         code, _ = run(["backlog", "--create", "--repo", "not a repo", "--dir", self.engine])
         self.assertEqual(code, 2)
         self.assertFalse(os.path.exists(self.state))
+
+    def test_without_provenance_a_body_carrying_an_attribution_is_refused(self):
+        item = os.path.join(self.engine, "backlog", "001-first.md")
+        with open(item, "a", encoding="utf-8") as handle:
+            handle.write("\n" + backlog.ATTRIBUTION_HEADING + "\nSomeone's statement.\n")
+        code, log = self.create()
+        self.assertEqual(code, 1, log)
+        self.assertIn("attributes a corpus's text (0023)", log)
+        self.assertEqual(self.writes(), [])
+
+
+SRD = os.path.join(REPO, "examples", "srd-52-combat")
+with open(os.path.join(SRD, "corpus-manifest.json"), encoding="utf-8") as _handle:
+    SRD_LICENCE = json.load(_handle)["corpora"][0]["licence"]
+# The statement as the SRD's Legal Information page words it, restated here rather than parsed from the
+# manifest, so a parser that kept the wrong part of the licence cannot pass.
+SRD_STATEMENT = ("This work includes material from the System Reference Document 5.2.1 (“SRD 5.2.1”) by Wizards of "
+                 "the Coast LLC, available at https://www.dndbeyond.com/srd. The SRD 5.2.1 is licensed under the "
+                 "Creative Commons Attribution 4.0 International License, available at "
+                 "https://creativecommons.org/licenses/by/4.0/legalcode.")
+
+
+class TestAttribution(unittest.TestCase):
+    """Decision 0023: a backlog quoting an attribution-requiring corpus (the SRD, CC-BY-4.0) carries the
+    attribution in every item and every issue body; a public-domain corpus's backlog carries nothing extra."""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.tmp = tempfile.mkdtemp()
+        cls.nupkg = {}
+        for key, directory, corpus, name in (("srd", SRD, "srd-5.2.1.txt", "Srd52Combat"),
+                                             ("hoyle", os.path.join(REPO, "examples", "hoyle-backgammon"), "hoyle.txt",
+                                              "HoyleBackgammon")):
+            out = os.path.join(cls.tmp, "pkg-" + key)
+            subprocess.run([sys.executable, PACK, directory, "--out", out], check=True,
+                           stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            (nupkg,) = [n for n in os.listdir(out) if n.endswith(".nupkg")]
+            cls.nupkg[key] = (os.path.join(out, nupkg), os.path.join(directory, corpus), name)
+
+    @classmethod
+    def tearDownClass(cls):
+        shutil.rmtree(cls.tmp, True)
+
+    def setUp(self):
+        self.work = tempfile.mkdtemp(dir=self.tmp)
+        self.state = os.path.join(self.work, "issues.json")
+        gh = os.path.join(self.work, "gh")
+        with open(gh, "w", encoding="utf-8") as handle:
+            handle.write(STUB.format(python=sys.executable))
+        os.chmod(gh, 0o755)
+        for key, value in (("GH_STUB_STATE", self.state), ("FACTORY_GH", gh),
+                           ("NUGET_PACKAGES", os.path.join(self.work, "empty-nuget"))):
+            self.addCleanup(os.environ.__setitem__, key, os.environ[key]) if key in os.environ else \
+                self.addCleanup(os.environ.pop, key, None)
+            os.environ[key] = value
+
+    def produce(self, key):
+        nupkg, corpus, name = self.nupkg[key]
+        engine = os.path.join(self.work, "engine-" + key)
+        code, log = run(["produce", "--package", nupkg, "--corpus", corpus, "--name", name, "--out", engine,
+                         "--allow-dirty", "--no-verify"])
+        self.assertEqual(code, 0, log)
+        return engine
+
+    def create(self, engine, *extra):
+        return run(["backlog", "--create", "--repo", "example/engine", "--dir", engine, *extra])
+
+    def calls(self):
+        path = self.state + ".calls"
+        return open(path, encoding="utf-8").read().splitlines() if os.path.exists(path) else []
+
+    def test_the_manifest_licence_is_read_for_its_statement(self):
+        credit = backlog.attribution({"sourceId": "srd-5.2.1", "licence": SRD_LICENCE})
+        self.assertEqual(credit, {"sourceId": "srd-5.2.1", "terms": "CC-BY-4.0", "statement": SRD_STATEMENT})
+        for licence in ("public-domain-us-government",
+                        "public-domain-underlying-work; Project Gutenberg trademark terms apply to the edition"):
+            self.assertIsNone(backlog.attribution({"sourceId": "s", "licence": licence}))
+        for licence in ("CC-BY-4.0", "CC-BY-SA-4.0; credit the authors", "attribution: see the colophon", "", None):
+            with self.subTest(licence=licence), self.assertRaises(backlog.BacklogError):
+                backlog.attribution({"sourceId": "s", "licence": licence})
+
+    def test_every_srd_item_and_the_index_carry_the_statement_verbatim(self):
+        engine = self.produce("srd")
+        files = backlog_files(engine)
+        self.assertGreater(len(files), 2)
+        for name, data in files.items():
+            text = data.decode("utf-8")
+            self.assertEqual(text.count(SRD_STATEMENT), 1, name)
+            self.assertIn(backlog.ATTRIBUTION_HEADING, text, name)
+            self.assertIn("CC-BY-4.0", text, name)
+            self.assertIn("`LICENCE.txt` inside RulesFactory.Maps.Srd52Combat 1.0.0", text, name)
+        with zipfile.ZipFile(self.nupkg["srd"][0]) as archive:
+            self.assertIn("LICENCE.txt", archive.namelist(), "the pointer names a file the package carries")
+
+    def test_a_public_domain_backlog_carries_no_attribution(self):
+        engine = self.produce("hoyle")
+        for name, data in backlog_files(engine).items():
+            self.assertNotIn(backlog.ATTRIBUTION_HEADING, data.decode("utf-8"), name)
+        code, log = self.create(engine, "--package", self.nupkg["hoyle"][0])
+        self.assertEqual(code, 0, log)
+        self.assertNotIn("(0023)", log)
+
+    def test_create_posts_bodies_that_carry_the_statement(self):
+        engine = self.produce("srd")
+        code, log = self.create(engine, "--package", self.nupkg["srd"][0])
+        self.assertEqual(code, 0, log)
+        self.assertIn("bodies carry the attribution srd-5.2.1's licence (CC-BY-4.0) requires (0023)", log)
+        with open(self.state, encoding="utf-8") as handle:
+            issues = json.load(handle)
+        self.assertEqual(len(issues), len(backlog_files(engine)) - 1)
+        for issue in issues:
+            self.assertIn(SRD_STATEMENT, issue["body"], issue["title"])
+
+    def test_create_refuses_a_body_without_the_statement_before_any_call(self):
+        engine = self.produce("srd")
+        item = sorted(n for n in os.listdir(os.path.join(engine, "backlog")) if n != "README.md")[1]
+        path = os.path.join(engine, "backlog", item)
+        with open(path, encoding="utf-8") as handle:
+            text = handle.read()
+        with open(path, "w", encoding="utf-8") as handle:
+            handle.write(text.replace(SRD_STATEMENT, "(attribution removed)"))
+        code, log = self.create(engine, "--package", self.nupkg["srd"][0])
+        self.assertEqual(code, 1, log)
+        self.assertIn(f"do not carry its statement verbatim: {item}", log)
+        self.assertEqual(self.calls(), [], "gh was never called")
+
+    def test_create_refuses_when_the_package_that_says_whether_attribution_is_needed_is_absent(self):
+        engine = self.produce("srd")
+        code, log = self.create(engine)  # NUGET_PACKAGES is an empty folder, and nothing is downloaded
+        self.assertEqual(code, 1, log)
+        self.assertIn("not a local file or in the NuGet global packages folder", log)
+        self.assertEqual(self.calls(), [])
+
+    def test_create_refuses_a_package_other_than_the_one_provenance_records(self):
+        engine = self.produce("srd")
+        code, log = self.create(engine, "--package", self.nupkg["hoyle"][0])
+        self.assertEqual(code, 1, log)
+        self.assertIn("is not the map provenance.json records", log)
+        self.assertEqual(self.calls(), [])
 
 
 if __name__ == "__main__":

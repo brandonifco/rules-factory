@@ -63,6 +63,34 @@ when a cited corpus has no `licence`. **Nothing defaults to Apache-2.0.**
 | `hoyle-backgammon` | `public-domain-underlying-work; Project Gutenberg trademark terms apply to the edition` | A: US public domain, no licence granted, Gutenberg's terms govern its edition and trademark; B: Apache-2.0 |
 | `faa-part-107` | `public-domain-us-government` | A: US public domain under 17 U.S.C. 105, no licence granted; B: Apache-2.0 |
 
+### The backlog carries the attribution too
+
+Added 2026-09-15 ([#106](https://github.com/brandonifco/rules-factory/issues/106), trial 7). The
+package is not the only thing that quotes the corpus. `factory produce` writes `backlog/*.md` with
+each entry's evidence verbatim, and `backlog --create` posts those files as GitHub issue bodies, so an
+SRD engine's issues carried CC-BY text with no attribution.
+
+- **Where the requirement is read.** From the package, since `produce` works from the package: the
+  packaged manifest's `licence` for the corpus the map cites. A corpus whose terms require attribution
+  states it there as `<licence>. Attribution required: <statement>`, as the SRD's does. A `licence`
+  that mentions attribution or CC-BY in any other shape, or a corpus with no `licence`, is refused by
+  `produce`: the statement cannot be found in it, and it is not guessed.
+- **What an item carries.** Every backlog item, and `backlog/README.md`, carries a "Corpus licence"
+  section: the corpus the quotations are from, its licence, a pointer to `LICENCE.txt` in the map
+  package and version (the full terms and what was changed), and the attribution statement
+  verbatim. Every issue body is an item file below its title, so every issue carries it.
+- **`backlog --create` refuses to post** a body without the statement verbatim, before any call to
+  `gh`. It reads the map package `provenance.json` records (`--package`, or `Id@Version` from the
+  NuGet global packages folder, never downloaded) and refuses a package whose map or manifest is not
+  the one recorded, or a package it cannot find. So `--create` now needs the package at hand for every
+  produced engine, not only a licensed local-copy one (0022): whether a body needs an attribution is the
+  package's to say, not the body's.
+- **Public-domain corpora get nothing extra.** Their terms require no notice, and a line naming them
+  would change every existing backlog and issue for no obligation. The `hoyle-backgammon` and
+  `faa-part-107` backlogs are byte-identical to before.
+- **A licensed `local-copy` corpus (0022)** quotes nothing in its backlog, so its items carry no
+  attribution section.
+
 ### Versions
 
 `LICENCE.txt` is a package file other than the map and manifest, and the nuspec's licence
