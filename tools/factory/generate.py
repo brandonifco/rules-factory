@@ -66,7 +66,15 @@ correspondence tests read it. Over it, each entry gets
   * a request type of its own, `{Engine}.Requests.{Member}Request`, and a typed entry point,
     `EntryPoints.{Member}`, a `RuleEntry<{Member}Request, TOutput>`. Handing one entry's request to
     another entry does not compile. (`EntryPoints`, not `Rules`: an engine's hand-written code
-    commonly lives in a `{Engine}.Rules` namespace, which a class of that name would collide with);
+    commonly lives in a `{Engine}.Rules` namespace, which a class of that name would collide with).
+    The request type is `sealed partial` (#93): the map names no inputs, so an engine declares an
+    entry's inputs itself, as `init` properties in a file of its own, and a caller sets them in an
+    object initializer (`new {Member}Request { Position = p }`). The entry point hands that very
+    object to the handler (`Registry.Resolve(IEntryRequest)`); only the dictionary dispatch,
+    `Registry.Resolve(id, RuleRequest)`, builds one from the assertions, with every input at its
+    default. The generated members are the constructors `()` and `(RuleRequest)`, `Empty`,
+    `Asserting` on an assertion, `EntryId` and `Assertions`; since the generated code constructs
+    requests, an engine's input may not be a C# `required` member;
   * a handler declaration, a partial method of `Handlers`, whose implementation is the
     hand-written code. For an entry whose merged status is `implemented` and whose row is not 8
     (the entries a correspondence test already requires a handler for) it is an extended partial
@@ -575,7 +583,9 @@ REGISTRY_BODY = """
     /// Resolves <paramref name="entryId"/>: through its hand-written handler when the entry is
     /// <c>implemented</c> and has one (the typed handler first, which answers unless an optional
     /// hook leaves the resolution null), otherwise through the default its correspondence row fixes.
-    /// The typed entry points in <see cref="EntryPoints"/> resolve through here.
+    /// A typed handler receives a request of its entry's type built from <paramref name="request"/>
+    /// alone, so any input property an engine declares on that type has its default value; to pass
+    /// inputs, resolve through <see cref="Resolve(IEntryRequest)"/> or <see cref="EntryPoints"/>.
     /// </summary>
     /// <param name="entryId">A map entry id.</param>
     /// <param name="request">What the caller asserts.</param>
@@ -583,24 +593,44 @@ REGISTRY_BODY = """
     public static Resolution<object> Resolve(string entryId, RuleRequest request)
     {
         ArgumentNullException.ThrowIfNull(request);
-        var entry = Entry(entryId);
+        return Answer(Entry(entryId), request, null);
+    }
+
+    /// <summary>
+    /// Resolves the entry <paramref name="request"/> is for, exactly as
+    /// <see cref="Resolve(string, RuleRequest)"/> does for its id and assertions, except that a
+    /// typed handler receives <paramref name="request"/> itself, with every input property the
+    /// engine declared on its type. The typed entry points in <see cref="EntryPoints"/> resolve
+    /// through here.
+    /// </summary>
+    /// <param name="request">A request for one map entry.</param>
+    /// <returns>The resolution.</returns>
+    public static Resolution<object> Resolve(IEntryRequest request)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+        var assertions = request.Assertions ?? throw new ArgumentException("the request carries no assertions", nameof(request));
+        return Answer(Entry(request.EntryId), assertions, request);
+    }
+
+    private static Resolution<object> Answer(RegisteredEntry entry, RuleRequest assertions, IEntryRequest? request)
+    {
         // Discovery runs on the first resolve whatever answers it, so a malformed or duplicate
         // [Implements] handler is refused even for an entry a typed handler answers.
         var untyped = Implementations.Value;
         if (entry.Status == EntryStatus.Implemented)
         {
-            if (Handlers.Dispatch(entryId, request) is { } typed)
+            if (Handlers.Dispatch(entry.Id, assertions, request) is { } typed)
             {
                 return typed;
             }
 
-            if (untyped.TryGetValue(entryId, out var handler))
+            if (untyped.TryGetValue(entry.Id, out var handler))
             {
-                return handler(request);
+                return handler(assertions);
             }
         }
 
-        return Default(entry, request);
+        return Default(entry, assertions);
     }
 
     private static Resolution<object> Default(RegisteredEntry entry, RuleRequest request) => entry.Row switch
@@ -720,7 +750,7 @@ public sealed class RuleEntry<TInput, TOutput>
     /// <summary>The entry as the registry holds it: status, row and citations.</summary>
     public RegisteredEntry Registered => Registry.Entry(Id);
 
-    /// <summary>Resolves the entry, exactly as <see cref="Registry.Resolve"/> does for its id.</summary>
+    /// <summary>Resolves the entry through <see cref="Registry.Resolve(IEntryRequest)"/>, so its handler receives <paramref name="request"/> itself.</summary>
     /// <param name="request">The entry's request.</param>
     /// <returns>The resolution.</returns>
     public Resolution<TOutput> Resolve(TInput request)
@@ -746,7 +776,7 @@ def contracts_cs(model):
         lines.append("\n" if index else "")
         lines.append(f"    /// <summary>{xml_text(entry.get('name', entry['id']))} (<c>{xml_text(entry['id'])}</c>).</summary>\n"
                      f"    public static RuleEntry<{c['request_cs']}, {c['output']}> {item['member']} {{ get; }} =\n"
-                     f"        new({cs_string(entry['id'])}, request => Registry.Resolve({cs_string(entry['id'])}, request.Assertions));\n")
+                     f"        new({cs_string(entry['id'])}, request => Registry.Resolve(request));\n")
     lines.append("}\n\n")
     lines.append(
         "/// <summary>\n"
@@ -768,8 +798,12 @@ def contracts_cs(model):
             hooks.append(item)
             lines.append(f"{summary}: optional.</summary>\n"
                          f"    static partial void {item['member']}({c['request_cs']} request, ref Resolution<{c['output']}>? resolution);\n\n")
-    lines.append("    /// <summary>The typed handler's resolution of <paramref name=\"entryId\"/>, or null when it has none or leaves it null.</summary>\n"
-                 "    internal static Resolution<object>? Dispatch(string entryId, RuleRequest request)\n"
+    lines.append("    /// <summary>\n"
+                 "    /// The typed handler's resolution of <paramref name=\"entryId\"/>, or null when it has none or leaves it null.\n"
+                 "    /// The handler receives <paramref name=\"request\"/> when it is of the entry's request type, and otherwise\n"
+                 "    /// (the dictionary dispatch) a request of that type built from <paramref name=\"assertions\"/>.\n"
+                 "    /// </summary>\n"
+                 "    internal static Resolution<object>? Dispatch(string entryId, RuleRequest assertions, IEntryRequest? request)\n"
                  "    {\n"
                  "        Resolution<object>? resolution = null;\n")
     if model.entries:
@@ -778,13 +812,13 @@ def contracts_cs(model):
             c = contract(model, item)
             lines.append(f"            case {cs_string(item['entry']['id'])}:\n")
             if c["required"]:
-                lines.append(f"                resolution = {item['member']}(new(request));\n")
+                lines.append(f"                resolution = {item['member']}(request as {c['request_cs']} ?? new(assertions));\n")
             else:
-                lines.append(f"                {item['member']}(new(request), ref resolution);\n")
+                lines.append(f"                {item['member']}(request as {c['request_cs']} ?? new(assertions), ref resolution);\n")
             lines.append("                break;\n")
         lines.append("        }\n\n")
     else:
-        lines.append("        _ = entryId;\n        _ = request;\n")
+        lines.append("        _ = entryId;\n        _ = assertions;\n        _ = request;\n")
     lines.append("        return resolution;\n    }\n\n")
     lines.append("    /// <summary>Whether <paramref name=\"entryId\"/> has a typed handler: always when it is required, and an\n"
                  "    /// optional hook when the engine implemented it (an unimplemented partial method is not compiled).</summary>\n"
@@ -812,7 +846,14 @@ def requests_cs(model):
         lines.append(
             "\n"
             f"/// <summary>A request to resolve {xml_text(entry.get('name', entry['id']))} (<c>{xml_text(entry['id'])}</c>).</summary>\n"
-            f"public sealed class {c['request']} : IEntryRequest\n{{\n"
+            "/// <remarks>Partial: an engine declares the entry's inputs as <c>init</c> properties in a file of its own, and a\n"
+            "/// caller sets them in an object initializer; the handler receives this very object through <c>EntryPoints</c>.</remarks>\n"
+            f"public sealed partial class {c['request']} : IEntryRequest\n{{\n"
+            f"    /// <summary>A request for <c>{xml_text(entry['id'])}</c> asserting nothing.</summary>\n"
+            f"    public {c['request']}()\n"
+            "        : this(RuleRequest.Empty)\n"
+            "    {\n"
+            "    }\n\n"
             f"    /// <summary>A request for <c>{xml_text(entry['id'])}</c> carrying <paramref name=\"assertions\"/>.</summary>\n"
             "    /// <param name=\"assertions\">What the caller asserts.</param>\n"
             f"    public {c['request']}(RuleRequest assertions)\n"

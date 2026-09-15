@@ -613,9 +613,25 @@ class TestValidateShWithDotnet(GateCase):
 
     def test_passes_with_an_implemented_entry_whose_tests_ran(self):
         engine = self.copy()
+        # #93: the handler answers with an input the engine declares on its partial request type, and
+        # a hand-written test proves the value arrives through EntryPoints (and, through the
+        # dictionary dispatch, which has no inputs, that it is at its default).
         self.implement_speed_limit(engine, "    internal static partial Resolution<object> SpeedLimit("
                                            "Requests.SpeedLimitRequest request) =>\n"
-                                           "        Resolution<object>.FromValue(87);\n")
+                                           "        Resolution<object>.FromValue(request.Knots);\n")
+        with open(os.path.join(engine, "src", NAME, "SpeedLimitRequest.cs"), "w", encoding="utf-8") as handle:
+            handle.write("namespace FaaPart107.Requests;\n\npublic sealed partial class SpeedLimitRequest\n{\n"
+                         "    /// <summary>An engine-declared input.</summary>\n"
+                         "    public int Knots { get; init; } = 87;\n}\n")
+        with open(os.path.join(engine, "tests", f"{NAME}.Tests", "InputTests.cs"), "w", encoding="utf-8") as handle:
+            handle.write("using RulesKernel.Resolution;\nusing Xunit;\n\nnamespace FaaPart107.Tests;\n\n"
+                         "public sealed class InputTests\n{\n"
+                         "    [Fact]\n"
+                         "    public void an_engine_declared_input_reaches_the_handler()\n"
+                         "    {\n"
+                         "        Assert.Equal(100, EntryPoints.SpeedLimit.Resolve(new Requests.SpeedLimitRequest { Knots = 100 }).Match<object?>(v => v, _ => null));\n"
+                         "        Assert.Equal(87, Registry.Resolve(\"speed-limit\", RuleRequest.Empty).Match<object?>(v => v, _ => null));\n"
+                         "    }\n}\n")
         code, output = self.validate(engine, "full")
         self.assertEqual(code, 0, output[-4000:])
         self.assertIn("1 test(s) named by 1 implemented entries, every one found and executed in all 2", output)

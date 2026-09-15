@@ -306,7 +306,12 @@ class TestGeneration(ProduceCase):
         contracts = self.read(out, GENERATED[3])
         self.assertIn("    internal static partial Resolution<object> SpeedWithinLimit("
                       "global::FaaPart107.Requests.SpeedWithinLimitRequest request);\n", contracts)
-        self.assertIn("                resolution = SpeedWithinLimit(new(request));\n", contracts)
+        # #93: the handler receives the caller's typed request, and a request built from the
+        # assertions only on the dictionary dispatch.
+        self.assertIn("                resolution = SpeedWithinLimit(request as global::FaaPart107.Requests.SpeedWithinLimitRequest "
+                      "?? new(assertions));\n", contracts)
+        self.assertIn("                ReasonableProtection(request as global::FaaPart107.Requests.ReasonableProtectionRequest "
+                      "?? new(assertions), ref resolution);\n", contracts)
         self.assertIn('        "speed-within-limit" => true,\n', contracts)
         self.assertIn("    static partial void ReasonableProtection(global::FaaPart107.Requests.ReasonableProtectionRequest request, "
                       "ref Resolution<object>? resolution);\n", contracts)
@@ -327,12 +332,16 @@ class TestGeneration(ProduceCase):
             request = f"global::{NAME}.Requests.{member}Request"
             with self.subTest(entry["id"]):
                 self.assertIn(f"    public static RuleEntry<{request}, object> {member} {{ get; }} =\n"
-                              f'        new("{entry["id"]}", request => Registry.Resolve("{entry["id"]}", request.Assertions));\n',
+                              f'        new("{entry["id"]}", request => Registry.Resolve(request));\n',
                               contracts)
                 # Nothing is implemented in the package map, so every handler is an optional hook.
                 self.assertIn(f"    static partial void {member}({request} request, ref Resolution<object>? resolution);\n", contracts)
                 self.assertIn(f'        "{entry["id"]}" => Hooked("{member}", typeof({request})),\n', contracts)
-                self.assertIn(f"public sealed class {member}Request : IEntryRequest\n", requests)
+                # #93: partial, so an engine declares the entry's inputs, with a parameterless
+                # constructor for an object initializer.
+                self.assertIn(f"public sealed partial class {member}Request : IEntryRequest\n", requests)
+                self.assertIn(f"    public {member}Request()\n        : this(RuleRequest.Empty)\n", requests)
+                self.assertIn(f"    public {member}Request(RuleRequest assertions)\n", requests)
                 self.assertIn(f'    public string EntryId => "{entry["id"]}";\n', requests)
                 self.assertIn(f"            EntryPoints.{member}.Id,\n", tests)
                 asserting = f"    public static {member}Request Asserting(object value) => " \
@@ -342,6 +351,13 @@ class TestGeneration(ProduceCase):
                 else:
                     self.assertNotIn(asserting, requests)
         self.assertNotIn("internal static partial Resolution<", contracts)
+        self.assertNotIn("public sealed class", requests)
+        # #93: the typed entry points dispatch the request object; the dictionary dispatch stays.
+        registry = self.read(out, GENERATED[1])
+        self.assertIn("    public static Resolution<object> Resolve(IEntryRequest request)\n", registry)
+        self.assertIn("    public static Resolution<object> Resolve(string entryId, RuleRequest request)\n", registry)
+        self.assertIn("    internal static Resolution<object>? Dispatch(string entryId, RuleRequest assertions, IEntryRequest? request)\n",
+                      contracts)
         # Every decline is proved through the typed entry point as well as the dictionary.
         self.assertEqual(tests.count("AssertDeclines(\""), len(self.map["entries"]))
         self.assertEqual(len(re.findall(r'AssertDeclines\("[a-z0-9-]+", UnresolvedReason\.\w+, EntryPoints\.\w+\.Resolve\(', tests)),
