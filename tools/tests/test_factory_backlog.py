@@ -258,7 +258,7 @@ def entries():
 
 
 class TestCrossReferencesRendered(unittest.TestCase):
-    """The Cross-references section, rendered alone: deterministic, and quoting nothing of a local-copy corpus (0022)."""
+    """The Cross-references section, rendered alone: deterministic and exact."""
 
     CITES = "except as provided in paragraph (d) of this section"
     REASON = "Paragraph (d) of this section is outside the slice mapped here."
@@ -279,18 +279,6 @@ class TestCrossReferencesRendered(unittest.TestCase):
                       first["002-second.md"])
         self.assertIn("## Cross-references\n\n`crossReferences` -- each pointer the evidence makes, and the entry or "
                       "the recorded reason it resolves to:\n\n- none\n\n", first["001-first.md"])
-
-    def test_a_local_copy_corpus_keeps_the_resolution_and_withholds_the_words(self):
-        body = backlog.render(self.listed(), {**CONTEXT, "localCopy": True})["002-second.md"]
-        section = body.split("## Cross-references\n\n", 1)[1].split("\n## ", 1)[0]
-        self.assertIn("- `cites` (withheld) -- `resolvedBy` [`first`](001-first.md)\n", section)
-        self.assertIn("- `cites` (withheld) -- `unmapped`: (withheld)\n", section)
-        self.assertIn(backlog.WITHHELD, section)
-        self.assertNotIn("paragraph (d)", body)
-        self.assertNotIn("outside the slice", body)
-        strings = backlog.quoted_strings({"entries": self.listed()})
-        self.assertIn(self.CITES, strings)
-        self.assertIn(self.REASON, strings)
 
 
 class CreateCase(unittest.TestCase):

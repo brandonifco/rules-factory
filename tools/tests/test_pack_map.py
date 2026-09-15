@@ -214,6 +214,17 @@ class TestRefuses(PackCase):
         code, output = self.pack()
         self.assert_refused(code, output)
 
+    def test_a_corpus_whose_licence_is_not_public_domain_or_open_is_refused_before_any_check(self):
+        """0028: a licensed corpus's map is never packed, even with a terms file that states its licence."""
+        self.edit("corpus-manifest.json", lambda m: m["corpora"][0].__setitem__("licence", "commercial"))
+        with open(os.path.join(self.map_dir, "CORPUS-LICENCE.txt"), "w", encoding="utf-8") as handle:
+            handle.write("The corpus is commercial.\n")
+        code, output = self.pack()
+        self.assert_refused(code, output)
+        self.assertIn("hoyle-1909's manifest `licence` is 'commercial'", output)
+        self.assertIn("docs/decisions/0028", output)
+        self.assertNotIn("check-map.py --phase publish", output, "the licence is refused before any gate runs")
+
     def test_an_adapter_with_no_locator_checker_is_refused(self):
         self.edit("corpus-manifest.json", lambda m: m["corpora"][0].__setitem__("adapter", "pdf"))
         code, output = self.pack()

@@ -435,7 +435,9 @@ its entries carry no `evidence`, and `check-map.py --only postures` fails any th
 citation is unverifiable — which `check-locators.py` reports, because an unlocatable entry
 fails the run and is never counted as ok. What is not acceptable is a summary occupying the field
 and looking like evidence. No trial has produced this case; every mapped corpus is public domain
-and declares `quotation: verbatim`.
+and declares `quotation: verbatim`. The factory admits no corpus whose licence forbids the
+quote ([0028](decisions/0028-the-factory-admits-only-corpora-whose-licence-permits-publishing-them.md)), so this case
+describes a manifest the checker reads, never a map the factory packs.
 
 **What a verified span does not prove.** Only that the page cited is the page the quoted words
 sit on. It says nothing about whether that is the *right* passage for the entry, whether the
@@ -1024,11 +1026,8 @@ answered per corpus for the same reason ([0013](decisions/0013-verification-post
   committed; a holder of a legal copy points `envVar` at it, and everyone else — every CI run
   included — is told `NOT VERIFIED` with the reason, never `ok`. A `never-commit` corpus is
   always `local-copy`; a `pin-in-repo` corpus that commits only a derivation may be too.
-  The factory refuses a `local-copy` corpus at every step, with one exception: an operator on
-  the committed allowlist, identified by `gh api user` and passing `--licensed-copy-exception`
-  outside CI, may pack its map into a local, unpublishable package and produce, verify and
-  recompute an engine from the file `envVar` names. A `local-copy` map is never published
-  ([0022](decisions/0022-a-licensed-copy-is-used-locally-by-a-named-operator-and-never-published.md)).
+  The factory refuses a `local-copy` corpus at every step: `pack-map.py` will not pack its map,
+  and intake will not produce from it.
 - **`quotation`** — whether a map may carry verbatim spans of the corpus. `verbatim`, or
   `withheld` where the licence forbids it: since `evidence` became a span, a map carries a few
   hundred sentences of its corpus, and for a licensed corpus **the map is itself the
@@ -1043,6 +1042,17 @@ source; the factory pins that package at the kernel's version and references not
 declares it from the rules. Nothing infers it, and a missing value is a failure, never `none`. Which
 entries draw, and how many of what, is the map's `draws` field, which is refused under `none`
 ([0025](decisions/0025-an-assertion-names-who-asserts-it-and-an-operation-names-what-it-draws.md)).
+
+**`licence` decides whether the factory uses the corpus at all**
+([0028](decisions/0028-the-factory-admits-only-corpora-whose-licence-permits-publishing-them.md)).
+The factory admits only a corpus whose licence permits committing and publishing its text and its
+map. The class is read from the licence's leading
+identifier: `public-domain` or `public-domain-<whose>` is public domain, and `CC-BY-4.0` or `CC0-1.0`
+is open. Any other licence, or none, is refused by intake (`produce`, `verify`, `provenance`) and by
+`pack-map.py`, naming 0028. `core-rules` in the example above is such a corpus: the schema can
+describe it and `check-map.py` checks its declarations, but the factory neither packs its map nor
+produces from it. The same holds for `never-commit`, `local-copy` and `withheld`, which no corpus the
+factory admits uses today.
 
 `check-map.py --only postures` requires all three on every admitted corpus, refuses a `never-commit`
 `committed-copy`, a `local-copy` with no `envVar`, a `committedPath` that is not a file, and any

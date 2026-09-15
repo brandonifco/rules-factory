@@ -137,6 +137,15 @@ class TestAccepts(IntakeCase):
         with open(PART107_XML, "rb") as handle:
             self.assertEqual(result.corpus_bytes, handle.read())
 
+    def test_every_example_corpus_licence_is_admitted(self):
+        """0028: the committed corpora the factory produces from are all public domain or open."""
+        classes = {}
+        for name in ("hoyle-backgammon", "faa-part-107", "srd-52-combat"):
+            with open(os.path.join(REPO, "examples", name, "corpus-manifest.json"), encoding="utf-8") as handle:
+                for corpus in json.load(handle)["corpora"]:
+                    classes[corpus["sourceId"]] = intake.licence_class(corpus.get("licence"))
+        self.assertEqual(classes, {"hoyle-1909": "public-domain", "cfr-14-107": "public-domain", "srd-5.2.1": "open"})
+
     def test_the_published_package_when_cached(self):
         cached = os.path.join(intake._global_packages_folder(), HOYLE_ID.lower(), HOYLE_VERSION,
                               f"{HOYLE_ID.lower()}.{HOYLE_VERSION}.nupkg")
@@ -169,6 +178,41 @@ class TestRefuses(IntakeCase):
         package = rewrite(self.part107, os.path.join(self.tmp, "local.nupkg"),
                           {"map/corpus-manifest.json": json.dumps(manifest).encode("utf-8")})
         self.assert_refused(package, PART107_XML, "NOT VERIFIED", "'local-copy'")
+
+    def part107_with_licence(self, licence, **changes):
+        with zipfile.ZipFile(self.part107) as archive:
+            manifest = json.loads(archive.read("map/corpus-manifest.json"))
+        corpus = manifest["corpora"][0]
+        if licence is None:
+            corpus.pop("licence", None)
+        else:
+            corpus["licence"] = licence
+        corpus.update(changes)
+        return rewrite(self.part107, os.path.join(self.tmp, "licence.nupkg"),
+                       {"map/corpus-manifest.json": json.dumps(manifest).encode("utf-8")})
+
+    def test_a_licence_that_is_not_public_domain_or_open(self):
+        """0028: the factory admits only corpora whose licence permits committing and publishing them."""
+        for licence in ("commercial", "All rights reserved", "CC-BY-NC-4.0", "CC-BY-4.0-with-exceptions",
+                        "public-domainish", "Public-Domain", "", None):
+            with self.subTest(licence=licence):
+                package = self.part107_with_licence(licence)
+                self.assert_refused(package, PART107_XML, f"cfr-14-107's manifest `licence` is {licence!r}",
+                                    "neither public domain", "docs/decisions/0028")
+                self.assertFalse(os.path.exists(os.path.join(self.tmp, "out")), "a refused intake wrote the engine")
+
+    def test_a_licensed_corpus_is_refused_by_its_licence_before_its_posture(self):
+        package = self.part107_with_licence("commercial", verification="local-copy", boundaryPolicy="never-commit",
+                                            quotation="withheld", envVar="PART107_XML")
+        output = self.assert_refused(package, PART107_XML, "docs/decisions/0028")
+        self.assertNotIn("NOT VERIFIED", output)
+
+    def test_open_and_public_domain_licences_are_admitted(self):
+        for licence in ("public-domain", "public-domain-us-government", "CC0-1.0",
+                        "CC-BY-4.0. Attribution required: This work includes material from a test corpus."):
+            with self.subTest(licence=licence):
+                self.assert_passes(self.part107_with_licence(licence), PART107_XML)
+                shutil.rmtree(os.path.join(self.tmp, "out"), True)
 
     def test_a_manifest_that_does_not_declare_randomness(self):
         """0019: a package from before the field is refused, never read as `none`."""
