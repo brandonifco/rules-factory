@@ -8,7 +8,7 @@ this file only says how the answer is shaped.
 
 This file is a disclosure. Every line of it is information a fully blind implementer would not have,
 and the rebuild's evidence counts it as help received (`examples/hoyle-blind-rebuild/README.md` in
-rules-factory, decision H3). It was written by someone who has read the target's tests, and was
+rules-factory, Brandon's decisions H1 and H2 of 2026-09-15). It was written by someone who has read the target's tests, and was
 checked by `build-brief.py` for test names, copied test text and test literals.
 
 ## 1. Layout and build

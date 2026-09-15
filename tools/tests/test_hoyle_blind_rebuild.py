@@ -197,6 +197,7 @@ class Repos(unittest.TestCase):
         self.factory = base / "factory"
         factory_files = {
             "README.md": "# Factory\n\nIt produces engines.\n",
+            ".gitignore": "__pycache__/\n",
             "docs/method.md": "# Method\n\nA general paragraph about mapping.\n\n"
                               "The SecretBoardTests class once pinned this.\n\n- one item\n- A_well_hidden_test_name_nobody_should_see was here\n",
             "tools/factory/__main__.py": "print('factory')\n",
@@ -332,8 +333,9 @@ class Repos(unittest.TestCase):
                       "disclosureFiles": ["engine/conventions.md"],
                       "disclosures": [{"file": f"inputs/map/{self.nupkg.name}!map/corpus-map.json", "kind": "test-name",
                                        "name": "SecretBoardTests", "count": 1}]},
-            "equivalence": {"allowedShims": []},
-            "openDecisions": [{"id": "H1", "question": "q?", "recommendation": "r."}],
+            "equivalence": {"allowedShims": [], "casesRequired": "all", "assistedAfterAnswers": 10},
+            "decisions": [{"id": "H1", "question": "q?", "decision": "d.", "decidedBy": "Brandon",
+                           "decidedOn": "2026-09-15"}],
         }
         return target
 
@@ -427,7 +429,10 @@ class CheckTarget(Repos):
             "cases": lambda t: t["tests"].__setitem__("caseCount", 13),
             "framework": lambda t: t["tests"]["projects"]["HoyleBackgammon.Tests"]["casesPerFramework"].pop("net8.0"),
             "disclosure": lambda t: t["brief"]["disclosures"][0].__setitem__("name", "NoSuchTests"),
-            "decision": lambda t: t["openDecisions"].append({"id": "H1", "question": "again", "recommendation": "x"}),
+            "decision": lambda t: t["decisions"].append(dict(t["decisions"][0])),
+            "undated decision": lambda t: t["decisions"][0].pop("decidedOn"),
+            "open decision": lambda t: t.__setitem__("openDecisions", []),
+            "shim": lambda t: t["equivalence"]["allowedShims"].append("Adapter.cs"),
         }
         for name, mutate in mutations.items():
             with self.subTest(name):
@@ -540,6 +545,62 @@ class Brief(Repos):
         self.assertEqual(code, 1, text)
         self.assertIn("not the file MANIFEST.json records", text)
 
+    def test_the_factory_is_staged_as_a_clean_tools_only_checkout_of_the_tag(self):
+        code, text, out = self.assemble()
+        self.assertEqual(code, 0, text)
+        stage = out / build_brief.STAGE
+        self.assertEqual(self.git(stage, "rev-parse", "HEAD"), self.factory_commit)
+        self.assertEqual(self.git(stage, "remote"), "")
+        self.assertTrue((stage / "tools/factory/generate.py").is_file())
+        self.assertFalse((stage / "docs").exists())
+        self.assertNotEqual(subprocess.run(["git", "-C", str(stage), "cat-file", "-e", "HEAD:docs/method.md"],
+                                           capture_output=True).returncode, 0, "a blob outside the sparse paths is present")
+        manifest = json.loads((out / "MANIFEST.json").read_text())
+        self.assertFalse([f for f in manifest["files"] if "/.git/" in f["path"]])
+        # Running the factory writes __pycache__, which neither dirties the stage nor fails the scan.
+        (stage / "tools/factory/__pycache__").mkdir()
+        (stage / "tools/factory/__pycache__/generate.cpython-312.pyc").write_bytes(b"\0")
+        self.assertEqual(build_brief.check_stage(out, self.target, self.factory), [])
+
+    def test_a_tampered_stage_is_refused(self):
+        code, text, out = self.assemble()
+        stage = out / build_brief.STAGE
+        cases = {
+            "edited tool": lambda: (stage / "tools/factory/generate.py").write_text("changed\n"),
+            "remote": lambda: self.git(stage, "remote", "add", "origin", "https://example.invalid/x"),
+        }
+        for name, tamper in cases.items():
+            with self.subTest(name):
+                tamper()
+                self.assertTrue(build_brief.check_stage(out, self.target, self.factory), name)
+                code, text = self.scan(out)
+                self.assertEqual(code, 1, text)
+                self.git(stage, "checkout", "--", ".")
+                subprocess.run(["git", "-C", str(stage), "remote", "remove", "origin"], capture_output=True)
+
+    def test_the_review_quotes_what_was_removed_and_the_manifest_does_not(self):
+        review = self.base / "REDACTIONS.md"
+        out = self.base / "brief"
+        code, text = run(build_brief, "--target", self.target_path, "assemble", self.engine, "--factory", self.factory,
+                         "--nupkg", self.nupkg, "--api-contract", self.contract, "--out", out, "--review", review)
+        self.assertEqual(code, 0, text)
+        body = review.read_text()
+        self.assertIn("The SecretBoardTests class once pinned this.", body)
+        self.assertIn("test-name `SecretBoardTests`", body)
+        self.assertIn(f"test-literal `{SECRET_SEED}`", body)
+        self.assertNotIn("SecretBoardTests", (out / "MANIFEST.json").read_text())
+
+    def test_an_answer_is_checked_like_the_brief(self):
+        clean = self.base / "001-answer.md"
+        clean.write_text("Moves are listed highest origin first.\n")
+        leaky = self.base / "002-answer.md"
+        leaky.write_text("See A_well_hidden_test_name_nobody_should_see.\n")
+        common = ("--target", self.target_path, "check-text", self.engine, "--factory", self.factory, "--nupkg", self.nupkg)
+        self.assertEqual(run(build_brief, *common, clean)[0], 0)
+        code, text = run(build_brief, *common, clean, leaky)
+        self.assertEqual(code, 1, text)
+        self.assertIn("002-answer.md: test-name", text)
+
     def test_markdown_units_and_unlinking(self):
         blocks = build_brief.markdown_blocks("para one\nline two\n\n- a\n  - nested\n- b\n\n```\ncode\n\nmore\n```\n")
         self.assertIn("- a\n  - nested", blocks)
@@ -596,11 +657,92 @@ class CheckRebuild(Repos):
                 self.assertEqual(code, 1, f"{name} was not refused:\n{out}")
                 subprocess.run(["rm", "-rf", str(repo)], check=True)
 
+    def test_the_pass_count_and_the_label_are_reported(self):
+        repo, commit = self.rebuild()
+        questions = self.base / "questions"
+        questions.mkdir()
+        env = {"DOTNET": str(self.dotnet), "FAKE_TRX_SPEC": json.dumps(trx_spec(outcome="Failed"))}
+        code, out = self.judge(repo, commit, "--questions", questions, env=env)
+        self.assertEqual(code, 1, out)
+        self.assertIn("info P1 10 of 12 case(s) passed", out)
+        self.assertIn("label: blind, with a written interface (0 answer(s)", out)
+        for n in range(11):
+            (questions / f"{n:03d}-answer.md").write_text("an answer\n")
+        code, out = self.judge(repo, commit, "--skip-tests", "--questions", questions)
+        self.assertIn("label: assisted, with a written interface (11 answer(s)", out)
+
     def test_failing_target_tests_fail_the_rebuild(self):
         repo, commit = self.rebuild()
         env = {"DOTNET": str(self.dotnet), "FAKE_TRX_SPEC": json.dumps(trx_spec(outcome="Failed"))}
         code, out = self.judge(repo, commit, env=env)
         self.assertEqual(code, 1, out)
+
+
+search_transcript = load("hoyle_search_transcript", EXAMPLE / "search-transcript.py")
+proxy = load("hoyle_allowlist_proxy", EXAMPLE / "sandbox" / "allowlist-proxy.py")
+
+
+class SearchTranscript(Repos):
+    def search(self, *files, network_log=None):
+        argv = ["--target", self.target_path, *files]
+        if network_log:
+            argv += ["--network-log", network_log]
+        return run(search_transcript, *argv)
+
+    def jsonl(self, name, *records):
+        path = self.base / name
+        path.write_text("\n".join(json.dumps(r) for r in records) + "\n")
+        return path
+
+    def test_a_clean_session_passes_and_disclosed_names_are_not_failures(self):
+        transcript = self.jsonl(
+            "clean.jsonl",
+            {"type": "assistant", "message": {"content": [{"type": "tool_use", "input": {"command": "dotnet test"}}]}},
+            # The brief's own README names the target repository; reading it is not an action.
+            {"type": "user", "message": {"content": [{"type": "tool_result", "content": "Do not look at brandonifco/hoyle-backgammon"}]}},
+            {"type": "user", "message": {"content": [{"type": "tool_result", "content": "observable in SecretBoardTests only"}]}})
+        log = self.jsonl("network.jsonl",
+                         {"method": "CONNECT", "target": "api.nuget.org:443", "allowed": True},
+                         {"method": "GET", "target": "http://ocsp.digicert.com/abc", "allowed": False})
+        code, out = self.search(transcript, network_log=log)
+        self.assertEqual(code, 0, out)
+        self.assertIn("REVIEW network.jsonl:2: refused GET http://ocsp.digicert.com/abc", out)
+
+    def test_each_sign_of_looking_is_a_failure(self):
+        cases = {
+            "test method in a result": [{"type": "user", "message": {"content": [
+                {"type": "tool_result", "content": "A_theory_with_two_cases"}]}}],
+            "github fetch": [{"type": "assistant", "message": {"content": [
+                {"type": "tool_use", "input": {"url": "https://github.com/brandonifco/hoyle-backgammon"}}]}}],
+            "reading the example": [{"type": "assistant", "message": {"content": [
+                {"type": "tool_use", "input": {"file_path": "/src/rules-factory/examples/hoyle-blind-rebuild/TARGET.json"}}]}}],
+        }
+        for name, records in cases.items():
+            with self.subTest(name):
+                code, out = self.search(self.jsonl(f"{name}.jsonl", *records))
+                self.assertEqual(code, 1, out)
+        for name, entry in {"refused github": {"method": "CONNECT", "target": "github.com:443", "allowed": False},
+                            "allowed off-list": {"method": "CONNECT", "target": "evil.example:443", "allowed": True}}.items():
+            with self.subTest(name):
+                code, out = self.search(network_log=self.jsonl(f"{name}.jsonl", entry))
+                self.assertEqual(code, 1, out)
+
+
+class AllowlistProxy(unittest.TestCase):
+    def test_hosts(self):
+        rules = ["api.nuget.org", ".nuget.org", "learn.microsoft.com"]
+        self.assertTrue(proxy.allowed("api.nuget.org", rules))
+        self.assertTrue(proxy.allowed("globalcdn.nuget.org", rules))
+        self.assertTrue(proxy.allowed("nuget.org", rules))
+        self.assertTrue(proxy.allowed("LEARN.microsoft.com.", rules))
+        self.assertFalse(proxy.allowed("github.com", rules))
+        self.assertFalse(proxy.allowed("evilnuget.org", rules))
+        self.assertFalse(proxy.allowed("learn.microsoft.com.evil.example", rules))
+
+    def test_the_committed_allowlist_names_no_github_host(self):
+        rules = search_transcript.allowlist(EXAMPLE / "sandbox" / "allowlist.txt")
+        self.assertTrue(rules)
+        self.assertFalse([r for r in rules if "github" in r])
 
 
 if __name__ == "__main__":

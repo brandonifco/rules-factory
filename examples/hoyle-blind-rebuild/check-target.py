@@ -40,7 +40,8 @@ because it did not run on the pinned SDK. Without --run-tests the check exits 3,
 --emit prints the derived facts as JSON, which is how TARGET's pinned sections were written.
 
 --self-check needs no clone: TARGET is internally consistent (counts equal lists, hashes are hashes,
-disclosures name pinned methods, every decision has an id). tools/tests runs it offline.
+disclosures name pinned methods, every decision is recorded
+as decided, none open). tools/tests runs it offline.
 
 Exit 0 when every pin matches and the tests ran on the pinned SDK; 1 on any mismatch or refusal;
 2 on usage; 3 NOT VERIFIED. Standard library and git only.
@@ -428,11 +429,18 @@ def self_check(target: dict, report: Report) -> None:
             report.fail(f"disclosure {disclosure['name']} names no pinned test method or class")
         if not (isinstance(disclosure.get("count"), int) and disclosure["count"] > 0):
             report.fail(f"disclosure {disclosure['name']}: count must be a positive integer")
-    ids = [d.get("id") for d in target.get("openDecisions", [])]
-    report.expect("open decision ids are unique", len(ids), len(set(ids)))
-    report.expect("every open decision has an id, question and recommendation", [],
-                  [d.get("id") for d in target.get("openDecisions", [])
-                   if not (d.get("id") and d.get("question") and d.get("recommendation"))])
+    decisions = target.get("decisions", [])
+    ids = [d.get("id") for d in decisions]
+    report.expect("decision ids are unique", len(ids), len(set(ids)))
+    report.expect("every decision has an id, question, decision, decidedBy and a decidedOn date", [],
+                  [d.get("id") for d in decisions
+                   if not (d.get("id") and d.get("question") and d.get("decision") and d.get("decidedBy")
+                           and re.match(r"^\d{4}-\d{2}-\d{2}$", d.get("decidedOn", "")))])
+    report.expect("no decision is left open", [], sorted(k for k in ("openDecisions",) if k in target))
+    equivalence = target.get("equivalence", {})
+    report.expect("equivalence: no shims, all cases, an assisted threshold", ([], "all", True),
+                  (equivalence.get("allowedShims"), equivalence.get("casesRequired"),
+                   isinstance(equivalence.get("assistedAfterAnswers"), int)))
 
 
 # ---------------------------------------------------------------------------- main

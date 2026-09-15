@@ -2,7 +2,7 @@
 """Judge a blind rebuild of hoyle-backgammon against TARGET.json (#3, criterion 1; EQUIVALENCE.md).
 
     python3 examples/hoyle-blind-rebuild/check-rebuild.py REBUILD_CLONE --commit SHA ENGINE_CLONE
-            [--dotnet DOTNET] [--sdk-override VERSION] [--skip-tests]
+            [--questions DIR] [--dotnet DOTNET] [--sdk-override VERSION] [--skip-tests]
 
 REBUILD_CLONE is a git clone of the rebuilt engine and SHA the commit handed in. ENGINE_CLONE is a clone
 of brandonifco/hoyle-backgammon holding TARGET's commit. Everything is read from git objects. The
@@ -14,7 +14,8 @@ conditions, each printed ok or FAIL:
       equivalence.allowedShims, which is empty. Then, with CI=true: `dotnet restore --locked-mode`,
       `dotnet build -c Release -warnaserror`, and `dotnet test -c Release` with a TRX logger. Every
       case passes, the cases per project and framework equal TARGET's, and the methods that ran equal
-      TARGET's. Anything less is FAIL; there is no partial pass.
+      TARGET's. Anything less is FAIL; there is no partial pass. The number of cases that passed, of
+      TARGET's 560, is printed either way (Brandon, 2026-09-15, H4).
   P2  Provenance. The rebuild's provenance.json names TARGET's factory version and commit (not dirty),
       map package, version and nupkg sha256, kernel, corpus, randomness, packs and recipes digest, and
       the same owner's rulings (id, entry, span, answer, ruledBy, ruledOn, record). `recordSha256` may
@@ -29,6 +30,11 @@ conditions, each printed ok or FAIL:
   P5  Its own gate. The rebuild's CI `validate` run for the commit is green, and `factory provenance`
       reports every field matching. Neither is run here (they need the factory checkout and CI); this
       prints the commands, and EQUIVALENCE.md makes them part of the pass condition.
+
+The result's label (Brandon, 2026-09-15, H1-H3): every rebuild is "with a written interface", because
+the brief carries api-contract.md and conventions.md. --questions names the session's questions
+directory (RUNBOOK.md, "Questions"); each NNN-answer.md in it is an answer given. More than 10 answers
+labels the result "assisted"; otherwise it is "blind". Without --questions the label is not printed.
 
 --skip-tests does P2 to P4 and exits 3, NOT VERIFIED. --sdk-override rewrites global.json in the
 composed copy only, and the result is at best NOT VERIFIED (exit 3).
@@ -159,6 +165,8 @@ def tests(report: Report, target: dict, rebuild: Path, commit: str, engine: Path
                 return
             report.ok(f"P1 dotnet {step[0]}")
         runs = check_target.read_trx(sorted(results.glob("*.trx"))) if results.is_dir() else {}
+        passed = sum(sum(run["cases"].values()) - len(run["notPassed"]) for run in runs.values())
+        print(f"info P1 {passed} of {target['tests']['caseCount']} case(s) passed")
         check_target.compare_runs(target, {}, {k: v for k, v in runs.items()}, report)
 
 
@@ -171,6 +179,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--dotnet", default=os.environ.get("DOTNET", "dotnet"))
     parser.add_argument("--sdk-override")
     parser.add_argument("--skip-tests", action="store_true")
+    parser.add_argument("--questions", type=Path, help="the session's questions directory, for the label")
     args = parser.parse_args(argv)
     target = json.loads(args.target.read_text(encoding="utf-8"))
     report = Report()
@@ -185,8 +194,13 @@ def main(argv: list[str] | None = None) -> int:
             tests(report, target, args.rebuild, commit, args.engine, args.dotnet, args.sdk_override)
     except Refusal as refusal:
         report.fail(str(refusal))
-    print("todo P5 in the rebuild's checkout, with the factory from GET-FACTORY.sh: "
-          "python3 FACTORY/tools/factory provenance --engine . ; and its CI validate run for this commit")
+    print("todo P5 in the rebuild's checkout, with the factory at the tag (the brief's staged copy, or a checkout in "
+          "CI): python3 FACTORY/tools/factory provenance --engine . ; and the rebuild's CI validate run for this commit")
+    if args.questions is not None:
+        answers = len(list(args.questions.glob("*-answer.md"))) if args.questions.is_dir() else 0
+        limit = target["equivalence"]["assistedAfterAnswers"]
+        kind = "assisted" if answers > limit else "blind"
+        print(f"label: {kind}, with a written interface ({answers} answer(s) given; more than {limit} is assisted)")
     if report.failures:
         print(f"check-rebuild: FAIL ({len(report.failures)})")
         return 1

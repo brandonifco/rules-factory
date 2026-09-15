@@ -1,0 +1,22 @@
+# The rebuild session's network allowlist (RUNBOOK.md, "Network"). HTTPS on port 443 only.
+# An exact host, or .domain for the domain and every subdomain. Decided by Brandon, 2026-09-15 (H8):
+# NuGet, the .NET SDK, documentation, and the factory fetch. The factory is pre-staged in the brief,
+# so no github.com host is needed and none is listed.
+
+# NuGet restores (nuget.org's service index, packages, and the package CDN)
+api.nuget.org
+globalcdn.nuget.org
+www.nuget.org
+
+# The .NET SDK: install script and downloads (only if 10.0.112 is installed during the session)
+dot.net
+builds.dotnet.microsoft.com
+dotnetcli.azureedge.net
+ci.dot.net
+
+# Documentation: .NET, C#, xUnit
+learn.microsoft.com
+xunit.net
+
+# The model the session runs on (a Claude Code session inside the namespace needs its own API)
+api.anthropic.com

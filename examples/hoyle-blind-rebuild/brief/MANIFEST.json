@@ -10,10 +10,20 @@
     "nupkgSha256": "50f0381718d77ccf96ebe652db2235ba11ec079707a9bd4a8c5ad049e4e053a8"
   },
   "apiContractRawSha256": "a463fdcda47286cebb9b6317cc4b80adadb6acf4b047efc257365fe74ff12d32",
+  "stagedFactory": {
+    "path": "inputs/factory/rules-factory",
+    "commit": "069780809543a66d5556d713e337d850ef405b41",
+    "sparse": [
+      "/tools/factory/",
+      "/tools/check-map.py",
+      "/.gitignore"
+    ],
+    "note": "its .git/ is not byte-reproducible and is not listed; scan re-checks the stage"
+  },
   "files": [
     {
       "path": "README.md",
-      "sha256": "8a657f594e1fd649fe4db8bebb943b112780c85e0a79589018e289f65b00e854"
+      "sha256": "252f9e7df104b08479138060e272d371561b4ec070151ea3f7c260a6cb8a0e01"
     },
     {
       "path": "engine/api-contract.md",
@@ -37,7 +47,7 @@
     },
     {
       "path": "engine/conventions.md",
-      "sha256": "36925e12d08dfab5a7f8f09c42e279983f1d94cb437a77477f6ee5b2699806f4"
+      "sha256": "ab614be85a5168438d41bd629b5074fffc78ea2c3d42dab5521c42edd80d4f9f"
     },
     {
       "path": "engine/decisions/0001-the-dice-pack-is-its-own-project.md",
@@ -216,8 +226,76 @@
       "sha256": "6b8d34f126efdb12a68ea45b2856188dd31df8a8716b01d0c71df5027cf46e82"
     },
     {
-      "path": "inputs/factory/GET-FACTORY.sh",
-      "sha256": "bab01055b0ffc547f970df477f311cbc218e69a38d221f6854f1de41a9e96543"
+      "path": "inputs/factory/rules-factory/.gitignore",
+      "sha256": "0e5c31be70dcb75fbbc0bd4d7122dda30a10ec408a7cfddc7f7412e153217b5a"
+    },
+    {
+      "path": "inputs/factory/rules-factory/tools/check-map.py",
+      "sha256": "3198b323fbad84c6c7b284b88dce188d02c16b7bdd569c31ad090c58491e37c8"
+    },
+    {
+      "path": "inputs/factory/rules-factory/tools/factory/__main__.py",
+      "sha256": "e36697ae5b26a375f45c1c1dd6afab54f096162c7bb06003a257236a6a5db996"
+    },
+    {
+      "path": "inputs/factory/rules-factory/tools/factory/backlog.py",
+      "sha256": "43027c085a9dc027016118a81f0159d2e09b33340ee402fc26415b31d972ed7f"
+    },
+    {
+      "path": "inputs/factory/rules-factory/tools/factory/gate.py",
+      "sha256": "3af31278d127048660d6f8ef9f4c9d7ad4ba136e87c7ebd4fd3d9d736cca326b"
+    },
+    {
+      "path": "inputs/factory/rules-factory/tools/factory/generate.py",
+      "sha256": "afcea250d2dbd23390f156ece985824714ac68c65e8f4551c51323397c2388bb"
+    },
+    {
+      "path": "inputs/factory/rules-factory/tools/factory/intake.py",
+      "sha256": "002730b82e965e2ef2d70d5cd51855e01e8052f940a40cb591f2c26a26a5a7b9"
+    },
+    {
+      "path": "inputs/factory/rules-factory/tools/factory/licensed-copy-operators.json",
+      "sha256": "0559c7b769660eff9a23f03de6619b9084a6dc0e8ce4d0ca511d868da38bfff9"
+    },
+    {
+      "path": "inputs/factory/rules-factory/tools/factory/licensed_copy.py",
+      "sha256": "020549331fc45f0d08817cb55ab628a20d02b3db00f35e91aef9a25fe56b0d23"
+    },
+    {
+      "path": "inputs/factory/rules-factory/tools/factory/ownership.py",
+      "sha256": "799fd376c652954a4d371b329cc1bfdb8cd32c43e2eb3ed971ba028f6655240a"
+    },
+    {
+      "path": "inputs/factory/rules-factory/tools/factory/provenance.py",
+      "sha256": "715ae6898c9e370589d32f38a32b8bb8ace2b144281b19bdbcac9b6eff403f98"
+    },
+    {
+      "path": "inputs/factory/rules-factory/tools/factory/recipe/engine-gate.py",
+      "sha256": "6bdfc491088584d5dbca128692e4d3fb7182655d24f9b24c2b45e641b605ffdb"
+    },
+    {
+      "path": "inputs/factory/rules-factory/tools/factory/recipe/map-overlay.py",
+      "sha256": "11cb78f15f1e6a1ccc8a08542d5fd59beecb30bb8e0a6c903460d6b041129714"
+    },
+    {
+      "path": "inputs/factory/rules-factory/tools/factory/recipe/validate.sh",
+      "sha256": "c28695c10c0b4e966b895d9cd7bb0ac36a1b02dd6a7778d57257093023d2cff1"
+    },
+    {
+      "path": "inputs/factory/rules-factory/tools/factory/recipe/validate.yml",
+      "sha256": "f7720e2d2a26d65bb738c77d6be6fb84a46960a3e7230a75ed27ab66ce1b0033"
+    },
+    {
+      "path": "inputs/factory/rules-factory/tools/factory/rulings.py",
+      "sha256": "cd99fde18b6c9b031e6669d36d3d2af7030afbc686c3fdd8e7c40a0fc07e5fe2"
+    },
+    {
+      "path": "inputs/factory/rules-factory/tools/factory/transaction.py",
+      "sha256": "554d2b30826cb5c828bd1bb3dfb5b2888846a8fa22aa0982f4f5c5576cfd1e1a"
+    },
+    {
+      "path": "inputs/factory/rules-factory/tools/factory/verify.py",
+      "sha256": "ff188e0da339ed80599065ceaf81be45818590d4a91b1534aa709ce6dcf2c964"
     },
     {
       "path": "inputs/map/rulesfactory.maps.hoylebackgammon.6.0.0.nupkg",

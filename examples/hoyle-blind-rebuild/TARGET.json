@@ -604,68 +604,96 @@
         "why": "a comment in the engine project file, which the brief hands over verbatim so the tests' project builds against it"
       }
     ],
-    "manifestSha256": "ab6ba2b85fb04abc4dd3c33cb9f5894299342a5b48b05d842c0bfdb1b53d4ee0"
+    "manifestSha256": "da6726e61c3cbb3d8c179eccde0930c61aca082d5ac6a4388789a3dc19de8dcc"
   },
   "equivalence": {
     "document": "examples/hoyle-blind-rebuild/EQUIVALENCE.md",
     "checker": "examples/hoyle-blind-rebuild/check-rebuild.py",
-    "allowedShims": []
+    "runbook": "examples/hoyle-blind-rebuild/RUNBOOK.md",
+    "allowedShims": [],
+    "casesRequired": "all",
+    "label": "with a written interface",
+    "assistedAfterAnswers": 10,
+    "judgedIn": ".github/workflows/judge-rebuild.yml",
+    "judgedOnSdk": "10.0.112"
   },
-  "openDecisions": [
+  "decisions": [
     {
       "id": "H1",
       "question": "Does the API contract include the engine's public XML documentation, or signatures only?",
-      "recommendation": "Include it: it is what a package consumer sees, and signatures alone make the pinned-order tests a matter of luck."
+      "decision": "Keep api-contract.md with its documentation. A rebuild from this brief is labelled 'with a written interface'.",
+      "decidedBy": "Brandon",
+      "decidedOn": "2026-09-15"
     },
     {
       "id": "H2",
       "question": "Is conventions.md, written from the tests, allowed in the brief?",
-      "recommendation": "Allow it, publish it with the evidence, and report it as help received."
+      "decision": "Keep conventions.md. It counts as help received, and the result carries the 'with a written interface' label.",
+      "decidedBy": "Brandon",
+      "decidedOn": "2026-09-15"
     },
     {
       "id": "H3",
       "question": "May the implementer ask questions during the rebuild?",
-      "recommendation": "Yes, in writing; every answer becomes a counted disclosure; consider calling more than about ten answers assisted rather than blind."
+      "decision": "Written questions are allowed. Every question and answer is published with the result. More than 10 answers labels the result 'assisted'.",
+      "decidedBy": "Brandon",
+      "decidedOn": "2026-09-15"
     },
     {
       "id": "H4",
       "question": "Does a rebuild that passes most but not all cases meet the criterion?",
-      "recommendation": "No: all cases or fail, with the passing count reported either way."
+      "decision": "No. All 560 cases pass or it fails, and the pass count is reported either way.",
+      "decidedBy": "Brandon",
+      "decidedOn": "2026-09-15"
     },
     {
       "id": "H5",
       "question": "The published map 6.0.0 names three test methods and five test classes; accept them?",
-      "recommendation": "Accept as pinned disclosures; stop future maps naming an engine's tests."
+      "decision": "Accepted as a pinned disclosure. Future maps must not name an engine's tests.",
+      "decidedBy": "Brandon",
+      "decidedOn": "2026-09-15"
     },
     {
       "id": "H6",
       "question": "Some tests read the engine's source text; keep them?",
-      "recommendation": "Keep the tests unmodified and disclose the source convention in conventions.md."
+      "decision": "Accepted: the tests stay unmodified and the source convention is disclosed in conventions.md.",
+      "decidedBy": "Brandon",
+      "decidedOn": "2026-09-15"
     },
     {
       "id": "H7",
       "question": "Freeze 712e8ca with factory/v0.7.0 rather than dab64e0 with factory/v0.6.0?",
-      "recommendation": "Accept: 712e8ca only re-produces dab64e0 for RulesKernel 0.3.0, and v0.7.0 is the newest tag."
+      "decision": "Accepted: 712e8ca with factory/v0.7.0.",
+      "decidedBy": "Brandon",
+      "decidedOn": "2026-09-15"
     },
     {
       "id": "H8",
       "question": "How is blindness enforced?",
-      "recommendation": "A fresh agent context with egress limited to nuget.org, the SDK, documentation hosts and the one factory fetch, with its transcript searched; otherwise report attested blind."
+      "decision": "A fresh agent works with network restricted to NuGet, the .NET SDK, documentation and the factory, and its transcript is searched afterwards. The factory is pre-staged in the brief so no github.com access is needed. RUNBOOK.md says how, and what enforcement is available.",
+      "decidedBy": "Brandon",
+      "decidedOn": "2026-09-15"
     },
     {
       "id": "H9",
-      "question": "Is mechanical, logged, block-level redaction of the decision records and factory docs acceptable?",
-      "recommendation": "Accept, and review the logged redactions once."
+      "question": "Is mechanical, logged, block-level redaction acceptable?",
+      "decision": "Brandon reviews the 26 redactions himself, from REDACTIONS.md.",
+      "decidedBy": "Brandon",
+      "decidedOn": "2026-09-15"
     },
     {
       "id": "H10",
       "question": "May recordSha256, buildInputs and engineOwned differ, and is the copy check without a threshold acceptable?",
-      "recommendation": "Accept both."
+      "decision": "Accepted as recommended.",
+      "decidedBy": "Brandon",
+      "decidedOn": "2026-09-15"
     },
     {
       "id": "H11",
-      "question": "The pins were measured on SDK 10.0.111 with an override; where is the final judgement run?",
-      "recommendation": "In CI or on 10.0.112; a local 10.0.111 result stays NOT VERIFIED."
+      "question": "Where is the final judgement run?",
+      "decision": "In CI on the pinned SDK 10.0.112 (judge-rebuild.yml).",
+      "decidedBy": "Brandon",
+      "decidedOn": "2026-09-15"
     }
   ]
 }

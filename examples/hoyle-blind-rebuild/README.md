@@ -12,14 +12,19 @@ implements the engine. **An implementer may not read this directory**: `TARGET.j
 
 | File | What it is |
 |---|---|
-| [TARGET.json](TARGET.json) | The frozen target, and the decisions still open |
+| [TARGET.json](TARGET.json) | The frozen target, and Brandon's decisions of 2026-09-15 |
 | [check-target.py](check-target.py) | Re-derives every pin in TARGET.json from git objects, and optionally runs the tests |
 | [build-brief.py](build-brief.py) | Builds the API contract, assembles the brief from pinned inputs, and scans it for leaks |
 | [api-surface/](api-surface/Program.cs) | Prints a compiled assembly's public surface and XML documentation; reads metadata, never IL |
-| [brief-source/](brief-source/README.md) | The brief's hand-written parts: its front page, [conventions.md](brief-source/conventions.md) and GET-FACTORY.sh |
+| [brief-source/](brief-source/README.md) | The brief's hand-written parts: its front page and [conventions.md](brief-source/conventions.md) |
 | [brief/](brief/MANIFEST.json) | The assembled brief's engine-derived part and its manifest (the map, corpus and factory docs are rebuilt from pins, not committed) |
 | [EQUIVALENCE.md](EQUIVALENCE.md) | The pass condition, and what counts as cheating |
-| [check-rebuild.py](check-rebuild.py) | Runs the pass condition's scripted part against a rebuild |
+| [check-rebuild.py](check-rebuild.py) | Runs the pass condition's scripted part against a rebuild, with the pass count and the label |
+| [REDACTIONS.md](REDACTIONS.md) | Every redaction in the brief with its reason, findings and removed text, for Brandon's review (H9) |
+| [RUNBOOK.md](RUNBOOK.md) | The rebuild session: workspace, network allowlist and its enforcement, questions, transcript search, CI judgement |
+| [sandbox/](sandbox/run-isolated.sh) | bubblewrap isolation with a logging HTTPS allowlist proxy, no sudo needed, and its probe |
+| [search-transcript.py](search-transcript.py) | Searches the session's transcript and network log for signs it was not blind |
+| [judge-rebuild.yml](../../.github/workflows/judge-rebuild.yml) | The final judgement in CI on SDK 10.0.112, dispatched by hand |
 
 ## The target
 
@@ -58,10 +63,12 @@ copied source, offline.
 
 **Given**
 - the map package, byte for byte, and the corpus;
-- `GET-FACTORY.sh`: a shallow, blobless, sparse clone of rules-factory at `factory/v0.7.0` holding only
-  `tools/factory/`, `tools/check-map.py` and `.gitignore`, with its remote removed. `factory produce`
-  needs a clean git checkout of the tag to record provenance, and a full clone would include this
-  directory. Tested: the clone is clean after running the factory, and its recipes digest is the tag's;
+- the factory, pre-staged at `inputs/factory/rules-factory/` so the session needs no github.com access
+  (H8): a shallow, blobless, sparse clone of `factory/v0.7.0` from the local rules-factory clone, holding
+  only `tools/factory/`, `tools/check-map.py` and `.gitignore`, with no remote. `factory produce` needs a
+  clean git checkout of the tag to record provenance, and a full clone would include this directory.
+  `scan` re-checks the stage (commit, tag, clean, no remote, the tag's blobs, nothing else present).
+  Tested: it stays clean after running the factory, and produces with the tag's provenance;
 - rules-factory's `README.md` and `docs/` at the tag, redacted (4 blocks name the target's tests);
 - `api-contract.md`: every public type and member of `HoyleBackgammon` and `Tabletop.Dice` with
   signature, nullability, default and constant values, and public XML documentation, from the compiled
@@ -81,7 +88,8 @@ test method and class names; long integers and hex strings from the tests that n
 eight consecutive words from a test file, a statement or comment of engine source, or the overlay's
 mutation text, that no allowed source has. The map package and the factory's tools are scanned too,
 because the implementer sees them. Redactions are logged in `MANIFEST.json` with the sha256 of what
-was removed.
+was removed, and listed with their reasons and removed text in [REDACTIONS.md](REDACTIONS.md), outside
+the brief.
 
 **Disclosed and counted**: the published map package names 3 test methods and 5 test classes in entry
 notes (10 occurrences), a comment in the engine project file names one test class, and
@@ -96,80 +104,47 @@ records, gives all 20 generated and 3 managed files byte-identical to the target
 [EQUIVALENCE.md](EQUIVALENCE.md). In short: the target's `tests/` tree replaces the rebuild's, with no
 shims, and every one of the 560 cases passes on the pinned SDK with locked restore; provenance names the
 same factory, map, kernel, corpus and rulings; every generated and managed file is identical; no file
-is a copy; the rebuild's own gate is green; and the blindness rules were kept, checked by transcript
-search where the harness allows and attested where it does not. `check-rebuild.py` run against the
+is a copy; the rebuild's own gate is green; and the blindness rules were kept, enforced by the sandbox
+of [RUNBOOK.md](RUNBOOK.md) where the agent runs inside it and searched in the transcript in every
+case. The judgement runs in CI on SDK 10.0.112, reports the pass count either way, and labels the
+result "with a written interface", and "blind" or "assisted". `check-rebuild.py` run against the
 target as its own "rebuild" passes the tests and provenance and fails the copy check, as it should.
 
-## Decisions for Brandon
+## Decisions (Brandon, 2026-09-15)
 
-Each is recorded in TARGET.json `openDecisions`. The goal they are judged against: proving the factory
-can rebuild an engine without copying it.
+All eleven were decided by Brandon on 2026-09-15 and are recorded in TARGET.json `decisions`. None is
+open. The goal they serve: proving the factory can rebuild an engine without copying it.
 
-**H1. The API contract includes the public documentation, not only signatures.** The engine's doc
-comments state conventions its tests pin exactly: the order legal plays are listed in, whose die is
-thrown first, the pip numbering, what each ruling marks. With signatures alone a blind rebuild would
-almost certainly fail the replay hash, the play-enumeration tests and every scripted-game test,
-through guesses that have nothing to do with the factory. The cost is that the implementer reads the
-target's design reasoning, though never its code. *Recommendation: keep the documentation.* It is what
-any consumer of the package sees, and without it the test measures luck, not the factory.
+| # | Question | Decision |
+|---|---|---|
+| H1 | Does the API contract carry the engine's public documentation, or signatures only? | Keep `api-contract.md` with its documentation. The result is labelled "with a written interface". |
+| H2 | Is `conventions.md`, written from the tests, allowed? | Keep it. It counts as help received, under the same label. |
+| H3 | May the implementer ask questions? | Yes, in writing. Every question and answer is published with the result; more than 10 answers labels it "assisted". |
+| H4 | Does a partial pass count? | No. All 560 cases pass or it fails, and the pass count is reported either way. |
+| H5 | The published map 6.0.0 names 3 test methods and 5 test classes. | Accepted as a pinned disclosure. Future maps must not name an engine's tests. |
+| H6 | Five tests read the engine's source text. | Accepted: the tests stay unmodified and the convention is disclosed in `conventions.md`. |
+| H7 | Freeze `712e8ca` with `factory/v0.7.0` rather than `dab64e0` with `v0.6.0`? | Accepted. |
+| H8 | How is blindness enforced? | A fresh agent, network restricted to NuGet, the .NET SDK, docs and the factory, and its transcript searched afterwards. The factory is pre-staged in the brief, so no github.com access is needed. [RUNBOOK.md](RUNBOOK.md) says how, and what is and is not enforced on this machine. |
+| H9 | Mechanical, logged redaction. | Brandon reviews the 26 redactions himself, from [REDACTIONS.md](REDACTIONS.md). |
+| H10 | `recordSha256`, `buildInputs` and `engineOwned` may differ; the copy check has no threshold. | Accepted. |
+| H11 | Where does the final judgement run? | In CI on the pinned SDK 10.0.112: [judge-rebuild.yml](../../.github/workflows/judge-rebuild.yml). |
 
-**H2. `conventions.md` is written from the tests.** About 40 facts nothing else states: exception
-message fragments, `Move.ToString`'s format, point names, what each entry point returns, how
-`Game.Play` spends draws and decisions, the canonical record's terms (whose paragraph in decision 0006
-was redacted), a word list the dice pack's names must avoid, and the textual shape the tests require
-of hand-written declines. Without it, some 30 test methods would turn on guessing a format or a
-message, for reasons unrelated to the rules. With it, the rebuild is less than fully blind. *Recommendation: keep it, publish it
-with the evidence, and report it as help received.* The alternative, pre-registering those tests as
-expected failures, would make "passes the tests" untrue.
+What the decisions changed here:
 
-**H3. Questions during the rebuild.** The brief lets the implementer ask in writing; answers become
-disclosures and are counted. *Recommendation: allow it, with every answer published.* A silent
-implementer who guesses from outside sources is worse evidence than one whose questions are on record.
-Consider stating in advance that more than about ten answers makes the result "assisted" rather than
-"blind".
+- **The label.** `check-rebuild.py --questions` prints "with a written interface", and "blind" or
+  "assisted".
+- **The pass count.** It prints the count either way.
+- **Answers.** Each answer passes `build-brief.py check-text` before it is handed over.
+- **The factory.** It is pre-staged in the brief, and `GET-FACTORY.sh` is gone.
+- **The review.** `build-brief.py assemble --review` writes REDACTIONS.md.
+- **The session.** RUNBOOK.md, `sandbox/` and `search-transcript.py` are new.
+- **The judgement.** `judge-rebuild.yml` runs it in CI.
 
-**H4. No partial pass.** A rebuild passing 95% of cases does not meet the criterion. The tests pin
-exact bytes (the replay hash, record serialisation, play order); a 95% rebuild may be one that fails
-exactly those, which are the engine's contract with its callers. *Recommendation: all 560 or fail, with
-the passing count reported either way.* A near miss is still a useful finding about the factory, and
-should be written up as one, not as a pass.
-
-**H5. The published map names three test methods and five test classes.** They sit in entry notes of
-`RulesFactory.Maps.HoyleBackgammon` 6.0.0, which the build restores by hash and the tests assert by
-version, so they cannot be redacted without changing the target. *Recommendation: accept them as
-disclosed.* Names without bodies say little, and they record decided readings the map states anyway.
-Separately, future maps should not name an engine's tests (a small method change).
-
-**H6. Some tests read the engine's source text.** `MapCorrespondenceTests` inspects hand-written
-`src/` files for how declines are constructed, and reads `corpus-map.overlay.json`. That constrains how
-the code is written, not what it does. *Recommendation: keep the tests unmodified (that is the
-criterion) and disclose the convention in conventions.md, as done.* Excluding those five methods would
-be the first crack in "unmodified".
-
-**H7. Target at `712e8ca` and factory `v0.7.0`, not `dab64e0` and `v0.6.0`.** `712e8ca` is `dab64e0` plus
-a re-produce for RulesKernel 0.3.0, with no rule or test change, and `v0.7.0` is the newest tag and the
-one the engine records. *Recommendation: accept.* Freezing `dab64e0` would force the rebuild onto an
-older factory than the current one.
-
-**H8. Blindness is attested, not enforced, unless the harness restricts network access.** Both
-hoyle-backgammon and this directory are public. *Recommendation: run the implementer as a fresh agent
-context with egress limited to nuget.org, the .NET SDK, documentation hosts and the one factory fetch,
-keep its transcript, and search it for the target's name and every test name.* If egress cannot be
-limited, the result should say "attested blind". The context that froze this target (this one) has read
-the tests and cannot be the implementer.
-
-**H9. Redaction is mechanical.** A whole paragraph or list item goes if it names a test or quotes a
-seed or hash the tests pin, including the per-seed statistics in decisions 0008 to 0010 and the
-correspondence-test bullet in 0010. Some redacted paragraphs also held useful design text.
-*Recommendation: accept, and review the 26 logged redactions once.* Hand editing would be less
-lossy and would make the redaction itself something to trust.
-
-**H10. What is not compared.** `recordSha256` for the rulings, and provenance's `buildInputs` and
-`engineOwned`, are the rebuild's own files and may differ. The copy check fails byte-identical files
-and lists shared source lines for a reviewer, with no percentage threshold. *Recommendation: accept.*
-A threshold would either flag coincidental short lines or excuse copying below it.
-
-**H11. The pins were measured on SDK 10.0.111.** The factory pins 10.0.112, which is not installed
-here; test counts, the API contract and the dry run used an overridden `global.json`. *Recommendation:
-run the final judgement in CI or on a machine with 10.0.112, and treat a local 10.0.111 result as NOT
-VERIFIED, as the scripts already do.*
+**Enforcement finding (RUNBOOK.md section 2).** On this machine, without sudo, bubblewrap confines a
+process to the workspace, with network only through the logging allowlist proxy. Tested: NuGet and the
+docs are reachable, github.com and every other host are refused, a bypass of the proxy reaches nothing,
+`/home` is invisible, and a real `dotnet restore` succeeds inside. The mechanism does not confine an
+agent that runs outside it. This session's host, the desktop app, cannot be started inside it, and no
+Claude Code CLI is installed here, so an agent running inside was not tested. To enforce it for the
+agent too, Brandon must install the CLI, start it through `run-isolated.sh` and log in inside; the
+exact steps are in RUNBOOK.md. Otherwise the transcript search is the check, and the evidence says so.

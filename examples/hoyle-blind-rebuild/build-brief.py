@@ -16,7 +16,8 @@ result is TARGET brief.apiContract.rawSha256 when built on the pinned SDK.
 
   inputs/map/<package>.nupkg          the published map package, byte for byte
   inputs/corpus/hoyle.txt             the public-domain corpus, byte for byte
-  inputs/factory/GET-FACTORY.sh       how to check out the factory at its tag, tools only
+  inputs/factory/rules-factory/       the factory at its tag, pre-staged: a git checkout holding only
+                                      tools/factory/, tools/check-map.py and .gitignore (below)
   inputs/factory-docs/                rules-factory README.md and docs/ at the tag, redacted
   engine/api-contract.md              the API contract, redacted
   engine/conventions.md               conventions the tests observe that nothing above states
@@ -25,6 +26,23 @@ result is TARGET brief.apiContract.rawSha256 when built on the pinned SDK.
   engine/decisions/                   the engine's decision records 0001-0010, redacted
   README.md                           the brief's front page
   MANIFEST.json                       every file's sha256, every redaction, every disclosure
+
+The factory is pre-staged so the rebuild session needs no github.com access (Brandon, 2026-09-15,
+H8). `factory produce` names the factory by the git commit it runs from and refuses a dirty tree, so
+it must be a real checkout of the tag; a plain copy of the files would not do. It is a shallow,
+blobless (`--filter=blob:none`) clone of the tag from the local rules-factory clone, sparse-checked-out
+to those three paths, with its remote removed: its tree objects name other paths, but no content
+outside the three paths is present, and none can be fetched. Its `.git/` directory is not
+byte-reproducible, so MANIFEST.json records the staged commit and the checked-out files, and `scan`
+re-checks the stage: HEAD is the pinned commit and carries the tag, the tree is clean, there is no
+remote, every checked-out file is the tag's blob, and blobs outside the sparse paths are absent.
+
+`--review FILE` also writes a review of every redaction for the owner: its file, position, reasons,
+the exact findings and the removed text. The review names tests, so it is written outside the brief
+(REDACTIONS.md in this directory) and is never handed to an implementer.
+
+`check-text ENGINE_CLONE --factory ... --nupkg ... FILE...` holds any text to the same findings as the
+brief, copied text included: an answer to an implementer's question passes it before it is sent.
 
 `scan` re-runs the leak checks over a brief directory, and over the map package and the factory files
 at the tag, which the implementer also sees, and checks every file against MANIFEST.json and
@@ -100,6 +118,8 @@ REDACTED_BLOCK = "> [redacted by build-brief.py: {reasons}]"
 XML_CODE = re.compile(r"<c>.*?</c>|<(?:see|seealso|paramref|typeparamref)\b[^>]*/>|<[^>]+>")
 TOP_LEVEL_ITEM = re.compile(r"^ ?(?:[-*+]|[0-9]+\.) ")
 CODE_SPAN = re.compile(r"`[^`\n]*`")
+STAGE = "inputs/factory/rules-factory"
+SPARSE = ("/tools/factory/", "/tools/check-map.py", "/.gitignore")
 LINK = re.compile(r"\[([^\]]*)\]\(([^)#\s]+)(#[^)\s]*)?\)")
 
 
@@ -237,14 +257,19 @@ def markdown_blocks(text: str) -> list[str]:
     return blocks
 
 
+def redaction(path: str, unit: str, index: int, found: list, removed: str) -> dict:
+    """One log entry. `found` and `removed` go to the owner's review only, never to MANIFEST.json."""
+    return {"path": path, "unit": unit, "index": index, "reasons": reasons(found),
+            "removedSha256": sha256(removed.encode("utf-8")), "found": found, "removed": removed}
+
+
 def redact_markdown(text: str, knowledge: Knowledge, path: str, log: list) -> str:
     out = []
     for index, block in enumerate(markdown_blocks(text)):
         found = knowledge.findings(block) if block else []
         if found:
             out.append(REDACTED_BLOCK.format(reasons=reasons(found)))
-            log.append({"path": path, "unit": "block", "index": index, "reasons": reasons(found),
-                        "removedSha256": sha256(block.encode("utf-8"))})
+            log.append(redaction(path, "block", index, found, block))
         else:
             out.append(block)
     return "\n".join(out)
@@ -263,8 +288,7 @@ def redact_contract(text: str, knowledge: Knowledge, path: str, log: list) -> st
         elif line.lstrip().startswith("///"):
             indent = line[:len(line) - len(line.lstrip())]
             out.append(indent + REDACTED_LINE.format(reasons=reasons(found)))
-            log.append({"path": path, "unit": "line", "index": number, "reasons": reasons(found),
-                        "removedSha256": sha256(line.encode("utf-8"))})
+            log.append(redaction(path, "line", number, found, line))
         else:
             raise Refusal(f"{path}:{number}: a signature line has a finding ({reasons(found)}), which is not redacted")
     return "\n".join(out)
@@ -330,6 +354,58 @@ def overlay_skeleton(overlay: dict) -> dict:
     return skeleton
 
 
+def stage_factory(factory: Path, target: dict, dest: Path) -> None:
+    tag, commit = target["factory"]["tag"], target["factory"]["commit"]
+    dest.parent.mkdir(parents=True, exist_ok=True)
+    subprocess.run(["git", "clone", "--quiet", "--no-local", "--depth", "1", "--branch", tag, "--filter=blob:none",
+                    "--no-checkout", "--upload-pack", "git -c uploadpack.allowFilter=true upload-pack",
+                    f"file://{factory.resolve()}", str(dest)], check=True, capture_output=True)
+    subprocess.run(["git", "-C", str(dest), "sparse-checkout", "set", "--no-cone", *SPARSE], check=True,
+                   capture_output=True)
+    subprocess.run(["git", "-C", str(dest), "checkout", "--quiet", tag], check=True, capture_output=True)
+    subprocess.run(["git", "-C", str(dest), "remote", "remove", "origin"], check=True, capture_output=True)
+    if git(dest, "rev-parse", "HEAD").strip() != commit:
+        raise Refusal(f"the staged factory is not {commit}")
+
+
+def check_stage(root: Path, target: dict, factory: Path) -> list[str]:
+    """Every way the pre-staged factory is not a clean checkout of the pinned tag holding nothing else."""
+    dest = root / STAGE
+    commit = target["factory"]["commit"]
+    if not (dest / ".git").is_dir():
+        return [f"{STAGE}: no staged factory checkout"]
+    problems = []
+    try:
+        if git(dest, "rev-parse", "HEAD").strip() != commit:
+            problems.append(f"{STAGE}: HEAD is not {commit}")
+        if target["factory"]["tag"] not in git(dest, "tag", "--points-at", "HEAD").split():
+            problems.append(f"{STAGE}: HEAD does not carry {target['factory']['tag']}")
+        if git(dest, "status", "--porcelain").strip():
+            problems.append(f"{STAGE}: the checkout is dirty")
+        if git(dest, "remote").strip():
+            problems.append(f"{STAGE}: the checkout has a remote")
+    except Refusal as refusal:
+        return [f"{STAGE}: {refusal}"]
+    expected = {p: sha256(blob(factory, commit, p))
+                for p in ls(factory, commit, "tools/factory", "tools/check-map.py", ".gitignore")}
+    actual = {p.relative_to(dest).as_posix(): sha256(p.read_bytes()) for p in dest.rglob("*")
+              if p.is_file() and ".git" not in p.relative_to(dest).parts and "__pycache__" not in p.parts}
+    if actual != expected:
+        problems.append(f"{STAGE}: checked-out files are not the tag's tools "
+                        f"(extra or changed: {sorted(k for k in actual if actual[k] != expected.get(k))}; "
+                        f"missing: {sorted(set(expected) - set(actual))})")
+    outside = ls(factory, commit, "README.md", "docs", "examples")[:50]
+    present = [p for p in outside if subprocess.run(["git", "-C", str(dest), "cat-file", "-e", f"HEAD:{p}"],
+                                                   capture_output=True).returncode == 0]
+    if present:
+        problems.append(f"{STAGE}: holds content outside the sparse paths, e.g. {present[:3]}")
+    return problems
+
+
+def in_stage_git(rel: str) -> bool:
+    return rel.startswith(STAGE + "/.git/") or "/__pycache__/" in rel
+
+
 def verify_inputs(target: dict, engine: Path, factory: Path, nupkg: Path) -> None:
     commit = git(engine, "rev-parse", "--verify", f"{target['engine']['commit']}^{{commit}}").strip()
     if commit != target["engine"]["commit"]:
@@ -357,9 +433,7 @@ def assemble(args, target: dict) -> int:
     if sha256(corpus) != target["corpus"]["contentHash"]:
         raise Refusal("the corpus at the factory tag does not hash to the pinned baseline")
     write(out, "inputs/corpus/hoyle.txt", corpus)
-    get_factory = (SOURCES / "GET-FACTORY.sh").read_text(encoding="utf-8")
-    write(out, "inputs/factory/GET-FACTORY.sh", get_factory.replace("@TAG@", target["factory"]["tag"])
-          .replace("@COMMIT@", factory_commit).encode("utf-8"))
+    stage_factory(args.factory, target, out / STAGE)
 
     for path in ls(args.factory, factory_commit, "README.md", "docs"):
         if path.endswith(".md"):
@@ -388,23 +462,59 @@ def assemble(args, target: dict) -> int:
         md.write_text(unlink_missing(md.read_text(encoding="utf-8"), md, out), encoding="utf-8")
 
     problems, disclosures = scan_directory(out, knowledge, target, args.factory, args.nupkg)
+    problems += check_stage(out, target, args.factory)
     manifest = {
         "target": "rules-factory examples/hoyle-blind-rebuild/TARGET.json (not part of the brief)",
         "factory": {"tag": target["factory"]["tag"], "commit": factory_commit},
         "map": {"packageId": target["map"]["packageId"], "version": target["map"]["version"],
                 "nupkgSha256": target["map"]["nupkgSha256"]},
         "apiContractRawSha256": target["brief"]["apiContract"]["rawSha256"],
+        "stagedFactory": {"path": STAGE, "commit": factory_commit, "sparse": list(SPARSE),
+                          "note": "its .git/ is not byte-reproducible and is not listed; scan re-checks the stage"},
         "files": [{"path": p.relative_to(out).as_posix(), "sha256": sha256(p.read_bytes())}
-                  for p in sorted(out.rglob("*"), key=lambda p: p.relative_to(out).as_posix()) if p.is_file()],
-        "redactions": log,
+                  for p in sorted(out.rglob("*"), key=lambda p: p.relative_to(out).as_posix())
+                  if p.is_file() and not in_stage_git(p.relative_to(out).as_posix())],
+        "redactions": [{k: v for k, v in entry.items() if k not in ("found", "removed")} for entry in log],
         "disclosures": disclosures,
     }
     data = (json.dumps(manifest, indent=2) + "\n").encode("utf-8")
     write(out, "MANIFEST.json", data)
+    if args.review:
+        write_review(Path(args.review), log, sha256(data))
     for problem in problems:
         print(f"FAIL {problem}")
     print(f"brief {out}: {len(manifest['files'])} files, {len(log)} redaction(s), "
           f"{sum(d['count'] for d in disclosures)} disclosed occurrence(s); MANIFEST.json sha256 {sha256(data)}")
+    return 1 if problems else 0
+
+
+def write_review(path: Path, log: list, manifest_sha: str) -> None:
+    lines = ["# Redactions in the blind brief, for the owner's review", "",
+             "Written by `build-brief.py assemble --review`. **Not part of the brief: it quotes what was removed, "
+             "test names included.** An implementer may not read it.", "",
+             f"Brief MANIFEST.json sha256 `{manifest_sha}`. {len(log)} redaction(s). A block is a paragraph, a "
+             "top-level list item with what it nests, or a fenced block; a line is one documentation line of the "
+             "API contract. Findings: `test-name` (a hand-written test method or class), `test-literal` (a number "
+             "or hash a test holds and no allowed source does), `copied-text` (eight words from a test, an engine "
+             "statement or comment, or mutation text). In the removed text, every markdown link's `](` is written "
+             "`] (` so that this file's links are not checked as links; nothing else is changed.", ""]
+    for n, entry in enumerate(log, 1):
+        found = "; ".join(f"{kind} `{detail}`" for kind, detail in sorted(set(map(tuple, entry["found"]))))
+        fence = "````" if "```" in entry["removed"] else "```"
+        lines += [f"## {n}. `{entry['path']}`, {entry['unit']} {entry['index']}", "",
+                  f"- Reasons: {entry['reasons']}", f"- Found: {found}",
+                  f"- Removed text sha256: `{entry['removedSha256']}`", "- Owner's verdict: ", "",
+                  fence + "text", entry["removed"].replace("](", "] ("), fence, ""]
+    path.write_text("\n".join(lines), encoding="utf-8")
+
+
+def check_text(args, target: dict) -> int:
+    knowledge = Knowledge(target, args.engine, args.factory, args.nupkg)
+    problems = [f"{f}: {kind}: {detail}" for f in args.files
+                for kind, detail in knowledge.findings(Path(f).read_text(encoding="utf-8", errors="replace"))]
+    for problem in problems:
+        print(f"FAIL {problem}")
+    print(f"check-text: {'FAIL' if problems else 'PASS'} ({len(args.files)} file(s))")
     return 1 if problems else 0
 
 
@@ -415,7 +525,7 @@ def scan_directory(root: Path, knowledge: Knowledge, target: dict, factory: Path
     texts: list[tuple[str, str]] = []
     for path in sorted(root.rglob("*")):
         rel = path.relative_to(root).as_posix()
-        if not path.is_file() or rel == "MANIFEST.json" or rel.endswith(".nupkg"):
+        if not path.is_file() or rel == "MANIFEST.json" or rel.endswith(".nupkg") or in_stage_git(rel):
             continue
         texts.append((rel, path.read_text(encoding="utf-8", errors="replace")))
     with zipfile.ZipFile(nupkg) as package:
@@ -465,8 +575,10 @@ def scan(args, target: dict) -> int:
             problems.append(f"{item['path']}: not the file MANIFEST.json records")
     listed = {item["path"] for item in manifest["files"]}
     extra = [p.relative_to(args.dir).as_posix() for p in Path(args.dir).rglob("*")
-             if p.is_file() and p.name != "MANIFEST.json" and p.relative_to(args.dir).as_posix() not in listed]
+             if p.is_file() and p.name != "MANIFEST.json" and p.relative_to(args.dir).as_posix() not in listed
+             and not in_stage_git(p.relative_to(args.dir).as_posix())]
     problems += [f"{p}: in the brief but not in MANIFEST.json" for p in extra]
+    problems += check_stage(Path(args.dir), target, args.factory)
     manifest_sha = sha256((Path(args.dir) / "MANIFEST.json").read_bytes())
     if manifest_sha != target["brief"].get("manifestSha256"):
         problems.append(f"MANIFEST.json sha256 {manifest_sha} is not TARGET brief.manifestSha256: not the pinned brief")
@@ -492,15 +604,21 @@ def main(argv: list[str] | None = None) -> int:
     b.add_argument("--nupkg", type=Path, required=True)
     b.add_argument("--api-contract", type=Path, required=True)
     b.add_argument("--out", type=Path, required=True)
+    b.add_argument("--review", type=Path, help="write the owner's redaction review here (outside the brief)")
     s = sub.add_parser("scan")
     s.add_argument("engine", type=Path)
     s.add_argument("--factory", type=Path, required=True)
     s.add_argument("--nupkg", type=Path, required=True)
     s.add_argument("dir", type=Path)
+    c = sub.add_parser("check-text")
+    c.add_argument("engine", type=Path)
+    c.add_argument("--factory", type=Path, required=True)
+    c.add_argument("--nupkg", type=Path, required=True)
+    c.add_argument("files", nargs="+")
     args = parser.parse_args(argv)
     target = json.loads(args.target.read_text(encoding="utf-8"))
     try:
-        return {"api": api, "assemble": assemble, "scan": scan}[args.command](args, target)
+        return {"api": api, "assemble": assemble, "scan": scan, "check-text": check_text}[args.command](args, target)
     except Refusal as refusal:
         print(f"FAIL {refusal}")
         return 1
