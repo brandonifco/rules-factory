@@ -154,7 +154,7 @@ found at run time, not at compile time. The string-keyed `Registry` and reflecti
 
 | Piece | Repository | Status |
 |---|---|---|
-| Kernel — identity, provenance, resolution | [`rules-kernel`](https://github.com/brandonifco/rules-kernel) | published; engines pin 0.2.0 |
+| Kernel — identity, provenance, resolution | [`rules-kernel`](https://github.com/brandonifco/rules-kernel) | published; engines pin 0.3.0 |
 | Corpus maps — schema, checker, packages | this | maps of two corpora; `hoyle-backgammon` and `faa-part-107` published as packages |
 | Corpus toolkit — adapters, locators, boundary policy | none | locator checkers for two citation grammars live here; no adapters |
 | Domain packs — tabletop, legal | none | not implemented |

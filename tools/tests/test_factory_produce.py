@@ -170,7 +170,7 @@ class TestScaffold(ProduceCase):
         out = self.produced()
         self.assertEqual(json.loads(self.read(out, "global.json"))["sdk"], {"version": "10.0.112", "rollForward": "disable"})
         packages = self.read(out, PACKAGES_PROPS)
-        self.assertIn('<PackageVersion Include="RulesKernel" Version="0.2.0" />', packages)
+        self.assertIn('<PackageVersion Include="RulesKernel" Version="0.3.0" />', packages)
         self.assertIn(f'<PackageVersion Include="{MAP_ID}" Version="[4.0.0]" />', packages)
         self.assertIn(f"<ItemGroup Condition=\"'$(MSBuildProjectName)' == '{NAME}'\">", packages)
         self.assertIn(f'<PackageReference Include="{MAP_ID}" PrivateAssets="all" />', packages)
@@ -180,7 +180,7 @@ class TestScaffold(ProduceCase):
                               f"src/{NAME}/{NAME}.csproj", f"tests/{NAME}.Tests/{NAME}.Tests.csproj"):
             text = self.read(out, scaffold_file)
             self.assertNotIn(MAP_ID, text, f"{scaffold_file} is write-once and must not name the map package")
-            self.assertNotIn("0.2.0", text, f"{scaffold_file} is write-once and must not pin the kernel")
+            self.assertNotIn("0.3.0", text, f"{scaffold_file} is write-once and must not pin the kernel")
         build = self.read(out, "Directory.Build.props")
         self.assertIn("<RestorePackagesWithLockFile>true</RestorePackagesWithLockFile>", build)
         self.assertIn("<RestoreLockedMode", build)

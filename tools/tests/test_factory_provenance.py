@@ -181,7 +181,7 @@ class TestRecord(ProvenanceCase):
         self.assertEqual(record["corpus"], {"sourceId": "cfr-14-107", "contentHash": sha256_file(PART107_XML),
                                             "hashDerivation": "ecfr-versioner-xml", "asOf": "2026-01-01",
                                             "recomputed": True})
-        self.assertEqual(record["kernel"], {"packageId": "RulesKernel", "version": "0.2.0"})
+        self.assertEqual(record["kernel"], {"packageId": "RulesKernel", "version": "0.3.0"})
         self.assertEqual(record["packs"], [])
         self.assertEqual(record["randomness"], "none")
 
