@@ -39,7 +39,9 @@ What the generated code states:
 
   * `MapEntries.g.cs` -- one static per map entry, its citation verbatim, and the baseline. A
     derived entry (0012) has no citation of its own; its `Locators` are every citation it
-    rests on (see `Model._leaf_locators` for which, and in what order);
+    rests on (see `Model._leaf_locators` for which, and in what order). An assertion's static
+    also carries `AssertedBy`, the map's `assertedBy` (decision 0025), as an init property so the
+    records' constructors do not change; `draws` is not generated, because its `count` is prose;
   * `Registry.g.cs` -- every entry registered with the correspondence row it matches first
     (docs/corpus-map.md, "The map and the engine agree"), and a default handler per row:
       1 `scope: out`                                  -> OutsideCurrentScope
@@ -362,6 +364,27 @@ def contract(model, item):
     }
 
 
+ASSERTED_BY_MEMBER = (
+    "    /// <summary>\n"
+    "    /// Who the corpus lets assert this entry, the map's <c>assertedBy</c> (rules-factory decision 0025): the\n"
+    "    /// corpus's own words, or <c>caller</c> where the corpus names nobody. Empty on an entry that is not\n"
+    "    /// <c>kind: assertion</c>. An engine checks an assertion's attribution against these, not its own reading.\n"
+    "    /// </summary>\n"
+    "    public ImmutableArray<string> AssertedBy { get; init; } = [];\n\n")
+
+
+def asserted_by_init(entry):
+    """The object initializer carrying `assertedBy` (0025), or nothing on an entry without one.
+
+    An init property rather than a positional parameter, so the records' constructors and
+    deconstructors, which an engine's own code may call, do not change.
+    """
+    names = entry.get("assertedBy")
+    if not isinstance(names, list) or not names:
+        return ""
+    return f" {{ AssertedBy = [{', '.join(cs_string(name) for name in names)}] }}"
+
+
 def locator_cs(locator):
     return f"new SourceLocator({cs_string(locator['sourceId'])}, {cs_string(locator['citation'])})"
 
@@ -384,6 +407,7 @@ def map_entries_cs(model):
              "/// <param name=\"Name\">The entry's name, as the map records it.</param>\n",
              "/// <param name=\"Locator\">Corpus id plus citation, as the map records it.</param>\n",
              "public sealed record MapEntry(string Id, string Name, SourceLocator Locator)\n{\n",
+             ASSERTED_BY_MEMBER,
              "    /// <inheritdoc/>\n",
              "    public override string ToString() => $\"{Id} [{Locator}]\";\n}\n\n",
              "/// <summary>A derived entry (rules-factory decision 0012): a fact the corpus entails and never states.</summary>\n",
@@ -395,6 +419,7 @@ def map_entries_cs(model):
              "/// located ones, depth-first in <paramref name=\"DerivedFrom\"/> order, each locator once, at its first place.\n",
              "/// </param>\n",
              "public sealed record DerivedMapEntry(string Id, string Name, ImmutableArray<string> DerivedFrom, ImmutableArray<SourceLocator> Locators)\n{\n",
+             ASSERTED_BY_MEMBER,
              "    /// <inheritdoc/>\n",
              "    public override string ToString() => $\"{Id} [derived from {string.Join(\", \", DerivedFrom)}]\";\n}\n\n",
              f"/// <summary>The {len(model.entries)} entries of {xml_text(model.package_id)} {xml_text(model.version)}, "
@@ -417,7 +442,7 @@ def map_entries_cs(model):
             lines.append(f"    public static MapEntry {item['member']} {{ get; }} = new(\n"
                          f"        {cs_string(entry['id'])},\n"
                          f"        {cs_string(entry.get('name', entry['id']))},\n"
-                         f"        {locator_cs(locator)});\n")
+                         f"        {locator_cs(locator)}){asserted_by_init(entry)};\n")
         else:
             sources = ", ".join(cs_string(s) for s in entry.get("derivedFrom") or [])
             # Literals, not references to the located statics: a static initializer runs in
@@ -427,7 +452,7 @@ def map_entries_cs(model):
                          f"        {cs_string(entry['id'])},\n"
                          f"        {cs_string(entry.get('name', entry['id']))},\n"
                          f"        [{sources}],\n"
-                         f"        [\n{cited}        ]);\n")
+                         f"        [\n{cited}        ]){asserted_by_init(entry)};\n")
     lines.append("}\n")
     return "".join(lines)
 
@@ -540,6 +565,13 @@ public sealed class ImplementsAttribute(string entryId) : Attribute
 /// </param>
 public sealed record RegisteredEntry(string Id, EntryStatus Status, CorrespondenceRow Row, ImmutableArray<SourceLocator> Locators)
 {
+    /// <summary>
+    /// Who the corpus lets assert this entry, the map's <c>assertedBy</c> (rules-factory decision 0025): the
+    /// corpus's own words, or <c>caller</c> where the corpus names nobody. Empty on an entry that is not
+    /// <c>kind: assertion</c>. An engine checks an assertion's attribution against these, not its own reading.
+    /// </summary>
+    public ImmutableArray<string> AssertedBy { get; init; } = [];
+
     /// <summary>
     /// The locator its declines cite, the first of <see cref="Locators"/>: the kernel's
     /// <see cref="UnresolvedResult"/> holds one, and the rest are read through <see cref="Registry.Citations"/>.
@@ -708,7 +740,7 @@ def registry_cs(model):
         row = ROWS[item["row"]][0] if item["row"] else "None"
         lines.append(f"        new({cs_string(entry['id'])}, EntryStatus.{STATUSES[entry['status']]}, "
                      f"CorrespondenceRow.{row}, "
-                     f"[{', '.join(f'MapEntries.{m}.Locator' for m in item['locators'])}]),\n")
+                     f"[{', '.join(f'MapEntries.{m}.Locator' for m in item['locators'])}]){asserted_by_init(entry)},\n")
     lines.append("    ];\n\n")
     lines.append("    private static readonly ImmutableDictionary<string, RegisteredEntry> ById =\n"
                  "        All.ToImmutableDictionary(e => e.Id, StringComparer.Ordinal);\n")

@@ -109,7 +109,9 @@ def valid_map():
             entry("speed-within-limit", kind="operation", dependsOn=["speed-limit"],
                   status="implemented", implementedIn={"ruleset": "demo", "version": 1},
                   tests=proof("SpeedTests.At_the_limit_is_permitted", "SpeedTests.Above_the_limit_is_refused")),
-            entry("well-clear", kind="assertion", status="mapped"),
+            # 0025: an assertion names who asserts it, in the corpus's words.
+            entry("well-clear", kind="assertion", status="mapped", assertedBy=["remote pilot"],
+                  evidence="The remote pilot must keep the aircraft well clear of other aircraft."),
             entry("yield-right-of-way", kind="operation", dependsOn=["well-clear"],
                   enabledBy=["speed-limit"], suspendedBy=["speed-within-limit"],
                   status="implemented",
@@ -1072,6 +1074,197 @@ class TestAbsent(MapCase):
         self.assertEqual(self.status_of(output, "absent"), "skip", output)
         self.assertIn("NOT VERIFIED", output)
         self.assertEqual(code, 0, output)
+
+
+class TestAssertedBy(MapCase):
+    """0025 (#117): an assertion says who the corpus lets assert it, in the corpus's words."""
+
+    ASSERTION = 2  # well-clear, in valid_map()'s order
+
+    def test_an_assertion_that_names_nobody_fails(self):
+        self.assert_catches("asserted-by", lambda d: d["entries"][self.ASSERTION].pop("assertedBy"))
+
+    def test_asserted_by_on_an_entry_that_is_not_an_assertion_fails(self):
+        self.assert_catches("asserted-by", lambda d: d["entries"][1].update(assertedBy=["remote pilot"]))
+
+    def test_an_empty_or_malformed_list_fails(self):
+        for value in ([], "remote pilot", [""], [3]):
+            with self.subTest(value=value):
+                self.assert_catches("asserted-by",
+                                    lambda d, v=value: d["entries"][self.ASSERTION].update(assertedBy=v))
+
+    def test_a_party_named_twice_fails(self):
+        self.assert_catches("asserted-by", lambda d: d["entries"][self.ASSERTION].update(
+            assertedBy=["remote pilot", "Remote  Pilot"]))
+
+    def test_a_party_the_evidence_does_not_name_fails(self):
+        self.assert_catches("asserted-by", lambda d: d["entries"][self.ASSERTION].update(
+            assertedBy=["visual observer"]))
+
+    def test_a_party_matches_as_a_whole_word_only(self):
+        # "pilot" inside "autopilot" is not the pilot.
+        def mutate(document):
+            document["entries"][self.ASSERTION].update(
+                assertedBy=["pilot"], evidence="The autopilot must keep the aircraft well clear.")
+        self.assert_catches("asserted-by", mutate)
+
+    def test_a_party_matches_ignoring_case_and_spacing(self):
+        document = valid_map()
+        document["entries"][self.ASSERTION].update(
+            assertedBy=["Remote Pilot"], evidence="The remote\n pilot must keep the aircraft well clear.")
+        code, output = self.run_tool(document)
+        self.assertEqual(self.status_of(output, "asserted-by"), "ok", output)
+
+    def test_a_party_named_in_a_span_the_note_quotes_passes(self):
+        # The bearer is in a lead-in the evidence does not reach; the note quotes it.
+        def named_in_note(document):
+            document["entries"][self.ASSERTION].update(
+                assertedBy=["remote pilot in command"],
+                evidence="Keep the aircraft well clear of other aircraft.",
+                note="The bearer is the lead-in's, “Prior to flight, the remote pilot in command must:”.")
+        document = valid_map()
+        named_in_note(document)
+        code, output = self.run_tool(document)
+        self.assertEqual(self.status_of(output, "asserted-by"), "ok", output)
+        self.assertEqual(code, 0, output)
+        # The same words in the note, unquoted, are the mapper's and anchor nothing.
+        document["entries"][self.ASSERTION]["note"] = "The bearer is the remote pilot in command."
+        code, output = self.run_tool(document)
+        self.assertEqual(self.status_of(output, "asserted-by"), "fail", output)
+
+    def test_the_caller_passes_alone_and_with_a_reason(self):
+        document = valid_map()
+        document["entries"][self.ASSERTION].update(
+            assertedBy=["caller"], evidence="No person may operate so close as to create a hazard.",
+            note="The sentence names nobody who judges the hazard, so the caller asserts it.")
+        code, output = self.run_tool(document)
+        self.assertEqual(self.status_of(output, "asserted-by"), "ok", output)
+        self.assertEqual(code, 0, output)
+
+    def test_the_caller_with_no_reason_fails(self):
+        self.assert_catches("asserted-by", lambda d: d["entries"][self.ASSERTION].update(assertedBy=["caller"]))
+        self.assert_catches("asserted-by", lambda d: d["entries"][self.ASSERTION].update(
+            assertedBy=["caller"], note="Asserted, never inferred."))
+
+    def test_the_caller_beside_a_named_party_fails(self):
+        self.assert_catches("asserted-by", lambda d: d["entries"][self.ASSERTION].update(
+            assertedBy=["caller", "remote pilot"], note="The caller, or the remote pilot."))
+
+    def test_a_map_with_no_assertions_does_not_report_ok(self):
+        document = valid_map()
+        document["entries"].pop(self.ASSERTION)
+        document["entries"][1]["dependsOn"] = ["speed-limit"]
+        for item in document["entries"]:
+            item["dependsOn"] = [d for d in item.get("dependsOn", []) if d != "well-clear"]
+        code, output = self.run_tool(document)
+        self.assertEqual(self.status_of(output, "asserted-by"), "skip", output)
+
+
+SEEDED = json.loads(json.dumps(MANIFEST))
+SEEDED["corpora"][0]["randomness"] = "seeded"
+
+
+def seeded_map():
+    """valid_map, plus operations that draw and one whose unsettled point is how many draws."""
+    document = valid_map()
+    document["entries"].extend([
+        entry("opening-throw", kind="operation", draws={"dice": "die", "count": "one per player"},
+              evidence="The game begins with each player throwing a single die."),
+        entry("group-roll", kind="operation", clarity="ambiguous",
+              draws={"dice": "d20", "count": "one per group; how many groups is the question"},
+              ambiguity={"question": "What is a group?", "fate": "unresolved",
+                         "unresolvedReason": "RequiresInterpretation", "affectsDraws": True},
+              evidence="The GM makes a single roll for a group.",
+              note="The roll is a test, and “the game uses a d20 roll to determine success”."),
+        entry("attack", kind="operation",
+              draws=[{"dice": "d20", "count": 1}, {"dice": "damage dice", "count": "on a hit only"}],
+              evidence="Roll a d20 to hit; on a hit, roll the damage dice."),
+    ])
+    return document
+
+
+class TestDraws(MapCase):
+    """0025 (#118): an operation of a seeded corpus that draws says how many draws of what."""
+
+    THROW, GROUP, ATTACK = -3, -2, -1
+
+    def setUp(self):
+        super().setUp()
+        self.write_manifest(SEEDED)
+
+    def assert_draws_catch(self, mutate):
+        code, output = self.run_tool(seeded_map())
+        self.assertEqual(self.status_of(output, "draws"), "ok", output)
+        self.assertEqual(code, 0, output)
+        document = seeded_map()
+        mutate(document)
+        code, output = self.run_tool(document)
+        self.assertEqual(self.status_of(output, "draws"), "fail", output)
+        self.assertEqual(code, 1, output)
+        return output
+
+    def test_draws_under_randomness_none_fail(self):
+        self.write_manifest(MANIFEST)
+        code, output = self.run_tool(seeded_map())
+        self.assertEqual(self.status_of(output, "draws"), "fail", output)
+        self.assertIn("randomness: none", output)
+
+    def test_a_map_of_a_none_corpus_that_draws_nothing_passes(self):
+        self.write_manifest(MANIFEST)
+        code, output = self.run_tool(valid_map())
+        self.assertEqual(self.status_of(output, "draws"), "ok", output)
+
+    def test_a_seeded_map_that_declares_no_draws_does_not_report_ok(self):
+        code, output = self.run_tool(valid_map())
+        self.assertEqual(self.status_of(output, "draws"), "skip", output)
+
+    def test_draws_without_a_manifest_are_not_verified(self):
+        os.remove(self.manifest_path)
+        code, output = self.run_tool(seeded_map())
+        self.assertEqual(self.status_of(output, "draws"), "skip", output)
+        self.assertEqual(code, 1, output)
+
+    def test_draws_on_an_entry_that_is_not_an_operation_fail(self):
+        self.assert_draws_catch(lambda d: d["entries"][self.THROW].update(kind="value"))
+
+    def test_draws_on_an_out_of_scope_entry_fail(self):
+        self.assert_draws_catch(lambda d: d["entries"][self.THROW].update(scope="out", status="declined"))
+
+    def test_a_malformed_draw_fails(self):
+        for value in ({"dice": "die"}, {"count": 1}, {"dice": "", "count": 1}, {"dice": "die", "count": 0},
+                      {"dice": "die", "count": True}, {"dice": "die", "count": " "}, [],
+                      {"dice": "die", "count": 1, "faces": 6}, "one die", [{"dice": "die"}]):
+            with self.subTest(value=value):
+                self.assert_draws_catch(lambda d, v=value: d["entries"][self.THROW].update(draws=v))
+
+    def test_dice_the_evidence_does_not_name_fail(self):
+        output = self.assert_draws_catch(
+            lambda d: d["entries"][self.THROW].update(draws={"dice": "d6", "count": "one per player"}))
+        self.assertIn("'d6'", output)
+
+    def test_each_draw_of_a_list_is_anchored(self):
+        self.assert_draws_catch(lambda d: d["entries"][self.ATTACK]["draws"][1].update(dice="hit dice"))
+
+    def test_dice_named_in_a_span_the_note_quotes_pass_and_unquoted_fail(self):
+        self.assert_draws_catch(
+            lambda d: d["entries"][self.GROUP].update(note="The roll is a test on a d20."))
+
+    def test_an_ambiguity_affecting_draws_with_no_draws_fails(self):
+        output = self.assert_draws_catch(lambda d: d["entries"][self.GROUP].pop("draws"))
+        self.assertIn("affectsDraws is true", output)
+
+    def test_an_ambiguity_not_affecting_draws_needs_none(self):
+        document = seeded_map()
+        document["entries"][self.GROUP].pop("draws")
+        document["entries"][self.GROUP]["ambiguity"]["affectsDraws"] = False
+        code, output = self.run_tool(document)
+        self.assertEqual(self.status_of(output, "draws"), "ok", output)
+
+    def test_affects_draws_that_is_not_a_boolean_fails(self):
+        self.assert_draws_catch(lambda d: d["entries"][self.GROUP]["ambiguity"].update(affectsDraws="yes"))
+
+    def test_affects_draws_outside_the_ambiguity_block_fails(self):
+        self.assert_draws_catch(lambda d: d["entries"][self.THROW].update(affectsDraws=True))
 
 
 class TestCrossReferences(MapCase):

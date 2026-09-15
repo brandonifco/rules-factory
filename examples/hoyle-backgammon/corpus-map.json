@@ -141,6 +141,10 @@
         "citation": "BACKGAMMON / Playing / p. 273"
       },
       "kind": "operation",
+      "draws": {
+        "dice": "die",
+        "count": "one per player, and one per player again after each tie"
+      },
       "scope": "in",
       "clarity": "clear",
       "dependsOn": [],
@@ -192,6 +196,10 @@
         "citation": "BACKGAMMON / Playing / p. 273"
       },
       "kind": "operation",
+      "draws": {
+        "dice": "dice",
+        "count": 2
+      },
       "scope": "in",
       "clarity": "clear",
       "dependsOn": [
@@ -568,12 +576,15 @@
         "citation": "BACKGAMMON / Bearing off the Men / p. 277"
       },
       "kind": "assertion",
+      "assertedBy": [
+        "caller"
+      ],
       "scope": "in",
       "clarity": "clear",
       "dependsOn": [],
       "evidence": "the game is a \"backgammon,\" and the loser pays {277} either thrice or four times (as may have been agreed) the amount of the single stake.",
       "status": "mapped",
-      "note": "Not a gap: the corpus does not leave the figure undefined and vested in nobody. It fixes the set to two values and vests the choice between them in the players, by agreement. Under docs/decisions/0005 that is kind: assertion, and the standard is an entry of its own with the rule that consumes it depending on it. The engine owes it the four things an assertion is owed -- demand it, attribute it, record it alongside the outcome, never infer it -- and the bound is a rule the corpus states rather than a judgement it delegates, so the engine keeps that too; reading the delegation as an ambiguity returned RequiresInterpretation and threw the bound away with it. Demonstrate both figures the corpus admits, thrice and four times, and a figure outside them refused. Limit worth stating where the claim is: 0005's amended test, a standard of conduct the subject must meet versus a predicate the corpus vests in nobody, fits the Part 107 instances and does not describe this one, which is a bounded value fixed by agreement rather than a standard anybody is told to meet. corpus-map.md names this sentence as an assertion regardless, and the shape is a third one the test does not yet cover. The span starts on p. 276 and carries the {277} marker; the citation follows the figures."
+      "note": "Not a gap: the corpus does not leave the figure undefined and vested in nobody. It fixes the set to two values and vests the choice between them in an agreement. Under docs/decisions/0005 that is kind: assertion, and the standard is an entry of its own with the rule that consumes it depending on it. The engine owes it the four things an assertion is owed -- demand it, attribute it, record it alongside the outcome, never infer it -- and the bound is a rule the corpus states rather than a judgement it delegates, so the engine keeps that too; reading the delegation as an ambiguity returned RequiresInterpretation and threw the bound away with it. Demonstrate both figures the corpus admits, thrice and four times, and a figure outside them refused. Limit worth stating where the claim is: 0005's amended test, a standard of conduct the subject must meet versus a predicate the corpus vests in nobody, fits the Part 107 instances and does not describe this one, which is a bounded value fixed by agreement rather than a standard anybody is told to meet. corpus-map.md names this sentence as an assertion regardless, and the shape is a third one the test does not yet cover. The span starts on p. 276 and carries the {277} marker; the citation follows the figures. Who asserts it: the parties to that agreement, whom the sentence does not name; \"(as may have been agreed)\" is an agentless passive and names nobody (corpus-map.md, gate 3), so assertedBy is the caller rather than a party the corpus does not name (0025)."
     },
     {
       "id": "stake-multiplier",
