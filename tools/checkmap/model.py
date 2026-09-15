@@ -11,6 +11,10 @@ owns and no check crashes on one another check owns.
 # the factory refuses to intake it (0016), reading this set rather than keeping its own.
 SCHEMA_VERSIONS = (1,)
 
+# The map's top-level fields, and all of them (#60). The manifest is not among them: it is a
+# separate file. `extent` is optional; `schema` requires the other four.
+MAP_FIELDS = ("schemaVersion", "corpus", "baseline", "extent", "entries")
+
 KINDS = {"value", "operation", "assertion"}
 SCOPES = {"in", "out"}
 CLARITIES = {"clear", "ambiguous"}

@@ -28,3 +28,4 @@ kept; its number is never reused.
 | [0017](0017-a-map-change-carries-a-review-of-its-bytes.md) | A map change carries a review of its exact bytes, and a check refuses one that does not (enforces 0014) |
 | [0018](0018-every-file-the-factory-writes-has-one-owner.md) | Every file the factory writes has one owner: generated, managed (factory policy with a recipe version, hand edits refused) or engine-owned |
 | [0019](0019-randomness-is-declared-by-the-corpus.md) | Whether an engine may draw random values is declared by the corpus: `randomness: none` or `seeded` (extends 0002 and 0013) |
+| [0020](0020-a-section-citation-names-its-lead-in-and-a-section-map-lists-its-extent.md) | A section citation can name its lead-in, and a section-designation map lists its extent; the manifest is never inline, and `definedElsewhere` alone answers a pointer to an unadmitted corpus (extends 0009) |

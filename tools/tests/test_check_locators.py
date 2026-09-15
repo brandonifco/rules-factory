@@ -277,5 +277,129 @@ class TestCoverage(LocatorCase):
         self.assert_catches("coverage", mutate)
 
 
+# --- examples/faa-part-107/check-locators-section.py: the section-designation grammar -------
+
+SECTION_TOOL = os.path.join(os.path.dirname(os.path.dirname(HERE)),
+                            "examples", "faa-part-107", "check-locators-section.py")
+_section_spec = importlib.util.spec_from_file_location("check_locators_section", SECTION_TOOL)
+check_locators_section = importlib.util.module_from_spec(_section_spec)
+_section_spec.loader.exec_module(check_locators_section)
+
+# Two sections in the eCFR shape: one with an undesignated lead-in before its paragraphs, and
+# one with no designated paragraph at all.
+SECTION_CORPUS = """<ROOT><DIV6 N="B" TYPE="SUBPART">
+<DIV8 N="1.10" TYPE="SECTION"><HEAD>§ 1.10 Widgets.</HEAD>
+<P>Every operator of a widget must comply with all of the following:</P>
+<P>(a) The widget may not exceed ten tokens.</P>
+<P>(b) The widget may not be operated at night.</P>
+</DIV8>
+<DIV8 N="1.11" TYPE="SECTION"><HEAD>§ 1.11 Tokens.</HEAD>
+<P>No person may carry a token into a restricted area.</P>
+</DIV8>
+</DIV6></ROOT>"""
+
+LEAD_IN_TEXT = "Every operator of a widget must comply with all of the following:"
+
+
+def section_map():
+    """A map whose citations and extent hold against SECTION_CORPUS."""
+    return {
+        "schemaVersion": 1,
+        "corpus": "demo-cfr",
+        "baseline": {"contentHash": "b" * 64, "hashDerivation": "demo-xml"},
+        "extent": {"unit": "section-designation", "sections": ["§ 1.10", "§ 1.11"]},
+        "entries": [
+            entry("widget-compliance", "§ 1.10 introductory text", LEAD_IN_TEXT),
+            entry("token-limit", "§ 1.10(a)", "(a) The widget may not exceed ten tokens."),
+            entry("token-area", "§ 1.11", "No person may carry a token into a restricted area."),
+        ],
+    }
+
+
+class SectionCase(unittest.TestCase):
+    def setUp(self):
+        self.root = tempfile.mkdtemp()
+        self.corpus_path = os.path.join(self.root, "corpus.xml")
+        with open(self.corpus_path, "w", encoding="utf-8") as handle:
+            handle.write(SECTION_CORPUS)
+        self.corpus, self.spans, _ = check_locators_section.corpus_index(self.corpus_path)
+
+    def verdict(self, citation, evidence):
+        return check_locators_section.check(entry("x", citation, evidence), self.corpus, self.spans)[0]
+
+    def run_tool(self, document):
+        path = os.path.join(self.root, "corpus-map.json")
+        with open(path, "w", encoding="utf-8") as handle:
+            json.dump(document, handle)
+        out = io.StringIO()
+        with redirect_stdout(out), redirect_stderr(out):
+            code = check_locators_section.main(["check-locators-section.py", path, self.corpus_path])
+        return code, out.getvalue()
+
+
+class TestIntroductoryText(SectionCase):
+    """0020: "introductory text" names a section's undesignated lead-in, and only that."""
+
+    def test_a_lead_in_cited_as_introductory_text_is_verified(self):
+        self.assertEqual(self.verdict("§ 1.10 introductory text", LEAD_IN_TEXT), "ok")
+
+    def test_the_bare_section_still_covers_its_lead_in(self):
+        self.assertEqual(self.verdict("§ 1.10", LEAD_IN_TEXT), "ok")
+
+    def test_a_designated_paragraph_cited_as_introductory_text_fails(self):
+        self.assertEqual(
+            self.verdict("§ 1.10 introductory text", "(a) The widget may not exceed ten tokens."), "bad")
+
+    def test_a_quote_running_past_the_lead_in_fails_as_introductory_text_alone(self):
+        evidence = LEAD_IN_TEXT + " (a) The widget may not exceed ten tokens."
+        self.assertEqual(self.verdict("§ 1.10 introductory text", evidence), "bad")
+        self.assertEqual(self.verdict("§ 1.10 introductory text, (a)", evidence), "ok")
+
+    def test_a_section_with_no_designated_paragraph_has_no_introductory_text(self):
+        self.assertEqual(self.verdict(
+            "§ 1.11 introductory text", "No person may carry a token into a restricted area."), "bad")
+
+    def test_a_paragraphs_own_introductory_text_is_outside_the_grammar(self):
+        self.assertIsNone(check_locators_section.cited_paths("§ 1.10(a) introductory text"))
+        self.assertEqual(self.verdict(
+            "§ 1.10(a) introductory text", "(a) The widget may not exceed ten tokens."), "unchecked")
+
+
+class TestSectionCoverage(SectionCase):
+    """0020: every section of a section-designation extent is reached by a verified quote."""
+
+    def test_the_valid_map_passes(self):
+        code, output = self.run_tool(section_map())
+        self.assertEqual(code, 0, output)
+        self.assertIn("coverage ok (all 2 sections", output)
+
+    def test_a_section_no_entry_reaches_fails_and_is_named(self):
+        document = section_map()
+        document["entries"].pop(2)
+        code, output = self.run_tool(document)
+        self.assertEqual(code, 1, output)
+        self.assertIn("§ 1.11: inside the declared extent", output)
+
+    def test_a_citation_naming_a_section_is_not_a_quote_reaching_it(self):
+        document = section_map()
+        document["entries"][2]["evidence"] = "A summary of the token rule."
+        code, output = self.run_tool(document)
+        self.assertEqual(code, 1, output)
+        self.assertIn("§ 1.11: inside the declared extent", output)
+
+    def test_a_map_declaring_no_extent_fails(self):
+        document = section_map()
+        document.pop("extent")
+        code, output = self.run_tool(document)
+        self.assertEqual(code, 1, output)
+        self.assertIn("declares no `extent`", output)
+
+    def test_an_extent_in_pages_fails(self):
+        document = section_map()
+        document["extent"] = {"unit": "page", "from": 1, "to": 2}
+        code, output = self.run_tool(document)
+        self.assertEqual(code, 1, output)
+
+
 if __name__ == "__main__":
     unittest.main()

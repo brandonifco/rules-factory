@@ -3,16 +3,25 @@
 The interface between reading a corpus and building an engine from it. Everything in
 [method.md](method.md) phases 1–4 produces it; everything in phases 5–8 consumes it.
 
-A map is a list of entries, one per rule the corpus states, plus the manifest of the corpora
-they cite, plus a stamp naming the baseline it was built against:
+A map is a list of entries, one per rule the corpus states, plus a stamp naming the baseline it
+was built against and the extent it claims to have read. The corpora its entries cite are
+declared in a **separate file**, the [corpus manifest](#the-corpus-manifest)
+(`corpus-manifest*.json` beside the map, or `check-map.py --manifest`), never inside the map:
 
 ```json
 { "schemaVersion": 1, "corpus": "cfr-14-107",
   "baseline": { "contentHash": "80f6bc4b…", "hashDerivation": "ecfr-versioner-xml",
                 "asOf": "2026-01-01" },
-  "extent": { "unit": "page", "from": 271, "to": 280 },
+  "extent": { "unit": "section-designation", "sections": ["§ 107.25", "§ 107.29", "…"] },
   "entries": [ … ] }
 ```
+
+**Those five are the map's top-level fields, and there are no others.** `check-map.py --only
+schema` refuses any other key, and names an inline `manifest` in particular: the Part 107 blind
+mapper put one there, and the checker, which reads the manifest from its own file, reported
+"no manifest" and skipped every resolution against it while the key sat unread
+([#60](https://github.com/brandonifco/rules-factory/issues/60)). A field a checker ignores is a
+claim nothing checks.
 
 The stamp is not decoration. A map is true of **one state of one corpus**. Without it, two
 maps cannot be compared, a map cannot be checked against the text it claims to describe, and
@@ -40,9 +49,66 @@ argued with — and that a map cannot quietly shrink its own extent to match wha
 read, which deriving the extent from the citations would have allowed: the backgammon
 citations run 271–277, and the throw enumeration that #20 is about is on 278–280.
 
-**One grammar today.** `unit: "page"` is checkable because page markers are in the text. A
-`section-designation` corpus needs the paragraph-path equivalent and does not have one, so
-`coverage` reports NOT VERIFIED there rather than passing.
+**Two units, one per locator grammar.** Decided in
+[0020](decisions/0020-a-section-citation-names-its-lead-in-and-a-section-map-lists-its-extent.md)
+([#58](https://github.com/brandonifco/rules-factory/issues/58)).
+
+```json
+"extent": { "unit": "page", "from": 271, "to": 280 }
+"extent": { "unit": "section-designation", "sections": ["§ 107.25", "§ 107.29", "§ 107.31"] }
+```
+
+- **`page`** — a range of printed pages, `from` ≤ `to`, for a corpus with page markers in its
+  text. `check-locators.py`'s `coverage` names every page in it no verified quote reaches.
+- **`section-designation`** — a **list** of sections, each a bare designation (`§ 107.25`, never
+  `§ 107.25(a)`), for a corpus cited by section. A list and not a range, because what a mapper
+  reads of a CFR part is not contiguous: the Part 107 slice is twelve sections of subpart B and
+  skips § 107.27, .43 and .47 between them, and a range would claim them. Not a subpart, for the
+  same reason. `check-map.py --only extent` refuses a malformed list and **any entry whose
+  locator cites a section not in it** — the citation is parsed by the locator grammar below —
+  and `check-locators-section.py`'s `coverage` names every listed section no verified quote
+  reaches.
+
+`check-map.py` checks each unit's shape and refuses a unit outside the two. A map with no extent
+passes `check-map.py` and fails both locator checkers, which are where what was read can be
+compared with the text.
+
+**What the section list does not buy.** A citation naming a whole subpart (`subpart D`) names no
+section, and `check-map.py` does not read the corpus to learn which sections the subpart holds,
+so it names such an entry and does not place it. Part 107's `subpart-d-categories` is that entry:
+it quotes § 107.100, outside the twelve sections, to decline subpart D. And nothing sizes the
+list, exactly as nothing sizes a page range.
+
+### Citing a section in the `section-designation` grammar
+
+A citation names a section and, optionally, what inside it the quote sits in:
+
+| citation | names |
+|---|---|
+| `§ 107.35` | the whole section |
+| `§ 107.51 introductory text` | the section's undesignated lead-in, **and nothing under it** |
+| `§ 107.51(a)` | a paragraph and everything under it |
+| `§ 107.29(c)(1)-(2)`, `§ 107.51(c)-(d)` | a range at one level |
+| `§ 107.29(a)(2), (b)`, `§ 107.33 introductory text, (a)` | a list, each item read against the section |
+| `subpart D` | every section of a subpart |
+
+**"Introductory text" is part of the grammar**
+([#59](https://github.com/brandonifco/rules-factory/issues/59), 0020). A CFR section often opens
+with an undesignated sentence before paragraph (a) — § 107.51's *"A remote pilot in command and
+the person manipulating the flight controls … must comply with all of the following operating
+limitations"*. The bare section covers that sentence, and covers everything else in the section
+too; `§ 107.51 introductory text` says the quote is the lead-in, and
+`check-locators-section.py` holds it to that: **every occurrence of the quote lies before the
+section's first designated paragraph**, or the entry fails. The phrase is the CFR's own. A
+section with no designated paragraph has no introductory text, and citing one fails: cite the
+section. A paragraph's own introductory text (`§ 107.29(a) introductory text`) is not in the
+grammar and is reported unchecked.
+
+**Use it where the quote is the lead-in alone.** Part 107's `operating-limitations` cites
+`§ 107.51 introductory text`. Entries that quote the lead-in *together with* designated paragraphs
+— `over-human-beings`, `preflight-actions`, `visual-observer-conditions`, both § 107.25 entries —
+keep the bare section, which is true of them. So do sections that are one undesignated passage,
+§ 107.35, .36, .41 and .45.
 
 ## Why it exists
 
@@ -459,6 +525,14 @@ are two fields rather than one with a discriminator: each has required contents 
 against a different part of the manifest, and a merged field would be half-empty in every
 instance and checkable only after reading its own discriminator.
 
+**It answers the pointer, once.** *"The term hazardous material is defined in 49 CFR 171.8"* is
+a reference the corpus makes, and `definedElsewhere` is its answer: it names the manifest
+reference and gives the entry its runtime row. A `crossReferences` item for the same pointer
+answers it a second time, as prose, and `check-map.py --only cross-references` refuses it
+([#62](https://github.com/brandonifco/rules-factory/issues/62)). The entry may still declare its
+*other* pointers: `night-waiver-bar` routes "at night" to § 1.1 and answers "under § 107.200" as
+a cross-reference, because § 107.200 is a different passage.
+
 **An elsewhere-defined *input* is neither an elsewhere-defined rule nor an assertion.**
 `airspace-authorized` is fully implementable: § 107.41 requires authorization iff the class is
 B, C, D or the lateral surface area of E, and the entry's `evidence` is that matrix. What comes
@@ -582,6 +656,13 @@ asserted beside them — and resolved by exactly one of `resolvedBy` (an entry i
 What an *"except as provided in"* clause obliges a mapper to do is therefore: **follow it, and
 produce either an entry or a sentence saying why there is none.** Not a judgement about whether
 the target matters.
+
+**A pointer into a corpus that was not admitted is `definedElsewhere`'s, not this field's.** An
+item naming the entry's own `definedElsewhere` reference is refused
+([#62](https://github.com/brandonifco/rules-factory/issues/62), see above). The check recognises
+the reference by the designation in the manifest reference's `citation` (`§ 171.8` in
+"49 CFR 171.8") or by its `sourceId` read as words (`air-almanac` in "the Air Almanac"), and by
+nothing else, so an item naming it some other way passes.
 
 **Two limits.** The phrase list is closed and short: `starting-position` quotes *"as shown in
 {273} Fig. 1"* and the page marker falling inside the phrase hides it, so a corpus that points
@@ -880,6 +961,16 @@ Open questions are tracked as issues so they are worked rather than admired:
   Decided: [0010](decisions/0010-whose-fact-it-is-does-not-decide-the-kind.md) — whose fact
   it is does not decide the kind, so the family dissolves into assertions and gaps under the
   gate that already exists, and no new `kind` or field is added.
+
+- [#58](https://github.com/brandonifco/rules-factory/issues/58),
+  [#59](https://github.com/brandonifco/rules-factory/issues/59),
+  [#60](https://github.com/brandonifco/rules-factory/issues/60),
+  [#62](https://github.com/brandonifco/rules-factory/issues/62) — four schema points the Part 107
+  blind second mapping found unclear. Decided:
+  [0020](decisions/0020-a-section-citation-names-its-lead-in-and-a-section-map-lists-its-extent.md)
+  — a `section-designation` extent is a list of sections and every locator cites inside it;
+  "introductory text" is in the grammar and means the lead-in only; the manifest is never inline;
+  and `definedElsewhere` alone answers a pointer to an unadmitted corpus.
 
 **Where a decline's runtime reason lives.** Opened by 0004, answered by 0005: an entry whose
 meaning is fixed in an unadmitted corpus takes `definedElsewhere`, parallel to

@@ -235,7 +235,7 @@ same — and this section asked for the difference in a **reason string**, which
   declared extent for those terms and fails the entry if one turns up. Writing this entry is
   more work than declining a rule, deliberately: every instance of this failure so far has been
   a mapper who stopped reading.
-- **Nobody looked** — no entry, and two things narrow it. The map's `extent`, every page of
+- **Nobody looked** — no entry, and two things narrow it. The map's `extent`, every page or section of
   which must be reached by some entry's located evidence; and `crossReferences`, which turns
   the corpus's own pointers into obligations.
 

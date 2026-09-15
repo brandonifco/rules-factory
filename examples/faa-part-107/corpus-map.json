@@ -6,6 +6,23 @@
     "hashDerivation": "ecfr-versioner-xml",
     "asOf": "2026-01-01"
   },
+  "extent": {
+    "unit": "section-designation",
+    "sections": [
+      "\u00a7 107.25",
+      "\u00a7 107.29",
+      "\u00a7 107.31",
+      "\u00a7 107.33",
+      "\u00a7 107.35",
+      "\u00a7 107.36",
+      "\u00a7 107.37",
+      "\u00a7 107.39",
+      "\u00a7 107.41",
+      "\u00a7 107.45",
+      "\u00a7 107.49",
+      "\u00a7 107.51"
+    ]
+  },
   "entries": [
     {
       "id": "speed-limit",
@@ -150,7 +167,7 @@
       "name": "The operating limitations are complied with",
       "locator": {
         "sourceId": "cfr-14-107",
-        "citation": "\u00a7 107.51"
+        "citation": "\u00a7 107.51 introductory text"
       },
       "kind": "operation",
       "scope": "in",

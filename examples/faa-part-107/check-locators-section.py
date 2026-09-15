@@ -170,6 +170,10 @@ def corpus_index(xml_path):
 CITE_SECTION = re.compile(r"§+\s*(\d+\.\d+)")
 CITE_GROUP = re.compile(r"\(([A-Za-z0-9]{1,4})\)")
 CITE_SUBPART = re.compile(r"\bsubpart\s+([A-Z])\b", re.I)
+# The grammar's words for a section's undesignated lead-in, and the last element of a prefix
+# that names the lead-in and nothing under it. Never a designator: CITE_GROUP reads one to four
+# letters or digits.
+LEAD_IN = "introductory text"
 
 
 def cited_paths(citation):
@@ -177,6 +181,8 @@ def cited_paths(citation):
 
     Handles the grammar the two Part 107 maps actually use:
       `§ 107.35`                whole section
+      `§ 107.51 introductory text`  the section's undesignated lead-in, and only that (0020)
+      `§ 107.33 introductory text, (a)`  the lead-in and a paragraph, as a list
       `§ 107.51(a)`             one paragraph and everything under it
       `§ 107.29(c)(1)-(2)`      a range at the deepest level
       `§ 107.29(a)(2), (b)`     a list, each item read against the section
@@ -184,6 +190,7 @@ def cited_paths(citation):
       `subpart D`               every section in a subpart
     Returns a list of prefixes; a paragraph matches if any prefix is a prefix of its path.
     Returns None for a citation this grammar does not cover -- reported, never assumed ok.
+    A paragraph's own introductory text, `§ 107.29(a) introductory text`, is not in the grammar.
     """
     subpart = CITE_SUBPART.search(citation)
     if subpart and not CITE_SECTION.search(citation):
@@ -199,6 +206,11 @@ def cited_paths(citation):
     prefixes = []
     for item in tail.split(","):
         groups = CITE_GROUP.findall(item)
+        if " ".join(item.split()).lower() == LEAD_IN:
+            prefixes.append((None, number, LEAD_IN))
+            continue
+        if LEAD_IN in " ".join(item.split()).lower():
+            return None
         if not groups:
             if item.strip():
                 return None
@@ -233,7 +245,14 @@ def matches(prefix, path):
 
     A prefix whose first element is None is section-anchored: it is compared against the
     path with its subpart dropped, so `§ 107.29(a)` matches whatever subpart 107.29 sits in.
+
+    A prefix ending in LEAD_IN names the section's lead-in and matches only a paragraph whose
+    path is the section itself. `paragraphs` gives an undesignated <P> the path of the
+    designators open above it, so the only paragraphs with a bare section path are the ones
+    before the section's first designated paragraph.
     """
+    if prefix[-1] == LEAD_IN:
+        return prefix[0] is None and tuple(path[1:]) == tuple(prefix[1:-1])
     if prefix[0] is None:
         prefix, path = prefix[1:], path[1:]
     return len(prefix) <= len(path) and tuple(path[: len(prefix)]) == tuple(prefix)
@@ -261,19 +280,27 @@ def longest_prefix(fragment, corpus):
     return 0.0
 
 
-def check(entry, corpus, spans):
-    """(verdict, message) where verdict is 'ok', 'bad' or 'unchecked'."""
+def check(entry, corpus, spans, reached=None):
+    """(verdict, message) where verdict is 'ok', 'bad' or 'unchecked'.
+
+    On 'ok', the section of every paragraph the evidence touched is added to `reached`.
+    """
     citation = entry.get("locator", {}).get("citation", "")
     prefixes = cited_paths(citation)
     if prefixes is None:
         return "unchecked", f"citation {citation!r} is outside the grammar this check reads"
+
+    for prefix in prefixes:
+        if prefix[-1] == LEAD_IN and not any(p[1] == prefix[1] and len(p) > 2 for _, _, p in spans):
+            return "bad", (f"cited {citation}, and § {prefix[1]} has no designated paragraph, so it "
+                           f"has no introductory text; cite the section")
 
     evidence = normalise(entry.get("evidence", ""))
     fragments = [f for f in ELLIPSIS.split(evidence) if f]
     if not fragments:
         return "unchecked", "evidence is empty"
 
-    seen, cursor = 0, 0
+    seen, cursor, sections = 0, 0, set()
     for fragment in fragments:
         hits = occurrences(fragment, corpus)
         if not hits:
@@ -288,6 +315,7 @@ def check(entry, corpus, spans):
         seen += len(hits)
         for hit in hits:
             for path in touched(hit, spans):
+                sections.add(path[1])
                 if not any(matches(p, path) for p in prefixes):
                     where = "/".join(x for x in path[1:] if x)
                     return "bad", (
@@ -295,21 +323,57 @@ def check(entry, corpus, spans):
                         f"({len(hits)} occurrence(s) of this fragment)"
                     )
         cursor = ordered[0][1]
+    if reached is not None:
+        reached.update(sections)
     return "ok", f"{len(fragments)} fragment(s), {seen} occurrence(s), all inside {citation}"
+
+
+EXTENT_SECTION = re.compile(r"^§\s*(\d+\.\d+)$")
+
+
+def coverage(document, reached):
+    """(problems, summary): every section of the declared extent is reached by a verified quote.
+
+    The section-designation counterpart of `tools/check-locators.py`'s `coverage` (0009, 0020).
+    The extent is `{"unit": "section-designation", "sections": ["§ 107.25", ...]}`. A section
+    counts as reached only through an entry whose citation this tool verified, so a citation
+    naming a section is not a quote sitting in it. A map declaring no extent, or one in another
+    unit, is a problem: what it claims to have read is unstated. The shape of the list itself is
+    `check-map.py --only extent`.
+    """
+    extent = document.get("extent")
+    if not isinstance(extent, dict):
+        return ["  X  the map declares no `extent`, so what it claims to have read is unstated and "
+                "'no entry cites this section' cannot be a fact (0009)"], None
+    if extent.get("unit") != "section-designation":
+        return [f"  X  extent.unit is {extent.get('unit')!r}; this checker reads the section tree "
+                f"and can prove nothing about another unit"], None
+    sections = extent.get("sections")
+    matched = [EXTENT_SECTION.match(s) for s in sections if isinstance(s, str)] \
+        if isinstance(sections, list) else []
+    numbers = [m.group(1) for m in matched if m]
+    if not numbers:
+        return ["  X  extent names no section designation this checker can read"], None
+    missing = [n for n in numbers if n not in reached]
+    problems = [f"  X  § {n}: inside the declared extent and reached by no entry's verified "
+                f"evidence" for n in missing]
+    return problems, f"all {len(numbers)} sections of the declared extent are reached"
 
 
 def main(argv):
     if len(argv) != 3:
         print(__doc__.strip().splitlines()[-2], file=sys.stderr)
         return 2
-    entries = json.load(open(argv[1], encoding="utf-8"))["entries"]
+    document = json.load(open(argv[1], encoding="utf-8"))
+    entries = document["entries"]
     corpus, spans, refused = corpus_index(argv[2])
     for text, token in refused:
         print(f"  !  paragraph designator ({token}) is ambiguous; not indexed: {text}...")
 
     bad = unchecked = 0
+    reached = set()
     for entry in entries:
-        verdict, message = check(entry, corpus, spans)
+        verdict, message = check(entry, corpus, spans, reached)
         if verdict == "ok":
             continue
         if verdict == "bad":
@@ -321,6 +385,9 @@ def main(argv):
 
     total = len(entries)
     checked = total - unchecked
+    uncovered, covered = coverage(document, reached)
+    for line in uncovered:
+        print(line)
     if refused:
         print(f"\n{len(refused)} paragraph(s) could not be placed in the section tree")
         return 1
@@ -335,7 +402,11 @@ def main(argv):
     if checked < total:
         print(f"\n{checked} of {total} citations verified; {unchecked} could not be checked")
         return 1
-    print(f"locators ok (all {total} checked against the section tree)")
+    if uncovered:
+        print(f"\nlocators ok (all {total} checked), but coverage fails: "
+              f"{len(uncovered)} problem(s) with the declared extent")
+        return 1
+    print(f"locators ok (all {total} checked against the section tree); coverage ok ({covered})")
     return 0
 
 

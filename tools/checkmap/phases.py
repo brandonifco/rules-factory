@@ -2,6 +2,7 @@
 decides which of them an engine re-runs on its merged map (0015).
 """
 from .schema import check_required_fields, check_schema, check_unique_ids, check_vocabulary
+from .extent import check_extent
 from .relations import check_derived, check_gates, check_no_cycles, check_references
 from .manifest import check_manifest, check_postures
 from .ambiguity import check_conflicts, check_decision_records, check_exclusions
@@ -41,6 +42,7 @@ CHECKS = [
     ("required-fields", check_required_fields),
     ("vocabulary", check_vocabulary),
     ("unique-ids", check_unique_ids),
+    ("extent", check_extent),
     ("references", check_references),
     ("no-cycles", check_no_cycles),
     ("gates", check_gates),

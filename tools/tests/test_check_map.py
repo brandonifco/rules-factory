@@ -99,6 +99,7 @@ def valid_map():
         "schemaVersion": 1,
         "corpus": "demo-corpus",
         "baseline": {"contentHash": "a" * 64, "hashDerivation": "demo-plain-text"},
+        "extent": {"unit": "page", "from": 1, "to": 1},
         "entries": [
             entry("speed-limit", kind="value", status="implemented",
                   implementedIn={"ruleset": "demo", "version": 1},
@@ -228,6 +229,125 @@ class TestSchema(MapCase):
 
     def test_a_schema_version_this_checker_does_not_read_fails(self):
         self.assert_catches("schema", lambda d: d.update(schemaVersion=2))
+
+
+    def test_an_inline_manifest_is_refused_rather_than_ignored(self):
+        # #60: the blind Part 107 map carried `manifest` inline, and the checker reported "no
+        # manifest" and skipped every resolution while the key sat there unread.
+        self.assert_catches("schema", lambda d: d.update(manifest=MANIFEST))
+
+    def test_an_unknown_top_level_field_is_refused(self):
+        self.assert_catches("schema", lambda d: d.update(coverage="twelve sections"))
+
+    def test_every_example_map_uses_only_known_top_level_fields(self):
+        # The closed envelope must not break a map the repository already ships.
+        repo = os.path.dirname(os.path.dirname(HERE))
+        maps = sorted(os.path.join(repo, "examples", d, n)
+                      for d in os.listdir(os.path.join(repo, "examples"))
+                      if os.path.isdir(os.path.join(repo, "examples", d))
+                      for n in os.listdir(os.path.join(repo, "examples", d))
+                      if n.startswith("corpus-map") and n.endswith(".json"))
+        self.assertTrue(maps)
+        for path in maps:
+            with self.subTest(map=path), open(path, encoding="utf-8") as handle:
+                self.assertLessEqual(set(json.load(handle)), set(check_map.MAP_FIELDS))
+
+
+class TestExtent(MapCase):
+    """0020: the shape of `extent` in each unit, and a section-designation map cites inside it."""
+
+    def section_map(self):
+        """valid_map, re-cited in the section-designation grammar with an extent of two sections."""
+        document = valid_map()
+        document["extent"] = {"unit": "section-designation", "sections": ["§ 1.10", "§ 1.11"]}
+        for position, item in enumerate(document["entries"]):
+            if "locator" in item:
+                item["locator"]["citation"] = ("§ 1.10(a)", "§ 1.11 introductory text")[position % 2]
+        return document
+
+    def assert_section_catches(self, mutate):
+        code, output = self.run_tool(self.section_map())
+        self.assertEqual(self.status_of(output, "extent"), "ok", output)
+        self.assertEqual(code, 0, output)
+        document = self.section_map()
+        mutate(document)
+        code, output = self.run_tool(document)
+        self.assertEqual(self.status_of(output, "extent"), "fail", output)
+        self.assertEqual(code, 1, output)
+        return output
+
+    def test_a_page_extent_that_is_not_a_range_fails(self):
+        self.assert_catches("extent", lambda d: d["extent"].update({"from": 4, "to": 1}))
+
+    def test_a_page_extent_with_a_non_integer_bound_fails(self):
+        self.assert_catches("extent", lambda d: d["extent"].update({"to": "280"}))
+
+    def test_an_extent_in_an_unknown_unit_fails(self):
+        self.assert_catches("extent", lambda d: d["extent"].update({"unit": "paragraph"}))
+
+    def test_an_extent_mixing_the_two_shapes_fails(self):
+        self.assert_catches("extent", lambda d: d["extent"].update({"sections": ["§ 1.10"]}))
+
+    def test_a_citation_outside_the_declared_sections_fails(self):
+        output = self.assert_section_catches(
+            lambda d: d["entries"][0]["locator"].update(citation="§ 1.12(b)"))
+        self.assertIn("§ 1.12", output)
+
+    def test_a_section_list_holding_a_paragraph_fails(self):
+        self.assert_section_catches(lambda d: d["extent"]["sections"].append("§ 1.12(a)"))
+
+    def test_a_section_listed_twice_fails(self):
+        self.assert_section_catches(lambda d: d["extent"]["sections"].append("§ 1.10"))
+
+    def test_an_empty_section_list_fails(self):
+        self.assert_section_catches(lambda d: d["extent"].update(sections=[]))
+
+    def test_a_citation_in_no_section_grammar_fails(self):
+        self.assert_section_catches(
+            lambda d: d["entries"][0]["locator"].update(citation="Part One / p. 1"))
+
+    def test_a_subpart_citation_is_named_and_not_placed(self):
+        # Part 107's subpart-d-categories cites "subpart D". Nothing here reads the corpus to
+        # learn which sections the subpart holds, so it is named rather than counted inside.
+        document = self.section_map()
+        document["entries"][6]["locator"]["citation"] = "subpart D"
+        code, output = self.run_tool(document)
+        self.assertEqual(self.status_of(output, "extent"), "ok", output)
+        self.assertIn("subpart-d-categories (subpart D)", output)
+        self.assertEqual(code, 0, output)
+
+    def test_a_map_declaring_no_extent_is_not_refused_here(self):
+        # The omission is refused by the locator checkers' `coverage`, which have the corpus.
+        document = valid_map()
+        document.pop("extent")
+        code, output = self.run_tool(document)
+        self.assertEqual(self.status_of(output, "extent"), "skip", output)
+        self.assertEqual(code, 0, output)
+
+    def test_the_section_is_read_as_the_locator_checker_reads_it(self):
+        # The two grammars are one grammar, kept in two files; they agree on every citation
+        # the Part 107 maps make, and on the forms 0020 adds.
+        repo = os.path.dirname(os.path.dirname(HERE))
+        spec = importlib.util.spec_from_file_location(
+            "check_locators_section",
+            os.path.join(repo, "examples", "faa-part-107", "check-locators-section.py"))
+        section_tool = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(section_tool)
+        citations = ["§ 107.51 introductory text", "§ 107.33 introductory text, (a)", "subpart D"]
+        for name in ("faa-part-107/corpus-map.json",
+                     "faa-part-107-temporal/corpus-map-2020-01-01.json"):
+            with open(os.path.join(repo, "examples", name), encoding="utf-8") as handle:
+                citations += [e["locator"]["citation"] for e in json.load(handle)["entries"]
+                              if "locator" in e]
+        for citation in citations:
+            with self.subTest(citation=citation):
+                prefixes = section_tool.cited_paths(citation)
+                self.assertIsNotNone(prefixes)
+                if prefixes[0][0] is None:
+                    expected = ("section", prefixes[0][1])
+                else:
+                    expected = ("subpart", prefixes[0][0])
+                self.assertEqual(check_map.cited_section(citation), expected)
 
 
 class TestRequiredFields(MapCase):
@@ -891,6 +1011,55 @@ class TestCrossReferences(MapCase):
         document["entries"][self.POINTER]["crossReferences"] = [
             {"cites": "as at starting", "unmapped": "Nothing in this map states it."}
         ]
+        code, output = self.run_tool(document)
+        self.assertEqual(self.status_of(output, "cross-references"), "ok", output)
+        self.assertEqual(code, 0, output)
+
+    DEFINED_ELSEWHERE = 4  # hazardous-material, which names the unadmitted other-corpus
+
+    def with_pointer_elsewhere(self, document, evidence, cites, reason):
+        item = document["entries"][self.DEFINED_ELSEWHERE]
+        item["evidence"] = evidence
+        item["crossReferences"] = [{"cites": cites, "unmapped": reason}]
+        return document
+
+    def test_a_pointer_definedElsewhere_answers_is_not_declared_again_by_source_id(self):
+        # #62: the blind Part 107 map declared "as defined in the Air Almanac" both in
+        # definedElsewhere and as an unmapped crossReferences item.
+        document = self.with_pointer_elsewhere(
+            valid_map(), "Its meaning is as defined in the Other Corpus.",
+            "as defined in the Other Corpus", "Not admitted; see definedElsewhere.")
+        code, output = self.run_tool(document)
+        self.assertEqual(self.status_of(output, "cross-references"), "fail", output)
+        self.assertIn("definedElsewhere` already answers", output)
+        self.assertEqual(code, 1, output)
+
+    def test_a_pointer_definedElsewhere_answers_is_not_declared_again_by_citation(self):
+        # The other #62 instance: "defined in 49 CFR 171.8", whose manifest reference is
+        # `cfr-49-171` citing "§ 171.8".
+        manifest = json.loads(json.dumps(MANIFEST))
+        manifest["corpora"][0]["references"] = [
+            {"sourceId": "cfr-49-171", "citation": "§ 171.8", "admitted": False}]
+        self.write_manifest(manifest)
+        document = self.with_pointer_elsewhere(
+            valid_map(), "The term hazardous material is defined in 49 CFR 171.8.",
+            "49 CFR 171.8", "Not admitted; see definedElsewhere.")
+        document["entries"][self.DEFINED_ELSEWHERE]["definedElsewhere"] = {"reference": "cfr-49-171"}
+        code, output = self.run_tool(document)
+        self.assertEqual(self.status_of(output, "cross-references"), "fail", output)
+        self.assertEqual(code, 1, output)
+
+    def test_another_pointer_on_an_entry_defined_elsewhere_is_still_declared(self):
+        # Part 107's night-waiver-bar routes "at night" to § 1.1 and still answers its pointer
+        # to § 107.200, which is a different corpus passage.
+        manifest = json.loads(json.dumps(MANIFEST))
+        manifest["corpora"][0]["references"] = [
+            {"sourceId": "cfr-14-1", "citation": "§ 1.1", "admitted": False}]
+        self.write_manifest(manifest)
+        document = self.with_pointer_elsewhere(
+            valid_map(), "No person may operate at night under a waiver issued under § 107.200.",
+            "under § 107.200", "§ 107.200 is outside this map's extent.")
+        document["entries"][self.DEFINED_ELSEWHERE]["definedElsewhere"] = {"reference": "cfr-14-1"}
         code, output = self.run_tool(document)
         self.assertEqual(self.status_of(output, "cross-references"), "ok", output)
         self.assertEqual(code, 0, output)
