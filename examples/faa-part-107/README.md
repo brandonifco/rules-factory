@@ -25,7 +25,10 @@ procedure was applied to every entry
 [0010](../../docs/decisions/0010-whose-fact-it-is-does-not-decide-the-kind.md) settled the
 sweep's residue and #28's missing carve-out, and the
 [blind second mapping](blind-mapping/README.md) (0014) added four entries and three open
-questions: **44 entries. 6 values, 28 operations, 10 assertions. 34 clear, 10 ambiguous. 5
+questions. [0021](../../docs/decisions/0021-a-gate-outside-the-slice-is-held-by-the-caller.md)
+then recorded waivers ([#61](https://github.com/brandonifco/rules-factory/issues/61)). Two
+`scope: out` entries cite §§ 107.200 and 107.205, and 27 entries name the waiver list in
+`suspendedBy`: **46 entries. 6 values, 30 operations, 10 assertions. 36 clear, 10 ambiguous. 6
 declined.** The delegated standards are entries split
 out of the rules that consume them; so are the gaps the sweep below found. `right-of-way`
 stopped being an assertion, `night-operation` stopped being a rule this map could claim to
@@ -33,7 +36,7 @@ have derived from the text it admitted, and the four entries #11 had been open o
 this trial turned out to hold **both** answers rather than either.
 
 **The map is a third larger than the sections it reads suggest**, and that is the cost of
-`kind` being entry-level: twelve sections, forty-four entries, of which twenty are an assertion
+`kind` being entry-level: twelve sections, forty-four entries before the two waiver entries, of which twenty are an assertion
 or a gap — seventeen of those split out of a rule that consumes them, and three gaps that are
 whole entries: `moving-vehicle-operation`, and the two figures the blind second mapping found
 open, `speed-limit` and `cloud-clearance`.
@@ -191,7 +194,10 @@ inspectable instead of inferred.
 `cfr-49-171`, `civil-twilight-alaska` → `air-almanac`. The reason no longer lives in prose,
 and neither entry carries an `ambiguity` block, because neither is ambiguous. The third
 deferral, § 107.39(c) to subpart D, is not an unadmitted corpus at all — it is this corpus,
-out of scope, and it is `subpart-d-categories`.
+out of scope, and it is `subpart-d-categories`. Subpart E is the same kind of boundary, reached
+the other way: a certificate of waiver suspends the rules § 107.205 lists, so `waiver-policy` and
+`waivable-regulations` are `scope: out` entries that 27 in-scope entries name in `suspendedBy`
+([0021](../../docs/decisions/0021-a-gate-outside-the-slice-is-held-by-the-caller.md)).
 
 **Three of twelve was an undercount, and the fourth is the one that mattered.** § 107.3 puts
 "the definitions specified in § 1.1 of this chapter" in force for the whole part, which is a

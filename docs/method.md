@@ -158,8 +158,11 @@ a player's whole turn reaches the throw and everything a throw leads to; the bac
 recorded none of that for `full-table-suspension` through a trial, a build and a review, and
 the omission changed every later throw of a seeded game while passing every legality test.
 
-A stateless corpus will produce none of these, and that is the right outcome rather than an
-oversight. Both Part 107 maps carry neither field on any entry.
+A stateless corpus has no phases, but it can still have gates. A rule it lets a third party
+set aside is one: a Part 107 waiver suspends every regulation § 107.205 lists while it is held.
+Where that rule is outside your slice, name it with a `scope: out` entry. Whether it holds is a
+fact the caller states and the engine never infers
+([0021](decisions/0021-a-gate-outside-the-slice-is-held-by-the-caller.md)).
 
 **Do not classify while walking.** A first pass that is simultaneously deciding value versus
 operation, in scope versus out, produces worse results at both. Enumerate first.

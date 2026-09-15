@@ -1,0 +1,310 @@
+{
+  "about": "Independent verdict (0017) on #61: the waiver entries waiver-policy and waivable-regulations, and the suspendedBy and crossReferences changes to 29 existing entries (docs/decisions/0021). The reviewer was a separate agent context. It was given only: the corpus text of §§ 107.3, 107.25, 107.29, 107.31, 107.33, 107.35, 107.37, 107.39, 107.41, 107.51, 107.145, 107.200 and 107.205; the schema and method docs as they stood before this change (corpus-map.md, method.md, 0003, 0008, 0010, 0011); and a JSON diff of the added and changed entries, with an id/citation index of the rest. It saw the author's reasoning only in the map's own notes, and from round 2 in the author's responses and the decision record. `sha256` is the final map. `verdicts` is the reviewer's final file, unedited. `rounds` keeps the earlier rounds and how each disagreement was resolved.",
+  "sha256": "8778afb96c13375834fd579b87a72cf4e69fb65a8e127ce3975e3f931ab253e3",
+  "reviewer": "independent reviewer, separate context",
+  "read": [
+    "corpus-excerpt.txt",
+    "diff.json",
+    "corpus-map.md",
+    "method.md (lines 130-259 and grep of gate/scope/crossReference passages)",
+    "0003-a-phase-gate-names-a-rule-not-a-condition.md",
+    "0011-a-gate-has-a-direction.md",
+    "0010-whose-fact-it-is-does-not-decide-the-kind.md (lines 40-259)",
+    "0008-recognising-a-delegated-standard-is-a-procedure-not-a-test.md (grep only)",
+    "diff.json (round 2)",
+    "round2/0021-a-gate-outside-the-slice-is-held-by-the-caller.md",
+    "round2/corpus-map.md (diff against round 1)",
+    "round2/method.md (diff against round 1)",
+    "diff.json (round 3)",
+    "round2/0021 (round 3 update, crossReferences passage)",
+    "diff.json (round 4)",
+    "round2/corpus-map-pr100.md (extent and section-designation grammar, lines 70-114)",
+    "round2/0020 vs round2/0021 (diff: title number only)"
+  ],
+  "summary": "Round 1: 30 agree, 5 disagree. Round 2: 34 agree, 1 disagree. Round 3: 35 agree, 0 disagree, one nit. Round 4 (final bytes, after rebasing onto #100): 35 agree, 0 disagree.",
+  "verdicts": [
+    {
+      "entry": "waiver-policy",
+      "verdict": "agree",
+      "citation": "§ 107.200(a) 'any regulation specified in § 107.205'; § 107.205 lead-in 'A certificate of waiver issued pursuant to § 107.200'; 0021 (now provided)",
+      "reason": "The new crossReferences entry 'specified in § 107.205' -> waivable-regulations quotes the evidence verbatim and resolves correctly. The reworded note now matches § 107.205's lead-in, and #61/0021 are verifiable against 0021."
+    },
+    {
+      "entry": "waivable-regulations",
+      "verdict": "agree",
+      "citation": "§ 107.205(a)-(j); § 107.51 lead-in 'must comply with all of the following operating limitations'; corpus-map.md § crossReferences; round2/corpus-map-pr100.md grammar table; round2/0021 §2",
+      "reason": "All twelve crossReferences are unchanged from round 3 and each cites text that appears verbatim in the evidence. 'Section 107.51' -> operating-limitations still holds. Under #100's grammar, 'introductory text' names the lead-in 'and nothing under it', but that lead-in is the sentence that imposes (a)-(d) together ('comply with all of the following'), and no entry in the map cites § 107.51 bare, so it is the section-level target. The reworded note says exactly this, which fixes my round-3 nit. The renumbering to 0021 is consistent: the two records differ only in the title number, and the diff mentions only 0021."
+    },
+    {
+      "entry": "speed-limit",
+      "verdict": "agree",
+      "citation": "§ 107.205(i) 'Section 107.51—Operating limitations for small unmanned aircraft.'",
+      "reason": "Locator § 107.51(a) sits inside § 107.51, which (i) lists whole; suspendedBy is the right direction for a rule a waiver lets a holder deviate from."
+    },
+    {
+      "entry": "altitude-limit",
+      "verdict": "agree",
+      "citation": "§ 107.205(i) 'Section 107.51—Operating limitations for small unmanned aircraft.'",
+      "reason": "§ 107.51(b) is within the listed section; suspendedBy direction correct."
+    },
+    {
+      "entry": "visibility-minimum",
+      "verdict": "agree",
+      "citation": "§ 107.205(i) 'Section 107.51—Operating limitations for small unmanned aircraft.'",
+      "reason": "§ 107.51(c) is within the listed section; suspendedBy direction correct."
+    },
+    {
+      "entry": "cloud-clearance",
+      "verdict": "agree",
+      "citation": "§ 107.205(i) 'Section 107.51—Operating limitations for small unmanned aircraft.'",
+      "reason": "§ 107.51(d) is within the listed section; suspendedBy direction correct."
+    },
+    {
+      "entry": "speed-within-limit",
+      "verdict": "agree",
+      "citation": "§ 107.205(i) 'Section 107.51—Operating limitations for small unmanned aircraft.'",
+      "reason": "§ 107.51(a) is within the listed section; suspendedBy direction correct."
+    },
+    {
+      "entry": "altitude-within-limit",
+      "verdict": "agree",
+      "citation": "§ 107.205(i) 'Section 107.51—Operating limitations for small unmanned aircraft.'",
+      "reason": "§ 107.51(b) is within the listed section; suspendedBy direction correct."
+    },
+    {
+      "entry": "weather-minimums-met",
+      "verdict": "agree",
+      "citation": "§ 107.205(i) 'Section 107.51—Operating limitations for small unmanned aircraft.'",
+      "reason": "§ 107.51(c)-(d) is within the listed section; suspendedBy direction correct."
+    },
+    {
+      "entry": "operating-limitations",
+      "verdict": "agree",
+      "citation": "§ 107.205(i) 'Section 107.51—Operating limitations for small unmanned aircraft.'; round2/corpus-map-pr100.md grammar table '§ 107.51 introductory text'",
+      "reason": "The citation is now '§ 107.51 introductory text' (from #100, already in the base). The lead-in is still part of § 107.51, which (i) lists whole, so the suspendedBy edge holds."
+    },
+    {
+      "entry": "prominent-objects",
+      "verdict": "agree",
+      "citation": "§ 107.205(i) 'Section 107.51—Operating limitations for small unmanned aircraft.'; § 107.51(c) 'For purposes of this section, flight visibility means'",
+      "reason": "The definition sits in § 107.51(c) and serves only that section, so it falls within the listed regulation."
+    },
+    {
+      "entry": "single-aircraft",
+      "verdict": "agree",
+      "citation": "§ 107.205(e) 'Section 107.35—Operation of multiple small unmanned aircraft systems.'",
+      "reason": "§ 107.35 is listed whole and the entry is the whole section."
+    },
+    {
+      "entry": "airspace-authorized",
+      "verdict": "agree",
+      "citation": "§ 107.205(h) 'Section 107.41—Operation in certain airspace.'",
+      "reason": "§ 107.41 is listed whole and the entry is the whole section."
+    },
+    {
+      "entry": "moving-vehicle-operation",
+      "verdict": "agree",
+      "citation": "§ 107.200(d)(1) 'to the extent specified in the certificate of waiver'; round2 corpus-map.md 'Where the caller states the gate holds, the suspended entry answers OutsideCurrentScope'; waivable-regulations note (round 2)",
+      "reason": "Accepted on the evidence. The docs now define a held gate as OutsideCurrentScope, not a compliance verdict, so the edge's overreach past the § 107.205(a) proviso costs a decline rather than a wrong answer, and every waiver is partial under § 107.200(d)(1) anyway. The overreach is now recorded in waivable-regulations' note."
+    },
+    {
+      "entry": "moving-aircraft-operation",
+      "verdict": "agree",
+      "citation": "§ 107.205(a) 'Section 107.25—Operation from a moving vehicle or aircraft.'",
+      "reason": "§ 107.25(a) falls within the listed section, and (a) has no compensation clause for the proviso to bite on."
+    },
+    {
+      "entry": "night-waiver-termination",
+      "verdict": "agree",
+      "citation": "§ 107.29(d) 'The certificates of waiver issued prior to March 16, 2021 under § 107.200'",
+      "reason": "'under § 107.200' now resolves to the § 107.200 entry, which is correct; 'deviation from § 107.29' rightly stays unmapped as a fact about the waiver. No suspendedBy is right because § 107.205 does not list (d). (See the separate omission finding on this entry's note.)"
+    },
+    {
+      "entry": "night-waiver-bar",
+      "verdict": "agree",
+      "citation": "§ 107.29(d) 'in accordance with a certificate of waiver issued prior to April 21, 2021 under § 107.200'",
+      "reason": "The pointer is to § 107.200 and waiver-policy is that section; (d) is not listed in § 107.205, so no gate is right."
+    },
+    {
+      "entry": "civil-twilight-operation",
+      "verdict": "agree",
+      "citation": "§ 107.205(b) 'Section 107.29(a)(2) and (b)'; § 107.29(c) 'For purposes of paragraph (b) of this section'",
+      "reason": "The entry's rule is (b), which is listed; (c) only defines the term (b) uses, so including it does not widen the waiver."
+    },
+    {
+      "entry": "right-of-way",
+      "verdict": "agree",
+      "citation": "§ 107.205(f) 'Section 107.37(a)—Yielding the right of way.'",
+      "reason": "Locator § 107.37(a) is exactly the listed paragraph."
+    },
+    {
+      "entry": "well-clear",
+      "verdict": "agree",
+      "citation": "§ 107.205(f) 'Section 107.37(a)'",
+      "reason": "The span is the second sentence of § 107.37(a), within the listed paragraph."
+    },
+    {
+      "entry": "reasonable-protection",
+      "verdict": "agree",
+      "citation": "§ 107.205(g) 'Section 107.39—Operation over people.'",
+      "reason": "§ 107.39(b) is within the listed section."
+    },
+    {
+      "entry": "over-human-beings",
+      "verdict": "agree",
+      "citation": "§ 107.205(g) 'Section 107.39—Operation over people.'",
+      "reason": "The entry is the whole of § 107.39, which is listed."
+    },
+    {
+      "entry": "direct-participation",
+      "verdict": "agree",
+      "citation": "§ 107.205(g) 'Section 107.39'",
+      "reason": "§ 107.39(a) is within the listed section."
+    },
+    {
+      "entry": "flash-rate-sufficient",
+      "verdict": "agree",
+      "citation": "§ 107.205(b) 'Section 107.29(a)(2) and (b)'",
+      "reason": "The locator § 107.29(a)(2), (b) matches the listed paragraphs exactly."
+    },
+    {
+      "entry": "intensity-reduction-in-interest-of-safety",
+      "verdict": "agree",
+      "citation": "§ 107.205(b) 'Section 107.29(a)(2) and (b)'",
+      "reason": "The sentence appears only in (a)(2) and (b), both listed."
+    },
+    {
+      "entry": "anti-collision-lighting",
+      "verdict": "agree",
+      "citation": "§ 107.205(b) 'Section 107.29(a)(2) and (b)'",
+      "reason": "The locator matches the listed paragraphs exactly."
+    },
+    {
+      "entry": "visual-line-of-sight",
+      "verdict": "agree",
+      "citation": "§ 107.205(c) 'Section 107.31—Visual line of sight aircraft operation.'",
+      "reason": "§ 107.31 is listed whole and § 107.31 has no compensation clause for the (c) proviso to affect."
+    },
+    {
+      "entry": "unaided-visual-contact",
+      "verdict": "agree",
+      "citation": "§ 107.205(c) 'Section 107.31'",
+      "reason": "§ 107.31(a) is within the listed section."
+    },
+    {
+      "entry": "visual-observer-conditions",
+      "verdict": "agree",
+      "citation": "§ 107.205(d) 'Section 107.33—Visual observer.'",
+      "reason": "The entry is § 107.33, which is listed whole."
+    },
+    {
+      "entry": "effective-communication",
+      "verdict": "agree",
+      "citation": "§ 107.205(d) 'Section 107.33'",
+      "reason": "§ 107.33(a) is within the listed section."
+    },
+    {
+      "entry": "observer-coordination",
+      "verdict": "agree",
+      "citation": "§ 107.205(d) 'Section 107.33'",
+      "reason": "§ 107.33(c) is within the listed section."
+    },
+    {
+      "entry": "omission:night-waiver-termination",
+      "verdict": "agree",
+      "citation": "diff.json night-waiver-termination crossReferences before: '... recorded as unmapped rather than given a scope: out entry of its own, which is the weaker of the two answers 0009 allows and is named as such'; 0010 Alternatives",
+      "reason": "Withdrawn. The text 0010 refers to is in the replaced unmapped reason, which the diff's 'before' quotes, and that reason is gone. The entry's current note is not in the review files, so I could not read it directly, but nothing I can see supports a stale note."
+    },
+    {
+      "entry": "omission:night-operation",
+      "verdict": "agree",
+      "citation": "§ 107.205(b) lists '107.29(a)(2) and (b)', not § 107.29(a); § 107.29(a)(1)",
+      "reason": "Leaving it out is correct: a lighting waiver leaves (a)(1)'s training condition in force, and suspending the whole entry would drop that condition. No other unchanged entry (night-training-completed, civil-twilight-window, civil-twilight-alaska, collision-hazard-proximity, restricted-area-permitted, hazardous-material, the § 107.49 entries) falls within any listed paragraph."
+    },
+    {
+      "entry": "omission:subpart-d-categories",
+      "verdict": "agree",
+      "citation": "§ 107.205(j) 'Section 107.145'; waivable-regulations note (round 2) 'subpart D, which subpart-d-categories declines as a whole'",
+      "reason": "No edge is right because only § 107.145 of subpart D is listed, and the round-1 caveat about the (j) note sentence is now corrected."
+    },
+    {
+      "entry": "schema",
+      "verdict": "agree",
+      "citation": "round2/corpus-map.md § dependsOn and 'A gate outside the slice'; round2/method.md Phase 2 l.161; 0021 §§1-4 and Status ('Reverses one rejected alternative of 0010')",
+      "reason": "The four 'no gates in Part 107' statements are amended or recorded as withdrawn. 0021 explicitly reverses 0010's rejection of a § 107.200 entry and defines the runtime reading: the caller states the fact, the engine never infers it, a held gate returns OutsideCurrentScope, and no new row is added, which is consistent with the table and with the ban on edges to absent rules. A small leftover: the 0003 and 0011 files still say Part 107 carries no gates, and only 0021 marks that, not the files themselves."
+    }
+  ],
+  "rounds": [
+    {
+      "round": 1,
+      "sha256": "18e0907fb3a40610d5baec5714f2add52de4e5411e1a9fb9ae417d2af85d4000",
+      "verdicts": [
+        {
+          "entry": "waiver-policy",
+          "verdict": "disagree",
+          "citation": "§ 107.200(a) 'any regulation specified in § 107.205'; corpus-map.md § crossReferences; § 107.205 intro 'A certificate of waiver issued pursuant to § 107.200'",
+          "reason": "Evidence is a verbatim contiguous span of the whole section and kind/scope/status are sound, but the evidence makes a pointer ('specified in § 107.205') and the entry declares no crossReferences, though corpus-map.md requires every reference to be 'an entry, or a recorded reason there is none' and the target (waivable-regulations) now exists. The note also misstates the corpus: it says § 107.205 'is issued pursuant to it', whereas § 107.205 says the certificate of waiver is 'issued pursuant to § 107.200'; and it rests on #61 and 0020, which are not among the docs and cannot be checked."
+        },
+        {
+          "entry": "waivable-regulations",
+          "verdict": "disagree",
+          "citation": "§ 107.205(a)-(j); § 107.200(d)(1) 'May deviate from the regulations of this part to the extent specified in the certificate of waiver'; 0011 § The gates full-table-suspension reaches 'the judgement for each entry that names it is in that entry's note'; corpus-map.md § dependsOn 'each with the judgement in its note'; method.md Phase 3 'A fact is a value: ... a list of conditions'",
+          "reason": "Evidence is verbatim and the paragraph-by-paragraph edge list is accurate, but (1) crossReferences resolves only 'pursuant to § 107.200' and leaves the ten 'Section 107.xx' pointers unanswered, including (j) § 107.145, which needs an unmapped reason rather than prose in note; (2) the note deliberately records the per-entry judgement 'here, once', contrary to 0011 and corpus-map.md, which put it in each gated entry's note. (3) § 107.205 only bounds what a certificate 'may authorize'; the rule that makes a regulation inapplicable to a holder is § 107.200(d)(1), and only 'to the extent specified', so this entry is not the rule that 'holds' as a gate, and as a list it reads as a value, not an operation."
+        },
+        {
+          "entry": "moving-vehicle-operation",
+          "verdict": "disagree",
+          "citation": "§ 107.205(a) 'However, no waiver of this provision will be issued to allow the carriage of property of another by aircraft for compensation or hire'; § 107.25(b) 'is not transporting another person's property for compensation or hire'",
+          "reason": "§ 107.25 is listed, but an unconditional whole-entry suspendedBy edge also switches off (b)'s compensation-or-hire condition, which the proviso in § 107.205(a) says no waiver will reach. The note dismisses the proviso as bounding only the Administrator, but here it bounds exactly a clause of this entry's own evidence, so the edge overstates the waiver's reach; at minimum this entry's note must say so."
+        },
+        {
+          "entry": "omission:night-waiver-termination",
+          "verdict": "disagree",
+          "citation": "0010 § Alternatives 'The reference is recorded as unmapped with a reason ... and night-waiver-termination's note says so'",
+          "reason": "Per 0010 this entry's note explains that § 107.200 was left unmapped rather than given an out-of-scope entry; the change resolves that pointer to waiver-policy but lists no change to the note, so the note now contradicts the entry's own crossReferences."
+        },
+        {
+          "entry": "schema",
+          "verdict": "disagree",
+          "citation": "corpus-map.md § dependsOn 'both Part 107 maps carry neither gate field on any entry'; method.md Phase 2 'Both Part 107 maps carry neither field on any entry'; 0003 Consequences; 0011 Consequences 'which remains the right outcome for a corpus with no phases'; corpus-map.md correspondence row 1; 0010 Alternatives 'Add a § 107.200 entry while there. Rejected as scope creep.'",
+          "reason": "No doc forbids an out-of-scope gate target: only an absentFrom target is forbidden. But the change contradicts four standing doc statements that Part 107 carries no gates, and it reverses 0010's rejection of a § 107.200 entry, with no amending record among the docs (0020 is cited but not provided). It also leaves the runtime meaning undefined: 0003 says 'the condition belongs to the engine', while row 1 says an out-of-scope rule returns OutsideCurrentScope, so the engine cannot evaluate the gate, and the note's 'the caller states' it has no schema carrier."
+        }
+      ],
+      "resolutions": {
+        "waiver-policy": "Adopted: crossReferences 'specified in § 107.205' -> waivable-regulations, and the note now says a certificate is issued pursuant to § 107.200.",
+        "waivable-regulations": "(1) Kept in round 2, adopted in round 3: every 'Section 107.xx' item is declared. (2) Not adopted: the per-entry judgement stays once, in the gate's note and the decision record, not in 27 notes. corpus-map.md's 'each with the judgement in its note' describes the backgammon map; it does not state a rule. (3) Not adopted: the gate stays § 107.205, because the list decides which rules a waiver reaches, and it depends on § 107.200. The reviewer agreed with (2) and (3) in round 2.",
+        "moving-vehicle-operation": "Not changed; reasoning added to waivable-regulations' note. § 107.200(d)(1) makes every waiver partial. While a waiver is stated to be held, the entry answers OutsideCurrentScope rather than a verdict, so the overreach past § 107.205(a)'s proviso costs a decline, not a wrong answer. The reviewer agreed in round 2.",
+        "omission:night-waiver-termination": "Disputed on evidence: the entry's note never mentioned the § 107.200 reference. The 'weaker of the two answers' text was in the crossReferences unmapped reason, which this change replaced. The reviewer withdrew the finding in round 2.",
+        "schema": "The 'Part 107 carries no gates' statements are amended in corpus-map.md and method.md. The decision record (then numbered 0020, now 0021) reverses 0010's rejected alternative and defines the runtime meaning. The reviewer agreed in round 2."
+      }
+    },
+    {
+      "round": 2,
+      "sha256": "99ae466b6ffabc207be32543c89e467c44889ee5a62d0a71bd039ab7b7006b29",
+      "verdicts": [
+        {
+          "entry": "waivable-regulations",
+          "verdict": "disagree",
+          "citation": "diff.json crossReferences [{'cites':'pursuant to § 107.200'},{'cites':'Section 107.145'}]; evidence '(a) Section 107.25— ... (i) Section 107.51—'; corpus-map.md § crossReferences 'resolved by exactly one of resolvedBy ... or unmapped (a reason there is none)'",
+          "reason": "(b) and (c) are resolved: 0020 §2 is an accepted record that puts the per-paragraph judgement in this note and names § 107.205 as the gate, and its reasoning holds. What remains is (a), which is inconsistent. 'Section 107.145' is declared as a pointer, but the identically formed 'Section 107.25' through 'Section 107.51' are said not to be pointers. The claim that one resolvedBy cannot hold several targets does not excuse the gap either, because corpus-map.md's other arm, 'unmapped' with a reason (e.g. 'answered by suspendedBy on moving-vehicle-operation, moving-aircraft-operation'), holds exactly that; the answer sits only in note prose, the carrier 0009 replaced."
+        }
+      ],
+      "resolutions": {
+        "waivable-regulations": "Adopted: the nine remaining 'Section 107.xx' items are declared with resolvedBy, with 107.25 declared twice. The reviewer agreed in round 3."
+      }
+    },
+    {
+      "round": 3,
+      "sha256": "d2c296d6b663fd67f349e9ada338366e8c8b8ec41314c23603f00c2bf594d561",
+      "verdicts": [],
+      "resolutions": {
+        "waivable-regulations (nit)": "Every item was agreed, with one nit: the note said each pointer resolves to the entry that 'states the listed regulation whole', but operating-limitations quotes only § 107.51's lead-in. The note was reworded in round 4."
+      }
+    },
+    {
+      "round": 4,
+      "sha256": "8778afb96c13375834fd579b87a72cf4e69fb65a8e127ce3975e3f931ab253e3",
+      "note": "Rebased onto #100 (map sha256 75ecd225…), which added `extent` and cited operating-limitations as '§ 107.51 introductory text'. The decision record was renumbered from 0020 to 0021 because #100 took 0020, and both new entries' notes changed to match. Where an earlier round's verdict says '0020', read the record now numbered 0021. This round's verdicts are `verdicts` above."
+    }
+  ]
+}
