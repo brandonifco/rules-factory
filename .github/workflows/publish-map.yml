@@ -46,7 +46,6 @@ jobs:
     timeout-minutes: 10
     permissions:
       contents: read
-      issues: read
     outputs:
       map: ${{ steps.tag.outputs.map }}
       sha256: ${{ steps.pack.outputs.sha256 }}
@@ -90,8 +89,10 @@ jobs:
       - name: Validate
         run: ./scripts/validate.sh
         env:
-          # Read-only: check-status-issues.py reads issue states, and nothing else uses it.
-          GH_TOKEN: ${{ github.token }}
+          # The README is not what this workflow publishes, so a README sentence citing an issue
+          # closed since is not a reason to hold a map back. Pull requests and main still run
+          # check-status-issues.py for real; here it says NOT CHECKED.
+          RULES_FACTORY_OFFLINE: '1'
 
       # The gate proper for this map. pack-map.py checks the tag against map-package.json,
       # runs check-map.py --phase publish and the locator checker, and writes nothing if any
