@@ -946,9 +946,11 @@ def player_count_evidence():
 # decision 0029, #157). What is proved here and cannot be proved in tools/tests: the entry packet
 # resolving the map package through MSBuild -- the path a real agent takes, and the one the unit
 # tests skip by passing --package-map -- and the guard refusing a commit in a produced engine's own
-# checkout. The rails' own logic (the verdict invalidated by a new head commit, the chain read from
-# the policy, the pull request contract) is proved in tools/tests/test_factory_rails.py against
-# this same output, and is not restated here: a second definition would be one more thing to drift.
+# checkout. Then the four behaviours #157 names, run as the produced engine's own files with a
+# stand-in for GitHub: the pull request contract, the verdict tied to the head commit, the
+# independent-risk issue, and the provider chain as configuration. tools/tests/test_factory_rails.py
+# proves the same logic in depth; what only this can prove is that it holds in what an engine
+# actually receives, after produce has written it -- not in the recipe copies the tests read.
 def the_rails_run_in_a_produced_engine(r):
     step("the rails a produced engine ships with run in it")
     # In a copy, which is then restored: the packet asks MSBuild where the map package is, and MSBuild
@@ -963,6 +965,11 @@ def the_rails_run_in_a_produced_engine(r):
     the_entry_packet_resolves_through_msbuild(r, railed)
     the_doctor_names_the_remote_half_unexamined(r, railed)
     the_guard_refuses_a_primary_checkout_commit(r, railed)
+    github = FakeGitHub(r.s("fake-gh"))
+    a_malformed_pull_request_is_refused_by_the_contract(r, railed, github)
+    a_verdict_at_one_commit_does_not_pass_another(r, railed, github)
+    an_independent_risk_issue_needs_more_than_the_semantic_verdict(r, railed, github)
+    swapping_the_provider_chain_is_an_edit_to_the_policy_alone(r, railed, github)
 
 
 # The packet, with no --package-map: it asks MSBuild where the restore put the map, as the gate does.
@@ -1032,6 +1039,303 @@ def the_guard_refuses_a_primary_checkout_commit(r, railed):
         cat(log)
         fail("the documented escape hatch did not lift the guard")
     ok("the guard refuses a commit in the primary checkout, and the documented hatch lifts it")
+
+
+# A stand-in for `gh`, answering exactly the calls the emitted rails make and nothing else. The
+# state -- pull requests, issues, the repository name and the commit statuses -- is one JSON file
+# the checks below rewrite. A call it does not know, or a --json field the state does not hold, is
+# an error rather than an empty answer: a rail whose `gh` call changed must fail these checks, not
+# be fed a None it happens to tolerate.
+FAKE_GH = r'''#!/usr/bin/env python3
+import json, os, sys
+
+path = os.environ["VALIDATE_ENGINE_FAKE_GH_STATE"]
+with open(path, encoding="utf-8") as handle:
+    state = json.load(handle)
+argv = sys.argv[1:]
+
+
+def refuse(why):
+    sys.stderr.write(f"fake gh: {why}: gh {' '.join(argv)}\n")
+    sys.exit(2)
+
+
+def answer(record):
+    if "--json" not in argv:
+        refuse("no --json")
+    wanted = argv[argv.index("--json") + 1].split(",")
+    missing = [field for field in wanted if field not in record]
+    if missing:
+        refuse(f"no {', '.join(missing)} in the state")
+    print(json.dumps({field: record[field] for field in wanted}))
+
+
+if argv[:2] in (["pr", "view"], ["issue", "view"]) and len(argv) > 2:
+    record = state["pulls" if argv[0] == "pr" else "issues"].get(argv[2])
+    if record is None:
+        refuse(f"no {argv[0]} {argv[2]}")
+    answer(record)
+elif argv[:2] == ["repo", "view"]:
+    answer({"nameWithOwner": state["repository"]})
+elif argv[:1] == ["api"] and len(argv) > 1:
+    prefix = f"repos/{state['repository']}/"
+    route = argv[1]
+    if route.startswith(prefix + "statuses/") and argv[2:4] == ["-X", "POST"]:
+        fields = dict(argv[i + 1].split("=", 1) for i in range(len(argv) - 1) if argv[i] == "-f")
+        sha = route[len(prefix + "statuses/"):]
+        # Newest first, as GitHub's combined status lists them.
+        state["statuses"].setdefault(sha, []).insert(0, {"context": fields["context"], "state": fields["state"]})
+        with open(path, "w", encoding="utf-8") as handle:
+            json.dump(state, handle, indent=2)
+        print("{}")
+    elif route.startswith(prefix + "commits/") and route.endswith("/status"):
+        sha = route[len(prefix + "commits/"):-len("/status")]
+        print(json.dumps({"sha": sha, "statuses": state["statuses"].get(sha, [])}))
+    else:
+        refuse("an api route the rails do not call")
+else:
+    refuse("a command the rails do not call")
+'''
+
+PR = "5"
+ISSUE = 27
+COMMIT_A = "a" * 40
+COMMIT_B = "b" * 40
+
+# A pull request filled the way the emitted template asks: every section, one `Closes`, a command
+# and its output, a mutation, and who implemented and reviewed. If the contract rejects this, the
+# rejection of the malformed body below proves nothing about the body.
+WELL_FORMED_PR_BODY = f"""## Linked issue
+
+Closes #{ISSUE}
+
+## Exact behavioural claim
+
+`PlayerCount` answers two, citing the corpus, where it declined before.
+
+## Scope, and what this deliberately does not do
+
+Only the player count. No other entry is touched.
+
+## Map and rules conformance
+
+- entry id(s): player-count
+- map package and version: the package this engine was produced from
+- source locator(s): the locator the entry packet names
+- owner's rulings used, if any: none
+
+## Tests and evidence
+
+```
+$ ./scripts/validate.sh full
+ok   test Release
+validate.sh full: PASS
+```
+
+Mutations observed: `PlayerCount_IsTwo` fails with the mutation "answer three" (observed).
+
+## Determinism
+
+Nothing here reads the machine.
+
+## Decisions and trade-offs
+
+None beyond the entry's own evidence.
+
+## Known limitations and unresolved behaviour
+
+None.
+
+## Agent provenance
+
+- implemented by: engine-dev
+- structurally reviewed by: repo-steward
+- semantically reviewed by: rules-conformance
+- independently reviewed by: not required
+
+## Unrelated changes
+
+None
+"""
+
+
+class FakeGitHub:
+    """The stand-in's script and state, and the rails run against it in a produced engine."""
+
+    def __init__(self, directory):
+        os.makedirs(directory, exist_ok=True)
+        self.script = os.path.join(directory, "gh")
+        self.state = os.path.join(directory, "state.json")
+        write(self.script, FAKE_GH)
+        os.chmod(self.script, 0o755)
+
+    def serve(self, railed, head, labels, body=WELL_FORMED_PR_BODY):
+        """One open pull request at `head`, touching the semantic surface, closing one issue with `labels`.
+
+        The commit statuses start empty: each check records its own verdicts through record-verdict.py."""
+        document = {
+            "repository": "owner/engine",
+            "pulls": {PR: {"number": int(PR), "title": "Implement the player count", "body": body, "state": "OPEN",
+                           "headRefOid": head, "files": [{"path": f"src/{NAME}/Rules/PlayerCount.cs"}],
+                           "closingIssuesReferences": [{"number": ISSUE}]}},
+            "issues": {str(ISSUE): {"number": ISSUE, "state": "OPEN", "labels": [{"name": name} for name in labels]}},
+            "statuses": {},
+        }
+        write(self.state, json.dumps(document, indent=2))
+
+    def move_head(self, head):
+        """A further commit pushed to the pull request: the statuses stay on the commits they were recorded at."""
+        with open(self.state, encoding="utf-8") as handle:
+            document = json.load(handle)
+        document["pulls"][PR]["headRefOid"] = head
+        write(self.state, json.dumps(document, indent=2))
+
+    def tool(self, railed, log, *command):
+        """An emitted rail, run in the produced engine against the stand-in; its exit code, its output in `log`."""
+        env = dict(os.environ, RULES_ENGINE_GH=self.script, VALIDATE_ENGINE_FAKE_GH_STATE=self.state)
+        return run_to(log, [PYTHON, *command], cwd=railed, env=env, both=True)
+
+    def record(self, railed, log, reviewer):
+        if self.tool(railed, log, "tools/record-verdict.py", "--pr", PR, "--reviewer", reviewer, "--verdict", "pass") != 0:
+            cat(log)
+            fail(f"tools/record-verdict.py could not record a pass by {reviewer} in a produced engine")
+
+    def gate(self, railed, log):
+        return self.tool(railed, log, "tools/conformance-gate.py", PR)
+
+
+def railed_policy(railed):
+    with open(os.path.join(railed, ".github", "agent-policy.json"), encoding="utf-8") as handle:
+        return json.load(handle)
+
+
+def ready(policy, risk):
+    """An issue's labels: the policy's ready state, and its `risk` label -- by the policy's names, not by literals."""
+    return [policy["labels"]["ready"], policy["labels"][risk]]
+
+
+# The pull request contract (#157): the engine's own template, opened and left as it is, is refused
+# by the engine's own tools/pr-policy.py, which names what is missing. The well-formed body is
+# accepted first, against the same issue and the same stand-in, so the refusal is about the body.
+def a_malformed_pull_request_is_refused_by_the_contract(r, railed, github):
+    policy = railed_policy(railed)
+    log = r.s("pr-policy.log")
+    github.serve(railed, COMMIT_A, ready(policy, "normalRisk"))
+    if github.tool(railed, log, "tools/pr-policy.py", PR) != 0 or not grep_fixed(log, "satisfies the contract"):
+        cat(log)
+        fail("tools/pr-policy.py refused a well-formed pull request, so its refusals prove nothing")
+    with open(os.path.join(railed, ".github", "pull_request_template.md"), encoding="utf-8") as handle:
+        template = handle.read()
+    github.serve(railed, COMMIT_A, ready(policy, "normalRisk"), body=template)
+    if github.tool(railed, log, "tools/pr-policy.py", PR) != 1:
+        cat(log)
+        fail("tools/pr-policy.py did not refuse a pull request body left as the template")
+    for text, message in (("does not satisfy the contract", "tools/pr-policy.py exited 1 without refusing the contract"),
+                          ("no `Closes #<n>`", "tools/pr-policy.py did not name the missing `Closes #<n>`"),
+                          ("`## Exact behavioural claim` is empty", "tools/pr-policy.py did not name the empty sections")):
+        if not grep_fixed(log, text):
+            cat(log)
+            fail(message)
+    ok("tools/pr-policy.py refuses the template left unfilled, naming what is missing, and accepts it filled")
+
+
+# A verdict is on the bytes somebody read (#157). Recorded by the engine's record-verdict.py at the
+# head A, it satisfies the engine's conformance-gate.py at A; one more commit moves the head to B,
+# the status stays on A, and the same gate now blocks -- with nothing having had to notice.
+def a_verdict_at_one_commit_does_not_pass_another(r, railed, github):
+    policy = railed_policy(railed)
+    log = r.s("verdict-at-sha.log")
+    github.serve(railed, COMMIT_A, ready(policy, "normalRisk"))
+    github.record(railed, log, "semantic")
+    if github.gate(railed, log) != 0:
+        cat(log)
+        fail(f"a semantic verdict recorded at the head {COMMIT_A[:12]} did not satisfy the gate there")
+    github.move_head(COMMIT_B)
+    if github.gate(railed, log) != 1:
+        cat(log)
+        fail(f"a verdict recorded at {COMMIT_A[:12]} satisfied the gate with the head at {COMMIT_B[:12]}")
+    if not grep_fixed(log, f"{policy['review']['semanticContext']} is not recorded as a success at {COMMIT_B[:12]}"):
+        cat(log)
+        fail("the gate blocked a moved head for some other reason than the missing verdict at the new head")
+    ok("a verdict recorded at one commit satisfies tools/conformance-gate.py there, and not at the next")
+
+
+# An issue the policy labels for independent review (#157): the semantic verdict alone does not
+# satisfy the gate, and a success from the first link of the configured chain then does.
+def an_independent_risk_issue_needs_more_than_the_semantic_verdict(r, railed, github):
+    policy = railed_policy(railed)
+    chain = policy["review"]["independentFallback"]
+    log = r.s("independent-risk.log")
+    github.serve(railed, COMMIT_A, ready(policy, "independentRisk"))
+    github.record(railed, log, "semantic")
+    if github.gate(railed, log) != 1:
+        cat(log)
+        fail(f"an issue labelled {policy['labels']['independentRisk']} passed the gate on the semantic verdict alone")
+    if not grep_fixed(log, f"one of {' or '.join(link['context'] for link in chain)} must also be recorded as a success"):
+        cat(log)
+        fail("the gate blocked an independent-risk issue without naming the independent chain it needs")
+    github.record(railed, log, chain[0]["id"])
+    if github.gate(railed, log) != 0:
+        cat(log)
+        fail(f"an independent verdict at {chain[0]['context']} did not satisfy the gate beside the semantic one")
+    ok("an independent-risk issue is not satisfied by the semantic verdict alone, and is with the chain's")
+
+
+def tree_hashes(directory):
+    """relative path -> sha256, for every file under `directory` but .git."""
+    found = {}
+    for parent, directories, files in os.walk(directory):
+        directories[:] = [d for d in directories if not (parent == directory and d == ".git")]
+        for name in files:
+            path = os.path.join(parent, name)
+            if not os.path.islink(path):
+                found[os.path.relpath(path, directory)] = sha256(path)
+    return found
+
+
+# The provider chain is configuration (decision 0029, #157). Swapping it is an edit to
+# .github/agent-policy.json and to nothing else: every other file in the engine hashes the same
+# after, and the engine's own record-verdict.py and conformance-gate.py read the new chain -- the old
+# ids are no longer reviewers, an old context's success no longer satisfies the gate, and the new
+# one does.
+def swapping_the_provider_chain_is_an_edit_to_the_policy_alone(r, railed, github):
+    policy_path = os.path.join(railed, ".github", "agent-policy.json")
+    policy = railed_policy(railed)
+    old = policy["review"]["independentFallback"]
+    new = [{"id": "swapped-first", "context": "rules-verdict/swapped-first"},
+           {"id": "swapped-second", "context": "rules-verdict/swapped-second"}]
+    if {link["id"] for link in old} & {link["id"] for link in new} or {link["context"] for link in old} & {link["context"] for link in new}:
+        fail("the swapped chain shares an id or a context with the emitted one, so the swap would prove nothing")
+    before = tree_hashes(railed)
+    policy["review"]["independentFallback"] = new
+    write(policy_path, json.dumps(policy, indent=2) + "\n")
+    after = tree_hashes(railed)
+    changed = sorted(path for path in before.keys() | after.keys() if before.get(path) != after.get(path))
+    if changed != [os.path.join(".github", "agent-policy.json")]:
+        fail(f"swapping the provider chain changed {', '.join(changed) or 'nothing'}, not .github/agent-policy.json alone")
+
+    log = r.s("provider-swap.log")
+    github.serve(railed, COMMIT_A, ready(policy, "independentRisk"))
+    if github.tool(railed, log, "tools/record-verdict.py", "--pr", PR, "--reviewer", old[0]["id"], "--verdict", "pass") != 1:
+        cat(log)
+        fail(f"tools/record-verdict.py still records for {old[0]['id']}, which the swapped policy no longer names")
+    github.record(railed, log, "semantic")
+    # The old chain's context, recorded as a success at the head as though the rail had never changed.
+    with open(github.state, encoding="utf-8") as handle:
+        document = json.load(handle)
+    document["statuses"][COMMIT_A].insert(0, {"context": old[0]["context"], "state": "success"})
+    write(github.state, json.dumps(document, indent=2))
+    if github.gate(railed, log) != 1:
+        cat(log)
+        fail(f"a success at {old[0]['context']}, dropped from the chain, still satisfied tools/conformance-gate.py")
+    if not grep_fixed(log, f"one of {' or '.join(link['context'] for link in new)} must also be recorded"):
+        cat(log)
+        fail("tools/conformance-gate.py did not name the swapped chain's contexts; it is not reading the policy")
+    github.record(railed, log, new[0]["id"])
+    if github.gate(railed, log) != 0:
+        cat(log)
+        fail(f"a success at the swapped chain's {new[0]['context']} did not satisfy tools/conformance-gate.py")
+    ok("swapping the provider chain edits .github/agent-policy.json alone, and the gate requires the new contexts")
 
 
 AMBIENT_CLOCK = """\
