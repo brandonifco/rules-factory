@@ -5,6 +5,10 @@ run on 2026-09-15 under [RUNBOOK.md](RUNBOOK.md) and judged by the conditions
 [EQUIVALENCE.md](EQUIVALENCE.md) sets. This file is A3: the published evidence criterion 1 is ticked
 from.
 
+Criterion 1 is the one Brandon redefined on 2026-09-15 (TARGET.json `criterion`): a blind rebuild of
+`hoyle-backgammon`, replacing "rebuild deckard from the licensed SR6 corpus", which was dropped when
+PR #143 was closed. Issue #3's checkbox still carries the old wording.
+
 **Result: PASS, "blind, with a written interface". 560 of 560 cases. P1 to P5 all met.**
 
 | | |
@@ -224,6 +228,16 @@ and a method named as a sentence asserting what the corpus says. Two implementer
 convention over the same map entries land on the same names. Two method names out of the target's 189
 converged, and four class names out of its hand-written classes. Nothing in the transcript shows the
 implementer reading a name; every occurrence is it writing one.
+
+They are also **not** among the brief's nine pinned disclosures (H5) — the three method names and six
+class names the published map package and the verbatim engine project file carry, which could not be
+redacted because those files are pinned by hash. Those nine are
+`A_blocked_forward_move_bears_off_from_the_highest_point_men_still_above_it`,
+`A_point_held_by_the_entering_players_own_men_does_not_make_the_table_full`,
+`Entry_is_permitted_on_a_point_the_entering_players_own_men_hold`, `BearingOffDetailTests`,
+`EnterFromBarTests`, `FullTableSuspensionTests`, `GameValueTests`, `WholeThrowTests` and
+`CitationTests`. None of them overlaps the six the search flagged, and none of them is flagged, so the
+convergence is genuine convergence and not a disclosure being echoed back.
 
 **Independent checks by the operator, beyond the script.** The implementer's transcript was audited
 directly:
