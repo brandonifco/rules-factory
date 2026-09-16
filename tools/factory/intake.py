@@ -40,6 +40,13 @@ which chose that package by exact version and lock-file hash. The factory has ch
 yet when it opens a package, so running what the package names would hand the package the
 privileges of whoever runs the factory before a single claim in it had been checked.
 
+**Nothing is read without a limit (#187).** All six checks above run on bytes intake already
+holds, so the size of what it takes in is the one thing it must decide before it has verified
+anything. A download is streamed to disk under `MAX_PACKAGE_BYTES` and hashed as it streams; a
+member is refused unread when it declares more than `MAX_MEMBER_BYTES` or a compression ratio
+over `MAX_COMPRESSION_RATIO`. The package the operator names is theirs, so this is about not
+exhausting their machine, not about trust.
+
 What intake cannot do: tell whether the map is *right* about the corpus (the publish gate's
 locator checkers and review did that), or whether a newer version of the package exists.
 
@@ -115,6 +122,30 @@ _checker_module = None
 PACKAGE_REF = re.compile(r"^(?P<id>[A-Za-z0-9_.-]+)@(?P<version>[0-9A-Za-z.+-]+)$")
 THIS_DIR = "$(MSBuildThisFileDirectory)"
 
+# How much of a package intake will take in before it has verified anything (#187). Every check
+# below -- the digest, the props, the schema version, the consumer phase -- happens after the
+# bytes are already here, so a package or a mirror that is hostile or merely broken could
+# exhaust memory or disk before a single claim in it had been read. These bound that window.
+#
+# The numbers are sized off what a map package this factory builds actually weighs, with room
+# for maps far larger than any written yet. Packing examples/ today:
+#
+#   srd-52-combat  235 KB, largest member map/corpus-map.json at 108 KB
+#   faa-part-107   205 KB, largest member tools/check-map.py  at 105 KB
+#   hoyle-backgammon 185 KB, same checker
+#
+# and every member deflates by at most 5.1x (the maps; the checker 3.7x, the XML and props under
+# 3x). pack-map.py stores rather than deflates, so packages built here sit at ratio 1.0; a
+# package repacked by another tool will not.
+#
+# They are constants, not options. This is a refusal boundary, and a limit an operator can raise
+# is one an attacker's README can tell them to raise ("if intake refuses, set the cap higher").
+# A real map that outgrows these wants a considered change here, not a flag at the call site.
+MAX_PACKAGE_BYTES = 64 * 1024 * 1024      # ~280x the largest package this factory builds
+MAX_MEMBER_BYTES = 8 * 1024 * 1024        # ~75x the largest member; a map is JSON, not media
+MAX_COMPRESSION_RATIO = 100               # real members reach 5.1x; a zip bomb reaches 1000x
+DOWNLOAD_CHUNK = 1024 * 1024
+
 
 class Refused(Exception):
     """Intake did not pass. Nothing is produced."""
@@ -143,10 +174,48 @@ def _global_packages_folder():
     return os.environ.get("NUGET_PACKAGES") or os.path.join(os.path.expanduser("~"), ".nuget", "packages")
 
 
+def sha256_of_file(path):
+    """The file's SHA-256, read a chunk at a time: a .nupkg is never held whole in memory."""
+    digest = hashlib.sha256()
+    with open(path, "rb") as handle:
+        for chunk in iter(lambda: handle.read(DOWNLOAD_CHUNK), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
+
+
+def _download(url, target):
+    """Stream `url` to `target`, hashing as it goes; refuse past MAX_PACKAGE_BYTES (#187).
+
+    Hashed while streaming rather than re-read afterwards, and capped while streaming rather
+    than checked afterwards: by the time a whole `response.read()` had returned, the memory or
+    the disk is already spent. What is written before the cap is reached is removed, so a
+    refusal leaves no half a package behind for anything else to pick up.
+    """
+    digest, total = hashlib.sha256(), 0
+    try:
+        with urllib.request.urlopen(url, timeout=60) as response, open(target, "wb") as handle:
+            for chunk in iter(lambda: response.read(DOWNLOAD_CHUNK), b""):
+                total += len(chunk)
+                if total > MAX_PACKAGE_BYTES:
+                    raise Refused(f"{url} is larger than {MAX_PACKAGE_BYTES} bytes, the most intake will "
+                                  f"download; nothing in a package is verified until it is here, so the "
+                                  f"download is stopped and the partial file removed")
+                digest.update(chunk)
+                handle.write(chunk)
+    except BaseException as error:
+        with contextlib.suppress(OSError):
+            os.remove(target)
+        if isinstance(error, OSError):
+            raise Usage(f"cannot fetch {url}: {error}")
+        raise
+    return digest.hexdigest()
+
+
 def resolve_package(spec, download_dir, log=None):
-    """A `.nupkg` path for `spec`: a file path, or `Id@Version` from the NuGet cache or nuget.org."""
+    """(`.nupkg` path, its SHA-256) for `spec`: a file path, or `Id@Version` from the cache or nuget.org."""
     if os.path.isfile(spec):
-        return os.path.abspath(spec)
+        path = os.path.abspath(spec)
+        return path, sha256_of_file(path)
     match = PACKAGE_REF.match(spec)
     if not match:
         raise Usage(f"--package {spec!r} is neither a .nupkg file nor Id@Version")
@@ -155,16 +224,11 @@ def resolve_package(spec, download_dir, log=None):
     cached = os.path.join(_global_packages_folder(), lower_id, version, name)
     if os.path.isfile(cached):
         _note(log, f"package {spec} from the NuGet global packages folder: {cached}")
-        return cached
+        return cached, sha256_of_file(cached)
     url = f"{FLAT_CONTAINER}/{lower_id}/{version}/{name}"
     target = os.path.join(download_dir, name)
     _note(log, f"package {spec} from {url}")
-    try:
-        with urllib.request.urlopen(url, timeout=60) as response, open(target, "wb") as handle:
-            handle.write(response.read())
-    except OSError as error:
-        raise Usage(f"cannot fetch {url}: {error}")
-    return target
+    return target, _download(url, target)
 
 
 # --- reading the package -----------------------------------------------------------------
@@ -180,6 +244,47 @@ def _props_path(ref):
     return joined.replace(os.sep, "/")
 
 
+def _read_member(archive, name):
+    """One member's bytes, refusing an oversized or over-compressed one *before* reading it (#187).
+
+    This runs on every member intake reads, whatever the package's provenance: a downloaded one
+    is capped on the way in, but one named on the command line or taken from the NuGet cache is
+    not, and either can carry a member that decompresses to more memory than the machine has.
+
+    Two checks, then the read:
+
+      * the declared uncompressed size, against MAX_MEMBER_BYTES;
+      * the declared ratio, against MAX_COMPRESSION_RATIO -- a member can sit under the size cap
+        and still be a bomb relative to the bytes intake paid for it.
+
+    Both read the archive's own declarations, which the package controls, so checking them looks
+    like trusting the attacker. What makes it sound is the reader underneath: `ZipFile.open`
+    stops at the declared `file_size` and verifies the member's CRC-32, so a member that declares
+    less than it holds does not hand back the extra -- it fails, and that failure is a refusal
+    here rather than a traceback. A declaration can therefore only be an *over*statement, and an
+    overstatement is refused above. The read is still asked for one byte past the declared size
+    and checked, so the bound is stated here and does not rest on that reader's internals.
+    """
+    info = archive.getinfo(name)
+    if info.file_size > MAX_MEMBER_BYTES:
+        raise Refused(f"{name} declares {info.file_size} uncompressed bytes, over the {MAX_MEMBER_BYTES} "
+                      f"a package member may be; it is refused unread")
+    ratio = info.file_size / info.compress_size if info.compress_size else info.file_size
+    if ratio > MAX_COMPRESSION_RATIO:
+        raise Refused(f"{name} declares {info.file_size} bytes from {info.compress_size} compressed, a ratio "
+                      f"of {ratio:.0f} over the {MAX_COMPRESSION_RATIO} a package member may be; it is "
+                      f"refused unread")
+    try:
+        with archive.open(name) as member:
+            data = member.read(info.file_size + 1)
+    except (OSError, zipfile.BadZipFile) as error:
+        raise Refused(f"{name} cannot be read as the {info.file_size} bytes it declares: {error}")
+    if len(data) > info.file_size:
+        raise Refused(f"{name} decompresses to more than the {info.file_size} bytes it declares; the size "
+                      f"intake checked was not the size the member has")
+    return data
+
+
 def read_package(nupkg):
     try:
         archive = zipfile.ZipFile(nupkg)
@@ -190,7 +295,7 @@ def read_package(nupkg):
         nuspecs = [n for n in names if "/" not in n and n.endswith(".nuspec")]
         if len(nuspecs) != 1:
             raise Refused(f"{nupkg}: expected one root .nuspec, found {sorted(nuspecs) or 'none'}")
-        metadata = ET.fromstring(archive.read(nuspecs[0])).find("{*}metadata")
+        metadata = ET.fromstring(_read_member(archive, nuspecs[0])).find("{*}metadata")
         package_id = metadata.findtext("{*}id") if metadata is not None else None
         version = metadata.findtext("{*}version") if metadata is not None else None
         if not package_id or not version:
@@ -202,7 +307,7 @@ def read_package(nupkg):
         if not props:
             raise Refused(f"{package_id} {version} has no {props_name}, so it declares no "
                           f"RulesFactoryMap item and is not a map package (0015)")
-        items = [e for e in ET.fromstring(archive.read(props[0])).iter() if e.tag.endswith("RulesFactoryMap")]
+        items = [e for e in ET.fromstring(_read_member(archive, props[0])).iter() if e.tag.endswith("RulesFactoryMap")]
         if len(items) != 1:
             raise Refused(f"{props_name} declares {len(items)} RulesFactoryMap items; a map package declares one")
         item = items[0].attrib
@@ -220,7 +325,7 @@ def read_package(nupkg):
                 what = ("the consumer-phase checker (#51), so an engine built on it could not run the "
                         "checks its own overlay can change" if label == "checker" else f"its {label}")
                 raise Refused(f"{package_id} {version} names {path} as {what}, and the package does not contain it")
-            parts[label] = (path, archive.read(path))
+            parts[label] = (path, _read_member(archive, path))
     return package_id, version, parts
 
 
@@ -384,10 +489,8 @@ def run_consumer_checks(parts, log=None):
 
 def intake(package_spec, corpus_path, log=None):
     with tempfile.TemporaryDirectory(prefix="factory-download-") as downloads:
-        nupkg = resolve_package(package_spec, downloads, log)
+        nupkg, nupkg_sha256 = resolve_package(package_spec, downloads, log)
         package_id, version, parts = read_package(nupkg)
-        with open(nupkg, "rb") as handle:
-            nupkg_sha256 = hashlib.sha256(handle.read()).hexdigest()
     _note(log, f"--- intake: {package_id} {version}")
     document = _json("map", parts["map"][1])
     manifest = _json("manifest", parts["manifest"][1])
