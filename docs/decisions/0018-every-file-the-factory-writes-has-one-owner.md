@@ -129,7 +129,7 @@ written path the table does not classify.
 | `.claude/settings.json` | managed | 1 | Which tools the guard runs before. |
 | `tools/dispatch-agent.sh` | managed | 1 | One issue, one worktree, one branch; it refuses what is not ready to work (0029). |
 | `tools/new-issue.sh` | managed | 1 | An issue with the shape the rails expect, at the ready state and normal risk. |
-| `tools/entry-packet.py` | managed | 1 | The bounded assignment for one entry, assembled from merge(package, overlay) so it cannot carry a reading of its own. |
+| `tools/entry-packet.py` | managed | 2 | The bounded assignment for one entry, assembled from merge(package, overlay) so it cannot carry a reading of its own. |
 | `tools/review-packet.py` | managed | 1 | Everything a reviewer needs about one pull request, in the order it is meant to be read. |
 | `tools/pr-policy.py` | managed | 1 | The pull request contract, checked mechanically: one linked issue, every section filled, output rather than a claim. |
 | `tools/record-verdict.py` | managed | 1 | A review verdict as a commit status on the exact commit reviewed, so a later commit invalidates it by itself. |
