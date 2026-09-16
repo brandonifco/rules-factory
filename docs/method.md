@@ -502,14 +502,13 @@ answer. What counts as a group for a group Initiative roll is the instance. Mark
 `affectsDraws: true`, and let the entry's `draws` name the alternatives (0025).
 
 **What stops an engine is the text, and a table never notices.** Fifty-four entries of the SRD
-5.2.1 combat slice were implemented from the prose in a day. What the engine could not answer came
-down to six questions, and every one is a phrase a human table settles silently and
-continuously: what makes creatures *"a group of
-identical creatures"*; what *"an appropriate anatomy"* for a mount is; who is covered by *"and
-similar creatures"* beside the horse and the mule; whether *"two sizes larger or smaller"* means
-exactly two; whether combat ends when both sides agree and neither is defeated; and how far the
-Disengage action's protection reaches. They sit in three different places in the map, and the
-difference matters:
+5.2.1 combat slice were implemented from the prose in one evening. What the engine could not answer
+came down to six questions, and every one is a phrase a human table settles silently and
+continuously: what makes creatures *"a group of identical creatures"*; what *"an appropriate
+anatomy"* for a mount is; who is covered by *"and similar creatures"* beside the horse and the
+mule; whether *"two sizes larger or smaller"* means exactly two; whether combat ends when both
+sides agree and neither is defeated; and how far the Disengage action's protection reaches. They
+sit in three different places in the map, and the difference matters:
 
 - Four are **unresolved ambiguities**, and not all of one shape. Three are open terms the corpus
   bounds with nothing and delegates to nobody — `group-initiative`, `appropriate-anatomy`,
