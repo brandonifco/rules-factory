@@ -21,6 +21,7 @@ Three kinds of output, one per ownership class (ownership.py holds the table, de
 version pins of RulesKernel and the map package, and the map's PackageReference (conditioned
 on the engine project, so the test project does not take it). When the corpus declares
 `randomness: seeded` (decision 0019) it also pins RulesKernel.Randomness at the kernel's version,
+RulesKernel.Analyzers always,
 and references nothing: whether and where to draw is the engine's to write, and the pin only
 means that when it does, the version is the kernel's. Under `none` there is no pin. Directory.Packages.props imports
 it, and keeps only the central-package-management switches and the test packages, which an
@@ -145,6 +146,10 @@ OVERLAY_NAME = "corpus-map.overlay.json"
 PACKAGES_PROPS = "RulesFactory.Packages.g.props"
 # Decision 0019: the corpus's `randomness`, carried from its manifest by intake.
 RANDOMNESS_PACKAGE = "RulesKernel.Randomness"
+# The kernel's compile-time determinism diagnostics (RK0001-RK0005, RK0007), pinned at the kernel's
+# version like everything else the kernel ships. Referenced by the engine project alone, the way the
+# map package is: a build asset, never a reference, and never part of the test project's graph.
+ANALYZERS_PACKAGE = "RulesKernel.Analyzers"
 RANDOMNESS = ("none", "seeded")
 OWNED = ("status", "implementedIn", "tests")
 
@@ -1097,6 +1102,9 @@ RAILS = {
     ".github/workflows/pr-policy.yml": "workflows/pr-policy.yml",
     ".github/workflows/conformance-gate.yml": "workflows/conformance-gate.yml",
     "tools/agent-doctor.py": "tools/agent-doctor.py",
+    # Named `editorconfig` in the recipe: a dotfile there would be invisible in a listing of the
+    # rails, and the published path is what matters.
+    ".editorconfig": "editorconfig",
 }
 # The rails an operator runs. `produce` writes with the default mode, so a script invoked by path
 # would not run; the hook is invoked through `python3` by .claude/settings.json instead and needs
@@ -1283,6 +1291,10 @@ def packages_props(model):
         "  <ItemGroup>\n"
         "    <!-- The kernel is referenced, never copied. -->\n"
         f'    <PackageVersion Include="RulesKernel" Version="{KERNEL_VERSION}" />\n'
+        "    <!-- The kernel's determinism analyzers, at the kernel's version. An engine that copied a\n"
+        "         list of forbidden constructs into itself would diverge from every other engine's copy,\n"
+        "         which is what the kernel exists to end (rules-factory decision 0029). -->\n"
+        f'    <PackageVersion Include="{ANALYZERS_PACKAGE}" Version="{KERNEL_VERSION}" />\n'
         f"{randomness}"
         "    <!-- The map is referenced, never copied (rules-factory decision 0015), at an exact\n"
         "         version. The engine's own build facts live in corpus-map.overlay.json. -->\n"
@@ -1293,6 +1305,10 @@ def packages_props(model):
         "       manifest and checker. -->\n"
         f"  <ItemGroup Condition=\"'$(MSBuildProjectName)' == '{model.name}'\">\n"
         f'    <PackageReference Include="{model.package_id}" PrivateAssets="all" />\n'
+        "    <!-- The analyzers, on the engine project only: a determinism defect in the rules is a build\n"
+        "         error, and a test that fakes a clock or iterates a set is not the engine doing it.\n"
+        "         .editorconfig states each severity rather than leaving it to the package's defaults. -->\n"
+        f'    <PackageReference Include="{ANALYZERS_PACKAGE}" PrivateAssets="all" />\n'
         "  </ItemGroup>\n\n"
         "</Project>\n")
 

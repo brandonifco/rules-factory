@@ -64,7 +64,7 @@ marked `not implemented` that the parser does have.
 | `produce` | `--adopt` | implemented | make a managed file engine-owned, keeping its edits |
 | `produce` | `--reset` | implemented | overwrite a managed or adopted file with the current recipe |
 | `produce` | domain pack | not implemented | no pack exists; provenance records `"packs": []` |
-| `produce` | agent rails | not implemented | not an input — the rails are output, and no flag turns them on or off ([0029](docs/decisions/0029-the-rails-are-emitted-by-default-and-vendor-choice-is-engine-owned-configuration.md)). Emitted: the contract, the roles, the charters, the guard, the engine-owned policy, the packets, dispatch, the pull request contract, the verdict gates and the rails doctor. `factory rails --apply` is what makes the checks required on GitHub. Not yet: the PR policy and the verdict gates ([#152](https://github.com/brandonifco/rules-factory/issues/152)–[#155](https://github.com/brandonifco/rules-factory/issues/155)) |
+| `produce` | agent rails | not implemented | not an input — the rails are output, and no flag turns them on or off ([0029](docs/decisions/0029-the-rails-are-emitted-by-default-and-vendor-choice-is-engine-owned-configuration.md)). Emitted: the contract, the roles, the charters, the guard, the engine-owned policy, the packets, dispatch, the pull request contract, the verdict gates, the rails doctor and the kernel's determinism analyzers. `factory rails --apply` is what makes the checks required on GitHub. Not yet: the PR policy and the verdict gates ([#152](https://github.com/brandonifco/rules-factory/issues/152)–[#155](https://github.com/brandonifco/rules-factory/issues/155)) |
 | `backlog` | — | implemented | synchronise `backlog/` with GitHub issues through `gh`, and label each one: state from the item's dependencies, `normal` risk on an issue with none. A `needs-decision` state and a promoted risk are a person's, and a sync never undoes either ([0029](docs/decisions/0029-the-rails-are-emitted-by-default-and-vendor-choice-is-engine-owned-configuration.md)) |
 | `backlog` | `--create` | implemented | the only action; never closes or deletes an issue |
 | `backlog` | `--repo` | implemented | `owner/name` |
@@ -182,8 +182,9 @@ name          the engine's PascalCase name
                        verify (in a staging copy), write to --out (no commit)
         |
         v
-engine        a .NET solution on RulesKernel: managed build policy, engine-owned
-              projects and overlay, generated *.g.cs tied to the map, the corpus
+engine        a .NET solution on RulesKernel: managed build policy, the kernel's
+              determinism analyzers, engine-owned projects and overlay, generated
+              *.g.cs tied to the map, the corpus
 gate          scripts/validate.sh and the CI workflow that runs it
 backlog       backlog/NNN-<entry-id>.md, one per entry still to build, in
               dependency order
