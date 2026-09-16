@@ -1,0 +1,2325 @@
+{
+  "schemaVersion": 1,
+  "corpus": "srd-5.2.1",
+  "baseline": {
+    "contentHash": "c55926cb77bc7ea09096fc652db1411d763eae89d430c52221ed8709a075b100",
+    "hashDerivation": "srd-5.2.1-pdftotext-24.02.0-page-marked"
+  },
+  "extent": {
+    "unit": "page",
+    "from": 177,
+    "to": 191
+  },
+  "entries": [
+    {
+      "id": "condition-definition",
+      "name": "What a condition is, and that rules elsewhere end it",
+      "locator": {
+        "sourceId": "srd-5.2.1",
+        "citation": "Rules Glossary / Condition / p. 179"
+      },
+      "kind": "value",
+      "scope": "in",
+      "clarity": "ambiguous",
+      "ambiguity": {
+        "question": "The corpus calls a condition “a temporary game state” and says “various rules define how to end a condition”, and neither fixes a duration nor names the rules. For nine of the fifteen — Blinded, Charmed, Deafened, Frightened, Invisible, Paralyzed, Petrified, Poisoned and Stunned — no rule in the Rules Glossary says how the condition ends at all. Does “temporary” bound a condition that no rule ends, and if so by what? The corpus states no measure and delegates the question to nobody.",
+        "fate": "unresolved",
+        "unresolvedReason": "RequiresInterpretation"
+      },
+      "dependsOn": [],
+      "evidence": "A condition is a temporary game state. The definition of a condition says how it affects its recipient, and various rules define how to end a condition.",
+      "status": "mapped",
+      "note": "The root of the slice: every condition entry is an instance of this. It is a value and not an operation because it states what a condition is, not a procedure over one. The ambiguity is the slice's largest hole and it is stated once here rather than fifteen times: the glossary defines what each condition does and, for most of them, nothing about when it stops. A test must show that the engine can hold a condition and cannot be asked how long it lasts."
+    },
+    {
+      "id": "condition-list",
+      "name": "The fifteen conditions this glossary defines",
+      "locator": {
+        "sourceId": "srd-5.2.1",
+        "citation": "Rules Glossary / Condition / p. 179"
+      },
+      "kind": "value",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [
+        "condition-definition"
+      ],
+      "crossReferences": [
+        {
+          "cites": "Blinded",
+          "resolvedBy": "blinded"
+        },
+        {
+          "cites": "Charmed",
+          "resolvedBy": "charmed"
+        },
+        {
+          "cites": "Deafened",
+          "resolvedBy": "deafened"
+        },
+        {
+          "cites": "Exhaustion",
+          "resolvedBy": "exhaustion"
+        },
+        {
+          "cites": "Frightened",
+          "resolvedBy": "frightened"
+        },
+        {
+          "cites": "Grappled",
+          "resolvedBy": "grappled"
+        },
+        {
+          "cites": "Incapacitated",
+          "resolvedBy": "incapacitated"
+        },
+        {
+          "cites": "Invisible",
+          "resolvedBy": "invisible"
+        },
+        {
+          "cites": "Paralyzed",
+          "resolvedBy": "paralyzed"
+        },
+        {
+          "cites": "Petrified",
+          "resolvedBy": "petrified"
+        },
+        {
+          "cites": "Poisoned",
+          "resolvedBy": "poisoned"
+        },
+        {
+          "cites": "Prone",
+          "resolvedBy": "prone"
+        },
+        {
+          "cites": "Restrained",
+          "resolvedBy": "restrained"
+        },
+        {
+          "cites": "Stunned",
+          "resolvedBy": "stunned"
+        },
+        {
+          "cites": "Unconscious",
+          "resolvedBy": "unconscious"
+        }
+      ],
+      "evidence": "This glossary defines these conditions: Blinded Charmed Deafened Exhaustion Frightened Grappled Incapacitated Invisible Paralyzed Petrified Poisoned Prone Restrained Stunned Unconscious",
+      "status": "mapped",
+      "note": "A finite table, so the whole of it is verified and never a sample: fifteen names, and a test must assert all fifteen and that there is no sixteenth. The printed list is three columns read downwards (pdftotext -layout on p. 179 shows Blinded, Charmed, Deafened, Exhaustion, Frightened as the first column), so the extraction's order is the printed reading order and no `extraction` defect is declared. Each name is a term this corpus defines elsewhere in the same slice, so each is a term-anchored crossReference (0026) to that condition's entry — fifteen of them on one entry."
+    },
+    {
+      "id": "condition-no-stacking",
+      "name": "A condition does not stack with itself; Exhaustion is the exception",
+      "locator": {
+        "sourceId": "srd-5.2.1",
+        "citation": "Rules Glossary / Condition / p. 179"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [
+        "condition-definition",
+        "exhaustion-levels"
+      ],
+      "crossReferences": [
+        {
+          "cites": "The Exhaustion condition",
+          "resolvedBy": "exhaustion"
+        }
+      ],
+      "evidence": "A condition doesn’t stack with itself; a recipient either has a condition or doesn’t. The Exhaustion condition is an exception to that rule.",
+      "status": "mapped",
+      "note": "Two rules in one span and they are one rule with its own exception, so one entry. A test must show that receiving Blinded twice leaves one Blinded, and that receiving Exhaustion twice leaves level 2 (exhaustion-levels, which this depends on for what the exception amounts to)."
+    },
+    {
+      "id": "blinded",
+      "name": "The Blinded condition",
+      "locator": {
+        "sourceId": "srd-5.2.1",
+        "citation": "Rules Glossary / Blinded [Condition] / p. 177"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [
+        "condition-definition",
+        "blinded-cant-see",
+        "blinded-attacks"
+      ],
+      "evidence": "While you have the Blinded condition, you experience the following effects.",
+      "status": "mapped",
+      "note": "The hub: the sentence that binds the effects below to holding the condition, and the entry every reference to “the Blinded condition” elsewhere in the corpus resolves to. It exists because the corpus points at a condition as a whole and never at one of its effects, and a pointer needs an entry to name. dependsOn lists its 2 effects, so the backlog builds them first."
+    },
+    {
+      "id": "blinded-cant-see",
+      "name": "Blinded: you cannot see, and fail sight-dependent ability checks",
+      "locator": {
+        "sourceId": "srd-5.2.1",
+        "citation": "Rules Glossary / Blinded [Condition] / p. 177"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "ambiguous",
+      "ambiguity": {
+        "question": "“Any ability check that requires sight” names no set of checks and no test for membership. The corpus lists the abilities and skills elsewhere and nowhere marks which require sight, and it delegates the judgement to nobody — not the GM, not the player. Which checks fail automatically is reachable on the first use of the condition and is not determined.",
+        "fate": "unresolved",
+        "unresolvedReason": "RequiresInterpretation"
+      },
+      "dependsOn": [
+        "ability-check"
+      ],
+      "crossReferences": [
+        {
+          "cites": "ability check",
+          "resolvedBy": "ability-check"
+        }
+      ],
+      "evidence": "Can’t See. You can’t see and automatically fail any ability check that requires sight.",
+      "status": "mapped",
+      "note": "The gap is the category, not the consequence: once a check is known to require sight the rule is total. Split from blinded-attacks because one is undetermined and the other is not."
+    },
+    {
+      "id": "blinded-attacks",
+      "name": "Blinded: Advantage against you, Disadvantage for you",
+      "locator": {
+        "sourceId": "srd-5.2.1",
+        "citation": "Rules Glossary / Blinded [Condition] / p. 177"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [
+        "attack-roll",
+        "advantage",
+        "disadvantage"
+      ],
+      "crossReferences": [
+        {
+          "cites": "Attack rolls",
+          "resolvedBy": "attack-roll"
+        },
+        {
+          "cites": "Advantage",
+          "resolvedBy": "advantage"
+        },
+        {
+          "cites": "Disadvantage",
+          "resolvedBy": "disadvantage"
+        }
+      ],
+      "evidence": "Can’t See. You can’t see and automatically fail any ability check that requires sight. Attacks Affected. Attack rolls against you have Advantage, and your attack rolls have Disadvantage.",
+      "status": "mapped",
+      "note": "Word for word the same sentence as restrained-attacks, and the map cannot cite this one without the lead sentence above it (see the README, finding 2)."
+    },
+    {
+      "id": "charmed",
+      "name": "The Charmed condition",
+      "locator": {
+        "sourceId": "srd-5.2.1",
+        "citation": "Rules Glossary / Charmed [Condition] / p. 178"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [
+        "condition-definition",
+        "charmed-cant-harm",
+        "charmed-social-advantage"
+      ],
+      "evidence": "While you have the Charmed condition, you experience the following effects.",
+      "status": "mapped",
+      "note": "The hub: the sentence that binds the effects below to holding the condition, and the entry every reference to “the Charmed condition” elsewhere in the corpus resolves to. It exists because the corpus points at a condition as a whole and never at one of its effects, and a pointer needs an entry to name. dependsOn lists its 2 effects, so the backlog builds them first."
+    },
+    {
+      "id": "charmed-cant-harm",
+      "name": "Charmed: you cannot attack or damage the charmer",
+      "locator": {
+        "sourceId": "srd-5.2.1",
+        "citation": "Rules Glossary / Charmed [Condition] / p. 178"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "ambiguous",
+      "ambiguity": {
+        "question": "Two things are open. “Damaging abilities or magical effects” names no set the corpus defines, so whether a given ability is barred is undetermined; and nothing says an effect that includes the charmer in an area “targets” them. Separately, no rule in the corpus says that the Charmed condition records who the charmer is, so the rule presupposes a datum no rule stores.",
+        "fate": "unresolved",
+        "unresolvedReason": "RequiresInterpretation"
+      },
+      "dependsOn": [],
+      "evidence": "Can’t Harm the Charmer. You can’t attack the charmer or target the charmer with damaging abilities or magical effects.",
+      "status": "mapped",
+      "note": "The charmer point is the sharpest thing this slice found about its own shape: four conditions (Charmed, Frightened, Grappled, and Invisible's “creator”) are defined against a party the condition must carry, and the corpus never says a condition carries anything but itself."
+    },
+    {
+      "id": "charmed-social-advantage",
+      "name": "Charmed: the charmer has Advantage on social ability checks",
+      "locator": {
+        "sourceId": "srd-5.2.1",
+        "citation": "Rules Glossary / Charmed [Condition] / p. 178"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "ambiguous",
+      "ambiguity": {
+        "question": "“Any ability check to interact with you socially” names no set of checks. The Influence action (p. 184) suggests Charisma checks for influencing a monster, and neither that passage nor any other says which checks are “social”, nor who decides. Which checks gain Advantage is reachable and undetermined.",
+        "fate": "unresolved",
+        "unresolvedReason": "RequiresInterpretation"
+      },
+      "dependsOn": [
+        "ability-check",
+        "advantage"
+      ],
+      "crossReferences": [
+        {
+          "cites": "ability check",
+          "resolvedBy": "ability-check"
+        },
+        {
+          "cites": "Advantage",
+          "resolvedBy": "advantage"
+        }
+      ],
+      "evidence": "Social Advantage. The charmer has Advantage on any ability check to interact with you socially.",
+      "status": "mapped",
+      "note": "The same shape as blinded-cant-see: a determinate consequence over an undetermined category."
+    },
+    {
+      "id": "deafened",
+      "name": "The Deafened condition",
+      "locator": {
+        "sourceId": "srd-5.2.1",
+        "citation": "Rules Glossary / Deafened [Condition] / p. 181"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [
+        "condition-definition",
+        "deafened-cant-hear"
+      ],
+      "evidence": "While you have the Deafened condition, you experience the following effect.",
+      "status": "mapped",
+      "note": "The hub: the sentence that binds the effects below to holding the condition, and the entry every reference to “the Deafened condition” elsewhere in the corpus resolves to. It exists because the corpus points at a condition as a whole and never at one of its effects, and a pointer needs an entry to name. dependsOn lists its 1 effect, so the backlog builds them first."
+    },
+    {
+      "id": "deafened-cant-hear",
+      "name": "Deafened: you cannot hear, and fail hearing-dependent ability checks",
+      "locator": {
+        "sourceId": "srd-5.2.1",
+        "citation": "Rules Glossary / Deafened [Condition] / p. 181"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "ambiguous",
+      "ambiguity": {
+        "question": "“Any ability check that requires hearing” names no set of checks and no test for membership, exactly as blinded-cant-see's sight does, and the corpus delegates the judgement to nobody.",
+        "fate": "unresolved",
+        "unresolvedReason": "RequiresInterpretation"
+      },
+      "dependsOn": [
+        "ability-check"
+      ],
+      "crossReferences": [
+        {
+          "cites": "ability check",
+          "resolvedBy": "ability-check"
+        }
+      ],
+      "evidence": "Can’t Hear. You can’t hear and automatically fail any ability check that requires hearing.",
+      "status": "mapped",
+      "note": "The only condition with a single effect; the lead sentence says “effect”, singular, which is the corpus keeping its own count."
+    },
+    {
+      "id": "exhaustion",
+      "name": "The Exhaustion condition",
+      "locator": {
+        "sourceId": "srd-5.2.1",
+        "citation": "Rules Glossary / Exhaustion [Condition] / p. 181"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [
+        "condition-definition",
+        "exhaustion-levels",
+        "exhaustion-d20-tests",
+        "exhaustion-speed-reduced",
+        "exhaustion-removing"
+      ],
+      "evidence": "While you have the Exhaustion condition, you experience the following effects.",
+      "status": "mapped",
+      "note": "The hub: the sentence that binds the effects below to holding the condition, and the entry every reference to “the Exhaustion condition” elsewhere in the corpus resolves to. It exists because the corpus points at a condition as a whole and never at one of its effects, and a pointer needs an entry to name. dependsOn lists its 4 effects, so the backlog builds them first."
+    },
+    {
+      "id": "exhaustion-levels",
+      "name": "Exhaustion levels: cumulative, one per receipt, death at 6",
+      "locator": {
+        "sourceId": "srd-5.2.1",
+        "citation": "Rules Glossary / Exhaustion [Condition] / p. 181"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [
+        "condition-definition"
+      ],
+      "evidence": "Exhaustion Levels. This condition is cumulative. Each time you receive it, you gain 1 Exhaustion level. You die if your Exhaustion level is 6.",
+      "status": "mapped",
+      "note": "The one condition that is a number rather than a flag, and the reason condition-no-stacking has an exception. Kept as one entry rather than split into the threshold and the comparison: the threshold and the consequence are one clause, and there is no second sentence that compares against it. A test must show levels accumulating and death at exactly 6, and that level 6 is the only reachable death by this rule."
+    },
+    {
+      "id": "exhaustion-d20-tests",
+      "name": "Exhaustion: D20 Tests are reduced by twice your level",
+      "locator": {
+        "sourceId": "srd-5.2.1",
+        "citation": "Rules Glossary / Exhaustion [Condition] / p. 181"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [
+        "d20-test",
+        "exhaustion-levels"
+      ],
+      "crossReferences": [
+        {
+          "cites": "D20 Test",
+          "resolvedBy": "d20-test"
+        }
+      ],
+      "evidence": "D20 Tests Affected. When you make a D20 Test, the roll is reduced by 2 times your Exhaustion level.",
+      "status": "mapped",
+      "note": "A penalty on the roll, not Disadvantage, so it does not interact with advantage or disadvantage. The whole range is finite — levels 1 to 5 give -2 to -10 — and a test must cover all five, not a sample."
+    },
+    {
+      "id": "exhaustion-speed-reduced",
+      "name": "Exhaustion: Speed is reduced by five feet per level",
+      "locator": {
+        "sourceId": "srd-5.2.1",
+        "citation": "Rules Glossary / Exhaustion [Condition] / p. 181"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [
+        "speed",
+        "exhaustion-levels"
+      ],
+      "crossReferences": [
+        {
+          "cites": "Speed",
+          "resolvedBy": "speed"
+        }
+      ],
+      "evidence": "Speed Reduced. Your Speed is reduced by a number of feet equal to 5 times your Exhaustion level.",
+      "status": "mapped",
+      "note": "Levels 1 to 5 give -5 to -25 feet; all five are verified, not a sample. Nothing in this slice says a Speed reduced below zero is zero, and nothing in it says a Speed of 0 from grappled-speed-0 and the rest can be reduced further — an interaction of two implemented rules with no entry (correspondence row 7), not an ambiguity in either sentence."
+    },
+    {
+      "id": "exhaustion-removing",
+      "name": "Exhaustion: a Long Rest removes one level, and the condition ends at 0",
+      "locator": {
+        "sourceId": "srd-5.2.1",
+        "citation": "Rules Glossary / Exhaustion [Condition] / p. 181"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "ambiguous",
+      "ambiguity": {
+        "question": "This sentence says without qualification that finishing a Long Rest removes 1 Exhaustion level. Malnutrition (p. 185) says “Exhaustion caused by malnutrition can’t be removed until the creature eats the full amount of food required for a day”. A starving creature that finishes a Long Rest is a case both rules reach and they give opposite answers, and neither says which governs. Does the Long Rest remove a level, or does malnutrition bar it?",
+        "conflict": "can-a-long-rest-remove-exhaustion-from-malnutrition",
+        "fate": "unresolved",
+        "unresolvedReason": "RequiresInterpretation"
+      },
+      "dependsOn": [
+        "exhaustion-levels",
+        "long-rest"
+      ],
+      "crossReferences": [
+        {
+          "cites": "Long Rest",
+          "resolvedBy": "long-rest"
+        }
+      ],
+      "evidence": "Removing Exhaustion Levels. Finishing a Long Rest removes 1 of your Exhaustion levels. When your Exhaustion level reaches 0, the condition ends.",
+      "status": "mapped",
+      "note": "The only conflict in the slice, and it is between the condition's own definition and a hazard fifteen pages away that the condition's entry does not mention. Read with malnutrition-hazard, which carries the same question. The likelier reading, that the specific rule governs, is a Phase 4 decision and is not taken here. Two further removal routes do not conflict with this one, because this sentence does not say “only”: suffocation-hazard removes every level gained by suffocating, and dead-revival-conditions returns a revived creature with one level fewer."
+    },
+    {
+      "id": "frightened",
+      "name": "The Frightened condition",
+      "locator": {
+        "sourceId": "srd-5.2.1",
+        "citation": "Rules Glossary / Frightened [Condition] / p. 182"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [
+        "condition-definition",
+        "frightened-checks-attacks",
+        "frightened-cant-approach"
+      ],
+      "evidence": "While you have the Frightened condition, you experience the following effects.",
+      "status": "mapped",
+      "note": "The hub: the sentence that binds the effects below to holding the condition, and the entry every reference to “the Frightened condition” elsewhere in the corpus resolves to. It exists because the corpus points at a condition as a whole and never at one of its effects, and a pointer needs an entry to name. dependsOn lists its 2 effects, so the backlog builds them first."
+    },
+    {
+      "id": "frightened-checks-attacks",
+      "name": "Frightened: Disadvantage while the source of fear is in line of sight",
+      "locator": {
+        "sourceId": "srd-5.2.1",
+        "citation": "Rules Glossary / Frightened [Condition] / p. 182"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "ambiguous",
+      "ambiguity": {
+        "question": "“The source of fear” is not defined anywhere in the corpus, and no rule says that the Frightened condition records what its source is. Where the fear has no locatable source — an effect with no creature behind it, or one whose source has left play — whether the source is “within line of sight” has no answer, and the rule's only trigger is undetermined.",
+        "fate": "unresolved",
+        "unresolvedReason": "RequiresInterpretation"
+      },
+      "dependsOn": [
+        "ability-check",
+        "attack-roll",
+        "disadvantage"
+      ],
+      "crossReferences": [
+        {
+          "cites": "ability checks",
+          "resolvedBy": "ability-check"
+        },
+        {
+          "cites": "attack rolls",
+          "resolvedBy": "attack-roll"
+        },
+        {
+          "cites": "Disadvantage",
+          "resolvedBy": "disadvantage"
+        }
+      ],
+      "evidence": "Ability Checks and Attacks Affected. You have Disadvantage on ability checks and attack rolls while the source of fear is within line of sight.",
+      "status": "mapped",
+      "note": "Whether a given source is in line of sight is a fact the rule tests and a caller-supplied parameter (gate 1), so it gets no entry. What is open is what the source is at all."
+    },
+    {
+      "id": "frightened-cant-approach",
+      "name": "Frightened: you cannot willingly move closer to the source of fear",
+      "locator": {
+        "sourceId": "srd-5.2.1",
+        "citation": "Rules Glossary / Frightened [Condition] / p. 182"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "ambiguous",
+      "ambiguity": {
+        "question": "The same undefined “source of fear” as frightened-checks-attacks, and a second opening: “willingly” excludes something and the corpus never says what. Forced movement is the obvious case and is nowhere stated to be the only one — movement the creature chooses for another reason that happens to close the distance is reachable and unanswered.",
+        "fate": "unresolved",
+        "unresolvedReason": "RequiresInterpretation"
+      },
+      "dependsOn": [],
+      "evidence": "Can’t Approach. You can’t willingly move closer to the source of fear.",
+      "status": "mapped",
+      "note": "Recorded separately from the line-of-sight effect because this one applies whether or not the source can be seen."
+    },
+    {
+      "id": "grappled",
+      "name": "The Grappled condition",
+      "locator": {
+        "sourceId": "srd-5.2.1",
+        "citation": "Rules Glossary / Grappled [Condition] / p. 182"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [
+        "condition-definition",
+        "grappled-speed-0",
+        "grappled-attacks",
+        "grappled-movable"
+      ],
+      "evidence": "While you have the Grappled condition, you experience the following effects.",
+      "status": "mapped",
+      "note": "The hub: the sentence that binds the effects below to holding the condition, and the entry every reference to “the Grappled condition” elsewhere in the corpus resolves to. It exists because the corpus points at a condition as a whole and never at one of its effects, and a pointer needs an entry to name. dependsOn lists its 3 effects, so the backlog builds them first."
+    },
+    {
+      "id": "grappled-speed-0",
+      "name": "Grappled: Speed is 0 and cannot increase",
+      "locator": {
+        "sourceId": "srd-5.2.1",
+        "citation": "Rules Glossary / Grappled [Condition] / p. 182"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [
+        "speed"
+      ],
+      "crossReferences": [
+        {
+          "cites": "Speed",
+          "resolvedBy": "speed"
+        }
+      ],
+      "evidence": "While you have the Grappled condition, you experience the following effects. Speed 0. Your Speed is 0 and can’t increase.",
+      "status": "mapped",
+      "note": "One of five entries quoting this identical sentence."
+    },
+    {
+      "id": "grappled-attacks",
+      "name": "Grappled: Disadvantage on attacks against anyone but the grappler",
+      "locator": {
+        "sourceId": "srd-5.2.1",
+        "citation": "Rules Glossary / Grappled [Condition] / p. 182"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [
+        "attack-roll",
+        "disadvantage",
+        "grappling-imposes"
+      ],
+      "crossReferences": [
+        {
+          "cites": "attack rolls",
+          "resolvedBy": "attack-roll"
+        },
+        {
+          "cites": "Disadvantage",
+          "resolvedBy": "disadvantage"
+        },
+        {
+          "cites": "the grappler",
+          "resolvedBy": "grappling-imposes"
+        }
+      ],
+      "evidence": "Attacks Affected. You have Disadvantage on attack rolls against any target other than the grappler.",
+      "status": "mapped",
+      "note": "Who the grappler is comes from Grappling (p. 182), outside the slice, which is why grappling-imposes is in dependsOn and not only in crossReferences (0026): without it the exception has no referent."
+    },
+    {
+      "id": "grappled-movable",
+      "name": "Grappled: the grappler can drag or carry you at one extra foot per foot",
+      "locator": {
+        "sourceId": "srd-5.2.1",
+        "citation": "Rules Glossary / Grappled [Condition] / p. 182"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [
+        "creature-size",
+        "grappling-imposes"
+      ],
+      "crossReferences": [
+        {
+          "cites": "Tiny",
+          "resolvedBy": "creature-size"
+        },
+        {
+          "cites": "The grappler",
+          "resolvedBy": "grappling-imposes"
+        }
+      ],
+      "evidence": "Movable. The grappler can drag or carry you when it moves, but every foot of movement costs it 1 extra foot unless you are Tiny or two or more sizes smaller than it.",
+      "status": "mapped",
+      "note": "“Two or more sizes smaller” is total once the size order is known, which creature-size (p. 188) gives; it is not trial 7's “two sizes larger or smaller”, which left exactly-two open. A test must cover the six size categories pairwise, not a sample."
+    },
+    {
+      "id": "incapacitated",
+      "name": "The Incapacitated condition",
+      "locator": {
+        "sourceId": "srd-5.2.1",
+        "citation": "Rules Glossary / Incapacitated [Condition] / p. 184"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [
+        "condition-definition",
+        "incapacitated-inactive",
+        "incapacitated-no-concentration",
+        "incapacitated-speechless",
+        "incapacitated-surprised"
+      ],
+      "evidence": "While you have the Incapacitated condition, you experience the following effects.",
+      "status": "mapped",
+      "note": "The hub: the sentence that binds the effects below to holding the condition, and the entry every reference to “the Incapacitated condition” elsewhere in the corpus resolves to. It exists because the corpus points at a condition as a whole and never at one of its effects, and a pointer needs an entry to name. dependsOn lists its 4 effects, so the backlog builds them first."
+    },
+    {
+      "id": "incapacitated-inactive",
+      "name": "Incapacitated: no action, Bonus Action or Reaction",
+      "locator": {
+        "sourceId": "srd-5.2.1",
+        "citation": "Rules Glossary / Incapacitated [Condition] / p. 184"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [
+        "action",
+        "bonus-action",
+        "reaction"
+      ],
+      "crossReferences": [
+        {
+          "cites": "action",
+          "resolvedBy": "action"
+        },
+        {
+          "cites": "Bonus Action",
+          "resolvedBy": "bonus-action"
+        },
+        {
+          "cites": "Reaction",
+          "resolvedBy": "reaction"
+        }
+      ],
+      "evidence": "Inactive. You can’t take any action, Bonus Action, or Reaction.",
+      "status": "mapped",
+      "note": "The effect the rest of the corpus leans on hardest: it is why a Paralyzed creature cannot escape a grapple (grappling-ends requires an action), and why a Stunned one takes no Opportunity Attack."
+    },
+    {
+      "id": "incapacitated-no-concentration",
+      "name": "Incapacitated: Concentration is broken",
+      "locator": {
+        "sourceId": "srd-5.2.1",
+        "citation": "Rules Glossary / Incapacitated [Condition] / p. 184"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [
+        "concentration"
+      ],
+      "crossReferences": [
+        {
+          "cites": "Concentration",
+          "resolvedBy": "concentration"
+        }
+      ],
+      "evidence": "No Concentration. Your Concentration is broken.",
+      "status": "mapped",
+      "note": "The corpus states this rule twice: here, and in Concentration (p. 179), “Your Concentration ends if you have the Incapacitated condition or you die”. The two agree, so this is a restatement and not a conflict; the second passage is concentration, which dependsOn names."
+    },
+    {
+      "id": "incapacitated-speechless",
+      "name": "Incapacitated: you cannot speak",
+      "locator": {
+        "sourceId": "srd-5.2.1",
+        "citation": "Rules Glossary / Incapacitated [Condition] / p. 184"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [],
+      "evidence": "Speechless. You can’t speak.",
+      "status": "mapped",
+      "note": "Three words and no qualification. What it costs — a spell's Verbal component, the Influence action's communication — is stated by those rules and not by this one, so the entry is clear and narrow."
+    },
+    {
+      "id": "incapacitated-surprised",
+      "name": "Incapacitated: Disadvantage on the Initiative roll",
+      "locator": {
+        "sourceId": "srd-5.2.1",
+        "citation": "Rules Glossary / Incapacitated [Condition] / p. 184"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [
+        "initiative",
+        "disadvantage"
+      ],
+      "crossReferences": [
+        {
+          "cites": "Initiative",
+          "resolvedBy": "initiative"
+        },
+        {
+          "cites": "Disadvantage",
+          "resolvedBy": "disadvantage"
+        }
+      ],
+      "evidence": "Surprised. If you’re Incapacitated when you roll Initiative, you have Disadvantage on the roll.",
+      "status": "mapped",
+      "note": "The effect is headed “Surprised.” and the corpus's Surprise entry (p. 189) gives the same penalty for a different trigger, being caught unawares. Nothing in the corpus keys off the word “surprised” other than that penalty, so the label costs nothing and the entry is clear; if some later rule did key off it, this would be a conflict. It is also the entry that the SRD combat map's initiative-roll depends on — the same passage, mapped from the other side."
+    },
+    {
+      "id": "invisible",
+      "name": "The Invisible condition",
+      "locator": {
+        "sourceId": "srd-5.2.1",
+        "citation": "Rules Glossary / Invisible [Condition] / p. 184"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [
+        "condition-definition",
+        "invisible-surprise",
+        "invisible-concealed",
+        "invisible-attacks"
+      ],
+      "evidence": "While you have the Invisible condition, you experience the following effects.",
+      "status": "mapped",
+      "note": "The hub: the sentence that binds the effects below to holding the condition, and the entry every reference to “the Invisible condition” elsewhere in the corpus resolves to. It exists because the corpus points at a condition as a whole and never at one of its effects, and a pointer needs an entry to name. dependsOn lists its 3 effects, so the backlog builds them first."
+    },
+    {
+      "id": "invisible-surprise",
+      "name": "Invisible: Advantage on the Initiative roll",
+      "locator": {
+        "sourceId": "srd-5.2.1",
+        "citation": "Rules Glossary / Invisible [Condition] / p. 184"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [
+        "initiative",
+        "advantage"
+      ],
+      "crossReferences": [
+        {
+          "cites": "Initiative",
+          "resolvedBy": "initiative"
+        },
+        {
+          "cites": "Advantage",
+          "resolvedBy": "advantage"
+        }
+      ],
+      "evidence": "Surprise. If you’re Invisible when you roll Initiative, you have Advantage on the roll.",
+      "status": "mapped",
+      "note": "A creature that is both Invisible and Incapacitated when it rolls Initiative has Advantage and Disadvantage, which cancel (advantage, disadvantage); the case is reachable, because Paralyzed and Petrified both impose Incapacitated. A test must roll one d20 in that case, not two or three, which is what makes the draw count part of a replay."
+    },
+    {
+      "id": "invisible-concealed",
+      "name": "Invisible: effects requiring a seen target do not affect you",
+      "locator": {
+        "sourceId": "srd-5.2.1",
+        "citation": "Rules Glossary / Invisible [Condition] / p. 184"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "ambiguous",
+      "ambiguity": {
+        "question": "“Can somehow see you” states a degree with no measure: the corpus names Truesight and Blindsight as ways of seeing a creature that is Invisible and does not say the list is closed, and “somehow” invites more. Whether a given sense counts is reachable and unfixed, and no party is named to decide it.",
+        "fate": "unresolved",
+        "unresolvedReason": "RequiresInterpretation"
+      },
+      "dependsOn": [],
+      "evidence": "Concealed. You aren’t affected by any effect that requires its target to be seen unless the effect’s creator can somehow see you. Any equipment you are wearing or carrying is also concealed.",
+      "status": "mapped",
+      "note": "The consequence is determinate; the trigger is not. Blindsight (p. 177) and Truesight (p. 190) are two of the senses that satisfy it and are recorded as scope: out entries."
+    },
+    {
+      "id": "invisible-attacks",
+      "name": "Invisible: Disadvantage against you, Advantage for you",
+      "locator": {
+        "sourceId": "srd-5.2.1",
+        "citation": "Rules Glossary / Invisible [Condition] / p. 184"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "ambiguous",
+      "ambiguity": {
+        "question": "The sentence states two benefits — Disadvantage on attacks against you, and Advantage on yours — and then withdraws “this benefit”, singular, from a creature that can somehow see you. Does such a creature attack you without Disadvantage, or attack you without Disadvantage and face your attacks without Advantage? The two readings differ on every attack between an Invisible creature and one with Truesight, and “somehow see” carries the same open degree as invisible-concealed.",
+        "fate": "unresolved",
+        "unresolvedReason": "RequiresInterpretation"
+      },
+      "dependsOn": [
+        "attack-roll",
+        "advantage",
+        "disadvantage"
+      ],
+      "crossReferences": [
+        {
+          "cites": "Attack rolls",
+          "resolvedBy": "attack-roll"
+        },
+        {
+          "cites": "Advantage",
+          "resolvedBy": "advantage"
+        },
+        {
+          "cites": "Disadvantage",
+          "resolvedBy": "disadvantage"
+        }
+      ],
+      "evidence": "Attacks Affected. Attack rolls against you have Disadvantage, and your attack rolls have Advantage. If a creature can somehow see you, you don’t gain this benefit against that creature.",
+      "status": "mapped",
+      "note": "Two openings in one sentence, recorded as one question because one fate settles both."
+    },
+    {
+      "id": "paralyzed",
+      "name": "The Paralyzed condition",
+      "locator": {
+        "sourceId": "srd-5.2.1",
+        "citation": "Rules Glossary / Paralyzed [Condition] / p. 186"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [
+        "condition-definition",
+        "paralyzed-incapacitated",
+        "paralyzed-speed-0",
+        "paralyzed-saving-throws",
+        "paralyzed-attacks",
+        "paralyzed-auto-crit"
+      ],
+      "evidence": "While you have the Paralyzed condition, you experience the following effects.",
+      "status": "mapped",
+      "note": "The hub: the sentence that binds the effects below to holding the condition, and the entry every reference to “the Paralyzed condition” elsewhere in the corpus resolves to. It exists because the corpus points at a condition as a whole and never at one of its effects, and a pointer needs an entry to name. dependsOn lists its 5 effects, so the backlog builds them first."
+    },
+    {
+      "id": "paralyzed-incapacitated",
+      "name": "Paralyzed: you have the Incapacitated condition",
+      "locator": {
+        "sourceId": "srd-5.2.1",
+        "citation": "Rules Glossary / Paralyzed [Condition] / p. 186"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [
+        "incapacitated"
+      ],
+      "crossReferences": [
+        {
+          "cites": "the Incapacitated condition",
+          "resolvedBy": "incapacitated"
+        }
+      ],
+      "evidence": "While you have the Paralyzed condition, you experience the following effects. Incapacitated. You have the Incapacitated condition.",
+      "status": "mapped",
+      "note": "One of the four condition-imposes-condition edges this trial exists to test. The whole content of this rule is the edge, and it points at a condition as a whole, never at one of its effects."
+    },
+    {
+      "id": "paralyzed-speed-0",
+      "name": "Paralyzed: Speed is 0 and cannot increase",
+      "locator": {
+        "sourceId": "srd-5.2.1",
+        "citation": "Rules Glossary / Paralyzed [Condition] / p. 186"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [
+        "speed"
+      ],
+      "crossReferences": [
+        {
+          "cites": "Speed",
+          "resolvedBy": "speed"
+        }
+      ],
+      "evidence": "While you have the Paralyzed condition, you experience the following effects. Incapacitated. You have the Incapacitated condition. Speed 0. Your Speed is 0 and can’t increase.",
+      "status": "mapped",
+      "note": "Identical in the corpus to grappled-speed-0, petrified-speed-0, restrained-speed-0 and unconscious-speed-0."
+    },
+    {
+      "id": "paralyzed-saving-throws",
+      "name": "Paralyzed: Strength and Dexterity saves fail automatically",
+      "locator": {
+        "sourceId": "srd-5.2.1",
+        "citation": "Rules Glossary / Paralyzed [Condition] / p. 186"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [
+        "saving-throw"
+      ],
+      "crossReferences": [
+        {
+          "cites": "saving throws",
+          "resolvedBy": "saving-throw"
+        }
+      ],
+      "evidence": "Speed 0. Your Speed is 0 and can’t increase. Saving Throws Affected. You automatically fail Strength and Dexterity saving throws.",
+      "status": "mapped",
+      "note": "Identical in the corpus to petrified-saving-throws, stunned-saving-throws and unconscious-saving-throws."
+    },
+    {
+      "id": "paralyzed-attacks",
+      "name": "Paralyzed: attack rolls against you have Advantage",
+      "locator": {
+        "sourceId": "srd-5.2.1",
+        "citation": "Rules Glossary / Paralyzed [Condition] / p. 186"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [
+        "attack-roll",
+        "advantage"
+      ],
+      "crossReferences": [
+        {
+          "cites": "Attack rolls",
+          "resolvedBy": "attack-roll"
+        },
+        {
+          "cites": "Advantage",
+          "resolvedBy": "advantage"
+        }
+      ],
+      "evidence": "Speed 0. Your Speed is 0 and can’t increase. Saving Throws Affected. You automatically fail Strength and Dexterity saving throws. Attacks Affected. Attack rolls against you have Advantage.",
+      "status": "mapped",
+      "note": "This sentence is also a prefix of blinded-attacks and restrained-attacks, so it occurs five times in the text and cannot be cited on its own."
+    },
+    {
+      "id": "paralyzed-auto-crit",
+      "name": "Paralyzed: a hit from within 5 feet is a Critical Hit",
+      "locator": {
+        "sourceId": "srd-5.2.1",
+        "citation": "Rules Glossary / Paralyzed [Condition] / p. 186"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [
+        "critical-hit",
+        "attack-roll"
+      ],
+      "crossReferences": [
+        {
+          "cites": "Critical Hit",
+          "resolvedBy": "critical-hit"
+        },
+        {
+          "cites": "attack roll",
+          "resolvedBy": "attack-roll"
+        }
+      ],
+      "evidence": "Attacks Affected. Attack rolls against you have Advantage. Automatic Critical Hits. Any attack roll that hits you is a Critical Hit if the attacker is within 5 feet of you.",
+      "status": "mapped",
+      "note": "A Critical Hit granted without the 20 the Critical Hit entry defines it by; the damage consequence is that entry's and is inherited. Identical in the corpus to unconscious-auto-crit."
+    },
+    {
+      "id": "petrified",
+      "name": "The Petrified condition",
+      "locator": {
+        "sourceId": "srd-5.2.1",
+        "citation": "Rules Glossary / Petrified [Condition] / p. 186"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [
+        "condition-definition",
+        "petrified-turned",
+        "petrified-incapacitated",
+        "petrified-speed-0",
+        "petrified-attacks",
+        "petrified-saving-throws",
+        "petrified-resist-damage",
+        "petrified-poison-immunity"
+      ],
+      "evidence": "While you have the Petrified condition, you experience the following effects.",
+      "status": "mapped",
+      "note": "The hub: the sentence that binds the effects below to holding the condition, and the entry every reference to “the Petrified condition” elsewhere in the corpus resolves to. It exists because the corpus points at a condition as a whole and never at one of its effects, and a pointer needs an entry to name. dependsOn lists its 7 effects, so the backlog builds them first."
+    },
+    {
+      "id": "petrified-turned",
+      "name": "Petrified: turned to inanimate substance, ten times weight, no aging",
+      "locator": {
+        "sourceId": "srd-5.2.1",
+        "citation": "Rules Glossary / Petrified [Condition] / p. 186"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "ambiguous",
+      "ambiguity": {
+        "question": "Three openings. Which substance: “usually stone” fixes no value and names nobody to choose. What happens to the magical objects the sentence excludes from the transformation — they are not turned to stone and the corpus does not say whether they are carried, dropped or left. And “you cease aging” attaches to no rule in the corpus: nothing else in the slice or the glossary makes aging do anything, so the engine cannot give an answer that differs from not having the effect.",
+        "fate": "unresolved",
+        "unresolvedReason": "RequiresInterpretation"
+      },
+      "dependsOn": [],
+      "evidence": "Turned to Inanimate Substance. You are transformed, along with any nonmagical objects you are wearing and carrying, into a solid inanimate substance (usually stone). Your weight increases by a factor of ten, and you cease aging.",
+      "status": "mapped",
+      "note": "The weight multiplier is exact and total; the entry is ambiguous on the other three clauses and is not split, because no one of them is a rule a consuming entry could depend on separately."
+    },
+    {
+      "id": "petrified-incapacitated",
+      "name": "Petrified: you have the Incapacitated condition",
+      "locator": {
+        "sourceId": "srd-5.2.1",
+        "citation": "Rules Glossary / Petrified [Condition] / p. 186"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [
+        "incapacitated"
+      ],
+      "crossReferences": [
+        {
+          "cites": "the Incapacitated condition",
+          "resolvedBy": "incapacitated"
+        }
+      ],
+      "evidence": "Turned to Inanimate Substance. You are transformed, along with any nonmagical objects you are wearing and carrying, into a solid inanimate substance (usually stone). Your weight increases by a factor of ten, and you cease aging. Incapacitated. You have the Incapacitated condition.",
+      "status": "mapped",
+      "note": "The second of the four condition-imposes-condition edges."
+    },
+    {
+      "id": "petrified-speed-0",
+      "name": "Petrified: Speed is 0 and cannot increase",
+      "locator": {
+        "sourceId": "srd-5.2.1",
+        "citation": "Rules Glossary / Petrified [Condition] / p. 186"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [
+        "speed"
+      ],
+      "crossReferences": [
+        {
+          "cites": "Speed",
+          "resolvedBy": "speed"
+        }
+      ],
+      "evidence": "Turned to Inanimate Substance. You are transformed, along with any nonmagical objects you are wearing and carrying, into a solid inanimate substance (usually stone). Your weight increases by a factor of ten, and you cease aging. Incapacitated. You have the Incapacitated condition. Speed 0. Your Speed is 0 and can’t increase.",
+      "status": "mapped",
+      "note": "One named effect of the condition, mapped as its own entry because the corpus states it as its own rule."
+    },
+    {
+      "id": "petrified-attacks",
+      "name": "Petrified: attack rolls against you have Advantage",
+      "locator": {
+        "sourceId": "srd-5.2.1",
+        "citation": "Rules Glossary / Petrified [Condition] / p. 186"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [
+        "attack-roll",
+        "advantage"
+      ],
+      "crossReferences": [
+        {
+          "cites": "Attack rolls",
+          "resolvedBy": "attack-roll"
+        },
+        {
+          "cites": "Advantage",
+          "resolvedBy": "advantage"
+        }
+      ],
+      "evidence": "Incapacitated. You have the Incapacitated condition. Speed 0. Your Speed is 0 and can’t increase. Attacks Affected. Attack rolls against you have Advantage.",
+      "status": "mapped",
+      "note": "One named effect of the condition, mapped as its own entry because the corpus states it as its own rule."
+    },
+    {
+      "id": "petrified-saving-throws",
+      "name": "Petrified: Strength and Dexterity saves fail automatically",
+      "locator": {
+        "sourceId": "srd-5.2.1",
+        "citation": "Rules Glossary / Petrified [Condition] / p. 186"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [
+        "saving-throw"
+      ],
+      "crossReferences": [
+        {
+          "cites": "saving throws",
+          "resolvedBy": "saving-throw"
+        }
+      ],
+      "evidence": "Incapacitated. You have the Incapacitated condition. Speed 0. Your Speed is 0 and can’t increase. Attacks Affected. Attack rolls against you have Advantage. Saving Throws Affected. You automatically fail Strength and Dexterity saving throws.",
+      "status": "mapped",
+      "note": "One named effect of the condition, mapped as its own entry because the corpus states it as its own rule."
+    },
+    {
+      "id": "petrified-resist-damage",
+      "name": "Petrified: Resistance to all damage",
+      "locator": {
+        "sourceId": "srd-5.2.1",
+        "citation": "Rules Glossary / Petrified [Condition] / p. 186"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [
+        "resistance"
+      ],
+      "crossReferences": [
+        {
+          "cites": "Resistance",
+          "resolvedBy": "resistance"
+        }
+      ],
+      "evidence": "Resist Damage. You have Resistance to all damage.",
+      "status": "mapped",
+      "note": "“All damage” is every damage type the corpus lists (p. 180), so the rule is total over a finite set."
+    },
+    {
+      "id": "petrified-poison-immunity",
+      "name": "Petrified: Immunity to the Poisoned condition",
+      "locator": {
+        "sourceId": "srd-5.2.1",
+        "citation": "Rules Glossary / Petrified [Condition] / p. 186"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [
+        "immunity",
+        "poisoned"
+      ],
+      "crossReferences": [
+        {
+          "cites": "Immunity",
+          "resolvedBy": "immunity"
+        },
+        {
+          "cites": "the Poisoned condition",
+          "resolvedBy": "poisoned"
+        }
+      ],
+      "evidence": "Poison Immunity. You have Immunity to the Poisoned condition.",
+      "status": "mapped",
+      "note": "The only edge in the slice from one condition to another that *denies* it rather than imposing it, and it runs through a third rule, Immunity (p. 183). A test must show that a Petrified creature receiving Poisoned does not have it."
+    },
+    {
+      "id": "poisoned",
+      "name": "The Poisoned condition",
+      "locator": {
+        "sourceId": "srd-5.2.1",
+        "citation": "Rules Glossary / Poisoned [Condition] / p. 186"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [
+        "condition-definition",
+        "poisoned-checks-attacks"
+      ],
+      "evidence": "While you have the Poisoned condition, you experience the following effect.",
+      "status": "mapped",
+      "note": "The hub: the sentence that binds the effects below to holding the condition, and the entry every reference to “the Poisoned condition” elsewhere in the corpus resolves to. It exists because the corpus points at a condition as a whole and never at one of its effects, and a pointer needs an entry to name. dependsOn lists its 1 effect, so the backlog builds them first."
+    },
+    {
+      "id": "poisoned-checks-attacks",
+      "name": "Poisoned: Disadvantage on attack rolls and ability checks",
+      "locator": {
+        "sourceId": "srd-5.2.1",
+        "citation": "Rules Glossary / Poisoned [Condition] / p. 186"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [
+        "attack-roll",
+        "ability-check",
+        "disadvantage"
+      ],
+      "crossReferences": [
+        {
+          "cites": "attack rolls",
+          "resolvedBy": "attack-roll"
+        },
+        {
+          "cites": "ability checks",
+          "resolvedBy": "ability-check"
+        },
+        {
+          "cites": "Disadvantage",
+          "resolvedBy": "disadvantage"
+        }
+      ],
+      "evidence": "Ability Checks and Attacks Affected. You have Disadvantage on attack rolls and ability checks.",
+      "status": "mapped",
+      "note": "Unconditional, unlike frightened-checks-attacks, which the same effect name heads two pages earlier. The difference is the whole of why that one is ambiguous and this one is not."
+    },
+    {
+      "id": "prone",
+      "name": "The Prone condition",
+      "locator": {
+        "sourceId": "srd-5.2.1",
+        "citation": "Rules Glossary / Prone [Condition] / p. 186"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [
+        "condition-definition",
+        "prone-restricted-movement",
+        "prone-attacks"
+      ],
+      "evidence": "While you have the Prone condition, you experience the following effects.",
+      "status": "mapped",
+      "note": "The hub: the sentence that binds the effects below to holding the condition, and the entry every reference to “the Prone condition” elsewhere in the corpus resolves to. It exists because the corpus points at a condition as a whole and never at one of its effects, and a pointer needs an entry to name. dependsOn lists its 2 effects, so the backlog builds them first."
+    },
+    {
+      "id": "prone-restricted-movement",
+      "name": "Prone: crawl, or spend half your Speed to stand",
+      "locator": {
+        "sourceId": "srd-5.2.1",
+        "citation": "Rules Glossary / Prone [Condition] / p. 186"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [
+        "crawling",
+        "speed",
+        "round-down"
+      ],
+      "crossReferences": [
+        {
+          "cites": "crawl",
+          "resolvedBy": "crawling"
+        },
+        {
+          "cites": "Speed",
+          "resolvedBy": "speed"
+        },
+        {
+          "cites": "round down",
+          "resolvedBy": "round-down"
+        }
+      ],
+      "evidence": "Restricted Movement. Your only movement options are to crawl or to spend an amount of movement equal to half your Speed (round down) to right yourself and thereby end the condition. If your Speed is 0, you can’t right yourself.",
+      "status": "mapped",
+      "note": "The only condition in the slice that states how to end itself, and it is the counter-example to condition-definition's gap. It also closes its own interaction with the four Speed 0 rules explicitly, which nothing else here does."
+    },
+    {
+      "id": "prone-attacks",
+      "name": "Prone: Disadvantage on your attacks; attacks on you turn on 5 feet",
+      "locator": {
+        "sourceId": "srd-5.2.1",
+        "citation": "Rules Glossary / Prone [Condition] / p. 186"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [
+        "attack-roll",
+        "advantage",
+        "disadvantage"
+      ],
+      "crossReferences": [
+        {
+          "cites": "attack roll",
+          "resolvedBy": "attack-roll"
+        },
+        {
+          "cites": "Advantage",
+          "resolvedBy": "advantage"
+        },
+        {
+          "cites": "Disadvantage",
+          "resolvedBy": "disadvantage"
+        }
+      ],
+      "evidence": "Attacks Affected. You have Disadvantage on attack rolls. An attack roll against you has Advantage if the attacker is within 5 feet of you. Otherwise, that attack roll has Disadvantage.",
+      "status": "mapped",
+      "note": "The only attack effect in the slice that states both branches, so a test must cover the 5-foot boundary from both sides."
+    },
+    {
+      "id": "restrained",
+      "name": "The Restrained condition",
+      "locator": {
+        "sourceId": "srd-5.2.1",
+        "citation": "Rules Glossary / Restrained [Condition] / p. 187"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [
+        "condition-definition",
+        "restrained-speed-0",
+        "restrained-attacks",
+        "restrained-saving-throws"
+      ],
+      "evidence": "While you have the Restrained condition, you experience the following effects.",
+      "status": "mapped",
+      "note": "The hub: the sentence that binds the effects below to holding the condition, and the entry every reference to “the Restrained condition” elsewhere in the corpus resolves to. It exists because the corpus points at a condition as a whole and never at one of its effects, and a pointer needs an entry to name. dependsOn lists its 3 effects, so the backlog builds them first."
+    },
+    {
+      "id": "restrained-speed-0",
+      "name": "Restrained: Speed is 0 and cannot increase",
+      "locator": {
+        "sourceId": "srd-5.2.1",
+        "citation": "Rules Glossary / Restrained [Condition] / p. 187"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [
+        "speed"
+      ],
+      "crossReferences": [
+        {
+          "cites": "Speed",
+          "resolvedBy": "speed"
+        }
+      ],
+      "evidence": "While you have the Restrained condition, you experience the following effects. Speed 0. Your Speed is 0 and can’t increase.",
+      "status": "mapped",
+      "note": "One named effect of the condition, mapped as its own entry because the corpus states it as its own rule."
+    },
+    {
+      "id": "restrained-attacks",
+      "name": "Restrained: Advantage against you, Disadvantage for you",
+      "locator": {
+        "sourceId": "srd-5.2.1",
+        "citation": "Rules Glossary / Restrained [Condition] / p. 187"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [
+        "attack-roll",
+        "advantage",
+        "disadvantage"
+      ],
+      "crossReferences": [
+        {
+          "cites": "Attack rolls",
+          "resolvedBy": "attack-roll"
+        },
+        {
+          "cites": "Advantage",
+          "resolvedBy": "advantage"
+        },
+        {
+          "cites": "Disadvantage",
+          "resolvedBy": "disadvantage"
+        }
+      ],
+      "evidence": "Speed 0. Your Speed is 0 and can’t increase. Attacks Affected. Attack rolls against you have Advantage, and your attack rolls have Disadvantage.",
+      "status": "mapped",
+      "note": "Word for word blinded-attacks."
+    },
+    {
+      "id": "restrained-saving-throws",
+      "name": "Restrained: Disadvantage on Dexterity saving throws",
+      "locator": {
+        "sourceId": "srd-5.2.1",
+        "citation": "Rules Glossary / Restrained [Condition] / p. 187"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [
+        "saving-throw",
+        "disadvantage"
+      ],
+      "crossReferences": [
+        {
+          "cites": "saving throws",
+          "resolvedBy": "saving-throw"
+        },
+        {
+          "cites": "Disadvantage",
+          "resolvedBy": "disadvantage"
+        }
+      ],
+      "evidence": "Saving Throws Affected. You have Disadvantage on Dexterity saving throws.",
+      "status": "mapped",
+      "note": "Disadvantage, where Paralyzed, Petrified, Stunned and Unconscious fail automatically. The effect name is the same in all five."
+    },
+    {
+      "id": "stunned",
+      "name": "The Stunned condition",
+      "locator": {
+        "sourceId": "srd-5.2.1",
+        "citation": "Rules Glossary / Stunned [Condition] / p. 189"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [
+        "condition-definition",
+        "stunned-incapacitated",
+        "stunned-saving-throws",
+        "stunned-attacks"
+      ],
+      "evidence": "While you have the Stunned condition, you experience the following effects.",
+      "status": "mapped",
+      "note": "The hub: the sentence that binds the effects below to holding the condition, and the entry every reference to “the Stunned condition” elsewhere in the corpus resolves to. It exists because the corpus points at a condition as a whole and never at one of its effects, and a pointer needs an entry to name. dependsOn lists its 3 effects, so the backlog builds them first."
+    },
+    {
+      "id": "stunned-incapacitated",
+      "name": "Stunned: you have the Incapacitated condition",
+      "locator": {
+        "sourceId": "srd-5.2.1",
+        "citation": "Rules Glossary / Stunned [Condition] / p. 189"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [
+        "incapacitated"
+      ],
+      "crossReferences": [
+        {
+          "cites": "the Incapacitated condition",
+          "resolvedBy": "incapacitated"
+        }
+      ],
+      "evidence": "While you have the Stunned condition, you experience the following effects. Incapacitated. You have the Incapacitated condition.",
+      "status": "mapped",
+      "note": "The third of the four condition-imposes-condition edges."
+    },
+    {
+      "id": "stunned-saving-throws",
+      "name": "Stunned: Strength and Dexterity saves fail automatically",
+      "locator": {
+        "sourceId": "srd-5.2.1",
+        "citation": "Rules Glossary / Stunned [Condition] / p. 189"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [
+        "saving-throw"
+      ],
+      "crossReferences": [
+        {
+          "cites": "saving throws",
+          "resolvedBy": "saving-throw"
+        }
+      ],
+      "evidence": "Incapacitated. You have the Incapacitated condition. Saving Throws Affected. You automatically fail Strength and Dexterity saving throws.",
+      "status": "mapped",
+      "note": "One named effect of the condition, mapped as its own entry because the corpus states it as its own rule."
+    },
+    {
+      "id": "stunned-attacks",
+      "name": "Stunned: attack rolls against you have Advantage",
+      "locator": {
+        "sourceId": "srd-5.2.1",
+        "citation": "Rules Glossary / Stunned [Condition] / p. 189"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [
+        "attack-roll",
+        "advantage"
+      ],
+      "crossReferences": [
+        {
+          "cites": "Attack rolls",
+          "resolvedBy": "attack-roll"
+        },
+        {
+          "cites": "Advantage",
+          "resolvedBy": "advantage"
+        }
+      ],
+      "evidence": "Incapacitated. You have the Incapacitated condition. Saving Throws Affected. You automatically fail Strength and Dexterity saving throws. Attacks Affected. Attack rolls against you have Advantage.",
+      "status": "mapped",
+      "note": "Stunned is Paralyzed without the Speed 0, the automatic Critical Hits and the Speed clause; the map shows that as three entries present in one and absent from the other, which is what per-effect entries buy."
+    },
+    {
+      "id": "unconscious",
+      "name": "The Unconscious condition",
+      "locator": {
+        "sourceId": "srd-5.2.1",
+        "citation": "Rules Glossary / Unconscious [Condition] / p. 191"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [
+        "condition-definition",
+        "unconscious-inert",
+        "unconscious-speed-0",
+        "unconscious-attacks",
+        "unconscious-saving-throws",
+        "unconscious-auto-crit",
+        "unconscious-unaware"
+      ],
+      "evidence": "While you have the Unconscious condition, you experience the following effects.",
+      "status": "mapped",
+      "note": "The hub: the sentence that binds the effects below to holding the condition, and the entry every reference to “the Unconscious condition” elsewhere in the corpus resolves to. It exists because the corpus points at a condition as a whole and never at one of its effects, and a pointer needs an entry to name. dependsOn lists its 6 effects, so the backlog builds them first."
+    },
+    {
+      "id": "unconscious-inert",
+      "name": "Unconscious: Incapacitated and Prone, drop what you hold, stay Prone",
+      "locator": {
+        "sourceId": "srd-5.2.1",
+        "citation": "Rules Glossary / Unconscious [Condition] / p. 191"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [
+        "incapacitated",
+        "prone"
+      ],
+      "crossReferences": [
+        {
+          "cites": "the Incapacitated and Prone conditions",
+          "resolvedBy": "incapacitated"
+        },
+        {
+          "cites": "the Incapacitated and Prone conditions",
+          "resolvedBy": "prone"
+        }
+      ],
+      "evidence": "Inert. You have the Incapacitated and Prone conditions, and you drop whatever you’re holding. When this condition ends, you remain Prone.",
+      "status": "mapped",
+      "note": "The fourth condition-imposes-condition rule and the only one that imposes two at once, in a single noun phrase: one pointer, two edges, and the crossReferences items have to repeat the same `cites` to say so. It is also the only one that says what survives the condition ending."
+    },
+    {
+      "id": "unconscious-speed-0",
+      "name": "Unconscious: Speed is 0 and cannot increase",
+      "locator": {
+        "sourceId": "srd-5.2.1",
+        "citation": "Rules Glossary / Unconscious [Condition] / p. 191"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [
+        "speed"
+      ],
+      "crossReferences": [
+        {
+          "cites": "Speed",
+          "resolvedBy": "speed"
+        }
+      ],
+      "evidence": "Inert. You have the Incapacitated and Prone conditions, and you drop whatever you’re holding. When this condition ends, you remain Prone. Speed 0. Your Speed is 0 and can’t increase.",
+      "status": "mapped",
+      "note": "One named effect of the condition, mapped as its own entry because the corpus states it as its own rule."
+    },
+    {
+      "id": "unconscious-attacks",
+      "name": "Unconscious: attack rolls against you have Advantage",
+      "locator": {
+        "sourceId": "srd-5.2.1",
+        "citation": "Rules Glossary / Unconscious [Condition] / p. 191"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [
+        "attack-roll",
+        "advantage"
+      ],
+      "crossReferences": [
+        {
+          "cites": "Attack rolls",
+          "resolvedBy": "attack-roll"
+        },
+        {
+          "cites": "Advantage",
+          "resolvedBy": "advantage"
+        }
+      ],
+      "evidence": "Inert. You have the Incapacitated and Prone conditions, and you drop whatever you’re holding. When this condition ends, you remain Prone. Speed 0. Your Speed is 0 and can’t increase. Attacks Affected. Attack rolls against you have Advantage.",
+      "status": "mapped",
+      "note": "One named effect of the condition, mapped as its own entry because the corpus states it as its own rule."
+    },
+    {
+      "id": "unconscious-saving-throws",
+      "name": "Unconscious: Strength and Dexterity saves fail automatically",
+      "locator": {
+        "sourceId": "srd-5.2.1",
+        "citation": "Rules Glossary / Unconscious [Condition] / p. 191"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [
+        "saving-throw"
+      ],
+      "crossReferences": [
+        {
+          "cites": "saving throws",
+          "resolvedBy": "saving-throw"
+        }
+      ],
+      "evidence": "Inert. You have the Incapacitated and Prone conditions, and you drop whatever you’re holding. When this condition ends, you remain Prone. Speed 0. Your Speed is 0 and can’t increase. Attacks Affected. Attack rolls against you have Advantage. Saving Throws Affected. You automatically fail Strength and Dexterity saving throws.",
+      "status": "mapped",
+      "note": "One named effect of the condition, mapped as its own entry because the corpus states it as its own rule."
+    },
+    {
+      "id": "unconscious-auto-crit",
+      "name": "Unconscious: a hit from within 5 feet is a Critical Hit",
+      "locator": {
+        "sourceId": "srd-5.2.1",
+        "citation": "Rules Glossary / Unconscious [Condition] / p. 191"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [
+        "critical-hit",
+        "attack-roll"
+      ],
+      "crossReferences": [
+        {
+          "cites": "Critical Hit",
+          "resolvedBy": "critical-hit"
+        },
+        {
+          "cites": "attack roll",
+          "resolvedBy": "attack-roll"
+        }
+      ],
+      "evidence": "Saving Throws Affected. You automatically fail Strength and Dexterity saving throws. Automatic Critical Hits. Any attack roll that hits you is a Critical Hit if the attacker is within 5 feet of you.",
+      "status": "mapped",
+      "note": "One named effect of the condition, mapped as its own entry because the corpus states it as its own rule."
+    },
+    {
+      "id": "unconscious-unaware",
+      "name": "Unconscious: you are unaware of your surroundings",
+      "locator": {
+        "sourceId": "srd-5.2.1",
+        "citation": "Rules Glossary / Unconscious [Condition] / p. 191"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "ambiguous",
+      "ambiguity": {
+        "question": "“Unaware of your surroundings” is stated as an effect and attaches to no rule. Nothing in the corpus defines awareness or makes it a condition of anything, so an engine that implements this effect and one that omits it give the same answer to every question the corpus asks. Whether it bars anything — noticing a creature, reacting to a trigger, being the source of fear — is not determined.",
+        "fate": "unresolved",
+        "unresolvedReason": "RequiresInterpretation"
+      },
+      "dependsOn": [],
+      "evidence": "Unaware. You’re unaware of your surroundings.",
+      "status": "mapped",
+      "note": "The clearest instance in the slice of a stated effect with no stated consequence. Kept as an entry rather than dropped as flavour because the corpus lists it beside five effects that all do work, under the same formatting, and dropping it would be the mapper deciding it is flavour."
+    },
+    {
+      "id": "ability-check",
+      "name": "An ability check",
+      "locator": {
+        "sourceId": "srd-5.2.1",
+        "citation": "Rules Glossary / Ability Check / p. 176"
+      },
+      "kind": "operation",
+      "scope": "out",
+      "clarity": "clear",
+      "dependsOn": [],
+      "evidence": "An ability check is a D20 Test that represents using one of the six abilities—or a specific skill associated with an ability—to overcome a challenge.",
+      "status": "declined",
+      "note": "Outside the slice: the glossary's A section, before the extent begins. Named by five in-scope entries whose effect turns on an ability check. Which checks “require sight” or are “social” is not stated here either; that gap stays on the condition entries."
+    },
+    {
+      "id": "attack-roll",
+      "name": "An attack roll",
+      "locator": {
+        "sourceId": "srd-5.2.1",
+        "citation": "Rules Glossary / Attack Roll / p. 177"
+      },
+      "kind": "operation",
+      "scope": "out",
+      "clarity": "clear",
+      "dependsOn": [],
+      "evidence": "An attack roll is a D20 Test that represents making an attack with a weapon, an Unarmed Strike, or a spell.",
+      "status": "declined",
+      "note": "Outside the slice: a term twelve in-scope entries turn on. The extraction puts the Area of Effect paragraph between the heading and this sentence (two columns linearised); the quote is contiguous in the extraction and needs no `extraction` field."
+    },
+    {
+      "id": "advantage",
+      "name": "Advantage on a D20 Test",
+      "locator": {
+        "sourceId": "srd-5.2.1",
+        "citation": "Rules Glossary / Advantage / p. 176"
+      },
+      "kind": "operation",
+      "scope": "out",
+      "clarity": "clear",
+      "dependsOn": [],
+      "evidence": "If you have Advantage on a D20 Test, roll two d20s, and use the higher roll. A roll can’t be affected by more than one Advantage, and Advantage and Disadvantage on the same roll cancel each other.",
+      "status": "declined",
+      "note": "Outside the slice, and load-bearing for the draw count: it is what makes a creature that is both Invisible and Incapacitated at Initiative roll one d20 rather than two."
+    },
+    {
+      "id": "disadvantage",
+      "name": "Disadvantage on a D20 Test",
+      "locator": {
+        "sourceId": "srd-5.2.1",
+        "citation": "Rules Glossary / Disadvantage / p. 181"
+      },
+      "kind": "operation",
+      "scope": "out",
+      "clarity": "clear",
+      "dependsOn": [],
+      "evidence": "If you have Disadvantage on a D20 Test, roll two d20s and use the lower roll. A roll can’t be affected by more than one Disadvantage, and Advantage and Disadvantage on the same roll cancel each other.",
+      "status": "declined",
+      "note": "Outside the slice. “A roll can’t be affected by more than one Disadvantage” is what stops the Blinded, Frightened, Poisoned and Prone penalties compounding on one roll, and no condition entry says so."
+    },
+    {
+      "id": "d20-test",
+      "name": "The three D20 Tests",
+      "locator": {
+        "sourceId": "srd-5.2.1",
+        "citation": "Rules Glossary / D20 Test / p. 180"
+      },
+      "kind": "value",
+      "scope": "out",
+      "clarity": "clear",
+      "dependsOn": [],
+      "evidence": "D20 Tests encompass the three main d20 rolls of the game: ability checks, attack rolls, and saving throws. If something in the game affects D20 Tests, it affects all three of these rolls.",
+      "status": "declined",
+      "note": "Outside the slice. exhaustion-d20-tests reduces “a D20 Test”, and this is the closed list of three that the reduction reaches."
+    },
+    {
+      "id": "saving-throw",
+      "name": "A saving throw",
+      "locator": {
+        "sourceId": "srd-5.2.1",
+        "citation": "Rules Glossary / Saving Throw / p. 187"
+      },
+      "kind": "operation",
+      "scope": "out",
+      "clarity": "clear",
+      "dependsOn": [],
+      "evidence": "A saving throw—also called a save—represents an attempt to avoid or resist a threat. You normally make a saving throw only when a rule requires you to do so, but you can decide to fail the save without rolling. The result of a save is detailed in the effect that allowed it.",
+      "status": "declined",
+      "note": "Outside the slice: named by the five conditions that affect saving throws."
+    },
+    {
+      "id": "critical-hit",
+      "name": "A Critical Hit",
+      "locator": {
+        "sourceId": "srd-5.2.1",
+        "citation": "Rules Glossary / Critical Hit / p. 179"
+      },
+      "kind": "operation",
+      "scope": "out",
+      "clarity": "clear",
+      "dependsOn": [],
+      "evidence": "If you roll a 20 on the d20 for an attack roll, you score a Critical Hit, and the attack hits regardless of any modifiers or the target’s AC.",
+      "status": "declined",
+      "note": "Outside the slice. Paralyzed and Unconscious grant a Critical Hit without the 20 this sentence defines it by, so the granted hit inherits the damage rule and not the trigger."
+    },
+    {
+      "id": "concentration",
+      "name": "Concentration on a spell or effect",
+      "locator": {
+        "sourceId": "srd-5.2.1",
+        "citation": "Rules Glossary / Concentration / p. 179"
+      },
+      "kind": "operation",
+      "scope": "out",
+      "clarity": "clear",
+      "dependsOn": [],
+      "evidence": "Some spells and other effects require Concentration to remain active, as specified in their descriptions. If the effect’s creator loses Concentration, the effect ends.",
+      "status": "declined",
+      "note": "Outside the slice. The same page also states incapacitated-no-concentration's rule from the other side — “Your Concentration ends if you have the Incapacitated condition or you die” — and the two agree."
+    },
+    {
+      "id": "action",
+      "name": "Taking an action on your turn",
+      "locator": {
+        "sourceId": "srd-5.2.1",
+        "citation": "Rules Glossary / Action / p. 176"
+      },
+      "kind": "operation",
+      "scope": "out",
+      "clarity": "clear",
+      "dependsOn": [],
+      "evidence": "On your turn, you can take one action. Choose which action to take from those below or from the special actions provided by your features.",
+      "status": "declined",
+      "note": "Outside the slice: one of the three things incapacitated-inactive forbids."
+    },
+    {
+      "id": "bonus-action",
+      "name": "A Bonus Action",
+      "locator": {
+        "sourceId": "srd-5.2.1",
+        "citation": "Rules Glossary / Bonus Action / p. 177"
+      },
+      "kind": "operation",
+      "scope": "out",
+      "clarity": "clear",
+      "dependsOn": [],
+      "evidence": "A Bonus Action is a special action that you can take on the same turn that you take an action. You can’t take more than one Bonus Action on a turn, and you have a Bonus Action to take only if a rule explicitly says so.",
+      "status": "declined",
+      "note": "Outside the slice: the second of the three things incapacitated-inactive forbids."
+    },
+    {
+      "id": "reaction",
+      "name": "A Reaction",
+      "locator": {
+        "sourceId": "srd-5.2.1",
+        "citation": "Rules Glossary / Reaction / p. 186"
+      },
+      "kind": "operation",
+      "scope": "out",
+      "clarity": "clear",
+      "dependsOn": [],
+      "evidence": "A Reaction is a special action taken in response to a trigger defined in the Reaction’s description. You can take a Reaction on another creature’s turn, and if you take it on your turn, you can do so even if you also take an action, a Bonus Action, or both.",
+      "status": "declined",
+      "note": "Outside the slice: the third of the three things incapacitated-inactive forbids, and the one that makes Incapacitated reach into another creature's turn."
+    },
+    {
+      "id": "initiative",
+      "name": "Initiative determines the order of turns",
+      "locator": {
+        "sourceId": "srd-5.2.1",
+        "citation": "Rules Glossary / Initiative / p. 184"
+      },
+      "kind": "operation",
+      "scope": "out",
+      "clarity": "clear",
+      "dependsOn": [],
+      "evidence": "Initiative determines the order of turns during combat. The combat rules in “Playing the Game” explain how to roll Initiative.",
+      "status": "declined",
+      "note": "Outside the slice: the roll that incapacitated-surprised and invisible-surprise modify. The roll itself is mapped in the SRD combat slice as initiative-roll, in a different map over the same corpus."
+    },
+    {
+      "id": "speed",
+      "name": "A creature's Speed",
+      "locator": {
+        "sourceId": "srd-5.2.1",
+        "citation": "Rules Glossary / Speed / p. 188"
+      },
+      "kind": "operation",
+      "scope": "out",
+      "clarity": "clear",
+      "dependsOn": [],
+      "evidence": "A creature has a Speed, which is the distance in feet the creature can cover when it moves on its turn.",
+      "status": "declined",
+      "note": "Outside the slice: named by the four Speed 0 rules, by exhaustion-speed-reduced and by prone-restricted-movement. Nothing quoted here or in the slice says a Speed cannot fall below zero."
+    },
+    {
+      "id": "creature-size",
+      "name": "The six size categories",
+      "locator": {
+        "sourceId": "srd-5.2.1",
+        "citation": "Rules Glossary / Size / p. 188"
+      },
+      "kind": "value",
+      "scope": "out",
+      "clarity": "clear",
+      "dependsOn": [],
+      "evidence": "A creature or an object belongs to a size category: Tiny, Small, Medium, Large, Huge, or Gargantuan. A creature’s size determines how much space the creature occupies in combat.",
+      "status": "declined",
+      "note": "Outside the slice: the ordered set grappled-movable's “two or more sizes smaller” is measured on. A finite table, verified whole."
+    },
+    {
+      "id": "crawling",
+      "name": "Crawling costs an extra foot per foot",
+      "locator": {
+        "sourceId": "srd-5.2.1",
+        "citation": "Rules Glossary / Crawling / p. 179"
+      },
+      "kind": "operation",
+      "scope": "out",
+      "clarity": "clear",
+      "dependsOn": [],
+      "crossReferences": [
+        {
+          "cites": "See also “Speed.”",
+          "resolvedBy": "speed"
+        }
+      ],
+      "evidence": "While you’re crawling, each foot of movement costs 1 extra foot (2 extra feet in Difficult Terrain). See also “Speed.”",
+      "status": "declined",
+      "note": "Outside the slice: one of the two movement options prone-restricted-movement leaves open. The closing sentence is one of the five pointers in this whole map that the SRD's declared `pointerPhrases` detect."
+    },
+    {
+      "id": "round-down",
+      "name": "Round down",
+      "locator": {
+        "sourceId": "srd-5.2.1",
+        "citation": "Rules Glossary / Round Down / p. 187"
+      },
+      "kind": "operation",
+      "scope": "out",
+      "clarity": "clear",
+      "dependsOn": [],
+      "evidence": "Whenever you divide or multiply a number in the game, round down if you end up with a fraction, even if the fraction is one-half or greater. Some rules make an exception and tell you to round up. Save Save is another name for a saving throw.",
+      "status": "declined",
+      "note": "Outside the slice: what makes “half your Speed (round down)” total for an odd Speed. The quote annexes the whole of the next glossary entry, Save, and it has to: the SRD prints this rule word for word twice, in Playing the Game (p. 5) and here, so neither occurrence can be cited on its own under a checker that requires every occurrence of a quote to touch the cited page. See the README, finding 2."
+    },
+    {
+      "id": "resistance",
+      "name": "Resistance halves damage",
+      "locator": {
+        "sourceId": "srd-5.2.1",
+        "citation": "Rules Glossary / Resistance / p. 187"
+      },
+      "kind": "operation",
+      "scope": "out",
+      "clarity": "clear",
+      "dependsOn": [],
+      "evidence": "If you have Resistance to a damage type, damage of that type is halved against you (round down). Resistance is applied only once to an instance of damage.",
+      "status": "declined",
+      "note": "Outside the slice: what petrified-resist-damage grants."
+    },
+    {
+      "id": "immunity",
+      "name": "Immunity to a damage type or a condition",
+      "locator": {
+        "sourceId": "srd-5.2.1",
+        "citation": "Rules Glossary / Immunity / p. 183"
+      },
+      "kind": "operation",
+      "scope": "out",
+      "clarity": "clear",
+      "dependsOn": [],
+      "evidence": "If you have Immunity to a damage type or a condition, it doesn’t affect you in any way.",
+      "status": "declined",
+      "note": "Outside the slice, and the only rule in the corpus that says what it means to be immune to a *condition*, which is what petrified-poison-immunity grants."
+    },
+    {
+      "id": "long-rest",
+      "name": "A Long Rest, during which you are Unconscious",
+      "locator": {
+        "sourceId": "srd-5.2.1",
+        "citation": "Rules Glossary / Long Rest / p. 185"
+      },
+      "kind": "operation",
+      "scope": "out",
+      "clarity": "clear",
+      "dependsOn": [],
+      "crossReferences": [
+        {
+          "cites": "the Unconscious condition",
+          "resolvedBy": "unconscious"
+        }
+      ],
+      "evidence": "A Long Rest is a period of extended downtime—at least 8 hours—available to any creature. During a Long Rest, you sleep for at least 6 hours and perform no more than 2 hours of light activity, such as reading, talking, eating, or standing watch. During sleep, you have the Unconscious condition.",
+      "status": "declined",
+      "note": "Outside the slice, and in the graph twice over: it is what exhaustion-removing turns on, and it is one of the four rules outside the slice that impose a condition — here Unconscious, on every creature that sleeps."
+    },
+    {
+      "id": "long-rest-exhaustion",
+      "name": "A Long Rest reduces Exhaustion by one level",
+      "locator": {
+        "sourceId": "srd-5.2.1",
+        "citation": "Rules Glossary / Long Rest / p. 185"
+      },
+      "kind": "operation",
+      "scope": "out",
+      "clarity": "clear",
+      "dependsOn": [],
+      "crossReferences": [
+        {
+          "cites": "the Exhaustion condition",
+          "resolvedBy": "exhaustion"
+        }
+      ],
+      "evidence": "Exhaustion Reduced. If you have the Exhaustion condition, its level decreases by 1.",
+      "status": "declined",
+      "note": "Outside the slice, and the same rule as exhaustion-removing's first sentence stated from the other side. They agree, so this is a restatement and not a conflict; the conflict is with malnutrition-hazard."
+    },
+    {
+      "id": "malnutrition-hazard",
+      "name": "Malnutrition gives Exhaustion that a rest cannot remove",
+      "locator": {
+        "sourceId": "srd-5.2.1",
+        "citation": "Rules Glossary / Malnutrition [Hazard] / p. 185"
+      },
+      "kind": "operation",
+      "scope": "out",
+      "clarity": "ambiguous",
+      "ambiguity": {
+        "question": "Malnutrition says Exhaustion it caused “can’t be removed until the creature eats the full amount of food required for a day”, and the Exhaustion condition (p. 181) says without qualification that finishing a Long Rest removes 1 Exhaustion level. A starving creature that finishes a Long Rest is reached by both and they answer differently, and neither says which governs.",
+        "conflict": "can-a-long-rest-remove-exhaustion-from-malnutrition",
+        "fate": "unresolved",
+        "unresolvedReason": "RequiresInterpretation"
+      },
+      "dependsOn": [],
+      "crossReferences": [
+        {
+          "cites": "See also “Exhaustion.”",
+          "resolvedBy": "exhaustion"
+        }
+      ],
+      "evidence": "A creature that eats but consumes less than half the required food for a day must succeed on a DC 10 Constitution saving throw or gain 1 Exhaustion level at the day’s end. A creature that eats nothing for 5 days automatically gains 1 Exhaustion level at the end of the fifth day as well as an additional level at the end of each subsequent day without food. Exhaustion caused by malnutrition can’t be removed until the creature eats the full amount of food required for a day. See also “Exhaustion.”",
+      "status": "declined",
+      "note": "Outside the slice as a hazard, and a member of the slice's only conflict: its last sentence bars what exhaustion-removing grants. Recorded as `scope: out` and `clarity: ambiguous`, which is the shape a conflict between an in-scope rule and an out-of-scope one has to take — a conflict needs two members and this is the other one."
+    },
+    {
+      "id": "suffocation-hazard",
+      "name": "Suffocation gives Exhaustion, and breathing removes it",
+      "locator": {
+        "sourceId": "srd-5.2.1",
+        "citation": "Rules Glossary / Suffocation [Hazard] / p. 189"
+      },
+      "kind": "operation",
+      "scope": "out",
+      "clarity": "clear",
+      "dependsOn": [],
+      "evidence": "When a creature runs out of breath or is choking, it gains 1 Exhaustion level at the end of each of its turns. When a creature can breathe again, it removes all levels of Exhaustion it gained from suffocating.",
+      "status": "declined",
+      "note": "Outside the slice: a third route into and out of Exhaustion. It does not conflict with exhaustion-removing, which never says a Long Rest is the only way out; it does require the engine to know which levels came from suffocating, and no rule says a level records its cause."
+    },
+    {
+      "id": "dead-revival-conditions",
+      "name": "A revived creature keeps its conditions and loses one Exhaustion level",
+      "locator": {
+        "sourceId": "srd-5.2.1",
+        "citation": "Rules Glossary / Dead / p. 180"
+      },
+      "kind": "operation",
+      "scope": "out",
+      "clarity": "clear",
+      "dependsOn": [],
+      "evidence": "Unless otherwise stated, the creature returns to life with any conditions, magical contagions, or curses that were affecting it at death if the durations of those effects are still ongoing. If the creature died with any Exhaustion levels, it returns with 1 fewer level.",
+      "status": "declined",
+      "note": "Outside the slice: the only rule in the corpus that says what happens to a creature's conditions across death, and a fourth route out of an Exhaustion level. It is also the only passage that treats “the durations of those effects” as a thing conditions have, which condition-definition says the corpus never fixes."
+    },
+    {
+      "id": "heavily-obscured",
+      "name": "A Heavily Obscured space gives the Blinded condition",
+      "locator": {
+        "sourceId": "srd-5.2.1",
+        "citation": "Rules Glossary / Heavily Obscured / p. 182"
+      },
+      "kind": "operation",
+      "scope": "out",
+      "clarity": "clear",
+      "dependsOn": [],
+      "crossReferences": [
+        {
+          "cites": "the Blinded condition",
+          "resolvedBy": "blinded"
+        },
+        {
+          "cites": "See also “Blinded,” “Darkness,” and “Playing the Game” (“Exploration”).",
+          "resolvedBy": "blinded"
+        }
+      ],
+      "evidence": "You have the Blinded condition while trying to see something in a Heavily Obscured space. See also “Blinded,” “Darkness,” and “Playing the Game” (“Exploration”).",
+      "status": "declined",
+      "note": "Outside the slice: one of the rules that impose a condition from elsewhere in the same glossary. It also states its own ending, which the Blinded entry does not. The only place in the map where a detectable pointer phrase and a condition-to-condition edge coincide: the sentence names Blinded twice, once as the rule and once as a pointer."
+    },
+    {
+      "id": "blindsight",
+      "name": "Blindsight sees past Blinded and Invisible",
+      "locator": {
+        "sourceId": "srd-5.2.1",
+        "citation": "Rules Glossary / Blindsight / p. 177"
+      },
+      "kind": "operation",
+      "scope": "out",
+      "clarity": "clear",
+      "dependsOn": [],
+      "crossReferences": [
+        {
+          "cites": "the Blinded condition",
+          "resolvedBy": "blinded"
+        },
+        {
+          "cites": "the Invisible condition",
+          "resolvedBy": "invisible"
+        }
+      ],
+      "evidence": "Within that range, you can see anything that isn’t behind Total Cover even if you have the Blinded condition or are in Darkness. Moreover, in that range, you can see something that has the Invisible condition.",
+      "status": "declined",
+      "note": "Outside the slice: a sense that modifies two conditions in the slice, cancelling part of Blinded and satisfying invisible-concealed's “somehow see you”."
+    },
+    {
+      "id": "truesight",
+      "name": "Truesight sees creatures with the Invisible condition",
+      "locator": {
+        "sourceId": "srd-5.2.1",
+        "citation": "Rules Glossary / Truesight / p. 190"
+      },
+      "kind": "operation",
+      "scope": "out",
+      "clarity": "clear",
+      "dependsOn": [],
+      "crossReferences": [
+        {
+          "cites": "the Invisible condition",
+          "resolvedBy": "invisible"
+        }
+      ],
+      "evidence": "Invisibility. You see creatures and objects that have the Invisible condition.",
+      "status": "declined",
+      "note": "Outside the slice: the second sense that satisfies “somehow see you”, and the one that makes invisible-attacks' “this benefit” reachable."
+    },
+    {
+      "id": "grappling-imposes",
+      "name": "Grappling gives the target the Grappled condition",
+      "locator": {
+        "sourceId": "srd-5.2.1",
+        "citation": "Rules Glossary / Grappling / p. 182"
+      },
+      "kind": "operation",
+      "scope": "out",
+      "clarity": "clear",
+      "dependsOn": [],
+      "crossReferences": [
+        {
+          "cites": "the Grappled condition",
+          "resolvedBy": "grappled"
+        },
+        {
+          "cites": "See also “Unarmed Strike” and “Grappled.”",
+          "resolvedBy": "grappled"
+        }
+      ],
+      "evidence": "However a grapple is initiated, it follows these rules. See also “Unarmed Strike” and “Grappled.” Grappled Condition. Successfully grappling a creature gives it the Grappled condition.",
+      "status": "declined",
+      "note": "Outside the slice: where the grappler comes from. grappled-attacks and grappled-movable both turn on “the grappler” and the Grappled entry never says who that is. The span starts one sentence earlier than the rule so that it carries the pointer the corpus makes at the same rule."
+    },
+    {
+      "id": "grappling-ends",
+      "name": "Ending a grapple",
+      "locator": {
+        "sourceId": "srd-5.2.1",
+        "citation": "Rules Glossary / Grappling / p. 182"
+      },
+      "kind": "operation",
+      "scope": "out",
+      "clarity": "clear",
+      "dependsOn": [],
+      "crossReferences": [
+        {
+          "cites": "the Incapacitated condition",
+          "resolvedBy": "incapacitated"
+        }
+      ],
+      "evidence": "Ending a Grapple. A Grappled creature can use its action to make a Strength (Athletics) or Dexterity (Acrobatics) check against the grapple’s escape DC, ending the condition on itself on a success. The condition also ends if the grappler has the Incapacitated condition or if the distance between the Grappled target and the grappler exceeds the grapple’s range.",
+      "status": "declined",
+      "note": "Outside the slice, and the only ending rule any of the fifteen has apart from Prone's own. It also closes a loop the slice opens: escaping costs an action, and incapacitated-inactive forbids actions, so a Paralyzed, Petrified or Stunned creature that is also Grappled cannot escape — a consequence of two rules that no sentence states, and one this map records in a note rather than as a derived entry, because `derivedFrom` requires in-scope sources and both of these are out."
+    },
+    {
+      "id": "falling-hazard",
+      "name": "A creature that lands from a fall has the Prone condition",
+      "locator": {
+        "sourceId": "srd-5.2.1",
+        "citation": "Rules Glossary / Falling [Hazard] / p. 182"
+      },
+      "kind": "operation",
+      "scope": "out",
+      "clarity": "clear",
+      "dependsOn": [],
+      "crossReferences": [
+        {
+          "cites": "the Prone condition",
+          "resolvedBy": "prone"
+        }
+      ],
+      "evidence": "When the creature lands, it has the Prone condition unless it avoids taking any damage from the fall.",
+      "status": "declined",
+      "note": "Outside the slice: another rule that imposes a condition from outside."
+    },
+    {
+      "id": "flying-fall",
+      "name": "A flying creature that is Incapacitated or Prone falls",
+      "locator": {
+        "sourceId": "srd-5.2.1",
+        "citation": "Rules Glossary / Flying / p. 182"
+      },
+      "kind": "operation",
+      "scope": "out",
+      "clarity": "clear",
+      "dependsOn": [],
+      "crossReferences": [
+        {
+          "cites": "the Incapacitated or Prone condition",
+          "resolvedBy": "incapacitated"
+        },
+        {
+          "cites": "the Incapacitated or Prone condition",
+          "resolvedBy": "prone"
+        },
+        {
+          "cites": "See also “Falling” and “Fly Speed.”",
+          "resolvedBy": "falling-hazard"
+        }
+      ],
+      "evidence": "A variety of effects allow a creature to fly. While flying, you fall if you have the Incapacitated or Prone condition or your Fly Speed is reduced to 0. You can stay aloft in those circumstances if you can hover. See also “Falling” and “Fly Speed.”",
+      "status": "declined",
+      "note": "Outside the slice, and the sharpest instance of the graph running outward: Paralyzed, Petrified, Stunned and Unconscious all impose Incapacitated, Unconscious imposes Prone, and so all four drop a flying creature out of the air through a rule none of them mentions. With falling-hazard that then imposes Prone, which Unconscious had already imposed."
+    },
+    {
+      "id": "hide-action",
+      "name": "The Hide action gives the Invisible condition until you are found",
+      "locator": {
+        "sourceId": "srd-5.2.1",
+        "citation": "Rules Glossary / Hide [Action] / p. 183"
+      },
+      "kind": "operation",
+      "scope": "out",
+      "clarity": "clear",
+      "dependsOn": [],
+      "crossReferences": [
+        {
+          "cites": "the Invisible condition",
+          "resolvedBy": "invisible"
+        }
+      ],
+      "evidence": "On a successful check, you have the Invisible condition while hidden. Make note of your check’s total, which is the DC for a creature to find you with a Wisdom (Perception) check. You stop being hidden immediately after any of the following occurs: you make a sound louder than a whisper, an enemy finds you, you make an attack roll, or you cast a spell with a Verbal component.",
+      "status": "declined",
+      "note": "Outside the slice: the one rule in the corpus that both imposes a condition and enumerates how it ends. Invisible's own entry says neither."
+    },
+    {
+      "id": "knocking-out-a-creature",
+      "name": "Knocking a creature out gives it the Unconscious condition",
+      "locator": {
+        "sourceId": "srd-5.2.1",
+        "citation": "Rules Glossary / Knocking Out a Creature / p. 184"
+      },
+      "kind": "operation",
+      "scope": "out",
+      "clarity": "clear",
+      "dependsOn": [],
+      "crossReferences": [
+        {
+          "cites": "the Unconscious condition",
+          "resolvedBy": "unconscious"
+        }
+      ],
+      "evidence": "The creature then has the Unconscious condition and starts a Short Rest. The creature remains Unconscious until it regains any Hit Points or until someone uses an action to administer first aid to it, which requires a successful DC 10 Wisdom (Medicine) check.",
+      "status": "declined",
+      "note": "Outside the slice: imposes Unconscious and states its ending, which the Unconscious entry does not."
+    },
+    {
+      "id": "unarmed-strike-grapple",
+      "name": "An Unarmed Strike can give the Grappled condition",
+      "locator": {
+        "sourceId": "srd-5.2.1",
+        "citation": "Rules Glossary / Unarmed Strike / p. 190"
+      },
+      "kind": "operation",
+      "scope": "out",
+      "clarity": "clear",
+      "dependsOn": [],
+      "crossReferences": [
+        {
+          "cites": "the Grappled condition",
+          "resolvedBy": "grappled"
+        }
+      ],
+      "evidence": "Grapple. The target must succeed on a Strength or Dexterity saving throw (it chooses which), or it has the Grappled condition.",
+      "status": "declined",
+      "note": "Outside the slice: the ordinary way a creature receives Grappled."
+    },
+    {
+      "id": "surprise",
+      "name": "A creature caught unawares has Disadvantage on its Initiative roll",
+      "locator": {
+        "sourceId": "srd-5.2.1",
+        "citation": "Rules Glossary / Surprise / p. 189"
+      },
+      "kind": "operation",
+      "scope": "out",
+      "clarity": "clear",
+      "dependsOn": [],
+      "evidence": "If a creature is caught unawares by the start of combat, that creature is surprised, which causes it to have Disadvantage on its Initiative roll.",
+      "status": "declined",
+      "note": "Outside the slice, and recorded because incapacitated-surprised's effect is headed “Surprised.” and gives the same penalty for a different trigger. The two do not contradict each other — Disadvantage does not stack — so this is a note on a clear entry and not a conflict."
+    }
+  ]
+}
