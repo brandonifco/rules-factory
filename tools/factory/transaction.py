@@ -18,6 +18,15 @@ mutation set too, so they are never touched. Symlinks are followed when copying 
 is not copied, and not counted as removed), so no step can write through a link to outside the
 staging copy.
 
+Symlinks in `--out` itself (#184). Git stores symlinks, so a pull request to an engine can turn a
+directory the factory writes into a link to anywhere. `os.replace` and `os.remove` on
+`--out/backlog/x.md` resolve a symlinked `backlog`, so committing through it would write and
+delete outside `--out`. Before anything is written, every path in the mutation set is checked:
+if the file itself, or any directory between it and `--out`, is a symlink, the run is refused,
+naming the link, and nothing is written. A symlink on a path the commit does not touch is left
+alone. A link swapped in between that check and the write is not caught; that would take
+descriptor-relative I/O the standard library does not offer portably.
+
 The mutation set. Right after the copy, each staged file's size, executable bit and SHA-256 is
 noted. After the steps, a file is added when it is new, changed when its bytes or executable bit
 differ from what was copied, and removed when it was copied and is gone. The executable bit is the
@@ -50,6 +59,14 @@ says so, and then runs as usual. Rolling back rather than refusing: the backups 
 and a refusal would leave the engine half-committed until someone repaired it by hand. A journal
 that cannot be read, names a different directory (a copy of an engine taken mid-commit, as
 `recompute` makes), or whose rollback fails, is refused, naming the journal and the backups.
+
+A journal is also a file in the engine's checkout, so it can arrive in a commit rather than from a
+dead run (#183). Rollback deletes and overwrites the paths it names, so nothing in it is taken on
+trust: before any rollback, every path must be relative and normalised (no absolute prefix, no
+empty, `.` or `..` component) and must not pass through a symlink under `--out`; the working
+directory must exist as a real directory; and every changed or removed path must have a regular
+file in its `backup/`. A journal failing any of these is refused, and nothing is deleted or
+restored.
 
 Not handled: a working directory left behind by a process killed before step 2 is not removed
 by a later run (it cannot tell a dead run from a concurrent one); it is a hidden
@@ -106,6 +123,22 @@ def _native(root, relative):
     return os.path.join(root, *relative.split("/"))
 
 
+def _safe_relative(relative):
+    """Whether `relative` is a normalised relative POSIX path that cannot leave the root it is joined to."""
+    return (isinstance(relative, str) and relative and "\0" not in relative and not relative.startswith("/")
+            and all(part not in ("", ".", "..") for part in relative.split("/")))
+
+
+def _symlink_on(root, relative):
+    """The first of `relative`'s own path or its parent directories, under `root`, that is a symlink; else None."""
+    parts = relative.split("/")
+    for depth in range(1, len(parts) + 1):
+        prefix = "/".join(parts[:depth])
+        if os.path.islink(_native(root, prefix)):
+            return prefix
+    return None
+
+
 def _existing_ancestor(path):
     while not os.path.isdir(path):
         parent = os.path.dirname(path)
@@ -140,6 +173,27 @@ def _rollback(journal):
             raise
 
 
+def _journal_problem(journal, out):
+    """Why the journal's paths cannot be rolled back safely (#183), or None. Checked before anything is touched."""
+    root = journal["out"]
+    work = journal["work"]
+    if os.path.islink(work) or not os.path.isdir(work):
+        return f"its working directory {work} does not exist"
+    backup = os.path.join(work, "backup")
+    for key in ("added", "changed", "removed", "directories"):
+        for relative in journal[key]:
+            if not _safe_relative(relative):
+                return f"its {key!r} list names {relative!r}, which is not a relative path inside the engine"
+            link = _symlink_on(root, relative)
+            if link is not None:
+                return f"its {key!r} path {relative!r} passes through the symlink {link}"
+    for relative in journal["changed"] + journal["removed"]:
+        saved = _native(backup, relative)
+        if _symlink_on(backup, relative) is not None or not os.path.isfile(saved):
+            return f"{relative!r} has no backed-up file under {backup}"
+    return None
+
+
 def recover(out, log=None):
     """Roll back a commit to `out` that a dead run left journaled; refuse when that cannot be done."""
     path = os.path.join(out, JOURNAL)
@@ -167,6 +221,11 @@ def recover(out, log=None):
         raise intake_step.Refused(f"{path} records an interrupted commit to this engine, but names {work!r} as "
                                   f"its working directory, which is not one produce makes; restore the engine "
                                   f"from version control and delete the journal")
+    unsafe = _journal_problem(journal, out)
+    if unsafe:
+        raise intake_step.Refused(f"{path} records an interrupted commit to this engine, but {unsafe}, so it is not "
+                                  f"one produce wrote and nothing in it was rolled back; restore the engine from "
+                                  f"version control and delete the journal")
     try:
         _rollback(journal)
     except OSError as error:
@@ -275,6 +334,13 @@ class Stage:
             raise CommitError(f"moving the staged engine to {self.out} failed ({error})", rolled_back=True)
 
     def _commit_existing(self, added, changed, removed):
+        linked = sorted({f"{p} (through {link})" for p in added + changed + removed
+                         for link in [_symlink_on(self.out, p)] if link is not None})
+        if linked:
+            raise intake_step.Refused(f"--out has a symlink where produce would write or remove ({', '.join(linked)}); "
+                                      f"writing through it would change files outside --out, so nothing was "
+                                      f"written. Replace the link with a real file or directory and run produce "
+                                      f"again")
         moved = [p for p in added if os.path.lexists(_native(self.out, p))]
         moved += [p for p in changed + removed
                   if not os.path.isfile(_native(self.out, p)) or _signature(_native(self.out, p)) != self.snapshot[p]]

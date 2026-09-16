@@ -683,6 +683,21 @@ class TestTransactional(ProduceCase):
         self.assertEqual(before, snapshot(out))
         self.assert_no_leftovers(self.tmp)
 
+    def test_a_symlinked_directory_it_would_write_through_is_refused_and_nothing_is_written(self):
+        """#184: backlog/ turned into a link (git stores links) must not carry produce's writes outside --out."""
+        out = self.existing()
+        outside = os.path.join(self.tmp, "outside")
+        shutil.move(os.path.join(out, "backlog"), outside)
+        os.symlink(outside, os.path.join(out, "backlog"))
+        before, before_outside = snapshot(out), snapshot(outside)
+        code, output = self.produce(out, package=self.v2)
+        self.assertEqual(code, 1, output)
+        self.assertIn("through backlog", output)
+        self.assertIn("Nothing was produced.", output)
+        self.assertEqual(before, snapshot(out))
+        self.assertEqual(before_outside, snapshot(outside))
+        self.assert_no_leftovers(self.tmp)
+
     def test_an_interrupted_commit_is_rolled_back_by_the_next_run(self):
         out = self.existing()
         before = snapshot(out)
