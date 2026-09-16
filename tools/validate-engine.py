@@ -965,7 +965,8 @@ def player_count_evidence():
 # committed checkout, so the next dispatch is not refused (#194), and the guard refusing a commit
 # in a produced engine's own checkout. Then the four behaviours #157 names, run as the produced
 # engine's own files with a stand-in for GitHub: the pull request contract, the verdict tied to the
-# head commit, the independent-risk issue, and the provider chain as configuration.
+# head commit, the independent-risk issue, the recorded verdict re-running the required check
+# through the emitted workflow's own wiring (#191), and the provider chain as configuration.
 # tools/tests/test_factory_rails.py proves the same logic in depth; what only this can prove is that it holds in what an engine
 # actually receives, after produce has written it -- not in the recipe copies the tests read.
 def the_rails_run_in_a_produced_engine(r):
@@ -987,6 +988,7 @@ def the_rails_run_in_a_produced_engine(r):
     a_malformed_pull_request_is_refused_by_the_contract(r, railed, github)
     a_verdict_at_one_commit_does_not_pass_another(r, railed, github)
     an_independent_risk_issue_needs_more_than_the_semantic_verdict(r, railed, github)
+    the_verdict_re_runs_the_gate(r, railed, github)
     swapping_the_provider_chain_is_an_edit_to_the_policy_alone(r, railed, github)
 
 
@@ -1179,8 +1181,25 @@ elif argv[:1] == ["api"] and len(argv) > 1:
     elif route.startswith(prefix + "commits/") and route.endswith("/status"):
         sha = route[len(prefix + "commits/"):-len("/status")]
         print(json.dumps({"sha": sha, "statuses": state["statuses"].get(sha, [])}))
+    elif route.startswith(prefix + "actions/workflows/") and "/runs?" in route:
+        query = dict(pair.split("=", 1) for pair in route.split("?", 1)[1].split("&"))
+        if query.get("event") != "pull_request":
+            refuse("the runs query does not ask for the pull_request event")
+        print(json.dumps({"workflow_runs": state.get("runs", {}).get(query.get("head_sha", ""), [])}))
+    elif route.startswith(prefix + "actions/runs/") and route.endswith("/rerun") and argv[2:4] == ["-X", "POST"]:
+        run = route[len(prefix + "actions/runs/"):-len("/rerun")]
+        state.setdefault("reruns", []).append(run)
+        with open(path, "w", encoding="utf-8") as handle:
+            json.dump(state, handle, indent=2)
+        print("{}")
     else:
         refuse("an api route the rails do not call")
+elif argv[:2] == ["pr", "list"]:
+    if "--state" not in argv or argv[argv.index("--state") + 1] != "open":
+        refuse("a pull request listing that does not ask for the open ones")
+    wanted = argv[argv.index("--json") + 1].split(",") if "--json" in argv else refuse("no --json")
+    open_pulls = [pull for pull in state["pulls"].values() if pull.get("state") == "OPEN"]
+    print(json.dumps([{field: pull[field] for field in wanted} for pull in open_pulls]))
 else:
     refuse("a command the rails do not call")
 '''
@@ -1189,6 +1208,9 @@ PR = "5"
 ISSUE = 27
 COMMIT_A = "a" * 40
 COMMIT_B = "b" * 40
+# A commit no open pull request heads: #191's second acceptance criterion is about this one.
+COMMIT_STRANGER = "c" * 40
+GATE_RUN = 4242
 
 # A pull request filled the way the emitted template asks: every section, one `Closes`, a command
 # and its output, a mutation, and who implemented and reviewed. If the contract rejects this, the
@@ -1260,7 +1282,9 @@ class FakeGitHub:
     def serve(self, railed, head, labels, body=WELL_FORMED_PR_BODY):
         """One open pull request at `head`, touching the semantic surface, closing one issue with `labels`.
 
-        The commit statuses start empty: each check records its own verdicts through record-verdict.py."""
+        The commit statuses start empty: each check records its own verdicts through record-verdict.py.
+        `runs` is the conformance-gate run GitHub holds at that head -- there is one as soon as a
+        pull request is opened -- and `reruns` the re-requests the rails make of it, which start none."""
         document = {
             "repository": "owner/engine",
             "pulls": {PR: {"number": int(PR), "title": "Implement the player count", "body": body, "state": "OPEN",
@@ -1268,8 +1292,14 @@ class FakeGitHub:
                            "closingIssuesReferences": [{"number": ISSUE}]}},
             "issues": {str(ISSUE): {"number": ISSUE, "state": "OPEN", "labels": [{"name": name} for name in labels]}},
             "statuses": {},
+            "runs": {head: [{"id": GATE_RUN, "run_number": 1, "status": "completed", "conclusion": "failure"}]},
+            "reruns": [],
         }
         write(self.state, json.dumps(document, indent=2))
+
+    def reruns(self):
+        with open(self.state, encoding="utf-8") as handle:
+            return json.load(handle).get("reruns") or []
 
     def move_head(self, head):
         """A further commit pushed to the pull request: the statuses stay on the commits they were recorded at."""
@@ -1367,6 +1397,201 @@ def an_independent_risk_issue_needs_more_than_the_semantic_verdict(r, railed, gi
         cat(log)
         fail(f"an independent verdict at {chain[0]['context']} did not satisfy the gate beside the semantic one")
     ok("an independent-risk issue is not satisfied by the semantic verdict alone, and is with the chain's")
+
+
+# --- the emitted workflows, read and dispatched -------------------------------------------------
+#
+# #157's checks called tools/conformance-gate.py directly, so nothing had ever read the workflow
+# that runs it -- which is where #191's defect lived: a `status:` trigger whose only job was gated
+# to `pull_request` events, so recording a verdict re-ran nothing and the required check stayed
+# red. What follows is the smallest thing that can see that class of defect: the emitted workflow's
+# own triggers, job conditions, step environments and commands, read from the file the engine
+# received, and the command run with the variable names the YAML binds. Rename VERDICT_SHA in the
+# workflow and not in the script, or the other way round, and this fails.
+#
+# It reads lines, not YAML: the standard library has no YAML parser, and tools/check-workflow-pins.py
+# sets the precedent of saying so rather than adding a dependency to the factory. It therefore
+# understands exactly the shape the factory emits -- one `on:` block of bare triggers, jobs at one
+# indent, steps with an `env:` map and a one-line `run:` -- and fails loudly where it cannot tell.
+JOB_IF = re.compile(r"^github\.event_name == '([a-z_]+)'$")
+EXPRESSION = re.compile(r"^\$\{\{\s*(.+?)\s*\}\}$")
+STATUS_PAYLOAD_FIELDS = ("sha", "context", "state")
+
+
+def read_workflow(path):
+    """{"triggers": [...], "jobs": {name: {"if": str|None, "steps": [{"env": {...}, "run": str|None}]}}}."""
+    triggers, jobs = [], {}
+    section, job, step, env_indent = None, None, None, None
+    for line in read_lines(path):
+        text = line.strip()
+        if not text or text.startswith("#"):
+            continue
+        indent = len(line) - len(line.lstrip())
+        if indent == 0:
+            section, job, step, env_indent = text.rstrip(":"), None, None, None
+        elif section == "on" and indent == 2:
+            triggers.append(text.rstrip(":"))
+        elif section == "jobs" and indent == 2:
+            job, step, env_indent = text.rstrip(":"), None, None
+            jobs[job] = {"if": None, "steps": []}
+        elif section == "jobs" and job and indent == 4 and text.startswith("if:"):
+            jobs[job]["if"] = text[len("if:"):].strip()
+        elif section == "jobs" and job and indent == 6 and text.startswith("- "):
+            step, env_indent = {"env": {}, "run": None}, None
+            jobs[job]["steps"].append(step)
+        elif step is not None and indent == 8:
+            env_indent = 10 if text == "env:" else None
+            if text.startswith("run:"):
+                step["run"] = text[len("run:"):].strip()
+        elif step is not None and env_indent is not None and indent == env_indent and ": " in text:
+            key, value = text.split(": ", 1)
+            step["env"][key] = value
+    return {"triggers": triggers, "jobs": jobs}
+
+
+def jobs_selected(workflow, event_name, path):
+    """The jobs a `event_name` run would actually execute, by each job's `if:`."""
+    selected = []
+    for name, job in workflow["jobs"].items():
+        if job["if"] is None:
+            selected.append(name)
+            continue
+        found = JOB_IF.fullmatch(job["if"])
+        if not found:
+            # An undecidable check fails. Saying "no job matched" here would read as a pass.
+            fail(f"{path}: this check understands one form of `if:`, `github.event_name == '<x>'`; the job "
+                 f"{name} now uses another ({job['if']!r}), so it cannot tell whether the job runs")
+        if found.group(1) == event_name:
+            selected.append(name)
+    return selected
+
+
+def step_environment(step, payload, path):
+    """The step's `env:` map with each `${{ }}` resolved against the event payload."""
+    env = {}
+    for key, value in step["env"].items():
+        found = EXPRESSION.fullmatch(value)
+        if not found:
+            fail(f"{path}: {key} is {value!r}, which this check cannot resolve; it understands `${{{{ ... }}}}`")
+        expression = found.group(1)
+        if expression == "github.token":
+            env[key] = "fake-token-the-stand-in-ignores"
+        elif expression.startswith("github.event."):
+            field = expression[len("github.event."):]
+            if field not in payload:
+                fail(f"{path}: {key} reads {expression}, and a status payload carries "
+                     f"{', '.join(STATUS_PAYLOAD_FIELDS)}")
+            env[key] = payload[field]
+        else:
+            fail(f"{path}: {key} reads {expression}, which this check cannot synthesise for a status event")
+    return env
+
+
+def dispatch_status(railed, github, workflow, payload, log, path):
+    """Deliver a `status` event to the emitted workflow: its jobs' steps, run as the YAML declares them.
+
+    The command and the variable names are the workflow's own, so this is the wiring under test and
+    not a paraphrase of it."""
+    if "status" not in workflow["triggers"]:
+        fail(f"{path} does not trigger on `status`, so a recorded verdict reaches nothing")
+    selected = jobs_selected(workflow, "status", path)
+    if selected != ["verdict-requeue"]:
+        fail(f"{path}: a status event selects {selected or 'no job'}; #191 was this job being skipped, and a job "
+             f"named conformance-gate here would report the required check onto the default branch's commit")
+    code = 0
+    for name in selected:
+        for step in workflow["jobs"][name]["steps"]:
+            if not step["run"]:
+                continue
+            env = dict(os.environ, RULES_ENGINE_GH=github.script, VALIDATE_ENGINE_FAKE_GH_STATE=github.state,
+                       **step_environment(step, payload, path))
+            code = run_to(log, ["bash", "-c", step["run"]], cwd=railed, env=env, both=True)
+            if code != 0:
+                return code
+    return code
+
+
+def status_payload(sha, context, state):
+    return {"sha": sha, "context": context, "state": state}
+
+
+# Recording a verdict turns the required check green with no manual step (#191, acceptance
+# criterion 1), and a verdict on a commit no open pull request heads produces a failing check
+# nowhere (criterion 2). The whole chain, in the engine the factory produced: the emitted
+# record-verdict.py writes the status, the emitted verdict-requeue.yml is dispatched the `status`
+# event that status would cause, its own command re-requests the gate's run, and the emitted
+# conformance-gate.py -- which that run would execute -- then passes.
+#
+# **What this cannot prove.** That GitHub delivers the `status` event to the workflow at all; that
+# `actions: write` is the permission the re-run POST needs; and that the check run the re-run
+# produces supersedes the failed one for the ruleset, so the pull request stops being BLOCKED. All
+# three are GitHub's behaviour, not the engine's, and the evidence for them is the live #157 run.
+def the_verdict_re_runs_the_gate(r, railed, github):
+    workflows = os.path.join(railed, ".github", "workflows")
+    requeue_path = os.path.join(workflows, "verdict-requeue.yml")
+    gate_path = os.path.join(workflows, "conformance-gate.yml")
+    requeue, gate_workflow = read_workflow(requeue_path), read_workflow(gate_path)
+    if "status" in gate_workflow["triggers"]:
+        fail("the conformance-gate workflow triggers on `status`, whose run belongs to the default branch's "
+             "commit: that is how #191 painted the required check's name onto a commit nobody heads")
+    if "conformance-gate" not in jobs_selected(gate_workflow, "pull_request", gate_path):
+        fail("a pull_request event selects no conformance-gate job, so the required check has no producer")
+
+    policy = railed_policy(railed)
+    semantic = policy["review"]["semanticContext"]
+    log = r.s("verdict-requeue.log")
+    github.serve(railed, COMMIT_A, ready(policy, "normalRisk"))
+    if github.gate(railed, log) != 1:
+        cat(log)
+        fail("the gate passed before any verdict was recorded, so nothing here would prove a re-run was needed")
+
+    github.record(railed, log, "semantic")
+    if dispatch_status(railed, github, requeue, status_payload(COMMIT_A, semantic, "success"), log,
+                       requeue_path) != 0:
+        cat(log)
+        fail("the verdict-requeue workflow's own command failed on the status event a recorded verdict causes")
+    if github.reruns() != [str(GATE_RUN)]:
+        cat(log)
+        fail(f"the recorded verdict re-requested {github.reruns() or 'no run'}, not the gate's run {GATE_RUN} "
+             f"at the head it names")
+    # No status and no check run of the required check's name, ever: a status would stand beside the
+    # failed check run rather than replace it, and a second check run of that name is ambiguous. The
+    # stand-in refuses every route but the three the rails call, so a check run would have failed the
+    # dispatch above; what is asserted here is the commit's statuses, which it does serve.
+    with open(github.state, encoding="utf-8") as handle:
+        recorded = json.load(handle)["statuses"][COMMIT_A]
+    if [status["context"] for status in recorded] != [semantic]:
+        fail(f"the requeue wrote {[s['context'] for s in recorded]} at {COMMIT_A[:12]}; it must write no status "
+             f"of its own, least of all one named conformance-gate")
+    if github.gate(railed, log) != 0:
+        cat(log)
+        fail("the re-requested gate run does not pass at the commit the verdict names, so the chain from "
+             "recording a verdict to a green required check is still broken")
+
+    # A verdict on a commit no open pull request heads: nothing to re-run, and nothing red anywhere.
+    before = list(github.reruns())
+    if dispatch_status(railed, github, requeue, status_payload(COMMIT_STRANGER, semantic, "success"), log,
+                       requeue_path) != 0:
+        cat(log)
+        fail(f"a status on {COMMIT_STRANGER[:12]}, which no open pull request heads, failed; a failing check "
+             f"on a commit nobody heads is exactly what #191's second criterion forbids")
+    if not grep_fixed(log, f"no open pull request heads {COMMIT_STRANGER}"):
+        cat(log)
+        fail("the requeue passed on a commit nobody heads without saying which commit it was asked about")
+
+    # A status somebody else's service wrote, and a verdict still being formed: neither is a verdict
+    # recorded at a head, and neither may re-run anything.
+    for context, state, why in ((f"ci/{NAME.lower()}-coverage", "success", "a status that is not a verdict"),
+                                (semantic, "pending", "a verdict that has not concluded")):
+        if dispatch_status(railed, github, requeue, status_payload(COMMIT_A, context, state), log,
+                           requeue_path) != 0:
+            cat(log)
+            fail(f"{why} failed the requeue instead of being ignored")
+    if github.reruns() != before:
+        fail(f"{len(github.reruns()) - len(before)} run(s) were re-requested by a status that is no recorded "
+             f"verdict; the context filter is what keeps this from re-running the gate on anything that moves")
+    ok("a recorded verdict re-runs the gate through the emitted workflow, and a status on a commit nobody "
+       "heads re-runs nothing")
 
 
 def tree_hashes(directory):

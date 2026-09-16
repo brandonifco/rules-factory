@@ -55,9 +55,9 @@ MANAGED = ("Directory.Build.props", "NuGet.config", "global.json",
            ".claude/hooks/primary-checkout-guard.py", ".claude/settings.json",
            "tools/dispatch-agent.sh", "tools/new-issue.sh", "tools/entry-packet.py",
            "tools/review-packet.py", "tools/pr-policy.py", "tools/record-verdict.py",
-           "tools/conformance-gate.py", ".github/pull_request_template.md",
+           "tools/conformance-gate.py", "tools/requeue-gate.py", ".github/pull_request_template.md",
            ".github/workflows/pr-policy.yml", ".github/workflows/conformance-gate.yml",
-           "tools/agent-doctor.py", ".editorconfig")
+           ".github/workflows/verdict-requeue.yml", "tools/agent-doctor.py", ".editorconfig")
 ENGINE_OWNED = ("Directory.Packages.props", f"{NAME}.slnx", f"src/{NAME}/{NAME}.csproj",
                 f"tests/{NAME}.Tests/{NAME}.Tests.csproj", "corpus-map.overlay.json",
                 ".github/agent-policy.json")

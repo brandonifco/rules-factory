@@ -38,6 +38,8 @@ import sys
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 POLICY = ".github/agent-policy.json"
 RULESET = "rules-factory-agent-rails"
+# `verdict-requeue` is deliberately absent: it runs on the default branch's commit, where a
+# required check governs nothing.
 REQUIRED_CHECKS = ("validate", "pr-policy", "conformance-gate")
 GUARDED_TOOLS = "Bash|Edit|Write|NotebookEdit"
 RAILS = ("AGENTS.md", "CLAUDE.md", "docs/agent-team.md", POLICY,
@@ -45,9 +47,10 @@ RAILS = ("AGENTS.md", "CLAUDE.md", "docs/agent-team.md", POLICY,
          ".claude/hooks/primary-checkout-guard.py", ".claude/settings.json",
          "tools/dispatch-agent.sh", "tools/new-issue.sh", "tools/entry-packet.py", "tools/review-packet.py",
          "tools/pr-policy.py", "tools/record-verdict.py", "tools/conformance-gate.py",
+         "tools/requeue-gate.py",
          ".github/pull_request_template.md",
          ".github/workflows/validate.yml", ".github/workflows/pr-policy.yml",
-         ".github/workflows/conformance-gate.yml")
+         ".github/workflows/conformance-gate.yml", ".github/workflows/verdict-requeue.yml")
 OK, MISSING, WRONG, UNKNOWN = "OK", "MISSING", "WRONG", "NOT EXAMINED"
 
 

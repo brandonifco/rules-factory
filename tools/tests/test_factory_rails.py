@@ -1089,11 +1089,12 @@ if argv_api := [a for a in sys.argv[1:] if a.startswith("repos/")]:
 
 
 GH_STATUS_STUB = '''#!/usr/bin/env python3
-"""A stand-in for `gh` that also keeps commit statuses in a JSON file."""
+"""A stand-in for `gh` that also keeps commit statuses, workflow runs and re-runs in JSON files."""
 import json, os, sys
 
 fixture = json.load(open(os.environ["GH_FIXTURE"], encoding="utf-8"))
 store = os.environ["GH_STATUSES"]
+reruns = os.environ.get("GH_RERUNS", "")
 argv = sys.argv[1:]
 
 def statuses():
@@ -1104,6 +1105,22 @@ def statuses():
 
 if argv[0] == "api":
     endpoint = argv[1]
+    if endpoint.endswith("/rerun"):
+        # The 30-day limit, when the fixture asks for it: GitHub refuses the re-run, and nothing
+        # else can produce a run at that commit.
+        if fixture.get("rerunFails"):
+            sys.stderr.write("HTTP 403: Unable to retry this workflow run because it was created over 30 days ago\\n")
+            sys.exit(1)
+        run_id = endpoint.split("/actions/runs/")[1].split("/rerun")[0]
+        recorded = json.load(open(reruns, encoding="utf-8")) if os.path.exists(reruns) else []
+        recorded.append(run_id)
+        json.dump(recorded, open(reruns, "w", encoding="utf-8"))
+        print("{}")
+        raise SystemExit(0)
+    if "/actions/workflows/" in endpoint:
+        sha = endpoint.split("head_sha=")[1].split("&")[0]
+        print(json.dumps({"workflow_runs": (fixture.get("runs") or {}).get(sha, [])}))
+        raise SystemExit(0)
     if "-X" in argv and argv[argv.index("-X") + 1] == "POST":
         sha = endpoint.split("/statuses/")[1]
         fields = dict(argv[i + 1].split("=", 1) for i, a in enumerate(argv) if a == "-f")
@@ -1121,6 +1138,12 @@ if argv[0] == "repo":
     print(json.dumps(fixture["repo"]))
     raise SystemExit(0)
 
+if argv[:2] == ["pr", "list"]:
+    fields = argv[argv.index("--json") + 1].split(",")
+    open_pulls = [p for p in (fixture.get("pr") or {}).values() if p.get("state") == "OPEN"]
+    print(json.dumps([{f: p.get(f) for f in fields} for p in open_pulls]))
+    raise SystemExit(0)
+
 kind = argv[0]
 number = argv[2] if len(argv) > 2 else ""
 record = (fixture.get(kind) or {}).get(number)
@@ -1130,6 +1153,165 @@ if record is None:
 fields = argv[argv.index("--json") + 1].split(",") if "--json" in argv else []
 print(json.dumps({f: record.get(f) for f in fields}))
 '''
+
+
+HEAD = "a" * 40
+STRANGER = "c" * 40
+
+
+class TestTheVerdictReRunsTheGate(TestVerdicts):
+    """`tools/requeue-gate.py` and the two workflows' shape (#191).
+
+    Recording a verdict used to leave the required `conformance-gate` check holding its earlier
+    answer, because a commit status re-runs nothing and the gate's own `status` trigger was gated
+    to `pull_request` events. What is asserted here is the logic that replaces it, and the emitted
+    YAML's shape -- the workflow-level wiring, which only tools/validate-engine.py can run, is
+    proved there.
+    """
+
+    def setUp(self):
+        super().setUp()
+        self.reruns = os.path.join(self.tmp, "reruns.json")
+
+    def requeue(self, sha=HEAD, context="rules-verdict/semantic", state="success"):
+        return subprocess.run([sys.executable, os.path.join(self.out, "tools", "requeue-gate.py")],
+                              cwd=self.out, capture_output=True, text=True,
+                              env={**self.environment(), "GH_STATUSES": self.statuses, "GH_RERUNS": self.reruns,
+                                   "VERDICT_SHA": sha, "VERDICT_CONTEXT": context, "VERDICT_STATE": state})
+
+    def requeue_scenario(self, runs=({"id": 991, "run_number": 7, "status": "completed"},), head=HEAD,
+                         rerun_fails=False):
+        """One open pull request at `head`, and the gate runs GitHub holds at that commit."""
+        self.gh_with_statuses()
+        self.fixture({
+            "pr": {"5": {"number": 5, "headRefOid": head, "state": "OPEN"}},
+            "repo": {"nameWithOwner": "owner/engine"},
+            "runs": {head: list(runs)},
+            "rerunFails": rerun_fails,
+        })
+        with open(self.statuses, "w", encoding="utf-8") as handle:
+            json.dump({}, handle)
+
+    def recorded_reruns(self):
+        return json.load(open(self.reruns, encoding="utf-8")) if os.path.exists(self.reruns) else []
+
+    def test_a_verdict_re_requests_the_gate_run_at_that_head(self):
+        self.produced()
+        self.requeue_scenario()
+        done = self.requeue()
+        self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+        self.assertEqual(self.recorded_reruns(), ["991"])
+        self.assertIn("#5", done.stdout)
+
+    def test_the_newest_run_is_the_one_re_requested(self):
+        self.produced()
+        self.requeue_scenario(runs=({"id": 991, "run_number": 7, "status": "completed"},
+                                    {"id": 992, "run_number": 9, "status": "completed"}))
+        self.assertEqual(self.requeue().returncode, 0)
+        self.assertEqual(self.recorded_reruns(), ["992"])
+
+    def test_a_status_on_a_commit_no_open_pull_request_heads_re_runs_nothing(self):
+        # Acceptance criterion 2 of #191: and it is not a failure either, because a failing check
+        # on such a commit is a red mark nobody can clear.
+        self.produced()
+        self.requeue_scenario()
+        done = self.requeue(sha=STRANGER)
+        self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+        self.assertEqual(self.recorded_reruns(), [])
+        self.assertIn(f"no open pull request heads {STRANGER}", done.stdout)
+
+    def test_a_status_that_is_not_a_verdict_is_ignored(self):
+        self.produced()
+        self.requeue_scenario()
+        done = self.requeue(context="ci/some-other-service")
+        self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+        self.assertEqual(self.recorded_reruns(), [])
+        self.assertIn("is not a verdict context", done.stdout)
+
+    def test_a_pending_verdict_re_runs_nothing(self):
+        self.produced()
+        self.requeue_scenario()
+        done = self.requeue(state="pending")
+        self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+        self.assertEqual(self.recorded_reruns(), [])
+
+    def test_the_verdict_contexts_are_the_policy_s(self):
+        self.produced()
+        path = os.path.join(self.out, ".github", "agent-policy.json")
+        settings = json.load(open(path, encoding="utf-8"))
+        settings["review"]["independentFallback"] = [{"id": "acme", "context": "rules-verdict/acme"}]
+        with open(path, "w", encoding="utf-8") as handle:
+            json.dump(settings, handle, indent=2)
+        self.requeue_scenario()
+        self.assertEqual(self.requeue(context="rules-verdict/codex").returncode, 0)
+        self.assertEqual(self.recorded_reruns(), [], "a context the policy dropped is no longer a verdict")
+        self.assertEqual(self.requeue(context="rules-verdict/acme").returncode, 0)
+        self.assertEqual(self.recorded_reruns(), ["991"])
+
+    def test_a_run_already_under_way_is_left_alone(self):
+        self.produced()
+        self.requeue_scenario(runs=({"id": 991, "run_number": 7, "status": "in_progress"},))
+        done = self.requeue()
+        self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+        self.assertEqual(self.recorded_reruns(), [])
+        self.assertIn("without being asked", done.stdout)
+
+    def test_no_run_to_re_request_is_a_failure_that_names_why(self):
+        self.produced()
+        self.requeue_scenario(runs=())
+        done = self.requeue()
+        self.assertEqual(done.returncode, 1, done.stdout)
+        self.assertIn("no conformance-gate.yml run on the `pull_request` event", done.stderr)
+
+    def test_a_run_too_old_to_re_request_is_a_failure_that_names_the_30_day_limit(self):
+        self.produced()
+        self.requeue_scenario(rerun_fails=True)
+        done = self.requeue()
+        self.assertEqual(done.returncode, 1, done.stdout)
+        self.assertIn("30 days", done.stderr)
+        self.assertIn("the branch must be pushed", done.stderr)
+
+    def test_a_sha_that_is_not_a_commit_is_refused(self):
+        self.produced()
+        self.requeue_scenario()
+        done = self.requeue(sha="not-a-sha")
+        self.assertEqual(done.returncode, 1, done.stdout)
+        self.assertIn("not a 40-character commit SHA", done.stderr)
+
+    def test_the_gate_workflow_is_asked_only_by_the_pull_request_event(self):
+        self.produced()
+        text = self.read(".github/workflows/conformance-gate.yml")
+        triggers = text.split("\non:\n", 1)[1].split("\nconcurrency:", 1)[0]
+        self.assertNotIn("status:", triggers,
+                         "a status run belongs to the default branch's commit, not to the pull request")
+        job = text.split("jobs:\n", 1)[1]
+        self.assertNotIn("if:", job, "the job's `if:` was what skipped every status run (#191)")
+        self.assertNotIn("github.sha", text, "on a status event github.sha is the default branch's head")
+
+    def test_the_requeue_workflow_does_not_answer_to_the_required_check_s_name(self):
+        self.produced()
+        text = self.read(".github/workflows/verdict-requeue.yml")
+        self.assertIn("\non:\n  status:\n", text)
+        jobs = [line.strip().rstrip(":") for line in text.split("jobs:\n", 1)[1].splitlines()
+                if line.startswith("  ") and not line.startswith("   ") and line.strip().endswith(":")]
+        self.assertEqual(jobs, ["verdict-requeue"],
+                         "two check runs of one name are ambiguous; this one lands on the default branch's head")
+        self.assertNotIn("if:", text.split("jobs:\n", 1)[1],
+                         "a job condition on the only event this workflow has is how #191 skipped every run")
+        self.assertIn("group: verdict-requeue-${{ github.event.sha }}", text)
+        self.assertNotIn("github.sha }}", text,
+                         "github.sha is the same value for every verdict, and cancel-in-progress is on")
+        # The payload is text somebody else wrote: it reaches the script as values, never as script.
+        for variable in ("VERDICT_SHA", "VERDICT_CONTEXT", "VERDICT_STATE"):
+            self.assertIn(f"{variable}: ${{{{ github.event.", text)
+        self.assertIn("run: python3 tools/requeue-gate.py\n", text)
+
+    def test_the_requeue_is_not_a_required_check(self):
+        # The ruleset the factory applies, and the doctor's reading of it from inside an engine:
+        # both leave it out, because it runs on the default branch's commit.
+        self.assertNotIn("verdict-requeue", factory.rails_step.REQUIRED_CHECKS)
+        self.assertIn("verdict-requeue", generate.rails_files()["tools/agent-doctor.py"])
+        self.assertNotIn('"verdict-requeue"', generate.rails_files()["tools/agent-doctor.py"])
 
 
 class TestTheEngineGateChecksItsOwnRails(TestAProducedEngine):

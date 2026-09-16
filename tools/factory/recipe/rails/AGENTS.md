@@ -164,6 +164,10 @@ decline that names why and cites where — that is the engine working, not the e
   that preceded it, automatically, because the status is on the bytes that were actually read. A
   verdict that lives only in a conversation is worth nothing to this repository.
 
+  **Recording it is the whole of the step.** `.github/workflows/verdict-requeue.yml` sees the
+  status and asks the gate to report again at that commit; there is no re-run to remember. If the
+  check is still red a minute later, the thing to read is that workflow's run, not the verdict.
+
   A change touching the semantic surface needs the semantic verdict; an issue classified as
   needing independent review needs one of the configured independent contexts as well. **A
   recorded failure at any configured context blocks outright**, and a pass recorded elsewhere does

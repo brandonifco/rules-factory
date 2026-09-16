@@ -159,12 +159,12 @@ written path the table does not classify.
 | `scripts/engine-gate.py` | generated |  | Gate recipe: the non-dotnet checks. |
 | `scripts/factory/*.py` | generated |  | The factory's generator, vendored so the gate can regenerate without the factory. |
 | `.github/workflows/validate.yml` | generated |  | Gate recipe: CI runs `validate.sh full`. |
-| `AGENTS.md` | managed | 3 | The governing contract every agent works the engine under (0029). Managed, not generated: a team may amend its own contract, and the factory must then either carry the amendment or refuse and say so, never silently overwrite it. |
+| `AGENTS.md` | managed | 4 | The governing contract every agent works the engine under (0029). Managed, not generated: a team may amend its own contract, and the factory must then either carry the amendment or refuse and say so, never silently overwrite it. |
 | `CLAUDE.md` | managed | 1 | A pointer to `AGENTS.md` and an index of the Claude adapters. It states no rule of its own, so it cannot drift from the contract. |
-| `docs/agent-team.md` | managed | 3 | The four roles and what each may not do (0029). |
+| `docs/agent-team.md` | managed | 4 | The four roles and what each may not do (0029). |
 | `.claude/agents/engine-dev.md` | managed | 3 | The implementer's charter. |
 | `.claude/agents/repo-steward.md` | managed | 1 | The structural reviewer's charter, read-only. |
-| `.claude/agents/rules-conformance.md` | managed | 2 | The semantic reviewer's charter, read-only. |
+| `.claude/agents/rules-conformance.md` | managed | 3 | The semantic reviewer's charter, read-only. |
 | `.claude/hooks/primary-checkout-guard.py` | managed | 1 | The `PreToolUse` guard keeping implementation work out of the primary checkout. Policy, and the engine that must change it adopts it. |
 | `.claude/settings.json` | managed | 1 | Which tools the guard runs before. |
 | `tools/dispatch-agent.sh` | managed | 1 | One issue, one worktree, one branch; it refuses what is not ready to work (0029). |
@@ -174,10 +174,12 @@ written path the table does not classify.
 | `tools/pr-policy.py` | managed | 1 | The pull request contract, checked mechanically: one linked issue, every section filled, output rather than a claim. |
 | `tools/record-verdict.py` | managed | 1 | A review verdict as a commit status on the exact commit reviewed, so a later commit invalidates it by itself. |
 | `tools/conformance-gate.py` | managed | 1 | Whether the verdicts this change needs are recorded at the commit being merged. |
+| `tools/requeue-gate.py` | managed | 1 | Asks the gate to report again at the commit a recorded verdict names, so recording the verdict is the whole of the step (#191). It writes no status and no check run of its own. |
 | `.github/pull_request_template.md` | managed | 1 | The pull request shape `pr-policy.py` checks. Template and checker are emitted together, so neither can drift from the other. |
 | `.github/workflows/pr-policy.yml` | managed | 1 | The required check that runs `pr-policy.py`. |
-| `.github/workflows/conformance-gate.yml` | managed | 1 | The required check that runs `conformance-gate.py`. |
-| `tools/agent-doctor.py` | managed | 1 | Whether the rails are active or only present: the hook wired, the labels created, the checks required. |
+| `.github/workflows/conformance-gate.yml` | managed | 2 | The required check that runs `conformance-gate.py`, on the `pull_request` event alone: a `status` run belongs to the default branch's commit, so the check has one producer and one commit it lands on (#191). |
+| `.github/workflows/verdict-requeue.yml` | managed | 1 | Runs `requeue-gate.py` on the `status` event. Deliberately not a required check: it runs on the default branch's commit, where a required check governs nothing. |
+| `tools/agent-doctor.py` | managed | 2 | Whether the rails are active or only present: the hook wired, the labels created, the checks required. |
 | `.editorconfig` | managed | 1 | The kernel determinism analyzers' severities: warning (so, with warnings as errors, a build error) under `src/`, off under `tests/`. |
 | `global.json` | managed | 1 | The SDK the kernel pins and `rollForward: disable`. This is policy every engine should follow as the kernel moves. An engine that must move ahead of the kernel adopts the file. |
 | `NuGet.config` | managed | 2 | Package sources and source mapping: supply-chain policy (restore talks to nuget.org only, lock files pin content). An extra feed is a deliberate departure, so it is an explicit adoption. |
