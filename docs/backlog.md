@@ -74,6 +74,22 @@ the labels do say: a `review-p0` or `review-p1` issue is a defect in the factory
 factory, so it measures a factory with whatever review findings are still open. The review labels
 belong to that one review; work found later is labelled under the scheme above.
 
+### `review2-p1`, `review2-p2`, `review2-p3` — findings of the 2026-09-16 review
+
+A second review, of `factory/v0.8.1`, labelled the same way: a review label instead of a
+`p1`–`p3` label, category labels as usual, and a first line giving the issue's place in the
+review's one ordered list of twelve ("Review priority P2 (6 of 12)"). Two of the twelve were
+already open, #157 and #8, and carry the label beside their own.
+
+| Label | What belongs in it |
+|---|---|
+| `review2-p1` | Prove what exists before building more: the rails' live acceptance (#157), the dense cross-reference trial (#8), a second independent review, and status text that is true about `main`. |
+| `review2-p2` | Maintainability and reproducibility of the factory as merged: refactors that change no output byte, floating CI tooling, the rails as their own bounded context. |
+| `review2-p3` | Deeper trust that does not block 1.0: signed release tags, an expected package digest, an engine-owned domain-type contract, build attestation. |
+
+The review's other recommendation is not an issue: hold new factory features until the P1 items
+are done, and let real engine work, not anticipated needs, propose the next abstraction.
+
 ## The hub
 
 [#24](https://github.com/brandonifco/rules-factory/issues/24) is not one issue among the

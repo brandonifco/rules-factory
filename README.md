@@ -1,7 +1,11 @@
 # Rules Factory
 
 The production apparatus for deterministic rules engines built from plain-language rulesets: a
-method for mapping a ruleset, and a factory that turns the map into an engine.
+method for mapping a ruleset, and a factory that turns the map into an engine. It admits only
+rulesets that are public domain or openly licensed, because the corpus and its map are committed
+and published
+([0028](docs/decisions/0028-the-factory-admits-only-corpora-whose-licence-permits-publishing-them.md));
+a commercial rulebook is outside it.
 
 The engine is the product. This is the factory: it takes a published corpus-map package, the
 corpus that map was made of, and an engine name, and writes a .NET solution on
@@ -40,8 +44,7 @@ The factory is now code, in standard-library Python under
 | M4 provenance | `provenance.py` | merged. `provenance.json` (format 3), and a command that recomputes it |
 | M5 backlog | `backlog.py` | merged. `backlog/` files, and GitHub issues matched to them by an entry marker, never by title; one state label and one risk label from the engine's own `.github/agent-policy.json` |
 | Verify and write out | `verify.py`, `transaction.py` | merged. `produce` verifies in a staging copy and writes only what passed into `--out`. It writes files and makes no commit: the changes are left in the engine's working tree to review and commit |
-| Acceptance: an engine the factory produced | | [`hoyle-backgammon`](https://github.com/brandonifco/hoyle-backgammon) is produced by `factory/v0.2.1` from `RulesFactory.Maps.HoyleBackgammon` 4.0.0. A from-scratch produce differs from it only in engine-owned files, and `factory provenance` matches it ([evidence](examples/hoyle-backgammon/produced-engine/EVIDENCE.md)). Not yet ticked on [#3](https://github.com/brandonifco/rules-factory/issues/3) |
-| Acceptance: rebuild an engine blind, and build something that is not a game | | not done ([#3](https://github.com/brandonifco/rules-factory/issues/3)); criterion 1 is a blind rebuild of `hoyle-backgammon`, since the factory admits no licensed corpus ([0028](docs/decisions/0028-the-factory-admits-only-corpora-whose-licence-permits-publishing-them.md)) |
+| Acceptance test | | met; [#3](https://github.com/brandonifco/rules-factory/issues/3) closed 2026-09-16. A blind rebuild of `hoyle-backgammon` passes its tests ([evidence](examples/hoyle-blind-rebuild/EVIDENCE.md)); a board game ([`hoyle-backgammon`](https://github.com/brandonifco/hoyle-backgammon)), a regulation ([`faa-part-107`](https://github.com/brandonifco/faa-part-107)) and an SRD rulebook ([`srd-52-combat`](https://github.com/brandonifco/srd-52-combat)) are produced, carry provenance that `factory provenance` matches, and pass `factory verify` ([evidence](examples/acceptance-4-5/EVIDENCE.md)). The SR6 rebuild the test first named was dropped with licensed corpora ([0028](docs/decisions/0028-the-factory-admits-only-corpora-whose-licence-permits-publishing-them.md)) |
 
 Factory versions are tagged `factory/vX.Y.Z`. Provenance records the tag's version for a tagged
 commit (`0.2.1` at `factory/v0.2.1`), and `0.0.0-dev+<commit>` for any other commit.
@@ -49,7 +52,9 @@ commit (`0.2.1` at `factory/v0.2.1`), and `0.0.0-dev+<commit>` for any other com
 What the CLI accepts is the table below. [`tools/check-readme-status.py`](tools/check-readme-status.py),
 run by `validate.sh`, checks it against the parser `tools/factory/__main__.py` builds: a
 subcommand or argument without a row fails, and so does a row the parser does not have, or one
-marked `not implemented` that the parser does have.
+marked `not implemented` that the parser does have. The prose cannot be checked that way, but one claim in it
+can: [`tools/check-status-issues.py`](tools/check-status-issues.py) fails when a sentence or row
+says something is "not yet" or "not done" and cites a closed issue.
 
 <!-- factory-cli-status:begin -->
 | Command | Argument | Status | Notes |
@@ -64,7 +69,7 @@ marked `not implemented` that the parser does have.
 | `produce` | `--adopt` | implemented | make a managed file engine-owned, keeping its edits |
 | `produce` | `--reset` | implemented | overwrite a managed or adopted file with the current recipe |
 | `produce` | domain pack | not implemented | no pack exists; provenance records `"packs": []` |
-| `produce` | agent rails | not implemented | not an input — the rails are output, and no flag turns them on or off ([0029](docs/decisions/0029-the-rails-are-emitted-by-default-and-vendor-choice-is-engine-owned-configuration.md)). Emitted: the contract, the roles, the charters, the guard, the engine-owned policy, the packets, dispatch, the pull request contract, the verdict gates, the rails doctor and the kernel's determinism analyzers. `factory rails --apply` is what makes the checks required on GitHub. Not yet: the PR policy and the verdict gates ([#152](https://github.com/brandonifco/rules-factory/issues/152)–[#155](https://github.com/brandonifco/rules-factory/issues/155)) |
+| `produce` | agent rails | not implemented | not an input — the rails are output, and no flag turns them on or off ([0029](docs/decisions/0029-the-rails-are-emitted-by-default-and-vendor-choice-is-engine-owned-configuration.md)). Emitted: the contract, the roles, the charters, the guard, the engine-owned policy, the packets, dispatch, the pull request contract, the verdict gates, the rails doctor and the kernel's determinism analyzers. `factory rails --apply` is what makes the checks required on GitHub. Not yet: the PR policy and the verdict gates exercised on a produced engine, and one real rule taken through the rails end to end ([#157](https://github.com/brandonifco/rules-factory/issues/157)) |
 | `backlog` | — | implemented | synchronise `backlog/` with GitHub issues through `gh`, and label each one: state from the item's dependencies, `normal` risk on an issue with none. A `needs-decision` state and a promoted risk are a person's, and a sync never undoes either ([0029](docs/decisions/0029-the-rails-are-emitted-by-default-and-vendor-choice-is-engine-owned-configuration.md)) |
 | `backlog` | `--create` | implemented | the only action; never closes or deletes an issue |
 | `backlog` | `--repo` | implemented | `owner/name` |

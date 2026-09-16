@@ -186,6 +186,13 @@ check_readme_status() {
   python3 tools/check-readme-status.py
 }
 
+# A README sentence that something is "not yet" or "not done" cites an open issue (#170). The prose
+# beside #75's table drifted within days of it; this reads GitHub, fails when a state cannot be
+# read, and says NOT CHECKED only when RULES_FACTORY_OFFLINE=1 asks it to.
+check_status_issues() {
+  python3 tools/check-status-issues.py
+}
+
 # check-map.py ships as one file inside every map package, so it is built from tools/checkmap/
 # rather than edited (#74). A module changed without rebuilding would ship, and be judged by,
 # the checks as they were; every step after this one runs the built file.
@@ -198,6 +205,7 @@ run "the checkers' own tests"                          check_tool_tests
 run "every repository link resolves"                   check_doc_references
 run "every decision record is indexed"                 check_decision_index
 run "the README's status table matches the factory CLI" check_readme_status
+run "the README cites no closed issue as not yet done"  check_status_issues
 
 printf '\n'
 if [ "$failed" -ne 0 ]; then
