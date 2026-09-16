@@ -20,18 +20,18 @@ git rev-parse --git-common-dir; git rev-parse --git-dir
 ```
 
 Different answers mean you are in a worktree. The same answer means you are standing in the
-primary checkout: stop, and get the work dispatched properly (`AGENTS.md` §4). Do not work around
-the guard.
+primary checkout: stop, and get the work dispatched properly (`tools/dispatch-agent.sh <n>`, or
+`AGENTS.md` §4). Do not work around the guard.
 
 Then read, in this order:
 
 1. the issue, in full, including its acceptance criteria and its required evidence;
-2. the map entry it names — its locator, its `evidence` verbatim, its dependencies, its
-   reachability, its cross-references and its unresolved cases;
-3. the owner's rulings in `corpus-map.overlay.json` that apply to it, and the decision records
-   the issue names.
+2. the entry packet — `tools/entry-packet.py <entry id>` — which is the map entry as this engine
+   has it: the locator, the `evidence` verbatim, the dependencies, the reachability, the
+   cross-references, the owner's rulings that apply, and the exact handler you are to implement;
+3. the decision records the issue or the packet names.
 
-You do not need to read the whole corpus, and you should not try. The entry is the assignment.
+You do not need to read the whole corpus, and you should not try. The packet is the assignment.
 
 ## What you do
 

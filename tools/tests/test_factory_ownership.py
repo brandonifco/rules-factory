@@ -52,7 +52,9 @@ MANAGED = ("Directory.Build.props", "NuGet.config", "global.json",
            # The agent rails (decision 0029).
            "AGENTS.md", "CLAUDE.md", "docs/agent-team.md", ".claude/agents/engine-dev.md",
            ".claude/agents/repo-steward.md", ".claude/agents/rules-conformance.md",
-           ".claude/hooks/primary-checkout-guard.py", ".claude/settings.json")
+           ".claude/hooks/primary-checkout-guard.py", ".claude/settings.json",
+           "tools/dispatch-agent.sh", "tools/new-issue.sh", "tools/entry-packet.py",
+           "tools/review-packet.py")
 ENGINE_OWNED = ("Directory.Packages.props", f"{NAME}.slnx", f"src/{NAME}/{NAME}.csproj",
                 f"tests/{NAME}.Tests/{NAME}.Tests.csproj", "corpus-map.overlay.json",
                 ".github/agent-policy.json")

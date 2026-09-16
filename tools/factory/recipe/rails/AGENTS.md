@@ -59,11 +59,18 @@ implementation happens in a worktree outside the repository directory**, so that
 contaminate another and a half-finished change cannot reach `main`:
 
 ```bash
-git -C <primary checkout> worktree add "${RULES_ENGINE_WORKTREE_ROOT:-$HOME/rules-engine-worktrees}/<repo>/issue-<n>" -b issue-<n>
+tools/dispatch-agent.sh <issue number>      # creates the worktree and the branch, and prints the path
+tools/dispatch-agent.sh --cleanup <n>       # after the pull request merged
 ```
 
-A worktree is never created inside the repository: one that lives there is eventually committed,
-scanned by a tool that did not expect it, or deleted by a clean step.
+Dispatch refuses rather than leaving readiness to your judgement: an issue that is closed, blocked
+or awaiting a decision, one that already has a worktree, and a primary checkout with uncommitted
+changes. A worktree is never created inside the repository: one that lives there is eventually
+committed, scanned by a tool that did not expect it, or deleted by a clean step.
+
+`tools/new-issue.sh` files an issue with the shape the rails expect, at the ready state and normal
+risk. Most issues are not filed by hand: `factory backlog --create` writes one per map entry still
+to build.
 
 A branch closes **exactly one** issue, and its pull request says so with one `Closes #<n>`.
 Stage explicit paths; `git add -A` and `git add .` are how build output, packets and another
@@ -86,9 +93,20 @@ the guard actually reads, and this paragraph names the default.
 
 ## 5. The map is the interface, and you do not remap it
 
-You implement the entry the issue names, from the map merged with this engine's overlay. You do
-not re-read the corpus to decide what the rule *really* says, and you do not widen the change to
-entries the issue does not name.
+You implement the entry the issue names, from the map merged with this engine's overlay:
+
+```bash
+tools/entry-packet.py <entry id>            # the assignment, assembled from the map
+```
+
+The packet is the entry as published and merged, its locator and the evidence verbatim, its
+dependencies and reachability, where its cross-references land, the owner's rulings that apply,
+the exact handler the generated code declares, and what the gate will ask of you. Every line of it
+is the map's own bytes or a fact computed from them.
+
+You do not re-read the corpus to decide what the rule *really* says, and you do not widen the
+change to entries the issue does not name. A packet is written outside the repository and is never
+committed: it is derived from the map, and a committed copy of the interface goes stale.
 
 **Where the map and the corpus appear to disagree, stop.** Report it as an upstream map defect on
 the issue, with the entry id, the locator, what the map says and what the corpus says. Do not make
@@ -128,6 +146,10 @@ decline that names why and cites where — that is the engine working, not the e
   has shipped two checks that counted work they had not done.
 - **Report what happened, not what should have happened.** Paste the command and its actual
   output. "Tests pass" is not evidence; a run is.
+- **A reviewer is given the context, not asked to find it.** `tools/review-packet.py <pr number>`
+  assembles the issue, the claim, the entries as the map has them, the overlay's before and after,
+  the bounded diff and what must be green. Its sections are in the order a semantic reviewer reads
+  them: the entry before the implementation, always.
 - A check that examines nothing is a failure, never an ok. If a step could not run, say it could
   not run.
 

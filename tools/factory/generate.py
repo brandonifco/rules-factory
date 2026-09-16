@@ -1086,7 +1086,16 @@ RAILS = {
     ".claude/agents/rules-conformance.md": "agents/rules-conformance.md",
     ".claude/hooks/primary-checkout-guard.py": "hooks/primary-checkout-guard.py",
     ".claude/settings.json": "settings.json",
+    "tools/dispatch-agent.sh": "tools/dispatch-agent.sh",
+    "tools/new-issue.sh": "tools/new-issue.sh",
+    "tools/entry-packet.py": "tools/entry-packet.py",
+    "tools/review-packet.py": "tools/review-packet.py",
 }
+# The rails an operator runs. `produce` writes with the default mode, so a script invoked by path
+# would not run; the hook is invoked through `python3` by .claude/settings.json instead and needs
+# no bit. The mode is not part of a recipe's bytes, so it plays no part in hand-edit detection.
+EXECUTABLE = frozenset({"tools/dispatch-agent.sh", "tools/new-issue.sh", "tools/entry-packet.py",
+                        "tools/review-packet.py"})
 RAILS_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "recipe", "rails")
 
 
@@ -1378,7 +1387,10 @@ def produce(intake, name, out, log=None, adopt=(), reset=()):
             _write(path, text.encode("utf-8"))
             written.append(relative)
     for relative, data in sorted(managed_writes.items()):
-        _write(os.path.join(out, *relative.split("/")), data)
+        path = os.path.join(out, *relative.split("/"))
+        _write(path, data)
+        if relative in EXECUTABLE:
+            os.chmod(path, 0o755)
         written.append(relative)
     _write(os.path.join(out, "corpus", corpus_file), intake.corpus_bytes)
     written.append(f"corpus/{corpus_file}")
