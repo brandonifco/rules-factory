@@ -110,7 +110,7 @@ class ProduceCase(unittest.TestCase):
         self.tmp = tempfile.mkdtemp()
         self.addCleanup(shutil.rmtree, self.tmp, True)
 
-    def produce(self, out, package=None, corpus=PART107_XML, name=NAME):
+    def produce(self, out, package=None, corpus=PART107_XML, name=NAME, report=None):
         # --allow-dirty: this checkout's own state is not under test here (test_factory_provenance.py
         # runs a committed copy of the factory to test the refusal).
         buffer = io.StringIO()
@@ -118,7 +118,7 @@ class ProduceCase(unittest.TestCase):
             code = factory.main(["produce", "--package", package or self.part107, "--corpus", corpus,
                                  "--name", name, "--out", out, "--allow-dirty",
                                  # nor is building it: no SDK assumed (test_factory_verify.py)
-                                 "--no-verify"])
+                                 "--no-verify", *(["--produce-report", report] if report else [])])
         return code, buffer.getvalue()
 
     def produced(self, out=None, **kwargs):
@@ -253,6 +253,46 @@ class TestMapVersionChange(ProduceCase):
         self.produced(out, package=self.v1)
         self.assert_names_only(out, "5.0.0", "7.0.0")
         self.assert_same_as_fresh(out, self.v1)
+
+    def test_the_produce_report_says_what_moved_and_what_it_wrote(self):
+        """#193: a factory update's pull request is filled in from the run, not from memory."""
+        out = self.produced(package=self.v1)
+        report_path = os.path.join(self.tmp, "report.json")
+        self.produced(out, package=self.v2, report=report_path)
+        with open(report_path, encoding="utf-8") as handle:
+            report = json.load(handle)
+        self.assertEqual(report["map"], {"packageId": MAP_ID, "from": "5.0.0", "to": "7.0.0"})
+        self.assertEqual(report["kernel"]["from"], report["kernel"]["to"], "only the map moved")
+        self.assertEqual(report["moved"], ["the map, 5.0.0 to 7.0.0"])
+        # The four fields the emitted pull request template asks for, under its own labels, so
+        # nothing is retyped from a terminal into a pull request body.
+        self.assertEqual(report["declaration"]["map package and version"], f"{MAP_ID} 7.0.0")
+        self.assertEqual(report["declaration"]["what moved"], "the map, 5.0.0 to 7.0.0")
+        self.assertEqual(report["declaration"]["factory version"], report["factory"]["version"])
+        # Every path this run put in place, classified by the table produce wrote them by: a map
+        # bump rewrites the pins and the generated code, and nothing engine-owned.
+        by_path = {item["path"]: item for item in report["paths"]}
+        self.assertEqual(by_path[PACKAGES_PROPS], {"path": PACKAGES_PROPS, "change": "changed", "class": "generated"})
+        self.assertEqual({item["class"] for item in report["paths"]}, {"generated"})
+        self.assertTrue(any(line.startswith("map.version:") for line in report["provenanceDiff"]),
+                        report["provenanceDiff"])
+
+    def test_the_report_of_a_run_that_moved_nothing_says_so(self):
+        out = self.produced(package=self.v1)
+        report_path = os.path.join(self.tmp, "report.json")
+        self.produced(out, package=self.v1, report=report_path)
+        with open(report_path, encoding="utf-8") as handle:
+            report = json.load(handle)
+        self.assertEqual(report["moved"], [])
+        self.assertIn("reproduced the engine from the inputs it already had", report["declaration"]["what moved"])
+        self.assertEqual(report["paths"], [], "a re-produce from the same inputs writes nothing new")
+
+    def test_a_report_path_in_no_directory_is_refused_before_anything_is_produced(self):
+        out = os.path.join(self.tmp, "engine")
+        code, output = self.produce(out, report=os.path.join(self.tmp, "nowhere", "report.json"))
+        self.assertEqual(code, 2, output)
+        self.assertIn("is not a directory", output)
+        self.assertFalse(os.path.exists(out), "nothing was produced")
 
     def test_engine_owned_scaffold_edits_survive_a_version_change(self):
         out = self.produced(package=self.v1)

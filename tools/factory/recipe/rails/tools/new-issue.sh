@@ -3,6 +3,7 @@
 #
 #   tools/new-issue.sh --title "Widen the altitude limit to the tolerance case"
 #   tools/new-issue.sh --title "..." --entry altitude-limit --risk independent --dry-run
+#   tools/new-issue.sh --title "Take the engine to the next map version" --produce --dry-run
 #
 # Emitted by rules-factory as a managed file (decision 0029).
 #
@@ -12,9 +13,17 @@
 # -- so that an issue filed from a terminal by an agent and one filed by a person look the same
 # six months later, and so that both carry exactly one state label and one risk label.
 #
-# Every issue starts at the ready state and normal risk. Promoting risk, or moving an issue to the
-# awaiting-decision state, is the orchestrator's judgement (AGENTS.md section 6, docs/agent-team.md)
-# and is done deliberately afterwards -- not asserted by whoever filed it.
+# `--produce` files the other kind that is not a map entry: a `factory produce` update to this
+# engine -- a new map version, a new kernel pin, a new factory recipe. Such work is work under
+# these rails like any other, and it starts from an issue like any other (AGENTS.md section 4).
+# The body it swaps in asks what moves, from what to what, why now, and the evidence such a pull
+# request carries instead of a mutation.
+#
+# Every issue starts at the ready state and normal risk, `--produce` included: a factory update is
+# not more or less risky by being one, and what it moves decides that. Promoting risk, or moving an
+# issue to the awaiting-decision state, is the orchestrator's judgement (AGENTS.md section 6,
+# docs/agent-team.md) and is done deliberately afterwards -- not asserted by whoever filed it, and
+# not by a flag.
 set -euo pipefail
 
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -39,6 +48,7 @@ TITLE=""
 ENTRY=""
 RISK="normal"
 BODY_FILE=""
+PRODUCE=0
 DRY_RUN=0
 EXTRA_LABELS=()
 
@@ -50,14 +60,19 @@ while [[ $# -gt 0 ]]; do
     --entry) ENTRY="${2:-}"; shift 2 ;;
     --risk) RISK="${2:-}"; shift 2 ;;
     --body-file) BODY_FILE="${2:-}"; shift 2 ;;
+    --produce) PRODUCE=1; shift ;;
     --label) EXTRA_LABELS+=("${2:-}"); shift 2 ;;
     --dry-run) DRY_RUN=1; shift ;;
-    -h|--help) sed -n '2,6p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'; exit 0 ;;
+    -h|--help) sed -n '2,7p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'; exit 0 ;;
     *) die "unknown argument: $1" ;;
   esac
 done
 
 [[ -n "$TITLE" ]] || die "--title is required"
+# Both name the body, and which one won would decide what the issue asks for. Say so instead.
+if [[ "$PRODUCE" -eq 1 && -n "$BODY_FILE" ]]; then
+  die "--produce and --body-file both say what the body is; pass one. --produce is the factory-update template, and --body-file is your own"
+fi
 case "$RISK" in
   normal|independent) ;;
   *) die "--risk is normal or independent, got: $RISK" ;;
@@ -78,6 +93,51 @@ MARKER=""
 if [[ -n "$BODY_FILE" ]]; then
   [[ -f "$BODY_FILE" ]] || die "no such file: $BODY_FILE"
   BODY="$MARKER$(cat "$BODY_FILE")"
+elif [[ "$PRODUCE" -eq 1 ]]; then
+  BODY="$MARKER$(cat <<'TPL'
+## What moves
+
+<!-- One of: the map version, the kernel pin, the factory recipe. If it is more than one, say
+     which and why they move together; a produce that moves two things is still one produce, but
+     it is two things to review. -->
+
+- from:
+- to:
+
+## Why now
+
+<!-- What the new version makes true that the current one does not, or what it fixes. "It is
+     newer" is not a reason; the current engine passes its gate. -->
+
+## Scope, and what it deliberately does not do
+
+<!-- The pull request carries what `factory produce` wrote and nothing else. Any hand edit the new
+     input forces -- an overlay entry the new map adds, a handler whose contract changed -- is a
+     separate issue, because it is a rules decision the factory did not make and it is reviewed as
+     one. Name the ones you expect here. -->
+
+## Acceptance criteria
+
+<!-- Observable conditions. Someone other than whoever ran produce must be able to check each. -->
+
+- [ ] the pull request carries only files `factory produce` wrote, and `tools/pr-policy.py` admits
+      the `## Produced by the factory` claim
+- [ ] `./scripts/validate.sh full` passes, so every generated file regenerates byte for byte
+- [ ] `factory provenance --engine <dir>` reports no mismatch
+- [ ] every verdict the changed paths call for is recorded at the head commit
+
+## Required evidence
+
+<!-- A produce update writes no test of its own and names no mutation. It shows the `factory
+     produce` command and its output, the gate's output, and the provenance recompute. -->
+
+## Dependencies
+
+<!-- The map version must be published, or the kernel released, before this can be worked. -->
+
+None
+TPL
+)"
 else
   BODY="$MARKER$(cat <<'TPL'
 ## What this is

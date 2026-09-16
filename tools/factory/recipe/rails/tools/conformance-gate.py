@@ -15,6 +15,13 @@ Emitted by rules-factory as a managed file (decision 0029), and run by
   3. is any configured context recorded as a failure at that commit? Then this blocks, whatever
      else is green.
 
+**Why it refuses a truncated file list (#193).** The answer to 1 is derived from the changed paths
+and nothing else, which is also what makes it right for a `factory produce` update: a map version
+bump rewrites `RulesFactory.Packages.g.props`, the generated code under `src/` and `tests/` and both
+lock files, so it is semantic four times over and no author has to say so. But `gh pr view --json
+files` returns at most 100 files with no error, and a regeneration writes hundreds. So the count is
+asked for with the list, and a short list is undecidable rather than a change that looked small.
+
 **Why the head commit, and not "the pull request".** A verdict is formed on bytes somebody read.
 A commit after it means nobody has read the bytes being merged. Because the status lives on the
 commit rather than on the pull request, that invalidation is automatic: nothing has to notice.
@@ -82,11 +89,21 @@ def main(argv=None):
             raise Undecidable(f"{POLICY} sets no review.semanticContext")
 
         pull = json.loads(gh("pr", "view", str(args.pr), "--json",
-                             "number,headRefOid,files,closingIssuesReferences"))
+                             "number,headRefOid,files,changedFiles,closingIssuesReferences"))
         sha = pull.get("headRefOid")
         if not sha:
             raise Undecidable(f"PR #{args.pr} has no head commit")
         changed = [f["path"] for f in pull.get("files") or []]
+        # `gh pr view --json files` caps at 100 files, silently: no error, no warning, and
+        # `changedFiles` says how many there really are. Which verdicts this change needs is decided
+        # from these paths alone, so on a partial list the answer "nothing on the semantic surface"
+        # can be produced by files nobody listed -- and a map version bump, which regenerates
+        # hundreds of files, is exactly the change that reaches the cap. An undecidable gate fails.
+        count = pull.get("changedFiles")
+        if isinstance(count, int) and len(changed) != count:
+            raise Undecidable(f"GitHub listed {len(changed)} of PR #{args.pr}'s {count} changed files, so the file "
+                              f"list is truncated. The semantic surface cannot be decided from a partial list, and "
+                              f"a gate that decides on half the files is the failure this check exists to prevent")
         touched = sorted(path for path in changed if is_semantic(path, review.get("semanticPaths") or []))
 
         issues = pull.get("closingIssuesReferences") or []
