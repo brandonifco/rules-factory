@@ -193,6 +193,13 @@ check_status_issues() {
   python3 tools/check-status-issues.py
 }
 
+# CI runs on an exact Python patch and installs only hash-locked packages (#173). The runner and
+# the actions were already pinned; a floating Python or pytest could change this gate's verdict
+# with no commit here.
+check_workflow_pins() {
+  python3 tools/check-workflow-pins.py
+}
+
 # check-map.py ships as one file inside every map package, so it is built from tools/checkmap/
 # rather than edited (#74). A module changed without rebuilding would ship, and be judged by,
 # the checks as they were; every step after this one runs the built file.
@@ -204,6 +211,7 @@ run "every map package passes its publish gate"        check_map_packages
 run "the checkers' own tests"                          check_tool_tests
 run "every repository link resolves"                   check_doc_references
 run "every decision record is indexed"                 check_decision_index
+run "every workflow pins its Python and its packages"  check_workflow_pins
 run "the README's status table matches the factory CLI" check_readme_status
 run "the README cites no closed issue as not yet done"  check_status_issues
 
