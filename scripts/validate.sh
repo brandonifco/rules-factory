@@ -115,6 +115,12 @@ check_tool_tests() {
 
 # Every markdown link to a file in this repository resolves. The predecessor repo shipped
 # sixty-one references to files that did not exist, several inside runtime error messages.
+#
+# tools/factory/recipe/ is skipped here and nowhere else: those files are not this repository's
+# documents but the bytes an engine receives, and their links resolve against the engine's layout
+# (AGENTS.md at its root, not in a recipe directory). Checking them here would compare a rail
+# against the wrong tree. tools/tests/test_factory_rails.py checks them against the right one --
+# skipping them without checking them somewhere is the failure this step exists to catch.
 check_doc_references() {
   python3 - "$ROOT" <<'PY'
 import pathlib, re, sys
@@ -122,10 +128,11 @@ import pathlib, re, sys
 root = pathlib.Path(sys.argv[1])
 LINK = re.compile(r"\[[^\]]*\]\(([^)#\s]+)(?:#[^)\s]*)?\)")
 IGNORED = {".git", "node_modules"}
+RECIPE = root / "tools" / "factory" / "recipe"
 
 broken = examined = 0
 for md in sorted(root.rglob("*.md")):
-    if any(part in IGNORED for part in md.parts):
+    if any(part in IGNORED for part in md.parts) or RECIPE in md.parents:
         continue
     for target in LINK.findall(md.read_text(encoding="utf-8", errors="replace")):
         if target.startswith(("http://", "https://", "mailto:")):

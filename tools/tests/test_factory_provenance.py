@@ -55,6 +55,7 @@ GIT_ENV = {"GIT_AUTHOR_NAME": "factory-test", "GIT_AUTHOR_EMAIL": "factory-test@
 
 sys.path.insert(0, FACTORY)
 import provenance  # noqa: E402
+import generate  # noqa: E402  (the managed recipes, to name them once)
 
 
 def sha256_file(path):
@@ -212,14 +213,17 @@ class TestRecord(ProvenanceCase):
         inputs = {b["path"]: b["sha256"] for b in record["buildInputs"]}
         self.assertEqual(list(inputs), sorted(inputs, key=lambda p: p.encode("utf-8")))
         self.assertEqual(set(inputs), {"Directory.Packages.props", f"{NAME}.slnx", "corpus-map.overlay.json",
-                                       f"src/{NAME}/{NAME}.csproj", f"tests/{NAME}.Tests/{NAME}.Tests.csproj"})
+                                       f"src/{NAME}/{NAME}.csproj", f"tests/{NAME}.Tests/{NAME}.Tests.csproj",
+                                       # Configuration the rails read rather than MSBuild (0029).
+                                       ".github/agent-policy.json"})
         for path, digest in inputs.items():
             self.assertEqual(digest, sha256_file(os.path.join(out, *path.split("/"))), path)
         generated = {g["path"] for g in record["generated"]}
         self.assertIn(PACKAGES_PROPS, generated)
         self.assertEqual(set(inputs) & generated, set(), "a generated file is not listed again as a build input")
         managed = {m["path"]: m for m in record["managed"]}
-        self.assertEqual(set(managed), {"global.json", "NuGet.config", "Directory.Build.props"})
+        self.assertEqual(set(managed), set(generate.managed_files()))
+        self.assertIn("AGENTS.md", managed)
         for path, item in managed.items():
             self.assertEqual(item["sha256"], sha256_file(os.path.join(out, *path.split("/"))), path)
             self.assertIsInstance(item["recipeVersion"], int)
@@ -231,7 +235,8 @@ class TestRecord(ProvenanceCase):
 
     def test_the_rule_is_by_name_and_skips_build_output(self):
         for path in ("global.json", "sub/nuget.CONFIG", "Directory.Build.targets", "src/A/A.csproj", "A.sln",
-                     "src/A/packages.lock.json", "corpus-map.overlay.json", ".editorconfig", "x/My.targets"):
+                     "src/A/packages.lock.json", "corpus-map.overlay.json", ".editorconfig", "x/My.targets",
+                     ".github/agent-policy.json"):
             self.assertTrue(provenance.is_build_input(path), path)
         for path in ("src/A/obj/A.csproj.nuget.g.props", "bin/x.props", ".git/x.props", "src/A/Rules/Speed.cs",
                      "scripts/validate.sh", "backlog/README.md", "corpus/part107.xml"):

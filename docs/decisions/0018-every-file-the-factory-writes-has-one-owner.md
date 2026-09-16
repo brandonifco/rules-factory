@@ -11,6 +11,13 @@ external review.
 *Amendment — changed pins re-lock* below. The lock-file rows of the table changed; nothing else
 did.
 
+**Amended 2026-09-16** for [#151](https://github.com/brandonifco/rules-factory/issues/151): the
+agent rails of [0029](0029-the-rails-are-emitted-by-default-and-vendor-choice-is-engine-owned-configuration.md)
+are rows in the table below — eight managed, one engine-owned. Nothing about the three classes or
+the detection changed. 0029 §5 records the one constraint the managed class puts on them: a
+managed recipe's bytes are fixed per version, so a rail may not interpolate the engine's name or
+its map.
+
 ## Amendment — changed pins re-lock
 
 The lock files are engine-owned, and the table said no `produce` rewrites them. That made a map
@@ -112,6 +119,14 @@ written path the table does not classify.
 | `scripts/engine-gate.py` | generated |  | Gate recipe: the non-dotnet checks. |
 | `scripts/factory/*.py` | generated |  | The factory's generator, vendored so the gate can regenerate without the factory. |
 | `.github/workflows/validate.yml` | generated |  | Gate recipe: CI runs `validate.sh full`. |
+| `AGENTS.md` | managed | 1 | The governing contract every agent works the engine under (0029). Managed, not generated: a team may amend its own contract, and the factory must then either carry the amendment or refuse and say so, never silently overwrite it. |
+| `CLAUDE.md` | managed | 1 | A pointer to `AGENTS.md` and an index of the Claude adapters. It states no rule of its own, so it cannot drift from the contract. |
+| `docs/agent-team.md` | managed | 1 | The four roles and what each may not do (0029). |
+| `.claude/agents/engine-dev.md` | managed | 1 | The implementer's charter. |
+| `.claude/agents/repo-steward.md` | managed | 1 | The structural reviewer's charter, read-only. |
+| `.claude/agents/rules-conformance.md` | managed | 1 | The semantic reviewer's charter, read-only. |
+| `.claude/hooks/primary-checkout-guard.py` | managed | 1 | The `PreToolUse` guard keeping implementation work out of the primary checkout. Policy, and the engine that must change it adopts it. |
+| `.claude/settings.json` | managed | 1 | Which tools the guard runs before. |
 | `global.json` | managed | 1 | The SDK the kernel pins and `rollForward: disable`. This is policy every engine should follow as the kernel moves. An engine that must move ahead of the kernel adopts the file. |
 | `NuGet.config` | managed | 2 | Package sources and source mapping: supply-chain policy (restore talks to nuget.org only, lock files pin content). An extra feed is a deliberate departure, so it is an explicit adoption. |
 | `Directory.Build.props` | managed | 2 | Target frameworks, analyzers, warnings-as-errors, determinism and lock-file mode. The review named exactly these as changes that never reached existing engines. |
@@ -120,6 +135,7 @@ written path the table does not classify.
 | `src/{name}/{name}.csproj` | engine-owned |  | The engine adds references and files. The map reference lives in the generated props. |
 | `tests/{name}.Tests/{name}.Tests.csproj` | engine-owned |  | The engine adds test references. |
 | `corpus-map.overlay.json` | engine-owned |  | The engine's three fields per entry (0015). The factory must never overwrite it. |
+| `.github/agent-policy.json` | engine-owned |  | The engine's own rails configuration: label strings, review contexts, the ordered independent-review chain, the worktree variables (0029). Written once; a factory change must never undo a consumer's provider chain. |
 | `src/{name}/packages.lock.json` | engine-owned |  | Written by `verify`'s first restore (#70) in the staging copy, only when there is no lock file yet, and committed with the engine. After that, the engine relocks (`scripts/validate.sh lock`), reviews and commits it. A `produce` rewrites it only when that run changed the generated pins: it re-locks before the gate (#94, *Amendment* above). |
 | `tests/{name}.Tests/packages.lock.json` | engine-owned |  | The same, for the test project. |
 

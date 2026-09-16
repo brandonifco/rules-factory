@@ -48,9 +48,14 @@ PART107 = os.path.join(REPO, "examples", "faa-part-107")
 PART107_XML = os.path.join(PART107, "part107.xml")
 HOYLE = os.path.join(REPO, "examples", "hoyle-backgammon")
 NAME = "FaaPart107"
-MANAGED = ("Directory.Build.props", "NuGet.config", "global.json")
+MANAGED = ("Directory.Build.props", "NuGet.config", "global.json",
+           # The agent rails (decision 0029).
+           "AGENTS.md", "CLAUDE.md", "docs/agent-team.md", ".claude/agents/engine-dev.md",
+           ".claude/agents/repo-steward.md", ".claude/agents/rules-conformance.md",
+           ".claude/hooks/primary-checkout-guard.py", ".claude/settings.json")
 ENGINE_OWNED = ("Directory.Packages.props", f"{NAME}.slnx", f"src/{NAME}/{NAME}.csproj",
-                f"tests/{NAME}.Tests/{NAME}.Tests.csproj", "corpus-map.overlay.json")
+                f"tests/{NAME}.Tests/{NAME}.Tests.csproj", "corpus-map.overlay.json",
+                ".github/agent-policy.json")
 LOCKS = (f"src/{NAME}/packages.lock.json", f"tests/{NAME}.Tests/packages.lock.json")
 
 
