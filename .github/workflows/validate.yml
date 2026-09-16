@@ -18,6 +18,7 @@ concurrency:
 
 permissions:
   contents: read
+  issues: read
 
 jobs:
   validate:
@@ -48,6 +49,9 @@ jobs:
       # index. No count here: validate.sh prints the counts, and a number in a comment drifts.
       - name: Validate
         run: ./scripts/validate.sh
+        env:
+          # Read-only: check-status-issues.py reads issue states, and nothing else uses it.
+          GH_TOKEN: ${{ github.token }}
 
   engine:
     # Separate from `validate` because it needs the .NET SDK and nuget.org, and because a
