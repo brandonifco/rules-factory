@@ -99,7 +99,9 @@ its own.
 
 A verdict is recorded with `tools/record-verdict.py --pr <n> --reviewer <id> --verdict pass|fail`,
 under that provider's own context, and `tools/conformance-gate.py` requires it at the commit being
-merged.
+merged. Recording it is the whole of the step: `.github/workflows/verdict-requeue.yml` asks the
+gate to report again at that commit, so a gate still red for a moment afterwards is bookkeeping
+catching up, not the verdict failing to register.
 
 **The chain advances because a provider was unavailable, never because its verdict was
 unwelcome.** Unavailable means it could not be reached or returned no verdict at all. A provider

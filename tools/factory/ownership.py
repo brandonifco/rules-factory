@@ -81,14 +81,14 @@ TABLE = (
     Row("scripts/engine-gate.py", GENERATED, None, "the gate recipe: its non-dotnet checks"),
     Row("scripts/factory/*.py", GENERATED, None, "the factory's generator, vendored so the gate can regenerate"),
     Row(".github/workflows/validate.yml", GENERATED, None, "the gate recipe: CI runs validate.sh full"),
-    Row("AGENTS.md", MANAGED, 3,
+    Row("AGENTS.md", MANAGED, 4,
         "the governing contract every agent works this engine under (decision 0029)"),
     Row("CLAUDE.md", MANAGED, 1,
         "a pointer to AGENTS.md and the Claude adapters; it states no rule of its own (0029)"),
-    Row("docs/agent-team.md", MANAGED, 3, "the four roles, and what each may not do (0029)"),
+    Row("docs/agent-team.md", MANAGED, 4, "the four roles, and what each may not do (0029)"),
     Row(".claude/agents/engine-dev.md", MANAGED, 3, "the implementer's charter (0029)"),
     Row(".claude/agents/repo-steward.md", MANAGED, 1, "the structural reviewer's charter, read-only (0029)"),
-    Row(".claude/agents/rules-conformance.md", MANAGED, 2, "the semantic reviewer's charter, read-only (0029)"),
+    Row(".claude/agents/rules-conformance.md", MANAGED, 3, "the semantic reviewer's charter, read-only (0029)"),
     Row(".claude/hooks/primary-checkout-guard.py", MANAGED, 1,
         "the PreToolUse guard that keeps implementation work out of the primary checkout (0029)"),
     Row(".claude/settings.json", MANAGED, 1, "which tools the guard runs before (0029)"),
@@ -105,11 +105,15 @@ TABLE = (
         "a review verdict as a commit status on the exact commit reviewed (0029)"),
     Row("tools/conformance-gate.py", MANAGED, 1,
         "whether the verdicts this change needs are recorded at the commit being merged (0029)"),
+    Row("tools/requeue-gate.py", MANAGED, 1,
+        "asks the gate to report again at the commit a recorded verdict names (#191)"),
     Row(".github/pull_request_template.md", MANAGED, 1, "the pull request shape pr-policy.py checks (0029)"),
     Row(".github/workflows/pr-policy.yml", MANAGED, 1, "the required check that runs pr-policy.py (0029)"),
-    Row(".github/workflows/conformance-gate.yml", MANAGED, 1,
+    Row(".github/workflows/conformance-gate.yml", MANAGED, 2,
         "the required check that runs conformance-gate.py (0029)"),
-    Row("tools/agent-doctor.py", MANAGED, 1,
+    Row(".github/workflows/verdict-requeue.yml", MANAGED, 1,
+        "runs requeue-gate.py on the status event; deliberately not a required check (#191)"),
+    Row("tools/agent-doctor.py", MANAGED, 2,
         "whether the rails are active or only present, locally and on GitHub (0029)"),
     Row(".editorconfig", MANAGED, 1,
         "the kernel determinism analyzers' severities: a build error in src, off in tests (0029)"),
@@ -149,6 +153,7 @@ RECIPE_SHA256 = {
     ".claude/agents/rules-conformance.md": {
         1: "95eac2e802b474bdefad5a6053528dceda7465bbacfc946a0dd3c52a09705e78",
         2: "034cc0af3ecb98e9af60a65931102c69546f22ddadfea9c82961bb71fbbf96c2",
+        3: "7f91ed4187d6d87621873266741f972a5b9bc8a27e16a248e78eb4de69789a64",
     },
     ".claude/hooks/primary-checkout-guard.py": {
         1: "a263531db502dfad98b38bf1dd90df7b1bec5f22133db016b6f30dc38509d16d",
@@ -160,6 +165,7 @@ RECIPE_SHA256 = {
         1: "06594a3207634553a28ca057ecb53225082e4f111890961e27589c544353e740",
         2: "81f5756c1bff7ca2f1f9091087138fed0204a43e2f30a1e6f05ad4430e2efd48",
         3: "c3576d1cea769505a43794b8f2d42797f230f058b238eda09230f1fd3105ab50",
+        4: "f56c233ba212433e135c24618c5da784ee0b408bac75570130fd0d8db4e2cdac",
     },
     "CLAUDE.md": {
         1: "04c07ad36e742fa60efafeca54d20bd96d16b6e338a44e46fad2b679ab8dfd9f",
@@ -168,6 +174,7 @@ RECIPE_SHA256 = {
         1: "48baa22a5f1b6bb3f26d6aaed5715782462430b8b5524e1f0737ad627fae219d",
         2: "2972f4cdb30b4549639dc34de2fd47b8b06e0c680ef41e88de701ccfa66abb4d",
         3: "ae9c54d7236adca8507e673d77b51e6431a48f4a3c29af40d7420ea2810e8521",
+        4: "1806e2679578deb3f6b59c920e1c209fb5c5606f36a07d1b8b9a942994103379",
     },
     "tools/dispatch-agent.sh": {
         1: "868ce983b51d784a83a6a0fcac7456608b31f0af025c75ac5eeac64a373dca2b",
@@ -192,6 +199,9 @@ RECIPE_SHA256 = {
     "tools/conformance-gate.py": {
         1: "567972b60f16d1f86c661e97efa56fa2878c9a5aa92fb820c4aea07a402cbd24",
     },
+    "tools/requeue-gate.py": {
+        1: "a4315a5fa76a696ee616e5ef190d6bbec0d023c04e22086082d4031c460aec8d",
+    },
     ".github/pull_request_template.md": {
         1: "e2cebc6419d62e2df3b218d76462caf807d6637f2b305ac2aa11153f13304a92",
     },
@@ -200,9 +210,14 @@ RECIPE_SHA256 = {
     },
     ".github/workflows/conformance-gate.yml": {
         1: "851d64e8705363b70711b74fe1b25306c3fac1c1e26c88a9805defc3a03042a8",
+        2: "d66ae8a37a37874369ac962fbecbf9ac1b98cf0246541a61ea5089b23f8ea702",
+    },
+    ".github/workflows/verdict-requeue.yml": {
+        1: "b1a48c75587dcbcf15638f83a703025c08f5449d9e2611550c4f15a448fcb178",
     },
     "tools/agent-doctor.py": {
         1: "1b6fced99797d165ab0216523bddae183d6e7254f41d5d5f51cdb1d1c3b8913d",
+        2: "ecdc84a736f1bbb32b795928720a091c1b4470e88ba8ec4ff35e361992645703",
     },
     ".editorconfig": {
         1: "4109d1ef55053ef656e536d7818934deb73016fbe950f153bae6b2a163591cb2",

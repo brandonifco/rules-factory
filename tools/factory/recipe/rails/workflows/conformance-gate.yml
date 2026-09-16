@@ -7,15 +7,23 @@ name: conformance-gate
 #
 # It re-runs on `synchronize` because that is the point: a new commit means the verdicts recorded
 # on the old one no longer describe what is being merged, and this check goes red again by itself.
+#
+# It deliberately does NOT trigger on `status`, though recording a verdict is exactly when this
+# check must be asked again. A `status` run belongs to the default branch's commit, not to the
+# pull request whose head the verdict names, so this job would report the required check's name
+# onto a commit that is nobody's head -- and `github.event.pull_request.number` is empty there, so
+# it would have no pull request to ask about either. Recording a verdict re-runs this workflow
+# from outside instead: .github/workflows/verdict-requeue.yml re-requests the pull request run at
+# that head. So this check has exactly one producer, the `pull_request` event, and one commit it
+# ever lands on (rules-factory #191).
 
 on:
   pull_request:
     types: [opened, synchronize, reopened, labeled, unlabeled]
     branches: [main]
-  status:
 
 concurrency:
-  group: conformance-gate-${{ github.event.pull_request.number || github.sha }}
+  group: conformance-gate-${{ github.event.pull_request.number }}
   cancel-in-progress: true
 
 permissions:
@@ -26,7 +34,6 @@ permissions:
 
 jobs:
   conformance-gate:
-    if: github.event_name == 'pull_request'
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     steps:

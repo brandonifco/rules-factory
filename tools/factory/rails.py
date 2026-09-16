@@ -36,6 +36,9 @@ import subprocess
 import generate
 
 RULESET = "rules-factory-agent-rails"
+# `verdict-requeue` is deliberately not among them (#191). It runs on the `status` event, so its
+# run belongs to the default branch's commit rather than to any pull request, and a required check
+# on that commit is a condition on something that has already merged.
 REQUIRED_CHECKS = ("validate", "pr-policy", "conformance-gate")
 POLICY = ".github/agent-policy.json"
 LABEL_COLOURS = {
