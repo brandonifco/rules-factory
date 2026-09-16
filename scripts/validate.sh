@@ -64,6 +64,16 @@ check_locators() {
   python3 examples/faa-part-107/check-locators-section.py \
     examples/faa-part-107-temporal/corpus-map-2020-01-01.json \
     examples/faa-part-107-temporal/part107-2020-01-01.xml || return 1
+  # A third corpus through the same eCFR checker, and a different title of the CFR: trial 9's
+  # § 1.121-1. It is reused and not copied, which is the point -- the grammar is the grammar.
+  # Two things in it were title-14 shaped and were generalised rather than duplicated: a
+  # section's subpart is now read from its ancestry, so a single section served as a bare DIV8
+  # indexes like one inside a subpart, and a section designation may carry a hyphenated suffix
+  # (§ 1.121-1). tools/checkmap/extent.py carries the same expression, and test_check_map.py
+  # holds the two to each other.
+  python3 examples/faa-part-107/check-locators-section.py \
+    examples/tax-121-principal-residence/corpus-map.json \
+    examples/tax-121-principal-residence/section-1.121-1.xml || return 1
   # A third grammar: page markers over text extracted from a PDF. extract.py first holds the
   # committed text to the manifest's contentHash and the committed PDF to sourcePdf.sha256, and
   # re-derives the text from the PDF where the pinned pdftotext is installed (NOT VERIFIED,

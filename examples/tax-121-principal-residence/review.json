@@ -1,0 +1,14 @@
+{
+  "about": "The review of each map's exact bytes (docs/decisions/0017-a-map-change-carries-a-review-of-its-bytes.md). tools/check-map-review.py fails any map whose sha256 is not the one recorded here.",
+  "reviews": {
+    "corpus-map.json": {
+      "sha256": "d5b4f0979d902c7099da85aa59e64444fea9ecd5e39059f37b1f0d597b0262ba",
+      "method": "exemption",
+      "exemption": {
+        "kind": "legacy",
+        "issue": "#8",
+        "reason": "Not reviewed: this is the first mapping of 26 CFR § 1.121-1 and it has not had the blind second mapping 0014 requires, so nothing has compared it with a second reading of the section. `legacy` is the wrong word and is used deliberately, for the reason trial 8 already recorded -- it is the only exemption kind that names a tracking issue, and `non-semantic` needs a reviewed map to depart from, which a new map does not have. Unlike trial 8's map this one declares a map-package.json and passes the publish gate, and that is worth stating plainly: the gate checks the licence class, the schema at --phase publish, every locator, and byte-identical packing, and it does not check that a human ever read the map against the corpus. A blind second mapping is owed before anything is built from it, and three things should be attacked first. (1) The six scope: out verdicts on the four Examples paragraphs, the § 1.121-4(j) signpost and the absence entry: the examples are authoritative illustrations in a Treasury regulation, and declining them is what leaves short-temporary-absences and allocation-required open. (2) The eight ambiguity verdicts, and in particular whether \"adjacent\", \"ordinarily\" and \"separate from the dwelling unit\" are three gaps or three ordinary words a second reader would call clear. (3) The eighteen citations that name a paragraph one level shallower than the rule they carry -- § 1.121-1(b) for (b)(1), § 1.121-1(c) for (c)(1), § 1.121-1(d) for (d)(1), § 1.121-1(e) for (e)(1), and four more run-in sub-paragraphs -- because the eCFR XML runs the first sub-paragraph into its parent's <P> and the locator checker cannot see the deeper designation. Each is true and none is as precise as the corpus's own numbering, which is finding 1 of the report."
+      }
+    }
+  }
+}

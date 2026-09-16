@@ -1,0 +1,40 @@
+{
+  "schemaVersion": 1,
+  "corpora": [
+    {
+      "sourceId": "cfr-26-1.121-1",
+      "title": "26 CFR § 1.121-1 — Exclusion of gain from sale or exchange of a principal residence",
+      "adapter": "ecfr-xml",
+      "locatorGrammar": "section-designation",
+      "contentHash": "faf3e310a81b1d00729fd69fb422342bcff8049a98a0ae80955be3287e30bab2",
+      "hashDerivation": "ecfr-versioner-xml",
+      "asOf": "2026-01-01",
+      "boundaryPolicy": "pin-in-repo",
+      "licence": "public-domain-us-government",
+      "verification": "committed-copy",
+      "committedPath": "section-1.121-1.xml",
+      "quotation": "verbatim",
+      "randomness": "none",
+      "retrievedFrom": "https://www.ecfr.gov/api/versioner/v1/full/2026-01-01/title-26.xml?part=1&section=1.121-1",
+      "pointerPhrases": [
+        { "regex": "\\bparagraphs? \\([a-z0-9]+\\)(?:\\([a-z0-9]+\\))*(?:(?:,| and| or| through) \\([a-z0-9]+\\)(?:\\([a-z0-9]+\\))*)* of this section" },
+        { "regex": "\\bthis paragraph \\([a-z0-9]+\\)(?:\\([a-z0-9]+\\))*" },
+        { "regex": "§+\\s?\\d+\\.\\d+(?:-\\d+)?(?:\\([A-Za-z0-9]+\\))*" },
+        { "regex": "\\bsections? \\d+[A-Z]?(?:\\([A-Za-z0-9]+\\))*(?: through \\d+)?" }
+      ],
+      "references": [
+        { "sourceId": "usc-26-121", "citation": "§ 121", "admitted": false },
+        { "sourceId": "usc-26-216", "citation": "§ 216(b)(1) and (2)", "admitted": false },
+        { "sourceId": "usc-26-280A", "citation": "§ 280A(f)(1)", "admitted": false },
+        { "sourceId": "usc-26-671-679", "citation": "§§ 671 through 679", "admitted": false },
+        { "sourceId": "usc-26-1250", "citation": "§ 1250(b)(3)", "admitted": false },
+        { "sourceId": "usc-26-6511", "citation": "§ 6511", "admitted": false },
+        { "sourceId": "cfr-26-1.121-2", "citation": "§ 1.121-2", "admitted": false },
+        { "sourceId": "cfr-26-1.121-3", "citation": "§ 1.121-3", "admitted": false },
+        { "sourceId": "cfr-26-1.121-4", "citation": "§ 1.121-4", "admitted": false },
+        { "sourceId": "cfr-26-301.7701-3", "citation": "§ 301.7701-3", "admitted": false },
+        { "sourceId": "local-law", "admitted": false }
+      ]
+    }
+  ]
+}

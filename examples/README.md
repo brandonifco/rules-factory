@@ -15,6 +15,7 @@ nothing, and should be read as a failure to pick a hard enough corpus.
 | 3 | [Part 107, two dates](faa-part-107-temporal/) — 2020-01-01 and 2026-01-01 | The temporal axis, across a real amendment | 23 → 24 as first mapped; 39 → 47 now | 4 → 5; 7 → 10 now | maps must stamp their baseline; clarity belongs to a version; re-mapping guidance |
 | 7 | [SRD 5.2.1, Combat](srd-52-combat/) — Wizards of the Coast, CC-BY-4.0, pp. 13–16 | A PDF: an adapter over extracted text, page locators; turn structure; GM judgement; pointers into the Rules Glossary | 86 (68 in scope) → 91 (70) after the [blind second mapping](srd-52-combat/blind-mapping/README.md) | 17 → 19 (27% of in scope) | Blind-mapped (#106 step 3): 259 flags, 21 blind-right and 11 corpus-does-not-settle, corrected. Numbered 7 because trials 5 and 6 are the injection and blind-mapping trials (0014, 0015); #106 first called it 5. Nothing changed in the method yet. Findings recorded, not decided: a quote is verbatim of the extraction, not the page; a page extent cannot end mid-page; no field for a term defined in the same corpus outside the slice; the cross-reference phrase list detects none of the SRD's pointers; assertion attribution has no field; whether a draw happens can be ambiguous |
 | 8 | [SRD 5.2.1, the fifteen conditions](srd-52-conditions/) — Wizards of the Coast, CC-BY-4.0, Rules Glossary pp. 177–191 | A dense **internal** graph: conditions that impose, deny and end each other (#8) | 100 (66 in scope) | 12 (18% of in scope) | Answers #8, partly. `dependsOn` survives density unchanged (142 edges, no cycle, longest chain 5, a clean five-layer backlog) — but the dense part of the graph is not the part it carries: the thirteen rules that *impose* or *end* a condition run the other way and are `crossReferences`. Findings recorded, not decided: `extent` has no list unit for a page grammar, so a slice of sixteen scattered glossary entries has to claim fifteen whole pages; a rule the corpus prints verbatim five times cannot be cited on its own, and *Round Down*, printed twice identically, cannot be cited without annexing the next glossary entry; a second slice of one corpus must restate its manifest and nothing compares the copies; a conflict can straddle the slice boundary. And the sharpest one: **0026's `pointerPhrases` detect 0 of the 51 condition-to-condition references**, and no regex can, because this corpus points by naming the term and the same words make a self-reference |
+| 9 | [26 CFR § 1.121-1](tax-121-principal-residence/) — exclusion of gain on a principal residence, 2026-01-01 | A corpus that references **structurally** — `paragraph (e) of this section` — which is the only thing that tests #8's remaining question | 37 (31 in scope) | 8 (26% of in scope) | **Closes #8.** A citation *can* address a cross-reference: 16 of the map's 26 resolved `crossReferences` are anchored on a structural pointer and every one of the 26 resolves to an entry whose locator is a constituent — `§ 1.121-1(d)` ↔ `§ 1.121-1(e)`, a mutual qualification, proved by the locator checker. No schema change: the field was `crossReferences` all along, and #8's phrasing put the question on the wrong field. Also: deriving `dependsOn` from the corpus's own pointers would be wrong in 12 of 16 places; the `section-designation` grammar cannot have #207's duplicate-passage problem at all (every one of 37 spans occurs exactly once, against 20 of 48 SRD entries forced to extend); the first publishable trial map. Findings recorded, not decided: the eCFR XML runs `(e)(1)` into `(e)`'s element, so 18 of 37 citations are one level shallower than the regulation's own numbering; `<EXAMPLE>` is not indexed, and holds 12 of the section's 21 structural pointers; a Treasury regulation's examples are *worked answers that constrain a rule*, and the method has no category for them between "advice" and "rule"; `definedElsewhere` and `ambiguity` are mutually exclusive and one entry needs both; `definedElsewhere` can only name one corpus and "local law" is a class of them; `check-locators-section.py` has no `absence` check |
 
 ## What has actually changed
 
@@ -122,16 +123,22 @@ Tracked as issues, not listed here — a markdown backlog outside the tracker is
 queue, and this project archived its predecessor partly for having one.
 
 - [#8](https://github.com/brandonifco/rules-factory/issues/8) — a corpus with a dense
-  internal cross-reference graph. **Partly answered by [trial 8](srd-52-conditions/)**, the SRD
-  5.2.1 conditions: six condition-to-condition edges over 100 entries, 142 `dependsOn` edges,
-  and the report answers all four of #8's questions. Two of them it can only answer for this
-  corpus. *Can a citation address a cross-reference — one entry's locator pointing at the
-  constituent of another?* went untested, because the SRD never points at a constituent: all 51
-  of its internal references name a condition as a whole, which is what forced a hub entry per
-  condition. And *does the map become unreadable?* got a qualified answer — the entries stay
-  readable and the file does not, which argues for a derived view rather than a schema change.
-  A corpus that really does cite into the middle of another rule, a tax regulation or a contract
-  with defined terms, would still test the first of those.
+  internal cross-reference graph. **Now fully answered**, across two trials and two corpora that
+  point in opposite styles. [Trial 8](srd-52-conditions/), the SRD 5.2.1 conditions, answered
+  three of the four questions and could not test the fourth, because the SRD points at a *term by
+  name* and never at a constituent. [Trial 9](tax-121-principal-residence/), 26 CFR § 1.121-1,
+  is the corpus that issue named — a tax regulation — and it points structurally twenty-one
+  times. **Can a citation address a cross-reference? Yes**, and without a schema change: sixteen
+  of the map's resolved `crossReferences` items are anchored on a pointer such as *"paragraph (e)
+  of this section"*, and every resolved item names an entry whose own locator is a constituent —
+  including the mutual `§ 1.121-1(d)` ↔ `§ 1.121-1(e)` qualification, with the locator checker
+  proving both. The correction #8 needs is that the question was on the wrong field: a locator
+  says where *this* rule sits and never points, and what points is `crossReferences`, whose
+  `resolvedBy` has always resolved to an entry of whatever granularity the mapper chose. The
+  bound on the answer is the adapter's, not the schema's — a citation can address a
+  cross-reference to the depth the markup exposes, and the eCFR XML exposes one level less than
+  the CFR's own numbering. Trial 9 also sharpens *does the map become unreadable?*: the trigger
+  is repetition, not size.
 - [#9](https://github.com/brandonifco/rules-factory/issues/9) — whether a **wrong** map is
   caught downstream. Every finding so far surfaced during mapping, which is the cheap place,
   and that is encouraging rather than evidence.

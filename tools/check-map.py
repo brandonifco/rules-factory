@@ -311,10 +311,10 @@ EXTENT_UNITS = ("page", "section-designation")
 # examples/faa-part-107/check-locators-section.py reads them. `CITE_SECTION` and `CITE_SUBPART`
 # are that checker's expressions, verbatim; `test_check_map.py` runs both over every citation in
 # the Part 107 maps and requires them to agree, so the two cannot drift apart silently.
-CITE_SECTION = re.compile(r"§+\s*(\d+\.\d+)")
+CITE_SECTION = re.compile(r"§+\s*(\d+\.\d+(?:-\d+)?)")
 CITE_SUBPART = re.compile(r"\bsubpart\s+([A-Z])\b", re.I)
 # One item of `extent.sections`: a section and nothing else -- no paragraph, no range.
-EXTENT_SECTION = re.compile(r"^§\s*(\d+\.\d+)$")
+EXTENT_SECTION = re.compile(r"^§\s*(\d+\.\d+(?:-\d+)?)$")
 
 
 def cited_section(citation):
