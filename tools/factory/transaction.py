@@ -1,8 +1,12 @@
 """`produce` is transactional (#67): a refusal leaves `--out` as it was.
 
+The transaction is over files in `--out`, never over git. `produce` writes an engine's files and
+makes no git commit: what it wrote is left in the engine's working tree for whoever ran it to
+review and commit (`git_note()` says so, on every run whose `--out` is a git checkout).
+
 Every step of `produce` -- generation, the gate recipe, backlog, provenance -- writes into a
 staging copy of the engine, never into `--out`. Only when every step has passed is the result
-committed. A refusal before that point removes the staging copy, so `--out` is byte-identical to
+put in place. A refusal before that point removes the staging copy, so `--out` is byte-identical to
 how it started and "Nothing was produced." is true; a fresh `--out` is not created.
 
 Staging. A working directory is made beside `--out` (in its parent, or the nearest ancestor that
@@ -59,6 +63,7 @@ import json
 import os
 import shutil
 import stat
+import subprocess
 import tempfile
 
 import intake as intake_step
@@ -180,7 +185,7 @@ def recover(out, log=None):
 
 
 class Stage:
-    """A staging copy of `out` that every step writes into, committed to `out` by `commit()`.
+    """A staging copy of `out` that every step writes into, put in place in `out` by `commit()`.
 
     Leaving the `with` block without a successful commit discards the copy and leaves `out` alone.
     """
@@ -241,7 +246,9 @@ class Stage:
             self._commit_existing(added, changed, removed)
         self.committed = True
         if self.log is not None:
-            print(f"committed to {self.out}: {len(added)} added, {len(changed)} changed, {len(removed)} removed",
+            # "wrote", not "committed": this puts files in place in --out and makes no git commit
+            # (git_note() below says so where --out is a git checkout).
+            print(f"wrote to {self.out}: {len(added)} added, {len(changed)} changed, {len(removed)} removed",
                   file=self.log)
         return added, changed, removed
 
@@ -309,9 +316,38 @@ class Stage:
                 _rollback(journal)
                 os.remove(journal_path)
             except BaseException as second:
-                raise CommitError(f"committing to {self.out} failed ({error!r}), and rolling back failed too "
+                raise CommitError(f"writing to {self.out} failed ({error!r}), and rolling back failed too "
                                   f"({second!r}); the journal {journal_path} names every path, and the files "
                                   f"it changed or removed are backed up under {backup}. The next produce into "
                                   f"{self.out} retries the rollback", rolled_back=False)
-            raise CommitError(f"committing to {self.out} failed ({error!r}) and was rolled back", rolled_back=True)
+            raise CommitError(f"writing to {self.out} failed ({error!r}) and was rolled back", rolled_back=True)
         os.remove(journal_path)
+
+
+# --- what git was not told -------------------------------------------------------------------
+
+
+def git_note(out, log=None):
+    """Say that the files just written to `out` are uncommitted, when `out` is a git checkout.
+
+    `produce` never runs git in the engine: it writes files, and whoever ran it reviews and commits
+    them. The line reporting what was written used to say "committed to <engine>", which read as a
+    git commit that had not happened. Returns the note, or None when `out` is not in a git work tree, git
+    cannot be run, or the work tree is clean.
+    """
+    out = os.path.realpath(os.path.abspath(out))
+    try:
+        done = subprocess.run(["git", "-C", out, "status", "--porcelain"], stdout=subprocess.PIPE,
+                              stderr=subprocess.DEVNULL, text=True, timeout=60)
+    except (OSError, subprocess.TimeoutExpired):
+        return None
+    if done.returncode != 0:
+        return None  # not a git work tree: nothing to say about commits
+    changes = [line for line in done.stdout.splitlines() if line.strip()]
+    if not changes:
+        return None
+    note = (f"git: produce writes files and makes no commit -- {out} has {len(changes)} uncommitted "
+            f"change(s); review them (git -C {out} status) and commit")
+    if log is not None:
+        print(note, file=log)
+    return note

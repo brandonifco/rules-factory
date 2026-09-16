@@ -311,7 +311,7 @@ class TestProduce(VerifyCase):
             code, output = self.produce_into(self.engine)
         self.assertEqual(code, 0, output)
         self.assertIn("restore -- skipped: 2 lock file(s) present", output)
-        self.assertIn(f"committed to {os.path.realpath(self.engine)}: 0 added, 0 changed, 0 removed", output)
+        self.assertIn(f"wrote to {os.path.realpath(self.engine)}: 0 added, 0 changed, 0 removed", output)
 
     def test_standalone_verify_leaves_unrecorded_lock_files_unclaimed(self):
         code, output = self.verify()

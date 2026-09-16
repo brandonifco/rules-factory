@@ -659,7 +659,7 @@ class TestTransactional(ProduceCase):
                 os.chmod(path, os.stat(path).st_mode | 0o020)
         code, output = self.produce(out, package=self.v1)
         self.assertEqual(code, 0, output)
-        self.assertIn(f"committed to {os.path.realpath(out)}: 0 added, 0 changed, 0 removed", output)
+        self.assertIn(f"wrote to {os.path.realpath(out)}: 0 added, 0 changed, 0 removed", output)
 
     def test_an_executable_bit_that_differs_is_counted_as_changed(self):
         out = self.produced(package=self.v1)
@@ -667,7 +667,7 @@ class TestTransactional(ProduceCase):
         os.chmod(script, 0o664)
         code, output = self.produce(out, package=self.v1)
         self.assertEqual(code, 0, output)
-        self.assertIn(f"committed to {os.path.realpath(out)}: 0 added, 1 changed, 0 removed", output)
+        self.assertIn(f"wrote to {os.path.realpath(out)}: 0 added, 1 changed, 0 removed", output)
         self.assertEqual(stat.S_IMODE(os.stat(script).st_mode), 0o755)
 
     def test_a_failure_during_commit_is_rolled_back(self):
@@ -720,6 +720,67 @@ class TestTransactional(ProduceCase):
         self.assertEqual(tree(self.produced(os.path.join(self.tmp, "fresh"), package=self.v2)), tree(out))
         shutil.rmtree(copy)
         self.assert_no_leftovers(self.tmp)
+
+
+class TestSaysWhatItDidToGit(ProduceCase):
+    """produce writes files and makes no git commit, and its output may not suggest otherwise.
+
+    The message used to read `committed to <engine>: N added, ...` while `git log` was unchanged and
+    the engine left dirty, so four runs were believed saved that were not. What is asserted here is
+    the git state the output claims: no commit is made, and a run into a git checkout says the
+    changes are uncommitted.
+    """
+
+    def git(self, out, *args):
+        done = subprocess.run(["git", "-C", out, *args], stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
+                              text=True, check=True)
+        return done.stdout
+
+    def engine_repo(self):
+        """A produced engine whose files are committed, so a re-produce is the only thing git sees."""
+        out = self.produced(package=self.part107)
+        self.git(out, "-c", "init.defaultBranch=main", "init", "-q")
+        self.git(out, "-c", "user.email=t@example.com", "-c", "user.name=T", "add", "-A")
+        self.git(out, "-c", "user.email=t@example.com", "-c", "user.name=T", "commit", "-q", "-m", "produced")
+        self.assertEqual(self.git(out, "status", "--porcelain"), "")
+        return out
+
+    def test_a_produce_into_a_git_engine_makes_no_commit_and_does_not_claim_one(self):
+        out = self.engine_repo()
+        head = self.git(out, "rev-parse", "HEAD")
+        code, output = self.produce(out, package=self.hoyle_version())
+        self.assertEqual(code, 0, output)
+
+        # What actually happened: files changed in the working tree, and git recorded nothing.
+        self.assertEqual(self.git(out, "rev-parse", "HEAD"), head, "produce must not create a commit")
+        dirty = [line for line in self.git(out, "status", "--porcelain").splitlines() if line.strip()]
+        self.assertTrue(dirty, output)
+
+        # So the output may not say the engine was committed, and must say the changes are not.
+        self.assertNotIn("committed to", output)
+        self.assertIn(f"wrote to {os.path.realpath(out)}: ", output)
+        self.assertIn("produce writes files and makes no commit", output)
+        self.assertIn(f"{len(dirty)} uncommitted change(s)", output)
+
+    def test_a_produce_that_changes_nothing_says_nothing_about_git(self):
+        out = self.engine_repo()
+        code, output = self.produce(out, package=self.part107)
+        self.assertEqual(code, 0, output)
+        self.assertEqual(self.git(out, "status", "--porcelain"), "")
+        self.assertNotIn("uncommitted change(s)", output)
+
+    def test_a_produce_outside_a_git_checkout_says_nothing_about_git(self):
+        out = self.produced(package=self.part107)
+        self.assertFalse(os.path.isdir(os.path.join(out, ".git")))
+        code, output = self.produce(out, package=self.part107)
+        self.assertEqual(code, 0, output)
+        self.assertNotIn("uncommitted change(s)", output)
+
+    def hoyle_version(self):
+        """The Part 107 map packed at another version: a re-produce that changes files."""
+        if not hasattr(self.__class__, "_bumped"):
+            self.__class__._bumped = pack_version(PART107, "9.0.0", os.path.join(self.shared, "git-versions"))
+        return self._bumped
 
 
 if __name__ == "__main__":

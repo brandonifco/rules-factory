@@ -3,9 +3,12 @@
 Until this existed, `produce` printed that it had produced an engine without compiling it or
 running a single one of the tests it generated, so "produced" said nothing about whether the
 product worked. `verify` is what "produced" now means: `produce` runs it on the staging copy
-(transaction.py, #67) after provenance is written and before anything is committed, unless told
+(transaction.py, #67) after provenance is written and before anything is written into `--out`,
+unless told
 explicitly (`--no-verify`) not to. So a failed verify discards the staging copy, `--out` is
-byte-identical to how it started, and only a verified engine is ever committed. What verify
+byte-identical to how it started, and only a verified engine is ever written out. ("Committed",
+here and below, is transaction.py's commit of the staging copy into `--out`: produce writes files
+and makes no git commit.) What verify
 writes in the staging copy is committed with the engine only where it belongs to the engine: the
 packages.lock.json files a first restore writes are added files, while bin/ and obj/ are not:
 `verify_staged` deletes them from the staging copy once verify has passed. transaction.py already
