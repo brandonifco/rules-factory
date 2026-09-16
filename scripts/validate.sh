@@ -71,6 +71,12 @@ check_locators() {
   python3 examples/srd-52-combat/extract.py --check || return 1
   python3 examples/srd-52-combat/check-locators-pdf-text.py \
     examples/srd-52-combat/corpus-map.json examples/srd-52-combat/srd-5.2.1.txt || return 1
+  # A second slice of the same corpus. The checker and the text stay where they were committed:
+  # the conditions map declares its own manifest and points `committedPath` at that one copy,
+  # because a 6 MB PDF and a 1.4 MB text duplicated per slice would be a second baseline to keep
+  # in step, not a second corpus.
+  python3 examples/srd-52-combat/check-locators-pdf-text.py \
+    examples/srd-52-conditions/corpus-map.json examples/srd-52-combat/srd-5.2.1.txt || return 1
 }
 
 # Every map that declares a package version passes the gate its publish workflow runs, and
