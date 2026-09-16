@@ -224,8 +224,9 @@ def save():
 if args[:2] == ["issue", "list"]:
     assert args[args.index("--repo") + 1] == "example/engine"
     assert args[args.index("--state") + 1] == "all"
-    assert args[args.index("--json") + 1] == "number,title,body"
-    print(json.dumps(issues[:int(args[args.index("--limit") + 1])]))
+    assert args[args.index("--json") + 1] == "number,title,body,labels"
+    print(json.dumps([dict(i, labels=[{{"name": n}} for n in i.get("labels", [])])
+                      for i in issues[:int(args[args.index("--limit") + 1])]]))
 elif args[:2] == ["issue", "create"]:
     assert args[args.index("--body-file") + 1] == "-"
     number = max([i["number"] for i in issues] + [0]) + 1
@@ -233,10 +234,20 @@ elif args[:2] == ["issue", "create"]:
     save()
     print("https://github.com/example/engine/issues/%d" % number)
 elif args[:2] == ["issue", "edit"]:
-    assert args[args.index("--body-file") + 1] == "-"
     (issue,) = [i for i in issues if i["number"] == int(args[2])]
-    issue["title"] = args[args.index("--title") + 1]
-    issue["body"] = sys.stdin.read()
+    if "--body-file" in args:
+        assert args[args.index("--body-file") + 1] == "-"
+        issue["title"] = args[args.index("--title") + 1]
+        issue["body"] = sys.stdin.read()
+    labels = set(issue.get("labels", []))
+    for i, a in enumerate(args):
+        if a == "--add-label":
+            if os.environ.get("GH_STUB_MISSING_LABELS"):
+                sys.exit("could not add label: '%s' not found" % args[i + 1])
+            labels.add(args[i + 1])
+        elif a == "--remove-label":
+            labels.discard(args[i + 1])
+    issue["labels"] = sorted(labels)
     save()
     print("https://github.com/example/engine/issues/%d" % issue["number"])
 else:
@@ -636,3 +647,115 @@ class TestAttribution(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class TestLabels(CreateCase):
+    """One state label and one risk label per issue (#154, decision 0029)."""
+
+    def policy(self, **overrides):
+        os.makedirs(os.path.join(self.engine, ".github"), exist_ok=True)
+        labels = dict(backlog.DEFAULT_LABELS, **overrides)
+        with open(os.path.join(self.engine, ".github", "agent-policy.json"), "w", encoding="utf-8") as handle:
+            json.dump({"schemaVersion": 1, "labels": labels}, handle, indent=2)
+
+    def labels(self):
+        return {issue["number"]: set(issue.get("labels", [])) for issue in self.issues()}
+
+    def set_labels(self, number, names):
+        issues = self.issues()
+        (issue,) = [i for i in issues if i["number"] == number]
+        issue["labels"] = sorted(names)
+        with open(self.state, "w", encoding="utf-8") as handle:
+            json.dump(issues, handle)
+
+    def test_a_dependency_still_to_build_blocks_its_dependant(self):
+        self.policy()
+        code, output = self.create()
+        self.assertEqual(code, 0, output)
+        # `first` depends on nothing; `second` depends on `first`, which has an item of its own,
+        # so it is not built yet.
+        self.assertEqual(self.labels(), {1: {"state:ready", "risk:normal"},
+                                         2: {"state:blocked", "risk:normal"}})
+
+    def test_a_dependency_that_is_built_makes_its_dependant_ready(self):
+        self.policy()
+        self.assertEqual(self.create()[0], 0)
+        # `first` is implemented, so it leaves the backlog, and nothing `second` waits on remains.
+        built = entries()
+        built[0]["status"] = "implemented"
+        built[0]["implementedIn"] = "Rules/First.cs"
+        built[0]["tests"] = [{"name": "First_Resolves", "mutation": "return null"}]
+        self.emit(built)
+        code, output = self.create()
+        self.assertEqual(code, 0, output)
+        self.assertIn("state:ready", self.labels()[2])
+        self.assertNotIn("state:blocked", self.labels()[2])
+
+    def test_needs_decision_survives_a_sync(self):
+        self.policy()
+        self.assertEqual(self.create()[0], 0)
+        # A person judged that this one asks a question the corpus does not settle.
+        self.set_labels(2, ["state:needs-decision", "risk:normal"])
+        code, output = self.create()
+        self.assertEqual(code, 0, output)
+        self.assertEqual(self.labels()[2], {"state:needs-decision", "risk:normal"},
+                         "a sync re-imposed a state a person had overridden")
+
+    def test_risk_is_never_lowered(self):
+        self.policy()
+        self.assertEqual(self.create()[0], 0)
+        self.set_labels(1, ["state:ready", "risk:independent-review"])
+        self.assertEqual(self.create()[0], 0)
+        self.assertEqual(self.labels()[1], {"state:ready", "risk:independent-review"})
+
+    def test_a_state_that_no_longer_applies_is_removed(self):
+        self.policy()
+        self.assertEqual(self.create()[0], 0)
+        self.set_labels(1, ["state:blocked", "risk:normal"])
+        self.assertEqual(self.create()[0], 0)
+        self.assertEqual(self.labels()[1], {"state:ready", "risk:normal"},
+                         "an issue cannot carry two state labels")
+
+    def test_the_label_strings_are_the_engine_s(self):
+        self.policy(ready="ready-to-work", normalRisk="risk/ordinary")
+        code, output = self.create()
+        self.assertEqual(code, 0, output)
+        self.assertEqual(self.labels()[1], {"ready-to-work", "risk/ordinary"})
+
+    def test_an_engine_with_no_policy_is_synchronised_without_labels(self):
+        code, output = self.create()
+        self.assertEqual(code, 0, output)
+        self.assertIn("no .github/agent-policy.json", output)
+        self.assertEqual(self.labels(), {1: set(), 2: set()})
+
+    def test_a_policy_missing_a_label_is_refused(self):
+        os.makedirs(os.path.join(self.engine, ".github"), exist_ok=True)
+        with open(os.path.join(self.engine, ".github", "agent-policy.json"), "w", encoding="utf-8") as handle:
+            json.dump({"schemaVersion": 1, "labels": {"ready": "state:ready"}}, handle)
+        code, output = self.create()
+        self.assertEqual(code, 1, output)
+        self.assertIn("names no blocked", output)
+
+    def test_a_label_that_does_not_exist_in_the_repository_is_reported(self):
+        self.policy()
+        os.environ["GH_STUB_MISSING_LABELS"] = "1"
+        self.addCleanup(os.environ.pop, "GH_STUB_MISSING_LABELS", None)
+        code, output = self.create()
+        self.assertEqual(code, 1, output)
+        self.assertIn("not dispatchable", output)
+        self.assertIn("factory rails --apply", output)
+
+    def test_a_second_run_relabels_nothing(self):
+        self.policy()
+        self.assertEqual(self.create()[0], 0)
+        self.writes()
+        code, output = self.create()
+        self.assertEqual(code, 0, output)
+        self.assertIn("0 issue(s) relabelled", output)
+        self.assertEqual(self.writes(), [], "a second run in a row writes nothing")
+
+    def test_the_state_is_in_the_item_file_a_reader_can_see(self):
+        self.policy()
+        self.assertEqual(self.create()[0], 0)
+        self.assertIn("<!-- rules-factory-state: blocked -->", self.body("002-second.md"))
+        self.assertIn("<!-- rules-factory-state: ready -->", self.body("001-first.md"))
