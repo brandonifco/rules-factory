@@ -53,11 +53,13 @@ The fields, and where each comes from:
     next `produce` reads the adoptions back from here. No hash: every engine-owned file is a
     build input, hashed once in `buildInputs`.
   * `buildInputs` -- `[{path, sha256}]`, sorted by path in ascending byte order, for every file
-    under the engine directory that the .NET build reads as configuration and that the engine
-    owns, as it stands when `produce` finishes. The rule is `is_build_input`, its only
+    under the engine directory that the .NET build reads as configuration -- or that the agent
+    rails read as configuration, which is `.github/agent-policy.json` and nothing else (decision
+    0029) -- and that the engine owns, as it stands when `produce` finishes. The rule is `is_build_input`, its only
     definition: at any depth, with `bin`, `obj`, `.git` and `.vs` pruned, a file named
     `global.json`, `NuGet.config` (any case, as NuGet finds it), `packages.lock.json`,
-    `Directory.Build.rsp`, `.editorconfig`, `.globalconfig` or `corpus-map.overlay.json`, or
+    `Directory.Build.rsp`, `.editorconfig`, `.globalconfig`, `corpus-map.overlay.json` or
+    `agent-policy.json`, or
     ending in `.props`, `.targets`, `.sln`, `.slnx`, `.csproj`, `.fsproj` or `.vbproj`; minus
     `provenance.json` and every file already in `generated` or `managed` (RulesFactory.Packages.g.props
     and a managed global.json are the factory's, and are listed there, once). The section does
@@ -141,7 +143,8 @@ SKIP_DIRS = frozenset({"bin", "obj", ".git", ".vs"})
 COPY_IGNORE = shutil.ignore_patterns(*sorted(SKIP_DIRS))
 # The build-input rule (`buildInputs` above; `is_build_input` applies it). Names compare casefolded.
 BUILD_INPUT_NAMES = frozenset({"global.json", "nuget.config", "packages.lock.json", "directory.build.rsp",
-                               ".editorconfig", ".globalconfig", generate.OVERLAY_NAME.lower()})
+                               ".editorconfig", ".globalconfig", generate.OVERLAY_NAME.lower(),
+                               generate.AGENT_POLICY.rsplit("/", 1)[-1].lower()})
 BUILD_INPUT_SUFFIXES = (".props", ".targets", ".sln", ".slnx", ".csproj", ".fsproj", ".vbproj")
 LOCK_FILE = "packages.lock.json"
 
@@ -264,7 +267,12 @@ class Recorder:
 
 
 def is_build_input(relative):
-    """Whether the engine-relative POSIX path `relative` is a build input: the one rule."""
+    """Whether the engine-relative POSIX path `relative` is a build input: the one rule.
+
+    `agent-policy.json` is here for the reason the others are: it is configuration the engine owns
+    and something reads at face value, so what it held at a commit has to be recoverable from the
+    record. The reader is the rails rather than MSBuild (0029).
+    """
     parts = relative.split("/")
     if any(part in SKIP_DIRS for part in parts[:-1]):
         return False

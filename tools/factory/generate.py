@@ -1072,11 +1072,44 @@ MANAGED_NOTE = ("Managed by rules-factory (recipe {version}): `factory produce` 
                 "       recipe changes and refuses to overwrite a hand edit; adopting it makes it the engine's own.")
 
 
+# The agent rails whose recipe is a file rather than a string (decision 0029): published path ->
+# template under recipe/rails/. They are documents and a hook, long enough that inlining them here
+# would bury the generator, and worth reading as what they are. Read lazily, inside managed_files:
+# this module is vendored into every engine as scripts/factory/generate.py, where recipe/ does not
+# exist and the engine's gate calls `generated` alone.
+RAILS = {
+    "AGENTS.md": "AGENTS.md",
+    "CLAUDE.md": "CLAUDE.md",
+    "docs/agent-team.md": "agent-team.md",
+    ".claude/agents/engine-dev.md": "agents/engine-dev.md",
+    ".claude/agents/repo-steward.md": "agents/repo-steward.md",
+    ".claude/agents/rules-conformance.md": "agents/rules-conformance.md",
+    ".claude/hooks/primary-checkout-guard.py": "hooks/primary-checkout-guard.py",
+    ".claude/settings.json": "settings.json",
+}
+RAILS_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "recipe", "rails")
+
+
+def rails_files():
+    """The rails recipes: published path -> text, read from recipe/rails/.
+
+    Each is read in binary and decoded, so the bytes written are the bytes on disk: a recipe
+    version means one fixed sequence of bytes (ownership.py), and a newline translated on the way
+    through would silently make an engine's copy a hand edit.
+    """
+    out = {}
+    for relative, template in RAILS.items():
+        with open(os.path.join(RAILS_DIR, *template.split("/")), "rb") as handle:
+            out[relative] = handle.read().decode("utf-8")
+    return out
+
+
 def managed_files():
     """The managed recipes (ownership.py): path -> text. Independent of the engine and the map, so
     each recipe version is one fixed sequence of bytes."""
     versions = {row.pattern: row.recipe for row in ownership.managed_rows("")}
     return {
+        **rails_files(),
         "global.json": json.dumps({"sdk": {"version": SDK_VERSION, "rollForward": "disable"}}, indent=2) + "\n",
         "NuGet.config": (
             '<?xml version="1.0" encoding="utf-8"?>\n'
@@ -1119,6 +1152,43 @@ def managed_files():
             "  </PropertyGroup>\n\n"
             "</Project>\n"),
     }
+
+
+AGENT_POLICY = ".github/agent-policy.json"
+
+
+def agent_policy():
+    """The engine's rails configuration (decision 0029): every choice the rails read.
+
+    Engine-owned, so the factory writes it once and never again: a consumer changes the review
+    chain, the label vocabulary or the worktree variables by editing this file, and no emitted
+    script names a provider. The chain below is the default the factory ships, which is why it is
+    here and not in a script.
+    """
+    return json.dumps({
+        "schemaVersion": 1,
+        "labels": {
+            "ready": "state:ready",
+            "blocked": "state:blocked",
+            "needsDecision": "state:needs-decision",
+            "normalRisk": "risk:normal",
+            "independentRisk": "risk:independent-review",
+        },
+        "review": {
+            "semanticContext": "rules-verdict/semantic",
+            "semanticPaths": ["src/**", "tests/**", OVERLAY_NAME, PACKAGES_PROPS,
+                              "corpus/**", "docs/decisions/**"],
+            "independentFallback": [
+                {"id": "codex", "context": "rules-verdict/codex"},
+                {"id": "gemini", "context": "rules-verdict/gemini"},
+                {"id": "in-house-independent", "context": "rules-verdict/in-house-independent"},
+            ],
+        },
+        "worktrees": {
+            "rootEnvironmentVariable": "RULES_ENGINE_WORKTREE_ROOT",
+            "primaryMutationEscapeHatch": "RULES_ENGINE_ALLOW_PRIMARY_MUTATION",
+        },
+    }, indent=2) + "\n"
 
 
 def engine_owned(model):
@@ -1173,6 +1243,7 @@ def engine_owned(model):
             "  </ItemGroup>\n\n"
             "</Project>\n"),
         OVERLAY_NAME: "{}\n",
+        AGENT_POLICY: agent_policy(),
     }
 
 

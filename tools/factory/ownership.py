@@ -81,6 +81,17 @@ TABLE = (
     Row("scripts/engine-gate.py", GENERATED, None, "the gate recipe: its non-dotnet checks"),
     Row("scripts/factory/*.py", GENERATED, None, "the factory's generator, vendored so the gate can regenerate"),
     Row(".github/workflows/validate.yml", GENERATED, None, "the gate recipe: CI runs validate.sh full"),
+    Row("AGENTS.md", MANAGED, 1,
+        "the governing contract every agent works this engine under (decision 0029)"),
+    Row("CLAUDE.md", MANAGED, 1,
+        "a pointer to AGENTS.md and the Claude adapters; it states no rule of its own (0029)"),
+    Row("docs/agent-team.md", MANAGED, 1, "the four roles, and what each may not do (0029)"),
+    Row(".claude/agents/engine-dev.md", MANAGED, 1, "the implementer's charter (0029)"),
+    Row(".claude/agents/repo-steward.md", MANAGED, 1, "the structural reviewer's charter, read-only (0029)"),
+    Row(".claude/agents/rules-conformance.md", MANAGED, 1, "the semantic reviewer's charter, read-only (0029)"),
+    Row(".claude/hooks/primary-checkout-guard.py", MANAGED, 1,
+        "the PreToolUse guard that keeps implementation work out of the primary checkout (0029)"),
+    Row(".claude/settings.json", MANAGED, 1, "which tools the guard runs before (0029)"),
     Row("global.json", MANAGED, 1,
         "the kernel's SDK pin and roll-forward policy; an engine that must move it adopts it"),
     Row("NuGet.config", MANAGED, 2,
@@ -93,6 +104,9 @@ TABLE = (
     Row("src/{name}/{name}.csproj", ENGINE_OWNED, None, "the engine adds references and files"),
     Row("tests/{name}.Tests/{name}.Tests.csproj", ENGINE_OWNED, None, "the engine adds test references"),
     Row("corpus-map.overlay.json", ENGINE_OWNED, None, "the engine's three fields per entry (0015)"),
+    Row(".github/agent-policy.json", ENGINE_OWNED, None,
+        "the engine's own rails configuration: labels, review contexts and chain, worktree "
+        "variables. Written once so a factory change can never undo a consumer's choice (0029)"),
     Row("src/{name}/packages.lock.json", ENGINE_OWNED, None,
         "written by verify's first restore when absent, then reviewed, committed and relocked by the engine; "
         "re-locked by a produce that changes the generated pins (#94)"),
@@ -103,6 +117,30 @@ TABLE = (
 # Version 1 of each is what the write-once scaffold wrote before #72. Never remove a version: an
 # engine still carrying those bytes is unedited, and is migrated rather than refused.
 RECIPE_SHA256 = {
+    ".claude/agents/engine-dev.md": {
+        1: "22dbac892b04903992d13516e5a08ac04d92d02b0d8d4ce5e4bfa9ef53543287",
+    },
+    ".claude/agents/repo-steward.md": {
+        1: "6a2662ac958da76bb02263914d4e3b293a8dc15837e8a6ffccb14177b013bde7",
+    },
+    ".claude/agents/rules-conformance.md": {
+        1: "95eac2e802b474bdefad5a6053528dceda7465bbacfc946a0dd3c52a09705e78",
+    },
+    ".claude/hooks/primary-checkout-guard.py": {
+        1: "a263531db502dfad98b38bf1dd90df7b1bec5f22133db016b6f30dc38509d16d",
+    },
+    ".claude/settings.json": {
+        1: "4d410acd10ba5b6ed2d3c6a016cc2cfde1cf8e621da54424755376a80da30aa0",
+    },
+    "AGENTS.md": {
+        1: "06594a3207634553a28ca057ecb53225082e4f111890961e27589c544353e740",
+    },
+    "CLAUDE.md": {
+        1: "04c07ad36e742fa60efafeca54d20bd96d16b6e338a44e46fad2b679ab8dfd9f",
+    },
+    "docs/agent-team.md": {
+        1: "48baa22a5f1b6bb3f26d6aaed5715782462430b8b5524e1f0737ad627fae219d",
+    },
     "global.json": {
         1: "12f1cf1c3eef038f55de570dc8f5e321f4ff5306a9281106c43cc60a1f78a371",
     },

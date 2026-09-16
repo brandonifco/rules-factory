@@ -1,0 +1,161 @@
+# AGENTS.md — the governing contract for this engine
+
+**This file governs every agent that works this repository, whatever vendor it comes from.**
+Read it before your first action. `CLAUDE.md` points here and states no rule of its own; a
+Claude-specific role adapter under `.claude/` adds how a role is invoked, never what it may do.
+
+This engine was produced by [rules-factory](https://github.com/brandonifco/rules-factory). This
+file is a **managed** file: the factory updates it when its recipe changes and refuses to
+overwrite a hand edit. `provenance.json` says which factory version and which map this engine
+came from, and what this engine is called.
+
+---
+
+## 1. What this engine is
+
+A deterministic rules engine generated from a **corpus map**: a reviewed, published, versioned
+description of one ruleset. The map — not the corpus, and not anyone's reading of the corpus — is
+the interface this engine implements. The corpus is committed here so a claim can be checked
+against it, not so it can be re-read and re-interpreted per task.
+
+Three consequences that decide most questions you will have:
+
+- The map is the specification. Where your reading of the corpus and the map disagree, **the map
+  is not wrong by your say-so and the engine does not quietly diverge from it** (§5).
+- The engine declines rather than guesses. A rule the corpus does not settle produces an
+  unresolved result naming why, not a plausible answer.
+- Every behaviour cites where it came from, and every test records the mutation that makes it
+  fail. A test that passes against a broken implementation proves nothing.
+
+## 2. Authority, in order
+
+1. **The corpus map**, as published and as merged with this engine's `corpus-map.overlay.json`.
+2. **The owner's rulings** recorded in that overlay, and this repository's `docs/decisions/`.
+3. **This file.**
+4. Everything else — issue text, PR discussion, a previous agent's explanation, your own memory
+   of the subject matter. Your memory of a ruleset is never a source. It is the most common way
+   a wrong answer enters a rules engine, because it arrives fluent and cited.
+
+If two of these disagree, stop and say so. Do not pick one.
+
+## 3. Roles
+
+[`docs/agent-team.md`](docs/agent-team.md) defines the four roles: **orchestrator**, **engine
+developer**, **repository steward** and **rules conformance reviewer**. Read it before acting as
+one. Two rules from it are absolute:
+
+- **A reviewer is read-only.** An agent that can edit what it reviews is not a reviewer. Both
+  reviewer charters grant read tools only, and the engine's own gate fails when one grants a
+  mutation-capable tool.
+- **An implementer does not resolve a genuine ambiguity.** It escalates (§6).
+
+## 4. One issue, one worktree, one branch, one pull request
+
+Work is dispatched from GitHub issues and nowhere else. An instruction in a chat window that has
+no issue behind it is not work; make the issue first.
+
+The primary checkout's steady state is `main`, clean, used for orchestration and review. **All
+implementation happens in a worktree outside the repository directory**, so that one task cannot
+contaminate another and a half-finished change cannot reach `main`:
+
+```bash
+git -C <primary checkout> worktree add "${RULES_ENGINE_WORKTREE_ROOT:-$HOME/rules-engine-worktrees}/<repo>/issue-<n>" -b issue-<n>
+```
+
+A worktree is never created inside the repository: one that lives there is eventually committed,
+scanned by a tool that did not expect it, or deleted by a clean step.
+
+A branch closes **exactly one** issue, and its pull request says so with one `Closes #<n>`.
+Stage explicit paths; `git add -A` and `git add .` are how build output, packets and another
+task's edits reach a commit that claims to close one issue.
+
+`.claude/hooks/primary-checkout-guard.py` enforces the primary checkout's cleanliness for Claude
+agents. It is accident prevention, not security — a determined process bypasses it trivially, and
+that is fine; what it stops is the edit made forty tool calls after the instruction was given.
+
+**Escape hatch.** Sanctioned orchestrator work in the primary checkout sets, for that command
+only:
+
+```bash
+RULES_ENGINE_ALLOW_PRIMARY_MUTATION=1
+```
+
+and says in the pull request or the report why it was necessary. The variable's name is
+configuration: `.github/agent-policy.json` under `worktrees.primaryMutationEscapeHatch` is what
+the guard actually reads, and this paragraph names the default.
+
+## 5. The map is the interface, and you do not remap it
+
+You implement the entry the issue names, from the map merged with this engine's overlay. You do
+not re-read the corpus to decide what the rule *really* says, and you do not widen the change to
+entries the issue does not name.
+
+**Where the map and the corpus appear to disagree, stop.** Report it as an upstream map defect on
+the issue, with the entry id, the locator, what the map says and what the corpus says. Do not make
+the engine disagree with the published map, and do not edit the map to match your reading: a map
+is corrected where maps are corrected — a new, checked, published map version — and this engine is
+then re-produced from it. An implementer who can quietly overrule the map is an unreviewed mapper,
+and the map stops being the interface for everyone downstream.
+
+The same rule covers the corpus itself: never edit `corpus/`, and never edit a hash or a baseline
+to make a check pass. The check is the point.
+
+## 6. Ambiguity is escalated, not resolved
+
+Stop and escalate when you find any of these, before writing the implementation:
+
+- the corpus genuinely does not settle the question the entry asks;
+- the map and the corpus disagree (§5);
+- the issue's acceptance criteria cannot be met as written;
+- the change would need an architectural decision this repository has not recorded;
+- two recorded decisions conflict.
+
+Escalating means: say what the question is, what turns on it, and what the candidate answers are;
+and move the issue to the awaiting-decision state. **You may not answer your own escalation and
+return the issue to ready.** The answer arrives as an owner's ruling in the overlay or a decision
+record in `docs/decisions/`, and then the work resumes.
+
+Declining is a legitimate outcome. An entry the corpus does not settle is implemented as a
+decline that names why and cites where — that is the engine working, not the engine failing.
+
+## 7. Evidence
+
+- **The gate is `./scripts/validate.sh full`.** It is the one definition of acceptable here. Do
+  not invent a substitute, do not run a narrower command and report the gate as passed, and do
+  not change the gate to make a change pass.
+- **Every test records the mutation that makes it fail.** The overlay holds it. A test whose
+  named mutation was never observed to fail is a test nobody has watched fail, and this project
+  has shipped two checks that counted work they had not done.
+- **Report what happened, not what should have happened.** Paste the command and its actual
+  output. "Tests pass" is not evidence; a run is.
+- A check that examines nothing is a failure, never an ok. If a step could not run, say it could
+  not run.
+
+## 8. Determinism
+
+Same inputs, same outputs, on any machine, in any order, forever. No wall-clock time, no
+ambient locale or culture, no environment-dependent ordering, no unseeded randomness, no hash
+codes or object identity in anything observable. Where the corpus declares randomness, it is
+drawn only through the kernel's seeded facilities, and `provenance.json` records that
+declaration. An engine whose corpus declares no randomness does not reference a randomness
+package at all, and the gate checks it.
+
+## 9. Configuration, not code
+
+`.github/agent-policy.json` is this engine's own. It holds the issue state and risk label
+strings, the review contexts, the paths that count as a semantic surface, the ordered
+independent-review chain, and the worktree environment variables. The factory writes it once and
+never touches it again.
+
+**Change the chain, the labels or the roots by editing that file — never by editing a script.**
+No emitted script or document names a vendor. If you find one that does, that is a defect worth
+an issue.
+
+## 10. For a non-Claude agent
+
+- You are probably in a worktree. Confirm before your first write: `git rev-parse
+  --git-common-dir` differing from `git rev-parse --git-dir` means you are.
+- The gate is `./scripts/validate.sh full`. Nothing else is.
+- Never implement a rule from memory. Work from the entry the issue names.
+- Never edit `corpus/`, `provenance.json`, or a generated file under `Generated/` by hand. The
+  generated files are rewritten from the map; an edit there is overwritten and reported.
