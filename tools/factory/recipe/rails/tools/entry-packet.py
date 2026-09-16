@@ -12,8 +12,9 @@ published map, ends up in the engine. The map is the interface (rules-factory de
 the assignment is one entry of it, assembled mechanically: the entry as published and merged with
 this engine's overlay, its citation and the evidence verbatim, what it depends on and what those
 entries are, what enables or suspends it, where its cross-references land, the owner's rulings
-that apply to it, the exact handler the generated code already declares, and the obligations the
-gate will hold the work to.
+that apply to it, the handler the generated code declares once the entry is `implemented` -- the
+one the work has to produce, not the one on disk while it is still `mapped` -- and the obligations
+the gate will hold the work to.
 
 **What this deliberately does not do.** It does not read the corpus, quote more of it than the map
 quotes, summarise, paraphrase or rank anything. Every line below is the map's own bytes or a fact
@@ -176,14 +177,42 @@ def locators(generate, model, item):
     return out
 
 
+def as_implemented(generate, model, item):
+    """This entry as the generator will see it once the overlay says `implemented` (#204).
+
+    §7 describes the work, and the work changes the declaration: `status` decides both the
+    correspondence row (`first_row`) and, through it, whether the handler is the required partial
+    or the optional hook. So the status is moved and the generator is asked again, rather than the
+    packet restating either rule -- the packet's whole claim is that it computes from the map with
+    the factory's own generator, and a second copy of that rule here would be the first line of it
+    that could drift from what the build emits.
+    """
+    entry = {**item["entry"], "status": "implemented"}
+    entries = {entry_id: other["entry"] for entry_id, other in model.by_id.items()}
+    entries[entry["id"]] = entry
+    return {**item, "entry": entry, "row": generate.first_row(entry, entries)}
+
+
 def handler(generate, model, item):
-    """The declared handler for this entry, in the exact form Contracts.g.cs holds."""
-    c = generate.contract(model, item)
+    """The handler this entry will declare once it is implemented -- not the one declared today.
+
+    While the entry is `mapped`, `Contracts.g.cs` declares the optional hook, and the regeneration
+    that follows marking it `implemented` replaces that with the required partial. Rendering the
+    file as it stands hands the implementer a signature that is right about the present and wrong
+    about the assignment, which costs one rewrite of the handler file (#204).
+
+    Returns the signature, what obliges it, and whether it is not what the file holds today -- an
+    entry that stays on the optional hook when implemented (correspondence row 8) has the same
+    declaration before and after, and saying otherwise would be the same defect the other way up.
+    """
+    c = generate.contract(model, as_implemented(generate, model, item))
+    replaces = c["required"] != generate.contract(model, item)["required"]
     if c["required"]:
         return (f"internal static partial Resolution<{c['output']}> {item['member']}({c['request_cs']} request);",
-                "required: the entry is `implemented`, and the build does not complete without it")
+                "required: the build does not complete without it", replaces)
     return (f"static partial void {item['member']}({c['request_cs']} request, ref Resolution<{c['output']}>? resolution);",
-            "optional: implement it to answer, or leave it and the correspondence row's default answers")
+            "optional even then: its correspondence row answers by default, and this hook overrides that "
+            "answer or leaves it", replaces)
 
 
 def packet(generate, model, overlay, item, identity):
@@ -265,10 +294,16 @@ def packet(generate, model, overlay, item, identity):
     for ruling in applicable:
         lines.append(block(ruling) + "\n")
 
-    signature, obligation = handler(generate, model, item)
+    signature, obligation, replaces = handler(generate, model, item)
     lines.append("## 7. The handler you implement\n")
-    lines.append(f"Declared in `src/{name}/Generated/Contracts.g.cs` — {obligation}:\n")
+    lines.append(f"What `src/{name}/Generated/Contracts.g.cs` declares for this entry once it is `implemented` — "
+                 f"{obligation}:\n")
     lines.append(f"```csharp\n{signature}\n```\n")
+    if replaces:
+        lines.append(f"That file holds a different declaration **today**: this entry is `{entry.get('status')}`, so "
+                     "the generator has emitted the optional hook, and the re-produce that follows marking it "
+                     "`implemented` replaces that with the signature above. Write the signature above; do not copy "
+                     "the one currently in the file.\n")
     lines.append(f"The request type is `{generate.contract(model, item)['request']}` in "
                  f"`src/{name}/Generated/Requests.g.cs`. It is partial: declare the entry's inputs as `init` "
                  f"properties in a file of your own. Do not edit anything under `Generated/`.\n")

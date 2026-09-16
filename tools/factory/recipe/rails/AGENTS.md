@@ -85,9 +85,9 @@ something a reviewer would otherwise have to take on trust.
 ### A factory update is work under these rails too
 
 A `factory produce` update to this engine — a new map version, a new kernel pin, a new factory
-recipe — is not a special case outside this section. It is opened from an issue
-(`tools/new-issue.sh --produce` files one with the shape for it), dispatched to a worktree,
-produced there, and opened as a pull request that closes that issue like any other:
+recipe — is not a special case outside this section. It is opened from an issue (`tools/new-issue.sh`,
+under `--produce`, files one with the shape for it), dispatched to a worktree, produced there, and
+opened as a pull request that closes that issue like any other:
 
 ```bash
 tools/new-issue.sh --produce --title "..."   # what moves, from what to what, and why now
@@ -140,8 +140,9 @@ tools/entry-packet.py <entry id>            # the assignment, assembled from the
 
 The packet is the entry as published and merged, its locator and the evidence verbatim, its
 dependencies and reachability, where its cross-references land, the owner's rulings that apply,
-the exact handler the generated code declares, and what the gate will ask of you. Every line of it
-is the map's own bytes or a fact computed from them.
+the handler the generated code declares once the entry is `implemented` — the one you have to
+write, not the one on disk while it is still `mapped` — and what the gate will ask of you. Every
+line of it is the map's own bytes or a fact computed from them.
 
 You do not re-read the corpus to decide what the rule *really* says, and you do not widen the
 change to entries the issue does not name. A packet is written outside the repository and is never

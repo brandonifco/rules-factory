@@ -41,11 +41,12 @@ You do not need to read the whole corpus, and you should not try. The packet is 
   nobody has watched fail is not yet a test.
 - Finish an overlay change properly, in this order. The entry's overlay object gets `status:
   implemented`, its `implementedIn`, and its `tests` — each with the mutation you actually watched
-  fail. `scripts/engine-gate.py regenerate --write` then refreshes the generated C# **and nothing
-  else**: it does not touch `provenance.json` or `backlog/`, and it cannot, because those are
-  written by `factory produce` alone, from a factory checkout. `tools/re-produce.sh` is how you run
-  it — one command, from the factory commit the record names. Until you do, the record hashes the
-  old bytes and the backlog still lists the entry as one to build, and the gate fails saying so.
+  fail. Then `tools/re-produce.sh`, which re-produces this engine from the factory commit the
+  record names — one command, and the only thing that brings the generated C#, `provenance.json`
+  and `backlog/` back into step with the overlay together. Regenerating the C# alone does not:
+  `provenance.json` and `backlog/` are written by `factory produce` from a factory checkout and by
+  nothing else, so the record would still hash the old bytes and the backlog would still list the
+  entry as one to build, and the gate fails saying so.
 - Run the gate, whole: `./scripts/validate.sh full`. Paste what it printed.
 - Open one pull request that closes exactly that one issue, filling in every section of
   `.github/pull_request_template.md` with real command output. `tools/pr-policy.py` checks it as a

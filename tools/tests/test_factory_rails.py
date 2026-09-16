@@ -8,6 +8,11 @@ Asserted here, about the bytes the factory emits rather than about a GitHub repo
     scripts/validate.sh's repository-wide link check skips that directory and this replaces it.
     The predecessor shipped 61 references to files that did not exist, several inside runtime
     error messages, and a rail that cites a document the factory does not emit is that failure;
+  * every command an emitted rail tells an agent to run is one it can run: run as written against
+    a produced engine, none of them refuses the call itself. The charter shipped
+    `scripts/engine-gate.py regenerate --write` as "how you run it", and run as written it exits 2
+    asking for five arguments only a restored project can supply (#203). A rail here is read by
+    agents, which take a backticked command as a command to run;
   * no vendor name appears in any emitted rail. The one place a provider is named is
     `.github/agent-policy.json`, which the engine owns (0029 §3);
   * a reviewer charter grants read tools only. The predecessor's own check caught a charter
@@ -432,14 +437,45 @@ class TestTheEntryPacket(TestAProducedEngine):
         self.assertIn("suspendedBy", text)
         self.assertIn("waivable-regulations", text)
 
-    def test_the_packet_declares_the_handler_the_build_declares(self):
+    def regenerate(self):
+        """The generated C# as the gate rewrites it from the overlay as it stands."""
+        record = json.loads(self.read("provenance.json"))
+        done = subprocess.run([sys.executable, os.path.join(self.out, "scripts", "engine-gate.py"), "regenerate",
+                               "--write", "--package-map", self.PACKAGE_MAP,
+                               "--package-manifest", os.path.join(PART107, "corpus-manifest.json"),
+                               "--package-id", record["map"]["packageId"],
+                               "--package-version", record["map"]["version"], "--name", NAME],
+                              capture_output=True, text=True, cwd=self.out)
+        self.assertIn(done.returncode, (0, 1), done.stdout + done.stderr)
+        return done
+
+    def test_the_packet_declares_the_handler_the_build_declares_once_the_entry_is_implemented(self):
+        """§7 is the assignment, and the assignment is the declaration the work produces (#204).
+
+        `speed-limit` is `mapped`, so `Contracts.g.cs` holds the optional hook today and the
+        required partial the moment the overlay says `implemented` -- which is the first thing the
+        implementer does. A packet rendering the file as it stands is right about the present and
+        wrong about the work, and costs one rewrite of the handler file. So the packet is read
+        before the overlay moves and checked against the file after it has moved and been
+        regenerated: the two are the same bytes or the packet is describing the wrong state.
+        """
         self.produced()
         text = self.rendered("speed-limit")
         signature = next(line for line in text.splitlines()
-                         if "SpeedLimit(" in line and "partial" in line)
+                         if "SpeedLimit(" in line and "partial" in line).strip()
+
+        with open(os.path.join(self.out, "corpus-map.overlay.json"), "w", encoding="utf-8") as handle:
+            json.dump({"speed-limit": {"status": "implemented", "implementedIn": "Rules/SpeedLimit.cs",
+                                       "tests": [{"name": "SpeedLimit_DeclinesTheUnsettledQuestion",
+                                                  "mutation": "answer it instead of declining"}]}},
+                      handle, indent=2)
+        done = self.regenerate()
         contracts = self.read(f"src/{NAME}/Generated/Contracts.g.cs")
-        self.assertIn(signature.strip(), contracts,
-                      "the packet's handler signature is not the one Contracts.g.cs declares")
+        self.assertIn(signature, contracts,
+                      f"the packet's §7 signature is not the one the implemented entry declares\n{done.stdout}")
+        self.assertIn("internal static partial Resolution<object> SpeedLimit(", signature,
+                      "the required form is what an implemented entry off row 8 declares; the packet showed "
+                      "something else, and the check above would then be comparing two wrong things")
 
     def test_an_unknown_entry_is_refused_with_what_the_map_does_have(self):
         self.produced()
@@ -614,6 +650,23 @@ class TestTheDispatcher(RailsInAGitEngine):
         done = self.dispatch("altitude-limit")
         self.assertEqual(done.returncode, 1, done.stdout)
         self.assertIn("must be numeric", done.stderr)
+
+    def test_the_closing_order_names_the_re_produce_before_the_gate(self):
+        """The last thing dispatch prints is an order an implementer can follow to a green gate.
+
+        Marking an entry `implemented` edits the overlay, and since #192 the gate's provenance step
+        fails by design until `tools/re-produce.sh` has run, so the gate alone -- which is what
+        dispatch used to close with -- is an order no entry implementation can follow (#202). The
+        order is asserted rather than the two lines' presence: printing both in the wrong order is
+        the defect, and the drift this holds shut.
+        """
+        self.commit_engine()
+        self.issue(27)
+        done = self.dispatch("27")
+        self.assertEqual(done.returncode, 0, done.stderr)
+        self.assertIn("tools/re-produce.sh", done.stdout, "dispatch does not mention the re-produce at all")
+        self.assertLess(done.stdout.index("tools/re-produce.sh"), done.stdout.index("scripts/validate.sh"),
+                        f"dispatch tells the implementer to run the gate before the re-produce:\n{done.stdout}")
 
     def test_cleanup_removes_the_worktree_and_the_merged_branch(self):
         self.commit_engine()
@@ -1611,13 +1664,12 @@ print("stub factory @VERSION@ produced into " + out)
 '''
 
 
-class TestReProduce(RailsInAGitEngine):
-    """`tools/re-produce.sh`: the one command an overlay edit is finished with (#192).
+class AFactoryToReProduceFrom:
+    """A stand-in factory in a git repository, and an engine record pointed at a commit of it.
 
-    The factory is a stand-in here, in a git repository of its own with two commits: the one the
-    engine's record names, and a later `main`. Which of the two runs is the whole point -- checking
-    out `main` would re-emit the gate, the rails and the vendored generator from a factory nobody
-    asked for, into an implementation pull request.
+    Shared by the two suites that run `tools/re-produce.sh` for real: #192's, which is about which
+    commit it takes, and #203's, which runs every command a rail names and needs this to be one of
+    the commands it can run without cloning the factory over the network.
     """
 
     def factory_repo(self):
@@ -1660,6 +1712,16 @@ class TestReProduce(RailsInAGitEngine):
             environment["RULES_ENGINE_FACTORY_REPO"] = repo
         return subprocess.run(["bash", os.path.join(self.out, "tools", "re-produce.sh"), *args],
                               cwd=self.out, capture_output=True, text=True, env=environment)
+
+
+class TestReProduce(AFactoryToReProduceFrom, RailsInAGitEngine):
+    """`tools/re-produce.sh`: the one command an overlay edit is finished with (#192).
+
+    The factory is a stand-in here, in a git repository of its own with two commits: the one the
+    engine's record names, and a later `main`. Which of the two runs is the whole point -- checking
+    out `main` would re-emit the gate, the rails and the vendored generator from a factory nobody
+    asked for, into an implementation pull request.
+    """
 
     def test_it_re_produces_from_the_commit_the_record_names_and_never_main(self):
         self.produced()
@@ -1733,6 +1795,138 @@ class TestReProduce(RailsInAGitEngine):
             handle.write("{}\n")
         self.record_commit(commits["recorded"])
         self.assertEqual(self.re_produce(repo=repo).returncode, 0)
+
+
+COMMAND = re.compile(r"^(?:\./)?(?:tools|scripts)/[A-Za-z0-9_.\-]+\.(?:py|sh)$")
+# What a rail's placeholder stands for here, so the command that runs is the one the rail spells.
+# An unknown placeholder fails the test rather than skipping the command it is in: a rail that
+# grows a new one is a command nobody has run.
+PLACEHOLDERS = {"<n>": "1", "<issue number>": "1", "<entry id>": "speed-limit", "<entry-id>": "speed-limit",
+                "<pr>": "1", "<pr number>": "1", "<id>": "semantic", "{args.pr}": "1",
+                '"..."': "Title", "pass|fail": "pass"}
+# `scripts/validate.sh` is the gate itself: running it here would restore, build and test an engine
+# in every target framework from inside a unit test. scripts/validate-engine.sh runs it against a
+# produced engine for real, which is where its runnability is proven.
+NOT_RUN_HERE = ("scripts/validate.sh",)
+# How a script refuses the way it was called, rather than what it was asked to do: argparse's own
+# vocabulary, a shell rail printing its usage, and a rail that names the option it was not given.
+# The last is a pattern rather than the words "is required", which a rail says about other things
+# ("gh is required: work starts from an issue").
+USAGE_ERROR = ("the following arguments are required", "unrecognized arguments", "invalid choice",
+               "expected one argument", "error: argument")
+USAGE_PATTERN = re.compile(r"(?m)^usage: |(?:^|: )-{1,2}[A-Za-z][A-Za-z-]* is required")
+
+
+def refused_for_how_it_was_called(done):
+    """Why the run below was a usage error, or None when the command got as far as doing something."""
+    said = done.stdout + done.stderr
+    marker = next((marker for marker in USAGE_ERROR if marker in said), None)
+    if marker is None:
+        found = USAGE_PATTERN.search(said)
+        marker = found.group(0).strip() if found else None
+    if marker is None and done.returncode == 2:
+        marker = "it exited 2, which is how a command refuses its own arguments"
+    return marker
+# MSBuild's answer to `-getItem:RulesFactoryMap`, so entry-packet.py's own resolution runs here
+# rather than being skipped: the restore is what this test cannot have, not the question.
+DOTNET_STUB = '''#!/usr/bin/env python3
+import json, sys
+print(json.dumps({"Items": {"RulesFactoryMap": [{"FullPath": "@MAP@"}]}}))
+'''
+
+
+def rail_commands(rails):
+    """Every command an emitted rail tells an agent to run: (rail, argv-as-written), deduplicated.
+
+    Two shapes count, and the difference is not pedantry. A line in a fenced block is a command
+    whether or not it carries arguments: the fence is there to be typed. An inline code span counts
+    only when it carries one -- a bare `tools/pr-policy.py` in a sentence is the tool's name, and
+    that the file exists is already the engine gate's rails check, while
+    `scripts/engine-gate.py regenerate --write` is an instruction to run something (#203).
+    """
+    found = {}
+    for relative, text in sorted(rails.items()):
+        spans = [(span, False) for span in re.findall(r"`([^`\n]+)`", text)]
+        fence = None
+        for line in text.splitlines():
+            stripped = line.strip()
+            if stripped.startswith("```"):
+                fence = None if fence is not None else stripped[3:].strip()
+            elif fence in ("bash", "sh", ""):
+                spans.append((stripped.split("#", 1)[0].strip(), True))
+        for span, fenced in spans:
+            words = span.split()
+            if words and COMMAND.match(words[0]) and (fenced or len(words) > 1):
+                found.setdefault(span, relative)
+    return sorted((relative, span) for span, relative in found.items())
+
+
+class TestEveryCommandARailNamesRunsAsWritten(AFactoryToReProduceFrom, RailsInAGitEngine):
+    """Every command an emitted rail hands an agent, run against a produced engine (#203).
+
+    The implementer's charter used to offer `scripts/engine-gate.py regenerate --write` as "how you
+    run it", and run as written it exits 2: it needs five arguments that only a
+    `dotnet msbuild -getItem:RulesFactoryMap` against a restored project can supply. Rails here are
+    read by agents, which take a backticked command as a command to run, so an uninvokable one
+    spends an attempt and the rails' own credibility -- and the narrower defect, fixing the one
+    sentence, would leave the next one free to appear.
+
+    What is asserted is deliberately narrow: not that each command succeeds. Most of these need a
+    GitHub, a restore or a network this test does not have, and the stand-ins below answer them with
+    failures. What must not happen is a command refused for how it was spelled, before it does
+    anything at all. That is the whole class of defect, and the only part of it that can be checked
+    without reproducing the world every rail expects.
+    """
+
+    def setUp(self):
+        super().setUp()
+        self.produced()
+        repo, commits = self.factory_repo()
+        self.factory = repo
+        self.record_commit(commits["recorded"])
+        self.commit_engine_as_is()
+        self.fixture({"issue": {"1": {"title": "Widen the altitude limit", "state": "OPEN",
+                                      "labels": [{"name": "state:ready"}, {"name": "risk:normal"}]}},
+                      "pr": {"1": {"number": 1, "title": "Implement the altitude limit", "body": "Closes #1",
+                                   "headRefOid": git(self.out, "rev-parse", "HEAD"), "headRefName": "issue-1",
+                                   "baseRefName": "main", "files": [{"path": "corpus-map.overlay.json"}],
+                                   "closingIssuesReferences": [{"number": 1}]}}})
+        self.bin = os.path.join(self.tmp, "bin")
+        os.makedirs(self.bin)
+        dotnet = os.path.join(self.bin, "dotnet")
+        with open(dotnet, "w", encoding="utf-8") as handle:
+            handle.write(DOTNET_STUB.replace("@MAP@", os.path.join(PART107, "corpus-map.json")))
+        os.chmod(dotnet, 0o755)
+
+    def spelled(self, span):
+        """The rail's command as argv, with each placeholder replaced by something concrete."""
+        def value(match):
+            token = match.group(0)
+            self.assertIn(token, PLACEHOLDERS,
+                          f"{token!r} in `{span}` is a placeholder this test has no value for. Give it one: a "
+                          f"command nobody can run as written is the defect this test exists for.")
+            return PLACEHOLDERS[token]
+        return re.sub(r"<[^>]*>|\{[^}]*\}|\"\.\.\.\"|\b\w+\|\w+\b", value, span).split()
+
+    def test_no_rail_names_a_command_that_is_refused_for_how_it_was_spelled(self):
+        commands = rail_commands(generate.rails_files())
+        self.assertGreater(len(commands), 5, "no commands were found in the rails -- this check proved nothing")
+        environment = {**self.environment(), "RULES_ENGINE_FACTORY_REPO": self.factory,
+                       "RULES_ENGINE_PACKET_ROOT": os.path.join(self.tmp, "packets"),
+                       "PATH": self.bin + os.pathsep + os.environ["PATH"]}
+        ran = 0
+        for relative, span in commands:
+            if any(span.split()[0].lstrip("./").startswith(tool) for tool in NOT_RUN_HERE):
+                continue
+            argv = self.spelled(span)
+            runner = [sys.executable] if argv[0].endswith(".py") else ["bash"]
+            done = subprocess.run([*runner, os.path.join(self.out, *argv[0].lstrip("./").split("/")), *argv[1:]],
+                                  cwd=self.out, capture_output=True, text=True, env=environment, timeout=300)
+            ran += 1
+            refusal = refused_for_how_it_was_called(done)
+            self.assertIsNone(refusal, f"{relative} tells an agent to run `{span}`, and run exactly as written it "
+                                       f"refuses that call ({refusal}):\n{(done.stdout + done.stderr).strip()}")
+        self.assertGreater(ran, 5, "every command was skipped -- this check proved nothing")
 
 
 class TestTheEngineGateChecksItsOwnRails(TestAProducedEngine):
