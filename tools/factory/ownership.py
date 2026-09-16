@@ -81,17 +81,24 @@ TABLE = (
     Row("scripts/engine-gate.py", GENERATED, None, "the gate recipe: its non-dotnet checks"),
     Row("scripts/factory/*.py", GENERATED, None, "the factory's generator, vendored so the gate can regenerate"),
     Row(".github/workflows/validate.yml", GENERATED, None, "the gate recipe: CI runs validate.sh full"),
-    Row("AGENTS.md", MANAGED, 1,
+    Row("AGENTS.md", MANAGED, 2,
         "the governing contract every agent works this engine under (decision 0029)"),
     Row("CLAUDE.md", MANAGED, 1,
         "a pointer to AGENTS.md and the Claude adapters; it states no rule of its own (0029)"),
-    Row("docs/agent-team.md", MANAGED, 1, "the four roles, and what each may not do (0029)"),
-    Row(".claude/agents/engine-dev.md", MANAGED, 1, "the implementer's charter (0029)"),
+    Row("docs/agent-team.md", MANAGED, 2, "the four roles, and what each may not do (0029)"),
+    Row(".claude/agents/engine-dev.md", MANAGED, 2, "the implementer's charter (0029)"),
     Row(".claude/agents/repo-steward.md", MANAGED, 1, "the structural reviewer's charter, read-only (0029)"),
     Row(".claude/agents/rules-conformance.md", MANAGED, 1, "the semantic reviewer's charter, read-only (0029)"),
     Row(".claude/hooks/primary-checkout-guard.py", MANAGED, 1,
         "the PreToolUse guard that keeps implementation work out of the primary checkout (0029)"),
     Row(".claude/settings.json", MANAGED, 1, "which tools the guard runs before (0029)"),
+    Row("tools/dispatch-agent.sh", MANAGED, 1,
+        "one issue, one worktree, one branch; it refuses what is not ready to work (0029)"),
+    Row("tools/new-issue.sh", MANAGED, 1, "an issue with the shape the rails expect (0029)"),
+    Row("tools/entry-packet.py", MANAGED, 1,
+        "the bounded assignment for one entry, assembled from merge(package, overlay) (0029)"),
+    Row("tools/review-packet.py", MANAGED, 1,
+        "everything a reviewer needs about one pull request, in the order it is read (0029)"),
     Row("global.json", MANAGED, 1,
         "the kernel's SDK pin and roll-forward policy; an engine that must move it adopts it"),
     Row("NuGet.config", MANAGED, 2,
@@ -119,6 +126,7 @@ TABLE = (
 RECIPE_SHA256 = {
     ".claude/agents/engine-dev.md": {
         1: "22dbac892b04903992d13516e5a08ac04d92d02b0d8d4ce5e4bfa9ef53543287",
+        2: "5f0dd905e2b3857115d93196a66a168e17b505f87dda13a7d200f2bc12572bdb",
     },
     ".claude/agents/repo-steward.md": {
         1: "6a2662ac958da76bb02263914d4e3b293a8dc15837e8a6ffccb14177b013bde7",
@@ -134,12 +142,26 @@ RECIPE_SHA256 = {
     },
     "AGENTS.md": {
         1: "06594a3207634553a28ca057ecb53225082e4f111890961e27589c544353e740",
+        2: "81f5756c1bff7ca2f1f9091087138fed0204a43e2f30a1e6f05ad4430e2efd48",
     },
     "CLAUDE.md": {
         1: "04c07ad36e742fa60efafeca54d20bd96d16b6e338a44e46fad2b679ab8dfd9f",
     },
     "docs/agent-team.md": {
         1: "48baa22a5f1b6bb3f26d6aaed5715782462430b8b5524e1f0737ad627fae219d",
+        2: "2972f4cdb30b4549639dc34de2fd47b8b06e0c680ef41e88de701ccfa66abb4d",
+    },
+    "tools/dispatch-agent.sh": {
+        1: "868ce983b51d784a83a6a0fcac7456608b31f0af025c75ac5eeac64a373dca2b",
+    },
+    "tools/new-issue.sh": {
+        1: "382a2f516f81f593e74ed9e57262080c25edbac1a16d542ffb235eb772b10e88",
+    },
+    "tools/entry-packet.py": {
+        1: "6e413d4e4143d888e00c1570358c5f6c7404347a173cd023b821f4d2f781835a",
+    },
+    "tools/review-packet.py": {
+        1: "2e989c02c1827bf6d3da8fce9a35874e25ea4baf14f62eeb64aab78c30b1f392",
     },
     "global.json": {
         1: "12f1cf1c3eef038f55de570dc8f5e321f4ff5306a9281106c43cc60a1f78a371",

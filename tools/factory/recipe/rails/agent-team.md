@@ -49,6 +49,9 @@ Cheap, **read-only**, structural review on every pull request. It runs **first**
 review, so that a scope or evidence defect is found before expensive reasoning is spent on a
 change that is going back anyway.
 
+**Reads:** `tools/review-packet.py <pr number>`, which is the whole context — nothing here needs
+rediscovering from the diff.
+
 **Checks:** the change is within the issue's scope and contains nothing unrelated; generated
 files were not hand-edited and the ownership classes are respected; the determinism rules hold;
 provenance and citations are present; the overlay's mutation evidence is real and specific;
@@ -64,7 +67,8 @@ cheap.
 High-reasoning, **read-only**, semantic review: does this implementation actually do what the
 mapped rule says?
 
-**Reads the entry packet before it reads the implementation.** Anchoring is the failure this role
+**Reads the entry packet before it reads the implementation** (`tools/review-packet.py <pr>`
+assembles both, in that order). Anchoring is the failure this role
 exists to catch, and a reviewer who reads the code first will find the code's reading of the rule
 persuasive, because it was written to be.
 

@@ -24,6 +24,7 @@ Asserted here, about the bytes the factory emits rather than about a GitHub repo
 
 Run: python3 -m pytest tools/tests/test_factory_rails.py
 """
+import hashlib
 import importlib.util
 import io
 import json
@@ -344,3 +345,390 @@ class TestTheGuard(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class TestTheEntryPacket(TestAProducedEngine):
+    """`tools/entry-packet.py` against a produced engine and the map it was produced from (#152)."""
+
+    PACKAGE_MAP = os.path.join(PART107, "corpus-map.json")
+
+    def packet(self, entry, *extra, out=None):
+        done = subprocess.run([sys.executable, os.path.join(self.out, "tools", "entry-packet.py"), entry,
+                               "--package-map", self.PACKAGE_MAP, *extra],
+                              capture_output=True, text=True, cwd=self.out)
+        return done
+
+    def rendered(self, entry):
+        done = self.packet(entry, "--stdout")
+        self.assertEqual(done.returncode, 0, done.stderr)
+        return done.stdout
+
+    def test_the_packet_is_the_map_s_own_bytes(self):
+        self.produced()
+        text = self.rendered("speed-limit")
+        source = json.load(open(self.PACKAGE_MAP, encoding="utf-8"))
+        entry = next(e for e in source["entries"] if e["id"] == "speed-limit")
+        # The evidence verbatim, the citation, and the unresolved question: quoted, never summarised.
+        self.assertIn(entry["evidence"], text)
+        self.assertIn("§ 107.51(a)", text)
+        self.assertIn(entry["ambiguity"]["question"], text)
+        self.assertIn("RulesFactory.Maps.FaaPart107", text)
+        # Reachability and cross-references are named with what they point at, not bare ids.
+        self.assertIn("suspendedBy", text)
+        self.assertIn("waivable-regulations", text)
+
+    def test_the_packet_declares_the_handler_the_build_declares(self):
+        self.produced()
+        text = self.rendered("speed-limit")
+        signature = next(line for line in text.splitlines()
+                         if "SpeedLimit(" in line and "partial" in line)
+        contracts = self.read(f"src/{NAME}/Generated/Contracts.g.cs")
+        self.assertIn(signature.strip(), contracts,
+                      "the packet's handler signature is not the one Contracts.g.cs declares")
+
+    def test_an_unknown_entry_is_refused_with_what_the_map_does_have(self):
+        self.produced()
+        done = self.packet("speed", "--stdout")
+        self.assertEqual(done.returncode, 1, done.stdout)
+        self.assertIn("REFUSED", done.stderr)
+        self.assertIn("speed-limit", done.stderr, "a near miss says what the map does have")
+
+    def test_a_packet_is_never_written_inside_the_repository(self):
+        self.produced()
+        done = self.packet("speed-limit", "--out", os.path.join(self.out, "packets"))
+        self.assertEqual(done.returncode, 1, done.stdout)
+        self.assertIn("never written inside the repository", done.stderr)
+        self.assertFalse(os.path.exists(os.path.join(self.out, "packets")))
+
+    def test_the_packet_is_written_where_the_variable_says(self):
+        self.produced()
+        root = os.path.join(self.tmp, "packets")
+        done = self.packet("altitude-limit", "--out", root)
+        self.assertEqual(done.returncode, 0, done.stderr)
+        written = done.stdout.strip()
+        self.assertEqual(written, os.path.join(root, "entry-altitude-limit.md"))
+        with open(written, encoding="utf-8") as handle:
+            self.assertIn("# Entry packet: `altitude-limit`", handle.read())
+
+
+GH_STUB = '''#!/usr/bin/env python3
+"""A stand-in for `gh`, answering from a JSON fixture. Only the shapes the rails ask for."""
+import json, os, sys
+
+fixture = json.load(open(os.environ["GH_FIXTURE"], encoding="utf-8"))
+argv = sys.argv[1:]
+kind = argv[0] if argv else ""
+number = argv[2] if len(argv) > 2 else ""
+record = (fixture.get(kind) or {}).get(number)
+if record is None:
+    sys.stderr.write(f"no such {kind} {number}\\n")
+    sys.exit(1)
+fields = argv[argv.index("--json") + 1].split(",") if "--json" in argv else []
+answer = {f: record.get(f) for f in fields}
+if "--jq" in argv:
+    expression = argv[argv.index("--jq") + 1]
+    if expression == ".title":
+        print(record.get("title", ""))
+    elif expression == ".state":
+        print(record.get("state", ""))
+    elif "labels" in expression:
+        print(",".join(label["name"] for label in record.get("labels") or []))
+    else:
+        sys.stderr.write(f"unsupported --jq {expression}\\n")
+        sys.exit(2)
+else:
+    print(json.dumps(answer))
+'''
+
+
+class RailsInAGitEngine(TestAProducedEngine):
+    """A produced engine that is also a git repository, with a stand-in for `gh`."""
+
+    def setUp(self):
+        super().setUp()
+        self.worktrees = os.path.join(self.tmp, "worktrees")
+        self.gh = os.path.join(self.tmp, "gh-stub.py")
+        with open(self.gh, "w", encoding="utf-8") as handle:
+            handle.write(GH_STUB)
+        os.chmod(self.gh, 0o755)
+        self.fixture_path = os.path.join(self.tmp, "gh.json")
+
+    def fixture(self, document):
+        with open(self.fixture_path, "w", encoding="utf-8") as handle:
+            json.dump(document, handle)
+
+    def commit_engine(self):
+        self.produced()
+        git(self.out, "init", "-q", "-b", "main")
+        git(self.out, "config", "user.email", "t@example.invalid")
+        git(self.out, "config", "user.name", "t")
+        git(self.out, "add", ".")
+        git(self.out, "commit", "-qm", "the produced engine")
+
+    def environment(self, **extra):
+        return {**os.environ, "RULES_ENGINE_GH": self.gh, "GH_FIXTURE": self.fixture_path,
+                "RULES_ENGINE_WORKTREE_ROOT": self.worktrees, **extra}
+
+    def dispatch(self, *args, **extra):
+        return subprocess.run(["bash", os.path.join(self.out, "tools", "dispatch-agent.sh"), *args],
+                              cwd=self.out, capture_output=True, text=True, env=self.environment(**extra))
+
+
+class TestTheDispatcher(RailsInAGitEngine):
+    """`tools/dispatch-agent.sh`: what it refuses, and what it leaves behind when it does not (#152)."""
+
+    def issue(self, number, labels=("state:ready", "risk:normal"), state="OPEN", title="Widen the altitude limit"):
+        self.fixture({"issue": {str(number): {"title": title, "state": state,
+                                              "labels": [{"name": name} for name in labels]}}})
+
+    def test_a_ready_issue_gets_a_worktree_outside_the_repository(self):
+        self.commit_engine()
+        self.issue(27)
+        done = self.dispatch("27")
+        self.assertEqual(done.returncode, 0, done.stderr)
+        path = os.path.join(self.worktrees, "issue-27-widen-the-altitude-limit")
+        self.assertTrue(os.path.isdir(path), done.stdout)
+        self.assertIn("tools/entry-packet.py", done.stdout, "it says where the assignment comes from")
+        # The primary checkout is untouched: still on main, still clean.
+        self.assertEqual(git(self.out, "rev-parse", "--abbrev-ref", "HEAD"), "main")
+        self.assertEqual(git(self.out, "status", "--porcelain"), "")
+
+    def test_an_issue_awaiting_a_decision_is_not_dispatched(self):
+        self.commit_engine()
+        self.issue(27, labels=("state:needs-decision", "risk:normal"))
+        done = self.dispatch("27")
+        self.assertEqual(done.returncode, 1, done.stdout)
+        self.assertIn("may not resolve the open question itself", done.stderr)
+        self.assertFalse(os.path.isdir(self.worktrees) and os.listdir(self.worktrees))
+
+    def test_a_blocked_issue_is_not_dispatched(self):
+        self.commit_engine()
+        self.issue(27, labels=("state:blocked",))
+        done = self.dispatch("27")
+        self.assertEqual(done.returncode, 1, done.stdout)
+        self.assertIn("not built yet", done.stderr)
+
+    def test_a_closed_issue_is_not_dispatched(self):
+        self.commit_engine()
+        self.issue(27, state="CLOSED")
+        done = self.dispatch("27")
+        self.assertEqual(done.returncode, 1, done.stdout)
+        self.assertIn("is CLOSED", done.stderr)
+
+    def test_the_labels_are_the_policy_s(self):
+        # An engine that renames its labels gets the rename honoured, with no change to the script.
+        self.commit_engine()
+        path = os.path.join(self.out, ".github", "agent-policy.json")
+        policy = json.load(open(path, encoding="utf-8"))
+        policy["labels"]["needsDecision"] = "awaiting-brandon"
+        with open(path, "w", encoding="utf-8") as handle:
+            json.dump(policy, handle, indent=2)
+        git(self.out, "commit", "-qam", "rename a label")  # the dirty-checkout guard fires first otherwise
+        self.issue(27, labels=("awaiting-brandon",))
+        done = self.dispatch("27")
+        self.assertEqual(done.returncode, 1, done.stdout)
+        self.assertIn("awaiting-brandon", done.stderr)
+
+    def test_a_dirty_primary_checkout_is_not_dispatched_from(self):
+        self.commit_engine()
+        self.issue(27)
+        with open(os.path.join(self.out, "README-notes.md"), "w", encoding="utf-8") as handle:
+            handle.write("half-finished\n")
+        done = self.dispatch("27")
+        self.assertEqual(done.returncode, 1, done.stdout)
+        self.assertIn("uncommitted changes", done.stderr)
+
+    def test_a_second_dispatch_of_the_same_issue_is_refused(self):
+        self.commit_engine()
+        self.issue(27)
+        self.assertEqual(self.dispatch("27").returncode, 0)
+        done = self.dispatch("27")
+        self.assertEqual(done.returncode, 1, done.stdout)
+        self.assertIn("already exists", done.stderr)
+        self.assertIn("--cleanup 27", done.stderr)
+
+    def test_a_worktree_root_inside_the_repository_is_refused(self):
+        self.commit_engine()
+        self.issue(27)
+        done = self.dispatch("27", RULES_ENGINE_WORKTREE_ROOT=os.path.join(self.out, "worktrees"))
+        self.assertEqual(done.returncode, 1, done.stdout)
+        self.assertIn("resolves inside the repository", done.stderr)
+
+    def test_a_non_numeric_issue_is_refused(self):
+        self.commit_engine()
+        done = self.dispatch("altitude-limit")
+        self.assertEqual(done.returncode, 1, done.stdout)
+        self.assertIn("must be numeric", done.stderr)
+
+    def test_cleanup_removes_the_worktree_and_the_merged_branch(self):
+        self.commit_engine()
+        self.issue(27)
+        self.assertEqual(self.dispatch("27").returncode, 0)
+        done = self.dispatch("--cleanup", "27")
+        self.assertEqual(done.returncode, 0, done.stderr)
+        self.assertFalse(os.path.isdir(os.path.join(self.worktrees, "issue-27-widen-the-altitude-limit")))
+
+
+class TestNewIssue(RailsInAGitEngine):
+    """`tools/new-issue.sh`: one state label, one risk label, and the shape (#152)."""
+
+    def new_issue(self, *args):
+        return subprocess.run(["bash", os.path.join(self.out, "tools", "new-issue.sh"), *args],
+                              cwd=self.out, capture_output=True, text=True, env=self.environment())
+
+    def test_it_files_at_the_ready_state_and_normal_risk(self):
+        self.produced()
+        done = self.new_issue("--title", "Widen the altitude limit", "--dry-run")
+        self.assertEqual(done.returncode, 0, done.stderr)
+        self.assertIn("labels: state:ready,risk:normal", done.stdout)
+        self.assertIn("## Acceptance criteria", done.stdout)
+        self.assertIn("names the mutation that makes it fail", done.stdout)
+
+    def test_independent_risk_is_asked_for_explicitly(self):
+        self.produced()
+        done = self.new_issue("--title", "x", "--risk", "independent", "--dry-run")
+        self.assertEqual(done.returncode, 0, done.stderr)
+        self.assertIn("risk:independent-review", done.stdout)
+
+    def test_an_entry_gets_the_marker_that_ties_it_to_the_map(self):
+        self.produced()
+        done = self.new_issue("--title", "x", "--entry", "altitude-limit", "--dry-run")
+        self.assertEqual(done.returncode, 0, done.stderr)
+        self.assertIn("<!-- rules-factory-entry: altitude-limit -->", done.stdout)
+
+    def test_the_labels_are_the_policy_s(self):
+        self.produced()
+        path = os.path.join(self.out, ".github", "agent-policy.json")
+        policy = json.load(open(path, encoding="utf-8"))
+        policy["labels"]["ready"] = "ready-to-work"
+        with open(path, "w", encoding="utf-8") as handle:
+            json.dump(policy, handle, indent=2)
+        done = self.new_issue("--title", "x", "--dry-run")
+        self.assertIn("labels: ready-to-work,risk:normal", done.stdout)
+
+    def test_an_unknown_risk_is_refused(self):
+        self.produced()
+        done = self.new_issue("--title", "x", "--risk", "catastrophic", "--dry-run")
+        self.assertEqual(done.returncode, 1, done.stdout)
+        self.assertIn("--risk is normal or independent", done.stderr)
+
+
+class TestTheReviewPacket(RailsInAGitEngine):
+    """`tools/review-packet.py`: the reviewer's context, assembled once and in reading order (#152)."""
+
+    def change(self):
+        """A branch that touches the semantic surface, as an implementation would."""
+        git(self.out, "checkout", "-qb", "issue-27")
+        overlay = os.path.join(self.out, "corpus-map.overlay.json")
+        with open(overlay, "w", encoding="utf-8") as handle:
+            json.dump({"altitude-limit": {"status": "implemented", "implementedIn": "Rules/AltitudeLimit.cs",
+                                          "tests": [{"name": "AltitudeLimit_DeclinesAboveTheCeiling",
+                                                     "mutation": "return the ceiling instead of declining"}]}},
+                      handle, indent=2)
+        os.makedirs(os.path.join(self.out, "src", NAME, "Rules"), exist_ok=True)
+        with open(os.path.join(self.out, "src", NAME, "Rules", "AltitudeLimit.cs"), "w", encoding="utf-8") as handle:
+            handle.write("// the altitude limit\n")
+        git(self.out, "add", "-A")
+        git(self.out, "commit", "-qm", "implement the altitude limit")
+        return git(self.out, "rev-parse", "HEAD")
+
+    def pull_request(self, head, *, labels=("state:ready", "risk:normal"), issues=1, body="## Linked Issue\nCloses #27"):
+        self.fixture({
+            "pr": {"5": {"number": 5, "title": "Implement the altitude limit", "body": body,
+                         "headRefOid": head, "headRefName": "issue-27", "baseRefName": "main",
+                         "files": [{"path": "corpus-map.overlay.json"},
+                                   {"path": f"src/{NAME}/Rules/AltitudeLimit.cs"},
+                                   {"path": "README.md"}],
+                         "closingIssuesReferences": [{"number": 27}][:issues]}},
+            "issue": {"27": {"number": 27, "title": "Widen the altitude limit", "state": "OPEN",
+                             "body": "<!-- rules-factory-entry: altitude-limit -->\n## Acceptance criteria\n- [ ] it declines",
+                             "labels": [{"name": name} for name in labels]}},
+        })
+
+    def packet(self, *extra):
+        # --package-map because the test has no restored package: in an engine it asks MSBuild, as the
+        # gate does. Everything else about the packet is the same either way.
+        return subprocess.run([sys.executable, os.path.join(self.out, "tools", "review-packet.py"), "5",
+                               "--base", "main", "--package-map", os.path.join(PART107, "corpus-map.json"), *extra],
+                              cwd=self.out, capture_output=True, text=True, env=self.environment())
+
+    def rendered(self, *extra):
+        done = self.packet("--stdout", *extra)
+        self.assertEqual(done.returncode, 0, done.stderr)
+        return done.stdout
+
+    def test_the_entry_comes_before_the_diff(self):
+        self.commit_engine()
+        head = self.change()
+        self.pull_request(head)
+        text = self.rendered()
+        self.assertLess(text.index("## 3. The entries, as the map has them"), text.index("## 7. The diff"),
+                        "a semantic reviewer reads the entry first, so the packet puts it first")
+        self.assertIn("altitude-limit", text)
+        self.assertIn(head, text, "the head commit every verdict is recorded against")
+
+    def test_it_carries_the_issue_the_claim_the_overlay_and_what_must_be_green(self):
+        self.commit_engine()
+        head = self.change()
+        self.pull_request(head)
+        text = self.rendered()
+        self.assertIn("Widen the altitude limit", text)
+        self.assertIn("Closes #27", text)
+        self.assertIn("AltitudeLimit_DeclinesAboveTheCeiling", text, "the overlay's before and after")
+        self.assertIn("return the ceiling instead of declining", text, "the mutation evidence")
+        self.assertIn("./scripts/validate.sh full", text)
+        self.assertIn("rules-verdict/semantic", text)
+        self.assertIn("← semantic surface", text, "which changed files are on the semantic surface")
+
+    def test_an_independent_risk_issue_says_one_verdict_is_not_enough(self):
+        self.commit_engine()
+        head = self.change()
+        self.pull_request(head, labels=("state:ready", "risk:independent-review"))
+        text = self.rendered()
+        self.assertIn("A semantic verdict alone does not satisfy the gate", text)
+        self.assertIn("rules-verdict/codex → rules-verdict/gemini", text, "the chain, read from the policy")
+
+    def test_the_chain_is_the_policy_s_to_replace(self):
+        self.commit_engine()
+        path = os.path.join(self.out, ".github", "agent-policy.json")
+        policy = json.load(open(path, encoding="utf-8"))
+        policy["review"]["independentFallback"] = [{"id": "acme", "context": "rules-verdict/acme"}]
+        with open(path, "w", encoding="utf-8") as handle:
+            json.dump(policy, handle, indent=2)
+        git(self.out, "commit", "-qam", "one provider, ours")
+        head = self.change()
+        self.pull_request(head, labels=("risk:independent-review",))
+        text = self.rendered()
+        self.assertIn("rules-verdict/acme", text)
+        self.assertNotIn("codex", text, "no script names a provider; the policy does")
+
+    def test_a_pull_request_closing_no_single_issue_is_refused(self):
+        self.commit_engine()
+        head = self.change()
+        self.pull_request(head, issues=0)
+        done = self.packet("--stdout")
+        self.assertEqual(done.returncode, 1, done.stdout)
+        self.assertIn("closes 0 issues", done.stderr)
+
+    def test_the_packet_is_written_outside_the_repository_with_the_entry_packets(self):
+        self.commit_engine()
+        head = self.change()
+        self.pull_request(head)
+        out = os.path.join(self.tmp, "packets")
+        done = self.packet("--out", out)
+        self.assertEqual(done.returncode, 0, done.stderr)
+        written = done.stdout.split()
+        self.assertEqual(written[0], os.path.join(out, f"pr-5-{head[:12]}.md"))
+        self.assertEqual(written[1], os.path.join(out, "entry-altitude-limit.md"))
+        with open(written[0], encoding="utf-8") as handle:
+            body = handle.read()
+        digest = hashlib.sha256(open(written[1], "rb").read()).hexdigest()
+        self.assertIn(digest, body, "the entry packet's digest, so two reviewers can prove they read the same entry")
+
+    def test_a_packet_inside_the_repository_is_refused(self):
+        self.commit_engine()
+        head = self.change()
+        self.pull_request(head)
+        done = self.packet("--out", os.path.join(self.out, "packets"))
+        self.assertEqual(done.returncode, 1, done.stdout)
+        self.assertIn("never written inside the repository", done.stderr)
