@@ -95,7 +95,7 @@ TABLE = (
     Row("tools/dispatch-agent.sh", MANAGED, 1,
         "one issue, one worktree, one branch; it refuses what is not ready to work (0029)"),
     Row("tools/new-issue.sh", MANAGED, 1, "an issue with the shape the rails expect (0029)"),
-    Row("tools/entry-packet.py", MANAGED, 1,
+    Row("tools/entry-packet.py", MANAGED, 2,
         "the bounded assignment for one entry, assembled from merge(package, overlay) (0029)"),
     Row("tools/review-packet.py", MANAGED, 1,
         "everything a reviewer needs about one pull request, in the order it is read (0029)"),
@@ -177,6 +177,7 @@ RECIPE_SHA256 = {
     },
     "tools/entry-packet.py": {
         1: "6e413d4e4143d888e00c1570358c5f6c7404347a173cd023b821f4d2f781835a",
+        2: "59f112154a77a8cf574bd8d1ee1e43d39399025308c8f4eb2371d99081e49b20",
     },
     "tools/review-packet.py": {
         1: "2e989c02c1827bf6d3da8fce9a35874e25ea4baf14f62eeb64aab78c30b1f392",

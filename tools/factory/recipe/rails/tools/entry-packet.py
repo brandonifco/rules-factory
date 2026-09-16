@@ -39,6 +39,7 @@ import argparse
 import json
 import os
 import pathlib
+import re
 import subprocess
 import sys
 import tempfile
@@ -132,6 +133,18 @@ def block(value):
     return "```json\n" + json.dumps(value, indent=2, ensure_ascii=False) + "\n```"
 
 
+def fence(text):
+    """A string the corpus wrote, in a fence, exactly as the map holds it.
+
+    Not `block`: JSON-quoting the corpus's own sentence escapes its quotation marks and turns the
+    wording an implementer has to read into something they have to decode first. The map's backlog
+    items render evidence this way for the same reason. The fence is opened with as many backticks
+    as it takes to contain what is inside it.
+    """
+    ticks = "`" * max(3, max((len(run) for run in re.findall(r"`+", text)), default=0) + 1)
+    return f"{ticks}text\n{text}\n{ticks}"
+
+
 def entry_line(model, entry_id):
     """`<id> -- <name> (<status>)` for an entry of the map, or a note that the map has no such entry."""
     item = model.by_id.get(entry_id)
@@ -188,10 +201,20 @@ def packet(generate, model, overlay, item, identity):
     if evidence is not None:
         lines.append("**Evidence, verbatim as the map quotes it.** This is the corpus's wording, and the only "
                      "wording you may rely on:\n")
-        lines.append(block(evidence) + "\n")
+        lines.append(fence(str(evidence)) + "\n")
     else:
         lines.append("The map quotes no evidence for this entry. That is a fact about the entry, not a gap for "
                      "you to fill from the corpus.\n")
+
+    ambiguity = entry.get("ambiguity")
+    if isinstance(ambiguity, dict):
+        lines.append("**The question the map records as unsettled** — `fate` "
+                     f"`{ambiguity.get('fate')}`"
+                     + (f", `unresolvedReason` `{ambiguity['unresolvedReason']}`"
+                        if ambiguity.get("unresolvedReason") else "") + ":\n")
+        lines.append(fence(str(ambiguity.get("question", ""))) + "\n")
+        lines.append("An entry whose question is unresolved is implemented as a decline that names why and cites "
+                     "where. Answering it is not yours to do (`AGENTS.md`).\n")
 
     lines.append("## 3. What this engine records about it\n")
     row = overlay.get(entry_id)
