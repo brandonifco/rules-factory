@@ -44,6 +44,14 @@ import json
 import pathlib
 import sys
 
+# rulings, imported just below, leaves its bytecode behind: scripts/factory/__pycache__/, a path
+# no ownership row covers, so the checkout that ran this goes dirty and tools/dispatch-agent.sh
+# refuses to open a worktree for the next issue (#194). scripts/validate.sh and `factory verify`
+# export PYTHONDONTWRITEBYTECODE for the same reason, but nothing exports it in the shell an agent
+# runs this from. The loader reads this flag when the import happens, so it must come first --
+# here the import is at module level, so today even `--help` writes the bytecode.
+sys.dont_write_bytecode = True
+
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent / "factory"))
 import rulings  # noqa: E402  (vendored by `factory produce`, rules-factory decision 0027)
 

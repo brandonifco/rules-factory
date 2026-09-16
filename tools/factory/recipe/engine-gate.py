@@ -30,6 +30,15 @@ import re
 import sys
 import types
 
+# derivations() and regenerate() import the vendored scripts/factory modules, and an imported
+# module leaves its bytecode behind: scripts/factory/__pycache__/, a path no ownership row covers,
+# so the checkout that ran this goes dirty and tools/dispatch-agent.sh refuses to open a worktree
+# for the next issue (#194). scripts/validate.sh, which is what usually runs this, exports
+# PYTHONDONTWRITEBYTECODE for the same reason, and so does `factory verify`; nothing exports it
+# when an agent runs a subcommand directly from its shell. The loader reads this flag when the
+# import happens, so it belongs here and not beside the imports it disarms.
+sys.dont_write_bytecode = True
+
 ROOT = pathlib.Path.cwd()
 IGNORED = {"bin", "obj", ".git", "artifacts", "TestResults"}
 OVERLAY = "corpus-map.overlay.json"

@@ -51,6 +51,7 @@ _spec = importlib.util.spec_from_file_location("factory_main_rails", os.path.joi
 factory = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(factory)
 generate = factory.generate
+gate = factory.gate
 ownership = generate.ownership
 
 LINK = re.compile(r"\[[^\]]*\]\(([^)#\s]+)(?:#[^)\s]*)?\)")
@@ -170,6 +171,52 @@ class TestTheEmittedRails(unittest.TestCase):
         (hook,) = entry["hooks"]
         self.assertTrue(hook["command"].startswith("python3 "), hook["command"])
         self.assertIn(".claude/hooks/primary-checkout-guard.py", hook["command"])
+
+
+class TestBytecodeStaysOutOfTheCheckout(unittest.TestCase):
+    """#194: a script run as `__main__` writes no bytecode of its own, but the vendored
+    scripts/factory modules it imports do -- into scripts/factory/__pycache__, a path no ownership
+    row covers. The checkout that ran the script then reports it as untracked, and
+    tools/dispatch-agent.sh refuses to open a worktree for the next issue. scripts/validate.sh and
+    `factory verify` export PYTHONDONTWRITEBYTECODE, but an agent's shell exports nothing.
+
+    What is asserted is where the flag sits, not that it appears: the loader reads it when the
+    import happens, so a flag set after the path insert prevents exactly nothing."""
+
+    SUPPRESSION = "sys.dont_write_bytecode = True"
+
+    def emitted_python(self):
+        """Every .py the factory writes into an engine and something runs as a command. The
+        vendored scripts/factory modules are left out: they are the imported side, and a flag in
+        them would be read too late to stop their own bytecode."""
+        out = {relative: text for relative, text in generate.managed_files().items() if relative.endswith(".py")}
+        for relative, (data, _) in gate.files(NAME).items():
+            if relative.endswith(".py") and not relative.startswith("scripts/factory/"):
+                out[relative] = data.decode("utf-8")
+        return out
+
+    def test_every_emitted_script_that_imports_the_vendored_factory_suppresses_bytecode(self):
+        importers = {}
+        for relative, text in self.emitted_python().items():
+            lines = text.splitlines()
+            reaches = next((i for i, line in enumerate(lines)
+                            if "sys.path.insert" in line and "factory" in line), None)
+            if reaches is None:
+                continue
+            importers[relative] = reaches
+            # Column 0, so the flag is module level: map-overlay.py imports while it loads, and for
+            # the two that import inside a function the line order below only means something if
+            # the flag is not itself nested in some function that may never run.
+            flag = next((i for i, line in enumerate(lines) if line == self.SUPPRESSION), None)
+            self.assertIsNotNone(flag, f"{relative} puts scripts/factory on the path and leaves its "
+                                       f"bytecode in the engine (#194)")
+            self.assertLess(flag, reaches,
+                            f"{relative} sets dont_write_bytecode at line {flag + 1}, after line "
+                            f"{reaches + 1} reaches for scripts/factory; there it prevents nothing")
+        # Named, so that an emitted script that starts importing the factory fails here rather than
+        # being skipped by a check that examined whatever it happened to find.
+        self.assertEqual(sorted(importers),
+                         ["scripts/engine-gate.py", "scripts/map-overlay.py", "tools/entry-packet.py"])
 
 
 class TestAProducedEngine(unittest.TestCase):
