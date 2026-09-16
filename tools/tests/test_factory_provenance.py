@@ -20,6 +20,10 @@ re-run agree on it; editing the overlay or a csproj, or adding or removing a bui
 `managed[global.json]` mismatch until `--adopt global.json` records it; lock files are no claim
 until a record lists one, and then every lock file is held.
 
+The engine's gate carries a narrower check of the same record, without the factory
+(`scripts/engine-gate.py provenance`, #192). One test here holds the two to the same direction: a
+tree the gate fails is one recompute also fails, naming at least one of the same paths.
+
 The embedded copy is only exercised by `dotnet test` on a produced engine, which needs the
 SDK the kernel pins and network access to nuget.org; that test skips, saying why, without them.
 
@@ -30,6 +34,7 @@ import importlib.util
 import json
 import os
 import pathlib
+import re
 import shutil
 import subprocess
 import sys
@@ -487,6 +492,31 @@ class TestRecompute(ProvenanceCase):
         output = self.assert_recompute_names(engine, "randomness: recorded \"none\", recomputed \"seeded\"",
                                              f"generated[{PACKAGES_PROPS}]", package=seeded)
         self.assertIn("map.files[map/corpus-manifest.json].sha256", output)
+
+    def test_the_gate_s_own_check_and_recompute_agree_in_direction(self):
+        """#192: `scripts/engine-gate.py provenance` compares without the factory; this recomputes
+        with it. They are not equal -- recompute re-produces, so it legitimately says more -- but a
+        tree the gate fails must be one recompute also fails, naming at least one of the same paths.
+        Were that not so, the cheap check in every engine's gate would be reporting something the
+        factory's own recomputation does not believe.
+        """
+        out = self.produced()
+        implemented = {"status": "implemented", "implementedIn": {"ruleset": "faa-part-107", "version": 1},
+                       "tests": [{"test": "T.t", "mutation": "m"}]}
+        pathlib.Path(out, "corpus-map.overlay.json").write_text(json.dumps({"reasonable-protection": implemented}),
+                                                                encoding="utf-8")
+        gate = subprocess.run([sys.executable, os.path.join(out, "scripts", "engine-gate.py"), "provenance"],
+                              cwd=out, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
+        self.assertEqual(gate.returncode, 1, gate.stdout)
+        named = set(re.findall(r"(?:generated|managed|buildInputs)\[([^\]]+)\]", gate.stdout))
+        self.assertTrue(named, gate.stdout)
+
+        code, output = self.recompute(out)
+        self.assertEqual(code, 1, output)
+        mismatches = [line for line in output.splitlines() if "MISMATCH" in line]
+        self.assertTrue(mismatches, output)
+        self.assertTrue(named & set(re.findall(r"\[([^\]]+)\]", "\n".join(mismatches))),
+                        f"the gate named {sorted(named)}; recompute named none of them:\n{output}")
 
     def test_a_hand_edited_record(self):
         out = self.produced()

@@ -8,6 +8,8 @@ The recipe is the factory's, not the engine's, so it is rewritten on every `prod
     under 0015 and the packaged `check-map.py --phase consumer` on the merge; RulesKernel.Randomness
     reachable only as the packaged manifest's `randomness` declares (0019); corpus hash under its declared posture (NOT
     VERIFIED is its own outcome, never ok); every `*.g.cs` equal to a fresh regeneration;
+    provenance.json still hashing the generated files, the managed files and the overlay they
+    were generated from, so an overlay edit never followed by a re-produce fails (#192);
     format; build and test in Debug and Release, with TRX evidence that the tests ran and that
     every test an implemented entry names exists and ran;
   * `scripts/map-overlay.py` -- merge(package, overlay), 0015 rules 1-5;

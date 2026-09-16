@@ -137,6 +137,7 @@ row. The classification:
 | `tools/entry-packet.py`, `tools/review-packet.py` | managed | bounded context, read from the merged map |
 | `tools/pr-policy.py`, `tools/record-verdict.py`, `tools/conformance-gate.py` | managed | enforcement |
 | `tools/requeue-gate.py` | managed | a recorded verdict asks the gate to report again (#191) |
+| `tools/re-produce.sh` | managed | an overlay edit is finished by a re-produce, from the factory commit the record names (#192) |
 | `tools/agent-doctor.py` | managed | the audit of all of it |
 | `.github/pull_request_template.md` | managed | the PR shape |
 | `.github/workflows/pr-policy.yml`, `.github/workflows/conformance-gate.yml` | managed | the two new required checks |
