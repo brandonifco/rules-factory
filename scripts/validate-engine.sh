@@ -545,6 +545,51 @@ PY
 step "factory provenance recomputes on the bumped engine"
 python3 tools/factory provenance --engine "$ENGINE" --package "$PACKAGE_BUMPED"
 
+# The kernel's determinism analyzers, on the engine the factory just produced (rules-factory
+# decision 0029). A pin in a props file and a severity in .editorconfig prove nothing on their own:
+# what has to be true is that a non-deterministic construct in the rules stops the build, and that
+# the same construct in a test does not. Both directions are checked here, on the engine's real
+# toolchain, because nothing else can check them.
+step "a determinism defect in the engine is a build error, and in a test it is not"
+ANALYZED="$SCRATCH/analyzed"
+cp -R "$ENGINE" "$ANALYZED"
+rm -rf "$ANALYZED"/src/*/bin "$ANALYZED"/src/*/obj "$ANALYZED"/tests/*/bin "$ANALYZED"/tests/*/obj
+grep -qF '<PackageVersion Include="RulesKernel.Analyzers"' "$ANALYZED/RulesFactory.Packages.g.props" \
+  || fail "the produced engine does not pin RulesKernel.Analyzers"
+grep -qF 'dotnet_diagnostic.RK0002.severity = warning' "$ANALYZED/.editorconfig" \
+  || fail "the produced engine's .editorconfig does not set the analyzers' severities"
+
+# RK0002: an ambient clock. The same two lines in both places, so the only difference is where.
+cat > "$ANALYZED/src/$NAME/AmbientClock.cs" <<CS
+namespace $NAME;
+
+internal static class AmbientClock
+{
+    internal static int Hour() => System.DateTime.Now.Hour;
+}
+CS
+if (cd "$ANALYZED" && dotnet build "src/$NAME/$NAME.csproj" -f net10.0 -nologo) > "$SCRATCH/analyzed.log" 2>&1; then
+  tail -20 "$SCRATCH/analyzed.log"
+  fail "an ambient clock in the engine built; the determinism analyzers are not enforced"
+fi
+grep -q "RK0002" "$SCRATCH/analyzed.log" \
+  || { tail -30 "$SCRATCH/analyzed.log"; fail "the engine failed to build without RK0002; something else broke it"; }
+echo "ok   an ambient clock in src/ is RK0002, and the build stops"
+rm "$ANALYZED/src/$NAME/AmbientClock.cs"
+
+cat > "$ANALYZED/tests/$NAME.Tests/AmbientClock.cs" <<CS
+namespace $NAME.Tests;
+
+internal static class AmbientClock
+{
+    internal static int Hour() => System.DateTime.Now.Hour;
+}
+CS
+(cd "$ANALYZED" && dotnet build "tests/$NAME.Tests/$NAME.Tests.csproj" -f net10.0 -warnaserror -nologo) \
+  > "$SCRATCH/analyzed-tests.log" 2>&1 \
+  || { tail -30 "$SCRATCH/analyzed-tests.log"; fail "the same construct in a test stopped the build; tests are scaffolding, not the product"; }
+echo "ok   the same construct in tests/ builds: a test may fix a clock"
+
 # #106: everything above is one map's engine, and a corpus admitted with something only its own
 # engine exercises (the SRD's hashDerivation, which the gate could not recompute) passed every check
 # here while no SRD engine could pass its gate. So every other example map that declares a package is
