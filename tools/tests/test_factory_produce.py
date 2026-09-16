@@ -124,7 +124,9 @@ class ProduceCase(unittest.TestCase):
     def produced(self, out=None, **kwargs):
         out = out or os.path.join(self.tmp, "engine")
         code, output = self.produce(out, **kwargs)
-        self.assertEqual(code, 0, output)
+        # `--no-verify` ends NOT VERIFIED (3), never 0: the engine was written but never built
+        # or tested (tools/factory/__main__.py).
+        self.assertEqual(code, factory.NOT_VERIFIED, output)
         return out
 
     def read(self, out, relative):
@@ -658,7 +660,7 @@ class TestTransactional(ProduceCase):
                 path = os.path.join(directory, name)
                 os.chmod(path, os.stat(path).st_mode | 0o020)
         code, output = self.produce(out, package=self.v1)
-        self.assertEqual(code, 0, output)
+        self.assertEqual(code, factory.NOT_VERIFIED, output)
         self.assertIn(f"wrote to {os.path.realpath(out)}: 0 added, 0 changed, 0 removed", output)
 
     def test_an_executable_bit_that_differs_is_counted_as_changed(self):
@@ -666,7 +668,7 @@ class TestTransactional(ProduceCase):
         script = os.path.join(out, "scripts", "validate.sh")
         os.chmod(script, 0o664)
         code, output = self.produce(out, package=self.v1)
-        self.assertEqual(code, 0, output)
+        self.assertEqual(code, factory.NOT_VERIFIED, output)
         self.assertIn(f"wrote to {os.path.realpath(out)}: 0 added, 1 changed, 0 removed", output)
         self.assertEqual(stat.S_IMODE(os.stat(script).st_mode), 0o755)
 
@@ -713,7 +715,7 @@ class TestTransactional(ProduceCase):
                 mock.patch.object(factory.transaction, "_rollback", side_effect=OSError("the process died")):
             self.produce(out, package=self.v2)
         code, output = self.produce(out, package=self.v2)
-        self.assertEqual(code, 0, output)
+        self.assertEqual(code, factory.NOT_VERIFIED, output)
         self.assertIn("rolled back an interrupted commit", output)
         self.assertFalse(os.path.exists(journal))
         shutil.rmtree(os.path.join(out, "bin"))
@@ -749,7 +751,7 @@ class TestSaysWhatItDidToGit(ProduceCase):
         out = self.engine_repo()
         head = self.git(out, "rev-parse", "HEAD")
         code, output = self.produce(out, package=self.hoyle_version())
-        self.assertEqual(code, 0, output)
+        self.assertEqual(code, factory.NOT_VERIFIED, output)
 
         # What actually happened: files changed in the working tree, and git recorded nothing.
         self.assertEqual(self.git(out, "rev-parse", "HEAD"), head, "produce must not create a commit")
@@ -765,7 +767,7 @@ class TestSaysWhatItDidToGit(ProduceCase):
     def test_a_produce_that_changes_nothing_says_nothing_about_git(self):
         out = self.engine_repo()
         code, output = self.produce(out, package=self.part107)
-        self.assertEqual(code, 0, output)
+        self.assertEqual(code, factory.NOT_VERIFIED, output)
         self.assertEqual(self.git(out, "status", "--porcelain"), "")
         self.assertNotIn("uncommitted change(s)", output)
 
@@ -773,7 +775,7 @@ class TestSaysWhatItDidToGit(ProduceCase):
         out = self.produced(package=self.part107)
         self.assertFalse(os.path.isdir(os.path.join(out, ".git")))
         code, output = self.produce(out, package=self.part107)
-        self.assertEqual(code, 0, output)
+        self.assertEqual(code, factory.NOT_VERIFIED, output)
         self.assertNotIn("uncommitted change(s)", output)
 
     def hoyle_version(self):

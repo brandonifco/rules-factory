@@ -337,7 +337,7 @@ class TestProduce(ProducedCase):
     def test_the_worked_example_generates_the_registry_and_records_the_rulings(self):
         self.with_overlay(worked_example())
         code, output = self.produce()
-        self.assertEqual(code, 0, output)
+        self.assertEqual(code, factory.NOT_VERIFIED, output)
         self.assertIn("--- owner's ruling bearing-off-eligible/2 on bearing-off-eligible, not the corpus", output)
         generated = self.read(RULINGS_CS)
         self.assertIn("public sealed partial record OwnerRuling(string Id, string EntryId, string Span, string Answer, "
@@ -359,20 +359,20 @@ class TestProduce(ProducedCase):
 
     def test_an_engine_without_rulings_generates_no_registry_and_records_none(self):
         code, output = self.produce()
-        self.assertEqual(code, 0, output)
+        self.assertEqual(code, factory.NOT_VERIFIED, output)
         self.assertFalse(os.path.exists(os.path.join(self.out, *RULINGS_CS.split("/"))))
         with open(os.path.join(self.out, "provenance.json"), encoding="utf-8") as handle:
             self.assertNotIn("rulings", json.load(handle))
 
     def test_withdrawing_the_last_ruling_removes_the_registry(self):
         self.with_overlay(worked_example())
-        self.assertEqual(self.produce()[0], 0)
+        self.assertEqual(self.produce()[0], factory.NOT_VERIFIED)
         overlay = worked_example()
         overlay["bearing-off-eligible"].pop("rulings")
         overlay["bearing-off-eligible"]["declines"].append({"span": SECOND_PART, "tests": [RULED_TEST]})
         self.with_overlay(overlay)
         code, output = self.produce()
-        self.assertEqual(code, 0, output)
+        self.assertEqual(code, factory.NOT_VERIFIED, output)
         self.assertFalse(os.path.exists(os.path.join(self.out, *RULINGS_CS.split("/"))))
         code, output = self.script("engine-gate.py", "regenerate", *self.package_args())
         self.assertEqual(code, 0, output)
@@ -394,12 +394,12 @@ class TestProduce(ProducedCase):
 
     def test_an_edited_record_is_a_provenance_mismatch_until_produced_again(self):
         self.with_overlay(worked_example())
-        self.assertEqual(self.produce()[0], 0)
+        self.assertEqual(self.produce()[0], factory.NOT_VERIFIED)
         write_record(self.out, text="# 0009\n\nBrandon ruled, and the record changed.\n")
         code, output = self.run_factory("provenance", "--engine", self.out, "--package", self.nupkg)
         self.assertEqual(code, 1, output)
         self.assertIn("MISMATCH rulings:", output)
-        self.assertEqual(self.produce()[0], 0)
+        self.assertEqual(self.produce()[0], factory.NOT_VERIFIED)
         code, output = self.run_factory("provenance", "--engine", self.out, "--package", self.nupkg)
         self.assertEqual(code, 0, output)
 
@@ -420,7 +420,7 @@ class TestProduce(ProducedCase):
 class TestGate(ProducedCase):
     def setUp(self):
         super().setUp()
-        self.assertEqual(self.produce()[0], 0)
+        self.assertEqual(self.produce()[0], factory.NOT_VERIFIED)
         self.package_map = os.path.join(self.tmp, "package-map.json")
         self.merged = os.path.join(self.tmp, "merged.json")
         with open(self.package_map, "w", encoding="utf-8") as handle:
@@ -461,7 +461,7 @@ class TestGate(ProducedCase):
 
     def test_regeneration_passes_with_rulings_and_fails_on_a_hand_edited_registry(self):
         self.with_overlay(worked_example())
-        self.assertEqual(self.produce()[0], 0)
+        self.assertEqual(self.produce()[0], factory.NOT_VERIFIED)
         args = TestProduce.package_args(self)
         code, output = self.script("engine-gate.py", "regenerate", *args)
         self.assertEqual(code, 0, output)

@@ -69,8 +69,10 @@ def produce(package, out, *extra):
         code = factory.main(["produce", "--package", package, "--corpus", PART107_XML, "--name", NAME, "--out", out,
                              "--allow-dirty",  # this checkout's state is not under test here
                              "--no-verify", *extra])  # nor is building it: no SDK assumed (test_factory_verify.py)
-    if code != 0:
-        raise AssertionError(buffer.getvalue())
+    # `--no-verify` ends NOT VERIFIED (3), never 0 (tools/factory/__main__.py).
+    if code != factory.NOT_VERIFIED:
+        raise AssertionError(f"produce --no-verify exited {code}, not {factory.NOT_VERIFIED}\n"
+                             + buffer.getvalue())
 
 
 def edit(path, change):
@@ -402,7 +404,8 @@ class TestRandomnessSeeded(unittest.TestCase):
         with redirect_stdout(buffer), redirect_stderr(buffer):
             code = factory.main(["produce", "--package", self.nupkg, "--corpus", os.path.join(HOYLE, "hoyle.txt"),
                                  "--name", self.HOYLE_NAME, "--out", out, "--allow-dirty", "--no-verify"])
-        self.assertEqual(code, 0, buffer.getvalue())
+        # `--no-verify` ends NOT VERIFIED (3), never 0 (tools/factory/__main__.py).
+        self.assertEqual(code, factory.NOT_VERIFIED, buffer.getvalue())
         return out
 
     def gate(self, engine, *args):
@@ -547,7 +550,7 @@ class TestCorpusPosture(GateCase):
                     code = factory.main(["produce", "--package", nupkg, "--corpus",
                                          os.path.join(map_dir, corpus["committedPath"]), "--name", name, "--out", engine,
                                          "--allow-dirty", "--no-verify"])
-                self.assertEqual(code, 0, buffer.getvalue())
+                self.assertEqual(code, factory.NOT_VERIFIED, buffer.getvalue())  # `--no-verify`: NOT VERIFIED (3), never 0
                 merged = os.path.join(work, "merged.json")
                 code, output = self.script(engine, "map-overlay.py", "merge", "--package-map", files["map"],
                                            "--overlay", os.path.join(engine, "corpus-map.overlay.json"), "--out", merged)

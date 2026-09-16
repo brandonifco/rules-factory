@@ -21,7 +21,8 @@
 #
 # Both produces pass --no-verify: whether the engine builds and its tests pass is the engine's own
 # CI, and verify needs the SDK the kernel pins. The question here is only whether the committed
-# files are what the factory writes.
+# files are what the factory writes. A `--no-verify` produce exits 3, NOT VERIFIED, from
+# factory/v0.8.1 on (and 0 before it); this script accepts either, and nothing else.
 #
 # Not run by scripts/validate.sh or CI: it needs the network (GitHub, and nuget.org unless the
 # package is in the NuGet cache) and a published package. Its recorded output is EVIDENCE.md.
@@ -89,9 +90,14 @@ if [ "$FACTORY_HEAD" != "$RECORDED_FACTORY" ]; then
 fi
 
 produce() {
+  # `--no-verify` exits 3, NOT VERIFIED, from factory/v0.8.1 on, and 0 in the factory refs before
+  # it; both are the intended outcome here, and anything else is a failure to show.
+  local status=0
   (cd "$WORK/factory" && python3 tools/factory produce --package "$PACKAGE" --corpus "$CORPUS" \
-    --name "$NAME" --out "$1" --no-verify) >"$WORK/$(basename "$1").log" 2>&1 \
-    || { cat "$WORK/$(basename "$1").log"; return 1; }
+    --name "$NAME" --out "$1" --no-verify) >"$WORK/$(basename "$1").log" 2>&1 || status=$?
+  if [ "$status" -ne 0 ] && [ "$status" -ne 3 ]; then
+    cat "$WORK/$(basename "$1").log"; return 1
+  fi
   tail -1 "$WORK/$(basename "$1").log" | sed "s|$WORK|\$WORK|g"
 }
 

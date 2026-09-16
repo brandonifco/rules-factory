@@ -37,8 +37,13 @@ changes are uncommitted, for whoever ran it to review and commit:
     to record them as build inputs (#69), so what is written out is what the gate tested.
     When the run changed the generated pins (a map version bump) and lock files exist, verify
     re-locks them first (#94); that is the one case produce rewrites engine-owned files.
-    `--no-verify` skips it, for a machine without the SDK the engine pins, and the output and
-    the final line say the engine was written unverified. A `--no-verify` run whose committed lock
+    `--no-verify` skips it, for a machine without the SDK the engine pins. The output and the
+    final line say the engine was written unverified, and the run **exits 3, NOT VERIFIED, never
+    0**: nothing was built or tested, so no caller reading only the exit code may read it as a
+    verified produce. 3 is what NOT VERIFIED exits with everywhere in this lineage (the gate's
+    `posture` check, `check-rebuild.py`, `check-target.py`); a caller for which an unverified
+    engine is the intended outcome accepts exactly that code, the way scripts/validate.sh accepts
+    3 from `engine-gate.py posture`. A `--no-verify` run whose committed lock
     files resolve a pinned package (RulesKernel, RulesKernel.Randomness, the map) at another version
     than the generated pins re-locks them with `dotnet restore` alone, on the pinned SDK or
     `FACTORY_DOTNET_SDK_OVERRIDE`, and records them. When no SDK can run, restore fails, or the lock
@@ -72,7 +77,9 @@ global.json's pin, without changing global.json or what provenance checks, and v
 say so in a WARNING and on their last line.
 See verify.py.
 
-Exit 0 when every step passed; 1 when a step refused; 2 on a usage error.
+Exit 0 when every step passed; 1 when a step refused; 2 on a usage error; 3 when a step could
+prove nothing and said so -- today that is `produce --no-verify`, which writes an engine that was
+never built or tested. 3 is NOT VERIFIED: not a pass, not a failure, and never silent (0013).
 Standard library only.
 """
 import argparse
@@ -95,6 +102,12 @@ import transaction  # noqa: E402
 import verify as verify_step  # noqa: E402
 
 PASCAL = re.compile(r"^[A-Z][A-Za-z0-9]*$")
+
+#: The exit code of a run that proved nothing and said so. Not a pass and not a failure: the same
+#: outcome, and the same code, that `engine-gate.py posture`, `check-rebuild.py` and
+#: `check-target.py` already use for NOT VERIFIED. `produce --no-verify` is the only run that ends
+#: this way; a caller that wants an unverified engine accepts exactly 3, and 1 still means refused.
+NOT_VERIFIED = 3
 
 
 def produce(args):
@@ -138,7 +151,8 @@ def produce(args):
             # (verify.py, `stale_locks`, `relock`).
             if getattr(args, "check_locks", True):
                 overridden = relock_stale_locks(out, args, record_lock_files)
-            print("verification SKIPPED (--no-verify): the engine was not built or tested")
+            print(f"verification SKIPPED (--no-verify): the engine was not built or tested, so this "
+                  f"run ends NOT VERIFIED and exits {NOT_VERIFIED}, never 0")
         else:
             # #94: a run that moved the generated pins re-locks (verify.py). The lock files are
             # engine-owned, and this is the one case produce rewrites them (ownership.py, 0018).
@@ -156,8 +170,11 @@ def produce(args):
     if relocked:
         print(f"re-locked {len(relocked)} packages.lock.json file(s) because the generated pins changed: "
               f"review and commit them")
+    # The last line is what a caller reads, and it must agree with the exit code: a --no-verify run
+    # names the code it ends with, so "NOT VERIFIED" and "exit 0" can never be read together.
     print(f"produced {args.name} in {args.out}, {'NOT VERIFIED' if args.no_verify else 'verified'}"
-          f"{overridden_suffix(overridden, verify_step.pinned_sdk(args.out), 'lock files re-locked' if args.no_verify else '')}")
+          f"{overridden_suffix(overridden, verify_step.pinned_sdk(args.out), 'lock files re-locked' if args.no_verify else '')}"
+          f"{f' -- nothing was built or tested, so this run exits {NOT_VERIFIED}, not 0' if args.no_verify else ''}")
     # produce writes files and runs no git in the engine: say so where --out is a git checkout,
     # so nobody reads "wrote to <engine>" as a commit that was made for them (transaction.py).
     transaction.git_note(args.out, log=sys.stdout)
@@ -267,7 +284,8 @@ def build_parser():
     p.add_argument("--allow-dirty", action="store_true",
                    help="produce from a factory with uncommitted changes, recording dirty: true")
     p.add_argument("--no-verify", action="store_true",
-                   help="write the engine without `verify` (no .NET SDK here); the output says it is not verified")
+                   help="write the engine without `verify` (no .NET SDK here); the output says it is not verified "
+                        f"and the run exits {NOT_VERIFIED} (NOT VERIFIED), never 0")
     p.add_argument("--adopt", action="append", metavar="PATH",
                    help="make this managed file (global.json, NuGet.config, Directory.Build.props) engine-owned, "
                         "keeping its edits; repeatable (tools/factory/ownership.py)")
@@ -315,7 +333,10 @@ def main(argv=None):
             print(f"verify {args.engine}: PASS" + overridden_suffix(overridden, verify_step.pinned_sdk(args.engine)))
             return 0
         produce(args)
-        return 0
+        # An engine that was written but never built or tested is not a success to a caller reading
+        # the exit code, and `--no-verify` stays a usable, documented mode: it ends NOT VERIFIED (3),
+        # which a caller that meant to skip verification accepts explicitly.
+        return NOT_VERIFIED if args.no_verify else 0
     except intake_step.Usage as error:
         print(f"factory: {error}", file=sys.stderr)
         return 2

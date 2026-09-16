@@ -12,7 +12,13 @@ SDK is **10.0.112**, which is not installed here, so every step that builds ran 
 the pinned SDK (`validate-engine.sh` refuses the override when `CI=true`).
 
 **Result: both criteria are met. Three limits are named below rather than papered over, and one
-of them is a hole in what "success" proves.**
+of them was a hole in what "success" proves.**
+
+> **Update, 2026-09-16.** That hole — `produce --no-verify` reporting `NOT VERIFIED` and exiting
+> 0 — is fixed. It now exits 3, NOT VERIFIED. Caveat 1 under *What "verified" does not mean*,
+> near the end of criterion 5, has the fix, the commands and the exit codes. The other three
+> caveats stand as they were, and everything else in this file is the run of 2026-09-16,
+> unchanged.
 
 ## The outputs
 
@@ -355,7 +361,7 @@ The factory says so in exactly these ways, and nowhere else:
 | Command | Success | Failure |
 |---|---|---|
 | `produce` (default) | last line `produced <Name> in <out>, verified` (plus the SDK-override clause when one was used), exit 0 | a `REFUSED --` or `verify FAILED at stage <stage>` line on stderr, exit 1, and `--out` untouched |
-| `produce --no-verify` | `verification SKIPPED (--no-verify): the engine was not built or tested`, then `produced <Name> in <out>, NOT VERIFIED`, **exit 0** | as above, exit 1 |
+| `produce --no-verify` | `verification SKIPPED (--no-verify): …`, then `produced <Name> in <out>, NOT VERIFIED — nothing was built or tested, so this run exits 3, not 0`, **exit 3, NOT VERIFIED** — not a success, and it never was one (see the caveat below, now fixed) | as above, exit 1 |
 | `verify --engine` | `verify <dir>: PASS`, exit 0 | `verify FAILED at stage <stage> -- …`, exit 1 |
 | `provenance --engine` | `provenance of <dir>: every field matches`, exit 0 | one `MISMATCH …` line per field, then a count, exit 1 |
 | the engine's own gate | `validate.sh full: PASS` | `FAIL <step>` then `validate.sh full: FAIL` |
@@ -364,12 +370,50 @@ There is no step that prints success while something failed: the gate's steps ar
 `FAIL` / `skip … (depends on a step that failed)` individually and a single `FAIL` ends the run,
 and both `produce` and `verify` stop at the first stage that fails.
 
-**What "verified" does not mean, and the one hole worth naming.**
+**What "verified" does not mean, and the one hole worth naming** (fixed since; see 1).
 
-1. **`--no-verify` exits 0.** It writes an engine that was never built or tested, and says so
-   twice in its output — but a caller reading only the exit code cannot tell it from a verified
-   produce. That is the hole. It is bounded: such a run still refuses to commit lock files that
-   disagree with the generated pins (proven above), and CI never uses the flag.
+1. **~~`--no-verify` exits 0.~~ FIXED.** As run for this file, `--no-verify` wrote an engine that
+   was never built or tested, said so twice in its output — and exited 0, so a caller reading only
+   the exit code could not tell it from a verified produce. That was the hole, and it is the only
+   one of these four caveats that was one. **Fixed in the factory after `factory/v0.8.0`, in commit
+   `9c5e324`; it ships in the next release, `factory/v0.8.1`** (amending
+   [0018](../../docs/decisions/0018-every-file-the-factory-writes-has-one-owner.md)): a
+   `--no-verify` produce now ends **NOT VERIFIED, exit 3**, never 0. 3 is the code this lineage
+   already gives that outcome — `scripts/engine-gate.py posture`, and `check-rebuild.py` and
+   `check-target.py` in [`hoyle-blind-rebuild`](../hoyle-blind-rebuild/), whose rule is "without
+   `--run-tests` the check exits 3, NOT VERIFIED: never 0". No flag turns it back into 0.
+
+   Re-run from a clean clone of this branch (`9c5e324`, not dirty), same package and corpus as
+   §1 above, the three outcomes a caller can see:
+
+   ```
+   $ python3 tools/factory produce --package RulesFactory.Maps.FaaPart107@4.0.0 \
+       --corpus examples/faa-part-107/part107.xml --name FaaPart107 --out ../scratch-engine --no-verify
+   …
+   verification SKIPPED (--no-verify): the engine was not built or tested, so this run ends NOT
+   VERIFIED and exits 3, never 0
+   wrote to …/scratch-engine: 88 added, 0 changed, 0 removed
+   produced FaaPart107 in …/scratch-engine, NOT VERIFIED -- nothing was built or tested, so this
+   run exits 3, not 0
+                                                                           # exit 3
+   $ FACTORY_DOTNET_SDK_OVERRIDE=10.0.111 python3 tools/factory produce … --out ../scratch-engine
+   …
+   ok   gate: scripts/validate.sh full passed on SDK 10.0.111 (FACTORY_DOTNET_SDK_OVERRIDE), not the pinned 10.0.112
+   produced FaaPart107 in …/scratch-engine, verified on SDK 10.0.111 by FACTORY_DOTNET_SDK_OVERRIDE, not the pinned 10.0.112
+                                                                           # exit 0
+   $ printf '\n<!-- hand edit -->\n' >> ../scratch-engine/Directory.Build.props
+   $ python3 tools/factory produce … --out ../scratch-engine --no-verify
+   factory: REFUSED -- Directory.Build.props is a managed file edited by hand: … Nothing was produced.
+                                                                           # exit 1
+   ```
+
+   Three outcomes, three codes: `0` verified, `1` refused, `3` NOT VERIFIED (and `2` a usage
+   error). A caller for which an unverified engine is the intended outcome accepts exactly 3 —
+   the idiom `scripts/validate.sh` already uses for `posture` — and `scripts/validate-engine.sh`
+   now does that in one `unverified_produce` wrapper, which also fails if `--no-verify` ever exits
+   0 again. `tools/tests/test_factory_verify.py`'s `TestExitCodes` holds all of it. The earlier
+   bound still holds too: such a run still refuses to commit lock files that disagree with the
+   generated pins (proven above), and CI never uses the flag.
 2. **"verified" means the gate passed, not that the engine implements anything.** The fresh
    scratch engine above was declared `verified` with 51 generated tests, no entry implemented and
    no rule logic at all — the gate says so in its own words (`no entry is implemented, so no named

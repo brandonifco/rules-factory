@@ -11,6 +11,12 @@ external review.
 *Amendment — changed pins re-lock* below. The lock-file rows of the table changed; nothing else
 did.
 
+**Amended 2026-09-16** for the hole criterion 5 of
+[#3](https://github.com/brandonifco/rules-factory/issues/3) named in
+[`examples/acceptance-4-5/EVIDENCE.md`](../../examples/acceptance-4-5/EVIDENCE.md): a
+`produce --no-verify` exits 3, NOT VERIFIED, never 0. See *Amendment — `--no-verify` is not a
+success* below. Nothing about the three classes, the detection or the re-lock changed.
+
 **Amended 2026-09-16** for [#151](https://github.com/brandonifco/rules-factory/issues/151): the
 agent rails of [0029](0029-the-rails-are-emitted-by-default-and-vendor-choice-is-engine-owned-configuration.md)
 are rows in the table below — twenty managed, one engine-owned. Nothing about the three classes or
@@ -52,7 +58,41 @@ only when the gate passes, and `produce` names them as changed, for the engine t
   is built or tested. It refuses, naming each file, package and both versions (or ranges), when
   no SDK can run, restore fails, or they still disagree, and the refusal names the command that
   works: the same produce under the override at an installed SDK, or, with none, after installing
-  the pinned one. Lock files that already agree are committed as they are.
+  the pinned one. Lock files that already agree are committed as they are. Those refusals exit 1,
+  like every other refusal; a `--no-verify` run that writes its engine exits 3, below.
+
+## Amendment — `--no-verify` is not a success
+
+The bullet above is about what a `--no-verify` run must not *commit*. This is about what it must
+not *claim*. It printed `verification SKIPPED (--no-verify)` and `produced <Name> in <out>, NOT
+VERIFIED`, and then exited 0. A script or CI job that checks only the exit code — which is what a
+script checks — could not tell an engine that was never built or tested from a verified one. It
+was found proving criterion 5 of [#3](https://github.com/brandonifco/rules-factory/issues/3) ("the
+factory validates each output before declaring success") and recorded there as the one real hole
+([`examples/acceptance-4-5/EVIDENCE.md`](../../examples/acceptance-4-5/EVIDENCE.md)).
+
+**So `produce --no-verify` exits 3, NOT VERIFIED, and never 0.** 0 means verified, 1 means refused,
+2 means a usage error, and 3 means the output was written and nothing about it was proven.
+
+- **3 is not a new invention.** It is the code this lineage already gives that outcome:
+  `scripts/engine-gate.py posture` exits 3 when a corpus cannot be verified under its declared
+  posture — "neither ok nor FAIL, and never silent" — and `examples/hoyle-blind-rebuild`'s
+  `check-rebuild.py` and `check-target.py` both document "3 NOT VERIFIED", the latter adding
+  "without `--run-tests` the check exits 3, NOT VERIFIED: never 0".
+  [0013](0013-verification-posture-belongs-to-the-corpus.md) is where the rule comes from: a run
+  that could not verify reports `NOT VERIFIED` with the reason, never `ok`. An exit code is part of
+  the report.
+- **`--no-verify` stays usable, and unflagged.** No option makes it exit 0. That is deliberate, and
+  it follows `check-target.py`'s "never 0": a flag whose only effect is to turn NOT VERIFIED into
+  success would put the hole back behind one more argument. A caller for which an unverified engine
+  is the intended outcome accepts exactly 3 and passes every other code through — the idiom
+  `scripts/validate.sh` already uses for `posture`. `scripts/validate-engine.sh` does this in one
+  wrapper (`unverified_produce`), which also fails if produce ever exits 0 under `--no-verify`.
+- **Only `produce --no-verify` exits 3 today.** `verify`, `provenance`, `rails` and `backlog` each
+  either prove their claim (0) or refuse (1); none of them writes an unproven output. If a future
+  command acquires that outcome, it takes this code.
+- **The last line names the code.** `produced <Name> in <out>, NOT VERIFIED -- nothing was built or
+  tested, so this run exits 3, not 0`. The line and the code cannot be read apart.
 
 ## Context
 

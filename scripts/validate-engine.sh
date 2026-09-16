@@ -104,6 +104,21 @@ verified_produce() {
   env -u FACTORY_DOTNET_SDK_OVERRIDE CI=true python3 tools/factory produce "$@"
 }
 
+# A `--no-verify` produce, whose engine is deliberately not built or tested here. That run exits 3,
+# NOT VERIFIED, never 0 (tools/factory/__main__.py), so this wrapper accepts exactly 3 and passes
+# every other code through: 0 would mean produce verified after all, and 1 is still a refusal.
+# Callers keep their own `|| fail ...`, and their redirections apply to this function.
+unverified_produce() {
+  local status=0
+  python3 tools/factory produce "$@" --no-verify || status=$?
+  case "$status" in
+    3) return 0 ;;
+    0) echo "produce --no-verify exited 0; an engine that was not built or tested must exit 3" >&2
+       return 1 ;;
+    *) return "$status" ;;
+  esac
+}
+
 # A scratch engine's NuGet.config ($1) gains a local folder feed ($2), the only source of RulesFactory.Maps.*.
 add_local_feed() {
   python3 - "$1" "$2" <<'PY'
@@ -138,7 +153,7 @@ PACKAGE="${packages[0]}"
 # --no-verify only because global.json and NuGet.config must be edited before anything restores;
 # the re-produce below verifies.
 step "produce $NAME from scratch (unverified)"
-python3 tools/factory produce --package "$PACKAGE" --corpus "$CORPUS" --name "$NAME" --out "$ENGINE" --no-verify
+unverified_produce --package "$PACKAGE" --corpus "$CORPUS" --name "$NAME" --out "$ENGINE"
 
 grep -qF "\"version\": \"$PIN\"" "$ENGINE/global.json" \
   || fail "the produced global.json does not pin $PIN: $(cat "$ENGINE/global.json")"
@@ -268,7 +283,7 @@ cat > "$TYPED/corpus-map.overlay.json" <<'JSON'
                   "tests": [{"test": "CorrespondenceTests.player_count__is_implemented_so_a_hand_written_handler_answers_it",
                              "mutation": "scratch"}]}}
 JSON
-python3 tools/factory produce --package "$PACKAGE" --corpus "$CORPUS" --name "$NAME" --out "$TYPED" --no-verify >/dev/null
+unverified_produce --package "$PACKAGE" --corpus "$CORPUS" --name "$NAME" --out "$TYPED" >/dev/null
 grep -qF 'internal static partial Resolution<object> PlayerCount(' "$TYPED/src/$NAME/Generated/Contracts.g.cs" \
   || fail "the implemented entry player-count has no required handler declaration in Contracts.g.cs"
 typed_build() {
@@ -359,7 +374,7 @@ cat > "$TYPED/corpus-map.overlay.json" <<'JSON'
                           "declines": [{"span": "The stage begins 'when either player has succeeded in getting all his men into his home table', and the chapter never says whether it lasts. If one of his men is hit after he has begun to bear off and then re-enters, the text does not say whether he may go on bearing off the men still at home or must first bring every man home again.",
                                         "tests": ["CorrespondenceTests.bearing_off_eligible__is_implemented_so_a_hand_written_handler_answers_it"]}]}}
 JSON
-python3 tools/factory produce --package "$PACKAGE" --corpus "$CORPUS" --name "$NAME" --out "$TYPED" --no-verify > "$SCRATCH/ruling.log" \
+unverified_produce --package "$PACKAGE" --corpus "$CORPUS" --name "$NAME" --out "$TYPED" > "$SCRATCH/ruling.log" \
   || { tail -20 "$SCRATCH/ruling.log"; fail "produce refused an overlay with a well-formed owner's ruling"; }
 grep -qF "owner's ruling bearing-off-eligible/2 on bearing-off-eligible, not the corpus" "$SCRATCH/ruling.log" \
   || fail "produce did not say that bearing-off-eligible/2 is the owner's answer"
@@ -695,8 +710,8 @@ PY
 )" || fail "cannot read what $example_package produces"
   read -r example_name example_corpus example_source <<<"$described"
   example_engine="$SCRATCH/examples/$slug"
-  python3 tools/factory produce --package "$example_package" --corpus "$example_corpus" --name "$example_name" \
-    --out "$example_engine" --no-verify > "$SCRATCH/example-$slug.log" 2>&1 \
+  unverified_produce --package "$example_package" --corpus "$example_corpus" --name "$example_name" \
+    --out "$example_engine" > "$SCRATCH/example-$slug.log" 2>&1 \
     || { tail -40 "$SCRATCH/example-$slug.log"; fail "producing $example_name from $dir failed"; }
   repin_sdk "$example_engine"
   add_local_feed "$example_engine/NuGet.config" "$feed"
