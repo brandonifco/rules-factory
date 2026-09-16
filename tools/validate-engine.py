@@ -595,6 +595,58 @@ def a_mistyped_handler_is_a_build_error(r):
         ok(f"a handler with {label}: error {code}")
 
 
+# #192: implementing an entry changes the overlay, and provenance.json and backlog/ are generated
+# from that overlay. `regenerate --write` refreshes the generated C# and nothing else, so on its own
+# it leaves a record hashing bytes that are gone and a backlog still listing the entry as one to
+# build -- which is what the live run of #157 merged, because the gate did not look. On the same
+# scratch copy as the check above, and with no extra dotnet build: mark an entry implemented,
+# regenerate, and hold the gate's own provenance step to failing and then, after a produce, passing.
+def a_stale_record_fails_the_gate(r):
+    step("an overlay edit that was regenerated but never re-produced fails the engine's gate")
+    stale = r.s("stale")
+    copy_engine(r.engine, stale)
+    parts = r.s("stale-package")
+    os.makedirs(parts, exist_ok=True)
+    with zipfile.ZipFile(r.package) as archive:
+        nuspec = nuspec_text(archive)
+        for member in ("map/corpus-map.json", "map/corpus-manifest.json"):
+            with open(os.path.join(parts, os.path.basename(member)), "wb") as handle:
+                handle.write(archive.read(member))
+    package_id = re.search(r"<id>([^<]+)</id>", nuspec).group(1)
+    version = re.search(r"<version>([^<]+)</version>", nuspec).group(1)
+    write(os.path.join(stale, "corpus-map.overlay.json"), PLAYER_COUNT_OVERLAY)
+
+    log = r.s("stale.log")
+    gate = [PYTHON, "scripts/engine-gate.py"]
+    if run_to(log, gate + ["regenerate", "--package-map", os.path.join(parts, "corpus-map.json"),
+                           "--package-manifest", os.path.join(parts, "corpus-manifest.json"),
+                           "--package-id", package_id, "--package-version", version, "--name", NAME,
+                           "--write"], cwd=stale, both=True) != 0:
+        tail(log, 20)
+        fail("the regeneration an implementer runs after an overlay edit failed")
+    ok("regenerate --write refreshed the generated C#, and that is all it did")
+
+    if run_to(log, gate + ["provenance"], cwd=stale, both=True) == 0:
+        tail(log, 20)
+        fail("the gate passed on an engine whose record is older than the overlay it was generated from")
+    for named in ("buildInputs[corpus-map.overlay.json]", "tools/re-produce.sh"):
+        if not grep_fixed(log, named):
+            tail(log, 20)
+            fail(f"the stale-record failure does not name {named}")
+    ok("provenance fails, naming the overlay and the one command that fixes it")
+
+    # That command clones rules-factory at the commit the record names and runs exactly this
+    # produce; that it takes the recorded commit and never `main` is tools/tests/test_factory_rails.py's
+    # to prove. The factory under test here is this checkout, so the produce is run from it directly.
+    with open(os.devnull, "wb") as null:
+        check(unverified_produce(["--package", r.package, "--corpus", CORPUS, "--name", NAME, "--out", stale],
+                                 stdout=null))
+    if run_to(log, gate + ["provenance"], cwd=stale, both=True) != 0:
+        tail(log, 20)
+        fail("the record is still stale after a re-produce")
+    ok("a re-produce makes the record true of the tree again")
+
+
 PLAYER_COUNT_REQUEST = """\
 namespace {name}.Requests;
 
@@ -1811,6 +1863,7 @@ def main(argv=None):
             provenance_recomputes(r)
             a_seeded_engine_references_randomness(r)
             a_mistyped_handler_is_a_build_error(r)
+            a_stale_record_fails_the_gate(r)
             a_request_input_reaches_its_handler(r)
             an_owners_ruling_is_surfaced(r)
             reproduce_beside_the_engines_own_projects(r)

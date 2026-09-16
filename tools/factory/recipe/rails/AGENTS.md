@@ -174,6 +174,15 @@ decline that names why and cites where — that is the engine working, not the e
   not clear it: the chain advances when a provider is unavailable, never because its verdict was
   unwelcome. A failure is answered by fixing the code, fixing the map, or getting an owner's
   ruling.
+- **An overlay change is finished by a re-produce.** `tools/re-produce.sh` runs it. Marking an
+  entry implemented changes the overlay, and the generated files, the backlog and
+  `provenance.json` are all derived from that overlay; the gate hashes the derived files against
+  the record and fails while they are stale. Only the factory can write that record: it names the
+  factory commit the engine was produced from and hashes every one of that factory's recipe files,
+  so nothing inside the engine can refresh it — and nothing should try. A record an engine wrote
+  about itself would hash whatever is on disk, and a gate that re-blesses its own bytes proves
+  nothing.
+
 - A check that examines nothing is a failure, never an ok. If a step could not run, say it could
   not run.
 
@@ -205,3 +214,5 @@ an issue.
 - Never implement a rule from memory. Work from the entry the issue names.
 - Never edit `corpus/`, `provenance.json`, or a generated file under `Generated/` by hand. The
   generated files are rewritten from the map; an edit there is overwritten and reported.
+- After changing `corpus-map.overlay.json`, run `tools/re-produce.sh`. The record and `backlog/`
+  are the factory's to write, and the gate fails while they are older than the overlay.

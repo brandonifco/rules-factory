@@ -12,6 +12,8 @@ finds nothing to examine fails: a check with no inputs has proven nothing.
                                      the committed corpus hashes to the baseline, under its posture
   regenerate --package-map P --package-manifest M --package-id ID --package-version V --name N [--write]
                                      every *.g.cs is exactly what the factory generates
+  provenance                         provenance.json still hashes the files on disk (re-produce after
+                                     an overlay edit)
   expected-results                   test projects on disk x target frameworks
   tests-ran DIR EXPECTED             the TRX files show that many result files and >0 tests
   named-tests DIR --map MAP          every test an implemented entry names exists and ran
@@ -23,6 +25,7 @@ Run from the engine root. Standard library only.
 import argparse
 import difflib
 import glob
+import hashlib
 import json
 import os
 import pathlib
@@ -317,6 +320,111 @@ def regenerate(args):
                             f"{args.package_id}@{args.package_version} + {OVERLAY}")
 
 
+# --- the record -------------------------------------------------------------------------
+
+RECORD = "provenance.json"
+RE_PRODUCE = "tools/re-produce.sh"
+
+
+def record_matches(_args):
+    """provenance.json still hashes the bytes on disk: the derived files are not older than the
+    overlay they were derived from (#192).
+
+    This compares and nothing else. It re-derives nothing and writes nothing, because **an engine
+    cannot author this record.** `factory produce` writes it from a rules-factory checkout: it
+    names that checkout's commit, hashes every one of the factory's recipe files, and lists what
+    the run itself wrote. An engine has five vendored modules and no run to observe. Decisively, an
+    engine can re-derive its `*.g.cs` but not scripts/validate.sh, this file, scripts/map-overlay.py,
+    scripts/factory/*.py or the CI workflow -- all recorded as generated, all hashed here. An
+    engine-side rewrite would hash whatever is on disk and hand a fresh matching SHA-256 to a
+    hand-edited gate, and a gate that re-blesses its own bytes proves nothing.
+
+    **What is compared, and what deliberately is not.** Every `generated` entry, every `managed`
+    entry, and `buildInputs[corpus-map.overlay.json]` -- and no other build input. Adding a
+    PackageReference, a project to the solution or a version to Directory.Packages.props are
+    engine-owned acts (decision 0018); making each of them require a re-produce before this goes
+    green would produce a gate people route around. Holding the whole of `buildInputs` is
+    `factory provenance`'s job, where a real re-produce can tell a legitimate addition from drift.
+    The overlay is different in kind: it is the *input to generation*, and appears in `buildInputs`
+    only because it happens to be engine-owned. That single comparison is what catches a stale
+    record, because hashing the recorded backlog files cannot: a backlog item file that still lists
+    an implemented entry is unchanged, so its hash matches. The overlay moved, so everything derived
+    from it is older than the overlay, and that is the fact this names.
+    """
+    sys.path.insert(0, str(ROOT / "scripts" / "factory"))
+    try:
+        import provenance  # noqa: E402  (the factory's own record module, vendored by produce)
+    except ImportError as error:
+        return report([f"scripts/factory/provenance.py cannot be imported ({error}); run `{RE_PRODUCE}`"], "")
+
+    path = ROOT / RECORD
+    if not path.is_file():
+        return report([f"{RECORD} is not here, so nothing says what this engine was produced from; "
+                       f"run `{RE_PRODUCE}`"], "")
+    raw = path.read_bytes()
+    try:
+        recorded = json.loads(raw.decode("utf-8"))
+    except (UnicodeDecodeError, ValueError) as error:
+        return report([f"{RECORD} is not readable JSON ({error})"], "")
+    if not isinstance(recorded, dict):
+        return report([f"{RECORD} is not a JSON object"], "")
+
+    problems, examined = [], 0
+    # The factory's own serialisation, so a hand edit shows up even when it kept every hash true.
+    if raw != provenance.serialize(recorded):
+        problems.append(f"{RECORD} is not in the factory's canonical form; only `factory produce` writes it, "
+                        f"and this file has been through another hand")
+
+    for section in ("generated", "managed"):
+        for item in recorded.get(section) or []:
+            if not (isinstance(item, dict) and isinstance(item.get("path"), str)):
+                problems.append(f"{section}: {item!r} is not a recorded path and hash")
+                continue
+            examined += 1
+            where = ROOT / pathlib.Path(*item["path"].split("/"))
+            if not where.is_file():
+                problems.append(f"{section}[{item['path']}]: recorded, missing on disk")
+            else:
+                actual = hashlib.sha256(where.read_bytes()).hexdigest()
+                if actual != item.get("sha256"):
+                    problems.append(f"{section}[{item['path']}].sha256: recorded {item.get('sha256')}, "
+                                    f"on disk {actual}")
+
+    entry = next((item for item in recorded.get("buildInputs") or []
+                  if isinstance(item, dict) and item.get("path") == OVERLAY), None)
+    overlay_path = ROOT / OVERLAY
+    if entry is not None or overlay_path.is_file():
+        examined += 1
+    if entry is None and overlay_path.is_file():
+        problems.append(f"buildInputs[{OVERLAY}]: not recorded, and the engine has one; the record predates the "
+                        f"overlay it was generated from")
+    elif entry is not None and not overlay_path.is_file():
+        problems.append(f"buildInputs[{OVERLAY}]: recorded, missing on disk")
+    elif entry is not None:
+        actual = hashlib.sha256(overlay_path.read_bytes()).hexdigest()
+        if actual != entry.get("sha256"):
+            problems.append(f"buildInputs[{OVERLAY}].sha256: recorded {entry.get('sha256')}, on disk {actual}. "
+                            f"The overlay is the input the generated files and the backlog are made from, so "
+                            f"everything derived from it is older than it is")
+
+    if not examined:
+        print(f"error: {RECORD} lists no generated file, no managed file and no {OVERLAY}, so this check examined "
+              f"nothing -- and a check that examines nothing is a failure, never an ok", file=sys.stderr)
+        return 1
+    if problems:
+        source = recorded.get("map") or {}
+        name = (recorded.get("engine") or {}).get("name")
+        for problem in problems:
+            print(f"error: {problem}", file=sys.stderr)
+        print(f"error: one command fixes all of the above: `{RE_PRODUCE}`. It clones rules-factory at the commit "
+              f"{RECORD} names and runs `factory produce --package {source.get('packageId')}@{source.get('version')} "
+              f"--corpus <this engine's corpus> --name {name} --out <this engine>` -- which is the only thing that "
+              f"writes {RECORD} and backlog/. Editing either by hand is the defect this step exists to catch.",
+              file=sys.stderr)
+        return 1
+    return report([], f"{examined} recorded file(s) hash as {RECORD} records, {OVERLAY} among them")
+
+
 # --- tests ------------------------------------------------------------------------------
 
 
@@ -527,6 +635,7 @@ def main(argv=None):
         r.add_argument(flag, required=True)
     r.add_argument("--write", action="store_true")
     r.set_defaults(run=regenerate)
+    sub.add_parser("provenance").set_defaults(run=record_matches)
     sub.add_parser("expected-results").set_defaults(run=expected_results)
     t = sub.add_parser("tests-ran")
     t.add_argument("results_dir")

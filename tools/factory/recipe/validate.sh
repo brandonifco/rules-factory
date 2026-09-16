@@ -15,6 +15,9 @@
 #   * the committed corpus hashes to the baseline the engine cites, under the posture the manifest
 #     declares -- NOT VERIFIED where that posture leaves the bytes out of reach, and never ok;
 #   * every *.g.cs is exactly a fresh regeneration: no hand edits to generated files;
+#   * provenance.json still hashes the generated and managed files and the overlay it was
+#     generated from, so an overlay edit that was never followed by a re-produce -- leaving a stale
+#     record and a backlog still listing the entry as one to build -- fails here;
 #   * format, then build and test in Debug and Release, reading the TRX files to show the tests
 #     ran, and that every test an implemented entry names exists and ran.
 #
@@ -171,6 +174,12 @@ if [[ "$RESTORED" -eq 1 && -n "${PACKAGE_MAP:-}" ]]; then
 else
   skipped "every *.g.cs matches a fresh regeneration (no hand edits)"
 fi
+
+# Not guarded on $RESTORED or $MAP_OK: it reads files in this repository and nothing else -- no
+# restore, no map package, no network -- so it can never legitimately degrade to a skip.
+step "The provenance record"
+run "provenance.json hashes the generated files, the managed files and the overlay" \
+    "${GATE[@]}" provenance || true
 
 step "Format"
 if [[ "$RESTORED" -eq 1 ]]; then

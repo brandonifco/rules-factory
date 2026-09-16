@@ -1314,6 +1314,143 @@ class TestTheVerdictReRunsTheGate(TestVerdicts):
         self.assertNotIn('"verdict-requeue"', generate.rails_files()["tools/agent-doctor.py"])
 
 
+FACTORY_STUB = '''#!/usr/bin/env python3
+"""A stand-in for the factory's CLI. It records the version of itself that ran, and its arguments,
+where the run can be seen afterwards."""
+import json, sys
+
+argv = sys.argv[1:]
+out = argv[argv.index("--out") + 1]
+with open(out + "/re-produced-by.json", "w", encoding="utf-8") as handle:
+    json.dump({"version": "@VERSION@", "argv": argv}, handle)
+print("stub factory @VERSION@ produced into " + out)
+'''
+
+
+class TestReProduce(RailsInAGitEngine):
+    """`tools/re-produce.sh`: the one command an overlay edit is finished with (#192).
+
+    The factory is a stand-in here, in a git repository of its own with two commits: the one the
+    engine's record names, and a later `main`. Which of the two runs is the whole point -- checking
+    out `main` would re-emit the gate, the rails and the vendored generator from a factory nobody
+    asked for, into an implementation pull request.
+    """
+
+    def factory_repo(self):
+        """A repository whose recorded commit and whose `main` are different factories."""
+        repo = os.path.join(self.tmp, "factory-stub")
+        os.makedirs(os.path.join(repo, "tools", "factory"))
+        git(repo, "init", "-q", "-b", "main")
+        git(repo, "config", "user.email", "t@example.invalid")
+        git(repo, "config", "user.name", "t")
+        commits = {}
+        for version in ("recorded", "main"):
+            with open(os.path.join(repo, "tools", "factory", "__main__.py"), "w", encoding="utf-8") as handle:
+                handle.write(FACTORY_STUB.replace("@VERSION@", version))
+            git(repo, "add", ".")
+            git(repo, "commit", "-qm", version)
+            commits[version] = git(repo, "rev-parse", "HEAD")
+        return repo, commits
+
+    def commit_engine_as_is(self):
+        """`commit_engine`, without producing again: the record is already pointed at the stub."""
+        git(self.out, "init", "-q", "-b", "main")
+        git(self.out, "config", "user.email", "t@example.invalid")
+        git(self.out, "config", "user.name", "t")
+        git(self.out, "add", ".")
+        git(self.out, "commit", "-qm", "the produced engine")
+
+    def record_commit(self, commit):
+        """Point the engine's record at `commit`, as a produce from that factory would have."""
+        path = os.path.join(self.out, "provenance.json")
+        with open(path, encoding="utf-8") as handle:
+            record = json.load(handle)
+        record["factory"]["commit"] = commit
+        record["factory"]["dirty"] = False
+        with open(path, "w", encoding="utf-8") as handle:
+            handle.write(json.dumps(record, indent=2, ensure_ascii=False) + "\n")
+
+    def re_produce(self, *args, repo=None, **extra):
+        environment = self.environment(**extra)
+        if repo is not None:
+            environment["RULES_ENGINE_FACTORY_REPO"] = repo
+        return subprocess.run(["bash", os.path.join(self.out, "tools", "re-produce.sh"), *args],
+                              cwd=self.out, capture_output=True, text=True, env=environment)
+
+    def test_it_re_produces_from_the_commit_the_record_names_and_never_main(self):
+        self.produced()
+        repo, commits = self.factory_repo()
+        self.record_commit(commits["recorded"])
+        self.commit_engine_as_is()
+        done = self.re_produce(repo=repo)
+        self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+        with open(os.path.join(self.out, "re-produced-by.json"), encoding="utf-8") as handle:
+            ran = json.load(handle)
+        self.assertEqual(ran["version"], "recorded",
+                         "the clone took the factory's main, not the commit provenance.json names")
+        self.assertEqual(ran["argv"][0], "produce")
+        self.assertIn("--package", ran["argv"])
+        self.assertEqual(ran["argv"][ran["argv"].index("--name") + 1], NAME)
+        self.assertEqual(ran["argv"][ran["argv"].index("--out") + 1], self.out)
+        self.assertTrue(ran["argv"][ran["argv"].index("--corpus") + 1].endswith("/corpus/part107.xml"),
+                        ran["argv"])
+
+    def test_dry_run_prints_the_produce_it_would_run_and_does_nothing(self):
+        self.produced()
+        repo, commits = self.factory_repo()
+        self.record_commit(commits["recorded"])
+        done = self.re_produce("--dry-run", repo=repo)
+        self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+        self.assertIn(commits["recorded"], done.stdout)
+        self.assertRegex(done.stdout, r"produce\s+\S*python3 \S+/tools/factory produce --package \S+@\S+ "
+                                      r"--corpus \S+ --name " + NAME + r" --out \S+")
+        self.assertIn("nothing was cloned, produced or committed", done.stdout)
+        self.assertFalse(os.path.exists(os.path.join(self.out, "re-produced-by.json")))
+
+    def test_extra_arguments_reach_produce(self):
+        self.produced()
+        repo, commits = self.factory_repo()
+        self.record_commit(commits["recorded"])
+        self.commit_engine_as_is()
+        done = self.re_produce("--no-verify", repo=repo)
+        self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+        with open(os.path.join(self.out, "re-produced-by.json"), encoding="utf-8") as handle:
+            self.assertIn("--no-verify", json.load(handle)["argv"])
+
+    def test_it_makes_no_commit(self):
+        self.produced()
+        repo, commits = self.factory_repo()
+        self.record_commit(commits["recorded"])
+        self.commit_engine_as_is()
+        head = git(self.out, "rev-parse", "HEAD")
+        done = self.re_produce(repo=repo)
+        self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+        self.assertEqual(git(self.out, "rev-parse", "HEAD"), head, "re-produce.sh committed")
+        self.assertIn("re-produced-by.json", git(self.out, "status", "--porcelain"))
+        self.assertIn("No commit was made", done.stdout)
+
+    def test_an_uncommitted_change_to_the_recorded_factory_commit_is_refused(self):
+        """The one thing that must not be in doubt: which factory is about to rewrite this engine.
+
+        A dirty tree is otherwise the normal case -- this is run *after* an overlay edit and a
+        regeneration -- so only the field the script obeys is compared with the committed record.
+        """
+        self.produced()
+        repo, commits = self.factory_repo()
+        self.record_commit(commits["recorded"])
+        self.commit_engine_as_is()
+        self.record_commit(commits["main"])  # a hand edit redirecting the clone
+        done = self.re_produce(repo=repo)
+        self.assertEqual(done.returncode, 1, done.stdout + done.stderr)
+        self.assertIn("names factory.commit", done.stderr)
+        self.assertFalse(os.path.exists(os.path.join(self.out, "re-produced-by.json")))
+        # and an edit that leaves that field alone does not stop it: the overlay is expected to move
+        with open(os.path.join(self.out, "corpus-map.overlay.json"), "w", encoding="utf-8") as handle:
+            handle.write("{}\n")
+        self.record_commit(commits["recorded"])
+        self.assertEqual(self.re_produce(repo=repo).returncode, 0)
+
+
 class TestTheEngineGateChecksItsOwnRails(TestAProducedEngine):
     """`scripts/engine-gate.py rails`: the rails held to their own word (#153, 0029 §8 and §9)."""
 
