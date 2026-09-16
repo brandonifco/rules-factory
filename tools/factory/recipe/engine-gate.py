@@ -15,6 +15,8 @@ finds nothing to examine fails: a check with no inputs has proven nothing.
   expected-results                   test projects on disk x target frameworks
   tests-ran DIR EXPECTED             the TRX files show that many result files and >0 tests
   named-tests DIR --map MAP          every test an implemented entry names exists and ran
+  rails                              the agent rails hold: read-only reviewers, no dangling
+                                     citation, a policy the rails can read
 
 Run from the engine root. Standard library only.
 """
@@ -386,6 +388,118 @@ def named_tests(args):
                             f"executed in all {frameworks} target framework(s)")
 
 
+# --- the rails (rules-factory decision 0029) -------------------------------------------------
+
+POLICY = ".github/agent-policy.json"
+# A charter that grants any of these can edit what it reviews. The predecessor's own check caught a
+# charter claiming read-only while granting `Bash`, which is why this is a check and not a rule.
+MUTATING_TOOLS = {"bash", "edit", "write", "notebookedit", "multiedit", "task", "webfetch", "websearch"}
+REVIEWER_CHARTERS = (".claude/agents/repo-steward.md", ".claude/agents/rules-conformance.md")
+RAIL_DOCUMENTS = ("AGENTS.md", "CLAUDE.md", "docs/agent-team.md")
+LINK = re.compile(r"\[[^\]]*\]\(([^)#\s]+)(?:#[^)\s]*)?\)")
+
+
+def charter_tools(text):
+    """The `tools:` line of a charter's front matter, as a set, or None when it grants no list."""
+    if not text.startswith("---\n"):
+        return None
+    for line in text.split("---\n", 2)[1].splitlines():
+        if line.startswith("tools:"):
+            return {tool.strip().lower() for tool in line.split(":", 1)[1].split(",") if tool.strip()}
+    return None
+
+
+def rails(_args):
+    """The rails hold together: read-only means read-only, and nothing cites what is not here.
+
+    Two failures this repository's lineage has actually shipped, turned into checks:
+
+      * a charter that described a reviewer as read-only while granting it a tool that writes. A
+        reviewer that can edit what it reviews is not a reviewer, and prose saying otherwise is
+        worse than nothing because it is believed;
+      * enforcement machinery shipped beside documents it cited and did not have -- sixty-one
+        references to files that did not exist, several inside runtime error messages, and a
+        pre-armed hook whose escape hatch was documented in a file that had been deleted. Rails
+        and their manual ship together or neither ships.
+    """
+    problems = []
+    examined = 0
+
+    for relative in REVIEWER_CHARTERS:
+        path = ROOT / relative
+        if not path.is_file():
+            problems.append(f"{relative} is missing: a reviewer role with no charter is a reviewer with no limits")
+            continue
+        examined += 1
+        granted = charter_tools(path.read_text(encoding="utf-8"))
+        if granted is None:
+            problems.append(f"{relative} grants no explicit `tools:` list, so it inherits every tool. A reviewer "
+                            f"that can edit what it reviews is not a reviewer.")
+        elif granted & MUTATING_TOOLS:
+            problems.append(f"{relative} grants {', '.join(sorted(granted & MUTATING_TOOLS))}, which can write. "
+                            f"A read-only charter that grants a writing tool is the predecessor's own bug.")
+
+    for relative in RAIL_DOCUMENTS + REVIEWER_CHARTERS + (".claude/agents/engine-dev.md",):
+        path = ROOT / relative
+        if not path.is_file():
+            problems.append(f"{relative} is missing, and other rails cite it")
+            continue
+        for target in LINK.findall(path.read_text(encoding="utf-8")):
+            if target.startswith(("http://", "https://", "mailto:")):
+                continue
+            examined += 1
+            if not (path.parent / target).resolve().exists():
+                problems.append(f"{relative} cites {target}, which does not exist in this engine")
+
+    # Every path a rail names in running text, checked the same way: a command an agent is told to
+    # run that is not here is the same defect as a broken link, and reads as more authoritative.
+    for relative in RAIL_DOCUMENTS:
+        path = ROOT / relative
+        if not path.is_file():
+            continue
+        for named in set(re.findall(r"`((?:tools|scripts)/[A-Za-z0-9_.\-/]+\.(?:py|sh))`",
+                                    path.read_text(encoding="utf-8"))):
+            examined += 1
+            if not (ROOT / named).is_file():
+                problems.append(f"{relative} tells an agent to run {named}, which this engine does not have")
+
+    policy_path = ROOT / POLICY
+    if not policy_path.is_file():
+        problems.append(f"{POLICY} is missing: every rail reads its labels, contexts and chain from it")
+    else:
+        examined += 1
+        try:
+            document = json.loads(policy_path.read_text(encoding="utf-8"))
+        except ValueError as error:
+            problems.append(f"{POLICY} is not JSON ({error}); the rails cannot read their own configuration")
+            document = None
+        if isinstance(document, dict):
+            if document.get("schemaVersion") != 1:
+                problems.append(f"{POLICY} has schemaVersion {document.get('schemaVersion')!r}; this engine's rails "
+                                f"read version 1")
+            review = document.get("review") or {}
+            if not review.get("semanticContext"):
+                problems.append(f"{POLICY} sets no review.semanticContext, so no semantic verdict can be recorded")
+            chain = review.get("independentFallback") or []
+            if not chain:
+                problems.append(f"{POLICY} configures no independent reviewer, so an issue classified as needing "
+                                f"one can never be merged")
+            for link in chain:
+                if not (isinstance(link, dict) and link.get("id") and link.get("context")):
+                    problems.append(f"{POLICY}: every review.independentFallback link needs an id and a context "
+                                    f"(got {link!r}). A verdict recorded under a generic context cannot be told "
+                                    f"from a same-family fallback.")
+            for field in ("ready", "blocked", "needsDecision", "normalRisk", "independentRisk"):
+                if not (document.get("labels") or {}).get(field):
+                    problems.append(f"{POLICY} names no {field} label, and the rails read every label from here")
+
+    if not examined:
+        print("no rails found to examine -- this check proved nothing", file=sys.stderr)
+        return 1
+    return report(problems, f"the rails hold: {len(REVIEWER_CHARTERS)} read-only charter(s), {examined} citation(s) "
+                            f"and path(s) that resolve, and a policy the rails can read")
+
+
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__.split("\n")[0])
     sub = parser.add_subparsers(dest="command", required=True)
@@ -413,6 +527,7 @@ def main(argv=None):
     n.add_argument("results_dir")
     n.add_argument("--map", required=True)
     n.set_defaults(run=named_tests)
+    sub.add_parser("rails").set_defaults(run=rails)
     args = parser.parse_args(argv)
     return args.run(args)
 

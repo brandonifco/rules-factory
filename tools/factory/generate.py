@@ -1090,12 +1090,19 @@ RAILS = {
     "tools/new-issue.sh": "tools/new-issue.sh",
     "tools/entry-packet.py": "tools/entry-packet.py",
     "tools/review-packet.py": "tools/review-packet.py",
+    "tools/pr-policy.py": "tools/pr-policy.py",
+    "tools/record-verdict.py": "tools/record-verdict.py",
+    "tools/conformance-gate.py": "tools/conformance-gate.py",
+    ".github/pull_request_template.md": "pull_request_template.md",
+    ".github/workflows/pr-policy.yml": "workflows/pr-policy.yml",
+    ".github/workflows/conformance-gate.yml": "workflows/conformance-gate.yml",
 }
 # The rails an operator runs. `produce` writes with the default mode, so a script invoked by path
 # would not run; the hook is invoked through `python3` by .claude/settings.json instead and needs
 # no bit. The mode is not part of a recipe's bytes, so it plays no part in hand-edit detection.
 EXECUTABLE = frozenset({"tools/dispatch-agent.sh", "tools/new-issue.sh", "tools/entry-packet.py",
-                        "tools/review-packet.py"})
+                        "tools/review-packet.py", "tools/pr-policy.py", "tools/record-verdict.py",
+                        "tools/conformance-gate.py"})
 RAILS_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "recipe", "rails")
 
 

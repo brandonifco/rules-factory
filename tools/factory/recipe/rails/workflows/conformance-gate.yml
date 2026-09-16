@@ -1,0 +1,41 @@
+name: conformance-gate
+
+# Emitted by rules-factory as a managed file (decision 0029). It runs tools/conformance-gate.py,
+# which asks whether the review verdicts this change needs are recorded at the commit being
+# merged. The verdicts themselves are commit statuses, written by tools/record-verdict.py; this
+# workflow records nothing and reviews nothing.
+#
+# It re-runs on `synchronize` because that is the point: a new commit means the verdicts recorded
+# on the old one no longer describe what is being merged, and this check goes red again by itself.
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, labeled, unlabeled]
+    branches: [main]
+  status:
+
+concurrency:
+  group: conformance-gate-${{ github.event.pull_request.number || github.sha }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  pull-requests: read
+  issues: read
+  statuses: read
+
+jobs:
+  conformance-gate:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Require the recorded verdicts at this commit
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python3 tools/conformance-gate.py "${{ github.event.pull_request.number }}"

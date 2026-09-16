@@ -76,6 +76,12 @@ A branch closes **exactly one** issue, and its pull request says so with one `Cl
 Stage explicit paths; `git add -A` and `git add .` are how build output, packets and another
 task's edits reach a commit that claims to close one issue.
 
+The pull request is filled in from `.github/pull_request_template.md`, and `tools/pr-policy.py`
+checks it mechanically as a required check: one linked issue, every section filled, a command and
+its output rather than a claim, an entry and a locator for semantic work, who reviewed, and
+exactly one state and one risk label on the issue. None of that is about form. Each line of it is
+something a reviewer would otherwise have to take on trust.
+
 `.claude/hooks/primary-checkout-guard.py` enforces the primary checkout's cleanliness for Claude
 agents. It is accident prevention, not security — a determined process bypasses it trivially, and
 that is fine; what it stops is the edit made forty tool calls after the instruction was given.
@@ -138,7 +144,9 @@ decline that names why and cites where — that is the engine working, not the e
 
 ## 7. Evidence
 
-- **The gate is `./scripts/validate.sh full`.** It is the one definition of acceptable here. Do
+- **The gate is `./scripts/validate.sh full`.** It is the one definition of acceptable here, and
+  it checks the rails themselves too: a reviewer charter that grants a tool that writes, and a
+  rail citing a document this engine does not have, both fail it. Do
   not invent a substitute, do not run a narrower command and report the gate as passed, and do
   not change the gate to make a change pass.
 - **Every test records the mutation that makes it fail.** The overlay holds it. A test whose
@@ -150,6 +158,18 @@ decline that names why and cites where — that is the engine working, not the e
   assembles the issue, the claim, the entries as the map has them, the overlay's before and after,
   the bounded diff and what must be green. Its sections are in the order a semantic reviewer reads
   them: the entry before the implementation, always.
+- **A verdict names a commit.** `tools/record-verdict.py --pr <n> --reviewer <id> --verdict
+  pass|fail` records it as a commit status on the pull request's head SHA, and
+  `tools/conformance-gate.py` requires it there. A further commit therefore invalidates the review
+  that preceded it, automatically, because the status is on the bytes that were actually read. A
+  verdict that lives only in a conversation is worth nothing to this repository.
+
+  A change touching the semantic surface needs the semantic verdict; an issue classified as
+  needing independent review needs one of the configured independent contexts as well. **A
+  recorded failure at any configured context blocks outright**, and a pass recorded elsewhere does
+  not clear it: the chain advances when a provider is unavailable, never because its verdict was
+  unwelcome. A failure is answered by fixing the code, fixing the map, or getting an owner's
+  ruling.
 - A check that examines nothing is a failure, never an ok. If a step could not run, say it could
   not run.
 

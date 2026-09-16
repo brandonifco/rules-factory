@@ -217,6 +217,12 @@ if [[ "$MODE" != "fast" ]]; then
   build_and_test Release CI=true
 fi
 
+# The rails this engine is worked under, held to their own word: a reviewer charter that grants a
+# tool that writes, and a rail citing a document this engine does not have, are both defects this
+# project's lineage has actually shipped (rules-factory decision 0029).
+step "The agent rails"
+run "the rails hold: read-only reviewers, no dangling citation, a readable policy" "${GATE[@]}" rails || true
+
 echo
 if [[ "$FAILED" -eq 0 && "${#NOT_VERIFIED[@]}" -gt 0 ]]; then
   printf '%s%svalidate.sh %s: PASS, and NOT VERIFIED: %s%s\n' \

@@ -64,7 +64,7 @@ marked `not implemented` that the parser does have.
 | `produce` | `--adopt` | implemented | make a managed file engine-owned, keeping its edits |
 | `produce` | `--reset` | implemented | overwrite a managed or adopted file with the current recipe |
 | `produce` | domain pack | not implemented | no pack exists; provenance records `"packs": []` |
-| `produce` | agent rails | not implemented | not an input — the rails are output, and no flag turns them on or off ([0029](docs/decisions/0029-the-rails-are-emitted-by-default-and-vendor-choice-is-engine-owned-configuration.md)). Emitted: the contract, the roles, the charters, the guard, the engine-owned policy, the entry and review packets, and dispatch. Not yet: the PR policy and the verdict gates ([#152](https://github.com/brandonifco/rules-factory/issues/152)–[#155](https://github.com/brandonifco/rules-factory/issues/155)) |
+| `produce` | agent rails | not implemented | not an input — the rails are output, and no flag turns them on or off ([0029](docs/decisions/0029-the-rails-are-emitted-by-default-and-vendor-choice-is-engine-owned-configuration.md)). Emitted: the contract, the roles, the charters, the guard, the engine-owned policy, the packets, dispatch, the pull request contract and the verdict gates. Not yet: the PR policy and the verdict gates ([#152](https://github.com/brandonifco/rules-factory/issues/152)–[#155](https://github.com/brandonifco/rules-factory/issues/155)) |
 | `backlog` | — | implemented | synchronise `backlog/` with GitHub issues through `gh` |
 | `backlog` | `--create` | implemented | the only action; never closes or deletes an issue |
 | `backlog` | `--repo` | implemented | `owner/name` |
@@ -154,7 +154,7 @@ found at run time, not at compile time. The string-keyed `Registry` and reflecti
 | Corpus maps — schema, checker, packages | this | maps of two corpora; `hoyle-backgammon` and `faa-part-107` published as packages |
 | Corpus toolkit — adapters, locators, boundary policy | none | locator checkers for two citation grammars live here; no adapters |
 | Domain packs — tabletop, legal | none | not implemented |
-| Agent rails for produced engines | this | decided ([0029](docs/decisions/0029-the-rails-are-emitted-by-default-and-vendor-choice-is-engine-owned-configuration.md)); `AGENTS.md`, the roles, the charters, the guard, the packets, dispatch and `.github/agent-policy.json` are emitted. The PR policy and the verdict gates are open ([#1](https://github.com/brandonifco/rules-factory/issues/1), [#4](https://github.com/brandonifco/rules-factory/issues/4)) |
+| Agent rails for produced engines | this | decided ([0029](docs/decisions/0029-the-rails-are-emitted-by-default-and-vendor-choice-is-engine-owned-configuration.md)); `AGENTS.md`, the roles, the charters, the guard, the packets, dispatch, the PR contract, the recorded verdicts and `.github/agent-policy.json` are emitted. Making the checks *required* on GitHub is open ([#1](https://github.com/brandonifco/rules-factory/issues/1), [#4](https://github.com/brandonifco/rules-factory/issues/4)) |
 | **Factory — intake, generation, gate, backlog, provenance, verify** | **this** | implemented; acceptance test ([#3](https://github.com/brandonifco/rules-factory/issues/3)) not passed |
 | Produced engines | [`hoyle-backgammon`](https://github.com/brandonifco/hoyle-backgammon) | produced by the factory (`factory/v0.2.1`, map 4.0.0), with hand-written rule handlers ([evidence](examples/hoyle-backgammon/produced-engine/EVIDENCE.md)) |
 | Hand-built engines | `deckard`, `SRD_Combat` | built by hand, before the factory |
@@ -185,10 +185,12 @@ backlog       backlog/NNN-<entry-id>.md, one per entry still to build, in
 provenance    factory commit, map package, corpus, kernel, recipe hashes, and the
               generated, managed, engine-owned and build-input files; "packs": []
 rails         AGENTS.md, the roles, the three charters, the primary-checkout guard,
-              dispatch, the entry and review packets, and .github/agent-policy.json,
-              which the engine owns
+              dispatch, the entry and review packets, the pull request template and
+              its policy check, the recorded verdict and its conformance gate, and
+              .github/agent-policy.json, which the engine owns
 
-not implemented: a domain pack as input; the rails' PR policy and verdict gates
+not implemented: a domain pack as input; `factory rails`, which makes the two new
+checks required on GitHub rather than merely present
 ```
 
 ## Why a manual before code
