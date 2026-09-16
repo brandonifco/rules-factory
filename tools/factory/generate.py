@@ -1185,6 +1185,43 @@ def managed_files():
 
 
 AGENT_POLICY = ".github/agent-policy.json"
+# The five labels the issue state machine is written in: three states and two risks, in the order
+# `agent_policy` writes them.
+LABEL_KEYS = ("ready", "blocked", "needsDecision", "normalRisk", "independentRisk")
+
+
+class PolicyError(ValueError):
+    """An `.github/agent-policy.json` the rails cannot act on. Callers raise their own error type."""
+
+
+def policy_labels(document, where=AGENT_POLICY):
+    """The five label strings, or a refusal. The one place the label vocabulary is judged (#188).
+
+    Two keys may not share a string. `backlog.label_plan` computes a state set and a risk set from
+    these five, and two keys that collapse into one label make those sets lie: with `ready` equal
+    to `blocked` an issue is in two states at once and neither can be removed, and with a state
+    label equal to a risk label, moving the state strips the risk. Either way the issues reach
+    GitHub undispatchable, and `rails --check` said OK, because each key was non-empty.
+
+    It lives here because this module writes that file (`agent_policy` below), so what the rails
+    demand of it cannot drift from what the factory ships in it; `rails.py` and `backlog.py` both
+    read it through here and neither states the rule itself.
+    """
+    labels = document.get("labels") or {}
+    missing = [key for key in LABEL_KEYS if not labels.get(key)]
+    if missing:
+        raise PolicyError(f"{where} names no {', '.join(sorted(missing))} label; the rails read every label "
+                          f"from it, so a missing one would silently go unapplied")
+    taken = {}
+    for key in LABEL_KEYS:
+        taken.setdefault(labels[key], []).append(key)
+    shared = sorted((name, keys) for name, keys in taken.items() if len(keys) > 1)
+    if shared:
+        collisions = "; ".join(f"{' and '.join(keys)} are both {name!r}" for name, keys in shared)
+        raise PolicyError(f"{where} gives one label to more than one key ({collisions}); the five are a state "
+                          f"machine and a risk axis, so an issue would be in two states at once, or lose its "
+                          f"risk label when its state changed")
+    return {key: labels[key] for key in LABEL_KEYS}
 
 
 def agent_policy():

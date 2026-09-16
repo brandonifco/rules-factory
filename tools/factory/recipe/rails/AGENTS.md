@@ -198,6 +198,19 @@ decline that names why and cites where — that is the engine working, not the e
   that preceded it, automatically, because the status is on the bytes that were actually read. A
   verdict that lives only in a conversation is worth nothing to this repository.
 
+  **What the verdict gate proves, and what it does not.** A verdict is a commit status, and
+  **anyone who can write a commit status on this repository can post one**: any collaborator with
+  write access, any workflow whose token carries `statuses: write`, anyone holding a leaked token.
+  Nothing in the mechanism attributes a verdict to the reviewer it names. So the gate is an
+  integrity check — against a review that was skipped, forgotten, or formed on other bytes — and
+  **not an authentication of who reviewed**. What it does prove is worth keeping and is exactly the
+  commit binding above: a verdict names one SHA, so it cannot be replayed onto a commit nobody
+  read, and a further commit ends it. The three required checks are pinned to the app that posts
+  them, so a hand-posted status cannot impersonate one; a verdict context cannot be pinned the same
+  way, because it is posted by a person's token and the pin names an app. Recording a verdict that
+  was never formed is therefore stopped by honesty and by review, not by permissions — which is
+  what makes an invented verdict a serious act rather than a shortcut.
+
   **Recording it is the whole of the step.** `.github/workflows/verdict-requeue.yml` sees the
   status and asks the gate to report again at that commit; there is no re-run to remember. If the
   check is still red a minute later, the thing to read is that workflow's run, not the verdict.
