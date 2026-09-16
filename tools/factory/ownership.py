@@ -109,6 +109,8 @@ TABLE = (
     Row(".github/workflows/pr-policy.yml", MANAGED, 1, "the required check that runs pr-policy.py (0029)"),
     Row(".github/workflows/conformance-gate.yml", MANAGED, 1,
         "the required check that runs conformance-gate.py (0029)"),
+    Row("tools/agent-doctor.py", MANAGED, 1,
+        "whether the rails are active or only present, locally and on GitHub (0029)"),
     Row("global.json", MANAGED, 1,
         "the kernel's SDK pin and roll-forward policy; an engine that must move it adopts it"),
     Row("NuGet.config", MANAGED, 2,
@@ -194,6 +196,9 @@ RECIPE_SHA256 = {
     },
     ".github/workflows/conformance-gate.yml": {
         1: "851d64e8705363b70711b74fe1b25306c3fac1c1e26c88a9805defc3a03042a8",
+    },
+    "tools/agent-doctor.py": {
+        1: "1b6fced99797d165ab0216523bddae183d6e7254f41d5d5f51cdb1d1c3b8913d",
     },
     "global.json": {
         1: "12f1cf1c3eef038f55de570dc8f5e321f4ff5306a9281106c43cc60a1f78a371",

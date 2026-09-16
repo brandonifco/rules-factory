@@ -164,11 +164,15 @@ class TheRealReadme(unittest.TestCase):
         self.assertGreater(examined, 0)
 
     def test_a_subcommand_added_to_the_real_cli_fails(self):
+        # A name the CLI will not grow: `rails` was this fixture until the CLI grew it (#155), and a
+        # fixture that collides with a real subcommand fails as an argparse error rather than as the
+        # check it is testing.
         parser = status.load_parser(self.CLI_PATH)
         commands = next(a for a in parser._actions if isinstance(a, argparse._SubParsersAction))
-        commands.add_parser("rails")
+        commands.add_parser("not-a-real-subcommand")
         problems, _ = status.check(self.text(), status.cli_surface(parser))
-        self.assertIn("subcommand `rails` is in the CLI and not in the README's status table", problems)
+        self.assertIn("subcommand `not-a-real-subcommand` is in the CLI and not in the README's status table",
+                      problems)
 
     def test_a_flag_added_to_the_real_cli_fails(self):
         parser = status.load_parser(self.CLI_PATH)
