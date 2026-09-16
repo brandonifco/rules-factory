@@ -6,8 +6,10 @@
   python3 tools/factory backlog --create --repo <owner/name> --dir <engine dir>
 
 `produce` runs, in order, and stops at the first refusal. Every step writes into a staging copy
-of `--out`, and the result is committed to `--out` only after the last step passed, so a
-refusal leaves `--out` byte-identical to how it started (transaction.py, #67):
+of `--out`, and the result is written to `--out` only after the last step passed, so a
+refusal leaves `--out` byte-identical to how it started (transaction.py, #67). `produce` writes
+files and never runs git in the engine: when `--out` is a git checkout the last line says the
+changes are uncommitted, for whoever ran it to review and commit:
 
   * intake (intake.py) -- the package is a map package carrying its checker, the map's
     `schemaVersion` is one the factory reads, the corpus's licence is public domain or open
@@ -28,22 +30,23 @@ refusal leaves `--out` byte-identical to how it started (transaction.py, #67):
   * provenance (provenance.py), last -- `provenance.json` in the engine root, embedded in the
     engine. Before anything else, a factory whose git working tree is dirty is refused unless
     `--allow-dirty`;
-  * verify (verify.py), in the staging copy, before anything is committed -- the engine is
+  * verify (verify.py), in the staging copy, before anything is written out -- the engine is
     proven, as below, so a failure leaves `--out` as it was and only a verified engine is ever
-    committed. The lock files restore writes are committed with it (bin/ and obj/ never are).
+    written out. The lock files restore writes are written with it (bin/ and obj/ never are).
     When restore writes lock files there, provenance.json is rewritten before the gate builds
-    to record them as build inputs (#69), so what is committed is what the gate tested.
+    to record them as build inputs (#69), so what is written out is what the gate tested.
     When the run changed the generated pins (a map version bump) and lock files exist, verify
     re-locks them first (#94); that is the one case produce rewrites engine-owned files.
     `--no-verify` skips it, for a machine without the SDK the engine pins, and the output and
-    the final line say the engine was committed unverified. A `--no-verify` run whose committed lock
+    the final line say the engine was written unverified. A `--no-verify` run whose committed lock
     files resolve a pinned package (RulesKernel, RulesKernel.Randomness, the map) at another version
     than the generated pins re-locks them with `dotnet restore` alone, on the pinned SDK or
     `FACTORY_DOTNET_SDK_OVERRIDE`, and records them. When no SDK can run, restore fails, or the lock
     files still disagree, it is refused, naming each lock file, package and both versions, and the
-    command that works. Lock files that agree are committed as they are;
-  * commit (transaction.py) -- the files the steps added, changed or removed are put in place
-    in `--out`, journaled and rolled back on failure (a fresh `--out` is one rename).
+    command that works. Lock files that agree are written out as they are;
+  * writing out (transaction.py) -- the files the steps added, changed or removed are put in place
+    in `--out`, journaled and rolled back on failure (a fresh `--out` is one rename). No git commit
+    is made, here or anywhere else in produce.
 
 `backlog --create` synchronises those files with GitHub issues through `gh` (or `$FACTORY_GH`):
 each file is matched to its issue by the entry marker in its body, never by title, and the
@@ -99,7 +102,8 @@ def produce(args):
     state = provenance.factory_state()
     provenance.require_clean(state, args.allow_dirty)
     # Every step writes into `out`, a staging copy of --out; --out itself is only touched by
-    # commit(), after the last step passed (transaction.py).
+    # commit(), after the last step passed -- which puts files in place and makes no git commit
+    # (transaction.py).
     with transaction.Stage(args.out, log=sys.stdout) as stage:
         out = stage.root
         # The pins the engine had before this run: the staging copy is still --out as it was.
@@ -153,6 +157,9 @@ def produce(args):
               f"review and commit them")
     print(f"produced {args.name} in {args.out}, {'NOT VERIFIED' if args.no_verify else 'verified'}"
           f"{overridden_suffix(overridden, verify_step.pinned_sdk(args.out), 'lock files re-locked' if args.no_verify else '')}")
+    # produce writes files and runs no git in the engine: say so where --out is a git checkout,
+    # so nobody reads "wrote to <engine>" as a commit that was made for them (transaction.py).
+    transaction.git_note(args.out, log=sys.stdout)
     return document
 
 
@@ -202,7 +209,7 @@ def relock_stale_locks(out, args, record_lock_files):
     still = verify_step.stale_locks(out, pinned)
     if still:
         raise intake_step.Refused(f"{refused}after re-locking they still disagree ({describe_stale(still)}), so "
-                                  f"nothing is committed")
+                                  f"nothing is written out")
     print(f"--no-verify: re-locked the lock files that disagreed with the generated pins in "
           f"{verify_step.PACKAGES_PROPS} ({lines})")
     record_lock_files()
@@ -259,7 +266,7 @@ def build_parser():
     p.add_argument("--allow-dirty", action="store_true",
                    help="produce from a factory with uncommitted changes, recording dirty: true")
     p.add_argument("--no-verify", action="store_true",
-                   help="commit the engine without `verify` (no .NET SDK here); the output says it is not verified")
+                   help="write the engine without `verify` (no .NET SDK here); the output says it is not verified")
     p.add_argument("--adopt", action="append", metavar="PATH",
                    help="make this managed file (global.json, NuGet.config, Directory.Build.props) engine-owned, "
                         "keeping its edits; repeatable (tools/factory/ownership.py)")
