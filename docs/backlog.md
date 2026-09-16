@@ -43,6 +43,11 @@ Rails especially. Deciding what every produced engine ships with, from a sample 
 game, is how the predecessor repository ended up encoding one team's operating model as a
 framework. Wait for a corpus that is not a game.
 
+**The hold is lifted for the rails, 2026-09-15.** `faa-part-107` is a regulation and
+`srd-52-combat` is not backgammon, so the sample is no longer one board game. What the factory
+emits, and where the line falls between it and one team's operating model, is
+[0029](decisions/0029-the-rails-are-emitted-by-default-and-vendor-choice-is-engine-owned-configuration.md).
+
 ### `review-p0`, `review-p1`, `review-p2` — findings of the September 2026 external review
 
 The factory's code was reviewed from outside in September 2026, and each finding became an
