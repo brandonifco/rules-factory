@@ -127,12 +127,19 @@ import pathlib, re, sys
 
 root = pathlib.Path(sys.argv[1])
 LINK = re.compile(r"\[[^\]]*\]\(([^)#\s]+)(?:#[^)\s]*)?\)")
+# .claude/worktrees is where a worktree lands when one is made inside the repository. The rails
+# warn that such a worktree is "scanned by a tool that did not expect it", and this is that tool:
+# the rails copies under it resolve against an engine's layout, not this repository's, so they
+# would all read as broken. git already ignores the directory; so does this.
 IGNORED = {".git", "node_modules"}
+IGNORED_PATHS = {root / ".claude" / "worktrees"}
 RECIPE = root / "tools" / "factory" / "recipe"
 
 broken = examined = 0
 for md in sorted(root.rglob("*.md")):
     if any(part in IGNORED for part in md.parts) or RECIPE in md.parents:
+        continue
+    if any(ignored in md.parents for ignored in IGNORED_PATHS):
         continue
     for target in LINK.findall(md.read_text(encoding="utf-8", errors="replace")):
         if target.startswith(("http://", "https://", "mailto:")):
