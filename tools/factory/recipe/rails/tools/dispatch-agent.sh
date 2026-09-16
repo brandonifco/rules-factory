@@ -191,7 +191,15 @@ do_create() {
   printf '  base     %s\n\n' "$base"
   printf 'Work there, not here:\n  cd %s\n\n' "$path"
   printf 'The entry this issue names, as the map has it:\n  tools/entry-packet.py <entry-id>\n\n'
-  printf 'Before opening the pull request:\n  ./scripts/validate.sh full\n'
+  # The re-produce comes first, and is printed whether or not this issue's work will touch the
+  # overlay (#202). Marking an entry `implemented` edits corpus-map.overlay.json, and since #192
+  # the gate's provenance step fails by design while the record and the backlog are older than it,
+  # so the gate alone is an order no entry implementation can follow. Unconditional rather than
+  # guessed: a re-produce on an unchanged overlay writes nothing, and dispatch cannot know what the
+  # work will touch before it is done.
+  printf 'Before opening the pull request:\n'
+  printf '  tools/re-produce.sh          # an overlay change is finished by a re-produce\n'
+  printf '  ./scripts/validate.sh full   # the gate, whole, after the record is current\n'
   printf 'The pull request must say:  Closes #%s\n' "$issue"
 }
 

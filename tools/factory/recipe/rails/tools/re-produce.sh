@@ -9,10 +9,10 @@
 #
 # **An overlay edit is finished by a re-produce.** `provenance.json` and `backlog/` are generated
 # files (decision 0018): `factory produce` is their only author, and nothing in a produced engine
-# can refresh them. `scripts/engine-gate.py regenerate --write` refreshes the generated C# and
-# nothing else, so after an overlay change the record still hashes the old bytes and the backlog
-# still lists the entry as one to build. `scripts/engine-gate.py provenance` fails while that is
-# true, and names this script.
+# can refresh them. The gate's own regeneration step refreshes the generated C# and nothing else,
+# so after an overlay change the record still hashes the old bytes and the backlog still lists the
+# entry as one to build. `scripts/engine-gate.py provenance` fails while that is true, and names
+# this script.
 #
 # **Why a script and not a paragraph.** The procedure is: clone rules-factory at the commit the
 # record names, and run produce with the package, corpus, name and output this engine's record
