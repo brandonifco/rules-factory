@@ -38,7 +38,7 @@ The factory is now code, in standard-library Python under
 | M2 scaffold and generation | `generate.py`, `ownership.py` | merged. The registry, map entries and correspondence tests as `*.g.cs`; one ownership class per file ([0018](docs/decisions/0018-every-file-the-factory-writes-has-one-owner.md)) |
 | M3 gate recipe | `gate.py`, `recipe/` | merged. Every engine carries `scripts/validate.sh` and a CI workflow that runs it |
 | M4 provenance | `provenance.py` | merged. `provenance.json` (format 3), and a command that recomputes it |
-| M5 backlog | `backlog.py` | merged. `backlog/` files, and GitHub issues matched to them by an entry marker, never by title |
+| M5 backlog | `backlog.py` | merged. `backlog/` files, and GitHub issues matched to them by an entry marker, never by title; one state label and one risk label from the engine's own `.github/agent-policy.json` |
 | Verify and write out | `verify.py`, `transaction.py` | merged. `produce` verifies in a staging copy and writes only what passed into `--out`. It writes files and makes no commit: the changes are left in the engine's working tree to review and commit |
 | Acceptance: an engine the factory produced | | [`hoyle-backgammon`](https://github.com/brandonifco/hoyle-backgammon) is produced by `factory/v0.2.1` from `RulesFactory.Maps.HoyleBackgammon` 4.0.0. A from-scratch produce differs from it only in engine-owned files, and `factory provenance` matches it ([evidence](examples/hoyle-backgammon/produced-engine/EVIDENCE.md)). Not yet ticked on [#3](https://github.com/brandonifco/rules-factory/issues/3) |
 | Acceptance: rebuild an engine blind, and build something that is not a game | | not done ([#3](https://github.com/brandonifco/rules-factory/issues/3)); criterion 1 is a blind rebuild of `hoyle-backgammon`, since the factory admits no licensed corpus ([0028](docs/decisions/0028-the-factory-admits-only-corpora-whose-licence-permits-publishing-them.md)) |
@@ -65,7 +65,7 @@ marked `not implemented` that the parser does have.
 | `produce` | `--reset` | implemented | overwrite a managed or adopted file with the current recipe |
 | `produce` | domain pack | not implemented | no pack exists; provenance records `"packs": []` |
 | `produce` | agent rails | not implemented | not an input — the rails are output, and no flag turns them on or off ([0029](docs/decisions/0029-the-rails-are-emitted-by-default-and-vendor-choice-is-engine-owned-configuration.md)). Emitted: the contract, the roles, the charters, the guard, the engine-owned policy, the packets, dispatch, the pull request contract and the verdict gates. Not yet: the PR policy and the verdict gates ([#152](https://github.com/brandonifco/rules-factory/issues/152)–[#155](https://github.com/brandonifco/rules-factory/issues/155)) |
-| `backlog` | — | implemented | synchronise `backlog/` with GitHub issues through `gh` |
+| `backlog` | — | implemented | synchronise `backlog/` with GitHub issues through `gh`, and label each one: state from the item's dependencies, `normal` risk on an issue with none. A `needs-decision` state and a promoted risk are a person's, and a sync never undoes either ([0029](docs/decisions/0029-the-rails-are-emitted-by-default-and-vendor-choice-is-engine-owned-configuration.md)) |
 | `backlog` | `--create` | implemented | the only action; never closes or deletes an issue |
 | `backlog` | `--repo` | implemented | `owner/name` |
 | `backlog` | `--dir` | implemented | the engine directory |
