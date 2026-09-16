@@ -25,6 +25,7 @@ implements the engine. **An implementer may not read this directory**: `TARGET.j
 | [sandbox/](sandbox/run-isolated.sh) | bubblewrap isolation with a logging HTTPS allowlist proxy, no sudo needed, and its probe |
 | [search-transcript.py](search-transcript.py) | Searches the session's transcript and network log for signs it was not blind |
 | [judge-rebuild.yml](../../.github/workflows/judge-rebuild.yml) | The final judgement in CI on SDK 10.0.112, dispatched by hand |
+| [EVIDENCE.md](EVIDENCE.md) | **The result** (2026-09-15): PASS, 560 of 560, "blind, with a written interface", with the transcript search and the operator's decisions |
 
 ## The target
 
