@@ -101,7 +101,9 @@ class IntakeCase(unittest.TestCase):
 
     def assert_passes(self, package, corpus):
         code, output = self.produce(package, corpus)
-        self.assertEqual(code, 0, output)
+        # `--no-verify` ends NOT VERIFIED (3), never 0: the engine was written but never built
+        # or tested (tools/factory/__main__.py).
+        self.assertEqual(code, factory.NOT_VERIFIED, output)
         self.assertIn("intake passed", output)
         return output
 

@@ -83,7 +83,8 @@ class BacklogCase(unittest.TestCase):
                 cls.maps[key] = json.load(handle)
             cls.engines[key] = os.path.join(cls.tmp, "engine-" + key)
             code, log = cls.produce(key, cls.engines[key])
-            assert code == 0, log
+            # `--no-verify` ends NOT VERIFIED (3), never 0 (tools/factory/__main__.py).
+            assert code == factory.NOT_VERIFIED, log
 
     @classmethod
     def tearDownClass(cls):
@@ -198,7 +199,7 @@ class BacklogCase(unittest.TestCase):
         with open(stale, "w", encoding="utf-8") as handle:
             handle.write("# gone\n")
         code, log = self.produce("part107", other)
-        self.assertEqual(code, 0, log)
+        self.assertEqual(code, factory.NOT_VERIFIED, log)
         self.assertEqual(backlog_files(other), backlog_files(self.engines["part107"]))
         self.assertNotIn(self.tmp.encode(), b"".join(backlog_files(other).values()))
 
@@ -565,7 +566,8 @@ class TestAttribution(unittest.TestCase):
         engine = os.path.join(self.work, "engine-" + key)
         code, log = run(["produce", "--package", nupkg, "--corpus", corpus, "--name", name, "--out", engine,
                          "--allow-dirty", "--no-verify"])
-        self.assertEqual(code, 0, log)
+        # `--no-verify` ends NOT VERIFIED (3), never 0 (tools/factory/__main__.py).
+        self.assertEqual(code, factory.NOT_VERIFIED, log)
         return engine
 
     def create(self, engine, *extra):

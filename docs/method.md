@@ -548,7 +548,9 @@ rulings above to `srd-52-combat`. They are observations, not amendments; 0027 st
   `Generated/Rulings.g.cs` from the overlay (§ 4) — while `produce`'s verification is a build and a
   test run. So the first ruling goes into the overlay naming tests that do not exist, and is
   produced with `--no-verify`, before the tests it names can be written and a verified produce can
-  run. Nothing in the record says to expect that order.
+  run. Nothing in the record says to expect that order. That first produce exits 3, NOT VERIFIED,
+  not 0: the engine is written and nothing about it is proven, which is exactly the state the
+  bootstrap is in, and a script driving it accepts that code rather than reading it as success.
 - **There is no carrier for a ruling on an entry the map calls clear.** Disengage is the case: the
   map is right that the slice's sentence is clear, so there is no `ambiguity.question` for a span
   to quote, and § 5.1 refuses a ruling there. `srd-52-combat` holds that answer as the engine's own

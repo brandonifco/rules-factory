@@ -60,7 +60,7 @@ marked `not implemented` that the parser does have.
 | `produce` | `--name` | implemented | the engine's PascalCase name |
 | `produce` | `--out` | implemented | the engine directory: created when absent, updated when it exists |
 | `produce` | `--allow-dirty` | implemented | produce from a factory with uncommitted changes, recorded as `dirty: true` |
-| `produce` | `--no-verify` | implemented | write without building or testing; the output says so |
+| `produce` | `--no-verify` | implemented | write without building or testing; the output says so, and the run ends **NOT VERIFIED (exit 3)**, never 0 |
 | `produce` | `--adopt` | implemented | make a managed file engine-owned, keeping its edits |
 | `produce` | `--reset` | implemented | overwrite a managed or adopted file with the current recipe |
 | `produce` | domain pack | not implemented | no pack exists; provenance records `"packs": []` |
@@ -82,6 +82,35 @@ marked `not implemented` that the parser does have.
 | `verify` | `--engine` | implemented | the engine directory |
 | `verify` | `--package` | implemented | default: `Id@Version` from `provenance.json` |
 <!-- factory-cli-status:end -->
+
+### What the factory exits with
+
+A caller that reads only `$?` must be able to tell what happened. There are four outcomes, and
+they are four codes:
+
+| Exit | Meaning |
+|---|---|
+| `0` | every step passed. For `produce`, that means the engine was verified: built and tested |
+| `1` | a step refused or failed. Nothing was produced, and `--out` is as it was |
+| `2` | a usage error |
+| `3` | **NOT VERIFIED**: the command wrote its output but proved nothing about it. Today that is exactly `produce --no-verify` |
+
+3 is not a pass and not a failure, and it is not new here: `engine-gate.py posture` already exits
+3 when a corpus cannot be verified under its declared posture
+([0013](docs/decisions/0013-verification-posture-belongs-to-the-corpus.md)), and so do
+`examples/hoyle-blind-rebuild/check-rebuild.py` and `check-target.py`. `--no-verify` remains a
+legitimate, documented mode — a machine without the SDK the engine pins, or the first produce of
+an overlay whose tests cannot exist yet — so a caller that means to skip verification accepts
+exactly 3 and lets every other code through, the way `scripts/validate.sh` accepts 3 from
+`posture`:
+
+```sh
+status=0
+python3 tools/factory produce … --no-verify || status=$?
+[ "$status" -eq 3 ] || exit "$status"      # 3 is the intended outcome here; 0 and 1 are not
+```
+
+What never happens again is `NOT VERIFIED` on stdout and `0` in `$?`.
 
 ### What a verified `produce` proves
 
@@ -134,10 +163,11 @@ CI proves this on every pull request. The `validate` job runs
   pin, environment variables, MSBuild or NuGet files outside the engine directory, or that a
   given assembly was built from the tree. The limits are listed in
   [`provenance.py`](tools/factory/provenance.py).
-- **Anything, under `--no-verify`.** The engine is written without being built or tested. Lock
-  files the generated pins have moved past, in the version they resolve or the range they record
-  as requested, are re-locked by `dotnet restore` alone, or the run is refused; they are never
-  committed stale.
+- **Anything, under `--no-verify`.** The engine is written without being built or tested, and the
+  run says so twice and exits 3, NOT VERIFIED, so no caller can read it as a verified produce.
+  Lock files the generated pins have moved past, in the version they resolve or the range they
+  record as requested, are re-locked by `dotnet restore` alone, or the run is refused; they are
+  never committed stale.
 
 The generated runtime is typed by entry, and no further than the map declares
 ([#76](https://github.com/brandonifco/rules-factory/issues/76)). Each entry has its own request

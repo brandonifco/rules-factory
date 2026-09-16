@@ -26,6 +26,7 @@ SDK the kernel pins and network access to nuget.org; that test skips, saying why
 Run: python3 -m unittest discover -s tools/tests
 """
 import hashlib
+import importlib.util
 import json
 import os
 import pathlib
@@ -56,6 +57,13 @@ GIT_ENV = {"GIT_AUTHOR_NAME": "factory-test", "GIT_AUTHOR_EMAIL": "factory-test@
 sys.path.insert(0, FACTORY)
 import provenance  # noqa: E402
 import generate  # noqa: E402  (the managed recipes, to name them once)
+
+# What a `--no-verify` produce exits: NOT VERIFIED, never 0. Read from the CLI it names, so the
+# two cannot drift (the factory itself is run as a child process here).
+_main_spec = importlib.util.spec_from_file_location("factory_main_provenance", os.path.join(FACTORY, "__main__.py"))
+_main = importlib.util.module_from_spec(_main_spec)
+_main_spec.loader.exec_module(_main)
+NOT_VERIFIED = _main.NOT_VERIFIED
 
 
 def sha256_file(path):
@@ -134,7 +142,9 @@ class ProvenanceCase(unittest.TestCase):
 
     def produced(self, **kwargs):
         code, output, out = self.produce(**kwargs)
-        self.assertEqual(code, 0, output)
+        # `--no-verify` ends NOT VERIFIED (3), never 0: the engine was written but never built
+        # or tested (tools/factory/__main__.py).
+        self.assertEqual(code, NOT_VERIFIED, output)
         return out
 
     def recompute(self, out, repo=None, package=None):

@@ -44,6 +44,10 @@ factory = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(factory)
 verify_step = factory.verify_step
 
+# What produce appends to the last line of a `--no-verify` run, so the line and the exit code
+# can never be read apart.
+NOT_VERIFIED_TAIL = f" -- nothing was built or tested, so this run exits {factory.NOT_VERIFIED}, not 0"
+
 FAKE_DOTNET = r'''#!/usr/bin/env python3
 import json, os, re, sys
 args = sys.argv[1:]
@@ -133,7 +137,8 @@ class VerifyCase(unittest.TestCase):
         cls.nupkg = os.path.join(out, name)
         cls.base = os.path.join(cls.shared, "engine")
         code, log = cls.produce_into(cls.base, "--no-verify")
-        assert code == 0, log
+        # `--no-verify` ends NOT VERIFIED (3), never 0 (tools/factory/__main__.py).
+        assert code == factory.NOT_VERIFIED, log
 
     @classmethod
     def tearDownClass(cls):
@@ -345,10 +350,92 @@ class TestProduce(VerifyCase):
         out = os.path.join(self.tmp, "fresh")
         with mock.patch.object(verify_step, "verify_staged") as spy:
             code, output = self.produce_into(out, "--no-verify")
-        self.assertEqual(code, 0, output)
+        self.assertEqual(code, factory.NOT_VERIFIED, output)
         spy.assert_not_called()
         self.assertIn("verification SKIPPED (--no-verify)", output)
-        self.assertEqual(output.splitlines()[-1], f"produced {NAME} in {out}, NOT VERIFIED")
+        self.assertEqual(output.splitlines()[-1],
+                         f"produced {NAME} in {out}, NOT VERIFIED" + NOT_VERIFIED_TAIL)
+
+
+class TestExitCodes(VerifyCase):
+    """What a caller reading only the exit code learns.
+
+    The defect this class exists for: `produce --no-verify` printed NOT VERIFIED twice and exited 0,
+    so a script or CI job checking `$?` alone could not tell an engine that was never built or
+    tested from a verified one. It now ends NOT VERIFIED (3) -- the code this lineage already uses
+    for that outcome (`engine-gate.py posture`, `check-rebuild.py`, `check-target.py`), and which
+    0013 requires to be neither ok nor FAIL. A caller for which an unverified engine is the point
+    accepts exactly 3; 0 still means verified and 1 still means refused.
+    """
+
+    def test_not_verified_is_three_the_code_this_lineage_already_uses(self):
+        self.assertEqual(factory.NOT_VERIFIED, 3)
+
+    def test_no_verify_exits_not_verified_and_never_zero(self):
+        out = os.path.join(self.tmp, "fresh")
+        code, output = self.produce_into(out, "--no-verify")
+        self.assertEqual(code, factory.NOT_VERIFIED, output)
+        self.assertNotEqual(code, 0, "an engine that was never built or tested is not a success")
+        # The engine was still written: --no-verify stays a usable mode, it just is not a pass.
+        self.assertTrue(os.path.isfile(os.path.join(out, "provenance.json")), output)
+        self.assertIn("NOT VERIFIED", output)
+
+    def test_a_verified_produce_still_exits_zero(self):
+        out = os.path.join(self.tmp, "verified")
+        with mock.patch.dict(os.environ, self.env):
+            code, output = self.produce_into(out)
+        self.assertEqual(code, 0, output)
+        self.assertEqual(output.splitlines()[-1], f"produced {NAME} in {out}, verified")
+        # (intake's packaged-checker summary carries its own per-check NOT VERIFIED lines; the
+        # verdict line is the one a caller reads, and it says verified.)
+        self.assertNotIn("NOT VERIFIED", output.splitlines()[-1])
+
+    def test_the_three_outcomes_a_caller_can_see_are_three_different_codes(self):
+        """verified, NOT VERIFIED and refused must not collide: that collision was the defect."""
+        out = os.path.join(self.tmp, "codes")
+        with mock.patch.dict(os.environ, self.env):
+            verified, _ = self.produce_into(out + "-ok")
+        unverified, _ = self.produce_into(out + "-nv", "--no-verify")
+        with mock.patch.dict(os.environ, {**self.env, "FAKE_DOTNET_FAIL": "build"}):
+            refused, refusal = self.produce_into(out + "-bad")
+        self.assertEqual([verified, unverified, refused], [0, factory.NOT_VERIFIED, 1], refusal)
+        self.assertEqual(len({verified, unverified, refused}), 3)
+
+    def test_a_usage_error_is_still_two(self):
+        code, output = run(["produce", "--package", self.nupkg, "--corpus", CORPUS, "--name", "not pascal",
+                            "--out", os.path.join(self.tmp, "never"), "--allow-dirty", "--no-verify"])
+        self.assertEqual(code, 2, output)
+
+    def test_verify_and_provenance_still_exit_zero_when_they_prove_their_claim(self):
+        code, output = self.verify()
+        self.assertEqual(code, 0, output)
+        code, output = run(["provenance", "--engine", self.engine, "--package", self.nupkg])
+        self.assertEqual(code, 0, output)
+
+    def test_every_shipped_caller_of_no_verify_handles_the_new_code(self):
+        """The scripts in this repository that run `produce --no-verify` must handle its exit code.
+
+        Each of them runs it in exactly one place, which captures the status rather than letting
+        `set -e` abort on it, and the script names 3 as the code it accepts. A new bare
+        `tools/factory produce ... --no-verify` anywhere else fails this test, which is the point:
+        that is how the defect would come back.
+        """
+        for relative in ("scripts/validate-engine.sh", "examples/hoyle-backgammon/produced-engine/equivalence.sh"):
+            with open(os.path.join(REPO, *relative.split("/")), encoding="utf-8") as handle:
+                lines = handle.read().splitlines()
+            # The invocation and its continuation lines: a produce command here spans at most two.
+            blocks = [(number, "\n".join(lines[number - 1:number + 1]))
+                      for number, line in enumerate(lines, 1)
+                      if "tools/factory produce" in line and not line.lstrip().startswith("#")]
+            unverified = [(number, block) for number, block in blocks if "--no-verify" in block]
+            self.assertEqual(len(unverified), 1,
+                             f"{relative} runs `produce --no-verify` in {len(unverified)} places, not one")
+            (number, block) = unverified[0]
+            self.assertIn("status=$?", block,
+                          f"{relative}:{number} does not capture produce's exit code, so it cannot accept "
+                          f"{factory.NOT_VERIFIED} and reject the rest")
+            self.assertIn(str(factory.NOT_VERIFIED), "\n".join(lines),
+                          f"{relative} never names the NOT VERIFIED exit code")
 
 
 class TestSdkOverride(VerifyCase):
@@ -708,12 +795,13 @@ class TestNoVerifyStaleLocks(VerifyCase):
     def test_stale_lock_files_are_re_locked_recorded_and_committed_unverified(self):
         self.write_locks("6.0.0")
         code, output = self.produce_bumped("--no-verify", **self.env)
-        self.assertEqual(code, 0, output)
+        self.assertEqual(code, factory.NOT_VERIFIED, output)
         self.assertEqual(self.dotnet_calls(), ["--version", "restore --force-evaluate"], "restore only: no build, no test")
         self.assertEqual(self.gate_calls, [])
         self.assertIn(f"--no-verify: re-locked the lock files that disagreed with the generated pins", output)
         self.assertIn("verification SKIPPED (--no-verify)", output)
-        self.assertEqual(output.splitlines()[-1], f"produced {NAME} in {self.engine}, NOT VERIFIED")
+        self.assertEqual(output.splitlines()[-1],
+                         f"produced {NAME} in {self.engine}, NOT VERIFIED" + NOT_VERIFIED_TAIL)
         self.assertEqual(verify_step.stale_locks(self.engine, verify_step.read_pins(self.engine)), [])
         with open(os.path.join(self.engine, "provenance.json"), encoding="utf-8") as handle:
             recorded = {i["path"]: i["sha256"] for i in json.load(handle)["buildInputs"]
@@ -737,14 +825,15 @@ class TestNoVerifyStaleLocks(VerifyCase):
         pinned = verify_step.pinned_sdk(self.engine)
         code, output = self.produce_bumped("--no-verify", FACTORY_DOTNET_SDK_OVERRIDE="10.0.1",
                                            FAKE_DOTNET_SDK_LOG=sdk_log, **self.env)
-        self.assertEqual(code, 0, output)
+        self.assertEqual(code, factory.NOT_VERIFIED, output)
         with open(sdk_log, encoding="utf-8") as handle:
             self.assertEqual(handle.read().splitlines(), ["--version 10.0.1", "restore 10.0.1"])
         with open(os.path.join(self.engine, "global.json"), "rb") as handle:
             self.assertEqual(handle.read(), pinned_bytes)
         self.assertIn(f"WARNING: FACTORY_DOTNET_SDK_OVERRIDE=10.0.1 replaces the pinned SDK {pinned}", output)
         self.assertEqual(output.splitlines()[-1], f"produced {NAME} in {self.engine}, NOT VERIFIED, lock files "
-                                                  f"re-locked on SDK 10.0.1 by FACTORY_DOTNET_SDK_OVERRIDE, not the pinned {pinned}")
+                                                  f"re-locked on SDK 10.0.1 by FACTORY_DOTNET_SDK_OVERRIDE, not the pinned "
+                                                  f"{pinned}" + NOT_VERIFIED_TAIL)
 
     def test_without_any_sdk_the_refusal_names_the_pinned_sdk_and_the_command(self):
         self.write_locks("6.0.0")
@@ -792,9 +881,10 @@ class TestNoVerifyStaleLocks(VerifyCase):
         self.write_locks("7.0.0")
         before = snapshot(self.engine)
         code, output = self.produce_bumped("--no-verify", **self.env)
-        self.assertEqual(code, 0, output)
+        self.assertEqual(code, factory.NOT_VERIFIED, output)
         self.assertEqual(self.dotnet_calls(), [], "lock files that agree need no dotnet")
-        self.assertEqual(output.splitlines()[-1], f"produced {NAME} in {self.engine}, NOT VERIFIED")
+        self.assertEqual(output.splitlines()[-1],
+                         f"produced {NAME} in {self.engine}, NOT VERIFIED" + NOT_VERIFIED_TAIL)
         self.assertEqual(verify_step.read_pins(self.engine)[self.map_id.lower()], "[7.0.0]")
         after = snapshot(self.engine)
         for relative in self.LOCKS:
@@ -804,7 +894,7 @@ class TestNoVerifyStaleLocks(VerifyCase):
         """The version agrees with the pin, the range does not: a locked restore refuses it, so it re-locks."""
         self.write_locks("7.0.0", requested={self.map_id: "[7.0.0, )"})
         code, output = self.produce_bumped("--no-verify", **self.env)
-        self.assertEqual(code, 0, output)
+        self.assertEqual(code, factory.NOT_VERIFIED, output)
         self.assertEqual(self.dotnet_calls(), ["--version", "restore --force-evaluate"])
         self.assertIn(f"{self.LOCKS[0]}: {self.map_id} locked at [7.0.0, ), pinned at [7.0.0]", output)
         self.assertEqual(verify_step.stale_locks(self.engine, verify_step.read_pins(self.engine)), [])
@@ -820,7 +910,7 @@ class TestNoVerifyStaleLocks(VerifyCase):
 
     def test_an_engine_without_lock_files_is_unaffected(self):
         code, output = self.produce_bumped("--no-verify", **self.env)
-        self.assertEqual(code, 0, output)
+        self.assertEqual(code, factory.NOT_VERIFIED, output)
         self.assertEqual(self.dotnet_calls(), [])
         self.assertEqual(verify_step.read_pins(self.engine)[self.map_id.lower()], "[7.0.0]")
 
