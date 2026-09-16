@@ -292,12 +292,18 @@ ok   RulesKernel.Randomness is reachable only as the corpus declares
 ok   every corpus verified under its declared posture
 ok   every *.g.cs matches a fresh regeneration (no hand edits)
 ok   dotnet format --verify-no-changes
-ok   build Debug (0 warnings) / test Debug / build Release / test Release
-ok   every test an implemented entry names exists and ran (Debug, Release)
-ok   the rails hold: read-only reviewers, no dangling citation, a readable policy
-validate.sh full: PASS
+ok   build Debug (0 warnings)
+ok   test Debug
+ok   every test an implemented entry names exists and ran (Debug)
+ok   build Release (0 warnings)
+ok   test Release
+ok   every test an implemented entry names exists and ran (Release)
+ok   gate: scripts/validate.sh full passed on SDK 10.0.111 (FACTORY_DOTNET_SDK_OVERRIDE), not the pinned 10.0.112
 verify ../srd-52-combat: PASS on SDK 10.0.111 by FACTORY_DOTNET_SDK_OVERRIDE, not the pinned 10.0.112
 ```
+
+(the `ok` lines above, in order, with each step's `dotnet` output between them elided; the
+`WARNING` the override prints is elided too, and quoted in full further down)
 
 Provenance is stage 1 on purpose: everything after it runs code the factory generated, so the gate
 is only trusted once the generated files are proven to be the factory's, byte for byte, and not a
@@ -370,9 +376,17 @@ and both `produce` and `verify` stop at the first stage that fails.
    test was required (nothing here to prove yet)`, and the packaged checker's `2 ok, 0 failed,
    2 not verified`). Rule logic is the engine's own work and its evidence is the named tests, which
    the gate then enforces once an entry claims to be implemented.
-3. **`FACTORY_DOTNET_SDK_OVERRIDE` is loud.** A run under it prints a `WARNING` and repeats the
-   override on its last line, and is refused under `CI=true`. Every run in this file except the
-   provenance recomputations used it, at SDK 10.0.111 rather than the pinned 10.0.112.
+3. **`FACTORY_DOTNET_SDK_OVERRIDE` is loud.** A run under it prints, before anything builds:
+
+   ```
+   WARNING: FACTORY_DOTNET_SDK_OVERRIDE=10.0.111 replaces the pinned SDK 10.0.112; this run does
+   not prove the pinned toolchain. global.json is re-pinned to 10.0.111 only while dotnet restore
+   and the gate run, and put back byte for byte after each; provenance was checked on the pinned file
+   ```
+
+   and repeats the override on its last line. It is refused under `CI=true`. Every run in this
+   file except the provenance recomputations used it, at SDK 10.0.111 rather than the pinned
+   10.0.112.
 4. **A finding about locked restore.** In the stale-lock experiment with a verifying produce, the
    gate's `dotnet restore --locked-mode` printed `ok` even though `resolved` for `RulesKernel` had
    been hand-edited from `0.3.0` to `0.2.0`; the run was refused a step later, when the build could
@@ -384,7 +398,7 @@ and both `produce` and `verify` stop at the first stage that fails.
 **Verdict on criterion 5: met.** A verifying `produce` runs the engine's own gate — locked
 restore, the packaged consumer checker on the merged map, declared randomness, corpus posture,
 regeneration equality, format, `-warnaserror` build and tests in Debug and Release on two target
-frameworks, the named-test check and the agent rails — inside a staging copy, and writes `--out`
+frameworks, the named-test check, and the agent-rails step the current factory's gate adds — inside a staging copy, and writes `--out`
 only when it passes; a failure leaves `--out` byte-identical, which was measured, not assumed.
 `factory verify --engine` re-runs the same gate against a produced engine, and passed on all four
 outputs. `validate-engine.sh` runs both in CI for every example map, on the pinned SDK.
