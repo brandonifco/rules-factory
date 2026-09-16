@@ -502,12 +502,25 @@ class TestPdfTextLocators(unittest.TestCase):
         self.assertEqual(code, 1, output)
         self.assertIn("players: evidence does not occur", output)
 
-    def test_a_repeated_quote_is_checked_at_every_occurrence(self):
+    def test_a_repeated_quote_is_identified_by_its_heading_path(self):
+        # 0030, #207: the sentence is printed again on p. 3, under a different heading. The
+        # citation names the heading the p. 1 printing sits under, and that is what identifies it.
         document = pdf_text_map()
-        document["entries"][1]["evidence"] = "Each token moves once per round,"
+        document["entries"].append(entry("token-moves-once", "Widgets / Tokens / p. 1",
+                                         "Each token moves once per round,"))
+        code, output = self.run_tool(document)
+        self.assertEqual(code, 0, output)
+        self.assertIn("1 of them printed off the cited page too and identified by the heading path",
+                      output)
+
+    def test_a_repeated_quote_whose_path_selects_another_printing_fails(self):
+        # The heading resolves, and to the wrong page: a refusal, not a pass on the other copy.
+        document = pdf_text_map()
+        document["entries"].append(entry("token-moves-once", "Glossary / p. 1",
+                                         "Each token moves once per round,"))
         code, output = self.run_tool(document)
         self.assertEqual(code, 1, output)
-        self.assertIn("occurrence 2 of 2) is on p. 3", output)
+        self.assertIn("token-moves-once: cited p. 1, evidence is on p. 3", output)
 
     def test_a_heading_not_near_the_quote_fails(self):
         document = pdf_text_map()
@@ -650,6 +663,116 @@ class TestPdfTextExtentEnd(TestPdfTextLocators):
             code = check_locators.main([path, corpus])
         self.assertIn("[skip] extent-end: NOT VERIFIED", out.getvalue())
         self.assertEqual(code, 1, out.getvalue())
+
+
+# 0030, #207: the two shapes a corpus's own repetition takes, in miniature. One sentence printed
+# under two different headings (the SRD's "Speed 0." under five conditions), and one printed twice
+# under the *same* heading, in two chapters, with a different rule immediately after it (the SRD's
+# Round Down on pp. 5 and 187, and the Save entry that a unique span had to annex).
+REPEATED_CORPUS = """{1}
+Playing the Game
+Rounding
+Round down if you end up with a fraction.
+
+Turn Order
+The player to the left moves next.
+{2}
+Conditions
+Grappled
+Speed 0. Your Speed is 0.
+{3}
+Restrained
+Speed 0. Your Speed is 0.
+{4}
+Glossary
+Rounding
+Round down if you end up with a fraction.
+
+Save
+A save is another name for a saving throw.
+"""
+
+
+def repeated_map():
+    return {
+        "schemaVersion": 1,
+        "corpus": "demo-pdf",
+        "baseline": {"contentHash": "d" * 64, "hashDerivation": "demo-pdftotext"},
+        "extent": {"unit": "page", "from": 1, "to": 4},
+        "entries": [
+            entry("turn-order", "Playing the Game / Turn Order / p. 1",
+                  "The player to the left moves next."),
+            entry("grappled-speed", "Conditions / Grappled / p. 2", "Speed 0. Your Speed is 0."),
+            entry("restrained-speed", "Conditions / Restrained / p. 3", "Speed 0. Your Speed is 0."),
+            entry("rounding", "Glossary / Rounding / p. 4",
+                  "Round down if you end up with a fraction."),
+        ],
+    }
+
+
+class TestPdfTextRepeatedPassages(TestPdfTextLocators):
+    """0030: which printing of a repeated passage a citation means, and when it means none."""
+
+    def run_repeated(self, document):
+        """The repetition corpus, written per test so the inherited cases keep their own."""
+        self.write_corpus(REPEATED_CORPUS)
+        return self.run_tool(document)
+
+    def test_the_same_sentence_under_two_headings_is_cited_by_each(self):
+        code, output = self.run_repeated(repeated_map())
+        self.assertEqual(code, 0, output)
+        self.assertIn("3 quoted texts occur more than once, 3 of them printed off the cited page "
+                      "too and identified by the heading path", output)
+
+    def test_a_rule_printed_twice_is_cited_without_annexing_the_rule_after_it(self):
+        # The round-down shape: no span of this rule alone is unique anywhere, and the only unique
+        # span runs into the Save entry. The heading above it is what separates the two printings.
+        document = repeated_map()
+        quote = document["entries"][3]["evidence"]
+        self.assertEqual(len(check_locators_pdf_text.occurrences(quote, REPEATED_CORPUS)), 2,
+                         "the fixture must print this rule twice, or it is not the round-down shape")
+        self.assertNotIn("A save", quote)
+        code, output = self.run_repeated(document)
+        self.assertEqual(code, 0, output)
+
+    def test_the_old_workaround_is_not_the_only_option_and_still_passes(self):
+        document = repeated_map()
+        document["entries"][3]["evidence"] = ("Round down if you end up with a fraction. Save A "
+                                              "save is another name for a saving throw.")
+        code, output = self.run_repeated(document)
+        self.assertEqual(code, 0, output)
+
+    def test_a_citation_the_heading_path_cannot_narrow_is_refused(self):
+        # "Playing the Game" precedes both printings of "Rounding", so the path selects two
+        # passages. The checker says so and picks neither.
+        document = repeated_map()
+        document["entries"][3]["locator"]["citation"] = "Playing the Game / Rounding / p. 1"
+        code, output = self.run_repeated(document)
+        self.assertEqual(code, 1, output)
+        self.assertIn("the corpus prints this quote 2 times (p. 1, p. 4), and the heading path "
+                      "'Playing the Game / Rounding' selects 2 of them", output)
+        self.assertIn("does not guess", output)
+
+    def test_a_heading_no_printing_follows_selects_none_and_fails(self):
+        document = repeated_map()
+        document["entries"][3]["locator"]["citation"] = "Glossary / Save / p. 4"
+        code, output = self.run_repeated(document)
+        self.assertEqual(code, 1, output)
+        self.assertIn("heading path 'Glossary / Save' selects none of them", output)
+
+    def test_a_quote_that_occurs_nowhere_is_still_refused(self):
+        document = repeated_map()
+        document["entries"][3]["evidence"] = "Round up if you end up with a fraction."
+        code, output = self.run_repeated(document)
+        self.assertEqual(code, 1, output)
+        self.assertIn("rounding: evidence does not occur in the extracted text", output)
+
+    def test_a_repeated_quote_cited_to_a_page_neither_printing_is_on_fails(self):
+        document = repeated_map()
+        document["entries"][1]["locator"]["citation"] = "Conditions / Grappled / p. 3"
+        code, output = self.run_repeated(document)
+        self.assertEqual(code, 1, output)
+        self.assertIn("grappled-speed: cited p. 3, evidence is on p. 2", output)
 
 
 def table_entry(**overrides):

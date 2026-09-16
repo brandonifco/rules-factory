@@ -16,12 +16,39 @@ It is `tools/check-locators.py`'s page-marker idea with three differences, each 
   * **Every occurrence, not the first.** A sentence the corpus repeats, or one the map quotes twice
     under two entries, is found everywhere it occurs, and every occurrence must touch the cited
     page. The count is reported. (The SRD restates rules in its Rules Glossary, so this is not
-    hypothetical.)
+    hypothetical.) **Where an occurrence lies off the cited page, the heading path decides whether
+    it is this entry's passage at all** (0030, #207): see below.
   * **The heading is checked too.** The last heading in the citation must occur as a line of its
     own between the start of the page before the cited page and the start of the quote. That is a
     weak test, and deliberately: pdftotext linearises columns and sidebars in its own order, so
     "the nearest heading above the quote" is not a fact the text preserves, and a stronger test
     would fail honest citations. What it does catch is a heading that is not near the quote at all.
+
+**A passage the corpus prints more than once is identified by its heading path** (0030,
+[#207](https://github.com/brandonifco/rules-factory/issues/207)). `Speed 0. Your Speed is 0 and
+can't increase.` is printed under five conditions and `Round Down` twice, heading included, so
+"every occurrence touches the cited page" made twenty of the conditions map's entries extend their
+span through every rule between the condition's lead and their own, and made `round-down`
+uncitable without annexing the next glossary entry. What identifies a passage in a
+`section-designation` corpus is the container the citation names, and the page in a page-marked one
+is positional, not containing. The heading path is the container this grammar has, so when a quote
+occurs off the cited page, the path is asked which occurrence the citation means:
+
+  * each line of its own matching the citation's **last** heading selects the **first** occurrence
+    of the quote after it, and a heading selects nothing when no occurrence follows it;
+  * a heading line counts only where the citation's **earlier** headings occur as lines, in order,
+    before it;
+  * the citation must select **exactly one** occurrence, and that occurrence must touch the cited
+    page. Selecting none, or more than one, fails: this checker refuses an ambiguous citation
+    rather than picking an occurrence for the mapper.
+
+The rule is the extraction's reading order, which is all a flat text has: pdftotext gives no
+hierarchy, so "under this heading" can only mean "after this heading line, and before the same
+quote appears again". Two consequences, both deliberate. A citation whose last heading is repeated
+is separated only by a heading above it that is not — `Rules Glossary / Round Down / p. 187`
+resolves, because no `Rules Glossary` line precedes p. 5's `Round Down`, and `Playing the Game /
+Round Down / p. 5` does not, because `Playing the Game` precedes both. And an entry citing a
+heading its quote does not follow fails rather than reaching for a distant occurrence.
 
 `absence` and `coverage` are `tools/check-locators.py`'s checks, loaded from that file and run
 unchanged, because a page extent means the same thing in both corpora. Two things differ in
@@ -118,6 +145,64 @@ def pages_touched(span, starts):
     return {p for p in touched if p is not None}
 
 
+def heading_lines(heading, corpus):
+    """Every offset where `heading` occurs as a line of its own."""
+    return [m.start() for m in
+            re.finditer(r"^[ \t]*" + re.escape(heading) + r"[ \t]*$", corpus, re.M)]
+
+
+def selected_by_path(headings, spans, corpus):
+    """The occurrences of a repeated quote that the citation's heading path picks out (0030).
+
+    One per line matching the citation's last heading: the first occurrence after it, which is
+    the only sense "under this heading" has in a flat text with no hierarchy. A line counts only
+    where the citation's earlier headings occur as lines, in order, before it, so a heading the
+    corpus repeats is separated by a heading above it that it is not repeated under.
+
+    Returns the occurrences in corpus order, without duplicates. The caller requires exactly one:
+    none and several are both citations that do not identify a passage, and neither is guessed at.
+    """
+    inner, above = headings[-1], headings[:-1]
+    picked = []
+    for line in heading_lines(inner, corpus):
+        cursor, resolved = -1, True
+        for outer in above:
+            at = next((o for o in heading_lines(outer, corpus) if cursor < o < line), None)
+            if at is None:
+                resolved = False
+                break
+            cursor = at
+        if not resolved:
+            continue
+        first = next((span for span in spans if span[0] > line), None)
+        if first is not None and first not in picked:
+            picked.append(first)
+    return sorted(picked)
+
+
+def entry_occurrences(entry, corpus, starts):
+    """The occurrences of an entry's quote that its own citation covers (0030).
+
+    Every occurrence, except that where the quote is printed off the cited page as well, the
+    heading path identifies which one the entry means, and the others are another entry's passage
+    or nobody's. `locators` is where an unidentifiable citation fails; the checks that use this --
+    the extent's end and the extraction defects -- ask only about the entry's own passage, and
+    fall back to every occurrence when the path settles nothing, which is the reading they had
+    before there was a path to ask.
+    """
+    citation = str(entry.get("locator", {}).get("citation", ""))
+    page = PAGE.search(citation)
+    spans = occurrences(str(entry.get("evidence", "")), corpus)
+    segments = [s.strip() for s in citation.split(" / ")]
+    if not page or len(segments) < 2 or len(spans) < 2:
+        return spans
+    cited = int(page.group(1))
+    if all(cited in pages_touched(span, starts) for span in spans):
+        return spans
+    picked = selected_by_path(segments[:-1], spans, corpus)
+    return picked if len(picked) == 1 else spans
+
+
 def heading_near(heading, cited, span_start, corpus, starts):
     """The heading occurs as a whole line from the start of page cited-1 up to the quote."""
     first = max(1, cited - 1)
@@ -176,7 +261,7 @@ def check_locators(page_checker, entries, corpus, starts, reached, end=None):
     """
     derived = [e.get("id", "?") for e in entries if "derivedFrom" in e]
     located = [e for e in entries if "derivedFrom" not in e]
-    bad, checked, repeated = [], 0, 0
+    bad, checked, repeated, identified = [], 0, 0, 0
     for entry in located:
         name = entry.get("id", "?")
         citation = str(entry.get("locator", {}).get("citation", ""))
@@ -193,6 +278,25 @@ def check_locators(page_checker, entries, corpus, starts, reached, end=None):
         checked += 1
         if len(spans) > 1:
             repeated += 1
+        # 0030: an occurrence off the cited page is another printing of the same words, and the
+        # heading path says whether it is this entry's. Where every occurrence is on the cited
+        # page there is nothing to identify: the quote is checked at all of them, as before.
+        elsewhere = [s for s in spans if cited not in pages_touched(s, starts)]
+        if elsewhere:
+            picked = selected_by_path(segments[:-1], spans, corpus)
+            where = ", ".join(f"p. {p}" for p in sorted(
+                {p for span in spans for p in pages_touched(span, starts)}))
+            path = " / ".join(segments[:-1])
+            if len(picked) != 1:
+                bad.append(f"  X  {name}: the corpus prints this quote {len(spans)} times ({where}), "
+                           f"and the heading path {path!r} "
+                           + (f"selects none of them" if not picked else
+                              f"selects {len(picked)} of them")
+                           + f"; the citation does not identify one passage, and this checker does "
+                             f"not guess which was meant (0030)")
+                continue
+            identified += 1
+            spans = picked
         for span in spans:
             touched = pages_touched(span, starts)
             if end is not None and span[0] >= end[1]:
@@ -214,7 +318,8 @@ def check_locators(page_checker, entries, corpus, starts, reached, end=None):
         return page_checker.fail(bad, f"{checked} of {len(located)} entries located exactly{aside}")
     return page_checker.ok(f"all {checked} citations verified: every occurrence of each quote, exactly, on the "
                            f"cited page, under a heading near it ({repeated} quoted text"
-                           f"{'' if repeated == 1 else 's'} occur more than once){aside}")
+                           f"{'' if repeated == 1 else 's'} occur more than once, {identified} of them "
+                           f"printed off the cited page too and identified by the heading path){aside}")
 
 
 def located_entries(entries):
@@ -234,7 +339,7 @@ def check_extent_end(page_checker, entries, corpus, starts, extent, boundary, pr
     bad, beyond, held = [], [], 0
     for entry in located_entries(entries):
         name = entry.get("id", "?")
-        for span in occurrences(str(entry.get("evidence", "")), corpus):
+        for span in entry_occurrences(entry, corpus, starts):
             if span[1] <= page_begin or span[0] >= page_end:
                 continue  # not on the last page
             if span[1] <= boundary:
@@ -287,7 +392,7 @@ def check_extraction(page_checker, entries, corpus, starts):
     for entry in located_entries(entries):
         name = entry.get("id", "?")
         evidence = str(entry.get("evidence", ""))
-        spans = occurrences(evidence, corpus)
+        spans = entry_occurrences(entry, corpus, starts)
         extraction = entry.get("extraction")
         defect = extraction.get("defect") if isinstance(extraction, dict) else None
         if "extraction" in entry:
