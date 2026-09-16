@@ -260,6 +260,59 @@ class RestoredPackage(unittest.TestCase):
         self.assertIn("  X  no lock file names RulesFactory.Maps.Demo -- nothing was compared", out)
 
 
+class Bytecode(unittest.TestCase):
+    """The two helpers the #194 check reads the world through: what git would report, and what is
+    on disk. They answer different questions, and the check needs both."""
+
+    def setUp(self):
+        self._tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(self._tmp.cleanup)
+        self.repo = self._tmp.name
+        subprocess.run(["git", "-C", self.repo, "init", "-q", "-b", "main"], check=True)
+
+    def write(self, relative, text=""):
+        path = os.path.join(self.repo, relative)
+        os.makedirs(os.path.dirname(path), exist_ok=True)
+        with open(path, "w", encoding="utf-8") as handle:
+            handle.write(text)
+        return path
+
+    def commit(self):
+        identity = ["-c", "user.email=t@example.invalid", "-c", "user.name=t"]
+        subprocess.run(["git", "-C", self.repo, *identity, "add", "-A"], check=True,
+                       stdout=subprocess.DEVNULL)
+        subprocess.run(["git", "-C", self.repo, *identity, "commit", "-qm", "x"], check=True,
+                       stdout=subprocess.DEVNULL)
+
+    def test_porcelain_is_empty_only_while_nothing_is_untracked_or_changed(self):
+        self.write("scripts/factory/generate.py", "x\n")
+        self.commit()
+        self.assertEqual(engine.porcelain(self.repo), "")
+        self.write("scripts/factory/__pycache__/generate.pyc", "")
+        # The line dispatch-agent.sh printed when it refused on brandonifco/faa-part-107 (#194).
+        self.assertEqual(engine.porcelain(self.repo), "?? scripts/factory/__pycache__/")
+
+    def test_bytecode_dirs_finds_every_pycache_and_never_looks_inside_git(self):
+        self.write("a.txt", "one\n")
+        self.commit()
+        self.assertEqual(engine.bytecode_dirs(self.repo), [])
+        self.write("scripts/factory/__pycache__/generate.pyc", "")
+        self.write("tools/__pycache__/x.pyc", "")
+        os.makedirs(os.path.join(self.repo, ".git", "__pycache__"))
+        self.assertEqual(engine.bytecode_dirs(self.repo),
+                         [os.path.join("scripts", "factory", "__pycache__"), os.path.join("tools", "__pycache__")])
+
+    def test_an_ignored_pycache_is_on_disk_but_not_in_git_status(self):
+        """The distinction the #194 check rests on. A downstream engine whose .gitignore did name
+        __pycache__ would leave git status clean while the bytecode was still written, so a check
+        that only read porcelain() would pass on an unfixed tool."""
+        self.write(".gitignore", "__pycache__/\n")
+        self.commit()
+        self.write("scripts/factory/__pycache__/generate.pyc", "")
+        self.assertEqual(engine.porcelain(self.repo), "")
+        self.assertEqual(engine.bytecode_dirs(self.repo), [os.path.join("scripts", "factory", "__pycache__")])
+
+
 class UnverifiedProduce(unittest.TestCase):
     def status_for(self, code):
         err = io.BytesIO()

@@ -45,6 +45,14 @@ import sys
 import tempfile
 import types
 
+# model_for() imports the vendored scripts/factory modules, and an imported module leaves its
+# bytecode behind: scripts/factory/__pycache__/, a path no ownership row covers, so the checkout
+# that ran this goes dirty and tools/dispatch-agent.sh refuses to open a worktree for the next
+# issue (#194). scripts/validate.sh and `factory verify` export PYTHONDONTWRITEBYTECODE for the
+# same reason, but nothing exports it in the shell an agent runs this from. The loader reads this
+# flag when the import happens, so it belongs here and not beside the import it disarms.
+sys.dont_write_bytecode = True
+
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 OVERLAY = "corpus-map.overlay.json"
 PROVENANCE = "provenance.json"

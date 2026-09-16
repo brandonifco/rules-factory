@@ -204,6 +204,22 @@ def matching(path, pattern):
     return "\n".join(line for line in read_lines(path) or [] if re.search(pattern, line))
 
 
+def porcelain(repo):
+    """`git -C repo status --porcelain`, stripped: exactly what tools/dispatch-agent.sh reads to
+    decide whether the primary checkout is clean enough to dispatch from (#194)."""
+    done = subprocess.run(["git", "-C", repo, "status", "--porcelain"], stdout=subprocess.PIPE)
+    return done.stdout.decode("utf-8", errors="replace").strip()
+
+
+def bytecode_dirs(root):
+    """Every __pycache__ directory under root, .git aside; sorted, relative to root."""
+    found = []
+    for base, directories, _ in os.walk(root):
+        directories[:] = [d for d in directories if d != ".git"]
+        found += [os.path.relpath(os.path.join(base, d), root) for d in directories if d == "__pycache__"]
+    return sorted(found)
+
+
 def last_line_verified(path):
     """`tail -1 path | grep -q ', verified$'`."""
     lines = read_lines(path)
@@ -945,11 +961,12 @@ def player_count_evidence():
 # The rails an engine ships with, run in a produced engine rather than in a fixture (rules-factory
 # decision 0029, #157). What is proved here and cannot be proved in tools/tests: the entry packet
 # resolving the map package through MSBuild -- the path a real agent takes, and the one the unit
-# tests skip by passing --package-map -- and the guard refusing a commit in a produced engine's own
-# checkout. Then the four behaviours #157 names, run as the produced engine's own files with a
-# stand-in for GitHub: the pull request contract, the verdict tied to the head commit, the
-# independent-risk issue, and the provider chain as configuration. tools/tests/test_factory_rails.py
-# proves the same logic in depth; what only this can prove is that it holds in what an engine
+# tests skip by passing --package-map -- the packet leaving git status --porcelain empty in a
+# committed checkout, so the next dispatch is not refused (#194), and the guard refusing a commit
+# in a produced engine's own checkout. Then the four behaviours #157 names, run as the produced
+# engine's own files with a stand-in for GitHub: the pull request contract, the verdict tied to the
+# head commit, the independent-risk issue, and the provider chain as configuration.
+# tools/tests/test_factory_rails.py proves the same logic in depth; what only this can prove is that it holds in what an engine
 # actually receives, after produce has written it -- not in the recipe copies the tests read.
 def the_rails_run_in_a_produced_engine(r):
     step("the rails a produced engine ships with run in it")
@@ -964,6 +981,7 @@ def the_rails_run_in_a_produced_engine(r):
         fail("the copy of the engine does not restore")
     the_entry_packet_resolves_through_msbuild(r, railed)
     the_doctor_names_the_remote_half_unexamined(r, railed)
+    the_entry_packet_leaves_the_checkout_clean(r, railed)
     the_guard_refuses_a_primary_checkout_commit(r, railed)
     github = FakeGitHub(r.s("fake-gh"))
     a_malformed_pull_request_is_refused_by_the_contract(r, railed, github)
@@ -1005,6 +1023,76 @@ def the_doctor_names_the_remote_half_unexamined(r, railed):
             cat(log)
             fail(message)
     ok("tools/agent-doctor.py --local: every local rail true, the remote half named unexamined")
+
+
+# The four lines brandonifco/faa-part-107 carries today, and the reason this check is worth
+# running: the factory emits no .gitignore, so this is a hand-made file downstream, and it does
+# not mention __pycache__.
+ENGINE_GITIGNORE = """bin/
+obj/
+artifacts/
+TestResults/
+"""
+
+
+# Running the packet leaves the checkout clean, so the next `tools/dispatch-agent.sh` still opens
+# a worktree (#194): the live run of #157 on brandonifco/faa-part-107 was stopped by
+# "?? scripts/factory/__pycache__/" after the packet imported the vendored scripts/factory.
+#
+# The ignore list written below is that engine's own, verbatim, and it does not name __pycache__.
+# That is the point: what is proved here is that the tool's own sys.dont_write_bytecode keeps the
+# checkout clean on an engine as it exists today, with no help from an ignore list -- which is why
+# the fix for #194 did not have to invent a factory-emitted .gitignore. PYTHONDONTWRITEBYTECODE is
+# removed from the environment for the same reason: the gate and `factory verify` export it, but
+# the agent shell that runs the packet exports nothing, and only the tool's own flag stands
+# between the import and a __pycache__.
+#
+# A copy, and shutil.copytree rather than copy_engine: obj/ must survive, because the packet asks
+# MSBuild where the map package is and MSBuild can only answer where the restore above happened.
+def the_entry_packet_leaves_the_checkout_clean(r, railed):
+    engine = r.s("pycache")
+    shutil.copytree(railed, engine, symlinks=True)
+    write(os.path.join(engine, ".gitignore"), ENGINE_GITIGNORE)
+    identity = ["-c", "user.email=t@example.invalid", "-c", "user.name=t"]
+    with open(os.devnull, "wb") as null:
+        check(run(["git", "-C", engine, "init", "-q", "-b", "main"]))
+        check(run(["git", "-C", engine, *identity, "add", "-A"], stdout=null))
+        check(run(["git", "-C", engine, *identity, "commit", "-qm", "produced"], stdout=null))
+    if porcelain(engine):
+        print(porcelain(engine), file=sys.stderr, flush=True)
+        fail("the committed copy of the produced engine is not clean before the packet runs")
+
+    env = {key: value for key, value in os.environ.items() if key != "PYTHONDONTWRITEBYTECODE"}
+    log = r.s("pycache-packet.log")
+    if run_to(log, [PYTHON, "tools/entry-packet.py", "player-count", "--out", r.s("packets-clean")],
+              cwd=engine, env=env, both=True) != 0:
+        cat(log)
+        fail("tools/entry-packet.py could not assemble a packet with PYTHONDONTWRITEBYTECODE unset")
+    written = bytecode_dirs(engine)
+    if written:
+        fail(f"tools/entry-packet.py wrote bytecode into the engine: {', '.join(written)}")
+    dirty = porcelain(engine)
+    if dirty:
+        fail(f"the packet left the checkout dirty, so dispatch-agent.sh would refuse:\n{dirty}")
+
+    # The control. This import suppresses nothing, so it must write the __pycache__ the packet did
+    # not -- and if it does not, then this engine, this git and this environment cannot tell a
+    # fixed engine from a broken one, and the two assertions above proved nothing.
+    if run_to(log, [PYTHON, "-c", "import sys; sys.path.insert(0, 'scripts/factory'); import generate"],
+              cwd=engine, env=env, both=True) != 0:
+        cat(log)
+        fail("the control could not import the vendored scripts/factory")
+    control = bytecode_dirs(engine)
+    if not control:
+        fail("an import that suppresses nothing left no __pycache__ either, so this check cannot "
+             "distinguish a fixed engine from a broken one and proves nothing")
+    if not porcelain(engine):
+        fail("the control's __pycache__ does not show in git status, so the clean status above "
+             "proves nothing about what dispatch-agent.sh would see")
+    for relative in control:
+        shutil.rmtree(os.path.join(engine, relative))
+    ok("tools/entry-packet.py leaves git status --porcelain empty on a produced engine whose "
+       ".gitignore does not name __pycache__, where an unsuppressed import does not")
 
 
 def guard(railed, **extra):
