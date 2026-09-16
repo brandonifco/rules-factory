@@ -56,7 +56,8 @@ MANAGED = ("Directory.Build.props", "NuGet.config", "global.json",
            "tools/dispatch-agent.sh", "tools/new-issue.sh", "tools/entry-packet.py",
            "tools/review-packet.py", "tools/pr-policy.py", "tools/record-verdict.py",
            "tools/conformance-gate.py", ".github/pull_request_template.md",
-           ".github/workflows/pr-policy.yml", ".github/workflows/conformance-gate.yml")
+           ".github/workflows/pr-policy.yml", ".github/workflows/conformance-gate.yml",
+           "tools/agent-doctor.py")
 ENGINE_OWNED = ("Directory.Packages.props", f"{NAME}.slnx", f"src/{NAME}/{NAME}.csproj",
                 f"tests/{NAME}.Tests/{NAME}.Tests.csproj", "corpus-map.overlay.json",
                 ".github/agent-policy.json")

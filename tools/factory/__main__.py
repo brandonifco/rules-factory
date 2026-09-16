@@ -90,6 +90,7 @@ import gate  # noqa: E402
 import generate  # noqa: E402
 import intake as intake_step  # noqa: E402
 import provenance  # noqa: E402
+import rails as rails_step  # noqa: E402
 import transaction  # noqa: E402
 import verify as verify_step  # noqa: E402
 
@@ -279,6 +280,14 @@ def build_parser():
     b.add_argument("--package", help="the .nupkg whose manifest and map the bodies are checked against: the corpus "
                                       "licence's attribution (decision 0023) (default: Id@Version from provenance.json, from the "
                                       "NuGet global packages folder)")
+    l = commands.add_parser("rails", help="report, or put in place, the rails GitHub itself enforces")
+    l.add_argument("--repo", required=True, help="owner/name of the engine's repository")
+    l.add_argument("--dir", required=True, help="the engine directory `produce` wrote")
+    mode = l.add_mutually_exclusive_group(required=True)
+    mode.add_argument("--check", action="store_true", help="report what is in place and change nothing")
+    mode.add_argument("--apply", action="store_true",
+                     help="create the labels and the factory's own branch ruleset, and restrict merging to merge "
+                          "commits; idempotent, and it never reads or writes another ruleset")
     r = commands.add_parser("provenance", help="recompute an engine's provenance.json and report mismatches")
     r.add_argument("--engine", required=True, help="the engine directory")
     r.add_argument("--package", help="the .nupkg or Id@Version (default: Id@Version from provenance.json)")
@@ -297,6 +306,8 @@ def main(argv=None):
             backlog_step.create(args.repo, args.dir, log=sys.stdout, gh=os.environ.get("FACTORY_GH", "gh"),
                                 package=args.package)
             return 0
+        if args.command == "rails":
+            return rails_step.run(args.repo, args.dir, os.environ.get("FACTORY_GH", "gh"), sys.stdout, args.apply)
         if args.command == "provenance":
             return check_provenance(args)
         if args.command == "verify":
@@ -308,6 +319,12 @@ def main(argv=None):
     except intake_step.Usage as error:
         print(f"factory: {error}", file=sys.stderr)
         return 2
+    except rails_step.RailsError as error:
+        # Not "nothing was produced": `rails` produces nothing either way, and `--apply` may have
+        # made some of its changes before the one that failed. Every change it makes is idempotent,
+        # so the fix is to re-run it once the reason is gone.
+        print(f"factory: rails REFUSED -- {error}", file=sys.stderr)
+        return 1
     except (intake_step.Refused, generate.GenerationError, backlog_step.BacklogError) as error:
         print(f"factory: REFUSED -- {error}. Nothing was produced.", file=sys.stderr)
         return 1

@@ -1170,3 +1170,266 @@ class TestTheEngineGateChecksItsOwnRails(TestAProducedEngine):
     def test_the_gate_runs_it(self):
         self.produced()
         self.assertIn('"${GATE[@]}" rails', self.read("scripts/validate.sh"))
+
+
+RAILS_GH_STUB = '''#!/usr/bin/env python3
+"""A stand-in for `gh` holding one repository's labels, rulesets and settings in a JSON file."""
+import json, os, sys
+
+store = os.environ["GH_REPO_STATE"]
+state = json.load(open(store, encoding="utf-8"))
+argv = sys.argv[1:]
+
+
+def save():
+    json.dump(state, open(store, "w", encoding="utf-8"))
+
+
+def fields():
+    out = {}
+    for i, a in enumerate(argv):
+        if a in ("-f", "-F"):
+            key, value = argv[i + 1].split("=", 1)
+            out[key] = {"true": True, "false": False}.get(value, value)
+    return out
+
+
+if argv[0] == "repo" and argv[1] == "view":
+    print(json.dumps({"nameWithOwner": state["repo"]}))
+    raise SystemExit(0)
+
+assert argv[0] == "api", argv
+endpoint = argv[1]
+method = argv[argv.index("-X") + 1] if "-X" in argv else "GET"
+path = endpoint.split("/")
+
+if endpoint == f"repos/{state['repo']}":
+    if method == "PATCH":
+        state["settings"].update(fields())
+        save()
+    print(json.dumps({"default_branch": state["branch"], **state["settings"]}))
+elif endpoint.startswith(f"repos/{state['repo']}/labels"):
+    if method == "POST":
+        state["labels"].append(fields()["name"])
+        save()
+        print("{}")
+    else:
+        print(json.dumps([{"name": n} for n in state["labels"]]))
+elif endpoint.startswith(f"repos/{state['repo']}/rulesets"):
+    rest = endpoint.split("/rulesets")[1].strip("/")
+    if method == "POST":
+        payload = json.load(sys.stdin)
+        payload["id"] = len(state["rulesets"]) + 1
+        state["rulesets"].append(payload)
+        save()
+        print(json.dumps(payload))
+    elif method == "PUT":
+        payload = json.load(sys.stdin)
+        payload["id"] = int(rest)
+        state["rulesets"] = [payload if r["id"] == payload["id"] else r for r in state["rulesets"]]
+        save()
+        print(json.dumps(payload))
+    elif rest:
+        (found,) = [r for r in state["rulesets"] if r["id"] == int(rest)]
+        print(json.dumps(found))
+    else:
+        print(json.dumps([{"id": r["id"], "name": r["name"]} for r in state["rulesets"]]))
+else:
+    sys.exit(f"unexpected gh api call: {endpoint}")
+'''
+
+
+class TestFactoryRails(TestAProducedEngine):
+    """`factory rails --check` and `--apply` (#155, decision 0029 §10)."""
+
+    REPO = "owner/engine"
+
+    def setUp(self):
+        super().setUp()
+        self.state_path = os.path.join(self.tmp, "repo.json")
+        self.gh = os.path.join(self.tmp, "gh-repo.py")
+        with open(self.gh, "w", encoding="utf-8") as handle:
+            handle.write(RAILS_GH_STUB)
+        os.chmod(self.gh, 0o755)
+        self.repo_state(labels=[], rulesets=[],
+                        settings={"allow_merge_commit": True, "allow_squash_merge": True,
+                                  "allow_rebase_merge": True})
+
+    def repo_state(self, **overrides):
+        document = {"repo": self.REPO, "branch": "main", **overrides}
+        with open(self.state_path, "w", encoding="utf-8") as handle:
+            json.dump(document, handle)
+
+    def read_state(self):
+        with open(self.state_path, encoding="utf-8") as handle:
+            return json.load(handle)
+
+    def rails(self, *args):
+        buffer = io.StringIO()
+        environment = dict(os.environ, FACTORY_GH=self.gh, GH_REPO_STATE=self.state_path)
+        old = dict(os.environ)
+        os.environ.update(environment)
+        try:
+            with redirect_stdout(buffer), redirect_stderr(buffer):
+                code = factory.main(["rails", "--repo", self.REPO, "--dir", self.out, *args])
+        finally:
+            os.environ.clear()
+            os.environ.update(old)
+        return code, buffer.getvalue()
+
+    def test_check_on_a_bare_repository_says_what_is_missing_and_changes_nothing(self):
+        self.produced()
+        before = self.read_state()
+        code, output = self.rails("--check")
+        self.assertEqual(code, 1, output)
+        self.assertIn("Agent files", output)
+        self.assertIn("OK", output)
+        self.assertIn("MISSING", output)
+        self.assertIn("a workflow that exists is not a workflow that is required", output)
+        self.assertEqual(self.read_state(), before, "--check changed the repository")
+
+    def test_check_names_the_configured_chain(self):
+        self.produced()
+        code, output = self.rails("--check")
+        self.assertIn("Review chain", output)
+        self.assertIn("codex -> gemini -> in-house-independent", output)
+
+    def test_apply_creates_the_labels_the_ruleset_and_the_merge_policy(self):
+        self.produced()
+        code, output = self.rails("--apply")
+        self.assertEqual(code, 0, output)
+        state = self.read_state()
+        self.assertEqual(sorted(state["labels"]),
+                         ["risk:independent-review", "risk:normal", "state:blocked",
+                          "state:needs-decision", "state:ready"])
+        (ruleset,) = state["rulesets"]
+        self.assertEqual(ruleset["name"], "rules-factory-agent-rails")
+        self.assertEqual(ruleset["enforcement"], "active")
+        self.assertEqual(ruleset["bypass_actors"], [])
+        rules = {rule["type"]: rule.get("parameters", {}) for rule in ruleset["rules"]}
+        self.assertEqual({check["context"] for check in rules["required_status_checks"]["required_status_checks"]},
+                         {"validate", "pr-policy", "conformance-gate"})
+        self.assertTrue(rules["required_status_checks"]["strict_required_status_checks_policy"])
+        self.assertTrue(rules["pull_request"]["required_review_thread_resolution"])
+        self.assertEqual(rules["pull_request"]["allowed_merge_methods"], ["merge"])
+        self.assertIn("deletion", rules)
+        self.assertIn("non_fast_forward", rules)
+        self.assertEqual(state["settings"], {"allow_merge_commit": True, "allow_squash_merge": False,
+                                             "allow_rebase_merge": False})
+        self.assertIn("The rails are in place on GitHub, not merely present", output)
+
+    def test_apply_twice_changes_nothing_the_second_time(self):
+        self.produced()
+        self.assertEqual(self.rails("--apply")[0], 0)
+        first = self.read_state()
+        code, output = self.rails("--apply")
+        self.assertEqual(code, 0, output)
+        self.assertIn("nothing to do: the rails are already in place", output)
+        self.assertEqual(self.read_state(), first)
+
+    def test_apply_leaves_another_ruleset_byte_identical(self):
+        self.produced()
+        theirs = {"id": 99, "name": "someone-elses-ruleset", "target": "branch", "enforcement": "active",
+                  "rules": [{"type": "required_signatures"}]}
+        self.repo_state(labels=[], rulesets=[theirs],
+                        settings={"allow_merge_commit": True, "allow_squash_merge": True,
+                                  "allow_rebase_merge": True})
+        self.assertEqual(self.rails("--apply")[0], 0)
+        state = self.read_state()
+        self.assertIn(theirs, state["rulesets"], "the factory edited a ruleset it does not own")
+        self.assertEqual(len(state["rulesets"]), 2)
+
+    def test_a_ruleset_that_is_only_evaluated_is_not_in_place(self):
+        self.produced()
+        self.assertEqual(self.rails("--apply")[0], 0)
+        state = self.read_state()
+        state["rulesets"][0]["enforcement"] = "evaluate"
+        with open(self.state_path, "w", encoding="utf-8") as handle:
+            json.dump(state, handle)
+        code, output = self.rails("--check")
+        self.assertEqual(code, 1, output)
+        self.assertIn("is not active", output)
+
+    def test_a_dropped_required_check_is_reported_and_put_back(self):
+        self.produced()
+        self.assertEqual(self.rails("--apply")[0], 0)
+        state = self.read_state()
+        for rule in state["rulesets"][0]["rules"]:
+            if rule["type"] == "required_status_checks":
+                rule["parameters"]["required_status_checks"] = [{"context": "validate"}]
+        with open(self.state_path, "w", encoding="utf-8") as handle:
+            json.dump(state, handle)
+        code, output = self.rails("--check")
+        self.assertEqual(code, 1, output)
+        self.assertIn("conformance-gate is not a required check", output)
+        self.assertEqual(self.rails("--apply")[0], 0)
+
+    def test_a_bypass_actor_is_reported(self):
+        self.produced()
+        self.assertEqual(self.rails("--apply")[0], 0)
+        state = self.read_state()
+        state["rulesets"][0]["bypass_actors"] = [{"actor_id": 5, "actor_type": "RepositoryRole"}]
+        with open(self.state_path, "w", encoding="utf-8") as handle:
+            json.dump(state, handle)
+        code, output = self.rails("--check")
+        self.assertEqual(code, 1, output)
+        self.assertIn("may bypass", output)
+
+    def test_squash_merging_is_reported(self):
+        self.produced()
+        self.assertEqual(self.rails("--apply")[0], 0)
+        state = self.read_state()
+        state["settings"]["allow_squash_merge"] = True
+        with open(self.state_path, "w", encoding="utf-8") as handle:
+            json.dump(state, handle)
+        code, output = self.rails("--check")
+        self.assertEqual(code, 1, output)
+        self.assertIn("squash or rebase merging is still on", output)
+        self.assertIn("the repository still allows squash or rebase merging", output)
+
+    def test_an_engine_with_no_policy_is_refused(self):
+        self.produced()
+        os.remove(os.path.join(self.out, ".github", "agent-policy.json"))
+        code, output = self.rails("--check")
+        self.assertEqual(code, 1, output)
+        self.assertIn("rails REFUSED", output)
+
+    def test_a_repo_that_is_not_owner_name_is_refused(self):
+        self.produced()
+        buffer = io.StringIO()
+        with redirect_stdout(buffer), redirect_stderr(buffer):
+            code = factory.main(["rails", "--repo", "engine", "--dir", self.out, "--check"])
+        self.assertEqual(code, 1, buffer.getvalue())
+        self.assertIn("is not owner/name", buffer.getvalue())
+
+
+class TestTheDoctor(TestAProducedEngine):
+    """`tools/agent-doctor.py`: active, or merely present? (#155)"""
+
+    def doctor(self, *args, **environment):
+        return subprocess.run([sys.executable, os.path.join(self.out, "tools", "agent-doctor.py"), *args],
+                              cwd=self.out, capture_output=True, text=True,
+                              env={**os.environ, **environment})
+
+    def test_local_says_the_remote_half_was_not_examined(self):
+        self.produced()
+        done = self.doctor("--local")
+        self.assertEqual(done.returncode, 1, done.stdout)
+        self.assertIn("NOT EXAMINED", done.stdout)
+        self.assertIn("says nothing about what GitHub enforces", done.stdout)
+        self.assertIn("Rail files ", done.stdout)
+        self.assertIn("Guard wired to the tools", done.stdout)
+
+    def test_a_guard_nothing_invokes_is_reported(self):
+        self.produced()
+        path = os.path.join(self.out, ".claude", "settings.json")
+        with open(path, "w", encoding="utf-8") as handle:
+            json.dump({"hooks": {}}, handle)
+        done = self.doctor("--local")
+        self.assertIn("not wired into .claude/settings.json", done.stdout)
+
+    def test_a_missing_rail_is_reported(self):
+        self.produced()
+        os.remove(os.path.join(self.out, "tools", "record-verdict.py"))
+        done = self.doctor("--local")
+        self.assertIn("are not in this engine", done.stdout)

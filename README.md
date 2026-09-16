@@ -64,12 +64,17 @@ marked `not implemented` that the parser does have.
 | `produce` | `--adopt` | implemented | make a managed file engine-owned, keeping its edits |
 | `produce` | `--reset` | implemented | overwrite a managed or adopted file with the current recipe |
 | `produce` | domain pack | not implemented | no pack exists; provenance records `"packs": []` |
-| `produce` | agent rails | not implemented | not an input — the rails are output, and no flag turns them on or off ([0029](docs/decisions/0029-the-rails-are-emitted-by-default-and-vendor-choice-is-engine-owned-configuration.md)). Emitted: the contract, the roles, the charters, the guard, the engine-owned policy, the packets, dispatch, the pull request contract and the verdict gates. Not yet: the PR policy and the verdict gates ([#152](https://github.com/brandonifco/rules-factory/issues/152)–[#155](https://github.com/brandonifco/rules-factory/issues/155)) |
+| `produce` | agent rails | not implemented | not an input — the rails are output, and no flag turns them on or off ([0029](docs/decisions/0029-the-rails-are-emitted-by-default-and-vendor-choice-is-engine-owned-configuration.md)). Emitted: the contract, the roles, the charters, the guard, the engine-owned policy, the packets, dispatch, the pull request contract, the verdict gates and the rails doctor. `factory rails --apply` is what makes the checks required on GitHub. Not yet: the PR policy and the verdict gates ([#152](https://github.com/brandonifco/rules-factory/issues/152)–[#155](https://github.com/brandonifco/rules-factory/issues/155)) |
 | `backlog` | — | implemented | synchronise `backlog/` with GitHub issues through `gh`, and label each one: state from the item's dependencies, `normal` risk on an issue with none. A `needs-decision` state and a promoted risk are a person's, and a sync never undoes either ([0029](docs/decisions/0029-the-rails-are-emitted-by-default-and-vendor-choice-is-engine-owned-configuration.md)) |
 | `backlog` | `--create` | implemented | the only action; never closes or deletes an issue |
 | `backlog` | `--repo` | implemented | `owner/name` |
 | `backlog` | `--dir` | implemented | the engine directory |
 | `backlog` | `--package` | implemented | the map package the bodies are checked against: each carries the attribution the corpus licence requires (0023) |
+| `rails` | — | implemented | report, or put in place, the rails GitHub itself enforces: the labels, the factory's own branch ruleset, and the three required checks |
+| `rails` | `--repo` | implemented | `owner/name` |
+| `rails` | `--dir` | implemented | the engine directory, for the policy and the rail files |
+| `rails` | `--check` | implemented | read-only: one row per rail, and what is not in place |
+| `rails` | `--apply` | implemented | creates the labels and a ruleset named `rules-factory-agent-rails`, and restricts merging to merge commits; idempotent, and it never reads or writes another ruleset |
 | `provenance` | — | implemented | re-produce in a scratch copy and name every field that does not match |
 | `provenance` | `--engine` | implemented | the engine directory |
 | `provenance` | `--package` | implemented | default: `Id@Version` from `provenance.json` |
@@ -154,7 +159,7 @@ found at run time, not at compile time. The string-keyed `Registry` and reflecti
 | Corpus maps — schema, checker, packages | this | maps of two corpora; `hoyle-backgammon` and `faa-part-107` published as packages |
 | Corpus toolkit — adapters, locators, boundary policy | none | locator checkers for two citation grammars live here; no adapters |
 | Domain packs — tabletop, legal | none | not implemented |
-| Agent rails for produced engines | this | decided ([0029](docs/decisions/0029-the-rails-are-emitted-by-default-and-vendor-choice-is-engine-owned-configuration.md)); `AGENTS.md`, the roles, the charters, the guard, the packets, dispatch, the PR contract, the recorded verdicts and `.github/agent-policy.json` are emitted. Making the checks *required* on GitHub is open ([#1](https://github.com/brandonifco/rules-factory/issues/1), [#4](https://github.com/brandonifco/rules-factory/issues/4)) |
+| Agent rails for produced engines | this | decided ([0029](docs/decisions/0029-the-rails-are-emitted-by-default-and-vendor-choice-is-engine-owned-configuration.md)); emitted and enforced: the contract, the roles, the charters, the guard, the packets, dispatch, the PR contract, the recorded verdicts, `.github/agent-policy.json`, and `factory rails --apply`, which makes the three checks required. The acceptance run is open ([#1](https://github.com/brandonifco/rules-factory/issues/1), [#4](https://github.com/brandonifco/rules-factory/issues/4)) |
 | **Factory — intake, generation, gate, backlog, provenance, verify** | **this** | implemented; acceptance test ([#3](https://github.com/brandonifco/rules-factory/issues/3)) not passed |
 | Produced engines | [`hoyle-backgammon`](https://github.com/brandonifco/hoyle-backgammon) | produced by the factory (`factory/v0.2.1`, map 4.0.0), with hand-written rule handlers ([evidence](examples/hoyle-backgammon/produced-engine/EVIDENCE.md)) |
 | Hand-built engines | `deckard`, `SRD_Combat` | built by hand, before the factory |
@@ -189,8 +194,7 @@ rails         AGENTS.md, the roles, the three charters, the primary-checkout gua
               its policy check, the recorded verdict and its conformance gate, and
               .github/agent-policy.json, which the engine owns
 
-not implemented: a domain pack as input; `factory rails`, which makes the two new
-checks required on GitHub rather than merely present
+not implemented: a domain pack as input
 ```
 
 ## Why a manual before code
