@@ -13,7 +13,7 @@ did.
 
 **Amended 2026-09-16** for [#151](https://github.com/brandonifco/rules-factory/issues/151): the
 agent rails of [0029](0029-the-rails-are-emitted-by-default-and-vendor-choice-is-engine-owned-configuration.md)
-are rows in the table below — nineteen managed, one engine-owned. Nothing about the three classes or
+are rows in the table below — twenty managed, one engine-owned. Nothing about the three classes or
 the detection changed. 0029 §5 records the one constraint the managed class puts on them: a
 managed recipe's bytes are fixed per version, so a rail may not interpolate the engine's name or
 its map.
@@ -138,6 +138,7 @@ written path the table does not classify.
 | `.github/workflows/pr-policy.yml` | managed | 1 | The required check that runs `pr-policy.py`. |
 | `.github/workflows/conformance-gate.yml` | managed | 1 | The required check that runs `conformance-gate.py`. |
 | `tools/agent-doctor.py` | managed | 1 | Whether the rails are active or only present: the hook wired, the labels created, the checks required. |
+| `.editorconfig` | managed | 1 | The kernel determinism analyzers' severities: warning (so, with warnings as errors, a build error) under `src/`, off under `tests/`. |
 | `global.json` | managed | 1 | The SDK the kernel pins and `rollForward: disable`. This is policy every engine should follow as the kernel moves. An engine that must move ahead of the kernel adopts the file. |
 | `NuGet.config` | managed | 2 | Package sources and source mapping: supply-chain policy (restore talks to nuget.org only, lock files pin content). An extra feed is a deliberate departure, so it is an explicit adoption. |
 | `Directory.Build.props` | managed | 2 | Target frameworks, analyzers, warnings-as-errors, determinism and lock-file mode. The review named exactly these as changes that never reached existing engines. |
