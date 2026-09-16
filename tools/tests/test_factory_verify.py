@@ -416,22 +416,26 @@ class TestExitCodes(VerifyCase):
         """The scripts in this repository that run `produce --no-verify` must handle its exit code.
 
         Each of them runs it in exactly one place, which captures the status rather than letting
-        `set -e` abort on it, and the script names 3 as the code it accepts. A new bare
-        `tools/factory produce ... --no-verify` anywhere else fails this test, which is the point:
-        that is how the defect would come back.
+        `set -e` (or a check of the code) abort on it, and the script names 3 as the code it accepts.
+        A new bare `tools/factory produce ... --no-verify` anywhere else fails this test, which is the
+        point: that is how the defect would come back. scripts/validate-engine.sh is a wrapper since
+        #172, so its orchestration, tools/validate-engine.py, is the caller examined: there the command
+        is a list, and the status is captured as `status = run(...)`.
         """
-        for relative in ("scripts/validate-engine.sh", "examples/hoyle-backgammon/produced-engine/equivalence.sh"):
+        callers = (("tools/validate-engine.py", '"tools/factory", "produce"', "status = "),
+                   ("examples/hoyle-backgammon/produced-engine/equivalence.sh", "tools/factory produce", "status=$?"))
+        for relative, invocation, capture in callers:
             with open(os.path.join(REPO, *relative.split("/")), encoding="utf-8") as handle:
                 lines = handle.read().splitlines()
             # The invocation and its continuation lines: a produce command here spans at most two.
             blocks = [(number, "\n".join(lines[number - 1:number + 1]))
                       for number, line in enumerate(lines, 1)
-                      if "tools/factory produce" in line and not line.lstrip().startswith("#")]
+                      if invocation in line and not line.lstrip().startswith("#")]
             unverified = [(number, block) for number, block in blocks if "--no-verify" in block]
             self.assertEqual(len(unverified), 1,
                              f"{relative} runs `produce --no-verify` in {len(unverified)} places, not one")
             (number, block) = unverified[0]
-            self.assertIn("status=$?", block,
+            self.assertIn(capture, block,
                           f"{relative}:{number} does not capture produce's exit code, so it cannot accept "
                           f"{factory.NOT_VERIFIED} and reject the rest")
             self.assertIn(str(factory.NOT_VERIFIED), "\n".join(lines),
