@@ -81,12 +81,12 @@ TABLE = (
     Row("scripts/engine-gate.py", GENERATED, None, "the gate recipe: its non-dotnet checks"),
     Row("scripts/factory/*.py", GENERATED, None, "the factory's generator, vendored so the gate can regenerate"),
     Row(".github/workflows/validate.yml", GENERATED, None, "the gate recipe: CI runs validate.sh full"),
-    Row("AGENTS.md", MANAGED, 3,
+    Row("AGENTS.md", MANAGED, 4,
         "the governing contract every agent works this engine under (decision 0029)"),
     Row("CLAUDE.md", MANAGED, 1,
         "a pointer to AGENTS.md and the Claude adapters; it states no rule of its own (0029)"),
     Row("docs/agent-team.md", MANAGED, 3, "the four roles, and what each may not do (0029)"),
-    Row(".claude/agents/engine-dev.md", MANAGED, 3, "the implementer's charter (0029)"),
+    Row(".claude/agents/engine-dev.md", MANAGED, 4, "the implementer's charter (0029)"),
     Row(".claude/agents/repo-steward.md", MANAGED, 1, "the structural reviewer's charter, read-only (0029)"),
     Row(".claude/agents/rules-conformance.md", MANAGED, 2, "the semantic reviewer's charter, read-only (0029)"),
     Row(".claude/hooks/primary-checkout-guard.py", MANAGED, 1,
@@ -97,6 +97,8 @@ TABLE = (
     Row("tools/new-issue.sh", MANAGED, 1, "an issue with the shape the rails expect (0029)"),
     Row("tools/entry-packet.py", MANAGED, 3,
         "the bounded assignment for one entry, assembled from merge(package, overlay) (0029)"),
+    Row("tools/re-produce.sh", MANAGED, 1,
+        "an overlay edit is finished by a re-produce, from the factory commit the record names (#192)"),
     Row("tools/review-packet.py", MANAGED, 1,
         "everything a reviewer needs about one pull request, in the order it is read (0029)"),
     Row("tools/pr-policy.py", MANAGED, 1,
@@ -109,7 +111,7 @@ TABLE = (
     Row(".github/workflows/pr-policy.yml", MANAGED, 1, "the required check that runs pr-policy.py (0029)"),
     Row(".github/workflows/conformance-gate.yml", MANAGED, 1,
         "the required check that runs conformance-gate.py (0029)"),
-    Row("tools/agent-doctor.py", MANAGED, 1,
+    Row("tools/agent-doctor.py", MANAGED, 2,
         "whether the rails are active or only present, locally and on GitHub (0029)"),
     Row(".editorconfig", MANAGED, 1,
         "the kernel determinism analyzers' severities: a build error in src, off in tests (0029)"),
@@ -142,6 +144,7 @@ RECIPE_SHA256 = {
         1: "22dbac892b04903992d13516e5a08ac04d92d02b0d8d4ce5e4bfa9ef53543287",
         2: "5f0dd905e2b3857115d93196a66a168e17b505f87dda13a7d200f2bc12572bdb",
         3: "c8569477e58633f6e807a4b9be9a00b37a6f315d5b0f1fa8b0a7bc1f36b24b06",
+        4: "f2b21c791a783f828f8d4dc3fa17407f6557a15923be9b0b67ce5a94ba69f926",
     },
     ".claude/agents/repo-steward.md": {
         1: "6a2662ac958da76bb02263914d4e3b293a8dc15837e8a6ffccb14177b013bde7",
@@ -160,6 +163,7 @@ RECIPE_SHA256 = {
         1: "06594a3207634553a28ca057ecb53225082e4f111890961e27589c544353e740",
         2: "81f5756c1bff7ca2f1f9091087138fed0204a43e2f30a1e6f05ad4430e2efd48",
         3: "c3576d1cea769505a43794b8f2d42797f230f058b238eda09230f1fd3105ab50",
+        4: "81d299fb5b7d6fd19d7a25032e74453bb7016ac9c35ad4fa803bc9b16f9cc335",
     },
     "CLAUDE.md": {
         1: "04c07ad36e742fa60efafeca54d20bd96d16b6e338a44e46fad2b679ab8dfd9f",
@@ -179,6 +183,9 @@ RECIPE_SHA256 = {
         1: "6e413d4e4143d888e00c1570358c5f6c7404347a173cd023b821f4d2f781835a",
         2: "59f112154a77a8cf574bd8d1ee1e43d39399025308c8f4eb2371d99081e49b20",
         3: "58791e5a923a50c591ef35325a7f45ec8db652f1b09179f5fc28c874b44d230f",
+    },
+    "tools/re-produce.sh": {
+        1: "2a281f94f81ce141733494a94744caa96c88af3cd9fa848cec21c13e73739499",
     },
     "tools/review-packet.py": {
         1: "2e989c02c1827bf6d3da8fce9a35874e25ea4baf14f62eeb64aab78c30b1f392",
@@ -203,6 +210,7 @@ RECIPE_SHA256 = {
     },
     "tools/agent-doctor.py": {
         1: "1b6fced99797d165ab0216523bddae183d6e7254f41d5d5f51cdb1d1c3b8913d",
+        2: "95e64721a6b2bd4155e99d43c0f736b009c60152de20e4414ec2cd7fd47f8a5d",
     },
     ".editorconfig": {
         1: "4109d1ef55053ef656e536d7818934deb73016fbe950f153bae6b2a163591cb2",

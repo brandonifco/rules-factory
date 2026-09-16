@@ -9,7 +9,9 @@ Two layers:
     edit in a `*.g.cs`, an overlay key the map lacks, `implemented` without `tests`, a lock file
     or project resolving RulesKernel.Randomness for a corpus that declares `randomness: none`, or
     pinning it outside the generated props for one that declares `seeded` (0019), a corpus that is
-    not the baseline.
+    not the baseline, or an overlay edit that was regenerated but never followed by a re-produce,
+    which leaves provenance.json hashing bytes that are gone and the backlog listing an entry that
+    is already built (#192).
   * **With a .NET SDK** (skipped cleanly when `dotnet` is absent, as in this repository's CI, or
     when RULES_FACTORY_SKIP_DOTNET is set): the emitted `scripts/validate.sh` itself passes on
     fresh output and fails on each of those mutations. The engine is a scratch copy: its
@@ -54,6 +56,7 @@ RECIPE = ("scripts/validate.sh", "scripts/map-overlay.py", "scripts/engine-gate.
           "scripts/factory/generate.py", "scripts/factory/intake.py", "scripts/factory/ownership.py",
           "scripts/factory/provenance.py", "scripts/factory/rulings.py", ".github/workflows/validate.yml")
 IMPLEMENTED_IN = {"ruleset": "faa-part-107", "version": 1}
+OVERLAY = "corpus-map.overlay.json"
 
 
 def pack(map_dir, out):
@@ -213,6 +216,102 @@ class TestGeneratedFilesMatchARegeneration(GateCase):
         self.assertEqual(code, 1, output)
         produce(self.nupkg, engine)
         self.assertEqual(self.regenerate(engine)[0], 0)
+
+
+class TestTheRecordHashesWhatIsOnDisk(GateCase):
+    """#192: `provenance` compares the record with the tree, and an overlay edit is only finished
+    by a re-produce.
+
+    The defect this exists for passed `validate.sh full` in the live run of #157: marking an entry
+    implemented changes the overlay, `regenerate --write` refreshes the generated C# and nothing
+    else, and `provenance.json` and `backlog/` -- both generated, both `factory produce`'s alone --
+    are left hashing bytes that no longer exist and listing an entry that is already built.
+    """
+
+    IMPLEMENTED = {"speed-limit": {"status": "implemented", "implementedIn": IMPLEMENTED_IN,
+                                   "tests": [{"test": "SpeedTests.t", "mutation": "m"}]}}
+
+    def provenance(self, engine):
+        return self.script(engine, "engine-gate.py", "provenance")
+
+    def test_passes_on_fresh_output_having_examined_something(self):
+        code, output = self.provenance(self.engine())
+        self.assertEqual(code, 0, output)
+        count = re.search(r"(\d+) recorded file\(s\) hash as provenance\.json records", output)
+        self.assertIsNotNone(count, output)
+        self.assertGreater(int(count.group(1)), 0, "a check that examined nothing reported an ok")
+        self.assertIn(OVERLAY, output, "the overlay is named as examined, not merely implied")
+
+    def test_a_regeneration_alone_leaves_the_record_stale(self):
+        """The whole of #192, end to end: the leak, the failure that closes it, and the fix."""
+        engine = self.engine()
+        write_json(os.path.join(engine, OVERLAY), self.IMPLEMENTED)
+        code, output = self.script(engine, "engine-gate.py", "regenerate", "--package-map", self.package_map,
+                                   "--package-manifest", self.package_manifest, "--package-id", PACKAGE_ID,
+                                   "--package-version", "4.0.0", "--name", NAME, "--write")
+        self.assertEqual(code, 0, output)  # the leak: refreshing the C# is not a failure, and it is not enough
+
+        code, output = self.provenance(engine)
+        self.assertEqual(code, 1, output)
+        self.assertIn(f"buildInputs[{OVERLAY}].sha256", output)
+        self.assertRegex(output, r"generated\[[^\]]+\.g\.cs\]\.sha256")
+        self.assertIn("tools/re-produce.sh", output, "the failure names the command that fixes it")
+
+        produce(self.nupkg, engine)
+        code, output = self.provenance(engine)
+        self.assertEqual(code, 0, output)
+
+    def test_a_hand_edited_gate_fails(self):
+        """Why an engine must not rewrite its own record: it cannot re-derive these bytes.
+
+        `scripts/validate.sh` is generated and hashed, and no engine can regenerate it -- only the
+        factory that emitted it can. An engine-side rewrite of the record would hash whatever is on
+        disk and hand this edit a fresh matching SHA-256.
+        """
+        engine = self.engine()
+        edit(os.path.join(engine, "scripts", "validate.sh"),
+             lambda t: t.replace("FAILED=0", "FAILED=0\nexit 0  # tweaked by hand", 1))
+        code, output = self.provenance(engine)
+        self.assertEqual(code, 1, output)
+        self.assertIn("generated[scripts/validate.sh].sha256", output)
+
+    def test_a_deleted_backlog_item_fails(self):
+        engine = self.engine()
+        items = sorted(f for f in os.listdir(os.path.join(engine, "backlog")) if f.endswith(".md"))
+        self.assertTrue(items, "the produced engine has no backlog to delete from")
+        os.remove(os.path.join(engine, "backlog", items[0]))
+        code, output = self.provenance(engine)
+        self.assertEqual(code, 1, output)
+        self.assertIn(f"generated[backlog/{items[0]}]: recorded, missing on disk", output)
+
+    def test_a_hand_edited_managed_file_fails(self):
+        engine = self.engine()
+        with open(os.path.join(engine, "AGENTS.md"), "a", encoding="utf-8") as handle:
+            handle.write("\n## Our own section\n")
+        code, output = self.provenance(engine)
+        self.assertEqual(code, 1, output)
+        self.assertIn("managed[AGENTS.md].sha256", output)
+
+    def test_a_record_that_lists_nothing_fails_rather_than_passing(self):
+        engine = self.engine()
+        os.remove(os.path.join(engine, OVERLAY))
+        with open(os.path.join(engine, "provenance.json"), "wb") as handle:
+            handle.write((json.dumps({"engine": {"name": NAME}, "generated": [], "managed": [],
+                                      "buildInputs": []}, indent=2) + "\n").encode("utf-8"))
+        code, output = self.provenance(engine)
+        self.assertEqual(code, 1, output)
+        self.assertIn("examined nothing", output)
+
+    def test_a_hand_edited_record_is_not_in_the_factory_s_canonical_form(self):
+        engine = self.engine()
+        path = os.path.join(engine, "provenance.json")
+        with open(path, encoding="utf-8") as handle:
+            record = json.load(handle)
+        with open(path, "w", encoding="utf-8") as handle:
+            json.dump(record, handle)  # every hash still true; only the serialisation differs
+        code, output = self.provenance(engine)
+        self.assertEqual(code, 1, output)
+        self.assertIn("not in the factory's canonical form", output)
 
 
 class TestOverlayMerge(GateCase):
@@ -638,7 +737,8 @@ class TestValidateShWithDotnet(GateCase):
         self.assertIn("validate.sh lock: PASS\n", output)
         for step in ("SDK ", "every project has a packages.lock.json", "dotnet restore --locked-mode",
                      "RulesKernel.Randomness is reachable only as the corpus declares", "packaged check-map.py --phase consumer",
-                     "every corpus verified", "every *.g.cs matches a fresh regeneration", "dotnet format",
+                     "every corpus verified", "every *.g.cs matches a fresh regeneration",
+                     "provenance.json hashes the generated files, the managed files and the overlay", "dotnet format",
                      "build Debug", "test Debug", "build Release", "test Release"):
             self.assertIn(f"ok   {step}", output)
         self.assertNotIn("FAIL", output)
@@ -770,6 +870,20 @@ class TestValidateShWithDotnet(GateCase):
         engine = self.copy()
         edit(os.path.join(engine, *REGISTRY.split("/")), hand_edit)
         self.assertFailsAt(self.validate(engine, "full"), "every *.g.cs matches a fresh regeneration (no hand edits)")
+
+    def test_fails_when_an_overlay_edit_was_regenerated_but_never_re_produced(self):
+        """#192 through the whole gate: the regeneration step is green and the record is stale."""
+        engine = self.copy()
+        write_json(os.path.join(engine, "corpus-map.overlay.json"),
+                   {"speed-limit": {"status": "implemented", "implementedIn": IMPLEMENTED_IN,
+                                    "tests": [{"test": "SpeedTests.t", "mutation": "m"}]}})
+        code, output = self.script(engine, "engine-gate.py", "regenerate", "--package-map", self.package_map,
+                                   "--package-manifest", self.package_manifest, "--package-id", PACKAGE_ID,
+                                   "--package-version", "4.0.0", "--name", NAME, "--write")
+        self.assertEqual(code, 0, output)
+        result = self.validate(engine, "full")
+        self.assertFailsAt(result, "provenance.json hashes the generated files, the managed files and the overlay")
+        self.assertIn("tools/re-produce.sh", result[1])
 
 
 if __name__ == "__main__":

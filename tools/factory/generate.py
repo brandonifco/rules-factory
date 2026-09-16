@@ -1094,6 +1094,7 @@ RAILS = {
     "tools/dispatch-agent.sh": "tools/dispatch-agent.sh",
     "tools/new-issue.sh": "tools/new-issue.sh",
     "tools/entry-packet.py": "tools/entry-packet.py",
+    "tools/re-produce.sh": "tools/re-produce.sh",
     "tools/review-packet.py": "tools/review-packet.py",
     "tools/pr-policy.py": "tools/pr-policy.py",
     "tools/record-verdict.py": "tools/record-verdict.py",
@@ -1111,7 +1112,7 @@ RAILS = {
 # no bit. The mode is not part of a recipe's bytes, so it plays no part in hand-edit detection.
 EXECUTABLE = frozenset({"tools/dispatch-agent.sh", "tools/new-issue.sh", "tools/entry-packet.py",
                         "tools/review-packet.py", "tools/pr-policy.py", "tools/record-verdict.py",
-                        "tools/conformance-gate.py", "tools/agent-doctor.py"})
+                        "tools/conformance-gate.py", "tools/agent-doctor.py", "tools/re-produce.sh"})
 RAILS_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "recipe", "rails")
 
 

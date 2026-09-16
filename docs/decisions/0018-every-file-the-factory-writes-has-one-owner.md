@@ -24,6 +24,69 @@ the detection changed. 0029 §5 records the one constraint the managed class put
 managed recipe's bytes are fixed per version, so a rail may not interpolate the engine's name or
 its map.
 
+**Amended 2026-09-16** for [#192](https://github.com/brandonifco/rules-factory/issues/192): an
+engine that edits an engine-owned *input* must re-produce, and the gate now enforces it. See
+*Amendment — an overlay edit is finished by a re-produce* below. No row of the table changes class,
+and one managed row is added (`tools/re-produce.sh`).
+
+## Amendment — an overlay edit is finished by a re-produce
+
+`provenance.json` and `backlog/*.md` are **generated**, which by this decision means `factory
+produce` is their only author. Implementing a backlog entry edits `corpus-map.overlay.json`, which
+is engine-owned — and every one of those generated files is derived from it. Nothing in a produced
+engine refreshes them: `scripts/engine-gate.py regenerate --write` rewrites the generated C# and
+nothing else. So an implementation pull request carried a record hashing bytes that no longer
+existed and a backlog still listing the entry as one to build, and `validate.sh full` passed
+anyway. The live run of [#157](https://github.com/brandonifco/rules-factory/issues/157) on
+`brandonifco/faa-part-107` merged at four stale hashes; steward review caught it, and it took an
+owner's ruling and a second commit.
+
+**So an engine that changes an engine-owned input re-produces, and `scripts/engine-gate.py
+provenance` fails until it has.** The step is in `scripts/validate.sh` after the regeneration step,
+and it is not guarded on the restore or the map: it reads only files in the repository, so it can
+never legitimately degrade to a skip. Its failure names one command, `tools/re-produce.sh`, which
+is a managed rail (0029) rather than a paragraph telling an operator to clone rules-factory and
+assemble four arguments — a procedure with a trap in it, since cloning the factory's `main` instead
+of the recorded commit silently rewrites the gate, the rails and the vendored generator into an
+implementation pull request.
+
+- **What the check compares, and why not more.** Every `generated` entry, every `managed` entry,
+  and `buildInputs[corpus-map.overlay.json]` — and no other build input. Adding a
+  `PackageReference`, a project to the `.slnx`, or a version to `Directory.Packages.props` are
+  legitimate engine-owned acts under this decision; making each of them require a re-produce
+  before the gate goes green produces a gate people route around. Holding the whole of
+  `buildInputs` is `factory provenance`'s job, where a real re-produce can tell a legitimate
+  addition from drift. The overlay is different in kind: it is the *input to generation*, and it
+  appears in `buildInputs` only because it happens to be engine-owned. This scoping is recorded
+  here so it is a decision and not an omission.
+- **The overlay comparison is the load-bearing one.** Hashing the recorded backlog files does not
+  catch a stale backlog: the item file for an entry that has since been implemented is recorded
+  and unchanged, so its hash matches. What catches it is that the overlay moved, which makes
+  everything derived from the overlay older than the overlay.
+- **The record is also checked for the factory's canonical serialisation** (`provenance.serialize`),
+  so a hand edit that kept every hash true is still named.
+- **A check that examines nothing is a failure.** A record listing no generated file, no managed
+  file and no overlay fails, saying it examined nothing.
+
+**Rejected: let the engine rewrite the record itself.** This is the issue's first option, and it
+cannot be done. Four independent blockers, all in `tools/factory/provenance.py`:
+
+1. `factory_state()` resolves the factory directory from `__file__`. In an engine that is
+   `<engine>/scripts/factory`, so the engine's own HEAD would be written into `factory.commit` — a
+   false value indistinguishable from a true one.
+2. `recipes()` walks all of `tools/factory/` plus `tools/check-map.py`. An engine has only the five
+   modules `gate.FILES` vendors.
+3. `generated` is built by `provenance.Recorder`, which watches `open`, `replace` and `rename`
+   while `produce` runs. Engine-side there is no run to observe.
+4. Decisively, an engine can re-derive its `*.g.cs` but not `scripts/validate.sh`,
+   `scripts/engine-gate.py`, `scripts/map-overlay.py`, `scripts/factory/*.py` or
+   `.github/workflows/validate.yml` — all class generated, all hashed in the record. An engine-side
+   rewrite would hash whatever is on disk and hand a fresh, matching SHA-256 to a hand-edited gate.
+   A gate that re-blesses its own bytes proves nothing.
+
+So the engine compares and never writes, and `tools/factory/backlog.py` is deliberately not
+vendored into an engine and stays that way.
+
 ## Amendment — changed pins re-lock
 
 The lock files are engine-owned, and the table said no `produce` rewrites them. That made a map
@@ -159,10 +222,10 @@ written path the table does not classify.
 | `scripts/engine-gate.py` | generated |  | Gate recipe: the non-dotnet checks. |
 | `scripts/factory/*.py` | generated |  | The factory's generator, vendored so the gate can regenerate without the factory. |
 | `.github/workflows/validate.yml` | generated |  | Gate recipe: CI runs `validate.sh full`. |
-| `AGENTS.md` | managed | 3 | The governing contract every agent works the engine under (0029). Managed, not generated: a team may amend its own contract, and the factory must then either carry the amendment or refuse and say so, never silently overwrite it. |
+| `AGENTS.md` | managed | 4 | The governing contract every agent works the engine under (0029). Managed, not generated: a team may amend its own contract, and the factory must then either carry the amendment or refuse and say so, never silently overwrite it. |
 | `CLAUDE.md` | managed | 1 | A pointer to `AGENTS.md` and an index of the Claude adapters. It states no rule of its own, so it cannot drift from the contract. |
 | `docs/agent-team.md` | managed | 3 | The four roles and what each may not do (0029). |
-| `.claude/agents/engine-dev.md` | managed | 3 | The implementer's charter. |
+| `.claude/agents/engine-dev.md` | managed | 4 | The implementer's charter. |
 | `.claude/agents/repo-steward.md` | managed | 1 | The structural reviewer's charter, read-only. |
 | `.claude/agents/rules-conformance.md` | managed | 2 | The semantic reviewer's charter, read-only. |
 | `.claude/hooks/primary-checkout-guard.py` | managed | 1 | The `PreToolUse` guard keeping implementation work out of the primary checkout. Policy, and the engine that must change it adopts it. |
@@ -170,6 +233,7 @@ written path the table does not classify.
 | `tools/dispatch-agent.sh` | managed | 1 | One issue, one worktree, one branch; it refuses what is not ready to work (0029). |
 | `tools/new-issue.sh` | managed | 1 | An issue with the shape the rails expect, at the ready state and normal risk. |
 | `tools/entry-packet.py` | managed | 3 | The bounded assignment for one entry, assembled from merge(package, overlay) so it cannot carry a reading of its own. |
+| `tools/re-produce.sh` | managed | 1 | Re-runs `factory produce` on the engine from the factory commit `provenance.json` names. The record and the backlog are generated, so an overlay edit is only finished by a produce, and prose describing that clone is a procedure an operator can get wrong (#192). |
 | `tools/review-packet.py` | managed | 1 | Everything a reviewer needs about one pull request, in the order it is meant to be read. |
 | `tools/pr-policy.py` | managed | 1 | The pull request contract, checked mechanically: one linked issue, every section filled, output rather than a claim. |
 | `tools/record-verdict.py` | managed | 1 | A review verdict as a commit status on the exact commit reviewed, so a later commit invalidates it by itself. |
@@ -177,7 +241,7 @@ written path the table does not classify.
 | `.github/pull_request_template.md` | managed | 1 | The pull request shape `pr-policy.py` checks. Template and checker are emitted together, so neither can drift from the other. |
 | `.github/workflows/pr-policy.yml` | managed | 1 | The required check that runs `pr-policy.py`. |
 | `.github/workflows/conformance-gate.yml` | managed | 1 | The required check that runs `conformance-gate.py`. |
-| `tools/agent-doctor.py` | managed | 1 | Whether the rails are active or only present: the hook wired, the labels created, the checks required. |
+| `tools/agent-doctor.py` | managed | 2 | Whether the rails are active or only present: the hook wired, the labels created, the checks required. |
 | `.editorconfig` | managed | 1 | The kernel determinism analyzers' severities: warning (so, with warnings as errors, a build error) under `src/`, off under `tests/`. |
 | `global.json` | managed | 1 | The SDK the kernel pins and `rollForward: disable`. This is policy every engine should follow as the kernel moves. An engine that must move ahead of the kernel adopts the file. |
 | `NuGet.config` | managed | 2 | Package sources and source mapping: supply-chain policy (restore talks to nuget.org only, lock files pin content). An extra feed is a deliberate departure, so it is an explicit adoption. |

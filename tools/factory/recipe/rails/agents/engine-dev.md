@@ -39,7 +39,13 @@ You do not need to read the whole corpus, and you should not try. The packet is 
 - Write tests that prove the mapped rule, not tests that describe the code you wrote. For each,
   **record in the overlay the mutation that makes it fail, and actually observe it fail.** A test
   nobody has watched fail is not yet a test.
-- Regenerate whatever the factory generates, rather than editing a generated file.
+- Finish an overlay change properly, in this order. The entry's overlay object gets `status:
+  implemented`, its `implementedIn`, and its `tests` — each with the mutation you actually watched
+  fail. `scripts/engine-gate.py regenerate --write` then refreshes the generated C# **and nothing
+  else**: it does not touch `provenance.json` or `backlog/`, and it cannot, because those are
+  written by `factory produce` alone, from a factory checkout. `tools/re-produce.sh` is how you run
+  it — one command, from the factory commit the record names. Until you do, the record hashes the
+  old bytes and the backlog still lists the entry as one to build, and the gate fails saying so.
 - Run the gate, whole: `./scripts/validate.sh full`. Paste what it printed.
 - Open one pull request that closes exactly that one issue, filling in every section of
   `.github/pull_request_template.md` with real command output. `tools/pr-policy.py` checks it as a
@@ -55,6 +61,9 @@ You do not need to read the whole corpus, and you should not try. The packet is 
   upstream map defect and stop (`AGENTS.md` §5). Do not make the engine disagree with the
   published map, and do not edit the map.
 - **Do not edit `corpus/`, a baseline, a hash, or the gate** to make a check pass.
+- **Never hand-edit `provenance.json`, anything under `backlog/`, or anything under `Generated/`.**
+  The gate hashes all three against the record. Editing one so the gate goes green is the same
+  defect as editing a baseline: it is the check you are changing, not the thing it checks.
 - **Do not widen the change.** An unrelated defect you notice is a new issue, not a second commit
   on this branch. Say you found it; do not fix it here.
 - **Do not bulk-stage.** `git add <explicit paths>`, never `git add -A` or `git add .`.

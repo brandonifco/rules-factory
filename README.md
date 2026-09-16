@@ -135,6 +135,12 @@ What never happens again is `NOT VERIFIED` on stdout and `0` in `$?`.
   kernel version, the hash of every recipe file and generated file, the managed files at their
   recipe versions, and the bytes of every file the build reads as configuration.
   `factory provenance` re-produces the engine and names every field that no longer matches.
+  The engine's own gate holds a narrower claim without the factory: `scripts/engine-gate.py
+  provenance` hashes the recorded generated and managed files and the overlay they were generated
+  from, so an overlay edit never followed by a re-produce — a stale record and a backlog still
+  listing an implemented entry — fails the gate, naming `tools/re-produce.sh`
+  ([0018](docs/decisions/0018-every-file-the-factory-writes-has-one-owner.md)). It compares and
+  never writes: only `produce` authors that record.
 
 CI proves this on every pull request. The `validate` job runs
 [`scripts/validate.sh`](scripts/validate.sh). The `engine` job runs
