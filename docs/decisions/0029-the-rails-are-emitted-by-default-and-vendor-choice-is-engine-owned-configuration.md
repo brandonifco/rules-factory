@@ -12,6 +12,119 @@ interface an engine is built against.
 
 Neither #1 nor #4 closes with this record. Both close on the acceptance run below.
 
+**Amended 2026-09-16** for [#193](https://github.com/brandonifco/rules-factory/issues/193): a
+`factory produce` update to an engine is work under these rails like any other, and §4's contract
+could not be satisfied by one. See *Amendment — a factory update is work under the rails* below.
+Nothing in §3's line, §7's verdicts or §10's ruleset changes; §5's table gains no row, and five
+managed rails move a recipe version.
+
+## Amendment — a factory update is work under the rails
+
+The live run of #157 found it: `faa-part-107#43` failed `pr-policy` and `conformance-gate`, and
+merged only because neither was required yet. From then on every `factory produce` update to an
+engine — a new map version, a new kernel pin, a new factory recipe — is a pull request under the
+rails this record emits, and such a pull request closes no issue, names no single entry or locator,
+and records no mutation, because it writes no test. The rails could not accept the change that
+installs them.
+
+**A factory update is opened from an issue like any other work** (`tools/new-issue.sh --produce`),
+dispatched to a worktree, produced there, and merged through the same three checks. Nothing about
+it is outside §4. `--produce` does not promote risk: what moved decides that, and risk stays the
+orchestrator's judgement (§3).
+
+**Produce mode in `tools/pr-policy.py` is a closed predicate, not an indicative one.** A pull
+request is a factory update only when all three hold:
+
+1. **it says so** — a `## Produced by the factory` section carrying the fixed marker
+   `<!-- rules-factory-produce -->`, declaring the factory version, the map package and version,
+   and the kernel version;
+2. **those facts equal `provenance.json` in the checked-out tree**, and that record says
+   `factory.dirty: false`. `pr-policy.yml` checks out on a `pull_request` event, so the workspace
+   is the merge result. A produce from a dirty factory is not reproducible by anyone, so it is not
+   an update;
+3. **every changed path is one the factory writes**, classified through the engine's own vendored
+   `scripts/factory/ownership.py` — generated, managed, or a `packages.lock.json` the #94 re-lock
+   exception covers. The table is imported rather than restated, so the classification a pull
+   request is judged by and the one `produce` wrote the files by cannot disagree. A hand-written
+   `src/**/*.cs`, an overlay edit, a `.csproj` edit, an edit to `.github/agent-policy.json`, an
+   unclassified path: any one of them voids the claim, and the pull request is judged as the
+   ordinary pull request it then is.
+
+A claim that fails any part produces a finding naming which part. There is no silent downgrade: an
+author who wrote the section meant it, and being told "you named no mutation" without being told
+why the claim was refused is the failure this record's §9 is about.
+
+**Why this grants no new territory.** The file set produce mode can cover is *exactly* the set
+nobody may hand-edit anyway: `AGENTS.md` §10 already forbids editing `corpus/`, `provenance.json`
+and `Generated/` by hand, and `produce` refuses a hand-edited managed file by name (0018). Forging
+the *content* of those bytes is caught by `validate.sh full`, a required check, which regenerates
+every `*.g.cs` and compares byte for byte. Forging the *declaration* fails against
+`provenance.json`, which is in the diff.
+
+**It changes what a pull request must say, and never what it must prove.** It waives no verdict, no
+`Closes #<n>`, no label rule, no `validate` run and no behavioural claim. It replaces two
+obligations that do not apply with two that are harder to fake:
+
+- instead of one entry id and one locator — the map package and version, and what moved. A map
+  version bump regenerates every entry, so "all of them" is the honest answer and it names nothing;
+- instead of a named mutation — the `factory produce` command and its output, the gate's output,
+  and a `factory provenance --engine <dir>` recompute showing the committed record is the one a
+  re-produce writes. All three are re-runnable by a reviewer.
+
+`factory produce --produce-report FILE` writes those fields, so they are read off the run rather
+than remembered. Agent provenance is unchanged: a factory update still says who ran the produce and
+who reviewed it.
+
+**No future amendment lets produce mode waive the semantic verdict.** This is refused here, in
+advance, because it is the amendment that will be proposed the first time a map bump is urgent: the
+whole value of the predicate is that it moves nothing from the review column into the paperwork
+column. A produce update that cannot get its verdict is a produce update that waits.
+
+**Which verdicts such a pull request needs is derived from the changed paths, by the rule already
+in `tools/conformance-gate.py`, unchanged.** `review.semanticPaths` is `src/**`, `tests/**`,
+`corpus-map.overlay.json`, `RulesFactory.Packages.g.props`, `corpus/**` and `docs/decisions/**`,
+and that answers all four sub-cases without anyone declaring anything:
+
+- **a map version bump** rewrites `RulesFactory.Packages.g.props`, every `src/**/Generated/*.g.cs`
+  and `tests/**/Generated/*.g.cs`, and re-locks both `packages.lock.json`, which sit under `src/**`
+  and `tests/**`. Semantic, by four independent paths;
+- **a kernel pin bump** touches the props file and the lock files. Semantic, and it must stay so:
+  the kernel is the runtime the rules execute on, and "only a pin" is exactly the change that
+  alters behaviour without looking like it;
+- **a generator recipe change** rewrites the `*.g.cs`. Semantic;
+- **a rails or gate recipe change** touches managed files, `scripts/**` and `backlog/`, none of them
+  on the semantic surface. No rules verdict, and the gate already prints "nothing on the semantic
+  surface".
+
+The gate therefore gets **no produce-aware branch**. It needs none, and it is precisely where an
+exemption could later be written. Its one change for #193 is unrelated to produce mode and is
+described below.
+
+**A truncated file list is undecidable, in both checks.** `gh pr view --json files` returns at most
+100 files, silently: `cli/cli#14354` has 150 changed files and returns 100, `kubernetes#142020` has
+164 and returns 100, with no error and no warning. Both checks derive everything from that list,
+and neither asked for `changedFiles`, so neither could tell. A pull request with more than a
+hundred changed files whose rule-bearing files sort past the first hundred got "nothing on the
+semantic surface" and merged unreviewed — and a map version bump regenerates hundreds of files, so
+it is exactly the change that hits it. Both now ask for the count alongside the list and refuse to
+decide when they disagree: an `Undecidable` in `conformance-gate.py`, a finding in `pr-policy.py`.
+This is §7's "a check that examines nothing is a failure" applied to a check that examined *some*
+things.
+
+**What this does not close.** Two gaps, recorded rather than implied:
+
+- **A map version bump is semantic work with no single entry, and `tools/review-packet.py` assembles
+  a packet around one entry.** A reviewer of such a pull request is served a packet for whichever
+  entry the issue happens to name, or none. The verdict is still required and is still a person's
+  reading; what is missing is the bounded context this record's §6 promises them. A known gap.
+- **The predicate cannot catch a pull request that edits the vendored generator and the files it
+  generates together**, so that regeneration agrees with itself. Both are generated files, so the
+  claim would stand. This hole exists for every pull request today and is not created here:
+  `validate.sh` regenerates using the *vendored* generator, so it cannot see it, and only
+  `factory provenance` against the real factory closes it (`recipes[]` hashes every factory module).
+  What the predicate does add is that such a diff is loud — a produce that changed nothing else
+  rewriting `scripts/factory/generate.py` is the first thing a reviewer sees.
+
 ## Context
 
 Both rails issues were held at `p3-needs-two-engines`: deciding what every produced engine ships
@@ -321,6 +434,24 @@ history.
 **Managed-with-substitution ownership, so rails can name their engine.** Rejected. It weakens
 hand-edit detection for every managed file, in exchange for personalising documents whose
 specifics belong in the packets.
+
+**A `factory:produce` label, instead of the body marker and the predicate.** Rejected. A label is
+not in the reviewed bytes and not in the merge commit, so a reader six months later cannot tell why
+the checks asked less of that pull request. Worse, nothing invalidates it: a commit status is
+pinned to a SHA and dies when the head moves (§7), but a label applied *after* a reviewer read the
+change alters what the gate demands without altering a byte.
+
+**A body marker that relaxes the contract by its presence.** Rejected, and this is the distinction
+the amendment turns on. `pr-policy.yml` treats the pull request body as attacker-controlled text and
+refuses `pull_request_target` for exactly that reason; a marker that buys relaxations is a
+self-issued exemption written in the one field anybody can edit. It survives only as the
+human-readable statement of a claim that is decided elsewhere — against `provenance.json` and the
+ownership table, both of which are in the diff.
+
+**Let the author declare whether the update is semantic.** Rejected. The gate would have to check
+the declaration against the changed paths anyway, since a declaration is worth what it can be
+checked against — and once it does that, the declaration can only ever agree with the paths or
+disagree with the truth.
 
 **`produce` applies the GitHub settings itself.** Rejected. Producing files into a directory and
 mutating a remote repository's protection settings are different acts with different blast radii,

@@ -81,7 +81,7 @@ TABLE = (
     Row("scripts/engine-gate.py", GENERATED, None, "the gate recipe: its non-dotnet checks"),
     Row("scripts/factory/*.py", GENERATED, None, "the factory's generator, vendored so the gate can regenerate"),
     Row(".github/workflows/validate.yml", GENERATED, None, "the gate recipe: CI runs validate.sh full"),
-    Row("AGENTS.md", MANAGED, 4,
+    Row("AGENTS.md", MANAGED, 5,
         "the governing contract every agent works this engine under (decision 0029)"),
     Row("CLAUDE.md", MANAGED, 1,
         "a pointer to AGENTS.md and the Claude adapters; it states no rule of its own (0029)"),
@@ -94,22 +94,24 @@ TABLE = (
     Row(".claude/settings.json", MANAGED, 1, "which tools the guard runs before (0029)"),
     Row("tools/dispatch-agent.sh", MANAGED, 1,
         "one issue, one worktree, one branch; it refuses what is not ready to work (0029)"),
-    Row("tools/new-issue.sh", MANAGED, 1, "an issue with the shape the rails expect (0029)"),
+    Row("tools/new-issue.sh", MANAGED, 2,
+        "an issue with the shape the rails expect, a factory update's included (0029, #193)"),
     Row("tools/entry-packet.py", MANAGED, 3,
         "the bounded assignment for one entry, assembled from merge(package, overlay) (0029)"),
     Row("tools/re-produce.sh", MANAGED, 1,
         "an overlay edit is finished by a re-produce, from the factory commit the record names (#192)"),
     Row("tools/review-packet.py", MANAGED, 1,
         "everything a reviewer needs about one pull request, in the order it is read (0029)"),
-    Row("tools/pr-policy.py", MANAGED, 1,
-        "the pull request contract, checked mechanically (0029)"),
+    Row("tools/pr-policy.py", MANAGED, 2,
+        "the pull request contract, checked mechanically; a produce update's claim is checked, not taken (#193)"),
     Row("tools/record-verdict.py", MANAGED, 1,
         "a review verdict as a commit status on the exact commit reviewed (0029)"),
-    Row("tools/conformance-gate.py", MANAGED, 1,
-        "whether the verdicts this change needs are recorded at the commit being merged (0029)"),
+    Row("tools/conformance-gate.py", MANAGED, 2,
+        "whether the verdicts this change needs are recorded at the commit being merged; a truncated "
+        "file list is undecidable (0029, #193)"),
     Row("tools/requeue-gate.py", MANAGED, 1,
         "asks the gate to report again at the commit a recorded verdict names (#191)"),
-    Row(".github/pull_request_template.md", MANAGED, 1, "the pull request shape pr-policy.py checks (0029)"),
+    Row(".github/pull_request_template.md", MANAGED, 2, "the pull request shape pr-policy.py checks (0029)"),
     Row(".github/workflows/pr-policy.yml", MANAGED, 1, "the required check that runs pr-policy.py (0029)"),
     Row(".github/workflows/conformance-gate.yml", MANAGED, 2,
         "the required check that runs conformance-gate.py (0029)"),
@@ -169,6 +171,7 @@ RECIPE_SHA256 = {
         2: "81f5756c1bff7ca2f1f9091087138fed0204a43e2f30a1e6f05ad4430e2efd48",
         3: "c3576d1cea769505a43794b8f2d42797f230f058b238eda09230f1fd3105ab50",
         4: "b615fbea821a0171f3b7cdc503da561a7f385504da48395fa1efef934c0fc833",
+        5: "0bf3bb0f7519ac6cdccf4c03fd11bf65d8b3c0a4e5580917dd5bc7e8f81b1257",
     },
     "CLAUDE.md": {
         1: "04c07ad36e742fa60efafeca54d20bd96d16b6e338a44e46fad2b679ab8dfd9f",
@@ -184,6 +187,7 @@ RECIPE_SHA256 = {
     },
     "tools/new-issue.sh": {
         1: "382a2f516f81f593e74ed9e57262080c25edbac1a16d542ffb235eb772b10e88",
+        2: "2830ba6458df4c34378538d73eadc4d522fb5f5cb7dbb945ef89097d66c9b9ee",
     },
     "tools/entry-packet.py": {
         1: "6e413d4e4143d888e00c1570358c5f6c7404347a173cd023b821f4d2f781835a",
@@ -198,18 +202,21 @@ RECIPE_SHA256 = {
     },
     "tools/pr-policy.py": {
         1: "79a33c7fe1ea8d888e4d6912a43ac60afe285c7a8bf43fbe9f7be87d6947b76e",
+        2: "4a0c6677913decb13c8e9499840d5da4935c1725559dd6514d67dd72c8d849bd",
     },
     "tools/record-verdict.py": {
         1: "48f7b11f7fc829cdaebd776a3eb5db04e27cade97c427c6806b72f58805d83db",
     },
     "tools/conformance-gate.py": {
         1: "567972b60f16d1f86c661e97efa56fa2878c9a5aa92fb820c4aea07a402cbd24",
+        2: "6e4a57468144caf4eaf74dce4d178a582322235ba37eb04d92bd72ddb929e58a",
     },
     "tools/requeue-gate.py": {
         1: "a4315a5fa76a696ee616e5ef190d6bbec0d023c04e22086082d4031c460aec8d",
     },
     ".github/pull_request_template.md": {
         1: "e2cebc6419d62e2df3b218d76462caf807d6637f2b305ac2aa11153f13304a92",
+        2: "8b679be11d7a53d3df4ee29fa687bff03042da01efa46a639da1d70e5dfe4234",
     },
     ".github/workflows/pr-policy.yml": {
         1: "caa3394a473d5fdd45b274176d8e28c48d9f5425176318194ba68fbea8453fa2",

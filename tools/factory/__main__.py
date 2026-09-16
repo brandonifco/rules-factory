@@ -49,6 +49,11 @@ changes are uncommitted, for whoever ran it to review and commit:
     `FACTORY_DOTNET_SDK_OVERRIDE`, and records them. When no SDK can run, restore fails, or the lock
     files still disagree, it is refused, naming each lock file, package and both versions, and the
     command that works. Lock files that agree are written out as they are;
+  * `--produce-report FILE`, after the files are in place -- what this run did, as JSON: what moved
+    (the map version, the kernel, the factory) and from what to what, every path written with its
+    ownership class, and the provenance diff. A `factory produce` update to an engine is a pull
+    request under that engine's rails, and this is where its template's fields come from, so they
+    are read off the run rather than remembered (#193, decision 0029's amendment);
   * writing out (transaction.py) -- the files the steps added, changed or removed are put in place
     in `--out`, journaled and rolled back on failure (a fresh `--out` is one rename). No git commit
     is made, here or anywhere else in produce.
@@ -85,6 +90,7 @@ Standard library only.
 import argparse
 import contextlib
 import io
+import json
 import os
 import re
 import shlex
@@ -113,8 +119,18 @@ NOT_VERIFIED = 3
 def produce(args):
     if not PASCAL.match(args.name):
         raise intake_step.Usage(f"--name {args.name!r} is not a PascalCase C# identifier")
+    # Refused before anything is produced: a report directory that does not exist is a typo, and
+    # finding out after a verified produce means running the whole thing again for one file.
+    if getattr(args, "produce_report", None):
+        directory = os.path.dirname(os.path.abspath(args.produce_report))
+        if not os.path.isdir(directory):
+            raise intake_step.Usage(f"--produce-report {args.produce_report}: {directory} is not a directory")
     state = provenance.factory_state()
     provenance.require_clean(state, args.allow_dirty)
+    # The record this engine had before the run, for --produce-report. Read here because the
+    # staging copy is about to be overwritten with the new one, and an absent file is the first
+    # produce of this engine, which the report says rather than guesses at.
+    before = read_record(args.out)
     # Every step writes into `out`, a staging copy of --out; --out itself is only touched by
     # commit(), after the last step passed -- which puts files in place and makes no git commit
     # (transaction.py).
@@ -159,7 +175,12 @@ def produce(args):
             relock = verify_step.pins_changed(pins_before, verify_step.read_pins(out))
             overridden = verify_step.verify_staged(out, recompute_provenance, args.package, log=sys.stdout,
                                                    after_restore=record_lock_files, relock=relock)
-        added, changed, _ = stage.commit()
+        added, changed, removed = stage.commit()
+
+    if getattr(args, "produce_report", None):
+        write_produce_report(args.produce_report, before, document, added, changed, removed)
+        print(f"wrote the produce report to {args.produce_report}: what moved, the changed paths by "
+              f"ownership class, and the provenance diff")
 
     def is_lock(path):
         return path.endswith("/packages.lock.json") or path == "packages.lock.json"
@@ -179,6 +200,105 @@ def produce(args):
     # so nobody reads "wrote to <engine>" as a commit that was made for them (transaction.py).
     transaction.git_note(args.out, log=sys.stdout)
     return document
+
+
+#: The produce report's shape (#193). 1 is the first.
+REPORT_FORMAT = 1
+#: The four values `.github/pull_request_template.md`'s `## Produced by the factory` section asks
+#: for, under the labels it asks for them under, so a factory update's pull request is filled in
+#: from the run rather than from memory -- and `tools/pr-policy.py` checks three of them against the
+#: engine's own provenance.json, which is where a retyped version would be caught anyway.
+DECLARATION_FIELDS = ("factory version", "map package and version", "kernel version", "what moved")
+
+
+def read_record(engine_dir):
+    """`engine_dir`'s provenance.json, or {} when there is none to read.
+
+    {} for an unreadable record and not a refusal: produce is about to write a new one, and a
+    report that says "this engine had no readable record before" is true and useful, where a run
+    refused over the old record would be a produce blocked by the state it is replacing.
+    """
+    try:
+        with open(os.path.join(engine_dir, provenance.FILE_NAME), encoding="utf-8") as handle:
+            record = json.load(handle)
+        return record if isinstance(record, dict) else {}
+    except (OSError, ValueError):
+        return {}
+
+
+def moved(before, after):
+    """One line per input that is not what it was: the map version, the kernel, the factory.
+
+    Only what moved. A run that regenerates an engine from the same inputs (a recipe change, or a
+    re-produce after an overlay edit) says so, rather than listing three facts that all stayed
+    still and leaving a reader to compare them.
+    """
+    lines = []
+    for what, path in (("the map", ("map", "version")), ("the kernel", ("kernel", "version")),
+                       ("the factory", ("factory", "version"))):
+        was, now = before, after
+        for key in path:
+            was, now = (was or {}).get(key), (now or {}).get(key)
+        if was != now:
+            lines.append(f"{what}, {was if was is not None else 'nothing recorded'} to {now}")
+    return lines
+
+
+def classified_paths(name, added, changed, removed):
+    """Every path this run put in place, with how it changed and which ownership class it is in.
+
+    The class comes from ownership.py, the one table produce itself wrote these files by, so a
+    reader of the report and `tools/pr-policy.py` reading the pull request are answering from the
+    same rows. `class: null` is a path the table does not classify: the lock files a restore wrote
+    are engine-owned rows and do classify, so a null here is something to look at.
+    """
+    out = []
+    for how, paths in (("added", added), ("changed", changed), ("removed", removed)):
+        for path in paths:
+            try:
+                row = generate.ownership.classify(path, name)
+            except generate.ownership.OwnershipError:
+                row = None
+            out.append({"path": path, "change": how, "class": row.cls if row else None})
+    return sorted(out, key=lambda item: item["path"].encode("utf-8"))
+
+
+def write_produce_report(path, before, after, added, changed, removed):
+    """The report `--produce-report` writes: what this run did, as JSON (#193).
+
+    A `factory produce` update to an engine is a pull request under that engine's rails, and its
+    template asks what moved, from what to what, and what the run wrote. Every one of those facts
+    is known here, at the moment the run makes them, and nowhere else afterwards except by
+    reconstruction from the diff. So the run writes them down.
+
+    `provenanceDiff` is provenance.diff() over the two records, field by field and including
+    `recipes[]`, which is the same comparison `factory provenance` reports mismatches with. It is
+    reused rather than re-derived: two answers to "how does this record differ from that one" can
+    disagree, and then a reader has to decide which to believe.
+    """
+    report = {
+        "reportFormat": REPORT_FORMAT,
+        "engine": after.get("engine") or {},
+        "factory": after.get("factory") or {},
+        "map": {"packageId": (after.get("map") or {}).get("packageId"),
+                "from": (before.get("map") or {}).get("version"),
+                "to": (after.get("map") or {}).get("version")},
+        "kernel": {"packageId": (after.get("kernel") or {}).get("packageId"),
+                   "from": (before.get("kernel") or {}).get("version"),
+                   "to": (after.get("kernel") or {}).get("version")},
+        "moved": moved(before, after),
+        "paths": classified_paths((after.get("engine") or {}).get("name") or "", added, changed, removed),
+        "provenanceDiff": provenance.diff(before, after) if before else [],
+    }
+    report["declaration"] = dict(zip(DECLARATION_FIELDS, (
+        report["factory"].get("version"),
+        f"{report['map']['packageId']} {report['map']['to']}",
+        report["kernel"].get("to"),
+        "; ".join(report["moved"]) or "nothing: this run reproduced the engine from the inputs it already had",
+    )))
+    with open(path, "w", encoding="utf-8") as handle:
+        json.dump(report, handle, indent=2, ensure_ascii=False)
+        handle.write("\n")
 
 
 def overridden_suffix(overridden, pinned, what=""):
@@ -291,6 +411,10 @@ def build_parser():
                         "keeping its edits; repeatable (tools/factory/ownership.py)")
     p.add_argument("--reset", action="append", metavar="PATH",
                    help="overwrite this managed or adopted file with the current recipe and make it managed; repeatable")
+    p.add_argument("--produce-report", metavar="FILE",
+                   help="write a JSON report of this run: what moved (map, kernel, factory) from what to what, every "
+                        "path written with its ownership class, and the provenance diff. A factory update's pull "
+                        "request is filled in from it (#193)")
     b = commands.add_parser("backlog", help="create or update GitHub issues from an engine's backlog/ files")
     b.add_argument("--create", action="store_true", required=True, help="create missing issues and update changed ones (the only action)")
     b.add_argument("--repo", required=True, help="owner/name of the engine's repository")
