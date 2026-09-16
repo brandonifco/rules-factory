@@ -215,6 +215,27 @@ agreed)"*, the value is `caller` and the note says so. Do not supply a party the
 because it is the obvious one. See
 [0025](decisions/0025-an-assertion-names-who-asserts-it-and-an-operation-names-what-it-draws.md).
 
+**"The GM decides" is the same instruction as "the caller states".** A rulebook hands its referee
+what a regulation hands its operator, and an engine owes both the same contract. The SRD 5.2.1
+combat slice does it five times, and the engine demands a statement for each and infers none:
+whether the table plays on a square grid (`grid-play` — a parameter with no entry of its own, and
+"a Speed in squares asked for is not a grid"), whether a creature is underwater and whether it has
+a Swim Speed (`underwater-melee`), whether a creature the corpus does not name — it names a
+domesticated horse and a mule — is trained to accept a rider
+(`mount-control-requires-training`), and whether the GM requires an action for an activity
+(`gm-requires-action`, an assertion whose decider is checked against the map's `assertedBy`). A
+statement left out is an `ArgumentException` naming it, never a default and never an unresolved
+result.
+
+What goes wrong when an engine infers instead is not that it is wrong more often. It is that
+nothing afterwards says which answers were the corpus's. An engine that assumed the grid would
+price a move in squares and cite p. 13 for it; one that read *"and similar creatures"* for itself
+would answer for a giant spider in the corpus's voice. Where the gate is outside the slice the
+caller holds it
+([0021](decisions/0021-a-gate-outside-the-slice-is-held-by-the-caller.md)); where the fact is one
+the rule tests, the caller states it and the answer records who did
+([0025](decisions/0025-an-assertion-names-who-asserts-it-and-an-operation-names-what-it-draws.md)).
+
 *Judgement the corpus deliberately delegates* looks ambiguous and is not. "If the pilot
 determines it would be in the interest of safety" is not a defect in the text — the corpus
 is perfectly clear that the decision belongs to the pilot. Classifying it as ambiguous would
@@ -351,6 +372,21 @@ with no row is unresolved, and the map is not used.
 
 **What it does not catch.** Two mappers who share a misreading agree, and agreement is silent.
 
+**And what only an executed map catches.** Building the SRD 5.2.1 combat engine turned up three
+defects no reading had. `attack-resolution` declares `draws` — a d20 and the attack's damage dice —
+while its `dependsOn`, `attack-rolls` and `damage-rolls`, are both `scope: out`: an engine of this
+extent that drew a bare d20 would have nothing to read it against. `falling-off` declares a d20 for
+a DC 10 Dexterity saving throw whose rule, `saving-throws`, is `scope: out` for the same reason.
+And `wrong-location-misses`' note says *"A seeded engine draws for it"* on an entry with no `draws`
+at all — consistent only once you find that the roll belongs to `attack-resolution`, and a
+contradiction of [0025](decisions/0025-an-assertion-names-who-asserts-it-and-an-operation-names-what-it-draws.md)
+until you do. All three survived the first mapping; `wrong-location-misses`' note survived the
+blind second mapping, which read the entry and agreed it was clear; and the two `draws` fields were
+added by a change that carried an independent verdict of its own, three rounds of it, and came
+through unremarked. An implementer had to ask "what does this engine actually roll" before any of
+them was a defect. Reading a map checks that it says what the corpus says; executing it checks
+that the parts fit each other.
+
 **How the review is held to the map.** `review.json` beside the map names the SHA-256 of the map
 bytes the review covers and points at the comparison and resolution record. `validate.sh` fails a
 map whose bytes no longer match, so a map changed after its review is refused until it is
@@ -465,6 +501,37 @@ rolls once where another rolls three times is replaying a different game, not ju
 answer. What counts as a group for a group Initiative roll is the instance. Mark such an ambiguity
 `affectsDraws: true`, and let the entry's `draws` name the alternatives (0025).
 
+**What stops an engine is the text, and a table never notices.** Fifty-four entries of the SRD
+5.2.1 combat slice were implemented from the prose in a day. What the engine could not answer came
+down to six questions, and every one is a phrase a human table settles silently and
+continuously: what makes creatures *"a group of
+identical creatures"*; what *"an appropriate anatomy"* for a mount is; who is covered by *"and
+similar creatures"* beside the horse and the mule; whether *"two sizes larger or smaller"* means
+exactly two; whether combat ends when both sides agree and neither is defeated; and how far the
+Disengage action's protection reaches. They sit in three different places in the map, and the
+difference matters:
+
+- Four are **unresolved ambiguities**, and not all of one shape. Three are open terms the corpus
+  bounds with nothing and delegates to nobody — `group-initiative`, `appropriate-anatomy`,
+  `mount-control-requires-training` — which is this phase's gate 3 returning a gap. The fourth,
+  `moving-through-creatures`, is a sentence that reads two ways: *"two sizes larger or smaller"* is
+  exactly two or at least two, and it permits four kinds of passage without saying that every other
+  creature's space is barred.
+- One is a **conflict**: `next-round` and `combat-end` carry the same question under
+  `does-combat-end-without-a-defeat`, because p. 13 continues the fight while neither side is
+  defeated and p. 14 ends it when both sides agree.
+- One is on an entry the map calls **clear**, and correctly. The slice's sentence — *"You can
+  avoid provoking an Opportunity Attack by taking the Disengage action"* — states no limit, and it
+  is the same corpus's Rules Glossary, outside the extent, that narrows the protection to your own
+  movement and to the rest of your turn. The map records that in `opportunity-attack-avoidance`'s
+  note and names `disengage-action` in `dependsOn`, and asks no question, which is right: the
+  ambiguity is not in the sentence, it is in which of two passages governs.
+
+The map had already recorded five of the six; what building added was that these, and nothing in
+the engineering, were what the engine could not get past. Once the owner ruled, applying all six
+was one pull request. A table gets through all six without noticing it decided anything, which is
+why a map is the only place they are ever written down.
+
 **An engine's owner may rule where the map stays unresolved.** That is not a third fate, and it
 is not a map change. The corpus still does not settle the question, so the map still says
 `unresolved`. One engine's owner answers part of it for that engine. The answer goes in the
@@ -473,6 +540,34 @@ decision record, and the tests that show it. Every result that relies on the ans
 parts not ruled on still decline. The factory refuses a ruling that no longer matches the map's
 question. Decided in
 [0027](decisions/0027-an-owners-ruling-is-held-by-the-engine-and-checked-by-the-factory.md).
+
+**Four things 0027 was awkward about the first time an engine adopted it**, found applying the six
+rulings above to `srd-52-combat`. They are observations, not amendments; 0027 stands as written.
+
+- **The bootstrap runs backwards.** A ruling's `tests` must each already be one of the entry's own
+  `tests` (§ 5.4), and the engine's code cannot compile until `produce` has written
+  `Generated/Rulings.g.cs` from the overlay (§ 4) — while `produce`'s verification is a build and a
+  test run. So the first ruling goes into the overlay naming tests that do not exist, and is
+  produced with `--no-verify`, before the tests it names can be written and a verified produce can
+  run. Nothing in the record says to expect that order.
+- **There is no carrier for a ruling on an entry the map calls clear.** Disengage is the case: the
+  map is right that the slice's sentence is clear, so there is no `ambiguity.question` for a span
+  to quote, and § 5.1 refuses a ruling there. `srd-52-combat` holds that answer as the engine's own
+  `OwnerDecision`, a type deliberately not `OwnerRuling`, named on every answer that rests on it.
+  It is a different claim with a different carrier, which is correct, and it means an owner's six
+  answers arrive in two shapes.
+- **A conflict is one question on two entries, and a ruling is held per entry.** § 5.1 allows a
+  ruling only where the overlay says `implemented`. `combat-end` is not built, so the answer that
+  both sides agreeing ends the combat sits on `next-round` alone; `combat-end` declines as an
+  unbuilt in-scope rule and carries nothing. When it is built it takes a second ruling, with the
+  same answer, its own id and its own span. One decision, two overlay items, and between them a
+  period in which one side of a conflict is answered and the other is silent about why.
+- **`declines: []` can sit beside a live declining path.** It means the *question* is fully ruled,
+  which is exactly what `appropriate-anatomy/gm-decides` does: the question named nobody who
+  decides, and the ruling names the GM. The entry still declines whenever the GM has stated
+  nothing — that is a missing fact, not a part of the question, and a decline relies on no ruling
+  (§ 4). Both readings of `declines: []` are defensible from the words, and the engine's record has
+  to say which one it means.
 
 What is never acceptable is the third option: an implementer picking a reading silently.
 That produces an engine that is reproducibly wrong, which is worse than one that is
@@ -508,7 +603,50 @@ supplied most of what an issue needs:
 Order the backlog by the dependency graph, not by the corpus's page order. A corpus is
 organised for a reader; a backlog is organised for a builder.
 
+**And batch by the dependency graph too, not by subject.** Rules form a web, and a chapter is a
+slice through it that cuts edges. Every batch of the SRD 5.2.1 combat build was named after a
+subject, and every one of them had to build entries that were not in it. *Movement and space* had
+to build `grid-square-size` and `size-categories`, two `kind: value` entries nobody had assigned
+it, because four of its own entries `dependsOn` them. *Mounted combat and underwater*, the fourth
+batch, had to build six more from two directions at once: `cover-degree`, `melee-within-reach`,
+`single-range` and the value `reach`, which the attacks batch had left `attack-modifiers` and
+`attack-target` declining and citing; and `move-up-to-speed` and `movement-deduction`, the movement
+budget its own `mounting-cost` spends.
+
+**Correspondence row 5 is what forces this, and nothing warns anyone in advance.** An operation
+whose `value` dependency is unimplemented answers `MissingRulesData`. So a batch that builds the
+operations of its subject and leaves a value outside it `mapped` has built an engine whose answers
+the map says are unavailable — an engine cannot divide a Speed by a square size it has not built,
+or count "two sizes larger" along an order it does not hold. A backlog item's page lists its
+`dependsOn` and says nothing about what row those dependencies put it on. Close the batch under
+`dependsOn` when you cut it, or the first builder discovers the closure and the rest discover it
+one decline at a time.
+
 ## Phase 6 — Implement
+
+**Most of a modern rulebook turns out to be machine-followable, and the map says how much.** The
+third engine the factory produced is the SRD 5.2.1 Combat chapter, pp. 13–16: ninety-five entries,
+seventy of them in scope. Fifty-four are implemented — seventy-seven per cent of the mapped slice —
+and each of the fifty-four answers from the corpus's own words, with its citation. What the
+remaining forty-one are is worth stating exactly, because "not implemented" hides three different
+things:
+
+- **Twenty-five are `scope: out`**, and twenty-one of those are rules this corpus states somewhere
+  the map's extent does not cover: ten in the Rules Glossary, the rest in *Playing the Game*
+  (attack rolls, saving throws, Advantage and Disadvantage, the actions table) and *Damage and
+  Healing*. They are the boundary of a four-page slice, not a limit of the method. Two of the other
+  four are `absentFrom` verdicts — `flanking` and `surprise-round`, rules a reader of another
+  edition expects and this text does not state.
+- **Sixteen are in scope and simply not built yet.** They decline `UnsupportedRule` and name
+  themselves, and the backlog holds them.
+- **Nineteen in-scope entries carry a question the corpus does not settle** (eleven of them among
+  the fifty-four built, answering every case but the open one). That is the genuine residue: about
+  a quarter of the slice. Six of the nineteen carry five of the six questions Phase 4 describes
+  above; the sixth sits on an entry the map calls clear.
+
+The proportion is one engine's, over four pages of one rulebook, and it is not a law. What it is
+evidence for is where the cost sits: not in the rules that are hard to compute, but in the handful
+of phrases nobody wrote down a rule for.
 
 The smallest coherent change per issue. The engine's own rails govern the rest, and they are
 not this document's business. Three things belong to the method:
@@ -548,6 +686,32 @@ shown to have got wrong.
 
 **Preserve determinism deliberately.** Changes to random consumption, ordering, serialization
 or identity are compatibility events. An extra draw shifts every later result.
+
+**Parallel agents cost coordination, not correctness.** The SRD combat slice went from four
+implemented entries to fifty-four in one evening, four agents working four batches at once: four
+pull requests, four decision records, twenty-two findings against the map, three of them faults in
+it. No later batch had to undo an earlier one's work. What it cost was three collisions, all in
+shared bookkeeping:
+
+- **The ruleset version.** Each batch changed what the engine answers, so each bumped the version —
+  3, then 4, then 5, then 6, and a fifth agent's rulings took it to 7. The version is rendered into
+  the seeded replay record, so every bump re-pinned the replay's SHA-256 (`efbcdbab…` to
+  `df5c2b91…` to `20fb2e9b…` to `c92429e3…` to `a8a8105d…`, every other line of the replay
+  unchanged), and every branch but the first had to rebase onto the one merged before it to learn
+  its own starting number. The four batch commits are a straight line for that reason.
+- **The backlog.** Items are numbered sequentially and the numbers close up as entries are built,
+  so each merge renumbered what was left. One batch's merge renamed or rewrote thirty-three backlog
+  files while closing sixteen issues. Issues survive it — `backlog --create` matches by the entry
+  marker in the body, never by title — but two batches in flight always conflict in `backlog/`.
+- **A message that said something untrue.** `produce` ended with `committed to <engine>: …` while
+  making no commit at all. All four agents read it as a git commit and committed by hand each time.
+  The wording was fixed to the behaviour in factory 0.8.0
+  ([#158](https://github.com/brandonifco/rules-factory/issues/158)); the behaviour was always right.
+
+**The recommendation, and it is the only one this pays for:** fewer batches, shaped by the
+dependency graph rather than by subject (Phase 5), and a decision made before dispatch about
+whether a *batch* bumps the ruleset or a *release* does. The correctness of parallel work was never
+in question here. Everything that went wrong was a counter two agents were both allowed to move.
 
 **State what fixes any list a replay indexes into.** If a recorded game stores a position in a
 list — the index of the chosen play among the legal plays — then the order and length of that
@@ -615,6 +779,29 @@ That is
 what makes the map a live artifact rather than a plan: at any moment it says what the engine
 covers, what it deliberately does not, and what it cannot yet answer — which is the same
 question `UnresolvedReason` answers at runtime, from the other side.
+
+**The declines are the product, not the shortfall.** A decline that names its reason, its citation
+and the entry that stopped it is a finished answer about a question nobody else in the pipeline can
+answer, and it is the part of an engine no rulebook, table or spreadsheet gives you. Three from the
+SRD combat engine, each naming something different:
+
+- `cover-degree` answers Half, Three-Quarters or Total wherever the two readings of the Cover table
+  agree, and declines `RequiresInterpretation` for exactly one case: a creature covering *less*
+  than half of the target, where whether *"that covers at least half"* qualifies *"Another
+  creature"* decides the answer and the corpus does not choose. The decline names the one shape of
+  question the table does not settle, and leaves everything else answered.
+- While `cover-degree` was unbuilt, `attack-modifiers` — step 2 of an attack — declined
+  `UnsupportedRule` citing `cover-degree`, with the Advantage and Disadvantage it *had* determined
+  named in the decline. It names the missing dependency, not a failure, and it hands back the work
+  it did do.
+- `falling-off` states the DC 10 Dexterity saving throw, names `saving-throws` as where that roll
+  is made, draws nothing itself, and on a failed save declines `RequiresInterpretation` with what
+  the rule *did* determine — the rider falls off and lands Prone — in the attempt. What it names is
+  the gap: which unoccupied space within 5 feet, and what happens when there is none, the corpus
+  never says.
+
+An engine that guessed any of the three would be a better demo and a worse instrument. These are
+the answers a reader cannot get from the book, because the book does not know it is silent.
 
 ## What an engine owes its map's source, over time
 
