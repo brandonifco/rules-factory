@@ -41,7 +41,10 @@ You do not need to read the whole corpus, and you should not try. The packet is 
   nobody has watched fail is not yet a test.
 - Regenerate whatever the factory generates, rather than editing a generated file.
 - Run the gate, whole: `./scripts/validate.sh full`. Paste what it printed.
-- Open one pull request that closes exactly that one issue, with real command output in it.
+- Open one pull request that closes exactly that one issue, filling in every section of
+  `.github/pull_request_template.md` with real command output. `tools/pr-policy.py` checks it as a
+  required check, and your verdicts are recorded against the head commit — so another commit after
+  a review means that review no longer applies, and the gate will say so.
 
 ## What you must not do
 

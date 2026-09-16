@@ -81,14 +81,14 @@ TABLE = (
     Row("scripts/engine-gate.py", GENERATED, None, "the gate recipe: its non-dotnet checks"),
     Row("scripts/factory/*.py", GENERATED, None, "the factory's generator, vendored so the gate can regenerate"),
     Row(".github/workflows/validate.yml", GENERATED, None, "the gate recipe: CI runs validate.sh full"),
-    Row("AGENTS.md", MANAGED, 2,
+    Row("AGENTS.md", MANAGED, 3,
         "the governing contract every agent works this engine under (decision 0029)"),
     Row("CLAUDE.md", MANAGED, 1,
         "a pointer to AGENTS.md and the Claude adapters; it states no rule of its own (0029)"),
-    Row("docs/agent-team.md", MANAGED, 2, "the four roles, and what each may not do (0029)"),
-    Row(".claude/agents/engine-dev.md", MANAGED, 2, "the implementer's charter (0029)"),
+    Row("docs/agent-team.md", MANAGED, 3, "the four roles, and what each may not do (0029)"),
+    Row(".claude/agents/engine-dev.md", MANAGED, 3, "the implementer's charter (0029)"),
     Row(".claude/agents/repo-steward.md", MANAGED, 1, "the structural reviewer's charter, read-only (0029)"),
-    Row(".claude/agents/rules-conformance.md", MANAGED, 1, "the semantic reviewer's charter, read-only (0029)"),
+    Row(".claude/agents/rules-conformance.md", MANAGED, 2, "the semantic reviewer's charter, read-only (0029)"),
     Row(".claude/hooks/primary-checkout-guard.py", MANAGED, 1,
         "the PreToolUse guard that keeps implementation work out of the primary checkout (0029)"),
     Row(".claude/settings.json", MANAGED, 1, "which tools the guard runs before (0029)"),
@@ -99,6 +99,16 @@ TABLE = (
         "the bounded assignment for one entry, assembled from merge(package, overlay) (0029)"),
     Row("tools/review-packet.py", MANAGED, 1,
         "everything a reviewer needs about one pull request, in the order it is read (0029)"),
+    Row("tools/pr-policy.py", MANAGED, 1,
+        "the pull request contract, checked mechanically (0029)"),
+    Row("tools/record-verdict.py", MANAGED, 1,
+        "a review verdict as a commit status on the exact commit reviewed (0029)"),
+    Row("tools/conformance-gate.py", MANAGED, 1,
+        "whether the verdicts this change needs are recorded at the commit being merged (0029)"),
+    Row(".github/pull_request_template.md", MANAGED, 1, "the pull request shape pr-policy.py checks (0029)"),
+    Row(".github/workflows/pr-policy.yml", MANAGED, 1, "the required check that runs pr-policy.py (0029)"),
+    Row(".github/workflows/conformance-gate.yml", MANAGED, 1,
+        "the required check that runs conformance-gate.py (0029)"),
     Row("global.json", MANAGED, 1,
         "the kernel's SDK pin and roll-forward policy; an engine that must move it adopts it"),
     Row("NuGet.config", MANAGED, 2,
@@ -127,12 +137,14 @@ RECIPE_SHA256 = {
     ".claude/agents/engine-dev.md": {
         1: "22dbac892b04903992d13516e5a08ac04d92d02b0d8d4ce5e4bfa9ef53543287",
         2: "5f0dd905e2b3857115d93196a66a168e17b505f87dda13a7d200f2bc12572bdb",
+        3: "c8569477e58633f6e807a4b9be9a00b37a6f315d5b0f1fa8b0a7bc1f36b24b06",
     },
     ".claude/agents/repo-steward.md": {
         1: "6a2662ac958da76bb02263914d4e3b293a8dc15837e8a6ffccb14177b013bde7",
     },
     ".claude/agents/rules-conformance.md": {
         1: "95eac2e802b474bdefad5a6053528dceda7465bbacfc946a0dd3c52a09705e78",
+        2: "034cc0af3ecb98e9af60a65931102c69546f22ddadfea9c82961bb71fbbf96c2",
     },
     ".claude/hooks/primary-checkout-guard.py": {
         1: "a263531db502dfad98b38bf1dd90df7b1bec5f22133db016b6f30dc38509d16d",
@@ -143,6 +155,7 @@ RECIPE_SHA256 = {
     "AGENTS.md": {
         1: "06594a3207634553a28ca057ecb53225082e4f111890961e27589c544353e740",
         2: "81f5756c1bff7ca2f1f9091087138fed0204a43e2f30a1e6f05ad4430e2efd48",
+        3: "c3576d1cea769505a43794b8f2d42797f230f058b238eda09230f1fd3105ab50",
     },
     "CLAUDE.md": {
         1: "04c07ad36e742fa60efafeca54d20bd96d16b6e338a44e46fad2b679ab8dfd9f",
@@ -150,6 +163,7 @@ RECIPE_SHA256 = {
     "docs/agent-team.md": {
         1: "48baa22a5f1b6bb3f26d6aaed5715782462430b8b5524e1f0737ad627fae219d",
         2: "2972f4cdb30b4549639dc34de2fd47b8b06e0c680ef41e88de701ccfa66abb4d",
+        3: "ae9c54d7236adca8507e673d77b51e6431a48f4a3c29af40d7420ea2810e8521",
     },
     "tools/dispatch-agent.sh": {
         1: "868ce983b51d784a83a6a0fcac7456608b31f0af025c75ac5eeac64a373dca2b",
@@ -162,6 +176,24 @@ RECIPE_SHA256 = {
     },
     "tools/review-packet.py": {
         1: "2e989c02c1827bf6d3da8fce9a35874e25ea4baf14f62eeb64aab78c30b1f392",
+    },
+    "tools/pr-policy.py": {
+        1: "79a33c7fe1ea8d888e4d6912a43ac60afe285c7a8bf43fbe9f7be87d6947b76e",
+    },
+    "tools/record-verdict.py": {
+        1: "48f7b11f7fc829cdaebd776a3eb5db04e27cade97c427c6806b72f58805d83db",
+    },
+    "tools/conformance-gate.py": {
+        1: "567972b60f16d1f86c661e97efa56fa2878c9a5aa92fb820c4aea07a402cbd24",
+    },
+    ".github/pull_request_template.md": {
+        1: "e2cebc6419d62e2df3b218d76462caf807d6637f2b305ac2aa11153f13304a92",
+    },
+    ".github/workflows/pr-policy.yml": {
+        1: "caa3394a473d5fdd45b274176d8e28c48d9f5425176318194ba68fbea8453fa2",
+    },
+    ".github/workflows/conformance-gate.yml": {
+        1: "851d64e8705363b70711b74fe1b25306c3fac1c1e26c88a9805defc3a03042a8",
     },
     "global.json": {
         1: "12f1cf1c3eef038f55de570dc8f5e321f4ff5306a9281106c43cc60a1f78a371",

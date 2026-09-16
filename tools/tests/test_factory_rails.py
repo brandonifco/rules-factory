@@ -120,6 +120,11 @@ class TestTheEmittedRails(unittest.TestCase):
                 self.assertIn(resolved, layout, f"{relative} -> {target} resolves to nothing an engine holds")
         self.assertEqual(set(examined), {p for p in self.emitted if p.endswith(".md")})
         for relative, count in examined.items():
+            if relative == ".github/pull_request_template.md":
+                # A form, not a document: its text is copied into every pull request body, where a
+                # repository-relative link would render as a broken one. It names paths in prose
+                # instead, and the engine gate checks those paths exist.
+                continue
             self.assertGreater(count, 0, f"{relative} links to nothing in the engine, so it proved nothing here")
 
     def test_no_emitted_rail_names_a_vendor(self):
@@ -732,3 +737,436 @@ class TestTheReviewPacket(RailsInAGitEngine):
         done = self.packet("--out", os.path.join(self.out, "packets"))
         self.assertEqual(done.returncode, 1, done.stdout)
         self.assertIn("never written inside the repository", done.stderr)
+
+
+GOOD_PR_BODY = """## Linked issue
+
+Closes #27
+
+## Exact behavioural claim
+
+Above 400 feet AGL outside a structure's 400-foot radius, `AltitudeLimit` now declines
+`RequiresInterpretation` citing § 107.51(b) instead of answering 400.
+
+## Scope, and what this deliberately does not do
+
+Only the altitude limit. The speed limit's unit gap is untouched (#31).
+
+## Map and rules conformance
+
+- entry id(s): altitude-limit
+- map package and version: RulesFactory.Maps.FaaPart107 4.0.0
+- source locator(s): § 107.51(b)
+- owner's rulings used, if any: none
+
+## Tests and evidence
+
+```
+$ ./scripts/validate.sh full
+==> [7] Build + test (Release, CI=true)
+ok   test Release
+validate.sh full: PASS
+```
+
+Mutations observed: `AltitudeLimit_DeclinesAboveTheCeiling` fails with the mutation "return the
+ceiling instead of declining" (observed).
+
+## Determinism
+
+Nothing here reads the machine: no time, no locale, no ordering.
+
+## Decisions and trade-offs
+
+Declining rather than answering 400, because the corpus does not settle the radius case.
+
+## Known limitations and unresolved behaviour
+
+The structure-radius case still declines.
+
+## Agent provenance
+
+- implemented by: engine-dev
+- structurally reviewed by: repo-steward
+- semantically reviewed by: rules-conformance
+- independently reviewed by: not required
+
+## Unrelated changes
+
+None
+"""
+
+
+class TestPrPolicy(RailsInAGitEngine):
+    """`tools/pr-policy.py`: the contract, checked mechanically (#153)."""
+
+    def pull_request(self, body=GOOD_PR_BODY, labels=("state:ready", "risk:normal"), files=None):
+        self.fixture({
+            "pr": {"5": {"number": 5, "title": "Implement the altitude limit", "body": body,
+                         "files": files if files is not None else [{"path": "corpus-map.overlay.json"},
+                                                                   {"path": f"src/{NAME}/Rules/AltitudeLimit.cs"}]}},
+            "issue": {"27": {"number": 27, "state": "OPEN",
+                             "labels": [{"name": name} for name in labels]}},
+        })
+
+    def policy_check(self):
+        return subprocess.run([sys.executable, os.path.join(self.out, "tools", "pr-policy.py"), "5"],
+                              cwd=self.out, capture_output=True, text=True, env=self.environment())
+
+    def test_a_filled_pull_request_passes(self):
+        self.produced()
+        self.pull_request()
+        done = self.policy_check()
+        self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+        self.assertIn("satisfies the contract", done.stdout)
+        self.assertIn("What this does not say", done.stdout, "it says what it did not check")
+
+    def test_the_template_is_what_it_checks_against(self):
+        # The template and the checker are emitted together, so a section renamed in one and not
+        # the other would make every pull request fail. This is that pairing, asserted.
+        self.produced()
+        template = self.read(".github/pull_request_template.md")
+        for name, _ in [("Linked issue", 0)]:
+            self.assertIn(f"## {name}", template)
+        headings = {line[3:].strip() for line in template.splitlines() if line.startswith("## ")}
+        with open(os.path.join(self.out, "tools", "pr-policy.py"), encoding="utf-8") as handle:
+            checker = handle.read()
+        for heading in headings:
+            self.assertIn(f'("{heading}"', checker, f"the template has `## {heading}` and pr-policy.py does not")
+
+    def test_no_closes_is_a_finding(self):
+        self.produced()
+        self.pull_request(body=GOOD_PR_BODY.replace("Closes #27", "Related to #27"))
+        done = self.policy_check()
+        self.assertEqual(done.returncode, 1, done.stdout)
+        self.assertIn("no `Closes #<n>`", done.stdout)
+
+    def test_two_closes_is_a_finding(self):
+        self.produced()
+        self.pull_request(body=GOOD_PR_BODY.replace("Closes #27", "Closes #27\nCloses #28"))
+        done = self.policy_check()
+        self.assertEqual(done.returncode, 1, done.stdout)
+        self.assertIn("closes 2 issues", done.stdout)
+
+    def test_a_missing_section_is_named(self):
+        self.produced()
+        self.pull_request(body=GOOD_PR_BODY.split("## Determinism")[0])
+        done = self.policy_check()
+        self.assertEqual(done.returncode, 1, done.stdout)
+        self.assertIn("## Determinism` is missing", done.stdout)
+        self.assertIn("## Agent provenance` is missing", done.stdout)
+
+    def test_a_claim_is_not_evidence(self):
+        self.produced()
+        body = GOOD_PR_BODY.replace("""```
+$ ./scripts/validate.sh full
+==> [7] Build + test (Release, CI=true)
+ok   test Release
+validate.sh full: PASS
+```
+
+Mutations observed: `AltitudeLimit_DeclinesAboveTheCeiling` fails with the mutation "return the
+ceiling instead of declining" (observed).""", "Tests pass.")
+        self.pull_request(body=body)
+        done = self.policy_check()
+        self.assertEqual(done.returncode, 1, done.stdout)
+        self.assertIn("no command and no output", done.stdout)
+        self.assertIn("names no mutation", done.stdout)
+
+    def test_semantic_work_must_name_its_entry_and_locator(self):
+        self.produced()
+        conformance = GOOD_PR_BODY.split("## Map and rules conformance")[1].split("## Tests")[0]
+        self.pull_request(body=GOOD_PR_BODY.replace(conformance, "\n\nN/A\n\n"))
+        done = self.policy_check()
+        self.assertEqual(done.returncode, 1, done.stdout)
+        self.assertIn("touches the semantic surface", done.stdout)
+
+    def test_a_change_off_the_semantic_surface_need_not_name_an_entry(self):
+        self.produced()
+        conformance = GOOD_PR_BODY.split("## Map and rules conformance")[1].split("## Tests")[0]
+        self.pull_request(body=GOOD_PR_BODY.replace(conformance, "\n\nN/A\n\n"),
+                          files=[{"path": "README.md"}])
+        done = self.policy_check()
+        self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+
+    def test_provenance_must_say_who_reviewed(self):
+        self.produced()
+        self.pull_request(body=GOOD_PR_BODY.replace("- semantically reviewed by: rules-conformance",
+                                                    "- semantically reviewed by:"))
+        done = self.policy_check()
+        self.assertEqual(done.returncode, 1, done.stdout)
+        self.assertIn("semantically reviewed", done.stdout)
+
+    def test_the_issue_needs_exactly_one_risk_label(self):
+        self.produced()
+        self.pull_request(labels=("state:ready",))
+        done = self.policy_check()
+        self.assertEqual(done.returncode, 1, done.stdout)
+        self.assertIn("0 risk labels", done.stdout)
+
+    def test_an_issue_awaiting_a_decision_cannot_be_closed_by_a_pull_request(self):
+        self.produced()
+        self.pull_request(labels=("state:needs-decision", "risk:normal"))
+        done = self.policy_check()
+        self.assertEqual(done.returncode, 1, done.stdout)
+        self.assertIn("cannot answer it for itself", done.stdout)
+
+
+class TestVerdicts(RailsInAGitEngine):
+    """`tools/record-verdict.py` and `tools/conformance-gate.py` (#153)."""
+
+    def setUp(self):
+        super().setUp()
+        self.statuses = os.path.join(self.tmp, "statuses.json")
+
+    def gh_with_statuses(self):
+        """The stand-in, extended to answer `gh api` for commit statuses and to accept POSTs."""
+        with open(self.gh, "w", encoding="utf-8") as handle:
+            handle.write(GH_STUB.replace('fixture = json.load', '''
+if argv_api := [a for a in sys.argv[1:] if a.startswith("repos/")]:
+    pass
+''' + 'fixture = json.load'))
+        # Simpler: a purpose-built stub for the status API.
+        with open(self.gh, "w", encoding="utf-8") as handle:
+            handle.write(GH_STATUS_STUB)
+        os.chmod(self.gh, 0o755)
+
+    def record(self, *args):
+        return subprocess.run([sys.executable, os.path.join(self.out, "tools", "record-verdict.py"), *args],
+                              cwd=self.out, capture_output=True, text=True,
+                              env={**self.environment(), "GH_STATUSES": self.statuses})
+
+    def gate(self):
+        return subprocess.run([sys.executable, os.path.join(self.out, "tools", "conformance-gate.py"), "5"],
+                              cwd=self.out, capture_output=True, text=True,
+                              env={**self.environment(), "GH_STATUSES": self.statuses})
+
+    def scenario(self, head="a" * 40, labels=("state:ready", "risk:normal"), files=None):
+        self.gh_with_statuses()
+        self.fixture({
+            "pr": {"5": {"number": 5, "headRefOid": head, "state": "OPEN",
+                         "files": files if files is not None else [{"path": f"src/{NAME}/Rules/AltitudeLimit.cs"}],
+                         "closingIssuesReferences": [{"number": 27}]}},
+            "issue": {"27": {"number": 27, "labels": [{"name": name} for name in labels]}},
+            "repo": {"nameWithOwner": "owner/engine"},
+        })
+        with open(self.statuses, "w", encoding="utf-8") as handle:
+            json.dump({}, handle)
+
+    def test_a_verdict_is_recorded_at_the_head_commit(self):
+        self.produced()
+        self.scenario()
+        done = self.record("--pr", "5", "--reviewer", "semantic", "--verdict", "pass")
+        self.assertEqual(done.returncode, 0, done.stderr)
+        recorded = json.load(open(self.statuses, encoding="utf-8"))
+        self.assertEqual(recorded["a" * 40]["rules-verdict/semantic"], "success")
+
+    def test_an_unconfigured_reviewer_is_refused_and_says_what_is_configured(self):
+        self.produced()
+        self.scenario()
+        done = self.record("--pr", "5", "--reviewer", "a-friend", "--verdict", "pass")
+        self.assertEqual(done.returncode, 1, done.stdout)
+        self.assertIn("not a reviewer this engine configures", done.stderr)
+        self.assertIn("Known: semantic", done.stderr)
+        self.assertIn("edit to .github/agent-policy.json", done.stderr)
+
+    def test_the_gate_requires_a_semantic_verdict_for_semantic_work(self):
+        self.produced()
+        self.scenario()
+        done = self.gate()
+        self.assertEqual(done.returncode, 1, done.stdout)
+        self.assertIn("rules-verdict/semantic is not recorded as a success", done.stdout)
+        self.assertEqual(self.record("--pr", "5", "--reviewer", "semantic", "--verdict", "pass").returncode, 0)
+        done = self.gate()
+        self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+
+    def test_a_verdict_at_one_commit_does_not_satisfy_the_gate_at_another(self):
+        self.produced()
+        self.scenario(head="a" * 40)
+        self.assertEqual(self.record("--pr", "5", "--reviewer", "semantic", "--verdict", "pass").returncode, 0)
+        self.assertEqual(self.gate().returncode, 0)
+        # One more commit on the pull request: the verdict is on the bytes nobody is merging now.
+        self.scenario(head="b" * 40)
+        recorded = {"a" * 40: {"rules-verdict/semantic": "success"}}
+        with open(self.statuses, "w", encoding="utf-8") as handle:
+            json.dump(recorded, handle)
+        done = self.gate()
+        self.assertEqual(done.returncode, 1, done.stdout)
+        self.assertIn("verdict on an earlier commit is a verdict on bytes nobody is merging", done.stdout)
+
+    def test_a_recorded_failure_blocks_and_another_context_does_not_clear_it(self):
+        self.produced()
+        self.scenario(labels=("state:ready", "risk:independent-review"))
+        self.assertEqual(self.record("--pr", "5", "--reviewer", "semantic", "--verdict", "pass").returncode, 0)
+        done = self.record("--pr", "5", "--reviewer", "codex", "--verdict", "fail", "--note", "row 7 is wrong")
+        self.assertEqual(done.returncode, 0, done.stderr)
+        self.assertIn("blocks the merge outright", done.stdout)
+        self.assertEqual(self.record("--pr", "5", "--reviewer", "gemini", "--verdict", "pass").returncode, 0)
+        done = self.gate()
+        self.assertEqual(done.returncode, 1, done.stdout)
+        self.assertIn("recorded as a failure", done.stdout)
+        self.assertIn("does not clear it", done.stdout)
+
+    def test_an_independent_risk_issue_needs_a_second_verdict(self):
+        self.produced()
+        self.scenario(labels=("state:ready", "risk:independent-review"))
+        self.assertEqual(self.record("--pr", "5", "--reviewer", "semantic", "--verdict", "pass").returncode, 0)
+        done = self.gate()
+        self.assertEqual(done.returncode, 1, done.stdout)
+        self.assertIn("must also be recorded as a success", done.stdout)
+        self.assertIn("rules-verdict/codex or rules-verdict/gemini", done.stdout)
+        self.assertEqual(self.record("--pr", "5", "--reviewer", "codex", "--verdict", "pass").returncode, 0)
+        self.assertEqual(self.gate().returncode, 0)
+
+    def test_a_change_off_the_semantic_surface_needs_no_verdict(self):
+        self.produced()
+        self.scenario(files=[{"path": "README.md"}])
+        done = self.gate()
+        self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+        self.assertIn("no rules verdict required", done.stdout)
+
+    def test_the_chain_is_the_policy_s(self):
+        self.produced()
+        path = os.path.join(self.out, ".github", "agent-policy.json")
+        settings = json.load(open(path, encoding="utf-8"))
+        settings["review"]["independentFallback"] = [{"id": "acme", "context": "rules-verdict/acme"}]
+        with open(path, "w", encoding="utf-8") as handle:
+            json.dump(settings, handle, indent=2)
+        self.scenario(labels=("risk:independent-review",))
+        self.assertEqual(self.record("--pr", "5", "--reviewer", "codex", "--verdict", "pass").returncode, 1,
+                         "a provider the policy dropped is no longer a reviewer")
+        self.assertEqual(self.record("--pr", "5", "--reviewer", "semantic", "--verdict", "pass").returncode, 0)
+        self.assertEqual(self.record("--pr", "5", "--reviewer", "acme", "--verdict", "pass").returncode, 0)
+        self.assertEqual(self.gate().returncode, 0)
+
+
+GH_STATUS_STUB = '''#!/usr/bin/env python3
+"""A stand-in for `gh` that also keeps commit statuses in a JSON file."""
+import json, os, sys
+
+fixture = json.load(open(os.environ["GH_FIXTURE"], encoding="utf-8"))
+store = os.environ["GH_STATUSES"]
+argv = sys.argv[1:]
+
+def statuses():
+    try:
+        return json.load(open(store, encoding="utf-8"))
+    except Exception:
+        return {}
+
+if argv[0] == "api":
+    endpoint = argv[1]
+    if "-X" in argv and argv[argv.index("-X") + 1] == "POST":
+        sha = endpoint.split("/statuses/")[1]
+        fields = dict(argv[i + 1].split("=", 1) for i, a in enumerate(argv) if a == "-f")
+        recorded = statuses()
+        recorded.setdefault(sha, {})[fields["context"]] = fields["state"]
+        json.dump(recorded, open(store, "w", encoding="utf-8"))
+        print("{}")
+    else:
+        sha = endpoint.split("/commits/")[1].split("/status")[0]
+        found = statuses().get(sha, {})
+        print(json.dumps({"statuses": [{"context": c, "state": s} for c, s in found.items()]}))
+    raise SystemExit(0)
+
+if argv[0] == "repo":
+    print(json.dumps(fixture["repo"]))
+    raise SystemExit(0)
+
+kind = argv[0]
+number = argv[2] if len(argv) > 2 else ""
+record = (fixture.get(kind) or {}).get(number)
+if record is None:
+    sys.stderr.write(f"no such {kind} {number}\\n")
+    sys.exit(1)
+fields = argv[argv.index("--json") + 1].split(",") if "--json" in argv else []
+print(json.dumps({f: record.get(f) for f in fields}))
+'''
+
+
+class TestTheEngineGateChecksItsOwnRails(TestAProducedEngine):
+    """`scripts/engine-gate.py rails`: the rails held to their own word (#153, 0029 §8 and §9)."""
+
+    def rails(self):
+        return subprocess.run([sys.executable, os.path.join(self.out, "scripts", "engine-gate.py"), "rails"],
+                              cwd=self.out, capture_output=True, text=True)
+
+    def test_a_freshly_produced_engine_passes(self):
+        self.produced()
+        done = self.rails()
+        self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+        self.assertIn("the rails hold", done.stdout)
+
+    def test_a_reviewer_charter_that_can_write_fails(self):
+        self.produced()
+        path = os.path.join(self.out, ".claude", "agents", "rules-conformance.md")
+        with open(path, encoding="utf-8") as handle:
+            text = handle.read()
+        with open(path, "w", encoding="utf-8") as handle:
+            handle.write(text.replace("tools: Read, Grep, Glob", "tools: Read, Grep, Glob, Bash"))
+        done = self.rails()
+        self.assertEqual(done.returncode, 1, done.stdout)
+        self.assertIn("grants bash", done.stderr.lower())
+
+    def test_a_reviewer_charter_with_no_tool_list_fails(self):
+        self.produced()
+        path = os.path.join(self.out, ".claude", "agents", "repo-steward.md")
+        with open(path, encoding="utf-8") as handle:
+            text = handle.read()
+        with open(path, "w", encoding="utf-8") as handle:
+            handle.write(text.replace("tools: Read, Grep, Glob\n", ""))
+        done = self.rails()
+        self.assertEqual(done.returncode, 1, done.stdout)
+        self.assertIn("inherits every tool", done.stderr)
+
+    def test_a_rail_citing_a_document_the_engine_does_not_have_fails(self):
+        self.produced()
+        with open(os.path.join(self.out, "AGENTS.md"), "a", encoding="utf-8") as handle:
+            handle.write("\nSee [the runbook](docs/runbook-that-was-deleted.md).\n")
+        done = self.rails()
+        self.assertEqual(done.returncode, 1, done.stdout)
+        self.assertIn("docs/runbook-that-was-deleted.md", done.stderr)
+
+    def test_a_rail_naming_a_command_the_engine_does_not_have_fails(self):
+        # The predecessor's failure exactly: enforcement shipped beside documents and tools it
+        # cited and did not have, several inside runtime error messages.
+        self.produced()
+        with open(os.path.join(self.out, "AGENTS.md"), "a", encoding="utf-8") as handle:
+            handle.write("\nRun `tools/reconcile-the-map.py` before opening a pull request.\n")
+        done = self.rails()
+        self.assertEqual(done.returncode, 1, done.stdout)
+        self.assertIn("tools/reconcile-the-map.py", done.stderr)
+        self.assertIn("does not have", done.stderr)
+
+    def test_a_policy_without_an_independent_chain_fails(self):
+        self.produced()
+        path = os.path.join(self.out, ".github", "agent-policy.json")
+        policy = json.load(open(path, encoding="utf-8"))
+        policy["review"]["independentFallback"] = []
+        with open(path, "w", encoding="utf-8") as handle:
+            json.dump(policy, handle, indent=2)
+        done = self.rails()
+        self.assertEqual(done.returncode, 1, done.stdout)
+        self.assertIn("can never be merged", done.stderr)
+
+    def test_a_policy_link_without_its_own_context_fails(self):
+        self.produced()
+        path = os.path.join(self.out, ".github", "agent-policy.json")
+        policy = json.load(open(path, encoding="utf-8"))
+        policy["review"]["independentFallback"] = [{"id": "acme"}]
+        with open(path, "w", encoding="utf-8") as handle:
+            json.dump(policy, handle, indent=2)
+        done = self.rails()
+        self.assertEqual(done.returncode, 1, done.stdout)
+        self.assertIn("cannot be told", done.stderr)
+
+    def test_an_unreadable_policy_fails(self):
+        self.produced()
+        with open(os.path.join(self.out, ".github", "agent-policy.json"), "w", encoding="utf-8") as handle:
+            handle.write("{ not json")
+        done = self.rails()
+        self.assertEqual(done.returncode, 1, done.stdout)
+        self.assertIn("cannot read their own configuration", done.stderr)
+
+    def test_the_gate_runs_it(self):
+        self.produced()
+        self.assertIn('"${GATE[@]}" rails', self.read("scripts/validate.sh"))

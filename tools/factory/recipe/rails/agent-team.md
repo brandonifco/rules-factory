@@ -97,6 +97,10 @@ visible by recording the verdict under its own context rather than a generic one
 acceptance criteria. **It does not receive any other reviewer's conclusions** before producing
 its own.
 
+A verdict is recorded with `tools/record-verdict.py --pr <n> --reviewer <id> --verdict pass|fail`,
+under that provider's own context, and `tools/conformance-gate.py` requires it at the commit being
+merged.
+
 **The chain advances because a provider was unavailable, never because its verdict was
 unwelcome.** Unavailable means it could not be reached or returned no verdict at all. A provider
 that returned a fail was available: the answer is to fix the code, fix the map, or get an owner's

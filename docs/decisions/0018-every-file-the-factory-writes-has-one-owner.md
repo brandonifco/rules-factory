@@ -13,7 +13,7 @@ did.
 
 **Amended 2026-09-16** for [#151](https://github.com/brandonifco/rules-factory/issues/151): the
 agent rails of [0029](0029-the-rails-are-emitted-by-default-and-vendor-choice-is-engine-owned-configuration.md)
-are rows in the table below — twelve managed, one engine-owned. Nothing about the three classes or
+are rows in the table below — eighteen managed, one engine-owned. Nothing about the three classes or
 the detection changed. 0029 §5 records the one constraint the managed class puts on them: a
 managed recipe's bytes are fixed per version, so a rail may not interpolate the engine's name or
 its map.
@@ -119,18 +119,24 @@ written path the table does not classify.
 | `scripts/engine-gate.py` | generated |  | Gate recipe: the non-dotnet checks. |
 | `scripts/factory/*.py` | generated |  | The factory's generator, vendored so the gate can regenerate without the factory. |
 | `.github/workflows/validate.yml` | generated |  | Gate recipe: CI runs `validate.sh full`. |
-| `AGENTS.md` | managed | 2 | The governing contract every agent works the engine under (0029). Managed, not generated: a team may amend its own contract, and the factory must then either carry the amendment or refuse and say so, never silently overwrite it. |
+| `AGENTS.md` | managed | 3 | The governing contract every agent works the engine under (0029). Managed, not generated: a team may amend its own contract, and the factory must then either carry the amendment or refuse and say so, never silently overwrite it. |
 | `CLAUDE.md` | managed | 1 | A pointer to `AGENTS.md` and an index of the Claude adapters. It states no rule of its own, so it cannot drift from the contract. |
-| `docs/agent-team.md` | managed | 2 | The four roles and what each may not do (0029). |
-| `.claude/agents/engine-dev.md` | managed | 2 | The implementer's charter. |
+| `docs/agent-team.md` | managed | 3 | The four roles and what each may not do (0029). |
+| `.claude/agents/engine-dev.md` | managed | 3 | The implementer's charter. |
 | `.claude/agents/repo-steward.md` | managed | 1 | The structural reviewer's charter, read-only. |
-| `.claude/agents/rules-conformance.md` | managed | 1 | The semantic reviewer's charter, read-only. |
+| `.claude/agents/rules-conformance.md` | managed | 2 | The semantic reviewer's charter, read-only. |
 | `.claude/hooks/primary-checkout-guard.py` | managed | 1 | The `PreToolUse` guard keeping implementation work out of the primary checkout. Policy, and the engine that must change it adopts it. |
 | `.claude/settings.json` | managed | 1 | Which tools the guard runs before. |
 | `tools/dispatch-agent.sh` | managed | 1 | One issue, one worktree, one branch; it refuses what is not ready to work (0029). |
 | `tools/new-issue.sh` | managed | 1 | An issue with the shape the rails expect, at the ready state and normal risk. |
 | `tools/entry-packet.py` | managed | 1 | The bounded assignment for one entry, assembled from merge(package, overlay) so it cannot carry a reading of its own. |
 | `tools/review-packet.py` | managed | 1 | Everything a reviewer needs about one pull request, in the order it is meant to be read. |
+| `tools/pr-policy.py` | managed | 1 | The pull request contract, checked mechanically: one linked issue, every section filled, output rather than a claim. |
+| `tools/record-verdict.py` | managed | 1 | A review verdict as a commit status on the exact commit reviewed, so a later commit invalidates it by itself. |
+| `tools/conformance-gate.py` | managed | 1 | Whether the verdicts this change needs are recorded at the commit being merged. |
+| `.github/pull_request_template.md` | managed | 1 | The pull request shape `pr-policy.py` checks. Template and checker are emitted together, so neither can drift from the other. |
+| `.github/workflows/pr-policy.yml` | managed | 1 | The required check that runs `pr-policy.py`. |
+| `.github/workflows/conformance-gate.yml` | managed | 1 | The required check that runs `conformance-gate.py`. |
 | `global.json` | managed | 1 | The SDK the kernel pins and `rollForward: disable`. This is policy every engine should follow as the kernel moves. An engine that must move ahead of the kernel adopts the file. |
 | `NuGet.config` | managed | 2 | Package sources and source mapping: supply-chain policy (restore talks to nuget.org only, lock files pin content). An extra feed is a deliberate departure, so it is an explicit adoption. |
 | `Directory.Build.props` | managed | 2 | Target frameworks, analyzers, warnings-as-errors, determinism and lock-file mode. The review named exactly these as changes that never reached existing engines. |

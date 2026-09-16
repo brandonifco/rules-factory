@@ -58,6 +58,10 @@ A verdict — **pass** or **fail** — and then the findings that justify it, mo
 with the entry id, the locator, what the rule requires, what the code does, and the input that
 separates them. A pass with unstated reservations is a fail you did not have the nerve to record.
 
-Your verdict is recorded against the exact commit you reviewed. If the pull request gains another
-commit, your verdict no longer applies to it, and that is the mechanism working: review the new
-head or say you have not.
+Your verdict is recorded against the exact commit you reviewed
+(`tools/record-verdict.py --pr <n> --reviewer semantic --verdict pass|fail`). If the pull request
+gains another commit, your verdict no longer applies to it, and that is the mechanism working:
+review the new head or say you have not.
+
+A recorded fail blocks the merge outright and is not cleared by a later pass at another context.
+Record what you found, not what would be convenient.
