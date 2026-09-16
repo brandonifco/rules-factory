@@ -545,6 +545,71 @@ PY
 step "factory provenance recomputes on the bumped engine"
 python3 tools/factory provenance --engine "$ENGINE" --package "$PACKAGE_BUMPED"
 
+# The rails an engine ships with, run in a produced engine rather than in a fixture (rules-factory
+# decision 0029, #157). What is proved here and cannot be proved in tools/tests: the entry packet
+# resolving the map package through MSBuild -- the path a real agent takes, and the one the unit
+# tests skip by passing --package-map -- and the guard refusing a commit in a produced engine's own
+# checkout. The rails' own logic (the verdict invalidated by a new head commit, the chain read from
+# the policy, the pull request contract) is proved in tools/tests/test_factory_rails.py against
+# this same output, and is not restated here: a second definition would be one more thing to drift.
+step "the rails a produced engine ships with run in it"
+# In a copy, which is then restored: the packet asks MSBuild where the map package is, and MSBuild
+# can only answer that where a restore has happened. `produce` commits no obj/, so a freshly
+# committed engine has no answer yet -- which is what an agent's first command in a new worktree
+# hits too, and why the packet says "restore first" rather than guessing at the packages folder.
+RAILED="$SCRATCH/railed"
+cp -R "$ENGINE" "$RAILED"
+rm -rf "$RAILED"/src/*/bin "$RAILED"/src/*/obj "$RAILED"/tests/*/bin "$RAILED"/tests/*/obj
+(cd "$RAILED" && dotnet restore "$NAME.slnx") > "$SCRATCH/railed-restore.log" 2>&1 \
+  || { tail -20 "$SCRATCH/railed-restore.log"; fail "the copy of the engine does not restore"; }
+
+# The packet, with no --package-map: it asks MSBuild where the restore put the map, as the gate does.
+packet="$(cd "$RAILED" && python3 tools/entry-packet.py player-count --out "$SCRATCH/packets")" \
+  || fail "tools/entry-packet.py could not assemble an entry packet in a produced engine"
+grep -qF "# Entry packet: \`player-count\`" "$packet" || fail "the packet is not the entry it was asked for"
+grep -qF "$(python3 -c '
+import json
+entry = next(e for e in json.load(open("examples/hoyle-backgammon/corpus-map.json"))["entries"]
+             if e["id"] == "player-count")
+print(entry["evidence"])')" "$packet" || fail "the packet does not carry the entry's evidence verbatim"
+grep -q "PlayerCount(" "$packet" || fail "the packet does not declare the handler the engine generates"
+echo "ok   tools/entry-packet.py resolved the map package through MSBuild and assembled player-count"
+
+# The doctor: every local row true of a freshly produced engine, and the remote half named as not
+# examined rather than counted as passing.
+doctor_out="$SCRATCH/doctor.log"
+if (cd "$RAILED" && python3 tools/agent-doctor.py --local) > "$doctor_out" 2>&1; then
+  cat "$doctor_out"; fail "agent-doctor.py --local exited 0; it must say the remote half was not examined"
+fi
+grep -q "NOT EXAMINED" "$doctor_out" || { cat "$doctor_out"; fail "the doctor did not say the remote half was unexamined"; }
+grep -qE "^Rail files .* OK" "$doctor_out" || { cat "$doctor_out"; fail "a produced engine is missing a rail"; }
+grep -qE "^Guard wired to the tools .* OK" "$doctor_out" || { cat "$doctor_out"; fail "the guard is not wired to anything"; }
+grep -qE "^Gate checks the rails .* OK" "$doctor_out" || { cat "$doctor_out"; fail "the gate does not check the rails"; }
+grep -qE "^Review chain .* OK" "$doctor_out" || { cat "$doctor_out"; fail "no review chain is configured"; }
+echo "ok   tools/agent-doctor.py --local: every local rail true, the remote half named unexamined"
+
+# The guard, in the produced engine's own checkout: a commit on the primary checkout is refused,
+# and the escape hatch AGENTS.md documents is the thing that lifts it.
+git -C "$RAILED" init -q -b main
+git -C "$RAILED" -c user.email=t@example.invalid -c user.name=t add AGENTS.md >/dev/null
+git -C "$RAILED" -c user.email=t@example.invalid -c user.name=t commit -qm "first" >/dev/null
+guard() {
+  printf '{"tool_name": "Bash", "tool_input": {"command": "git commit -m x"}, "cwd": "%s"}' "$RAILED" \
+    | (cd "$RAILED" && CLAUDE_PROJECT_DIR="$RAILED" env "$@" python3 .claude/hooks/primary-checkout-guard.py)
+}
+if guard IGNORED=1 > "$SCRATCH/guard.log" 2>&1; then
+  cat "$SCRATCH/guard.log"; fail "the guard allowed a commit in the primary checkout"
+fi
+grep -q "commit in the primary checkout" "$SCRATCH/guard.log" \
+  || { cat "$SCRATCH/guard.log"; fail "the guard blocked for some other reason"; }
+grep -q "RULES_ENGINE_ALLOW_PRIMARY_MUTATION" "$SCRATCH/guard.log" \
+  || fail "the guard does not name its escape hatch where it blocks"
+grep -qF "RULES_ENGINE_ALLOW_PRIMARY_MUTATION" "$RAILED/AGENTS.md" \
+  || fail "the escape hatch is not documented in AGENTS.md; that is the predecessor's exact failure"
+guard RULES_ENGINE_ALLOW_PRIMARY_MUTATION=1 > "$SCRATCH/guard.log" 2>&1 \
+  || { cat "$SCRATCH/guard.log"; fail "the documented escape hatch did not lift the guard"; }
+echo "ok   the guard refuses a commit in the primary checkout, and the documented hatch lifts it"
+
 # The kernel's determinism analyzers, on the engine the factory just produced (rules-factory
 # decision 0029). A pin in a props file and a severity in .editorconfig prove nothing on their own:
 # what has to be true is that a non-deterministic construct in the rules stops the build, and that
