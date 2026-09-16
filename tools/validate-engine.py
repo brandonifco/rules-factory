@@ -1018,7 +1018,8 @@ def player_count_evidence():
 # in a produced engine's own checkout. Then the four behaviours #157 names, run as the produced
 # engine's own files with a stand-in for GitHub: the pull request contract, the verdict tied to the
 # head commit, the independent-risk issue, the recorded verdict re-running the required check
-# through the emitted workflow's own wiring (#191), and the provider chain as configuration.
+# through the emitted workflow's own wiring (#191), a factory update's claim checked against the
+# engine's own record and vendored ownership table (#193), and the provider chain as configuration.
 # tools/tests/test_factory_rails.py proves the same logic in depth; what only this can prove is that it holds in what an engine
 # actually receives, after produce has written it -- not in the recipe copies the tests read.
 def the_rails_run_in_a_produced_engine(r):
@@ -1041,6 +1042,7 @@ def the_rails_run_in_a_produced_engine(r):
     a_verdict_at_one_commit_does_not_pass_another(r, railed, github)
     an_independent_risk_issue_needs_more_than_the_semantic_verdict(r, railed, github)
     the_verdict_re_runs_the_gate(r, railed, github)
+    a_factory_update_is_checked_against_the_tree_that_produced_it(r, railed, github)
     swapping_the_provider_chain_is_an_edit_to_the_policy_alone(r, railed, github)
 
 
@@ -1337,10 +1339,11 @@ class FakeGitHub:
         The commit statuses start empty: each check records its own verdicts through record-verdict.py.
         `runs` is the conformance-gate run GitHub holds at that head -- there is one as soon as a
         pull request is opened -- and `reruns` the re-requests the rails make of it, which start none."""
+        changed = [{"path": f"src/{NAME}/Rules/PlayerCount.cs"}]
         document = {
             "repository": "owner/engine",
             "pulls": {PR: {"number": int(PR), "title": "Implement the player count", "body": body, "state": "OPEN",
-                           "headRefOid": head, "files": [{"path": f"src/{NAME}/Rules/PlayerCount.cs"}],
+                           "headRefOid": head, "files": changed, "changedFiles": len(changed),
                            "closingIssuesReferences": [{"number": ISSUE}]}},
             "issues": {str(ISSUE): {"number": ISSUE, "state": "OPEN", "labels": [{"name": name} for name in labels]}},
             "statuses": {},
@@ -1352,6 +1355,25 @@ class FakeGitHub:
     def reruns(self):
         with open(self.state, encoding="utf-8") as handle:
             return json.load(handle).get("reruns") or []
+
+    def files(self, paths):
+        """The pull request's changed files, and GitHub's own count of them.
+
+        Both, because `changedFiles` is what tells a rail that `files` was truncated at a hundred
+        (#193); a mutator that set only the list would make the two disagree and every check that
+        reads the diff would refuse.
+        """
+        with open(self.state, encoding="utf-8") as handle:
+            document = json.load(handle)
+        document["pulls"][PR]["files"] = [{"path": path} for path in paths]
+        document["pulls"][PR]["changedFiles"] = len(paths)
+        write(self.state, json.dumps(document, indent=2))
+
+    def body(self, text):
+        with open(self.state, encoding="utf-8") as handle:
+            document = json.load(handle)
+        document["pulls"][PR]["body"] = text
+        write(self.state, json.dumps(document, indent=2))
 
     def move_head(self, head):
         """A further commit pushed to the pull request: the statuses stay on the commits they were recorded at."""
@@ -1701,6 +1723,90 @@ def swapping_the_provider_chain_is_an_edit_to_the_policy_alone(r, railed, github
         cat(log)
         fail(f"a success at the swapped chain's {new[0]['context']} did not satisfy tools/conformance-gate.py")
     ok("swapping the provider chain edits .github/agent-policy.json alone, and the gate requires the new contexts")
+
+
+# A `factory produce` update's pull request, as the emitted template asks for it. The three declared
+# facts are filled in from the engine's own provenance.json at the moment of the check: they are the
+# claim, and the whole point of the claim is that the tree can contradict it.
+PRODUCE_PR_BODY = WELL_FORMED_PR_BODY.replace("""- entry id(s): player-count
+- map package and version: the package this engine was produced from
+- source locator(s): the locator the entry packet names
+- owner's rulings used, if any: none""", "- map package and version: {map}").replace(
+    """Mutations observed: `PlayerCount_IsTwo` fails with the mutation "answer three" (observed).""",
+    """```
+$ python3 tools/factory produce --package ... --name ... --out .
+produced in ., verified
+$ python3 tools/factory provenance --engine .
+provenance of .: every field matches
+```""").replace("## Exact behavioural claim", """## Produced by the factory
+
+<!-- rules-factory-produce -->
+
+- factory version: {factory}
+- map package and version: {map}
+- kernel version: {kernel}
+- what moved: the map, from the version before this one
+
+## Exact behavioural claim""")
+
+
+# The predicate #193 decided, run against a real produced tree and the engine's own vendored
+# ownership table. tools/tests/test_factory_rails.py proves the logic in depth against the recipe
+# bytes; what only this can prove is that the file set a real `produce` wrote classifies as the
+# factory's in the engine that received it -- a fixture of invented path strings would agree with
+# itself whatever the table said.
+def a_factory_update_is_checked_against_the_tree_that_produced_it(r, railed, github):
+    policy = railed_policy(railed)
+    log = r.s("produce-claim.log")
+    with open(os.path.join(railed, "provenance.json"), encoding="utf-8") as handle:
+        record = json.load(handle)
+    if record["factory"]["dirty"] is not False:
+        fail("the produced engine's record says the factory was dirty, so no produce claim could be admitted")
+    body = PRODUCE_PR_BODY.format(factory=record["factory"]["version"],
+                                  map=f"{record['map']['packageId']} {record['map']['version']}",
+                                  kernel=record["kernel"]["version"])
+    # Drawn from the record rather than listed here: these are the paths this produce wrote.
+    written = ["provenance.json"] + [item["path"] for item in record["generated"]]
+
+    github.serve(railed, COMMIT_A, ready(policy, "normalRisk"), body=body)
+    github.files(written)
+    if github.tool(railed, log, "tools/pr-policy.py", PR) != 0:
+        cat(log)
+        fail("tools/pr-policy.py refused a factory update whose every changed file this engine's own "
+             "provenance.json records as produced, so its refusal below would prove nothing")
+    if not grep_fixed(log, "claim was admitted"):
+        cat(log)
+        fail("tools/pr-policy.py passed the factory update without saying the produce claim was admitted")
+
+    # One hand-written file among them. Nothing else changes: the same body, the same engine, the
+    # same declared facts -- and the claim is void, by name. This is the escape hatch, closed.
+    smuggled = f"src/{NAME}/Rules/SmuggledByHand.cs"
+    github.files(written + [smuggled])
+    if github.tool(railed, log, "tools/pr-policy.py", PR) != 1:
+        cat(log)
+        fail(f"tools/pr-policy.py admitted a produce claim over a diff carrying {smuggled}, which no produce writes")
+    for text, message in ((smuggled, "the refusal does not name the hand-written file that voided the claim"),
+                          ("not files a produce writes", "the refusal does not say why the claim is void"),
+                          ("names no mutation", "the voided pull request was not judged as the ordinary one it is")):
+        if not grep_fixed(log, text):
+            cat(log)
+            fail(message)
+
+    # And the claim buys no verdict: the same diff, which regenerates the map's code, still needs
+    # the semantic verdict at the head, and gets it only when one is recorded there.
+    github.files(written)
+    if github.gate(railed, log) != 1:
+        cat(log)
+        fail("tools/conformance-gate.py passed a regeneration with no verdict recorded; the produce claim waived it")
+    if not grep_fixed(log, f"{policy['review']['semanticContext']} is not recorded as a success at {COMMIT_A[:12]}"):
+        cat(log)
+        fail("the gate blocked the factory update for some other reason than the missing semantic verdict")
+    github.record(railed, log, "semantic")
+    if github.gate(railed, log) != 0:
+        cat(log)
+        fail("a semantic verdict at the head did not satisfy the gate for a factory update")
+    ok("a factory update's claim is admitted against this engine's own record and ownership table, is void "
+       "when one hand-written file joins it, and waives no verdict")
 
 
 AMBIENT_CLOCK = """\

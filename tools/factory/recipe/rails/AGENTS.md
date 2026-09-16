@@ -82,6 +82,39 @@ its output rather than a claim, an entry and a locator for semantic work, who re
 exactly one state and one risk label on the issue. None of that is about form. Each line of it is
 something a reviewer would otherwise have to take on trust.
 
+### A factory update is work under these rails too
+
+A `factory produce` update to this engine — a new map version, a new kernel pin, a new factory
+recipe — is not a special case outside this section. It is opened from an issue
+(`tools/new-issue.sh --produce` files one with the shape for it), dispatched to a worktree,
+produced there, and opened as a pull request that closes that issue like any other:
+
+```bash
+tools/new-issue.sh --produce --title "..."   # what moves, from what to what, and why now
+tools/dispatch-agent.sh <issue number>
+tools/re-produce.sh                          # from the factory commit provenance.json names
+```
+
+Its pull request body carries the `## Produced by the factory` section and its marker, declaring
+the factory version, the map package and version, the kernel version, and what moved.
+**`tools/pr-policy.py` checks that claim; it does not take it.** The three facts must equal
+`provenance.json` in this tree, that record must say the factory was not dirty, and every changed
+file must be one the factory writes — classified by this engine's own vendored ownership table, the
+same one `produce` wrote the files by. **One hand-written file voids the claim**, by name, and the
+pull request is then judged as the ordinary pull request it is.
+
+Two things follow, and neither is a loophole:
+
+- **An edit the new input forces is a separate issue.** A new map version that adds an entry, or a
+  handler whose contract changed, is a rules decision the factory did not make. Putting it in the
+  same branch makes the claim false and the diff unreviewable; file it, and work it under §5.
+- **The claim waives no verdict.** It changes what the pull request must *say* — no single entry id
+  and no locator where a map bump regenerates every entry, and no mutation where nothing wrote a
+  test — and never what it must prove. `tools/conformance-gate.py` still decides which verdicts are
+  needed from the changed paths, and a regeneration touches the semantic surface several times
+  over. What replaces the mutation is the produce command and its output, the gate's output, and a
+  provenance recompute showing the committed record is the one a re-produce writes.
+
 `.claude/hooks/primary-checkout-guard.py` enforces the primary checkout's cleanliness for Claude
 agents. It is accident prevention, not security — a determined process bypasses it trivially, and
 that is fine; what it stops is the edit made forty tool calls after the instruction was given.
@@ -216,3 +249,6 @@ an issue.
   generated files are rewritten from the map; an edit there is overwritten and reported.
 - After changing `corpus-map.overlay.json`, run `tools/re-produce.sh`. The record and `backlog/`
   are the factory's to write, and the gate fails while they are older than the overlay.
+- A pull request that is a `factory produce` update says so in its `## Produced by the factory`
+  section, and carries what produce wrote and nothing else (§4). One file that produce did not
+  write voids the claim, which is why the files named above are also the only ones it can cover.

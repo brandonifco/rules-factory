@@ -21,6 +21,35 @@ So this checks what can be checked mechanically, and nothing it cannot:
   5. agent provenance says who implemented and who reviewed;
   6. the linked issue carries exactly one risk label and exactly one state label.
 
+**Produce mode (#193).** A `factory produce` update to this engine -- a new map version, a new
+kernel pin, a new factory recipe -- is a pull request under these rails like any other, and two of
+the obligations above cannot be met honestly by one: it writes no test of its own, so it can name
+no mutation, and a map bump regenerates every entry, so it has no single entry id or locator. A
+pull request whose body carries the `## Produced by the factory` section and its marker claims to
+be one. The claim is **checked, never taken**, and it is closed on three conditions, all of which
+must hold:
+
+  1. it says so -- the section, the marker, and three declared facts: factory version, map package
+     and version, kernel version;
+  2. those facts equal `provenance.json` in the checked-out tree, and that record says the factory
+     was not dirty. A produce from a dirty factory is not reproducible, so it is not an update
+     anybody can repeat;
+  3. every changed path is one the factory writes, classified through this engine's own vendored
+     `scripts/factory/ownership.py` -- generated, managed, or a `packages.lock.json` a pin change
+     re-locks (#94). One hand-written `.cs`, one overlay edit, one edit to `.github/agent-policy.json`
+     voids the claim, by name, and the pull request is judged as the ordinary pull request it is.
+
+The file set this can ever cover is exactly the set nobody may hand-edit anyway (AGENTS.md section
+10), so it grants no new territory. Forging the bytes is caught by `./scripts/validate.sh full`,
+which regenerates every `*.g.cs` and compares byte for byte; forging the declaration fails against
+`provenance.json`, which is in the diff a reviewer reads.
+
+**Produce mode changes what a pull request must say, never what it must prove.** It waives no
+verdict, no `Closes #<n>`, no label rule and no gate run. It replaces the two obligations that do
+not apply with two that are harder to fake: the map package and version and what moved, in place of
+an entry and a locator; and the produce command, the gate's output and a `factory provenance`
+recompute, in place of a named mutation.
+
 **What it cannot check, and does not pretend to.** Whether the behavioural claim is true, whether
 the evidence was really run, whether the mutation was really observed to fail, or whether the
 named reviewer really reviewed. Those are a reviewer's, and the review verdict recorded against
@@ -38,8 +67,16 @@ import re
 import subprocess
 import sys
 
+# The produce claim is classified by the engine's vendored scripts/factory/ownership.py, and an
+# imported module leaves its bytecode behind: scripts/factory/__pycache__/, a path no ownership row
+# covers, so the checkout that ran this goes dirty and tools/dispatch-agent.sh refuses to open a
+# worktree for the next issue (#194). The loader reads this flag when the import happens, so it
+# belongs here and not beside the import it disarms.
+sys.dont_write_bytecode = True
+
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 POLICY = ".github/agent-policy.json"
+PROVENANCE = "provenance.json"
 
 # The template's headings, and what each is for. A pull request is judged against these names, so
 # the template and this list move together (both are managed rails, emitted by the same factory).
@@ -54,7 +91,27 @@ SECTIONS = (
     ("Known limitations and unresolved behaviour", "what this does not answer"),
     ("Agent provenance", "who implemented, and who reviewed"),
     ("Unrelated changes", "there are none, or they are named"),
+    ("Produced by the factory", "what this run of `factory produce` moved, and from what to what"),
 )
+# The one heading whose absence is not a finding: almost no pull request is a factory update, and a
+# section every author had to write "N/A" into would be noise. Its presence is a claim, though, so
+# once it is there it is judged like any other section -- and then checked against the tree.
+PRODUCE_SECTION = "Produced by the factory"
+OPTIONAL = frozenset({PRODUCE_SECTION})
+# Fixed, and matched in the raw body rather than in the parsed section: the template's guidance
+# lives in HTML comments, which sections() strips, and so does this.
+PRODUCE_MARKER = "<!-- rules-factory-produce -->"
+# The three facts a produce update declares, and where provenance.json holds each. A declaration is
+# only worth checking because it can be wrong: each of these is in the diff the pull request carries.
+PRODUCE_FACTS = (
+    ("factory version", lambda record: (record.get("factory") or {}).get("version")),
+    ("map package and version",
+     lambda record: f"{(record.get('map') or {}).get('packageId')} {(record.get('map') or {}).get('version')}"),
+    ("kernel version", lambda record: (record.get("kernel") or {}).get("version")),
+)
+# Prose, compared against nothing: which of the three moved, and what a reader should expect to see
+# in the diff because of it. A produce report (`factory produce --produce-report`) writes all four.
+PRODUCE_PROSE = "what moved"
 CLOSES = re.compile(r"\b(?:close[sd]?|fix(?:e[sd])?|resolve[sd]?)\s+#(\d+)\b", re.I)
 FENCE = re.compile(r"```.*?```", re.S)
 # "tests pass", "all green", "CI is happy": a claim in the place the template asks for output.
@@ -132,6 +189,8 @@ def check_sections(body, findings):
     for name, purpose in SECTIONS:
         empty = {"", "-", "TODO"} if name == MAY_BE_NA else {"", "-", "N/A", "TODO"}
         if name not in present:
+            if name in OPTIONAL:
+                continue
             findings.append(f"the section `## {name}` is missing ({purpose}). The template is "
                             f".github/pull_request_template.md.")
         elif present[name] in empty:
@@ -141,7 +200,125 @@ def check_sections(body, findings):
     return filled
 
 
-def check_evidence(filled, findings):
+def labelled(text, field):
+    """The value written after `<field>:` on its own line, or None. The labels are the template's
+    bullets (`- factory version:`), so the word is looked for anywhere in the label, not at its
+    start -- the same rule check_conformance and check_provenance read their fields by."""
+    found = re.search(rf"(?im)^[^\n:]*\b{re.escape(field)}[^:\n]*:[ \t]*(\S.*?)[ \t]*$", text or "")
+    return found.group(1) if found else None
+
+
+def same_fact(declared, recorded):
+    """Whether a declared fact is the recorded one. Whitespace is collapsed, and `Id@Version` is
+    accepted for the map beside `Id Version`, because both spellings name the same package and
+    `factory produce --package` takes the second."""
+    return " ".join((declared or "").replace("@", " ").split()) == " ".join((recorded or "").split())
+
+
+def engine_ownership():
+    """This engine's own `scripts/factory/ownership.py`, and the engine's name (#193).
+
+    Imported from the tree rather than restated here, so the classification a pull request is
+    judged by and the one `factory produce` wrote can never disagree: they are one table. A tree
+    without it, or without a readable provenance.json, cannot answer the question at all, which is
+    why the caller turns that into a finding rather than into an admitted claim.
+    """
+    with open(ROOT / PROVENANCE, encoding="utf-8") as handle:
+        record = json.load(handle)
+    name = (record.get("engine") or {}).get("name")
+    if not isinstance(name, str) or not name:
+        raise Failed(f"{PROVENANCE} names no engine, so no path in this pull request can be classified")
+    sys.path.insert(0, str(ROOT / "scripts" / "factory"))
+    try:
+        import ownership  # noqa: E402  (the factory's ownership table, vendored by produce)
+    except ImportError as error:
+        raise Failed(f"scripts/factory/ownership.py is not importable ({error}); run `factory produce` again")
+    return ownership, name, record
+
+
+def factory_written(path, ownership, name):
+    """Whether `path` is one a `factory produce` run writes, by the engine's own table.
+
+    Generated and managed files are the factory's on every run. The two `packages.lock.json` are
+    engine-owned, and are here for the one case 0018's amendment (#94) admits: a produce that moved
+    the generated pins re-locks them, because lock files resolved against the old pins cannot pass
+    the gate. Everything else an engine owns -- its overlay, its projects, its rails configuration,
+    its hand-written code -- is a decision the factory did not make, and is what voids a claim.
+    """
+    row = ownership.classify(path, name)
+    if row is None:
+        return False
+    if row.cls in (ownership.GENERATED, ownership.MANAGED):
+        return True
+    return row.cls == ownership.ENGINE_OWNED and row.pattern.endswith("/packages.lock.json")
+
+
+def check_produce(body, filled, changed, findings):
+    """Whether this pull request is a factory update, by the closed predicate #193 decided.
+
+    Returns True only when the section says so, the declared facts are the tree's, and every changed
+    path is one the factory writes. A claim that fails any part of that produces a finding naming
+    which part: an author who wrote the section meant it, and a silent downgrade would leave them
+    reading findings about a mutation they could not have named and wondering which rule they hit.
+
+    `body` is a parameter and not a module global on purpose. This predicate decides what two other
+    checks may relax, and a value it read from somewhere else in the process is a value a reader
+    cannot follow to its source.
+    """
+    if PRODUCE_SECTION not in filled and f"## {PRODUCE_SECTION}" not in (body or ""):
+        return False
+    claim = f"`## {PRODUCE_SECTION}` claims this is a `factory produce` update"
+    declared = filled.get(PRODUCE_SECTION) or ""
+    if PRODUCE_MARKER not in (body or ""):
+        findings.append(f"{claim}, and carries no `{PRODUCE_MARKER}`. The marker is what the section is "
+                        f"recognised by; the template writes it, and a section written by hand must keep it.")
+        return False
+
+    try:
+        ownership, name, record = engine_ownership()
+    except (Failed, OSError, ValueError) as error:
+        findings.append(f"{claim}, and that claim cannot be checked here: {error}. A claim this check cannot "
+                        f"examine is not admitted.")
+        return False
+
+    problems = []
+    for field, recorded_by in PRODUCE_FACTS:
+        value = labelled(declared, field)
+        recorded = recorded_by(record)
+        if value is None:
+            problems.append(f"it declares no {field}")
+        elif not same_fact(value, recorded):
+            problems.append(f"it declares {field} {value!r}, and {PROVENANCE} in this tree records {recorded!r}")
+    if labelled(declared, PRODUCE_PROSE) is None:
+        problems.append(f"it does not say {PRODUCE_PROSE}: which of the three moved, and what a reader should "
+                        f"therefore expect to find in the diff")
+    if (record.get("factory") or {}).get("dirty") is not False:
+        problems.append(f"{PROVENANCE} records the factory as dirty, so this engine was produced from a factory "
+                        f"checkout with uncommitted changes. Nobody can reproduce that run, so it is not a "
+                        f"factory update -- re-produce from a clean factory")
+
+    smuggled = []
+    for path in sorted(changed):
+        try:
+            if not factory_written(path, ownership, name):
+                smuggled.append(path)
+        except ownership.OwnershipError as error:
+            smuggled.append(f"{path} ({error})")
+    if smuggled:
+        problems.append(f"{len(smuggled)} changed file(s) are not files a produce writes: "
+                        f"{', '.join(smuggled[:5])}{'...' if len(smuggled) > 5 else ''}. A produce writes the "
+                        f"generated and managed files and re-locks the lock files; anything else in this diff is "
+                        f"somebody's decision, and it is reviewed as one")
+
+    if problems:
+        findings.append(f"{claim}, and it is not one: {'; '.join(problems)}. The claim is void and this pull "
+                        f"request is judged as the ordinary pull request it is. Nothing here is waived by the "
+                        f"section being present.")
+        return False
+    return True
+
+
+def check_evidence(filled, findings, produce=False):
     evidence = filled.get("Tests and evidence")
     if evidence is None:
         return
@@ -157,26 +334,44 @@ def check_evidence(filled, findings):
         findings.append("`## Tests and evidence` says the tests pass rather than showing them passing. "
                         "This repository has twice shipped a check that counted work it had not done.")
     # Asked whatever the fences hold: the mutation obligation is about the tests, not the formatting.
-    if "mutation" not in evidence.lower():
+    if produce:
+        # A produce writes no test of its own, so there is no mutation it could honestly name -- and a
+        # rule met by writing the word is worse than no rule. What replaces it is not lighter: the
+        # command that made these bytes, and a recompute saying the committed record is the one a
+        # re-produce writes. Both are re-runnable by a reviewer; "mutation" is not.
+        for command, why in (("factory produce", "the command that wrote these bytes"),
+                             ("factory provenance", "the recompute showing the committed record is the one a "
+                                                    "re-produce writes")):
+            if command not in evidence:
+                findings.append(f"`## Tests and evidence` shows no `{command}`, and this is a factory update: "
+                                f"show {why}, and what it printed. A produce update names no mutation because it "
+                                f"writes no test; this is what it shows instead.")
+    elif "mutation" not in evidence.lower():
         findings.append("`## Tests and evidence` names no mutation. Every test records the mutation that makes it "
                         "fail, and you must have watched it fail -- a test nobody has watched fail is not yet a test.")
 
 
-def check_conformance(filled, semantic_files, findings):
+def check_conformance(filled, semantic_files, findings, produce=False):
     conformance = filled.get("Map and rules conformance")
     if conformance is None or not semantic_files:
         return
+    # A map version bump regenerates every entry, so a factory update has no single entry id and no
+    # single locator: the honest answers are "all of them" and "the whole map", which name nothing.
+    # What it does have is the map package and the version it moved to, which is the fact the diff
+    # can be read against -- and that is required here, not waived.
+    fields = ((("map", "the map package and version this engine was produced from"),) if produce else
+              (("entry", "the entry id, which is what ties this to the map"),
+               ("map", "the map package and version this was implemented against"),
+               ("locator", "the locator, which is where the rule is")))
     if re.fullmatch(r"(?i)\s*n/?a\.?\s*", conformance):
         findings.append(f"`## Map and rules conformance` says N/A, but this change touches the semantic surface "
-                        f"({', '.join(sorted(semantic_files)[:3])}...). Name the entry id, the map version and the "
-                        f"locator: an implementation of an unnamed rule cannot be reviewed against one.")
+                        f"({', '.join(sorted(semantic_files)[:3])}...). Name {', '.join(w for _, w in fields)}: "
+                        f"an implementation of an unnamed rule cannot be reviewed against one.")
         return
-    for field, what in (("entry", "the entry id, which is what ties this to the map"),
-                        ("map", "the map package and version this was implemented against"),
-                        ("locator", "the locator, which is where the rule is")):
+    for field, what in fields:
         # The template's bullets read "entry id(s):", "map package and version:", "source
         # locator(s):" -- so the word is looked for anywhere in the label, not at its start.
-        if not re.search(rf"(?im)^[^\n:]*\b{field}[^:\n]*:[ \t]*\S", conformance):
+        if labelled(conformance, field) is None:
             findings.append(f"`## Map and rules conformance` does not name {what}.")
 
 
@@ -208,6 +403,29 @@ def check_issue_labels(number, settings, findings):
     return issue
 
 
+def truncation(pull, changed, findings):
+    """Whether `gh pr view --json files` gave a partial list (#193). True means decide nothing from it.
+
+    The cap is real and silent: `gh pr view --json files` returns at most 100 files, with no error
+    and no warning, whatever `changedFiles` says. Every rule below reads the changed paths -- what
+    is on the semantic surface, and whether a produce claim covers the whole diff -- so a pull
+    request with more than a hundred changed files whose rule-bearing ones sort past the first
+    hundred would be judged on a diff that is not the diff. A map version bump regenerates hundreds
+    of files, which is exactly the case this check is for. So the count is asked for alongside the
+    list, and a short list refuses rather than deciding on the half it was given: a check that
+    examines some of what it is for is not a pass either.
+    """
+    count = pull.get("changedFiles")
+    if not isinstance(count, int) or len(changed) == count:
+        return False
+    findings.append(f"GitHub returned {len(changed)} of this pull request's {count} changed files: the list is "
+                    f"truncated, and the semantic surface and the ownership of this diff cannot be decided from "
+                    f"a partial list. Nothing below was judged against the files that are missing. Read the diff "
+                    f"(`gh pr diff {pull.get('number')} --name-only`) and split the change, or say on the issue "
+                    f"why one pull request this large is the reviewable unit.")
+    return True
+
+
 def main(argv=None):
     parser = argparse.ArgumentParser(prog="pr-policy.py", description=__doc__.split("\n")[0])
     parser.add_argument("pr", type=int, help="the pull request number")
@@ -216,16 +434,20 @@ def main(argv=None):
     findings = []
     try:
         settings = policy()
-        pull = json.loads(gh("pr", "view", str(args.pr), "--json", "number,title,body,files"))
+        pull = json.loads(gh("pr", "view", str(args.pr), "--json", "number,title,body,files,changedFiles"))
         body = pull.get("body") or ""
         changed = [f["path"] for f in pull.get("files") or []]
+        truncated = truncation(pull, changed, findings)
         semantic_files = {path for path in changed
                           if is_semantic(path, (settings.get("review") or {}).get("semanticPaths") or [])}
 
         linked = check_closes(body, findings)
         filled = check_sections(body, findings)
-        check_evidence(filled, findings)
-        check_conformance(filled, semantic_files, findings)
+        # Never on a truncated list: the produce predicate says every changed path is one the
+        # factory writes, and a list that is missing some cannot say that about the ones it lost.
+        produce = False if truncated else check_produce(body, filled, changed, findings)
+        check_evidence(filled, findings, produce=produce)
+        check_conformance(filled, semantic_files, findings, produce=produce)
         check_provenance(filled, findings)
         if linked is not None:
             check_issue_labels(linked, settings, findings)
@@ -244,7 +466,11 @@ def main(argv=None):
               "line above is something a reviewer would otherwise have to take on trust.")
         return 1
     print(f"pr-policy: PR #{args.pr} satisfies the contract "
-          f"({len(SECTIONS)} sections, one linked issue, evidence and provenance present).")
+          f"({len(SECTIONS) - len(OPTIONAL)} required sections, one linked issue, evidence and provenance present).")
+    if produce:
+        print(f"The `## {PRODUCE_SECTION}` claim was admitted: the declared factory, map and kernel are "
+              f"{PROVENANCE}'s, that record is not dirty, and every changed file is one a produce writes. "
+              f"It replaced the mutation and the entry, and waived no verdict.")
     print("What this does not say: that the claim is true, that the evidence was run, or that the named reviewers "
           "reviewed. Those are the review verdict's, recorded against the head commit.")
     return 0

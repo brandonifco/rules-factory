@@ -216,7 +216,8 @@ class TestBytecodeStaysOutOfTheCheckout(unittest.TestCase):
         # Named, so that an emitted script that starts importing the factory fails here rather than
         # being skipped by a check that examined whatever it happened to find.
         self.assertEqual(sorted(importers),
-                         ["scripts/engine-gate.py", "scripts/map-overlay.py", "tools/entry-packet.py"])
+                         ["scripts/engine-gate.py", "scripts/map-overlay.py", "tools/entry-packet.py",
+                          "tools/pr-policy.py"])
 
 
 class TestAProducedEngine(unittest.TestCase):
@@ -660,6 +661,28 @@ class TestNewIssue(RailsInAGitEngine):
         done = self.new_issue("--title", "x", "--dry-run")
         self.assertIn("labels: ready-to-work,risk:normal", done.stdout)
 
+    def test_a_factory_update_is_filed_at_the_ready_state_and_normal_risk(self):
+        # #193: a `factory produce` update is work under the rails like any other, so it is filed
+        # like any other. The flag swaps the body and promotes nothing: what moved decides the
+        # risk, and that is the orchestrator's judgement (0029 section 3), not a flag's.
+        self.produced()
+        done = self.new_issue("--title", "Take the engine to the next map version", "--produce", "--dry-run")
+        self.assertEqual(done.returncode, 0, done.stderr)
+        self.assertIn("labels: state:ready,risk:normal", done.stdout)
+        self.assertIn("## What moves", done.stdout)
+        self.assertIn("## Produced by the factory", done.stdout)
+        self.assertIn("separate issue, because it is a rules decision the factory did not make", done.stdout)
+        self.assertNotIn("risk:independent-review", done.stdout)
+
+    def test_a_factory_update_body_and_a_body_file_are_refused_together(self):
+        self.produced()
+        path = os.path.join(self.tmp, "body.md")
+        with open(path, "w", encoding="utf-8") as handle:
+            handle.write("## What this is\n\nmine\n")
+        done = self.new_issue("--title", "x", "--produce", "--body-file", path, "--dry-run")
+        self.assertEqual(done.returncode, 1, done.stdout)
+        self.assertIn("both say what the body is", done.stderr)
+
     def test_an_unknown_risk_is_refused(self):
         self.produced()
         done = self.new_issue("--title", "x", "--risk", "catastrophic", "--dry-run")
@@ -848,11 +871,15 @@ None
 class TestPrPolicy(RailsInAGitEngine):
     """`tools/pr-policy.py`: the contract, checked mechanically (#153)."""
 
-    def pull_request(self, body=GOOD_PR_BODY, labels=("state:ready", "risk:normal"), files=None):
+    def pull_request(self, body=GOOD_PR_BODY, labels=("state:ready", "risk:normal"), files=None, changed_files=None):
+        files = files if files is not None else [{"path": "corpus-map.overlay.json"},
+                                                 {"path": f"src/{NAME}/Rules/AltitudeLimit.cs"}]
         self.fixture({
+            # `changedFiles` is GitHub's own count, and defaults here to the length of the list:
+            # a fixture where they disagree is a truncated list, which is its own test below.
             "pr": {"5": {"number": 5, "title": "Implement the altitude limit", "body": body,
-                         "files": files if files is not None else [{"path": "corpus-map.overlay.json"},
-                                                                   {"path": f"src/{NAME}/Rules/AltitudeLimit.cs"}]}},
+                         "files": files,
+                         "changedFiles": len(files) if changed_files is None else changed_files}},
             "issue": {"27": {"number": 27, "state": "OPEN",
                              "labels": [{"name": name} for name in labels]}},
         })
@@ -959,6 +986,234 @@ ceiling instead of declining" (observed).""", "Tests pass.")
         self.assertEqual(done.returncode, 1, done.stdout)
         self.assertIn("cannot answer it for itself", done.stdout)
 
+    def test_a_truncated_file_list_is_refused_rather_than_judged(self):
+        # `gh pr view --json files` caps at 100 with no error (#193). Everything pr-policy.py
+        # decides about the diff comes from that list, so half of it is not a smaller diff.
+        self.produced()
+        self.pull_request(files=[{"path": "README.md"}], changed_files=140)
+        done = self.policy_check()
+        self.assertEqual(done.returncode, 1, done.stdout)
+        self.assertIn("GitHub returned 1 of this pull request's 140 changed files", done.stdout)
+        self.assertIn("cannot be decided from a partial list", done.stdout)
+
+
+# The `## Produced by the factory` section, filled as `factory produce --produce-report` gives it.
+# The three facts are substituted from the engine's own provenance.json at the moment of the test:
+# they are the claim, and a claim the tree does not bear out is refused (#193).
+PRODUCE_SECTION = """## Produced by the factory
+
+<!-- rules-factory-produce -->
+
+- factory version: {factory}
+- map package and version: {map}
+- kernel version: {kernel}
+- what moved: the map, 3.0.0 to {version}
+"""
+PRODUCE_EVIDENCE = """```
+$ python3 tools/factory produce --package ... --out .
+produced in ., verified
+$ ./scripts/validate.sh full
+validate.sh full: PASS
+$ python3 tools/factory provenance --engine .
+provenance of .: every field matches
+```
+"""
+
+
+class TestAProduceUpdateIsAPullRequestLikeAnyOther(TestPrPolicy):
+    """`tools/pr-policy.py` produce mode: a closed predicate, not an escape hatch (#193).
+
+    A `factory produce` update to an engine cannot honestly name a mutation (it writes no test) or
+    a single entry and locator (a map bump regenerates every entry), and until #193 the rails it
+    installs could not accept the pull request that installs them. What is asserted here is the
+    shape of the relaxation and, more than that, its edges: the `files` list comes from a real
+    produced tree rather than from invented path strings, so the ownership predicate is exercised
+    against what `produce` actually wrote, and the test that matters is the one where a single
+    hand-written file is smuggled in beside them.
+    """
+
+    def record(self):
+        return json.loads(self.read("provenance.json"))
+
+    def write_record(self, record):
+        with open(os.path.join(self.out, "provenance.json"), "w", encoding="utf-8") as handle:
+            json.dump(record, handle, indent=2)
+
+    def commit_engine(self):
+        """The produced engine, committed, with a record saying the factory was clean.
+
+        Every engine in these tests is produced `--allow-dirty`, because the factory checkout a
+        test runs in usually has uncommitted changes. A real factory update is produced from a
+        clean factory and the predicate requires it, so the record is corrected here once; the test
+        that is about a dirty record puts it back.
+        """
+        super().commit_engine()
+        record = self.record()
+        record["factory"]["dirty"] = False
+        self.write_record(record)
+
+    def produced_files(self, extra=(), limit=40):
+        """Paths a real produce wrote into this engine, as GitHub would list them.
+
+        Read back out of provenance.json's own `generated` and `managed` sections, so a file the
+        factory stops writing (or starts writing) changes this fixture without anybody editing it.
+        """
+        record = self.record()
+        # provenance.json is written last and so is not in its own `generated` list, but it is in
+        # every real produce's diff -- and it is the file the declaration is checked against.
+        paths = ["provenance.json"] + [item["path"] for item in record["generated"][:limit]]
+        paths += [item["path"] for item in record["managed"][:5]]
+        return [{"path": path} for path in paths + list(extra)]
+
+    def produce_body(self, section=None, evidence=PRODUCE_EVIDENCE, conformance=None):
+        """GOOD_PR_BODY turned into the factory update it would be: the produce section added, the
+        entry and locator dropped, and the produce evidence in place of the mutation."""
+        record = self.record()
+        body = GOOD_PR_BODY
+        if section is None:
+            section = PRODUCE_SECTION.format(factory=record["factory"]["version"],
+                                             map=f"{record['map']['packageId']} {record['map']['version']}",
+                                             kernel=record["kernel"]["version"], version=record["map"]["version"])
+        body = body.replace("## Exact behavioural claim", f"{section}\n## Exact behavioural claim")
+        body = body.replace("""- entry id(s): altitude-limit
+- map package and version: RulesFactory.Maps.FaaPart107 4.0.0
+- source locator(s): § 107.51(b)
+- owner's rulings used, if any: none""",
+                            conformance if conformance is not None else
+                            f"- map package and version: {record['map']['packageId']} {record['map']['version']}")
+        old_evidence = GOOD_PR_BODY.split("## Tests and evidence")[1].split("## Determinism")[0]
+        return body.replace(old_evidence, f"\n\n{evidence}\n") if evidence is not None else body
+
+    def produce_request(self, body=None, **extra):
+        self.commit_engine()
+        self.pull_request(body=self.produce_body() if body is None else body,
+                          files=extra.pop("files", None) or self.produced_files(), **extra)
+
+    def test_a_produce_update_passes(self):
+        self.produce_request()
+        done = self.policy_check()
+        self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+        self.assertIn("claim was admitted", done.stdout)
+        self.assertIn("waived no verdict", done.stdout)
+
+    def test_it_need_not_name_a_mutation(self):
+        self.produce_request()
+        done = self.policy_check()
+        self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+        self.assertNotIn("names no mutation", done.stdout)
+
+    def test_it_need_not_name_an_entry_or_a_locator(self):
+        self.produce_request()
+        done = self.policy_check()
+        self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+        self.assertNotIn("the entry id", done.stdout)
+        self.assertNotIn("the locator", done.stdout)
+
+    def test_one_hand_written_file_voids_the_claim_and_is_named(self):
+        # The escape-hatch test. Everything else in this class is about a claim that holds; this is
+        # the one that says the claim is a predicate over the diff and not a sentence in the body.
+        smuggled = f"src/{NAME}/Rules/AltitudeLimit.cs"
+        self.commit_engine()
+        self.pull_request(body=self.produce_body(), files=self.produced_files(extra=[smuggled]))
+        done = self.policy_check()
+        self.assertEqual(done.returncode, 1, done.stdout)
+        self.assertIn(smuggled, done.stdout)
+        self.assertIn("not files a produce writes", done.stdout)
+        self.assertIn("claim is void", done.stdout)
+        # And, having been voided, the pull request is held to the whole contract again.
+        self.assertIn("names no mutation", done.stdout)
+
+    def test_an_overlay_edit_voids_the_claim(self):
+        # The overlay is engine-owned and is the input to generation: an entry the new map forces
+        # is a rules decision the factory did not make, and belongs to its own issue.
+        self.commit_engine()
+        self.pull_request(body=self.produce_body(), files=self.produced_files(extra=["corpus-map.overlay.json"]))
+        done = self.policy_check()
+        self.assertEqual(done.returncode, 1, done.stdout)
+        self.assertIn("corpus-map.overlay.json", done.stdout)
+        self.assertIn("not files a produce writes", done.stdout)
+
+    def test_a_declared_version_the_tree_does_not_show_is_refused(self):
+        self.commit_engine()
+        record = self.record()
+        section = PRODUCE_SECTION.format(factory=record["factory"]["version"],
+                                         map=f"{record['map']['packageId']} 99.0.0",
+                                         kernel=record["kernel"]["version"], version="99.0.0")
+        self.pull_request(body=self.produce_body(section=section), files=self.produced_files())
+        done = self.policy_check()
+        self.assertEqual(done.returncode, 1, done.stdout)
+        self.assertIn("99.0.0", done.stdout)
+        self.assertIn("provenance.json in this tree records", done.stdout)
+
+    def test_a_dirty_factory_record_is_refused(self):
+        # Every engine these tests produce is produced --allow-dirty, so the record already says
+        # dirty: true; the passing cases above clear it, and this one does not. A produce nobody
+        # can repeat is not an update to anything.
+        self.commit_engine()
+        self.pull_request(body=self.produce_body(), files=self.produced_files())
+        record = self.record()
+        record["factory"]["dirty"] = True
+        self.write_record(record)
+        done = self.policy_check()
+        self.assertEqual(done.returncode, 1, done.stdout)
+        self.assertIn("records the factory as dirty", done.stdout)
+
+    def test_the_marker_alone_buys_nothing(self):
+        # The body says every true thing a produce update says, and the diff is an ordinary
+        # implementation. Both relaxations must be gone, not one of them.
+        self.commit_engine()
+        self.pull_request(body=self.produce_body(),
+                          files=[{"path": "corpus-map.overlay.json"}, {"path": f"src/{NAME}/Rules/AltitudeLimit.cs"}])
+        done = self.policy_check()
+        self.assertEqual(done.returncode, 1, done.stdout)
+        self.assertIn("names no mutation", done.stdout)
+        self.assertIn("does not name the entry id", done.stdout)
+        self.assertIn("does not name the locator", done.stdout)
+
+    def test_it_still_needs_one_closes_and_one_of_each_label(self):
+        self.commit_engine()
+        self.pull_request(body=self.produce_body().replace("Closes #27", "Related to #27"),
+                          files=self.produced_files())
+        done = self.policy_check()
+        self.assertEqual(done.returncode, 1, done.stdout)
+        self.assertIn("no `Closes #<n>`", done.stdout)
+
+        self.pull_request(body=self.produce_body(), files=self.produced_files(), labels=("state:ready",))
+        done = self.policy_check()
+        self.assertEqual(done.returncode, 1, done.stdout)
+        self.assertIn("0 risk labels", done.stdout)
+
+    def test_the_produce_evidence_is_required_in_the_mutation_s_place(self):
+        # Not a discount: a produce update shows the command that wrote the bytes and the recompute
+        # saying the committed record is the one a re-produce writes. Both are re-runnable.
+        self.commit_engine()
+        self.pull_request(body=self.produce_body(evidence="```\n$ ./scripts/validate.sh full\nPASS\n```"),
+                          files=self.produced_files())
+        done = self.policy_check()
+        self.assertEqual(done.returncode, 1, done.stdout)
+        self.assertIn("shows no `factory produce`", done.stdout)
+        self.assertIn("shows no `factory provenance`", done.stdout)
+
+    def test_the_emitted_template_carries_the_section_and_the_marker(self):
+        # Template and checker are emitted together and are one contract: renaming the section in
+        # one would make every factory update's claim silently unrecognised, which is the shape of
+        # failure this pairing exists to prevent.
+        self.produced()
+        template = self.read(".github/pull_request_template.md")
+        self.assertIn("## Produced by the factory", template)
+        self.assertIn("<!-- rules-factory-produce -->", template)
+        checker = self.read("tools/pr-policy.py")
+        self.assertIn('("Produced by the factory"', checker)
+        self.assertIn('PRODUCE_MARKER = "<!-- rules-factory-produce -->"', checker)
+
+    def test_a_pull_request_without_the_section_is_not_asked_for_one(self):
+        # The one optional heading: almost no pull request is a factory update.
+        self.produced()
+        self.pull_request()
+        done = self.policy_check()
+        self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+        self.assertNotIn("Produced by the factory", done.stdout)
+
 
 class TestVerdicts(RailsInAGitEngine):
     """`tools/record-verdict.py` and `tools/conformance-gate.py` (#153)."""
@@ -989,11 +1244,13 @@ if argv_api := [a for a in sys.argv[1:] if a.startswith("repos/")]:
                               cwd=self.out, capture_output=True, text=True,
                               env={**self.environment(), "GH_STATUSES": self.statuses})
 
-    def scenario(self, head="a" * 40, labels=("state:ready", "risk:normal"), files=None):
+    def scenario(self, head="a" * 40, labels=("state:ready", "risk:normal"), files=None, changed_files=None):
         self.gh_with_statuses()
+        files = files if files is not None else [{"path": f"src/{NAME}/Rules/AltitudeLimit.cs"}]
         self.fixture({
             "pr": {"5": {"number": 5, "headRefOid": head, "state": "OPEN",
-                         "files": files if files is not None else [{"path": f"src/{NAME}/Rules/AltitudeLimit.cs"}],
+                         "files": files,
+                         "changedFiles": len(files) if changed_files is None else changed_files,
                          "closingIssuesReferences": [{"number": 27}]}},
             "issue": {"27": {"number": 27, "labels": [{"name": name} for name in labels]}},
             "repo": {"nameWithOwner": "owner/engine"},
@@ -1072,6 +1329,33 @@ if argv_api := [a for a in sys.argv[1:] if a.startswith("repos/")]:
         done = self.gate()
         self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
         self.assertIn("no rules verdict required", done.stdout)
+
+    def test_a_truncated_file_list_is_undecidable(self):
+        # #193: `gh pr view --json files` caps at 100 silently, and a regeneration writes hundreds.
+        # The verdict requirement is derived from these paths, so "nothing on the semantic surface"
+        # from a partial list is the answer this gate exists to never give by accident.
+        self.produced()
+        self.scenario(files=[{"path": "README.md"}], changed_files=140)
+        done = self.gate()
+        self.assertEqual(done.returncode, 2, done.stdout + done.stderr)
+        self.assertIn("listed 1 of PR #5's 140 changed files", done.stderr)
+        self.assertIn("cannot be decided from a partial list", done.stderr)
+
+    def test_a_produce_update_touching_the_generated_code_still_needs_the_semantic_verdict(self):
+        # Produce mode lives in pr-policy.py and buys nothing here: the gate reads the changed
+        # paths and nothing else, and a map bump rewrites the generated code, the pins and both
+        # lock files. This is the check 0029's amendment refuses ever to let the claim waive.
+        self.produced()
+        self.scenario(files=[{"path": "provenance.json"},
+                             {"path": "RulesFactory.Packages.g.props"},
+                             {"path": f"src/{NAME}/Generated/MapEntries.g.cs"},
+                             {"path": f"src/{NAME}/packages.lock.json"}])
+        done = self.gate()
+        self.assertEqual(done.returncode, 1, done.stdout)
+        self.assertIn("rules-verdict/semantic is not recorded as a success", done.stdout)
+        self.assertEqual(self.record("--pr", "5", "--reviewer", "semantic", "--verdict", "pass").returncode, 0)
+        done = self.gate()
+        self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
 
     def test_the_chain_is_the_policy_s(self):
         self.produced()
