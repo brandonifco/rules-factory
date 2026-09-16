@@ -39,7 +39,7 @@ The factory is now code, in standard-library Python under
 | M3 gate recipe | `gate.py`, `recipe/` | merged. Every engine carries `scripts/validate.sh` and a CI workflow that runs it |
 | M4 provenance | `provenance.py` | merged. `provenance.json` (format 3), and a command that recomputes it |
 | M5 backlog | `backlog.py` | merged. `backlog/` files, and GitHub issues matched to them by an entry marker, never by title |
-| Verify and commit | `verify.py`, `transaction.py` | merged. `produce` verifies in a staging copy and commits only what passed |
+| Verify and write out | `verify.py`, `transaction.py` | merged. `produce` verifies in a staging copy and writes only what passed into `--out`. It writes files and makes no commit: the changes are left in the engine's working tree to review and commit |
 | Acceptance: an engine the factory produced | | [`hoyle-backgammon`](https://github.com/brandonifco/hoyle-backgammon) is produced by `factory/v0.2.1` from `RulesFactory.Maps.HoyleBackgammon` 4.0.0. A from-scratch produce differs from it only in engine-owned files, and `factory provenance` matches it ([evidence](examples/hoyle-backgammon/produced-engine/EVIDENCE.md)). Not yet ticked on [#3](https://github.com/brandonifco/rules-factory/issues/3) |
 | Acceptance: rebuild an engine blind, and build something that is not a game | | not done ([#3](https://github.com/brandonifco/rules-factory/issues/3)); criterion 1 is a blind rebuild of `hoyle-backgammon`, since the factory admits no licensed corpus ([0028](docs/decisions/0028-the-factory-admits-only-corpora-whose-licence-permits-publishing-them.md)) |
 
@@ -54,13 +54,13 @@ marked `not implemented` that the parser does have.
 <!-- factory-cli-status:begin -->
 | Command | Argument | Status | Notes |
 |---|---|---|---|
-| `produce` | — | implemented | intake, generation, gate, backlog, provenance, verify, commit |
+| `produce` | — | implemented | intake, generation, gate, backlog, provenance, verify, write out |
 | `produce` | `--package` | implemented | a `.nupkg` path, or `Id@Version` |
 | `produce` | `--corpus` | implemented | the corpus file: `committed-copy`, public domain or openly licensed ([0028](docs/decisions/0028-the-factory-admits-only-corpora-whose-licence-permits-publishing-them.md)), hashing to the map's baseline |
 | `produce` | `--name` | implemented | the engine's PascalCase name |
 | `produce` | `--out` | implemented | the engine directory: created when absent, updated when it exists |
 | `produce` | `--allow-dirty` | implemented | produce from a factory with uncommitted changes, recorded as `dirty: true` |
-| `produce` | `--no-verify` | implemented | commit without building or testing; the output says so |
+| `produce` | `--no-verify` | implemented | write without building or testing; the output says so |
 | `produce` | `--adopt` | implemented | make a managed file engine-owned, keeping its edits |
 | `produce` | `--reset` | implemented | overwrite a managed or adopted file with the current recipe |
 | `produce` | domain pack | not implemented | no pack exists; provenance records `"packs": []` |
@@ -129,7 +129,7 @@ CI proves this on every pull request. The `validate` job runs
   pin, environment variables, MSBuild or NuGet files outside the engine directory, or that a
   given assembly was built from the tree. The limits are listed in
   [`provenance.py`](tools/factory/provenance.py).
-- **Anything, under `--no-verify`.** The engine is committed without being built or tested. Lock
+- **Anything, under `--no-verify`.** The engine is written without being built or tested. Lock
   files the generated pins have moved past, in the version they resolve or the range they record
   as requested, are re-locked by `dotnet restore` alone, or the run is refused; they are never
   committed stale.
@@ -174,7 +174,7 @@ name          the engine's PascalCase name
         |
         v
     factory produce    intake, generation, gate, backlog, provenance,
-                       verify (in a staging copy), commit to --out
+                       verify (in a staging copy), write to --out (no commit)
         |
         v
 engine        a .NET solution on RulesKernel: managed build policy, engine-owned

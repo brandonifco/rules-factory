@@ -173,8 +173,8 @@ ADOPT=(--adopt NuGet.config)
 [ "$SDK" = "$PIN" ] || ADOPT+=(--adopt global.json)
 verified_produce --package "$PACKAGE" --corpus "$CORPUS" --name "$NAME" --out "$ENGINE" \
   "${ADOPT[@]}" | tee "$SCRATCH/reproduce.log"
-grep -qxF "committed to $(cd "$ENGINE" && pwd -P): 2 added, 1 changed, 0 removed" "$SCRATCH/reproduce.log" \
-  || fail "re-producing should add the 2 lock files and change provenance.json only: $(grep '^committed to' "$SCRATCH/reproduce.log")"
+grep -qxF "wrote to $(cd "$ENGINE" && pwd -P): 2 added, 1 changed, 0 removed" "$SCRATCH/reproduce.log" \
+  || fail "re-producing should add the 2 lock files and change provenance.json only: $(grep '^wrote to' "$SCRATCH/reproduce.log")"
 tail -1 "$SCRATCH/reproduce.log" | grep -q ', verified$' || fail "produce did not end verified"
 python3 - "$ENGINE/provenance.json" <<'PY'
 import json, sys
@@ -487,8 +487,8 @@ own_files > "$SCRATCH/own-before.txt"
 verified_produce --package "$PACKAGE" --corpus "$CORPUS" --name "$NAME" --out "$ENGINE" \
   | tee "$SCRATCH/extra.log"
 tail -1 "$SCRATCH/extra.log" | grep -q ', verified$' || fail "re-producing into an engine with its own projects did not end verified"
-grep -qxF "committed to $(cd "$ENGINE" && pwd -P): 0 added, 1 changed, 0 removed" "$SCRATCH/extra.log" \
-  || fail "re-producing into an engine with its own projects should change provenance.json only: $(grep '^committed to' "$SCRATCH/extra.log")"
+grep -qxF "wrote to $(cd "$ENGINE" && pwd -P): 0 added, 1 changed, 0 removed" "$SCRATCH/extra.log" \
+  || fail "re-producing into an engine with its own projects should change provenance.json only: $(grep '^wrote to' "$SCRATCH/extra.log")"
 grep -q "restore -- skipped" "$SCRATCH/extra.log" || fail "the pins did not change, yet verify did not skip its restore"
 own_files | diff "$SCRATCH/own-before.txt" - || fail "re-producing changed the engine's own projects or lock files"
 echo "ok   the engine's own projects and every lock file are byte-identical after a verified re-produce"
