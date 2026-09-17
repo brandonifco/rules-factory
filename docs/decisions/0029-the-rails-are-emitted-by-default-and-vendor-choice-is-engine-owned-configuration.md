@@ -18,6 +18,57 @@ could not be satisfied by one. See *Amendment — a factory update is work under
 Nothing in §3's line, §7's verdicts or §10's ruleset changes; §5's table gains no row, and five
 managed rails move a recipe version.
 
+**Amended 2026-09-16** for [#186](https://github.com/brandonifco/rules-factory/issues/186): §7's
+verdict gate says who can satisfy it, which is everyone with status-write access, and the required
+checks are pinned to the app that posts them. See *Amendment — the verdict gate is an integrity
+check, not an authentication* below. Nothing about the chain, the contexts or the commit binding
+changes; §10's ruleset gains the pin, and `AGENTS.md` moves a recipe version.
+
+## Amendment — the verdict gate is an integrity check, not an authentication
+
+A verdict is a commit status under a policy-named context, and **anyone who can write commit
+statuses on the repository can post one**: any collaborator with write access, any workflow whose
+token carries `statuses: write`, anyone holding a leaked token. Nothing attributes a verdict to the
+reviewer it names. `tools/record-verdict.py` has always said it cannot check which model produced a
+verdict; what was missing is that the trust boundary was not stated where the rails are decided —
+here — nor where they are read, in the emitted `AGENTS.md` §7. A reader of either could reasonably
+have concluded that a recorded verdict proves a review happened.
+
+**So it is stated, and it is not overstated.** The commit binding is real and does the work claimed
+for it in §7: a verdict names one SHA, so it cannot be replayed onto bytes nobody read, and a
+further commit ends it. What the gate is, exactly, is an integrity check — against a review that
+was skipped, forgotten, or formed on an earlier commit — and not an authentication of who reviewed.
+An invented verdict is stopped by honesty and by the review of the pull request it sits on, not by
+permissions.
+
+**The verdict contexts cannot be pinned to a source, and this records why.** GitHub's ruleset
+`required_status_checks` takes an optional `integration_id` beside each `context`: "the optional
+integration ID that this status check must originate from". An integration is a **GitHub App**. A
+verdict is posted by whoever ran `tools/record-verdict.py`, with that person's own token, so it has
+no integration to name and no value of `integration_id` would ever match it. A verdict context is
+therefore unpinnable **while a verdict is a commit status posted by a person**, and no arrangement
+of the ruleset changes that. What would change it is changing who posts: a verdict recorded by a
+GitHub App, or by a workflow using `GITHUB_TOKEN` (which posts as the GitHub Actions app), could be
+pinned to that app. Both move the identity from the reviewer to the machine that carries it, which
+is a different design and a larger one — an App to install and hold a key for, or a workflow that
+must itself decide a verdict it did not form. It is not done here, and the gap is named rather than
+papered over.
+
+**Where a pin does apply, `--apply` now writes it.** The three required checks — `validate`,
+`pr-policy` and `conformance-gate` — are GitHub Actions workflows this record emits, and a required
+status check matches by context name alone: an unpinned `conformance-gate` was satisfied by a commit
+status under that name, which is the same write access as above. Each is now pinned by
+`integration_id` to the GitHub Actions app, read from the host at apply time rather than hard-coded,
+because the id differs between github.com and each Enterprise Server. `rails --check` reports a
+required check that is not pinned, and `--apply` refuses to write the ruleset at all when the app's
+id cannot be read: a ruleset whose checks look required and are satisfiable by anyone is the defect,
+not a degraded success.
+
+**Two consequences worth stating.** A check satisfied from anywhere but GitHub Actions — another CI
+posting a status named `validate` — stops counting, which is the point and is also a real change for
+any engine doing that. And an engine whose rails were applied before this carries three unpinned
+checks until the next `factory rails --apply`, which `--check` now reports.
+
 ## Amendment — a factory update is work under the rails
 
 The live run of #157 found it: `faa-part-107#43` failed `pr-policy` and `conformance-gate`, and
@@ -232,6 +283,12 @@ provider chain or label vocabulary. Its `schemaVersion` is 1. The shape the fact
 }
 ```
 
+**The five labels are three states and two risks, and no two of them may be the same string**
+(#188). `backlog.py` computes a state set and a risk set from them, so two keys sharing one label
+make an issue ready and blocked at once, or strip its risk when its state moves. The rule is
+checked once, in the module that writes this file, and both `rails --check` and `backlog` refuse
+through it rather than each stating it.
+
 Replacing the review chain is an edit to this file and nothing else. That is #1's second
 acceptance criterion and #4's third, and it is what the emitted scripts are tested against.
 
@@ -314,6 +371,11 @@ recorded failure at any configured context blocks the gate outright, and a later
 different context does not clear it. A fail is answered by fixing the code, fixing the map, or
 getting an owner's ruling.
 
+**Who can satisfy this gate: everyone with status-write access on the repository.** The commit
+binding above is an integrity check, not an authentication of the reviewer, and the verdict
+contexts cannot be pinned to a source. See *Amendment — the verdict gate is an integrity check, not
+an authentication* above (#186).
+
 ### 8. Read-only is checked, not claimed
 
 The predecessor shipped a charter that described a reviewer as read-only while granting it
@@ -341,6 +403,14 @@ configured. `--apply` creates the labels and a branch ruleset the factory owns, 
 `rules-factory-agent-rails`, requiring a pull request, resolved threads, no force-push, no
 deletion, no bypass actor, and the checks `validate`, `pr-policy` and `conformance-gate`. Both are
 idempotent.
+
+**A ruleset that carries the factory's name is compared in full, and `--check` says OK only when it
+is the ruleset the factory writes** — its target, its enforcement, its conditions *including any
+exclusion*, its bypass actors and every rule's parameters, with a condition the factory does not
+model counted as a mismatch rather than skipped. Until #185 the comparison read `enforcement`, the
+`include` list, the bypass actors and the rule parameters, so a ruleset excluding `~DEFAULT_BRANCH`
+or targeting tags was reported as enforced and left alone: the default branch had no rails and the
+doctor said OK. The checks are pinned to the app that posts them (#186, the amendment above).
 
 **The factory owns one ruleset and never edits another.** A ruleset update replaces its whole
 rules array, so writing into an existing ruleset would silently drop rules the factory did not
