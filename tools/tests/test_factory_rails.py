@@ -1177,6 +1177,21 @@ class TestAProduceUpdateIsAPullRequestLikeAnyOther(TestPrPolicy):
         # And, having been voided, the pull request is held to the whole contract again.
         self.assertIn("names no mutation", done.stdout)
 
+    def test_a_retired_path_the_produce_deleted_does_not_void_the_claim(self):
+        """#243: the migration produce deletes the engine's committed `backlog/`.
+
+        Those paths match no row of the ownership table -- nothing writes them any more -- so
+        without `ownership.RETIRED` every migration pull request would have its produce claim voided
+        by the nineteen deletions the produce itself made.
+        """
+        self.commit_engine()
+        gone = ["backlog/001-speed-limit.md", "backlog/README.md"]
+        self.pull_request(body=self.produce_body(), files=self.produced_files(extra=gone))
+        done = self.policy_check()
+        self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+        self.assertIn("claim was admitted", done.stdout)
+        self.assertNotIn("not files a produce writes", done.stdout)
+
     def test_an_overlay_edit_voids_the_claim(self):
         # The overlay is engine-owned and is the input to generation: an entry the new map forces
         # is a rules decision the factory did not make, and belongs to its own issue.
