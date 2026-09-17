@@ -1,0 +1,21 @@
+{
+  "about": "The review of the reconciled map's exact bytes (docs/decisions/0017-a-map-change-carries-a-review-of-its-bytes.md). The map beside this file is the first mapping corrected to resolutions.json, which is the 0014 procedure's output; the first mapping itself is not corrected and keeps the `legacy` exemption in ../review.json, because it is one of the two frozen inputs to this comparison and editing it would destroy the evidence.",
+  "reviews": {
+    "corpus-map-reconciled.json": {
+      "sha256": "e96c33b3a1bbe4d62447f8b6148074d3e4b0b2efec742f522ece876be74726c6",
+      "method": "blind-second-mapping",
+      "comparison": "results.json",
+      "resolutions": "resolutions.json",
+      "compared": {
+        "commit": "c9ec1b73469fd510d85ea62fab062683d25c63b0",
+        "sha256": "d5b4f0979d902c7099da85aa59e64444fea9ecd5e39059f37b1f0d597b0262ba"
+      },
+      "blindMap": {
+        "path": "blind-map.json",
+        "sha256": "1d4ed894a6517f1596a1a151ead420c74eddc3d316ee80700086e8b4b651dbe9",
+        "note": "Map B, copied verbatim from the mapper's bundle with its corpus-manifest.json, and not edited. It is evidence, not a map this repository uses, so it carries no review of its own and is not named by the glob that requires one."
+      },
+      "scope": "One disagreement is recorded open and the reconciled map does not carry it: resolutions.json's worked-examples-as-entries row, which is #216. Everything else results.json flagged has a ruling."
+    }
+  }
+}

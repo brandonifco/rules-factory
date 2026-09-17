@@ -31,10 +31,24 @@ run() {
 maps_checked=0
 check_all_maps() {
   local map
-  for map in examples/*/corpus-map*.json; do
+  # Two globs, not one: a map that reconciles another cannot sit beside it, because
+  # pack-map.py requires exactly one corpus-map*.json in a packable directory. Trial 9's Map C
+  # is examples/tax-121-principal-residence/blind-mapping/corpus-map-reconciled.json, and a map
+  # one level down is still a committed map. tools/check-map-review.py reads the same two.
+  local dir manifest
+  for map in examples/*/corpus-map*.json examples/*/*/corpus-map*.json; do
     [ -e "$map" ] || continue
     printf -- '--- %s\n' "$map"
-    python3 tools/check-map.py "$map" || return 1
+    # check-map.py finds a corpus-manifest.json beside the map by itself. A map in a
+    # subdirectory has its corpus one level up, and without this its manifest, posture and
+    # reference checks would all report NOT VERIFIED -- a step examining nothing.
+    dir="$(dirname "$map")"
+    manifest="$dir/../corpus-manifest.json"
+    if [ ! -e "$dir/corpus-manifest.json" ] && [ -e "$manifest" ]; then
+      python3 tools/check-map.py "$map" --manifest "$manifest" || return 1
+    else
+      python3 tools/check-map.py "$map" || return 1
+    fi
     maps_checked=$((maps_checked + 1))
   done
   if [ "$maps_checked" -eq 0 ]; then
@@ -74,6 +88,17 @@ check_locators() {
   python3 examples/faa-part-107/check-locators-section.py \
     examples/tax-121-principal-residence/corpus-map.json \
     examples/tax-121-principal-residence/section-1.121-1.xml || return 1
+  # And the reconciled map of the same section (0014's Map C), against the same corpus and the
+  # same grammar. It is the map anything would be built from, so leaving its citations unchecked
+  # would be the "reports ok while examining nothing" failure this file exists to refuse. It
+  # cites a worked example -- `§ 1.121-1(b)(4) Example 4` -- which the grammar could not read
+  # until the blind second mapping found the rule inside one.
+  python3 examples/faa-part-107/check-locators-section.py \
+    examples/tax-121-principal-residence/blind-mapping/corpus-map-reconciled.json \
+    examples/tax-121-principal-residence/section-1.121-1.xml || return 1
+  # The reconciled map is what build-map-c.py builds from the first map plus the adjudication
+  # record: a change to one and not the other is a correction nobody ruled on.
+  python3 examples/tax-121-principal-residence/blind-mapping/build-map-c.py --check || return 1
   # A third grammar: page markers over text extracted from a PDF. extract.py first holds the
   # committed text to the manifest's contentHash and the committed PDF to sourcePdf.sha256, and
   # re-derives the text from the PDF where the pinned pdftotext is installed (NOT VERIFIED,

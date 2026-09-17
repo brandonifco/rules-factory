@@ -1,0 +1,186 @@
+{
+  "about": "The adjudication record for 0014's blind second mapping of 26 CFR § 1.121-1. One row per disagreement, each answered from the corpus and not by vote or by seniority of the first map. `disagreements` are the four that turn on a verdict about a rule; `families` are the remaining field-level flags results.json raised, grouped by the reason they differ. A disagreement with no row is unresolved and the map is not used.",
+  "corpus": {
+    "sourceId": "cfr-26-1.121-1",
+    "committedPath": "examples/tax-121-principal-residence/section-1.121-1.xml",
+    "sha256": "faf3e310a81b1d00729fd69fb422342bcff8049a98a0ae80955be3287e30bab2",
+    "note": "Every quote below is of these bytes. Nothing outside them was consulted, and 26 U.S.C. 280A, 26 U.S.C. 121, 26 U.S.C. 1250 and 26 U.S.C. 6511 are named by the section and are not admitted."
+  },
+  "verdicts": {
+    "A": "the first map is right; Map C keeps its verdict",
+    "B": "the blind map is right; Map C is corrected to it",
+    "neither": "both misread the corpus; Map C carries a third answer",
+    "not-a-corpus-disagreement": "the two maps agree about the text and differ about the schema, the span or the granularity",
+    "open": "the corpus does not settle it; recorded and carried no further"
+  },
+  "disagreements": [
+    {
+      "id": "adjacent-to",
+      "entry": {
+        "a": "vacant-land-not-principal-residence",
+        "b": "vacant-land-sale"
+      },
+      "citation": "§ 1.121-1(b)(3)(i)",
+      "field": "clarity",
+      "aSaid": "clarity: ambiguous. ambiguity.question: \"Condition (A) requires the vacant land to be \\\"adjacent to\\\" land containing the dwelling unit, and the corpus fixes no measure of adjacency: land across a public road, land touching at a corner, and land separated by a strip the taxpayer does not own are each inside or outside the rule depending on a reading the corpus does not give. Nobody is named to decide.\"",
+      "bSaid": "clarity: clear, no ambiguity block. note: \"One rule with four conjunctive conditions (A) through (D) - the corpus joins (C) and (D) with 'and' - kept as one entry because no condition has an independent consequence. A test must show the rule failing for each of the four conditions separately, and must show the two-year window in (C) running in both directions from the date of the vacant-land sale. 'adjacent' is an ordinary word used ordinarily and is not recorded as ambiguous.\"",
+      "corpusEvidence": "§ 1.121-1(b)(3)(i): \"The sale or exchange of vacant land is not a sale or exchange of the taxpayer's principal residence unless— (A) The vacant land is adjacent to land containing the dwelling unit of the taxpayer's principal residence; (B) The taxpayer owned and used the vacant land as part of the taxpayer's principal residence; (C) The taxpayer sells or exchanges the dwelling unit in a sale or exchange that meets the requirements of section 121 within 2 years before or 2 years after the date of the sale or exchange of the vacant land; and (D) The requirements of section 121 have otherwise been met with respect to the vacant land.\" The section uses the word twice more, both times on the paradigm case: § 1.121-1(b)(4) Example 4, \"In 1999 D buys 29 acres adjacent to his house and uses the vacant land as part of his principal residence\", and § 1.121-1(b)(4) Example 3, where C \"buys property consisting of a house and 10 acres\" and later \"sells 8 acres of the land\" — one parcel subdivided. It never uses it on a case at the edge.",
+      "whyTheyDiffered": "A treated an undefined qualitative term as an ambiguity on sight: no measure stated, nobody named to decide, therefore a gap. B required the corpus's own language to signal openness before recording one — \"depends upon all the facts and circumstances\", \"ordinarily\", \"such as\" — and, finding a flat predicate instead, read \"adjacent\" as an ordinary word whose application is a fact the caller reports. The difference is not about what the sentence says. It is about what makes a term a blank in the rule rather than an input to it, which is gate 1 of corpus-map.md's procedure, and neither map argued it from the text.",
+      "ruling": "A. The evidence is the contrast inside the constituent, which neither map used. In one four-item list the corpus fixes the measure of every element it means to fix — (C) states a window, its length (2 years), and its direction (\"before or after\"), anchored on a stated date — and fixes nothing whatever for (A): no distance, no contiguity requirement, no rule about an intervening road, strip or corner. (B) is open only through principal-residence-facts-and-circumstances, which both maps already record as ambiguous. Clarity asserts that for every valid input the corpus determines exactly one answer; for land across a public road this corpus determines none, and the two paradigm uses of the word in the examples are the only guidance it gives. The ambiguity stands, `fate: unresolved`, `RequiresInterpretation`.",
+      "methodConsequence": "Two things, and the second is the more useful. (1) A treated undefined qualitative language as ambiguity per se; B required an unresolved decision boundary before declaring one. The corpus supports A here, but on neither map's stated ground. The argument that carries is comparative and checkable by a reader: **within one constituent, compare the term against the elements the corpus did fix.** A list that states a length, a direction and an anchor for one condition and nothing at all for another is a list with a blank in it. Method clarification required in corpus-map.md's gate 1, which is currently argued from single terms in isolation. (2) **The decomposition-granularity hypothesis is refuted, and it was testable.** The brief for this adjudication supposed that A carried (b)(3) in one coarse entry whose vague term contaminated several rules, against six fine clear entries in B. The maps say otherwise: each decomposes § 1.121-1(b)(3) into seven entries, the seven partner one-to-one by quoted text, and six of the seven pairs agree that the rule is clear. The only verdict difference is on the one entry that contains the word. Measured ambiguity in this slice is a property of the term, not of the granularity, and a future finding that granularity moves a clarity count needs this shape of evidence — an alignment by quoted text — rather than an entry count."
+    },
+    {
+      "id": "incapable-of-self-care",
+      "entry": {
+        "a": "out-of-residence-care",
+        "b": "out-of-residence-care-use"
+      },
+      "citation": "§ 1.121-1(c)(2)(ii)",
+      "field": "clarity",
+      "aSaid": "clarity: ambiguous. ambiguity.question: \"The rule applies only to a taxpayer who \\\"has become physically or mentally incapable of self-care\\\", and the corpus states no standard for that and names nobody -- not a physician, not the taxpayer -- to determine it. Everything else in the paragraph is determinate.\"",
+      "bSaid": "clarity: clear, no ambiguity block. note: \"...Whether the taxpayer is incapable of self-care, and whether a given facility is so licensed, are facts the rule tests and are caller-supplied parameters with no entries of their own; the rule is total once they are supplied. Recorded as clear deliberately: 'incapable of self-care' is a condition the rule tests, not a degree the rule leaves blank, which is the line that separates it from 'short' in (c)(2)(i).\"",
+      "corpusEvidence": "§ 1.121-1(c)(2)(ii): \"If a taxpayer has become physically or mentally incapable of self-care and the taxpayer sells or exchanges property that the taxpayer owned and used as the taxpayer's principal residence for periods aggregating at least 1 year during the 5-year period preceding the sale or exchange, the taxpayer is treated as using the property as the taxpayer's principal residence for any period of time during the 5-year period in which the taxpayer owns the property and resides in any facility (including a nursing home) licensed by a State or political subdivision to care for an individual in the taxpayer's condition.\"",
+      "whyTheyDiffered": "A asked whether the corpus states a standard and names a decider, and found neither. B asked whether resolving the rule requires the rule to draw a line, and answered no: the caller reports the condition, the rule consumes it. B named the call as its closest and drew an explicit line against \"short\" one sentence above, on the ground that \"short\" is a degree the rule itself must grade while incapacity is a state of the taxpayer. The two maps are applying the same gate — corpus-map.md's gate 1, \"a blank in the rule, or a fact the rule tests?\" — and disagree about which side this term falls on.",
+      "ruling": "A. The same contrast that decides `adjacent-to` decides this, and here it is sharper because the sentence is one sentence. It fixes a quantity (\"periods aggregating at least 1 year\"), a window (\"during the 5-year period preceding the sale or exchange\"), an ownership condition running through the substituted period, and an institutional test for the facility — \"licensed by a State or political subdivision to care for an individual in the taxpayer's condition\". Four elements, four measures. For the incapacity it states no degree, no dimension and no determiner, in a sentence that expressly assigns an institutional determination to the element beside it. Capacity for self-care admits cases this corpus cannot sort — a taxpayer who cannot cook or bathe unaided but manages everything else — and clarity fails for them. The licensing clause is not a rescue: it tests the facility, not the taxpayer, and it takes \"the taxpayer's condition\" as already given. Ambiguous stands, `fate: unresolved`, `RequiresInterpretation`.",
+      "methodConsequence": "**B's formulation was the most valuable product of this exercise and it does not survive testing.** Stated as \"undefined language is not automatically an ambiguity; it becomes one when resolving the rule requires choosing a boundary the corpus does not supply\", it was tested against the five ambiguities both maps agreed on. It keeps `short-temporary-absences` ambiguous (a boundary on duration) and `principal-residence-majority-of-time` ambiguous (\"ordinarily\" leaves the displacing case unfixed, which is a boundary on a case). It fails on three. `residence-facts-and-circumstances` and `principal-residence-facts-and-circumstances` supply no dimension for a boundary to be drawn on at all, so on a strict reading nothing is left unsupplied and both would be clear — and B called both ambiguous, on the ground that the corpus \"names nobody whose determination is operative\", which is A's ground and not B's own. `method-of-allocation`'s \"if applicable\" leaves a case unfixed, not a boundary. Read loosely enough to keep all five, \"boundary\" means \"anything the corpus did not fix\" and the formulation is gate 1 restated, which both maps already share. So the formulation is either too narrow to hold the agreed ambiguities or too broad to do any work, and B did not apply it consistently within its own map. **What replaces it** is not new: 0010's \"whose fact it is decides nothing\", plus the comparative test above. Gate 1's escape — a fact the rule tests, a caller-supplied parameter with no entry — is available for a predicate with a determinate extension the caller can simply report (an authorization granted, a licence held, a date a sale closed, a sum of money). It is not available for a predicate whose application is the contested classification, however plainly the caller is the only person who could answer: that is `direct-participation`'s residue in corpus-map.md, and 0010 rules it. Method clarification required: gate 1 should say so, because as written it is decided by the mapper's intuition about a single term, which is what produced this disagreement."
+    },
+    {
+      "id": "separate-from-the-dwelling-unit",
+      "entry": {
+        "a": "allocation-required",
+        "b": "allocation-required"
+      },
+      "citation": "§ 1.121-1(e)(1)",
+      "field": "clarity",
+      "aSaid": "clarity: ambiguous. ambiguity.question: \"Allocation is required only for a portion \\\"separate from the dwelling unit\\\", and the corpus states no test for separateness. (e)(2) defines \\\"dwelling unit\\\" by reference to section 280A(f)(1) and excludes appurtenant structures, which says what a dwelling unit is and not when a portion is separate from one: a basement with its own entrance and a room used as an office are on opposite sides of a line the operative text does not draw, and nobody is named to draw it.\"",
+      "bSaid": "clarity: clear, no ambiguity block; dependsOn includes dwelling-unit-definition; suspendedBy: [no-allocation-within-dwelling-unit]. B's dwelling-unit-definition note: \"the base meaning is section 280A(f)(1)'s, which was not admitted, so the entry declines with MissingRulesData while still carrying what this corpus does add - appurtenant structures and other property are excluded.\"",
+      "corpusEvidence": "§ 1.121-1(e)(1), third sentence: \"No allocation is required if both the residential and non-residential portions of the property are within the same dwelling unit.\" § 1.121-1(e)(2): \"For purposes of this paragraph (e), the term dwelling unit has the same meaning as in section 280A(f)(1), but does not include appurtenant structures or other property.\" The section applies the relation three times and each time reads it off the term: § 1.121-1(e)(4) Example 1, \"Because the stable and the 28 acres used in the business are separate from the dwelling unit, the allocation rules under this paragraph (e) apply\"; Example 3, \"After the conversion, the property constitutes 2 dwelling units within the meaning of paragraph (e)(2) of this section\" and \"Because the basement apartment and the upper floors of the townhouse are separate dwelling units, C must allocate\"; Example 5, \"The house constitutes a single dwelling unit but D uses a portion of the house as a law office\", and no allocation is required.",
+      "whyTheyDiffered": "A looked for a definition of the relation \"separate from\" and correctly found none, and filed the absence as an open reading. B looked for a definition of \"dwelling unit\", found (e)(2)'s pointer, and treated the pointer as supplying the relation — which it does not do on its face, since a definition of a thing is not a definition of a relation to that thing. Both stopped at (e)(1)'s first two sentences. Neither read the third.",
+      "ruling": "Neither, on the reasoning; B's verdict, on the corpus. The corpus does state the test, in the constituent's own third sentence: allocation is not required where both portions are \"within the same dwelling unit\", so separate from the dwelling unit means not within it. (e)(2) closes the partition from the other side by subtracting \"appurtenant structures or other property\" from the term, which is why a stable is separate (Example 1) and a law office in the house is not (Example 5); Example 3 settles the hard case — a basement with its own entrance — by counting dwelling units, not by measuring separateness. So this is not a reading the corpus leaves open. It is a term whose content is fixed in a corpus that was not admitted. **Map C records `clarity: clear` with no ambiguity block, keeps the `dependsOn` edge to `dwelling-unit-definition`, whose `definedElsewhere` gives the runtime reason, and adds B's `suspendedBy: [no-allocation-within-dwelling-unit]`.** The engine declines with `MissingRulesData` naming 26 U.S.C. 280A, not with `RequiresInterpretation`. The residual inference is stated rather than hidden: that \"separate from\" is the complement of \"within the same\" is read from three sentences of (e)(1) and (e)(2) together, not from one.",
+      "methodConsequence": "**The § 280A point does not change what `definedElsewhere` means, and it sharpens what it can do.** A `definedElsewhere` attribution is not a claim about the unadmitted corpus's content — it is a claim that *this* corpus defers, and that claim is checkable from the admitted text alone: \"has the same meaning as in section 280A(f)(1)\" is in the frozen extract and is quoted by both maps. So a plausible-looking attribution is falsifiable here after all, on the narrow question it actually asserts. What it can never do is settle an ambiguity, and that is the general rule this disagreement establishes: **`definedElsewhere` relocates the reason an entry declines; it never converts a decline into an answer.** corpus-map.md already forbids one entry carrying both `definedElsewhere` and an `ambiguity` block, and this is that exclusion arriving one edge away — an entry whose `dependsOn` reaches a `definedElsewhere` entry inherits `MissingRulesData`, not `RequiresInterpretation`, and must not be recorded `clear` on the strength of the pointer either. Two failure modes are now named, one per map. A's files a missing definition under `RequiresInterpretation`, which sends Phase 4 to decide something no reading of this corpus could settle. B's reads a pointer as a definition, which reports as total a rule that cannot be applied — and B's own map contradicts it two entries away, where `dwelling-unit-definition` says it declines with `MissingRulesData`. Method clarification required: a checkable form of the propagation rule belongs in corpus-map.md beside the exclusion it extends."
+    },
+    {
+      "id": "combined-sale-nets-dwelling-loss",
+      "entry": {
+        "a": null,
+        "b": "combined-sale-nets-dwelling-loss"
+      },
+      "citation": "§ 1.121-1(b)(4) Example 4",
+      "field": "coverage",
+      "aSaid": "No entry. `examples-b` (§ 1.121-1(b)(4), scope: out, status: declined) covers the paragraph: \"Read and declined. The four examples apply rules (b)(1) to (b)(3) state and state no rule of their own; every number in them is an output of an entry this map already has, which makes them the slice's test suite rather than its rules, and Phase 6 is where they belong.\"",
+      "bSaid": "clarity: ambiguous, scope: in. ambiguity.question: \"Example 4 excludes $245,000 where the house and 1 acre sold at a $25,000 loss and the 29 acres of vacant land realized $270,000 of gain - the loss netted against the gain. No sentence of paragraph (b)(3)(ii)(A) says that a loss on one of the two transactions reduces the gain excludable on the other; it says only that the two are treated as one sale or exchange for the maximum limitation amount. The example states a result and not the rule that produces it.\"",
+      "corpusEvidence": "§ 1.121-1(b)(3)(ii)(A): \"For purposes of section 121(b)(1) and (2) (relating to the maximum limitation amount of the section 121 exclusion), the sale or exchange of the dwelling unit and the vacant land are treated as one sale or exchange. Therefore, only one maximum limitation amount of $250,000 ($500,000 for certain joint returns) applies to the combined sales or exchanges of vacant land and the dwelling unit.\" § 1.121-1(b)(4) Example 4: \"In 2003 D sells the house and 1 acre and the 29 acres in 2 separate transactions. D sells the house and 1 acre at a loss of $25,000. D realizes $270,000 of gain from the sale of the 29 acres. D may exclude the $245,000 gain from the 2 sales.\"",
+      "whyTheyDiffered": "A declined a paragraph on what the paragraph is for — illustration — and checked that every figure in it was an output of an entry the map already had. B decided scope per rule inside the paragraph, and checking the same thing found one figure that was not.",
+      "ruling": "B, and it is a coverage miss rather than a classification disagreement. The arithmetic is the proof: $270,000 − $25,000 = $245,000, and the maximum limitation amount is $250,000, so the cap is not what produces the figure — the loss on one transaction is netted against the gain on the other. The merger the operative text states is expressly bounded, \"For purposes of section 121(b)(1) and (2) (relating to the maximum limitation amount...)\", and nothing in (b)(3)(ii)(A), (B) or (C) says that a loss on one sale reduces the gain excludable on the other. No entry of Map A can produce $245,000; an engine built from Map A would answer $250,000 for the corpus's own worked facts, in the corpus's voice. Ambiguous is right: an example promulgated as part of the regulation fixes the result for its own facts and states no rule, so the corpus determines one answer for D's figures and none for any other pair of figures. **Map C carries the entry, `scope: in`, `clarity: ambiguous`, `fate: unresolved`, `RequiresInterpretation`.**",
+      "methodConsequence": "**This is what a blind second mapping catches and no mechanical check can.** Map A's every locator resolves, its declared extent is reached, it passes `check-map.py` at publish phase and packs byte-identically; the rule is missing from a paragraph the map does cite, by an entry that declines it. `extent` coverage is satisfied by one verified quote per section, so it cannot see a rule inside a declined paragraph, and `crossReferences` cannot either, because the corpus does not point at its own example. The general shape: **a blanket `scope: out` verdict on a section or paragraph is where a rule is lost with every check green** — which is method.md's own rule, \"`scope` is decided per rule, never per section\", and the backgammon map lost the number of faces on a die the same way. A second, tooling consequence was in the way and is fixed here: § 1.121-1's examples sit in `<EXAMPLE>` elements that the eCFR locator checker did not index, so until this branch **no entry could cite one at all**, which is the first map's own finding 3 and a reason it declined them wholesale. `examples/faa-part-107/check-locators-section.py` now indexes an `<EXAMPLE>` under the paragraph that introduces it and reads `§ 1.121-1(b)(4) Example 4` as a citation. A grammar that cannot cite a passage is a grammar that quietly decides the passage holds no rules."
+    }
+  ],
+  "families": [
+    {
+      "id": "citation-depth",
+      "count": 18,
+      "field": "locator.citation",
+      "aSaid": "the parent designation: § 1.121-1(b), (c), (d), (e), (b)(3), (b)(3)(ii), (c)(2), (c)(3)",
+      "bSaid": "the regulation's own designation, one level deeper: § 1.121-1(b)(1), (c)(1), (d)(1), (e)(1), (b)(3)(i), (b)(3)(ii)(A), (c)(2)(i), (c)(3)(i)",
+      "corpusEvidence": "The eCFR XML runs a first sub-paragraph into its parent's <P>: \"(b) Residence—(1) In general. Whether property is used by the taxpayer as the taxpayer's residence depends upon all the facts and circumstances.\" is one element whose designator is (b).",
+      "whyTheyDiffered": "A cited what the locator grammar can verify; B cited what the regulation numbers.",
+      "ruling": "not-a-corpus-disagreement. Tested rather than argued: rewriting Map A's 18 citations to B's makes 18 of 37 entries fail check-locators-section.py, each reported as \"evidence also sits in\" the parent. Both maps read the regulation the same way; only one of the two citations is checkable under the grammar. Map C keeps A's.",
+      "methodConsequence": "An independent mapper wrote the deeper designation for every one of the eighteen, which is corroboration that the corpus's own numbering is what a reader sees and the grammar's limit is the grammar's. This is the first map's finding 1, now confirmed from outside it and still open."
+    },
+    {
+      "id": "effective-date-gate",
+      "count": 30,
+      "field": "enabledBy",
+      "aSaid": "no entry carries enabledBy; `effective-date` is an entry nothing points at",
+      "bSaid": "enabledBy: [\"effective-date\"] on every scope: in entry (34 of its entries; 30 of the 36 partnerships differ on the field)",
+      "corpusEvidence": "§ 1.121-1(f): \"This section is applicable for sales and exchanges on or after Decmeber 24, 2002.\" (The misspelling is the eCFR's.)",
+      "whyTheyDiffered": "A mapped the gate and not its reach; B asked which entries the gate reaches and answered \"the section\", which is what the sentence says.",
+      "ruling": "B. The sentence names the whole section and makes every rule in it reachable only for a qualifying sale or exchange, which is `enabledBy` under 0011, and the gating rule already has an entry in both maps, which is what 0003 requires. Map C adds the edge to every scope: in entry but `effective-date` itself.",
+      "methodConsequence": "The omission is the documented `full-table-suspension` shape — method.md's \"Ask of every gate which entries it reaches, not only the obvious ones\" — and it is the largest single correction this adjudication makes, 33 edges. A gate recorded with none of its reach passes every check in the repository. Worth a checkable rule: an entry that gates by its own words on the whole section should be named by every entry in it, and a map with a `scope: in` gate that nothing names is worth a flag."
+    },
+    {
+      "id": "kind-of-a-declined-signpost",
+      "count": 4,
+      "field": "kind",
+      "aSaid": "operation, on examples-b, examples-c, example-d, examples-e",
+      "bSaid": "value, on residence-examples, ownership-and-use-examples, depreciation-example, partial-use-examples",
+      "corpusEvidence": "§ 1.121-1(b)(4): \"Examples. The provisions of this paragraph (b) are illustrated by the following examples:\"",
+      "whyTheyDiffered": "Nothing about the corpus. `kind` on a declined entry is a field with no subject.",
+      "ruling": "not-a-corpus-disagreement. The sentence states neither a fact nor a procedure. Map C keeps A's.",
+      "methodConsequence": "`kind` is required on every entry and is vacuous on a `scope: out` signpost, which makes four flags out of nothing. A candidate for the split/merge noise 0014's consequences already ask to cut."
+    },
+    {
+      "id": "kind-effective-date",
+      "count": 1,
+      "field": "kind",
+      "aSaid": "operation",
+      "bSaid": "value",
+      "corpusEvidence": "§ 1.121-1(f): \"This section is applicable for sales and exchanges on or after Decmeber 24, 2002.\"",
+      "whyTheyDiffered": "B read the date; A read the comparison the date is in.",
+      "ruling": "A. The constituent states an applicability test the engine performs against a date the caller supplies, and the date is a constant inside it rather than a table the entry transcribes. Map C keeps A's."
+    },
+    {
+      "id": "kind-two-year-equivalents",
+      "count": 1,
+      "field": "kind",
+      "aSaid": "operation, on ownership-and-use-aggregation: \"it is a rule rather than a value because it states an equivalence a computation must apply\"",
+      "bSaid": "value, on two-year-equivalents",
+      "corpusEvidence": "§ 1.121-1(c)(1): \"The requirements of ownership and use for periods aggregating 2 years or more may be satisfied by establishing ownership and use for 24 full months or for 730 days (365 × 2).\"",
+      "whyTheyDiffered": "A read \"may be satisfied by establishing\" as the procedure; B read the three quantities as the fact and left the procedure where it already had one.",
+      "ruling": "B. The constituent supplies three equivalent quantities and no procedure the engine performs; the procedure that consumes them is the aggregation test in § 1.121-1(a), which both maps map separately (A's `ownership-and-use-test`). An entry that is both a value and an operation is two entries, and here the second already exists. Map C records `kind: value`."
+    },
+    {
+      "id": "kind-residence-exclusion",
+      "count": 1,
+      "field": "kind",
+      "aSaid": "operation, on residence-excludes-personal-property",
+      "bSaid": "value, on residence-excludes-non-fixture-personal-property",
+      "corpusEvidence": "§ 1.121-1(b)(1), two consecutive sentences: \"A property used by the taxpayer as the taxpayer's residence may include a houseboat, a house trailer, or the house or apartment ...\" and \"Property used by the taxpayer as the taxpayer's residence does not include personal property that is not a fixture under local law.\"",
+      "whyTheyDiffered": "A classified the exclusion by the work a reader does to apply it (is this thing a fixture?); B classified it by what the sentence states (what the term's extension covers).",
+      "ruling": "B, on Map A's own neighbouring verdict. Map A records the \"may include\" sentence as `value` and the \"does not include\" sentence one line later as `operation`, for two sentences of the same grammatical shape doing the same job from opposite ends. Map C records `kind: value` and keeps A's `definedElsewhere: local-law`.",
+      "methodConsequence": "The catch is internal consistency inside one map, which a second reader finds by reading the two sentences together and a checker cannot: nothing compares two entries' `kind` against the shape of the sentences they quote."
+    },
+    {
+      "id": "which-field-carries-an-unadmitted-reference",
+      "count": 9,
+      "field": "definedElsewhere vs crossReferences[].unmapped",
+      "aSaid": "definedElsewhere on six entries (sections 671-679, § 301.7701-3, section 1250(b)(3), local law, section 6511, section 121(b)(2)(A)) and crossReferences[].unmapped elsewhere",
+      "bSaid": "crossReferences[].unmapped throughout, plus three scope: out entries of its own — one-sale-every-two-years, joint-return-limitation, reduced-maximum-exclusion — for pointer targets A records only as unmapped",
+      "corpusEvidence": "§ 1.121-1(c)(3)(i): \"for the period that a taxpayer is treated under sections 671 through 679 ... as the owner of the trust\". § 1.121-1(b)(3)(ii)(C): \"(for any period for which the period of limitation under section 6511 has not expired)\".",
+      "whyTheyDiffered": "A asked whether the rule's meaning is fixed outside and used `definedElsewhere`; B asked whether the outcome is a fact the caller reports and used `crossReferences[].unmapped` with a caller-supplied parameter.",
+      "ruling": "not-a-corpus-disagreement, and a schema question. Both maps record the same deferral to the same unadmitted corpus and quote the same words; they differ on which field carries it, and the corpus has nothing to say about the map's schema. Map C keeps A's. Recorded on #8, because the line between \"the meaning is fixed elsewhere\" (`definedElsewhere`, declines with MissingRulesData) and \"the outcome is a fact the caller reports\" (no entry at all) is the same line the `incapable-of-self-care` disagreement turns on, one level up."
+    },
+    {
+      "id": "graph-shape",
+      "count": 9,
+      "field": "dependsOn, suspendedBy",
+      "aSaid": "edge counts differing by one on six pairs; no entry carries suspendedBy",
+      "bSaid": "different counts, and suspendedBy: [no-allocation-within-dwelling-unit] on allocation-required",
+      "corpusEvidence": "§ 1.121-1(e)(1): \"No allocation is required if both the residential and non-residential portions of the property are within the same dwelling unit.\"",
+      "whyTheyDiffered": "Six are two defensible orderings of the same graph. The seventh is a direction: A files the relation as `no-allocation-within-dwelling-unit.dependsOn: [allocation-required]`, which is implementation order; B files it as reachability, in the direction 0011 names.",
+      "ruling": "Six not-a-corpus-disagreement; the seventh B. A rule stating that no allocation is required in a case is a rule that makes the allocation rule unreachable while it holds, which is `suspendedBy`. Map C adds the edge and keeps A's dependency."
+    },
+    {
+      "id": "one-sided-entries",
+      "count": 6,
+      "field": "presence",
+      "aSaid": "uniformed-services-suspension-absent, a 0009 absence entry naming the terms searched for",
+      "bSaid": "military-extended-duty-suspension, one-sale-every-two-years, joint-return-limitation, reduced-maximum-exclusion, source-credit — each scope: out",
+      "corpusEvidence": "§ 1.121-1(f) and the source credit \"[T.D. 9030, 67 FR 78361, Dec. 24, 2002]\", which states no rule.",
+      "whyTheyDiffered": "The same readings filed differently: A records an absence under 0009 and pointers under crossReferences; B gives a declined entry to each pointer target and to the source credit.",
+      "ruling": "not-a-corpus-disagreement. The two maps agree on every reading behind these six. Map C keeps A's.",
+      "methodConsequence": "Five of the nine entries only B has are this, which is the split-and-merge noise 0014's consequences name: 35 of run 1's 71 flags were the same artefact. Aligning by quoted text removed most of it here — 36 partnerships out of A's 37 entries — and what it leaves is entries with no counterpart quote at all, which is the shape a reviewer has to read."
+    },
+    {
+      "id": "worked-examples-as-entries",
+      "count": 2,
+      "field": "presence",
+      "aSaid": "no entry; the (c)(4) examples are declined with the rest of the paragraph, and the two bounds are named in examples-c's and short-temporary-absences' notes",
+      "bSaid": "sabbatical-not-short-absence and two-month-vacation-short-absence, kind: value, scope: in, clarity: clear, dependsOn: [short-temporary-absences] — while still recording short-temporary-absences ambiguous",
+      "corpusEvidence": "§ 1.121-1(c)(4) Example 4: \"Because his leave is not considered to be a short temporary absence under paragraph (c)(2) of this section, the period of the sabbatical leave may not be included ...\". Example 5: \"the 2-month vacations are short temporary absences and are counted as periods of use ...\".",
+      "whyTheyDiffered": "A declined every example as illustration; B mapped the two that state something the operative text does not.",
+      "ruling": "open. This is #216 and it is not settled here. B established that the concept is missing and found *a* representation; it did not establish that an ordinary entry is the right one, and the objection stands — these two entries answer no caller request and exist only to constrain the permissible readings of another rule. Map C does **not** adopt B's shape. It carries both bounds, with their citations, inside `short-temporary-absences.ambiguity.question`, so the corpus's only authority on the term is not lost while the schema question is open.",
+      "methodConsequence": "A line worth proposing, because it is what separates this row from the `combined-sale-nets-dwelling-loss` ruling above: **an example that is the corpus's only authority for a rule no operative sentence states is an entry; an example that bounds a term an operative rule leaves open is an interpretation constraint on that rule, and the schema has no shape for one.** See the README's #216 section for what B's representation preserves, what it loses and what would decide it."
+    }
+  ]
+}

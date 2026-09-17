@@ -41,8 +41,12 @@ What this does not buy, stated here rather than in a commit message:
     run, so a shallow checkout gives the same answer as a full one.
 
 Usage: check-map-review.py [MAP ...] [--root DIR]
-With no MAP, checks every examples/*/corpus-map*.json under the repository root, the same
-glob scripts/validate.sh uses. Exit 0 if every map has a review of its current bytes and at
+With no MAP, checks every examples/*/corpus-map*.json and examples/*/*/corpus-map*.json under
+the repository root, the same globs scripts/validate.sh uses. The second is there because a
+reconciled map cannot sit beside the map it reconciles: `pack-map.py` requires exactly one
+corpus-map*.json in a packable directory, so trial 9's Map C lives in its blind-mapping/
+subdirectory with its own review.json. A map one level down is still a committed map and still
+carries a review of its bytes. Exit 0 if every map has a review of its current bytes and at
 least one map was examined; 1 otherwise; 2 on a usage error.
 """
 import argparse
@@ -217,7 +221,8 @@ def main(argv=None):
             print(f"no such map: {', '.join(missing)}", file=sys.stderr)
             return 2
     else:
-        maps = sorted(root.glob("examples/*/corpus-map*.json"))
+        maps = sorted(set(root.glob("examples/*/corpus-map*.json"))
+                      | set(root.glob("examples/*/*/corpus-map*.json")))
 
     examined, failed, exempt = check(maps, root)
     if examined == 0:

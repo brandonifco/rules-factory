@@ -1,0 +1,1003 @@
+{
+  "schemaVersion": 1,
+  "corpus": "cfr-26-1.121-1",
+  "baseline": {
+    "contentHash": "faf3e310a81b1d00729fd69fb422342bcff8049a98a0ae80955be3287e30bab2",
+    "hashDerivation": "ecfr-section-xml-bytes",
+    "asOf": "2026-01-01"
+  },
+  "extent": {
+    "unit": "section-designation",
+    "sections": [
+      "§ 1.121-1"
+    ]
+  },
+  "entries": [
+    {
+      "id": "exclusion-of-gain",
+      "name": "Exclusion of gain from the sale or exchange of a principal residence",
+      "locator": {
+        "sourceId": "cfr-26-1.121-1",
+        "citation": "§ 1.121-1(a)"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [
+        "ownership-and-use-requirement"
+      ],
+      "enabledBy": [
+        "effective-date"
+      ],
+      "evidence": "Section 121 provides that, under certain circumstances, gross income does not include gain realized on the sale or exchange of property that was owned and used by a taxpayer as the taxpayer's principal residence.",
+      "status": "mapped",
+      "note": "The consequence the section is about: gain realized on a qualifying sale or exchange is not included in gross income. Clear as to the consequence it states - gain in, gross income out - and it fixes no amount; the maximum limitation amounts live in section 121(b), of which this section states only the figures in paragraph (b)(3)(ii)(A) (mapped as maximum-limitation-amount). 'under certain circumstances' is answered by the rest of the section, which is why this entry dependsOn ownership-and-use-requirement rather than treating the phrase as an open term."
+    },
+    {
+      "id": "ownership-and-use-requirement",
+      "name": "Two years of ownership and use in the five-year period",
+      "locator": {
+        "sourceId": "cfr-26-1.121-1",
+        "citation": "§ 1.121-1(a)"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [
+        "residence-determination",
+        "principal-residence-determination",
+        "two-year-equivalents"
+      ],
+      "enabledBy": [
+        "effective-date"
+      ],
+      "crossReferences": [
+        {
+          "cites": "Subject to the other provisions of section 121",
+          "unmapped": "Section 121 itself (26 U.S.C. 121) was not admitted; its other provisions are outside this map."
+        }
+      ],
+      "evidence": "Subject to the other provisions of section 121, a taxpayer may exclude gain only if, during the 5-year period ending on the date of the sale or exchange, the taxpayer owned and used the property as the taxpayer's principal residence for periods aggregating 2 years or more.",
+      "status": "mapped",
+      "note": "A necessary condition ('only if'), not a sufficient one. Both the window (the 5-year period ending on the date of the sale or exchange) and the threshold (periods aggregating 2 years or more) are fixed in this sentence; the arithmetic equivalents of the threshold are in paragraph (c)(1). A test must show a taxpayer just over and just under the aggregate, and must show that ownership and use are two requirements over the same window."
+    },
+    {
+      "id": "residence-determination",
+      "name": "Whether property is used as the taxpayer's residence",
+      "locator": {
+        "sourceId": "cfr-26-1.121-1",
+        "citation": "§ 1.121-1(b)(1)"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "ambiguous",
+      "ambiguity": {
+        "question": "The corpus fixes no test for whether property is used by the taxpayer as the taxpayer's residence. It says the question 'depends upon all the facts and circumstances', names no facts to be weighed, states no threshold, and names nobody whose determination is operative.",
+        "fate": "unresolved",
+        "unresolvedReason": "RequiresInterpretation"
+      },
+      "dependsOn": [
+        "residence-inclusions",
+        "cooperative-housing-residence",
+        "residence-excludes-non-fixture-personal-property"
+      ],
+      "enabledBy": [
+        "effective-date"
+      ],
+      "evidence": "Whether property is used by the taxpayer as the taxpayer's residence depends upon all the facts and circumstances.",
+      "status": "mapped",
+      "note": "Gate 3 of the assertion procedure returns a gap here, not an assertion: the sentence delegates the judgement to nobody the corpus names, and 'all the facts and circumstances' bounds the term with nothing. The two following sentences of (b)(1) narrow the extension of 'residence' at the edges only, and are mapped as their own entries."
+    },
+    {
+      "id": "residence-inclusions",
+      "name": "Property that may be a residence",
+      "locator": {
+        "sourceId": "cfr-26-1.121-1",
+        "citation": "§ 1.121-1(b)(1)"
+      },
+      "kind": "value",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [],
+      "enabledBy": [
+        "effective-date"
+      ],
+      "evidence": "A property used by the taxpayer as the taxpayer's residence may include a houseboat, a house trailer",
+      "status": "mapped",
+      "note": "A stated, non-exhaustive list of forms of property that are not disqualified as a residence by their form. Clear as a value: the corpus names exactly these forms. Whether a particular houseboat or house trailer is in fact used as a residence is residence-determination's question, not this entry's; a test must show that the form of the property alone neither settles nor bars the question."
+    },
+    {
+      "id": "cooperative-housing-residence",
+      "name": "Cooperative housing as a residence",
+      "locator": {
+        "sourceId": "cfr-26-1.121-1",
+        "citation": "§ 1.121-1(b)(1)"
+      },
+      "kind": "value",
+      "scope": "in",
+      "clarity": "clear",
+      "definedElsewhere": {
+        "reference": "usc-26-216"
+      },
+      "dependsOn": [],
+      "enabledBy": [
+        "effective-date"
+      ],
+      "evidence": "the house or apartment that the taxpayer is entitled to occupy as a tenant-stockholder in a cooperative housing corporation (as those terms are defined in section 216(b)(1) and (2)).",
+      "status": "mapped",
+      "note": "Split from residence-inclusions because this arm alone cannot be resolved inside the corpus: 'tenant-stockholder' and 'cooperative housing corporation' are fixed by section 216(b)(1) and (2), which was not admitted, so the entry declines with MissingRulesData rather than dragging the houseboat and house-trailer arms down with it."
+    },
+    {
+      "id": "residence-excludes-non-fixture-personal-property",
+      "name": "Personal property that is not a fixture is not a residence",
+      "locator": {
+        "sourceId": "cfr-26-1.121-1",
+        "citation": "§ 1.121-1(b)(1)"
+      },
+      "kind": "value",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [],
+      "enabledBy": [
+        "effective-date"
+      ],
+      "evidence": "Property used by the taxpayer as the taxpayer's residence does not include personal property that is not a fixture under local law.",
+      "status": "mapped",
+      "note": "A categorical exclusion. Whether an item is a fixture under local law is a fact the rule tests and is a caller-supplied parameter with no entry of its own: 'local law' names no corpus that could be admitted, so this is not definedElsewhere. The rule is total given that fact."
+    },
+    {
+      "id": "principal-residence-determination",
+      "name": "Which residence is the principal residence",
+      "locator": {
+        "sourceId": "cfr-26-1.121-1",
+        "citation": "§ 1.121-1(b)(2)"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "ambiguous",
+      "ambiguity": {
+        "question": "Where a taxpayer uses more than one property as a residence, which one is the principal residence 'depends upon all the facts and circumstances'. The relevant factors 'include, but are not limited to' the six listed, so the list is not closed; the corpus gives no weighting among them and names nobody whose determination settles the question.",
+        "fate": "unresolved",
+        "unresolvedReason": "RequiresInterpretation"
+      },
+      "dependsOn": [
+        "residence-determination",
+        "principal-residence-factors",
+        "principal-residence-majority-of-time"
+      ],
+      "enabledBy": [
+        "effective-date"
+      ],
+      "evidence": "In the case of a taxpayer using more than one property as a residence, whether property is used by the taxpayer as the taxpayer's principal residence depends upon all the facts and circumstances.",
+      "status": "mapped",
+      "note": "A gap, not an assertion: the corpus states a measure of a kind (facts and circumstances, with six named relevant factors) but names no party whose determination is operative, and the factor list is expressly open. Paragraph (b)(2)'s second sentence gives a default for one shape of case and is mapped separately."
+    },
+    {
+      "id": "principal-residence-majority-of-time",
+      "name": "Majority of the time during the year",
+      "locator": {
+        "sourceId": "cfr-26-1.121-1",
+        "citation": "§ 1.121-1(b)(2)"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "ambiguous",
+      "ambiguity": {
+        "question": "The property used a majority of the time during the year 'ordinarily will be considered' the taxpayer's principal residence. The corpus does not say in what circumstances the majority-of-time property is not the principal residence, so for the non-ordinary case the rule determines no answer.",
+        "fate": "unresolved",
+        "unresolvedReason": "RequiresInterpretation"
+      },
+      "dependsOn": [
+        "residence-determination"
+      ],
+      "enabledBy": [
+        "effective-date"
+      ],
+      "evidence": "If a taxpayer alternates between 2 properties, using each as a residence for successive periods of time, the property that the taxpayer uses a majority of the time during the year ordinarily will be considered the taxpayer's principal residence.",
+      "status": "mapped",
+      "note": "The rule is computable wherever it governs - count the days in the year spent at each of two alternately used properties - and the word 'ordinarily' is what leaves it short of total. The case is narrow and stated: alternating between 2 properties for successive periods of time."
+    },
+    {
+      "id": "principal-residence-factors",
+      "name": "Relevant factors in determining a principal residence",
+      "locator": {
+        "sourceId": "cfr-26-1.121-1",
+        "citation": "§ 1.121-1(b)(2)"
+      },
+      "kind": "value",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [],
+      "enabledBy": [
+        "effective-date"
+      ],
+      "evidence": "In addition to the taxpayer's use of the property, relevant factors in determining a taxpayer's principal residence, include, but are not limited to—\n(i) The taxpayer's place of employment;\n(ii) The principal place of abode of the taxpayer's family members;\n(iii) The address listed on the taxpayer's federal and state tax returns, driver's license, automobile registration, and voter registration card;\n(iv) The taxpayer's mailing address for bills and correspondence;\n(v) The location of the taxpayer's banks; and\n(vi) The location of religious organizations and recreational clubs with which the taxpayer is affiliated.",
+      "status": "mapped",
+      "note": "The six factors the corpus prints, transcribed whole and not sampled. Clear as a value: these six are exactly what the corpus lists. That the list is open, and unweighted, is principal-residence-determination's ambiguity and not a defect in this transcription. The span runs across the six separate paragraph elements (i) through (vi); it is contiguous in the section's reading order."
+    },
+    {
+      "id": "vacant-land-sale",
+      "name": "Sale or exchange of vacant land as a sale of a principal residence",
+      "locator": {
+        "sourceId": "cfr-26-1.121-1",
+        "citation": "§ 1.121-1(b)(3)(i)"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [
+        "principal-residence-determination"
+      ],
+      "enabledBy": [
+        "effective-date"
+      ],
+      "crossReferences": [
+        {
+          "cites": "a sale or exchange that meets the requirements of section 121",
+          "unmapped": "Whether the dwelling-unit sale met section 121 is a fact this rule tests; section 121 (26 U.S.C. 121) was not admitted and the fact reaches the engine as a caller-supplied parameter."
+        },
+        {
+          "cites": "The requirements of section 121 have otherwise been met with respect to the vacant land",
+          "unmapped": "Same: the requirements of section 121 are outside the admitted corpus and are supplied to the engine, never inferred."
+        }
+      ],
+      "evidence": "The sale or exchange of vacant land is not a sale or exchange of the taxpayer's principal residence unless—\n(A) The vacant land is adjacent to land containing the dwelling unit of the taxpayer's principal residence;\n(B) The taxpayer owned and used the vacant land as part of the taxpayer's principal residence;\n(C) The taxpayer sells or exchanges the dwelling unit in a sale or exchange that meets the requirements of section 121 within 2 years before or 2 years after the date of the sale or exchange of the vacant land; and\n(D) The requirements of section 121 have otherwise been met with respect to the vacant land.",
+      "status": "mapped",
+      "note": "One rule with four conjunctive conditions (A) through (D) - the corpus joins (C) and (D) with 'and' - kept as one entry because no condition has an independent consequence. A test must show the rule failing for each of the four conditions separately, and must show the two-year window in (C) running in both directions from the date of the vacant-land sale. 'adjacent' is an ordinary word used ordinarily and is not recorded as ambiguous."
+    },
+    {
+      "id": "vacant-land-one-sale-for-limitation",
+      "name": "Dwelling unit and vacant land treated as one sale",
+      "locator": {
+        "sourceId": "cfr-26-1.121-1",
+        "citation": "§ 1.121-1(b)(3)(ii)(A)"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [
+        "vacant-land-sale",
+        "maximum-limitation-amount"
+      ],
+      "enabledBy": [
+        "vacant-land-sale",
+        "effective-date"
+      ],
+      "crossReferences": [
+        {
+          "cites": "For purposes of section 121(b)(1) and (2) (relating to the maximum limitation amount of the section 121 exclusion)",
+          "unmapped": "Section 121(b)(1) and (2) are in 26 U.S.C. 121, which was not admitted; this section states the figures it needs in the next sentence."
+        }
+      ],
+      "evidence": "For purposes of section 121(b)(1) and (2) (relating to the maximum limitation amount of the section 121 exclusion), the sale or exchange of the dwelling unit and the vacant land are treated as one sale or exchange.",
+      "status": "mapped",
+      "note": "Enabled by vacant-land-sale: the combination rule only reaches a vacant-land sale that paragraph (b)(3) has already made a sale of a principal residence."
+    },
+    {
+      "id": "maximum-limitation-amount",
+      "name": "Maximum limitation amount for the combined sales",
+      "locator": {
+        "sourceId": "cfr-26-1.121-1",
+        "citation": "§ 1.121-1(b)(3)(ii)(A)"
+      },
+      "kind": "value",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [],
+      "enabledBy": [
+        "effective-date"
+      ],
+      "evidence": "Therefore, only one maximum limitation amount of $250,000 ($500,000 for certain joint returns) applies to the combined sales or exchanges of vacant land and the dwelling unit.",
+      "status": "mapped",
+      "note": "The only dollar figures the section states: $250,000, and $500,000 for certain joint returns. Clear as a value. Which joint returns are 'certain' is not stated here - section 121(b)(2) and 1.121-2(a)(3)(i) are named for that in the next sentence, and joint-return-limitation records that they are outside the slice; the figures themselves are unambiguous."
+    },
+    {
+      "id": "vacant-land-cross-year-ordering",
+      "name": "Applying the limitation across taxable years",
+      "locator": {
+        "sourceId": "cfr-26-1.121-1",
+        "citation": "§ 1.121-1(b)(3)(ii)(A)"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [
+        "vacant-land-one-sale-for-limitation",
+        "maximum-limitation-amount"
+      ],
+      "enabledBy": [
+        "vacant-land-sale",
+        "effective-date"
+      ],
+      "crossReferences": [
+        {
+          "cites": "section 121(b)(2)(A) and § 1.121-2(a)(3)(i) (relating to the limitation for certain joint returns)",
+          "resolvedBy": "joint-return-limitation"
+        }
+      ],
+      "evidence": "In applying the maximum limitation amount to sales or exchanges that occur in different taxable years, gain from the sale or exchange of the dwelling unit, up to the maximum limitation amount under section 121(b)(1) or (2), is excluded first and each spouse is treated as excluding one-half of the gain from a sale or exchange to which section 121(b)(2)(A) and § 1.121-2(a)(3)(i) (relating to the limitation for certain joint returns) apply.",
+      "status": "mapped",
+      "note": "Two ordering facts: dwelling-unit gain is excluded first, up to the maximum limitation amount, and on a joint-return sale each spouse is treated as excluding one-half of the gain. Which sales the one-half rule reaches is fixed outside the slice; the rule itself is stated here and is total once that fact is supplied."
+    },
+    {
+      "id": "vacant-land-separate-transactions-two-year-rule",
+      "name": "Separate transactions and the one-sale-every-two-years restriction",
+      "locator": {
+        "sourceId": "cfr-26-1.121-1",
+        "citation": "§ 1.121-1(b)(3)(ii)(B)"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [
+        "vacant-land-sale"
+      ],
+      "enabledBy": [
+        "vacant-land-sale",
+        "effective-date"
+      ],
+      "crossReferences": [
+        {
+          "cites": "under this paragraph (b)(3)",
+          "resolvedBy": "vacant-land-sale"
+        },
+        {
+          "cites": "section 121(b)(3) (restricting the application of section 121 to only 1 sale or exchange every 2 years)",
+          "resolvedBy": "one-sale-every-two-years"
+        }
+      ],
+      "evidence": "If a dwelling unit and vacant land are sold or exchanged in separate transactions that qualify for the section 121 exclusion under this paragraph (b)(3), each of the transactions is disregarded in applying section 121(b)(3) (restricting the application of section 121 to only 1 sale or exchange every 2 years) to the other transactions but is taken into account as a sale or exchange of a principal residence on the date of the transaction in applying section 121(b)(3) to that transaction and the sale or exchange of any other principal residence.",
+      "status": "mapped",
+      "note": "The sentence does two opposite things and both are stated: each qualifying transaction is disregarded when the restriction is applied to the other, and is taken into account, on its own date, when the restriction is applied to that transaction itself and to any other principal residence. A test must show both directions on the same pair of transactions."
+    },
+    {
+      "id": "vacant-land-gain-taxable-when-dwelling-sold-later",
+      "name": "Vacant land sold before the dwelling unit",
+      "locator": {
+        "sourceId": "cfr-26-1.121-1",
+        "citation": "§ 1.121-1(b)(3)(ii)(C)"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [
+        "vacant-land-sale"
+      ],
+      "enabledBy": [
+        "vacant-land-sale",
+        "effective-date"
+      ],
+      "evidence": "If the sale or exchange of the dwelling unit occurs in a later taxable year than the sale or exchange of the vacant land and after the date prescribed by law (including extensions) for the filing of the return for the taxable year of the sale or exchange of the vacant land, any gain from the sale or exchange of the vacant land must be treated as taxable on the taxpayer's return for the taxable year of the sale or exchange of the vacant land.",
+      "status": "mapped",
+      "note": "Both conditions are stated and conjunctive: a later taxable year for the dwelling-unit sale, and a date after the due date (including extensions) for filing the vacant-land year's return. The filing due date is a caller-supplied parameter; this section does not state it."
+    },
+    {
+      "id": "vacant-land-amended-return",
+      "name": "Claiming the exclusion for the vacant land by amended return",
+      "locator": {
+        "sourceId": "cfr-26-1.121-1",
+        "citation": "§ 1.121-1(b)(3)(ii)(C)"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [
+        "vacant-land-gain-taxable-when-dwelling-sold-later"
+      ],
+      "enabledBy": [
+        "vacant-land-sale",
+        "effective-date"
+      ],
+      "crossReferences": [
+        {
+          "cites": "this paragraph (b)(3)",
+          "resolvedBy": "vacant-land-sale"
+        },
+        {
+          "cites": "the period of limitation under section 6511",
+          "unmapped": "Section 6511 (26 U.S.C. 6511) was not admitted; whether the period has expired is a fact the rule tests and reaches the engine as a caller-supplied parameter."
+        }
+      ],
+      "evidence": "If the taxpayer has reported gain from the sale or exchange of the vacant land as taxable, after satisfying the requirements of this paragraph (b)(3) the taxpayer may claim the section 121 exclusion with regard to the sale or exchange of the vacant land (for any period for which the period of limitation under section 6511 has not expired) by filing an amended return.",
+      "status": "mapped",
+      "note": "A permission, not an obligation ('may claim'). The engine can answer whether the amended-return route is open once it is told whether the section 6511 period has expired."
+    },
+    {
+      "id": "residence-examples",
+      "name": "Examples illustrating paragraph (b)",
+      "locator": {
+        "sourceId": "cfr-26-1.121-1",
+        "citation": "§ 1.121-1(b)(4)"
+      },
+      "kind": "value",
+      "scope": "out",
+      "clarity": "clear",
+      "dependsOn": [],
+      "evidence": "(4) Examples. The provisions of this paragraph (b) are illustrated by the following examples:",
+      "status": "declined",
+      "note": "Read and declined: four worked examples illustrating rules paragraph (b) already states, adding no rule of their own. Examples 1 and 2 apply principal-residence-majority-of-time; Example 3 applies vacant-land-sale, maximum-limitation-amount and vacant-land-amended-return. Example 4 is the exception and is mapped in scope as combined-sale-nets-dwelling-loss, because its arithmetic rests on something no sentence of the operative text states."
+    },
+    {
+      "id": "combined-sale-nets-dwelling-loss",
+      "name": "A loss on one combined transaction and the excludable gain",
+      "locator": {
+        "sourceId": "cfr-26-1.121-1",
+        "citation": "§ 1.121-1(b)(4), Example 4"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "ambiguous",
+      "ambiguity": {
+        "question": "Example 4 excludes $245,000 where the house and 1 acre sold at a $25,000 loss and the 29 acres of vacant land realized $270,000 of gain - the loss netted against the gain. No sentence of paragraph (b)(3)(ii)(A) says that a loss on one of the two transactions reduces the gain excludable on the other; it says only that the two are treated as one sale or exchange for the maximum limitation amount. The example states a result and not the rule that produces it.",
+        "fate": "unresolved",
+        "unresolvedReason": "RequiresInterpretation"
+      },
+      "dependsOn": [
+        "vacant-land-one-sale-for-limitation",
+        "maximum-limitation-amount"
+      ],
+      "enabledBy": [
+        "vacant-land-sale",
+        "effective-date"
+      ],
+      "evidence": "In 2003 D sells the house and 1 acre and the 29 acres in 2 separate transactions. D sells the house and 1 acre at a loss of $25,000. D realizes $270,000 of gain from the sale of the 29 acres. D may exclude the $245,000 gain from the 2 sales.",
+      "status": "mapped",
+      "note": "Mapped in scope, against the rest of paragraph (b)(4), because excluding a paragraph wholesale as illustration is how a map loses the only authority it has for a rule. The figure is the only place in the section where a loss on one of two combined transactions meets a gain on the other; the operative text is silent on it, which is why the entry is ambiguous rather than clear."
+    },
+    {
+      "id": "two-year-equivalents",
+      "name": "What two years of ownership and use may be satisfied by",
+      "locator": {
+        "sourceId": "cfr-26-1.121-1",
+        "citation": "§ 1.121-1(c)(1)"
+      },
+      "kind": "value",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [],
+      "enabledBy": [
+        "effective-date"
+      ],
+      "evidence": "The requirements of ownership and use for periods aggregating 2 years or more may be satisfied by establishing ownership and use for 24 full months or for 730 days (365 × 2).",
+      "status": "mapped",
+      "note": "Two stated equivalents of the aggregate threshold, 24 full months or 730 days, with the corpus's own arithmetic printed beside the second. Clear: both figures are stated exactly, and a test must show each satisfying the threshold and each falling one unit short."
+    },
+    {
+      "id": "nonconcurrent-ownership-and-use",
+      "name": "Ownership and use need not be concurrent",
+      "locator": {
+        "sourceId": "cfr-26-1.121-1",
+        "citation": "§ 1.121-1(c)(1)"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [
+        "two-year-equivalents"
+      ],
+      "enabledBy": [
+        "effective-date"
+      ],
+      "evidence": "The requirements of ownership and use may be satisfied during nonconcurrent periods if both the ownership and use tests are met during the 5-year period ending on the date of the sale or exchange.",
+      "status": "mapped",
+      "note": "Total as stated: the two tests are measured separately and the only constraint the sentence adds is that both are met inside the same 5-year period. A test must show a taxpayer whose ownership and use periods do not overlap at all still satisfying the requirement."
+    },
+    {
+      "id": "occupancy-required",
+      "name": "Occupancy is required for use",
+      "locator": {
+        "sourceId": "cfr-26-1.121-1",
+        "citation": "§ 1.121-1(c)(2)(i)"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [],
+      "enabledBy": [
+        "effective-date"
+      ],
+      "evidence": "In establishing whether a taxpayer has satisfied the 2-year use requirement, occupancy of the residence is required.",
+      "status": "mapped",
+      "note": "A flat requirement, stated without qualification, and the baseline the next sentence carves an exception out of."
+    },
+    {
+      "id": "short-temporary-absences",
+      "name": "Short temporary absences count as periods of use",
+      "locator": {
+        "sourceId": "cfr-26-1.121-1",
+        "citation": "§ 1.121-1(c)(2)(i)"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "ambiguous",
+      "ambiguity": {
+        "question": "'short temporary absences' fixes no length and no measure. The corpus gives kinds of absence ('such as for vacation or other seasonal absence') rather than a bound on shortness, and names nobody whose determination settles it. The examples in paragraph (c)(4) bound the term at two ends - a 2-month summer vacation is short (Example 5) and a 1-year sabbatical leave is not (Example 4) - and the corpus says nothing about any period between them.",
+        "fate": "unresolved",
+        "unresolvedReason": "RequiresInterpretation"
+      },
+      "dependsOn": [
+        "occupancy-required"
+      ],
+      "enabledBy": [
+        "effective-date"
+      ],
+      "evidence": "However, short temporary absences, such as for vacation or other seasonal absence (although accompanied with rental of the residence), are counted as periods of use.",
+      "status": "mapped",
+      "note": "The parenthetical is stated and is total on its own point: an absence does not stop counting as use merely because the residence was rented out during it. What is open is the degree, 'short'. The two example-derived bounds are mapped as their own in-scope entries, sabbatical-not-short-absence and two-month-vacation-short-absence."
+    },
+    {
+      "id": "out-of-residence-care-use",
+      "name": "Use during periods of out-of-residence care",
+      "locator": {
+        "sourceId": "cfr-26-1.121-1",
+        "citation": "§ 1.121-1(c)(2)(ii)"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [
+        "occupancy-required"
+      ],
+      "enabledBy": [
+        "effective-date"
+      ],
+      "evidence": "If a taxpayer has become physically or mentally incapable of self-care and the taxpayer sells or exchanges property that the taxpayer owned and used as the taxpayer's principal residence for periods aggregating at least 1 year during the 5-year period preceding the sale or exchange, the taxpayer is treated as using the property as the taxpayer's principal residence for any period of time during the 5-year period in which the taxpayer owns the property and resides in any facility (including a nursing home) licensed by a State or political subdivision to care for an individual in the taxpayer's condition.",
+      "status": "mapped",
+      "note": "A deeming rule with every element stated: the incapacity, a reduced ownership-and-use threshold of periods aggregating at least 1 year in the 5-year period preceding the sale, and the facility licensed by a State or political subdivision to care for an individual in the taxpayer's condition. Whether the taxpayer is incapable of self-care, and whether a given facility is so licensed, are facts the rule tests and are caller-supplied parameters with no entries of their own; the rule is total once they are supplied. Recorded as clear deliberately: 'incapable of self-care' is a condition the rule tests, not a degree the rule leaves blank, which is the line that separates it from 'short' in (c)(2)(i)."
+    },
+    {
+      "id": "trust-ownership",
+      "name": "Residence owned by a trust",
+      "locator": {
+        "sourceId": "cfr-26-1.121-1",
+        "citation": "§ 1.121-1(c)(3)(i)"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [
+        "ownership-and-use-requirement"
+      ],
+      "enabledBy": [
+        "effective-date"
+      ],
+      "crossReferences": [
+        {
+          "cites": "sections 671 through 679 (relating to the treatment of grantors and others as substantial owners)",
+          "unmapped": "26 U.S.C. 671-679 was not admitted. Whether the taxpayer is treated as the owner of the trust, or of the portion that includes the residence, is a fact this rule tests and reaches the engine as a caller-supplied parameter."
+        }
+      ],
+      "evidence": "If a residence is owned by a trust, for the period that a taxpayer is treated under sections 671 through 679 (relating to the treatment of grantors and others as substantial owners) as the owner of the trust or the portion of the trust that includes the residence, the taxpayer will be treated as owning the residence for purposes of satisfying the 2-year ownership requirement of section 121, and the sale or exchange by the trust will be treated as if made by the taxpayer.",
+      "status": "mapped",
+      "note": "Two consequences, both stated: the taxpayer is treated as owning the residence for the 2-year ownership requirement, and the trust's sale or exchange is treated as made by the taxpayer. The attribution runs only for the period the taxpayer is so treated, which a test must show by attributing part of a period and not all of it."
+    },
+    {
+      "id": "single-owner-entity-ownership",
+      "name": "Residence owned by a disregarded single-owner entity",
+      "locator": {
+        "sourceId": "cfr-26-1.121-1",
+        "citation": "§ 1.121-1(c)(3)(ii)"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [
+        "ownership-and-use-requirement"
+      ],
+      "enabledBy": [
+        "effective-date"
+      ],
+      "crossReferences": [
+        {
+          "cites": "within the meaning of § 301.7701-3(a) of this chapter",
+          "unmapped": "§ 301.7701-3 of this chapter is outside the admitted extract. Whether the entity is an eligible entity with a single owner and is disregarded is a fact this rule tests and reaches the engine as a caller-supplied parameter."
+        }
+      ],
+      "evidence": "If a residence is owned by an eligible entity (within the meaning of § 301.7701-3(a) of this chapter) that has a single owner and is disregarded for federal tax purposes as an entity separate from its owner under § 301.7701-3 of this chapter, the owner will be treated as owning the residence for purposes of satisfying the 2-year ownership requirement of section 121, and the sale or exchange by the entity will be treated as if made by the owner.",
+      "status": "mapped",
+      "note": "The same shape as trust-ownership and stated with the same two consequences. Both conditions - single owner, and disregarded as an entity separate from its owner - are required by the sentence."
+    },
+    {
+      "id": "ownership-and-use-examples",
+      "name": "Examples illustrating paragraph (c)",
+      "locator": {
+        "sourceId": "cfr-26-1.121-1",
+        "citation": "§ 1.121-1(c)(4)"
+      },
+      "kind": "value",
+      "scope": "out",
+      "clarity": "clear",
+      "dependsOn": [],
+      "evidence": "(4) Examples. The provisions of this paragraph (c) are illustrated by the following examples.",
+      "status": "declined",
+      "note": "Read and declined as illustration for Examples 1, 2 and 3, which apply ownership-and-use-requirement and nonconcurrent-ownership-and-use to stated dates and add nothing. Examples 4 and 5 are not declined: each states that a particular absence is or is not a short temporary absence, which the operative text does not, and each is mapped in scope."
+    },
+    {
+      "id": "reduced-maximum-exclusion",
+      "name": "Reduced maximum exclusion",
+      "locator": {
+        "sourceId": "cfr-26-1.121-1",
+        "citation": "§ 1.121-1(c)(4)"
+      },
+      "kind": "operation",
+      "scope": "out",
+      "clarity": "clear",
+      "dependsOn": [],
+      "crossReferences": [
+        {
+          "cites": "§ 1.121-3 (relating to the reduced maximum exclusion)",
+          "unmapped": "§ 1.121-3 is outside the admitted extract; this section states none of its rules."
+        }
+      ],
+      "evidence": "The examples assume that § 1.121-3 (relating to the reduced maximum exclusion) does not apply to the sale of the property.",
+      "status": "declined",
+      "note": "Out of scope: the corpus names the reduced maximum exclusion and states no rule of it, placing it in 1.121-3, outside the extent. Recorded rather than omitted because the section's own examples are drawn on the assumption that it does not apply, so an engine built from this slice answers only for that case."
+    },
+    {
+      "id": "sabbatical-not-short-absence",
+      "name": "A one-year sabbatical leave is not a short temporary absence",
+      "locator": {
+        "sourceId": "cfr-26-1.121-1",
+        "citation": "§ 1.121-1(c)(4), Example 4"
+      },
+      "kind": "value",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [
+        "short-temporary-absences"
+      ],
+      "enabledBy": [
+        "effective-date"
+      ],
+      "crossReferences": [
+        {
+          "cites": "under paragraph (c)(2) of this section",
+          "resolvedBy": "short-temporary-absences"
+        }
+      ],
+      "evidence": "Because his leave is not considered to be a short temporary absence under paragraph (c)(2) of this section, the period of the sabbatical leave may not be included in determining whether D used the house for periods aggregating 2 years during the 5-year period ending on the date of the sale.",
+      "status": "mapped",
+      "note": "Mapped in scope because it is the only authority in the corpus for an upper bound on 'short': a 1-year sabbatical leave abroad is not a short temporary absence, and its period is not counted toward use. Clear on its own facts; it bounds short-temporary-absences' question without answering it."
+    },
+    {
+      "id": "two-month-vacation-short-absence",
+      "name": "A two-month vacation is a short temporary absence",
+      "locator": {
+        "sourceId": "cfr-26-1.121-1",
+        "citation": "§ 1.121-1(c)(4), Example 5"
+      },
+      "kind": "value",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [
+        "short-temporary-absences"
+      ],
+      "enabledBy": [
+        "effective-date"
+      ],
+      "crossReferences": [
+        {
+          "cites": "under paragraph (c)(2) of this section",
+          "resolvedBy": "short-temporary-absences"
+        }
+      ],
+      "evidence": "the section 121 exclusion will apply to gain from the sale of the residence because, under paragraph (c)(2) of this section, the 2-month vacations are short temporary absences and are counted as periods of use in determining whether E used the residence for the requisite period.",
+      "status": "mapped",
+      "note": "The corpus's only lower bound on 'short': 2-month summer vacations are short temporary absences and are counted as periods of use, so that 21 months of actual occupancy satisfies the 2-year requirement. Mapped in scope for the same reason as sabbatical-not-short-absence."
+    },
+    {
+      "id": "depreciation-limitation",
+      "name": "Exclusion does not apply to post-May 6, 1997 depreciation adjustments",
+      "locator": {
+        "sourceId": "cfr-26-1.121-1",
+        "citation": "§ 1.121-1(d)(1)"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [
+        "exclusion-of-gain"
+      ],
+      "enabledBy": [
+        "effective-date"
+      ],
+      "crossReferences": [
+        {
+          "cites": "(as defined in section 1250(b)(3))",
+          "unmapped": "Section 1250(b)(3) (26 U.S.C. 1250) was not admitted. The amount of the depreciation adjustments is a value this rule consumes and reaches the engine as a caller-supplied parameter."
+        }
+      ],
+      "evidence": "The section 121 exclusion does not apply to so much of the gain from the sale or exchange of property as does not exceed the portion of the depreciation adjustments (as defined in section 1250(b)(3)) attributable to the property for periods after May 6, 1997.",
+      "status": "mapped",
+      "note": "A ceiling, stated as a comparison the engine can make once the depreciation-adjustment figure is supplied: gain up to that figure is outside the exclusion. The date, May 6, 1997, is fixed by the corpus. The entry is an operation and not definedElsewhere, because what comes from outside is an input the rule tests, not the meaning of the rule."
+    },
+    {
+      "id": "depreciation-of-non-excluded-portion-disregarded",
+      "name": "Depreciation on a portion the exclusion does not reach",
+      "locator": {
+        "sourceId": "cfr-26-1.121-1",
+        "citation": "§ 1.121-1(d)(1)"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [
+        "depreciation-limitation",
+        "allocation-required"
+      ],
+      "enabledBy": [
+        "effective-date"
+      ],
+      "crossReferences": [
+        {
+          "cites": "paragraph (e) of this section",
+          "resolvedBy": "allocation-required"
+        }
+      ],
+      "evidence": "Depreciation adjustments allocable to any portion of the property to which the section 121 exclusion does not apply under paragraph (e) of this section are not taken into account for this purpose.",
+      "status": "mapped",
+      "note": "Keeps paragraph (d) from counting depreciation twice against a taxpayer whose property is split under paragraph (e). Separate from depreciation-limitation because it changes the figure that rule consumes rather than restating the ceiling."
+    },
+    {
+      "id": "depreciation-example",
+      "name": "Example illustrating paragraph (d)",
+      "locator": {
+        "sourceId": "cfr-26-1.121-1",
+        "citation": "§ 1.121-1(d)(2)"
+      },
+      "kind": "value",
+      "scope": "out",
+      "clarity": "clear",
+      "dependsOn": [],
+      "evidence": "(2) Example. The provisions of this paragraph (d) are illustrated by the following example:",
+      "status": "declined",
+      "note": "Read and declined as illustration. The worked figures ($40,000 gain realized less $14,000 of depreciation deductions, $26,000 excluded) apply depreciation-limitation and state no rule of their own; the example's closing sentence characterises the $14,000 as unrecaptured section 1250 gain under section 121(d)(6) and section 1(h), both outside the admitted corpus."
+    },
+    {
+      "id": "allocation-required",
+      "name": "Allocation between residential and non-residential portions",
+      "locator": {
+        "sourceId": "cfr-26-1.121-1",
+        "citation": "§ 1.121-1(e)(1)"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [
+        "dwelling-unit-definition",
+        "allocation-method",
+        "ownership-and-use-requirement"
+      ],
+      "enabledBy": [
+        "effective-date"
+      ],
+      "suspendedBy": [
+        "no-allocation-within-dwelling-unit"
+      ],
+      "evidence": "Section 121 will not apply to the gain allocable to any portion (separate from the dwelling unit) of property sold or exchanged with respect to which a taxpayer does not satisfy the use requirement. Thus, if a portion of the property was used for residential purposes and a portion of the property (separate from the dwelling unit) was used for non-residential purposes, only the gain allocable to the residential portion is excludable under section 121.",
+      "status": "mapped",
+      "note": "The rule and its restatement ('Thus, ...') are one contiguous passage and one rule: where a portion separate from the dwelling unit fails the use requirement, the gain allocable to it is outside section 121. Suspended by no-allocation-within-dwelling-unit, which is the same paragraph's carve-out for portions inside one dwelling unit."
+    },
+    {
+      "id": "no-allocation-within-dwelling-unit",
+      "name": "No allocation within a single dwelling unit",
+      "locator": {
+        "sourceId": "cfr-26-1.121-1",
+        "citation": "§ 1.121-1(e)(1)"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [
+        "dwelling-unit-definition"
+      ],
+      "enabledBy": [
+        "effective-date"
+      ],
+      "evidence": "No allocation is required if both the residential and non-residential portions of the property are within the same dwelling unit.",
+      "status": "mapped",
+      "note": "Stated flatly and without qualification, and it is the gate that closes allocation-required rather than a factor weighed against it. Its scope turns entirely on dwelling-unit-definition, which is why it depends on it."
+    },
+    {
+      "id": "residential-portion-depreciation-limit",
+      "name": "Depreciation limit on the residential portion",
+      "locator": {
+        "sourceId": "cfr-26-1.121-1",
+        "citation": "§ 1.121-1(e)(1)"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [
+        "allocation-required",
+        "depreciation-limitation"
+      ],
+      "enabledBy": [
+        "effective-date"
+      ],
+      "crossReferences": [
+        {
+          "cites": "paragraph (d) of this section",
+          "resolvedBy": "depreciation-limitation"
+        }
+      ],
+      "evidence": "However, section 121 does not apply to the gain allocable to the residential portion of the property to the extent provided by paragraph (d) of this section.",
+      "status": "mapped",
+      "note": "A separate rule from allocation-required: allocation can put gain on the residential side and paragraph (d) still withholds the exclusion from it up to the depreciation adjustments. Kept separate so that each entry has one runtime reason."
+    },
+    {
+      "id": "dwelling-unit-definition",
+      "name": "Dwelling unit",
+      "locator": {
+        "sourceId": "cfr-26-1.121-1",
+        "citation": "§ 1.121-1(e)(2)"
+      },
+      "kind": "value",
+      "scope": "in",
+      "clarity": "clear",
+      "definedElsewhere": {
+        "reference": "usc-26-280A"
+      },
+      "dependsOn": [],
+      "enabledBy": [
+        "effective-date"
+      ],
+      "evidence": "For purposes of this paragraph (e), the term dwelling unit has the same meaning as in section 280A(f)(1), but does not include appurtenant structures or other property.",
+      "status": "mapped",
+      "note": "The definition the whole of paragraph (e) turns on, and the corpus fixes only its carve-out: the base meaning is section 280A(f)(1)'s, which was not admitted, so the entry declines with MissingRulesData while still carrying what this corpus does add - appurtenant structures and other property are excluded. The span is the definition itself, which is why this is definedElsewhere and not a caller-supplied parameter."
+    },
+    {
+      "id": "allocation-method",
+      "name": "Method of allocation",
+      "locator": {
+        "sourceId": "cfr-26-1.121-1",
+        "citation": "§ 1.121-1(e)(3)"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "ambiguous",
+      "ambiguity": {
+        "question": "The taxpayer must allocate basis and amount realized 'using the same method of allocation that the taxpayer used to determine depreciation adjustments ..., if applicable'. Where no depreciation adjustments were determined - so that there is no such method - the corpus states no method of allocation at all, and 'if applicable' does not say what governs instead.",
+        "fate": "unresolved",
+        "unresolvedReason": "RequiresInterpretation"
+      },
+      "dependsOn": [
+        "dwelling-unit-definition"
+      ],
+      "enabledBy": [
+        "effective-date"
+      ],
+      "crossReferences": [
+        {
+          "cites": "(as defined in section 1250(b)(3))",
+          "unmapped": "Section 1250(b)(3) (26 U.S.C. 1250) was not admitted; the depreciation adjustments and the method used to determine them reach the engine from the caller."
+        }
+      ],
+      "evidence": "For purposes of determining the amount of gain allocable to the residential and non-residential portions of the property, the taxpayer must allocate the basis and the amount realized between the residential and the non-residential portions of the property using the same method of allocation that the taxpayer used to determine depreciation adjustments (as defined in section 1250(b)(3)), if applicable.",
+      "status": "mapped",
+      "note": "Total in the case it does cover - both basis and amount realized are allocated by the method already used for depreciation adjustments - and silent in the case where that method does not exist. Paragraph (e)'s examples state allocated figures ('A determines that $14,000 of the gain is allocable ...') without ever stating how they were derived, so nothing else in the corpus closes the gap."
+    },
+    {
+      "id": "partial-use-examples",
+      "name": "Examples illustrating paragraph (e)",
+      "locator": {
+        "sourceId": "cfr-26-1.121-1",
+        "citation": "§ 1.121-1(e)(4)"
+      },
+      "kind": "value",
+      "scope": "out",
+      "clarity": "clear",
+      "dependsOn": [],
+      "evidence": "(4) Examples. The provisions of this paragraph (e) are illustrated by the following examples:",
+      "status": "declined",
+      "note": "Read and declined as illustration. All six examples apply allocation-required, no-allocation-within-dwelling-unit, residential-portion-depreciation-limit and dwelling-unit-definition to stated figures; each takes its allocated amounts as given ('A determines that $14,000 of the gain is allocable ...'), so none of them supplies the method allocation-method leaves open, and none states a rule the operative text does not."
+    },
+    {
+      "id": "effective-date",
+      "name": "Effective date of this section",
+      "locator": {
+        "sourceId": "cfr-26-1.121-1",
+        "citation": "§ 1.121-1(f)"
+      },
+      "kind": "value",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [],
+      "evidence": "This section is applicable for sales and exchanges on or after Decmeber 24, 2002.",
+      "status": "mapped",
+      "note": "The date on which every rule in this section starts to apply, which is why every in-scope rule entry names this one in enabledBy. The corpus prints 'Decmeber 24, 2002'; the misspelling is the corpus's and the span is verbatim of it. The date matches the credit line at the end of the section, Dec. 24, 2002. This pins the rules' own applicability and is not corpus versioning: comparing a caller's sale date against it is an ordinary operation. The retroactive election that can displace it is the next sentence, mapped as retroactive-election."
+    },
+    {
+      "id": "retroactive-election",
+      "name": "Electing to apply this section retroactively",
+      "locator": {
+        "sourceId": "cfr-26-1.121-1",
+        "citation": "§ 1.121-1(f)"
+      },
+      "kind": "operation",
+      "scope": "out",
+      "clarity": "clear",
+      "dependsOn": [],
+      "crossReferences": [
+        {
+          "cites": "see § 1.121-4(j)",
+          "unmapped": "§ 1.121-4(j) is outside the admitted extract; this section states no rule for the election and only points at it."
+        }
+      ],
+      "evidence": "For rules on electing to apply the provisions of this section retroactively, see § 1.121-4(j).",
+      "status": "declined",
+      "note": "Out of scope: read and declined. The corpus states that such an election exists and places every rule about it in 1.121-4(j). Recorded because it is the one thing that can displace effective-date, and an engine that answered 'the section does not apply' for a pre-2002 sale without saying so would be hiding it."
+    },
+    {
+      "id": "one-sale-every-two-years",
+      "name": "One sale or exchange every two years",
+      "locator": {
+        "sourceId": "cfr-26-1.121-1",
+        "citation": "§ 1.121-1(b)(3)(ii)(B)"
+      },
+      "kind": "operation",
+      "scope": "out",
+      "clarity": "clear",
+      "dependsOn": [],
+      "evidence": "each of the transactions is disregarded in applying section 121(b)(3) (restricting the application of section 121 to only 1 sale or exchange every 2 years)",
+      "status": "declined",
+      "note": "Out of scope: the restriction itself is section 121(b)(3)'s, in a corpus that was not admitted. This section states only how the vacant-land transactions are counted against it, which is mapped as vacant-land-separate-transactions-two-year-rule. The parenthetical is the only description of the restriction the corpus gives."
+    },
+    {
+      "id": "joint-return-limitation",
+      "name": "Limitation for certain joint returns",
+      "locator": {
+        "sourceId": "cfr-26-1.121-1",
+        "citation": "§ 1.121-1(b)(3)(ii)(A)"
+      },
+      "kind": "operation",
+      "scope": "out",
+      "clarity": "clear",
+      "dependsOn": [],
+      "evidence": "each spouse is treated as excluding one-half of the gain from a sale or exchange to which section 121(b)(2)(A) and § 1.121-2(a)(3)(i) (relating to the limitation for certain joint returns) apply.",
+      "status": "declined",
+      "note": "Out of scope: which joint returns get the $500,000 limitation is fixed by section 121(b)(2)(A) and 1.121-2(a)(3)(i), both outside the admitted extract. What this section states about them - the one-half treatment - is in scope and is mapped as vacant-land-cross-year-ordering; this entry records the boundary that rule stops at."
+    },
+    {
+      "id": "military-extended-duty-suspension",
+      "name": "Suspension of the five-year period for extended duty",
+      "locator": {
+        "sourceId": "cfr-26-1.121-1",
+        "citation": "§ 1.121-1(a)"
+      },
+      "kind": "operation",
+      "scope": "out",
+      "clarity": "clear",
+      "absentFrom": {
+        "searched": [
+          "uniformed services",
+          "military",
+          "extended duty",
+          "suspension",
+          "suspend",
+          "Foreign Service",
+          "intelligence community"
+        ]
+      },
+      "dependsOn": [],
+      "evidence": "Subject to the other provisions of section 121, a taxpayer may exclude gain only if, during the 5-year period ending on the date of the sale or exchange, the taxpayer owned and used the property as the taxpayer's principal residence for periods aggregating 2 years or more.",
+      "status": "declined",
+      "note": "Not in the corpus. The 5-year period this section states runs to the date of the sale or exchange with no suspension of any kind; the section states no rule allowing any taxpayer to disregard a period of absence from the 5-year window, and none of the searched terms occurs anywhere in the extract. The span is the sentence such a rule would qualify. A reader who expects one will otherwise read the absence as an omission in the map rather than in the text."
+    },
+    {
+      "id": "source-credit",
+      "name": "Source credit",
+      "locator": {
+        "sourceId": "cfr-26-1.121-1",
+        "citation": "§ 1.121-1"
+      },
+      "kind": "value",
+      "scope": "out",
+      "clarity": "clear",
+      "dependsOn": [],
+      "evidence": "[T.D. 9030, 67 FR 78361, Dec. 24, 2002]",
+      "status": "declined",
+      "note": "Out of scope: the credit line naming the Treasury decision and Federal Register citation that adopted the section. Publication metadata, not a rule. Recorded so that the last line of the extract is a read verdict rather than a gap in coverage."
+    }
+  ]
+}
