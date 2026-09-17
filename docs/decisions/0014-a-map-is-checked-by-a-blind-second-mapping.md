@@ -58,6 +58,40 @@ backgammon examples replaced. The two runs agree to within one, which says the c
 one mapper's accident. It is one corpus, two mappers and 15 purposive injections, and it gives no
 rate for other corpora.
 
+### A natural case, 2026-09-17
+
+The evidence above is synthetic: errors were injected on purpose, so it shows the procedure can
+find an error someone planted. It does not show that a map made in good faith contains one to
+find. [Trial 9](../../examples/tax-121-principal-residence/blind-mapping/README.md) supplied that.
+
+26 CFR § 1.121-1 was mapped, packed, and passed every check the factory has — `check-map.py
+--phase publish`, all 37 locators against the section tree, the extent reached, byte-identical
+packing twice. A blind second mapping then found a rule the first map does not contain.
+
+§ 1.121-1(b)(4) Example 4 nets a $25,000 loss on one sale against $270,000 of gain on another and
+excludes $245,000. The cap is $250,000, so the cap is not what produces that figure, and the
+merger of the two sales is expressly bounded to the maximum limitation amount: nothing in the
+operative text says a loss on one reduces the gain excludable on the other. **No entry of the
+first map can produce $245,000.** An engine built from it answers $250,000 for the regulation's
+own worked facts, in the regulation's voice.
+
+Two things follow that the injection trial could not show:
+
+  * **A map can pass every mechanical check and still be missing a rule.** Not a misclassified
+    entry -- an absent one. The completeness machinery examines the entries a map has; it cannot
+    ask after one nobody wrote. That is the question [#9](https://github.com/brandonifco/rules-factory/issues/9)
+    asked, and this is the first answer to it from a map nobody tampered with.
+  * **The comparison is worth more than the second map.** The blind mapper also produced a
+    principle for its own disagreements that did not survive being tested against the
+    ambiguities both mappers agreed on, and a `definedElsewhere` attribution its own map
+    contradicts two entries away. Adjudication against the corpus ruled two of four
+    disagreements *for the first map*, on evidence neither mapper had used. A second reading is
+    not a better reading; it is a second reading, and what it is worth is the argument the two
+    force.
+
+The same exercise also found 30 `enabledBy` edges missing from the first map, which no review had
+asked after.
+
 ## Alternatives considered
 
 **A checkable claim per entry** (trial 5's suggestion). The stronger form if it can be designed,
