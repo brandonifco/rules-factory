@@ -337,6 +337,40 @@ The claim was stated three times and corrected three times, each time by someone
 `clarity` — **the one field nothing compares against the corpus.** That is the more durable
 finding, and it is why trial 1's undefined-term sweep exists.
 
+### When a worked example is an entry, when it is a bound, and when it is neither
+
+Regulations and rulebooks illustrate their rules. Most illustrations state no rule and are
+declined: they apply rules the map already has, and Phase 6 is where they belong, as tests. Three
+of them are not, and the mapper decides which this one is
+([0031](decisions/0031-an-example-that-bounds-a-term-is-recorded-as-a-bound.md),
+[#216](https://github.com/brandonifco/rules-factory/issues/216)):
+
+- **An example that is the corpus's only authority for a rule no operative sentence states is an
+  entry**, in scope, with the example as its `locator` and its `evidence`. § 1.121-1(b)(4)
+  Example 4 nets a $25,000 loss on the dwelling unit against $270,000 of gain on the vacant land,
+  and no operative sentence says a loss does that; a map without that entry cannot produce the
+  regulation's own answer. Decide this per rule, never per paragraph: the rest of the same
+  examples paragraph stays declined.
+- **An example that bounds a term an operative rule leaves open is a bound on that rule's
+  ambiguity** — `ambiguity.bounds`, on the entry the term is open in, never an entry of its own.
+  § 1.121-1(c)(4) Examples 4 and 5 do this for "short temporary absences": a 1-year sabbatical is
+  not one, a 2-month vacation is. They answer no caller's request and state no rule; what they do
+  is decide what an owner's later ruling may say.
+- **And a bound is recorded only where the dimension is comparable.** Write the example's fact
+  pattern as a value on a scale — a duration, in the vocabulary `corpus-map.md` closes — and the
+  verdict as `applies` or `doesNotApply`. If the fact pattern is not a value on a scale a ruling's
+  threshold could be compared against, **decline the example and leave the reading in
+  `ambiguity.question`**: "adjacent to", bounded by a fact pattern about a public road and a
+  corner, is comparable to nothing a ruling would state. A bound that cannot be compared is a
+  claim nothing checks, which is what `note` is for.
+
+Two shapes that look right and are not. An example that illustrates the **settled side** of a
+rule whose other side is open bounds nothing — § 1.121-1(e)'s Examples 5 and 6 are both business
+use *within* the dwelling unit, the case the operative text already decides in terms. And an
+example that **resolves on a different paragraph** sidesteps the question rather than answering
+it. Neither is an entry and neither is a bound; both are declined, and the entry's `note` says
+what was read.
+
 ## Before the map is used — a blind second mapping
 
 Mechanical checks prove a quote is *where* an entry says, never that it *says* what the entry
@@ -406,6 +440,13 @@ the right fate when the engine must produce an answer and a defensible one exist
 **A runtime unresolved.** The engine returns `RequiresInterpretation` and declines. This is
 the right fate when no reading is defensible enough to bake in, or when the ambiguity is the
 caller's to resolve rather than the engine's.
+
+**An unresolved question the corpus bounds by worked example carries those bounds.** Phase 3
+decides which examples they are; the fate does not change, because a bound narrows the defensible
+readings without picking one. What it buys is later: an owner who rules on the question under
+[0027](decisions/0027-an-owners-ruling-is-held-by-the-engine-and-checked-by-the-factory.md) states
+the line the ruling draws in the bounded dimension, and a ruling that contradicts an example fails
+the engine's gate, naming it ([0031](decisions/0031-an-example-that-bounds-a-term-is-recorded-as-a-bound.md)).
 
 **A standard is not a gap, and it is not an ambiguity either.** "Well clear", "reasonable
 protection", "a flash rate sufficient to avoid a collision" — a regulator who writes these has

@@ -291,6 +291,126 @@ class TestProblems(unittest.TestCase):
         self.assertIn("ruled by Brandon on 2026-09-15", line)
 
 
+class BoundedCase(unittest.TestCase):
+    """The real case, from the real map: § 1.121-1(c)(2) leaves "short temporary absences" open,
+    and § 1.121-1(c)(4) Examples 4 and 5 bound it -- a 1-year sabbatical is not one, a 2-month
+    vacation is (rules-factory decision 0031).
+    """
+
+    @classmethod
+    def setUpClass(cls):
+        with open(os.path.join(REPO, "examples", "tax-121-principal-residence", "corpus-map.json"),
+                  encoding="utf-8") as handle:
+            cls.package = json.load(handle)
+        cls.entry = next(e for e in cls.package["entries"] if e["id"] == "short-temporary-absences")
+        cls.question = cls.entry["ambiguity"]["question"]
+
+    def overlay(self, boundary=..., **ruling):
+        item = {
+            "status": "implemented",
+            "implementedIn": {"ruleset": "tax-121-principal-residence", "version": 1},
+            "tests": [{"test": "ShortAbsenceTests.An_absence_within_the_line_is_use",
+                       "mutation": "Moved the line past a year; this test went red."}],
+            "rulings": [{
+                "id": "short-temporary-absences/length",
+                "span": self.question,
+                "answer": "An absence of six months or less is a short temporary absence.",
+                "ruledBy": "Brandon",
+                "ruledOn": "2026-09-17",
+                "record": RECORD,
+                "tests": ["ShortAbsenceTests.An_absence_within_the_line_is_use"],
+            }],
+            "declines": [],
+        }
+        if boundary is not ...:
+            item["rulings"][0]["boundary"] = boundary
+        item["rulings"][0].update(ruling)
+        return {"short-temporary-absences": item}
+
+    def line(self, operator, value):
+        return {"dimension": "duration", "operator": operator, "value": value}
+
+
+class TestARulingAgainstItsBounds(BoundedCase):
+    def setUp(self):
+        self.root = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, self.root, True)
+        write_record(self.root)
+
+    def check(self, overlay):
+        return rulings.problems(self.package, overlay, self.root)
+
+    def test_the_map_carries_the_two_bounds_this_expects(self):
+        bounds = self.entry["ambiguity"]["bounds"]
+        self.assertEqual(bounds["dimension"], "duration")
+        self.assertEqual([(e["value"], e["verdict"]) for e in bounds["examples"]],
+                         [("P1Y", "doesNotApply"), ("P2M", "applies")])
+
+    def test_the_eighteen_month_ruling_is_refused_and_the_bound_is_named(self):
+        # #216's failure mode, and the whole point of the field: an owner sets the line at
+        # eighteen months, and Example 4 says a 1-year sabbatical is not a short temporary
+        # absence. Before 0031 no check saw the contradiction.
+        found = self.check(self.overlay(self.line("<=", "P18M")))
+        self.assertEqual(len(found), 1, found)
+        self.assertIn("§ 1.121-1(c)(4) Example 4", found[0])
+        self.assertIn("short temporary absences' applies at P1Y", found[0])
+        self.assertIn("is not considered to be a short temporary absence", found[0])
+
+    def test_a_ruling_the_bounds_leave_open_is_accepted(self):
+        # Six months is between the two examples, where the corpus says nothing.
+        self.assertEqual(self.check(self.overlay(self.line("<=", "P6M"))), [])
+
+    def test_the_same_length_in_other_units_is_refused_too(self):
+        # 12 months is a year: a ruling cannot clear Example 4 by restating the length.
+        self.assertIn("Example 4", "\n".join(self.check(self.overlay(self.line("<=", "P12M")))))
+        self.assertIn("Example 4", "\n".join(self.check(self.overlay(self.line("<", "P366D")))))
+
+    def test_a_line_drawn_the_wrong_way_round_contradicts_both_bounds(self):
+        found = self.check(self.overlay(self.line(">=", "P6M")))
+        self.assertEqual(len(found), 2, found)
+        self.assertIn("Example 5", "\n".join(found))
+
+    def test_a_ruling_on_a_bounded_question_that_names_no_boundary_is_refused(self):
+        found = self.check(self.overlay())
+        self.assertIn("names no `boundary`", "\n".join(found))
+
+    def test_a_ruling_that_draws_no_line_says_so_and_is_printed(self):
+        overlay = self.overlay(None)
+        self.assertEqual(self.check(overlay), [])
+        self.assertIn("draws no line in the dimension short-temporary-absences's bounds are in",
+                      "\n".join(rulings.describe(overlay)))
+
+    def test_a_boundary_in_another_dimension_is_refused(self):
+        found = self.check(self.overlay({"dimension": "distance", "operator": "<=", "value": "P6M"}))
+        self.assertIn("is in 'distance' and the entry's bounds are in 'duration'", "\n".join(found))
+
+    def test_a_malformed_boundary_is_refused(self):
+        cases = {
+            "operator": ({"dimension": "duration", "operator": "≤", "value": "P6M"},
+                         "outside {<, <=, >, >=}"),
+            "value": (self.line("<=", "six months"), "not a duration"),
+            "missing": ({"dimension": "duration", "value": "P6M"}, "it lacks operator"),
+            "extra": (dict(self.line("<=", "P6M"), why="because"), "it carries why"),
+            "not an object": ("<= P6M", "neither an object"),
+        }
+        for label, (boundary, expected) in cases.items():
+            with self.subTest(label):
+                self.assertIn(expected, "\n".join(self.check(self.overlay(boundary))))
+
+    def test_a_boundary_on_an_entry_with_no_bounds_is_refused(self):
+        # Nothing would compare it: a line in a dimension no example bounds is prose in a
+        # structured field, which is what 0031 exists to refuse.
+        overlay = worked_example()
+        overlay["bearing-off-eligible"]["rulings"][0]["boundary"] = self.line("<=", "P6M")
+        found = rulings.problems(MAP, overlay, self.root)
+        self.assertIn("carries boundary", "\n".join(found))
+        self.assertIn("only where the entry's question carries `ambiguity.bounds`", "\n".join(found))
+
+    def test_a_ruling_that_draws_its_line_is_printed_with_it(self):
+        (_, line) = rulings.describe(self.overlay(self.line("<=", "P6M")))[:2]
+        self.assertIn("draws the line at <= P6M in duration", line)
+
+
 class ProducedCase(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
@@ -473,6 +593,51 @@ class TestGate(ProducedCase):
         code, output = self.script("engine-gate.py", "regenerate", *args)
         self.assertEqual(code, 1, output)
         self.assertIn(f"{RULINGS_CS} differs from a fresh regeneration", output)
+
+
+class TestTheGateRefusesARulingItsBoundsForbid(ProducedCase, BoundedCase):
+    """The engine's own gate, on the real map: `map-overlay.py merge` runs the vendored
+    scripts/factory/rulings.py, so an engine whose owner ruled past a bound fails its gate and
+    never answers (0031). The package map here is § 1.121-1's, written to a file the way TestGate
+    writes hoyle's: the engine produced above is only the harness that vendors the checker.
+    """
+
+    @classmethod
+    def setUpClass(cls):
+        # Both parents have one, and each sets up half of what these tests need: the packed hoyle
+        # feed the engine is produced from, and the § 1.121-1 map that carries the bounds.
+        ProducedCase.setUpClass.__func__(cls)
+        BoundedCase.setUpClass.__func__(cls)
+
+    @classmethod
+    def tearDownClass(cls):
+        ProducedCase.tearDownClass.__func__(cls)
+
+    def setUp(self):
+        ProducedCase.setUp(self)
+        self.assertEqual(self.produce()[0], factory.NOT_VERIFIED)
+        write_record(self.out)
+        self.package_map = os.path.join(self.tmp, "bounded-package-map.json")
+        with open(self.package_map, "w", encoding="utf-8") as handle:
+            json.dump(self.package, handle)
+
+    def merge(self, overlay):
+        with open(os.path.join(self.out, "corpus-map.overlay.json"), "w", encoding="utf-8") as handle:
+            json.dump(overlay, handle, indent=2)
+        merged = os.path.join(self.tmp, "merged.json")
+        return self.script("map-overlay.py", "merge", "--package-map", self.package_map,
+                           "--overlay", os.path.join(self.out, "corpus-map.overlay.json"), "--out", merged)
+
+    def test_the_eighteen_month_ruling_fails_the_gate_naming_the_bound(self):
+        code, output = self.merge(self.overlay(self.line("<=", "P18M")))
+        self.assertEqual(code, 1, output)
+        self.assertIn("§ 1.121-1(c)(4) Example 4", output)
+        self.assertIn("is not considered to be a short temporary absence", output)
+
+    def test_a_ruling_the_bounds_leave_open_merges(self):
+        code, output = self.merge(self.overlay(self.line("<=", "P6M")))
+        self.assertEqual(code, 0, output)
+        self.assertIn("draws the line at <= P6M in duration", output)
 
 
 if __name__ == "__main__":

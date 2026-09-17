@@ -536,6 +536,77 @@ Nothing detects a conflict the mapper never noticed: two `clarity: clear` entrie
 incompatible rules produce a map that validates, which is the same blind spot as an incomplete
 gate list. What these rules buy is that a *recorded* conflict cannot be half-settled.
 
+### `ambiguity.bounds` — what an authored example fixes about the open term
+
+An operative rule can leave a term open while the same corpus, in the same authority's words,
+states that a particular fact pattern is or is not within it. § 1.121-1(c)(2) counts "short
+temporary absences" as use and fixes no length; § 1.121-1(c)(4) Example 4 states that a 1-year
+sabbatical is not one and Example 5 that a 2-month vacation is. Those two are not entries — they
+answer no caller's request and state no rule — and they are not prose either: they decide what an
+owner's `ruling` (0027) may say. Decided in
+[0031](decisions/0031-an-example-that-bounds-a-term-is-recorded-as-a-bound.md)
+([#216](https://github.com/brandonifco/rules-factory/issues/216)).
+
+```json
+"ambiguity": {
+  "question": "\"Short temporary absences\" fixes no length and no test. …",
+  "fate": "unresolved",
+  "unresolvedReason": "RequiresInterpretation",
+  "bounds": {
+    "term": "short temporary absences",
+    "dimension": "duration",
+    "examples": [
+      { "locator": { "sourceId": "cfr-26-1.121-1", "citation": "§ 1.121-1(c)(4) Example 4" },
+        "text": "… Because his leave is not considered to be a short temporary absence under paragraph (c)(2) of this section, …",
+        "verdict": "doesNotApply", "value": "P1Y" },
+      { "locator": { "sourceId": "cfr-26-1.121-1", "citation": "§ 1.121-1(c)(4) Example 5" },
+        "text": "… the 2-month vacations are short temporary absences and are counted as periods of use …",
+        "verdict": "applies", "value": "P2M" }
+    ]
+  }
+}
+```
+
+- **`term`** is the open term in the corpus's words, and it must occur verbatim in the entry's
+  own `evidence`. A term the cited passage does not use is the mapper's, not the corpus's.
+- **`dimension`** is the scale the example's fact pattern and a later ruling's line are both
+  values on. **It is a closed vocabulary, and it holds only what a checker compares**: today
+  `duration`, in ISO 8601 (`P1Y`, `P18M`, `P730D`), compared in 30-day months and 12-month years
+  so that `P1Y` and `P12M` are one value. A dimension is added when a corpus states a bound in it
+  and a parser and its tests arrive with it.
+- **`examples[].locator` and `.text`** are the example's own citation and one contiguous verbatim
+  span of it, on the same terms as `locator` and `evidence`: the locator checkers find the words
+  and hold them to the citation, and a bound whose words are not there fails the run.
+- **`examples[].verdict`** is `applies` or `doesNotApply` — the term reaches that fact pattern, or
+  it does not. **`.value`** is where the fact pattern sits in the dimension.
+- Only on `fate: unresolved`, and only inside the `ambiguity` block. `check-map.py --only bounds`
+  refuses the block elsewhere, a dimension it cannot compare, a value it cannot place, and
+  **examples no single threshold separates** — two bounds that cannot both hold are a defect in
+  the map, not an ambiguity in the corpus.
+
+**What a bound buys, and it is one thing: an owner's ruling is compared against it.** Under 0027
+an engine's owner may answer part of an open question. Where the entry carries bounds, that ruling
+states the line it draws — `"boundary": {"dimension", "operator", "value"}` — or `null` to declare
+that it draws no line in that dimension, and `tools/factory/rulings.py` evaluates it at every
+example's value. A ruling that "short temporary absence" means eighteen months or less makes a
+1-year sabbatical short, Example 4 says it is not, and the engine fails its gate naming the
+example rather than answering. That comparison is the whole of what the field earns its place by
+under [0005](decisions/0005-a-field-earns-its-place-by-being-checkable.md), which is why the
+dimension must be comparable.
+
+**A bound is admitted only where the dimension is comparable, and the rest stays prose.**
+§ 1.121-1(b)(3)(i)'s "adjacent to" is bounded by fact patterns about a public road and a corner;
+no threshold any ruling would state is comparable to them, so they stay in `ambiguity.question`,
+unchecked and admittedly so. Recording them as bounds would put in a structured field exactly what
+the field was scoped to exclude.
+
+**What it does not buy.** Nothing detects an authored example the mapper never read — the blind
+spot an unrecorded conflict already has. Nothing holds a ruling's `boundary` to the `answer` in
+prose beside it, or a `boundary: null` to the truth; both are what review reads. And a bound's
+`value` is the mapper's reading of the example's fact pattern: that Taxpayer D's sabbatical was
+a year is in the quoted text, and that it is the feature the example turns on is a judgement no
+check makes.
+
 ### `dependsOn` orders work; `enabledBy` and `suspendedBy` do not
 
 `dependsOn` orders *implementation*. A rule that applies only in a phase — bearing off

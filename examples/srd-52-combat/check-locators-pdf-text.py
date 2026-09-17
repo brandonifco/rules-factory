@@ -322,6 +322,29 @@ def check_locators(page_checker, entries, corpus, starts, reached, end=None):
                            f"printed off the cited page too and identified by the heading path){aside}")
 
 
+def bound_examples(entries):
+    """Each authored example in `ambiguity.bounds` as an entry of its own (rules-factory 0031).
+
+    A bound quotes the corpus and carries a `locator`, exactly as `evidence` does, so it is
+    checked by `check_locators` above rather than by a second implementation of finding a quote:
+    an owner's ruling is admitted or refused by comparing it against that quotation, so a bound
+    whose words are not at its citation is a bound of nothing. They are located with a `reached`
+    of their own, because coverage asks which pages an entry's own evidence reached and an example
+    quoted to bound someone else's term is not a verdict on the page it sits on.
+    """
+    out = []
+    for entry in entries:
+        ambiguity = entry.get("ambiguity")
+        bounds = ambiguity.get("bounds") if isinstance(ambiguity, dict) else None
+        listed = bounds.get("examples") if isinstance(bounds, dict) else None
+        for index, example in enumerate(listed if isinstance(listed, list) else [], start=1):
+            if isinstance(example, dict):
+                out.append({"id": f"{entry.get('id', '?')}: bounds.examples[{index}]",
+                            "locator": example.get("locator") or {},
+                            "evidence": example.get("text", "")})
+    return out
+
+
 def located_entries(entries):
     return [e for e in entries if "derivedFrom" not in e]
 
@@ -460,8 +483,12 @@ def main(argv=None):
     reached = set()
     end = (declared["to"], boundary) if boundary is not None else None
     print(f"{map_path} ({len(entries)} entries) against {corpus_path}")
+    bounds = bound_examples(entries)
     results = [
         ("locators", check_locators(page_checker, entries, corpus, starts, reached, end)),
+        ("bounds", check_locators(page_checker, bounds, corpus, starts, set())
+         if bounds else page_checker.skip("no entry carries `ambiguity.bounds`, so no authored "
+                                          "example bounds a term in this map", had_subject=False)),
         ("extent-end", check_extent_end(page_checker, entries, corpus, starts, declared, boundary, problem)),
         ("extraction", check_extraction(page_checker, entries, corpus, starts)),
         ("absence", page_checker.check_absence(entries, extent)),

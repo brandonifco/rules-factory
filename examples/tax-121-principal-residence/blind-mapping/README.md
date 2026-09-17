@@ -174,6 +174,9 @@ passage holds no rules.**
 
 ## The worked-examples question — [#216](https://github.com/brandonifco/rules-factory/issues/216)
 
+*(Written while the question was open, and kept as written; the decision is at the end of this
+section.)*
+
 **Not solved, and Map C does not adopt B's shape.** B mapped two of the (c)(4) examples as
 ordinary in-scope entries — `sabbatical-not-short-absence` and `two-month-vacation-short-absence`,
 `kind: value`, `clarity: clear`, opposite verdicts on the same paragraph — while **still**
@@ -217,9 +220,24 @@ bears on this and does not settle it.
 > entry. An example that **bounds a term an operative rule leaves open** is an interpretation
 > constraint on that rule, and the schema has no shape for one.
 
-Map C follows it: `combined-sale-nets-dwelling-loss` is an entry; the two "short" bounds are
-quoted, with their citations, inside `short-temporary-absences.ambiguity.question`, so the
-authority is not lost while the schema question stays open.
+**Decided 2026-09-17 by [0031](../../../docs/decisions/0031-an-example-that-bounds-a-term-is-recorded-as-a-bound.md),
+and the paragraphs above are left as they were written.** The proposed line is the decision's, and
+the schema now has the shape it says was missing. `combined-sale-nets-dwelling-loss` is an entry,
+as it already was; the two "short" bounds are `short-temporary-absences.ambiguity.bounds` — each
+with its citation, its verbatim text, its verdict and its value in the dimension that makes it
+comparable (duration: the sabbatical at `P1Y`, `doesNotApply`; the vacations at `P2M`, `applies`)
+— rather than a quotation inside the question. What that buys is the fourth thing B's shape lost:
+an owner's ruling under 0027 states the line it draws in the same dimension, and one setting
+"short temporary absence" at eighteen months fails the engine's gate naming Example 4.
+
+Of the three things this record said it would take to decide, (2) and (3) are answered — the
+checkable obligation is the ruling comparison, and a constraint is a field on the entry it
+constrains, not an entry. (1) is **not**: a survey of every unresolved ambiguity in this
+repository's maps found no second corpus instance, because Part 107 contains no worked example at
+all and every other candidate either illustrates the settled side or turns on a categorical fact.
+0031's answer to designing from one regulation is the restriction rather than the delay: bounds
+are admitted only where the dimension is comparable, which is what keeps the field off the cases
+that do not fit.
 
 ## What Map C changes, and what it does not
 
@@ -231,8 +249,9 @@ Six rulings land in Map C, every one keyed to a row of the record and applied by
   `graph-shape`).
 - `combined-sale-nets-dwelling-loss` is added, ambiguous and unresolved (row
   `combined-sale-nets-dwelling-loss`), and `examples-b`'s note stops declining the paragraph whole.
-- `short-temporary-absences`' ambiguity question now quotes both example bounds (row
-  `worked-examples-as-entries`).
+- `short-temporary-absences` carries both example bounds as `ambiguity.bounds`, and its question
+  states that they bound the term rather than re-quoting them (row `worked-examples-as-entries`,
+  ruled later by 0031; the bounds' own text is held to the corpus by the locator checker).
 - `ownership-and-use-aggregation` and `residence-excludes-personal-property` become `value`
   (rows `kind-two-year-equivalents`, `kind-residence-exclusion`). The second was caught by Map A's
   own neighbouring verdict: it records *"may include"* as a value and *"does not include"*, one
@@ -245,9 +264,11 @@ Six rulings land in Map C, every one keyed to a row of the record and applied by
   `full-table-suspension` omission method.md warns about, and it passed every check in this
   repository.
 
-**One disagreement is open and Map C does not carry it:** #216's shape, row
-`worked-examples-as-entries`. Under 0014 that is a legitimate outcome — the corpus settles what a
-rule says, not what a schema should be — and it is recorded rather than guessed.
+**One disagreement was recorded open and is now ruled elsewhere:** #216's shape, row
+`worked-examples-as-entries`. Under 0014 leaving it open was a legitimate outcome — the corpus
+settles what a rule says, not what a schema should be — and it was recorded rather than guessed
+until 0031 decided the schema question. The row keeps its original ruling and carries the later
+one beside it.
 
 What Map C keeps from A, over B's objection, with reasons in the record: the eighteen
 citations one level shallower than the regulation's own numbering (tested — written at the

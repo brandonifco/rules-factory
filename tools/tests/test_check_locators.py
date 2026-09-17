@@ -910,5 +910,131 @@ class ExampleCase(unittest.TestCase):
             "ok")
 
 
+def bounded_map():
+    """A map whose open term is bounded by the two worked examples of § 2.20(b) (0031)."""
+    bounded = entry("widget-adjacency", "§ 2.20(a)",
+                    "A widget adjacent to a token is a widget of the token.")
+    bounded["clarity"] = "ambiguous"
+    bounded["ambiguity"] = {
+        "question": "The corpus fixes no distance for `adjacent`.",
+        "fate": "unresolved",
+        "unresolvedReason": "RequiresInterpretation",
+        "bounds": {
+            "term": "adjacent",
+            "dimension": "duration",  # the shape, not the reading: what is checked here is the quote
+            "examples": [
+                {"locator": {"sourceId": "demo-cfr", "citation": "§ 2.20(b) Example 1"},
+                 "text": "A owns a widget and a token. A may keep six.",
+                 "verdict": "applies", "value": "P2M"},
+                {"locator": {"sourceId": "demo-cfr", "citation": "§ 2.20(b) Example 2"},
+                 "text": "B owns a widget across a road from a token. B may keep none.",
+                 "verdict": "doesNotApply", "value": "P1Y"},
+            ],
+        },
+    }
+    return {
+        "schemaVersion": 1,
+        "corpus": "demo-cfr",
+        "baseline": {"contentHash": "b" * 64, "hashDerivation": "demo-xml"},
+        "extent": {"unit": "section-designation", "sections": ["§ 2.20"]},
+        "entries": [bounded],
+    }
+
+
+class TestBoundsAreLocated(ExampleCase):
+    """0031: a bound quotes the corpus and cites it, so it is held to `evidence`'s standard.
+
+    A ruling is admitted or refused by comparing it against the bound's words, so a bound whose
+    words are not at the citation it names would decide an engine's gate on a quotation of
+    nothing -- which is the failure `evidence` being a summary already was (#18).
+    """
+
+    def run_tool(self, document):
+        path = os.path.join(self.root, "corpus-map.json")
+        with open(path, "w", encoding="utf-8") as handle:
+            json.dump(document, handle)
+        out = io.StringIO()
+        with redirect_stdout(out), redirect_stderr(out):
+            code = check_locators_section.main(["check-locators-section.py", path, self.corpus_path])
+        return code, out.getvalue()
+
+    def test_a_map_whose_bounds_quote_their_examples_passes(self):
+        code, output = self.run_tool(bounded_map())
+        self.assertEqual(code, 0, output)
+        self.assertIn("2 authored example(s) bounding a term", output)
+
+    def test_a_bound_whose_text_is_not_in_the_corpus_fails(self):
+        document = bounded_map()
+        document["entries"][0]["ambiguity"]["bounds"]["examples"][0]["text"] = (
+            "A owns a widget and a token. A may keep seven.")
+        code, output = self.run_tool(document)
+        self.assertEqual(code, 1, output)
+        self.assertIn("widget-adjacency: bounds.examples[1]", output)
+        self.assertIn("do not quote the corpus at the citation they name", output)
+
+    def test_a_bound_cited_to_the_wrong_example_fails(self):
+        document = bounded_map()
+        document["entries"][0]["ambiguity"]["bounds"]["examples"][0]["locator"]["citation"] = (
+            "§ 2.20(b) Example 2")
+        code, output = self.run_tool(document)
+        self.assertEqual(code, 1, output)
+        self.assertIn("widget-adjacency: bounds.examples[1]", output)
+
+    def test_a_bound_does_not_reach_a_section_for_coverage(self):
+        # An example quoted to bound someone else's term is not a verdict on the paragraph it
+        # sits in. With the entry's own evidence unfindable, § 2.20 is reached by nothing, and
+        # the two verified bounds inside it must not cover the section.
+        document = bounded_map()
+        document["entries"][0]["evidence"] = "A summary of the adjacency rule."
+        code, output = self.run_tool(document)
+        self.assertEqual(code, 1, output)
+        self.assertIn("§ 2.20: inside the declared extent and reached by no entry's verified", output)
+
+
+class TestPageBoundsAreLocated(LocatorCase):
+    """The same rule in the printed-page grammar: a bound is located as `evidence` is (0031)."""
+
+    def bounded(self):
+        document = valid_map()
+        document["entries"][1]["clarity"] = "ambiguous"
+        document["entries"][1]["ambiguity"] = {
+            "question": "The corpus does not say which number governs.",
+            "fate": "unresolved",
+            "unresolvedReason": "RequiresInterpretation",
+            "bounds": {
+                "term": "the number shown",
+                "dimension": "duration",
+                "examples": [
+                    {"locator": {"sourceId": "demo-corpus", "citation": "Part One / p. 3"},
+                     "text": "Where several rounds are played in succession, the winner moves first.",
+                     "verdict": "applies", "value": "P2M"},
+                ],
+            },
+        }
+        return document
+
+    def test_a_bound_quoting_its_cited_page_passes(self):
+        code, output = self.run_tool(self.bounded())
+        self.assertEqual(self.status_of(output, "locators"), "ok", output)
+        self.assertEqual(code, 0, output)
+
+    def test_a_bound_cited_to_the_wrong_page_fails(self):
+        document = self.bounded()
+        document["entries"][1]["ambiguity"]["bounds"]["examples"][0]["locator"]["citation"] = \
+            "Part One / p. 2"
+        code, output = self.run_tool(document)
+        self.assertEqual(self.status_of(output, "locators"), "fail", output)
+        self.assertIn("legal-destination: bounds.examples[1]", output)
+        self.assertEqual(code, 1, output)
+
+    def test_a_bound_whose_text_is_not_in_the_corpus_fails(self):
+        document = self.bounded()
+        document["entries"][1]["ambiguity"]["bounds"]["examples"][0]["text"] = "The winner moves last."
+        code, output = self.run_tool(document)
+        self.assertEqual(self.status_of(output, "locators"), "fail", output)
+        self.assertIn("is not in the corpus verbatim", output)
+        self.assertEqual(code, 1, output)
+
+
 if __name__ == "__main__":
     unittest.main()
