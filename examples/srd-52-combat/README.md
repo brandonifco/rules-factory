@@ -89,9 +89,12 @@ turns to and the PDF's fifteenth page, and the grammar does not have to choose.
 **Locator checker: [check-locators-pdf-text.py](check-locators-pdf-text.py)**, standard library
 only, registered for the adapter in `pack-map.py`'s `LOCATOR_CHECKERS` and run by `validate.sh`.
 It is stricter than Hoyle's `tools/check-locators.py` in three ways. The whole quote must occur,
-not its longest five-word prefix. Every occurrence must touch the cited page, not only the first.
-The citation's last heading must occur as a line between the start of the previous page and the
-quote. `absence` and `coverage` are Hoyle's checks, loaded from that file and run unchanged. Its
+not its longest five-word prefix. Every occurrence must touch the cited page, not only the first —
+unless the corpus prints the passage elsewhere too, in which case the heading path says which
+printing the citation means, and a path that does not narrow it to one fails
+([0030](../../docs/decisions/0030-a-repeated-passage-is-identified-by-the-container-its-citation-names.md),
+[#207](https://github.com/brandonifco/rules-factory/issues/207)). The citation's last heading must
+occur as a line between the start of the previous page and the quote. `absence` and `coverage` are Hoyle's checks, loaded from that file and run unchanged. Its
 failing cases are in `tools/tests/test_check_locators.py`.
 
 **`extent`: pages 13–16**, the "Combat" section of "Playing the Game", from the heading at the top
