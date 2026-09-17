@@ -400,7 +400,7 @@ now indexed under the paragraph that introduces it and nowhere deeper — `("1.1
 this finding held back on, what path an example's own `(i)`/`(ii)` parts take, is still not
 answered and did not have to be: an example is indexed whole, so a quote from any part of it
 verifies against the example, and nothing claims those parts are paragraphs. Eight tests in
-`tools/tests/test_check_locators.py`. See
+`tools/tests/mapvalidator/test_check_locators.py`. See
 [blind-mapping/README.md](blind-mapping/README.md#4-a-coverage-miss-verified-against-the-corpus):
 a grammar that cannot cite a passage quietly decides the passage holds no rules, and that is what
 happened here.

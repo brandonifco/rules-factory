@@ -27,7 +27,7 @@ tree the gate fails is one recompute also fails, naming at least one of the same
 The embedded copy is only exercised by `dotnet test` on a produced engine, which needs the
 SDK the kernel pins and network access to nuget.org; that test skips, saying why, without them.
 
-Run: python3 -m unittest discover -s tools/tests
+Run: python3 -m unittest discover -s tools/tests -t tools
 """
 import hashlib
 import importlib.util
@@ -43,7 +43,7 @@ import unittest
 import zipfile
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-TOOLS = os.path.dirname(HERE)
+TOOLS = os.path.dirname(os.path.dirname(HERE))
 REPO = os.path.dirname(TOOLS)
 FACTORY = os.path.join(TOOLS, "factory")
 PACK = os.path.join(TOOLS, "pack-map.py")

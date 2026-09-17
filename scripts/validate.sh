@@ -198,8 +198,10 @@ check_map_packages() {
   printf '%d map package(s) gated and packed, byte-identical twice\n' "$packed"
 }
 
-# The checkers' own tests. A checker nobody has watched fail is not yet a checker, and this
-# repo has shipped two that counted work they had not done.
+# The checkers' own tests, laid out by subsystem (0033): tools/tests/mapper/,
+# tools/tests/mapvalidator/, tools/tests/factory/, and at the top level the tests of the checkers
+# that hold *this repository* to its word rather than any subsystem. A checker nobody has watched
+# fail is not yet a checker, and this repo has shipped two that counted work they had not done.
 check_tool_tests() {
   local out
   out="$(python3 -m pytest -p no:cacheprovider tools/tests -q 2>&1)" || { printf '%s\n' "$out"; return 1; }
@@ -215,8 +217,9 @@ check_tool_tests() {
 # tools/factory/recipe/ is skipped here and nowhere else: those files are not this repository's
 # documents but the bytes an engine receives, and their links resolve against the engine's layout
 # (AGENTS.md at its root, not in a recipe directory). Checking them here would compare a rail
-# against the wrong tree. tools/tests/test_factory_rails.py checks them against the right one --
-# skipping them without checking them somewhere is the failure this step exists to catch.
+# against the wrong tree. tools/tests/factory/test_factory_rails.py checks them against the
+# right one -- skipping them without checking them somewhere is the failure this step exists to
+# catch.
 check_doc_references() {
   python3 - "$ROOT" <<'PY'
 import pathlib, re, sys

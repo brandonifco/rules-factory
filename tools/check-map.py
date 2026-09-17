@@ -1096,7 +1096,7 @@ def duration_in_days(value):
     """`P1Y` as 360, `P18M` as 540, or None when the value is not a duration this compares.
 
     `tools/factory/rulings.py` carries the same parser, because it is vendored into every engine
-    and imports nothing of this checker; `tools/tests/test_check_map.py` holds the two to each
+    and imports nothing of this checker; `tools/tests/mapvalidator/test_check_map.py` holds the two to each
     other over one table, as it already does for the section-designation expression.
     """
     match = DURATION.match(value) if isinstance(value, str) else None

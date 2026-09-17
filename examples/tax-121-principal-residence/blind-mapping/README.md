@@ -169,7 +169,7 @@ elements that the eCFR locator checker did not index, so **no entry could cite o
 trial 9's own finding 3, and part of why it declined them wholesale.
 `examples/faa-part-107/check-locators-section.py` now indexes an `<EXAMPLE>` under the paragraph
 that introduces it and reads `§ 1.121-1(b)(4) Example 4` as a citation, with eight tests in
-`tools/tests/test_check_locators.py`. **A grammar that cannot cite a passage quietly decides the
+`tools/tests/mapvalidator/test_check_locators.py`. **A grammar that cannot cite a passage quietly decides the
 passage holds no rules.**
 
 ## The worked-examples question — [#216](https://github.com/brandonifco/rules-factory/issues/216)

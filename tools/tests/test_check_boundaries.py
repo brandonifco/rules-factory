@@ -12,7 +12,7 @@ each rule below is watched failing on a tree built to break it, and the mutation
   * a subsystem that is declared and absent, and one whose statement of what it owns is gone;
   * an examined-nothing run.
 
-Run: python3 -m unittest discover -s tools/tests
+Run: python3 -m unittest discover -s tools/tests -t tools
 """
 import importlib.util
 import io

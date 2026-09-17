@@ -29,7 +29,7 @@ Detection compares against the recipe history in code rather than against the ha
 `produce` recorded in provenance.json. The history does not trust a file in the engine (an edited
 provenance.json cannot make a hand edit look like the factory's), it works for an engine produced
 before this module existed (its files are version 1), and it makes a recipe version mean fixed
-bytes: tools/tests/test_factory_ownership.py fails when a recipe changes without a new version and
+bytes: tools/tests/factory/test_factory_ownership.py fails when a recipe changes without a new version and
 its hash. The cost is that a managed recipe may not depend on the engine's name or the map, and
 none does.
 

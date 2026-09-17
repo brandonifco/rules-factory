@@ -154,7 +154,7 @@ in `rules-kernel`. Maps are versioned independently of each other.
 **Structure is checked before a map can be a version. The engine re-runs only the checks its
 own overlay can change.** The split lives in `STATUS_DEPENDENT` in
 [`tools/check-map.py`](../../tools/check-map.py) and is not maintained anywhere else, this table
-included. `tools/tests/test_check_map.py` holds it in both directions. It sets the overlay fields
+included. `tools/tests/mapvalidator/test_check_map.py` holds it in both directions. It sets the overlay fields
 every way an overlay can and requires that each structural check keeps its verdict and that each
 status-dependent check can be changed.
 

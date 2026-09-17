@@ -7,7 +7,7 @@ directory in an engine made a commit write one file and delete another in the di
 pointed to. These cases drive `Stage` and `recover()` directly, on a scratch tree, so they are
 fast and need no package; test_factory_produce.py covers the refusal through `produce`.
 
-Run: python3 -m unittest discover -s tools/tests
+Run: python3 -m unittest discover -s tools/tests -t tools
 """
 import json
 import os
@@ -17,7 +17,7 @@ import unittest
 from unittest import mock
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-FACTORY = os.path.join(os.path.dirname(HERE), "factory")
+FACTORY = os.path.join(os.path.dirname(os.path.dirname(HERE)), "factory")
 sys.path.insert(0, FACTORY)
 import transaction  # noqa: E402
 import intake  # noqa: E402

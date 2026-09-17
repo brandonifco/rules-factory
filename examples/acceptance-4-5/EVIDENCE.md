@@ -411,7 +411,7 @@ and both `produce` and `verify` stop at the first stage that fails.
    error). A caller for which an unverified engine is the intended outcome accepts exactly 3 —
    the idiom `scripts/validate.sh` already uses for `posture` — and `scripts/validate-engine.sh`
    now does that in one `unverified_produce` wrapper, which also fails if `--no-verify` ever exits
-   0 again. `tools/tests/test_factory_verify.py`'s `TestExitCodes` holds all of it. The earlier
+   0 again. `tools/tests/factory/test_factory_verify.py`'s `TestExitCodes` holds all of it. The earlier
    bound still holds too: such a run still refuses to commit lock files that disagree with the
    generated pins (proven above), and CI never uses the flag.
 2. **"verified" means the gate passed, not that the engine implements anything.** The fresh

@@ -90,8 +90,8 @@ disagreement about the corpus: a split, a merge, a choice of span, or a schema q
 | crossReferences declared: `night-waiver-termination` (§ 107.29, unmapped); `visual-line-of-sight` (paragraph (a) → `unaided-visual-contact`); `visual-observer-conditions` (§ 107.31 → `visual-line-of-sight`); `over-human-beings` (subpart D → `subpart-d-categories`); `preflight-actions` (subpart D, §§ 107.110, 107.120(a), 107.130(a), 107.140 → `subpart-d-categories`) | 77, 80, 81, 83–88 |
 
 Also changed for the new count: the headline figures in [`../README.md`](../README.md), and the
-entry-count assertions in `tools/tests/test_factory_intake.py`,
-`tools/tests/test_factory_produce.py` and `tools/tests/test_factory_backlog.py` (40 → 44
+entry-count assertions in `tools/tests/factory/test_factory_intake.py`,
+`tools/tests/factory/test_factory_produce.py` and `tools/tests/factory/test_factory_backlog.py` (40 → 44
 entries; 36 → 40 `UnsupportedRule` declines; 36 → 39 backlog files).
 
 Checks after the fix: `tools/check-map.py` 11 ok, 0 failed, 6 not verified;

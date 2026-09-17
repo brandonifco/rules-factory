@@ -20,7 +20,7 @@ files before the gate and provenance records them.
 
 scripts/validate.sh proves the Python machinery. It cannot prove that what the machinery
 writes is a .NET solution that builds, because that needs the SDK the kernel pins, and the
-only test that tried (tools/tests/test_factory_provenance.py) skips without it. A green run
+only test that tried (tools/tests/factory/test_factory_provenance.py) skips without it. A green run
 that skipped the one check that mattered is a check that examined nothing, so here a missing
 or wrong SDK is a failure, never a skip.
 
@@ -44,7 +44,7 @@ refactor only: the same checks, in the same order, failing on the same condition
 messages, printing the same `ok` lines and exiting with the same codes. So each check is one
 function below, and where the shell let a command's own exit code end the run (`set -e`), `Stop`
 carries that code out unchanged. The parts that need no dotnet are tested in
-tools/tests/test_validate_engine.py.
+tools/tests/factory/test_validate_engine.py.
 
 Usage: validate-engine.sh [--print-sdk]
 Exit 0 when every check passes; 1 when one fails; 2 on a usage error; otherwise the exit code of
@@ -566,7 +566,7 @@ def typed_build(typed, handler):
 
 
 # #76: the typed contract is only a contract if the compiler enforces it, and the Python test that
-# shows so (tools/tests/test_factory_gate.py) skips without an SDK, as in this repository's
+# shows so (tools/tests/factory/test_factory_gate.py) skips without an SDK, as in this repository's
 # validate job. So here, on a scratch copy of the committed engine: mark one entry implemented,
 # regenerate, and build the engine project with a hand-written handler of the declared type
 # (builds), none (CS8795) and one of another return type (CS8817).
@@ -638,7 +638,7 @@ def a_stale_record_fails_the_gate(r):
     ok("provenance fails, naming the overlay and the one command that fixes it")
 
     # That command clones rules-factory at the commit the record names and runs exactly this
-    # produce; that it takes the recorded commit and never `main` is tools/tests/test_factory_rails.py's
+    # produce; that it takes the recorded commit and never `main` is tools/tests/factory/test_factory_rails.py's
     # to prove. The factory under test here is this checkout, so the produce is run from it directly.
     with open(os.devnull, "wb") as null:
         check(unverified_produce(["--package", r.package, "--corpus", CORPUS, "--name", NAME, "--out", stale],
@@ -780,7 +780,7 @@ public sealed class RulingsTests
 
 
 # Decision 0027: an owner's ruling on part of an unresolved question lives in the overlay, and the factory
-# generates Rulings.g.cs from it. The Python tests (tools/tests/test_factory_rulings.py) show what is
+# generates Rulings.g.cs from it. The Python tests (tools/tests/factory/test_factory_rulings.py) show what is
 # generated and refused; only a build shows it compiles warning-free beside an engine's own partial members
 # and a handler that surfaces it. On the same scratch copy: bearing-off-eligible is implemented with a
 # ruling on its second part and a decline of its first, produce accepts it and says whose answer it is, and
@@ -1023,7 +1023,7 @@ def player_count_evidence():
 # head commit, the independent-risk issue, the recorded verdict re-running the required check
 # through the emitted workflow's own wiring (#191), a factory update's claim checked against the
 # engine's own record and vendored ownership table (#193), and the provider chain as configuration.
-# tools/tests/test_factory_rails.py proves the same logic in depth; what only this can prove is that it holds in what an engine
+# tools/tests/factory/test_factory_rails.py proves the same logic in depth; what only this can prove is that it holds in what an engine
 # actually receives, after produce has written it -- not in the recipe copies the tests read.
 def the_rails_run_in_a_produced_engine(r):
     step("the rails a produced engine ships with run in it")
@@ -1767,7 +1767,7 @@ provenance of .: every field matches
 
 
 # The predicate #193 decided, run against a real produced tree and the engine's own vendored
-# ownership table. tools/tests/test_factory_rails.py proves the logic in depth against the recipe
+# ownership table. tools/tests/factory/test_factory_rails.py proves the logic in depth against the recipe
 # bytes; what only this can prove is that the file set a real `produce` wrote classifies as the
 # factory's in the engine that received it -- a fixture of invented path strings would agree with
 # itself whatever the table said.

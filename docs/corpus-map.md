@@ -335,7 +335,7 @@ enforces all of it. The generated `MapEntry` and `RegisteredEntry` carry the lis
 an engine checks an attribution against the map.
 
 **What it does not buy.** `check-map.py` reads no corpus, so it cannot tell a quote in `note` from a
-sentence in quotation marks. `tools/tests/test_map_anchors.py` holds the example maps' quotes to their
+sentence in quotation marks. `tools/tests/mapvalidator/test_map_anchors.py` holds the example maps' quotes to their
 committed corpora. An anchor proves the word is there, not that it names the right party. And a list
 of who must *be able to see* (§ 107.31(a)) does not say that § 107.31(b) lets some of them do it
 instead of others.

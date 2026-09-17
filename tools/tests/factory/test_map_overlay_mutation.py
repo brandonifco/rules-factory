@@ -22,7 +22,7 @@ What is asserted here, without a .NET SDK and without the factory:
   * an entry whose status is not `implemented` is untouched by the rule, whatever it records;
   * `merge` and `check` both refuse, at the command line, with exit 1.
 
-Run: python3 -m unittest discover -s tools/tests
+Run: python3 -m unittest discover -s tools/tests -t tools
 """
 import importlib.util
 import json
@@ -34,7 +34,7 @@ import tempfile
 import unittest
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-TOOLS = os.path.dirname(HERE)
+TOOLS = os.path.dirname(os.path.dirname(HERE))
 FACTORY = os.path.join(TOOLS, "factory")
 RECIPE = os.path.join(FACTORY, "recipe", "map-overlay.py")
 

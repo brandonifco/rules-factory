@@ -18,7 +18,7 @@ name: publish-map
 # gate passed. The gate is tools/pack-map.py, which refuses to write a package at all unless
 # check-map.py (every check, --phase publish) and the corpus's locator checker pass; there
 # is no flag that packs without gating. It is proven to refuse trial 5's dependsOn cycle in
-# tools/tests/test_pack_map.py.
+# tools/tests/mapvalidator/test_pack_map.py.
 #
 # `id-token: write` is granted only to the `publish` job. The `gate` job, which runs the
 # whole of validate.sh, never holds it. `publish` re-packs from its own checkout (the jobs

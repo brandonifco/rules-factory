@@ -16,7 +16,7 @@ tests hold the build to three claims:
 
 The checks themselves are proved in test_check_map.py, against the built file.
 
-Run: python3 -m unittest discover -s tools/tests
+Run: python3 -m unittest discover -s tools/tests -t tools
 """
 import glob
 import importlib
@@ -30,7 +30,7 @@ import unittest
 from contextlib import redirect_stdout, redirect_stderr
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-TOOLS = os.path.dirname(HERE)
+TOOLS = os.path.dirname(os.path.dirname(HERE))
 REPO = os.path.dirname(TOOLS)
 BUILT = os.path.join(TOOLS, "check-map.py")
 SOURCES = TOOLS  # the directory the packages live in, as --sources means it

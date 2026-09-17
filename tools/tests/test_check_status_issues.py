@@ -4,7 +4,7 @@
 Issue state is a dictionary here, never the network, so a case does not move when an issue
 closes. validate.sh runs the checker against the real README and the real issues.
 
-Run: python3 -m unittest discover -s tools/tests
+Run: python3 -m unittest discover -s tools/tests -t tools
 """
 import importlib.util
 import io

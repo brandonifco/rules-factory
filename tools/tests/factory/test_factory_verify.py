@@ -12,7 +12,7 @@ the order of the stages, that each refusal names its stage and stops the run, th
 only for an unlocked engine and the gate always, that produce records the lock files before the
 gate builds, and that produce calls verify unless `--no-verify`.
 
-Run: python3 -m unittest discover -s tools/tests
+Run: python3 -m unittest discover -s tools/tests -t tools
 """
 import hashlib
 import importlib.util
@@ -31,7 +31,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from test_factory_produce import pack_version, snapshot  # noqa: E402  (#67's TestTransactional helper)
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-TOOLS = os.path.dirname(HERE)
+TOOLS = os.path.dirname(os.path.dirname(HERE))
 REPO = os.path.dirname(TOOLS)
 FACTORY = os.path.join(TOOLS, "factory")
 PACK = os.path.join(TOOLS, "pack-map.py")

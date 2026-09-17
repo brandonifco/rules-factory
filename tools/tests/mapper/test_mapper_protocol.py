@@ -7,7 +7,7 @@ coverage. So every closed set is watched refusing a value outside it, and the de
 watched on the corpus #208 measured: `defined-term-use` finds namings where the phrase list
 finds zero, and does not make a definition point at itself.
 
-Run: python3 -m unittest discover -s tools/tests
+Run: python3 -m unittest discover -s tools/tests -t tools
 """
 import copy
 import glob
@@ -19,7 +19,7 @@ import unittest
 from contextlib import redirect_stdout, redirect_stderr
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-TOOLS = os.path.dirname(HERE)
+TOOLS = os.path.dirname(os.path.dirname(HERE))
 REPO = os.path.dirname(TOOLS)
 
 sys.path.insert(0, TOOLS)

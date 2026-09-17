@@ -30,7 +30,7 @@ What it cannot see, stated here rather than in a commit message:
     this repository's code but the files a produced engine carries, and they import their
     vendored copies by bare name (`import generate`) inside the engine, where the rule that
     governs them is ownership (0018) and the checker is
-    `tools/tests/test_factory_rails.py`. Judging them here would compare them against the
+    `tools/tests/factory/test_factory_rails.py`. Judging them here would compare them against the
     wrong tree.
   * **Whether the boundary is the right one.** It checks the declaration, not the design.
 

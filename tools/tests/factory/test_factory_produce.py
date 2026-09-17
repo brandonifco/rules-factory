@@ -20,7 +20,7 @@ SDK the kernel pins and nuget.org, so it is not a unit test here, and produce ru
 `factory verify` on it (restore, build `-warnaserror`, test, the engine's gate), and CI's `engine`
 job runs that script with the pinned SDK installed. verify's own logic is test_factory_verify.py's.
 
-Run: python3 -m unittest discover -s tools/tests
+Run: python3 -m unittest discover -s tools/tests -t tools
 """
 import hashlib
 import importlib.util
@@ -38,7 +38,7 @@ from unittest import mock
 from contextlib import redirect_stdout, redirect_stderr
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-TOOLS = os.path.dirname(HERE)
+TOOLS = os.path.dirname(os.path.dirname(HERE))
 REPO = os.path.dirname(TOOLS)
 FACTORY = os.path.join(TOOLS, "factory")
 PACK = os.path.join(TOOLS, "pack-map.py")

@@ -5,7 +5,7 @@ The fixtures are a small CLI module and a README written here, so a case does no
 real CLI does. Three cases use the real README and the real parser: the table agrees with main as
 it stands, and a subcommand or flag added to that parser without a row fails.
 
-Run: python3 -m unittest discover -s tools/tests
+Run: python3 -m unittest discover -s tools/tests -t tools
 """
 import argparse
 import importlib.util
