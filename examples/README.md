@@ -143,6 +143,27 @@ queue, and this project archived its predecessor partly for having one.
   caught downstream. Every finding so far surfaced during mapping, which is the cheap place,
   and that is encouraging rather than evidence.
 
+## The build of trial 9 — seven entries of § 1.121-1
+
+The second run downstream of a map, and the first with the rails in place:
+[`tax-121-build/`](tax-121-build/), seven of 24 entries of `tax-121-principal-residence` taken
+from `factory backlog --create` to merged `main` on 2026-09-17.
+
+Trial 4 asked whether a map survives being built from. This one asked **what an entry costs, and
+what the rails get wrong**, because the case for the platform rested on estimates.
+
+Measured: ~17 minutes and ~230k tokens per merged entry, about two thirds of it process rather
+than rules. Zero map defects found downstream, zero escalations, zero blocking review findings —
+which says the blind second mapping worked, and says nothing about whether the map's boundary is
+the right boundary for a product.
+
+Four defects in the rails, one a real bypass of the evidence rule
+([#239](https://github.com/brandonifco/rules-factory/issues/239), fixed), one a structural limit on
+throughput ([#242](https://github.com/brandonifco/rules-factory/issues/242): any two entry pull
+requests always conflict, because 19 of the 24 derived files in one are a backlog rendering nothing
+reads). Full account, including the two findings left unfiled and the reasoning behind the
+superposition idea the run produced: [EVIDENCE.md](tax-121-build/EVIDENCE.md).
+
 ## Trial 4 — building from a map
 
 The first run that goes *downstream* of a map rather than producing one:
