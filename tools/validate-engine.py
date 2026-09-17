@@ -1235,6 +1235,12 @@ elif argv[:1] == ["api"] and len(argv) > 1:
         with open(path, "w", encoding="utf-8") as handle:
             json.dump(state, handle, indent=2)
         print("{}")
+    elif route.startswith(prefix + "contents/") and "?ref=" in route:
+        # The base commit's provenance.json, which pr-policy.py reads for a retired deletion (#243).
+        body = state.get("contents", {}).get(route.split("?ref=", 1)[1])
+        if body is None:
+            refuse("no contents at that ref")
+        print(json.dumps(body))
     elif route.startswith(prefix + "commits/") and route.endswith("/status"):
         sha = route[len(prefix + "commits/"):-len("/status")]
         print(json.dumps({"sha": sha, "statuses": state["statuses"].get(sha, [])}))
@@ -1267,6 +1273,9 @@ COMMIT_A = "a" * 40
 COMMIT_B = "b" * 40
 # A commit no open pull request heads: #191's second acceptance criterion is about this one.
 COMMIT_STRANGER = "c" * 40
+# The commit a pull request is based on: pr-policy.py reads its provenance.json when the diff holds
+# a path under a retired pattern (#243).
+COMMIT_BASE = "d" * 40
 GATE_RUN = 4242
 
 # A pull request filled the way the emitted template asks: every section, one `Closes`, a command
@@ -1342,11 +1351,15 @@ class FakeGitHub:
         The commit statuses start empty: each check records its own verdicts through record-verdict.py.
         `runs` is the conformance-gate run GitHub holds at that head -- there is one as soon as a
         pull request is opened -- and `reruns` the re-requests the rails make of it, which start none."""
-        changed = [{"path": f"src/{NAME}/Rules/PlayerCount.cs"}]
+        changed = [{"path": f"src/{NAME}/Rules/PlayerCount.cs", "changeType": "MODIFIED"}]
         document = {
             "repository": "owner/engine",
+            # `baseRefOid` and `changeType` are what pr-policy.py reads to decide whether a deletion
+            # under a retired pattern is the factory's (#243); `contents` is the base commit's
+            # provenance.json, which nothing here asks for until a test puts a retired path in the diff.
             "pulls": {PR: {"number": int(PR), "title": "Implement the player count", "body": body, "state": "OPEN",
-                           "headRefOid": head, "files": changed, "changedFiles": len(changed),
+                           "headRefOid": head, "baseRefOid": COMMIT_BASE, "files": changed,
+                           "changedFiles": len(changed),
                            "closingIssuesReferences": [{"number": ISSUE}]}},
             "issues": {str(ISSUE): {"number": ISSUE, "state": "OPEN", "labels": [{"name": name} for name in labels]}},
             "statuses": {},
@@ -1368,7 +1381,7 @@ class FakeGitHub:
         """
         with open(self.state, encoding="utf-8") as handle:
             document = json.load(handle)
-        document["pulls"][PR]["files"] = [{"path": path} for path in paths]
+        document["pulls"][PR]["files"] = [{"path": path, "changeType": "MODIFIED"} for path in paths]
         document["pulls"][PR]["changedFiles"] = len(paths)
         write(self.state, json.dumps(document, indent=2))
 
