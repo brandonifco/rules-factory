@@ -41,12 +41,15 @@ output before committing it.
 
 | Subsystem | Where | What it takes | What it produces |
 |---|---|---|---|
-| **Mapper** | [the method](docs/method.md), by hand; `tools/mapper/` is [#249](https://github.com/brandonifco/rules-factory/issues/249) | a pinned corpus, its manifest, an adapter, a mapping protocol | a candidate map, and the record of how it was made |
+| **Mapper** | [`tools/mapper/`](tools/mapper/__init__.py) and [docs/mapper.md](docs/mapper.md); the map itself is still made by hand, by [the method](docs/method.md) | a pinned corpus, its manifest, an adapter, a mapping protocol | a candidate map, and the record of how it was made |
 | **Map validation** | [`tools/checkmap/`](tools/checkmap/__init__.py), built into `tools/check-map.py`, with [`tools/check-locators.py`](tools/check-locators.py), [`tools/check-map-review.py`](tools/check-map-review.py) and [`tools/pack-map.py`](tools/pack-map.py) | a map and its manifest | a verdict, and a map that may become a version |
 | **Factory** | [`tools/factory/`](tools/factory/__main__.py) | a published map package and the corpus it was made of | a deterministic engine on `rules-kernel` |
 | **Map contract** | [`tools/mapcontract/`](tools/mapcontract/__init__.py) | — | the map's closed vocabularies and the readers that get a field out of an entry |
 
-The three are siblings and **none imports another**; the contract imports none of them. The
+Each asks a different question — the mapper *what does this corpus say, and where does its
+certainty end?*, validation *has the mapper justified those claims?*, the factory *given an
+acceptable map, what follows mechanically?* — and the three are siblings over the contract:
+**none imports another**, and the contract imports none of them. The
 factory therefore knows nothing about how a map was made — give it a valid, appropriately
 certified map and it produces an engine — and producer and verifier stay apart for the reason
 production code is not its own only test oracle.

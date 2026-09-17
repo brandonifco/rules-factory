@@ -69,6 +69,53 @@ check_all_maps() {
   printf '%d map(s) checked\n' "$maps_checked"
 }
 
+# Every map says how its corpus communicates rules, and the protocol is one this mapper can act
+# on (0032, #249). A map with no protocol is one that cannot say how it was read: each trial
+# decided that by hand and recorded nothing, which is how a phrase list went on being the
+# interrogation mechanism for a corpus that points by naming its terms (#208).
+protocols_checked=0
+check_protocols() {
+  local map
+  for map in examples/*/corpus-map*.json examples/*/*/corpus-map*.json; do
+    [ -e "$map" ] || continue
+    printf -- '--- %s\n' "$map"
+    python3 tools/mapper protocol "$map" || return 1
+    protocols_checked=$((protocols_checked + 1))
+  done
+  if [ "$protocols_checked" -eq 0 ]; then
+    echo "no corpus maps found -- this step proved nothing" >&2
+    return 1
+  fi
+  printf '%d protocol(s) checked\n' "$protocols_checked"
+}
+
+# The interrogation each protocol obliges, for the mechanisms this subsystem detects. A corpus
+# that declares `defined-term-use` and on which nothing fires fails: a silent zero is the shape
+# 0026 already refuses for phrases, and it is exactly what #208 measured for this corpus under
+# the phrase list -- 0 detected in passages holding 51 references.
+#
+# 3 is the intended outcome on a map that names a defined term without declaring a pointer to
+# it. Whether each naming is owed is decided by reading the corpus (0026), not by this tool, so
+# it reports NOT VERIFIED rather than passing or failing. The three on `srd-52-conditions` are
+# #254, and this accepts 3 until that is settled; 0 and 1 both pass through as themselves.
+pointers_checked=0
+check_pointers() {
+  local map status
+  for map in examples/*/corpus-map*.json examples/*/*/corpus-map*.json; do
+    [ -e "$map" ] || continue
+    printf -- '--- %s\n' "$map"
+    status=0
+    python3 tools/mapper pointers "$map" || status=$?
+    [ "$status" -eq 0 ] || [ "$status" -eq 3 ] || return "$status"
+    pointers_checked=$((pointers_checked + 1))
+  done
+  if [ "$pointers_checked" -eq 0 ]; then
+    echo "no corpus maps found -- this step proved nothing" >&2
+    return 1
+  fi
+  printf '%d map(s) interrogated\n' "$pointers_checked"
+}
+
 # Every map carries a review of its exact bytes (0017): a blind second mapping, a verdict from a
 # separate context, or an exemption that says why. The checker counts the maps it examined and
 # fails on none, and prints every exemption, so neither an empty glob nor a waiver passes quietly.
@@ -271,6 +318,8 @@ check_boundaries() {
 run "each subsystem imports only the map contract"     check_boundaries
 run "check-map.py is what the two packages build"      python3 tools/build-check-map.py --check
 run "every corpus map satisfies the schema"            check_all_maps
+run "every map says how its corpus is read"            check_protocols
+run "every protocol's own detectors find its pointers" check_pointers
 run "every corpus map carries a review of its bytes"   check_map_reviews
 run "every citation resolves in its corpus"            check_locators
 run "every map package passes its publish gate"        check_map_packages
