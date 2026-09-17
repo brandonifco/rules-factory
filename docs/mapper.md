@@ -30,6 +30,12 @@ corpus*; the protocol says what walking this corpus means.
 `mapping-protocol.json`, beside the map. One per map, and `validate.sh` fails a map without one:
 a map with no protocol cannot say how it was read.
 
+It is **not** packed into the map package
+([0015](decisions/0015-a-map-is-published-as-a-versioned-package.md)). The package carries the
+map, the manifest and the checker, because those are what a consumer needs to judge and build
+from the map. The protocol is how the map was *made*, which is the mapper's business and not the
+factory's — the factory asks for a valid, certified map and nothing about how it was read.
+
 ```json
 {
   "protocolVersion": 1,
