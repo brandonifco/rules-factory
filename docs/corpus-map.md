@@ -395,6 +395,28 @@ the granularity finding the map already rests on.
 on p. 272 and the `{273}` marker falls mid-sentence. Citing either page is honest and the
 checker accepts both; dropping the marker to make the quote read cleanly would break the match.
 
+**A span the corpus prints more than once is identified by the container the citation names, and
+never by extending the span until it is unique.** Decided in
+[0030](decisions/0030-a-repeated-passage-is-identified-by-the-container-its-citation-names.md)
+([#207](https://github.com/brandonifco/rules-factory/issues/207)). A corpus repeats itself — a
+regulation restates a proviso, a glossary gives five conditions the same effect — and a quote that
+resolves in five places resolves in none. What settles it is what the citation *names*:
+
+- **`section-designation`** names a container, so `check-locators-section.py` asks whether every
+  occurrence lies inside it. The anti-collision sentence is printed in `§ 107.29(a)(2)` and again
+  in `(b)`, and each is cited by naming its paragraph. Nothing more is needed, at any depth.
+- **`heading-path-and-printed-page`** names a page, which is positional and contains nothing, so
+  the **heading path** is the container. Where a quote also occurs off the cited page,
+  `check-locators-pdf-text.py` reads the path: each line matching the citation's last heading
+  selects the first occurrence after it, counted only where the earlier headings occur as lines
+  before it, and **exactly one occurrence must be selected**. `Rules Glossary / Round Down / p. 187`
+  resolves and `Playing the Game / Round Down / p. 5` does not, because `Playing the Game` precedes
+  both printings; a citation the path does not narrow to one passage **fails**, and the checker
+  never picks a printing for the mapper.
+
+Extending a span until it is unique is what this replaces, and it is not a fallback: it produced a
+`round-down` whose span carried the whole of the next glossary entry and passed every check.
+
 **What must be demonstrated is a mapper's reading, and it goes in `note`.** "Both figures",
 "the worked distribution, for both the quatre and the trois", "a throw fully playable, partly
 playable, and unplayable" — these are genuinely useful and no check can read them. They are
