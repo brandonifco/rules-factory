@@ -2,13 +2,25 @@
   "about": "The review of each map's exact bytes (docs/decisions/0017-a-map-change-carries-a-review-of-its-bytes.md). tools/check-map-review.py fails any map whose sha256 is not the one recorded here.",
   "reviews": {
     "corpus-map.json": {
-      "sha256": "d5b4f0979d902c7099da85aa59e64444fea9ecd5e39059f37b1f0d597b0262ba",
-      "method": "exemption",
-      "exemption": {
-        "kind": "legacy",
-        "issue": "#8",
-        "reason": "Not corrected, deliberately, and no longer unreviewed. The blind second mapping 0014 requires was run and is in blind-mapping/: a second mapper who had not seen this map mapped the same section, compare.py aligned the two by the text they quote, and resolutions.json answers every flag from the corpus. This map is one of the two frozen inputs to that comparison, so it is not edited -- editing it would destroy the evidence the record is checked against. The map the rulings produce is blind-mapping/corpus-map-reconciled.json, and it carries a blind-second-mapping review of its own bytes in blind-mapping/review.json; anything built from § 1.121-1 is built from that one. The exemption stays `legacy` and keeps naming #8 because that is the only kind that names a tracking issue, and what #8 still tracks is what the review turned up rather than the review being missing. Three of this map's verdicts were wrong and are corrected there: allocation-required is not ambiguous (the separateness test is in (e)(1)'s third sentence and the term is defined in a corpus that was not admitted, so it declines with MissingRulesData), ownership-and-use-aggregation and residence-excludes-personal-property are values, and no entry named the effective-date gate that reaches all thirty of them. One rule was missing altogether: § 1.121-1(b)(4) Example 4 nets a $25,000 loss on the dwelling unit against $270,000 of gain on the vacant land, no operative sentence says a loss does that, and declining the Examples paragraph whole is what lost it. Two verdicts the blind map challenged are upheld: \"adjacent to\" in (b)(3)(i)(A) and \"physically or mentally incapable of self-care\" in (c)(2)(ii) are both gaps. The eighteen citations a level shallower than the regulation's own numbering are upheld too, and tested: written at the regulation's depth, eighteen of them fail the locator checker, because the eCFR XML runs a first sub-paragraph into its parent's <P>."
-      }
+      "sha256": "e96c33b3a1bbe4d62447f8b6148074d3e4b0b2efec742f522ece876be74726c6",
+      "method": "blind-second-mapping",
+      "comparison": "blind-mapping/results.json",
+      "resolutions": "blind-mapping/resolutions.json",
+      "compared": {
+        "commit": "c9ec1b73469fd510d85ea62fab062683d25c63b0",
+        "sha256": "d5b4f0979d902c7099da85aa59e64444fea9ecd5e39059f37b1f0d597b0262ba"
+      },
+      "firstMap": {
+        "path": "blind-mapping/first-map.json",
+        "sha256": "d5b4f0979d902c7099da85aa59e64444fea9ecd5e39059f37b1f0d597b0262ba",
+        "note": "Map A, the first mapping, and the map these bytes are the correction of. It was this example's corpus-map.json under the `legacy` exemption until the reconciled map was promoted to that name (#8); it is frozen evidence now, beside Map B, and carries no review of its own for the reason Map B carries none -- it is an input to this comparison, not a map this repository uses. It is a file and not only a git object because blind-mapping/build-map-c.py reads it: `--check` rebuilds these bytes from it and the resolutions on every validate.sh run, so a correction nobody ruled on fails the gate, and the digest above is the same one compared.sha256 names."
+      },
+      "blindMap": {
+        "path": "blind-mapping/blind-map.json",
+        "sha256": "1d4ed894a6517f1596a1a151ead420c74eddc3d316ee80700086e8b4b651dbe9",
+        "note": "Map B, copied verbatim from the mapper's bundle with its corpus-manifest.json, and not edited. It is evidence, not a map this repository uses, so it carries no review of its own and is not named by the glob that requires one."
+      },
+      "scope": "One disagreement is recorded open and this map does not carry it: resolutions.json's worked-examples-as-entries row, which is #216. Everything else results.json flagged has a ruling."
     }
   }
 }

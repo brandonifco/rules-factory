@@ -17,9 +17,11 @@ question is about, and this corpus makes it twenty-one times.
 
 **The answer is yes, without a schema change, and the section below says exactly how.**
 
-**Status: a mapping trial, not a produced engine** — but unlike trial 8 this map is
-**publishable**. It declares [map-package.json](map-package.json) and passes `tools/pack-map.py`'s
-publish gate, which is `scripts/validate.sh` step 5. No engine consumes it.
+**Status: a mapping trial, and its map is publishable** — unlike trial 8's. It declares
+[map-package.json](map-package.json) and passes `tools/pack-map.py`'s publish gate, which is
+`scripts/validate.sh` step 5. The published map is the reconciled one (below), at version 2.0.0;
+1.0.0 was the first mapping and was never pushed to nuget.org. An engine has been produced from
+the map locally, from the package in a local feed, and it lives outside this repository.
 
 ## Why this slice
 
@@ -75,6 +77,15 @@ they fix carries `definedElsewhere`. Had the corpus been the whole of part 1, th
 Both are defensible; the map says which one it did.
 
 ## The map
+
+Every count in this report is of **the first mapping**, which is what phases 1–3 produced and what
+the blind second mapping below was run against. That map is no longer the file this example
+publishes: since #8's promotion, [`corpus-map.json`](corpus-map.json) is the reconciled map (38
+entries, 32 in scope, and the netting rule the first mapping did not have), and the first mapping
+is frozen evidence at [`blind-mapping/first-map.json`](blind-mapping/first-map.json). The
+differences are listed in [blind-mapping/README.md](blind-mapping/README.md), under *What Map C
+changes*; nothing below is restated there, and nothing below is edited to match, because a trial
+report that quietly acquired its own corrections would be a report of a run that never happened.
 
 **37 entries**: 31 in scope, 6 out.
 
@@ -484,14 +495,19 @@ shared with two other maps.
 
 ### 9. The publish gate does not require that anyone read the map
 
-This is the first map to carry both a `map-package.json` and a review recorded as an **exemption**.
+*As it stood when this finding was written.* The map it describes is the first mapping, which
+carried a `map-package.json` and a review recorded as an **exemption**; the map here now carries a
+`blind-second-mapping` review, so the gap below is no longer open for this map. It is still open
+for the gate, which is what the finding is about.
+
 `scripts/validate.sh` step 5 checks the licence class (0028), `check-map.py --phase publish`,
 every locator against the corpus, and that two packs produce identical bytes. Step 3 checks that a
 review record names the map's current sha256 — and an exemption satisfies it, printed. So a map
 that has never had a blind second mapping is publishable, and the strongest thing the gate says
 about its content is that every quote is where it claims to be. That was already true and no map
-had stood in the gap before; [review.json](review.json) says it in the record rather than only
-here.
+had stood in the gap before; the exemption said it in the record rather than only here. The
+record that replaced it is in [review.json](review.json), and the exemption's own words are in
+git, at the commit before the promotion.
 
 ### 10. Where the checker was Part-107-shaped, exactly
 
@@ -517,10 +533,14 @@ citations, coverage ok), and `tools/tests` is green at 951 tests.
 **Run, adjudicated and recorded: [blind-mapping/](blind-mapping/README.md).** A second mapper who
 had not seen this map mapped the same section; the two were aligned by the text they quote (36
 partnerships), every disagreement was answered from the corpus before any reconciled map existed,
-and the result is [blind-mapping/corpus-map-reconciled.json](blind-mapping/corpus-map-reconciled.json)
-— **Map C, which is the map anything is built from.** This map is not corrected: it is one of the
-two frozen inputs to the comparison, and [review.json](review.json) keeps its `legacy` exemption
-saying so.
+and the result is **Map C, which is [`corpus-map.json`](corpus-map.json): the map this example
+publishes and the engine is produced from.** The first mapping is not corrected in place — it is
+one of the two frozen inputs to the comparison, so it moved beside the other, to
+[`blind-mapping/first-map.json`](blind-mapping/first-map.json), and
+[`build-map-c.py`](blind-mapping/build-map-c.py) rebuilds the published map from it and the
+rulings on every `validate.sh` run. [review.json](review.json) now records the published map's
+`blind-second-mapping` review of its bytes, in place of the first mapping's `legacy` exemption
+(#8).
 
 The three things the exemption asked a reviewer to attack were the right three, and they came out
 three different ways. Of the six `scope: out` verdicts, one was wrong in a way that lost a rule:

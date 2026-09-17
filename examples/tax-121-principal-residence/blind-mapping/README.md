@@ -2,7 +2,7 @@
 
 The procedure in [method.md](../../../docs/method.md) ("Before the map is used — a blind second
 mapping", [0014](../../../docs/decisions/0014-a-map-is-checked-by-a-blind-second-mapping.md)),
-applied to [trial 9's map](../corpus-map.json). A second mapper who had not seen that map mapped
+applied to [trial 9's map](first-map.json). A second mapper who had not seen that map mapped
 the same section; the two were compared field by field; every disagreement was answered from the
 corpus and recorded before any reconciled map existed.
 
@@ -10,9 +10,9 @@ Three maps, and only one of them is used:
 
 | | file | entries | in scope | ambiguous | status |
 |---|---|---:|---:|---:|---|
-| **A** | [`../corpus-map.json`](../corpus-map.json) | 37 | 31 | 8 | the first mapping. **Frozen evidence, not edited.** |
+| **A** | [`first-map.json`](first-map.json) | 37 | 31 | 8 | the first mapping. **Frozen evidence, not edited.** It was `../corpus-map.json` until Map C was promoted to that name (#8), and moved here rather than into git alone because `build-map-c.py` reads it. |
 | **B** | [`blind-map.json`](blind-map.json) | 44 | 34 | 6 | the blind second mapping, copied verbatim from the mapper's bundle with its [`blind-map-manifest.json`](blind-map-manifest.json). **Frozen evidence, not edited.** |
-| **C** | [`corpus-map-reconciled.json`](corpus-map-reconciled.json) | 38 | 32 | 8 | A corrected to every ruling in [`resolutions.json`](resolutions.json). This is the map anything is built from. |
+| **C** | [`../corpus-map.json`](../corpus-map.json) | 38 | 32 | 8 | A corrected to every ruling in [`resolutions.json`](resolutions.json). This is the map the example publishes and anything is built from. |
 
 The corpus is [`../section-1.121-1.xml`](../section-1.121-1.xml), sha256
 `faf3e310a81b1d00729fd69fb422342bcff8049a98a0ae80955be3287e30bab2`. Every quote in the record is
@@ -30,11 +30,14 @@ and nothing outside the extract was consulted for any ruling.
 - [`resolutions.json`](resolutions.json) — **the adjudication record.** Four disagreements about a
   rule, each with the six fields 0014's review needs, and nine families covering every remaining
   flag. A disagreement with no row would leave the map unusable.
-- [`build-map-c.py`](build-map-c.py) → [`corpus-map-reconciled.json`](corpus-map-reconciled.json)
+- [`first-map.json`](first-map.json) — Map A as the first mapping left it.
+- [`build-map-c.py`](build-map-c.py) → [`../corpus-map.json`](../corpus-map.json)
   — Map C, built from Map A by applying exactly the changes the record rules, keyed to row ids.
-  `--check` fails if the committed map is not what the script builds, and `scripts/validate.sh`
-  runs it, so a correction nobody ruled on cannot be slipped into Map C.
-- [`review.json`](review.json) — Map C's `blind-second-mapping` review of its bytes (0017).
+  `--check` fails if the published map is not what the script builds, and `scripts/validate.sh`
+  runs it, so a correction nobody ruled on cannot be slipped into the map that is used — and
+  neither can a change to Map A, which nothing else checks now that it is not a map.
+- Map C's `blind-second-mapping` review of its bytes (0017) is [`../review.json`](../review.json),
+  beside the map it reviews, where the checker's glob looks for it.
 
 ## Counts
 

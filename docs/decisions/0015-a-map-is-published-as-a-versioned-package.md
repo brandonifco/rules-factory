@@ -311,5 +311,18 @@ which quotes § 107.29(b) whole, and a sentence in `visual-observer-conditions`'
 pointer needed no declaration is replaced. No entry is added or removed, and no `dependsOn`,
 gate, kind, scope or status changes. A correction to what the map says is major. 47 entries.
 
+`tax-121-principal-residence`'s first version was `1.0.0`, the first mapping. `2.0.0` is the map
+the blind second mapping produced, promoted to be `corpus-map.json` (#8, 0014, 0017): a new entry
+(`combined-sale-nets-dwelling-loss`, § 1.121-1(b)(4) Example 4), `enabledBy: [effective-date]` on
+every in-scope entry but the gate itself (30 of the first mapping's, and the new one), `kind`
+changed on two, and `clarity`, `ambiguity` and `suspendedBy`
+changed on `allocation-required`. Each of those but the new entry is major on its own. 38 entries.
+**`1.0.0` was never pushed to nuget.org**, so nothing depends on it and the bump buys no consumer
+anything; it is taken anyway because two artifacts on disk — the `.nupkg` in the engine's local
+feed and the engine's `provenance.json` — already record `1.0.0` as the map whose answer to
+Example 4 is wrong, and a version number that means one map in those and another here is the thing
+a version exists to rule out. The version is also how the engine's gate notices: it references the
+package at `[2.0.0]`, so a stale restore fails rather than silently answering $250,000.
+
 **corpus-map.md's "Where the map lives" changes.** A map is published from the factory and
 consumed as a package. The engine owns only its overlay.

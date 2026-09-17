@@ -31,10 +31,11 @@ run() {
 maps_checked=0
 check_all_maps() {
   local map
-  # Two globs, not one: a map that reconciles another cannot sit beside it, because
-  # pack-map.py requires exactly one corpus-map*.json in a packable directory. Trial 9's Map C
-  # is examples/tax-121-principal-residence/blind-mapping/corpus-map-reconciled.json, and a map
-  # one level down is still a committed map. tools/check-map-review.py reads the same two.
+  # Two globs, not one: a map that reconciles another cannot sit beside it while both are maps,
+  # because pack-map.py requires exactly one corpus-map*.json in a packable directory. Trial 9's
+  # Map C lived one level down for that reason until it was promoted to be the map (#8), and no
+  # map is one level down today; the glob stays because the next reconciliation needs it and an
+  # unglobbed map would be an unchecked one. tools/check-map-review.py reads the same two.
   local dir manifest
   for map in examples/*/corpus-map*.json examples/*/*/corpus-map*.json; do
     [ -e "$map" ] || continue
@@ -79,7 +80,10 @@ check_locators() {
     examples/faa-part-107-temporal/corpus-map-2020-01-01.json \
     examples/faa-part-107-temporal/part107-2020-01-01.xml || return 1
   # A third corpus through the same eCFR checker, and a different title of the CFR: trial 9's
-  # § 1.121-1. It is reused and not copied, which is the point -- the grammar is the grammar.
+  # § 1.121-1, as the blind second mapping reconciled it (0014's Map C, promoted to be the map
+  # under #8). It cites a worked example -- `§ 1.121-1(b)(4) Example 4` -- which the grammar
+  # could not read until that mapping found the rule inside one.
+  # The checker is reused and not copied, which is the point -- the grammar is the grammar.
   # Two things in it were title-14 shaped and were generalised rather than duplicated: a
   # section's subpart is now read from its ancestry, so a single section served as a bare DIV8
   # indexes like one inside a subpart, and a section designation may carry a hyphenated suffix
@@ -88,16 +92,10 @@ check_locators() {
   python3 examples/faa-part-107/check-locators-section.py \
     examples/tax-121-principal-residence/corpus-map.json \
     examples/tax-121-principal-residence/section-1.121-1.xml || return 1
-  # And the reconciled map of the same section (0014's Map C), against the same corpus and the
-  # same grammar. It is the map anything would be built from, so leaving its citations unchecked
-  # would be the "reports ok while examining nothing" failure this file exists to refuse. It
-  # cites a worked example -- `§ 1.121-1(b)(4) Example 4` -- which the grammar could not read
-  # until the blind second mapping found the rule inside one.
-  python3 examples/faa-part-107/check-locators-section.py \
-    examples/tax-121-principal-residence/blind-mapping/corpus-map-reconciled.json \
-    examples/tax-121-principal-residence/section-1.121-1.xml || return 1
-  # The reconciled map is what build-map-c.py builds from the first map plus the adjudication
-  # record: a change to one and not the other is a correction nobody ruled on.
+  # The map above is what build-map-c.py builds from the first mapping plus the adjudication
+  # record: a change to one and not the other is a correction nobody ruled on. The first mapping
+  # is frozen evidence at blind-mapping/first-map.json and is checked nowhere else, which this
+  # covers -- its bytes cannot change without the map they build stopping matching.
   python3 examples/tax-121-principal-residence/blind-mapping/build-map-c.py --check || return 1
   # A third grammar: page markers over text extracted from a PDF. extract.py first holds the
   # committed text to the manifest's contentHash and the committed PDF to sourcePdf.sha256, and

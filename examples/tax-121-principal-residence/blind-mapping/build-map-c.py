@@ -3,10 +3,17 @@
 
 0014 says the map is corrected to the answers, and the two maps it was corrected from stay
 where they are. This script is how the correction is auditable: it reads
-`../corpus-map.json` (Map A, frozen) and applies exactly the changes `resolutions.json`
+`first-map.json` (Map A, frozen) and applies exactly the changes `resolutions.json`
 rules, refusing to write if a change does not land. `blind-map.json` (Map B, frozen) is not
 read at all -- every correction below is justified by a row of the record, not by copying an
 entry across.
+
+Map C is `../corpus-map.json`: the map this example publishes and anything is built from (#8).
+Before it was promoted, Map A was that file and Map C sat here beside this script; both frozen
+inputs now sit here instead, side by side, and what `--check` compares is the map in use. That
+is the stronger reading of the same check -- a correction nobody ruled on cannot reach the
+packed map without failing it -- and it is why Map A is a file and not only a git object: this
+script has to read it.
 
 Every change is keyed to a row id in resolutions.json. There are no others: a diff of Map C
 against Map A that shows anything not listed here is a defect in this script.
@@ -30,8 +37,8 @@ import pathlib
 import sys
 
 HERE = pathlib.Path(__file__).resolve().parent
-MAP_A = HERE.parent / "corpus-map.json"
-MAP_C = HERE / "corpus-map-reconciled.json"
+MAP_A = HERE / "first-map.json"
+MAP_C = HERE.parent / "corpus-map.json"
 
 
 def by_id(document):
@@ -216,10 +223,10 @@ def main():
             print(f"{MAP_C} does not exist", file=sys.stderr)
             return 1
         if MAP_C.read_text(encoding="utf-8") != text:
-            print(f"{MAP_C} is not what build-map-c.py builds from ../corpus-map.json",
+            print(f"{MAP_C} is not what build-map-c.py builds from first-map.json",
                   file=sys.stderr)
             return 1
-        print(f"corpus-map-reconciled.json is what build-map-c.py builds "
+        print(f"corpus-map.json is what build-map-c.py builds from first-map.json "
               f"({len(document['entries'])} entries)")
         return 0
     MAP_C.write_text(text, encoding="utf-8")
