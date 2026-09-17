@@ -1249,6 +1249,60 @@ class TestAProduceUpdateIsAPullRequestLikeAnyOther(TestPrPolicy):
         self.assertIn("claim was admitted", done.stdout)
         self.assertNotIn("not files a produce writes", done.stdout)
 
+    #: What the pre-#247 shared overlay held, and what `overlay/` must carry for its deletion to be
+    #: the factory's. Two entries, because a split that dropped one is the failure being ruled out.
+    SHARED_OVERLAY = {"altitude-limit": {"status": "blocked"},
+                      "speed-limit": {"status": "implemented", "implementedIn": "Rules/SpeedLimit.cs",
+                                      "tests": [{"test": "T.t", "mutation": "returned 88 for 87; it went red"}]}}
+
+    def overlay_base(self, document=None):
+        """A base commit holding `corpus-map.overlay.json`, as every engine before #247 did.
+
+        Its hash is in `buildInputs` and not in `generated` or `managed`, because the factory never
+        wrote the engine's evidence -- which is exactly why the record cannot authorise this
+        deletion and the split's witness has to.
+        """
+        record = self.record()
+        text = json.dumps(document if document is not None else self.SHARED_OVERLAY, indent=2) + "\n"
+        record["buildInputs"] = list(record["buildInputs"]) + [
+            {"path": "corpus-map.overlay.json", "sha256": hashlib.sha256(text.encode("utf-8")).hexdigest()}]
+        return {"corpus-map.overlay.json": text, "provenance.json": json.dumps(record)}
+
+    def test_the_split_s_deletion_of_the_shared_overlay_does_not_void_the_claim(self):
+        """#247: the migration produce deletes `corpus-map.overlay.json` after splitting it.
+
+        The record cannot say the factory wrote that file, because it never did -- it is the
+        engine's own evidence. What admits the deletion is `overlay.superseded_by_split`, the
+        witness the remover itself uses, reading the head tree: every key the deleted file held is
+        in an `overlay/<entry id>.json` beside it, so the deletion drops nothing.
+        """
+        self.commit_engine()
+        write_overlay(self.out, self.SHARED_OVERLAY)
+        files = self.produced_files(extra=[{"path": "corpus-map.overlay.json", "changeType": "REMOVED"}])
+        self.pull_request(body=self.produce_body(), files=files, base_record=self.overlay_base())
+        done = self.policy_check()
+        self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+        self.assertIn("claim was admitted", done.stdout)
+        self.assertNotIn("not files a produce writes", done.stdout)
+
+    def test_a_shared_overlay_the_split_does_not_carry_voids_the_claim(self):
+        """The witness reads the content, so a key `overlay/` lacks is evidence being dropped.
+
+        Same diff, same pattern, same pathname; the only difference is that the files in the head
+        tree do not account for one of the deleted file's entries. Admitting that would let a
+        produce update carry away an entry's evidence, which is the shape #246's three review rounds
+        kept coming back to: never authorise a deletion by pathname alone.
+        """
+        self.commit_engine()
+        write_overlay(self.out, {"altitude-limit": self.SHARED_OVERLAY["altitude-limit"]})
+        files = self.produced_files(extra=[{"path": "corpus-map.overlay.json", "changeType": "REMOVED"}])
+        self.pull_request(body=self.produce_body(), files=files, base_record=self.overlay_base())
+        done = self.policy_check()
+        self.assertEqual(done.returncode, 1, done.stdout)
+        self.assertIn("not files a produce writes", done.stdout)
+        self.assertIn("corpus-map.overlay.json", done.stdout)
+        self.assertIn("claim is void", done.stdout)
+
     def test_a_retired_path_added_or_modified_voids_the_claim(self):
         """`backlog/notes.md` is hand-written and matches `backlog/*.md`. A produce deletes; it
         never adds to or edits a retired pattern, so a diff that does is somebody's decision."""
