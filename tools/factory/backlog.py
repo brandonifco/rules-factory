@@ -394,6 +394,20 @@ def document(rendered):
     return "\n\n---\n\n".join(rendered[name].rstrip("\n") + "\n" for name in order if name in rendered)
 
 
+def stale_names(directory, rendered):
+    """Names of an earlier rendering in `directory` that this one no longer has.
+
+    The set `write_rendered` removes, computed where the ignore gate can also see it: a deletion in
+    the engine is as much a change to the engine as a write, and `999-old.md` may be tracked even
+    where every file about to be written is ignored. So the gate is asked about these too, and a
+    directory that cannot be cleaned is refused rather than half-cleaned.
+    """
+    if not os.path.isdir(directory) or os.path.islink(directory):
+        return []
+    return sorted(name for name in os.listdir(directory)
+                  if (ITEM_FILE.match(name) or name == "README.md") and name not in rendered)
+
+
 def refuse_unignored(engine_dir, directory, names):
     """Refuse a `--render --to` inside `engine_dir` that the engine does not ignore (#243).
 
@@ -404,8 +418,10 @@ def refuse_unignored(engine_dir, directory, names):
 
       * **the engine root itself**, outright and without asking git. `--to <engine>` would write
         `README.md` over the engine's own, and the root is never ignored by anything;
-      * **a file the engine does not ignore**, which is asked of git for **every file about to be
-        written** (`names`), not for the directory that will hold them. An ignored directory can
+      * **a file the engine does not ignore**, which is asked of git for **every file the run would
+        touch** (`names`: the rendering, and the stale items `write_rendered` would delete), not for
+        the directory that will hold them. A deletion is held to the standard a write is: nothing
+        here removes a file the engine tracks. An ignored directory can
         hold a tracked child -- `git check-ignore` answers for the path it is given, and a
         negation (`!backlog/README.md`) or an already-tracked file makes the directory's answer and
         the file's differ. Checking the directory alone was the first version of this and was wrong;
@@ -473,13 +489,25 @@ def write_rendered(rendered, directory):
     follows a link, so a `README.md -> ../../README.md` planted in the output directory would put
     the backlog's index over the engine's -- and `--to` is allowed to point at a directory the
     engine ignores, where planting one costs nothing. Each file is opened `O_NOFOLLOW`, which fails
-    on a link rather than writing past it, and the run is refused naming the path.
+    on a link rather than writing past it, and the run is refused naming the path. A platform whose
+    `os` has no `O_NOFOLLOW` is refused outright: the flag defaulting to 0 would put the
+    link-following write back silently, on the one platform nobody here is testing on.
+
+    `O_NOFOLLOW` covers the **final component**. A parent directory swapped for a link between
+    `refuse_unignored`'s check and the write is not caught, and catching it would take
+    descriptor-relative I/O the standard library does not offer portably -- the same limit
+    transaction.py records for `--out`.
     """
+    if not hasattr(os, "O_NOFOLLOW"):
+        raise BacklogError("this platform's os has no O_NOFOLLOW, so a rendering cannot be written without "
+                           "the risk of following a symlink out of the directory it was told to write to. "
+                           "Render to stdout (`factory backlog --render` with no --to) instead")
     os.makedirs(directory, exist_ok=True)
-    for name in sorted(os.listdir(directory)):
-        if (ITEM_FILE.match(name) or name == "README.md") and name not in rendered:
-            os.remove(os.path.join(directory, name))  # removes the link, never what it points at
-    nofollow = getattr(os, "O_NOFOLLOW", 0)
+    for name in stale_names(directory, rendered):
+        # Held to the gate the writes are (refuse_unignored), and it removes the link, never what
+        # it points at.
+        os.remove(os.path.join(directory, name))
+    nofollow = os.O_NOFOLLOW
     for name in sorted(rendered):
         path = os.path.join(directory, name)
         try:

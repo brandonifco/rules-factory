@@ -58,6 +58,7 @@ import fnmatch
 import hashlib
 import json
 import os
+import re
 
 GENERATED = "generated"
 MANAGED = "managed"
@@ -169,11 +170,17 @@ Retired = collections.namedtuple("Retired", "pattern reason")
 #: the factory's to remove.
 #:
 #: **And a pattern may not overlap a row.** `retired_conflicts()` is checked before any deletion and
-#: by tools/tests/test_factory_ownership.py: no RETIRED pattern may be able to match a path any row
-#: of TABLE can match, so a retirement can never reach an engine-owned or managed file -- adopted
-#: ones included -- however the pattern is spelled. That is the structural guard; the record check
-#: above is the second, and an adopted file is listed in `engineOwned` without a hash, so it fails
-#: that one too.
+#: by the tests: no RETIRED pattern may be able to match a path any row of TABLE can match, so a
+#: retirement can never reach an engine-owned or managed file -- adopted ones included -- however the
+#: pattern is spelled. Overlap is decided **exactly**, inside the narrow grammar `RETIRED_SEGMENT`
+#: admits and `check_retired_grammar` enforces, so the guard neither blocks a safe retirement nor
+#: misses an unsafe one. That is the structural guard; the record check above is the second, and an
+#: adopted file is listed in `engineOwned` without a hash, so it fails that one too.
+#:
+#: **A file kept once is kept for good.** The next `produce` writes a record that does not mention
+#: it, so no later run can attribute it to the factory either. That is the trade this makes
+#: deliberately: preserving a file somebody wrote, forever, costs an engine one path nothing
+#: maintains, and the run names it every time; deleting it costs somebody their work.
 RETIRED = (
     Retired("backlog/*.md",
             "the backlog is a projection of the map and the overlay -- filed as GitHub issues by "
@@ -255,7 +262,7 @@ RECIPE_SHA256 = {
         1: "79a33c7fe1ea8d888e4d6912a43ac60afe285c7a8bf43fbe9f7be87d6947b76e",
         2: "4a0c6677913decb13c8e9499840d5da4935c1725559dd6514d67dd72c8d849bd",
         3: "fc3ca4f9571e3276b7208a5927cdcef01da852ae97972a5c47663fe7391703eb",
-        4: "2ad3e43e9d03af433ee6561eb2f2d1ce57e2b2aea11565ebd55a072e5cdfbd2b",
+        4: "1100f4005be978240ddd1f4ddb5001fefae8a89dff85818784dfe2e54ff61f8f",
     },
     "tools/record-verdict.py": {
         1: "48f7b11f7fc829cdaebd776a3eb5db04e27cade97c427c6806b72f58805d83db",
@@ -347,20 +354,56 @@ def retired(relative, name):
     return None
 
 
-def _segments_can_overlap(one, other):
-    """Whether one path segment glob and another could both match the same segment.
+#: The whole grammar a RETIRED pattern's segments may use. Each segment is a literal, or `*`, or
+#: `*` followed by a literal suffix (`*.md`, `*.g.cs`). Nothing else: no `?`, no `[`, no interior or
+#: trailing `*`, no `{name}`. The grammar is narrow on purpose -- inside it `_segments_can_overlap`
+#: decides overlap **exactly**, so `retired_conflicts()` neither blocks a safe retirement nor misses
+#: an unsafe one. `a*.md` and `*b.md` both match `ab.md` while neither matches the other, which is
+#: the shape a fnmatch-both-ways test gets wrong; it is not in the grammar, so it cannot arise.
+RETIRED_SEGMENT = re.compile(r"\A(?:\*[^*?\[\]{}]*|[^*?\[\]{}]+)\Z")
 
-    `{name}` is the engine's name, which is not known here, so a segment holding it is treated as
-    matching anything: the answer this function gives is used to *refuse* a pattern, and erring
-    towards "they could overlap" refuses a pattern that might have been safe rather than admitting
-    one that is not. The vocabulary in use is literals and `*`, optionally with a suffix (`*.md`,
-    `*.g.cs`), which `fnmatch` decides both ways.
+
+def _suffix(segment):
+    """(is a glob, its literal suffix) for a segment in the grammar; None for one outside it."""
+    if not RETIRED_SEGMENT.match(segment):
+        return None
+    return (True, segment[1:]) if segment.startswith("*") else (False, segment)
+
+
+def _segments_can_overlap(one, other):
+    """Whether two path segments could both match one segment. Exact inside the grammar.
+
+    `one` is a retired segment, always in the grammar (`check_retired_grammar`). `other` is a
+    table row's, with `{name}` already replaced by `*`: the engine name is one segment's worth of
+    text, so `{name}.slnx` is exactly "anything, then `.slnx`" -- which is why a retirement of
+    `obsolete.md` does not collide with it. A table segment outside the grammar (none is today)
+    answers True, which refuses a retirement rather than admitting one on an answer this cannot
+    give.
     """
-    if "{name}" in one or "{name}" in other:
+    left, right = _suffix(one), _suffix(other)
+    if left is None or right is None:
         return True
-    if one == other or one == "*" or other == "*":
-        return True
-    return fnmatch.fnmatchcase(one, other) or fnmatch.fnmatchcase(other, one)
+    (left_glob, left_text), (right_glob, right_text) = left, right
+    if not left_glob and not right_glob:
+        return left_text == right_text
+    if not left_glob:
+        return fnmatch.fnmatchcase(left_text, other)
+    if not right_glob:
+        return fnmatch.fnmatchcase(right_text, one)
+    # Both are `*` plus a suffix: a witness exists exactly when one suffix ends the other.
+    return left_text.endswith(right_text) or right_text.endswith(left_text)
+
+
+def check_retired_grammar():
+    """Refuse any RETIRED pattern outside the grammar overlap detection is exact for."""
+    for gone in RETIRED:
+        outside = [part for part in gone.pattern.split("/") if _suffix(part) is None]
+        if outside:
+            raise OwnershipError(
+                f"the retired pattern {gone.pattern} uses {', '.join(repr(p) for p in outside)}, which is "
+                f"outside the grammar a retirement may use (a literal, `*`, or `*` and a literal suffix). "
+                f"Overlap with the ownership table is only decidable inside it, and a retirement whose "
+                f"reach cannot be decided is not run")
 
 
 def retired_conflicts():
@@ -368,13 +411,15 @@ def retired_conflicts():
 
     A retirement deletes files. A pattern that could reach a row of TABLE could delete a generated,
     managed, adopted or engine-owned file -- the overlay, a lock file, a project -- so this makes
-    that impossible rather than unlikely. Segment counts differ or every segment pair is disjoint,
-    or the pattern does not go in RETIRED.
+    that impossible rather than unlikely. Either the segment counts differ, or some segment pair is
+    disjoint, or the pattern does not go in RETIRED.
     """
+    check_retired_grammar()
     found = []
     for gone in RETIRED:
         for row in TABLE:
-            left, right = gone.pattern.split("/"), row.pattern.split("/")
+            left = gone.pattern.split("/")
+            right = row.pattern.replace("{name}", "*").split("/")
             if len(left) == len(right) and all(_segments_can_overlap(a, b) for a, b in zip(left, right)):
                 found.append((gone.pattern, row.pattern))
     return found

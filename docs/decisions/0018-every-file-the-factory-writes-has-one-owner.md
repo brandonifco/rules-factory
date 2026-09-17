@@ -111,10 +111,15 @@ before — every body is byte-identical. `factory backlog --render --dir <engine
 rendering as one Markdown document, or writes the files with `--to <directory>`. A rendering of the
 overlay committed beside the overlay is the state this amendment removes, and the command must not
 be the way it comes back, so a `--to` inside the engine is refused unless all three hold: it is not
-the engine root; `git check-ignore` agrees the engine ignores **every file the run would write**,
-asked per file because an ignored directory can hold a tracked child; and no component of the path
-is a symlink, because git answers about the name and the write follows the link. Each file is then
-opened `O_NOFOLLOW`, so a planted `README.md ->` anywhere fails the write instead of going through it.
+the engine root; `git check-ignore` agrees the engine ignores **every file the run would touch** —
+what it writes *and* the stale items it would delete, asked per file because an ignored directory
+can hold a tracked child, and a deletion is a change to the engine as much as a write; and no
+component of the path is a symlink, because git answers about the name and the write follows the
+link. Each file is then opened `O_NOFOLLOW`, so a planted `README.md ->` anywhere fails the write
+instead of going through it, and a platform whose `os` has no `O_NOFOLLOW` is refused rather than
+quietly given the following write back. `O_NOFOLLOW` covers the final component; a parent directory
+swapped for a link between the check and the write is not caught, which would take
+descriptor-relative I/O the standard library does not offer portably.
 
 **Migration.** The next `produce` removes a committed `backlog/` inside the staging copy, so the
 removal is committed with the rest of the run or not at all (`transaction.py`), and the run prints
@@ -137,10 +142,27 @@ part of `produce` that removes a file it did not just write:
   reach a generated, managed, adopted or engine-owned file however it is spelled — not merely
   unlikely, impossible. An adopted file fails the evidence guard too: `engineOwned` carries no hash.
 
-`tools/pr-policy.py` admits a retired path just as narrowly: only as a **deletion**, and only when
-the **base commit's** `provenance.json` records the factory as having written it. Adding to,
-editing, or deleting an unrecorded file under a retired pattern voids a produce claim like any
-other hand-written change, and a base record that cannot be read admits nothing.
+  Overlap is decided **exactly**, which takes a **constrained grammar**: a retired segment is a
+  literal, or `*`, or `*` and a literal suffix, and `check_retired_grammar` refuses anything else
+  before any deletion. Inside it, `{name}` on the table's side reduces to `*` (an engine name is one
+  segment's worth of text), so a retirement of `obsolete.md` does not collide with `{name}.slnx` —
+  and `*.g.cs` against `*.cs` is a collision, which it is. The alternative, matching two globs
+  against each other with `fnmatch` both ways, is wrong in both directions: it calls `{name}.slnx` a
+  conflict with every root-level retirement, and it calls `a*.md` and `*b.md` disjoint when `ab.md`
+  matches both. The grammar excludes the interior `*` that makes the second possible.
+
+A file kept once is kept for good: the next `produce` writes a record that does not mention it, so
+no later run can attribute it to the factory either. That is the trade, taken deliberately —
+preserving a file somebody wrote costs an engine one path nothing maintains, named on every run;
+deleting it costs somebody their work.
+
+`tools/pr-policy.py` admits a retired path just as narrowly, and draws **the same line the remover
+draws**: only as a **deletion**, and only when the bytes at that path in the base commit hash to
+what the base commit's `provenance.json` recorded. The path's presence in the record is not enough
+— a file generated once and hand-edited since is listed under its old hash, and the remover keeps
+it, so a policy that went by name would have called somebody's deletion of somebody's work a
+produce. Adding to, editing, or deleting an unattributed file under a retired pattern voids a claim
+like any other hand-written change, and a base record that cannot be read admits nothing.
 
 **What still catches a stale derived state.** `buildInputs[corpus-map.overlay.json]`. Hashing the
 backlog never could catch a stale backlog, because an item file listing an entry someone has since

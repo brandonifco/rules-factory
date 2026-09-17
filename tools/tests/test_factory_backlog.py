@@ -397,19 +397,77 @@ class BacklogCase(unittest.TestCase):
 
     def test_no_retired_pattern_can_reach_a_file_the_table_owns(self):
         """The structural guard, not the record one: a retirement must not be able to delete an
-        engine-owned, adopted, managed or generated file however the pattern is spelled (#243)."""
+        engine-owned, adopted, managed or generated file however the pattern is spelled (#243).
+
+        Exact, not conservative. `backlog/*.md` does not conflict with `{name}.slnx` -- the engine's
+        name is a segment's worth of text, so that row is "anything, then `.slnx`", and a `.md`
+        retirement cannot reach it. A guard that called that a conflict would block a legitimate
+        retirement; one that missed `*.g.cs` against `*.cs` would admit a lethal one.
+        """
         ownership = factory.generate.ownership
         self.assertEqual(ownership.retired_conflicts(), [])
-        overlapping = ownership.RETIRED + (ownership.Retired("corpus-map.overlay.json", "a mistake"),)
-        with mock.patch.object(ownership, "RETIRED", overlapping):
-            # `{name}.slnx` is reported too: the engine's name is unknown here, so a segment
-            # holding it is treated as matching anything. The answer is used to refuse a pattern,
-            # so erring towards "could overlap" refuses a safe pattern rather than admitting an
-            # unsafe one.
-            self.assertIn(("corpus-map.overlay.json", "corpus-map.overlay.json"),
-                          ownership.retired_conflicts())
-            with self.assertRaisesRegex(ownership.OwnershipError, "overlaps corpus-map.overlay.json"):
-                ownership.remove_retired(self.engines["part107"], "FaaPart107")
+        self.assertTrue(ownership._segments_can_overlap("*b.md", "*.md"), "a supported pair, decided exactly")
+        for pattern, expected in (("corpus-map.overlay.json", "corpus-map.overlay.json"),
+                                  ("scripts/factory/*.py", "scripts/factory/*.py"),
+                                  ("src/*/Generated/*.cs", "src/{name}/Generated/*.g.cs"),
+                                  ("*.slnx", "{name}.slnx")):
+            with self.subTest(pattern=pattern), \
+                    mock.patch.object(ownership, "RETIRED",
+                                      ownership.RETIRED + (ownership.Retired(pattern, "a mistake"),)):
+                self.assertIn((pattern, expected), ownership.retired_conflicts())
+                with self.assertRaisesRegex(ownership.OwnershipError, "overlaps"):
+                    ownership.remove_retired(self.engines["part107"], "FaaPart107")
+        # And it does not over-approximate: a root-level `.md` retirement reaches nothing, though
+        # `{name}.slnx` and `{name}.md`-shaped rows sit at the root beside it. Treating a segment
+        # holding `{name}` as matching anything made this a conflict and would have blocked it.
+        with mock.patch.object(ownership, "RETIRED", (ownership.Retired("obsolete.md", "a future retirement"),)):
+            self.assertEqual(ownership.retired_conflicts(), [])
+
+    def test_a_platform_without_o_nofollow_is_refused_rather_than_written_to(self):
+        """The flag defaulting to 0 would put the link-following write back, silently (#243)."""
+        engine, _ = self.ignoring_engine("no-nofollow")
+        rendered, _ = backlog.engine_backlog(engine, self.packages["part107"][0])
+        target = os.path.join(self.tmp, "no-nofollow-out")
+        saved = os.O_NOFOLLOW
+        del os.O_NOFOLLOW
+        self.addCleanup(setattr, os, "O_NOFOLLOW", saved)
+        with self.assertRaisesRegex(backlog.BacklogError, "no O_NOFOLLOW"):
+            backlog.write_rendered(rendered, target)
+        self.assertFalse(os.path.exists(target), "nothing was written, and the directory was not made")
+
+    def test_a_retired_pattern_outside_the_grammar_is_refused(self):
+        """Overlap is only decidable inside the grammar, so a pattern outside it never runs (#243).
+
+        `a*.md` and `*b.md` both match `ab.md` while neither matches the other: a pair a
+        fnmatch-both-ways test calls disjoint. The grammar excludes the interior `*` that makes that
+        shape possible -- `*b.md` is still allowed, because `*`-and-a-suffix against
+        `*`-and-a-suffix is decided exactly by whether one suffix ends the other.
+        """
+        ownership = factory.generate.ownership
+        for pattern in ("backlog/a*.md", "backlog/*.md.*", "backlog/[0-9]*.md", "backlog/00?.md",
+                        "{name}/old.md"):
+            with self.subTest(pattern=pattern), \
+                    mock.patch.object(ownership, "RETIRED", (ownership.Retired(pattern, "unsupported"),)):
+                with self.assertRaisesRegex(ownership.OwnershipError, "outside the grammar"):
+                    ownership.remove_retired(self.engines["part107"], "FaaPart107")
+
+    def test_render_to_refuses_rather_than_delete_a_stale_item_the_engine_tracks(self):
+        """A deletion is a change to the engine as much as a write, and is gated as one (#243)."""
+        engine, render = self.ignoring_engine("stale-tracked")
+        target = os.path.join(engine, "artifacts", "backlog")
+        os.makedirs(target)
+        stale = os.path.join(target, "999-an-entry-that-is-gone.md")
+        with open(stale, "w", encoding="utf-8") as handle:
+            handle.write("tracked on purpose\n")
+        for argv in (["add", "-f", "artifacts/backlog/999-an-entry-that-is-gone.md"], ["add", ".gitignore"],
+                     ["-c", "user.email=t@example.invalid", "-c", "user.name=t", "commit", "-qm", "tracked"]):
+            subprocess.run(["git", "-C", engine] + argv, check=True,
+                           stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        code, log = run(render + [target])
+        self.assertEqual(code, 1, log)
+        self.assertIn("999-an-entry-that-is-gone.md", log)
+        self.assertTrue(os.path.isfile(stale), "a tracked stale item was deleted")
+        self.assertFalse(os.path.exists(os.path.join(target, "README.md")), "nothing was written either")
 
     def test_render_without_a_record_is_refused(self):
         bare = os.path.join(self.tmp, "bare")

@@ -505,20 +505,23 @@ class TestTheEntryPacket(TestAProducedEngine):
 
 GH_STUB = '''#!/usr/bin/env python3
 """A stand-in for `gh`, answering from a JSON fixture. Only the shapes the rails ask for."""
-import json, os, sys
+import base64, json, os, sys
 
 fixture = json.load(open(os.environ["GH_FIXTURE"], encoding="utf-8"))
 argv = sys.argv[1:]
 kind = argv[0] if argv else ""
 if kind == "api":
-    # `gh api repos/{owner}/{repo}/contents/provenance.json?ref=<sha>`: the base commit's record,
-    # which pr-policy.py reads to decide whether the factory ever wrote a retired path (#243).
-    ref = argv[1].split("ref=")[-1] if "ref=" in argv[1] else ""
-    body = (fixture.get("contents") or {}).get(ref)
+    # `gh api repos/{owner}/{repo}/contents/<path>?ref=<sha> --jq .content`: a file at the base
+    # commit, base64 as GitHub returns it. pr-policy.py reads the record this way and then hashes
+    # each deleted retired path's bytes against it (#243).
+    route, _, query = argv[1].partition("?")
+    ref = query.split("ref=")[-1]
+    wanted = route.split("/contents/", 1)[1] if "/contents/" in route else ""
+    body = ((fixture.get("contents") or {}).get(ref) or {}).get(wanted)
     if body is None:
-        sys.stderr.write(f"no contents at {ref}\\n")
+        sys.stderr.write(f"no {wanted} at {ref}\\n")
         sys.exit(1)
-    print(json.dumps(body))
+    print(base64.b64encode(body.encode("utf-8")).decode("ascii"))
     sys.exit(0)
 number = argv[2] if len(argv) > 2 else ""
 record = (fixture.get(kind) or {}).get(number)
@@ -950,8 +953,8 @@ class TestPrPolicy(RailsInAGitEngine):
                          "changedFiles": len(files) if changed_files is None else changed_files}},
             "issue": {"27": {"number": 27, "state": "OPEN",
                              "labels": [{"name": name} for name in labels]}},
-            # `gh api .../contents/provenance.json?ref=<base>`: only read when a retired path is in
-            # the diff (#243). Absent unless a test puts one there.
+            # `gh api .../contents/<path>?ref=<base>`: the base commit's files, read only when a
+            # retired path is in the diff (#243). Absent unless a test puts them there.
             "contents": {self.BASE: base_record} if base_record is not None else {},
         })
 
@@ -1200,12 +1203,23 @@ class TestAProduceUpdateIsAPullRequestLikeAnyOther(TestPrPolicy):
 
     RETIRED_GONE = ["backlog/001-speed-limit.md", "backlog/README.md"]
 
-    def retired_base(self, paths=None):
-        """A base record that says the factory wrote those retired paths, as one before #243 did."""
+    def retired_base(self, paths=None, edited=()):
+        """The base commit's files: a record that hashed those retired paths, and the paths themselves.
+
+        The bytes are here, not only the hashes, because pr-policy fetches and hashes them -- the
+        same test `ownership.remove_retired` applies. `edited` names paths whose committed bytes have
+        moved since the record hashed them, which is the hand-edit case the record alone misses.
+        """
         record = self.record()
-        record["generated"] = list(record["generated"]) + [
-            {"path": path, "sha256": "0" * 64} for path in (self.RETIRED_GONE if paths is None else paths)]
-        return record
+        listed = self.RETIRED_GONE if paths is None else paths
+        contents, generated = {}, list(record["generated"])
+        for path in listed:
+            text = f"# committed by a produce before #243: {path}\n"
+            generated.append({"path": path, "sha256": hashlib.sha256(text.encode("utf-8")).hexdigest()})
+            contents[path] = f"{text}hand-edited after the last produce\n" if path in edited else text
+        record["generated"] = generated
+        contents["provenance.json"] = json.dumps(record)
+        return contents
 
     def retired_files(self, change="REMOVED"):
         return self.produced_files(extra=[{"path": path, "changeType": change} for path in self.RETIRED_GONE])
@@ -1239,6 +1253,24 @@ class TestAProduceUpdateIsAPullRequestLikeAnyOther(TestPrPolicy):
                 self.assertIn("not files a produce writes", done.stdout)
                 self.assertIn("backlog/001-speed-limit.md", done.stdout)
                 self.assertIn("claim is void", done.stdout)
+
+    def test_a_retired_deletion_whose_base_bytes_were_hand_edited_voids_the_claim(self):
+        """The policy draws the line the remover draws, and the record's path list is not that line.
+
+        A file the factory generated once and somebody edited afterwards without re-producing is
+        still listed in the record, under its old hash. `ownership.remove_retired` keeps such a file;
+        a policy that admitted its deletion on the strength of the path alone would call somebody's
+        deletion of somebody's work a produce.
+        """
+        self.commit_engine()
+        self.pull_request(body=self.produce_body(), files=self.retired_files(),
+                          base_record=self.retired_base(edited=["backlog/001-speed-limit.md"]))
+        done = self.policy_check()
+        self.assertEqual(done.returncode, 1, done.stdout)
+        self.assertIn("not files a produce writes", done.stdout)
+        self.assertIn("backlog/001-speed-limit.md", done.stdout)
+        self.assertNotIn("backlog/README.md", done.stdout.split("are not files a produce writes")[1][:200],
+                         "the one whose bytes are the record's is still admitted")
 
     def test_a_retired_deletion_the_base_record_does_not_own_voids_the_claim(self):
         """Deleting a hand-written file under a retired pattern is still a decision (#243).

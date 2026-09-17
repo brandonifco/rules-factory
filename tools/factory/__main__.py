@@ -449,9 +449,12 @@ def render_backlog(args):
     """
     rendered, _ = backlog_step.engine_backlog(args.dir, args.package)
     if args.to:
-        # The names are known before anything is written, and the gate is asked about each of them:
-        # an ignored directory can hold a tracked child (backlog.refuse_unignored, #243).
-        backlog_step.refuse_unignored(args.dir, args.to, rendered)
+        # Every name the run would touch -- what it writes, and the stale items it would delete --
+        # is known before anything happens, and the gate is asked about each: an ignored directory
+        # can hold a tracked child, and a deletion is a change to the engine as much as a write
+        # (backlog.refuse_unignored, #243).
+        touched = list(rendered) + backlog_step.stale_names(args.to, rendered)
+        backlog_step.refuse_unignored(args.dir, args.to, touched)
         written = backlog_step.write_rendered(rendered, args.to)
         print(f"--- backlog: {len(written) - 1} item(s) and an index written to {args.to}")
         return 0
