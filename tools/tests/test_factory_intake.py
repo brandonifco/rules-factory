@@ -382,6 +382,74 @@ class TestNothingIsReadWithoutALimit(IntakeCase):
         self.assertLess(os.path.getsize(self.hoyle), intake.MAX_PACKAGE_BYTES)
 
 
+class TestADocumentTypeIsRefused(IntakeCase):
+    """#210: a nuspec or props that declares a DTD is refused before it is parsed.
+
+    The size caps bound the bytes read, not what the parser expands them to, and a map package has
+    no reason to carry a DTD: nothing tools/pack-map.py builds declares one.
+    """
+
+    NUSPEC = f"{HOYLE_ID}.nuspec"
+    PROPS = f"build/{HOYLE_ID}.props"
+    LAUGHS = (b'<!DOCTYPE lolz [\n  <!ENTITY lol "lol">\n'
+              + b"".join(b'  <!ENTITY lol%d "%s">\n' % (n, (b"&lol%s;" % (str(n - 1).encode() if n > 1 else b"")) * 10)
+                         for n in range(1, 10))
+              + b"]>\n")
+
+    def member(self, name):
+        with zipfile.ZipFile(self.hoyle) as archive:
+            return archive.read(name)
+
+    def with_declaration(self, name, declaration, entity=b""):
+        """Hoyle's member with a document type declared after its XML declaration (if any), and
+        `entity` referenced in its first element's text."""
+        data = self.member(name)
+        head, sep, rest = data.partition(b"?>\n") if data.startswith(b"<?xml") else (b"", b"", data)
+        if entity:
+            rest = rest.replace(b"<id>", b"<id>" + entity, 1) if name == self.NUSPEC else \
+                rest.replace(b"<ItemGroup>", b"<ItemGroup>" + entity, 1)
+        return head + sep + declaration + rest
+
+    def test_a_nuspec_that_declares_a_doctype_is_refused_naming_why(self):
+        package = rewrite(self.hoyle, os.path.join(self.tmp, "doctype.nupkg"),
+                          {self.NUSPEC: self.with_declaration(self.NUSPEC, b"<!DOCTYPE package>\n")})
+        self.assert_refused(package, HOYLE_TEXT, self.NUSPEC, "declares a document type (DTD)", "0016")
+
+    def test_a_props_that_declares_a_doctype_is_refused_naming_why(self):
+        package = rewrite(self.hoyle, os.path.join(self.tmp, "doctype.nupkg"),
+                          {self.PROPS: self.with_declaration(self.PROPS, b"<!DOCTYPE Project>\n")})
+        self.assert_refused(package, HOYLE_TEXT, self.PROPS, "declares a document type (DTD)", "0016")
+
+    def test_a_billion_laughs_in_either_member_is_refused_not_expanded(self):
+        for name in (self.NUSPEC, self.PROPS):
+            with self.subTest(member=name):
+                package = rewrite(self.hoyle, os.path.join(self.tmp, "laughs.nupkg"),
+                                  {name: self.with_declaration(name, self.LAUGHS, b"&lol9;")})
+                self.assert_refused(package, HOYLE_TEXT, name, "declares a document type (DTD)")
+
+    def test_a_doctype_in_another_encoding_is_still_refused(self):
+        """A search of the bytes for `<!DOCTYPE` reads straight past UTF-16; the parser does not."""
+        text = self.with_declaration(self.NUSPEC, b"<!DOCTYPE package>\n").decode("utf-8")
+        text = text.replace('encoding="utf-8"', 'encoding="utf-16"', 1)
+        package = rewrite(self.hoyle, os.path.join(self.tmp, "utf16.nupkg"), {self.NUSPEC: text.encode("utf-16")})
+        self.assert_refused(package, HOYLE_TEXT, self.NUSPEC, "declares a document type (DTD)")
+
+    def test_a_malformed_nuspec_is_refused_not_a_traceback(self):
+        package = rewrite(self.hoyle, os.path.join(self.tmp, "malformed.nupkg"),
+                          {self.NUSPEC: self.member(self.NUSPEC).replace(b"</package>", b"")})
+        self.assert_refused(package, HOYLE_TEXT, self.NUSPEC, "is not well-formed XML")
+
+    def test_packages_pack_map_builds_are_unaffected(self):
+        """The refusal is a boundary pack-map.py's output is inside: both real packages still pass."""
+        self.assert_passes(self.hoyle, HOYLE_TEXT)
+        self.assert_passes(self.part107, PART107_XML)
+        for package in (self.hoyle, self.part107):
+            with zipfile.ZipFile(package) as archive:
+                for name in archive.namelist():
+                    if name.endswith((".nuspec", ".props")):
+                        self.assertNotIn(b"<!DOCTYPE", archive.read(name))
+
+
 class FakeResponse:
     """A urlopen response that serves `body` in chunks, or raises partway through."""
 
