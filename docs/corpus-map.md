@@ -989,20 +989,34 @@ derived consequence (#16): **the artifact is the test.**
 **A placeholder is not a mutation.** An engine's gate (`scripts/map-overlay.py`, the recipe at
 `tools/factory/recipe/map-overlay.py`) refuses an `implemented` entry whose test records
 `PENDING`, `TBD`, `TODO`, `none`, `n/a`, `scratch`, `placeholder`, `xxx`, `unknown`, `later`,
-`fixme`, `wip`, `?` or `-` — matched case-insensitively once whitespace and surrounding
-punctuation are stripped, so `Pending.` and `--` and `` (empty) go with them — or anything
-shorter than **three words and twelve characters**. The refusal names the entry, the test, the
-string and `tools/re-produce.sh`. Filed as
+`fixme`, `wip`, `?` or `-` — or anything shorter than **three distinct words and twelve
+characters**. Both are applied to the mutation after it is normalised: NFKD, combining marks and
+format characters removed, whitespace collapsed, punctuation and symbols stripped from both ends
+by Unicode category, and casefolded. So `Pending.`, `--`, `""`, `“TODO”`, `ＴＯＤＯ`, `TÓDO` and a
+`TODO` with a zero-width space inside it are all the same word. Words are counted **distinct**, so
+`TODO TODO TODO` is one word however each copy is spelled — including with a Cyrillic `О`, since
+no confusable mapping is done and none is claimed. The refusal names the entry, the test, the
+string, where the record lives and `tools/re-produce.sh`.
+
+**It reads the merge, not the overlay.** `tests` is a field of the merged entry, and a package map
+may carry one, so checking only the overlay would leave an implemented entry whose evidence came
+from upstream unexamined — the same shape of hole. Filed as
 [#239](https://github.com/brandonifco/rules-factory/issues/239): the first implementer of
 `tax-121-principal-residence` had to produce twice, because a handler cannot compile until a
 re-produce marks the entry `implemented`, so it wrote `PENDING`, produced, ran the real mutations
 and produced again — and `validate.sh full` passed on the intermediate run. The threshold is set
 an order of magnitude below the shortest real mutation either of the factory's engines records
 (20 words, 159 characters), because refusing an honest mutation blocks work and invites padding,
-which is worse than a placeholder slipping through. This is a floor against the unfilled
-placeholder, **not a grader of mutation quality** — see immediately below for what it still
-cannot show. `tools/checkmap/status.py`, the published-map path, does not yet carry the rule
-([#240](https://github.com/brandonifco/rules-factory/issues/240)).
+which is worse than a placeholder slipping through.
+
+**What it refuses is an unfilled placeholder, and nothing more.** It cannot tell whether the edit
+was made, whether the test went red, whether the mutation was a good one, or whether the sentence
+was copied from another entry; `not yet recorded` passes it, and so does a real mutation typed by
+someone who ran nothing. That part rests on the implementer's word, as it did before — see
+immediately below. `tools/checkmap/status.py`, and the `check-map.py` built from it, is the
+checker a **published map** carries and the one this repository runs over its own maps; it does
+not yet carry the rule ([#240](https://github.com/brandonifco/rules-factory/issues/240)), which is
+now about a map before any engine merges it rather than a second line under the engine's gate.
 
 `check-map.py --only status` enforces what a map alone can show: `tests` is present and
 non-empty on every `implemented` entry, and wherever it appears each item has a non-blank `test`,

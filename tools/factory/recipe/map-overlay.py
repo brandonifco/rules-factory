@@ -31,19 +31,36 @@ merge(package, overlay), as 0015 defines it -- each rule is also a failure below
 (Rule 6, the consumer-phase checks on the merge, is the package's own tools/check-map.py
 --phase consumer, which scripts/validate.sh runs.)
 
-And one rule 0015 did not state, because until rules-factory #239 nothing checked it: an item
-whose `status` is `implemented` records, for every test, a **mutation that is not an unfilled
-placeholder**. AGENTS.md's "a test whose named mutation was never observed to fail is a test
-nobody has watched fail" rested on `isinstance(mutation, str) and mutation.strip()`, so the gate
-passed with `"mutation": "PENDING"` -- evidence for a test nobody had run. The rule, in full, is
-`placeholder_problem()` below: a named set of placeholder words, matched case-insensitively after
-whitespace and surrounding punctuation are stripped, and a floor of MINIMUM_WORDS words and
-MINIMUM_CHARACTERS characters.
+And one rule 0015 did not state, because until rules-factory #239 nothing checked it: an entry
+**of the merge** whose `status` is `implemented` records, for every test, a **mutation that is not
+an unfilled placeholder**. AGENTS.md's "a test whose named mutation was never observed to fail is
+a test nobody has watched fail" rested on `isinstance(mutation, str) and mutation.strip()`, so the
+gate passed with `"mutation": "PENDING"` -- evidence for a test nobody had run.
 
-This is a floor against the unfilled placeholder, **not a grader of mutation quality**. It cannot
-tell whether the edit was made, whether the test went red, or whether the mutation was a good one;
-nothing a string can be read for can. What it removes is the state of recording evidence that was
-never filled in. The threshold is set far below any real mutation on purpose: refusing an honest
+Read on the merge, not on the overlay. The overlay is where an engine normally records its tests,
+but `tests` is a field of the merged entry, and a package map may carry one: checking overlay
+items would leave an implemented entry whose evidence came from upstream unexamined, which is the
+same shape of hole as the one this rule closes. What the engine ships is the merge, so the merge
+is what is read.
+
+The rule, in full, is `placeholder_problem()` below: a named set of placeholder words, and a floor
+of MINIMUM_WORDS distinct words and MINIMUM_CHARACTERS characters, both applied to the mutation
+after `normalise()` -- NFKD, combining marks and format characters (Unicode Mn, Me, Cf) removed,
+whitespace collapsed, punctuation, symbols and spaces stripped from both ends by Unicode category,
+and casefolded. So `TODO`, `ＴＯＤＯ`, `"TODO"`, `TO<zero-width space>DO` and `TÓDO` are one word.
+
+The floor counts **distinct** words on purpose. A mutation that says one word over and over says
+nothing, and counting distinct words refuses `TODO TODO TODO` however each copy is spelled --
+including with a Cyrillic `О` for a Latin `O`. **Confusable (homoglyph) mapping is deliberately
+not done**: it needs a versioned table of confusables kept current against Unicode, which belongs
+to the whole factory and not to one check, and a homoglyph here is deliberate evasion, which this
+floor does not claim to stop in any case. What it does mean is that a mutation spelled in another
+script is not recognised as a placeholder word -- it is refused, when it is refused, by the floor.
+
+This refuses **unfilled placeholders**, and nothing more. It cannot tell whether the edit was
+made, whether the test went red, whether the mutation was a good one, or whether the sentence was
+copied from another entry; `not yet recorded` passes it. Nothing a string can be read for can do
+otherwise. The threshold is set far below any real mutation on purpose: refusing an honest
 mutation blocks honest work and teaches people to pad, which is worse than a placeholder slipping
 through. The shortest mutation in either engine the factory has built (faa-part-107,
 tax-121-principal-residence) is 20 words and 159 characters, an order of magnitude above the
@@ -60,8 +77,8 @@ Standard library only, and scripts/factory/rulings.py.
 import argparse
 import json
 import pathlib
-import string
 import sys
+import unicodedata
 
 # rulings, imported just below, leaves its bytecode behind: scripts/factory/__pycache__/, a path
 # no ownership row covers, so the checkout that ran this goes dirty and tools/dispatch-agent.sh
@@ -87,49 +104,78 @@ PLACEHOLDERS = frozenset((
 ))
 
 # The floor. A mutation is a sentence: it names what was changed and says what the test then did,
-# and neither fits in two words. Set an order of magnitude below any real mutation -- the shortest
-# in faa-part-107 or tax-121-principal-residence is 20 words and 159 characters -- because refusing
-# an honest mutation is worse than letting a placeholder through: it blocks work and invites
-# padding. Not a quality bar; see the module docstring.
+# and neither fits in two words. Distinct words, so a word repeated is still one word. Set an order
+# of magnitude below any real mutation -- the shortest in faa-part-107 or tax-121-principal-residence
+# is 20 words and 159 characters -- because refusing an honest mutation is worse than letting a
+# placeholder through: it blocks work and invites padding. Not a quality bar; see the docstring.
 MINIMUM_WORDS = 3
 MINIMUM_CHARACTERS = 12
 
-# The punctuation a placeholder is decorated with: "TODO.", "-- pending --", "?", "n/a!". Stripped
-# from both ends before matching, which is also how the empty-after-punctuation case ("...", "-")
-# becomes the empty string and matches.
-EDGES = string.punctuation + string.whitespace
+# Combining marks and format characters. Removed outright, not stripped from the ends: a zero-width
+# space inside `TO<zwsp>DO` hides the word, and seven of them pad `1 2 3` past a character floor.
+INVISIBLE = ("Mn", "Me", "Cf")
+
+# What a placeholder is decorated with -- "TODO.", "-- pending --", "?", "n/a!", curly quotes --
+# taken by Unicode category rather than an ASCII set, so it is not only ASCII punctuation. This is
+# also how the empty-after-punctuation case ("...", "-", "()") becomes the empty string.
+EDGE_CATEGORIES = ("P", "S", "Z")
+
+
+def an_edge(character):
+    return unicodedata.category(character)[0] in EDGE_CATEGORIES or character.isspace()
+
+
+def strip_edges(text):
+    """`text` without leading and trailing punctuation, symbols and whitespace."""
+    start, end = 0, len(text)
+    while start < end and an_edge(text[start]):
+        start += 1
+    while end > start and an_edge(text[end - 1]):
+        end -= 1
+    return text[start:end]
 
 
 def normalise(mutation):
-    """The mutation as it is matched: lowercased, with whitespace and surrounding punctuation gone."""
-    return " ".join(mutation.split()).strip(EDGES).casefold()
+    """The mutation as it is matched. See the docstring: NFKD, invisibles gone, whitespace
+    collapsed, ends stripped by category, casefolded."""
+    text = unicodedata.normalize("NFKD", mutation)
+    text = "".join(c for c in text if unicodedata.category(c) not in INVISIBLE)
+    text = unicodedata.normalize("NFC", text)
+    return strip_edges(" ".join(text.split())).casefold()
 
 
 def words(normalised):
-    """The tokens that carry meaning: whitespace-separated, at least one letter or digit each."""
-    return [w for w in normalised.split() if any(c.isalnum() for c in w)]
+    """The tokens that carry meaning: whitespace-separated, at least one letter or digit each,
+    with their own punctuation off, and each counted once."""
+    return {strip_edges(w) for w in normalised.split() if any(c.isalnum() for c in w)}
 
 
 def placeholder_problem(mutation):
     """Why this mutation is not evidence, or None. The whole rule, in one place (#239)."""
     normalised = normalise(mutation)
-    tokens = words(normalised)
-    if normalised in PLACEHOLDERS or (tokens and all(t.strip(EDGES) in PLACEHOLDERS for t in tokens)):
+    distinct = words(normalised)
+    if normalised in PLACEHOLDERS or (distinct and distinct <= PLACEHOLDERS):
         return f"{mutation.strip()!r}, which is a placeholder, not a mutation"
-    if len(tokens) < MINIMUM_WORDS or len(normalised) < MINIMUM_CHARACTERS:
-        return (f"{mutation.strip()!r}, which is too short to be a mutation: at least {MINIMUM_WORDS} words "
-                f"and {MINIMUM_CHARACTERS} characters are asked for, and this is "
-                f"{len(tokens)} and {len(normalised)}")
+    if len(distinct) < MINIMUM_WORDS or len(normalised) < MINIMUM_CHARACTERS:
+        return (f"{mutation.strip()!r}, which is too short to be a mutation: at least "
+                f"{MINIMUM_WORDS} distinct words and {MINIMUM_CHARACTERS} characters are asked "
+                f"for, and this is {len(distinct)} and {len(normalised)}")
     return None
 
 
-def mutation_problems(entry_id, item):
-    """Rule #239, for one overlay item: an `implemented` entry records a real mutation per test."""
-    if not isinstance(item, dict) or item.get("status") != "implemented":
+def mutation_problems(entry_id, entry, from_overlay):
+    """Rule #239, for one entry of the merge: an `implemented` entry records a real mutation per
+    test. `from_overlay` says where the reader must go to fix it."""
+    if not isinstance(entry, dict) or entry.get("status") != "implemented":
         return []
-    tests = item.get("tests")
+    tests = entry.get("tests")
     if not isinstance(tests, list):
         return []
+    advice = ("Make the edit, watch the test fail, undo it, record it in corpus-map.overlay.json, "
+              "and re-produce with `tools/re-produce.sh`." if from_overlay else
+              "This entry's `tests` come from the map package, not this engine's overlay, so the "
+              "record to fix is upstream's and no re-produce here will change it: raise it against "
+              "the map, or set this engine's own `tests` for the entry in corpus-map.overlay.json.")
     problems = []
     for position, test in enumerate(tests, start=1):
         if not isinstance(test, dict):
@@ -145,11 +191,10 @@ def mutation_problems(entry_id, item):
                 continue
             why = f"records {why}"
         problems.append(
-            f"overlay item {entry_id!r} is implemented, and {named!r} {why}. A mutation is the edit "
+            f"merged entry {entry_id!r} is implemented, and {named!r} {why}. A mutation is the edit "
             "you made to this engine that turned that test red, written down: what you changed, "
-            "where, and what the test then did. Make the edit, watch the test fail, undo it, record "
-            "it here, and re-produce with `tools/re-produce.sh`. This is a floor against an unfilled "
-            "placeholder, not a judgement of the mutation.")
+            f"where, and what the test then did. {advice} This refuses an unfilled "
+            "placeholder; it cannot tell whether the edit was made or the test went red.")
     return problems
 
 
@@ -183,7 +228,6 @@ def merge(package, overlay, root=None):
                 problems.append(f"overlay item {entry_id!r} sets {key!r}; an engine owns only "
                                 f"{', '.join(OWNED)} (and its owner's {' and '.join(rulings.KEYS)}), "
                                 f"and every other field is the package's")
-        problems += mutation_problems(entry_id, item)
     problems += [f"owner's rulings (rules-factory decision 0027): {p}"
                  for p in rulings.problems(package, overlay, root)]
     if problems:
@@ -206,6 +250,16 @@ def merge(package, overlay, root=None):
         if not placed:
             out.update({k: item[k] for k in OWNED if k in item})
         merged_entries.append(out)
+
+    # #239, and it reads the merge rather than the overlay: an implemented entry whose `tests` came
+    # from the package map is checked too. The merge exists by here, and is returned only if it
+    # holds; a refused merge writes nothing.
+    for entry in merged_entries:
+        entry_id = entry.get("id") if isinstance(entry, dict) else None
+        problems += mutation_problems(entry_id, entry, from_overlay=entry_id in overlay)
+    if problems:
+        return None, problems
+
     return {key: (merged_entries if key == "entries" else value) for key, value in package.items()}, []
 
 

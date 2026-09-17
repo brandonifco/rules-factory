@@ -186,15 +186,17 @@ decline that names why and cites where — that is the engine working, not the e
 - **Every test records the mutation that makes it fail.** The overlay holds it. A test whose
   named mutation was never observed to fail is a test nobody has watched fail, and this project
   has shipped two checks that counted work they had not done. **The gate refuses a placeholder
-  there**: on an entry whose `status` is `implemented`, `"mutation": "PENDING"` — or `TBD`,
-  `TODO`, `none`, `n/a`, `scratch`, `placeholder`, `xxx`, `unknown`, `later`, `fixme`, `wip`, `?`,
-  `-`, however cased or punctuated — fails `scripts/map-overlay.py`, and so does anything shorter
-  than three words and twelve characters. Write the real one, and finish with
-  `tools/re-produce.sh`. The floor exists because until it did, an engine's gate passed with
-  `PENDING` recorded against work nobody had done. It is a floor against the unfilled
-  placeholder, **not a grader of the mutation**: nothing a string can be read for can tell whether
-  the edit was made or the test went red. That part is still your word. The rule is stated in full
-  at the top of `scripts/map-overlay.py`.
+  there**: on an entry of the merge whose `status` is `implemented`, `"mutation": "PENDING"` — or
+  `TBD`, `TODO`, `none`, `n/a`, `scratch`, `placeholder`, `xxx`, `unknown`, `later`, `fixme`,
+  `wip`, `?`, `-`, however cased, punctuated or spelled in Unicode — fails
+  `scripts/map-overlay.py`, and so does anything shorter than three **distinct** words and twelve
+  characters. Write the real one, and finish with `tools/re-produce.sh`. The floor exists because
+  until it did, an engine's gate passed with `PENDING` recorded against work nobody had done. It
+  refuses an unfilled placeholder and **nothing more**: it cannot tell whether the edit was made,
+  whether the test went red, or whether you copied the sentence from another entry. That is still
+  your word, and the point of writing it down is that a reviewer can re-run it. The rule is stated
+  in full at the top of `scripts/map-overlay.py`, which is also where to look before assuming a
+  refusal is wrong.
 - **Write the handler while the entry is still `mapped`, and re-produce once.** There is no
   placeholder step, and no reason to produce twice. Every entry that is *not* `implemented`
   already has an optional hook,

@@ -10,8 +10,13 @@ What is asserted here, without a .NET SDK and without the factory:
 
   * every placeholder in the defined set is refused, and refused however it is cased, spaced or
     punctuated, and the empty-after-punctuation case with it;
-  * the floor refuses what is too short to be a sentence, and the refusal names the entry, the
-    test, the reason, what a mutation is and `tools/re-produce.sh`;
+  * and however it is spelled in Unicode: curly quotes, zero-width spaces, fullwidth forms,
+    combining marks, and a Latin `O` written as a Cyrillic `О`;
+  * the floor refuses what is too short to be a sentence -- each half of it independently, at its
+    exact boundary -- and the refusal names the entry, the test, the reason, what a mutation is
+    and `tools/re-produce.sh`;
+  * **an implemented entry whose `tests` come from the package map is checked too**, because the
+    rule reads the merge and not the overlay;
   * the real mutations of faa-part-107 and tax-121-principal-residence pass -- the shortest of
     each, by words and by characters, verbatim, because those are the ones a floor could refuse;
   * an entry whose status is not `implemented` is untouched by the rule, whatever it records;
@@ -42,6 +47,12 @@ PACKAGE = {"corpus": "widget", "entries": [
     {"id": "speed-limit", "status": "mapped"},
     {"id": "altitude-limit", "status": "mapped"},
 ]}
+
+ZWSP = "\u200b"          # a format character (Cf) that hides inside a word and pads a length
+CURLY = "\u201c{}\u201d"  # left and right double quotation marks (Pi, Pf)
+FULLWIDTH_TODO = "\uff34\uff2f\uff24\uff2f"
+CYRILLIC_TODO = "T\u041eDO"      # a Cyrillic capital O where the Latin O belongs
+COMBINING_TODO = "T\u00d3DO"     # O with an acute accent
 
 # Verbatim from /home/brandon/faa-part-107 and /home/brandon/tax-121-principal-residence: the
 # shortest mutation each engine records, by words and by characters. If a floor ever refuses one
@@ -75,8 +86,53 @@ PLACEHOLDERS = [
 ]
 
 # Refused by the floor, not by the set: nothing here is a placeholder word, and none of it is a
-# sentence saying what was changed and what the test did.
-TOO_SHORT = ["m", "m1", "x", "changed", "return null", "inverted it", "broke it", "a b", "1 2 3 4"]
+# sentence saying what was changed and what the test did. Each half of the floor has cases that
+# only it refuses, so removing either half turns a test red.
+TOO_SHORT = {
+    # below both halves
+    "m": "1 word, 1 character",
+    "m1": "1 word, 2 characters",
+    "changed": "1 word, 7 characters",
+    "a b": "2 words, 3 characters",
+    # below the word floor only: over twelve characters, under three distinct words
+    "comparison inverted": "2 words, 19 characters",
+    "Registry.Resolve short-circuited": "2 words, 32 characters",
+    "reversed reversed reversed reversed": "1 distinct word, 35 characters",
+    f"TODO{ZWSP} TODO{ZWSP} TODO{ZWSP} elsewhere": "2 distinct words once the zero-widths go",
+    # below the character floor only: three or more distinct words, under twelve characters
+    "abc def ghi": "3 words, 11 characters",
+    "1 2 3 4": "4 words, 7 characters",
+    f"1 2 3{ZWSP * 7}": "4 characters of padding do not count",
+    # exactly one under each boundary
+    "abc def gh": "3 words, 10 characters",
+}
+
+# The exact boundary, and one character and one word above it: these pass, and a floor raised by
+# one refuses them.
+AT_THE_FLOOR = {
+    "abc def ghij": "exactly 3 distinct words and exactly 12 characters",
+    "abcd efgh ijkl": "3 distinct words, 14 characters",
+    "one two three four": "4 distinct words, 18 characters",
+}
+
+# The reviewer's Unicode cases (#241 review): every one of these passed before normalisation. The
+# expected reason matters as much as the refusal -- "is a placeholder" means normalisation read the
+# word, where "too short" would mean only the floor caught it.
+PLACEHOLDER = "is a placeholder, not a mutation"
+TOO_SHORT_REASON = "is too short to be a mutation"
+UNICODE_PLACEHOLDERS = {
+    " ".join([CURLY.format("TODO")] * 3): (PLACEHOLDER, "curly quotes around each word"),
+    " ".join([f"TODO{ZWSP}"] * 3): (PLACEHOLDER, "a zero-width space inside each word"),
+    " ".join([FULLWIDTH_TODO] * 3): (PLACEHOLDER, "fullwidth letters"),
+    " ".join([COMBINING_TODO] * 3): (PLACEHOLDER, "a combining acute accent"),
+    " ".join([CYRILLIC_TODO] * 3): (TOO_SHORT_REASON,
+                                    "a Cyrillic homoglyph: refused by the distinct-word floor, "
+                                    "not read as the word, because no confusable mapping is done"),
+    CURLY.format("pending"): (PLACEHOLDER, "one curly-quoted placeholder"),
+    f"TB{ZWSP}D": (PLACEHOLDER, "a zero-width space inside a placeholder"),
+    FULLWIDTH_TODO: (PLACEHOLDER, "one fullwidth placeholder"),
+    COMBINING_TODO: (PLACEHOLDER, "one accented placeholder"),
+}
 
 
 def overlay(mutation, status="implemented", entry="speed-limit"):
@@ -85,9 +141,15 @@ def overlay(mutation, status="implemented", entry="speed-limit"):
                     "tests": [{"test": "SpeedTests.The_limit_is_87_knots", "mutation": mutation}]}}
 
 
-def problems(document):
-    merged, found = overlay_tool.merge(PACKAGE, document)
+def problems(document, package=None):
+    merged, found = overlay_tool.merge(package or PACKAGE, document)
     return found
+
+
+def package_with(entry_id, item):
+    """The package map, with `item`'s fields already on one of its entries: evidence upstream owns."""
+    return {"corpus": "widget",
+            "entries": [dict(e, **item) if e["id"] == entry_id else e for e in PACKAGE["entries"]]}
 
 
 class TestThePlaceholderSetIsRefused(unittest.TestCase):
@@ -101,6 +163,20 @@ class TestThePlaceholderSetIsRefused(unittest.TestCase):
     def test_a_mutation_made_only_of_placeholder_words_is_refused(self):
         self.assertIn("is a placeholder", problems(overlay("todo -- pending, tbd"))[0])
 
+    def test_a_placeholder_spelled_in_unicode_is_refused_for_the_right_reason(self):
+        for mutation, (reason, why) in UNICODE_PLACEHOLDERS.items():
+            with self.subTest(why):
+                found = problems(overlay(mutation))
+                self.assertEqual(len(found), 1, f"{mutation!r} ({why}) was accepted: {found}")
+                self.assertIn(reason, found[0], f"{mutation!r} ({why}) was refused, but not as {reason!r}")
+
+    def test_no_confusable_mapping_is_claimed(self):
+        """A homoglyph is refused by the floor, not recognised as the word. Stated so that deciding
+        otherwise is a deliberate change and not a surprise."""
+        self.assertIn("too short to be a mutation",
+                      overlay_tool.placeholder_problem(" ".join([CYRILLIC_TODO] * 3)))
+        self.assertIsNone(overlay_tool.placeholder_problem(f"{CYRILLIC_TODO} and two more words"))
+
     def test_a_placeholder_word_inside_a_real_mutation_is_not_refused(self):
         self.assertEqual(problems(overlay(
             "Handlers.SpeedLimit answered none where the map says pending review is unknown to "
@@ -109,13 +185,18 @@ class TestThePlaceholderSetIsRefused(unittest.TestCase):
 
 class TestTheFloorRefusesWhatIsNotASentence(unittest.TestCase):
     def test_what_is_too_short_is_refused_and_told_how_short(self):
-        for mutation in TOO_SHORT:
-            with self.subTest(mutation):
+        for mutation, why in TOO_SHORT.items():
+            with self.subTest(why):
                 found = problems(overlay(mutation))
-                self.assertEqual(len(found), 1, f"{mutation!r} was accepted: {found}")
+                self.assertEqual(len(found), 1, f"{mutation!r} ({why}) was accepted: {found}")
                 self.assertIn("is too short to be a mutation", found[0])
-                self.assertIn(f"at least {overlay_tool.MINIMUM_WORDS} words and "
+                self.assertIn(f"at least {overlay_tool.MINIMUM_WORDS} distinct words and "
                               f"{overlay_tool.MINIMUM_CHARACTERS} characters", found[0])
+
+    def test_the_exact_boundary_passes(self):
+        for mutation, why in AT_THE_FLOOR.items():
+            with self.subTest(why):
+                self.assertEqual(problems(overlay(mutation)), [], f"{mutation!r} ({why}) was refused")
 
     def test_the_floor_is_an_order_of_magnitude_below_the_shortest_real_mutation(self):
         """The threshold is a floor, not a bar. Stated as a test so lifting it is a deliberate act."""
@@ -153,6 +234,46 @@ class TestTheRealMutationsStillPass(unittest.TestCase):
                 self.assertEqual(problems(overlay(mutation)), [])
 
 
+class TestTheRuleReadsTheMergeNotTheOverlay(unittest.TestCase):
+    """#241's review, blocking finding 1: `merge()` checked `overlay.items()`, so an implemented
+    entry whose `status` and `tests` came from the **package map** was never looked at, and
+    `"mutation": "PENDING"` survived into the merged map untouched."""
+
+    IMPLEMENTED_UPSTREAM = {"status": "implemented",
+                            "implementedIn": {"ruleset": "widget", "version": 1},
+                            "tests": [{"test": "SpeedTests.The_limit_is_87_knots",
+                                       "mutation": "PENDING"}]}
+
+    def test_a_placeholder_in_the_package_map_is_refused_with_an_empty_overlay(self):
+        found = problems({}, package=package_with("speed-limit", self.IMPLEMENTED_UPSTREAM))
+        self.assertEqual(len(found), 1, found)
+        self.assertIn("'speed-limit'", found[0])
+        self.assertIn("is a placeholder", found[0])
+
+    def test_the_refusal_says_the_evidence_is_upstream_and_not_this_engine_s(self):
+        found = problems({}, package=package_with("speed-limit", self.IMPLEMENTED_UPSTREAM))
+        self.assertIn("come from the map package, not this engine's overlay", found[0])
+        self.assertIn("no re-produce here will change it", found[0])
+        self.assertNotIn("Make the edit, watch the test fail, undo it, record it in "
+                         "corpus-map.overlay.json", found[0])
+
+    def test_the_same_placeholder_from_the_overlay_names_the_overlay(self):
+        message = problems(overlay("PENDING"))[0]
+        self.assertIn("record it in corpus-map.overlay.json, and re-produce", message)
+        self.assertNotIn("come from the map package", message)
+
+    def test_a_real_mutation_in_the_package_map_merges(self):
+        upstream = dict(self.IMPLEMENTED_UPSTREAM,
+                        tests=[{"test": "SpeedTests.The_limit_is_87_knots", "mutation": FAA_SHORTEST}])
+        self.assertEqual(problems({}, package=package_with("speed-limit", upstream)), [])
+
+    def test_an_overlay_that_overrides_upstream_tests_is_judged_on_the_overlay_s(self):
+        """The overlay owns `tests` where it sets them (rule 3), so the merged entry is what counts."""
+        package = package_with("speed-limit", self.IMPLEMENTED_UPSTREAM)
+        self.assertEqual(problems(overlay(FAA_SHORTEST), package=package), [])
+        self.assertEqual(len(problems(overlay("TBD"), package=package)), 1)
+
+
 class TestAnEntryThatIsNotImplementedIsUnaffected(unittest.TestCase):
     def test_a_mapped_entry_recording_a_placeholder_merges(self):
         for status in ("mapped", "declined", "deferred"):
@@ -185,7 +306,7 @@ class TestTheRefusalSaysWhatToDo(unittest.TestCase):
 
     def test_it_names_re_produce_and_says_the_check_is_a_floor_not_a_grader(self):
         self.assertIn("`tools/re-produce.sh`", self.message)
-        self.assertIn("floor against an unfilled placeholder, not a judgement", self.message)
+        self.assertIn("it cannot tell whether the edit was made or the test went red", self.message)
 
 
 class TestTheCommandLineRefuses(unittest.TestCase):

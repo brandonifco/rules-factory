@@ -56,10 +56,16 @@ RECIPE = ("scripts/validate.sh", "scripts/map-overlay.py", "scripts/engine-gate.
           "scripts/factory/generate.py", "scripts/factory/intake.py", "scripts/factory/ownership.py",
           "scripts/factory/provenance.py", "scripts/factory/rulings.py", ".github/workflows/validate.yml")
 IMPLEMENTED_IN = {"ruleset": "faa-part-107", "version": 1}
-# A mutation these fixtures can record. Since #239 the gate refuses a placeholder one, so "m"
-# no longer stands in for a sentence -- and a fixture nobody could have observed is the habit
-# the refusal exists to break.
+# Mutations these fixtures can record. Since #239 the gate refuses a placeholder one, so "m" no
+# longer stands in for a sentence -- and a fixture nobody could have observed is the habit the
+# refusal exists to break, so each names an edit that would genuinely turn the named test red.
+# MUTATION goes with the invented SpeedTests; CORRESPONDENCE with the generated correspondence
+# test, which asserts Registry.HasImplementation and so is not reddened by editing a handler
+# (deleting one is CS8795, a build error).
 MUTATION = "GroundspeedLimit.Knots printed 88 knots (`InKnots(88m)` for `InKnots(87m)`); it went red."
+CORRESPONDENCE = ("Registry.HasImplementation was made to answer false for every entry (`=> false` "
+                  "for `Implementations.Value.ContainsKey(entryId) || Handlers.Has(entryId)`); this "
+                  "test went red.")
 OVERLAY = "corpus-map.overlay.json"
 
 
@@ -757,7 +763,8 @@ class TestValidateShWithDotnet(GateCase):
         """Mark speed-limit implemented, re-produce, and put `handler` in a hand-written file."""
         test = "CorrespondenceTests.speed_limit__is_implemented_so_a_hand_written_handler_answers_it"
         write_json(os.path.join(engine, "corpus-map.overlay.json"), {"speed-limit": {
-            "status": "implemented", "implementedIn": IMPLEMENTED_IN, "tests": [{"test": test, "mutation": MUTATION}]}})
+            "status": "implemented", "implementedIn": IMPLEMENTED_IN,
+            "tests": [{"test": test, "mutation": CORRESPONDENCE}]}})
         produce(self.nupkg, engine)
         with open(os.path.join(engine, "src", NAME, "Speed.cs"), "w", encoding="utf-8") as handle:
             handle.write("using RulesKernel.Resolution;\n\nnamespace FaaPart107;\n\n"
