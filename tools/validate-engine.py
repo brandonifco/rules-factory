@@ -595,10 +595,12 @@ def a_mistyped_handler_is_a_build_error(r):
         ok(f"a handler with {label}: error {code}")
 
 
-# #192: implementing an entry changes the overlay, and provenance.json and backlog/ are generated
-# from that overlay. `regenerate --write` refreshes the generated C# and nothing else, so on its own
-# it leaves a record hashing bytes that are gone and a backlog still listing the entry as one to
-# build -- which is what the live run of #157 merged, because the gate did not look. On the same
+# #192: implementing an entry changes the overlay, and provenance.json is generated from that
+# overlay. `regenerate --write` refreshes the generated C# and nothing else, so on its own it leaves
+# a record hashing bytes that are gone and hashing the overlay as it was before the edit -- which is
+# what the live run of #157 merged, because the gate did not look. Since #243 took the backlog out
+# of the engine, `buildInputs[corpus-map.overlay.json]` is the only comparison that carries this
+# case, and this is where it is proven on a real engine end to end. On the same
 # scratch copy as the check above, and with no extra dotnet build: mark an entry implemented,
 # regenerate, and hold the gate's own provenance step to failing and then, after a produce, passing.
 def a_stale_record_fails_the_gate(r):

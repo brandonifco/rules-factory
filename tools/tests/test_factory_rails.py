@@ -106,7 +106,7 @@ class TestTheEmittedRails(unittest.TestCase):
         # plus the directories those paths imply.
         model = type("M", (), {"name": NAME, "rulings": (), "entries": ()})()
         layout = set(self.emitted) | {"scripts/validate.sh", "provenance.json", "corpus-map.overlay.json",
-                                      "docs/decisions", "corpus", "backlog"}
+                                      "docs/decisions", "corpus"}
         for row in ownership.rows(NAME):
             layout.add(row.pattern.replace("*", "x"))
         layout |= {os.path.dirname(p) for p in list(layout) if os.path.dirname(p)}

@@ -45,6 +45,11 @@ gate's locked restore. The rewrite is the consequence of the factory's input mov
 in provenance.json, and is committed only if the gate passes. Files the engine adds itself (its
 hand-written code, lock files) match no row and are not the factory's to classify.
 
+`RETIRED` is the other direction: a pattern `produce` **once wrote and now removes**. It is not a
+fourth class -- nothing writes a retired path and nothing hashes one -- but a file the factory
+stops writing does not become the engine's by default, so every run deletes what the patterns match
+(`remove_retired`) and that deletion is still recognisably the factory's work.
+
 Standard library only; vendored into every engine as scripts/factory/ownership.py because
 generate.py imports it and the engine's gate imports generate.py.
 """
@@ -74,35 +79,33 @@ TABLE = (
         "the correspondence and provenance tests, from the same merge"),
     Row("corpus/*", GENERATED, None,
         "the corpus copy intake proved against the map's baseline"),
-    Row("backlog/*.md", GENERATED, None,
-        "the entries still to build, from the merge; GitHub issues are synced from it"),
     Row("scripts/validate.sh", GENERATED, None, "the gate recipe (M3): the factory's definition of acceptable"),
     Row("scripts/map-overlay.py", GENERATED, None, "the gate recipe: 0015's merge"),
     Row("scripts/engine-gate.py", GENERATED, None, "the gate recipe: its non-dotnet checks"),
     Row("scripts/factory/*.py", GENERATED, None, "the factory's generator, vendored so the gate can regenerate"),
     Row(".github/workflows/validate.yml", GENERATED, None, "the gate recipe: CI runs validate.sh full"),
-    Row("AGENTS.md", MANAGED, 8,
+    Row("AGENTS.md", MANAGED, 9,
         "the governing contract every agent works this engine under (decision 0029)"),
     Row("CLAUDE.md", MANAGED, 1,
         "a pointer to AGENTS.md and the Claude adapters; it states no rule of its own (0029)"),
     Row("docs/agent-team.md", MANAGED, 4, "the four roles, and what each may not do (0029)"),
-    Row(".claude/agents/engine-dev.md", MANAGED, 5, "the implementer's charter (0029)"),
+    Row(".claude/agents/engine-dev.md", MANAGED, 6, "the implementer's charter (0029)"),
     Row(".claude/agents/repo-steward.md", MANAGED, 1, "the structural reviewer's charter, read-only (0029)"),
     Row(".claude/agents/rules-conformance.md", MANAGED, 3, "the semantic reviewer's charter, read-only (0029)"),
     Row(".claude/hooks/primary-checkout-guard.py", MANAGED, 1,
         "the PreToolUse guard that keeps implementation work out of the primary checkout (0029)"),
     Row(".claude/settings.json", MANAGED, 1, "which tools the guard runs before (0029)"),
-    Row("tools/dispatch-agent.sh", MANAGED, 2,
+    Row("tools/dispatch-agent.sh", MANAGED, 3,
         "one issue, one worktree, one branch; it refuses what is not ready to work (0029)"),
     Row("tools/new-issue.sh", MANAGED, 2,
         "an issue with the shape the rails expect, a factory update's included (0029, #193)"),
     Row("tools/entry-packet.py", MANAGED, 4,
         "the bounded assignment for one entry, assembled from merge(package, overlay) (0029)"),
-    Row("tools/re-produce.sh", MANAGED, 2,
+    Row("tools/re-produce.sh", MANAGED, 3,
         "an overlay edit is finished by a re-produce, from the factory commit the record names (#192)"),
     Row("tools/review-packet.py", MANAGED, 1,
         "everything a reviewer needs about one pull request, in the order it is read (0029)"),
-    Row("tools/pr-policy.py", MANAGED, 2,
+    Row("tools/pr-policy.py", MANAGED, 3,
         "the pull request contract, checked mechanically; a produce update's claim is checked, not taken (#193)"),
     Row("tools/record-verdict.py", MANAGED, 1,
         "a review verdict as a commit status on the exact commit reviewed (0029)"),
@@ -142,6 +145,28 @@ TABLE = (
     Row("tests/{name}.Tests/packages.lock.json", ENGINE_OWNED, None, "the same, for the test project"),
 )
 
+Retired = collections.namedtuple("Retired", "pattern reason")
+
+#: Patterns `produce` **once wrote and now removes**. A file the factory stopped writing does not
+#: become the engine's by default: an engine produced before the retirement still has it committed,
+#: hashed by a record that no longer mentions it, and nobody would think to delete it. So each
+#: `produce` removes what these match (`remove_retired`), inside the staging copy, and the removal is
+#: committed with the run or not at all (transaction.py) -- which is the whole migration, run by the
+#: same `tools/re-produce.sh` an engine already runs after every overlay edit.
+#:
+#: They are not a fourth class: a retired path matches no row of TABLE, is written by nothing and is
+#: hashed nowhere. The list exists so that *deleting* one is still recognisably the factory's work --
+#: the engine's `tools/pr-policy.py` reads it, so a migration produce is not read as somebody's own
+#: decision smuggled into a produce update. A pattern is never removed from this list, for the same
+#: reason a recipe version is never removed: an engine that has not been produced since still holds
+#: the files.
+RETIRED = (
+    Retired("backlog/*.md",
+            "the backlog is a projection of the map and the overlay -- filed as GitHub issues by "
+            "`factory backlog --create`, printed by `factory backlog --render` -- and is not "
+            "committed into an engine (#243)"),
+)
+
 # Every version of every managed recipe: path -> {recipe version: SHA-256 of the bytes it wrote}.
 # Version 1 of each is what the write-once scaffold wrote before #72. Never remove a version: an
 # engine still carrying those bytes is unedited, and is migrated rather than refused.
@@ -152,6 +177,7 @@ RECIPE_SHA256 = {
         3: "c8569477e58633f6e807a4b9be9a00b37a6f315d5b0f1fa8b0a7bc1f36b24b06",
         4: "f2b21c791a783f828f8d4dc3fa17407f6557a15923be9b0b67ce5a94ba69f926",
         5: "3491f1a0bbdd6b4fcb7b0d1e8d3827dfe5f4a19199d8da6ddcdc2b5bc9921521",
+        6: "5e88a1d896a9f9528f038f6daffb990e03bdcfe5f9d39f60c88723c8ee8247ca",
     },
     ".claude/agents/repo-steward.md": {
         1: "6a2662ac958da76bb02263914d4e3b293a8dc15837e8a6ffccb14177b013bde7",
@@ -176,6 +202,7 @@ RECIPE_SHA256 = {
         6: "7da4642b702c6a8f527b043e4cf1d8f54f5ac6efc8840df250e998c40ac152c3",
         7: "d141aa496491ab4eb6702fbdba803f82a4a0e11163c56289be404d9a7eeea8d9",
         8: "0dca04ff9fd39143f1d241c4f02d14dd54576524c9596e76539a5572a552be14",
+        9: "434abab979025ab4b31974829e4ca50559f3e7dbc1d0ea05170a574ff5724239",
     },
     "CLAUDE.md": {
         1: "04c07ad36e742fa60efafeca54d20bd96d16b6e338a44e46fad2b679ab8dfd9f",
@@ -189,6 +216,7 @@ RECIPE_SHA256 = {
     "tools/dispatch-agent.sh": {
         1: "868ce983b51d784a83a6a0fcac7456608b31f0af025c75ac5eeac64a373dca2b",
         2: "5e66ff9229bf31ed43d4a70c957e774696462dba3ff4e7f75b566132a6858cb5",
+        3: "0f62f797181512f7e7e2b5b2314faaf50566866509f882927879e9361a7b6bfc",
     },
     "tools/new-issue.sh": {
         1: "382a2f516f81f593e74ed9e57262080c25edbac1a16d542ffb235eb772b10e88",
@@ -203,6 +231,7 @@ RECIPE_SHA256 = {
     "tools/re-produce.sh": {
         1: "2a281f94f81ce141733494a94744caa96c88af3cd9fa848cec21c13e73739499",
         2: "259e860a06e1407b38ff2f302bd657056eb601955e5363b19d30b705f74b7d8e",
+        3: "0b0fd08926db78dff21bb8687e3cf57d34ff3a0456ae4cfb9ec1734ea2f8638f",
     },
     "tools/review-packet.py": {
         1: "2e989c02c1827bf6d3da8fce9a35874e25ea4baf14f62eeb64aab78c30b1f392",
@@ -210,6 +239,7 @@ RECIPE_SHA256 = {
     "tools/pr-policy.py": {
         1: "79a33c7fe1ea8d888e4d6912a43ac60afe285c7a8bf43fbe9f7be87d6947b76e",
         2: "4a0c6677913decb13c8e9499840d5da4935c1725559dd6514d67dd72c8d849bd",
+        3: "fc3ca4f9571e3276b7208a5927cdcef01da852ae97972a5c47663fe7391703eb",
     },
     "tools/record-verdict.py": {
         1: "48f7b11f7fc829cdaebd776a3eb5db04e27cade97c427c6806b72f58805d83db",
@@ -291,6 +321,38 @@ def classify(relative, name):
 
 def managed_rows(name):
     return [row for row in rows(name) if row.cls == MANAGED]
+
+
+def retired(relative, name):
+    """The RETIRED entry `relative` matches, or None: a file `produce` used to write and now removes."""
+    for row in RETIRED:
+        if _matches(row.pattern.replace("{name}", name), relative):
+            return row
+    return None
+
+
+def remove_retired(out, name):
+    """Delete every file under `out` a RETIRED pattern matches; the relative paths removed, sorted.
+
+    The migration, and all of it. Run by `produce` in the staging copy before provenance is
+    written, so the deletions are part of the one transaction and a refused run removes nothing.
+    A directory left empty by the deletions goes too; a directory holding anything else stays,
+    with whatever else is in it, because only the patterns are the factory's.
+    """
+    removed, directories = [], set()
+    for directory, dirs, names in os.walk(out):
+        dirs[:] = [d for d in dirs if d not in ("bin", "obj", ".git", ".vs")]
+        for base in sorted(names):
+            path = os.path.join(directory, base)
+            relative = os.path.relpath(path, out).replace(os.sep, "/")
+            if retired(relative, name) is not None:
+                os.remove(path)
+                removed.append(relative)
+                directories.add(directory)
+    for directory in sorted(directories, key=len, reverse=True):
+        if directory != out and os.path.isdir(directory) and not os.listdir(directory):
+            os.rmdir(directory)
+    return sorted(removed)
 
 
 def adopted(out):

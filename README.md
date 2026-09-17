@@ -10,13 +10,14 @@ a commercial rulebook is outside it.
 The engine is the product. This is the factory: it takes a published corpus-map package, the
 corpus that map was made of, and an engine name, and writes a .NET solution on
 [`rules-kernel`](https://github.com/brandonifco/rules-kernel) whose code is tied to the map, with
-the gate that judges it, a backlog derived from the map, and a record of what it was built from.
+the gate that judges it, and a record of what it was built from. The backlog derived from the map
+is filed as GitHub issues and rendered on demand, not committed into the engine.
 Making the map is not the factory's job. That is [the method](docs/method.md), done by hand.
 
 It is **not** a template you copy and diverge from. A factory keeps a relationship with what
 it produced, and every file it writes has one owner
 ([decision 0018](docs/decisions/0018-every-file-the-factory-writes-has-one-owner.md)).
-*Generated* files, such as the code tied to the map, the pins, the gate and the backlog, are
+*Generated* files, such as the code tied to the map, the pins and the gate, are
 rewritten on every run. *Managed* files (`global.json`, `NuGet.config`,
 `Directory.Build.props`) hold the factory's build policy at a recipe version. A re-run updates
 them, and refuses to overwrite a hand edit until the engine adopts the file or resets it.
@@ -42,7 +43,7 @@ The factory is now code, in standard-library Python under
 | M2 scaffold and generation | `generate.py`, `ownership.py` | merged. The registry, map entries and correspondence tests as `*.g.cs`; one ownership class per file ([0018](docs/decisions/0018-every-file-the-factory-writes-has-one-owner.md)) |
 | M3 gate recipe | `gate.py`, `recipe/` | merged. Every engine carries `scripts/validate.sh` and a CI workflow that runs it |
 | M4 provenance | `provenance.py` | merged. `provenance.json` (format 3), and a command that recomputes it |
-| M5 backlog | `backlog.py` | merged. `backlog/` files, and GitHub issues matched to them by an entry marker, never by title; one state label and one risk label from the engine's own `.github/agent-policy.json` |
+| M5 backlog | `backlog.py` | merged. GitHub issues, one per entry still to build, matched by an entry marker and never by title; one state label and one risk label from the engine's own `.github/agent-policy.json`. Rendered from the map and the overlay on demand and never committed into the engine ([#243](https://github.com/brandonifco/rules-factory/issues/243)) |
 | Verify and write out | `verify.py`, `transaction.py` | merged. `produce` verifies in a staging copy and writes only what passed into `--out`. It writes files and makes no commit: the changes are left in the engine's working tree to review and commit |
 | Acceptance test | | met; [#3](https://github.com/brandonifco/rules-factory/issues/3) closed 2026-09-16. A blind rebuild of `hoyle-backgammon` passes its tests ([evidence](examples/hoyle-blind-rebuild/EVIDENCE.md)); a board game ([`hoyle-backgammon`](https://github.com/brandonifco/hoyle-backgammon)), a regulation ([`faa-part-107`](https://github.com/brandonifco/faa-part-107)) and an SRD rulebook ([`srd-52-combat`](https://github.com/brandonifco/srd-52-combat)) are produced, carry provenance that `factory provenance` matches, and pass `factory verify` ([evidence](examples/acceptance-4-5/EVIDENCE.md)). The SR6 rebuild the test first named was dropped with licensed corpora ([0028](docs/decisions/0028-the-factory-admits-only-corpora-whose-licence-permits-publishing-them.md)) |
 
@@ -62,7 +63,7 @@ the diff ([AGENTS.md](AGENTS.md) §3).
 <!-- factory-cli-status:begin -->
 | Command | Argument | Status | Notes |
 |---|---|---|---|
-| `produce` | — | implemented | intake, generation, gate, backlog, provenance, verify, write out |
+| `produce` | — | implemented | intake, generation, gate, provenance, verify, write out. It writes no backlog, and removes one an earlier produce committed ([#243](https://github.com/brandonifco/rules-factory/issues/243)) |
 | `produce` | `--package` | implemented | a `.nupkg` path, or `Id@Version` |
 | `produce` | `--corpus` | implemented | the corpus file: `committed-copy`, public domain or openly licensed ([0028](docs/decisions/0028-the-factory-admits-only-corpora-whose-licence-permits-publishing-them.md)), hashing to the map's baseline |
 | `produce` | `--name` | implemented | the engine's PascalCase name |
@@ -74,11 +75,13 @@ the diff ([AGENTS.md](AGENTS.md) §3).
 | `produce` | `--produce-report` | implemented | a JSON report of the run: what moved and from what to what, every path written with its ownership class, and the provenance diff. A factory update's pull request is filled in from it ([#193](https://github.com/brandonifco/rules-factory/issues/193)) |
 | `produce` | domain pack | not implemented | no pack exists; provenance records `"packs": []` |
 | `produce` | agent rails | not implemented | not an input — the rails are output, and no flag turns them on or off ([0029](docs/decisions/0029-the-rails-are-emitted-by-default-and-vendor-choice-is-engine-owned-configuration.md)). Emitted: the contract, the roles, the charters, the guard, the engine-owned policy, the packets, dispatch, the pull request contract, the verdict gates, the rails doctor and the kernel's determinism analyzers. `factory rails --apply` is what makes the checks required on GitHub. Proven on a produced engine and on a real rule: `faa-part-107` was re-produced onto the rails, and `control-links-working` (§ 107.49(c)) went issue to merge through them ([#157](https://github.com/brandonifco/rules-factory/issues/157) closed 2026-09-16, [evidence](https://github.com/brandonifco/faa-part-107/pull/47)) |
-| `backlog` | — | implemented | synchronise `backlog/` with GitHub issues through `gh`, and label each one: state from the item's dependencies, `normal` risk on an issue with none. A `needs-decision` state and a promoted risk are a person's, and a sync never undoes either ([0029](docs/decisions/0029-the-rails-are-emitted-by-default-and-vendor-choice-is-engine-owned-configuration.md)) |
-| `backlog` | `--create` | implemented | the only action; never closes or deletes an issue |
+| `backlog` | — | implemented | render an engine's backlog from its map package and `corpus-map.overlay.json`, and either file it as GitHub issues through `gh` or print it. `--create` labels each issue: state from the item's dependencies, `normal` risk on an issue with none. A `needs-decision` state and a promoted risk are a person's, and a sync never undoes either ([0029](docs/decisions/0029-the-rails-are-emitted-by-default-and-vendor-choice-is-engine-owned-configuration.md)) |
+| `backlog` | `--create` | implemented | create missing issues and update changed ones; never closes or deletes an issue |
+| `backlog` | `--render` | implemented | print the rendering as one Markdown document and send nothing; the replacement for the `backlog/` the factory no longer commits ([#243](https://github.com/brandonifco/rules-factory/issues/243)) |
 | `backlog` | `--repo` | implemented | `owner/name` |
 | `backlog` | `--dir` | implemented | the engine directory |
-| `backlog` | `--package` | implemented | the map package the bodies are checked against: each carries the attribution the corpus licence requires (0023) |
+| `backlog` | `--to` | implemented | with `--render`, write the item files to this directory instead of printing them. A directory inside the engine is refused unless `git check-ignore` agrees the engine ignores it |
+| `backlog` | `--package` | implemented | the map package the backlog is rendered from and the bodies checked against: each carries the attribution the corpus licence requires (0023) |
 | `rails` | — | implemented | report, or put in place, the rails GitHub itself enforces: the labels, the factory's own branch ruleset, and the three required checks |
 | `rails` | `--repo` | implemented | `owner/name` |
 | `rails` | `--dir` | implemented | the engine directory, for the policy and the rail files |
@@ -141,8 +144,10 @@ What never happens again is `NOT VERIFIED` on stdout and `0` in `$?`.
   `factory provenance` re-produces the engine and names every field that no longer matches.
   The engine's own gate holds a narrower claim without the factory: `scripts/engine-gate.py
   provenance` hashes the recorded generated and managed files and the overlay they were generated
-  from, so an overlay edit never followed by a re-produce — a stale record and a backlog still
-  listing an implemented entry — fails the gate, naming `tools/re-produce.sh`
+  from, so an overlay edit never followed by a re-produce — leaving a record that hashes the
+  overlay as it was before the edit — fails the gate, naming `tools/re-produce.sh`. That one
+  comparison, `buildInputs[corpus-map.overlay.json]`, is the whole of that check, and a run in
+  which it had nothing to compare fails too
   ([0018](docs/decisions/0018-every-file-the-factory-writes-has-one-owner.md)). It compares and
   never writes: only `produce` authors that record.
 
@@ -163,7 +168,8 @@ CI proves this on every pull request. The `validate` job runs
   than a review.
 - **That a rule is implemented.** A produced engine answers each entry that is not
   `implemented` with a decline citing its locator. The rules themselves are hand-written
-  handlers, and the backlog lists the ones still to write.
+  handlers, and the backlog — the GitHub issues, and `factory backlog --render` — lists the ones
+  still to write.
 - **That an engine declines what its map leaves open.** An `implemented` entry whose question is
   `unresolved` must decline the question, unless the engine's owner has ruled on it
   ([0027](docs/decisions/0027-an-owners-ruling-is-held-by-the-engine-and-checked-by-the-factory.md)).
@@ -223,7 +229,7 @@ corpus        the one corpus the map cites, committed-copy, hashing to its basel
 name          the engine's PascalCase name
         |
         v
-    factory produce    intake, generation, gate, backlog, provenance,
+    factory produce    intake, generation, gate, provenance,
                        verify (in a staging copy), write to --out (no commit)
         |
         v
@@ -231,8 +237,9 @@ engine        a .NET solution on RulesKernel: managed build policy, the kernel's
               determinism analyzers, engine-owned projects and overlay, generated
               *.g.cs tied to the map, the corpus
 gate          scripts/validate.sh and the CI workflow that runs it
-backlog       backlog/NNN-<entry-id>.md, one per entry still to build, in
-              dependency order
+backlog       not a file in the engine: GitHub issues, one per entry still to
+              build, in dependency order (factory backlog --create), rendered from
+              the map and the overlay on demand (factory backlog --render)
 provenance    factory commit, map package, corpus, kernel, recipe hashes, and the
               generated, managed, engine-owned and build-input files; "packs": []
 rails         AGENTS.md, the roles, the three charters, the primary-checkout guard,

@@ -42,11 +42,11 @@ You do not need to read the whole corpus, and you should not try. The packet is 
 - Finish an overlay change properly, in this order. The entry's overlay object gets `status:
   implemented`, its `implementedIn`, and its `tests` — each with the mutation you actually watched
   fail. Then `tools/re-produce.sh`, which re-produces this engine from the factory commit the
-  record names — one command, and the only thing that brings the generated C#, `provenance.json`
-  and `backlog/` back into step with the overlay together. Regenerating the C# alone does not:
-  `provenance.json` and `backlog/` are written by `factory produce` from a factory checkout and by
-  nothing else, so the record would still hash the old bytes and the backlog would still list the
-  entry as one to build, and the gate fails saying so.
+  record names — one command, and the only thing that brings the generated C# and
+  `provenance.json` back into step with the overlay together. Regenerating the C# alone does not:
+  `provenance.json` is written by `factory produce` from a factory checkout and by nothing else,
+  so the record would still hash the old bytes and would still hash the overlay as it was before
+  your edit, and the gate fails saying so.
 - Run the gate, whole: `./scripts/validate.sh full`. Paste what it printed.
 - Open one pull request that closes exactly that one issue, filling in every section of
   `.github/pull_request_template.md` with real command output. `tools/pr-policy.py` checks it as a
@@ -62,9 +62,11 @@ You do not need to read the whole corpus, and you should not try. The packet is 
   upstream map defect and stop (`AGENTS.md` §5). Do not make the engine disagree with the
   published map, and do not edit the map.
 - **Do not edit `corpus/`, a baseline, a hash, or the gate** to make a check pass.
-- **Never hand-edit `provenance.json`, anything under `backlog/`, or anything under `Generated/`.**
-  The gate hashes all three against the record. Editing one so the gate goes green is the same
-  defect as editing a baseline: it is the check you are changing, not the thing it checks.
+- **Never hand-edit `provenance.json` or anything under `Generated/`.** The gate hashes both
+  against the record. Editing one so the gate goes green is the same defect as editing a baseline:
+  it is the check you are changing, not the thing it checks. This engine has no `backlog/` to
+  edit either — the backlog lives in the issues, and `factory backlog --render` prints it from the
+  map and the overlay whenever you want to read it.
 - **Do not widen the change.** An unrelated defect you notice is a new issue, not a second commit
   on this branch. Say you found it; do not fix it here.
 - **Do not bulk-stage.** `git add <explicit paths>`, never `git add -A` or `git add .`.

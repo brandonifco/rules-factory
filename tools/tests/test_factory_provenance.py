@@ -214,11 +214,13 @@ class TestRecord(ProvenanceCase):
 
         generated = {g["path"]: g["sha256"] for g in record["generated"]}
         self.assertEqual(list(generated), sorted(generated))
-        for path in (MAP_ENTRIES, "corpus/part107.xml", "backlog/README.md", f"src/{NAME}/Generated/Provenance.g.cs",
+        for path in (MAP_ENTRIES, "corpus/part107.xml", "scripts/validate.sh", f"src/{NAME}/Generated/Provenance.g.cs",
                      f"tests/{NAME}.Tests/Generated/ProvenanceTests.g.cs", PACKAGES_PROPS):
             self.assertIn(path, generated)
         for path in ("provenance.json", "corpus-map.overlay.json", "global.json", f"src/{NAME}/{NAME}.csproj"):
             self.assertNotIn(path, generated, "provenance.json, managed and engine-owned files are not generated")
+        self.assertFalse([p for p in generated if p.startswith("backlog/")],
+                         "the backlog is not produced, so it is not recorded as generated (#243)")
         for path, digest in generated.items():
             self.assertEqual(digest, sha256_file(os.path.join(out, *path.split("/"))), path)
 

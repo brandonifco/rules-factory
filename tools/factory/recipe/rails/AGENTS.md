@@ -70,7 +70,9 @@ committed, scanned by a tool that did not expect it, or deleted by a clean step.
 
 `tools/new-issue.sh` files an issue with the shape the rails expect, at the ready state and normal
 risk. Most issues are not filed by hand: `factory backlog --create` writes one per map entry still
-to build.
+to build. **The issues are the backlog**, and this engine holds no copy of it: the factory renders
+it from the map and `corpus-map.overlay.json` on demand (`factory backlog --render --dir <this
+engine>`), and writes none of it here.
 
 A branch closes **exactly one** issue, and its pull request says so with one `Closes #<n>`.
 Stage explicit paths; `git add -A` and `git add .` are how build output, packets and another
@@ -255,9 +257,11 @@ decline that names why and cites where — that is the engine working, not the e
   unwelcome. A failure is answered by fixing the code, fixing the map, or getting an owner's
   ruling.
 - **An overlay change is finished by a re-produce.** `tools/re-produce.sh` runs it. Marking an
-  entry implemented changes the overlay, and the generated files, the backlog and
-  `provenance.json` are all derived from that overlay; the gate hashes the derived files against
-  the record and fails while they are stale. Only the factory can write that record: it names the
+  entry implemented changes the overlay, and the generated files and `provenance.json` are both
+  derived from that overlay; the gate hashes the derived files against the record, and the one
+  comparison that catches an unfinished overlay edit is
+  `buildInputs[corpus-map.overlay.json]` — the record's hash of the overlay against the overlay on
+  disk. Only the factory can write that record: it names the
   factory commit the engine was produced from and hashes every one of that factory's recipe files,
   so nothing inside the engine can refresh it — and nothing should try. A record an engine wrote
   about itself would hash whatever is on disk, and a gate that re-blesses its own bytes proves
@@ -294,8 +298,9 @@ an issue.
 - Never implement a rule from memory. Work from the entry the issue names.
 - Never edit `corpus/`, `provenance.json`, or a generated file under `Generated/` by hand. The
   generated files are rewritten from the map; an edit there is overwritten and reported.
-- After changing `corpus-map.overlay.json`, run `tools/re-produce.sh`. The record and `backlog/`
-  are the factory's to write, and the gate fails while they are older than the overlay.
+- After changing `corpus-map.overlay.json`, run `tools/re-produce.sh`. The record and the
+  generated files are the factory's to write, and the gate fails while they are older than the
+  overlay.
 - A pull request that is a `factory produce` update says so in its `## Produced by the factory`
   section, and carries what produce wrote and nothing else (§4). One file that produce did not
   write voids the claim, which is why the files named above are also the only ones it can cover.

@@ -10,8 +10,9 @@ Two layers:
     or project resolving RulesKernel.Randomness for a corpus that declares `randomness: none`, or
     pinning it outside the generated props for one that declares `seeded` (0019), a corpus that is
     not the baseline, or an overlay edit that was regenerated but never followed by a re-produce,
-    which leaves provenance.json hashing bytes that are gone and the backlog listing an entry that
-    is already built (#192).
+    which leaves provenance.json hashing bytes that are gone and hashing the overlay as it was
+    before the edit (#192) -- the one comparison that carries that case now that the backlog has
+    left the engine (#243), and one that is refused when it had nothing to compare.
   * **With a .NET SDK** (skipped cleanly when `dotnet` is absent, as in this repository's CI, or
     when RULES_FACTORY_SKIP_DOTNET is set): the emitted `scripts/validate.sh` itself passes on
     fresh output and fails on each of those mutations. The engine is a scratch copy: its
@@ -234,8 +235,12 @@ class TestTheRecordHashesWhatIsOnDisk(GateCase):
 
     The defect this exists for passed `validate.sh full` in the live run of #157: marking an entry
     implemented changes the overlay, `regenerate --write` refreshes the generated C# and nothing
-    else, and `provenance.json` and `backlog/` -- both generated, both `factory produce`'s alone --
-    are left hashing bytes that no longer exist and listing an entry that is already built.
+    else, and `provenance.json` -- generated, `factory produce`'s alone -- is left hashing bytes
+    that no longer exist and hashing the overlay as it was before the edit.
+
+    Since #243 took the backlog out of the engine, `buildInputs[corpus-map.overlay.json]` is not
+    merely the load-bearing comparison here but the only one that carries the case, so it is also
+    asserted that the step refuses a run in which it had nothing to compare.
     """
 
     IMPLEMENTED = {"speed-limit": {"status": "implemented", "implementedIn": IMPLEMENTED_IN,
@@ -285,14 +290,44 @@ class TestTheRecordHashesWhatIsOnDisk(GateCase):
         self.assertEqual(code, 1, output)
         self.assertIn("generated[scripts/validate.sh].sha256", output)
 
-    def test_a_deleted_backlog_item_fails(self):
+    def test_a_deleted_generated_file_fails(self):
         engine = self.engine()
-        items = sorted(f for f in os.listdir(os.path.join(engine, "backlog")) if f.endswith(".md"))
-        self.assertTrue(items, "the produced engine has no backlog to delete from")
-        os.remove(os.path.join(engine, "backlog", items[0]))
+        os.remove(os.path.join(engine, "scripts", "map-overlay.py"))
         code, output = self.provenance(engine)
         self.assertEqual(code, 1, output)
-        self.assertIn(f"generated[backlog/{items[0]}]: recorded, missing on disk", output)
+        self.assertIn("generated[scripts/map-overlay.py]: recorded, missing on disk", output)
+
+    def test_the_engine_holds_no_backlog_for_the_record_to_hash(self):
+        """#243: the backlog is not produced, so no `backlog/` path is written or recorded."""
+        engine = self.engine()
+        self.assertFalse(os.path.exists(os.path.join(engine, "backlog")))
+        with open(os.path.join(engine, "provenance.json"), encoding="utf-8") as handle:
+            record = json.load(handle)
+        self.assertFalse([item["path"] for section in ("generated", "managed", "buildInputs")
+                          for item in record[section] if item["path"].startswith("backlog/")])
+
+    def test_an_overlay_that_is_neither_recorded_nor_on_disk_fails(self):
+        """The one comparison that carries the stale-overlay case may never examine nothing (#243).
+
+        Deleting the overlay and the entry that records it leaves every generated hash true, so
+        before this the step reported ok on an engine whose only check for an unfinished overlay
+        edit had no input at all. `examined` was not zero -- eighteen generated files and
+        twenty-seven managed ones were compared -- so the "examined nothing" refusal did not
+        catch it either: it counts the check as a whole, not this comparison.
+        """
+        engine = self.engine()
+        os.remove(os.path.join(engine, OVERLAY))
+        path = os.path.join(engine, "provenance.json")
+        with open(path, encoding="utf-8") as handle:
+            record = json.load(handle)
+        record["buildInputs"] = [i for i in record["buildInputs"] if i["path"] != OVERLAY]
+        with open(path, "wb") as handle:
+            handle.write(factory.provenance.serialize(record))  # canonical, so only this differs
+        code, output = self.provenance(engine)
+        self.assertEqual(code, 1, output)
+        self.assertIn(f"buildInputs[{OVERLAY}]: neither recorded nor on disk", output)
+        self.assertNotIn("examined nothing", output, "the check had inputs; this one comparison had none")
+        self.assertIn("tools/re-produce.sh", output)
 
     def test_a_hand_edited_managed_file_fails(self):
         engine = self.engine()

@@ -29,6 +29,10 @@ engine that edits an engine-owned *input* must re-produce, and the gate now enfo
 *Amendment — an overlay edit is finished by a re-produce* below. No row of the table changes class,
 and one managed row is added (`tools/re-produce.sh`).
 
+**Amended 2026-09-17** for [#243](https://github.com/brandonifco/rules-factory/issues/243): the
+backlog is no longer a file the factory writes, so `backlog/*.md` leaves the table. See
+*Amendment — the backlog is a projection, not an output* below. No remaining row changes class.
+
 ## Amendment — an overlay edit is finished by a re-produce
 
 `provenance.json` and `backlog/*.md` are **generated**, which by this decision means `factory
@@ -86,6 +90,43 @@ cannot be done. Four independent blockers, all in `tools/factory/provenance.py`:
 
 So the engine compares and never writes, and `tools/factory/backlog.py` is deliberately not
 vendored into an engine and stays that way.
+
+## Amendment — the backlog is a projection, not an output
+
+`backlog/*.md` and `backlog/README.md` were **generated**: `factory produce` wrote them on every
+run and `provenance.json` hashed each one. They are gone
+([#243](https://github.com/brandonifco/rules-factory/issues/243), part A of the design decision on
+[#242](https://github.com/brandonifco/rules-factory/issues/242)), and the row leaves the table.
+
+**Why.** Nineteen of the twenty-seven files in a one-entry pull request were backlog files, and
+each item states its position out of the total, so finishing any entry renumbered and rewrote
+nearly all of them. Two entry branches therefore collided, with rename/rename conflicts, on twenty
+files neither of them was about. Nothing read them: `factory backlog --create` files GitHub issues,
+`tools/dispatch-agent.sh` dispatches from issues, `tools/entry-packet.py` assembles an assignment
+from the map. The committed markdown was a rendering of what the issues already held.
+
+**What replaces it.** `factory backlog --create` renders the items in memory from the map package
+the record names, merged with `corpus-map.overlay.json`, and files them as issues exactly as
+before — every body is byte-identical. `factory backlog --render --dir <engine>` prints the same
+rendering as one Markdown document, or writes the files with `--to <directory>`. A `--to` inside
+the engine is refused unless `git check-ignore` agrees the engine ignores it: a rendering of the
+overlay committed beside the overlay is the state this amendment removes, and the command must not
+be the way it comes back.
+
+**Migration.** The next `produce` removes a committed `backlog/` — the item files and `README.md`,
+and the directory when nothing else is in it — inside the staging copy, so the removal is committed
+with the rest of the run or not at all (`transaction.py`), and the run prints what it removed. No
+one-off migration command: an engine is already brought into step by `tools/re-produce.sh` after
+every overlay edit, and a command that had to be remembered once per engine would leave any engine
+that forgot it holding a `backlog/` its record no longer mentions.
+
+**What still catches a stale derived state.** `buildInputs[corpus-map.overlay.json]`, exactly as
+the amendment above already said: hashing the backlog never could catch a stale backlog, because an
+item file listing an entry someone has since implemented is *unchanged*. Now that it is the only
+comparison that carries the case, it is no longer conditional — a record with no overlay entry and
+an engine with no overlay on disk fails `scripts/engine-gate.py provenance`, rather than passing on
+the strength of the generated hashes it did compare. A check that examined nothing is a failure,
+including when what it failed to examine is the one input it exists for.
 
 ## Amendment — changed pins re-lock
 
@@ -216,26 +257,25 @@ written path the table does not classify.
 | `src/{name}/Generated/*.g.cs` | generated |  | The map, registry, typed contracts and embedded provenance, from merge(package, overlay). |
 | `tests/{name}.Tests/Generated/*.g.cs` | generated |  | The correspondence and provenance tests, from the same merge. |
 | `corpus/*` | generated |  | The corpus copy intake proved against the map's baseline. |
-| `backlog/*.md` | generated |  | The entries still to build, from the merge. GitHub issues are synced from it, not the reverse. |
 | `scripts/validate.sh` | generated |  | The gate recipe (M3): the factory's definition of acceptable, which an engine must not weaken by editing. |
 | `scripts/map-overlay.py` | generated |  | Gate recipe: 0015's merge. |
 | `scripts/engine-gate.py` | generated |  | Gate recipe: the non-dotnet checks. |
 | `scripts/factory/*.py` | generated |  | The factory's generator, vendored so the gate can regenerate without the factory. |
 | `.github/workflows/validate.yml` | generated |  | Gate recipe: CI runs `validate.sh full`. |
-| `AGENTS.md` | managed | 8 | The governing contract every agent works the engine under (0029). Managed, not generated: a team may amend its own contract, and the factory must then either carry the amendment or refuse and say so, never silently overwrite it. |
+| `AGENTS.md` | managed | 9 | The governing contract every agent works the engine under (0029). Managed, not generated: a team may amend its own contract, and the factory must then either carry the amendment or refuse and say so, never silently overwrite it. |
 | `CLAUDE.md` | managed | 1 | A pointer to `AGENTS.md` and an index of the Claude adapters. It states no rule of its own, so it cannot drift from the contract. |
 | `docs/agent-team.md` | managed | 4 | The four roles and what each may not do (0029). |
-| `.claude/agents/engine-dev.md` | managed | 5 | The implementer's charter. |
+| `.claude/agents/engine-dev.md` | managed | 6 | The implementer's charter. |
 | `.claude/agents/repo-steward.md` | managed | 1 | The structural reviewer's charter, read-only. |
 | `.claude/agents/rules-conformance.md` | managed | 3 | The semantic reviewer's charter, read-only. |
 | `.claude/hooks/primary-checkout-guard.py` | managed | 1 | The `PreToolUse` guard keeping implementation work out of the primary checkout. Policy, and the engine that must change it adopts it. |
 | `.claude/settings.json` | managed | 1 | Which tools the guard runs before. |
-| `tools/dispatch-agent.sh` | managed | 2 | One issue, one worktree, one branch; it refuses what is not ready to work (0029). |
+| `tools/dispatch-agent.sh` | managed | 3 | One issue, one worktree, one branch; it refuses what is not ready to work (0029). |
 | `tools/new-issue.sh` | managed | 2 | An issue with the shape the rails expect, at the ready state and normal risk. `--produce` swaps in the body for a `factory produce` update, and promotes nothing (#193). |
 | `tools/entry-packet.py` | managed | 4 | The bounded assignment for one entry, assembled from merge(package, overlay) so it cannot carry a reading of its own. |
-| `tools/re-produce.sh` | managed | 2 | Re-runs `factory produce` on the engine from the factory commit `provenance.json` names. The record and the backlog are generated, so an overlay edit is only finished by a produce, and prose describing that clone is a procedure an operator can get wrong (#192). |
+| `tools/re-produce.sh` | managed | 3 | Re-runs `factory produce` on the engine from the factory commit `provenance.json` names. The record is generated, so an overlay edit is only finished by a produce, and prose describing that clone is a procedure an operator can get wrong (#192). |
 | `tools/review-packet.py` | managed | 1 | Everything a reviewer needs about one pull request, in the order it is meant to be read. |
-| `tools/pr-policy.py` | managed | 2 | The pull request contract, checked mechanically: one linked issue, every section filled, output rather than a claim. A `factory produce` update's claim is checked against `provenance.json` and this table, never taken (#193). |
+| `tools/pr-policy.py` | managed | 3 | The pull request contract, checked mechanically: one linked issue, every section filled, output rather than a claim. A `factory produce` update's claim is checked against `provenance.json` and this table, never taken (#193), retired patterns included (#243). |
 | `tools/record-verdict.py` | managed | 1 | A review verdict as a commit status on the exact commit reviewed, so a later commit invalidates it by itself. |
 | `tools/conformance-gate.py` | managed | 2 | Whether the verdicts this change needs are recorded at the commit being merged. A truncated file list is undecidable rather than a small change (#193). |
 | `tools/requeue-gate.py` | managed | 1 | Asks the gate to report again at the commit a recorded verdict names, so recording the verdict is the whole of the step (#191). It writes no status and no check run of its own. |

@@ -35,8 +35,9 @@ must hold:
      was not dirty. A produce from a dirty factory is not reproducible, so it is not an update
      anybody can repeat;
   3. every changed path is one the factory writes, classified through this engine's own vendored
-     `scripts/factory/ownership.py` -- generated, managed, or a `packages.lock.json` a pin change
-     re-locks (#94). One hand-written `.cs`, one overlay edit, one edit to `.github/agent-policy.json`
+     `scripts/factory/ownership.py` -- generated, managed, a `packages.lock.json` a pin change
+     re-locks (#94), or a retired pattern a produce deletes (#243). One hand-written `.cs`, one
+     overlay edit, one edit to `.github/agent-policy.json`
      voids the claim, by name, and the pull request is judged as the ordinary pull request it is.
 
 The file set this can ever cover is exactly the set nobody may hand-edit anyway (AGENTS.md section
@@ -242,9 +243,14 @@ def factory_written(path, ownership, name):
     Generated and managed files are the factory's on every run. The two `packages.lock.json` are
     engine-owned, and are here for the one case 0018's amendment (#94) admits: a produce that moved
     the generated pins re-locks them, because lock files resolved against the old pins cannot pass
-    the gate. Everything else an engine owns -- its overlay, its projects, its rails configuration,
-    its hand-written code -- is a decision the factory did not make, and is what voids a claim.
+    the gate. A **retired** path (`ownership.RETIRED`) is one the factory used to write and now
+    deletes on every run; a produce that migrates this engine deletes them, so the deletions are
+    the factory's work and not somebody's decision carried in beside it. Everything else an engine
+    owns -- its overlay, its projects, its rails configuration, its hand-written code -- is a
+    decision the factory did not make, and is what voids a claim.
     """
+    if getattr(ownership, "retired", None) is not None and ownership.retired(path, name) is not None:
+        return True
     row = ownership.classify(path, name)
     if row is None:
         return False

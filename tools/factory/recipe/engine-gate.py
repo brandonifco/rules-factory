@@ -346,10 +346,17 @@ def record_matches(_args):
     green would produce a gate people route around. Holding the whole of `buildInputs` is
     `factory provenance`'s job, where a real re-produce can tell a legitimate addition from drift.
     The overlay is different in kind: it is the *input to generation*, and appears in `buildInputs`
-    only because it happens to be engine-owned. That single comparison is what catches a stale
-    record, because hashing the recorded backlog files cannot: a backlog item file that still lists
-    an implemented entry is unchanged, so its hash matches. The overlay moved, so everything derived
-    from it is older than the overlay, and that is the fact this names.
+    only because it happens to be engine-owned. **That single comparison is the whole of the
+    stale-derived-state check.** It always was: the engine's backlog used to be hashed here too, and
+    hashing it could never catch a stale backlog, because an item file that still lists an entry
+    someone has since implemented is *unchanged* -- its hash matches. What moved is the overlay, so
+    everything derived from the overlay is older than it is, and that is the fact this names. Since
+    #243 removed the committed backlog, nothing else even appears to carry the case, so the
+    comparison is no longer conditional: a record with no `buildInputs[corpus-map.overlay.json]`
+    and an engine with no overlay on disk is a failure here, not a pass, because the one check that
+    catches an unfinished overlay edit would otherwise have examined nothing and said ok. Every
+    `produce` writes an overlay (generate.py writes `{}` when the engine has none) and records it,
+    so the only way to reach that state is by deleting both.
     """
     sys.path.insert(0, str(ROOT / "scripts" / "factory"))
     try:
@@ -395,7 +402,11 @@ def record_matches(_args):
     overlay_path = ROOT / OVERLAY
     if entry is not None or overlay_path.is_file():
         examined += 1
-    if entry is None and overlay_path.is_file():
+    if entry is None and not overlay_path.is_file():
+        problems.append(f"buildInputs[{OVERLAY}]: neither recorded nor on disk, so the one comparison that catches "
+                        f"an overlay edit never followed by a re-produce had nothing to compare. Every produce "
+                        f"writes {OVERLAY} and records it; run `{RE_PRODUCE}`")
+    elif entry is None and overlay_path.is_file():
         problems.append(f"buildInputs[{OVERLAY}]: not recorded, and the engine has one; the record predates the "
                         f"overlay it was generated from")
     elif entry is not None and not overlay_path.is_file():
@@ -404,8 +415,8 @@ def record_matches(_args):
         actual = hashlib.sha256(overlay_path.read_bytes()).hexdigest()
         if actual != entry.get("sha256"):
             problems.append(f"buildInputs[{OVERLAY}].sha256: recorded {entry.get('sha256')}, on disk {actual}. "
-                            f"The overlay is the input the generated files and the backlog are made from, so "
-                            f"everything derived from it is older than it is")
+                            f"The overlay is the input the generated files are made from, so everything derived "
+                            f"from it is older than it is")
 
     if not examined:
         print(f"error: {RECORD} lists no generated file, no managed file and no {OVERLAY}, so this check examined "
@@ -419,7 +430,7 @@ def record_matches(_args):
         print(f"error: one command fixes all of the above: `{RE_PRODUCE}`. It clones rules-factory at the commit "
               f"{RECORD} names and runs `factory produce --package {source.get('packageId')}@{source.get('version')} "
               f"--corpus <this engine's corpus> --name {name} --out <this engine>` -- which is the only thing that "
-              f"writes {RECORD} and backlog/. Editing either by hand is the defect this step exists to catch.",
+              f"writes {RECORD}. Editing it by hand is the defect this step exists to catch.",
               file=sys.stderr)
         return 1
     return report([], f"{examined} recorded file(s) hash as {RECORD} records, {OVERLAY} among them")
