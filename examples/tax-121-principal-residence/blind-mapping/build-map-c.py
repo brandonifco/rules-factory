@@ -131,34 +131,67 @@ def build():
     )
     landed.append("combined-sale-nets-dwelling-loss")
 
-    # --- worked-examples-as-entries (#216: recorded, not adopted) -----------------------
+    # --- worked-examples-as-entries (#216, closed by 0031: the bounds are `ambiguity.bounds`) ---
     absences = entries["short-temporary-absences"]
     absences["ambiguity"]["question"] = (
         "\"Short temporary absences\" fixes no length and no test. The corpus gives two instances "
         "-- a vacation and a seasonal absence -- introduced by \"such as\", so they bound nothing, "
-        "and names nobody to decide. The two worked examples of paragraph (c)(4) bound the term at "
-        "its two ends and at no point between them: § 1.121-1(c)(4) Example 4 states that a "
-        "1-year sabbatical leave \"is not considered to be a short temporary absence under "
-        "paragraph (c)(2) of this section\", and Example 5 states that \"the 2-month vacations are "
-        "short temporary absences and are counted as periods of use\". An absence of five months "
-        "is inside neither, and the corpus says nothing about it."
+        "and names nobody to decide. Paragraph (c)(4)'s worked examples bound the term at its two "
+        "ends and at no point between them, and are recorded in `bounds` below: a 1-year "
+        "sabbatical leave is not a short temporary absence (Example 4) and a 2-month vacation is "
+        "one (Example 5). An absence of five months is inside neither, and the corpus says nothing "
+        "about it."
     )
+    absences["ambiguity"]["bounds"] = {
+        "term": "short temporary absences",
+        "dimension": "duration",
+        "examples": [
+            {
+                "locator": {"sourceId": "cfr-26-1.121-1", "citation": "§ 1.121-1(c)(4) Example 4"},
+                "text": "He uses the house as his principal residence continuously until September "
+                        "1, 1998, when he goes abroad for a 1-year sabbatical leave. On October 1, "
+                        "1999, 1 month after returning from the leave, D sells the house. Because "
+                        "his leave is not considered to be a short temporary absence under "
+                        "paragraph (c)(2) of this section, the period of the sabbatical leave may "
+                        "not be included in determining whether D used the house for periods "
+                        "aggregating 2 years during the 5-year period ending on the date of the "
+                        "sale.",
+                "verdict": "doesNotApply",
+                "value": "P1Y",
+            },
+            {
+                "locator": {"sourceId": "cfr-26-1.121-1", "citation": "§ 1.121-1(c)(4) Example 5"},
+                "text": "During 1998 and 1999, E leaves his residence for a 2-month summer "
+                        "vacation. E sells the house on March 1, 2000. Although, in the 5-year "
+                        "period preceding the date of sale, the total time E used his residence is "
+                        "less than 2 years (21 months), the section 121 exclusion will apply to "
+                        "gain from the sale of the residence because, under paragraph (c)(2) of "
+                        "this section, the 2-month vacations are short temporary absences and are "
+                        "counted as periods of use in determining whether E used the residence for "
+                        "the requisite period.",
+                "verdict": "applies",
+                "value": "P2M",
+            },
+        ],
+    }
     absences["note"] = (
-        "The bounds the two examples fix are recorded in the question above rather than as entries "
-        "of their own. They are the corpus's only authority on the term and they answer no "
-        "caller's request: what they do is constrain which readings of this rule are permissible, "
-        "and the schema has no shape for that. The blind second mapping made each an ordinary "
-        "in-scope entry and kept this one ambiguous, which preserves the authority and loses the "
-        "relation; #216 is where the shape is decided and this entry is written to be re-shaped "
-        "when it is. What the entry does determine is that a qualifying absence is counted even "
-        "where the residence was rented out."
+        "The two worked examples are the corpus's only authority on the term and they answer no "
+        "caller's request: what they do is constrain which readings of this rule are permissible. "
+        "They are recorded as `ambiguity.bounds` rather than as entries of their own -- the blind "
+        "second mapping made each an ordinary in-scope entry and kept this one ambiguous, which "
+        "preserves the authority and loses the relation (#216, closed by rules-factory decision "
+        "0031). An owner's ruling on this question under 0027 states the line it draws in the same "
+        "dimension, and one that would make a 1-year sabbatical short is refused by the engine's "
+        "own gate, naming Example 4. What the entry itself determines is that a qualifying absence "
+        "is counted even where the residence was rented out."
     )
     entries["examples-c"]["note"] = (
         entries["examples-c"]["note"].rstrip()
         + " Examples 4 and 5 are the two the corpus needs read: each states that a particular "
-          "absence is or is not a short temporary absence, which the operative text does not. "
-          "They are declined here as entries and quoted in short-temporary-absences' ambiguity "
-          "question, pending #216."
+          "absence is or is not a short temporary absence, which the operative text does not. They "
+          "are declined here as entries -- an example that bounds a term an operative rule leaves "
+          "open is not an entry -- and carried as `ambiguity.bounds` on short-temporary-absences, "
+          "where a later ruling is compared against them (#216, decision 0031)."
     )
     landed.append("worked-examples-as-entries")
 

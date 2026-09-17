@@ -135,6 +135,14 @@ def skip(summary, had_subject=True):
     return Result("skip", "NOT VERIFIED -- " + summary, had_subject=had_subject)
 
 
+def bounds_of(entry):
+    """The authored examples in `ambiguity.bounds` (0031), each a text and a locator of its own."""
+    ambiguity = entry.get("ambiguity")
+    bounds = ambiguity.get("bounds") if isinstance(ambiguity, dict) else None
+    listed = bounds.get("examples") if isinstance(bounds, dict) else None
+    return [e for e in listed if isinstance(e, dict)] if isinstance(listed, list) else []
+
+
 def check_locators(entries, corpus, index, page_re, reached):
     """Each entry's cited page against the page its evidence sits on.
 
@@ -172,6 +180,24 @@ def check_locators(entries, corpus, index, page_re, reached):
             partial = "" if coverage > 0.95 else f" (matched {coverage:.0%} of the evidence)"
             found = " or ".join(f"p. {p}" for p in sorted(actual))
             bad.append(f"  X  {name}: cited p. {claimed.group(1)}, evidence is on {found}{partial}")
+        # An authored example that bounds an open term quotes the corpus and cites it, exactly as
+        # `evidence` does (0031), so it is located by the same probe and held to the same page --
+        # a bound whose words are not where it says they are would admit or refuse an owner's
+        # ruling on a quotation of nothing. Its pages are not added to `reached`: coverage asks
+        # which pages an entry's own evidence reached, and an example quoted to bound a term is
+        # not a verdict on the page it sits on.
+        for index_of, example in enumerate(bounds_of(entry), start=1):
+            where = f"{name}: bounds.examples[{index_of}]"
+            cited = re.search(page_re, (example.get("locator") or {}).get("citation", ""))
+            if not cited:
+                bad.append(f"  X  {where}: citation names no page, so nothing can be compared")
+                continue
+            at, _ = probe(normalise(example.get("text", "")), corpus)
+            if at is None:
+                bad.append(f"  ?  {where}: the example's text is not in the corpus verbatim; cannot check")
+            elif int(cited.group(1)) not in pages_spanned(at, index):
+                on = " or ".join(f"p. {p}" for p in sorted(pages_spanned(at, index)))
+                bad.append(f"  X  {where}: cited p. {cited.group(1)}, the example is on {on}")
     if not entries:
         return skip("the map has no entries to locate")
     if checked == 0:

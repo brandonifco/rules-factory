@@ -2,7 +2,7 @@
   "about": "The review of each map's exact bytes (docs/decisions/0017-a-map-change-carries-a-review-of-its-bytes.md). tools/check-map-review.py fails any map whose sha256 is not the one recorded here.",
   "reviews": {
     "corpus-map.json": {
-      "sha256": "e96c33b3a1bbe4d62447f8b6148074d3e4b0b2efec742f522ece876be74726c6",
+      "sha256": "5106bb4879b7c1af5fc0ddb1699800e91cd9fb97bada74f483c9ae4dbed83879",
       "method": "blind-second-mapping",
       "comparison": "blind-mapping/results.json",
       "resolutions": "blind-mapping/resolutions.json",
@@ -20,7 +20,7 @@
         "sha256": "1d4ed894a6517f1596a1a151ead420c74eddc3d316ee80700086e8b4b651dbe9",
         "note": "Map B, copied verbatim from the mapper's bundle with its corpus-manifest.json, and not edited. It is evidence, not a map this repository uses, so it carries no review of its own and is not named by the glob that requires one."
       },
-      "scope": "One disagreement is recorded open and this map does not carry it: resolutions.json's worked-examples-as-entries row, which is #216. Everything else results.json flagged has a ruling."
+      "scope": "Every disagreement results.json flagged has a ruling in resolutions.json. The last one recorded open, worked-examples-as-entries (#216), was ruled on 2026-09-17 by rules-factory decision 0031 and the row carries that ruling beside its original: these bytes differ from the reviewed ones by that row alone, applied by blind-mapping/build-map-c.py, which validate.sh re-runs. What it adds is short-temporary-absences.ambiguity.bounds -- the two (c)(4) examples the blind second mapping and the adjudication both read, with their citations and their verbatim text, which the locator checker holds to the corpus -- and the question it rewrote no longer re-quotes them. No entry's scope, kind, clarity or fate moved."
     }
   }
 }

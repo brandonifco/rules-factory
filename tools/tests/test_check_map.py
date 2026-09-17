@@ -96,6 +96,24 @@ def proof(*names):
             for name in names]
 
 
+def bounds(**overrides):
+    """0031: what two authored examples fix about a term an operative rule leaves open."""
+    base = {
+        "term": "short interruption",
+        "dimension": "duration",
+        "examples": [
+            {"locator": {"sourceId": "demo-corpus", "citation": "Part One / p. 1 (the long pause)"},
+             "text": "A pause of one year is not a short interruption.",
+             "verdict": "doesNotApply", "value": "P1Y"},
+            {"locator": {"sourceId": "demo-corpus", "citation": "Part One / p. 1 (the short pause)"},
+             "text": "A pause of two months is a short interruption.",
+             "verdict": "applies", "value": "P2M"},
+        ],
+    }
+    base.update(overrides)
+    return base
+
+
 def valid_map():
     """A map exercising every shape the spec describes, and nothing the spec forbids."""
     return {
@@ -123,13 +141,19 @@ def valid_map():
             entry("inner-table-handedness", kind="value", status="declined",
                   beyondAdapter={"adapter": "plain-text", "modality": "illustration"}),
             entry("subpart-d-categories", scope="out", status="declined"),
+            # 0031: the corpus leaves "a short interruption" open and bounds it by two authored
+            # examples, on opposite sides, in a dimension a later ruling can be compared against.
             entry("must-play-whole-throw", kind="operation", clarity="ambiguous",
                   status="implemented", implementedIn={"ruleset": "demo", "version": 1},
                   tests=proof("WholeThrowTests.Either_die_alone_but_not_both_declines"),
+                  evidence="The player must play the whole throw, and a short interruption does "
+                           "not end his turn.",
                   ambiguity={
-                      "question": "The text does not say what happens when only one die is playable.",
+                      "question": "The text does not say what happens when only one die is playable, "
+                                  "nor how long a short interruption may be.",
                       "fate": "unresolved",
                       "unresolvedReason": "RequiresInterpretation",
+                      "bounds": bounds(),
                   }),
             # 0009: read, and the corpus does not state the rule at all. `scope: out` like
             # subpart-d-categories above and a different verdict, which is the distinction
@@ -1035,6 +1059,134 @@ class TestConflicts(MapCase):
         self.assertEqual(self.status_of(output, "conflicts"), "skip", output)
         self.assertIn("NOT VERIFIED", output)
         self.assertEqual(code, 0, output)
+
+
+class TestBounds(MapCase):
+    """0031: an example that bounds a term an operative rule leaves open, in a dimension a later
+    ruling can be compared against -- and nothing else."""
+
+    BOUNDED = 7  # must-play-whole-throw, in valid_map()'s order
+
+    def bounded(self, document):
+        return document["entries"][self.BOUNDED]["ambiguity"]["bounds"]
+
+    def test_the_valid_map_is_bounded_where_this_expects(self):
+        self.assertEqual(valid_map()["entries"][self.BOUNDED]["id"], "must-play-whole-throw")
+
+    def test_a_dimension_the_checker_cannot_compare_is_refused(self):
+        # The restriction the decision turns on: "adjacent", bounded by a fact pattern about a
+        # road and a corner, is comparable to no threshold any ruling would state, and a field
+        # that accepted it would be recorded rather than checked (0005).
+        def mutate(document):
+            self.bounded(document).update(dimension="adjacency")
+            for example in self.bounded(document)["examples"]:
+                example["value"] = "across a public road"
+        self.assert_catches("bounds", mutate)
+        document = valid_map()
+        mutate(document)
+        _, output = self.run_tool(document)
+        self.assertIn("not a dimension this checker can compare", output)
+        self.assertIn("stays prose in `ambiguity.question`", output)
+
+    def test_bounds_that_contradict_each_other_are_refused(self):
+        # An 18-month pause that is short, beside the one-year pause that is not: a threshold
+        # separates two months from a year, and nothing separates these three. No reading of the
+        # term satisfies all of them, so the defect is in the map and not in the corpus.
+        def mutate(document):
+            self.bounded(document)["examples"].append(
+                {"locator": {"sourceId": "demo-corpus", "citation": "Part One / p. 1 (the longest pause)"},
+                 "text": "A pause of eighteen months is a short interruption.",
+                 "verdict": "applies", "value": "P18M"})
+        self.assert_catches("bounds", mutate)
+        document = valid_map()
+        mutate(document)
+        _, output = self.run_tool(document)
+        self.assertIn("contradict each other in duration", output)
+
+    def test_one_value_with_both_verdicts_is_refused(self):
+        self.assert_catches("bounds", lambda d: self.bounded(d)["examples"][0].update(value="P2M"))
+
+    def test_one_sided_bounds_pass(self):
+        # An example on one side only bounds the term from that side, and contradicts nothing.
+        document = valid_map()
+        self.bounded(document)["examples"] = self.bounded(document)["examples"][:1]
+        code, output = self.run_tool(document)
+        self.assertEqual(self.status_of(output, "bounds"), "ok", output)
+        self.assertEqual(code, 0, output)
+
+    def test_a_value_that_is_not_a_duration_is_refused(self):
+        self.assert_catches("bounds", lambda d: self.bounded(d)["examples"][0].update(value="a year"))
+
+    def test_a_verdict_outside_the_vocabulary_is_refused(self):
+        self.assert_catches("bounds", lambda d: self.bounded(d)["examples"][0].update(verdict="maybe"))
+
+    def test_a_bound_without_a_locator_is_refused(self):
+        self.assert_catches("bounds", lambda d: self.bounded(d)["examples"][0].pop("locator"))
+
+    def test_a_bound_citing_another_corpus_is_refused(self):
+        self.assert_catches("bounds", lambda d: self.bounded(d)["examples"][0]["locator"].update(
+            sourceId="core-rules"))
+
+    def test_a_bound_whose_text_elides_its_middle_is_refused(self):
+        self.assert_catches("bounds", lambda d: self.bounded(d)["examples"][0].update(
+            text="A pause of one year ... is not a short interruption."))
+
+    def test_a_term_the_evidence_does_not_use_is_refused(self):
+        self.assert_catches("bounds", lambda d: self.bounded(d).update(term="brief interruption"))
+
+    def test_a_field_the_block_does_not_have_is_refused(self):
+        self.assert_catches("bounds", lambda d: self.bounded(d).update(note="why these two"))
+
+    def test_a_field_an_example_does_not_have_is_refused(self):
+        self.assert_catches("bounds", lambda d: self.bounded(d)["examples"][0].update(
+            note="the mapper's reading"))
+
+    def test_no_examples_is_refused(self):
+        self.assert_catches("bounds", lambda d: self.bounded(d).update(examples=[]))
+
+    def test_bounds_at_entry_level_are_refused(self):
+        document = valid_map()
+        document["entries"][0]["bounds"] = bounds()
+        code, output = self.run_tool(document)
+        self.assertEqual(self.status_of(output, "bounds"), "fail", output)
+        self.assertIn("belongs in the `ambiguity` block", output)
+        self.assertEqual(code, 1, output)
+
+    def test_bounds_on_a_settled_ambiguity_are_refused(self):
+        # A `fate: decision` has no ruling for a bound to be compared against, and this checker
+        # cannot read the decision record, so the bound would be recorded and never read.
+        def mutate(document):
+            ambiguity = document["entries"][self.BOUNDED]["ambiguity"]
+            ambiguity.pop("unresolvedReason")
+            ambiguity["fate"] = "decision"
+            ambiguity["decision"] = "docs/decisions/0007-opposed-test-tie-break.md"
+        self.assert_catches("bounds", mutate)
+
+    def test_a_map_with_no_bounds_does_not_report_ok(self):
+        document = valid_map()
+        document["entries"][self.BOUNDED]["ambiguity"].pop("bounds")
+        code, output = self.run_tool(document)
+        self.assertEqual(self.status_of(output, "bounds"), "skip", output)
+        self.assertIn("NOT VERIFIED", output)
+        self.assertEqual(code, 0, output)
+
+    def test_a_duration_is_the_same_length_the_factory_compares(self):
+        # tools/factory/rulings.py carries the same parser, because it is vendored into every
+        # engine and imports nothing of this checker. The two are held to one table here, as the
+        # section-designation expression already is above: a scale that drifted would let a
+        # ruling clear a bound in the factory that the map's own checker read differently.
+        repo = os.path.dirname(os.path.dirname(HERE))
+        spec = importlib.util.spec_from_file_location(
+            "factory_rulings_for_bounds", os.path.join(repo, "tools", "factory", "rulings.py"))
+        vendored = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(vendored)
+        for value in ("P1Y", "P12M", "P18M", "P2M", "P730D", "P52W", "P1Y6M", "P0D",
+                      "a year", "P", "", "PT48H", "1Y", "P1.5Y", None):
+            with self.subTest(value=value):
+                self.assertEqual(check_map.duration_in_days(value), vendored.duration_in_days(value))
+        # And the convention itself, so neither file can quietly change it: 12 months is a year.
+        self.assertEqual(check_map.duration_in_days("P1Y"), check_map.duration_in_days("P12M"))
+        self.assertEqual(check_map.duration_in_days("P1W"), 7)
 
 
 class TestAbsent(MapCase):

@@ -427,6 +427,21 @@ it is not advice:** an example is not guidance a mapper may drop, it is a worked
 constrains the rule, and the method has no category for it. That is the finding worth taking
 forward from this trial after the headline.
 
+> **Answered 2026-09-17, and the paragraph above is left as it was.** Two of its claims did not
+> survive being checked against the corpus. "Two of the eight ambiguities would be settled by an
+> example" is wrong three times over: the (c)(4) examples **bracket** "short temporary absences"
+> at a year and two months and settle nothing between, the (e)(4) examples illustrate the side
+> (e)(1) already settles in terms, and (e)(4) Example 6 resolves under (e)(1) so
+> `method-of-allocation`'s question is never reached
+> ([#216](https://github.com/brandonifco/rules-factory/issues/216)). All three entries stay
+> ambiguous, and the declines stand. What did survive is the last sentence, and it now has an
+> answer: [0031](../../docs/decisions/0031-an-example-that-bounds-a-term-is-recorded-as-a-bound.md)
+> gives the method two categories, not one — an example that is the only authority for a rule no
+> operative sentence states is an entry (`combined-sale-nets-dwelling-loss`, which the blind second
+> mapping found this trial had missed), and an example that bounds an open term is
+> `ambiguity.bounds` on the rule it bounds, admitted only where the dimension is comparable. The
+> (c)(4) pair is now recorded that way and is what an owner's ruling is checked against.
+
 ### 4. `definedElsewhere` and `ambiguity` are mutually exclusive, and one entry needs both
 
 `method-of-allocation` says the taxpayer must allocate *"using the same method of allocation that

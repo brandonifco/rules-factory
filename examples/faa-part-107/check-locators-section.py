@@ -37,6 +37,11 @@ indexed like one served inside a `DIV5`/`DIV6`; and a section designation may ca
 suffix, so `§ 1.121-1` and `§ 1.121-2` are two sections rather than one. Nothing else about what
 a citation names changed, and no Part 107 path moves.
 
+**An authored example that bounds a term is held to the same standard** (rules-factory decision
+0031). `ambiguity.bounds.examples[].text` is a quotation with a `locator` of its own, so each is
+checked here by the same function as `evidence`, and a bound whose words are not at its citation
+fails the run: a ruling is refused or admitted by comparing it against that quotation.
+
 It does not check that the evidence is the *right* passage for the entry, only that the
 citation names where it is. And it cannot check an entry whose evidence is not a quote:
 such an entry is reported and **fails the run**. It never reports ok for a citation it did
@@ -416,6 +421,27 @@ def check(entry, corpus, spans, reached=None):
     return "ok", f"{len(fragments)} fragment(s), {seen} occurrence(s), all inside {citation}"
 
 
+def bounds_of(entry):
+    """`(label, quoting entry)` for each authored example in `ambiguity.bounds` (0031).
+
+    A bound quotes the corpus and cites it, exactly as `evidence` and `locator` do, so it is
+    checked by the same `check` above rather than by a second implementation of finding a quote:
+    the pair is handed over as an entry of its own. Its sections are deliberately **not** added to
+    `reached`: coverage asks which sections an entry's own evidence reached, and an example quoted
+    to bound someone else's term is not a verdict on the paragraph it sits in.
+    """
+    bounds = (entry.get("ambiguity") or {}).get("bounds") if isinstance(entry.get("ambiguity"), dict) else None
+    if not isinstance(bounds, dict):
+        return []
+    out = []
+    for index, example in enumerate(bounds.get("examples") or [], start=1):
+        if not isinstance(example, dict):
+            continue
+        out.append((f"{entry.get('id', '?')}: bounds.examples[{index}]",
+                    {"locator": example.get("locator") or {}, "evidence": example.get("text", "")}))
+    return out
+
+
 EXTENT_SECTION = re.compile(r"^§\s*(\d+\.\d+(?:-\d+)?)$")
 
 
@@ -458,18 +484,22 @@ def main(argv):
     for text, token in refused:
         print(f"  !  paragraph designator ({token}) is ambiguous; not indexed: {text}...")
 
-    bad = unchecked = 0
+    bad = unchecked = bounds = bad_bounds = 0
     reached = set()
     for entry in entries:
         verdict, message = check(entry, corpus, spans, reached)
-        if verdict == "ok":
-            continue
         if verdict == "bad":
             bad += 1
             print(f"  X  {entry['id']}: {message}")
-        else:
+        elif verdict != "ok":
             unchecked += 1
             print(f"  ?  {entry['id']}: {message}")
+        for name, quoting in bounds_of(entry):
+            bounds += 1
+            verdict, message = check(quoting, corpus, spans)
+            if verdict != "ok":
+                bad_bounds += 1
+                print(f"  {'X' if verdict == 'bad' else '?'}  {name}: {message}")
 
     total = len(entries)
     checked = total - unchecked
@@ -478,6 +508,12 @@ def main(argv):
         print(line)
     if refused:
         print(f"\n{len(refused)} paragraph(s) could not be placed in the section tree")
+        return 1
+    if bad_bounds:
+        print(f"\n{bad_bounds} of {bounds} authored example(s) in `ambiguity.bounds` do not quote "
+              f"the corpus at the citation they name. A bound is checked against an owner's ruling "
+              f"(0031), so a bound whose words are not there would refuse or admit a ruling on a "
+              f"quotation of nothing")
         return 1
     if bad:
         print(f"\n{bad} of {total} entries cite a passage their evidence is not in "
@@ -494,7 +530,9 @@ def main(argv):
         print(f"\nlocators ok (all {total} checked), but coverage fails: "
               f"{len(uncovered)} problem(s) with the declared extent")
         return 1
-    print(f"locators ok (all {total} checked against the section tree); coverage ok ({covered})")
+    print(f"locators ok (all {total} checked against the section tree"
+          + (f", and {bounds} authored example(s) bounding a term" if bounds else "")
+          + f"); coverage ok ({covered})")
     return 0
 
 
