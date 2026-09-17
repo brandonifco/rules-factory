@@ -247,6 +247,8 @@ def write_overlay(root, document):
     if os.path.isdir(directory):
         for name in os.listdir(directory):
             os.remove(os.path.join(directory, name))
+    # An engine with no implemented entry has no overlay/ at all: nothing scaffolds one (#247).
+    os.makedirs(directory, exist_ok=True)
     for entry_id, item in json.loads(document).items():
         write(os.path.join(directory, f"{entry_id}.json"), json.dumps(item, indent=2) + "\n")
 
