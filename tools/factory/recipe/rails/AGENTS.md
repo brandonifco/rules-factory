@@ -185,7 +185,16 @@ decline that names why and cites where — that is the engine working, not the e
   not change the gate to make a change pass.
 - **Every test records the mutation that makes it fail.** The overlay holds it. A test whose
   named mutation was never observed to fail is a test nobody has watched fail, and this project
-  has shipped two checks that counted work they had not done.
+  has shipped two checks that counted work they had not done. **The gate refuses a placeholder
+  there**: on an entry whose `status` is `implemented`, `"mutation": "PENDING"` — or `TBD`,
+  `TODO`, `none`, `n/a`, `scratch`, `placeholder`, `xxx`, `unknown`, `later`, `fixme`, `wip`, `?`,
+  `-`, however cased or punctuated — fails `scripts/map-overlay.py`, and so does anything shorter
+  than three words and twelve characters. Write the real one, and finish with
+  `tools/re-produce.sh`. The floor exists because until it did, an engine's gate passed with
+  `PENDING` recorded against work nobody had done. It is a floor against the unfilled
+  placeholder, **not a grader of the mutation**: nothing a string can be read for can tell whether
+  the edit was made or the test went red. That part is still your word. The rule is stated in full
+  at the top of `scripts/map-overlay.py`.
 - **Report what happened, not what should have happened.** Paste the command and its actual
   output. "Tests pass" is not evidence; a run is.
 - **A reviewer is given the context, not asked to find it.** `tools/review-packet.py <pr number>`

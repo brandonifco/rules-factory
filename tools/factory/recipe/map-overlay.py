@@ -31,6 +31,24 @@ merge(package, overlay), as 0015 defines it -- each rule is also a failure below
 (Rule 6, the consumer-phase checks on the merge, is the package's own tools/check-map.py
 --phase consumer, which scripts/validate.sh runs.)
 
+And one rule 0015 did not state, because until rules-factory #239 nothing checked it: an item
+whose `status` is `implemented` records, for every test, a **mutation that is not an unfilled
+placeholder**. AGENTS.md's "a test whose named mutation was never observed to fail is a test
+nobody has watched fail" rested on `isinstance(mutation, str) and mutation.strip()`, so the gate
+passed with `"mutation": "PENDING"` -- evidence for a test nobody had run. The rule, in full, is
+`placeholder_problem()` below: a named set of placeholder words, matched case-insensitively after
+whitespace and surrounding punctuation are stripped, and a floor of MINIMUM_WORDS words and
+MINIMUM_CHARACTERS characters.
+
+This is a floor against the unfilled placeholder, **not a grader of mutation quality**. It cannot
+tell whether the edit was made, whether the test went red, or whether the mutation was a good one;
+nothing a string can be read for can. What it removes is the state of recording evidence that was
+never filled in. The threshold is set far below any real mutation on purpose: refusing an honest
+mutation blocks honest work and teaches people to pad, which is worse than a placeholder slipping
+through. The shortest mutation in either engine the factory has built (faa-part-107,
+tax-121-principal-residence) is 20 words and 159 characters, an order of magnitude above the
+floor.
+
 Where the overlay's fields land inside an entry is serialisation, not meaning: they are placed,
 in the order status, implementedIn, tests, where upstream's `status` was.
 
@@ -42,6 +60,7 @@ Standard library only, and scripts/factory/rulings.py.
 import argparse
 import json
 import pathlib
+import string
 import sys
 
 # rulings, imported just below, leaves its bytecode behind: scripts/factory/__pycache__/, a path
@@ -57,6 +76,81 @@ import rulings  # noqa: E402  (vendored by `factory produce`, rules-factory deci
 
 OWNED = ("status", "implementedIn", "tests")
 
+# The placeholder set (#239). Each of these is a word someone types to get past a check they mean
+# to come back to, and every one of them has been seen in a `mutation` field or is one keystroke
+# from one. `scratch` is here deliberately: the factory's own tools/validate-engine.py wrote
+# `"mutation": "scratch"` in its scratch-engine overlays, which is exactly the habit this refuses,
+# so the fixtures were given real sentences rather than the rule being weakened for them.
+PLACEHOLDERS = frozenset((
+    "pending", "tbd", "todo", "none", "n/a", "na", "scratch", "placeholder", "xxx",
+    "unknown", "later", "fixme", "wip", "",
+))
+
+# The floor. A mutation is a sentence: it names what was changed and says what the test then did,
+# and neither fits in two words. Set an order of magnitude below any real mutation -- the shortest
+# in faa-part-107 or tax-121-principal-residence is 20 words and 159 characters -- because refusing
+# an honest mutation is worse than letting a placeholder through: it blocks work and invites
+# padding. Not a quality bar; see the module docstring.
+MINIMUM_WORDS = 3
+MINIMUM_CHARACTERS = 12
+
+# The punctuation a placeholder is decorated with: "TODO.", "-- pending --", "?", "n/a!". Stripped
+# from both ends before matching, which is also how the empty-after-punctuation case ("...", "-")
+# becomes the empty string and matches.
+EDGES = string.punctuation + string.whitespace
+
+
+def normalise(mutation):
+    """The mutation as it is matched: lowercased, with whitespace and surrounding punctuation gone."""
+    return " ".join(mutation.split()).strip(EDGES).casefold()
+
+
+def words(normalised):
+    """The tokens that carry meaning: whitespace-separated, at least one letter or digit each."""
+    return [w for w in normalised.split() if any(c.isalnum() for c in w)]
+
+
+def placeholder_problem(mutation):
+    """Why this mutation is not evidence, or None. The whole rule, in one place (#239)."""
+    normalised = normalise(mutation)
+    tokens = words(normalised)
+    if normalised in PLACEHOLDERS or (tokens and all(t.strip(EDGES) in PLACEHOLDERS for t in tokens)):
+        return f"{mutation.strip()!r} is a placeholder, not a mutation"
+    if len(tokens) < MINIMUM_WORDS or len(normalised) < MINIMUM_CHARACTERS:
+        return (f"{mutation.strip()!r} is too short to be a mutation: at least {MINIMUM_WORDS} words "
+                f"and {MINIMUM_CHARACTERS} characters are asked for, and this is "
+                f"{len(tokens)} and {len(normalised)}")
+    return None
+
+
+def mutation_problems(entry_id, item):
+    """Rule #239, for one overlay item: an `implemented` entry records a real mutation per test."""
+    if not isinstance(item, dict) or item.get("status") != "implemented":
+        return []
+    tests = item.get("tests")
+    if not isinstance(tests, list):
+        return []
+    problems = []
+    for position, test in enumerate(tests, start=1):
+        if not isinstance(test, dict):
+            continue
+        named = test.get("test") if isinstance(test.get("test"), str) else f"the test at position {position}"
+        mutation = test.get("mutation")
+        if not isinstance(mutation, str):
+            why = "records no mutation" if mutation is None else f"records a {type(mutation).__name__}, not a mutation"
+        else:
+            why = placeholder_problem(mutation)
+            if why is None:
+                continue
+            why = f"records {why}"
+        problems.append(
+            f"overlay item {entry_id!r} is implemented, and {named!r} {why}. A mutation is the edit "
+            "you made to this engine that turned that test red, written down: what you changed, "
+            "where, and what the test then did. Make the edit, watch the test fail, undo it, record "
+            "it here, and re-produce with `tools/re-produce.sh`. This is a floor against an unfilled "
+            "placeholder, not a judgement of the mutation.")
+    return problems
+
 
 def load(path):
     return json.loads(pathlib.Path(path).read_text(encoding="utf-8"))
@@ -67,8 +161,9 @@ def serialise(document):
 
 
 def merge(package, overlay, root=None):
-    """merge(package, overlay), and every way the overlay breaks rules 1 and 2. `root` is the engine
-    directory the owner's decision records are looked for in."""
+    """merge(package, overlay), every way the overlay breaks rules 1 and 2, and every placeholder
+    mutation an implemented entry records (#239). `root` is the engine directory the owner's
+    decision records are looked for in."""
     problems = []
     if not isinstance(overlay, dict):
         return None, ["the overlay is not an object of entry id -> owned fields"]
@@ -87,6 +182,7 @@ def merge(package, overlay, root=None):
                 problems.append(f"overlay item {entry_id!r} sets {key!r}; an engine owns only "
                                 f"{', '.join(OWNED)} (and its owner's {' and '.join(rulings.KEYS)}), "
                                 f"and every other field is the package's")
+        problems += mutation_problems(entry_id, item)
     problems += [f"owner's rulings (rules-factory decision 0027): {p}"
                  for p in rulings.problems(package, overlay, root)]
     if problems:

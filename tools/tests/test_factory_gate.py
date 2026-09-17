@@ -56,6 +56,10 @@ RECIPE = ("scripts/validate.sh", "scripts/map-overlay.py", "scripts/engine-gate.
           "scripts/factory/generate.py", "scripts/factory/intake.py", "scripts/factory/ownership.py",
           "scripts/factory/provenance.py", "scripts/factory/rulings.py", ".github/workflows/validate.yml")
 IMPLEMENTED_IN = {"ruleset": "faa-part-107", "version": 1}
+# A mutation these fixtures can record. Since #239 the gate refuses a placeholder one, so "m"
+# no longer stands in for a sentence -- and a fixture nobody could have observed is the habit
+# the refusal exists to break.
+MUTATION = "GroundspeedLimit.Knots printed 88 knots (`InKnots(88m)` for `InKnots(87m)`); it went red."
 OVERLAY = "corpus-map.overlay.json"
 
 
@@ -229,7 +233,7 @@ class TestTheRecordHashesWhatIsOnDisk(GateCase):
     """
 
     IMPLEMENTED = {"speed-limit": {"status": "implemented", "implementedIn": IMPLEMENTED_IN,
-                                   "tests": [{"test": "SpeedTests.t", "mutation": "m"}]}}
+                                   "tests": [{"test": "SpeedTests.t", "mutation": MUTATION}]}}
 
     def provenance(self, engine):
         return self.script(engine, "engine-gate.py", "provenance")
@@ -377,7 +381,7 @@ class TestImplementedNamesItsTests(GateCase):
         engine = self.engine()
         write_json(os.path.join(engine, "corpus-map.overlay.json"), {"speed-limit": {
             "status": "implemented", "implementedIn": IMPLEMENTED_IN,
-            "tests": [{"test": "SpeedTests.Nobody_wrote_this", "mutation": "m"}]}})
+            "tests": [{"test": "SpeedTests.Nobody_wrote_this", "mutation": MUTATION}]}})
         code, output = self.named(engine, self.merge(engine)[2])
         self.assertEqual(code, 1, output)
         self.assertIn("'SpeedTests.Nobody_wrote_this', which no result file shows running", output)
@@ -753,7 +757,7 @@ class TestValidateShWithDotnet(GateCase):
         """Mark speed-limit implemented, re-produce, and put `handler` in a hand-written file."""
         test = "CorrespondenceTests.speed_limit__is_implemented_so_a_hand_written_handler_answers_it"
         write_json(os.path.join(engine, "corpus-map.overlay.json"), {"speed-limit": {
-            "status": "implemented", "implementedIn": IMPLEMENTED_IN, "tests": [{"test": test, "mutation": "m"}]}})
+            "status": "implemented", "implementedIn": IMPLEMENTED_IN, "tests": [{"test": test, "mutation": MUTATION}]}})
         produce(self.nupkg, engine)
         with open(os.path.join(engine, "src", NAME, "Speed.cs"), "w", encoding="utf-8") as handle:
             handle.write("using RulesKernel.Resolution;\n\nnamespace FaaPart107;\n\n"
@@ -876,7 +880,7 @@ class TestValidateShWithDotnet(GateCase):
         engine = self.copy()
         write_json(os.path.join(engine, "corpus-map.overlay.json"),
                    {"speed-limit": {"status": "implemented", "implementedIn": IMPLEMENTED_IN,
-                                    "tests": [{"test": "SpeedTests.t", "mutation": "m"}]}})
+                                    "tests": [{"test": "SpeedTests.t", "mutation": MUTATION}]}})
         code, output = self.script(engine, "engine-gate.py", "regenerate", "--package-map", self.package_map,
                                    "--package-manifest", self.package_manifest, "--package-id", PACKAGE_ID,
                                    "--package-version", "4.0.0", "--name", NAME, "--write")

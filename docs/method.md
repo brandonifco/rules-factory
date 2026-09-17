@@ -810,7 +810,12 @@ has to judge — which is the work, and is not automatable by either diff alone.
 ## Phase 8 — Close the entry
 
 The entry's status advances, and it records which ruleset revision implemented it **and the
-tests that prove it, each with the mutation that was recorded turning it red**. An entry that
+tests that prove it, each with the mutation that was recorded turning it red** — a written
+mutation, not a placeholder standing in for one. Since
+[#239](https://github.com/brandonifco/rules-factory/issues/239) the engine's gate refuses
+`PENDING` and its kind on an `implemented` entry, so the two-step of writing a placeholder,
+producing, and coming back with the real mutation no longer passes in the middle
+([corpus-map.md](corpus-map.md)). An entry that
 cannot name a test that has been seen to fail does not advance to `implemented`; it stays
 `mapped`, whatever code exists ([#2](https://github.com/brandonifco/rules-factory/issues/2)),
 **and the engine declines it with `UnsupportedRule` until that test exists**

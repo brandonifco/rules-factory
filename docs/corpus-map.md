@@ -187,7 +187,7 @@ before either has been implemented.
 | `evidence` | One contiguous verbatim span of the corpus: the passage that *states* this rule. Not a summary of it. Absent on a derived entry, and only there. See below. |
 | `status` | Whether the engine has built this entry. Independent of `ambiguity.fate`. See below. |
 | `implementedIn` | The ruleset revision that implemented it. Set when status becomes `implemented`. |
-| `tests` | The tests that prove the entry, each `{ "test", "mutation" }`: the test's name, and the recorded change to the engine that turned it red. **Required, non-empty, when status is `implemented`.** See `status`. |
+| `tests` | The tests that prove the entry, each `{ "test", "mutation" }`: the test's name, and the recorded change to the engine that turned it red. **Required, non-empty, when status is `implemented`**, and the mutation may not be a placeholder. See `status`. |
 | `note` | Prose explanation: why the entry is shaped this way, and what a test must demonstrate. **Never a claim a test could carry** — a consequence the mapper proved is a test the entry names. See below. |
 
 ### `kind: assertion`
@@ -985,6 +985,24 @@ behind any of them. Every real defect this project has found in its own checks w
 mutation — five tests that could not fail, a checker counting an entry it had not checked — and
 none by reading. This makes that practice the schema. The same answer as rail E below and as a
 derived consequence (#16): **the artifact is the test.**
+
+**A placeholder is not a mutation.** An engine's gate (`scripts/map-overlay.py`, the recipe at
+`tools/factory/recipe/map-overlay.py`) refuses an `implemented` entry whose test records
+`PENDING`, `TBD`, `TODO`, `none`, `n/a`, `scratch`, `placeholder`, `xxx`, `unknown`, `later`,
+`fixme`, `wip`, `?` or `-` — matched case-insensitively once whitespace and surrounding
+punctuation are stripped, so `Pending.` and `--` and `` (empty) go with them — or anything
+shorter than **three words and twelve characters**. The refusal names the entry, the test, the
+string and `tools/re-produce.sh`. Filed as
+[#239](https://github.com/brandonifco/rules-factory/issues/239): the first implementer of
+`tax-121-principal-residence` had to produce twice, because a handler cannot compile until a
+re-produce marks the entry `implemented`, so it wrote `PENDING`, produced, ran the real mutations
+and produced again — and `validate.sh full` passed on the intermediate run. The threshold is set
+an order of magnitude below the shortest real mutation either of the factory's engines records
+(20 words, 159 characters), because refusing an honest mutation blocks work and invites padding,
+which is worse than a placeholder slipping through. This is a floor against the unfilled
+placeholder, **not a grader of mutation quality** — see immediately below for what it still
+cannot show. `tools/checkmap/status.py`, the published-map path, does not yet carry the rule
+([#240](https://github.com/brandonifco/rules-factory/issues/240)).
 
 `check-map.py --only status` enforces what a map alone can show: `tests` is present and
 non-empty on every `implemented` entry, and wherever it appears each item has a non-blank `test`,
