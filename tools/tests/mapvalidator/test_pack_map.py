@@ -10,7 +10,7 @@ refusal case is trial 5's `depends-cycle` injection (examples/injection-trial), 
 #39 records passing an engine's gate green: `point-designations` made to depend on
 `starting-position`, which already depends on it.
 
-Run: python3 -m unittest discover -s tools/tests
+Run: python3 -m unittest discover -s tools/tests -t tools
 """
 import hashlib
 import importlib.util
@@ -26,8 +26,8 @@ import zipfile
 from contextlib import redirect_stdout, redirect_stderr
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-REPO = os.path.dirname(os.path.dirname(HERE))
-TOOL = os.path.join(os.path.dirname(HERE), "pack-map.py")
+REPO = os.path.dirname(os.path.dirname(os.path.dirname(HERE)))
+TOOL = os.path.join(os.path.dirname(os.path.dirname(HERE)), "pack-map.py")
 HOYLE = os.path.join(REPO, "examples", "hoyle-backgammon")
 
 _spec = importlib.util.spec_from_file_location("pack_map", TOOL)
@@ -151,7 +151,7 @@ class TestCarriesTheConsumerChecker(PackCase):
         code, output = self.pack()
         self.assertEqual(code, 0, output)
         with zipfile.ZipFile(os.path.join(self.out, NUPKG)) as archive:
-            with open(os.path.join(os.path.dirname(HERE), "check-map.py"), "rb") as handle:
+            with open(os.path.join(os.path.dirname(os.path.dirname(HERE)), "check-map.py"), "rb") as handle:
                 self.assertEqual(archive.read("tools/check-map.py"), handle.read())
             props = archive.read(f"build/{PACKAGE}.props").decode("utf-8")
         self.assertIn('ConsumerChecker="$(MSBuildThisFileDirectory)../tools/check-map.py"', props)

@@ -10,7 +10,7 @@ and a fake dotnet that writes TRX files. A TARGET derived from the fixture passe
 changed on its own, is refused; a brief assembled from the fixture holds none of its test names, test
 literals or copied test text, and each kind of leak planted in it is found.
 
-Run: python3 -m pytest tools/tests/test_hoyle_blind_rebuild.py
+Run: python3 -m pytest tools/tests/factory/test_hoyle_blind_rebuild.py
 """
 import copy
 import hashlib
@@ -28,7 +28,7 @@ from contextlib import redirect_stderr, redirect_stdout
 from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
-ROOT = HERE.parents[1]
+ROOT = HERE.parents[2]
 EXAMPLE = ROOT / "examples" / "hoyle-blind-rebuild"
 
 

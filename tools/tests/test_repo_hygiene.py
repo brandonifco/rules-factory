@@ -4,7 +4,7 @@
 Every case builds a real origin and clone in a temporary directory, and puts a fake `gh` first on
 PATH that answers from JSON the case writes. Nothing reads the network.
 
-Run: python3 -m unittest discover -s tools/tests
+Run: python3 -m unittest discover -s tools/tests -t tools
 """
 import importlib.util
 import io

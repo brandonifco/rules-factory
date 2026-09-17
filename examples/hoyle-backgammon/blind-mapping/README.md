@@ -116,7 +116,7 @@ belong in 3.0.0).
 | crossReferences declared for quoted pointers: `starting-position` ("as shown in {273} Fig. 1", unmapped), `bearing-off-doublets` ("as in the earlier stage of the game" → `doublets`) | 121, 122 |
 
 Each changed entry's `note` says what moved and why. The count in `../README.md` and the backlog
-count in `tools/tests/test_factory_backlog.py` (28 → 29 qualifying entries) changed with it.
+count in `tools/tests/factory/test_factory_backlog.py` (28 → 29 qualifying entries) changed with it.
 
 Checks after the fix: `tools/check-map.py` 16 ok, 0 failed, 1 not verified (status). Also
 `check-locators.py` 3 ok (32 citations, 4 absent terms, 10 of 10 pages),

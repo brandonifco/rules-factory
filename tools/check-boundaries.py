@@ -30,7 +30,7 @@ What it cannot see, stated here rather than in a commit message:
     this repository's code but the files a produced engine carries, and they import their
     vendored copies by bare name (`import generate`) inside the engine, where the rule that
     governs them is ownership (0018) and the checker is
-    `tools/tests/test_factory_rails.py`. Judging them here would compare them against the
+    `tools/tests/factory/test_factory_rails.py`. Judging them here would compare them against the
     wrong tree.
   * **Whether the boundary is the right one.** It checks the declaration, not the design.
 
@@ -47,7 +47,8 @@ import sys
 # subsystem may only name one above it, and the first names nothing.
 #
 # `mapcontract` is first and depends on nothing, which is what makes it a contract rather than
-# a utility library shared by whoever reached for it. `mapper`, `checkmap` and `factory` are
+# a utility library shared by whoever reached for it. `mapper`, `mapvalidator` and `factory`
+# are
 # siblings: producer, verifier and consumer of the same map, and none of the three may know
 # another. Producer and verifier stay apart for the reason production code is not its own only
 # test oracle; the factory stays out of both so that it consumes a certified map and asks
@@ -60,7 +61,7 @@ import sys
 SUBSYSTEMS = (
     ("mapcontract", "__init__.py", ()),
     ("mapper", "__init__.py", ("mapcontract",)),
-    ("checkmap", "__init__.py", ("mapcontract",)),
+    ("mapvalidator", "__init__.py", ("mapcontract",)),
     ("factory", "__main__.py", ("mapcontract",)),
 )
 

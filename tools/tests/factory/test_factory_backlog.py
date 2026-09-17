@@ -18,7 +18,7 @@ its dependencies change, writes nothing on a second run, adopts a legacy title-o
 refuses a duplicate marker before any write, and reports without touching an issue whose entry
 left the backlog. No real repository is touched.
 
-Run: python3 -m unittest discover -s tools/tests
+Run: python3 -m unittest discover -s tools/tests -t tools
 """
 import hashlib
 import importlib.util
@@ -37,7 +37,7 @@ from contextlib import redirect_stdout, redirect_stderr
 from unittest import mock
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-TOOLS = os.path.dirname(HERE)
+TOOLS = os.path.dirname(os.path.dirname(HERE))
 REPO = os.path.dirname(TOOLS)
 FACTORY = os.path.join(TOOLS, "factory")
 PACK = os.path.join(TOOLS, "pack-map.py")

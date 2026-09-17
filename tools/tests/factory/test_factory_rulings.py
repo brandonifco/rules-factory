@@ -17,7 +17,7 @@ What is asserted here, without a .NET SDK:
 That `Rulings.g.cs` compiles, warning-free, beside an engine's own use of it, is
 scripts/validate-engine.sh's to show, on the SDK the kernel pins.
 
-Run: python3 -m unittest discover -s tools/tests
+Run: python3 -m unittest discover -s tools/tests -t tools
 """
 import copy
 import importlib.util
@@ -32,7 +32,7 @@ import unittest
 from contextlib import redirect_stderr, redirect_stdout
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-TOOLS = os.path.dirname(HERE)
+TOOLS = os.path.dirname(os.path.dirname(HERE))
 REPO = os.path.dirname(TOOLS)
 FACTORY = os.path.join(TOOLS, "factory")
 PACK = os.path.join(TOOLS, "pack-map.py")

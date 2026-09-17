@@ -7,7 +7,7 @@ test closes that for the maps this repository ships: every quoted span that anch
 found, whitespace-normalised, in the committed corpus text. It is proved able to fail on a span
 the corpus does not contain.
 
-Run: python3 -m pytest tools/tests/test_map_anchors.py
+Run: python3 -m pytest tools/tests/mapvalidator/test_map_anchors.py
 """
 import html
 import importlib.util
@@ -17,7 +17,7 @@ import re
 import unittest
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-REPO = os.path.dirname(os.path.dirname(HERE))
+REPO = os.path.dirname(os.path.dirname(os.path.dirname(HERE)))
 TOOL = os.path.join(REPO, "tools", "check-map.py")
 
 _spec = importlib.util.spec_from_file_location("check_map_anchors", TOOL)

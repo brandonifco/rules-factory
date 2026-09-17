@@ -27,7 +27,7 @@ Asserted here, about the bytes the factory emits rather than about a GitHub repo
     is unreadable rather than failing open or closed by accident, and actually blocks a write in
     the primary checkout while allowing one in a worktree.
 
-Run: python3 -m pytest tools/tests/test_factory_rails.py
+Run: python3 -m pytest tools/tests/factory/test_factory_rails.py
 """
 import hashlib
 import importlib.util
@@ -44,7 +44,7 @@ import unittest.mock
 from contextlib import redirect_stderr, redirect_stdout
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-TOOLS = os.path.dirname(HERE)
+TOOLS = os.path.dirname(os.path.dirname(HERE))
 REPO = os.path.dirname(TOOLS)
 FACTORY = os.path.join(TOOLS, "factory")
 PACK = os.path.join(TOOLS, "pack-map.py")

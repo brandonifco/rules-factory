@@ -95,7 +95,7 @@ printing the citation means, and a path that does not narrow it to one fails
 ([0030](../../docs/decisions/0030-a-repeated-passage-is-identified-by-the-container-its-citation-names.md),
 [#207](https://github.com/brandonifco/rules-factory/issues/207)). The citation's last heading must
 occur as a line between the start of the previous page and the quote. `absence` and `coverage` are Hoyle's checks, loaded from that file and run unchanged. Its
-failing cases are in `tools/tests/test_check_locators.py`.
+failing cases are in `tools/tests/mapvalidator/test_check_locators.py`.
 
 **`extent`: pages 13–16**, the "Combat" section of "Playing the Game", from the heading at the top
 of p. 13 to the end of "Underwater Combat" on p. 16, ending before the "Damage and Healing" heading

@@ -11,7 +11,7 @@ engine byte-identical afterwards, bumped recipe or not; `--adopt` keeps the edit
 provenance.json, and is remembered by later runs; `--reset` puts the recipe back; engine-owned
 files are never touched by a re-run, even when every managed recipe moves.
 
-Run: python3 -m unittest discover -s tools/tests
+Run: python3 -m unittest discover -s tools/tests -t tools
 """
 import contextlib
 import hashlib
@@ -30,7 +30,7 @@ from contextlib import redirect_stderr, redirect_stdout
 from unittest import mock
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-TOOLS = os.path.dirname(HERE)
+TOOLS = os.path.dirname(os.path.dirname(HERE))
 REPO = os.path.dirname(TOOLS)
 FACTORY = os.path.join(TOOLS, "factory")
 PACK = os.path.join(TOOLS, "pack-map.py")

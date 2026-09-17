@@ -17,7 +17,7 @@ The package's own checker is never run (0016): the consumer-phase checks are the
 tools/check-map.py, and TestPackageIsData replaces the packaged checker with a script that
 leaves a sentinel file and lies about the verdict, and asserts intake ignores it both ways.
 
-Run: python3 -m unittest discover -s tools/tests
+Run: python3 -m unittest discover -s tools/tests -t tools
 """
 import importlib.util
 import io
@@ -33,7 +33,7 @@ import zipfile
 from contextlib import redirect_stdout, redirect_stderr
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-TOOLS = os.path.dirname(HERE)
+TOOLS = os.path.dirname(os.path.dirname(HERE))
 REPO = os.path.dirname(TOOLS)
 FACTORY = os.path.join(TOOLS, "factory")
 PACK = os.path.join(TOOLS, "pack-map.py")

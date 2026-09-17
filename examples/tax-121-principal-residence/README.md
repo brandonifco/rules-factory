@@ -400,7 +400,7 @@ now indexed under the paragraph that introduces it and nowhere deeper — `("1.1
 this finding held back on, what path an example's own `(i)`/`(ii)` parts take, is still not
 answered and did not have to be: an example is indexed whole, so a quote from any part of it
 verifies against the example, and nothing claims those parts are paragraphs. Eight tests in
-`tools/tests/test_check_locators.py`. See
+`tools/tests/mapvalidator/test_check_locators.py`. See
 [blind-mapping/README.md](blind-mapping/README.md#4-a-coverage-miss-verified-against-the-corpus):
 a grammar that cannot cite a passage quietly decides the passage holds no rules, and that is what
 happened here.
@@ -537,7 +537,7 @@ things blocked that and both were generalised in place, in nine lines:
 - **`CITE_SECTION` read `\d+\.\d+`.** A Treasury regulation's number carries a hyphenated suffix,
   so `§ 1.121-1` parsed as section `1.121` and `§ 1.121-2` parsed as the *same* section — and the
   extent expression, anchored with `$`, rejected `"§ 1.121-1"` outright. Both expressions now read
-  `\d+\.\d+(?:-\d+)?`, in the checker and in `tools/checkmap/extent.py`, which
+  `\d+\.\d+(?:-\d+)?`, in the checker and in `tools/mapvalidator/extent.py`, which
   `test_check_map.py` holds to each other over every citation the maps make.
 
 Neither touches what a citation *names*. Both Part 107 maps re-verify unchanged (47 and 39

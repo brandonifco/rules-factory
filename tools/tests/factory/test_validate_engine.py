@@ -7,7 +7,7 @@ takes, the SDK pin it prints for CI, the override refused before anything runs w
 exact failure and step lines, and the helpers the checks lean on -- the local feed, the restored
 package's hashes, and the `produce --no-verify` exit code it accepts.
 
-Run: python3 -m unittest discover -s tools/tests
+Run: python3 -m unittest discover -s tools/tests -t tools
 """
 import base64
 import hashlib
@@ -24,7 +24,7 @@ from contextlib import redirect_stderr, redirect_stdout
 from unittest import mock
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-ROOT = os.path.dirname(os.path.dirname(HERE))
+ROOT = os.path.dirname(os.path.dirname(os.path.dirname(HERE)))
 TOOL = os.path.join(ROOT, "tools", "validate-engine.py")
 WRAPPER = os.path.join(ROOT, "scripts", "validate-engine.sh")
 

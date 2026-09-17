@@ -153,7 +153,7 @@ factory's intake runs `--phase consumer`, and neither new check is in it, so an 
 an older version still intakes and generates, with `AssertedBy` empty.
 
 **What the checks do not buy.**
-- A span quoted in `note` is not located by `check-map.py`, which reads no corpus. `tools/tests/test_map_anchors.py` holds every note anchor of the four example maps to the committed corpus text, and proves it can fail. A new map outside that list gets no such test.
+- A span quoted in `note` is not located by `check-map.py`, which reads no corpus. `tools/tests/mapvalidator/test_map_anchors.py` holds every note anchor of the four example maps to the committed corpus text, and proves it can fail. A new map outside that list gets no such test.
 - The anchor proves the word is in the passage, not that it names the right party. A bystander named in the evidence passes.
 - `assertedBy` records who bears the duty or holds the decision. Where a section lists persons who *must be able to see* (§ 107.31(a)), the attribution is to them, and the list does not say that § 107.31(b) lets some of them exercise the ability instead of the others. That is `visual-line-of-sight`'s rule.
 - Nothing reads `count`.

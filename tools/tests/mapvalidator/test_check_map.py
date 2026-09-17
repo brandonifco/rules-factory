@@ -10,7 +10,7 @@ The fixture is written from `docs/corpus-map.md` and `docs/decisions/0005`, not 
 example maps -- an expectation drawn from the thing under test proves nothing, and the
 example maps are mid-migration.
 
-Run: python3 -m unittest discover -s tools/tests
+Run: python3 -m unittest discover -s tools/tests -t tools
 """
 import glob
 import importlib.util
@@ -23,7 +23,7 @@ import unittest
 from contextlib import redirect_stdout, redirect_stderr
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-TOOL = os.path.join(os.path.dirname(HERE), "check-map.py")
+TOOL = os.path.join(os.path.dirname(os.path.dirname(HERE)), "check-map.py")
 
 _spec = importlib.util.spec_from_file_location("check_map", TOOL)
 check_map = importlib.util.module_from_spec(_spec)
@@ -274,7 +274,7 @@ class TestSchema(MapCase):
 
     def test_every_example_map_uses_only_known_top_level_fields(self):
         # The closed envelope must not break a map the repository already ships.
-        repo = os.path.dirname(os.path.dirname(HERE))
+        repo = os.path.dirname(os.path.dirname(os.path.dirname(HERE)))
         maps = sorted(os.path.join(repo, "examples", d, n)
                       for d in os.listdir(os.path.join(repo, "examples"))
                       if os.path.isdir(os.path.join(repo, "examples", d))
@@ -395,7 +395,7 @@ class TestExtent(MapCase):
     def test_the_section_is_read_as_the_locator_checker_reads_it(self):
         # The two grammars are one grammar, kept in two files; they agree on every citation
         # the Part 107 maps make, and on the forms 0020 adds.
-        repo = os.path.dirname(os.path.dirname(HERE))
+        repo = os.path.dirname(os.path.dirname(os.path.dirname(HERE)))
         spec = importlib.util.spec_from_file_location(
             "check_locators_section",
             os.path.join(repo, "examples", "faa-part-107", "check-locators-section.py"))
@@ -1175,7 +1175,7 @@ class TestBounds(MapCase):
         # engine and imports nothing of this checker. The two are held to one table here, as the
         # section-designation expression already is above: a scale that drifted would let a
         # ruling clear a bound in the factory that the map's own checker read differently.
-        repo = os.path.dirname(os.path.dirname(HERE))
+        repo = os.path.dirname(os.path.dirname(os.path.dirname(HERE)))
         spec = importlib.util.spec_from_file_location(
             "factory_rulings_for_bounds", os.path.join(repo, "tools", "factory", "rulings.py"))
         vendored = importlib.util.module_from_spec(spec)
@@ -1735,7 +1735,7 @@ class TestCrossReferences(MapCase):
     def test_every_example_corpus_reports_the_pointers_it_detected(self):
         # #116 on the committed maps: every corpus declares its phrases, and the SRD's declared
         # cross-references are now on pointers the check detects.
-        root = os.path.dirname(os.path.dirname(HERE))
+        root = os.path.dirname(os.path.dirname(os.path.dirname(HERE)))
         for path in sorted(glob.glob(os.path.join(root, "examples", "*", "corpus-map*.json"))):
             with self.subTest(map=os.path.relpath(path, root)):
                 out, err = io.StringIO(), io.StringIO()

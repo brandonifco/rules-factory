@@ -5,14 +5,14 @@
 it is invisible at the moment someone does. A checker that only ever passes proves nothing, so
 each rule below is watched failing on a tree built to break it, and the mutation is named:
 
-  * a sibling import -- checkmap reaching into factory;
-  * an import of a subsystem below the contract -- mapcontract reaching back into checkmap;
+  * a sibling import -- mapvalidator reaching into factory;
+  * an import of a subsystem below the contract -- mapcontract reaching back into mapvalidator;
   * a deferred import, inside a function, which is a dependency all the same;
   * a relative import that climbs out of its own package;
   * a subsystem that is declared and absent, and one whose statement of what it owns is gone;
   * an examined-nothing run.
 
-Run: python3 -m unittest discover -s tools/tests
+Run: python3 -m unittest discover -s tools/tests -t tools
 """
 import importlib.util
 import io
@@ -92,26 +92,26 @@ class MutationCase(unittest.TestCase):
 
 class TestMutations(MutationCase):
     def test_a_sibling_import(self):
-        self.prepend("checkmap/schema.py", "import factory")
-        self.assert_refused("checkmap/schema.py", "import factory",
+        self.prepend("mapvalidator/schema.py", "import factory")
+        self.assert_refused("mapvalidator/schema.py", "import factory",
                             "a subsystem beside it")
 
     def test_the_contract_importing_a_consumer(self):
-        self.prepend("mapcontract/entry.py", "from checkmap.diagnostics import verdict")
+        self.prepend("mapcontract/entry.py", "from mapvalidator.diagnostics import verdict")
         self.assert_refused("mapcontract/entry.py", "is the contract and imports no subsystem")
 
     def test_a_deferred_import_inside_a_function(self):
-        path = self.path("checkmap/cli.py")
+        path = self.path("mapvalidator/cli.py")
         with io.open(path, encoding="utf-8") as handle:
             text = handle.read()
         marker = "def find_manifest(map_path):\n"
         self.assertIn(marker, text)
         with io.open(path, "w", encoding="utf-8", newline="\n") as handle:
             handle.write(text.replace(marker, marker + "    import factory\n", 1))
-        self.assert_refused("checkmap/cli.py", "import factory")
+        self.assert_refused("mapvalidator/cli.py", "import factory")
 
     def test_a_relative_import_that_climbs_out(self):
-        self.prepend("mapcontract/entry.py", "from ..checkmap import diagnostics")
+        self.prepend("mapcontract/entry.py", "from ..mapvalidator import diagnostics")
         self.assert_refused("mapcontract/entry.py", "climbs out of tools/mapcontract/")
 
     def test_a_declared_subsystem_that_is_not_there(self):
@@ -119,9 +119,9 @@ class TestMutations(MutationCase):
         self.assert_refused("tools/mapcontract/ is declared a subsystem and does not exist")
 
     def test_a_subsystem_that_says_nothing_about_what_it_owns(self):
-        with io.open(self.path("checkmap/__init__.py"), "w", encoding="utf-8") as handle:
+        with io.open(self.path("mapvalidator/__init__.py"), "w", encoding="utf-8") as handle:
             handle.write("# nothing\n")
-        self.assert_refused("checkmap/__init__.py", "statement of what it owns")
+        self.assert_refused("mapvalidator/__init__.py", "statement of what it owns")
 
     def test_a_missing_statement_file(self):
         os.remove(self.path("factory/__main__.py"))

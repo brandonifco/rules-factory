@@ -7,7 +7,7 @@ review alone, records a digest from before, drops the reason from an exemption -
 it fails. The maps are a few bytes of JSON written here: the gate reads bytes, not entries,
 and a fixture drawn from `examples/` would move whenever a real map did.
 
-Run: python3 -m unittest discover -s tools/tests
+Run: python3 -m unittest discover -s tools/tests -t tools
 """
 import hashlib
 import importlib.util
@@ -20,7 +20,7 @@ import unittest
 from contextlib import redirect_stdout, redirect_stderr
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-TOOL = os.path.join(os.path.dirname(HERE), "check-map-review.py")
+TOOL = os.path.join(os.path.dirname(os.path.dirname(HERE)), "check-map-review.py")
 
 _spec = importlib.util.spec_from_file_location("check_map_review", TOOL)
 check_map_review = importlib.util.module_from_spec(_spec)

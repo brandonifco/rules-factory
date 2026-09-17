@@ -53,7 +53,7 @@ python3 examples/hoyle-blind-rebuild/check-target.py --self-check
 ```
 
 Run locally on 2026-09-15: every pin matches, and `--run-tests --sdk-override 10.0.111` passes all 560
-cases (NOT VERIFIED only because 10.0.112 is not installed here). `tools/tests/test_hoyle_blind_rebuild.py`
+cases (NOT VERIFIED only because 10.0.112 is not installed here). `tools/tests/factory/test_hoyle_blind_rebuild.py`
 runs the self-check, mutates each pin against a synthetic engine repository, plants each kind of leak
 in a synthetic brief, and refuses a synthetic rebuild with other provenance, edited generated files or
 copied source, offline.

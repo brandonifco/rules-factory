@@ -21,7 +21,7 @@ Two layers:
     nuget.org until it is tagged) and the user's global packages folder as a read-only fallback. Packages restore
     into a scratch NUGET_PACKAGES, so an unpublished map package never enters the user's cache.
 
-Run: python3 -m unittest discover -s tools/tests
+Run: python3 -m unittest discover -s tools/tests -t tools
 """
 import importlib.util
 import io
@@ -37,7 +37,7 @@ import zipfile
 from contextlib import redirect_stdout, redirect_stderr
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-TOOLS = os.path.dirname(HERE)
+TOOLS = os.path.dirname(os.path.dirname(HERE))
 REPO = os.path.dirname(TOOLS)
 FACTORY = os.path.join(TOOLS, "factory")
 PACK = os.path.join(TOOLS, "pack-map.py")

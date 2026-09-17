@@ -236,7 +236,7 @@ def corpus_index(xml_path):
 # A section designation: `107.29` in title 14, `1.121-1` in title 26, where a Treasury
 # regulation's number carries a hyphenated suffix. The suffix is part of the section number and
 # never a paragraph, so reading it is what lets `§ 1.121-1` and `§ 1.121-2` be two sections
-# rather than one. `tools/checkmap/extent.py` holds the same expression, and
+# rather than one. `tools/mapvalidator/extent.py` holds the same expression, and
 # `test_check_map.py` runs both over every citation the maps make.
 CITE_SECTION = re.compile(r"§+\s*(\d+\.\d+(?:-\d+)?)")
 CITE_GROUP = re.compile(r"\(([A-Za-z0-9]{1,4})\)")

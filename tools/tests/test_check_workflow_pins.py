@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """check-workflow-pins.py, proved able to fail.
 
-Run: python3 -m unittest discover -s tools/tests
+Run: python3 -m unittest discover -s tools/tests -t tools
 """
 import importlib.util
 import io

@@ -11,7 +11,7 @@ expectation drawn from the thing under test proves nothing -- and because the th
 have to be exercised over a corpus small enough that "page 3 is reached by no entry" is
 readable at a glance.
 
-Run: python3 -m unittest discover -s tools/tests
+Run: python3 -m unittest discover -s tools/tests -t tools
 """
 import importlib.util
 import io
@@ -24,7 +24,7 @@ import xml.etree.ElementTree as ET
 from contextlib import redirect_stdout, redirect_stderr
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-TOOL = os.path.join(os.path.dirname(HERE), "check-locators.py")
+TOOL = os.path.join(os.path.dirname(os.path.dirname(HERE)), "check-locators.py")
 
 _spec = importlib.util.spec_from_file_location("check_locators", TOOL)
 check_locators = importlib.util.module_from_spec(_spec)
@@ -280,7 +280,7 @@ class TestCoverage(LocatorCase):
 
 # --- examples/faa-part-107/check-locators-section.py: the section-designation grammar -------
 
-SECTION_TOOL = os.path.join(os.path.dirname(os.path.dirname(HERE)),
+SECTION_TOOL = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(HERE))),
                             "examples", "faa-part-107", "check-locators-section.py")
 _section_spec = importlib.util.spec_from_file_location("check_locators_section", SECTION_TOOL)
 check_locators_section = importlib.util.module_from_spec(_section_spec)
@@ -404,7 +404,7 @@ class TestSectionCoverage(SectionCase):
 
 # --- examples/srd-52-combat/check-locators-pdf-text.py: page-marked PDF text ----------------
 
-PDF_TEXT_TOOL = os.path.join(os.path.dirname(os.path.dirname(HERE)),
+PDF_TEXT_TOOL = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(HERE))),
                              "examples", "srd-52-combat", "check-locators-pdf-text.py")
 _pdf_text_spec = importlib.util.spec_from_file_location("check_locators_pdf_text", PDF_TEXT_TOOL)
 check_locators_pdf_text = importlib.util.module_from_spec(_pdf_text_spec)
