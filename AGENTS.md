@@ -137,6 +137,7 @@ is removed (§4).
 
 | Question | Answer |
 |---|---|
+| What the subsystems are, and who may import whom | [0032](docs/decisions/0032-mapping-validation-and-generation-are-three-subsystems-over-one-contract.md), held by [`tools/check-boundaries.py`](tools/check-boundaries.py) |
 | How a corpus is mapped | [docs/method.md](docs/method.md) |
 | What a map is | [docs/corpus-map.md](docs/corpus-map.md) |
 | What was decided, and why | [docs/decisions/](docs/decisions/README.md) |

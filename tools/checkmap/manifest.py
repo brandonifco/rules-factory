@@ -5,7 +5,7 @@ references and the baseline stamp, and each corpus's verification posture and qu
 import os
 
 from .diagnostics import skip, verdict
-from .model import block, corpora_of, entries_of, label, quotes_withheld
+from mapcontract.entry import block, corpora_of, entries_of, label, quotes_withheld
 
 
 def check_manifest(ctx):
@@ -169,7 +169,7 @@ def check_postures(ctx):
     for position, entry in enumerate(entries_of(ctx["map"])):
         if not isinstance(entry, dict):
             continue
-        if quotes_withheld(ctx, entry):
+        if quotes_withheld(ctx.get("manifest"), entry):
             if entry.get("evidence"):
                 bad.append(f"  X  {label(entry, position)}: quotes `evidence` from "
                            f"{block(entry, 'locator').get('sourceId')}, whose quotation is `withheld`; "

@@ -2,7 +2,8 @@
 an absent rule (0009) is `declined`, and nothing orders or gates on it.
 """
 from .diagnostics import skip, verdict
-from .model import ID_LIST_FIELDS, entries_of, label
+from mapcontract.vocabulary import ID_LIST_FIELDS
+from mapcontract.entry import entries_of, label
 
 
 def tests_problems(name, tests):

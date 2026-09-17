@@ -4,7 +4,7 @@
 import re
 
 from .diagnostics import skip, verdict
-from .model import block, corpora_of, entries_of, label, quotes_withheld
+from mapcontract.entry import block, corpora_of, entries_of, label, quotes_withheld
 
 
 # The ways an extraction was seen to garble a quote, and no others: each is a case trial 7 met in
@@ -93,7 +93,7 @@ def check_extraction(ctx):
                        f"cannot read the rule or reads it garbled, not both")
         source_id = block(entry, "locator").get("sourceId")
         source = corpora.get(source_id)
-        if quotes_withheld(ctx, entry):
+        if quotes_withheld(ctx.get("manifest"), entry):
             bad.append(f"  X  {name}: carries extraction under `quotation: withheld`; a rendered "
                        f"reading is a quote of the page")
         elif source is not None and "quotedText" not in source:

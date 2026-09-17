@@ -4,7 +4,7 @@ corpus map has: printed pages, and CFR-style section designations (0020).
 import re
 
 from .diagnostics import fail, skip, verdict
-from .model import block, entries_of, label
+from mapcontract.entry import block, entries_of, label
 
 
 EXTENT_UNITS = ("page", "section-designation")

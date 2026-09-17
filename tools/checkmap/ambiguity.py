@@ -4,7 +4,7 @@ that exists, and that the entries answering one contradicted question agree (000
 import os
 
 from .diagnostics import skip, verdict
-from .model import block, entries_of, fate_of, label
+from mapcontract.entry import block, entries_of, fate_of, label
 
 
 def check_exclusions(ctx):
