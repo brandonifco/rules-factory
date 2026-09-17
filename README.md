@@ -54,7 +54,10 @@ run by `validate.sh`, checks it against the parser `tools/factory/__main__.py` b
 subcommand or argument without a row fails, and so does a row the parser does not have, or one
 marked `not implemented` that the parser does have. The prose cannot be checked that way, but one claim in it
 can: [`tools/check-status-issues.py`](tools/check-status-issues.py) fails when a sentence or row
-says something is "not yet" or "not done" and cites a closed issue.
+says something is "not yet", "not done" or "not passed", or "is open", and cites a closed issue.
+Everything else in the prose is checked by a person on every pull request: its `## Documentation`
+section accounts for every living document, and the `documentation` check holds that section to
+the diff ([AGENTS.md](AGENTS.md) §3).
 
 <!-- factory-cli-status:begin -->
 | Command | Argument | Status | Notes |
@@ -198,12 +201,12 @@ found at run time, not at compile time. The string-keyed `Registry` and reflecti
 | Piece | Repository | Status |
 |---|---|---|
 | Kernel — identity, provenance, resolution | [`rules-kernel`](https://github.com/brandonifco/rules-kernel) | published; engines pin 0.3.0 |
-| Corpus maps — schema, checker, packages | this | maps of two corpora; `hoyle-backgammon` and `faa-part-107` published as packages |
-| Corpus toolkit — adapters, locators, boundary policy | none | locator checkers for two citation grammars live here; no adapters |
+| Corpus maps — schema, checker, packages | this | maps of six corpus slices; `hoyle-backgammon`, `faa-part-107` and `srd-52-combat` published as packages; `tax-121-principal-residence` declares a package and has no `map/` tag, so it is unpublished |
+| Corpus toolkit — adapters, locators, boundary policy | none | locator checkers for three citation grammars live here (page markers, eCFR sections, PDF-extracted text); no adapters |
 | Domain packs — tabletop, legal | none | not implemented |
-| Agent rails for produced engines | this | decided ([0029](docs/decisions/0029-the-rails-are-emitted-by-default-and-vendor-choice-is-engine-owned-configuration.md)); emitted and enforced: the contract, the roles, the charters, the guard, the packets, dispatch, the PR contract, the recorded verdicts, `.github/agent-policy.json`, and `factory rails --apply`, which makes the three checks required. The acceptance run is open ([#1](https://github.com/brandonifco/rules-factory/issues/1), [#4](https://github.com/brandonifco/rules-factory/issues/4)) |
-| **Factory — intake, generation, gate, backlog, provenance, verify** | **this** | implemented; acceptance test ([#3](https://github.com/brandonifco/rules-factory/issues/3)) not passed |
-| Produced engines | [`hoyle-backgammon`](https://github.com/brandonifco/hoyle-backgammon) | produced by the factory (`factory/v0.2.1`, map 4.0.0), with hand-written rule handlers ([evidence](examples/hoyle-backgammon/produced-engine/EVIDENCE.md)) |
+| Agent rails for produced engines | this | decided ([0029](docs/decisions/0029-the-rails-are-emitted-by-default-and-vendor-choice-is-engine-owned-configuration.md)); emitted and enforced: the contract, the roles, the charters, the guard, the packets, dispatch, the PR contract, the recorded verdicts, `.github/agent-policy.json`, and `factory rails --apply`, which makes the three checks required. Proven on a real rule: `faa-part-107`'s `control-links-working` went issue to merge through them ([#157](https://github.com/brandonifco/rules-factory/issues/157)) |
+| **Factory — intake, generation, gate, backlog, provenance, verify** | **this** | implemented; acceptance test ([#3](https://github.com/brandonifco/rules-factory/issues/3)) met 2026-09-16 |
+| Produced engines | [`hoyle-backgammon`](https://github.com/brandonifco/hoyle-backgammon), [`faa-part-107`](https://github.com/brandonifco/faa-part-107), [`srd-52-combat`](https://github.com/brandonifco/srd-52-combat) | produced by the factory, with hand-written rule handlers; each engine's `provenance.json` names the factory and map versions it was built from ([evidence](examples/acceptance-4-5/EVIDENCE.md)) |
 | Hand-built engines | `deckard`, `SRD_Combat` | built by hand, before the factory |
 
 `hoyle-backgammon` was built by hand first and is now produced by the factory. Its generated
@@ -254,4 +257,5 @@ messages. The manual comes first here partly to avoid repeating that, and partly
 writing it down is what exposes the decisions.
 
 The open work is labelled by what it is and by what it blocks; see
-[docs/backlog.md](docs/backlog.md) for the scheme and the reasoning behind the ordering.
+[docs/backlog.md](docs/backlog.md) for the scheme and the reasoning behind the ordering. How a
+change to this repository is made, checked, finished and released is [AGENTS.md](AGENTS.md).

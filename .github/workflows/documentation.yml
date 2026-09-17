@@ -1,0 +1,42 @@
+name: documentation
+
+# Every pull request says what it did to every living document, and what it says matches its diff
+# (AGENTS.md section 3). The rules are tools/check-pr-docs.py's; this workflow runs it on the event
+# and does nothing else, so there is one definition to keep true.
+#
+# The description is read from the event payload file by the script, never interpolated into a
+# shell line: a pull request description is text anyone opening one controls.
+
+on:
+  pull_request:
+    branches: [main]
+    # `edited` because the answer lives in the description, which changes without a push.
+    types: [opened, edited, synchronize, reopened, ready_for_review]
+
+concurrency:
+  group: documentation-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  documentation:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          # The diff is base...head, so the merge base has to be in the clone.
+          fetch-depth: 0
+          ref: ${{ github.event.pull_request.head.sha }}
+          persist-credentials: false
+
+      - name: Set up Python
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
+        with:
+          python-version: '3.12.14'
+
+      - name: Every living document is accounted for
+        run: python3 tools/check-pr-docs.py --event "$GITHUB_EVENT_PATH"
