@@ -9,6 +9,13 @@ each side of it, and **[0016](0016-a-map-package-is-data-not-code.md)** (the fac
 package with its own checker) by naming what "its own checker" is a part of. Adds no entry field
 and no manifest key. Changes no check's verdict on any committed map.
 
+## Amendment — the validator is named for what it is
+
+**2026-09-17.** `tools/checkmap/` is `tools/mapvalidator/`, by
+[0033](0033-the-validator-is-the-adversary-and-validates-the-uncertainty-too.md), which also
+records what the validator owns and what it still owes. Every mention of `tools/checkmap/`
+below means that directory. Nothing else in this record changed.
+
 ## Context
 
 This repository does three jobs:

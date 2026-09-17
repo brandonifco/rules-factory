@@ -9,11 +9,11 @@ Three different questions, three trust boundaries:
 | Subsystem | The question it asks |
 |---|---|
 | **Mapper** | What does this corpus say, and where does its certainty end? |
-| **Map validation** | Has the mapper justified those claims, and is this map safe to rely on? |
+| **[Validator](validator.md)** | Has the mapper justified those claims, and is this map safe to rely on? |
 | **Factory** | Given an acceptable map, what follows mechanically? |
 
 The mapper is an interpreter, and it is not allowed to certify itself. That is the whole reason
-validation is a sibling and not a utility hanging off this one.
+[the validator](validator.md) is a sibling and not a utility hanging off this one.
 
 ## What is here and what is in the method
 
