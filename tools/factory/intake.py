@@ -47,6 +47,13 @@ member is refused unread when it declares more than `MAX_MEMBER_BYTES` or a comp
 over `MAX_COMPRESSION_RATIO`. The package the operator names is theirs, so this is about not
 exhausting their machine, not about trust.
 
+**A nuspec or props that declares a DTD is refused before it is parsed (#210).** The size caps
+bound the bytes intake reads, not what an XML parser makes of them: `xml.etree` expands internal
+entities, so a nuspec of a few kilobytes can declare its way to gigabytes inside the parser. A
+DTD is a small instruction set, and admitting one is admitting a little code (0016); nothing
+`tools/pack-map.py` builds carries one, so a document type declaration is refused outright rather
+than its expansion bounded.
+
 What intake cannot do: tell whether the map is *right* about the corpus (the publish gate's
 locator checkers and review did that), or whether a newer version of the package exists.
 
@@ -62,6 +69,7 @@ import re
 import tempfile
 import urllib.request
 import xml.etree.ElementTree as ET
+import xml.parsers.expat
 import zipfile
 
 FLAT_CONTAINER = "https://api.nuget.org/v3-flatcontainer"
@@ -285,6 +293,37 @@ def _read_member(archive, name):
     return data
 
 
+class _DeclaresADocumentType(Exception):
+    pass
+
+
+def _refuse_document_type(*_):
+    raise _DeclaresADocumentType()
+
+
+def _xml(name, data):
+    """A package member parsed as XML, refused if it declares a document type (#210).
+
+    The declaration is found by expat itself rather than by searching the bytes for `<!DOCTYPE`:
+    expat honours the document's own encoding, so a UTF-16 nuspec that a byte search would read
+    past is seen here. The handler fires at the start of the declaration, before any entity in it
+    is declared, let alone expanded, and raising from it stops the parse there. An entity
+    declaration can only appear inside a DTD, so refusing the DTD refuses every entity with it;
+    the entity handler is set as well so that stays true without resting on that rule.
+    """
+    scan = xml.parsers.expat.ParserCreate()
+    scan.StartDoctypeDeclHandler = _refuse_document_type
+    scan.EntityDeclHandler = _refuse_document_type
+    try:
+        scan.Parse(data, True)
+    except _DeclaresADocumentType:
+        raise Refused(f"{name} declares a document type (DTD); a map package is data, not code (0016), and "
+                      f"a DTD's entities are instructions the parser would run, so it is refused unparsed")
+    except xml.parsers.expat.ExpatError as error:
+        raise Refused(f"{name} is not well-formed XML: {error}")
+    return ET.fromstring(data)
+
+
 def read_package(nupkg):
     try:
         archive = zipfile.ZipFile(nupkg)
@@ -295,7 +334,7 @@ def read_package(nupkg):
         nuspecs = [n for n in names if "/" not in n and n.endswith(".nuspec")]
         if len(nuspecs) != 1:
             raise Refused(f"{nupkg}: expected one root .nuspec, found {sorted(nuspecs) or 'none'}")
-        metadata = ET.fromstring(_read_member(archive, nuspecs[0])).find("{*}metadata")
+        metadata = _xml(nuspecs[0], _read_member(archive, nuspecs[0])).find("{*}metadata")
         package_id = metadata.findtext("{*}id") if metadata is not None else None
         version = metadata.findtext("{*}version") if metadata is not None else None
         if not package_id or not version:
@@ -307,7 +346,7 @@ def read_package(nupkg):
         if not props:
             raise Refused(f"{package_id} {version} has no {props_name}, so it declares no "
                           f"RulesFactoryMap item and is not a map package (0015)")
-        items = [e for e in ET.fromstring(_read_member(archive, props[0])).iter() if e.tag.endswith("RulesFactoryMap")]
+        items = [e for e in _xml(props[0], _read_member(archive, props[0])).iter() if e.tag.endswith("RulesFactoryMap")]
         if len(items) != 1:
             raise Refused(f"{props_name} declares {len(items)} RulesFactoryMap items; a map package declares one")
         item = items[0].attrib

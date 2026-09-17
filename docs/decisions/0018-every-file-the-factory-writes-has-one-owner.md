@@ -243,7 +243,7 @@ written path the table does not classify.
 | `.github/workflows/pr-policy.yml` | managed | 1 | The required check that runs `pr-policy.py`. |
 | `.github/workflows/conformance-gate.yml` | managed | 2 | The required check that runs `conformance-gate.py`, on the `pull_request` event alone: a `status` run belongs to the default branch's commit, so the check has one producer and one commit it lands on (#191). |
 | `.github/workflows/verdict-requeue.yml` | managed | 1 | Runs `requeue-gate.py` on the `status` event. Deliberately not a required check: it runs on the default branch's commit, where a required check governs nothing. |
-| `tools/agent-doctor.py` | managed | 2 | Whether the rails are active or only present: the hook wired, the labels created, the checks required. |
+| `tools/agent-doctor.py` | managed | 3 | Whether the rails are active or only present: the rails byte for byte as the recipe wrote them, the hook wired, the policy one a verdict can be recorded under, the labels created, the checks required (#211). |
 | `.editorconfig` | managed | 1 | The kernel determinism analyzers' severities: warning (so, with warnings as errors, a build error) under `src/`, off under `tests/`. |
 | `global.json` | managed | 1 | The SDK the kernel pins and `rollForward: disable`. This is policy every engine should follow as the kernel moves. An engine that must move ahead of the kernel adopts the file. |
 | `NuGet.config` | managed | 2 | Package sources and source mapping: supply-chain policy (restore talks to nuget.org only, lock files pin content). An extra feed is a deliberate departure, so it is an explicit adoption. |

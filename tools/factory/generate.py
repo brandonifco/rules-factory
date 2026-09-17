@@ -1224,6 +1224,51 @@ def policy_labels(document, where=AGENT_POLICY):
     return {key: labels[key] for key in LABEL_KEYS}
 
 
+def review_problems(document, where=AGENT_POLICY):
+    """Every way the policy's `review` section cannot be recorded under, as printable reasons (#211).
+
+    A semantic context, a non-empty independent chain, and an `id` and a `context` on every link.
+    `tools/record-verdict.py` records a verdict under the link's context, so a link with an `id`
+    and no `context` is a reviewer that cannot record anything -- and a reader finds that out at the
+    moment they try to, which is the worst time.
+
+    There is one statement of this rule for the three things that judge the file. `factory rails
+    --check` imports it from here, and the engine's `scripts/engine-gate.py rails` and
+    `tools/agent-doctor.py` import the copy `produce` vendors under `scripts/factory/`. Before it,
+    the gate rejected a link with no context and `rails --check` called the same file OK.
+    """
+    review = document.get("review") if isinstance(document, dict) else None
+    review = review if isinstance(review, dict) else {}
+    out = []
+    if not review.get("semanticContext"):
+        out.append(f"{where} sets no review.semanticContext, so no semantic verdict can be recorded")
+    chain = review.get("independentFallback") or []
+    if not isinstance(chain, list) or not chain:
+        out.append(f"{where} configures no independent reviewer, so an issue classified as needing one can never "
+                   f"be merged")
+        return out
+    for link in chain:
+        if not (isinstance(link, dict) and link.get("id") and link.get("context")):
+            out.append(f"{where}: every review.independentFallback link needs an id and a context (got {link!r}). "
+                       f"A verdict recorded under a generic context cannot be told from a same-family fallback.")
+    return out
+
+
+def policy_problems(document, where=AGENT_POLICY):
+    """Every way the policy is not one the rails can act on: its schema version, its five labels
+    (`policy_labels`) and its review section (`review_problems`). Empty when the rails can read it."""
+    if not isinstance(document, dict):
+        return [f"{where} is not a JSON object; the rails cannot read their own configuration"]
+    out = []
+    if document.get("schemaVersion") != 1:
+        out.append(f"{where} has schemaVersion {document.get('schemaVersion')!r}; the rails read version 1")
+    try:
+        policy_labels(document, where)
+    except PolicyError as error:
+        out.append(str(error))
+    return out + review_problems(document, where)
+
+
 def agent_policy():
     """The engine's rails configuration (decision 0029): every choice the rails read.
 
