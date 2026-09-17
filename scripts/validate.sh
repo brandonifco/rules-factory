@@ -256,10 +256,20 @@ check_workflow_pins() {
   python3 tools/check-workflow-pins.py
 }
 
-# check-map.py ships as one file inside every map package, so it is built from tools/checkmap/
+# Mapping, map validation and engine generation are three sibling subsystems over one map
+# contract, and none of them may import another (0032). An import is one line and the reason not
+# to write it is invisible at the moment someone does, so the direction is declared in the
+# checker and held here rather than hoped for. First, because it is a fact about the sources
+# every step below reads.
+check_boundaries() {
+  python3 tools/check-boundaries.py
+}
+
+# check-map.py ships as one file inside every map package, so it is built from the two packages
 # rather than edited (#74). A module changed without rebuilding would ship, and be judged by,
 # the checks as they were; every step after this one runs the built file.
-run "check-map.py is what tools/checkmap/ builds"      python3 tools/build-check-map.py --check
+run "each subsystem imports only the map contract"     check_boundaries
+run "check-map.py is what the two packages build"      python3 tools/build-check-map.py --check
 run "every corpus map satisfies the schema"            check_all_maps
 run "every corpus map carries a review of its bytes"   check_map_reviews
 run "every citation resolves in its corpus"            check_locators

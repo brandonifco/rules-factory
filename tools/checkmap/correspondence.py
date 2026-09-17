@@ -2,7 +2,7 @@
 data errors rather than precedence.
 """
 from .diagnostics import skip, verdict
-from .model import entries_of, fate_of, index, label
+from mapcontract.entry import entries_of, fate_of, index, label
 
 
 ROW_DESCRIPTIONS = {

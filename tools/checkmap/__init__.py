@@ -1,4 +1,9 @@
-# The checker's sources. tools/build-check-map.py joins these modules into tools/check-map.py,
+# Map validation: the checks that hold a map to docs/corpus-map.md, and one of the three
+# subsystems the map contract joins (0032). It reads tools/mapcontract/ for what the map's
+# fields mean and defines none of that itself; it knows nothing of the mapper that produced
+# the map or the factory that consumes it.
+#
+# tools/build-check-map.py joins these modules, and the contract's, into tools/check-map.py --
 # the one standard-library file a map package ships (0015) and the factory imports (0016).
 # The docstring below becomes that file's docstring and describes the built command, so
 # "below" in it means further down check-map.py.

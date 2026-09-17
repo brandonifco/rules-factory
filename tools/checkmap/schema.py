@@ -2,9 +2,10 @@
 vocabularies, and distinct ids. What the spec states field by field, before any relation.
 """
 from .diagnostics import fail, verdict
-from .model import (CITING_FIELDS, CLARITIES, FATES, ID_LIST_FIELDS, KINDS, MAP_FIELDS,
-                    REQUIRED_ENTRY_FIELDS, SCHEMA_VERSIONS, SCOPES, STATUSES, UNRESOLVED_REASONS, block,
-                    entries_of, label, quotes_withheld)
+from mapcontract.vocabulary import (CITING_FIELDS, CLARITIES, FATES, ID_LIST_FIELDS, KINDS,
+                                    MAP_FIELDS, REQUIRED_ENTRY_FIELDS, SCHEMA_VERSIONS,
+                                    SCOPES, STATUSES, UNRESOLVED_REASONS)
+from mapcontract.entry import block, entries_of, label, quotes_withheld
 
 
 def check_schema(ctx):
@@ -63,7 +64,7 @@ def check_required_fields(ctx):
         for field in REQUIRED_ENTRY_FIELDS:
             if derived and field in CITING_FIELDS:
                 continue  # `derived` refuses them instead: a derived entry cites nothing
-            if field == "evidence" and quotes_withheld(ctx, entry):
+            if field == "evidence" and quotes_withheld(ctx.get("manifest"), entry):
                 continue  # `postures` refuses it instead: the licence forbids the span
             if field not in entry:
                 bad.append(f"  X  {name}: missing required field `{field}`")

@@ -17,7 +17,7 @@ it names is the locator checkers' work, on the same terms as `evidence`
 import re
 
 from .diagnostics import skip, verdict
-from .model import block, entries_of, label
+from mapcontract.entry import block, entries_of, label
 
 BOUND_FIELDS = ("term", "dimension", "examples")
 EXAMPLE_FIELDS = ("locator", "text", "verdict", "value")
