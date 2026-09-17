@@ -166,7 +166,7 @@ the sentence is replaced.
 **Checked against every rule added since.** The map was last changed by 0026, which is the newest
 checker change, so every rule — 0020's extent and introductory-text grammar, 0024's extraction
 rules, 0025's `assertedBy` and draws, 0026's declared pointer phrases — already runs on it, and
-nothing in `tools/checkmap/` or `check-locators-section.py` names this map, a date or an
+nothing in `tools/mapvalidator/` or `check-locators-section.py` names this map, a date or an
 exemption. The six checks that report NOT VERIFIED on it report the same on the reviewed 2026
 map, each because no entry carries the field it reads (`derivedFrom`, `extraction`, `implemented`,
 `fate: decision`, `ambiguity.conflict`, `absentFrom`). `gates` was a seventh until this change.

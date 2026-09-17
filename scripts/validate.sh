@@ -144,7 +144,7 @@ check_locators() {
   # Two things in it were title-14 shaped and were generalised rather than duplicated: a
   # section's subpart is now read from its ancestry, so a single section served as a bare DIV8
   # indexes like one inside a subpart, and a section designation may carry a hyphenated suffix
-  # (§ 1.121-1). tools/checkmap/extent.py carries the same expression, and test_check_map.py
+  # (§ 1.121-1). tools/mapvalidator/extent.py carries the same expression, and test_check_map.py
   # holds the two to each other.
   python3 examples/faa-part-107/check-locators-section.py \
     examples/tax-121-principal-residence/corpus-map.json \

@@ -1025,7 +1025,7 @@ that could not be read yet. Fix what is named and run it again.
 was made, whether the test went red, whether the mutation was a good one, or whether the sentence
 was copied from another entry; `not yet recorded` passes it, and so does a real mutation typed by
 someone who ran nothing. That part rests on the implementer's word, as it did before — see
-immediately below. `tools/checkmap/status.py`, and the `check-map.py` built from it, is the
+immediately below. `tools/mapvalidator/status.py`, and the `check-map.py` built from it, is the
 checker a **published map** carries and the one this repository runs over its own maps; it does
 not yet carry the rule ([#240](https://github.com/brandonifco/rules-factory/issues/240)), which is
 now about a map before any engine merges it rather than a second line under the engine's gate.

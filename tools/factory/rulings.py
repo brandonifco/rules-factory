@@ -70,11 +70,11 @@ ANSWER_LIMIT = 300
 DECISION = "rules-factory decision 0027"
 BOUNDS_DECISION = "rules-factory decision 0031"
 
-# The same ISO 8601 durations, on the same scale, as tools/checkmap/bounds.py. That module is
+# The same ISO 8601 durations, on the same scale, as tools/mapvalidator/bounds.py. That module is
 # joined into check-map.py, which a map package ships, and this one is vendored into every engine
 # and imports nothing of it, so the parser is written twice on purpose and
 # tools/tests/test_check_map.py holds the two to each other over one table -- the arrangement
-# tools/checkmap/extent.py and the section locator checker already have.
+# tools/mapvalidator/extent.py and the section locator checker already have.
 DURATION = re.compile(r"^P(?=\d)(?:(\d+)Y)?(?:(\d+)M)?(?:(\d+)W)?(?:(\d+)D)?$")
 
 

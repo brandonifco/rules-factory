@@ -537,7 +537,7 @@ things blocked that and both were generalised in place, in nine lines:
 - **`CITE_SECTION` read `\d+\.\d+`.** A Treasury regulation's number carries a hyphenated suffix,
   so `§ 1.121-1` parsed as section `1.121` and `§ 1.121-2` parsed as the *same* section — and the
   extent expression, anchored with `$`, rejected `"§ 1.121-1"` outright. Both expressions now read
-  `\d+\.\d+(?:-\d+)?`, in the checker and in `tools/checkmap/extent.py`, which
+  `\d+\.\d+(?:-\d+)?`, in the checker and in `tools/mapvalidator/extent.py`, which
   `test_check_map.py` holds to each other over every citation the maps make.
 
 Neither touches what a citation *names*. Both Part 107 maps re-verify unchanged (47 and 39

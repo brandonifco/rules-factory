@@ -1,7 +1,12 @@
-# Map validation: the checks that hold a map to docs/corpus-map.md, and one of the three
-# subsystems the map contract joins (0032). It reads tools/mapcontract/ for what the map's
-# fields mean and defines none of that itself; it knows nothing of the mapper that produced
-# the map or the factory that consumes it.
+# Map validation: the adversary. One of the three subsystems the map contract joins (0032,
+# 0033), and the one whose attitude is "I don't care that the mapper thinks this is right,
+# show me". It reads tools/mapcontract/ for what the map's fields mean and defines none of that
+# itself; it knows nothing of the mapper that produced the map or the factory that consumes it,
+# and a map written by hand is validated the same way.
+#
+# What it challenges is six kinds of truth (0033): structural, evidentiary, completeness,
+# interpretive, relational and epistemic. The checks below are most of the first and none of the
+# last three; docs/validator.md says which is which and what each still owes.
 #
 # tools/build-check-map.py joins these modules, and the contract's, into tools/check-map.py --
 # the one standard-library file a map package ships (0015) and the factory imports (0016).
