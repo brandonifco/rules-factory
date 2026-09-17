@@ -19,10 +19,26 @@ the factory never saw. Rulesets are evaluated together, so a separate one named
 `rules-factory-agent-rails` composes with whatever else the repository has -- and the repository's
 own protections stay the repository's.
 
+**A ruleset carrying the factory's name is compared in full (#185).** Its target, its enforcement,
+its conditions -- exclusions included, and a condition the factory does not model is a mismatch,
+not something to skip -- its bypass actors, and every rule's parameters. `--check` says OK only
+about the ruleset `--apply` would write, because a ruleset that keeps the name while excluding the
+default branch protects nothing, and a doctor that reads half the document is how that goes unseen.
+
 **Merge commits only.** A review verdict is pinned to the pull request's head commit (0029 §7). A
 squash merge manufactures a commit that no reviewer ever read; a merge commit keeps the reviewed
 commit in the history as a parent. So `--apply` turns squash and rebase merging off, and `--check`
 reports it -- the one repository setting outside the ruleset that the verdict mechanism depends on.
+
+**A required check is pinned to the app that posts it (#186).** A required status check matches by
+context name, and anyone with status-write access on the repository can post a commit status under
+any name -- so an unpinned `conformance-gate` is satisfied by a collaborator typing the words. The
+three checks are GitHub Actions workflows this factory emits, so each is pinned by `integration_id`
+to the GitHub Actions app on the host the repository lives on, and a status from anywhere else no
+longer counts. **The verdict contexts cannot be pinned this way**, because a verdict is a commit
+status posted by whoever ran `tools/record-verdict.py` and `integration_id` pins to an app, not to
+a person: that limit is stated in 0029 §7 and in the emitted `AGENTS.md`, where the rails are
+decided, rather than left for a reader to infer.
 
 **Idempotent.** `--apply` twice in a row changes nothing the second time, and says so.
 
@@ -40,6 +56,10 @@ RULESET = "rules-factory-agent-rails"
 # run belongs to the default branch's commit rather than to any pull request, and a required check
 # on that commit is a condition on something that has already merged.
 REQUIRED_CHECKS = ("validate", "pr-policy", "conformance-gate")
+# The app that posts them. All three are workflows in the engine, so the app is GitHub Actions --
+# but its id is per host (github.com and each Enterprise Server have their own), so it is looked
+# up through the same `gh` and never written down here.
+CHECKS_APP = "github-actions"
 POLICY = ".github/agent-policy.json"
 LABEL_COLOURS = {
     # Colour is the one thing here with no consequence, so it is picked once and never argued
@@ -90,10 +110,12 @@ def labels_of(engine_dir):
             document = json.load(handle)
     except (OSError, ValueError) as error:
         raise RailsError(f"{path} cannot be read ({error})")
-    labels = document.get("labels") or {}
-    missing = [key for key in LABEL_COLOURS if not labels.get(key)]
-    if missing:
-        raise RailsError(f"{path} names no {', '.join(sorted(missing))} label")
+    try:
+        # The same check `backlog.py` reads the policy through, stated once where the file is
+        # written (#188): five labels, none empty, no two the same.
+        labels = generate.policy_labels(document, path)
+    except generate.PolicyError as error:
+        raise RailsError(str(error))
     return document, labels
 
 
@@ -103,13 +125,27 @@ def agent_files(engine_dir):
             for relative in sorted(generate.RAILS)}
 
 
-def ruleset_payload(branch):
+def checks_app(gh):
+    """The id of the app that posts the three required checks, or None if it cannot be read.
+
+    `integration_id` in a required status check is what makes the check mean "this app said so"
+    rather than "something said so under that name" (#186). The id differs per host, so it is
+    read from the host rather than hard-coded; GitHub Enterprise Server installs the same app
+    under the same slug with an id of its own.
+    """
+    document = _json(["api", f"apps/{CHECKS_APP}"], gh, default={}) or {}
+    identifier = document.get("id")
+    return identifier if isinstance(identifier, int) else None
+
+
+def ruleset_payload(branch, app):
     """The one ruleset the factory owns. Enforcement, not decoration.
 
     A pull request is required, its threads must be resolved, the branch cannot be deleted or
-    force-pushed, and the three checks are required and strict (a pull request must be up to date
-    with the branch it merges into, so the checks ran against what will exist afterwards). No
-    bypass actor: a rail with an exemption for its author is a rail nobody else can rely on.
+    force-pushed, and the three checks are required, strict (a pull request must be up to date
+    with the branch it merges into, so the checks ran against what will exist afterwards) and
+    pinned to `app`, the GitHub Actions app that runs the emitted workflows. No bypass actor: a
+    rail with an exemption for its author is a rail nobody else can rely on.
     """
     return {
         "name": RULESET,
@@ -130,7 +166,8 @@ def ruleset_payload(branch):
             {"type": "required_status_checks",
              "parameters": {"strict_required_status_checks_policy": True,
                             "do_not_enforce_on_create": False,
-                            "required_status_checks": [{"context": context} for context in REQUIRED_CHECKS]}},
+                            "required_status_checks": [{"context": context, "integration_id": app}
+                                                       for context in REQUIRED_CHECKS]}},
         ],
     }
     # `branch` is not interpolated: the condition names ~DEFAULT_BRANCH, so the ruleset follows a
@@ -148,24 +185,29 @@ def survey(repo, engine_dir, gh):
     ours = next((item for item in rulesets if item.get("name") == RULESET), None)
     detail = _json(["api", f"repos/{repo}/rulesets/{ours['id']}"], gh) if ours else None
 
-    required = set()
+    app = checks_app(gh)
+    required = {}
     pull_request = None
     if detail:
         for rule in detail.get("rules") or []:
             if rule.get("type") == "required_status_checks":
-                required = {check.get("context")
+                required = {check.get("context"): check.get("integration_id")
                             for check in (rule.get("parameters") or {}).get("required_status_checks") or []}
             if rule.get("type") == "pull_request":
                 pull_request = rule.get("parameters") or {}
 
     return {
         "branch": branch,
+        "checksApp": app,
         "files": agent_files(engine_dir),
         "policy": document,
         "labels": labels,
         "missingLabels": [labels[key] for key in sorted(LABEL_COLOURS) if labels[key] not in existing_labels],
         "ruleset": detail,
         "rulesetEnforced": bool(detail and detail.get("enforcement") == "active"),
+        # Every way the ruleset carrying the factory's name is not the ruleset the factory writes
+        # (#185). Empty when there is no such ruleset: what is missing is then the ruleset itself.
+        "rulesetDiffers": differences(detail, ruleset_payload(branch, app)) if detail else [],
         "bypass": (detail or {}).get("bypass_actors") or [],
         "requiredChecks": required,
         "pullRequest": pull_request,
@@ -192,15 +234,28 @@ def report(state):
     lines.append(_row("Policy", OK, f"{POLICY}, schemaVersion {state['policy'].get('schemaVersion')}"))
     lines.append(_row("Required labels", OK if not state["missingLabels"] else MISSING,
                       "" if not state["missingLabels"] else ", ".join(state["missingLabels"])))
+    differs = state["rulesetDiffers"]
     lines.append(_row(f"Ruleset on {state['branch']}",
-                      OK if state["rulesetEnforced"] else (WRONG if state["ruleset"] else MISSING),
-                      RULESET if state["rulesetEnforced"] else
-                      (f"{RULESET} exists but is not active" if state["ruleset"] else
+                      OK if state["rulesetEnforced"] and not differs else (WRONG if state["ruleset"] else MISSING),
+                      RULESET if state["rulesetEnforced"] and not differs else
+                      (f"{RULESET} exists but {differs[0] if differs else 'is not active'}" if state["ruleset"] else
                        f"no ruleset named {RULESET}")))
+    app = state["checksApp"]
     for context in REQUIRED_CHECKS:
+        pin = state["requiredChecks"].get(context)
         lines.append(_row(f"Required check: {context}",
-                          OK if context in state["requiredChecks"] else MISSING,
-                          "" if context in state["requiredChecks"] else "the workflow may exist; it is not required"))
+                          OK if pin is not None and pin == app else
+                          (WRONG if context in state["requiredChecks"] else MISSING),
+                          "" if pin is not None and pin == app else
+                          ("the workflow may exist; it is not required" if context not in state["requiredChecks"]
+                           else f"required, but not pinned to the {CHECKS_APP} app: a commit status under that "
+                                f"name satisfies it, whoever posted it")))
+    # Not a pass or a fail but a standing fact, reported where the rails are read: a verdict is a
+    # commit status posted by a person's token, and `integration_id` pins an app, not a person, so
+    # the verdict contexts cannot be pinned at all while they stay commit statuses (0029 §7, #186).
+    lines.append(_row("Verdict gate", OK,
+                      "recorded at the head SHA and unpinnable: an integrity check against mistakes and ordering, "
+                      "not an authentication of who reviewed (0029 §7)"))
     pull_request = state["pullRequest"]
     lines.append(_row("Pull request required", OK if pull_request else MISSING))
     if pull_request is not None:
@@ -221,29 +276,38 @@ def report(state):
 def problems(state):
     """The rows that are not OK, as reasons. `--check` exits 1 when there are any."""
     found = []
+
+    def note(reason):
+        # A ruleset difference and a missing required check are the same sentence read two ways --
+        # once per row and once for the ruleset as a whole -- so a reason is said once.
+        if reason not in found:
+            found.append(reason)
+
     missing_files = [path for path, present in state["files"].items() if not present]
     if missing_files:
-        found.append(f"the engine is missing {len(missing_files)} rail(s) ({', '.join(missing_files[:3])}...); "
-                     f"run `factory produce`")
+        note(f"the engine is missing {len(missing_files)} rail(s) ({', '.join(missing_files[:3])}...); "
+             f"run `factory produce`")
     if state["missingLabels"]:
-        found.append(f"the repository has no {', '.join(state['missingLabels'])} label, so the issues that need "
-                     f"them cannot be labelled or dispatched")
-    if not state["rulesetEnforced"]:
-        found.append(f"no active ruleset named {RULESET}: the branch has no rails, whatever files it holds")
-    for context in sorted(set(REQUIRED_CHECKS) - state["requiredChecks"]):
-        found.append(f"{context} is not a required check: a workflow that exists is not a workflow that is required")
-    if state["pullRequest"] is None:
-        found.append("a pull request is not required on the default branch")
-    elif (state["pullRequest"].get("allowed_merge_methods") or []) != ["merge"]:
-        found.append("the ruleset allows a merge method other than a merge commit; a verdict is pinned to the head "
-                     "commit, and a squash merge manufactures a commit nobody reviewed")
+        note(f"the repository has no {', '.join(state['missingLabels'])} label, so the issues that need "
+             f"them cannot be labelled or dispatched")
+    if state["checksApp"] is None:
+        note(f"the {CHECKS_APP} app's id could not be read from this host, so a required check cannot be pinned to "
+             f"the app that posts it, and a commit status under its name would satisfy it")
+    if state["ruleset"] is None:
+        note(f"no active ruleset named {RULESET}: the branch has no rails, whatever files it holds")
+        for context in REQUIRED_CHECKS:
+            note(f"{context} is not a required check: a workflow that exists is not a workflow that is required")
+        note("a pull request is not required on the default branch")
+    else:
+        # A ruleset that exists is judged by one comparison against what `--apply` would write, so
+        # no row of it can pass while the field beside it is wrong (#185).
+        for reason in state["rulesetDiffers"]:
+            note(reason)
     if not state["mergeOnly"]:
-        found.append("the repository still allows squash or rebase merging, for the same reason")
-    if state["bypass"]:
-        found.append(f"{len(state['bypass'])} actor(s) may bypass the ruleset; a rail with an exemption for its "
-                     f"author is a rail nobody else can rely on")
+        note("the repository still allows squash or rebase merging: a verdict is pinned to the head commit, and a "
+             "squash merge manufactures a commit nobody reviewed")
     if not state["chain"]:
-        found.append(f"{POLICY} configures no independent reviewer, so an issue that needs one can never merge")
+        note(f"{POLICY} configures no independent reviewer, so an issue that needs one can never merge")
     return found
 
 
@@ -261,7 +325,13 @@ def apply(repo, engine_dir, gh, log):
         print(f"created label {name}", file=log)
         changed += 1
 
-    payload = ruleset_payload(state["branch"])
+    if state["checksApp"] is None:
+        # Writing the ruleset without the pin would be the quiet half-measure #186 is about: the
+        # checks would look required and would be satisfiable by anyone who can post a status.
+        raise RailsError(f"the {CHECKS_APP} app's id could not be read from this host (`gh api apps/{CHECKS_APP}`), "
+                         f"and a required check that is not pinned to the app that posts it is satisfied by a "
+                         f"commit status anyone with write access can post; nothing was changed")
+    payload = ruleset_payload(state["branch"], state["checksApp"])
     existing = state["ruleset"]
     if existing is None:
         # The ruleset goes in as one JSON document on stdin: its rules are nested, and `-f` pairs
@@ -273,13 +343,15 @@ def apply(repo, engine_dir, gh, log):
             raise RailsError(f"could not create the ruleset: {done.stderr.strip() or done.stdout.strip()}")
         print(f"created ruleset {RULESET} on {state['branch']}", file=log)
         changed += 1
-    elif not matches(existing, payload):
+    elif differences(existing, payload):
         done = subprocess.run([gh, "api", f"repos/{repo}/rulesets/{existing['id']}", "-X", "PUT", "--input", "-"],
                               input=json.dumps(payload), text=True, stdout=subprocess.PIPE,
                               stderr=subprocess.PIPE, timeout=120)
         if done.returncode != 0:
             raise RailsError(f"could not update the ruleset: {done.stderr.strip() or done.stdout.strip()}")
-        print(f"updated ruleset {RULESET} (it is the factory's own; no other ruleset was read or written)", file=log)
+        print(f"updated ruleset {RULESET} (it is the factory's own; no other ruleset was read or written):", file=log)
+        for reason in differences(existing, payload):
+            print(f"  it was not what the factory writes: {reason}", file=log)
         changed += 1
 
     if not state["mergeOnly"]:
@@ -297,33 +369,103 @@ def apply(repo, engine_dir, gh, log):
 
 
 def matches(existing, payload):
-    """Whether the factory's ruleset already says what this version of the factory would write.
+    """Whether the ruleset on GitHub is the one this version of the factory would write.
 
-    Compared on what the rails depend on -- enforcement, conditions, and each rule's type and
-    parameters -- rather than on the whole document, which carries ids, timestamps and links that
-    say nothing about what is enforced. An equal ruleset is left alone, which is what makes
-    `--apply` idempotent.
+    An equal ruleset is left alone, which is what makes `--apply` idempotent.
     """
+    return not differences(existing, payload)
+
+
+def differences(existing, payload):
+    """Every way the ruleset carrying the factory's name is not the ruleset the factory writes.
+
+    Each item is a reason `--check` can print. The comparison is of what decides enforcement --
+    the target, the enforcement, the conditions, the bypass actors, and every rule's type and the
+    parameters the factory sets -- and not of the whole document, which carries ids, timestamps
+    and links that say nothing about what is enforced.
+
+    **What it used to skip is what it exists for now (#185).** It compared `enforcement`,
+    `conditions.ref_name.include`, the bypass actors and the rule parameters, and ignored `target`
+    and `conditions.ref_name.exclude`. So a ruleset named `rules-factory-agent-rails` that excluded
+    `~DEFAULT_BRANCH`, or targeted tags, was reported as enforced and left alone by `--apply`: the
+    default branch had no rails and the doctor said OK.
+
+    **An unknown condition is a mismatch, not something to ignore.** A condition this factory does
+    not model may narrow the ruleset in a way it cannot reason about -- which is the shape of the
+    defect above, one field further on. `--apply` rewrites the ruleset it owns, so the cost of
+    calling a narrowing the factory does not understand a mismatch is one rewrite; the cost of
+    ignoring it is a green check over an ungoverned branch.
+    """
+    out = []
+    if (existing.get("target") or "branch") != payload["target"]:
+        out.append(f"it targets {existing.get('target') or 'branch'!r}, not {payload['target']!r}, so it governs "
+                   f"nothing the rails are about")
     if existing.get("enforcement") != payload["enforcement"]:
-        return False
-    if (existing.get("conditions") or {}).get("ref_name", {}).get("include") != \
-            payload["conditions"]["ref_name"]["include"]:
-        return False
+        out.append(f"it is not active: its enforcement is {existing.get('enforcement')!r}, so the branch has no "
+                   f"rails, whatever files it holds")
+
+    conditions = existing.get("conditions") or {}
+    unknown = sorted(set(conditions) - set(payload["conditions"]))
+    if unknown:
+        out.append(f"it carries {', '.join(unknown)} condition(s) the factory did not write, which may narrow it "
+                   f"in a way the factory cannot reason about")
+    reference = conditions.get("ref_name") or {}
+    wanted_reference = payload["conditions"]["ref_name"]
+    if (reference.get("include") or []) != wanted_reference["include"]:
+        out.append(f"it applies to {', '.join(reference.get('include') or []) or 'no branch'}, not to "
+                   f"{', '.join(wanted_reference['include'])}")
+    if (reference.get("exclude") or []) != wanted_reference["exclude"]:
+        out.append(f"it excludes {', '.join(reference.get('exclude') or [])}, and an exclusion the factory did not "
+                   f"write takes the branch it names out of the rails while the ruleset still exists")
     if existing.get("bypass_actors"):
-        return False
-    wanted = {rule["type"]: rule.get("parameters", {}) for rule in payload["rules"]}
+        out.append(f"{len(existing['bypass_actors'])} actor(s) may bypass the ruleset; a rail with an exemption "
+                   f"for its author is a rail nobody else can rely on")
+
+    wanted = {rule["type"]: rule.get("parameters") or {} for rule in payload["rules"]}
     found = {rule.get("type"): rule.get("parameters") or {} for rule in existing.get("rules") or []}
-    if set(wanted) - set(found):
-        return False
-    for kind, parameters in wanted.items():
-        for key, value in parameters.items():
-            if key == "required_status_checks":
-                contexts = {check.get("context") for check in found[kind].get(key) or []}
-                if {check["context"] for check in value} - contexts:
-                    return False
-            elif found[kind].get(key) != value:
-                return False
-    return True
+    for kind in sorted(set(found) - set(wanted)):
+        out.append(f"it carries a {kind} rule the factory did not write")
+    for kind in sorted(wanted):
+        if kind not in found:
+            if kind == "pull_request":
+                out.append("a pull request is not required on the default branch")
+            else:
+                out.append(f"it has no {kind} rule")
+            continue
+        out.extend(_parameters(kind, wanted[kind], found[kind]))
+    return out
+
+
+def _parameters(kind, wanted, found):
+    """How one rule's parameters differ from the ones the factory sets.
+
+    Only the parameters the factory writes are compared: GitHub returns others, and a field this
+    factory never set is not a difference between two factory rulesets. The checks are compared as
+    (context, app) pairs, because a required check that is not pinned to the app that posts it is
+    satisfied by any account with status-write access (#186).
+    """
+    out = []
+    for key in sorted(wanted):
+        value, mine = found.get(key), wanted[key]
+        if key == "required_status_checks":
+            pinned = {check.get("context"): check.get("integration_id") for check in value or []}
+            for check in mine:
+                context, app = check["context"], check.get("integration_id")
+                if context not in pinned:
+                    out.append(f"{context} is not a required check: a workflow that exists is not a workflow that "
+                               f"is required")
+                elif pinned[context] != app:
+                    out.append(f"{context} is required but not pinned to the {CHECKS_APP} app (integration "
+                               f"{pinned[context]!r}, not {app!r}): a commit status under that name satisfies it, "
+                               f"whoever posted it")
+            for context in sorted(set(pinned) - {check["context"] for check in mine}):
+                out.append(f"{context} is a required check the factory did not write")
+        elif key == "allowed_merge_methods" and value != mine:
+            out.append("the ruleset allows a merge method other than a merge commit; a verdict is pinned to the "
+                       "head commit, and a squash merge manufactures a commit nobody reviewed")
+        elif value != mine:
+            out.append(f"its {kind} rule sets {key} to {value!r}, not {mine!r}")
+    return out
 
 
 def run(repo, engine_dir, gh, log, do_apply):

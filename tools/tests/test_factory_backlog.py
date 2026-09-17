@@ -656,7 +656,9 @@ class TestLabels(CreateCase):
 
     def policy(self, **overrides):
         os.makedirs(os.path.join(self.engine, ".github"), exist_ok=True)
-        labels = dict(backlog.DEFAULT_LABELS, **overrides)
+        # The labels the factory ships in the policy it writes, so this reads the defaults from
+        # the one place they are decided rather than restating them (#188).
+        labels = dict(json.loads(factory.generate.agent_policy())["labels"], **overrides)
         with open(os.path.join(self.engine, ".github", "agent-policy.json"), "w", encoding="utf-8") as handle:
             json.dump({"schemaVersion": 1, "labels": labels}, handle, indent=2)
 
@@ -737,6 +739,20 @@ class TestLabels(CreateCase):
         code, output = self.create()
         self.assertEqual(code, 1, output)
         self.assertIn("names no blocked", output)
+
+    def test_a_policy_whose_labels_collide_is_refused(self):
+        # `label_plan` computes a state set and a risk set from the five strings, so two keys that
+        # share one make an issue ready and blocked at once, or strip its risk label when its state
+        # moves. Refused before any issue is written, by the same check `rails --check` reads the
+        # policy through (#188).
+        for overrides, expected in (({"blocked": "state:ready"}, "ready and blocked are both 'state:ready'"),
+                                    ({"independentRisk": "state:blocked"},
+                                     "blocked and independentRisk are both 'state:blocked'")):
+            self.policy(**overrides)
+            code, output = self.create()
+            self.assertEqual(code, 1, output)
+            self.assertIn(expected, output)
+            self.assertIn("lose its risk label when its state changed", output)
 
     def test_a_label_that_does_not_exist_in_the_repository_is_reported(self):
         self.policy()

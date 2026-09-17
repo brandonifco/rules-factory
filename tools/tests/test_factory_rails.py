@@ -2046,6 +2046,15 @@ if argv[0] == "repo" and argv[1] == "view":
 
 assert argv[0] == "api", argv
 endpoint = argv[1]
+
+# The app the three required checks are pinned to. `apps` is a host-wide endpoint, not a
+# repository one: `state["app"]` absent is a host that will not say (#186).
+if endpoint == "apps/github-actions":
+    if "app" not in state:
+        sys.exit("Not Found")
+    print(json.dumps({"id": state["app"], "slug": "github-actions", "name": "GitHub Actions"}))
+    raise SystemExit(0)
+
 method = argv[argv.index("-X") + 1] if "-X" in argv else "GET"
 path = endpoint.split("/")
 
@@ -2101,8 +2110,10 @@ class TestFactoryRails(TestAProducedEngine):
                         settings={"allow_merge_commit": True, "allow_squash_merge": True,
                                   "allow_rebase_merge": True})
 
+    APP = 15368  # the GitHub Actions app on github.com; the stub answers `gh api apps/github-actions` with it
+
     def repo_state(self, **overrides):
-        document = {"repo": self.REPO, "branch": "main", **overrides}
+        document = {"repo": self.REPO, "branch": "main", "app": self.APP, **overrides}
         with open(self.state_path, "w", encoding="utf-8") as handle:
             json.dump(document, handle)
 
@@ -2209,6 +2220,111 @@ class TestFactoryRails(TestAProducedEngine):
         self.assertEqual(code, 1, output)
         self.assertIn("conformance-gate is not a required check", output)
         self.assertEqual(self.rails("--apply")[0], 0)
+
+    def edit_ruleset(self, change):
+        """Change the applied ruleset behind the factory's back, as an admin with the UI can."""
+        state = self.read_state()
+        change(state["rulesets"][0])
+        with open(self.state_path, "w", encoding="utf-8") as handle:
+            json.dump(state, handle)
+        return state["rulesets"][0]
+
+    def test_a_ruleset_that_excludes_the_default_branch_is_reported_and_rewritten(self):
+        # The ruleset is still named, still active and still carries every rule -- and governs
+        # nothing, because the one branch it applied to is excluded (#185).
+        self.produced()
+        self.assertEqual(self.rails("--apply")[0], 0)
+        self.edit_ruleset(lambda r: r["conditions"]["ref_name"].update({"exclude": ["~DEFAULT_BRANCH"]}))
+        payload = factory.rails_step.ruleset_payload("main", self.APP)
+        self.assertFalse(factory.rails_step.matches(self.read_state()["rulesets"][0], payload))
+        code, output = self.rails("--check")
+        self.assertEqual(code, 1, output)
+        self.assertIn("it excludes ~DEFAULT_BRANCH", output)
+        self.assertEqual(self.rails("--apply")[0], 0)
+        self.assertEqual(self.read_state()["rulesets"][0]["conditions"]["ref_name"]["exclude"], [])
+        self.assertEqual(self.rails("--check")[0], 0)
+
+    def test_a_ruleset_that_targets_tags_is_reported_and_rewritten(self):
+        self.produced()
+        self.assertEqual(self.rails("--apply")[0], 0)
+        self.edit_ruleset(lambda r: r.update({"target": "tag"}))
+        payload = factory.rails_step.ruleset_payload("main", self.APP)
+        self.assertFalse(factory.rails_step.matches(self.read_state()["rulesets"][0], payload))
+        code, output = self.rails("--check")
+        self.assertEqual(code, 1, output)
+        self.assertIn("it targets 'tag'", output)
+        self.assertEqual(self.rails("--apply")[0], 0)
+        self.assertEqual(self.read_state()["rulesets"][0]["target"], "branch")
+        self.assertEqual(self.rails("--check")[0], 0)
+
+    def test_a_condition_the_factory_does_not_understand_is_a_mismatch(self):
+        # Not because this one narrows the ruleset -- it may not -- but because the factory cannot
+        # tell whether it does, and a check that passes on what it did not read is #185 again.
+        self.produced()
+        self.assertEqual(self.rails("--apply")[0], 0)
+        self.edit_ruleset(lambda r: r["conditions"].update({"repository_property": {"include": []}}))
+        code, output = self.rails("--check")
+        self.assertEqual(code, 1, output)
+        self.assertIn("repository_property condition(s) the factory did not write", output)
+
+    def test_a_required_check_is_pinned_to_the_app_that_posts_it(self):
+        self.produced()
+        self.assertEqual(self.rails("--apply")[0], 0)
+        (rule,) = [r for r in self.read_state()["rulesets"][0]["rules"] if r["type"] == "required_status_checks"]
+        self.assertEqual({check["integration_id"] for check in rule["parameters"]["required_status_checks"]},
+                         {self.APP})
+
+    def test_an_unpinned_required_check_is_reported_and_pinned(self):
+        # What an unpinned context means: `conformance-gate` is satisfied by a commit status under
+        # that name, which anyone with write access can post (#186).
+        self.produced()
+        self.assertEqual(self.rails("--apply")[0], 0)
+
+        def unpin(ruleset):
+            for rule in ruleset["rules"]:
+                if rule["type"] == "required_status_checks":
+                    rule["parameters"]["required_status_checks"] = [{"context": c} for c in
+                                                                    ("validate", "pr-policy", "conformance-gate")]
+        self.edit_ruleset(unpin)
+        code, output = self.rails("--check")
+        self.assertEqual(code, 1, output)
+        self.assertIn("conformance-gate is required but not pinned to the github-actions app", output)
+        self.assertEqual(self.rails("--apply")[0], 0)
+        self.assertEqual(self.rails("--check")[0], 0)
+
+    def test_apply_refuses_when_the_app_the_checks_come_from_cannot_be_read(self):
+        self.produced()
+        state = self.read_state()
+        del state["app"]
+        with open(self.state_path, "w", encoding="utf-8") as handle:
+            json.dump(state, handle)
+        code, output = self.rails("--apply")
+        self.assertEqual(code, 1, output)
+        self.assertIn("could not be read from this host", output)
+        self.assertEqual(self.read_state()["rulesets"], [], "a ruleset was written without the pin")
+
+    def test_check_says_what_the_verdict_gate_is_worth(self):
+        # 0029 §7 and AGENTS.md §7 say it where the rails are decided and where they are read; the
+        # doctor's own report is the third place someone meets it (#186).
+        self.produced()
+        code, output = self.rails("--check")
+        self.assertIn("Verdict gate", output)
+        self.assertIn("not an authentication of who reviewed", output)
+
+    def test_a_policy_whose_labels_collide_is_refused(self):
+        self.produced()
+        path = os.path.join(self.out, ".github", "agent-policy.json")
+        for overrides, expected in (({"blocked": "state:ready"}, "ready and blocked are both 'state:ready'"),
+                                    ({"normalRisk": "state:ready"}, "ready and normalRisk are both 'state:ready'")):
+            with open(path, encoding="utf-8") as handle:
+                policy = json.load(handle)
+            edited = dict(policy, labels=dict(json.loads(generate.agent_policy())["labels"], **overrides))
+            with open(path, "w", encoding="utf-8") as handle:
+                json.dump(edited, handle, indent=2)
+            code, output = self.rails("--check")
+            self.assertEqual(code, 1, output)
+            self.assertIn(expected, output)
+            self.assertIn("in two states at once", output)
 
     def test_a_bypass_actor_is_reported(self):
         self.produced()

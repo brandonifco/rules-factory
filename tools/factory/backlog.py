@@ -453,9 +453,6 @@ def _read_items(directory, names):
 
 
 POLICY = os.path.join(".github", "agent-policy.json")
-DEFAULT_LABELS = {"ready": "state:ready", "blocked": "state:blocked",
-                  "needsDecision": "state:needs-decision",
-                  "normalRisk": "risk:normal", "independentRisk": "risk:independent-review"}
 
 
 def label_policy(engine_dir):
@@ -464,20 +461,23 @@ def label_policy(engine_dir):
     The strings are the engine's, not the factory's: an engine that renames `state:ready` renames
     it here and nowhere else. An engine produced before the rails have no policy at all, and its
     issues are synchronised without labels rather than with the factory's guesses.
+
+    What makes a vocabulary usable is `generate.policy_labels`, the same function `rails.py` reads
+    it through (#188): the rule that the five are distinct is stated once, where the file is
+    written, rather than twice here and there.
     """
     path = os.path.join(engine_dir, POLICY)
     if not os.path.isfile(path):
         return None
     try:
         with open(path, encoding="utf-8") as handle:
-            labels = (json.load(handle).get("labels") or {})
+            document = json.load(handle)
     except (OSError, ValueError) as error:
         raise BacklogError(f"{POLICY} cannot be read ({error}); it is where the label vocabulary lives")
-    missing = [key for key in DEFAULT_LABELS if not labels.get(key)]
-    if missing:
-        raise BacklogError(f"{POLICY} names no {', '.join(sorted(missing))} label; the rails read every label "
-                           f"from it, so a missing one would silently go unapplied")
-    return {key: labels[key] for key in DEFAULT_LABELS}
+    try:
+        return generate.policy_labels(document, POLICY)
+    except generate.PolicyError as error:
+        raise BacklogError(str(error))
 
 
 def label_plan(state, existing, labels):
