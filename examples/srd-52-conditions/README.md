@@ -290,7 +290,14 @@ genuinely needed. But that is luck. A slice whose scattered definitions happened
 spell descriptions would have had to either over-claim the extent or invent an entry, and the
 method offers no third answer. Recorded, not decided.
 
-### 2. `evidence` is where density actually broke, and it broke twice
+### 2. `evidence` is where density actually broke, and it broke twice — since fixed
+
+**Fixed by [#207](https://github.com/brandonifco/rules-factory/issues/207) and
+[0030](../../docs/decisions/0030-a-repeated-passage-is-identified-by-the-container-its-citation-names.md).**
+What follows is the finding as this trial made it, and the state it describes is the state before
+that decision. The citation's **heading path** now identifies which printing of a repeated passage
+an entry means, so all twenty entries quote their own sentence and `round-down` quotes *Round Down*
+and nothing else. What could not be reached is recorded at the end of this finding.
 
 **A rule the corpus states word for word five times cannot be cited on its own.** `evidence` is one
 contiguous verbatim span, and `check-locators-pdf-text.py` requires **every** occurrence of it to
@@ -320,10 +327,21 @@ on it (*"half your Speed (round down)"*), so it needs an entry, and no span of t
 be located. The map cites p. 187 and its span runs on into the whole of the next glossary entry:
 *"…tell you to round up. Save Save is another name for a saving throw."* That passes every check
 and it is a span whose last sentence is a different rule. Recorded as the sharpest thing this trial
-found, and not fixed: a `occurrence` discriminator on the locator, or an `evidence` that may name
-which occurrence it means, is a schema change that one instance does not justify
+found, and at the time not fixed: a `occurrence` discriminator on the locator, or an `evidence` that
+may name which occurrence it means, is a schema change that one instance does not justify
 ([0005](../../docs/decisions/0005-a-field-earns-its-place-by-being-checkable.md)), and two more
 instances would.
+
+**What #207 did, and what it did not reach.** No field was added and no schema changed: the
+citations were already `Rules Glossary / <heading> / p. N`, and the checker was discarding the only
+part of them capable of telling two printings apart. Twenty-one spans are now the rule the entry is
+about — the twenty effects, and `round-down`, which is why the map now carries twenty-one quotes
+the corpus prints more than once and verifies all of them. Two limits stand. A citation whose last
+heading is itself repeated is separated only by a heading above it that is not, so `Playing the
+Game / Round Down / p. 5` could not be written: the extraction does not record where a chapter ends,
+and the checker refuses rather than choosing. And the whole mechanism rests on pdftotext emitting a
+heading as a line of its own; a corpus whose headings run into their text would be back where this
+finding started.
 
 ### 3. The pointer-phrase regexes detect **none** of the internal graph, and cannot
 
