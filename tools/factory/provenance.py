@@ -58,9 +58,10 @@ The fields, and where each comes from:
     0029) -- and that the engine owns, as it stands when `produce` finishes. The rule is `is_build_input`, its only
     definition: at any depth, with `bin`, `obj`, `.git` and `.vs` pruned, a file named
     `global.json`, `NuGet.config` (any case, as NuGet finds it), `packages.lock.json`,
-    `Directory.Build.rsp`, `.editorconfig`, `.globalconfig`, `corpus-map.overlay.json` or
-    `agent-policy.json`, or
-    ending in `.props`, `.targets`, `.sln`, `.slnx`, `.csproj`, `.fsproj` or `.vbproj`; minus
+    `Directory.Build.rsp`, `.editorconfig`, `.globalconfig` or `agent-policy.json`, or
+    ending in `.props`, `.targets`, `.sln`, `.slnx`, `.csproj`, `.fsproj` or `.vbproj`; plus every
+    `overlay/<entry id>.json`, the engine's evidence for one entry (#247), which is covered by path
+    because its name is the entry's; minus
     `provenance.json` and every file already in `generated` or `managed` (RulesFactory.Packages.g.props
     and a managed global.json are the factory's, and are listed there, once). The section does
     not say the factory wrote these files: some are the engine-owned scaffold (or an adopted
@@ -104,7 +105,7 @@ What a match proves, and what it does not. The record carries two different guar
     generated files are exactly what this factory commit makes from this package and corpus;
   * build-input provenance (`managed`, `buildInputs`): every file in the engine that the build reads as
     configuration -- the SDK pin, package sources, MSBuild props and targets, projects and
-    solution, the overlay, and the lock files once recorded -- has the recorded bytes, whoever
+    solution, every overlay file, and the lock files once recorded -- has the recorded bytes, whoever
     wrote them.
 
 Together they say the engine's source tree is the recorded one. They do not say what a machine
@@ -130,10 +131,11 @@ import tempfile
 
 import generate
 import intake as intake_step
+import overlay as overlay_step
 import ownership
 
 FILE_NAME = "provenance.json"
-FORMAT = 3  # 2: buildInputs (#69); 3: managed and engineOwned (#72)
+FORMAT = 4  # 2: buildInputs (#69); 3: managed and engineOwned (#72); 4: the overlay is a directory (#247)
 FACTORY_DIR = os.path.dirname(os.path.abspath(__file__))
 TAG = re.compile(r"^factory/v(\d+)\.(\d+)\.(\d+)$")
 SHORT_SHA = 12
@@ -143,7 +145,7 @@ SKIP_DIRS = frozenset({"bin", "obj", ".git", ".vs"})
 COPY_IGNORE = shutil.ignore_patterns(*sorted(SKIP_DIRS))
 # The build-input rule (`buildInputs` above; `is_build_input` applies it). Names compare casefolded.
 BUILD_INPUT_NAMES = frozenset({"global.json", "nuget.config", "packages.lock.json", "directory.build.rsp",
-                               ".editorconfig", ".globalconfig", generate.OVERLAY_NAME.lower(),
+                               ".editorconfig", ".globalconfig",
                                generate.AGENT_POLICY.rsplit("/", 1)[-1].lower()})
 BUILD_INPUT_SUFFIXES = (".props", ".targets", ".sln", ".slnx", ".csproj", ".fsproj", ".vbproj")
 LOCK_FILE = "packages.lock.json"
@@ -272,12 +274,29 @@ def is_build_input(relative):
     `agent-policy.json` is here for the reason the others are: it is configuration the engine owns
     and something reads at face value, so what it held at a commit has to be recoverable from the
     record. The reader is the rails rather than MSBuild (0029).
+
+    `overlay/<entry id>.json` is here by path and not by name (#247): its name is the entry's, so
+    there is no name to list. It is the input every generated file is made from, and covering the
+    whole directory by rule -- rather than the files that happened to be there -- is what makes a
+    file **added** or **removed** a mismatch as loudly as one edited.
     """
     parts = relative.split("/")
     if any(part in SKIP_DIRS for part in parts[:-1]):
         return False
+    if overlay_step.is_overlay_file(relative):
+        return True
     name = parts[-1].lower()
     return name in BUILD_INPUT_NAMES or name.endswith(BUILD_INPUT_SUFFIXES)
+
+
+def _walk(root):
+    """Every file under `root` as an engine-relative POSIX path, with the build's noise pruned."""
+    found = []
+    for directory, dirs, names in os.walk(root, followlinks=True):
+        dirs[:] = [d for d in dirs if d not in SKIP_DIRS]
+        for name in names:
+            found.append(os.path.relpath(os.path.join(directory, name), root).replace(os.sep, "/"))
+    return found
 
 
 def is_lock_file(relative):
@@ -401,9 +420,17 @@ def build(state, result, model, recorder, factory_dir=FACTORY_DIR):
     managed = [{"path": path, "recipeVersion": version, "sha256": sha256_file(os.path.join(root, *path.split("/")))}
                for path, version in sorted(model.managed.items(), key=lambda kv: kv[0].encode("utf-8"))]
     # Only those present: the lock files exist once verify's restore has written them.
-    owned = sorted({row.pattern for row in ownership.rows(model.name) if row.cls == ownership.ENGINE_OWNED
-                    and os.path.isfile(os.path.join(root, *row.pattern.split("/")))}
-                   | set(model.adopted), key=lambda p: p.encode("utf-8"))
+    # A pattern with a `*` in it stands for however many files are there -- `overlay/*.json`, one
+    # per implemented entry (#247) -- so the section lists the paths, never the pattern.
+    owned = set(model.adopted)
+    for row in ownership.rows(model.name):
+        if row.cls != ownership.ENGINE_OWNED:
+            continue
+        if "*" in row.pattern:
+            owned |= {p for p in _walk(root) if ownership._matches(row.pattern, p)}
+        elif os.path.isfile(os.path.join(root, *row.pattern.split("/"))):
+            owned.add(row.pattern)
+    owned = sorted(owned, key=lambda p: p.encode("utf-8"))
     return {
         "provenanceFormat": FORMAT,
         "engine": {"name": model.name},

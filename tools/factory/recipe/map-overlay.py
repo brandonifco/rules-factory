@@ -5,9 +5,12 @@ Emitted by rules-factory tools/factory (the gate recipe, #3). Rewritten by every
 produce`; do not edit it here.
 
 rules-factory decision 0015 publishes a map as a NuGet package, which the engine references and
-never copies. What the engine owns is corpus-map.overlay.json,
-`{ "<entry id>": { "status", "implementedIn", "tests" } }`: the build facts only the engine can
-know. Every other byte of meaning is the package's. Beside them an item may hold its owner's
+never copies. What the engine owns is its overlay: one file per entry, `overlay/<entry id>.json`,
+each holding `{ "status", "implementedIn", "tests" }` for that entry -- the build facts only the
+engine can know. One entry, one file, so two entry branches never write the same one (#247); the
+files are read **in the package map's order**, never in the directory's, so the merge is the same
+bytes whatever a filesystem lists first. Every other byte of meaning is the package's. Beside them
+an item may hold its owner's
 `rulings` and the `declines` that go with them (rules-factory decision 0027): answers the owner,
 not the corpus, gives to part of an unresolved question. They are checked against the package map
 by scripts/factory/rulings.py, the factory's own, and never merged: the map says only what the
@@ -15,8 +18,8 @@ corpus says.
 
 merge(package, overlay), as 0015 defines it -- each rule is also a failure below:
 
-  1. every overlay key names an entry in the package map;
-  2. every overlay item sets `status`, and holds no key outside the three and `rulings` and
+  1. every overlay file names an entry in the package map (its name is the entry id);
+  2. every overlay file sets `status`, and holds no key outside the three and `rulings` and
      `declines`, which break none of 0027's rules (the decision record each ruling names is looked
      for beside the overlay, in the engine root);
   3. for a named entry, the three fields come from the overlay alone: they are removed from the
@@ -84,10 +87,12 @@ floor.
 Where the overlay's fields land inside an entry is serialisation, not meaning: they are placed,
 in the order status, implementedIn, tests, where upstream's `status` was.
 
-  map-overlay.py merge --package-map P --overlay O --out corpus-map.json
-  map-overlay.py check --package-map P --overlay O [--map corpus-map.json]
+  map-overlay.py merge --package-map P --overlay overlay --out corpus-map.json
+  map-overlay.py check --package-map P --overlay overlay [--map corpus-map.json]
 
-Standard library only, and scripts/factory/rulings.py.
+`--overlay` is the engine's overlay **directory**.
+
+Standard library only, and scripts/factory/{overlay,rulings}.py.
 """
 import argparse
 import json
@@ -104,6 +109,7 @@ import unicodedata
 sys.dont_write_bytecode = True
 
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent / "factory"))
+import overlay as overlay_step  # noqa: E402  (vendored by `factory produce`; the layout, #247)
 import rulings  # noqa: E402  (vendored by `factory produce`, rules-factory decision 0027)
 
 OWNED = ("status", "implementedIn", "tests")
@@ -181,6 +187,12 @@ def placeholder_problem(mutation):
     return None
 
 
+def where_it_is(entry_id):
+    """The overlay file an entry's item is in, for a refusal to name; its id when that is not a name."""
+    return (f"`{overlay_step.path_for(entry_id)}`"
+            if isinstance(entry_id, str) and overlay_step.NAME.match(entry_id) else f"overlay item {entry_id!r}")
+
+
 def mutation_problems(entry_id, entry, from_overlay):
     """Rule #239, for one entry of the merge: an `implemented` entry records a real mutation per
     test. `from_overlay` says where the reader must go to fix it."""
@@ -189,11 +201,11 @@ def mutation_problems(entry_id, entry, from_overlay):
     tests = entry.get("tests")
     if not isinstance(tests, list):
         return []
-    advice = ("Make the edit, watch the test fail, undo it, record it in corpus-map.overlay.json, "
+    advice = (f"Make the edit, watch the test fail, undo it, record it in {where_it_is(entry_id)}, "
               "and re-produce with `tools/re-produce.sh`." if from_overlay else
               "This entry's `tests` come from the map package, not this engine's overlay, so the "
               "record to fix is upstream's and no re-produce here will change it: raise it against "
-              "the map, or set this engine's own `tests` for the entry in corpus-map.overlay.json.")
+              f"the map, or set this engine's own `tests` for the entry in {where_it_is(entry_id)}.")
     problems = []
     for position, test in enumerate(tests, start=1):
         if not isinstance(test, dict):
@@ -233,17 +245,18 @@ def merge(package, overlay, root=None):
         return None, ["the overlay is not an object of entry id -> owned fields"]
     ids = [e.get("id") for e in package.get("entries", []) if isinstance(e, dict)]
     for entry_id, item in overlay.items():
+        where = where_it_is(entry_id)
         if entry_id not in ids:
-            problems.append(f"overlay names {entry_id!r}, which the package map has no entry for "
+            problems.append(f"{where} names {entry_id!r}, which the package map has no entry for "
                             "(renamed or removed upstream?)")
         if not isinstance(item, dict):
-            problems.append(f"overlay item {entry_id!r} is not an object")
+            problems.append(f"{where} is not an object")
             continue
         if "status" not in item:
-            problems.append(f"overlay item {entry_id!r} does not set status")
+            problems.append(f"{where} does not set status")
         for key in item:
             if key not in OWNED and key not in rulings.KEYS:
-                problems.append(f"overlay item {entry_id!r} sets {key!r}; an engine owns only "
+                problems.append(f"{where} sets {key!r}; an engine owns only "
                                 f"{', '.join(OWNED)} (and its owner's {' and '.join(rulings.KEYS)}), "
                                 f"and every other field is the package's")
     problems += [f"owner's rulings (rules-factory decision 0027): {p}"
@@ -286,25 +299,26 @@ def canonical(document):
 
 
 def main(argv=None):
-    parser = argparse.ArgumentParser(description="merge(package map, corpus-map.overlay.json) under 0015")
+    parser = argparse.ArgumentParser(description="merge(package map, the engine's overlay/) under 0015")
     sub = parser.add_subparsers(dest="command", required=True)
     m = sub.add_parser("merge", help="write the merge; exit 1 when the overlay breaks a rule")
     m.add_argument("--package-map", required=True)
-    m.add_argument("--overlay", required=True)
+    m.add_argument("--overlay", required=True, help="the engine's overlay directory")
     m.add_argument("--out", required=True)
     c = sub.add_parser("check", help="check the overlay, and a committed materialised map if given")
     c.add_argument("--package-map", required=True)
-    c.add_argument("--overlay", required=True)
+    c.add_argument("--overlay", required=True, help="the engine's overlay directory")
     c.add_argument("--map")
     args = parser.parse_args(argv)
 
+    root = pathlib.Path(args.overlay).resolve().parent
     try:
         package = load(args.package_map)
-        overlay = load(args.overlay)
-    except (OSError, ValueError) as error:
+        overlay = overlay_step.load(str(root), package)
+    except (OSError, ValueError, overlay_step.OverlayError) as error:
         print(f"error: {error}", file=sys.stderr)
         return 1
-    merged, problems = merge(package, overlay, root=str(pathlib.Path(args.overlay).resolve().parent))
+    merged, problems = merge(package, overlay, root=str(root))
 
     if merged is not None and args.command == "check" and args.map:
         committed = load(args.map)
@@ -321,8 +335,8 @@ def main(argv=None):
         return 1
     if args.command == "merge":
         pathlib.Path(args.out).write_text(serialise(merged), encoding="utf-8")
-    print(f"     merge(package, {pathlib.Path(args.overlay).name}): {len(overlay)} of "
-          f"{len(package.get('entries', []))} entries overlaid on {', '.join(OWNED)} only")
+    print(f"     merge(package, {overlay_step.DIRECTORY}/): {len(overlay)} of "
+          f"{len(package.get('entries', []))} entries overlaid on {', '.join(OWNED)} only, in map order")
     for line in rulings.describe(overlay):
         print(f"     {line}")
     return 0

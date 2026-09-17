@@ -309,20 +309,20 @@ written path the table does not classify.
 | `scripts/engine-gate.py` | generated |  | Gate recipe: the non-dotnet checks. |
 | `scripts/factory/*.py` | generated |  | The factory's generator, vendored so the gate can regenerate without the factory. |
 | `.github/workflows/validate.yml` | generated |  | Gate recipe: CI runs `validate.sh full`. |
-| `AGENTS.md` | managed | 9 | The governing contract every agent works the engine under (0029). Managed, not generated: a team may amend its own contract, and the factory must then either carry the amendment or refuse and say so, never silently overwrite it. |
+| `AGENTS.md` | managed | 10 | The governing contract every agent works the engine under (0029). Managed, not generated: a team may amend its own contract, and the factory must then either carry the amendment or refuse and say so, never silently overwrite it. |
 | `CLAUDE.md` | managed | 1 | A pointer to `AGENTS.md` and an index of the Claude adapters. It states no rule of its own, so it cannot drift from the contract. |
 | `docs/agent-team.md` | managed | 4 | The four roles and what each may not do (0029). |
-| `.claude/agents/engine-dev.md` | managed | 7 | The implementer's charter. |
+| `.claude/agents/engine-dev.md` | managed | 8 | The implementer's charter. |
 | `.claude/agents/repo-steward.md` | managed | 1 | The structural reviewer's charter, read-only. |
 | `.claude/agents/rules-conformance.md` | managed | 3 | The semantic reviewer's charter, read-only. |
 | `.claude/hooks/primary-checkout-guard.py` | managed | 1 | The `PreToolUse` guard keeping implementation work out of the primary checkout. Policy, and the engine that must change it adopts it. |
 | `.claude/settings.json` | managed | 1 | Which tools the guard runs before. |
 | `tools/dispatch-agent.sh` | managed | 3 | One issue, one worktree, one branch; it refuses what is not ready to work (0029). |
 | `tools/new-issue.sh` | managed | 2 | An issue with the shape the rails expect, at the ready state and normal risk. `--produce` swaps in the body for a `factory produce` update, and promotes nothing (#193). |
-| `tools/entry-packet.py` | managed | 4 | The bounded assignment for one entry, assembled from merge(package, overlay) so it cannot carry a reading of its own. |
-| `tools/re-produce.sh` | managed | 3 | Re-runs `factory produce` on the engine from the factory commit `provenance.json` names. The record is generated, so an overlay edit is only finished by a produce, and prose describing that clone is a procedure an operator can get wrong (#192). |
-| `tools/review-packet.py` | managed | 1 | Everything a reviewer needs about one pull request, in the order it is meant to be read. |
-| `tools/pr-policy.py` | managed | 4 | The pull request contract, checked mechanically: one linked issue, every section filled, output rather than a claim. A `factory produce` update's claim is checked against `provenance.json` and this table, never taken (#193). A retired path counts only as a deletion the base commit's record attributes to the factory (#243). |
+| `tools/entry-packet.py` | managed | 5 | The bounded assignment for one entry, assembled from merge(package, overlay) so it cannot carry a reading of its own. |
+| `tools/re-produce.sh` | managed | 4 | Re-runs `factory produce` on the engine from the factory commit `provenance.json` names. The record is generated, so an overlay edit is only finished by a produce, and prose describing that clone is a procedure an operator can get wrong (#192). |
+| `tools/review-packet.py` | managed | 2 | Everything a reviewer needs about one pull request, in the order it is meant to be read. |
+| `tools/pr-policy.py` | managed | 5 | The pull request contract, checked mechanically: one linked issue, every section filled, output rather than a claim. A `factory produce` update's claim is checked against `provenance.json` and this table, never taken (#193). A retired path counts only as a deletion the base commit's record attributes to the factory (#243). |
 | `tools/record-verdict.py` | managed | 1 | A review verdict as a commit status on the exact commit reviewed, so a later commit invalidates it by itself. |
 | `tools/conformance-gate.py` | managed | 2 | Whether the verdicts this change needs are recorded at the commit being merged. A truncated file list is undecidable rather than a small change (#193). |
 | `tools/requeue-gate.py` | managed | 1 | Asks the gate to report again at the commit a recorded verdict names, so recording the verdict is the whole of the step (#191). It writes no status and no check run of its own. |
@@ -339,7 +339,7 @@ written path the table does not classify.
 | `{name}.slnx` | engine-owned |  | The engine adds projects to its solution. |
 | `src/{name}/{name}.csproj` | engine-owned |  | The engine adds references and files. The map reference lives in the generated props. |
 | `tests/{name}.Tests/{name}.Tests.csproj` | engine-owned |  | The engine adds test references. |
-| `corpus-map.overlay.json` | engine-owned |  | The engine's three fields per entry (0015). The factory must never overwrite it. |
+| `overlay/*.json` | engine-owned |  | The engine's three fields for **one** entry, `overlay/<entry id>.json` (0015, #247). One file per entry, so two entry branches never write the same one. Scaffolded by nothing: a file appears when an entry is implemented, and `produce` writes one only to migrate an engine produced before the split. The factory must never overwrite one. |
 | `.github/agent-policy.json` | engine-owned |  | The engine's own rails configuration: label strings, review contexts, the ordered independent-review chain, the worktree variables (0029). Written once; a factory change must never undo a consumer's provider chain. |
 | `src/{name}/packages.lock.json` | engine-owned |  | Written by `verify`'s first restore (#70) in the staging copy, only when there is no lock file yet, and committed with the engine. After that, the engine relocks (`scripts/validate.sh lock`), reviews and commits it. A `produce` rewrites it only when that run changed the generated pins: it re-locks before the gate (#94, *Amendment* above). |
 | `tests/{name}.Tests/packages.lock.json` | engine-owned |  | The same, for the test project. |

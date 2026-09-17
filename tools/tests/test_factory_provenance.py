@@ -71,6 +71,19 @@ _main_spec.loader.exec_module(_main)
 NOT_VERIFIED = _main.NOT_VERIFIED
 
 
+def write_overlay(engine, items):
+    """Replace the engine's overlay/ with one file per entry of `items` (#247)."""
+    directory = os.path.join(engine, "overlay")
+    if os.path.isdir(directory):
+        for name in os.listdir(directory):
+            os.remove(os.path.join(directory, name))
+    os.makedirs(directory, exist_ok=True)
+    for entry_id, item in items.items():
+        with open(os.path.join(directory, f"{entry_id}.json"), "w", encoding="utf-8") as handle:
+            json.dump(item, handle, indent=2)
+            handle.write("\n")
+
+
 def sha256_file(path):
     with open(path, "rb") as handle:
         return hashlib.sha256(handle.read()).hexdigest()
@@ -217,7 +230,7 @@ class TestRecord(ProvenanceCase):
         for path in (MAP_ENTRIES, "corpus/part107.xml", "scripts/validate.sh", f"src/{NAME}/Generated/Provenance.g.cs",
                      f"tests/{NAME}.Tests/Generated/ProvenanceTests.g.cs", PACKAGES_PROPS):
             self.assertIn(path, generated)
-        for path in ("provenance.json", "corpus-map.overlay.json", "global.json", f"src/{NAME}/{NAME}.csproj"):
+        for path in ("provenance.json", "global.json", f"src/{NAME}/{NAME}.csproj"):
             self.assertNotIn(path, generated, "provenance.json, managed and engine-owned files are not generated")
         self.assertFalse([p for p in generated if p.startswith("backlog/")],
                          "the backlog is not produced, so it is not recorded as generated (#243)")
@@ -229,7 +242,7 @@ class TestRecord(ProvenanceCase):
         record = self.record(out)
         inputs = {b["path"]: b["sha256"] for b in record["buildInputs"]}
         self.assertEqual(list(inputs), sorted(inputs, key=lambda p: p.encode("utf-8")))
-        self.assertEqual(set(inputs), {"Directory.Packages.props", f"{NAME}.slnx", "corpus-map.overlay.json",
+        self.assertEqual(set(inputs), {"Directory.Packages.props", f"{NAME}.slnx",
                                        f"src/{NAME}/{NAME}.csproj", f"tests/{NAME}.Tests/{NAME}.Tests.csproj",
                                        # Configuration the rails read rather than MSBuild (0029).
                                        ".github/agent-policy.json"})
@@ -252,11 +265,13 @@ class TestRecord(ProvenanceCase):
 
     def test_the_rule_is_by_name_and_skips_build_output(self):
         for path in ("global.json", "sub/nuget.CONFIG", "Directory.Build.targets", "src/A/A.csproj", "A.sln",
-                     "src/A/packages.lock.json", "corpus-map.overlay.json", ".editorconfig", "x/My.targets",
-                     ".github/agent-policy.json"):
+                     "src/A/packages.lock.json", ".editorconfig", "x/My.targets",
+                     # One file per entry, covered by path because its name is the entry's (#247).
+                     "overlay/speed-limit.json", ".github/agent-policy.json"):
             self.assertTrue(provenance.is_build_input(path), path)
         for path in ("src/A/obj/A.csproj.nuget.g.props", "bin/x.props", ".git/x.props", "src/A/Rules/Speed.cs",
-                     "scripts/validate.sh", "backlog/README.md", "corpus/part107.xml"):
+                     "scripts/validate.sh", "backlog/README.md", "corpus/part107.xml",
+                     "corpus-map.overlay.json", "overlay/notes.md", "src/A/overlay/x.json"):
             self.assertFalse(provenance.is_build_input(path), path)
 
     def test_a_fresh_run_and_a_rerun_agree_on_build_inputs(self):
@@ -373,10 +388,9 @@ class TestRecompute(ProvenanceCase):
         out = self.produced()
         implemented = {"status": "implemented", "implementedIn": {"ruleset": "faa-part-107", "version": 1},
                        "tests": [{"test": "T.t", "mutation": "m"}]}
-        pathlib.Path(out, "corpus-map.overlay.json").write_text(json.dumps({"reasonable-protection": implemented}),
-                                                                 encoding="utf-8")
+        write_overlay(out, {"reasonable-protection": implemented})
         self.assert_recompute_names(out, f"generated[src/{NAME}/Generated/Registry.g.cs].sha256",
-                                    "buildInputs[corpus-map.overlay.json].sha256")
+                                    "buildInputs[overlay/reasonable-protection.json]")
         self.produced(out=out)
         code, output = self.recompute(out)
         self.assertEqual(code, 0, output)
@@ -505,8 +519,7 @@ class TestRecompute(ProvenanceCase):
         out = self.produced()
         implemented = {"status": "implemented", "implementedIn": {"ruleset": "faa-part-107", "version": 1},
                        "tests": [{"test": "T.t", "mutation": "m"}]}
-        pathlib.Path(out, "corpus-map.overlay.json").write_text(json.dumps({"reasonable-protection": implemented}),
-                                                                encoding="utf-8")
+        write_overlay(out, {"reasonable-protection": implemented})
         gate = subprocess.run([sys.executable, os.path.join(out, "scripts", "engine-gate.py"), "provenance"],
                               cwd=out, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
         self.assertEqual(gate.returncode, 1, gate.stdout)

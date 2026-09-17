@@ -35,7 +35,7 @@ import tempfile
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 POLICY = ".github/agent-policy.json"
-OVERLAY = "corpus-map.overlay.json"
+OVERLAY = "overlay"
 PROVENANCE = "provenance.json"
 ENTRY_PACKET = "tools/entry-packet.py"
 PACKET_ROOT_VARIABLE = "RULES_ENGINE_PACKET_ROOT"
@@ -189,11 +189,13 @@ def build(number, base, out_dir, package_map=None):
                          f"- factory `{record['factory'].get('commit', '')[:12]}`"))
 
     overlay_diff = git("diff", f"{base}...{head}", "--", OVERLAY).rstrip()
+    # The whole directory: one file per entry (#247), so a diff of `overlay` is this pull request's
+    # own entry file and, if it touched more than one entry, each of the others.
     parts.append(section("5. The overlay, before and after",
                          ("```diff\n" + overlay_diff + "\n```\n\nEvery test named here carries the mutation that "
                           "makes it fail. A mutation too vague to re-run is a finding.")
                          if overlay_diff else
-                         f"`{OVERLAY}` is unchanged. A change that adds a test without naming it here, or "
+                         f"`{OVERLAY}/` is unchanged. A change that adds a test without naming it here, or "
                          f"implements an entry without moving its status, is a finding."))
 
     parts.append(section("6. What changed",

@@ -72,6 +72,19 @@ VENDORS = ("codex", "gemini", "openai", "deckard", "shadowrun")
 MUTATING_TOOLS = {"bash", "edit", "write", "notebookedit", "multiedit", "task", "webfetch"}
 
 
+def write_overlay(engine, items):
+    """Replace the engine's overlay/ with one file per entry of `items` (#247)."""
+    directory = os.path.join(engine, "overlay")
+    if os.path.isdir(directory):
+        for name in os.listdir(directory):
+            os.remove(os.path.join(directory, name))
+    os.makedirs(directory, exist_ok=True)
+    for entry_id, item in items.items():
+        with open(os.path.join(directory, f"{entry_id}.json"), "w", encoding="utf-8") as handle:
+            json.dump(item, handle, indent=2)
+            handle.write("\n")
+
+
 def git(cwd, *args):
     return subprocess.run(["git", *args], cwd=cwd, check=True, stdout=subprocess.PIPE,
                           stderr=subprocess.PIPE, text=True).stdout.strip()
@@ -105,7 +118,7 @@ class TestTheEmittedRails(unittest.TestCase):
         # The engine an emitted rail lives in: every path the factory writes for a named engine,
         # plus the directories those paths imply.
         model = type("M", (), {"name": NAME, "rulings": (), "entries": ()})()
-        layout = set(self.emitted) | {"scripts/validate.sh", "provenance.json", "corpus-map.overlay.json",
+        layout = set(self.emitted) | {"scripts/validate.sh", "provenance.json", "overlay/x.json",
                                       "docs/decisions", "corpus"}
         for row in ownership.rows(NAME):
             layout.add(row.pattern.replace("*", "x"))
@@ -465,11 +478,9 @@ class TestTheEntryPacket(TestAProducedEngine):
         signature = next(line for line in text.splitlines()
                          if "SpeedLimit(" in line and "partial" in line).strip()
 
-        with open(os.path.join(self.out, "corpus-map.overlay.json"), "w", encoding="utf-8") as handle:
-            json.dump({"speed-limit": {"status": "implemented", "implementedIn": "Rules/SpeedLimit.cs",
-                                       "tests": [{"name": "SpeedLimit_DeclinesTheUnsettledQuestion",
-                                                  "mutation": "answer it instead of declining"}]}},
-                      handle, indent=2)
+        write_overlay(self.out, {"speed-limit": {"status": "implemented", "implementedIn": "Rules/SpeedLimit.cs",
+                                                "tests": [{"name": "SpeedLimit_DeclinesTheUnsettledQuestion",
+                                                           "mutation": "answer it instead of declining"}]}})
         done = self.regenerate()
         contracts = self.read(f"src/{NAME}/Generated/Contracts.g.cs")
         self.assertIn(signature, contracts,
@@ -763,12 +774,10 @@ class TestTheReviewPacket(RailsInAGitEngine):
     def change(self):
         """A branch that touches the semantic surface, as an implementation would."""
         git(self.out, "checkout", "-qb", "issue-27")
-        overlay = os.path.join(self.out, "corpus-map.overlay.json")
-        with open(overlay, "w", encoding="utf-8") as handle:
-            json.dump({"altitude-limit": {"status": "implemented", "implementedIn": "Rules/AltitudeLimit.cs",
-                                          "tests": [{"name": "AltitudeLimit_DeclinesAboveTheCeiling",
-                                                     "mutation": "return the ceiling instead of declining"}]}},
-                      handle, indent=2)
+        write_overlay(self.out, {"altitude-limit": {
+            "status": "implemented", "implementedIn": "Rules/AltitudeLimit.cs",
+            "tests": [{"name": "AltitudeLimit_DeclinesAboveTheCeiling",
+                       "mutation": "return the ceiling instead of declining"}]}})
         os.makedirs(os.path.join(self.out, "src", NAME, "Rules"), exist_ok=True)
         with open(os.path.join(self.out, "src", NAME, "Rules", "AltitudeLimit.cs"), "w", encoding="utf-8") as handle:
             handle.write("// the altitude limit\n")
@@ -780,7 +789,7 @@ class TestTheReviewPacket(RailsInAGitEngine):
         self.fixture({
             "pr": {"5": {"number": 5, "title": "Implement the altitude limit", "body": body,
                          "headRefOid": head, "headRefName": "issue-27", "baseRefName": "main",
-                         "files": [{"path": "corpus-map.overlay.json"},
+                         "files": [{"path": "overlay/altitude-limit.json"},
                                    {"path": f"src/{NAME}/Rules/AltitudeLimit.cs"},
                                    {"path": "README.md"}],
                          "closingIssuesReferences": [{"number": 27}][:issues]}},
@@ -943,7 +952,7 @@ class TestPrPolicy(RailsInAGitEngine):
 
     def pull_request(self, body=GOOD_PR_BODY, labels=("state:ready", "risk:normal"), files=None,
                      changed_files=None, base_record=None):
-        files = files if files is not None else [{"path": "corpus-map.overlay.json"},
+        files = files if files is not None else [{"path": "overlay/altitude-limit.json"},
                                                  {"path": f"src/{NAME}/Rules/AltitudeLimit.cs"}]
         self.fixture({
             # `changedFiles` is GitHub's own count, and defaults here to the length of the list:
@@ -1296,10 +1305,10 @@ class TestAProduceUpdateIsAPullRequestLikeAnyOther(TestPrPolicy):
         # The overlay is engine-owned and is the input to generation: an entry the new map forces
         # is a rules decision the factory did not make, and belongs to its own issue.
         self.commit_engine()
-        self.pull_request(body=self.produce_body(), files=self.produced_files(extra=["corpus-map.overlay.json"]))
+        self.pull_request(body=self.produce_body(), files=self.produced_files(extra=["overlay/altitude-limit.json"]))
         done = self.policy_check()
         self.assertEqual(done.returncode, 1, done.stdout)
-        self.assertIn("corpus-map.overlay.json", done.stdout)
+        self.assertIn("overlay/altitude-limit.json", done.stdout)
         self.assertIn("not files a produce writes", done.stdout)
 
     def test_a_declared_version_the_tree_does_not_show_is_refused(self):
@@ -1332,7 +1341,7 @@ class TestAProduceUpdateIsAPullRequestLikeAnyOther(TestPrPolicy):
         # implementation. Both relaxations must be gone, not one of them.
         self.commit_engine()
         self.pull_request(body=self.produce_body(),
-                          files=[{"path": "corpus-map.overlay.json"}, {"path": f"src/{NAME}/Rules/AltitudeLimit.cs"}])
+                          files=[{"path": "overlay/altitude-limit.json"}, {"path": f"src/{NAME}/Rules/AltitudeLimit.cs"}])
         done = self.policy_check()
         self.assertEqual(done.returncode, 1, done.stdout)
         self.assertIn("names no mutation", done.stdout)
@@ -1907,8 +1916,7 @@ class TestReProduce(AFactoryToReProduceFrom, RailsInAGitEngine):
         self.assertIn("names factory.commit", done.stderr)
         self.assertFalse(os.path.exists(os.path.join(self.out, "re-produced-by.json")))
         # and an edit that leaves that field alone does not stop it: the overlay is expected to move
-        with open(os.path.join(self.out, "corpus-map.overlay.json"), "w", encoding="utf-8") as handle:
-            handle.write("{}\n")
+        write_overlay(self.out, {"altitude-limit": {"status": "blocked"}})
         self.record_commit(commits["recorded"])
         self.assertEqual(self.re_produce(repo=repo).returncode, 0)
 
@@ -2005,7 +2013,7 @@ class TestEveryCommandARailNamesRunsAsWritten(AFactoryToReProduceFrom, RailsInAG
                                       "labels": [{"name": "state:ready"}, {"name": "risk:normal"}]}},
                       "pr": {"1": {"number": 1, "title": "Implement the altitude limit", "body": "Closes #1",
                                    "headRefOid": git(self.out, "rev-parse", "HEAD"), "headRefName": "issue-1",
-                                   "baseRefName": "main", "files": [{"path": "corpus-map.overlay.json"}],
+                                   "baseRefName": "main", "files": [{"path": "overlay/altitude-limit.json"}],
                                    "closingIssuesReferences": [{"number": 1}]}}})
         self.bin = os.path.join(self.tmp, "bin")
         os.makedirs(self.bin)

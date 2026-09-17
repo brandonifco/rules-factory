@@ -59,8 +59,10 @@ MANAGED = ("Directory.Build.props", "NuGet.config", "global.json",
            ".github/workflows/pr-policy.yml", ".github/workflows/conformance-gate.yml",
            ".github/workflows/verdict-requeue.yml", "tools/agent-doctor.py", ".editorconfig")
 ENGINE_OWNED = ("Directory.Packages.props", f"{NAME}.slnx", f"src/{NAME}/{NAME}.csproj",
-                f"tests/{NAME}.Tests/{NAME}.Tests.csproj", "corpus-map.overlay.json",
-                ".github/agent-policy.json")
+                f"tests/{NAME}.Tests/{NAME}.Tests.csproj", ".github/agent-policy.json")
+#: The engine's own evidence, one file per implemented entry (#247). Engine-owned, and scaffolded by
+#: nothing: an engine with no implemented entry has none, which is why it is not in ENGINE_OWNED.
+OVERLAY_FILE = "overlay/speed-limit.json"
 LOCKS = (f"src/{NAME}/packages.lock.json", f"tests/{NAME}.Tests/packages.lock.json")
 
 
@@ -145,6 +147,12 @@ class OwnershipCase(unittest.TestCase):
         with open(os.path.join(self.out, *relative.split("/")), encoding="utf-8") as handle:
             return handle.read()
 
+    def write(self, relative, text):
+        path = os.path.join(self.out, *relative.split("/"))
+        os.makedirs(os.path.dirname(path), exist_ok=True)
+        with open(path, "w", encoding="utf-8") as handle:
+            handle.write(text)
+
     def append(self, relative, text):
         with open(os.path.join(self.out, *relative.split("/")), "a", encoding="utf-8") as handle:
             handle.write(text)
@@ -164,11 +172,15 @@ class TestTheTable(OwnershipCase):
 
     def test_every_file_a_produced_engine_holds_is_in_exactly_one_class(self):
         self.produced()
+        # An implemented entry's evidence file: engine-owned, and the only file that matches the
+        # `overlay/*.json` row, so the row is exercised (`row ... matches nothing`, below).
+        self.write(OVERLAY_FILE, '{\n  "status": "blocked"\n}\n')
         classes = self.assert_every_file_has_one_class(self.out, NAME)
         self.produced()
         self.assertEqual(classes, self.assert_every_file_has_one_class(self.out, NAME), "a re-run agrees")
         self.assertEqual(sorted(p for p, c in classes.items() if c == ownership.MANAGED), sorted(MANAGED))
-        self.assertEqual(sorted(p for p, c in classes.items() if c == ownership.ENGINE_OWNED), sorted(ENGINE_OWNED))
+        self.assertEqual(sorted(p for p, c in classes.items() if c == ownership.ENGINE_OWNED),
+                         sorted(ENGINE_OWNED + (OVERLAY_FILE,)))
         # What a verified produce also commits: the lock files its restore writes (verify.py; this
         # test runs no dotnet, so they are written here the way restore would leave them).
         for relative in LOCKS:
@@ -178,10 +190,10 @@ class TestTheTable(OwnershipCase):
             self.assertEqual(self.read(relative), '{"version": 2}\n', "a re-run never touches a lock file")
         classes = self.assert_every_file_has_one_class(self.out, NAME)
         self.assertEqual(sorted(p for p, c in classes.items() if c == ownership.ENGINE_OWNED),
-                         sorted(ENGINE_OWNED + LOCKS))
+                         sorted(ENGINE_OWNED + LOCKS + (OVERLAY_FILE,)))
         record = self.record()
-        self.assertEqual({e["path"] for e in record["engineOwned"]}, set(ENGINE_OWNED + LOCKS))
-        self.assertEqual({b["path"] for b in record["buildInputs"]}, set(ENGINE_OWNED + LOCKS))
+        self.assertEqual({e["path"] for e in record["engineOwned"]}, set(ENGINE_OWNED + LOCKS + (OVERLAY_FILE,)))
+        self.assertEqual({b["path"] for b in record["buildInputs"]}, set(ENGINE_OWNED + LOCKS + (OVERLAY_FILE,)))
         for row in ownership.rows(NAME):
             self.assertTrue(any(ownership.matching(p, NAME) == [row] for p in classes), f"row {row.pattern} matches nothing")
 
@@ -192,13 +204,15 @@ class TestTheTable(OwnershipCase):
 
     def test_provenance_records_every_file_in_its_class_once(self):
         self.produced()
+        self.write(OVERLAY_FILE, '{\n  "status": "blocked"\n}\n')
+        self.produced()
         record = self.record()
         generated = {g["path"] for g in record["generated"]}
         managed = {m["path"] for m in record["managed"]}
         owned = {e["path"] for e in record["engineOwned"]}
         inputs = {b["path"] for b in record["buildInputs"]}
         self.assertEqual(managed, set(MANAGED))
-        self.assertEqual(owned, set(ENGINE_OWNED))
+        self.assertEqual(owned, set(ENGINE_OWNED + (OVERLAY_FILE,)))
         self.assertEqual(generated | managed | owned | {"provenance.json"}, set(tree(self.out)))
         self.assertFalse(generated & managed or generated & owned or managed & owned)
         self.assertEqual(inputs, owned, "engine-owned files are hashed in buildInputs, managed ones are not")
@@ -227,7 +241,9 @@ class TestTheTable(OwnershipCase):
     def test_generate_and_the_gate_write_each_class_from_the_table(self):
         model = types.SimpleNamespace(name=NAME, header="", package_id="P", version="1")
         self.assertEqual(set(generate.managed_files()), {r.pattern for r in ownership.rows(NAME) if r.cls == ownership.MANAGED})
-        self.assertEqual(set(generate.engine_owned(model)) | set(LOCKS),  # the lock files are restore's (verify.py)
+        # The lock files are restore's (verify.py); the overlay's files are the engine's own
+        # evidence, written when an entry is implemented and by no scaffold (#247).
+        self.assertEqual(set(generate.engine_owned(model)) | set(LOCKS) | {"overlay/*.json"},
                          {r.pattern for r in ownership.rows(NAME) if r.cls == ownership.ENGINE_OWNED})
         # The gate regenerates exactly the generated `*.g.*` files, and vendors what it needs as generated files.
         for relative in list(gate.FILES) + [f"src/{NAME}/Generated/X.g.cs", f"tests/{NAME}.Tests/Generated/X.g.cs",
@@ -319,15 +335,15 @@ class TestManaged(OwnershipCase):
 class TestEngineOwned(OwnershipCase):
     def test_never_touched_again_whatever_the_recipes_do(self):
         self.produced()
+        self.write(OVERLAY_FILE, '{\n  "status": "blocked"\n}\n')
         for relative in ENGINE_OWNED:
-            if relative != "corpus-map.overlay.json":
-                self.append(relative, "<!-- the engine's -->\n")
+            self.append(relative, "<!-- the engine's -->\n")
         with bumped(*MANAGED):
             self.produced()
         for relative in ENGINE_OWNED:
-            if relative != "corpus-map.overlay.json":
-                self.assertTrue(self.read(relative).endswith("<!-- the engine's -->\n"), relative)
-        self.assertEqual(self.read("corpus-map.overlay.json"), "{}\n")
+            self.assertTrue(self.read(relative).endswith("<!-- the engine's -->\n"), relative)
+        self.assertEqual(self.read(OVERLAY_FILE), '{\n  "status": "blocked"\n}\n',
+                         "an entry's evidence is the engine's, and no produce rewrites it")
 
 
 if __name__ == "__main__":

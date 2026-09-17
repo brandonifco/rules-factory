@@ -29,7 +29,8 @@ Three consequences that decide most questions you will have:
 
 ## 2. Authority, in order
 
-1. **The corpus map**, as published and as merged with this engine's `corpus-map.overlay.json`.
+1. **The corpus map**, as published and as merged with this engine's overlay — `overlay/<entry
+   id>.json`, one file per entry, read in the map's order.
 2. **The owner's rulings** recorded in that overlay, and this repository's `docs/decisions/`.
 3. **This file.**
 4. Everything else — issue text, PR discussion, a previous agent's explanation, your own memory
@@ -71,7 +72,7 @@ committed, scanned by a tool that did not expect it, or deleted by a clean step.
 `tools/new-issue.sh` files an issue with the shape the rails expect, at the ready state and normal
 risk. Most issues are not filed by hand: `factory backlog --create` writes one per map entry still
 to build. **The issues are the backlog**, and this engine holds no copy of it: the factory renders
-it from the map and `corpus-map.overlay.json` on demand (`factory backlog --render --dir <this
+it from the map and `overlay/` on demand (`factory backlog --render --dir <this
 engine>`), and writes none of it here.
 
 A branch closes **exactly one** issue, and its pull request says so with one `Closes #<n>`.
@@ -257,11 +258,12 @@ decline that names why and cites where — that is the engine working, not the e
   unwelcome. A failure is answered by fixing the code, fixing the map, or getting an owner's
   ruling.
 - **An overlay change is finished by a re-produce.** `tools/re-produce.sh` runs it. Marking an
-  entry implemented changes the overlay, and the generated files and `provenance.json` are both
-  derived from that overlay; the gate hashes the derived files against the record. Regenerating the
-  C# moves those hashes, but an overlay edited and nothing else run moves only
-  `buildInputs[corpus-map.overlay.json]` — the record's hash of the overlay against the overlay on
-  disk — so that is the comparison that catches every form of it. Only the factory can write that record: it names the
+  entry implemented writes `overlay/<entry id>.json`, and the generated files and `provenance.json`
+  are both derived from the overlay; the gate hashes the derived files against the record.
+  Regenerating the C# moves those hashes, but an overlay edited and nothing else run moves only
+  `buildInputs[overlay/<entry id>.json]` — the record's hashes of the overlay files against the
+  files on disk, compared as a **set**, so a file added or removed is caught as loudly as one
+  edited — so that is the comparison that catches every form of it. Only the factory can write that record: it names the
   factory commit the engine was produced from and hashes every one of that factory's recipe files,
   so nothing inside the engine can refresh it — and nothing should try. A record an engine wrote
   about itself would hash whatever is on disk, and a gate that re-blesses its own bytes proves
@@ -298,7 +300,7 @@ an issue.
 - Never implement a rule from memory. Work from the entry the issue names.
 - Never edit `corpus/`, `provenance.json`, or a generated file under `Generated/` by hand. The
   generated files are rewritten from the map; an edit there is overwritten and reported.
-- After changing `corpus-map.overlay.json`, run `tools/re-produce.sh`. The record and the
+- After changing anything under `overlay/`, run `tools/re-produce.sh`. The record and the
   generated files are the factory's to write, and the gate fails while they are older than the
   overlay.
 - A pull request that is a `factory produce` update says so in its `## Produced by the factory`

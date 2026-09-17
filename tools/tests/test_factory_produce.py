@@ -65,6 +65,19 @@ PACKAGES_PROPS = "RulesFactory.Packages.g.props"
 MAP_ID = "RulesFactory.Maps.FaaPart107"
 
 
+def write_overlay(engine, items):
+    """Replace the engine's overlay/ with one file per entry of `items` (#247)."""
+    directory = os.path.join(engine, "overlay")
+    if os.path.isdir(directory):
+        for name in os.listdir(directory):
+            os.remove(os.path.join(directory, name))
+    os.makedirs(directory, exist_ok=True)
+    for entry_id, item in items.items():
+        with open(os.path.join(directory, f"{entry_id}.json"), "w", encoding="utf-8") as handle:
+            json.dump(item, handle, indent=2)
+            handle.write("\n")
+
+
 def pack(map_dir, out):
     subprocess.run([sys.executable, PACK, map_dir, "--out", out], check=True,
                    stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
@@ -164,7 +177,7 @@ class TestScaffold(ProduceCase):
         files = set(tree(out))
         for expected in ("global.json", "NuGet.config", "Directory.Build.props", "Directory.Packages.props",
                          f"{NAME}.slnx", f"src/{NAME}/{NAME}.csproj", f"tests/{NAME}.Tests/{NAME}.Tests.csproj",
-                         "corpus-map.overlay.json", "corpus/part107.xml", "provenance.json", PACKAGES_PROPS, *GENERATED):
+                         "corpus/part107.xml", "provenance.json", PACKAGES_PROPS, *GENERATED):
             self.assertIn(expected, files)
         generated_code = {f for f in files if f.endswith(".cs")}
         self.assertEqual(generated_code, set(GENERATED), "every C# file the factory writes is *.g.cs")
@@ -187,7 +200,10 @@ class TestScaffold(ProduceCase):
         build = self.read(out, "Directory.Build.props")
         self.assertIn("<RestorePackagesWithLockFile>true</RestorePackagesWithLockFile>", build)
         self.assertIn("<RestoreLockedMode", build)
-        self.assertEqual(json.loads(self.read(out, "corpus-map.overlay.json")), {})
+        # #247: the overlay is a directory of one file per implemented entry, scaffolded by
+        # nothing. A fresh engine has implemented nothing, so it has no overlay file at all.
+        self.assertFalse(os.path.exists(os.path.join(out, "corpus-map.overlay.json")))
+        self.assertFalse(os.path.isdir(os.path.join(out, "overlay")))
         with open(PART107_XML, "rb") as handle, open(os.path.join(out, "corpus", "part107.xml"), "rb") as copy:
             self.assertEqual(handle.read(), copy.read())
 
@@ -362,8 +378,7 @@ class TestGeneration(ProduceCase):
         os.makedirs(out)
         implemented = {"status": "implemented", "implementedIn": {"ruleset": "faa-part-107", "version": 1},
                        "tests": [{"test": "T.t", "mutation": "m"}]}
-        with open(os.path.join(out, "corpus-map.overlay.json"), "w", encoding="utf-8") as handle:
-            json.dump({"speed-within-limit": implemented, "reasonable-protection": implemented}, handle)
+        write_overlay(out, {"speed-within-limit": implemented, "reasonable-protection": implemented})
         self.produced(out)
         tests = self.read(out, GENERATED[2])
         registry = self.read(out, GENERATED[1])
@@ -568,8 +583,7 @@ class TestRefuses(ProduceCase):
     def overlay(self, content):
         out = os.path.join(self.tmp, "engine")
         os.makedirs(out, exist_ok=True)
-        with open(os.path.join(out, "corpus-map.overlay.json"), "w", encoding="utf-8") as handle:
-            json.dump(content, handle)
+        write_overlay(out, content)
         code, output = self.produce(out)
         self.assertEqual(code, 1, output)
         self.assertIn("REFUSED", output)

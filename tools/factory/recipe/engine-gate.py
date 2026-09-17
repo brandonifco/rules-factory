@@ -12,8 +12,8 @@ finds nothing to examine fails: a check with no inputs has proven nothing.
                                      the committed corpus hashes to the baseline, under its posture
   regenerate --package-map P --package-manifest M --package-id ID --package-version V --name N [--write]
                                      every *.g.cs is exactly what the factory generates
-  provenance                         provenance.json still hashes the files on disk (re-produce after
-                                     an overlay edit)
+  provenance                         provenance.json still hashes the files on disk, the overlay set
+                                     included (re-produce after an overlay edit)
   expected-results                   test projects on disk x target frameworks
   tests-ran DIR EXPECTED             the TRX files show that many result files and >0 tests
   named-tests DIR --map MAP          every test an implemented entry names exists and ran
@@ -44,7 +44,7 @@ sys.dont_write_bytecode = True
 
 ROOT = pathlib.Path.cwd()
 IGNORED = {"bin", "obj", ".git", "artifacts", "TestResults"}
-OVERLAY = "corpus-map.overlay.json"
+OVERLAY = "overlay"
 RANDOMNESS_PACKAGE = "RulesKernel.Randomness"
 RANDOMNESS = ("none", "seeded")
 GENERATED_PROPS = "RulesFactory.Packages.g.props"
@@ -276,14 +276,17 @@ def regenerate(args):
     sys.path.insert(0, str(ROOT / "scripts" / "factory"))
     import generate  # noqa: E402  (the factory's generator, vendored by produce)
     import provenance  # noqa: E402  (its generated C# that embeds provenance.json)
+    import overlay as overlay_step  # noqa: E402  (where the engine's evidence lives, #247)
     import rulings  # noqa: E402  (the owner's rulings the overlay holds, rules-factory decision 0027)
 
     package = json.loads(pathlib.Path(args.package_map).read_text(encoding="utf-8"))
     declared, problem = declared_randomness(args.package_manifest, args.package_map)
     if problem:
         return report([problem], "")
-    overlay_path = ROOT / OVERLAY
-    overlay = json.loads(overlay_path.read_text(encoding="utf-8")) if overlay_path.is_file() else {}
+    try:
+        overlay = overlay_step.load(str(ROOT), package)
+    except overlay_step.OverlayError as error:
+        return report([str(error)], "")
     try:
         model = generate.Model(types.SimpleNamespace(package_id=args.package_id, version=args.package_version,
                                                      randomness=declared),
@@ -317,13 +320,15 @@ def regenerate(args):
     problems += [f"{s} is a *.g.cs file the factory does not generate; hand-written code goes in any other file"
                  for s in stray]
     return report(problems, f"{len(expected)} generated file(s) match a fresh regeneration from "
-                            f"{args.package_id}@{args.package_version} + {OVERLAY}")
+                            f"{args.package_id}@{args.package_version} + {OVERLAY}/ ({len(overlay)} entry file(s))")
 
 
 # --- the record -------------------------------------------------------------------------
 
 RECORD = "provenance.json"
 RE_PRODUCE = "tools/re-produce.sh"
+#: The first provenance format whose `buildInputs` describe the overlay directory (#247).
+OVERLAY_FORMAT = 4
 
 
 def record_matches(_args):
@@ -340,7 +345,8 @@ def record_matches(_args):
     hand-edited gate, and a gate that re-blesses its own bytes proves nothing.
 
     **What is compared, and what deliberately is not.** Every `generated` entry, every `managed`
-    entry, and `buildInputs[corpus-map.overlay.json]` -- and no other build input. Adding a
+    entry, and the whole of the overlay -- `buildInputs[overlay/*.json]` -- and no other build
+    input. Adding a
     PackageReference, a project to the solution or a version to Directory.Packages.props are
     engine-owned acts (decision 0018); making each of them require a re-produce before this goes
     green would produce a gate people route around. Holding the whole of `buildInputs` is
@@ -354,12 +360,19 @@ def record_matches(_args):
     either form: an item file that still lists an entry someone has since implemented is
     *unchanged*, so its hash matches. What moved is the overlay, and that is the fact this names.
 
-    Since #243 removed the committed backlog, the comparison is no longer conditional: a record with
-    no `buildInputs[corpus-map.overlay.json]` and an engine with no overlay on disk is a failure
-    here, not a pass, because the check that carries the case would otherwise have examined nothing
-    and said ok -- while printing that the overlay was among what it examined. Every `produce`
-    writes an overlay (generate.py writes `{}` when the engine has none) and records it, so the
-    only way to reach that state is by deleting both.
+    **A set, not a file (#247).** The overlay is a directory now, so "the overlay as the record
+    hashed it" is the whole set of paths and hashes, and the comparison is symmetric: a file whose
+    bytes moved is `edited`, a file on disk the record does not list is `added`, and a file the
+    record lists that is not on disk is `removed`. Comparing only the files the record happens to
+    name would let a new entry's evidence in without a re-produce -- the generated `*.g.cs` would
+    still be the old ones, and nothing would say so -- and comparing only the files on disk would
+    let one be deleted the same way.
+
+    An engine with no implemented entry has an empty overlay and always did; that is not "examined
+    nothing", it is a complete comparison of a set that is empty on both sides, and the check that
+    tells the two apart is `provenanceFormat`. A record written before #247 has format 3 or less and
+    describes a layout this engine does not have, so it is refused here and named as what it is: a
+    record that predates the split.
     """
     sys.path.insert(0, str(ROOT / "scripts" / "factory"))
     try:
@@ -400,30 +413,36 @@ def record_matches(_args):
                     problems.append(f"{section}[{item['path']}].sha256: recorded {item.get('sha256')}, "
                                     f"on disk {actual}")
 
-    entry = next((item for item in recorded.get("buildInputs") or []
-                  if isinstance(item, dict) and item.get("path") == OVERLAY), None)
-    overlay_path = ROOT / OVERLAY
-    if entry is not None or overlay_path.is_file():
-        examined += 1
-    if entry is None and not overlay_path.is_file():
-        problems.append(f"buildInputs[{OVERLAY}]: neither recorded nor on disk, so the one comparison that catches "
-                        f"an overlay edit never followed by a re-produce had nothing to compare. Every produce "
-                        f"writes {OVERLAY} and records it; run `{RE_PRODUCE}`")
-    elif entry is None and overlay_path.is_file():
-        problems.append(f"buildInputs[{OVERLAY}]: not recorded, and the engine has one; the record predates the "
-                        f"overlay it was generated from")
-    elif entry is not None and not overlay_path.is_file():
-        problems.append(f"buildInputs[{OVERLAY}]: recorded, missing on disk")
-    elif entry is not None:
-        actual = hashlib.sha256(overlay_path.read_bytes()).hexdigest()
-        if actual != entry.get("sha256"):
-            problems.append(f"buildInputs[{OVERLAY}].sha256: recorded {entry.get('sha256')}, on disk {actual}. "
-                            f"The overlay is the input the generated files are made from, so everything derived "
-                            f"from it is older than it is")
+    import overlay as overlay_step  # noqa: E402  (the layout: which paths are the overlay's, #247)
+
+    format_recorded = recorded.get("provenanceFormat")
+    if not isinstance(format_recorded, int) or format_recorded < OVERLAY_FORMAT:
+        problems.append(f"provenanceFormat: recorded {format_recorded!r}, and the overlay comparison below needs "
+                        f"at least {OVERLAY_FORMAT}. A record written before the overlay became a directory "
+                        f"describes a layout this engine does not have, so it cannot say which of "
+                        f"{OVERLAY}/<entry id>.json were there; run `{RE_PRODUCE}`")
+    else:
+        recorded_overlay = {item["path"]: item.get("sha256") for item in recorded.get("buildInputs") or []
+                            if isinstance(item, dict) and isinstance(item.get("path"), str)
+                            and overlay_step.is_overlay_file(item["path"])}
+        on_disk_overlay = {path: hashlib.sha256((ROOT / pathlib.Path(*path.split("/"))).read_bytes()).hexdigest()
+                           for path in overlay_step.files(str(ROOT))}
+        examined += len(set(recorded_overlay) | set(on_disk_overlay))
+        for path in sorted(set(recorded_overlay) - set(on_disk_overlay)):
+            problems.append(f"buildInputs[{path}]: recorded, missing on disk. An entry's evidence removed without "
+                            f"a re-produce leaves every generated file still carrying it")
+        for path in sorted(set(on_disk_overlay) - set(recorded_overlay)):
+            problems.append(f"buildInputs[{path}]: on disk, and {RECORD} does not record it. An entry's evidence "
+                            f"added without a re-produce leaves every generated file older than it")
+        for path in sorted(set(recorded_overlay) & set(on_disk_overlay)):
+            if recorded_overlay[path] != on_disk_overlay[path]:
+                problems.append(f"buildInputs[{path}].sha256: recorded {recorded_overlay[path]}, on disk "
+                                f"{on_disk_overlay[path]}. The overlay is the input the generated files are made "
+                                f"from, so everything derived from it is older than it is")
 
     if not examined:
-        print(f"error: {RECORD} lists no generated file, no managed file and no {OVERLAY}, so this check examined "
-              f"nothing -- and a check that examines nothing is a failure, never an ok", file=sys.stderr)
+        print(f"error: {RECORD} lists no generated file, no managed file and no {OVERLAY}/ file, so this check "
+              f"examined nothing -- and a check that examines nothing is a failure, never an ok", file=sys.stderr)
         return 1
     if problems:
         source = recorded.get("map") or {}
@@ -436,7 +455,7 @@ def record_matches(_args):
               f"writes {RECORD}. Editing it by hand is the defect this step exists to catch.",
               file=sys.stderr)
         return 1
-    return report([], f"{examined} recorded file(s) hash as {RECORD} records, {OVERLAY} among them")
+    return report([], f"{examined} recorded file(s) hash as {RECORD} records, every {OVERLAY}/ file among them")
 
 
 # --- tests ------------------------------------------------------------------------------
