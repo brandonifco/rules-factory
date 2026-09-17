@@ -60,6 +60,8 @@ import json
 import os
 import re
 
+import overlay
+
 GENERATED = "generated"
 MANAGED = "managed"
 ENGINE_OWNED = "engine-owned"
@@ -85,12 +87,12 @@ TABLE = (
     Row("scripts/engine-gate.py", GENERATED, None, "the gate recipe: its non-dotnet checks"),
     Row("scripts/factory/*.py", GENERATED, None, "the factory's generator, vendored so the gate can regenerate"),
     Row(".github/workflows/validate.yml", GENERATED, None, "the gate recipe: CI runs validate.sh full"),
-    Row("AGENTS.md", MANAGED, 9,
+    Row("AGENTS.md", MANAGED, 10,
         "the governing contract every agent works this engine under (decision 0029)"),
     Row("CLAUDE.md", MANAGED, 1,
         "a pointer to AGENTS.md and the Claude adapters; it states no rule of its own (0029)"),
     Row("docs/agent-team.md", MANAGED, 4, "the four roles, and what each may not do (0029)"),
-    Row(".claude/agents/engine-dev.md", MANAGED, 7, "the implementer's charter (0029)"),
+    Row(".claude/agents/engine-dev.md", MANAGED, 8, "the implementer's charter (0029)"),
     Row(".claude/agents/repo-steward.md", MANAGED, 1, "the structural reviewer's charter, read-only (0029)"),
     Row(".claude/agents/rules-conformance.md", MANAGED, 3, "the semantic reviewer's charter, read-only (0029)"),
     Row(".claude/hooks/primary-checkout-guard.py", MANAGED, 1,
@@ -100,13 +102,13 @@ TABLE = (
         "one issue, one worktree, one branch; it refuses what is not ready to work (0029)"),
     Row("tools/new-issue.sh", MANAGED, 2,
         "an issue with the shape the rails expect, a factory update's included (0029, #193)"),
-    Row("tools/entry-packet.py", MANAGED, 4,
+    Row("tools/entry-packet.py", MANAGED, 5,
         "the bounded assignment for one entry, assembled from merge(package, overlay) (0029)"),
-    Row("tools/re-produce.sh", MANAGED, 3,
+    Row("tools/re-produce.sh", MANAGED, 4,
         "an overlay edit is finished by a re-produce, from the factory commit the record names (#192)"),
-    Row("tools/review-packet.py", MANAGED, 1,
+    Row("tools/review-packet.py", MANAGED, 2,
         "everything a reviewer needs about one pull request, in the order it is read (0029)"),
-    Row("tools/pr-policy.py", MANAGED, 4,
+    Row("tools/pr-policy.py", MANAGED, 5,
         "the pull request contract, checked mechanically; a produce update's claim is checked, not taken (#193)"),
     Row("tools/record-verdict.py", MANAGED, 1,
         "a review verdict as a commit status on the exact commit reviewed (0029)"),
@@ -136,7 +138,8 @@ TABLE = (
     Row("{name}.slnx", ENGINE_OWNED, None, "the engine adds projects to its solution"),
     Row("src/{name}/{name}.csproj", ENGINE_OWNED, None, "the engine adds references and files"),
     Row("tests/{name}.Tests/{name}.Tests.csproj", ENGINE_OWNED, None, "the engine adds test references"),
-    Row("corpus-map.overlay.json", ENGINE_OWNED, None, "the engine's three fields per entry (0015)"),
+    Row(f"{overlay.DIRECTORY}/*{overlay.SUFFIX}", ENGINE_OWNED, None,
+        "the engine's three fields for one entry, one file per entry (0015, #247)"),
     Row(".github/agent-policy.json", ENGINE_OWNED, None,
         "the engine's own rails configuration: labels, review contexts and chain, worktree "
         "variables. Written once so a factory change can never undo a consumer's choice (0029)"),
@@ -146,7 +149,19 @@ TABLE = (
     Row("tests/{name}.Tests/packages.lock.json", ENGINE_OWNED, None, "the same, for the test project"),
 )
 
-Retired = collections.namedtuple("Retired", "pattern reason")
+Retired = collections.namedtuple("Retired", "pattern reason witness")
+
+#: The witnesses a retirement may be authorised by, by name (`Retired.witness`). A witness is
+#: `(root, relative, bytes) -> why it may not be deleted, or None`, and it is what the deletion
+#: rests on when the record cannot carry it.
+#:
+#: There is exactly one, and adding a second is a decision, not a convenience: every entry here is
+#: another sentence that ends "...and so these bytes may be deleted". `superseded_by_split` is the
+#: overlay's (#247) -- see `WROTE_IT` below for why the record could not carry that one.
+WITNESSES = {"overlay-split": overlay.superseded_by_split}
+
+#: `Retired.witness` for the ordinary retirement: no witness, so the record decides.
+WROTE_IT = None
 
 #: Patterns `produce` **once wrote and now removes**. A file the factory stopped writing does not
 #: become the engine's by default: an engine produced before the retirement still has it committed,
@@ -162,12 +177,26 @@ Retired = collections.namedtuple("Retired", "pattern reason")
 #: reason a recipe version is never removed: an engine that has not been produced since still holds
 #: the files.
 #:
-#: **A pattern is not a licence to delete.** `remove_retired` deletes a match only when the engine's
-#: own `provenance.json` -- the record as it stood before this run -- hashed that exact path with
-#: those exact bytes in `generated` or `managed`. A file the record does not name, or one whose bytes
-#: have moved since it was recorded, is somebody's: it is left where it is and named in the run's
-#: output. `backlog/notes.md`, written by hand and never emitted, matches `backlog/*.md` and is not
-#: the factory's to remove.
+#: **A pattern is not a licence to delete.** Every retirement is authorised by the bytes and never
+#: by the path, and there are two ways to authorise one:
+#:
+#:   * `witness=WROTE_IT` (the default, #243): the engine's own `provenance.json` -- the record as
+#:     it stood before this run -- hashed that exact path with those exact bytes in `generated` or
+#:     `managed`. A file the record does not name, or one whose bytes have moved since it did, is
+#:     somebody's: it is left where it is and named in the run's output. `backlog/notes.md`,
+#:     written by hand and never emitted, matches `backlog/*.md` and is not the factory's to remove.
+#:   * `witness=<a name in WITNESSES>` (#247): the record cannot speak for this file, and something
+#:     else can. `corpus-map.overlay.json` is the engine's own evidence, which the factory never
+#:     wrote and so cannot claim to have written: it is recorded in `buildInputs`, which says only
+#:     which bytes were there. What retires it is not that the factory is dropping it but that this
+#:     run **moved** it, into `overlay/<entry id>.json`, so the witness parses the bytes it is about
+#:     to delete and requires the files beside it to carry every one of their keys and values
+#:     (overlay.superseded_by_split). The bar is the same: prove, from the bytes, that deleting them
+#:     takes nothing away.
+#:
+#: Both answers land in the same place -- deleted, or kept and named -- and the engine's
+#: `tools/pr-policy.py` asks the same question of the base commit's bytes before admitting the
+#: deletion into a produce update, so the run and the policy cannot disagree about who owned a file.
 #:
 #: **And a pattern may not overlap a row.** `retired_conflicts()` is checked before any deletion and
 #: by the tests: no RETIRED pattern may be able to match a path any row of TABLE can match, so a
@@ -185,7 +214,13 @@ RETIRED = (
     Retired("backlog/*.md",
             "the backlog is a projection of the map and the overlay -- filed as GitHub issues by "
             "`factory backlog --create`, printed by `factory backlog --render` -- and is not "
-            "committed into an engine (#243)"),
+            "committed into an engine (#243)",
+            WROTE_IT),
+    Retired(overlay.RETIRED_NAME,
+            f"the overlay is one file per entry, {overlay.DIRECTORY}/<entry id>{overlay.SUFFIX}, so that two "
+            f"entry branches never write the same file; this run split it, and every key it held is in the "
+            f"files beside it (#247)",
+            "overlay-split"),
 )
 
 # Every version of every managed recipe: path -> {recipe version: SHA-256 of the bytes it wrote}.
@@ -200,6 +235,7 @@ RECIPE_SHA256 = {
         5: "3491f1a0bbdd6b4fcb7b0d1e8d3827dfe5f4a19199d8da6ddcdc2b5bc9921521",
         6: "5e88a1d896a9f9528f038f6daffb990e03bdcfe5f9d39f60c88723c8ee8247ca",
         7: "8f26f1270af1eeaa12f471018cb8bf590265c573d690954b8cb942f64315746b",
+        8: "d7838a14be85667f9f97e5a483be681a4a3a2ae969399aa7437762631639cc7c",
     },
     ".claude/agents/repo-steward.md": {
         1: "6a2662ac958da76bb02263914d4e3b293a8dc15837e8a6ffccb14177b013bde7",
@@ -225,6 +261,7 @@ RECIPE_SHA256 = {
         7: "d141aa496491ab4eb6702fbdba803f82a4a0e11163c56289be404d9a7eeea8d9",
         8: "0dca04ff9fd39143f1d241c4f02d14dd54576524c9596e76539a5572a552be14",
         9: "64a111b943a7eb632f9d0bbd9ec065e4ddb6e7df625944b923c100da6871251f",
+        10: "956af7bde2aaa84131f1dc88402d8f16a90715325c01381cafe626c97b187664",
     },
     "CLAUDE.md": {
         1: "04c07ad36e742fa60efafeca54d20bd96d16b6e338a44e46fad2b679ab8dfd9f",
@@ -249,20 +286,24 @@ RECIPE_SHA256 = {
         2: "59f112154a77a8cf574bd8d1ee1e43d39399025308c8f4eb2371d99081e49b20",
         3: "58791e5a923a50c591ef35325a7f45ec8db652f1b09179f5fc28c874b44d230f",
         4: "5ae5e226e92b0f1fe6ce227d58db2987173659d644e4a89667a984c9faee54af",
+        5: "3ef75a792934d473e87db94e1c3f08f459bab418a73ef5850dd6063fa4144fad",
     },
     "tools/re-produce.sh": {
         1: "2a281f94f81ce141733494a94744caa96c88af3cd9fa848cec21c13e73739499",
         2: "259e860a06e1407b38ff2f302bd657056eb601955e5363b19d30b705f74b7d8e",
         3: "0b0fd08926db78dff21bb8687e3cf57d34ff3a0456ae4cfb9ec1734ea2f8638f",
+        4: "465fb02b0fafd06106cfef3f1e8d0858b4cee232f7f57dc8ac628fe6f7513a67",
     },
     "tools/review-packet.py": {
         1: "2e989c02c1827bf6d3da8fce9a35874e25ea4baf14f62eeb64aab78c30b1f392",
+        2: "7dc52854df87a7837deb0cb7373258e4f7516ad23a9984b7ee20813eefbc5d50",
     },
     "tools/pr-policy.py": {
         1: "79a33c7fe1ea8d888e4d6912a43ac60afe285c7a8bf43fbe9f7be87d6947b76e",
         2: "4a0c6677913decb13c8e9499840d5da4935c1725559dd6514d67dd72c8d849bd",
         3: "fc3ca4f9571e3276b7208a5927cdcef01da852ae97972a5c47663fe7391703eb",
         4: "1100f4005be978240ddd1f4ddb5001fefae8a89dff85818784dfe2e54ff61f8f",
+        5: "c17dbf45d593454342680dc2b8333c88028ce9ec23367bdc668e8204202d4dc1",
     },
     "tools/record-verdict.py": {
         1: "48f7b11f7fc829cdaebd776a3eb5db04e27cade97c427c6806b72f58805d83db",
@@ -435,16 +476,57 @@ def _recorded_hashes(out):
     """
     try:
         with open(os.path.join(out, PROVENANCE), encoding="utf-8") as handle:
-            record = json.load(handle)
-        found = {}
-        for section in (GENERATED, MANAGED):
-            for item in record.get(section) or []:
-                if isinstance(item, dict) and isinstance(item.get("path"), str) \
-                        and isinstance(item.get("sha256"), str):
-                    found[item["path"]] = item["sha256"]
-        return found
+            return _hashes_of(json.load(handle))
     except (OSError, ValueError, AttributeError, TypeError):
         return {}
+
+
+def _hashes_of(record):
+    """The same, for a record already in hand (the engine's pr-policy.py has the base commit's)."""
+    found = {}
+    if not isinstance(record, dict):
+        return found
+    for section in (GENERATED, MANAGED):
+        for item in record.get(section) or []:
+            if isinstance(item, dict) and isinstance(item.get("path"), str) \
+                    and isinstance(item.get("sha256"), str):
+                found[item["path"]] = item["sha256"]
+    return found
+
+
+def _unauthorised(root, relative, data, row, recorded):
+    """Why `data` at `relative` may not be deleted under retirement `row`, or None: the one line.
+
+    `recorded` is `_recorded_hashes` of the record as it stood before the run. Both the remover and
+    the engine's `tools/pr-policy.py` come through here (the policy via `authorised`), so a
+    deletion the run makes and a deletion the policy admits are decided by the same sentence.
+    """
+    if row.witness is WROTE_IT:
+        if relative not in recorded:
+            return f"{PROVENANCE} does not record the factory as having written it"
+        if sha256(data) != recorded[relative]:
+            return (f"its bytes are not the ones {PROVENANCE} recorded ({recorded[relative][:12]}...), so it "
+                    f"was edited after the last produce")
+        return None
+    witness = WITNESSES.get(row.witness)
+    if witness is None:
+        raise OwnershipError(f"the retired pattern {row.pattern} names the witness {row.witness!r}, which is "
+                             f"not one of {', '.join(sorted(WITNESSES))}; a deletion nothing can authorise "
+                             f"is not made")
+    return witness(root, relative, data)
+
+
+def authorised(root, relative, data, name, record):
+    """Whether `data`, the bytes at retired `relative`, may be deleted. None-safe for `record`.
+
+    The engine's `tools/pr-policy.py` calls this on the base commit's bytes, with the base commit's
+    record, to decide whether a deletion in a pull request is the factory's own work. It is the
+    remover's own test and not a second copy of it.
+    """
+    row = retired(relative, name)
+    if row is None:
+        return False
+    return _unauthorised(root, relative, data, row, _hashes_of(record)) is None
 
 
 def remove_retired(out, name):
@@ -456,16 +538,21 @@ def remove_retired(out, name):
     provenance.json is still the record the engine had when the run began, which is what says who
     wrote each file.
 
-    Matching the pattern is necessary and not sufficient. A match is deleted only when that record
-    hashed it in `generated` or `managed` **and** the bytes on disk are still that hash. So
-    `backlog/notes.md`, written by hand under a directory the factory used to own, and an item file
-    somebody edited after the last produce, are both kept -- and returned in `kept`, for the caller
-    to print, because a file the factory has stopped maintaining and will not remove is something
-    its owner should be told about rather than left to find.
+    Matching the pattern is necessary and not sufficient; what makes it sufficient is the row's
+    witness (RETIRED above). With `WROTE_IT`, a match is deleted only when that record hashed it in
+    `generated` or `managed` **and** the bytes on disk are still that hash. So `backlog/notes.md`,
+    written by hand under a directory the factory used to own, and an item file somebody edited
+    after the last produce, are both kept -- and returned in `kept`, for the caller to print,
+    because a file the factory has stopped maintaining and will not remove is something its owner
+    should be told about rather than left to find. With a named witness, the record is not asked and
+    the witness is: `corpus-map.overlay.json` goes only when `overlay/` carries every key it holds
+    (#247), and an overlay that says anything those files do not is kept and named in exactly the
+    same way.
 
     The bytes are re-hashed rather than trusted from the record, so an edited provenance.json cannot
     talk this into deleting a file: `recipe_versions` does not trust the record either, and for the
-    same reason. Deletion by pathname alone was the first version of this and was wrong.
+    same reason. The witness reads the bytes for the same reason again. Deletion by pathname alone
+    was the first version of this and was wrong.
 
     A directory left empty by the deletions goes too; a directory holding anything else stays, with
     whatever else is in it.
@@ -483,16 +570,14 @@ def remove_retired(out, name):
         for base in sorted(names):
             path = os.path.join(directory, base)
             relative = os.path.relpath(path, out).replace(os.sep, "/")
-            if retired(relative, name) is None:
-                continue
-            if relative not in recorded:
-                kept.append((relative, f"{PROVENANCE} does not record the factory as having written it"))
+            row = retired(relative, name)
+            if row is None:
                 continue
             with open(path, "rb") as handle:
-                digest = sha256(handle.read())
-            if digest != recorded[relative]:
-                kept.append((relative, f"its bytes are not the ones {PROVENANCE} recorded "
-                                       f"({recorded[relative][:12]}...), so it was edited after the last produce"))
+                data = handle.read()
+            why = _unauthorised(out, relative, data, row, recorded)
+            if why is not None:
+                kept.append((relative, why))
                 continue
             os.remove(path)
             removed.append(relative)

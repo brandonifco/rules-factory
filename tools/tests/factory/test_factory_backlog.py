@@ -54,6 +54,19 @@ CASES = {
 FENCE = re.compile(rb"^(`{3,})text\n(.*?)\n\1$", re.S | re.M)
 
 
+def write_overlay(engine, items):
+    """Replace the engine's overlay/ with one file per entry of `items` (#247)."""
+    directory = os.path.join(engine, "overlay")
+    if os.path.isdir(directory):
+        for name in os.listdir(directory):
+            os.remove(os.path.join(directory, name))
+    os.makedirs(directory, exist_ok=True)
+    for entry_id, item in items.items():
+        with open(os.path.join(directory, f"{entry_id}.json"), "w", encoding="utf-8") as handle:
+            json.dump(item, handle, indent=2)
+            handle.write("\n")
+
+
 def run(argv):
     buffer = io.StringIO()
     with redirect_stdout(buffer), redirect_stderr(buffer):
@@ -262,10 +275,9 @@ class BacklogCase(unittest.TestCase):
         self.assertEqual(code, factory.NOT_VERIFIED, log)
         before = self.rendering("part107", engine)
         (item,) = [n for n in before if n.endswith("-speed-limit.md")]
-        with open(os.path.join(engine, "corpus-map.overlay.json"), "w", encoding="utf-8") as handle:
-            json.dump({"speed-limit": {"status": "implemented", "implementedIn": "Rules/Speed.cs",
-                                       "tests": [{"test": "SpeedTests.Limit",
-                                                  "mutation": "returned 88 knots for 87; it went red"}]}}, handle)
+        write_overlay(engine, {"speed-limit": {"status": "implemented", "implementedIn": "Rules/Speed.cs",
+                                               "tests": [{"test": "SpeedTests.Limit",
+                                                          "mutation": "returned 88 knots for 87; it went red"}]}})
         after = self.rendering("part107", engine)
         self.assertIn(item, before)
         self.assertNotIn("speed-limit", {n.split("-", 1)[1][:-3] for n in after if n != "README.md"},
@@ -407,20 +419,21 @@ class BacklogCase(unittest.TestCase):
         ownership = factory.generate.ownership
         self.assertEqual(ownership.retired_conflicts(), [])
         self.assertTrue(ownership._segments_can_overlap("*b.md", "*.md"), "a supported pair, decided exactly")
-        for pattern, expected in (("corpus-map.overlay.json", "corpus-map.overlay.json"),
+        for pattern, expected in (("Directory.Packages.props", "Directory.Packages.props"),
+                                  ("overlay/*.json", "overlay/*.json"),
                                   ("scripts/factory/*.py", "scripts/factory/*.py"),
                                   ("src/*/Generated/*.cs", "src/{name}/Generated/*.g.cs"),
                                   ("*.slnx", "{name}.slnx")):
             with self.subTest(pattern=pattern), \
                     mock.patch.object(ownership, "RETIRED",
-                                      ownership.RETIRED + (ownership.Retired(pattern, "a mistake"),)):
+                                      ownership.RETIRED + (ownership.Retired(pattern, "a mistake", ownership.WROTE_IT),)):
                 self.assertIn((pattern, expected), ownership.retired_conflicts())
                 with self.assertRaisesRegex(ownership.OwnershipError, "overlaps"):
                     ownership.remove_retired(self.engines["part107"], "FaaPart107")
         # And it does not over-approximate: a root-level `.md` retirement reaches nothing, though
         # `{name}.slnx` and `{name}.md`-shaped rows sit at the root beside it. Treating a segment
         # holding `{name}` as matching anything made this a conflict and would have blocked it.
-        with mock.patch.object(ownership, "RETIRED", (ownership.Retired("obsolete.md", "a future retirement"),)):
+        with mock.patch.object(ownership, "RETIRED", (ownership.Retired("obsolete.md", "a future retirement", ownership.WROTE_IT),)):
             self.assertEqual(ownership.retired_conflicts(), [])
 
     def test_a_platform_without_o_nofollow_is_refused_rather_than_written_to(self):
@@ -447,7 +460,7 @@ class BacklogCase(unittest.TestCase):
         for pattern in ("backlog/a*.md", "backlog/*.md.*", "backlog/[0-9]*.md", "backlog/00?.md",
                         "{name}/old.md"):
             with self.subTest(pattern=pattern), \
-                    mock.patch.object(ownership, "RETIRED", (ownership.Retired(pattern, "unsupported"),)):
+                    mock.patch.object(ownership, "RETIRED", (ownership.Retired(pattern, "unsupported", ownership.WROTE_IT),)):
                 with self.assertRaisesRegex(ownership.OwnershipError, "outside the grammar"):
                     ownership.remove_retired(self.engines["part107"], "FaaPart107")
 

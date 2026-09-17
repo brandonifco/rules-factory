@@ -47,6 +47,7 @@ _spec = importlib.util.spec_from_file_location("factory_main_produce", os.path.j
 factory = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(factory)
 generate = factory.generate
+overlay = factory.generate.overlay_step
 
 PART107 = os.path.join(REPO, "examples", "faa-part-107")
 PART107_XML = os.path.join(PART107, "part107.xml")
@@ -63,6 +64,19 @@ GENERATED = (
 )
 PACKAGES_PROPS = "RulesFactory.Packages.g.props"
 MAP_ID = "RulesFactory.Maps.FaaPart107"
+
+
+def write_overlay(engine, items):
+    """Replace the engine's overlay/ with one file per entry of `items` (#247)."""
+    directory = os.path.join(engine, "overlay")
+    if os.path.isdir(directory):
+        for name in os.listdir(directory):
+            os.remove(os.path.join(directory, name))
+    os.makedirs(directory, exist_ok=True)
+    for entry_id, item in items.items():
+        with open(os.path.join(directory, f"{entry_id}.json"), "w", encoding="utf-8") as handle:
+            json.dump(item, handle, indent=2)
+            handle.write("\n")
 
 
 def pack(map_dir, out):
@@ -164,7 +178,7 @@ class TestScaffold(ProduceCase):
         files = set(tree(out))
         for expected in ("global.json", "NuGet.config", "Directory.Build.props", "Directory.Packages.props",
                          f"{NAME}.slnx", f"src/{NAME}/{NAME}.csproj", f"tests/{NAME}.Tests/{NAME}.Tests.csproj",
-                         "corpus-map.overlay.json", "corpus/part107.xml", "provenance.json", PACKAGES_PROPS, *GENERATED):
+                         "corpus/part107.xml", "provenance.json", PACKAGES_PROPS, *GENERATED):
             self.assertIn(expected, files)
         generated_code = {f for f in files if f.endswith(".cs")}
         self.assertEqual(generated_code, set(GENERATED), "every C# file the factory writes is *.g.cs")
@@ -187,7 +201,10 @@ class TestScaffold(ProduceCase):
         build = self.read(out, "Directory.Build.props")
         self.assertIn("<RestorePackagesWithLockFile>true</RestorePackagesWithLockFile>", build)
         self.assertIn("<RestoreLockedMode", build)
-        self.assertEqual(json.loads(self.read(out, "corpus-map.overlay.json")), {})
+        # #247: the overlay is a directory of one file per implemented entry, scaffolded by
+        # nothing. A fresh engine has implemented nothing, so it has no overlay file at all.
+        self.assertFalse(os.path.exists(os.path.join(out, "corpus-map.overlay.json")))
+        self.assertFalse(os.path.isdir(os.path.join(out, "overlay")))
         with open(PART107_XML, "rb") as handle, open(os.path.join(out, "corpus", "part107.xml"), "rb") as copy:
             self.assertEqual(handle.read(), copy.read())
 
@@ -362,8 +379,7 @@ class TestGeneration(ProduceCase):
         os.makedirs(out)
         implemented = {"status": "implemented", "implementedIn": {"ruleset": "faa-part-107", "version": 1},
                        "tests": [{"test": "T.t", "mutation": "m"}]}
-        with open(os.path.join(out, "corpus-map.overlay.json"), "w", encoding="utf-8") as handle:
-            json.dump({"speed-within-limit": implemented, "reasonable-protection": implemented}, handle)
+        write_overlay(out, {"speed-within-limit": implemented, "reasonable-protection": implemented})
         self.produced(out)
         tests = self.read(out, GENERATED[2])
         registry = self.read(out, GENERATED[1])
@@ -568,8 +584,7 @@ class TestRefuses(ProduceCase):
     def overlay(self, content):
         out = os.path.join(self.tmp, "engine")
         os.makedirs(out, exist_ok=True)
-        with open(os.path.join(out, "corpus-map.overlay.json"), "w", encoding="utf-8") as handle:
-            json.dump(content, handle)
+        write_overlay(out, content)
         code, output = self.produce(out)
         self.assertEqual(code, 1, output)
         self.assertIn("REFUSED", output)
@@ -659,6 +674,108 @@ def snapshot(root):
             with open(path, "rb") as handle:
                 entries[os.path.relpath(path, root)] = (os.stat(path).st_mode, handle.read())
     return entries
+
+
+def shared_overlay(engine, document):
+    """`corpus-map.overlay.json` as every engine produced before #247 holds it.
+
+    The file alone is not that state: the record hashed it in `buildInputs`, and the engine had no
+    `overlay/`. A fixture that skipped the record would still migrate -- the split's witness is the
+    content, not the record -- but it would not be the state a real engine is in.
+    """
+    text = json.dumps(document, indent=2) + "\n"
+    path = os.path.join(engine, "corpus-map.overlay.json")
+    with open(path, "w", encoding="utf-8") as handle:
+        handle.write(text)
+    record_path = os.path.join(engine, "provenance.json")
+    with open(record_path, encoding="utf-8") as handle:
+        record = json.load(handle)
+    record["buildInputs"].append({"path": "corpus-map.overlay.json",
+                                  "sha256": hashlib.sha256(text.encode("utf-8")).hexdigest()})
+    record["buildInputs"].sort(key=lambda item: item["path"].encode("utf-8"))
+    record["engineOwned"].append({"path": "corpus-map.overlay.json", "adopted": False})
+    record["engineOwned"].sort(key=lambda item: item["path"].encode("utf-8"))
+    record["provenanceFormat"] = 3
+    with open(record_path, "w", encoding="utf-8") as handle:
+        json.dump(record, handle, indent=2)
+    return path
+
+
+class TestTheOverlayIsOneFilePerEntry(ProduceCase):
+    """#247: `overlay/<entry id>.json`, so two entry branches never write the same file.
+
+    Part B of #242. The shared `corpus-map.overlay.json` was the last file two entry pull requests
+    on one engine were *guaranteed* to collide in, because every implemented entry appended to it.
+    """
+
+    BLOCKED = {"status": "blocked"}
+
+    def test_the_merge_reads_the_files_in_map_order_not_directory_order(self):
+        """Deterministic whatever the filesystem lists first: the map decides the order.
+
+        Written in the reverse of the map's order, and the merge must still come out in the map's.
+        Directory order is not guaranteed by anything -- `os.listdir` is arbitrary, and differs
+        between filesystems -- so an overlay read in it would generate different bytes on two
+        machines from the same files, which is exactly what provenance is meant to rule out.
+        """
+        out = self.produced()
+        first, second = [entry["id"] for entry in self.map["entries"]][:2]
+        self.assertEqual(sorted((first, second)), [second, first],
+                         "the fixture only proves anything if the map's order is not the path order")
+        write_overlay(out, {second: self.BLOCKED, first: self.BLOCKED})
+        self.assertEqual(list(overlay.load(out, self.map)), [first, second],
+                         "the map's order, not the path order and not the order they were written in")
+
+    def test_an_overlay_file_that_names_no_entry_is_still_refused(self):
+        """0015 rule 1, which is also how an entry renamed upstream is caught (#247's non-scope)."""
+        out = self.produced()
+        write_overlay(out, {"no-such-entry": self.BLOCKED})
+        code, output = self.produce(out)
+        self.assertEqual(code, 1, output)
+        self.assertIn("overlay/no-such-entry.json names 'no-such-entry', which the package map has no "
+                      "entry for", output)
+
+    def test_an_engine_produced_before_the_split_is_migrated_by_the_next_produce(self):
+        """The migration, end to end: split, then #246's retirement deletes the file it came from."""
+        out = self.produced()
+        ids = [entry["id"] for entry in self.map["entries"]][:2]
+        shared_overlay(out, {entry_id: self.BLOCKED for entry_id in ids})
+        code, output = self.produce(out)
+        self.assertEqual(code, factory.NOT_VERIFIED, output)
+        self.assertFalse(os.path.exists(os.path.join(out, "corpus-map.overlay.json")),
+                         "the file the split replaced is gone")
+        self.assertIn("migrated corpus-map.overlay.json to 2 file(s) under overlay/", output)
+        self.assertIn("removed 1 file(s) matching the retired pattern corpus-map.overlay.json", output)
+        for entry_id in ids:
+            self.assertEqual(json.loads(self.read(out, f"overlay/{entry_id}.json")), self.BLOCKED)
+        record = json.loads(self.read(out, "provenance.json"))
+        self.assertEqual(record["provenanceFormat"], 4)
+        self.assertEqual({item["path"] for item in record["buildInputs"] if item["path"].startswith("overlay/")},
+                         {f"overlay/{entry_id}.json" for entry_id in ids})
+        self.assertFalse([item for item in record["buildInputs"] + record["engineOwned"]
+                          if item["path"] == "corpus-map.overlay.json"])
+
+    def test_an_overlay_the_split_does_not_carry_is_kept_and_named(self):
+        """The witness is the content, so a file `overlay/` does not account for is nobody's to delete.
+
+        Here the engine has already migrated -- `overlay/` holds one entry -- and somebody has left a
+        `corpus-map.overlay.json` behind saying something else. `split` does not run (the directory is
+        not empty), and the witness refuses the deletion because the files beside it do not carry
+        what it holds. Deleting it on the strength of the pathname would take somebody's work.
+        """
+        out = self.produced()
+        entry_id = self.map["entries"][0]["id"]
+        write_overlay(out, {entry_id: self.BLOCKED})
+        shared_overlay(out, {entry_id: {"status": "implemented", "implementedIn": {"ruleset": "x", "version": 1},
+                                        "tests": []}})
+        code, output = self.produce(out)
+        self.assertEqual(code, factory.NOT_VERIFIED, output)
+        self.assertTrue(os.path.isfile(os.path.join(out, "corpus-map.overlay.json")),
+                        "an overlay the split does not carry was deleted anyway")
+        self.assertIn("kept corpus-map.overlay.json", output)
+        self.assertIn("overlay/ does not carry what it holds", output)
+        self.assertEqual(json.loads(self.read(out, f"overlay/{entry_id}.json")), self.BLOCKED,
+                         "and the migrated files were not rewritten from it either")
 
 
 class TestTransactional(ProduceCase):

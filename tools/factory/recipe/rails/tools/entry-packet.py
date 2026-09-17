@@ -10,7 +10,7 @@ serves; read that first.
 a map for what a rule means re-does the mapping, badly, every time -- and its reading, not the
 published map, ends up in the engine. The map is the interface (rules-factory decision 0001), so
 the assignment is one entry of it, assembled mechanically: the entry as published and merged with
-this engine's overlay, its citation and the evidence verbatim, what it depends on and what those
+this engine's overlay file for it, its citation and the evidence verbatim, what it depends on and what those
 entries are, what enables or suspends it, where its cross-references land, the owner's rulings
 that apply to it, the handler the generated code declares once the entry is `implemented` -- the
 one the work has to produce, not the one on disk while it is still `mapped` -- and the obligations
@@ -55,7 +55,7 @@ import types
 sys.dont_write_bytecode = True
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]
-OVERLAY = "corpus-map.overlay.json"
+OVERLAY = "overlay"
 PROVENANCE = "provenance.json"
 PACKET_ROOT_VARIABLE = "RULES_ENGINE_PACKET_ROOT"
 
@@ -122,12 +122,15 @@ def model_for(package_map_path, name, package_id, version, randomness):
     sys.path.insert(0, str(ROOT / "scripts" / "factory"))
     try:
         import generate  # noqa: E402  (the factory's generator, vendored by produce)
+        import overlay as overlay_step  # noqa: E402  (one file per entry under overlay/, #247)
         import rulings  # noqa: E402  (the owner's rulings the overlay holds, decision 0027)
     except ImportError as error:
         raise Refused(f"scripts/factory is not importable ({error}); run `factory produce` again")
     package = read_json(package_map_path, "the map package's map")
-    overlay_path = ROOT / OVERLAY
-    overlay = read_json(overlay_path, "the overlay") if overlay_path.is_file() else {}
+    try:
+        overlay = overlay_step.load(str(ROOT), package)
+    except overlay_step.OverlayError as error:
+        raise Refused(str(error))
     try:
         merged = generate.merge(package, overlay, root=str(ROOT))
         model = generate.Model(types.SimpleNamespace(package_id=package_id, version=version, randomness=randomness),
@@ -255,9 +258,11 @@ def packet(generate, model, overlay, item, identity):
 
     lines.append("## 3. What this engine records about it\n")
     row = overlay.get(entry_id)
-    lines.append(f"Overlay row (`{OVERLAY}`, the three fields the engine owns under decision 0015):\n")
-    lines.append(block(row) if row is not None else "This entry has no overlay row yet. Adding one is part of the "
-                                                   "work: `status`, `implementedIn` and `tests`.")
+    lines.append(f"This entry's overlay file (`{OVERLAY}/{entry_id}.json`, the three fields the engine owns "
+                 f"under decision 0015; one file per entry, so it is yours alone to write):\n")
+    lines.append(block(row) if row is not None else f"This entry has no overlay file yet. Writing "
+                                                    f"`{OVERLAY}/{entry_id}.json` is part of the work: `status`, "
+                                                    f"`implementedIn` and `tests`.")
     lines.append(f"\nCorrespondence row: {item['row'] if item['row'] else 'none (not plainly computable)'}\n")
 
     lines.append("## 4. Dependencies and reachability\n")
@@ -309,7 +314,7 @@ def packet(generate, model, overlay, item, identity):
                  f"properties in a file of your own. Do not edit anything under `Generated/`.\n")
 
     lines.append("## 8. What the gate will ask of you\n")
-    lines.append(f"- Every test you write is named in this entry's `tests`, in `{OVERLAY}`, with the mutation that "
+    lines.append(f"- Every test you write is named in this entry's `tests`, in `{OVERLAY}/{entry_id}.json`, with the mutation that "
                  "makes it fail — and you must have watched it fail. A test nobody has watched fail is not yet a "
                  "test.\n"
                  "- The whole gate, not a narrower command: `./scripts/validate.sh full`.\n"

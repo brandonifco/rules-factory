@@ -192,13 +192,20 @@ red, and only the engine knows those. With two fields, an engine could set `impl
 `status` for missing `tests`, and have no way to add them. It could never honestly close an entry
 (method.md, Phase 8). **Brandon should confirm this reading.**
 
-The overlay is the engine's own file: `{ "<entry id>": { "status": …, "implementedIn": …,
-"tests": [ … ] } }`. `merge(package, overlay)` is defined as follows, and each rule is part of
-the check:
+The overlay is the engine's own. It was one file, `corpus-map.overlay.json`, holding
+`{ "<entry id>": { "status": …, "implementedIn": …, "tests": [ … ] } }`; since
+[#247](https://github.com/brandonifco/rules-factory/issues/247) it is a **directory**,
+`overlay/<entry id>.json`, each file holding one entry's object and nothing else. The reason is
+merges, not meaning: a shared file every implemented entry appends to is a file two entry branches
+always conflict in. The three fields, the merge and every rule below are unchanged — read "the
+overlay" as the union of those files, in the package map's entry order, which is the order they are
+read in whatever a filesystem lists first.
 
-1. **Every overlay key names an entry in the package map.** An upstream rename or removal fails
-   here, not silently.
-2. **Every overlay item sets `status`, and holds no key outside the three.**
+`merge(package, overlay)` is defined as follows, and each rule is part of the check:
+
+1. **Every overlay file names an entry in the package map** — its name is the entry id. An upstream
+   rename or removal fails here, not silently.
+2. **Every overlay file sets `status`, and holds no key outside the three.**
 3. **For a named entry, the three fields come from the overlay alone.** Remove them from the
    upstream entry, then set the ones the overlay item carries. An overlay can therefore state
    any build state, including "no longer implemented". Every other field of the entry stays

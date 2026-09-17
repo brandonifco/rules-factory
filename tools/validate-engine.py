@@ -241,6 +241,18 @@ def remove_build_output(engine):
                 os.remove(path)
 
 
+def write_overlay(root, document):
+    """The engine's overlay/ as `document` says: one file per entry, `overlay/<entry id>.json` (#247)."""
+    directory = os.path.join(root, "overlay")
+    if os.path.isdir(directory):
+        for name in os.listdir(directory):
+            os.remove(os.path.join(directory, name))
+    # An engine with no implemented entry has no overlay/ at all: nothing scaffolds one (#247).
+    os.makedirs(directory, exist_ok=True)
+    for entry_id, item in json.loads(document).items():
+        write(os.path.join(directory, f"{entry_id}.json"), json.dumps(item, indent=2) + "\n")
+
+
 def copy_engine(source, destination):
     """`cp -R source destination`, then its build output removed."""
     shutil.copytree(source, destination, symlinks=True)
@@ -574,7 +586,7 @@ def a_mistyped_handler_is_a_build_error(r):
     step("a missing or mis-typed handler for an implemented entry is a build error")
     typed = r.s("typed")
     copy_engine(r.engine, typed)
-    write(os.path.join(typed, "corpus-map.overlay.json"), PLAYER_COUNT_OVERLAY)
+    write_overlay(typed, PLAYER_COUNT_OVERLAY)
     with open(os.devnull, "wb") as null:
         check(unverified_produce(["--package", r.package, "--corpus", CORPUS, "--name", NAME, "--out", typed], stdout=null))
     if not grep_fixed(os.path.join(typed, "src", NAME, "Generated", "Contracts.g.cs"),
@@ -599,8 +611,9 @@ def a_mistyped_handler_is_a_build_error(r):
 # overlay. `regenerate --write` refreshes the generated C# and nothing else, so on its own it leaves
 # a record hashing bytes that are gone and hashing the overlay as it was before the edit -- which is
 # what the live run of #157 merged, because the gate did not look. Since #243 took the backlog out
-# of the engine, `buildInputs[corpus-map.overlay.json]` is the only comparison that carries this
-# case, and this is where it is proven on a real engine end to end. On the same
+# of the engine, `buildInputs[overlay/<entry id>.json]` is the only comparison that carries this
+# case -- compared as a set since #247, so an entry's evidence added, as it is here, is caught like
+# one edited -- and this is where it is proven on a real engine end to end. On the same
 # scratch copy as the check above, and with no extra dotnet build: mark an entry implemented,
 # regenerate, and hold the gate's own provenance step to failing and then, after a produce, passing.
 def a_stale_record_fails_the_gate(r):
@@ -616,7 +629,7 @@ def a_stale_record_fails_the_gate(r):
                 handle.write(archive.read(member))
     package_id = re.search(r"<id>([^<]+)</id>", nuspec).group(1)
     version = re.search(r"<version>([^<]+)</version>", nuspec).group(1)
-    write(os.path.join(stale, "corpus-map.overlay.json"), PLAYER_COUNT_OVERLAY)
+    write_overlay(stale, PLAYER_COUNT_OVERLAY)
 
     log = r.s("stale.log")
     gate = [PYTHON, "scripts/engine-gate.py"]
@@ -631,7 +644,7 @@ def a_stale_record_fails_the_gate(r):
     if run_to(log, gate + ["provenance"], cwd=stale, both=True) == 0:
         tail(log, 20)
         fail("the gate passed on an engine whose record is older than the overlay it was generated from")
-    for named in ("buildInputs[corpus-map.overlay.json]", "tools/re-produce.sh"):
+    for named in ("buildInputs[overlay/player-count.json]", "tools/re-produce.sh"):
         if not grep_fixed(log, named):
             tail(log, 20)
             fail(f"the stale-record failure does not name {named}")
@@ -792,7 +805,7 @@ def an_owners_ruling_is_surfaced(r):
     os.makedirs(os.path.join(typed, "docs", "decisions"), exist_ok=True)
     write(os.path.join(typed, "docs", "decisions", "0001-scratch-ruling.md"),
           "# 0001: a scratch ruling\n\nThe owner ruled; this record holds it.\n")
-    write(os.path.join(typed, "corpus-map.overlay.json"), RULING_OVERLAY)
+    write_overlay(typed, RULING_OVERLAY)
     if unverified_produce_to(log, ["--package", r.package, "--corpus", CORPUS, "--name", NAME, "--out", typed]) != 0:
         tail(log, 20)
         fail("produce refused an overlay with a well-formed owner's ruling")

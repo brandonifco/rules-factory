@@ -281,11 +281,11 @@ class TestTheRuleReadsTheMergeNotTheOverlay(unittest.TestCase):
         self.assertIn("come from the map package, not this engine's overlay", found[0])
         self.assertIn("no re-produce here will change it", found[0])
         self.assertNotIn("Make the edit, watch the test fail, undo it, record it in "
-                         "corpus-map.overlay.json", found[0])
+                         "`overlay/speed-limit.json`", found[0])
 
     def test_the_same_placeholder_from_the_overlay_names_the_overlay(self):
         message = problems(overlay("PENDING"))[0]
-        self.assertIn("record it in corpus-map.overlay.json, and re-produce", message)
+        self.assertIn("record it in `overlay/speed-limit.json`, and re-produce", message)
         self.assertNotIn("come from the map package", message)
 
     def test_a_real_mutation_in_the_package_map_merges(self):
@@ -350,15 +350,18 @@ class TestTheCommandLineRefuses(unittest.TestCase):
         self.tool = os.path.join(scripts, "map-overlay.py")
         shutil.copy(RECIPE, self.tool)
         shutil.copy(os.path.join(FACTORY, "rulings.py"), os.path.join(scripts, "factory", "rulings.py"))
+        shutil.copy(os.path.join(FACTORY, "overlay.py"), os.path.join(scripts, "factory", "overlay.py"))
         self.package_map = os.path.join(self.tmp, "package-map.json")
-        self.overlay = os.path.join(self.tmp, "corpus-map.overlay.json")
+        self.overlay = os.path.join(self.tmp, "overlay")
         self.out = os.path.join(self.tmp, "corpus-map.json")
         with open(self.package_map, "w", encoding="utf-8") as handle:
             json.dump(PACKAGE, handle)
 
     def run_tool(self, mutation, *argv):
-        with open(self.overlay, "w", encoding="utf-8") as handle:
-            json.dump(overlay(mutation), handle)
+        os.makedirs(self.overlay, exist_ok=True)
+        for entry_id, item in overlay(mutation).items():
+            with open(os.path.join(self.overlay, f"{entry_id}.json"), "w", encoding="utf-8") as handle:
+                json.dump(item, handle)
         result = subprocess.run([sys.executable, self.tool, *argv, "--package-map", self.package_map,
                                  "--overlay", self.overlay],
                                 capture_output=True, text=True,

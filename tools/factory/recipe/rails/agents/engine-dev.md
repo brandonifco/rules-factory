@@ -39,8 +39,9 @@ You do not need to read the whole corpus, and you should not try. The packet is 
 - Write tests that prove the mapped rule, not tests that describe the code you wrote. For each,
   **record in the overlay the mutation that makes it fail, and actually observe it fail.** A test
   nobody has watched fail is not yet a test.
-- Finish an overlay change properly, in this order. The entry's overlay object gets `status:
-  implemented`, its `implementedIn`, and its `tests` — each with the mutation you actually watched
+- Finish an overlay change properly, in this order. The entry's own file, `overlay/<entry
+  id>.json` — yours alone, which is why two entry branches no longer collide — gets `status:
+  implemented`, its `implementedIn`, and its `tests`, each with the mutation you actually watched
   fail. Then `tools/re-produce.sh`, which re-produces this engine from the factory commit the
   record names — one command, and the only thing that brings the generated C# and
   `provenance.json` back into step with the overlay together. Regenerating the C# alone does not:
@@ -68,7 +69,7 @@ You do not need to read the whole corpus, and you should not try. The packet is 
   serialisation instead. Editing either so the gate goes green is the same defect as editing a
   baseline: it is the check you are changing, not the thing it checks. This engine has no
   `backlog/` to edit either — the backlog lives in the issues, and `factory backlog --render`
-  prints it from the map and the overlay whenever you want to read it.
+  prints it from the map and `overlay/` whenever you want to read it.
 - **Do not widen the change.** An unrelated defect you notice is a new issue, not a second commit
   on this branch. Say you found it; do not fix it here.
 - **Do not bulk-stage.** `git add <explicit paths>`, never `git add -A` or `git add .`.

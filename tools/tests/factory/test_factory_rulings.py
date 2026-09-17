@@ -60,6 +60,19 @@ RULED_TEST = "MustPlayWholeThrowEntryPointTests.A_number_left_after_the_last_man
 DECLINE_TEST = "BearingOffEligibilityTests.A_man_re_entered_after_bearing_off_began_is_the_case_the_corpus_does_not_settle"
 
 
+def write_overlay(engine, items):
+    """Replace the engine's overlay/ with one file per entry of `items` (#247)."""
+    directory = os.path.join(engine, "overlay")
+    if os.path.isdir(directory):
+        for name in os.listdir(directory):
+            os.remove(os.path.join(directory, name))
+    os.makedirs(directory, exist_ok=True)
+    for entry_id, item in items.items():
+        with open(os.path.join(directory, f"{entry_id}.json"), "w", encoding="utf-8") as handle:
+            json.dump(item, handle, indent=2)
+            handle.write("\n")
+
+
 def worked_example():
     """The overlay item `bearing-off-eligible` carries once Brandon's ruling of 2026-09-15 moves into it."""
     return {"bearing-off-eligible": {
@@ -440,8 +453,7 @@ class ProducedCase(unittest.TestCase):
         os.makedirs(self.out, exist_ok=True)
         if record:
             write_record(self.out)
-        with open(os.path.join(self.out, "corpus-map.overlay.json"), "w", encoding="utf-8") as handle:
-            json.dump(overlay, handle, indent=2)
+        write_overlay(self.out, overlay)
 
     def read(self, relative):
         with open(os.path.join(self.out, *relative.split("/")), encoding="utf-8") as handle:
@@ -548,7 +560,7 @@ class TestGate(ProducedCase):
 
     def merge(self):
         return self.script("map-overlay.py", "merge", "--package-map", self.package_map,
-                           "--overlay", os.path.join(self.out, "corpus-map.overlay.json"), "--out", self.merged)
+                           "--overlay", os.path.join(self.out, "overlay"), "--out", self.merged)
 
     def test_the_worked_example_merges_without_its_rulings_and_is_reported(self):
         self.with_overlay(worked_example())
@@ -622,11 +634,10 @@ class TestTheGateRefusesARulingItsBoundsForbid(ProducedCase, BoundedCase):
             json.dump(self.package, handle)
 
     def merge(self, overlay):
-        with open(os.path.join(self.out, "corpus-map.overlay.json"), "w", encoding="utf-8") as handle:
-            json.dump(overlay, handle, indent=2)
+        write_overlay(self.out, overlay)
         merged = os.path.join(self.tmp, "merged.json")
         return self.script("map-overlay.py", "merge", "--package-map", self.package_map,
-                           "--overlay", os.path.join(self.out, "corpus-map.overlay.json"), "--out", merged)
+                           "--overlay", os.path.join(self.out, "overlay"), "--out", merged)
 
     def test_the_eighteen_month_ruling_fails_the_gate_naming_the_bound(self):
         code, output = self.merge(self.overlay(self.line("<=", "P18M")))

@@ -39,7 +39,7 @@ must hold:
      re-locks (#94), or the **deletion** of a file under a retired pattern whose base-commit bytes
      are the ones the base commit's `provenance.json` hashed -- the same test the remover applies,
      so the policy and the run agree about who owned a file (#243). One hand-written `.cs`, one
-     overlay edit, one edit to `.github/agent-policy.json`
+     overlay file, one edit to `.github/agent-policy.json`
      voids the claim, by name, and the pull request is judged as the ordinary pull request it is.
 
 The file set this can ever cover is exactly the set nobody may hand-edit anyway (AGENTS.md section
@@ -65,7 +65,6 @@ owns. Standard library only, plus `gh` (or `$RULES_ENGINE_GH`).
 import argparse
 import base64
 import binascii
-import hashlib
 import json
 import os
 import pathlib
@@ -271,33 +270,29 @@ def base_record(base_oid):
     return record if isinstance(record, dict) else None
 
 
-def recorded_hash(record, path):
-    """The SHA-256 `record` records for `path` as a file the factory wrote, or None.
+def the_factorys_to_delete(path, base_oid, base, ownership, name):
+    """Whether the bytes deleted at `path` are ones the factory is entitled to remove.
 
-    `generated` and `managed` only. `engineOwned` says the opposite and carries no hash;
-    `buildInputs` says only which bytes were there, not who put them there.
+    **The same line `ownership.remove_retired` draws**, and it has to be: it is literally the same
+    function (`ownership.authorised`), given the base commit's bytes and the base commit's record
+    instead of the staging copy's. A retirement is authorised by what the bytes are -- the record
+    hashing them as the factory's own output (#243), or a witness showing this run moved them
+    somewhere they still are (#247) -- and never by the pathname. A file that was generated once and
+    hand-edited afterwards without a re-produce is recorded under its old hash, so the path is in
+    the record and the bytes are not the factory's; the remover keeps such a file, and so this must
+    refuse its deletion, or the policy and the run would disagree about who owned it. So the base
+    bytes are fetched and handed over, not just looked up by name.
+
+    `ROOT` is the head tree the workflow checked out, which is what a witness reads: for the
+    overlay's, whether `overlay/` **in this pull request** carries every key the deleted file held.
     """
-    for section in ("generated", "managed"):
-        for item in (record or {}).get(section) or []:
-            if isinstance(item, dict) and item.get("path") == path and isinstance(item.get("sha256"), str):
-                return item["sha256"]
-    return None
-
-
-def factory_wrote_the_deleted_file(path, base_oid, base):
-    """Whether the bytes deleted at `path` are the ones the base record says the factory wrote.
-
-    **The same line `ownership.remove_retired` draws**, and it has to be: a file that was generated
-    once and hand-edited afterwards without a re-produce is recorded under its old hash, so the path
-    is in the record and the bytes are not the factory's. The remover keeps such a file; without the
-    hash this would have admitted its deletion, and the policy and the run would disagree about who
-    owned it. So the base bytes are fetched and hashed, not just looked up by name.
-    """
-    recorded = recorded_hash(base, path)
-    if recorded is None:
-        return False
     data = base_bytes(base_oid, path)
-    return data is not None and hashlib.sha256(data).hexdigest() == recorded
+    if data is None:
+        return False
+    try:
+        return ownership.authorised(str(ROOT), path, data, name, base)
+    except (ownership.OwnershipError, AttributeError):
+        return False
 
 
 def factory_written(path, change, ownership, name, attributed):
@@ -311,14 +306,14 @@ def factory_written(path, change, ownership, name, attributed):
     A **retired** pattern (`ownership.RETIRED`) is one the factory used to write and now deletes, so
     a migration produce's deletions are its work and not somebody's decision carried in beside them.
     That is a narrow admission and it is written narrowly: the change must be a **deletion**
-    (`changeType == "REMOVED"`), and `attributed` -- `factory_wrote_the_deleted_file`, the same test
-    the remover applies -- must say the base commit's bytes at that path are the ones the base
-    record hashed. A hand-written `backlog/notes.md` matches the pattern too, and so does one the
-    factory wrote and somebody has edited since; adding, editing or deleting either is a decision,
-    and voids the claim like any other. Matching the pattern alone was the first version of this and
-    was wrong.
+    (`changeType == "REMOVED"`), and `attributed` -- `the_factorys_to_delete`, which calls the same
+    `ownership.authorised` the remover does -- must say so of the base commit's bytes at that path.
+    A hand-written `backlog/notes.md` matches the pattern too, and so does one the factory wrote and
+    somebody has edited since; a `corpus-map.overlay.json` holding a key `overlay/` does not is
+    another (#247). Adding, editing or deleting any of them is a decision, and voids the claim like
+    any other. Matching the pattern alone was the first version of this and was wrong.
 
-    Everything else an engine owns -- its overlay, its projects, its rails configuration, its
+    Everything else an engine owns -- its overlay files, its projects, its rails configuration, its
     hand-written code -- is a decision the factory did not make, and is what voids a claim.
     """
     if getattr(ownership, "retired", None) is not None and ownership.retired(path, name) is not None:
@@ -386,7 +381,7 @@ def check_produce(body, filled, changed, findings, base_oid=None):
                             f"could not be read, so whether the factory ever wrote that file is unknown. A "
                             f"deletion this check cannot attribute is not admitted")
         else:
-            attributed = lambda path: factory_wrote_the_deleted_file(path, base_oid, base)  # noqa: E731
+            attributed = lambda path: the_factorys_to_delete(path, base_oid, base, ownership, name)  # noqa: E731
     smuggled = []
     for path in sorted(changed):
         try:

@@ -33,6 +33,11 @@ and one managed row is added (`tools/re-produce.sh`).
 backlog is no longer a file the factory writes, so `backlog/*.md` leaves the table. See
 *Amendment — the backlog is a projection, not an output* below. No remaining row changes class.
 
+**Amended 2026-09-17** for [#247](https://github.com/brandonifco/rules-factory/issues/247): the
+engine's overlay is a directory, one file per entry, so the `corpus-map.overlay.json` row becomes
+`overlay/*.json`. See *Amendment — the overlay is one file per entry* below. It stays
+engine-owned; no row changes class.
+
 ## Amendment — an overlay edit is finished by a re-produce
 
 `provenance.json` and `backlog/*.md` are **generated**, which by this decision means `factory
@@ -55,7 +60,8 @@ of the recorded commit silently rewrites the gate, the rails and the vendored ge
 implementation pull request.
 
 - **What the check compares, and why not more.** Every `generated` entry, every `managed` entry,
-  and `buildInputs[corpus-map.overlay.json]` — and no other build input. Adding a
+  and the overlay entirely — `buildInputs[overlay/*.json]`, as a set since #247, so a file added or
+  removed is a mismatch as loudly as one edited — and no other build input. Adding a
   `PackageReference`, a project to the `.slnx`, or a version to `Directory.Packages.props` are
   legitimate engine-owned acts under this decision; making each of them require a re-produce
   before the gate goes green produces a gate people route around. Holding the whole of
@@ -90,6 +96,41 @@ cannot be done. Four independent blockers, all in `tools/factory/provenance.py`:
 
 So the engine compares and never writes, and `tools/factory/backlog.py` is deliberately not
 vendored into an engine and stays that way.
+
+## Amendment — the overlay is one file per entry
+
+`corpus-map.overlay.json` was **engine-owned**: one shared JSON object, keyed by entry id, holding
+the three fields 0015 gives an engine. It is now `overlay/<entry id>.json`, one file per entry
+([#247](https://github.com/brandonifco/rules-factory/issues/247), part B of the design decision on
+[#242](https://github.com/brandonifco/rules-factory/issues/242)), and the row changes with it. The
+class does not: an overlay file is the engine's, written once by whoever implements the entry and
+never touched by a `produce` — except the one `produce` that migrates an engine to this layout.
+
+**Why.** Every implemented entry appended to the one object, so two entry branches cut from the
+same commit were *guaranteed* to collide in it, whatever else they touched. It was the last such
+file after #243. What 0015 says an engine owns is unchanged; only where the bytes sit moved.
+
+**Two things follow for this record.**
+
+*The scaffold.* Nothing writes an empty overlay any more. `produce` used to write
+`corpus-map.overlay.json` as `{}` when an engine had none; a directory has no equivalent, and an
+engine that has implemented nothing has nothing to say. So `overlay/*.json` is the one engine-owned
+row with no scaffold, and `provenance.json`'s `engineOwned` lists the files that are there rather
+than the pattern. The gate's "a check that examines nothing is a failure" is then carried by
+`provenanceFormat`, which is 4 from #247 on: a record written before the split describes a layout
+the engine does not have, and is refused rather than compared against nothing.
+
+*The retirement.* `corpus-map.overlay.json` joins `RETIRED`, and the migrating `produce` deletes it
+— but the rule #243 wrote cannot authorise that deletion. That rule is "the engine's own record
+hashed these bytes in `generated` or `managed`", and the overlay is in neither: the factory never
+wrote the engine's evidence and cannot claim to have. What authorises this one is different in kind
+and no weaker. The run **moved** the content, so before deleting anything it parses the bytes it is
+about to delete and requires the `overlay/*.json` files beside them to hold every key and every
+value (`ownership.WITNESSES`, `overlay.superseded_by_split`). An overlay those files do not account
+for is kept where it is and named in the run's output, exactly as a hand-edited `backlog/notes.md`
+is. Both answers are reached by reading the bytes; neither is reached from the pathname. The
+engine's `tools/pr-policy.py` asks the same function the same question about the base commit's
+bytes, so the run and the policy cannot disagree about who owned a file.
 
 ## Amendment — the backlog is a projection, not an output
 
@@ -309,20 +350,20 @@ written path the table does not classify.
 | `scripts/engine-gate.py` | generated |  | Gate recipe: the non-dotnet checks. |
 | `scripts/factory/*.py` | generated |  | The factory's generator, vendored so the gate can regenerate without the factory. |
 | `.github/workflows/validate.yml` | generated |  | Gate recipe: CI runs `validate.sh full`. |
-| `AGENTS.md` | managed | 9 | The governing contract every agent works the engine under (0029). Managed, not generated: a team may amend its own contract, and the factory must then either carry the amendment or refuse and say so, never silently overwrite it. |
+| `AGENTS.md` | managed | 10 | The governing contract every agent works the engine under (0029). Managed, not generated: a team may amend its own contract, and the factory must then either carry the amendment or refuse and say so, never silently overwrite it. |
 | `CLAUDE.md` | managed | 1 | A pointer to `AGENTS.md` and an index of the Claude adapters. It states no rule of its own, so it cannot drift from the contract. |
 | `docs/agent-team.md` | managed | 4 | The four roles and what each may not do (0029). |
-| `.claude/agents/engine-dev.md` | managed | 7 | The implementer's charter. |
+| `.claude/agents/engine-dev.md` | managed | 8 | The implementer's charter. |
 | `.claude/agents/repo-steward.md` | managed | 1 | The structural reviewer's charter, read-only. |
 | `.claude/agents/rules-conformance.md` | managed | 3 | The semantic reviewer's charter, read-only. |
 | `.claude/hooks/primary-checkout-guard.py` | managed | 1 | The `PreToolUse` guard keeping implementation work out of the primary checkout. Policy, and the engine that must change it adopts it. |
 | `.claude/settings.json` | managed | 1 | Which tools the guard runs before. |
 | `tools/dispatch-agent.sh` | managed | 3 | One issue, one worktree, one branch; it refuses what is not ready to work (0029). |
 | `tools/new-issue.sh` | managed | 2 | An issue with the shape the rails expect, at the ready state and normal risk. `--produce` swaps in the body for a `factory produce` update, and promotes nothing (#193). |
-| `tools/entry-packet.py` | managed | 4 | The bounded assignment for one entry, assembled from merge(package, overlay) so it cannot carry a reading of its own. |
-| `tools/re-produce.sh` | managed | 3 | Re-runs `factory produce` on the engine from the factory commit `provenance.json` names. The record is generated, so an overlay edit is only finished by a produce, and prose describing that clone is a procedure an operator can get wrong (#192). |
-| `tools/review-packet.py` | managed | 1 | Everything a reviewer needs about one pull request, in the order it is meant to be read. |
-| `tools/pr-policy.py` | managed | 4 | The pull request contract, checked mechanically: one linked issue, every section filled, output rather than a claim. A `factory produce` update's claim is checked against `provenance.json` and this table, never taken (#193). A retired path counts only as a deletion the base commit's record attributes to the factory (#243). |
+| `tools/entry-packet.py` | managed | 5 | The bounded assignment for one entry, assembled from merge(package, overlay) so it cannot carry a reading of its own. |
+| `tools/re-produce.sh` | managed | 4 | Re-runs `factory produce` on the engine from the factory commit `provenance.json` names. The record is generated, so an overlay edit is only finished by a produce, and prose describing that clone is a procedure an operator can get wrong (#192). |
+| `tools/review-packet.py` | managed | 2 | Everything a reviewer needs about one pull request, in the order it is meant to be read. |
+| `tools/pr-policy.py` | managed | 5 | The pull request contract, checked mechanically: one linked issue, every section filled, output rather than a claim. A `factory produce` update's claim is checked against `provenance.json` and this table, never taken (#193). A retired path counts only as a deletion the base commit's record attributes to the factory (#243). |
 | `tools/record-verdict.py` | managed | 1 | A review verdict as a commit status on the exact commit reviewed, so a later commit invalidates it by itself. |
 | `tools/conformance-gate.py` | managed | 2 | Whether the verdicts this change needs are recorded at the commit being merged. A truncated file list is undecidable rather than a small change (#193). |
 | `tools/requeue-gate.py` | managed | 1 | Asks the gate to report again at the commit a recorded verdict names, so recording the verdict is the whole of the step (#191). It writes no status and no check run of its own. |
@@ -339,7 +380,7 @@ written path the table does not classify.
 | `{name}.slnx` | engine-owned |  | The engine adds projects to its solution. |
 | `src/{name}/{name}.csproj` | engine-owned |  | The engine adds references and files. The map reference lives in the generated props. |
 | `tests/{name}.Tests/{name}.Tests.csproj` | engine-owned |  | The engine adds test references. |
-| `corpus-map.overlay.json` | engine-owned |  | The engine's three fields per entry (0015). The factory must never overwrite it. |
+| `overlay/*.json` | engine-owned |  | The engine's three fields for **one** entry, `overlay/<entry id>.json` (0015, #247). One file per entry, so two entry branches never write the same one. Scaffolded by nothing: a file appears when an entry is implemented, and `produce` writes one only to migrate an engine produced before the split. The factory must never overwrite one. |
 | `.github/agent-policy.json` | engine-owned |  | The engine's own rails configuration: label strings, review contexts, the ordered independent-review chain, the worktree variables (0029). Written once; a factory change must never undo a consumer's provider chain. |
 | `src/{name}/packages.lock.json` | engine-owned |  | Written by `verify`'s first restore (#70) in the staging copy, only when there is no lock file yet, and committed with the engine. After that, the engine relocks (`scripts/validate.sh lock`), reviews and commits it. A `produce` rewrites it only when that run changed the generated pins: it re-locks before the gate (#94, *Amendment* above). |
 | `tests/{name}.Tests/packages.lock.json` | engine-owned |  | The same, for the test project. |
