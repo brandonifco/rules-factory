@@ -24,6 +24,7 @@ import io
 import json
 import os
 import shutil
+import struct
 import subprocess
 import sys
 import tempfile
@@ -299,6 +300,142 @@ class TestPackageIsData(IntakeCase):
         self.assertEqual(result.checker_raw, self.script)
         self.assertEqual(result.part_paths["checker"], "tools/check-map.py")
         self.assertFalse(os.path.exists(self.sentinel), "the package's checker ran")
+
+
+class TestNothingIsReadWithoutALimit(IntakeCase):
+    """#187: a package is bounded on the way in, before any of it has been verified.
+
+    Every guarantee intake offers is computed from bytes it already holds, so the caps are the
+    only thing standing between a hostile or broken package and the operator's memory or disk.
+    """
+
+    def repacked(self, name, member, data, compress_type=zipfile.ZIP_STORED):
+        """Hoyle's package with one member replaced, stored or deflated as asked."""
+        target = os.path.join(self.tmp, name)
+        with zipfile.ZipFile(self.hoyle) as src, zipfile.ZipFile(target, "w") as dst:
+            for info in src.infolist():
+                if info.filename == member:
+                    info = zipfile.ZipInfo(member, date_time=info.date_time)
+                    info.compress_type = compress_type
+                    dst.writestr(info, data)
+                else:
+                    dst.writestr(info, src.read(info.filename))
+        return target
+
+    def opens_during(self, call):
+        """(the exception, the member names intake actually opened) -- what proves "unread"."""
+        opened = []
+        original = zipfile.ZipFile.open
+
+        def spy(archive, name, *args, **kwargs):
+            opened.append(name if isinstance(name, str) else name.filename)
+            return original(archive, name, *args, **kwargs)
+
+        zipfile.ZipFile.open = spy  # ZipFile.read() goes through open(), so it is caught here too
+        try:
+            with self.assertRaises(intake.Refused) as raised:
+                call()
+        finally:
+            zipfile.ZipFile.open = original
+        return raised.exception, opened
+
+    def test_a_member_over_the_size_cap_is_refused_without_being_read(self):
+        oversized = intake.MAX_MEMBER_BYTES + 1
+        package = self.repacked("big-map.nupkg", "map/corpus-map.json", b"x" * oversized)
+        error, opened = self.opens_during(lambda: intake.read_package(package))
+        self.assertIn(str(oversized), str(error))
+        self.assertIn(str(intake.MAX_MEMBER_BYTES), str(error))
+        self.assertNotIn("map/corpus-map.json", opened, "the oversized member was read before it was refused")
+
+    def test_a_member_over_the_compression_ratio_is_refused_without_being_read(self):
+        """Under the size cap and still a bomb: 4 MiB of zeros is a few KB on the wire."""
+        package = self.repacked("bomb.nupkg", "map/corpus-map.json", b"\0" * (4 * 1024 * 1024),
+                                compress_type=zipfile.ZIP_DEFLATED)
+        error, opened = self.opens_during(lambda: intake.read_package(package))
+        self.assertIn(f"over the {intake.MAX_COMPRESSION_RATIO}", str(error))
+        self.assertNotIn("map/corpus-map.json", opened)
+
+    def test_a_member_that_declares_less_than_it_holds_is_refused_not_a_traceback(self):
+        """`file_size` is the package's claim, not a measurement -- so a package can lie about it.
+
+        It does not get more memory by lying: zipfile stops at the declared size and the CRC then
+        fails. What this asserts is that the failure comes out as a refusal.
+        """
+        member = "map/corpus-map.json"
+        package = self.repacked("liar.nupkg", member, b"y" * 4096, zipfile.ZIP_DEFLATED)
+        with open(package, "rb") as handle:  # understate the member in both headers, as a hostile packer would
+            raw = handle.read().replace(struct.pack("<I", 4096), struct.pack("<I", 16))
+        with open(package, "wb") as handle:
+            handle.write(raw)
+        with zipfile.ZipFile(package) as archive:
+            self.assertEqual(archive.getinfo(member).file_size, 16)
+            with self.assertRaises(intake.Refused) as raised:
+                intake._read_member(archive, member)
+        self.assertIn("cannot be read as the 16 bytes it declares", str(raised.exception))
+
+    def test_a_package_that_passes_is_unaffected_by_the_caps(self):
+        """The caps are sized off real packages; the ones this factory builds are far under them."""
+        self.assert_passes(self.hoyle, HOYLE_TEXT)
+        with zipfile.ZipFile(self.hoyle) as archive:
+            for info in archive.infolist():
+                self.assertLess(info.file_size, intake.MAX_MEMBER_BYTES)
+        self.assertLess(os.path.getsize(self.hoyle), intake.MAX_PACKAGE_BYTES)
+
+
+class FakeResponse:
+    """A urlopen response that serves `body` in chunks, or raises partway through."""
+
+    def __init__(self, body, fail_after=None):
+        self.stream, self.fail_after, self.served = io.BytesIO(body), fail_after, 0
+
+    def read(self, size):
+        if self.fail_after is not None and self.served >= self.fail_after:
+            raise OSError("the mirror hung up")
+        chunk = self.stream.read(size)
+        self.served += len(chunk)
+        return chunk
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *exc):
+        return False
+
+
+class TestDownloadIsBounded(IntakeCase):
+    """#187: the download is capped and hashed as it streams, and a refusal leaves nothing behind."""
+
+    SPEC = "Not.A.Real.Package@9.9.9"
+
+    def serve(self, body, fail_after=None):
+        original = intake.urllib.request.urlopen
+        intake.urllib.request.urlopen = lambda url, timeout=None: FakeResponse(body, fail_after)
+        self.addCleanup(setattr, intake.urllib.request, "urlopen", original)
+
+    def downloaded(self):
+        return sorted(os.listdir(self.tmp))
+
+    def test_a_download_over_the_cap_is_refused_and_the_partial_file_removed(self):
+        self.serve(b"n" * (intake.MAX_PACKAGE_BYTES + intake.DOWNLOAD_CHUNK))
+        with self.assertRaises(intake.Refused) as raised:
+            intake.resolve_package(self.SPEC, self.tmp)
+        self.assertIn(str(intake.MAX_PACKAGE_BYTES), str(raised.exception))
+        self.assertEqual(self.downloaded(), [], "the partial download was left on disk")
+
+    def test_a_download_that_fails_partway_leaves_nothing_behind(self):
+        self.serve(b"n" * (4 * intake.DOWNLOAD_CHUNK), fail_after=intake.DOWNLOAD_CHUNK)
+        with self.assertRaises(intake.Usage):
+            intake.resolve_package(self.SPEC, self.tmp)
+        self.assertEqual(self.downloaded(), [])
+
+    def test_a_download_under_the_cap_is_hashed_as_it_streams(self):
+        with open(self.hoyle, "rb") as handle:
+            body = handle.read()
+        self.serve(body)
+        path, digest = intake.resolve_package(self.SPEC, self.tmp)
+        self.assertEqual(self.downloaded(), [os.path.basename(path)])
+        self.assertEqual(digest, intake.sha256_of_file(self.hoyle))
+        self.assertEqual(intake.intake(path, HOYLE_TEXT, log=None).nupkg_sha256, digest)
 
 
 if __name__ == "__main__":
