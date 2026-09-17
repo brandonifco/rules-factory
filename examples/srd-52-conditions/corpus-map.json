@@ -210,9 +210,9 @@
           "resolvedBy": "disadvantage"
         }
       ],
-      "evidence": "Can’t See. You can’t see and automatically fail any ability check that requires sight. Attacks Affected. Attack rolls against you have Advantage, and your attack rolls have Disadvantage.",
+      "evidence": "Attacks Affected. Attack rolls against you have Advantage, and your attack rolls have Disadvantage.",
       "status": "mapped",
-      "note": "Word for word the same sentence as restrained-attacks, and the map cannot cite this one without the lead sentence above it (see the README, finding 2)."
+      "note": "Word for word the same sentence as restrained-attacks, and the heading path is what separates the two printings of it (0030)."
     },
     {
       "id": "charmed",
@@ -564,9 +564,9 @@
           "resolvedBy": "speed"
         }
       ],
-      "evidence": "While you have the Grappled condition, you experience the following effects. Speed 0. Your Speed is 0 and can’t increase.",
+      "evidence": "Speed 0. Your Speed is 0 and can’t increase.",
       "status": "mapped",
-      "note": "One of five entries quoting this identical sentence."
+      "note": "One of five entries quoting this identical sentence; the heading path is what identifies this printing of it (0030)."
     },
     {
       "id": "grappled-attacks",
@@ -896,7 +896,7 @@
           "resolvedBy": "incapacitated"
         }
       ],
-      "evidence": "While you have the Paralyzed condition, you experience the following effects. Incapacitated. You have the Incapacitated condition.",
+      "evidence": "Incapacitated. You have the Incapacitated condition.",
       "status": "mapped",
       "note": "One of the four condition-imposes-condition edges this trial exists to test. The whole content of this rule is the edge, and it points at a condition as a whole, never at one of its effects."
     },
@@ -919,9 +919,9 @@
           "resolvedBy": "speed"
         }
       ],
-      "evidence": "While you have the Paralyzed condition, you experience the following effects. Incapacitated. You have the Incapacitated condition. Speed 0. Your Speed is 0 and can’t increase.",
+      "evidence": "Speed 0. Your Speed is 0 and can’t increase.",
       "status": "mapped",
-      "note": "Identical in the corpus to grappled-speed-0, petrified-speed-0, restrained-speed-0 and unconscious-speed-0."
+      "note": "Identical in the corpus to grappled-speed-0, petrified-speed-0, restrained-speed-0 and unconscious-speed-0; the heading path is what identifies this printing of it (0030)."
     },
     {
       "id": "paralyzed-saving-throws",
@@ -942,9 +942,9 @@
           "resolvedBy": "saving-throw"
         }
       ],
-      "evidence": "Speed 0. Your Speed is 0 and can’t increase. Saving Throws Affected. You automatically fail Strength and Dexterity saving throws.",
+      "evidence": "Saving Throws Affected. You automatically fail Strength and Dexterity saving throws.",
       "status": "mapped",
-      "note": "Identical in the corpus to petrified-saving-throws, stunned-saving-throws and unconscious-saving-throws."
+      "note": "Identical in the corpus to petrified-saving-throws, stunned-saving-throws and unconscious-saving-throws; the heading path is what identifies this printing of it (0030)."
     },
     {
       "id": "paralyzed-attacks",
@@ -970,9 +970,9 @@
           "resolvedBy": "advantage"
         }
       ],
-      "evidence": "Speed 0. Your Speed is 0 and can’t increase. Saving Throws Affected. You automatically fail Strength and Dexterity saving throws. Attacks Affected. Attack rolls against you have Advantage.",
+      "evidence": "Attacks Affected. Attack rolls against you have Advantage.",
       "status": "mapped",
-      "note": "This sentence is also a prefix of blinded-attacks and restrained-attacks, so it occurs five times in the text and cannot be cited on its own."
+      "note": "This sentence is also a prefix of blinded-attacks and restrained-attacks, so the words occur five times in the text and this exact sentence three; the heading path is what identifies this one (0030)."
     },
     {
       "id": "paralyzed-auto-crit",
@@ -998,9 +998,9 @@
           "resolvedBy": "attack-roll"
         }
       ],
-      "evidence": "Attacks Affected. Attack rolls against you have Advantage. Automatic Critical Hits. Any attack roll that hits you is a Critical Hit if the attacker is within 5 feet of you.",
+      "evidence": "Automatic Critical Hits. Any attack roll that hits you is a Critical Hit if the attacker is within 5 feet of you.",
       "status": "mapped",
-      "note": "A Critical Hit granted without the 20 the Critical Hit entry defines it by; the damage consequence is that entry's and is inherited. Identical in the corpus to unconscious-auto-crit."
+      "note": "A Critical Hit granted without the 20 the Critical Hit entry defines it by; the damage consequence is that entry's and is inherited. Identical in the corpus to unconscious-auto-crit; the heading path is what identifies this printing of it (0030)."
     },
     {
       "id": "petrified",
@@ -1065,7 +1065,7 @@
           "resolvedBy": "incapacitated"
         }
       ],
-      "evidence": "Turned to Inanimate Substance. You are transformed, along with any nonmagical objects you are wearing and carrying, into a solid inanimate substance (usually stone). Your weight increases by a factor of ten, and you cease aging. Incapacitated. You have the Incapacitated condition.",
+      "evidence": "Incapacitated. You have the Incapacitated condition.",
       "status": "mapped",
       "note": "The second of the four condition-imposes-condition edges."
     },
@@ -1088,7 +1088,7 @@
           "resolvedBy": "speed"
         }
       ],
-      "evidence": "Turned to Inanimate Substance. You are transformed, along with any nonmagical objects you are wearing and carrying, into a solid inanimate substance (usually stone). Your weight increases by a factor of ten, and you cease aging. Incapacitated. You have the Incapacitated condition. Speed 0. Your Speed is 0 and can’t increase.",
+      "evidence": "Speed 0. Your Speed is 0 and can’t increase.",
       "status": "mapped",
       "note": "One named effect of the condition, mapped as its own entry because the corpus states it as its own rule."
     },
@@ -1116,7 +1116,7 @@
           "resolvedBy": "advantage"
         }
       ],
-      "evidence": "Incapacitated. You have the Incapacitated condition. Speed 0. Your Speed is 0 and can’t increase. Attacks Affected. Attack rolls against you have Advantage.",
+      "evidence": "Attacks Affected. Attack rolls against you have Advantage.",
       "status": "mapped",
       "note": "One named effect of the condition, mapped as its own entry because the corpus states it as its own rule."
     },
@@ -1139,7 +1139,7 @@
           "resolvedBy": "saving-throw"
         }
       ],
-      "evidence": "Incapacitated. You have the Incapacitated condition. Speed 0. Your Speed is 0 and can’t increase. Attacks Affected. Attack rolls against you have Advantage. Saving Throws Affected. You automatically fail Strength and Dexterity saving throws.",
+      "evidence": "Saving Throws Affected. You automatically fail Strength and Dexterity saving throws.",
       "status": "mapped",
       "note": "One named effect of the condition, mapped as its own entry because the corpus states it as its own rule."
     },
@@ -1369,7 +1369,7 @@
           "resolvedBy": "speed"
         }
       ],
-      "evidence": "While you have the Restrained condition, you experience the following effects. Speed 0. Your Speed is 0 and can’t increase.",
+      "evidence": "Speed 0. Your Speed is 0 and can’t increase.",
       "status": "mapped",
       "note": "One named effect of the condition, mapped as its own entry because the corpus states it as its own rule."
     },
@@ -1402,7 +1402,7 @@
           "resolvedBy": "disadvantage"
         }
       ],
-      "evidence": "Speed 0. Your Speed is 0 and can’t increase. Attacks Affected. Attack rolls against you have Advantage, and your attack rolls have Disadvantage.",
+      "evidence": "Attacks Affected. Attack rolls against you have Advantage, and your attack rolls have Disadvantage.",
       "status": "mapped",
       "note": "Word for word blinded-attacks."
     },
@@ -1473,7 +1473,7 @@
           "resolvedBy": "incapacitated"
         }
       ],
-      "evidence": "While you have the Stunned condition, you experience the following effects. Incapacitated. You have the Incapacitated condition.",
+      "evidence": "Incapacitated. You have the Incapacitated condition.",
       "status": "mapped",
       "note": "The third of the four condition-imposes-condition edges."
     },
@@ -1496,7 +1496,7 @@
           "resolvedBy": "saving-throw"
         }
       ],
-      "evidence": "Incapacitated. You have the Incapacitated condition. Saving Throws Affected. You automatically fail Strength and Dexterity saving throws.",
+      "evidence": "Saving Throws Affected. You automatically fail Strength and Dexterity saving throws.",
       "status": "mapped",
       "note": "One named effect of the condition, mapped as its own entry because the corpus states it as its own rule."
     },
@@ -1524,7 +1524,7 @@
           "resolvedBy": "advantage"
         }
       ],
-      "evidence": "Incapacitated. You have the Incapacitated condition. Saving Throws Affected. You automatically fail Strength and Dexterity saving throws. Attacks Affected. Attack rolls against you have Advantage.",
+      "evidence": "Attacks Affected. Attack rolls against you have Advantage.",
       "status": "mapped",
       "note": "Stunned is Paralyzed without the Speed 0, the automatic Critical Hits and the Speed clause; the map shows that as three entries present in one and absent from the other, which is what per-effect entries buy."
     },
@@ -1598,7 +1598,7 @@
           "resolvedBy": "speed"
         }
       ],
-      "evidence": "Inert. You have the Incapacitated and Prone conditions, and you drop whatever you’re holding. When this condition ends, you remain Prone. Speed 0. Your Speed is 0 and can’t increase.",
+      "evidence": "Speed 0. Your Speed is 0 and can’t increase.",
       "status": "mapped",
       "note": "One named effect of the condition, mapped as its own entry because the corpus states it as its own rule."
     },
@@ -1626,7 +1626,7 @@
           "resolvedBy": "advantage"
         }
       ],
-      "evidence": "Inert. You have the Incapacitated and Prone conditions, and you drop whatever you’re holding. When this condition ends, you remain Prone. Speed 0. Your Speed is 0 and can’t increase. Attacks Affected. Attack rolls against you have Advantage.",
+      "evidence": "Attacks Affected. Attack rolls against you have Advantage.",
       "status": "mapped",
       "note": "One named effect of the condition, mapped as its own entry because the corpus states it as its own rule."
     },
@@ -1649,7 +1649,7 @@
           "resolvedBy": "saving-throw"
         }
       ],
-      "evidence": "Inert. You have the Incapacitated and Prone conditions, and you drop whatever you’re holding. When this condition ends, you remain Prone. Speed 0. Your Speed is 0 and can’t increase. Attacks Affected. Attack rolls against you have Advantage. Saving Throws Affected. You automatically fail Strength and Dexterity saving throws.",
+      "evidence": "Saving Throws Affected. You automatically fail Strength and Dexterity saving throws.",
       "status": "mapped",
       "note": "One named effect of the condition, mapped as its own entry because the corpus states it as its own rule."
     },
@@ -1677,7 +1677,7 @@
           "resolvedBy": "attack-roll"
         }
       ],
-      "evidence": "Saving Throws Affected. You automatically fail Strength and Dexterity saving throws. Automatic Critical Hits. Any attack roll that hits you is a Critical Hit if the attacker is within 5 feet of you.",
+      "evidence": "Automatic Critical Hits. Any attack roll that hits you is a Critical Hit if the attacker is within 5 feet of you.",
       "status": "mapped",
       "note": "One named effect of the condition, mapped as its own entry because the corpus states it as its own rule."
     },
@@ -1943,9 +1943,9 @@
       "scope": "out",
       "clarity": "clear",
       "dependsOn": [],
-      "evidence": "Whenever you divide or multiply a number in the game, round down if you end up with a fraction, even if the fraction is one-half or greater. Some rules make an exception and tell you to round up. Save Save is another name for a saving throw.",
+      "evidence": "Whenever you divide or multiply a number in the game, round down if you end up with a fraction, even if the fraction is one-half or greater. Some rules make an exception and tell you to round up.",
       "status": "declined",
-      "note": "Outside the slice: what makes “half your Speed (round down)” total for an odd Speed. The quote annexes the whole of the next glossary entry, Save, and it has to: the SRD prints this rule word for word twice, in Playing the Game (p. 5) and here, so neither occurrence can be cited on its own under a checker that requires every occurrence of a quote to touch the cited page. See the README, finding 2."
+      "note": "Outside the slice: what makes “half your Speed (round down)” total for an odd Speed. The SRD prints this rule word for word twice, in Playing the Game (p. 5) and here, heading included. The citation names the Rules Glossary, which p. 5's copy is not under, and that is what identifies this printing of it (0030). Until then the span had to run on through the whole of the next glossary entry, Save, to be unique — a citation every check accepted that carried a rule the entry is not about."
     },
     {
       "id": "resistance",
