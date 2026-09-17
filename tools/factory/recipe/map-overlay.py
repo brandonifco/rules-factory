@@ -115,9 +115,9 @@ def placeholder_problem(mutation):
     normalised = normalise(mutation)
     tokens = words(normalised)
     if normalised in PLACEHOLDERS or (tokens and all(t.strip(EDGES) in PLACEHOLDERS for t in tokens)):
-        return f"{mutation.strip()!r} is a placeholder, not a mutation"
+        return f"{mutation.strip()!r}, which is a placeholder, not a mutation"
     if len(tokens) < MINIMUM_WORDS or len(normalised) < MINIMUM_CHARACTERS:
-        return (f"{mutation.strip()!r} is too short to be a mutation: at least {MINIMUM_WORDS} words "
+        return (f"{mutation.strip()!r}, which is too short to be a mutation: at least {MINIMUM_WORDS} words "
                 f"and {MINIMUM_CHARACTERS} characters are asked for, and this is "
                 f"{len(tokens)} and {len(normalised)}")
     return None
@@ -137,7 +137,8 @@ def mutation_problems(entry_id, item):
         named = test.get("test") if isinstance(test.get("test"), str) else f"the test at position {position}"
         mutation = test.get("mutation")
         if not isinstance(mutation, str):
-            why = "records no mutation" if mutation is None else f"records a {type(mutation).__name__}, not a mutation"
+            why = ("records no mutation at all" if mutation is None else
+                   f"records a {type(mutation).__name__}, which is not a mutation")
         else:
             why = placeholder_problem(mutation)
             if why is None:

@@ -127,7 +127,7 @@ class TestTheFloorRefusesWhatIsNotASentence(unittest.TestCase):
         self.assertEqual(problems(overlay("inverted the comparison")), [])
 
     def test_a_missing_or_non_string_mutation_is_refused_too(self):
-        for mutation, expected in ((None, "records no mutation"), (17, "records a int")):
+        for mutation, expected in ((None, "records no mutation at all"), (17, "records a int, which is not a mutation")):
             with self.subTest(repr(mutation)):
                 document = overlay("unused")
                 if mutation is None:
