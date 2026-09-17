@@ -51,13 +51,15 @@ import sys
 # siblings: producer, verifier and consumer of the same map, and none of the three may know
 # another. Producer and verifier stay apart for the reason production code is not its own only
 # test oracle; the factory stays out of both so that it consumes a certified map and asks
-# nothing about how it was made.
+# nothing about how it was made. A map could be written by hand and still be validated and
+# built, which is the test of whether the boundary is real.
 # The middle element is the file that states what the subsystem owns. It is `__init__.py` for
 # an importable package, and `__main__.py` for `tools/factory/`, which is a directory run as a
 # script (`python3 tools/factory`) whose modules import each other by bare name -- so it has no
 # `__init__.py` to state anything in, and the statement lives where the command starts.
 SUBSYSTEMS = (
     ("mapcontract", "__init__.py", ()),
+    ("mapper", "__init__.py", ("mapcontract",)),
     ("checkmap", "__init__.py", ("mapcontract",)),
     ("factory", "__main__.py", ("mapcontract",)),
 )

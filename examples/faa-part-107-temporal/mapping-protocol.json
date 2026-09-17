@@ -1,0 +1,32 @@
+{
+  "protocolVersion": 1,
+  "corpus": "cfr-14-107",
+  "units": [
+    "section",
+    "paragraph",
+    "list-item",
+    "heading"
+  ],
+  "pointerMechanisms": [
+    {
+      "mechanism": "phrase"
+    },
+    {
+      "mechanism": "section-designation"
+    }
+  ],
+  "requiredSweeps": [
+    "definitions",
+    "applicability",
+    "exceptions",
+    "permissions",
+    "prohibitions",
+    "cross-references",
+    "extent-coverage"
+  ],
+  "adapterReach": {
+    "text": "readable",
+    "tables": "unsupported",
+    "illustrations": "unsupported"
+  }
+}
