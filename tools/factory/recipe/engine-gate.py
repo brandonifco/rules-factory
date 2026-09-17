@@ -589,26 +589,18 @@ def rails(_args):
             document = json.loads(policy_path.read_text(encoding="utf-8"))
         except ValueError as error:
             problems.append(f"{POLICY} is not JSON ({error}); the rails cannot read their own configuration")
-            document = None
-        if isinstance(document, dict):
-            if document.get("schemaVersion") != 1:
-                problems.append(f"{POLICY} has schemaVersion {document.get('schemaVersion')!r}; this engine's rails "
-                                f"read version 1")
-            review = document.get("review") or {}
-            if not review.get("semanticContext"):
-                problems.append(f"{POLICY} sets no review.semanticContext, so no semantic verdict can be recorded")
-            chain = review.get("independentFallback") or []
-            if not chain:
-                problems.append(f"{POLICY} configures no independent reviewer, so an issue classified as needing "
-                                f"one can never be merged")
-            for link in chain:
-                if not (isinstance(link, dict) and link.get("id") and link.get("context")):
-                    problems.append(f"{POLICY}: every review.independentFallback link needs an id and a context "
-                                    f"(got {link!r}). A verdict recorded under a generic context cannot be told "
-                                    f"from a same-family fallback.")
-            for field in ("ready", "blocked", "needsDecision", "normalRisk", "independentRisk"):
-                if not (document.get("labels") or {}).get(field):
-                    problems.append(f"{POLICY} names no {field} label, and the rails read every label from here")
+        else:
+            # The rule is the factory's, read from the generate.py `produce` vendored beside this
+            # file: `factory rails --check` and tools/agent-doctor.py judge the policy through the
+            # same function, so the three cannot disagree about one file (rules-factory #211).
+            sys.path.insert(0, str(ROOT / "scripts" / "factory"))
+            try:
+                import generate  # noqa: E402  (the factory's generator, vendored by produce)
+            except ImportError as error:
+                problems.append(f"scripts/factory/generate.py cannot be imported ({error}), so {POLICY} cannot be "
+                                f"judged; run `factory produce` again")
+            else:
+                problems.extend(generate.policy_problems(document, POLICY))
 
     if not examined:
         print("no rails found to examine -- this check proved nothing", file=sys.stderr)

@@ -117,7 +117,7 @@ TABLE = (
         "the required check that runs conformance-gate.py (0029)"),
     Row(".github/workflows/verdict-requeue.yml", MANAGED, 1,
         "runs requeue-gate.py on the status event; deliberately not a required check (#191)"),
-    Row("tools/agent-doctor.py", MANAGED, 2,
+    Row("tools/agent-doctor.py", MANAGED, 3,
         "whether the rails are active or only present, locally and on GitHub (0029)"),
     Row(".editorconfig", MANAGED, 1,
         "the kernel determinism analyzers' severities: a build error in src, off in tests (0029)"),
@@ -237,6 +237,7 @@ RECIPE_SHA256 = {
     "tools/agent-doctor.py": {
         1: "1b6fced99797d165ab0216523bddae183d6e7254f41d5d5f51cdb1d1c3b8913d",
         2: "340004575c29918f4dcbdacc7c1aef7f970e60bb270832901ae501bcb61b0b30",
+        3: "1ae43e922fbbe2cdcd4e1ed2708ac7377d644d7cdfac63a95cda2d37d7ef276b",
     },
     ".editorconfig": {
         1: "4109d1ef55053ef656e536d7818934deb73016fbe950f153bae6b2a163591cb2",
@@ -307,6 +308,49 @@ def adopted(out):
         return set()
 
 
+def recipe_versions(path, data):
+    """Every recipe version of managed `path` whose bytes are `data`: empty for a hand edit."""
+    digest = sha256(data)
+    return [version for version, recorded in RECIPE_SHA256.get(path, {}).items() if recorded == digest]
+
+
+# What `managed_states` finds a managed file to be.
+ABSENT, CURRENT, EARLIER, ADOPTED, EDITED = "absent", "current", "earlier recipe", "adopted", "edited by hand"
+
+
+def managed_states(out, paths):
+    """What each managed file in `paths` is on disk in `out`, judged against the recipe history.
+
+    Returns {path: (state, recipe versions its bytes are)}. `current` is the bytes of the table's
+    recipe version; `earlier recipe` is the bytes of an older one, which the next `produce`
+    migrates; `adopted` is a file provenance.json records as the engine's own, whatever its bytes;
+    `edited by hand` is bytes no version of the recipe wrote, which `produce` refuses.
+
+    It is the judgement `plan_managed` makes before a write, made without one, so that a report of
+    the rails (`factory rails --check`, the engine's `tools/agent-doctor.py`) can say a rail is as
+    the factory wrote it rather than only that a file of that name exists (#211).
+    """
+    table = {row.pattern: row for row in managed_rows("")}
+    recorded = adopted(out)
+    states = {}
+    for path in sorted(paths):
+        target = os.path.join(out, *path.split("/"))
+        if not os.path.isfile(target):
+            states[path] = (ABSENT, [])
+            continue
+        with open(target, "rb") as handle:
+            versions = recipe_versions(path, handle.read())
+        if path in recorded:
+            states[path] = (ADOPTED, versions)
+        elif not versions:
+            states[path] = (EDITED, versions)
+        elif path in table and table[path].recipe in versions:
+            states[path] = (CURRENT, versions)
+        else:
+            states[path] = (EARLIER, versions)
+    return states
+
+
 def plan_managed(out, name, recipes, adopt=(), reset=()):
     """Decide every managed file for a run into `out`.
 
@@ -353,7 +397,7 @@ def plan_managed(out, name, recipes, adopt=(), reset=()):
             writes[path] = current
             managed[path] = row.recipe
         else:
-            versions = [v for v, digest in RECIPE_SHA256[path].items() if digest == sha256(on_disk)]
+            versions = recipe_versions(path, on_disk)
             if not versions:
                 refused.append(path)
                 continue

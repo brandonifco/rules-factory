@@ -429,7 +429,7 @@ def build_parser():
     mode.add_argument("--check", action="store_true", help="report what is in place and change nothing")
     mode.add_argument("--apply", action="store_true",
                      help="create the labels and the factory's own branch ruleset, and restrict merging to merge "
-                          "commits; idempotent, and it never reads or writes another ruleset")
+                          "commits; idempotent, and it never writes another ruleset")
     r = commands.add_parser("provenance", help="recompute an engine's provenance.json and report mismatches")
     r.add_argument("--engine", required=True, help="the engine directory")
     r.add_argument("--package", help="the .nupkg or Id@Version (default: Id@Version from provenance.json)")

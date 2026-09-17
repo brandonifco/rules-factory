@@ -287,7 +287,9 @@ provider chain or label vocabulary. Its `schemaVersion` is 1. The shape the fact
 (#188). `backlog.py` computes a state set and a risk set from them, so two keys sharing one label
 make an issue ready and blocked at once, or strip its risk when its state moves. The rule is
 checked once, in the module that writes this file, and both `rails --check` and `backlog` refuse
-through it rather than each stating it.
+through it rather than each stating it. The review section is held to the same arrangement (#211):
+a semantic context, a non-empty chain, and an `id` and a `context` on every link, judged by one
+function that `rails --check`, the engine gate and `tools/agent-doctor.py` all import.
 
 Replacing the review chain is an edit to this file and nothing else. That is #1's second
 acceptance criterion and #4's third, and it is what the emitted scripts are tested against.
@@ -398,8 +400,8 @@ A workflow that exists is not a workflow that is required, and that gap is #4's 
 Closing it means changing repository settings, which `produce` must not do silently.
 
 `factory rails --repo <owner/name> --check` reports, read-only, whether the agent files, the
-policy, the labels, the ruleset and each required check are present, and which review chain is
-configured. `--apply` creates the labels and a branch ruleset the factory owns, named
+policy, the labels, the ruleset, the rules in force on the default branch and each required check
+are in place, and which review chain is configured. `--apply` creates the labels and a branch ruleset the factory owns, named
 `rules-factory-agent-rails`, requiring a pull request, resolved threads, no force-push, no
 deletion, no bypass actor, and the checks `validate`, `pr-policy` and `conformance-gate`. Both are
 idempotent.
@@ -411,6 +413,22 @@ model counted as a mismatch rather than skipped. Until #185 the comparison read 
 `include` list, the bypass actors and the rule parameters, so a ruleset excluding `~DEFAULT_BRANCH`
 or targeting tags was reported as enforced and left alone: the default branch had no rails and the
 doctor said OK. The checks are pinned to the app that posts them (#186, the amendment above).
+
+**A row says OK only about what it examined (#211).** Four rows did not. The `Agent files` row
+found files by name, so a truncated rail was OK; it now compares each rail's bytes with the recipe
+history `produce` refuses a hand edit by (0018), and names a rail that is absent, from an earlier
+recipe, edited by hand, or adopted by the engine. The `Policy` row was OK once the file parsed, so a
+chain link with an `id` and no `context` — a reviewer who cannot record a verdict — was OK here
+while the engine's gate rejected it; the policy is now judged by one function in `generate.py`,
+which `rails --check` imports and the engine's `scripts/engine-gate.py rails` and
+`tools/agent-doctor.py` import from the copy `produce` vendors, so the three cannot disagree about
+one file. Only the repository's own rulesets were read, and an organization's rulesets govern its
+repositories' branches too; the rules in force on the default branch are now read from GitHub at
+every level and named by the ruleset they come from, a ruleset carrying the factory's name above the
+repository is reported as not the factory's, and where the rules cannot be read the row says NOT
+VERIFIED and `--check` fails rather than reporting nothing there. And the `Verdict gate` row, which
+examines nothing, said OK beside a note saying the gate is unpinnable; its state is now NOT
+AUTHENTICATED, and, since no `--apply` can change it, it does not fail the check.
 
 **The factory owns one ruleset and never edits another.** A ruleset update replaces its whole
 rules array, so writing into an existing ruleset would silently drop rules the factory did not
