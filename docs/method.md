@@ -810,7 +810,25 @@ has to judge — which is the work, and is not automatable by either diff alone.
 ## Phase 8 — Close the entry
 
 The entry's status advances, and it records which ruleset revision implemented it **and the
-tests that prove it, each with the mutation that was recorded turning it red**. An entry that
+tests that prove it, each with the mutation that was recorded turning it red** — a written
+mutation, not a placeholder standing in for one. Since
+[#239](https://github.com/brandonifco/rules-factory/issues/239) the engine's gate refuses
+`PENDING` and its kind on an `implemented` entry, so the two-step of writing a placeholder,
+producing, and coming back with the real mutation no longer passes in the middle
+([corpus-map.md](corpus-map.md)).
+
+**The order that needs no placeholder, and only one produce.** Every entry that is not yet
+`implemented` is generated with an optional handler hook, so the rule body, the handler and the
+tests all compile while the entry is still `mapped`. Write them there, watch each mutation turn a
+test red, *then* set `status: implemented` with the mutations observed and re-produce once,
+converting the hook to the required signature the build then asks for. The flip changes which
+dispatch reaches the handler; it does not change the rule body, so the mutations recorded before
+it are still the mutations. What cannot be observed before the flip is anything resolved through
+the generated entry points, because a `mapped` entry declines `UnsupportedRule` whatever code
+exists — the next paragraph, and row 2. Those tests, and their mutations, belong to the change
+after the flip.
+
+An entry that
 cannot name a test that has been seen to fail does not advance to `implemented`; it stays
 `mapped`, whatever code exists ([#2](https://github.com/brandonifco/rules-factory/issues/2)),
 **and the engine declines it with `UnsupportedRule` until that test exists**

@@ -81,7 +81,7 @@ TABLE = (
     Row("scripts/engine-gate.py", GENERATED, None, "the gate recipe: its non-dotnet checks"),
     Row("scripts/factory/*.py", GENERATED, None, "the factory's generator, vendored so the gate can regenerate"),
     Row(".github/workflows/validate.yml", GENERATED, None, "the gate recipe: CI runs validate.sh full"),
-    Row("AGENTS.md", MANAGED, 7,
+    Row("AGENTS.md", MANAGED, 8,
         "the governing contract every agent works this engine under (decision 0029)"),
     Row("CLAUDE.md", MANAGED, 1,
         "a pointer to AGENTS.md and the Claude adapters; it states no rule of its own (0029)"),
@@ -175,6 +175,7 @@ RECIPE_SHA256 = {
         5: "0bf3bb0f7519ac6cdccf4c03fd11bf65d8b3c0a4e5580917dd5bc7e8f81b1257",
         6: "7da4642b702c6a8f527b043e4cf1d8f54f5ac6efc8840df250e998c40ac152c3",
         7: "d141aa496491ab4eb6702fbdba803f82a4a0e11163c56289be404d9a7eeea8d9",
+        8: "0dca04ff9fd39143f1d241c4f02d14dd54576524c9596e76539a5572a552be14",
     },
     "CLAUDE.md": {
         1: "04c07ad36e742fa60efafeca54d20bd96d16b6e338a44e46fad2b679ab8dfd9f",

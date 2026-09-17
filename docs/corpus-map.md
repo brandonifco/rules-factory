@@ -187,7 +187,7 @@ before either has been implemented.
 | `evidence` | One contiguous verbatim span of the corpus: the passage that *states* this rule. Not a summary of it. Absent on a derived entry, and only there. See below. |
 | `status` | Whether the engine has built this entry. Independent of `ambiguity.fate`. See below. |
 | `implementedIn` | The ruleset revision that implemented it. Set when status becomes `implemented`. |
-| `tests` | The tests that prove the entry, each `{ "test", "mutation" }`: the test's name, and the recorded change to the engine that turned it red. **Required, non-empty, when status is `implemented`.** See `status`. |
+| `tests` | The tests that prove the entry, each `{ "test", "mutation" }`: the test's name, and the recorded change to the engine that turned it red. **Required, non-empty, when status is `implemented`**, and the mutation may not be a placeholder. See `status`. |
 | `note` | Prose explanation: why the entry is shaped this way, and what a test must demonstrate. **Never a claim a test could carry** — a consequence the mapper proved is a test the entry names. See below. |
 
 ### `kind: assertion`
@@ -985,6 +985,50 @@ behind any of them. Every real defect this project has found in its own checks w
 mutation — five tests that could not fail, a checker counting an entry it had not checked — and
 none by reading. This makes that practice the schema. The same answer as rail E below and as a
 derived consequence (#16): **the artifact is the test.**
+
+**A placeholder is not a mutation.** An engine's gate (`scripts/map-overlay.py`, the recipe at
+`tools/factory/recipe/map-overlay.py`) refuses an `implemented` entry whose test records
+`PENDING`, `TBD`, `TODO`, `none`, `n/a`, `scratch`, `placeholder`, `xxx`, `unknown`, `later`,
+`fixme`, `wip`, `?` or `-` — or **one word repeated** — or anything shorter than **three words and
+twelve characters**. All three are applied to the mutation after it is normalised: NFKD, combining
+marks and format characters removed, whitespace collapsed, punctuation and symbols stripped from
+both ends by Unicode category, and casefolded. So `Pending.`, `--`, `""`, `“TODO”`, `ＴＯＤＯ`, `TÓDO`
+and a `TODO` with a zero-width space inside it are all the same word. The refusal names the entry,
+the test, the string, where the record lives and `tools/re-produce.sh`.
+
+Words are counted **with repeats**, because a word may legitimately appear twice: ``Increment
+`increment`; fails.`` is honest evidence about a variable named `increment`. Distinctness is only
+the placeholder rule's business — the whole mutation is a placeholder, or every distinct word in
+it is — and the separate "one word repeated" refusal is what catches `TODO TODO TODO` when the
+copies are spelled in a script the set does not contain, such as with a Cyrillic `О` for a Latin
+`O`. **No confusable mapping is done and none is claimed**, so the claim is exactly this: repeating
+one spelling is refused whatever script the spelling is in, and mixing spellings to evade
+(`TODO TОDO TODО`, three different ones) is not something this floor stops.
+
+**It reads the merge, not the overlay.** `tests` is a field of the merged entry, and a package map
+may carry one, so checking only the overlay would leave an implemented entry whose evidence came
+from upstream unexamined — the same shape of hole. Filed as
+[#239](https://github.com/brandonifco/rules-factory/issues/239): the first implementer of
+`tax-121-principal-residence` had to produce twice, because a handler cannot compile until a
+re-produce marks the entry `implemented`, so it wrote `PENDING`, produced, ran the real mutations
+and produced again — and `validate.sh full` passed on the intermediate run. The threshold is set
+an order of magnitude below the shortest real mutation either of the factory's engines records
+(20 words, 159 characters), because refusing an honest mutation blocks work and invites padding,
+which is worse than a placeholder slipping through.
+
+**It is read after the merge is built,** which is after rules 1 and 2 and the owner's rulings have
+held. An overlay that breaks one of those is refused there and its mutations are never looked at,
+so a refusal that names no mutation is not a report that the mutations are fine — it is a merge
+that could not be read yet. Fix what is named and run it again.
+
+**What it refuses is an unfilled placeholder, and nothing more.** It cannot tell whether the edit
+was made, whether the test went red, whether the mutation was a good one, or whether the sentence
+was copied from another entry; `not yet recorded` passes it, and so does a real mutation typed by
+someone who ran nothing. That part rests on the implementer's word, as it did before — see
+immediately below. `tools/checkmap/status.py`, and the `check-map.py` built from it, is the
+checker a **published map** carries and the one this repository runs over its own maps; it does
+not yet carry the rule ([#240](https://github.com/brandonifco/rules-factory/issues/240)), which is
+now about a map before any engine merges it rather than a second line under the engine's gate.
 
 `check-map.py --only status` enforces what a map alone can show: `tests` is present and
 non-empty on every `implemented` entry, and wherever it appears each item has a non-blank `test`,

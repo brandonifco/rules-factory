@@ -550,7 +550,7 @@ def a_seeded_engine_references_randomness(r):
 PLAYER_COUNT_OVERLAY = """\
 {"player-count": {"status": "implemented", "implementedIn": {"ruleset": "scratch", "version": 1},
                   "tests": [{"test": "CorrespondenceTests.player_count__is_implemented_so_a_hand_written_handler_answers_it",
-                             "mutation": "scratch"}]}}
+                             "mutation": "Registry.HasImplementation was made to answer false for every entry (`=> false` for `Implementations.Value.ContainsKey(entryId) || Handlers.Has(entryId)` in Registry.g.cs); this test went red. Deleting the handler instead is CS8795, a build error, not a red test."}]}}
 """
 
 HANDLER = "    internal static partial Resolution<object> PlayerCount(Requests.PlayerCountRequest request) => Resolution<object>.FromValue(2);"
@@ -714,11 +714,12 @@ def a_request_input_reaches_its_handler(r):
 RULING_OVERLAY = """\
 {"player-count": {"status": "implemented", "implementedIn": {"ruleset": "scratch", "version": 1},
                   "tests": [{"test": "CorrespondenceTests.player_count__is_implemented_so_a_hand_written_handler_answers_it",
-                             "mutation": "scratch"}]},
+                             "mutation": "Registry.HasImplementation was made to answer false for every entry (`=> false` for `Implementations.Value.ContainsKey(entryId) || Handlers.Has(entryId)` in Registry.g.cs); this test went red. Deleting the handler instead is CS8795, a build error, not a red test."}]},
  "bearing-off-eligible": {"status": "implemented", "implementedIn": {"ruleset": "scratch", "version": 1},
-                          "tests": [{"test": "RulingsTests.the_generated_ruling_is_surfaced_on_the_answer", "mutation": "scratch"},
+                          "tests": [{"test": "RulingsTests.the_generated_ruling_is_surfaced_on_the_answer",
+                                     "mutation": "Handlers.BearingOffEligible answered no rulings (`FromValue(Array.Empty<OwnerRuling>())` for `FromValue(OwnerRulings.All)`), so Assert.Single found none; this test went red."},
                                     {"test": "CorrespondenceTests.bearing_off_eligible__is_implemented_so_a_hand_written_handler_answers_it",
-                                     "mutation": "scratch"}],
+                                     "mutation": "Registry.HasImplementation was made to answer false for every entry (`=> false` for `Implementations.Value.ContainsKey(entryId) || Handlers.Has(entryId)` in Registry.g.cs); this test went red. Deleting the handler instead is CS8795, a build error, not a red test."}],
                           "rulings": [{"id": "bearing-off-eligible/2",
                                        "span": "Nor does it say when within a throw the stage begins. If a man played with the first number of a throw is the last to come home, the text does not say whether the number left is played under this stage ('each throw entitles the player either to move forward a man or men ... or to remove men'), or as an ordinary move because the throw began before the stage was reached. On the first reading, with his last man outside on the nine point and six-trois thrown, 9/3 then bearing that man off with the trois is a legal play, and so is 9/6 then bearing him off with the six; on the second reading neither is. The quatre-trois example weighs both numbers against a distribution already home, so it does not decide the case.",
                                        "answer": "The number left after the last man comes home bears off.",

@@ -66,9 +66,9 @@ def worked_example():
         "status": "implemented",
         "implementedIn": {"ruleset": "hoyle-1909-backgammon", "version": 5},
         "tests": [
-            {"test": "BearingOffEligibilityTests.Fourteen_home_and_one_out_does_not", "mutation": "m1"},
-            {"test": DECLINE_TEST, "mutation": "m2"},
-            {"test": RULED_TEST, "mutation": "m3"},
+            {"test": "BearingOffEligibilityTests.Fourteen_home_and_one_out_does_not", "mutation": "BearingOff.Eligible counted a man on the bar as home (`Home + Bar >= 15` for `Home == 15`), so fourteen home and one out qualified; this test went red."},
+            {"test": DECLINE_TEST, "mutation": "Handlers.BearingOffEligible answered the re-entry case (`FromValue(finding)` for the RequiresInterpretation decline), so the unsettled case resolved; this test went red."},
+            {"test": RULED_TEST, "mutation": "Handlers.MustPlayWholeThrow dropped the ruling from its answer (`FromValue(play)` for `FromValue(play with OwnerRulings.All)`); this test went red."},
         ],
         "rulings": [{
             "id": "bearing-off-eligible/2",

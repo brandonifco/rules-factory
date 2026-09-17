@@ -185,7 +185,40 @@ decline that names why and cites where — that is the engine working, not the e
   not change the gate to make a change pass.
 - **Every test records the mutation that makes it fail.** The overlay holds it. A test whose
   named mutation was never observed to fail is a test nobody has watched fail, and this project
-  has shipped two checks that counted work they had not done.
+  has shipped two checks that counted work they had not done. **The gate refuses a placeholder
+  there**: on an entry of the merge whose `status` is `implemented`, `"mutation": "PENDING"` — or
+  `TBD`, `TODO`, `none`, `n/a`, `scratch`, `placeholder`, `xxx`, `unknown`, `later`, `fixme`,
+  `wip`, `?`, `-`, however cased, punctuated or spelled in Unicode — fails
+  `scripts/map-overlay.py`, and so do one word repeated and anything shorter than three words and
+  twelve characters. Write the real one, and finish with `tools/re-produce.sh`. The floor exists
+  because until it did, an engine's gate passed with `PENDING` recorded against work nobody had
+  done. It refuses an unfilled placeholder and **nothing more**: it cannot tell whether the edit
+  was made, whether the test went red, or whether you copied the sentence from another entry. That
+  is still your word, and the point of writing it down is that a reviewer can re-run it. A word may
+  appear twice in an honest mutation and the floor allows it. And the mutations are read **after**
+  the merge is built, so a run that fails on an overlay's structure or on a ruling has not looked
+  at them: a refusal naming no mutation is not a clean bill. The rule is stated in full at the top
+  of `scripts/map-overlay.py`, which is also where to look before assuming a refusal is wrong.
+- **Write the handler while the entry is still `mapped`, and re-produce once.** There is no
+  placeholder step, and no reason to produce twice. Every entry that is *not* `implemented`
+  already has an optional hook,
+  `static partial void {Member}({Member}Request request, ref Resolution<TOutput>? resolution)`,
+  so the rule body and the handler compile with the entry `mapped`. Write them, write the tests
+  against **the rule body's own types** — which is what a mutation names anyway — and watch each
+  mutation turn one red. Then set `status: implemented` with the mutations you actually observed,
+  run `tools/re-produce.sh` once, and convert the hook to the required
+  `internal static partial Resolution<TOutput> {Member}({Member}Request request)`; the build names
+  the handler to change (CS8795 on the declaration, CS0759 on the old hook). **The status flip
+  changes the dispatch, not the rule.** The rule body and its tests are untouched by it, so the
+  mutations you recorded are still the mutations.
+  - **What you cannot observe before the flip:** anything resolved through `EntryPoints` or
+    `Registry.Resolve`. `Registry.Answer` dispatches to a handler only when the entry's status is
+    `Implemented`, so while it is `mapped` the entry declines `UnsupportedRule` and the hook is
+    never called — that is the correspondence table's row 2, and it is deliberate. The generated
+    `..._declines_UnsupportedRule_row_2` test therefore stays **green** with your hook in place,
+    and becomes `..._is_implemented_so_a_hand_written_handler_answers_it` at the flip. So name
+    rule-body tests in the overlay when you flip it, and add entry-point tests, with the
+    mutations you then observe, in the change that follows.
 - **Report what happened, not what should have happened.** Paste the command and its actual
   output. "Tests pass" is not evidence; a run is.
 - **A reviewer is given the context, not asked to find it.** `tools/review-packet.py <pr number>`
