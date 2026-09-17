@@ -1,0 +1,33 @@
+{
+  "protocolVersion": 1,
+  "corpus": "cfr-26-1.121-1",
+  "units": [
+    "section",
+    "paragraph",
+    "list-item",
+    "worked-example"
+  ],
+  "pointerMechanisms": [
+    {
+      "mechanism": "phrase"
+    },
+    {
+      "mechanism": "section-designation"
+    }
+  ],
+  "requiredSweeps": [
+    "definitions",
+    "applicability",
+    "exceptions",
+    "permissions",
+    "prohibitions",
+    "cross-references",
+    "extent-coverage",
+    "examples"
+  ],
+  "adapterReach": {
+    "text": "readable",
+    "tables": "unsupported",
+    "illustrations": "unsupported"
+  }
+}

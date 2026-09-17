@@ -7,7 +7,7 @@ import os
 import sys
 
 from .diagnostics import skip
-from .model import entries_of
+from mapcontract.entry import entries_of
 from .phases import CHECKS, OVERLAY_FIELDS, PHASES, STATUS_DEPENDENT
 
 

@@ -5,7 +5,8 @@ it may name and whether it may loop.
 import sys
 
 from .diagnostics import skip, verdict
-from .model import GATE_FIELDS, ID_LIST_FIELDS, PASSAGE_FIELDS, entries_of, index, label
+from mapcontract.vocabulary import GATE_FIELDS, ID_LIST_FIELDS, PASSAGE_FIELDS
+from mapcontract.entry import entries_of, index, label
 
 
 def check_references(ctx):

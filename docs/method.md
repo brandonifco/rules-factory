@@ -107,6 +107,17 @@ neither should the map.
 Walk the corpus and write an entry for every rule it states. The walk is bounded: read in
 slices small enough to hold, never the whole corpus at once.
 
+**What walking *this* corpus means is written down, not decided afresh each time.** The units it
+states rules in, the mechanisms it points with, the sweeps a mapping of it owes and how far the
+adapter reaches are its **mapping protocol**, `mapping-protocol.json` beside the map. Every map
+has one and `validate.sh` fails a map without one: a map with no protocol cannot say how it was
+read. The cost of leaving it to each trial is measured — a phrase list went on being the
+interrogation mechanism for a corpus that points by naming its defined terms, detecting 0
+pointers in passages holding 51 references
+([#208](https://github.com/brandonifco/rules-factory/issues/208)). The protocol, its closed
+vocabularies and the interrogation it obliges are [the mapper](mapper.md); this document stays
+the part that is judgement.
+
 **Every entry carries a locator.** An entry without one is not an entry. This is the single
 rule that makes the map trustworthy, because it is the one an agent is most tempted to skip
 when a rule "obviously" says something.

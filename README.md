@@ -1,7 +1,8 @@
 # Rules Factory
 
-The production apparatus for deterministic rules engines built from plain-language rulesets: a
-method for mapping a ruleset, and a factory that turns the map into an engine. It admits only
+The production apparatus for deterministic rules engines built from plain-language rulesets:
+a mapper that reads a ruleset, validation that certifies what it produced, and a factory that
+turns a certified map into an engine. It admits only
 rulesets that are public domain or openly licensed, because the corpus and its map are committed
 and published
 ([0028](docs/decisions/0028-the-factory-admits-only-corpora-whose-licence-permits-publishing-them.md));
@@ -12,7 +13,8 @@ corpus that map was made of, and an engine name, and writes a .NET solution on
 [`rules-kernel`](https://github.com/brandonifco/rules-kernel) whose code is tied to the map, with
 the gate that judges it, and a record of what it was built from. The backlog derived from the map
 is filed as GitHub issues and rendered on demand, not committed into the engine.
-Making the map is not the factory's job. That is [the method](docs/method.md), done by hand.
+Making the map is not the factory's job, and this repository is not only the factory
+([0032](docs/decisions/0032-mapping-validation-and-generation-are-three-subsystems-over-one-contract.md)).
 
 It is **not** a template you copy and diverge from. A factory keeps a relationship with what
 it produced, and every file it writes has one owner
@@ -25,6 +27,36 @@ them, and refuses to overwrite a hand edit until the engine adopts the file or r
 then belong to the engine. Output carries provenance saying which factory commit built it from
 what, and which class each file is in. Unless told not to, the factory builds and tests its
 output before committing it.
+
+## Three subsystems over one contract
+
+```text
+                              map contract
+                        what a map's fields mean
+                       /          |             \
+                      v           v              v
+                  mapper    map validation     factory
+             corpus -> map   map -> verdict   map -> engine
+```
+
+| Subsystem | Where | What it takes | What it produces |
+|---|---|---|---|
+| **Mapper** | [`tools/mapper/`](tools/mapper/__init__.py) and [docs/mapper.md](docs/mapper.md); the map itself is still made by hand, by [the method](docs/method.md) | a pinned corpus, its manifest, an adapter, a mapping protocol | a candidate map, and the record of how it was made |
+| **Map validation** | [`tools/checkmap/`](tools/checkmap/__init__.py), built into `tools/check-map.py`, with [`tools/check-locators.py`](tools/check-locators.py), [`tools/check-map-review.py`](tools/check-map-review.py) and [`tools/pack-map.py`](tools/pack-map.py) | a map and its manifest | a verdict, and a map that may become a version |
+| **Factory** | [`tools/factory/`](tools/factory/__main__.py) | a published map package and the corpus it was made of | a deterministic engine on `rules-kernel` |
+| **Map contract** | [`tools/mapcontract/`](tools/mapcontract/__init__.py) | — | the map's closed vocabularies and the readers that get a field out of an entry |
+
+Each asks a different question — the mapper *what does this corpus say, and where does its
+certainty end?*, validation *has the mapper justified those claims?*, the factory *given an
+acceptable map, what follows mechanically?* — and the three are siblings over the contract:
+**none imports another**, and the contract imports none of them. The
+factory therefore knows nothing about how a map was made — give it a valid, appropriately
+certified map and it produces an engine — and producer and verifier stay apart for the reason
+production code is not its own only test oracle.
+[`tools/check-boundaries.py`](tools/check-boundaries.py), run by `validate.sh`, holds that
+direction; its docstring says what it cannot see. The mapper is drawn as though it were already
+a separate repository, and is not one yet: the map schema and the mapping method are still
+co-evolving, and 0032 records what would justify the split.
 
 ## Status
 

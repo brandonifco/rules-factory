@@ -5,7 +5,7 @@ of the corpus (0025).
 import re
 
 from .diagnostics import skip, verdict
-from .model import block, corpora_of, entries_of, label
+from mapcontract.entry import block, corpora_of, entries_of, label
 
 # The one value that names nobody the corpus names: the caller, implied (0025).
 CALLER = "caller"

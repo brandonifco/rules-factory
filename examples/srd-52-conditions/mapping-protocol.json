@@ -1,0 +1,34 @@
+{
+  "protocolVersion": 1,
+  "corpus": "srd-5.2.1",
+  "units": [
+    "glossary-definition",
+    "heading",
+    "paragraph",
+    "list-item"
+  ],
+  "pointerMechanisms": [
+    {
+      "mechanism": "phrase"
+    },
+    {
+      "mechanism": "defined-term-use",
+      "vocabularyFrom": "condition-list"
+    }
+  ],
+  "requiredSweeps": [
+    "definitions",
+    "vocabulary",
+    "applicability",
+    "exceptions",
+    "undefined-terms",
+    "cross-references",
+    "extent-coverage"
+  ],
+  "adapterReach": {
+    "text": "readable",
+    "tables": "rendered-page-required",
+    "columns": "rendered-page-required",
+    "illustrations": "unsupported"
+  }
+}

@@ -5,7 +5,7 @@ built-in list plus the phrases each corpus declares in the manifest (0026).
 import re
 
 from .diagnostics import skip, verdict
-from .model import block, corpora_of, entries_of, index, label
+from mapcontract.entry import block, corpora_of, entries_of, index, label
 
 
 # The pointers the first corpora made, in the words they used to make them. Each phrase points

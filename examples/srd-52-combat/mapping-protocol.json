@@ -1,0 +1,32 @@
+{
+  "protocolVersion": 1,
+  "corpus": "srd-5.2.1",
+  "units": [
+    "section",
+    "heading",
+    "paragraph",
+    "table",
+    "worked-example"
+  ],
+  "pointerMechanisms": [
+    {
+      "mechanism": "phrase"
+    }
+  ],
+  "requiredSweeps": [
+    "definitions",
+    "vocabulary",
+    "applicability",
+    "exceptions",
+    "examples",
+    "tables",
+    "cross-references",
+    "extent-coverage"
+  ],
+  "adapterReach": {
+    "text": "readable",
+    "tables": "rendered-page-required",
+    "columns": "rendered-page-required",
+    "illustrations": "unsupported"
+  }
+}

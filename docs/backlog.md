@@ -13,6 +13,7 @@ Two labels on every issue: **what kind of thing it is**, and **what it blocks**.
 | `evidence` | Measures whether the method works — trials, miss rates, the acceptance test. |
 | `map-data` | An error in a specific map rather than in the schema. Cheap to fix, and worth keeping separate so a pile of them is not mistaken for a design problem. |
 | `factory` | The factory's own implementation: intake, generation, the gate recipe, provenance, backlog, verify. Distinct from `enforcement`, which holds this repository's documents to their word; a `factory` defect is in what `tools/factory/` does to a produced engine. |
+| `mapper` | The mapper subsystem: what turns a corpus into a candidate map — its protocol, its inventory, its sweeps, its blind staging. A sibling of the factory and not part of it ([0032](decisions/0032-mapping-validation-and-generation-are-three-subsystems-over-one-contract.md)), so a mapping finding has an owner instead of being filed against `schema` and `method` for want of one. |
 
 `documentation` (GitHub's default label) is used for text that is wrong about the code, such as
 [#75](https://github.com/brandonifco/rules-factory/issues/75).
