@@ -90,6 +90,17 @@ already open, #157 and #8, and carry the label beside their own.
 The review's other recommendation is not an issue: hold new factory features until the P1 items
 are done, and let real engine work, not anticipated needs, propose the next abstraction.
 
+### `review3-*`, `review4-*` — independent reviews by Codex
+
+Rounds three and four are the independent reviews #169 asked for, by a different model family,
+of `ba1a27f` (2026-09-16) and `cc2cd9c` (2026-09-17). They use the same three levels as the first
+review — `p0` breaks the trust, correspondence or refusal promise; `p1` the factory cannot prove
+its product; `p2` policy, depth and hardening — with the same first line giving each issue's place
+in its round. Every finding was verified against the code before it was filed, and several were
+filed at a different level from the one the reviewer gave, each saying why. How a round is run is
+[AGENTS.md](../AGENTS.md) §6. An open `review*-p0` issue blocks `factory/v1.0.0`, and a closed
+`review*-p0` or `review*-p1` makes a release due (AGENTS.md §5).
+
 ## The hub
 
 [#24](https://github.com/brandonifco/rules-factory/issues/24) is not one issue among the

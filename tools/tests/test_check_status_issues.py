@@ -63,6 +63,14 @@ class Cases(unittest.TestCase):
         self.assertIn("citing #152", output)
         self.assertIn("citing #155", output)
 
+    def test_not_passed_and_is_open_citing_closed_issues_fail(self):
+        code, output = self.run_on(
+            f"| Factory | this | acceptance test ([#3]({URL}/3)) not passed |\n"
+            f"| Rails | this | The acceptance run is open ([#152]({URL}/152)) |\n")
+        self.assertEqual(code, 1, output)
+        self.assertIn("says 'not passed' citing #3, which is closed", output)
+        self.assertIn("says 'is open' citing #152, which is closed", output)
+
     def test_not_yet_citing_an_open_issue_passes(self):
         code, output = self.run_on(f"Para one.\n\nNot yet proven end to end ([#157]({URL}/157)).\n")
         self.assertEqual(code, 0, output)

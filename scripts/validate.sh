@@ -15,6 +15,16 @@ ROOT="$(pwd)"
 failed=0
 step=0
 
+# The gate leaves the checkout as it found it (AGENTS.md section 4). No bytecode and no pytest cache
+# are written, and the last step compares what git does not track before and after the run.
+export PYTHONDONTWRITEBYTECODE=1
+leftovers() {
+  { git ls-files --others --exclude-standard --ignored --directory
+    git ls-files --others --exclude-standard
+  } | { grep -v -e '^\.claude/worktrees/' -e '^\.venv/' || true; } | LC_ALL=C sort -u
+}
+before="$(leftovers)"
+
 run() {
   local what="$1"; shift
   step=$((step + 1))
@@ -145,7 +155,7 @@ check_map_packages() {
 # repo has shipped two that counted work they had not done.
 check_tool_tests() {
   local out
-  out="$(python3 -m pytest tools/tests -q 2>&1)" || { printf '%s\n' "$out"; return 1; }
+  out="$(python3 -m pytest -p no:cacheprovider tools/tests -q 2>&1)" || { printf '%s\n' "$out"; return 1; }
   printf '%s\n' "$out" | tail -1
   # A green pytest run over an empty suite is the same lie as a check with no inputs.
   printf '%s\n' "$out" | grep -qE '[0-9]+ passed' || {
@@ -260,6 +270,18 @@ run "every decision record is indexed"                 check_decision_index
 run "every workflow pins its Python and its packages"  check_workflow_pins
 run "the README's status table matches the factory CLI" check_readme_status
 run "the README cites no closed issue as not yet done"  check_status_issues
+
+# Last, so that it sees every step above.
+check_nothing_left_behind() {
+  local added
+  added="$(LC_ALL=C comm -13 <(printf '%s\n' "$before") <(leftovers))"
+  if [ -n "$added" ]; then
+    printf 'this run left files in the checkout:\n%s\n' "$added" >&2
+    return 1
+  fi
+  echo "nothing untracked or ignored was added by this run"
+}
+run "validate.sh left nothing behind in the checkout"    check_nothing_left_behind
 
 printf '\n'
 if [ "$failed" -ne 0 ]; then

@@ -9,7 +9,10 @@ that something is missing, citing the issue that tracks it. When that issue is c
 statement is stale, or the issue was closed wrongly; either way a person has to look.
 
 A claim is one table row, or one paragraph (text between blank lines). It is an absence claim when
-it contains "not yet" or "not done" (any case). Every issue of this repository it cites, as a
+it contains "not yet", "not done" or "not passed", or says something "is open", "are open",
+"remains open" or "still open" (any case). The last four were added after the README's own "Where
+this sits" table said "acceptance test (#3) not passed" and "the acceptance run is open (#1, #4)"
+for a day after all three closed, which the first two phrases did not catch. Every issue of this repository it cites, as a
 link to `github.com/<repo>/issues/N` or as a bare `#N`, must be open. An absence claim that cites
 no issue is not checked; `check-readme-status.py` holds the `not implemented` rows to the CLI.
 
@@ -34,7 +37,7 @@ import urllib.request
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(HERE)
 REPO = "brandonifco/rules-factory"
-ABSENCE = re.compile(r"\bnot (?:yet|done)\b", re.IGNORECASE)
+ABSENCE = re.compile(r"\bnot (?:yet|done|passed)\b|\b(?:is|are|remains|still) open\b", re.IGNORECASE)
 
 
 class Problem(Exception):
@@ -126,7 +129,7 @@ def main(argv=None, state_of=github_state):
     if problems:
         print(f"\n{len(problems)} closed issue citation(s) in README.md absence claims")
         return 1
-    print(f"{examined} issue citation(s) in 'not yet' / 'not done' claims, every one open")
+    print(f"{examined} issue citation(s) in absence claims, every one open")
     return 0
 
 

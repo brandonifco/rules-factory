@@ -1,0 +1,15 @@
+{
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "cd \"$CLAUDE_PROJECT_DIR\" && python3 tools/repo-hygiene.py --fix || true",
+            "timeout": 60
+          }
+        ]
+      }
+    ]
+  }
+}
