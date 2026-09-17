@@ -175,7 +175,7 @@ RECIPE_SHA256 = {
         5: "0bf3bb0f7519ac6cdccf4c03fd11bf65d8b3c0a4e5580917dd5bc7e8f81b1257",
         6: "7da4642b702c6a8f527b043e4cf1d8f54f5ac6efc8840df250e998c40ac152c3",
         7: "d141aa496491ab4eb6702fbdba803f82a4a0e11163c56289be404d9a7eeea8d9",
-        8: "187523837353339cf5f7cacfea3b7e9f8a60bda1cfcc180d732e3576c6ae706a",
+        8: "3427eb7336ac0bbc20cc499812ccfc30a364dbc86f6a1fcbdc8ac8483749ae8a",
     },
     "CLAUDE.md": {
         1: "04c07ad36e742fa60efafeca54d20bd96d16b6e338a44e46fad2b679ab8dfd9f",
