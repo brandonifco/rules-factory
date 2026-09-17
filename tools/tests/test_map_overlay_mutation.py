@@ -94,11 +94,9 @@ TOO_SHORT = {
     "m1": "1 word, 2 characters",
     "changed": "1 word, 7 characters",
     "a b": "2 words, 3 characters",
-    # below the word floor only: over twelve characters, under three distinct words
+    # below the word floor only: over twelve characters, under three words
     "comparison inverted": "2 words, 19 characters",
     "Registry.Resolve short-circuited": "2 words, 32 characters",
-    "reversed reversed reversed reversed": "1 distinct word, 35 characters",
-    f"TODO{ZWSP} TODO{ZWSP} TODO{ZWSP} elsewhere": "2 distinct words once the zero-widths go",
     # below the character floor only: three or more distinct words, under twelve characters
     "abc def ghi": "3 words, 11 characters",
     "1 2 3 4": "4 words, 7 characters",
@@ -110,9 +108,22 @@ TOO_SHORT = {
 # The exact boundary, and one character and one word above it: these pass, and a floor raised by
 # one refuses them.
 AT_THE_FLOOR = {
-    "abc def ghij": "exactly 3 distinct words and exactly 12 characters",
-    "abcd efgh ijkl": "3 distinct words, 14 characters",
-    "one two three four": "4 distinct words, 18 characters",
+    "abc def ghij": "exactly 3 words and exactly 12 characters",
+    "abcd efgh ijkl": "3 words, 14 characters",
+    "one two three four": "4 words, 18 characters",
+    # #241 review A: the floor counts words with repeats, so honest evidence about a variable
+    # named `increment` is not refused for saying the word twice.
+    "Increment `increment`; fails.": "3 words, 2 of them the same, 28 characters",
+    "Registry.Resolve now resolves Registry.Resolve": "a repeated identifier in a real sentence",
+}
+
+# Two or more words, all the same word. This is where distinctness lives, and it is what refuses a
+# repeated placeholder spelled in a script the set does not contain.
+ONE_WORD_REPEATED = {
+    "reversed reversed reversed reversed": "a plain repeat",
+    " ".join([CYRILLIC_TODO] * 3): "a Cyrillic homoglyph, repeated -- refused here, not read as "
+                                   "the word, because no confusable mapping is done",
+    f"resolved{ZWSP} resolved{ZWSP} resolved": "zero-widths do not make three words of one",
 }
 
 # The reviewer's Unicode cases (#241 review): every one of these passed before normalisation. The
@@ -120,14 +131,15 @@ AT_THE_FLOOR = {
 # word, where "too short" would mean only the floor caught it.
 PLACEHOLDER = "is a placeholder, not a mutation"
 TOO_SHORT_REASON = "is too short to be a mutation"
+REPEATED = "is one word repeated, not a mutation"
 UNICODE_PLACEHOLDERS = {
     " ".join([CURLY.format("TODO")] * 3): (PLACEHOLDER, "curly quotes around each word"),
     " ".join([f"TODO{ZWSP}"] * 3): (PLACEHOLDER, "a zero-width space inside each word"),
     " ".join([FULLWIDTH_TODO] * 3): (PLACEHOLDER, "fullwidth letters"),
     " ".join([COMBINING_TODO] * 3): (PLACEHOLDER, "a combining acute accent"),
-    " ".join([CYRILLIC_TODO] * 3): (TOO_SHORT_REASON,
-                                    "a Cyrillic homoglyph: refused by the distinct-word floor, "
-                                    "not read as the word, because no confusable mapping is done"),
+    " ".join([CYRILLIC_TODO] * 3): (REPEATED,
+                                    "a Cyrillic homoglyph: refused as one word repeated, not read "
+                                    "as the word, because no confusable mapping is done"),
     CURLY.format("pending"): (PLACEHOLDER, "one curly-quoted placeholder"),
     f"TB{ZWSP}D": (PLACEHOLDER, "a zero-width space inside a placeholder"),
     FULLWIDTH_TODO: (PLACEHOLDER, "one fullwidth placeholder"),
@@ -171,11 +183,14 @@ class TestThePlaceholderSetIsRefused(unittest.TestCase):
                 self.assertIn(reason, found[0], f"{mutation!r} ({why}) was refused, but not as {reason!r}")
 
     def test_no_confusable_mapping_is_claimed(self):
-        """A homoglyph is refused by the floor, not recognised as the word. Stated so that deciding
-        otherwise is a deliberate change and not a surprise."""
-        self.assertIn("too short to be a mutation",
-                      overlay_tool.placeholder_problem(" ".join([CYRILLIC_TODO] * 3)))
+        """A homoglyph is never read as the word it imitates. Repeating one spelling is refused
+        whatever script it is in; mixing spellings to evade is not something this floor stops, and
+        saying so here keeps the claim and the rule the same size (#241 review B)."""
+        self.assertIn(REPEATED, overlay_tool.placeholder_problem(" ".join([CYRILLIC_TODO] * 3)))
         self.assertIsNone(overlay_tool.placeholder_problem(f"{CYRILLIC_TODO} and two more words"))
+        mixed = f"TODO {CYRILLIC_TODO} TOD\u041e"
+        self.assertIsNone(overlay_tool.placeholder_problem(mixed),
+                          "three spellings of TODO pass, and the documentation says so")
 
     def test_a_placeholder_word_inside_a_real_mutation_is_not_refused(self):
         self.assertEqual(problems(overlay(
@@ -190,8 +205,19 @@ class TestTheFloorRefusesWhatIsNotASentence(unittest.TestCase):
                 found = problems(overlay(mutation))
                 self.assertEqual(len(found), 1, f"{mutation!r} ({why}) was accepted: {found}")
                 self.assertIn("is too short to be a mutation", found[0])
-                self.assertIn(f"at least {overlay_tool.MINIMUM_WORDS} distinct words and "
+                self.assertIn(f"at least {overlay_tool.MINIMUM_WORDS} words and "
                               f"{overlay_tool.MINIMUM_CHARACTERS} characters", found[0])
+
+    def test_one_word_repeated_is_refused(self):
+        for mutation, why in ONE_WORD_REPEATED.items():
+            with self.subTest(why):
+                found = problems(overlay(mutation))
+                self.assertEqual(len(found), 1, f"{mutation!r} ({why}) was accepted: {found}")
+                self.assertIn(REPEATED, found[0])
+
+    def test_a_word_repeated_in_a_real_sentence_is_not_refused(self):
+        """#241 review A: the counter-example. Incrementing a variable named `increment`."""
+        self.assertEqual(problems(overlay("Increment `increment`; fails.")), [])
 
     def test_the_exact_boundary_passes(self):
         for mutation, why in AT_THE_FLOOR.items():

@@ -43,19 +43,34 @@ items would leave an implemented entry whose evidence came from upstream unexami
 same shape of hole as the one this rule closes. What the engine ships is the merge, so the merge
 is what is read.
 
-The rule, in full, is `placeholder_problem()` below: a named set of placeholder words, and a floor
-of MINIMUM_WORDS distinct words and MINIMUM_CHARACTERS characters, both applied to the mutation
-after `normalise()` -- NFKD, combining marks and format characters (Unicode Mn, Me, Cf) removed,
-whitespace collapsed, punctuation, symbols and spaces stripped from both ends by Unicode category,
-and casefolded. So `TODO`, `ＴＯＤＯ`, `"TODO"`, `TO<zero-width space>DO` and `TÓDO` are one word.
+The rule, in full, is `placeholder_problem()` below. Three refusals, in order, all applied to the
+mutation after `normalise()` -- NFKD, combining marks and format characters (Unicode Mn, Me, Cf)
+removed, whitespace collapsed, punctuation, symbols and spaces stripped from both ends by Unicode
+category, and casefolded, so `TODO`, `ＴＯＤＯ`, `"TODO"`, `TO<zero-width space>DO` and `TÓDO` are
+one word:
 
-The floor counts **distinct** words on purpose. A mutation that says one word over and over says
-nothing, and counting distinct words refuses `TODO TODO TODO` however each copy is spelled --
-including with a Cyrillic `О` for a Latin `O`. **Confusable (homoglyph) mapping is deliberately
-not done**: it needs a versioned table of confusables kept current against Unicode, which belongs
-to the whole factory and not to one check, and a homoglyph here is deliberate evasion, which this
-floor does not claim to stop in any case. What it does mean is that a mutation spelled in another
-script is not recognised as a placeholder word -- it is refused, when it is refused, by the floor.
+  * a **placeholder**: the whole mutation is one of the set, or every distinct word in it is;
+  * **one word repeated**: two or more words, all the same word;
+  * **too short**: fewer than MINIMUM_WORDS words, counted with repeats, or fewer than
+    MINIMUM_CHARACTERS characters.
+
+Words are counted with repeats, and distinctness is only ever the placeholder rule's business.
+They were one check and should not have been: ``Increment `increment`; fails.`` is honest evidence
+about a variable named `increment`, and a floor counting distinct words refused it.
+
+"One word repeated" is what refuses `TODO TODO TODO` when the copies are spelled in a script the
+placeholder set does not contain -- a Cyrillic `О` for a Latin `O`, say. **Confusable (homoglyph)
+mapping is deliberately not done**: it needs a versioned table of confusables kept current against
+Unicode, which belongs to the whole factory and not to one check, and a homoglyph here is
+deliberate evasion, which this floor does not claim to stop in any case. So the claim is exactly
+this and no more: *repeating one spelling is refused whatever script the spelling is in; mixing
+spellings to evade -- `TODO TОDO TODО`, three different ones -- is not something this floor
+stops.*
+
+Read after the merge is built, which means **after** rules 1 and 2 and 0027's rulings have held.
+An overlay that breaks one of those is refused there and its mutations are never looked at, so a
+refusal that names no mutation is not a report that the mutations are fine -- it is a merge that
+could not be read yet. Fix what is named, run it again.
 
 This refuses **unfilled placeholders**, and nothing more. It cannot tell whether the edit was
 made, whether the test went red, whether the mutation was a good one, or whether the sentence was
@@ -104,8 +119,8 @@ PLACEHOLDERS = frozenset((
 ))
 
 # The floor. A mutation is a sentence: it names what was changed and says what the test then did,
-# and neither fits in two words. Distinct words, so a word repeated is still one word. Set an order
-# of magnitude below any real mutation -- the shortest in faa-part-107 or tax-121-principal-residence
+# and neither fits in two words. Counted with repeats -- a word may legitimately appear twice, as in
+# ``Increment `increment`; fails.`` Set an order of magnitude below any real mutation -- the shortest in faa-part-107 or tax-121-principal-residence
 # is 20 words and 159 characters -- because refusing an honest mutation is worse than letting a
 # placeholder through: it blocks work and invites padding. Not a quality bar; see the docstring.
 MINIMUM_WORDS = 3
@@ -146,20 +161,23 @@ def normalise(mutation):
 
 def words(normalised):
     """The tokens that carry meaning: whitespace-separated, at least one letter or digit each,
-    with their own punctuation off, and each counted once."""
-    return {strip_edges(w) for w in normalised.split() if any(c.isalnum() for c in w)}
+    with their own punctuation off. In order, with repeats: the floor counts these."""
+    return [strip_edges(w) for w in normalised.split() if any(c.isalnum() for c in w)]
 
 
 def placeholder_problem(mutation):
     """Why this mutation is not evidence, or None. The whole rule, in one place (#239)."""
     normalised = normalise(mutation)
-    distinct = words(normalised)
+    tokens = words(normalised)
+    distinct = set(tokens)
     if normalised in PLACEHOLDERS or (distinct and distinct <= PLACEHOLDERS):
         return f"{mutation.strip()!r}, which is a placeholder, not a mutation"
-    if len(distinct) < MINIMUM_WORDS or len(normalised) < MINIMUM_CHARACTERS:
+    if len(tokens) > 1 and len(distinct) == 1:
+        return f"{mutation.strip()!r}, which is one word repeated, not a mutation"
+    if len(tokens) < MINIMUM_WORDS or len(normalised) < MINIMUM_CHARACTERS:
         return (f"{mutation.strip()!r}, which is too short to be a mutation: at least "
-                f"{MINIMUM_WORDS} distinct words and {MINIMUM_CHARACTERS} characters are asked "
-                f"for, and this is {len(distinct)} and {len(normalised)}")
+                f"{MINIMUM_WORDS} words and {MINIMUM_CHARACTERS} characters are asked "
+                f"for, and this is {len(tokens)} and {len(normalised)}")
     return None
 
 

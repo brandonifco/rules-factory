@@ -989,14 +989,21 @@ derived consequence (#16): **the artifact is the test.**
 **A placeholder is not a mutation.** An engine's gate (`scripts/map-overlay.py`, the recipe at
 `tools/factory/recipe/map-overlay.py`) refuses an `implemented` entry whose test records
 `PENDING`, `TBD`, `TODO`, `none`, `n/a`, `scratch`, `placeholder`, `xxx`, `unknown`, `later`,
-`fixme`, `wip`, `?` or `-` — or anything shorter than **three distinct words and twelve
-characters**. Both are applied to the mutation after it is normalised: NFKD, combining marks and
-format characters removed, whitespace collapsed, punctuation and symbols stripped from both ends
-by Unicode category, and casefolded. So `Pending.`, `--`, `""`, `“TODO”`, `ＴＯＤＯ`, `TÓDO` and a
-`TODO` with a zero-width space inside it are all the same word. Words are counted **distinct**, so
-`TODO TODO TODO` is one word however each copy is spelled — including with a Cyrillic `О`, since
-no confusable mapping is done and none is claimed. The refusal names the entry, the test, the
-string, where the record lives and `tools/re-produce.sh`.
+`fixme`, `wip`, `?` or `-` — or **one word repeated** — or anything shorter than **three words and
+twelve characters**. All three are applied to the mutation after it is normalised: NFKD, combining
+marks and format characters removed, whitespace collapsed, punctuation and symbols stripped from
+both ends by Unicode category, and casefolded. So `Pending.`, `--`, `""`, `“TODO”`, `ＴＯＤＯ`, `TÓDO`
+and a `TODO` with a zero-width space inside it are all the same word. The refusal names the entry,
+the test, the string, where the record lives and `tools/re-produce.sh`.
+
+Words are counted **with repeats**, because a word may legitimately appear twice: ``Increment
+`increment`; fails.`` is honest evidence about a variable named `increment`. Distinctness is only
+the placeholder rule's business — the whole mutation is a placeholder, or every distinct word in
+it is — and the separate "one word repeated" refusal is what catches `TODO TODO TODO` when the
+copies are spelled in a script the set does not contain, such as with a Cyrillic `О` for a Latin
+`O`. **No confusable mapping is done and none is claimed**, so the claim is exactly this: repeating
+one spelling is refused whatever script the spelling is in, and mixing spellings to evade
+(`TODO TОDO TODО`, three different ones) is not something this floor stops.
 
 **It reads the merge, not the overlay.** `tests` is a field of the merged entry, and a package map
 may carry one, so checking only the overlay would leave an implemented entry whose evidence came
@@ -1008,6 +1015,11 @@ and produced again — and `validate.sh full` passed on the intermediate run. Th
 an order of magnitude below the shortest real mutation either of the factory's engines records
 (20 words, 159 characters), because refusing an honest mutation blocks work and invites padding,
 which is worse than a placeholder slipping through.
+
+**It is read after the merge is built,** which is after rules 1 and 2 and the owner's rulings have
+held. An overlay that breaks one of those is refused there and its mutations are never looked at,
+so a refusal that names no mutation is not a report that the mutations are fine — it is a merge
+that could not be read yet. Fix what is named and run it again.
 
 **What it refuses is an unfilled placeholder, and nothing more.** It cannot tell whether the edit
 was made, whether the test went red, whether the mutation was a good one, or whether the sentence
