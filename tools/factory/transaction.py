@@ -33,9 +33,10 @@ differ from what was copied, and removed when it was copied and is gone. The exe
 only part of a mode git tracks, and the only part compared: the gate recipe writes 0644 and 0755,
 and a clone made under umask 002 has 0664 and 0775, so comparing whole modes counted files git
 sees as unchanged as changed. A file whose other mode bits alone differ is left as it is in
-`--out`. Removal is not a concept invented here:
-backlog.py deletes item files that are no longer in the backlog, and nothing else deletes
-anything. Comparing against the snapshot rather than against `--out` at commit time means a
+`--out`. Removal has one producer: a pattern the factory has retired (ownership.RETIRED --
+`backlog/*.md`, since #243) is deleted from the staging copy by every `produce`, which is how an
+engine produced before the retirement is migrated, transactionally. Nothing else deletes anything.
+Comparing against the snapshot rather than against `--out` at commit time means a
 file someone edits in `--out` while `produce` runs is not reverted; and before committing, every
 path in the set is checked against `--out` again (a changed or removed file still as it was
 copied, an added one still absent), and the run is refused, with nothing written, if not.
@@ -49,7 +50,9 @@ into place, one atomic rename. For an existing `--out`:
      directories to create. Its existence means the backups are complete;
   3. directories are created, each added or changed file is `os.replace`d into place, each
      removed file is deleted;
-  4. the journal is deleted, then the working directory.
+  4. the journal is deleted, then any directory the removals emptied (`_prune_emptied`: after the
+     journal, because an empty directory can lose nothing and a rollback has nothing to restore
+     into it), then the working directory.
 
 A failure in step 3 (an exception, KeyboardInterrupt included) is rolled back at once: added
 files and created directories are removed, changed and removed files are restored from
@@ -421,6 +424,28 @@ class Stage:
                                   f"{self.out} retries the rollback", rolled_back=False)
             raise CommitError(f"writing to {self.out} failed ({error!r}) and was rolled back", rolled_back=True)
         os.remove(journal_path)
+        self._prune_emptied(removed)
+
+    def _prune_emptied(self, removed):
+        """Remove directories this commit emptied, deepest first. After the journal, deliberately.
+
+        Removals can take the last file out of a directory -- `backlog/` when a produce migrates an
+        engine past #243. git does not track a directory, so an empty one left behind is invisible
+        in a diff and present on disk, which is the worst of both. It is done after the journal is
+        deleted because the transaction is over by then and there is nothing left to roll back:
+        every directory removed here is empty, so removing it can lose nothing, and a rollback that
+        had to recreate directories would need them in the journal for no gain. An `OSError` --
+        something arrived in the directory between the check and the call, or it is not ours to
+        remove -- leaves the directory alone and is not a failed commit.
+        """
+        directories = {os.path.dirname(relative) for relative in removed} - {""}
+        for relative in sorted(directories, key=lambda p: p.count("/"), reverse=True):
+            target = _native(self.out, relative)
+            try:
+                if os.path.isdir(target) and not os.path.islink(target) and not os.listdir(target):
+                    os.rmdir(target)
+            except OSError:
+                pass
 
 
 # --- what git was not told -------------------------------------------------------------------

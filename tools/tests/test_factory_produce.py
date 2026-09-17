@@ -7,9 +7,10 @@ the same directory leaves engine-owned files (the overlay above all) alone and r
 generated ones (managed files: test_factory_ownership.py); a re-run with a newer or older version of the map leaves nothing naming the
 version it replaced, pins included (#66); every one of Part 107's 47 entries is emitted with its citation verbatim and
 the correspondence row the table's first match gives it; the overlay moves an entry between
-rows; an overlay that breaks 0015's merge rules is refused. And produce is transactional (#67):
-a refusal after generation and backlog wrote leaves an existing engine byte-identical (modes
-included) and a fresh `--out` uncreated; a failure injected into the commit (os.replace patched
+rows; an overlay that breaks 0015's merge rules is refused; and a `backlog/` an earlier produce
+committed is removed, because the pattern is retired (#243). And produce is transactional (#67):
+a refusal after generation and after the retired files were removed leaves an existing engine
+byte-identical (modes included) and a fresh `--out` uncreated; a failure injected into the commit (os.replace patched
 in-process) is rolled back; a commit whose rollback also failed is rolled back by the next run,
 and a copy of that half-committed engine is refused, naming the journal.
 
@@ -229,7 +230,6 @@ class TestMapVersionChange(ProduceCase):
         self.assertIn(f'<PackageVersion Include="{MAP_ID}" Version="[{now}]" />', self.read(out, PACKAGES_PROPS))
         for path in GENERATED[:3]:
             self.assertIn(f"from {MAP_ID} {now}.", self.read(out, path), path)
-        self.assertIn(now, self.read(out, "backlog/README.md"))
         record = json.loads(self.read(out, "provenance.json"))
         self.assertEqual(record["map"]["version"], now)
         generated = {g["path"]: g["sha256"] for g in record["generated"]}
@@ -276,6 +276,30 @@ class TestMapVersionChange(ProduceCase):
         self.assertEqual({item["class"] for item in report["paths"]}, {"generated"})
         self.assertTrue(any(line.startswith("map.version:") for line in report["provenanceDiff"]),
                         report["provenanceDiff"])
+
+    def test_the_report_calls_a_retired_path_retired_only_where_it_deleted_one(self):
+        """`retired` is a class of change, not of file (#243).
+
+        A run deletes what it recorded under a retired pattern; nothing writes one. So a path that
+        *appears* or *changes* under the pattern is somebody's own, and reporting it `retired` would
+        say the opposite of what the section is for -- and is what `tools/pr-policy.py` reads to
+        decide whether a produce claim covers it.
+        """
+        out = self.produced(package=self.v1)
+        committed_backlog(out, ("999-stale.md",))
+        report_path = os.path.join(self.tmp, "report.json")
+        self.produced(out, package=self.v2, report=report_path)
+        with open(report_path, encoding="utf-8") as handle:
+            report = json.load(handle)
+        by_path = {item["path"]: item for item in report["paths"]}
+        self.assertEqual(by_path["backlog/999-stale.md"],
+                         {"path": "backlog/999-stale.md", "change": "removed", "class": "retired"})
+        self.assertEqual({item["change"] for item in report["paths"] if item["class"] == "retired"}, {"removed"})
+        for change in ("added", "changed"):
+            classified = factory.classified_paths(NAME, *[["backlog/notes.md"] if how == change else []
+                                                         for how in ("added", "changed", "removed")])
+            self.assertEqual(classified, [{"path": "backlog/notes.md", "change": change, "class": None}],
+                             "a file appearing or changing under a retired pattern is nobody's but the engine's")
 
     def test_the_report_of_a_run_that_moved_nothing_says_so(self):
         out = self.produced(package=self.v1)
@@ -600,6 +624,30 @@ class TestRefuses(ProduceCase):
         self.assertEqual(code, 2, output)
 
 
+def committed_backlog(engine, names=("999-stale.md", "README.md")):
+    """A `backlog/` as a produce before #243 left one: the files, **and the record that hashed them**.
+
+    Writing the files alone would not be that state. A retirement deletes only what the engine's own
+    provenance.json attributes to the factory (ownership.remove_retired), so a fixture that skipped
+    the record would be testing the case where nothing is removed.
+    """
+    directory = os.path.join(engine, "backlog")
+    os.makedirs(directory, exist_ok=True)
+    record_path = os.path.join(engine, "provenance.json")
+    with open(record_path, encoding="utf-8") as handle:
+        record = json.load(handle)
+    for name in names:
+        text = f"# committed by a produce before #243: {name}\n"
+        with open(os.path.join(directory, name), "w", encoding="utf-8") as handle:
+            handle.write(text)
+        record["generated"].append({"path": f"backlog/{name}",
+                                    "sha256": hashlib.sha256(text.encode("utf-8")).hexdigest()})
+    record["generated"].sort(key=lambda item: item["path"])
+    with open(record_path, "w", encoding="utf-8") as handle:
+        json.dump(record, handle, indent=2)
+    return [f"backlog/{name}" for name in names]
+
+
 def snapshot(root):
     """Every directory, and every file with its mode and bytes, under `root`."""
     entries = {}
@@ -623,22 +671,27 @@ class TestTransactional(ProduceCase):
         cls.v2 = pack_version(PART107, "7.0.0", os.path.join(cls.shared, "versions"))
 
     def existing(self):
-        """A v1 engine with a stale backlog item (a v2 run would change, add and remove files)."""
+        """A v1 engine still holding a committed backlog, as every engine produced before #243 does.
+
+        A v2 run changes, adds and removes files: the removals are the retired `backlog/*.md`
+        (ownership.RETIRED), which is the migration, and they go through the same journal and
+        rollback as everything else.
+        """
         out = self.produced(package=self.v1)
-        with open(os.path.join(out, "backlog", "999-stale.md"), "w", encoding="utf-8") as handle:
-            handle.write("stale\n")
+        committed_backlog(out)
         os.makedirs(os.path.join(out, "bin"))
         with open(os.path.join(out, "bin", "build.dll"), "wb") as handle:
             handle.write(b"built")
         return out
 
-    def fail_in_backlog(self):
-        real = factory.backlog_step.emit
+    def fail_after_generation(self):
+        """A refusal at the last step before provenance, once the run has already written and removed."""
+        real = factory.remove_retired
 
-        def emit_then_refuse(entries, context, out):
-            real(entries, context, out)
-            raise factory.backlog_step.BacklogError("forced after generation and backlog wrote")
-        return mock.patch.object(factory.backlog_step, "emit", emit_then_refuse)
+        def remove_then_refuse(name, out):
+            real(name, out)
+            raise factory.generate.GenerationError("forced after generation and the retired files were removed")
+        return mock.patch.object(factory, "remove_retired", remove_then_refuse)
 
     def fail_replace_after(self, out, count):
         real, calls = os.replace, []
@@ -658,7 +711,7 @@ class TestTransactional(ProduceCase):
     def test_a_refusal_after_generation_leaves_an_existing_engine_byte_identical(self):
         out = self.existing()
         before = snapshot(out)
-        with self.fail_in_backlog():
+        with self.fail_after_generation():
             code, output = self.produce(out, package=self.v2)
         self.assertEqual(code, 1, output)
         self.assertIn("forced after generation", output)
@@ -668,7 +721,7 @@ class TestTransactional(ProduceCase):
 
     def test_a_refusal_leaves_a_fresh_out_uncreated(self):
         out = os.path.join(self.tmp, "missing", "parent", "engine")
-        with self.fail_in_backlog():
+        with self.fail_after_generation():
             code, output = self.produce(out)
         self.assertEqual(code, 1, output)
         self.assertEqual(os.listdir(self.tmp), [])
@@ -676,7 +729,7 @@ class TestTransactional(ProduceCase):
     def test_a_refusal_leaves_an_empty_out_empty(self):
         out = os.path.join(self.tmp, "engine")
         os.makedirs(out)
-        with self.fail_in_backlog():
+        with self.fail_after_generation():
             code, output = self.produce(out)
         self.assertEqual(code, 1, output)
         self.assertEqual(os.listdir(out), [])
@@ -685,12 +738,41 @@ class TestTransactional(ProduceCase):
     def test_a_commit_removes_and_leaves_bin_alone(self):
         out = self.existing()
         self.produced(out, package=self.v2)
-        self.assertFalse(os.path.exists(os.path.join(out, "backlog", "999-stale.md")))
+        self.assertFalse(os.path.exists(os.path.join(out, "backlog")),
+                         "the retired backlog/ an earlier produce committed is removed, directory and all")
         self.assertTrue(os.path.isfile(os.path.join(out, "bin", "build.dll")))
         shutil.rmtree(os.path.join(out, "bin"))
         fresh = tree(self.produced(os.path.join(self.tmp, "fresh"), package=self.v2))
         self.assertEqual(fresh, tree(out))
         self.assert_no_leftovers(self.tmp)
+
+    def test_a_file_under_a_retired_pattern_the_record_does_not_own_is_kept_and_named(self):
+        """A retired pattern is not a licence to delete by pathname (#243).
+
+        `backlog/notes.md` matches `backlog/*.md` and was never emitted by anything; an item file
+        somebody edited after the last produce no longer hashes to what the record says. Neither is
+        the factory's to remove, and both are named in the output, because a file under a pattern
+        nothing maintains any more is something its owner has to be told about.
+        """
+        out = self.produced(package=self.v1)
+        committed_backlog(out)
+        mine = os.path.join(out, "backlog", "notes.md")
+        with open(mine, "w", encoding="utf-8") as handle:
+            handle.write("# my own notes, never emitted by anything\n")
+        edited = os.path.join(out, "backlog", "999-stale.md")
+        with open(edited, "a", encoding="utf-8") as handle:
+            handle.write("a line I added after the last produce\n")
+
+        code, output = self.produce(out, package=self.v2)
+        self.assertEqual(code, factory.NOT_VERIFIED, output)
+        self.assertTrue(os.path.isfile(mine), "a hand-written file under a retired pattern was deleted")
+        self.assertTrue(os.path.isfile(edited), "an edited file the record no longer matches was deleted")
+        self.assertFalse(os.path.exists(os.path.join(out, "backlog", "README.md")),
+                         "the one file the record does attribute to the factory is still removed")
+        self.assertIn("kept backlog/notes.md", output)
+        self.assertIn("provenance.json does not record the factory as having written it", output)
+        self.assertIn("kept backlog/999-stale.md", output)
+        self.assertIn("edited after the last produce", output)
 
     def test_modes_git_does_not_track_are_not_counted_as_changed(self):
         """A clone under umask 002 has 0664 and 0775 where the factory writes 0644 and 0755."""
@@ -724,7 +806,7 @@ class TestTransactional(ProduceCase):
         self.assert_no_leftovers(self.tmp)
 
     def test_a_symlinked_directory_it_would_write_through_is_refused_and_nothing_is_written(self):
-        """#184: backlog/ turned into a link (git stores links) must not carry produce's writes outside --out."""
+        """#184: backlog/ turned into a link (git stores links) must not carry produce's removals outside --out."""
         out = self.existing()
         outside = os.path.join(self.tmp, "outside")
         shutil.move(os.path.join(out, "backlog"), outside)

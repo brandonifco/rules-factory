@@ -35,8 +35,11 @@ must hold:
      was not dirty. A produce from a dirty factory is not reproducible, so it is not an update
      anybody can repeat;
   3. every changed path is one the factory writes, classified through this engine's own vendored
-     `scripts/factory/ownership.py` -- generated, managed, or a `packages.lock.json` a pin change
-     re-locks (#94). One hand-written `.cs`, one overlay edit, one edit to `.github/agent-policy.json`
+     `scripts/factory/ownership.py` -- generated, managed, a `packages.lock.json` a pin change
+     re-locks (#94), or the **deletion** of a file under a retired pattern whose base-commit bytes
+     are the ones the base commit's `provenance.json` hashed -- the same test the remover applies,
+     so the policy and the run agree about who owned a file (#243). One hand-written `.cs`, one
+     overlay edit, one edit to `.github/agent-policy.json`
      voids the claim, by name, and the pull request is judged as the ordinary pull request it is.
 
 The file set this can ever cover is exactly the set nobody may hand-edit anyway (AGENTS.md section
@@ -60,6 +63,9 @@ Label strings and the semantic surface come from `.github/agent-policy.json`, wh
 owns. Standard library only, plus `gh` (or `$RULES_ENGINE_GH`).
 """
 import argparse
+import base64
+import binascii
+import hashlib
 import json
 import os
 import pathlib
@@ -236,15 +242,87 @@ def engine_ownership():
     return ownership, name, record
 
 
-def factory_written(path, ownership, name):
-    """Whether `path` is one a `factory produce` run writes, by the engine's own table.
+def base_bytes(base_oid, path):
+    """The bytes of `path` at the commit this pull request is based on, or None (#243).
+
+    Only read for a path under a retired pattern, so an ordinary pull request makes no extra call.
+    Read from the API rather than from the checkout, because the workflow checks out one commit and
+    the base is not in it; `{owner}/{repo}` is expanded by `gh` from the current repository. The
+    base64 envelope is decoded rather than the raw media type taken, because these bytes are
+    hashed and text passed through a pipe is not reliably the bytes that were committed. Any
+    failure returns None, and None admits nothing.
+    """
+    try:
+        encoded = gh("api", f"repos/{{owner}}/{{repo}}/contents/{path}?ref={base_oid}", "--jq", ".content")
+        return base64.b64decode(encoded)
+    except (Failed, OSError, ValueError, binascii.Error):
+        return None
+
+
+def base_record(base_oid):
+    """The `provenance.json` of the base commit as a dict, or None."""
+    raw = base_bytes(base_oid, PROVENANCE)
+    if raw is None:
+        return None
+    try:
+        record = json.loads(raw.decode("utf-8"))
+    except (UnicodeDecodeError, ValueError):
+        return None
+    return record if isinstance(record, dict) else None
+
+
+def recorded_hash(record, path):
+    """The SHA-256 `record` records for `path` as a file the factory wrote, or None.
+
+    `generated` and `managed` only. `engineOwned` says the opposite and carries no hash;
+    `buildInputs` says only which bytes were there, not who put them there.
+    """
+    for section in ("generated", "managed"):
+        for item in (record or {}).get(section) or []:
+            if isinstance(item, dict) and item.get("path") == path and isinstance(item.get("sha256"), str):
+                return item["sha256"]
+    return None
+
+
+def factory_wrote_the_deleted_file(path, base_oid, base):
+    """Whether the bytes deleted at `path` are the ones the base record says the factory wrote.
+
+    **The same line `ownership.remove_retired` draws**, and it has to be: a file that was generated
+    once and hand-edited afterwards without a re-produce is recorded under its old hash, so the path
+    is in the record and the bytes are not the factory's. The remover keeps such a file; without the
+    hash this would have admitted its deletion, and the policy and the run would disagree about who
+    owned it. So the base bytes are fetched and hashed, not just looked up by name.
+    """
+    recorded = recorded_hash(base, path)
+    if recorded is None:
+        return False
+    data = base_bytes(base_oid, path)
+    return data is not None and hashlib.sha256(data).hexdigest() == recorded
+
+
+def factory_written(path, change, ownership, name, attributed):
+    """Whether `path`, changed as `change` says, is one a `factory produce` run writes.
 
     Generated and managed files are the factory's on every run. The two `packages.lock.json` are
     engine-owned, and are here for the one case 0018's amendment (#94) admits: a produce that moved
     the generated pins re-locks them, because lock files resolved against the old pins cannot pass
-    the gate. Everything else an engine owns -- its overlay, its projects, its rails configuration,
-    its hand-written code -- is a decision the factory did not make, and is what voids a claim.
+    the gate.
+
+    A **retired** pattern (`ownership.RETIRED`) is one the factory used to write and now deletes, so
+    a migration produce's deletions are its work and not somebody's decision carried in beside them.
+    That is a narrow admission and it is written narrowly: the change must be a **deletion**
+    (`changeType == "REMOVED"`), and `attributed` -- `factory_wrote_the_deleted_file`, the same test
+    the remover applies -- must say the base commit's bytes at that path are the ones the base
+    record hashed. A hand-written `backlog/notes.md` matches the pattern too, and so does one the
+    factory wrote and somebody has edited since; adding, editing or deleting either is a decision,
+    and voids the claim like any other. Matching the pattern alone was the first version of this and
+    was wrong.
+
+    Everything else an engine owns -- its overlay, its projects, its rails configuration, its
+    hand-written code -- is a decision the factory did not make, and is what voids a claim.
     """
+    if getattr(ownership, "retired", None) is not None and ownership.retired(path, name) is not None:
+        return change == "REMOVED" and attributed(path)
     row = ownership.classify(path, name)
     if row is None:
         return False
@@ -253,7 +331,7 @@ def factory_written(path, ownership, name):
     return row.cls == ownership.ENGINE_OWNED and row.pattern.endswith("/packages.lock.json")
 
 
-def check_produce(body, filled, changed, findings):
+def check_produce(body, filled, changed, findings, base_oid=None):
     """Whether this pull request is a factory update, by the closed predicate #193 decided.
 
     Returns True only when the section says so, the declared facts are the tree's, and every changed
@@ -297,17 +375,30 @@ def check_produce(body, filled, changed, findings):
                         f"checkout with uncommitted changes. Nobody can reproduce that run, so it is not a "
                         f"factory update -- re-produce from a clean factory")
 
+    # Only fetched when the diff holds a retired path, so an ordinary produce update makes no
+    # extra call and a failure to fetch is a refusal only where it decides something.
+    base, attributed = None, lambda _path: False
+    if any(getattr(ownership, "retired", None) is not None and ownership.retired(path, name) is not None
+           for path in changed):
+        base = base_record(base_oid) if base_oid else None
+        if base is None:
+            problems.append(f"it changes a file under a retired pattern, and the base commit's {PROVENANCE} "
+                            f"could not be read, so whether the factory ever wrote that file is unknown. A "
+                            f"deletion this check cannot attribute is not admitted")
+        else:
+            attributed = lambda path: factory_wrote_the_deleted_file(path, base_oid, base)  # noqa: E731
     smuggled = []
     for path in sorted(changed):
         try:
-            if not factory_written(path, ownership, name):
+            if not factory_written(path, changed[path], ownership, name, attributed):
                 smuggled.append(path)
         except ownership.OwnershipError as error:
             smuggled.append(f"{path} ({error})")
     if smuggled:
         problems.append(f"{len(smuggled)} changed file(s) are not files a produce writes: "
                         f"{', '.join(smuggled[:5])}{'...' if len(smuggled) > 5 else ''}. A produce writes the "
-                        f"generated and managed files and re-locks the lock files; anything else in this diff is "
+                        f"generated and managed files, re-locks the lock files, and deletes what it recorded "
+                        f"under a retired pattern; anything else in this diff is "
                         f"somebody's decision, and it is reviewed as one")
 
     if problems:
@@ -434,9 +525,13 @@ def main(argv=None):
     findings = []
     try:
         settings = policy()
-        pull = json.loads(gh("pr", "view", str(args.pr), "--json", "number,title,body,files,changedFiles"))
+        pull = json.loads(gh("pr", "view", str(args.pr), "--json",
+                             "number,title,body,files,changedFiles,baseRefOid"))
         body = pull.get("body") or ""
-        changed = [f["path"] for f in pull.get("files") or []]
+        # path -> how it changed, as GitHub reports it (ADDED, MODIFIED, REMOVED, RENAMED...). The
+        # produce predicate needs it: a retired path is the factory's when deleted and nobody's
+        # otherwise. An absent changeType reads as "" and is therefore never a deletion.
+        changed = {f["path"]: f.get("changeType") or "" for f in pull.get("files") or []}
         truncated = truncation(pull, changed, findings)
         semantic_files = {path for path in changed
                           if is_semantic(path, (settings.get("review") or {}).get("semanticPaths") or [])}
@@ -445,7 +540,8 @@ def main(argv=None):
         filled = check_sections(body, findings)
         # Never on a truncated list: the produce predicate says every changed path is one the
         # factory writes, and a list that is missing some cannot say that about the ones it lost.
-        produce = False if truncated else check_produce(body, filled, changed, findings)
+        produce = False if truncated else check_produce(body, filled, changed, findings,
+                                                        pull.get("baseRefOid"))
         check_evidence(filled, findings, produce=produce)
         check_conformance(filled, semantic_files, findings, produce=produce)
         check_provenance(filled, findings)

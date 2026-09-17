@@ -4,6 +4,7 @@
   python3 tools/factory produce --package <nupkg path | Id@Version> --corpus <file>
                                 --name <PascalName> --out <dir> [--no-verify]
   python3 tools/factory backlog --create --repo <owner/name> --dir <engine dir>
+  python3 tools/factory backlog --render --dir <engine dir> [--to <directory>]
 
 `produce` runs, in order, and stops at the first refusal. Every step writes into a staging copy
 of `--out`, and the result is written to `--out` only after the last step passed, so a
@@ -25,8 +26,10 @@ changes are uncommitted, for whoever ran it to review and commit:
     the map package at the versions given and references the map;
   * the gate recipe (gate.py) -- scripts/validate.sh and the scripts and CI workflow it runs,
     rewritten every run;
-  * backlog (backlog.py) -- `backlog/NNN-<entry-id>.md`, one per entry still to build, in
-    dependsOn order, and `backlog/README.md`, rewritten every run;
+  * backlog (backlog.py) -- nothing is written. The backlog is a projection of the map and the
+    overlay, not a file in the engine (#243): `backlog --create` files it as GitHub issues and
+    `backlog --render` prints it. A `backlog/` an earlier produce committed is removed, with the
+    run, and the run says so;
   * provenance (provenance.py), last -- `provenance.json` in the engine root, embedded in the
     engine. Before anything else, a factory whose git working tree is dirty is refused unless
     `--allow-dirty`;
@@ -58,12 +61,18 @@ changes are uncommitted, for whoever ran it to review and commit:
     in `--out`, journaled and rolled back on failure (a fresh `--out` is one rename). No git commit
     is made, here or anywhere else in produce.
 
-`backlog --create` synchronises those files with GitHub issues through `gh` (or `$FACTORY_GH`):
-each file is matched to its issue by the entry marker in its body, never by title, and the
+`backlog --create` renders the backlog from the map package provenance.json records (`--package`,
+or Id@Version from the NuGet global packages folder) merged with the engine's
+`corpus-map.overlay.json`, and synchronises it with GitHub issues through `gh` (or `$FACTORY_GH`):
+each item is matched to its issue by the entry marker in its body, never by title, and the
 issue is created, updated, or left unchanged. It never closes or deletes an issue. Before any
-call it reads the map package provenance.json records (`--package`, or Id@Version from the NuGet
-global packages folder): when the corpus's licence requires attribution, a body without the
-statement is refused (decision 0023).
+call, when the corpus's licence requires attribution, a body without the statement is refused
+(decision 0023).
+
+`backlog --render` is the same rendering with nothing sent anywhere: one Markdown document on
+stdout, or, with `--to <directory>`, the item files. `--to` is refused inside the engine unless
+the engine's `.gitignore` covers it -- the point of #243 is that a rendering of the overlay is
+not committed beside the overlay.
 
   python3 tools/factory provenance --engine <dir> [--package <nupkg path | Id@Version>]
 
@@ -144,12 +153,14 @@ def produce(args):
             model = generate.produce(result, args.name, out, log=sys.stdout,
                                      adopt=getattr(args, "adopt", None) or (), reset=getattr(args, "reset", None) or ())
             gate.emit(args.name, out, log=sys.stdout)
-            context = {"name": args.name, "package": result.package_id, "version": result.version}
-            credit = backlog_step.attribution(result.corpus)  # decision 0023: quotations carry their attribution
-            if credit:
-                context["attribution"] = credit
-            written = backlog_step.emit([item["entry"] for item in model.entries], context, out)
-            print(f"--- backlog: {len(written) - 1} item(s)")
+            # #243: the backlog is not a file in the engine. It is rendered on demand by
+            # `factory backlog --render` and filed as GitHub issues by `factory backlog --create`,
+            # both from the map and the overlay -- the same two inputs this run merged. What an
+            # earlier produce committed is removed here, by the retired patterns of the ownership
+            # table, and the removal is committed with everything else this run did, or not at all
+            # (transaction.py).
+            for line in remove_retired(args.name, out):
+                print(line)
             provenance.emit(model, out)
         # Provenance is written last, outside the recorder: every step above is in `generated`.
         document = provenance.build(state, result, model, recorder)
@@ -244,13 +255,45 @@ def moved(before, after):
     return lines
 
 
+def remove_retired(name, out):
+    """Delete what the factory used to write and no longer does, in the staging copy; the lines to log.
+
+    Silent when there is nothing to remove, which is every engine produced since the retirement.
+    One line per retired pattern that matched something, naming the pattern, how many files went
+    and why -- so the run says what it did, rather than leaving a reader to find nineteen deletions
+    in the diff and work out who made them.
+
+    **And every match this run would not delete is named, by path.** A file under a retired pattern
+    that provenance.json never recorded, or whose bytes have moved since it did, is not the
+    factory's to remove (ownership.remove_retired) -- but it is now under a pattern nothing
+    maintains, which its owner cannot know unless they are told here.
+    """
+    removed, kept = generate.ownership.remove_retired(out, name)
+    lines = []
+    for row in generate.ownership.RETIRED:
+        matched = [p for p in removed if generate.ownership.retired(p, name) == row]
+        if matched:
+            lines.append(f"--- removed {len(matched)} file(s) matching the retired pattern {row.pattern}, which "
+                         f"`produce` no longer writes: {row.reason}")
+    for path, why in kept:
+        lines.append(f"--- kept {path}: it matches the retired pattern "
+                     f"{generate.ownership.retired(path, name).pattern}, but {why}, so it is yours and not this "
+                     f"run's to remove. Nothing writes or checks it any more")
+    return lines
+
+
 def classified_paths(name, added, changed, removed):
     """Every path this run put in place, with how it changed and which ownership class it is in.
 
     The class comes from ownership.py, the one table produce itself wrote these files by, so a
     reader of the report and `tools/pr-policy.py` reading the pull request are answering from the
-    same rows. `class: null` is a path the table does not classify: the lock files a restore wrote
-    are engine-owned rows and do classify, so a null here is something to look at.
+    same rows. `class: "retired"` is a path the factory used to write and **this run deleted**
+    (ownership.RETIRED): a class of change rather than of file, named so that a migration's
+    deletions read as the factory's. It is only ever reported against `removed`, because a retired
+    pattern is not something the factory writes -- a file appearing or changing under one is
+    somebody's own, and calling it retired would say the opposite of what this section is for.
+    `class: null` is a path the table does not classify at all: the lock files a restore wrote are
+    engine-owned rows and do classify, so a null here is something to look at.
     """
     out = []
     for how, paths in (("added", added), ("changed", changed), ("removed", removed)):
@@ -259,7 +302,9 @@ def classified_paths(name, added, changed, removed):
                 row = generate.ownership.classify(path, name)
             except generate.ownership.OwnershipError:
                 row = None
-            out.append({"path": path, "change": how, "class": row.cls if row else None})
+            gone = how == "removed" and generate.ownership.retired(path, name) is not None
+            out.append({"path": path, "change": how,
+                        "class": row.cls if row else ("retired" if gone else None)})
     return sorted(out, key=lambda item: item["path"].encode("utf-8"))
 
 
@@ -392,6 +437,31 @@ def check_provenance(args):
     return 0
 
 
+def render_backlog(args):
+    """`backlog --render`: the backlog of an engine, rendered now from its map package and overlay.
+
+    Nothing is sent anywhere and nothing in the engine is written. Without `--to` the whole
+    rendering goes to stdout as one Markdown document, index first, so it can be piped, paged or
+    redirected. With `--to` the item files are written there, which is what a reader who wants the
+    links between items to resolve needs -- and a `--to` inside the engine is refused unless the
+    engine ignores every file it would write, is not the engine root, and passes through no symlink
+    (backlog.refuse_unignored, #243).
+    """
+    rendered, _ = backlog_step.engine_backlog(args.dir, args.package)
+    if args.to:
+        # Every name the run would touch -- what it writes, and the stale items it would delete --
+        # is known before anything happens, and the gate is asked about each: an ignored directory
+        # can hold a tracked child, and a deletion is a change to the engine as much as a write
+        # (backlog.refuse_unignored, #243).
+        touched = list(rendered) + backlog_step.stale_names(args.to, rendered)
+        backlog_step.refuse_unignored(args.dir, args.to, touched)
+        written = backlog_step.write_rendered(rendered, args.to)
+        print(f"--- backlog: {len(written) - 1} item(s) and an index written to {args.to}")
+        return 0
+    sys.stdout.write(backlog_step.document(rendered))
+    return 0
+
+
 def build_parser():
     """The CLI. README.md's status table is checked against this (tools/check-readme-status.py)."""
     parser = argparse.ArgumentParser(prog="factory", description="Produce a rules engine from a corpus-map package.")
@@ -415,13 +485,20 @@ def build_parser():
                    help="write a JSON report of this run: what moved (map, kernel, factory) from what to what, every "
                         "path written with its ownership class, and the provenance diff. A factory update's pull "
                         "request is filled in from it (#193)")
-    b = commands.add_parser("backlog", help="create or update GitHub issues from an engine's backlog/ files")
-    b.add_argument("--create", action="store_true", required=True, help="create missing issues and update changed ones (the only action)")
-    b.add_argument("--repo", required=True, help="owner/name of the engine's repository")
+    b = commands.add_parser("backlog", help="file an engine's backlog as GitHub issues, or render it")
+    action = b.add_mutually_exclusive_group(required=True)
+    action.add_argument("--create", action="store_true",
+                        help="create missing issues and update changed ones; needs --repo")
+    action.add_argument("--render", action="store_true",
+                        help="print the backlog as one Markdown document, or write its files to --to; sends nothing")
+    b.add_argument("--repo", help="owner/name of the engine's repository (--create)")
     b.add_argument("--dir", required=True, help="the engine directory `produce` wrote")
-    b.add_argument("--package", help="the .nupkg whose manifest and map the bodies are checked against: the corpus "
-                                      "licence's attribution (decision 0023) (default: Id@Version from provenance.json, from the "
-                                      "NuGet global packages folder)")
+    b.add_argument("--to", metavar="DIR",
+                   help="with --render, write the item files here instead of printing them; a directory inside the "
+                        "engine is refused unless the engine ignores it (#243)")
+    b.add_argument("--package", help="the .nupkg whose manifest and map the backlog is rendered from and the bodies "
+                                      "checked against: the corpus licence's attribution (decision 0023) (default: "
+                                      "Id@Version from provenance.json, from the NuGet global packages folder)")
     l = commands.add_parser("rails", help="report, or put in place, the rails GitHub itself enforces")
     l.add_argument("--repo", required=True, help="owner/name of the engine's repository")
     l.add_argument("--dir", required=True, help="the engine directory `produce` wrote")
@@ -443,6 +520,14 @@ def main(argv=None):
     args = build_parser().parse_args(argv)
     try:
         if args.command == "backlog":
+            if args.render:
+                if args.repo:
+                    raise intake_step.Usage("--repo is for --create; --render sends nothing anywhere")
+                return render_backlog(args)
+            if not args.repo:
+                raise intake_step.Usage("--create needs --repo <owner/name>")
+            if args.to:
+                raise intake_step.Usage("--to is for --render; --create writes issues, not files")
             if not re.match(r"^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$", args.repo):
                 raise intake_step.Usage(f"--repo {args.repo!r} is not owner/name")
             backlog_step.create(args.repo, args.dir, log=sys.stdout, gh=os.environ.get("FACTORY_GH", "gh"),

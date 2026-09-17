@@ -645,6 +645,15 @@ supplied most of what an issue needs:
 Order the backlog by the dependency graph, not by the corpus's page order. A corpus is
 organised for a reader; a backlog is organised for a builder.
 
+**Where the backlog lives.** In the issue tracker, and nowhere else. `factory backlog --create`
+writes one issue per entry still to build, from the map merged with the engine's
+`corpus-map.overlay.json`, and matches an existing issue by an entry marker in its body rather than
+by title. Nothing is committed into the engine: a rendering of the overlay kept beside the overlay
+goes stale between an entry being built and the next `factory produce`, and because every item
+states its position out of the total, building any entry rewrites nearly all of them
+([#243](https://github.com/brandonifco/rules-factory/issues/243)). `factory backlog --render --dir
+<engine>` prints the same rendering whenever anyone wants to read it as a document.
+
 **And batch by the dependency graph too, not by subject.** Rules form a web, and a chapter is a
 slice through it that cuts edges. Every batch of the SRD 5.2.1 combat build was named after a
 subject, and every one of them had to build entries that were not in it. *Movement and space* had
@@ -680,7 +689,7 @@ things:
   four are `absentFrom` verdicts — `flanking` and `surprise-round`, rules a reader of another
   edition expects and this text does not state.
 - **Sixteen are in scope and simply not built yet.** They decline `UnsupportedRule` and name
-  themselves, and the backlog holds them.
+  themselves, and the backlog — the engine's issues — holds them.
 - **Nineteen in-scope entries carry a question the corpus does not settle** (eleven of them among
   the fifty-four built, answering every case but the open one). That is the genuine residue: about
   a quarter of the slice. Six of the nineteen carry five of the six questions Phase 4 describes
@@ -744,7 +753,10 @@ shared bookkeeping:
 - **The backlog.** Items are numbered sequentially and the numbers close up as entries are built,
   so each merge renumbered what was left. One batch's merge renamed or rewrote thirty-three backlog
   files while closing sixteen issues. Issues survive it — `backlog --create` matches by the entry
-  marker in the body, never by title — but two batches in flight always conflict in `backlog/`.
+  marker in the body, never by title — but two batches in flight always conflicted in `backlog/`.
+  This is the evidence that
+  [#243](https://github.com/brandonifco/rules-factory/issues/243) acted on: the backlog is no
+  longer committed into an engine, so there is nothing left to renumber in a diff.
 - **A message that said something untrue.** `produce` ended with `committed to <engine>: …` while
   making no commit at all. All four agents read it as a git commit and committed by hand each time.
   The wording was fixed to the behaviour in factory 0.8.0

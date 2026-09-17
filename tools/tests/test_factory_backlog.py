@@ -1,11 +1,18 @@
 #!/usr/bin/env python3
-"""`factory produce` writes the backlog (#3, M5), and `factory backlog --create` files it.
+"""The backlog is rendered from the map and the overlay (#3, M5), and `factory backlog` files it.
 
-Asserted: one `backlog/NNN-<id>.md` per in-scope, unbuilt entry that is neither
-`definedElsewhere` nor `beyondAdapter` (derived entries included), for Part 107 and backgammon;
-every file comes after every file for its `dependsOn`; its locator citation and evidence are the
-map's bytes; links resolve; two runs give identical bytes and a stale item is removed; a cycle
-is refused. `--create` against a stubbed `gh` (`FACTORY_GH`) finds issues by the entry marker
+Since #243 `factory produce` writes no `backlog/`: the rendering is made on demand, from the map
+package `provenance.json` records merged with the engine's `corpus-map.overlay.json`, by
+`backlog.engine_backlog`. So what is asserted here is asserted about that rendering, and about the
+engine holding none of it.
+
+Asserted: one `NNN-<id>.md` item per in-scope, unbuilt entry that is neither `definedElsewhere` nor
+`beyondAdapter` (derived entries included), for Part 107 and backgammon; every item comes after
+every item for its `dependsOn`; its locator citation and evidence are the map's bytes; links
+resolve; a produced engine holds no `backlog/` path and records none; two renderings of the same
+inputs are identical; an overlay edit shows up in the rendering with no produce; `--render` prints
+the whole of it and `--render --to` writes it, refusing a directory the engine does not ignore; a
+cycle is refused. `--create` against a stubbed `gh` (`FACTORY_GH`) finds issues by the entry marker
 under each item's title: it creates each issue once, updates it when the entry is renamed or
 its dependencies change, writes nothing on a second run, adopts a legacy title-only issue,
 refuses a duplicate marker before any write, and reports without touching an issue whose entry
@@ -13,6 +20,7 @@ left the backlog. No real repository is touched.
 
 Run: python3 -m unittest discover -s tools/tests
 """
+import hashlib
 import importlib.util
 import io
 import json
@@ -26,6 +34,7 @@ import tempfile
 import unittest
 import zipfile
 from contextlib import redirect_stdout, redirect_stderr
+from unittest import mock
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 TOOLS = os.path.dirname(HERE)
@@ -52,13 +61,34 @@ def run(argv):
     return code, buffer.getvalue()
 
 
-def backlog_files(engine):
+def backlog_files(engine, package=None):
+    """The engine's backlog as bytes per item name -- rendered now, since nothing holds it (#243)."""
+    rendered, _ = backlog.engine_backlog(engine, package)
+    return {name: rendered[name].encode("utf-8") for name in sorted(rendered)}
+
+
+def committed_backlog(engine, names=("999-gone.md", "README.md")):
+    """A `backlog/` as a produce before #243 left one: the files, **and the record that hashed them**.
+
+    A retirement deletes only what the engine's own provenance.json attributes to the factory
+    (ownership.remove_retired), so a fixture that wrote the files and not the record would be
+    testing the case where nothing is removed -- which is its own test, below.
+    """
     directory = os.path.join(engine, "backlog")
-    out = {}
-    for name in sorted(os.listdir(directory)):
-        with open(os.path.join(directory, name), "rb") as handle:
-            out[name] = handle.read()
-    return out
+    os.makedirs(directory, exist_ok=True)
+    record_path = os.path.join(engine, "provenance.json")
+    with open(record_path, encoding="utf-8") as handle:
+        record = json.load(handle)
+    for name in names:
+        text = f"# committed by a produce before #243: {name}\n"
+        with open(os.path.join(directory, name), "w", encoding="utf-8") as handle:
+            handle.write(text)
+        record["generated"].append({"path": f"backlog/{name}",
+                                    "sha256": hashlib.sha256(text.encode("utf-8")).hexdigest()})
+    record["generated"].sort(key=lambda item: item["path"])
+    with open(record_path, "w", encoding="utf-8") as handle:
+        json.dump(record, handle, indent=2)
+    return [f"backlog/{name}" for name in names]
 
 
 def qualifies(entry):
@@ -98,8 +128,13 @@ class BacklogCase(unittest.TestCase):
                     "--allow-dirty",
                     "--no-verify"])  # no .NET SDK assumed; test_factory_verify.py covers verify
 
+    def rendering(self, key, engine=None):
+        """The rendering of an engine of `key`. The package is named, never looked up in the NuGet
+        global packages folder: these maps are packed into a temporary feed and are not published."""
+        return backlog_files(engine or self.engines[key], self.packages[key][0])
+
     def items(self, key):
-        return {n: b for n, b in backlog_files(self.engines[key]).items() if n != "README.md"}
+        return {n: b for n, b in self.rendering(key).items() if n != "README.md"}
 
     def test_one_file_per_qualifying_entry(self):
         for key in CASES:
@@ -185,23 +220,261 @@ class BacklogCase(unittest.TestCase):
     def test_links_resolve_and_readme_lists_order(self):
         for key in CASES:
             with self.subTest(key):
-                files = backlog_files(self.engines[key])
+                files = self.rendering(key)
                 for name, data in files.items():
                     for target in re.findall(rb"\]\(([^)]+\.md)\)", data):
                         self.assertIn(target.decode(), files, f"{name} links {target}")
                 listed = re.findall(r"^\d+\. \[.*\]\((\d{3}-.+\.md)\)$", files["README.md"].decode(), re.M)
                 self.assertEqual(listed, sorted(self.items(key)))
 
-    def test_deterministic_and_stale_items_removed(self):
+    def test_deterministic_and_the_engine_holds_none_of_it(self):
+        """#243: produce writes no backlog, removes the one a produce before it committed, and
+        records no backlog path.
+
+        The `backlog/` is put there with the record that hashed it, because that is the state an
+        engine produced before #243 is in, and it is the only state a retirement deletes."""
         other = os.path.join(self.tmp, "again")
-        stale = os.path.join(other, "backlog", "999-gone.md")
-        os.makedirs(os.path.dirname(stale))
-        with open(stale, "w", encoding="utf-8") as handle:
-            handle.write("# gone\n")
         code, log = self.produce("part107", other)
         self.assertEqual(code, factory.NOT_VERIFIED, log)
-        self.assertEqual(backlog_files(other), backlog_files(self.engines["part107"]))
-        self.assertNotIn(self.tmp.encode(), b"".join(backlog_files(other).values()))
+        self.assertFalse(os.path.exists(os.path.join(other, "backlog")))
+        committed_backlog(other, ("999-gone.md", "README.md"))
+
+        code, log = self.produce("part107", other)
+        self.assertEqual(code, factory.NOT_VERIFIED, log)
+        self.assertIn("removed 2 file(s) matching the retired pattern backlog/*.md", log)
+        self.assertFalse(os.path.exists(os.path.join(other, "backlog")))
+        self.assertEqual(self.rendering("part107", other), self.rendering("part107"))
+        self.assertNotIn(self.tmp.encode(), b"".join(self.rendering("part107", other).values()))
+        with open(os.path.join(other, "provenance.json"), encoding="utf-8") as handle:
+            record = json.load(handle)
+        self.assertFalse([i["path"] for section in ("generated", "managed", "buildInputs")
+                          for i in record[section] if i["path"].startswith("backlog/")])
+
+    def test_an_overlay_edit_shows_up_in_the_rendering_with_no_produce(self):
+        """What a rendering buys that a committed copy did not: it cannot be out of date.
+
+        The committed `backlog/` was written by `produce` and by nothing else, so between an overlay
+        edit and the next re-produce it listed an entry that was already built. The rendering is made
+        from the overlay each time it is asked for.
+        """
+        engine = os.path.join(self.tmp, "overlay-edit")
+        code, log = self.produce("part107", engine)
+        self.assertEqual(code, factory.NOT_VERIFIED, log)
+        before = self.rendering("part107", engine)
+        (item,) = [n for n in before if n.endswith("-speed-limit.md")]
+        with open(os.path.join(engine, "corpus-map.overlay.json"), "w", encoding="utf-8") as handle:
+            json.dump({"speed-limit": {"status": "implemented", "implementedIn": "Rules/Speed.cs",
+                                       "tests": [{"test": "SpeedTests.Limit",
+                                                  "mutation": "returned 88 knots for 87; it went red"}]}}, handle)
+        after = self.rendering("part107", engine)
+        self.assertIn(item, before)
+        self.assertNotIn("speed-limit", {n.split("-", 1)[1][:-3] for n in after if n != "README.md"},
+                         "an implemented entry leaves the backlog as soon as the overlay says so")
+        self.assertEqual(len(after), len(before) - 1)
+        self.assertFalse(os.path.exists(os.path.join(engine, "backlog")), "and still nothing is committed")
+
+    def test_render_prints_the_whole_backlog_and_to_writes_it(self):
+        engine, package = self.engines["part107"], self.packages["part107"][0]
+        code, log = run(["backlog", "--render", "--dir", engine, "--package", package])
+        self.assertEqual(code, 0, log)
+        rendered = self.rendering("part107")
+        self.assertIn("# Backlog for FaaPart107", log)
+        for name, data in rendered.items():
+            head = data.decode("utf-8").split("\n", 1)[0]
+            self.assertIn(head, log, name)
+        out = os.path.join(self.tmp, "rendered")
+        code, log = run(["backlog", "--render", "--dir", engine, "--package", package, "--to", out])
+        self.assertEqual(code, 0, log)
+        self.assertIn(f"{len(rendered) - 1} item(s) and an index written to", log)
+        written = {}
+        for name in sorted(os.listdir(out)):
+            with open(os.path.join(out, name), "rb") as handle:
+                written[name] = handle.read()
+        self.assertEqual(written, rendered)
+
+    def ignoring_engine(self, name, ignore="artifacts/\n"):
+        """A produced engine that is a git repository with an ignore rule, and the `--render` argv."""
+        engine = os.path.join(self.tmp, name)
+        code, log = self.produce("part107", engine)
+        self.assertEqual(code, factory.NOT_VERIFIED, log)
+        subprocess.run(["git", "init", "-q", engine], check=True)
+        with open(os.path.join(engine, ".gitignore"), "w", encoding="utf-8") as handle:
+            handle.write(ignore)
+        return engine, ["backlog", "--render", "--dir", engine,
+                        "--package", self.packages["part107"][0], "--to"]
+
+    def test_render_to_a_path_the_engine_does_not_ignore_is_refused(self):
+        """#243: the command must not be the way a committed rendering comes back."""
+        engine, render = self.ignoring_engine("ignore-rules")
+        code, log = run(render + [os.path.join(engine, "backlog")])
+        self.assertEqual(code, 1, log)
+        self.assertIn("the engine does not ignore", log)
+        self.assertFalse(os.path.exists(os.path.join(engine, "backlog")), "nothing was written")
+        inside = os.path.join(engine, "artifacts", "backlog")
+        self.assertEqual(run(render + [inside])[0], 0)
+        self.assertTrue(os.path.isfile(os.path.join(inside, "README.md")))
+        self.assertEqual(run(render + [os.path.join(self.tmp, "anywhere")])[0], 0)
+
+    def test_render_to_the_engine_root_is_refused(self):
+        """`--to <engine>` would write the backlog's README.md over the engine's own."""
+        engine, render = self.ignoring_engine("engine-root")
+        before = open(os.path.join(engine, "README.md"), encoding="utf-8").read() \
+            if os.path.isfile(os.path.join(engine, "README.md")) else None
+        code, log = run(render + [engine])
+        self.assertEqual(code, 1, log)
+        self.assertIn("is the engine root", log)
+        self.assertFalse(os.path.isfile(os.path.join(engine, "001-speed-limit.md")), "nothing was written")
+        if before is not None:
+            self.assertEqual(open(os.path.join(engine, "README.md"), encoding="utf-8").read(), before)
+
+    def test_render_checks_every_file_it_would_write_and_names_the_tracked_one(self):
+        """The gate is asked about the files, not the directory that will hold them.
+
+        An ignored directory can hold a tracked child: `git check-ignore` does not report a tracked
+        path as ignored, so `artifacts/backlog/001-*.md` comes back ignored and
+        `artifacts/backlog/README.md`, which this engine tracks, does not. Asking about the
+        directory cannot say which file is the problem, and its answer is git's opinion about a
+        path nothing is written to.
+        """
+        engine, render = self.ignoring_engine("tracked-child")
+        target = os.path.join(engine, "artifacts", "backlog")
+        os.makedirs(target)
+        with open(os.path.join(target, "README.md"), "w", encoding="utf-8") as handle:
+            handle.write("tracked on purpose\n")
+        for argv in (["add", "-f", "artifacts/backlog/README.md"], ["add", ".gitignore"],
+                     ["-c", "user.email=t@example.invalid", "-c", "user.name=t", "commit", "-qm", "tracked"]):
+            subprocess.run(["git", "-C", engine] + argv, check=True,
+                           stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        code, log = run(render + [target])
+        self.assertEqual(code, 1, log)
+        self.assertIn("does not ignore 1 of the 40 file(s) it would write", log)
+        self.assertIn("artifacts/backlog/README.md", log)
+        self.assertEqual(open(os.path.join(target, "README.md"), encoding="utf-8").read(), "tracked on purpose\n")
+        self.assertFalse(os.path.exists(os.path.join(target, "001-speed-limit.md")), "nothing was written")
+
+    def test_render_through_a_symlink_inside_the_engine_is_refused(self):
+        """git answers about the name; the write follows the link, and would land outside it."""
+        engine, render = self.ignoring_engine("linked-dir")
+        outside = os.path.join(self.tmp, "elsewhere")
+        os.makedirs(outside, exist_ok=True)
+        os.makedirs(os.path.join(engine, "artifacts"), exist_ok=True)
+        os.symlink(outside, os.path.join(engine, "artifacts", "backlog"))
+        code, log = run(render + [os.path.join(engine, "artifacts", "backlog")])
+        self.assertEqual(code, 1, log)
+        self.assertIn("passes through the symlink artifacts/backlog", log)
+        self.assertEqual(os.listdir(outside), [], "nothing was written through the link")
+
+    def test_an_output_file_that_is_a_symlink_is_refused(self):
+        """`open(path, "wb")` follows a link; a planted README.md would go over whatever it names."""
+        engine, render = self.ignoring_engine("linked-file")
+        target = os.path.join(engine, "artifacts", "backlog")
+        os.makedirs(target)
+        victim = os.path.join(self.tmp, "victim.md")
+        with open(victim, "w", encoding="utf-8") as handle:
+            handle.write("not the backlog's\n")
+        os.symlink(victim, os.path.join(target, "README.md"))
+        code, log = run(render + [target])
+        self.assertEqual(code, 1, log)
+        self.assertIn("never written through a symlink", log)
+        self.assertEqual(open(victim, encoding="utf-8").read(), "not the backlog's\n")
+
+    def test_a_file_under_a_retired_pattern_the_record_does_not_own_is_kept_and_named(self):
+        """A retired pattern is not a licence to delete by pathname (#243)."""
+        engine = os.path.join(self.tmp, "kept")
+        code, log = self.produce("part107", engine)
+        self.assertEqual(code, factory.NOT_VERIFIED, log)
+        committed_backlog(engine, ("999-gone.md",))
+        mine = os.path.join(engine, "backlog", "notes.md")
+        with open(mine, "w", encoding="utf-8") as handle:
+            handle.write("# my own notes, never emitted by anything\n")
+
+        code, log = self.produce("part107", engine)
+        self.assertEqual(code, factory.NOT_VERIFIED, log)
+        self.assertTrue(os.path.isfile(mine), "a hand-written file under a retired pattern was deleted")
+        self.assertFalse(os.path.exists(os.path.join(engine, "backlog", "999-gone.md")))
+        self.assertIn("kept backlog/notes.md", log)
+        self.assertIn("provenance.json does not record the factory as having written it", log)
+
+    def test_no_retired_pattern_can_reach_a_file_the_table_owns(self):
+        """The structural guard, not the record one: a retirement must not be able to delete an
+        engine-owned, adopted, managed or generated file however the pattern is spelled (#243).
+
+        Exact, not conservative. `backlog/*.md` does not conflict with `{name}.slnx` -- the engine's
+        name is a segment's worth of text, so that row is "anything, then `.slnx`", and a `.md`
+        retirement cannot reach it. A guard that called that a conflict would block a legitimate
+        retirement; one that missed `*.g.cs` against `*.cs` would admit a lethal one.
+        """
+        ownership = factory.generate.ownership
+        self.assertEqual(ownership.retired_conflicts(), [])
+        self.assertTrue(ownership._segments_can_overlap("*b.md", "*.md"), "a supported pair, decided exactly")
+        for pattern, expected in (("corpus-map.overlay.json", "corpus-map.overlay.json"),
+                                  ("scripts/factory/*.py", "scripts/factory/*.py"),
+                                  ("src/*/Generated/*.cs", "src/{name}/Generated/*.g.cs"),
+                                  ("*.slnx", "{name}.slnx")):
+            with self.subTest(pattern=pattern), \
+                    mock.patch.object(ownership, "RETIRED",
+                                      ownership.RETIRED + (ownership.Retired(pattern, "a mistake"),)):
+                self.assertIn((pattern, expected), ownership.retired_conflicts())
+                with self.assertRaisesRegex(ownership.OwnershipError, "overlaps"):
+                    ownership.remove_retired(self.engines["part107"], "FaaPart107")
+        # And it does not over-approximate: a root-level `.md` retirement reaches nothing, though
+        # `{name}.slnx` and `{name}.md`-shaped rows sit at the root beside it. Treating a segment
+        # holding `{name}` as matching anything made this a conflict and would have blocked it.
+        with mock.patch.object(ownership, "RETIRED", (ownership.Retired("obsolete.md", "a future retirement"),)):
+            self.assertEqual(ownership.retired_conflicts(), [])
+
+    def test_a_platform_without_o_nofollow_is_refused_rather_than_written_to(self):
+        """The flag defaulting to 0 would put the link-following write back, silently (#243)."""
+        engine, _ = self.ignoring_engine("no-nofollow")
+        rendered, _ = backlog.engine_backlog(engine, self.packages["part107"][0])
+        target = os.path.join(self.tmp, "no-nofollow-out")
+        saved = os.O_NOFOLLOW
+        del os.O_NOFOLLOW
+        self.addCleanup(setattr, os, "O_NOFOLLOW", saved)
+        with self.assertRaisesRegex(backlog.BacklogError, "no O_NOFOLLOW"):
+            backlog.write_rendered(rendered, target)
+        self.assertFalse(os.path.exists(target), "nothing was written, and the directory was not made")
+
+    def test_a_retired_pattern_outside_the_grammar_is_refused(self):
+        """Overlap is only decidable inside the grammar, so a pattern outside it never runs (#243).
+
+        `a*.md` and `*b.md` both match `ab.md` while neither matches the other: a pair a
+        fnmatch-both-ways test calls disjoint. The grammar excludes the interior `*` that makes that
+        shape possible -- `*b.md` is still allowed, because `*`-and-a-suffix against
+        `*`-and-a-suffix is decided exactly by whether one suffix ends the other.
+        """
+        ownership = factory.generate.ownership
+        for pattern in ("backlog/a*.md", "backlog/*.md.*", "backlog/[0-9]*.md", "backlog/00?.md",
+                        "{name}/old.md"):
+            with self.subTest(pattern=pattern), \
+                    mock.patch.object(ownership, "RETIRED", (ownership.Retired(pattern, "unsupported"),)):
+                with self.assertRaisesRegex(ownership.OwnershipError, "outside the grammar"):
+                    ownership.remove_retired(self.engines["part107"], "FaaPart107")
+
+    def test_render_to_refuses_rather_than_delete_a_stale_item_the_engine_tracks(self):
+        """A deletion is a change to the engine as much as a write, and is gated as one (#243)."""
+        engine, render = self.ignoring_engine("stale-tracked")
+        target = os.path.join(engine, "artifacts", "backlog")
+        os.makedirs(target)
+        stale = os.path.join(target, "999-an-entry-that-is-gone.md")
+        with open(stale, "w", encoding="utf-8") as handle:
+            handle.write("tracked on purpose\n")
+        for argv in (["add", "-f", "artifacts/backlog/999-an-entry-that-is-gone.md"], ["add", ".gitignore"],
+                     ["-c", "user.email=t@example.invalid", "-c", "user.name=t", "commit", "-qm", "tracked"]):
+            subprocess.run(["git", "-C", engine] + argv, check=True,
+                           stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        code, log = run(render + [target])
+        self.assertEqual(code, 1, log)
+        self.assertIn("999-an-entry-that-is-gone.md", log)
+        self.assertTrue(os.path.isfile(stale), "a tracked stale item was deleted")
+        self.assertFalse(os.path.exists(os.path.join(target, "README.md")), "nothing was written either")
+
+    def test_render_without_a_record_is_refused(self):
+        bare = os.path.join(self.tmp, "bare")
+        os.makedirs(bare, exist_ok=True)
+        code, log = run(["backlog", "--render", "--dir", bare])
+        self.assertEqual(code, 1, log)
+        self.assertIn("nothing says which map package this engine was produced from", log)
 
     def test_a_dependency_cycle_is_refused(self):
         entries = [{"id": "a", "dependsOn": ["b"]}, {"id": "b", "dependsOn": ["a"]}]
@@ -294,10 +567,21 @@ class TestCrossReferencesRendered(unittest.TestCase):
 
 
 class CreateCase(unittest.TestCase):
+    """`create` against a stubbed `gh`, over a rendering handed to it in place of a real engine's.
+
+    `engine_backlog` reads a provenance.json, a map package and an overlay; every assertion below is
+    about what `create` does with a rendering, not about how it obtained one, so it is stubbed here
+    and exercised for real by `BacklogCase` and `TestAttribution`. `self.rendered` is what
+    `backlog.render` makes of `listed`, which is what the real one returns too.
+    """
+
+    credit = None
+
     def setUp(self):
         self.tmp = tempfile.mkdtemp()
         self.addCleanup(shutil.rmtree, self.tmp, True)
         self.engine = os.path.join(self.tmp, "engine")
+        os.makedirs(self.engine)
         self.emit(entries())
         self.state = os.path.join(self.tmp, "issues.json")
         self.gh = os.path.join(self.tmp, "gh")
@@ -310,10 +594,12 @@ class CreateCase(unittest.TestCase):
         self.addCleanup(os.environ.pop, "FACTORY_GH", None)
 
     def emit(self, listed):
-        backlog.emit(listed, CONTEXT, self.engine)
+        self.rendered = backlog.render(listed, CONTEXT)
 
-    def create(self):
-        return run(["backlog", "--create", "--repo", "example/engine", "--dir", self.engine])
+    def create(self, *extra):
+        with mock.patch.object(backlog, "engine_backlog",
+                               lambda directory, package=None: (self.rendered, self.credit)):
+            return run(["backlog", "--create", "--repo", "example/engine", "--dir", self.engine, *extra])
 
     def issues(self):
         with open(self.state, encoding="utf-8") as handle:
@@ -334,8 +620,8 @@ class CreateCase(unittest.TestCase):
         return [c[:2] + c[2:3] * (c[1] == "edit") for c in seen if c[:2] != ["issue", "list"]]
 
     def body(self, name):
-        with open(os.path.join(self.engine, "backlog", name), encoding="utf-8") as handle:
-            return handle.read().partition("\n")[2].lstrip("\n")
+        """The rendered item without its `# ` title line, which is what `create` sends as a body."""
+        return self.rendered[name].partition("\n")[2].lstrip("\n")
 
     def test_every_item_carries_its_markers_under_the_title(self):
         body = self.body("002-second.md")
@@ -499,21 +785,34 @@ class CreateCase(unittest.TestCase):
         code, log = self.create()
         self.assertEqual(code, 1, log)
 
-    def test_a_missing_backlog_and_a_bad_repo(self):
-        code, _ = run(["backlog", "--create", "--repo", "example/engine", "--dir", os.path.join(self.tmp, "none")])
-        self.assertEqual(code, 1)
+    def test_an_engine_with_no_record_and_a_bad_repo(self):
+        """Unstubbed: without a provenance.json there is no map package to render from (#243)."""
+        code, log = run(["backlog", "--create", "--repo", "example/engine", "--dir", os.path.join(self.tmp, "none")])
+        self.assertEqual(code, 1, log)
+        self.assertIn("nothing says which map package this engine was produced from", log)
         code, _ = run(["backlog", "--create", "--repo", "not a repo", "--dir", self.engine])
         self.assertEqual(code, 2)
         self.assertFalse(os.path.exists(self.state))
 
-    def test_without_provenance_a_body_carrying_an_attribution_is_refused(self):
-        item = os.path.join(self.engine, "backlog", "001-first.md")
-        with open(item, "a", encoding="utf-8") as handle:
-            handle.write("\n" + backlog.ATTRIBUTION_HEADING + "\nSomeone's statement.\n")
+    def test_the_two_actions_do_not_take_each_other_s_arguments(self):
+        for argv, expected in ((["backlog", "--create", "--dir", self.engine], "--create needs --repo"),
+                               (["backlog", "--render", "--dir", self.engine, "--repo", "example/engine"],
+                                "--repo is for --create"),
+                               (["backlog", "--create", "--repo", "example/engine", "--dir", self.engine,
+                                 "--to", self.tmp], "--to is for --render")):
+            with self.subTest(argv=argv):
+                code, log = run(argv)
+                self.assertEqual(code, 2, log)
+                self.assertIn(expected, log)
+
+    def test_a_rendering_that_dropped_a_required_attribution_is_refused_before_any_call(self):
+        """0023 is the package's claim about the corpus, not the text's: a body that lost the
+        statement is refused even though the statement is what would have put it there."""
+        self.credit = {"sourceId": "srd-5.2.1", "terms": "CC-BY-4.0", "statement": "Someone's statement."}
         code, log = self.create()
         self.assertEqual(code, 1, log)
-        self.assertIn("attributes a corpus's text (0023)", log)
-        self.assertEqual(self.writes(), [])
+        self.assertIn("2 issue body(ies) do not carry its statement verbatim", log)
+        self.assertEqual(self.writes(), [], "gh was never called")
 
 
 SRD = os.path.join(REPO, "examples", "srd-52-combat")
@@ -589,7 +888,7 @@ class TestAttribution(unittest.TestCase):
 
     def test_every_srd_item_and_the_index_carry_the_statement_verbatim(self):
         engine = self.produce("srd")
-        files = backlog_files(engine)
+        files = backlog_files(engine, self.nupkg["srd"][0])
         self.assertGreater(len(files), 2)
         for name, data in files.items():
             text = data.decode("utf-8")
@@ -602,7 +901,7 @@ class TestAttribution(unittest.TestCase):
 
     def test_a_public_domain_backlog_carries_no_attribution(self):
         engine = self.produce("hoyle")
-        for name, data in backlog_files(engine).items():
+        for name, data in backlog_files(engine, self.nupkg["hoyle"][0]).items():
             self.assertNotIn(backlog.ATTRIBUTION_HEADING, data.decode("utf-8"), name)
         code, log = self.create(engine, "--package", self.nupkg["hoyle"][0])
         self.assertEqual(code, 0, log)
@@ -615,21 +914,24 @@ class TestAttribution(unittest.TestCase):
         self.assertIn("bodies carry the attribution srd-5.2.1's licence (CC-BY-4.0) requires (0023)", log)
         with open(self.state, encoding="utf-8") as handle:
             issues = json.load(handle)
-        self.assertEqual(len(issues), len(backlog_files(engine)) - 1)
+        self.assertEqual(len(issues), len(backlog_files(engine, self.nupkg["srd"][0])) - 1)
         for issue in issues:
             self.assertIn(SRD_STATEMENT, issue["body"], issue["title"])
 
     def test_create_refuses_a_body_without_the_statement_before_any_call(self):
+        """A rendering that lost the section the licence requires is refused, not posted (0023).
+
+        With the backlog rendered rather than committed (#243) the way to lose it is for the
+        rendering to stop emitting it, so that is what is simulated: `check_bodies` reads `credit`
+        from the map package and holds every body to it, whatever produced the body.
+        """
         engine = self.produce("srd")
-        item = sorted(n for n in os.listdir(os.path.join(engine, "backlog")) if n != "README.md")[1]
-        path = os.path.join(engine, "backlog", item)
-        with open(path, encoding="utf-8") as handle:
-            text = handle.read()
-        with open(path, "w", encoding="utf-8") as handle:
-            handle.write(text.replace(SRD_STATEMENT, "(attribution removed)"))
-        code, log = self.create(engine, "--package", self.nupkg["srd"][0])
+        item = sorted(n for n in backlog_files(engine, self.nupkg["srd"][0]) if n != "README.md")[1]
+        with mock.patch.object(backlog, "attribution_markdown", lambda context: ""):
+            code, log = self.create(engine, "--package", self.nupkg["srd"][0])
         self.assertEqual(code, 1, log)
-        self.assertIn(f"do not carry its statement verbatim: {item}", log)
+        self.assertIn("do not carry its statement verbatim", log)
+        self.assertIn(item, log)
         self.assertEqual(self.calls(), [], "gh was never called")
 
     def test_create_refuses_when_the_package_that_says_whether_attribution_is_needed_is_absent(self):
@@ -772,7 +1074,7 @@ class TestLabels(CreateCase):
         self.assertIn("0 issue(s) relabelled", output)
         self.assertEqual(self.writes(), [], "a second run in a row writes nothing")
 
-    def test_the_state_is_in_the_item_file_a_reader_can_see(self):
+    def test_the_state_is_in_the_rendered_item_a_reader_can_see(self):
         self.policy()
         self.assertEqual(self.create()[0], 0)
         self.assertIn("<!-- rules-factory-state: blocked -->", self.body("002-second.md"))

@@ -595,10 +595,12 @@ def a_mistyped_handler_is_a_build_error(r):
         ok(f"a handler with {label}: error {code}")
 
 
-# #192: implementing an entry changes the overlay, and provenance.json and backlog/ are generated
-# from that overlay. `regenerate --write` refreshes the generated C# and nothing else, so on its own
-# it leaves a record hashing bytes that are gone and a backlog still listing the entry as one to
-# build -- which is what the live run of #157 merged, because the gate did not look. On the same
+# #192: implementing an entry changes the overlay, and provenance.json is generated from that
+# overlay. `regenerate --write` refreshes the generated C# and nothing else, so on its own it leaves
+# a record hashing bytes that are gone and hashing the overlay as it was before the edit -- which is
+# what the live run of #157 merged, because the gate did not look. Since #243 took the backlog out
+# of the engine, `buildInputs[corpus-map.overlay.json]` is the only comparison that carries this
+# case, and this is where it is proven on a real engine end to end. On the same
 # scratch copy as the check above, and with no extra dotnet build: mark an entry implemented,
 # regenerate, and hold the gate's own provenance step to failing and then, after a produce, passing.
 def a_stale_record_fails_the_gate(r):
@@ -1233,6 +1235,12 @@ elif argv[:1] == ["api"] and len(argv) > 1:
         with open(path, "w", encoding="utf-8") as handle:
             json.dump(state, handle, indent=2)
         print("{}")
+    elif route.startswith(prefix + "contents/") and "?ref=" in route:
+        # The base commit's provenance.json, which pr-policy.py reads for a retired deletion (#243).
+        body = state.get("contents", {}).get(route.split("?ref=", 1)[1])
+        if body is None:
+            refuse("no contents at that ref")
+        print(json.dumps(body))
     elif route.startswith(prefix + "commits/") and route.endswith("/status"):
         sha = route[len(prefix + "commits/"):-len("/status")]
         print(json.dumps({"sha": sha, "statuses": state["statuses"].get(sha, [])}))
@@ -1265,6 +1273,9 @@ COMMIT_A = "a" * 40
 COMMIT_B = "b" * 40
 # A commit no open pull request heads: #191's second acceptance criterion is about this one.
 COMMIT_STRANGER = "c" * 40
+# The commit a pull request is based on: pr-policy.py reads its provenance.json when the diff holds
+# a path under a retired pattern (#243).
+COMMIT_BASE = "d" * 40
 GATE_RUN = 4242
 
 # A pull request filled the way the emitted template asks: every section, one `Closes`, a command
@@ -1340,11 +1351,15 @@ class FakeGitHub:
         The commit statuses start empty: each check records its own verdicts through record-verdict.py.
         `runs` is the conformance-gate run GitHub holds at that head -- there is one as soon as a
         pull request is opened -- and `reruns` the re-requests the rails make of it, which start none."""
-        changed = [{"path": f"src/{NAME}/Rules/PlayerCount.cs"}]
+        changed = [{"path": f"src/{NAME}/Rules/PlayerCount.cs", "changeType": "MODIFIED"}]
         document = {
             "repository": "owner/engine",
+            # `baseRefOid` and `changeType` are what pr-policy.py reads to decide whether a deletion
+            # under a retired pattern is the factory's (#243); `contents` is the base commit's
+            # provenance.json, which nothing here asks for until a test puts a retired path in the diff.
             "pulls": {PR: {"number": int(PR), "title": "Implement the player count", "body": body, "state": "OPEN",
-                           "headRefOid": head, "files": changed, "changedFiles": len(changed),
+                           "headRefOid": head, "baseRefOid": COMMIT_BASE, "files": changed,
+                           "changedFiles": len(changed),
                            "closingIssuesReferences": [{"number": ISSUE}]}},
             "issues": {str(ISSUE): {"number": ISSUE, "state": "OPEN", "labels": [{"name": name} for name in labels]}},
             "statuses": {},
@@ -1366,7 +1381,7 @@ class FakeGitHub:
         """
         with open(self.state, encoding="utf-8") as handle:
             document = json.load(handle)
-        document["pulls"][PR]["files"] = [{"path": path} for path in paths]
+        document["pulls"][PR]["files"] = [{"path": path, "changeType": "MODIFIED"} for path in paths]
         document["pulls"][PR]["changedFiles"] = len(paths)
         write(self.state, json.dumps(document, indent=2))
 
