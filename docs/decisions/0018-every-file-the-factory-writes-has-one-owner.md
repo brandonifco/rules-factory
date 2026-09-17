@@ -33,6 +33,11 @@ and one managed row is added (`tools/re-produce.sh`).
 backlog is no longer a file the factory writes, so `backlog/*.md` leaves the table. See
 *Amendment — the backlog is a projection, not an output* below. No remaining row changes class.
 
+**Amended 2026-09-17** for [#247](https://github.com/brandonifco/rules-factory/issues/247): the
+engine's overlay is a directory, one file per entry, so the `corpus-map.overlay.json` row becomes
+`overlay/*.json`. See *Amendment — the overlay is one file per entry* below. It stays
+engine-owned; no row changes class.
+
 ## Amendment — an overlay edit is finished by a re-produce
 
 `provenance.json` and `backlog/*.md` are **generated**, which by this decision means `factory
@@ -55,7 +60,8 @@ of the recorded commit silently rewrites the gate, the rails and the vendored ge
 implementation pull request.
 
 - **What the check compares, and why not more.** Every `generated` entry, every `managed` entry,
-  and `buildInputs[corpus-map.overlay.json]` — and no other build input. Adding a
+  and the overlay entirely — `buildInputs[overlay/*.json]`, as a set since #247, so a file added or
+  removed is a mismatch as loudly as one edited — and no other build input. Adding a
   `PackageReference`, a project to the `.slnx`, or a version to `Directory.Packages.props` are
   legitimate engine-owned acts under this decision; making each of them require a re-produce
   before the gate goes green produces a gate people route around. Holding the whole of
@@ -90,6 +96,41 @@ cannot be done. Four independent blockers, all in `tools/factory/provenance.py`:
 
 So the engine compares and never writes, and `tools/factory/backlog.py` is deliberately not
 vendored into an engine and stays that way.
+
+## Amendment — the overlay is one file per entry
+
+`corpus-map.overlay.json` was **engine-owned**: one shared JSON object, keyed by entry id, holding
+the three fields 0015 gives an engine. It is now `overlay/<entry id>.json`, one file per entry
+([#247](https://github.com/brandonifco/rules-factory/issues/247), part B of the design decision on
+[#242](https://github.com/brandonifco/rules-factory/issues/242)), and the row changes with it. The
+class does not: an overlay file is the engine's, written once by whoever implements the entry and
+never touched by a `produce` — except the one `produce` that migrates an engine to this layout.
+
+**Why.** Every implemented entry appended to the one object, so two entry branches cut from the
+same commit were *guaranteed* to collide in it, whatever else they touched. It was the last such
+file after #243. What 0015 says an engine owns is unchanged; only where the bytes sit moved.
+
+**Two things follow for this record.**
+
+*The scaffold.* Nothing writes an empty overlay any more. `produce` used to write
+`corpus-map.overlay.json` as `{}` when an engine had none; a directory has no equivalent, and an
+engine that has implemented nothing has nothing to say. So `overlay/*.json` is the one engine-owned
+row with no scaffold, and `provenance.json`'s `engineOwned` lists the files that are there rather
+than the pattern. The gate's "a check that examines nothing is a failure" is then carried by
+`provenanceFormat`, which is 4 from #247 on: a record written before the split describes a layout
+the engine does not have, and is refused rather than compared against nothing.
+
+*The retirement.* `corpus-map.overlay.json` joins `RETIRED`, and the migrating `produce` deletes it
+— but the rule #243 wrote cannot authorise that deletion. That rule is "the engine's own record
+hashed these bytes in `generated` or `managed`", and the overlay is in neither: the factory never
+wrote the engine's evidence and cannot claim to have. What authorises this one is different in kind
+and no weaker. The run **moved** the content, so before deleting anything it parses the bytes it is
+about to delete and requires the `overlay/*.json` files beside them to hold every key and every
+value (`ownership.WITNESSES`, `overlay.superseded_by_split`). An overlay those files do not account
+for is kept where it is and named in the run's output, exactly as a hand-edited `backlog/notes.md`
+is. Both answers are reached by reading the bytes; neither is reached from the pathname. The
+engine's `tools/pr-policy.py` asks the same function the same question about the base commit's
+bytes, so the run and the policy cannot disagree about who owned a file.
 
 ## Amendment — the backlog is a projection, not an output
 
