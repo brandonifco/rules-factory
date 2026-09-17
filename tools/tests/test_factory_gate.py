@@ -67,7 +67,18 @@ MUTATION = "GroundspeedLimit.Knots printed 88 knots (`InKnots(88m)` for `InKnots
 CORRESPONDENCE = ("Registry.HasImplementation was made to answer false for every entry (`=> false` "
                   "for `Implementations.Value.ContainsKey(entryId) || Handlers.Has(entryId)`); this "
                   "test went red.")
-OVERLAY = "corpus-map.overlay.json"
+OVERLAY = "overlay"
+
+
+def write_overlay(engine, items):
+    """Replace the engine's overlay/ with one file per entry of `items` (#247)."""
+    directory = os.path.join(engine, OVERLAY)
+    if os.path.isdir(directory):
+        for name in os.listdir(directory):
+            os.remove(os.path.join(directory, name))
+    os.makedirs(directory, exist_ok=True)
+    for entry_id, item in items.items():
+        write_json(os.path.join(directory, f"{entry_id}.json"), item)
 
 
 def pack(map_dir, out):
@@ -154,7 +165,7 @@ class GateCase(unittest.TestCase):
     def merge(self, engine):
         merged = os.path.join(self.tmp, "merged.json")
         code, output = self.script(engine, "map-overlay.py", "merge", "--package-map", self.package_map,
-                                   "--overlay", os.path.join(engine, "corpus-map.overlay.json"), "--out", merged)
+                                   "--overlay", os.path.join(engine, OVERLAY), "--out", merged)
         return code, output, merged
 
 
@@ -222,7 +233,7 @@ class TestGeneratedFilesMatchARegeneration(GateCase):
 
     def test_fails_when_the_overlay_changed_without_a_regeneration(self):
         engine = self.engine()
-        write_json(os.path.join(engine, "corpus-map.overlay.json"), {"speed-limit": {"status": "blocked"}})
+        write_overlay(engine, {"speed-limit": {"status": "blocked"}})
         code, output = self.regenerate(engine)
         self.assertEqual(code, 1, output)
         produce(self.nupkg, engine)
@@ -238,9 +249,11 @@ class TestTheRecordHashesWhatIsOnDisk(GateCase):
     else, and `provenance.json` -- generated, `factory produce`'s alone -- is left hashing bytes
     that no longer exist and hashing the overlay as it was before the edit.
 
-    Since #243 took the backlog out of the engine, `buildInputs[corpus-map.overlay.json]` is not
-    merely the load-bearing comparison here but the only one that carries the case, so it is also
-    asserted that the step refuses a run in which it had nothing to compare.
+    Since #243 took the backlog out of the engine, `buildInputs[overlay/<entry id>.json]` is not
+    merely the load-bearing comparison here but the only one that carries the case. Since #247 it is
+    a set rather than one path, and TestTheOverlaySetIsCompared below covers all three ways the set
+    can move; what is asserted here is that a record written before the split is refused rather than
+    silently comparing nothing.
     """
 
     IMPLEMENTED = {"speed-limit": {"status": "implemented", "implementedIn": IMPLEMENTED_IN,
@@ -260,7 +273,7 @@ class TestTheRecordHashesWhatIsOnDisk(GateCase):
     def test_a_regeneration_alone_leaves_the_record_stale(self):
         """The whole of #192, end to end: the leak, the failure that closes it, and the fix."""
         engine = self.engine()
-        write_json(os.path.join(engine, OVERLAY), self.IMPLEMENTED)
+        write_overlay(engine, self.IMPLEMENTED)
         code, output = self.script(engine, "engine-gate.py", "regenerate", "--package-map", self.package_map,
                                    "--package-manifest", self.package_manifest, "--package-id", PACKAGE_ID,
                                    "--package-version", "4.0.0", "--name", NAME, "--write")
@@ -268,7 +281,8 @@ class TestTheRecordHashesWhatIsOnDisk(GateCase):
 
         code, output = self.provenance(engine)
         self.assertEqual(code, 1, output)
-        self.assertIn(f"buildInputs[{OVERLAY}].sha256", output)
+        self.assertIn(f"buildInputs[{OVERLAY}/speed-limit.json]: on disk, and provenance.json does not "
+                      f"record it", output)
         self.assertRegex(output, r"generated\[[^\]]+\.g\.cs\]\.sha256")
         self.assertIn("tools/re-produce.sh", output, "the failure names the command that fixes it")
 
@@ -306,26 +320,25 @@ class TestTheRecordHashesWhatIsOnDisk(GateCase):
         self.assertFalse([item["path"] for section in ("generated", "managed", "buildInputs")
                           for item in record[section] if item["path"].startswith("backlog/")])
 
-    def test_an_overlay_that_is_neither_recorded_nor_on_disk_fails(self):
-        """The one comparison that carries the stale-overlay case may never examine nothing (#243).
+    def test_a_record_written_before_the_overlay_was_split_is_refused(self):
+        """The comparison that carries the stale-overlay case may never examine nothing (#243, #247).
 
-        Deleting the overlay and the entry that records it leaves every generated hash true, so
-        before this the step reported ok on an engine whose only check for an unfinished overlay
-        edit had no input at all. `examined` was not zero -- eighteen generated files and
-        twenty-seven managed ones were compared -- so the "examined nothing" refusal did not
-        catch it either: it counts the check as a whole, not this comparison.
+        An engine with no implemented entry has an empty overlay, so "no overlay path recorded and
+        none on disk" is a true and complete comparison -- and is also exactly what a record written
+        before #247 looks like, because its one overlay path is `corpus-map.overlay.json`, which this
+        engine does not have. `provenanceFormat` is what tells the two apart, and without it the step
+        would report ok on a record that describes a layout the engine no longer has.
         """
         engine = self.engine()
-        os.remove(os.path.join(engine, OVERLAY))
         path = os.path.join(engine, "provenance.json")
         with open(path, encoding="utf-8") as handle:
             record = json.load(handle)
-        record["buildInputs"] = [i for i in record["buildInputs"] if i["path"] != OVERLAY]
+        record["provenanceFormat"] = 3
         with open(path, "wb") as handle:
             handle.write(factory.provenance.serialize(record))  # canonical, so only this differs
         code, output = self.provenance(engine)
         self.assertEqual(code, 1, output)
-        self.assertIn(f"buildInputs[{OVERLAY}]: neither recorded nor on disk", output)
+        self.assertIn("provenanceFormat: recorded 3, and the overlay comparison below needs at least 4", output)
         self.assertNotIn("examined nothing", output, "the check had inputs; this one comparison had none")
         self.assertIn("tools/re-produce.sh", output)
 
@@ -339,10 +352,9 @@ class TestTheRecordHashesWhatIsOnDisk(GateCase):
 
     def test_a_record_that_lists_nothing_fails_rather_than_passing(self):
         engine = self.engine()
-        os.remove(os.path.join(engine, OVERLAY))
         with open(os.path.join(engine, "provenance.json"), "wb") as handle:
-            handle.write((json.dumps({"engine": {"name": NAME}, "generated": [], "managed": [],
-                                      "buildInputs": []}, indent=2) + "\n").encode("utf-8"))
+            handle.write((json.dumps({"provenanceFormat": 4, "engine": {"name": NAME}, "generated": [],
+                                      "managed": [], "buildInputs": []}, indent=2) + "\n").encode("utf-8"))
         code, output = self.provenance(engine)
         self.assertEqual(code, 1, output)
         self.assertIn("examined nothing", output)
@@ -368,19 +380,18 @@ class TestOverlayMerge(GateCase):
 
     def test_fails_on_an_overlay_key_not_in_the_map(self):
         engine = self.engine()
-        write_json(os.path.join(engine, "corpus-map.overlay.json"), {"no-such-entry": {"status": "mapped"}})
+        write_overlay(engine, {"no-such-entry": {"status": "mapped"}})
         code, output, _ = self.merge(engine)
         self.assertEqual(code, 1, output)
         self.assertIn("'no-such-entry', which the package map has no entry for", output)
 
     def test_merge_rules_2_and_3(self):
         engine = self.engine()
-        overlay = os.path.join(engine, "corpus-map.overlay.json")
-        write_json(overlay, {"speed-limit": {"status": "mapped", "note": "mine"}})
+        write_overlay(engine, {"speed-limit": {"status": "mapped", "note": "mine"}})
         self.assertIn("sets 'note'", self.merge(engine)[1])
-        write_json(overlay, {"speed-limit": {"tests": []}})
+        write_overlay(engine, {"speed-limit": {"tests": []}})
         self.assertIn("does not set status", self.merge(engine)[1])
-        write_json(overlay, {"speed-limit": {"status": "blocked"}})
+        write_overlay(engine, {"speed-limit": {"status": "blocked"}})
         code, output, merged = self.merge(engine)
         self.assertEqual(code, 0, output)
         with open(merged, encoding="utf-8") as handle:
@@ -391,6 +402,60 @@ class TestOverlayMerge(GateCase):
         self.assertEqual(list(entry), list(upstream), "the overlay's status lands where upstream's was")
         self.assertEqual({k: v for k, v in entry.items() if k != "status"},
                          {k: v for k, v in upstream.items() if k != "status"})
+
+
+class TestTheOverlaySetIsCompared(GateCase):
+    """#247: the overlay is a directory, so the record's overlay paths and the engine's are compared
+    as **sets**, and all three ways they can differ fail.
+
+    Before the split there was one overlay file and one hash, and "changed" was the only case there
+    was. With one file per entry, an entry's evidence can also be *added* -- the shape every
+    implementation takes -- or *removed*, and either leaves the generated files, the correspondence
+    tests and the record describing a different set of entries than the engine holds. Comparing only
+    the paths the record names would miss the first; comparing only the paths on disk would miss the
+    second.
+    """
+
+    IMPLEMENTED = {"speed-limit": {"status": "implemented", "implementedIn": IMPLEMENTED_IN,
+                                   "tests": [{"test": "SpeedTests.t", "mutation": MUTATION}]}}
+    OTHER = {"status": "blocked"}
+
+    def recorded(self):
+        """An engine whose record hashes one overlay file: the state every later case moves from."""
+        engine = self.engine()
+        write_overlay(engine, self.IMPLEMENTED)
+        produce(self.nupkg, engine)
+        code, output = self.script(engine, "engine-gate.py", "provenance")
+        self.assertEqual(code, 0, output)
+        return engine
+
+    def test_an_edited_evidence_file_fails(self):
+        engine = self.recorded()
+        edited = dict(self.IMPLEMENTED)
+        edited["speed-limit"] = {**edited["speed-limit"], "tests": [
+            {"test": "SpeedTests.t", "mutation": MUTATION.replace("88", "89")}]}
+        write_overlay(engine, edited)
+        code, output = self.script(engine, "engine-gate.py", "provenance")
+        self.assertEqual(code, 1, output)
+        self.assertIn(f"buildInputs[{OVERLAY}/speed-limit.json].sha256: recorded", output)
+        self.assertIn("tools/re-produce.sh", output)
+
+    def test_an_added_evidence_file_fails(self):
+        engine = self.recorded()
+        write_overlay(engine, {**self.IMPLEMENTED, "operating-limitations": self.OTHER})
+        code, output = self.script(engine, "engine-gate.py", "provenance")
+        self.assertEqual(code, 1, output)
+        self.assertIn(f"buildInputs[{OVERLAY}/operating-limitations.json]: on disk, and provenance.json "
+                      f"does not record it", output)
+        self.assertIn("tools/re-produce.sh", output)
+
+    def test_a_removed_evidence_file_fails(self):
+        engine = self.recorded()
+        os.remove(os.path.join(engine, OVERLAY, "speed-limit.json"))
+        code, output = self.script(engine, "engine-gate.py", "provenance")
+        self.assertEqual(code, 1, output)
+        self.assertIn(f"buildInputs[{OVERLAY}/speed-limit.json]: recorded, missing on disk", output)
+        self.assertIn("tools/re-produce.sh", output)
 
 
 class TestImplementedNamesItsTests(GateCase):
@@ -406,7 +471,7 @@ class TestImplementedNamesItsTests(GateCase):
 
     def test_fails_on_implemented_without_tests(self):
         engine = self.engine()
-        write_json(os.path.join(engine, "corpus-map.overlay.json"),
+        write_overlay(engine,
                    {"speed-limit": {"status": "implemented", "implementedIn": IMPLEMENTED_IN}})
         code, output, merged = self.merge(engine)
         self.assertEqual(code, 0, output)
@@ -420,7 +485,7 @@ class TestImplementedNamesItsTests(GateCase):
 
     def test_fails_on_a_named_test_that_did_not_run(self):
         engine = self.engine()
-        write_json(os.path.join(engine, "corpus-map.overlay.json"), {"speed-limit": {
+        write_overlay(engine, {"speed-limit": {
             "status": "implemented", "implementedIn": IMPLEMENTED_IN,
             "tests": [{"test": "SpeedTests.Nobody_wrote_this", "mutation": MUTATION}]}})
         code, output = self.named(engine, self.merge(engine)[2])
@@ -697,7 +762,7 @@ class TestCorpusPosture(GateCase):
                 self.assertEqual(code, factory.NOT_VERIFIED, buffer.getvalue())  # `--no-verify`: NOT VERIFIED (3), never 0
                 merged = os.path.join(work, "merged.json")
                 code, output = self.script(engine, "map-overlay.py", "merge", "--package-map", files["map"],
-                                           "--overlay", os.path.join(engine, "corpus-map.overlay.json"), "--out", merged)
+                                           "--overlay", os.path.join(engine, OVERLAY), "--out", merged)
                 self.assertEqual(code, 0, output)
                 code, output = self.script(engine, "engine-gate.py", "posture", "--manifest", files["manifest"],
                                            "--map", merged, "--name", name)
@@ -783,7 +848,8 @@ class TestValidateShWithDotnet(GateCase):
         for step in ("SDK ", "every project has a packages.lock.json", "dotnet restore --locked-mode",
                      "RulesKernel.Randomness is reachable only as the corpus declares", "packaged check-map.py --phase consumer",
                      "every corpus verified", "every *.g.cs matches a fresh regeneration",
-                     "provenance.json hashes the generated files, the managed files and the overlay", "dotnet format",
+                     "provenance.json hashes the generated files, the managed files and every overlay file",
+                     "dotnet format",
                      "build Debug", "test Debug", "build Release", "test Release"):
             self.assertIn(f"ok   {step}", output)
         self.assertNotIn("FAIL", output)
@@ -797,7 +863,7 @@ class TestValidateShWithDotnet(GateCase):
     def implement_speed_limit(self, engine, handler):
         """Mark speed-limit implemented, re-produce, and put `handler` in a hand-written file."""
         test = "CorrespondenceTests.speed_limit__is_implemented_so_a_hand_written_handler_answers_it"
-        write_json(os.path.join(engine, "corpus-map.overlay.json"), {"speed-limit": {
+        write_overlay(engine, {"speed-limit": {
             "status": "implemented", "implementedIn": IMPLEMENTED_IN,
             "tests": [{"test": test, "mutation": CORRESPONDENCE}]}})
         produce(self.nupkg, engine)
@@ -874,13 +940,13 @@ class TestValidateShWithDotnet(GateCase):
 
     def test_fails_on_an_overlay_key_not_in_the_map(self):
         engine = self.copy()
-        write_json(os.path.join(engine, "corpus-map.overlay.json"), {"no-such-entry": {"status": "mapped"}})
+        write_overlay(engine, {"no-such-entry": {"status": "mapped"}})
         self.assertFailsAt(self.validate(engine, "full"),
-                           f"merge({PACKAGE_ID}@4.0.0, corpus-map.overlay.json) obeys 0015")
+                           f"merge({PACKAGE_ID}@4.0.0, overlay/) obeys 0015")
 
     def test_fails_on_implemented_without_tests(self):
         engine = self.copy()
-        write_json(os.path.join(engine, "corpus-map.overlay.json"),
+        write_overlay(engine,
                    {"speed-limit": {"status": "implemented", "implementedIn": IMPLEMENTED_IN}})
         # Regenerated, and given the typed handler an implemented entry now needs to build (#76),
         # so only the claim itself is wrong.
@@ -920,7 +986,7 @@ class TestValidateShWithDotnet(GateCase):
     def test_fails_when_an_overlay_edit_was_regenerated_but_never_re_produced(self):
         """#192 through the whole gate: the regeneration step is green and the record is stale."""
         engine = self.copy()
-        write_json(os.path.join(engine, "corpus-map.overlay.json"),
+        write_overlay(engine,
                    {"speed-limit": {"status": "implemented", "implementedIn": IMPLEMENTED_IN,
                                     "tests": [{"test": "SpeedTests.t", "mutation": MUTATION}]}})
         code, output = self.script(engine, "engine-gate.py", "regenerate", "--package-map", self.package_map,
@@ -928,7 +994,8 @@ class TestValidateShWithDotnet(GateCase):
                                    "--package-version", "4.0.0", "--name", NAME, "--write")
         self.assertEqual(code, 0, output)
         result = self.validate(engine, "full")
-        self.assertFailsAt(result, "provenance.json hashes the generated files, the managed files and the overlay")
+        self.assertFailsAt(result, "provenance.json hashes the generated files, the managed files and every "
+                                   "overlay file")
         self.assertIn("tools/re-produce.sh", result[1])
 
 

@@ -21,8 +21,9 @@ changes are uncommitted, for whoever ran it to review and commit:
     package, each file in one ownership class (ownership.py): managed build policy, updated
     with its recipe and refused when hand-edited unless `--adopt PATH` or `--reset PATH`;
     engine-owned files, written once; and the generated files, rewritten
-    every run: the `*.g.cs` from the package map merged with the engine's
-    `corpus-map.overlay.json`, and `RulesFactory.Packages.g.props`, which pins RulesKernel and
+    every run: the `*.g.cs` from the package map merged with the engine's overlay --
+    `overlay/<entry id>.json`, one file per entry, read in map order (#247) -- and
+    `RulesFactory.Packages.g.props`, which pins RulesKernel and
     the map package at the versions given and references the map;
   * the gate recipe (gate.py) -- scripts/validate.sh and the scripts and CI workflow it runs,
     rewritten every run;
@@ -62,8 +63,8 @@ changes are uncommitted, for whoever ran it to review and commit:
     is made, here or anywhere else in produce.
 
 `backlog --create` renders the backlog from the map package provenance.json records (`--package`,
-or Id@Version from the NuGet global packages folder) merged with the engine's
-`corpus-map.overlay.json`, and synchronises it with GitHub issues through `gh` (or `$FACTORY_GH`):
+or Id@Version from the NuGet global packages folder) merged with the engine's `overlay/`, and
+synchronises it with GitHub issues through `gh` (or `$FACTORY_GH`):
 each item is matched to its issue by the entry marker in its body, never by title, and the
 issue is created, updated, or left unchanged. It never closes or deletes an issue. Before any
 call, when the corpus's licence requires attribution, a body without the statement is refused
@@ -153,12 +154,13 @@ def produce(args):
             model = generate.produce(result, args.name, out, log=sys.stdout,
                                      adopt=getattr(args, "adopt", None) or (), reset=getattr(args, "reset", None) or ())
             gate.emit(args.name, out, log=sys.stdout)
-            # #243: the backlog is not a file in the engine. It is rendered on demand by
-            # `factory backlog --render` and filed as GitHub issues by `factory backlog --create`,
-            # both from the map and the overlay -- the same two inputs this run merged. What an
-            # earlier produce committed is removed here, by the retired patterns of the ownership
-            # table, and the removal is committed with everything else this run did, or not at all
-            # (transaction.py).
+            # What the factory used to write and no longer does is removed here, by the retired
+            # patterns of the ownership table, and the removal is committed with everything else
+            # this run did, or not at all (transaction.py). Two things are retired: the `backlog/`
+            # an earlier produce committed (#243 -- the backlog is a projection of the map and the
+            # overlay, rendered on demand and filed as GitHub issues), and the one shared
+            # `corpus-map.overlay.json` (#247), whose keys generate.produce has just written out as
+            # `overlay/<entry id>.json`. Each is deleted only if the bytes say it may be.
             for line in remove_retired(args.name, out):
                 print(line)
             provenance.emit(model, out)

@@ -5,10 +5,13 @@ Three kinds of output, one per ownership class (ownership.py holds the table, de
   * **Managed** -- global.json, NuGet.config and Directory.Build.props (`managed_files`): the
     factory's build policy. Rewritten when the recipe version moves and the engine has not
     edited them; a hand edit is refused unless `--adopt` or `--reset` settles it.
-  * **Engine-owned** -- Directory.Packages.props, the solution, both project files and an
-    empty `corpus-map.overlay.json` (`engine_owned`). Written only when absent: after the first
-    `produce` they belong to the engine, and a second `produce` must not undo an edit to them
-    (above all to the overlay, which is the engine's own file, 0015).
+  * **Engine-owned** -- Directory.Packages.props, the solution and both project files
+    (`engine_owned`). Written only when absent: after the first `produce` they belong to the
+    engine, and a second `produce` must not undo an edit to them. The engine's overlay
+    (`overlay/<entry id>.json`, 0015 and #247) is engine-owned too and is scaffolded by nothing: a
+    file appears when an entry is implemented, and an engine with no implemented entry has an
+    empty overlay because it has nothing to say. `produce` only ever writes one of them to migrate
+    an engine produced before #247 (`overlay.split`).
     Neither managed nor engine-owned files may say anything the factory's inputs decide. A
     re-run with a different map version would leave such a file naming the old one while the
     code and provenance.json named the new (#66).
@@ -130,6 +133,7 @@ import json
 import os
 import re
 
+import overlay as overlay_step
 import ownership
 import rulings as rulings_step
 
@@ -142,7 +146,6 @@ TEST_PACKAGES = (
     ("xunit", "2.9.2"),
     ("xunit.runner.visualstudio", "2.8.2"),
 )
-OVERLAY_NAME = "corpus-map.overlay.json"
 PACKAGES_PROPS = "RulesFactory.Packages.g.props"
 # Decision 0019: the corpus's `randomness`, carried from its manifest by intake.
 RANDOMNESS_PACKAGE = "RulesKernel.Randomness"
@@ -182,20 +185,21 @@ def merge(document, overlay, root=None):
     or a decline that breaks decision 0027 (rulings.py; `root`, the engine directory, lets it check
     that each ruling's decision record is a file). A ruling never reaches the merge: the map is data."""
     if not isinstance(overlay, dict):
-        raise GenerationError(f"{OVERLAY_NAME} is not an object of entry id -> {', '.join(OWNED)}")
+        raise GenerationError(f"the overlay is not an object of entry id -> {', '.join(OWNED)}")
     ids = [e.get("id") for e in document.get("entries") or []]
     for entry_id, item in overlay.items():
         if entry_id not in ids:
-            raise GenerationError(f"{OVERLAY_NAME} names {entry_id!r}, which the package map has no entry for")
+            raise GenerationError(f"{overlay_step.path_for(entry_id)} names {entry_id!r}, which the package map "
+                                  f"has no entry for")
         if not isinstance(item, dict) or "status" not in item:
-            raise GenerationError(f"{OVERLAY_NAME} item {entry_id!r} does not set status")
+            raise GenerationError(f"{overlay_step.path_for(entry_id)} does not set status")
         extra = sorted(set(item) - set(OWNED) - set(rulings_step.KEYS))
         if extra:
-            raise GenerationError(f"{OVERLAY_NAME} item {entry_id!r} sets {extra}; an engine owns only {', '.join(OWNED)}, "
+            raise GenerationError(f"{overlay_step.path_for(entry_id)} sets {extra}; an engine owns only {', '.join(OWNED)}, "
                                   f"and keeps its owner's {' and '.join(rulings_step.KEYS)} beside them (0027)")
     problems = rulings_step.problems(document, overlay, root)
     if problems:
-        raise GenerationError(f"{OVERLAY_NAME} breaks decision 0027: " + "; ".join(problems))
+        raise GenerationError(f"{overlay_step.DIRECTORY}/ breaks decision 0027: " + "; ".join(problems))
     merged = dict(document)
     entries = []
     for entry in document.get("entries") or []:
@@ -1288,7 +1292,7 @@ def agent_policy():
         },
         "review": {
             "semanticContext": "rules-verdict/semantic",
-            "semanticPaths": ["src/**", "tests/**", OVERLAY_NAME, PACKAGES_PROPS,
+            "semanticPaths": ["src/**", "tests/**", f"{overlay_step.DIRECTORY}/**", PACKAGES_PROPS,
                               "corpus/**", "docs/decisions/**"],
             "independentFallback": [
                 {"id": "codex", "context": "rules-verdict/codex"},
@@ -1354,7 +1358,6 @@ def engine_owned(model):
             f'    <ProjectReference Include="../../src/{name}/{name}.csproj" />\n'
             "  </ItemGroup>\n\n"
             "</Project>\n"),
-        OVERLAY_NAME: "{}\n",
         AGENT_POLICY: agent_policy(),
     }
 
@@ -1466,6 +1469,36 @@ def refuse_split_pins(model, out):
                               f"{PACKAGES_PROPS}, which every produce rewrites, so remove them from those files")
 
 
+def split_notes(out, split):
+    """What a run that migrated the overlay should say, if it migrated one (#247).
+
+    The second line is the one a reader would otherwise find out the hard way.
+    `.github/agent-policy.json` is engine-owned (decision 0029): the factory writes it once and
+    never again, so an engine produced before #247 still lists `corpus-map.overlay.json` among the
+    paths that ask for a semantic review. After the migration that path no longer exists, and a
+    change to the evidence would stop asking for the review it used to ask for. The factory will not
+    edit an engine's own configuration to fix that, so it says so instead, every run, until the
+    engine changes it.
+    """
+    if not split:
+        return []
+    lines = [f"--- migrated {overlay_step.RETIRED_NAME} to {len(split)} file(s) under "
+             f"{overlay_step.DIRECTORY}/, one per entry, so two entry branches never write the same "
+             f"file (#247); the old file is removed below if these carry all of it"]
+    try:
+        with open(os.path.join(out, *AGENT_POLICY.split("/")), encoding="utf-8") as handle:
+            policy = json.load(handle)
+        paths = ((policy.get("review") or {}).get("semanticPaths") or [])
+    except (OSError, ValueError, AttributeError):
+        paths = []
+    if overlay_step.RETIRED_NAME in paths:
+        lines.append(f"--- {AGENT_POLICY} still lists {overlay_step.RETIRED_NAME} in review.semanticPaths, and "
+                     f"that file is going. It is engine-owned (0029), so this run will not edit it: replace "
+                     f"that entry with {overlay_step.DIRECTORY}/** yourself, or a change to this engine's "
+                     f"evidence stops asking for the semantic review it used to ask for")
+    return lines
+
+
 def produce(intake, name, out, log=None, adopt=(), reset=()):
     """Write an engine for `intake` under `out`, each file as its ownership class says.
 
@@ -1474,14 +1507,15 @@ def produce(intake, name, out, log=None, adopt=(), reset=()):
     always. The returned model carries `managed` ({path: recipe version}) and `adopted` (managed
     paths now engine-owned) for provenance to record. Every refusal is raised before any write.
     """
-    overlay_path = os.path.join(out, OVERLAY_NAME)
-    overlay = {}
-    if os.path.isfile(overlay_path):
-        try:
-            with open(overlay_path, encoding="utf-8") as handle:
-                overlay = json.load(handle)
-        except (OSError, ValueError) as error:
-            raise GenerationError(f"cannot read {overlay_path}: {error}")
+    # #247: the overlay is one file per entry. An engine produced before it has the one shared
+    # corpus-map.overlay.json and no overlay/ directory; the split writes its keys out, one file
+    # each, and ownership.remove_retired -- later in the run, in the same transaction -- deletes the
+    # old file if and only if these files carry every key of it (overlay.superseded_by_split).
+    try:
+        split = overlay_step.split(out)
+        overlay = overlay_step.load(out, intake.map)
+    except overlay_step.OverlayError as error:
+        raise GenerationError(str(error))
     model = Model(intake, merge(intake.map, overlay, root=out), name, rulings_step.collect(overlay))
     refuse_split_pins(model, out)
     try:
@@ -1520,6 +1554,8 @@ def produce(intake, name, out, log=None, adopt=(), reset=()):
             rows[item["row"]] = rows.get(item["row"], 0) + 1
         summary = ", ".join(f"row {r}: {n}" if r else f"no row: {n}" for r, n in sorted(rows.items(), key=lambda kv: kv[0] or 0))
         print(f"--- produce: {len(model.entries)} entries registered ({summary})", file=log)
+        for line in split_notes(out, split):
+            print(line, file=log)
         for line in rulings_step.describe(overlay):
             print(f"--- {line}", file=log)
         for note in notes:

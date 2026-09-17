@@ -657,8 +657,8 @@ Order the backlog by the dependency graph, not by the corpus's page order. A cor
 organised for a reader; a backlog is organised for a builder.
 
 **Where the backlog lives.** In the issue tracker, and nowhere else. `factory backlog --create`
-writes one issue per entry still to build, from the map merged with the engine's
-`corpus-map.overlay.json`, and matches an existing issue by an entry marker in its body rather than
+writes one issue per entry still to build, from the map merged with the engine's overlay
+(`overlay/<entry id>.json`, one file per entry), and matches an existing issue by an entry marker in its body rather than
 by title. Nothing is committed into the engine: a rendering of the overlay kept beside the overlay
 goes stale between an entry being built and the next `factory produce`, and because every item
 states its position out of the total, building any entry rewrites nearly all of them

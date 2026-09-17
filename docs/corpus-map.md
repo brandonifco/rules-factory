@@ -477,8 +477,8 @@ There is no third value. An implementer choosing a reading silently is the failu
 field exists to prevent.
 
 **An owner's ruling is not a fate, and it is not in the map.** The owner of one engine may answer
-part of an `unresolved` question for that engine. The answer lives in the engine's overlay as a
-`ruling` that quotes the part it answers from `question`, and the map still says `unresolved`,
+part of an `unresolved` question for that engine. The answer lives in the entry's own overlay file
+as a `ruling` that quotes the part it answers from `question`, and the map still says `unresolved`,
 because the corpus still does not settle it. The engine names the ruling on every result that
 relies on it. See [0027](decisions/0027-an-owners-ruling-is-held-by-the-engine-and-checked-by-the-factory.md)
 and `status` below.
@@ -965,7 +965,8 @@ checked in the engine, against its own runtime.
 accompanies it, the verdict covers every case except the one `ambiguity.question` names, and the
 declining case ships a test** — which is one of the tests named. **Or the engine's owner has ruled
 on part or all of that case** ([0027](decisions/0027-an-owners-ruling-is-held-by-the-engine-and-checked-by-the-factory.md)).
-Then the engine's overlay item carries `rulings` and `declines` beside its `tests`. Each ruling
+Then the engine's overlay file for that entry (`overlay/<entry id>.json`) carries `rulings` and
+`declines` beside its `tests`. Each ruling
 quotes the part of `question` it answers and names the tests that show it. Each decline quotes a
 part the engine still declines and names the test that shows the decline. Between them, the quoted
 spans cover the whole question. `declines: []` declares the question fully ruled, and then no
@@ -1259,7 +1260,10 @@ the corpora it cites, and the `tools/check-map.py` its consumer runs, and a vers
 
 **What a consumer owns** is an overlay of three fields per entry, `status`, `implementedIn` and
 `tests`, because those are build facts only the engine can know, and they are only true of a
-particular engine commit. The factory is canonical for everything else. The engine's gate checks
+particular engine commit. It is one file per entry, `overlay/<entry id>.json`, read in the package
+map's entry order ([#247](https://github.com/brandonifco/rules-factory/issues/247)): an entry's
+evidence is its own file, so two entry branches never write the same one. The factory is canonical
+for everything else. The engine's gate checks
 that the overlay names only entries the package has and sets only those three fields, and runs
 the package's own `tools/check-map.py --phase consumer` on the merge, never a copy
 ([#51](https://github.com/brandonifco/rules-factory/issues/51)). Any other difference is drift.

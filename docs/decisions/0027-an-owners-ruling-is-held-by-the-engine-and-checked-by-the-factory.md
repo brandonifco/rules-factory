@@ -69,8 +69,9 @@ honours, these rulings move into it."
 
 **A ruling is an engine-owned interpretation of part of an unresolved question.** The owner gives
 it, the engine records it and applies it, and it binds no other engine built from the same map. It
-lives in `corpus-map.overlay.json`, on the item of the entry whose question it answers, and **it is
-never merged into the map**. The merged map the packaged checker reads is byte for byte what it was
+lives in the engine's overlay, in the file of the entry whose question it answers —
+`overlay/<entry id>.json` since [#247](https://github.com/brandonifco/rules-factory/issues/247),
+`corpus-map.overlay.json` before it — and **it is never merged into the map**. The merged map the packaged checker reads is byte for byte what it was
 without it. So the map never claims the corpus said what a ruling says, and a map package's checker,
 which predates this record, needs no change to be run on the merge.
 

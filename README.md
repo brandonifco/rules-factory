@@ -107,7 +107,7 @@ the diff ([AGENTS.md](AGENTS.md) §3).
 | `produce` | `--produce-report` | implemented | a JSON report of the run: what moved and from what to what, every path written with its ownership class, and the provenance diff. A factory update's pull request is filled in from it ([#193](https://github.com/brandonifco/rules-factory/issues/193)) |
 | `produce` | domain pack | not implemented | no pack exists; provenance records `"packs": []` |
 | `produce` | agent rails | not implemented | not an input — the rails are output, and no flag turns them on or off ([0029](docs/decisions/0029-the-rails-are-emitted-by-default-and-vendor-choice-is-engine-owned-configuration.md)). Emitted: the contract, the roles, the charters, the guard, the engine-owned policy, the packets, dispatch, the pull request contract, the verdict gates, the rails doctor and the kernel's determinism analyzers. `factory rails --apply` is what makes the checks required on GitHub. Proven on a produced engine and on a real rule: `faa-part-107` was re-produced onto the rails, and `control-links-working` (§ 107.49(c)) went issue to merge through them ([#157](https://github.com/brandonifco/rules-factory/issues/157) closed 2026-09-16, [evidence](https://github.com/brandonifco/faa-part-107/pull/47)) |
-| `backlog` | — | implemented | render an engine's backlog from its map package and `corpus-map.overlay.json`, and either file it as GitHub issues through `gh` or print it. `--create` labels each issue: state from the item's dependencies, `normal` risk on an issue with none. A `needs-decision` state and a promoted risk are a person's, and a sync never undoes either ([0029](docs/decisions/0029-the-rails-are-emitted-by-default-and-vendor-choice-is-engine-owned-configuration.md)) |
+| `backlog` | — | implemented | render an engine's backlog from its map package and its `overlay/`, and either file it as GitHub issues through `gh` or print it. `--create` labels each issue: state from the item's dependencies, `normal` risk on an issue with none. A `needs-decision` state and a promoted risk are a person's, and a sync never undoes either ([0029](docs/decisions/0029-the-rails-are-emitted-by-default-and-vendor-choice-is-engine-owned-configuration.md)) |
 | `backlog` | `--create` | implemented | create missing issues and update changed ones; never closes or deletes an issue |
 | `backlog` | `--render` | implemented | print the rendering as one Markdown document and send nothing; the replacement for the `backlog/` the factory no longer commits ([#243](https://github.com/brandonifco/rules-factory/issues/243)) |
 | `backlog` | `--repo` | implemented | `owner/name` |
@@ -175,12 +175,14 @@ What never happens again is `NOT VERIFIED` on stdout and `0` in `$?`.
   recipe versions, and the bytes of every file the build reads as configuration.
   `factory provenance` re-produces the engine and names every field that no longer matches.
   The engine's own gate holds a narrower claim without the factory: `scripts/engine-gate.py
-  provenance` hashes the recorded generated and managed files and the overlay they were generated
-  from, so an overlay edit never followed by a re-produce — leaving a record that hashes the
-  overlay as it was before the edit — fails the gate, naming `tools/re-produce.sh`. An edit
-  followed by a regeneration moves the generated hashes too; an edit followed by nothing moves only
-  `buildInputs[corpus-map.overlay.json]`, so that comparison is the one that catches every form of
-  it, and a run in which it had nothing to compare fails too
+  provenance` hashes the recorded generated and managed files and every file of the overlay they
+  were generated from, so an overlay edit never followed by a re-produce — leaving a record that
+  hashes the overlay as it was before the edit — fails the gate, naming `tools/re-produce.sh`. An
+  edit followed by a regeneration moves the generated hashes too; an edit followed by nothing moves
+  only `buildInputs[overlay/<entry id>.json]`, so that comparison is the one that catches every
+  form of it — the overlay's recorded paths and the directory's are compared as a **set**, so an
+  entry's evidence added or removed is caught like one edited, and a record written before the
+  split is refused rather than compared against nothing
   ([0018](docs/decisions/0018-every-file-the-factory-writes-has-one-owner.md)). It compares and
   never writes: only `produce` authors that record.
 
