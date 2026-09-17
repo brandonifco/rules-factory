@@ -262,16 +262,23 @@ def remove_retired(name, out):
     One line per retired pattern that matched something, naming the pattern, how many files went
     and why -- so the run says what it did, rather than leaving a reader to find nineteen deletions
     in the diff and work out who made them.
+
+    **And every match this run would not delete is named, by path.** A file under a retired pattern
+    that provenance.json never recorded, or whose bytes have moved since it did, is not the
+    factory's to remove (ownership.remove_retired) -- but it is now under a pattern nothing
+    maintains, which its owner cannot know unless they are told here.
     """
-    removed = generate.ownership.remove_retired(out, name)
-    if not removed:
-        return []
+    removed, kept = generate.ownership.remove_retired(out, name)
     lines = []
     for row in generate.ownership.RETIRED:
         matched = [p for p in removed if generate.ownership.retired(p, name) == row]
         if matched:
             lines.append(f"--- removed {len(matched)} file(s) matching the retired pattern {row.pattern}, which "
                          f"`produce` no longer writes: {row.reason}")
+    for path, why in kept:
+        lines.append(f"--- kept {path}: it matches the retired pattern "
+                     f"{generate.ownership.retired(path, name).pattern}, but {why}, so it is yours and not this "
+                     f"run's to remove. Nothing writes or checks it any more")
     return lines
 
 
@@ -280,11 +287,13 @@ def classified_paths(name, added, changed, removed):
 
     The class comes from ownership.py, the one table produce itself wrote these files by, so a
     reader of the report and `tools/pr-policy.py` reading the pull request are answering from the
-    same rows. `class: "retired"` is a path the factory used to write and this run deleted
-    (ownership.RETIRED), which is not a class of file so much as a class of change; it is named
-    rather than left null so that a migration's deletions read as the factory's. `class: null` is a
-    path the table does not classify at all: the lock files a restore wrote are engine-owned rows
-    and do classify, so a null here is something to look at.
+    same rows. `class: "retired"` is a path the factory used to write and **this run deleted**
+    (ownership.RETIRED): a class of change rather than of file, named so that a migration's
+    deletions read as the factory's. It is only ever reported against `removed`, because a retired
+    pattern is not something the factory writes -- a file appearing or changing under one is
+    somebody's own, and calling it retired would say the opposite of what this section is for.
+    `class: null` is a path the table does not classify at all: the lock files a restore wrote are
+    engine-owned rows and do classify, so a null here is something to look at.
     """
     out = []
     for how, paths in (("added", added), ("changed", changed), ("removed", removed)):
@@ -293,9 +302,9 @@ def classified_paths(name, added, changed, removed):
                 row = generate.ownership.classify(path, name)
             except generate.ownership.OwnershipError:
                 row = None
-            gone = generate.ownership.retired(path, name)
+            gone = how == "removed" and generate.ownership.retired(path, name) is not None
             out.append({"path": path, "change": how,
-                        "class": row.cls if row else ("retired" if gone is not None else None)})
+                        "class": row.cls if row else ("retired" if gone else None)})
     return sorted(out, key=lambda item: item["path"].encode("utf-8"))
 
 
@@ -435,12 +444,14 @@ def render_backlog(args):
     rendering goes to stdout as one Markdown document, index first, so it can be piped, paged or
     redirected. With `--to` the item files are written there, which is what a reader who wants the
     links between items to resolve needs -- and a `--to` inside the engine is refused unless the
-    engine ignores it (backlog.refuse_unignored, #243).
+    engine ignores every file it would write, is not the engine root, and passes through no symlink
+    (backlog.refuse_unignored, #243).
     """
-    if args.to:
-        backlog_step.refuse_unignored(args.dir, args.to)
     rendered, _ = backlog_step.engine_backlog(args.dir, args.package)
     if args.to:
+        # The names are known before anything is written, and the gate is asked about each of them:
+        # an ignored directory can hold a tracked child (backlog.refuse_unignored, #243).
+        backlog_step.refuse_unignored(args.dir, args.to, rendered)
         written = backlog_step.write_rendered(rendered, args.to)
         print(f"--- backlog: {len(written) - 1} item(s) and an index written to {args.to}")
         return 0

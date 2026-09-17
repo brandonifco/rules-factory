@@ -510,6 +510,16 @@ import json, os, sys
 fixture = json.load(open(os.environ["GH_FIXTURE"], encoding="utf-8"))
 argv = sys.argv[1:]
 kind = argv[0] if argv else ""
+if kind == "api":
+    # `gh api repos/{owner}/{repo}/contents/provenance.json?ref=<sha>`: the base commit's record,
+    # which pr-policy.py reads to decide whether the factory ever wrote a retired path (#243).
+    ref = argv[1].split("ref=")[-1] if "ref=" in argv[1] else ""
+    body = (fixture.get("contents") or {}).get(ref)
+    if body is None:
+        sys.stderr.write(f"no contents at {ref}\\n")
+        sys.exit(1)
+    print(json.dumps(body))
+    sys.exit(0)
 number = argv[2] if len(argv) > 2 else ""
 record = (fixture.get(kind) or {}).get(number)
 if record is None:
@@ -925,17 +935,24 @@ None
 class TestPrPolicy(RailsInAGitEngine):
     """`tools/pr-policy.py`: the contract, checked mechanically (#153)."""
 
-    def pull_request(self, body=GOOD_PR_BODY, labels=("state:ready", "risk:normal"), files=None, changed_files=None):
+    #: The base commit's SHA in these fixtures, and the key its provenance.json is filed under.
+    BASE = "0000000000000000000000000000000000000000"
+
+    def pull_request(self, body=GOOD_PR_BODY, labels=("state:ready", "risk:normal"), files=None,
+                     changed_files=None, base_record=None):
         files = files if files is not None else [{"path": "corpus-map.overlay.json"},
                                                  {"path": f"src/{NAME}/Rules/AltitudeLimit.cs"}]
         self.fixture({
             # `changedFiles` is GitHub's own count, and defaults here to the length of the list:
             # a fixture where they disagree is a truncated list, which is its own test below.
             "pr": {"5": {"number": 5, "title": "Implement the altitude limit", "body": body,
-                         "files": files,
+                         "files": files, "baseRefOid": self.BASE,
                          "changedFiles": len(files) if changed_files is None else changed_files}},
             "issue": {"27": {"number": 27, "state": "OPEN",
                              "labels": [{"name": name} for name in labels]}},
+            # `gh api .../contents/provenance.json?ref=<base>`: only read when a retired path is in
+            # the diff (#243). Absent unless a test puts one there.
+            "contents": {self.BASE: base_record} if base_record is not None else {},
         })
 
     def policy_check(self):
@@ -1117,7 +1134,11 @@ class TestAProduceUpdateIsAPullRequestLikeAnyOther(TestPrPolicy):
         # every real produce's diff -- and it is the file the declaration is checked against.
         paths = ["provenance.json"] + [item["path"] for item in record["generated"][:limit]]
         paths += [item["path"] for item in record["managed"][:5]]
-        return [{"path": path} for path in paths + list(extra)]
+        # `changeType` is what GitHub reports and what the produce predicate reads: a retired path
+        # is the factory's when deleted and nobody's otherwise (#243). `extra` may carry its own.
+        return ([{"path": path, "changeType": "MODIFIED"} for path in paths]
+                + [item if isinstance(item, dict) else {"path": item, "changeType": "MODIFIED"}
+                   for item in extra])
 
     def produce_body(self, section=None, evidence=PRODUCE_EVIDENCE, conformance=None):
         """GOOD_PR_BODY turned into the factory update it would be: the produce section added, the
@@ -1177,20 +1198,67 @@ class TestAProduceUpdateIsAPullRequestLikeAnyOther(TestPrPolicy):
         # And, having been voided, the pull request is held to the whole contract again.
         self.assertIn("names no mutation", done.stdout)
 
+    RETIRED_GONE = ["backlog/001-speed-limit.md", "backlog/README.md"]
+
+    def retired_base(self, paths=None):
+        """A base record that says the factory wrote those retired paths, as one before #243 did."""
+        record = self.record()
+        record["generated"] = list(record["generated"]) + [
+            {"path": path, "sha256": "0" * 64} for path in (self.RETIRED_GONE if paths is None else paths)]
+        return record
+
+    def retired_files(self, change="REMOVED"):
+        return self.produced_files(extra=[{"path": path, "changeType": change} for path in self.RETIRED_GONE])
+
     def test_a_retired_path_the_produce_deleted_does_not_void_the_claim(self):
         """#243: the migration produce deletes the engine's committed `backlog/`.
 
         Those paths match no row of the ownership table -- nothing writes them any more -- so
         without `ownership.RETIRED` every migration pull request would have its produce claim voided
-        by the nineteen deletions the produce itself made.
+        by the nineteen deletions the produce itself made. Admitted only as a **deletion**, and only
+        because the **base commit's record** says the factory wrote those files: the two other
+        tests below are the same diff with each of those two facts taken away.
         """
         self.commit_engine()
-        gone = ["backlog/001-speed-limit.md", "backlog/README.md"]
-        self.pull_request(body=self.produce_body(), files=self.produced_files(extra=gone))
+        self.pull_request(body=self.produce_body(), files=self.retired_files(), base_record=self.retired_base())
         done = self.policy_check()
         self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
         self.assertIn("claim was admitted", done.stdout)
         self.assertNotIn("not files a produce writes", done.stdout)
+
+    def test_a_retired_path_added_or_modified_voids_the_claim(self):
+        """`backlog/notes.md` is hand-written and matches `backlog/*.md`. A produce deletes; it
+        never adds to or edits a retired pattern, so a diff that does is somebody's decision."""
+        self.commit_engine()
+        for change in ("ADDED", "MODIFIED"):
+            with self.subTest(change=change):
+                self.pull_request(body=self.produce_body(), files=self.retired_files(change=change),
+                                  base_record=self.retired_base())
+                done = self.policy_check()
+                self.assertEqual(done.returncode, 1, done.stdout)
+                self.assertIn("not files a produce writes", done.stdout)
+                self.assertIn("backlog/001-speed-limit.md", done.stdout)
+                self.assertIn("claim is void", done.stdout)
+
+    def test_a_retired_deletion_the_base_record_does_not_own_voids_the_claim(self):
+        """Deleting a hand-written file under a retired pattern is still a decision (#243).
+
+        The base commit's record is what says the factory wrote a file. Without it -- the record
+        never named the path, or the API call failed -- the deletion is not attributed, and a
+        deletion this check cannot attribute is not admitted.
+        """
+        self.commit_engine()
+        self.pull_request(body=self.produce_body(), files=self.retired_files(),
+                          base_record=self.retired_base(paths=["backlog/999-something-else.md"]))
+        done = self.policy_check()
+        self.assertEqual(done.returncode, 1, done.stdout)
+        self.assertIn("not files a produce writes", done.stdout)
+        self.assertIn("backlog/001-speed-limit.md", done.stdout)
+
+        self.pull_request(body=self.produce_body(), files=self.retired_files())  # no base record at all
+        done = self.policy_check()
+        self.assertEqual(done.returncode, 1, done.stdout)
+        self.assertIn("the base commit's provenance.json could not be read", done.stdout)
 
     def test_an_overlay_edit_voids_the_claim(self):
         # The overlay is engine-owned and is the input to generation: an entry the new map forces

@@ -89,7 +89,7 @@ TABLE = (
     Row("CLAUDE.md", MANAGED, 1,
         "a pointer to AGENTS.md and the Claude adapters; it states no rule of its own (0029)"),
     Row("docs/agent-team.md", MANAGED, 4, "the four roles, and what each may not do (0029)"),
-    Row(".claude/agents/engine-dev.md", MANAGED, 6, "the implementer's charter (0029)"),
+    Row(".claude/agents/engine-dev.md", MANAGED, 7, "the implementer's charter (0029)"),
     Row(".claude/agents/repo-steward.md", MANAGED, 1, "the structural reviewer's charter, read-only (0029)"),
     Row(".claude/agents/rules-conformance.md", MANAGED, 3, "the semantic reviewer's charter, read-only (0029)"),
     Row(".claude/hooks/primary-checkout-guard.py", MANAGED, 1,
@@ -105,7 +105,7 @@ TABLE = (
         "an overlay edit is finished by a re-produce, from the factory commit the record names (#192)"),
     Row("tools/review-packet.py", MANAGED, 1,
         "everything a reviewer needs about one pull request, in the order it is read (0029)"),
-    Row("tools/pr-policy.py", MANAGED, 3,
+    Row("tools/pr-policy.py", MANAGED, 4,
         "the pull request contract, checked mechanically; a produce update's claim is checked, not taken (#193)"),
     Row("tools/record-verdict.py", MANAGED, 1,
         "a review verdict as a commit status on the exact commit reviewed (0029)"),
@@ -160,6 +160,20 @@ Retired = collections.namedtuple("Retired", "pattern reason")
 #: decision smuggled into a produce update. A pattern is never removed from this list, for the same
 #: reason a recipe version is never removed: an engine that has not been produced since still holds
 #: the files.
+#:
+#: **A pattern is not a licence to delete.** `remove_retired` deletes a match only when the engine's
+#: own `provenance.json` -- the record as it stood before this run -- hashed that exact path with
+#: those exact bytes in `generated` or `managed`. A file the record does not name, or one whose bytes
+#: have moved since it was recorded, is somebody's: it is left where it is and named in the run's
+#: output. `backlog/notes.md`, written by hand and never emitted, matches `backlog/*.md` and is not
+#: the factory's to remove.
+#:
+#: **And a pattern may not overlap a row.** `retired_conflicts()` is checked before any deletion and
+#: by tools/tests/test_factory_ownership.py: no RETIRED pattern may be able to match a path any row
+#: of TABLE can match, so a retirement can never reach an engine-owned or managed file -- adopted
+#: ones included -- however the pattern is spelled. That is the structural guard; the record check
+#: above is the second, and an adopted file is listed in `engineOwned` without a hash, so it fails
+#: that one too.
 RETIRED = (
     Retired("backlog/*.md",
             "the backlog is a projection of the map and the overlay -- filed as GitHub issues by "
@@ -178,6 +192,7 @@ RECIPE_SHA256 = {
         4: "f2b21c791a783f828f8d4dc3fa17407f6557a15923be9b0b67ce5a94ba69f926",
         5: "3491f1a0bbdd6b4fcb7b0d1e8d3827dfe5f4a19199d8da6ddcdc2b5bc9921521",
         6: "5e88a1d896a9f9528f038f6daffb990e03bdcfe5f9d39f60c88723c8ee8247ca",
+        7: "8f26f1270af1eeaa12f471018cb8bf590265c573d690954b8cb942f64315746b",
     },
     ".claude/agents/repo-steward.md": {
         1: "6a2662ac958da76bb02263914d4e3b293a8dc15837e8a6ffccb14177b013bde7",
@@ -202,7 +217,7 @@ RECIPE_SHA256 = {
         6: "7da4642b702c6a8f527b043e4cf1d8f54f5ac6efc8840df250e998c40ac152c3",
         7: "d141aa496491ab4eb6702fbdba803f82a4a0e11163c56289be404d9a7eeea8d9",
         8: "0dca04ff9fd39143f1d241c4f02d14dd54576524c9596e76539a5572a552be14",
-        9: "434abab979025ab4b31974829e4ca50559f3e7dbc1d0ea05170a574ff5724239",
+        9: "64a111b943a7eb632f9d0bbd9ec065e4ddb6e7df625944b923c100da6871251f",
     },
     "CLAUDE.md": {
         1: "04c07ad36e742fa60efafeca54d20bd96d16b6e338a44e46fad2b679ab8dfd9f",
@@ -240,6 +255,7 @@ RECIPE_SHA256 = {
         1: "79a33c7fe1ea8d888e4d6912a43ac60afe285c7a8bf43fbe9f7be87d6947b76e",
         2: "4a0c6677913decb13c8e9499840d5da4935c1725559dd6514d67dd72c8d849bd",
         3: "fc3ca4f9571e3276b7208a5927cdcef01da852ae97972a5c47663fe7391703eb",
+        4: "2ad3e43e9d03af433ee6561eb2f2d1ce57e2b2aea11565ebd55a072e5cdfbd2b",
     },
     "tools/record-verdict.py": {
         1: "48f7b11f7fc829cdaebd776a3eb5db04e27cade97c427c6806b72f58805d83db",
@@ -331,28 +347,115 @@ def retired(relative, name):
     return None
 
 
-def remove_retired(out, name):
-    """Delete every file under `out` a RETIRED pattern matches; the relative paths removed, sorted.
+def _segments_can_overlap(one, other):
+    """Whether one path segment glob and another could both match the same segment.
 
-    The migration, and all of it. Run by `produce` in the staging copy before provenance is
-    written, so the deletions are part of the one transaction and a refused run removes nothing.
-    A directory left empty by the deletions goes too; a directory holding anything else stays,
-    with whatever else is in it, because only the patterns are the factory's.
+    `{name}` is the engine's name, which is not known here, so a segment holding it is treated as
+    matching anything: the answer this function gives is used to *refuse* a pattern, and erring
+    towards "they could overlap" refuses a pattern that might have been safe rather than admitting
+    one that is not. The vocabulary in use is literals and `*`, optionally with a suffix (`*.md`,
+    `*.g.cs`), which `fnmatch` decides both ways.
     """
-    removed, directories = [], set()
+    if "{name}" in one or "{name}" in other:
+        return True
+    if one == other or one == "*" or other == "*":
+        return True
+    return fnmatch.fnmatchcase(one, other) or fnmatch.fnmatchcase(other, one)
+
+
+def retired_conflicts():
+    """[(retired pattern, row pattern)] that could both match one path: a table bug, always empty.
+
+    A retirement deletes files. A pattern that could reach a row of TABLE could delete a generated,
+    managed, adopted or engine-owned file -- the overlay, a lock file, a project -- so this makes
+    that impossible rather than unlikely. Segment counts differ or every segment pair is disjoint,
+    or the pattern does not go in RETIRED.
+    """
+    found = []
+    for gone in RETIRED:
+        for row in TABLE:
+            left, right = gone.pattern.split("/"), row.pattern.split("/")
+            if len(left) == len(right) and all(_segments_can_overlap(a, b) for a, b in zip(left, right)):
+                found.append((gone.pattern, row.pattern))
+    return found
+
+
+def _recorded_hashes(out):
+    """{path: sha256} for every file `out`'s provenance.json says the factory wrote, or {}.
+
+    `generated` and `managed` only: those are the two sections that say "the factory wrote these
+    bytes". `engineOwned` says the opposite and carries no hash, and `buildInputs` says only which
+    bytes were there. An unreadable or absent record yields {}, which makes `remove_retired` delete
+    nothing -- the safe direction, since the alternative is deleting a file on no evidence.
+    """
+    try:
+        with open(os.path.join(out, PROVENANCE), encoding="utf-8") as handle:
+            record = json.load(handle)
+        found = {}
+        for section in (GENERATED, MANAGED):
+            for item in record.get(section) or []:
+                if isinstance(item, dict) and isinstance(item.get("path"), str) \
+                        and isinstance(item.get("sha256"), str):
+                    found[item["path"]] = item["sha256"]
+        return found
+    except (OSError, ValueError, AttributeError, TypeError):
+        return {}
+
+
+def remove_retired(out, name):
+    """Delete the files under `out` that a RETIRED pattern matches **and the record says are ours**.
+
+    Returns `(removed, kept)`: the relative paths deleted, sorted, and `[(path, why)]` for every
+    match left where it is. Run by `produce` in the staging copy before provenance is written, so
+    the deletions are part of the one transaction and a refused run removes nothing; `out`'s
+    provenance.json is still the record the engine had when the run began, which is what says who
+    wrote each file.
+
+    Matching the pattern is necessary and not sufficient. A match is deleted only when that record
+    hashed it in `generated` or `managed` **and** the bytes on disk are still that hash. So
+    `backlog/notes.md`, written by hand under a directory the factory used to own, and an item file
+    somebody edited after the last produce, are both kept -- and returned in `kept`, for the caller
+    to print, because a file the factory has stopped maintaining and will not remove is something
+    its owner should be told about rather than left to find.
+
+    The bytes are re-hashed rather than trusted from the record, so an edited provenance.json cannot
+    talk this into deleting a file: `recipe_versions` does not trust the record either, and for the
+    same reason. Deletion by pathname alone was the first version of this and was wrong.
+
+    A directory left empty by the deletions goes too; a directory holding anything else stays, with
+    whatever else is in it.
+    """
+    conflicts = retired_conflicts()
+    if conflicts:
+        raise OwnershipError(
+            "a retired pattern can match a path the ownership table owns, so a migration could delete a "
+            "generated, managed, adopted or engine-owned file: "
+            + "; ".join(f"{gone} overlaps {row}" for gone, row in conflicts))
+    recorded = _recorded_hashes(out)
+    removed, kept, directories = [], [], set()
     for directory, dirs, names in os.walk(out):
         dirs[:] = [d for d in dirs if d not in ("bin", "obj", ".git", ".vs")]
         for base in sorted(names):
             path = os.path.join(directory, base)
             relative = os.path.relpath(path, out).replace(os.sep, "/")
-            if retired(relative, name) is not None:
-                os.remove(path)
-                removed.append(relative)
-                directories.add(directory)
+            if retired(relative, name) is None:
+                continue
+            if relative not in recorded:
+                kept.append((relative, f"{PROVENANCE} does not record the factory as having written it"))
+                continue
+            with open(path, "rb") as handle:
+                digest = sha256(handle.read())
+            if digest != recorded[relative]:
+                kept.append((relative, f"its bytes are not the ones {PROVENANCE} recorded "
+                                       f"({recorded[relative][:12]}...), so it was edited after the last produce"))
+                continue
+            os.remove(path)
+            removed.append(relative)
+            directories.add(directory)
     for directory in sorted(directories, key=len, reverse=True):
         if directory != out and os.path.isdir(directory) and not os.listdir(directory):
             os.rmdir(directory)
-    return sorted(removed)
+    return sorted(removed), sorted(kept)
 
 
 def adopted(out):

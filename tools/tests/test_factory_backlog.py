@@ -20,6 +20,7 @@ left the backlog. No real repository is touched.
 
 Run: python3 -m unittest discover -s tools/tests
 """
+import hashlib
 import importlib.util
 import io
 import json
@@ -64,6 +65,30 @@ def backlog_files(engine, package=None):
     """The engine's backlog as bytes per item name -- rendered now, since nothing holds it (#243)."""
     rendered, _ = backlog.engine_backlog(engine, package)
     return {name: rendered[name].encode("utf-8") for name in sorted(rendered)}
+
+
+def committed_backlog(engine, names=("999-gone.md", "README.md")):
+    """A `backlog/` as a produce before #243 left one: the files, **and the record that hashed them**.
+
+    A retirement deletes only what the engine's own provenance.json attributes to the factory
+    (ownership.remove_retired), so a fixture that wrote the files and not the record would be
+    testing the case where nothing is removed -- which is its own test, below.
+    """
+    directory = os.path.join(engine, "backlog")
+    os.makedirs(directory, exist_ok=True)
+    record_path = os.path.join(engine, "provenance.json")
+    with open(record_path, encoding="utf-8") as handle:
+        record = json.load(handle)
+    for name in names:
+        text = f"# committed by a produce before #243: {name}\n"
+        with open(os.path.join(directory, name), "w", encoding="utf-8") as handle:
+            handle.write(text)
+        record["generated"].append({"path": f"backlog/{name}",
+                                    "sha256": hashlib.sha256(text.encode("utf-8")).hexdigest()})
+    record["generated"].sort(key=lambda item: item["path"])
+    with open(record_path, "w", encoding="utf-8") as handle:
+        json.dump(record, handle, indent=2)
+    return [f"backlog/{name}" for name in names]
 
 
 def qualifies(entry):
@@ -203,17 +228,20 @@ class BacklogCase(unittest.TestCase):
                 self.assertEqual(listed, sorted(self.items(key)))
 
     def test_deterministic_and_the_engine_holds_none_of_it(self):
-        """#243: produce writes no backlog, removes one it finds, and records no backlog path."""
+        """#243: produce writes no backlog, removes the one a produce before it committed, and
+        records no backlog path.
+
+        The `backlog/` is put there with the record that hashed it, because that is the state an
+        engine produced before #243 is in, and it is the only state a retirement deletes."""
         other = os.path.join(self.tmp, "again")
-        stale = os.path.join(other, "backlog", "999-gone.md")
-        os.makedirs(os.path.dirname(stale))
-        with open(stale, "w", encoding="utf-8") as handle:
-            handle.write("# gone\n")
-        with open(os.path.join(other, "backlog", "README.md"), "w", encoding="utf-8") as handle:
-            handle.write("# an index a produce before #243 committed\n")
         code, log = self.produce("part107", other)
         self.assertEqual(code, factory.NOT_VERIFIED, log)
-        self.assertIn("retired pattern backlog/*.md", log)
+        self.assertFalse(os.path.exists(os.path.join(other, "backlog")))
+        committed_backlog(other, ("999-gone.md", "README.md"))
+
+        code, log = self.produce("part107", other)
+        self.assertEqual(code, factory.NOT_VERIFIED, log)
+        self.assertIn("removed 2 file(s) matching the retired pattern backlog/*.md", log)
         self.assertFalse(os.path.exists(os.path.join(other, "backlog")))
         self.assertEqual(self.rendering("part107", other), self.rendering("part107"))
         self.assertNotIn(self.tmp.encode(), b"".join(self.rendering("part107", other).values()))
@@ -264,24 +292,124 @@ class BacklogCase(unittest.TestCase):
                 written[name] = handle.read()
         self.assertEqual(written, rendered)
 
-    def test_render_to_a_path_the_engine_does_not_ignore_is_refused(self):
-        """#243: the command must not be the way a committed rendering comes back."""
-        engine = os.path.join(self.tmp, "ignore-rules")
+    def ignoring_engine(self, name, ignore="artifacts/\n"):
+        """A produced engine that is a git repository with an ignore rule, and the `--render` argv."""
+        engine = os.path.join(self.tmp, name)
         code, log = self.produce("part107", engine)
         self.assertEqual(code, factory.NOT_VERIFIED, log)
         subprocess.run(["git", "init", "-q", engine], check=True)
         with open(os.path.join(engine, ".gitignore"), "w", encoding="utf-8") as handle:
-            handle.write("artifacts/\n")
-        package = self.packages["part107"][0]
-        render = ["backlog", "--render", "--dir", engine, "--package", package, "--to"]
+            handle.write(ignore)
+        return engine, ["backlog", "--render", "--dir", engine,
+                        "--package", self.packages["part107"][0], "--to"]
+
+    def test_render_to_a_path_the_engine_does_not_ignore_is_refused(self):
+        """#243: the command must not be the way a committed rendering comes back."""
+        engine, render = self.ignoring_engine("ignore-rules")
         code, log = run(render + [os.path.join(engine, "backlog")])
         self.assertEqual(code, 1, log)
-        self.assertIn("is inside the engine and the engine does not ignore it", log)
+        self.assertIn("the engine does not ignore", log)
         self.assertFalse(os.path.exists(os.path.join(engine, "backlog")), "nothing was written")
         inside = os.path.join(engine, "artifacts", "backlog")
         self.assertEqual(run(render + [inside])[0], 0)
         self.assertTrue(os.path.isfile(os.path.join(inside, "README.md")))
         self.assertEqual(run(render + [os.path.join(self.tmp, "anywhere")])[0], 0)
+
+    def test_render_to_the_engine_root_is_refused(self):
+        """`--to <engine>` would write the backlog's README.md over the engine's own."""
+        engine, render = self.ignoring_engine("engine-root")
+        before = open(os.path.join(engine, "README.md"), encoding="utf-8").read() \
+            if os.path.isfile(os.path.join(engine, "README.md")) else None
+        code, log = run(render + [engine])
+        self.assertEqual(code, 1, log)
+        self.assertIn("is the engine root", log)
+        self.assertFalse(os.path.isfile(os.path.join(engine, "001-speed-limit.md")), "nothing was written")
+        if before is not None:
+            self.assertEqual(open(os.path.join(engine, "README.md"), encoding="utf-8").read(), before)
+
+    def test_render_checks_every_file_it_would_write_and_names_the_tracked_one(self):
+        """The gate is asked about the files, not the directory that will hold them.
+
+        An ignored directory can hold a tracked child: `git check-ignore` does not report a tracked
+        path as ignored, so `artifacts/backlog/001-*.md` comes back ignored and
+        `artifacts/backlog/README.md`, which this engine tracks, does not. Asking about the
+        directory cannot say which file is the problem, and its answer is git's opinion about a
+        path nothing is written to.
+        """
+        engine, render = self.ignoring_engine("tracked-child")
+        target = os.path.join(engine, "artifacts", "backlog")
+        os.makedirs(target)
+        with open(os.path.join(target, "README.md"), "w", encoding="utf-8") as handle:
+            handle.write("tracked on purpose\n")
+        for argv in (["add", "-f", "artifacts/backlog/README.md"], ["add", ".gitignore"],
+                     ["-c", "user.email=t@example.invalid", "-c", "user.name=t", "commit", "-qm", "tracked"]):
+            subprocess.run(["git", "-C", engine] + argv, check=True,
+                           stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        code, log = run(render + [target])
+        self.assertEqual(code, 1, log)
+        self.assertIn("does not ignore 1 of the 40 file(s) it would write", log)
+        self.assertIn("artifacts/backlog/README.md", log)
+        self.assertEqual(open(os.path.join(target, "README.md"), encoding="utf-8").read(), "tracked on purpose\n")
+        self.assertFalse(os.path.exists(os.path.join(target, "001-speed-limit.md")), "nothing was written")
+
+    def test_render_through_a_symlink_inside_the_engine_is_refused(self):
+        """git answers about the name; the write follows the link, and would land outside it."""
+        engine, render = self.ignoring_engine("linked-dir")
+        outside = os.path.join(self.tmp, "elsewhere")
+        os.makedirs(outside, exist_ok=True)
+        os.makedirs(os.path.join(engine, "artifacts"), exist_ok=True)
+        os.symlink(outside, os.path.join(engine, "artifacts", "backlog"))
+        code, log = run(render + [os.path.join(engine, "artifacts", "backlog")])
+        self.assertEqual(code, 1, log)
+        self.assertIn("passes through the symlink artifacts/backlog", log)
+        self.assertEqual(os.listdir(outside), [], "nothing was written through the link")
+
+    def test_an_output_file_that_is_a_symlink_is_refused(self):
+        """`open(path, "wb")` follows a link; a planted README.md would go over whatever it names."""
+        engine, render = self.ignoring_engine("linked-file")
+        target = os.path.join(engine, "artifacts", "backlog")
+        os.makedirs(target)
+        victim = os.path.join(self.tmp, "victim.md")
+        with open(victim, "w", encoding="utf-8") as handle:
+            handle.write("not the backlog's\n")
+        os.symlink(victim, os.path.join(target, "README.md"))
+        code, log = run(render + [target])
+        self.assertEqual(code, 1, log)
+        self.assertIn("never written through a symlink", log)
+        self.assertEqual(open(victim, encoding="utf-8").read(), "not the backlog's\n")
+
+    def test_a_file_under_a_retired_pattern_the_record_does_not_own_is_kept_and_named(self):
+        """A retired pattern is not a licence to delete by pathname (#243)."""
+        engine = os.path.join(self.tmp, "kept")
+        code, log = self.produce("part107", engine)
+        self.assertEqual(code, factory.NOT_VERIFIED, log)
+        committed_backlog(engine, ("999-gone.md",))
+        mine = os.path.join(engine, "backlog", "notes.md")
+        with open(mine, "w", encoding="utf-8") as handle:
+            handle.write("# my own notes, never emitted by anything\n")
+
+        code, log = self.produce("part107", engine)
+        self.assertEqual(code, factory.NOT_VERIFIED, log)
+        self.assertTrue(os.path.isfile(mine), "a hand-written file under a retired pattern was deleted")
+        self.assertFalse(os.path.exists(os.path.join(engine, "backlog", "999-gone.md")))
+        self.assertIn("kept backlog/notes.md", log)
+        self.assertIn("provenance.json does not record the factory as having written it", log)
+
+    def test_no_retired_pattern_can_reach_a_file_the_table_owns(self):
+        """The structural guard, not the record one: a retirement must not be able to delete an
+        engine-owned, adopted, managed or generated file however the pattern is spelled (#243)."""
+        ownership = factory.generate.ownership
+        self.assertEqual(ownership.retired_conflicts(), [])
+        overlapping = ownership.RETIRED + (ownership.Retired("corpus-map.overlay.json", "a mistake"),)
+        with mock.patch.object(ownership, "RETIRED", overlapping):
+            # `{name}.slnx` is reported too: the engine's name is unknown here, so a segment
+            # holding it is treated as matching anything. The answer is used to refuse a pattern,
+            # so erring towards "could overlap" refuses a safe pattern rather than admitting an
+            # unsafe one.
+            self.assertIn(("corpus-map.overlay.json", "corpus-map.overlay.json"),
+                          ownership.retired_conflicts())
+            with self.assertRaisesRegex(ownership.OwnershipError, "overlaps corpus-map.overlay.json"):
+                ownership.remove_retired(self.engines["part107"], "FaaPart107")
 
     def test_render_without_a_record_is_refused(self):
         bare = os.path.join(self.tmp, "bare")

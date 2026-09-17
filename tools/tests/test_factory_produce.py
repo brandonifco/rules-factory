@@ -277,6 +277,30 @@ class TestMapVersionChange(ProduceCase):
         self.assertTrue(any(line.startswith("map.version:") for line in report["provenanceDiff"]),
                         report["provenanceDiff"])
 
+    def test_the_report_calls_a_retired_path_retired_only_where_it_deleted_one(self):
+        """`retired` is a class of change, not of file (#243).
+
+        A run deletes what it recorded under a retired pattern; nothing writes one. So a path that
+        *appears* or *changes* under the pattern is somebody's own, and reporting it `retired` would
+        say the opposite of what the section is for -- and is what `tools/pr-policy.py` reads to
+        decide whether a produce claim covers it.
+        """
+        out = self.produced(package=self.v1)
+        committed_backlog(out, ("999-stale.md",))
+        report_path = os.path.join(self.tmp, "report.json")
+        self.produced(out, package=self.v2, report=report_path)
+        with open(report_path, encoding="utf-8") as handle:
+            report = json.load(handle)
+        by_path = {item["path"]: item for item in report["paths"]}
+        self.assertEqual(by_path["backlog/999-stale.md"],
+                         {"path": "backlog/999-stale.md", "change": "removed", "class": "retired"})
+        self.assertEqual({item["change"] for item in report["paths"] if item["class"] == "retired"}, {"removed"})
+        for change in ("added", "changed"):
+            classified = factory.classified_paths(NAME, *[["backlog/notes.md"] if how == change else []
+                                                         for how in ("added", "changed", "removed")])
+            self.assertEqual(classified, [{"path": "backlog/notes.md", "change": change, "class": None}],
+                             "a file appearing or changing under a retired pattern is nobody's but the engine's")
+
     def test_the_report_of_a_run_that_moved_nothing_says_so(self):
         out = self.produced(package=self.v1)
         report_path = os.path.join(self.tmp, "report.json")
@@ -600,6 +624,30 @@ class TestRefuses(ProduceCase):
         self.assertEqual(code, 2, output)
 
 
+def committed_backlog(engine, names=("999-stale.md", "README.md")):
+    """A `backlog/` as a produce before #243 left one: the files, **and the record that hashed them**.
+
+    Writing the files alone would not be that state. A retirement deletes only what the engine's own
+    provenance.json attributes to the factory (ownership.remove_retired), so a fixture that skipped
+    the record would be testing the case where nothing is removed.
+    """
+    directory = os.path.join(engine, "backlog")
+    os.makedirs(directory, exist_ok=True)
+    record_path = os.path.join(engine, "provenance.json")
+    with open(record_path, encoding="utf-8") as handle:
+        record = json.load(handle)
+    for name in names:
+        text = f"# committed by a produce before #243: {name}\n"
+        with open(os.path.join(directory, name), "w", encoding="utf-8") as handle:
+            handle.write(text)
+        record["generated"].append({"path": f"backlog/{name}",
+                                    "sha256": hashlib.sha256(text.encode("utf-8")).hexdigest()})
+    record["generated"].sort(key=lambda item: item["path"])
+    with open(record_path, "w", encoding="utf-8") as handle:
+        json.dump(record, handle, indent=2)
+    return [f"backlog/{name}" for name in names]
+
+
 def snapshot(root):
     """Every directory, and every file with its mode and bytes, under `root`."""
     entries = {}
@@ -630,10 +678,7 @@ class TestTransactional(ProduceCase):
         rollback as everything else.
         """
         out = self.produced(package=self.v1)
-        os.makedirs(os.path.join(out, "backlog"), exist_ok=True)
-        for name in ("999-stale.md", "README.md"):
-            with open(os.path.join(out, "backlog", name), "w", encoding="utf-8") as handle:
-                handle.write("committed by a produce before #243\n")
+        committed_backlog(out)
         os.makedirs(os.path.join(out, "bin"))
         with open(os.path.join(out, "bin", "build.dll"), "wb") as handle:
             handle.write(b"built")
@@ -700,6 +745,34 @@ class TestTransactional(ProduceCase):
         fresh = tree(self.produced(os.path.join(self.tmp, "fresh"), package=self.v2))
         self.assertEqual(fresh, tree(out))
         self.assert_no_leftovers(self.tmp)
+
+    def test_a_file_under_a_retired_pattern_the_record_does_not_own_is_kept_and_named(self):
+        """A retired pattern is not a licence to delete by pathname (#243).
+
+        `backlog/notes.md` matches `backlog/*.md` and was never emitted by anything; an item file
+        somebody edited after the last produce no longer hashes to what the record says. Neither is
+        the factory's to remove, and both are named in the output, because a file under a pattern
+        nothing maintains any more is something its owner has to be told about.
+        """
+        out = self.produced(package=self.v1)
+        committed_backlog(out)
+        mine = os.path.join(out, "backlog", "notes.md")
+        with open(mine, "w", encoding="utf-8") as handle:
+            handle.write("# my own notes, never emitted by anything\n")
+        edited = os.path.join(out, "backlog", "999-stale.md")
+        with open(edited, "a", encoding="utf-8") as handle:
+            handle.write("a line I added after the last produce\n")
+
+        code, output = self.produce(out, package=self.v2)
+        self.assertEqual(code, factory.NOT_VERIFIED, output)
+        self.assertTrue(os.path.isfile(mine), "a hand-written file under a retired pattern was deleted")
+        self.assertTrue(os.path.isfile(edited), "an edited file the record no longer matches was deleted")
+        self.assertFalse(os.path.exists(os.path.join(out, "backlog", "README.md")),
+                         "the one file the record does attribute to the factory is still removed")
+        self.assertIn("kept backlog/notes.md", output)
+        self.assertIn("provenance.json does not record the factory as having written it", output)
+        self.assertIn("kept backlog/999-stale.md", output)
+        self.assertIn("edited after the last produce", output)
 
     def test_modes_git_does_not_track_are_not_counted_as_changed(self):
         """A clone under umask 002 has 0664 and 0775 where the factory writes 0644 and 0755."""

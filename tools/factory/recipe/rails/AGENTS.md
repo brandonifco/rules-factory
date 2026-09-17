@@ -258,10 +258,10 @@ decline that names why and cites where — that is the engine working, not the e
   ruling.
 - **An overlay change is finished by a re-produce.** `tools/re-produce.sh` runs it. Marking an
   entry implemented changes the overlay, and the generated files and `provenance.json` are both
-  derived from that overlay; the gate hashes the derived files against the record, and the one
-  comparison that catches an unfinished overlay edit is
+  derived from that overlay; the gate hashes the derived files against the record. Regenerating the
+  C# moves those hashes, but an overlay edited and nothing else run moves only
   `buildInputs[corpus-map.overlay.json]` — the record's hash of the overlay against the overlay on
-  disk. Only the factory can write that record: it names the
+  disk — so that is the comparison that catches every form of it. Only the factory can write that record: it names the
   factory commit the engine was produced from and hashes every one of that factory's recipe files,
   so nothing inside the engine can refresh it — and nothing should try. A record an engine wrote
   about itself would hash whatever is on disk, and a gate that re-blesses its own bytes proves

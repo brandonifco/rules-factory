@@ -62,11 +62,13 @@ You do not need to read the whole corpus, and you should not try. The packet is 
   upstream map defect and stop (`AGENTS.md` §5). Do not make the engine disagree with the
   published map, and do not edit the map.
 - **Do not edit `corpus/`, a baseline, a hash, or the gate** to make a check pass.
-- **Never hand-edit `provenance.json` or anything under `Generated/`.** The gate hashes both
-  against the record. Editing one so the gate goes green is the same defect as editing a baseline:
-  it is the check you are changing, not the thing it checks. This engine has no `backlog/` to
-  edit either — the backlog lives in the issues, and `factory backlog --render` prints it from the
-  map and the overlay whenever you want to read it.
+- **Never hand-edit `provenance.json` or anything under `Generated/`.** The gate hashes everything
+  under `Generated/` against the record, and holds the record itself to the factory's canonical
+  form — it cannot hash itself, so an edit that kept every other hash true is caught by the
+  serialisation instead. Editing either so the gate goes green is the same defect as editing a
+  baseline: it is the check you are changing, not the thing it checks. This engine has no
+  `backlog/` to edit either — the backlog lives in the issues, and `factory backlog --render`
+  prints it from the map and the overlay whenever you want to read it.
 - **Do not widen the change.** An unrelated defect you notice is a new issue, not a second commit
   on this branch. Say you found it; do not fix it here.
 - **Do not bulk-stage.** `git add <explicit paths>`, never `git add -A` or `git add .`.

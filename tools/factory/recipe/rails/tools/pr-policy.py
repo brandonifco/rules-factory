@@ -36,7 +36,8 @@ must hold:
      anybody can repeat;
   3. every changed path is one the factory writes, classified through this engine's own vendored
      `scripts/factory/ownership.py` -- generated, managed, a `packages.lock.json` a pin change
-     re-locks (#94), or a retired pattern a produce deletes (#243). One hand-written `.cs`, one
+     re-locks (#94), or the **deletion** of a file under a retired pattern that the base commit's
+     `provenance.json` recorded the factory as having written (#243). One hand-written `.cs`, one
      overlay edit, one edit to `.github/agent-policy.json`
      voids the claim, by name, and the pull request is judged as the ordinary pull request it is.
 
@@ -237,20 +238,58 @@ def engine_ownership():
     return ownership, name, record
 
 
-def factory_written(path, ownership, name):
-    """Whether `path` is one a `factory produce` run writes, by the engine's own table.
+def base_record(base_oid):
+    """The `provenance.json` of the commit this pull request is based on, or None (#243).
+
+    Only read when a retired path is in the diff, so an ordinary pull request makes no extra call.
+    Read from the API rather than from the checkout, because the workflow checks out one commit and
+    the base is not in it; `{owner}/{repo}` is expanded by `gh` from the current repository, and the
+    raw media type gives the file rather than a base64 envelope. Any failure returns None, which
+    admits nothing: the caller then treats every retired path as not the factory's.
+    """
+    try:
+        raw = gh("api", f"repos/{{owner}}/{{repo}}/contents/{PROVENANCE}?ref={base_oid}",
+                 "-H", "Accept: application/vnd.github.raw")
+        record = json.loads(raw)
+    except (Failed, OSError, ValueError):
+        return None
+    return record if isinstance(record, dict) else None
+
+
+def recorded_by(record, path):
+    """Whether `record` says the factory wrote `path`: a hash for it in `generated` or `managed`.
+
+    `engineOwned` says the opposite and carries no hash; `buildInputs` says only which bytes were
+    there, not who put them there. So neither answers this question and neither is read.
+    """
+    for section in ("generated", "managed"):
+        for item in (record or {}).get(section) or []:
+            if isinstance(item, dict) and item.get("path") == path and isinstance(item.get("sha256"), str):
+                return True
+    return False
+
+
+def factory_written(path, change, ownership, name, base):
+    """Whether `path`, changed as `change` says, is one a `factory produce` run writes.
 
     Generated and managed files are the factory's on every run. The two `packages.lock.json` are
     engine-owned, and are here for the one case 0018's amendment (#94) admits: a produce that moved
     the generated pins re-locks them, because lock files resolved against the old pins cannot pass
-    the gate. A **retired** path (`ownership.RETIRED`) is one the factory used to write and now
-    deletes on every run; a produce that migrates this engine deletes them, so the deletions are
-    the factory's work and not somebody's decision carried in beside it. Everything else an engine
-    owns -- its overlay, its projects, its rails configuration, its hand-written code -- is a
-    decision the factory did not make, and is what voids a claim.
+    the gate.
+
+    A **retired** pattern (`ownership.RETIRED`) is one the factory used to write and now deletes, so
+    a migration produce's deletions are its work and not somebody's decision carried in beside them.
+    That is a narrow admission and it is written narrowly: the change must be a **deletion**
+    (`changeType == "REMOVED"`), and the **base commit's record** must say the factory wrote that
+    file. A hand-written `backlog/notes.md` matches the pattern too -- adding one, editing one, or
+    deleting one the factory never wrote is a decision, and voids the claim like any other. Matching
+    the pattern alone was the first version of this and was wrong.
+
+    Everything else an engine owns -- its overlay, its projects, its rails configuration, its
+    hand-written code -- is a decision the factory did not make, and is what voids a claim.
     """
     if getattr(ownership, "retired", None) is not None and ownership.retired(path, name) is not None:
-        return True
+        return change == "REMOVED" and recorded_by(base, path)
     row = ownership.classify(path, name)
     if row is None:
         return False
@@ -259,7 +298,7 @@ def factory_written(path, ownership, name):
     return row.cls == ownership.ENGINE_OWNED and row.pattern.endswith("/packages.lock.json")
 
 
-def check_produce(body, filled, changed, findings):
+def check_produce(body, filled, changed, findings, base_oid=None):
     """Whether this pull request is a factory update, by the closed predicate #193 decided.
 
     Returns True only when the section says so, the declared facts are the tree's, and every changed
@@ -303,17 +342,28 @@ def check_produce(body, filled, changed, findings):
                         f"checkout with uncommitted changes. Nobody can reproduce that run, so it is not a "
                         f"factory update -- re-produce from a clean factory")
 
+    # Only fetched when the diff holds a retired path, so an ordinary produce update makes no
+    # extra call and a failure to fetch is a refusal only where it decides something.
+    base = None
+    if any(getattr(ownership, "retired", None) is not None and ownership.retired(path, name) is not None
+           for path in changed):
+        base = base_record(base_oid) if base_oid else None
+        if base is None:
+            problems.append(f"it changes a file under a retired pattern, and the base commit's {PROVENANCE} "
+                            f"could not be read, so whether the factory ever wrote that file is unknown. A "
+                            f"deletion this check cannot attribute is not admitted")
     smuggled = []
     for path in sorted(changed):
         try:
-            if not factory_written(path, ownership, name):
+            if not factory_written(path, changed[path], ownership, name, base):
                 smuggled.append(path)
         except ownership.OwnershipError as error:
             smuggled.append(f"{path} ({error})")
     if smuggled:
         problems.append(f"{len(smuggled)} changed file(s) are not files a produce writes: "
                         f"{', '.join(smuggled[:5])}{'...' if len(smuggled) > 5 else ''}. A produce writes the "
-                        f"generated and managed files and re-locks the lock files; anything else in this diff is "
+                        f"generated and managed files, re-locks the lock files, and deletes what it recorded "
+                        f"under a retired pattern; anything else in this diff is "
                         f"somebody's decision, and it is reviewed as one")
 
     if problems:
@@ -440,9 +490,13 @@ def main(argv=None):
     findings = []
     try:
         settings = policy()
-        pull = json.loads(gh("pr", "view", str(args.pr), "--json", "number,title,body,files,changedFiles"))
+        pull = json.loads(gh("pr", "view", str(args.pr), "--json",
+                             "number,title,body,files,changedFiles,baseRefOid"))
         body = pull.get("body") or ""
-        changed = [f["path"] for f in pull.get("files") or []]
+        # path -> how it changed, as GitHub reports it (ADDED, MODIFIED, REMOVED, RENAMED...). The
+        # produce predicate needs it: a retired path is the factory's when deleted and nobody's
+        # otherwise. An absent changeType reads as "" and is therefore never a deletion.
+        changed = {f["path"]: f.get("changeType") or "" for f in pull.get("files") or []}
         truncated = truncation(pull, changed, findings)
         semantic_files = {path for path in changed
                           if is_semantic(path, (settings.get("review") or {}).get("semanticPaths") or [])}
@@ -451,7 +505,8 @@ def main(argv=None):
         filled = check_sections(body, findings)
         # Never on a truncated list: the produce predicate says every changed path is one the
         # factory writes, and a list that is missing some cannot say that about the ones it lost.
-        produce = False if truncated else check_produce(body, filled, changed, findings)
+        produce = False if truncated else check_produce(body, filled, changed, findings,
+                                                        pull.get("baseRefOid"))
         check_evidence(filled, findings, produce=produce)
         check_conformance(filled, semantic_files, findings, produce=produce)
         check_provenance(filled, findings)

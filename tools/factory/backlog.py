@@ -394,33 +394,72 @@ def document(rendered):
     return "\n\n---\n\n".join(rendered[name].rstrip("\n") + "\n" for name in order if name in rendered)
 
 
-def refuse_unignored(engine_dir, directory):
+def refuse_unignored(engine_dir, directory, names):
     """Refuse a `--render --to` inside `engine_dir` that the engine does not ignore (#243).
 
     A rendering is derived from the overlay, and committing it beside the overlay is the state
     #243 removed: it renumbers on every entry built, so two entry branches collide on files
-    neither is about. A path outside the engine is the caller's business and is not checked. A
-    path inside it must be one `git check-ignore` agrees is ignored -- asked of git rather than
-    parsed out of `.gitignore`, because the engine's ignore rules are the engine's, may be spelled
-    in any of the places git reads, and the factory emits no `.gitignore` of its own.
+    neither is about. A path outside the engine is the caller's business and is not checked.
+    Inside it, three things are refused:
+
+      * **the engine root itself**, outright and without asking git. `--to <engine>` would write
+        `README.md` over the engine's own, and the root is never ignored by anything;
+      * **a file the engine does not ignore**, which is asked of git for **every file about to be
+        written** (`names`), not for the directory that will hold them. An ignored directory can
+        hold a tracked child -- `git check-ignore` answers for the path it is given, and a
+        negation (`!backlog/README.md`) or an already-tracked file makes the directory's answer and
+        the file's differ. Checking the directory alone was the first version of this and was wrong;
+      * **a path that passes through a symlink**, because the answer git gives is about the name and
+        the write follows the link.
+
+    git is asked rather than `.gitignore` parsed: the rules are the engine's, may be spelled in any
+    of the places git reads, and the factory emits no `.gitignore` of its own. A tree git cannot
+    answer for is refused, not admitted.
     """
     engine = os.path.realpath(os.path.abspath(engine_dir))
-    target = os.path.realpath(os.path.abspath(directory))
-    if os.path.commonpath([engine, target]) != engine or target == engine:
+    # Both spellings are asked, and the name is preferred. A path that *names* somewhere in the
+    # engine is inside it even when a link on the way out resolves elsewhere -- that is the case
+    # this refuses -- and a path that resolves into the engine from outside is inside it too.
+    lexical, resolved = os.path.abspath(directory), os.path.realpath(os.path.abspath(directory))
+    inside = [p for p in (lexical, resolved) if os.path.commonpath([engine, p]) == engine]
+    if not inside:
         return
-    relative = os.path.relpath(target, engine)
+    if engine in (lexical, resolved):
+        raise BacklogError(f"--to {directory} is the engine root: rendering there would write the backlog's "
+                           f"README.md over the engine's own, and nothing ignores the root. Render to a "
+                           f"directory of its own, outside the engine or one the engine ignores")
+    relative = os.path.relpath(inside[0], engine)
     advice = (f"render to a path outside the engine, or add {relative}/ to the engine's .gitignore. The "
               f"backlog is derived from corpus-map.overlay.json, and a committed copy of it is what #243 "
               f"removed")
+    link = _symlink_between(engine, lexical)
+    if link is not None:
+        raise BacklogError(f"--to {directory} is inside the engine and passes through the symlink {link}, so "
+                           f"what git says about the name is not what the write would reach; {advice}")
+    wanted = sorted(f"{relative}/{name}" for name in names)
     try:
-        done = subprocess.run(["git", "-C", engine, "check-ignore", "-q", "--", relative],
+        done = subprocess.run(["git", "-C", engine, "check-ignore", "--stdin"], input="\n".join(wanted),
                               capture_output=True, text=True, timeout=GH_TIMEOUT)
     except (OSError, subprocess.TimeoutExpired) as error:
         raise BacklogError(f"--to {directory} is inside the engine, and git cannot say whether the engine "
                            f"ignores it ({error}); {advice}")
-    if done.returncode != 0:
-        why = "the engine does not ignore it" if done.returncode == 1 else (done.stderr.strip() or "git failed")
-        raise BacklogError(f"--to {directory} is inside the engine and {why}; {advice}")
+    if done.returncode not in (0, 1):
+        raise BacklogError(f"--to {directory} is inside the engine, and `git check-ignore` failed "
+                           f"({done.stderr.strip() or 'no output'}); {advice}")
+    unignored = [path for path in wanted if path not in set(done.stdout.split("\n"))]
+    if unignored:
+        raise BacklogError(f"--to {directory} is inside the engine and the engine does not ignore "
+                           f"{len(unignored)} of the {len(wanted)} file(s) it would write "
+                           f"({', '.join(unignored[:3])}{'...' if len(unignored) > 3 else ''}); {advice}")
+
+
+def _symlink_between(root, target):
+    """The first component of `target` under `root` that is a symlink, or None. `root` itself is not one."""
+    parts = os.path.relpath(os.path.abspath(target), root).split(os.sep)
+    for depth in range(1, len(parts) + 1):
+        if os.path.islink(os.path.join(root, *parts[:depth])):
+            return "/".join(parts[:depth])
+    return None
 
 
 def write_rendered(rendered, directory):
@@ -429,13 +468,26 @@ def write_rendered(rendered, directory):
     For `factory backlog --render --to`. The directory is the caller's: it is created when absent,
     and an earlier rendering in it (`README.md`, `NNN-*.md`) is replaced, so a re-render leaves no
     item the backlog no longer has. Nothing else in it is touched.
+
+    **Nothing is written through a symlink.** `open(path, "wb")` opens its destination by name and
+    follows a link, so a `README.md -> ../../README.md` planted in the output directory would put
+    the backlog's index over the engine's -- and `--to` is allowed to point at a directory the
+    engine ignores, where planting one costs nothing. Each file is opened `O_NOFOLLOW`, which fails
+    on a link rather than writing past it, and the run is refused naming the path.
     """
     os.makedirs(directory, exist_ok=True)
     for name in sorted(os.listdir(directory)):
         if (ITEM_FILE.match(name) or name == "README.md") and name not in rendered:
-            os.remove(os.path.join(directory, name))
+            os.remove(os.path.join(directory, name))  # removes the link, never what it points at
+    nofollow = getattr(os, "O_NOFOLLOW", 0)
     for name in sorted(rendered):
-        with open(os.path.join(directory, name), "wb") as handle:
+        path = os.path.join(directory, name)
+        try:
+            fd = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_TRUNC | nofollow, 0o644)
+        except OSError as error:
+            raise BacklogError(f"cannot write {path}: {error}. A rendering is never written through a "
+                               f"symlink; remove it, or render somewhere else")
+        with open(fd, "wb") as handle:
             handle.write(rendered[name].encode("utf-8"))
     return [os.path.join(directory, name) for name in sorted(rendered)]
 

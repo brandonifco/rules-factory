@@ -145,9 +145,10 @@ What never happens again is `NOT VERIFIED` on stdout and `0` in `$?`.
   The engine's own gate holds a narrower claim without the factory: `scripts/engine-gate.py
   provenance` hashes the recorded generated and managed files and the overlay they were generated
   from, so an overlay edit never followed by a re-produce — leaving a record that hashes the
-  overlay as it was before the edit — fails the gate, naming `tools/re-produce.sh`. That one
-  comparison, `buildInputs[corpus-map.overlay.json]`, is the whole of that check, and a run in
-  which it had nothing to compare fails too
+  overlay as it was before the edit — fails the gate, naming `tools/re-produce.sh`. An edit
+  followed by a regeneration moves the generated hashes too; an edit followed by nothing moves only
+  `buildInputs[corpus-map.overlay.json]`, so that comparison is the one that catches every form of
+  it, and a run in which it had nothing to compare fails too
   ([0018](docs/decisions/0018-every-file-the-factory-writes-has-one-owner.md)). It compares and
   never writes: only `produce` authors that record.
 

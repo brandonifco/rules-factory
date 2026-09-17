@@ -108,25 +108,50 @@ from the map. The committed markdown was a rendering of what the issues already 
 **What replaces it.** `factory backlog --create` renders the items in memory from the map package
 the record names, merged with `corpus-map.overlay.json`, and files them as issues exactly as
 before — every body is byte-identical. `factory backlog --render --dir <engine>` prints the same
-rendering as one Markdown document, or writes the files with `--to <directory>`. A `--to` inside
-the engine is refused unless `git check-ignore` agrees the engine ignores it: a rendering of the
+rendering as one Markdown document, or writes the files with `--to <directory>`. A rendering of the
 overlay committed beside the overlay is the state this amendment removes, and the command must not
-be the way it comes back.
+be the way it comes back, so a `--to` inside the engine is refused unless all three hold: it is not
+the engine root; `git check-ignore` agrees the engine ignores **every file the run would write**,
+asked per file because an ignored directory can hold a tracked child; and no component of the path
+is a symlink, because git answers about the name and the write follows the link. Each file is then
+opened `O_NOFOLLOW`, so a planted `README.md ->` anywhere fails the write instead of going through it.
 
-**Migration.** The next `produce` removes a committed `backlog/` — the item files and `README.md`,
-and the directory when nothing else is in it — inside the staging copy, so the removal is committed
-with the rest of the run or not at all (`transaction.py`), and the run prints what it removed. No
-one-off migration command: an engine is already brought into step by `tools/re-produce.sh` after
-every overlay edit, and a command that had to be remembered once per engine would leave any engine
-that forgot it holding a `backlog/` its record no longer mentions.
+**Migration.** The next `produce` removes a committed `backlog/` inside the staging copy, so the
+removal is committed with the rest of the run or not at all (`transaction.py`), and the run prints
+what it removed. No one-off migration command: an engine is already brought into step by
+`tools/re-produce.sh` after every overlay edit, and a command that had to be remembered once per
+engine would leave any engine that forgot it holding a `backlog/` its record no longer mentions.
 
-**What still catches a stale derived state.** `buildInputs[corpus-map.overlay.json]`, exactly as
-the amendment above already said: hashing the backlog never could catch a stale backlog, because an
-item file listing an entry someone has since implemented is *unchanged*. Now that it is the only
-comparison that carries the case, it is no longer conditional — a record with no overlay entry and
-an engine with no overlay on disk fails `scripts/engine-gate.py provenance`, rather than passing on
-the strength of the generated hashes it did compare. A check that examined nothing is a failure,
-including when what it failed to examine is the one input it exists for.
+**A retired pattern is not a licence to delete.** Two independent guards, because this is the only
+part of `produce` that removes a file it did not just write:
+
+- **By evidence.** A match is deleted only when the engine's own `provenance.json`, as it stood
+  before the run, hashed that exact path in `generated` or `managed` *and* the bytes on disk are
+  still that hash. The bytes are re-hashed rather than trusted from the record, for the same reason
+  `recipe_versions` does not trust it. A hand-written `backlog/notes.md`, and an item somebody
+  edited after the last produce, are left where they are — and **named in the run's output**, since
+  a file under a pattern nothing maintains any more is something its owner has to be told about.
+  Deleting by pathname alone was the first implementation of this and was wrong.
+- **By structure.** `retired_conflicts()` refuses, before any deletion and in the tests, any RETIRED
+  pattern that could match a path any row of the table can match. A retirement therefore cannot
+  reach a generated, managed, adopted or engine-owned file however it is spelled — not merely
+  unlikely, impossible. An adopted file fails the evidence guard too: `engineOwned` carries no hash.
+
+`tools/pr-policy.py` admits a retired path just as narrowly: only as a **deletion**, and only when
+the **base commit's** `provenance.json` records the factory as having written it. Adding to,
+editing, or deleting an unrecorded file under a retired pattern voids a produce claim like any
+other hand-written change, and a base record that cannot be read admits nothing.
+
+**What still catches a stale derived state.** `buildInputs[corpus-map.overlay.json]`. Hashing the
+backlog never could catch a stale backlog, because an item file listing an entry someone has since
+implemented is *unchanged*. The `generated` hashes do catch one form of an unfinished overlay edit
+— one followed by `regenerate --write`, which leaves the `*.g.cs` differing from what the record
+holds — but an overlay edited and nothing else run moves no generated byte, and the overlay
+comparison is the only thing that sees it. Now that nothing else even appears to carry the case, it
+is no longer conditional: a record with no overlay entry and an engine with no overlay on disk fails
+`scripts/engine-gate.py provenance`, rather than passing on the strength of the generated hashes it
+did compare — and printing that the overlay was among what it examined. A check that examined
+nothing is a failure, including when what it failed to examine is the one input it exists for.
 
 ## Amendment — changed pins re-lock
 
@@ -265,7 +290,7 @@ written path the table does not classify.
 | `AGENTS.md` | managed | 9 | The governing contract every agent works the engine under (0029). Managed, not generated: a team may amend its own contract, and the factory must then either carry the amendment or refuse and say so, never silently overwrite it. |
 | `CLAUDE.md` | managed | 1 | A pointer to `AGENTS.md` and an index of the Claude adapters. It states no rule of its own, so it cannot drift from the contract. |
 | `docs/agent-team.md` | managed | 4 | The four roles and what each may not do (0029). |
-| `.claude/agents/engine-dev.md` | managed | 6 | The implementer's charter. |
+| `.claude/agents/engine-dev.md` | managed | 7 | The implementer's charter. |
 | `.claude/agents/repo-steward.md` | managed | 1 | The structural reviewer's charter, read-only. |
 | `.claude/agents/rules-conformance.md` | managed | 3 | The semantic reviewer's charter, read-only. |
 | `.claude/hooks/primary-checkout-guard.py` | managed | 1 | The `PreToolUse` guard keeping implementation work out of the primary checkout. Policy, and the engine that must change it adopts it. |
@@ -275,7 +300,7 @@ written path the table does not classify.
 | `tools/entry-packet.py` | managed | 4 | The bounded assignment for one entry, assembled from merge(package, overlay) so it cannot carry a reading of its own. |
 | `tools/re-produce.sh` | managed | 3 | Re-runs `factory produce` on the engine from the factory commit `provenance.json` names. The record is generated, so an overlay edit is only finished by a produce, and prose describing that clone is a procedure an operator can get wrong (#192). |
 | `tools/review-packet.py` | managed | 1 | Everything a reviewer needs about one pull request, in the order it is meant to be read. |
-| `tools/pr-policy.py` | managed | 3 | The pull request contract, checked mechanically: one linked issue, every section filled, output rather than a claim. A `factory produce` update's claim is checked against `provenance.json` and this table, never taken (#193), retired patterns included (#243). |
+| `tools/pr-policy.py` | managed | 4 | The pull request contract, checked mechanically: one linked issue, every section filled, output rather than a claim. A `factory produce` update's claim is checked against `provenance.json` and this table, never taken (#193). A retired path counts only as a deletion the base commit's record attributes to the factory (#243). |
 | `tools/record-verdict.py` | managed | 1 | A review verdict as a commit status on the exact commit reviewed, so a later commit invalidates it by itself. |
 | `tools/conformance-gate.py` | managed | 2 | Whether the verdicts this change needs are recorded at the commit being merged. A truncated file list is undecidable rather than a small change (#193). |
 | `tools/requeue-gate.py` | managed | 1 | Asks the gate to report again at the commit a recorded verdict names, so recording the verdict is the whole of the step (#191). It writes no status and no check run of its own. |
