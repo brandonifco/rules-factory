@@ -43,10 +43,12 @@ What this does not buy, stated here rather than in a commit message:
 Usage: check-map-review.py [MAP ...] [--root DIR]
 With no MAP, checks every examples/*/corpus-map*.json and examples/*/*/corpus-map*.json under
 the repository root, the same globs scripts/validate.sh uses. The second is there because a
-reconciled map cannot sit beside the map it reconciles: `pack-map.py` requires exactly one
-corpus-map*.json in a packable directory, so trial 9's Map C lives in its blind-mapping/
-subdirectory with its own review.json. A map one level down is still a committed map and still
-carries a review of its bytes. Exit 0 if every map has a review of its current bytes and at
+reconciled map cannot sit beside the map it reconciles while both are maps: `pack-map.py`
+requires exactly one corpus-map*.json in a packable directory, so trial 9's Map C sat in its
+blind-mapping/ subdirectory with a review.json of its own until it was promoted to be the map
+(#8). No map is one level down today; the glob stays so that the next one is examined rather
+than missed. A map one level down is still a committed map and still carries a review of its
+bytes. Exit 0 if every map has a review of its current bytes and at
 least one map was examined; 1 otherwise; 2 on a usage error.
 """
 import argparse

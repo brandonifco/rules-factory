@@ -4,7 +4,9 @@
 0014's comparison, for 26 CFR § 1.121-1. The two maps are frozen inputs and neither is
 written to:
 
-  A  examples/tax-121-principal-residence/corpus-map.json   (the first mapping, trial 9)
+  A  examples/tax-121-principal-residence/blind-mapping/first-map.json  (the first mapping,
+     trial 9; it was the example's corpus-map.json when this comparison was run, and moved here
+     beside Map B when the reconciled map was promoted to that name -- #8)
   B  examples/tax-121-principal-residence/blind-mapping/blind-map.json  (the blind second)
 
 Entries are aligned **by the text they quote**, not by id, because the two mappers chose ids
@@ -33,7 +35,7 @@ import subprocess
 import sys
 
 HERE = pathlib.Path(__file__).resolve().parent
-MAP_A = HERE.parent / "corpus-map.json"
+MAP_A = HERE / "first-map.json"
 MAP_B = HERE / "blind-map.json"
 RESULTS = HERE / "results.json"
 
@@ -155,7 +157,11 @@ def compare():
         "about": "0014's field-by-field comparison of two independent mappings of 26 CFR "
                  "§ 1.121-1. Neither map is written to. Written by compare.py.",
         "reference": {
-            "path": "examples/tax-121-principal-residence/corpus-map.json",
+            # The committed results.json still names Map A's old path and the commit it had
+            # there, which is what review.json's compared.commit is checked against. Re-running
+            # this script names Map A where it now lives and the commit that moved it, so a
+            # re-run is a new comparison and needs the review record updated with it (#8).
+            "path": "examples/tax-121-principal-residence/blind-mapping/first-map.json",
             "commit": last_commit(MAP_A),
             "sha256": hashlib.sha256(MAP_A.read_bytes()).hexdigest(),
             "entries": len(a_map["entries"]),
