@@ -65,8 +65,11 @@ dead run (#183). Rollback deletes and overwrites the paths it names, so nothing 
 trust: before any rollback, every path must be relative and normalised (no absolute prefix, no
 empty, `.` or `..` component) and must not pass through a symlink under `--out`; the working
 directory must exist as a real directory; and every changed or removed path must have a regular
-file in its `backup/`. A journal failing any of these is refused, and nothing is deleted or
-restored.
+file in its `backup/`, which is itself a real directory; and the `restoring` file the rollback
+copies through must not be a symlink or anything but a regular file (#228). A journal failing any of
+these is refused, and nothing is deleted or restored. The copy into `restoring` is also made
+without following a link at either end, so one planted after the check fails the copy instead of
+being written through.
 
 Not handled: a working directory left behind by a process killed before step 2 is not removed
 by a later run (it cannot tell a dead run from a concurrent one); it is a hidden
@@ -151,6 +154,28 @@ def _existing_ancestor(path):
 # --- rollback --------------------------------------------------------------------------------
 
 
+def _copy_without_following(source, destination):
+    """`shutil.copy2(source, destination)`, except that neither end is followed through a symlink (#228).
+
+    `copy2` opens its destination by name, so a link planted there is written through to wherever it
+    points. A regular file left there by a run that died mid-restore is removed without following
+    anything; then the destination is created exclusively and without following, so a link that
+    appears after the removal makes the copy fail rather than land outside `--out`.
+    """
+    if os.path.islink(destination):
+        raise OSError(f"{destination} is a symlink, and a restore is never written through one")
+    if os.path.lexists(destination):
+        os.unlink(destination)
+    nofollow = getattr(os, "O_NOFOLLOW", 0)
+    with open(source, "rb", opener=lambda path, flags: os.open(path, flags | nofollow)) as reader:
+        mode = stat.S_IMODE(os.fstat(reader.fileno()).st_mode)
+        fd = os.open(destination, os.O_WRONLY | os.O_CREAT | os.O_EXCL | nofollow, 0o600)
+        with open(fd, "wb") as writer:
+            shutil.copyfileobj(reader, writer)
+    shutil.copystat(source, destination, follow_symlinks=False)
+    os.chmod(destination, mode)
+
+
 def _rollback(journal):
     out, work = journal["out"], journal["work"]
     backup = os.path.join(work, "backup")
@@ -160,7 +185,7 @@ def _rollback(journal):
             os.remove(target)
     restoring = os.path.join(work, "restoring")
     for relative in journal["changed"] + journal["removed"]:
-        shutil.copy2(_native(backup, relative), restoring)
+        _copy_without_following(_native(backup, relative), restoring)
         os.replace(restoring, _native(out, relative))
     for relative in reversed(journal["directories"]):
         try:
@@ -180,6 +205,14 @@ def _journal_problem(journal, out):
     if os.path.islink(work) or not os.path.isdir(work):
         return f"its working directory {work} does not exist"
     backup = os.path.join(work, "backup")
+    # Rollback copies out of `backup/` into `restoring` and moves that into --out, so neither may be a
+    # link: a planted `restoring` pointing outside --out is written through, and a linked `backup/`
+    # makes every "backed-up file" whatever it points at (#228).
+    if os.path.islink(backup) or (os.path.lexists(backup) and not os.path.isdir(backup)):
+        return f"its backup directory {backup} is not a real directory"
+    restoring = os.path.join(work, "restoring")
+    if os.path.islink(restoring) or (os.path.lexists(restoring) and not os.path.isfile(restoring)):
+        return f"{restoring} is not a regular file, and a restore is never written through one"
     for key in ("added", "changed", "removed", "directories"):
         for relative in journal[key]:
             if not _safe_relative(relative):
