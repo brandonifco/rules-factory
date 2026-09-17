@@ -1,0 +1,663 @@
+{
+  "about": "0014's field-by-field comparison of two independent mappings of 26 CFR § 1.121-1. Neither map is written to. Written by compare.py.",
+  "reference": {
+    "path": "examples/tax-121-principal-residence/corpus-map.json",
+    "commit": "c9ec1b73469fd510d85ea62fab062683d25c63b0",
+    "sha256": "d5b4f0979d902c7099da85aa59e64444fea9ecd5e39059f37b1f0d597b0262ba",
+    "entries": 37
+  },
+  "blind": {
+    "path": "examples/tax-121-principal-residence/blind-mapping/blind-map.json",
+    "sha256": "1d4ed894a6517f1596a1a151ead420c74eddc3d316ee80700086e8b4b651dbe9",
+    "entries": 44
+  },
+  "counts": {
+    "partnered": 36,
+    "agreeing": 1,
+    "flagged": 35,
+    "onlyA": 1,
+    "onlyB": 8,
+    "unalignable": 0
+  },
+  "flags": [
+    {
+      "a": "allocation-required",
+      "b": "allocation-required",
+      "score": 1.0,
+      "differences": [
+        {
+          "field": "clarity",
+          "a": "ambiguous",
+          "b": "clear"
+        },
+        {
+          "field": "ambiguity",
+          "a": "present",
+          "b": "absent"
+        },
+        {
+          "field": "citation",
+          "a": "§ 1.121-1(e)",
+          "b": "§ 1.121-1(e)(1)"
+        },
+        {
+          "field": "dependsOn",
+          "a": 2,
+          "b": 3
+        },
+        {
+          "field": "enabledBy",
+          "a": 0,
+          "b": 1
+        },
+        {
+          "field": "suspendedBy",
+          "a": 0,
+          "b": 1
+        }
+      ]
+    },
+    {
+      "a": "allocation-subject-to-depreciation",
+      "b": "residential-portion-depreciation-limit",
+      "score": 1.0,
+      "differences": [
+        {
+          "field": "citation",
+          "a": "§ 1.121-1(e)",
+          "b": "§ 1.121-1(e)(1)"
+        },
+        {
+          "field": "enabledBy",
+          "a": 0,
+          "b": 1
+        }
+      ]
+    },
+    {
+      "a": "depreciation-excludes-allocated-portion",
+      "b": "depreciation-of-non-excluded-portion-disregarded",
+      "score": 1.0,
+      "differences": [
+        {
+          "field": "citation",
+          "a": "§ 1.121-1(d)",
+          "b": "§ 1.121-1(d)(1)"
+        },
+        {
+          "field": "enabledBy",
+          "a": 0,
+          "b": 1
+        }
+      ]
+    },
+    {
+      "a": "depreciation-not-excludable",
+      "b": "depreciation-limitation",
+      "score": 1.0,
+      "differences": [
+        {
+          "field": "citation",
+          "a": "§ 1.121-1(d)",
+          "b": "§ 1.121-1(d)(1)"
+        },
+        {
+          "field": "definedElsewhere",
+          "a": "present",
+          "b": "absent"
+        },
+        {
+          "field": "enabledBy",
+          "a": 0,
+          "b": 1
+        }
+      ]
+    },
+    {
+      "a": "dwelling-unit-definition",
+      "b": "dwelling-unit-definition",
+      "score": 1.0,
+      "differences": [
+        {
+          "field": "enabledBy",
+          "a": 0,
+          "b": 1
+        }
+      ]
+    },
+    {
+      "a": "effective-date",
+      "b": "effective-date",
+      "score": 1.0,
+      "differences": [
+        {
+          "field": "kind",
+          "a": "operation",
+          "b": "value"
+        }
+      ]
+    },
+    {
+      "a": "example-d",
+      "b": "depreciation-example",
+      "score": 1.0,
+      "differences": [
+        {
+          "field": "kind",
+          "a": "operation",
+          "b": "value"
+        }
+      ]
+    },
+    {
+      "a": "examples-b",
+      "b": "residence-examples",
+      "score": 1.0,
+      "differences": [
+        {
+          "field": "kind",
+          "a": "operation",
+          "b": "value"
+        }
+      ]
+    },
+    {
+      "a": "examples-c",
+      "b": "ownership-and-use-examples",
+      "score": 1.0,
+      "differences": [
+        {
+          "field": "kind",
+          "a": "operation",
+          "b": "value"
+        }
+      ]
+    },
+    {
+      "a": "examples-e",
+      "b": "partial-use-examples",
+      "score": 1.0,
+      "differences": [
+        {
+          "field": "kind",
+          "a": "operation",
+          "b": "value"
+        }
+      ]
+    },
+    {
+      "a": "exclusion-of-gain",
+      "b": "exclusion-of-gain",
+      "score": 1.0,
+      "differences": [
+        {
+          "field": "enabledBy",
+          "a": 0,
+          "b": 1
+        }
+      ]
+    },
+    {
+      "a": "maximum-limitation-amount",
+      "b": "maximum-limitation-amount",
+      "score": 1.0,
+      "differences": [
+        {
+          "field": "citation",
+          "a": "§ 1.121-1(b)(3)(ii)",
+          "b": "§ 1.121-1(b)(3)(ii)(A)"
+        },
+        {
+          "field": "enabledBy",
+          "a": 0,
+          "b": 1
+        }
+      ]
+    },
+    {
+      "a": "method-of-allocation",
+      "b": "allocation-method",
+      "score": 1.0,
+      "differences": [
+        {
+          "field": "enabledBy",
+          "a": 0,
+          "b": 1
+        }
+      ]
+    },
+    {
+      "a": "no-allocation-within-dwelling-unit",
+      "b": "no-allocation-within-dwelling-unit",
+      "score": 1.0,
+      "differences": [
+        {
+          "field": "citation",
+          "a": "§ 1.121-1(e)",
+          "b": "§ 1.121-1(e)(1)"
+        },
+        {
+          "field": "dependsOn",
+          "a": 2,
+          "b": 1
+        },
+        {
+          "field": "enabledBy",
+          "a": 0,
+          "b": 1
+        }
+      ]
+    },
+    {
+      "a": "out-of-residence-care",
+      "b": "out-of-residence-care-use",
+      "score": 1.0,
+      "differences": [
+        {
+          "field": "clarity",
+          "a": "ambiguous",
+          "b": "clear"
+        },
+        {
+          "field": "ambiguity",
+          "a": "present",
+          "b": "absent"
+        },
+        {
+          "field": "dependsOn",
+          "a": 2,
+          "b": 1
+        },
+        {
+          "field": "enabledBy",
+          "a": 0,
+          "b": 1
+        }
+      ]
+    },
+    {
+      "a": "ownership-and-use-aggregation",
+      "b": "two-year-equivalents",
+      "score": 1.0,
+      "differences": [
+        {
+          "field": "kind",
+          "a": "operation",
+          "b": "value"
+        },
+        {
+          "field": "citation",
+          "a": "§ 1.121-1(c)",
+          "b": "§ 1.121-1(c)(1)"
+        },
+        {
+          "field": "enabledBy",
+          "a": 0,
+          "b": 1
+        }
+      ]
+    },
+    {
+      "a": "ownership-and-use-nonconcurrent",
+      "b": "nonconcurrent-ownership-and-use",
+      "score": 1.0,
+      "differences": [
+        {
+          "field": "citation",
+          "a": "§ 1.121-1(c)",
+          "b": "§ 1.121-1(c)(1)"
+        },
+        {
+          "field": "enabledBy",
+          "a": 0,
+          "b": 1
+        }
+      ]
+    },
+    {
+      "a": "ownership-and-use-test",
+      "b": "ownership-and-use-requirement",
+      "score": 1.0,
+      "differences": [
+        {
+          "field": "enabledBy",
+          "a": 0,
+          "b": 1
+        }
+      ]
+    },
+    {
+      "a": "ownership-through-disregarded-entity",
+      "b": "single-owner-entity-ownership",
+      "score": 1.0,
+      "differences": [
+        {
+          "field": "definedElsewhere",
+          "a": "present",
+          "b": "absent"
+        },
+        {
+          "field": "enabledBy",
+          "a": 0,
+          "b": 1
+        }
+      ]
+    },
+    {
+      "a": "ownership-through-trust",
+      "b": "trust-ownership",
+      "score": 1.0,
+      "differences": [
+        {
+          "field": "citation",
+          "a": "§ 1.121-1(c)(3)",
+          "b": "§ 1.121-1(c)(3)(i)"
+        },
+        {
+          "field": "definedElsewhere",
+          "a": "present",
+          "b": "absent"
+        },
+        {
+          "field": "enabledBy",
+          "a": 0,
+          "b": 1
+        }
+      ]
+    },
+    {
+      "a": "principal-residence-factors",
+      "b": "principal-residence-factors",
+      "score": 1.0,
+      "differences": [
+        {
+          "field": "enabledBy",
+          "a": 0,
+          "b": 1
+        }
+      ]
+    },
+    {
+      "a": "principal-residence-facts-and-circumstances",
+      "b": "principal-residence-determination",
+      "score": 1.0,
+      "differences": [
+        {
+          "field": "dependsOn",
+          "a": 2,
+          "b": 3
+        },
+        {
+          "field": "enabledBy",
+          "a": 0,
+          "b": 1
+        }
+      ]
+    },
+    {
+      "a": "principal-residence-majority-of-time",
+      "b": "principal-residence-majority-of-time",
+      "score": 1.0,
+      "differences": [
+        {
+          "field": "enabledBy",
+          "a": 0,
+          "b": 1
+        }
+      ]
+    },
+    {
+      "a": "residence-cooperative-apartment",
+      "b": "cooperative-housing-residence",
+      "score": 1.0,
+      "differences": [
+        {
+          "field": "citation",
+          "a": "§ 1.121-1(b)",
+          "b": "§ 1.121-1(b)(1)"
+        },
+        {
+          "field": "enabledBy",
+          "a": 0,
+          "b": 1
+        }
+      ]
+    },
+    {
+      "a": "residence-excludes-personal-property",
+      "b": "residence-excludes-non-fixture-personal-property",
+      "score": 1.0,
+      "differences": [
+        {
+          "field": "kind",
+          "a": "operation",
+          "b": "value"
+        },
+        {
+          "field": "citation",
+          "a": "§ 1.121-1(b)",
+          "b": "§ 1.121-1(b)(1)"
+        },
+        {
+          "field": "definedElsewhere",
+          "a": "present",
+          "b": "absent"
+        },
+        {
+          "field": "enabledBy",
+          "a": 0,
+          "b": 1
+        }
+      ]
+    },
+    {
+      "a": "residence-facts-and-circumstances",
+      "b": "residence-determination",
+      "score": 1.0,
+      "differences": [
+        {
+          "field": "citation",
+          "a": "§ 1.121-1(b)",
+          "b": "§ 1.121-1(b)(1)"
+        },
+        {
+          "field": "dependsOn",
+          "a": 0,
+          "b": 3
+        },
+        {
+          "field": "enabledBy",
+          "a": 0,
+          "b": 1
+        }
+      ]
+    },
+    {
+      "a": "residence-may-include",
+      "b": "residence-inclusions",
+      "score": 1.0,
+      "differences": [
+        {
+          "field": "citation",
+          "a": "§ 1.121-1(b)",
+          "b": "§ 1.121-1(b)(1)"
+        },
+        {
+          "field": "enabledBy",
+          "a": 0,
+          "b": 1
+        }
+      ]
+    },
+    {
+      "a": "short-temporary-absences",
+      "b": "short-temporary-absences",
+      "score": 1.0,
+      "differences": [
+        {
+          "field": "citation",
+          "a": "§ 1.121-1(c)(2)",
+          "b": "§ 1.121-1(c)(2)(i)"
+        },
+        {
+          "field": "enabledBy",
+          "a": 0,
+          "b": 1
+        }
+      ]
+    },
+    {
+      "a": "use-requires-occupancy",
+      "b": "occupancy-required",
+      "score": 1.0,
+      "differences": [
+        {
+          "field": "citation",
+          "a": "§ 1.121-1(c)(2)",
+          "b": "§ 1.121-1(c)(2)(i)"
+        },
+        {
+          "field": "enabledBy",
+          "a": 0,
+          "b": 1
+        }
+      ]
+    },
+    {
+      "a": "vacant-land-amended-return",
+      "b": "vacant-land-amended-return",
+      "score": 1.0,
+      "differences": [
+        {
+          "field": "definedElsewhere",
+          "a": "present",
+          "b": "absent"
+        },
+        {
+          "field": "dependsOn",
+          "a": 2,
+          "b": 1
+        },
+        {
+          "field": "enabledBy",
+          "a": 0,
+          "b": 2
+        }
+      ]
+    },
+    {
+      "a": "vacant-land-not-principal-residence",
+      "b": "vacant-land-sale",
+      "score": 1.0,
+      "differences": [
+        {
+          "field": "clarity",
+          "a": "ambiguous",
+          "b": "clear"
+        },
+        {
+          "field": "ambiguity",
+          "a": "present",
+          "b": "absent"
+        },
+        {
+          "field": "citation",
+          "a": "§ 1.121-1(b)(3)",
+          "b": "§ 1.121-1(b)(3)(i)"
+        },
+        {
+          "field": "enabledBy",
+          "a": 0,
+          "b": 1
+        }
+      ]
+    },
+    {
+      "a": "vacant-land-ordering-across-years",
+      "b": "vacant-land-cross-year-ordering",
+      "score": 1.0,
+      "differences": [
+        {
+          "field": "citation",
+          "a": "§ 1.121-1(b)(3)(ii)",
+          "b": "§ 1.121-1(b)(3)(ii)(A)"
+        },
+        {
+          "field": "definedElsewhere",
+          "a": "present",
+          "b": "absent"
+        },
+        {
+          "field": "enabledBy",
+          "a": 0,
+          "b": 2
+        }
+      ]
+    },
+    {
+      "a": "vacant-land-single-sale",
+      "b": "vacant-land-one-sale-for-limitation",
+      "score": 1.0,
+      "differences": [
+        {
+          "field": "citation",
+          "a": "§ 1.121-1(b)(3)(ii)",
+          "b": "§ 1.121-1(b)(3)(ii)(A)"
+        },
+        {
+          "field": "dependsOn",
+          "a": 1,
+          "b": 2
+        },
+        {
+          "field": "enabledBy",
+          "a": 0,
+          "b": 2
+        }
+      ]
+    },
+    {
+      "a": "vacant-land-sold-first-is-taxable",
+      "b": "vacant-land-gain-taxable-when-dwelling-sold-later",
+      "score": 1.0,
+      "differences": [
+        {
+          "field": "enabledBy",
+          "a": 0,
+          "b": 2
+        }
+      ]
+    },
+    {
+      "a": "vacant-land-two-year-rule-disregard",
+      "b": "vacant-land-separate-transactions-two-year-rule",
+      "score": 1.0,
+      "differences": [
+        {
+          "field": "dependsOn",
+          "a": 2,
+          "b": 1
+        },
+        {
+          "field": "enabledBy",
+          "a": 0,
+          "b": 2
+        }
+      ]
+    }
+  ],
+  "onlyA": [
+    "uniformed-services-suspension-absent"
+  ],
+  "onlyB": [
+    "combined-sale-nets-dwelling-loss",
+    "joint-return-limitation",
+    "military-extended-duty-suspension",
+    "one-sale-every-two-years",
+    "reduced-maximum-exclusion",
+    "sabbatical-not-short-absence",
+    "source-credit",
+    "two-month-vacation-short-absence"
+  ],
+  "unalignable": []
+}

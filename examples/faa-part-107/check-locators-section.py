@@ -149,6 +149,16 @@ def paragraphs(root):
         subpart = subpart_of(section, parents)
         stack = {}  # level -> designator, for the levels currently open
         for p in section:
+            if p.tag == "EXAMPLE":
+                label = example_label(p)
+                text = normalise("".join(p.itertext()))
+                if label is None or not text:
+                    continue
+                path = (subpart, section.get("N")) + tuple(
+                    stack[k] for k in sorted(stack)
+                ) + (label,)
+                out.append((path, text, None))
+                continue
             if p.tag != "P":
                 continue
             text = normalise("".join(p.itertext()))
@@ -173,6 +183,33 @@ def paragraphs(root):
 
 def normalise(text):
     return re.sub(r"\s+", " ", text).strip()
+
+
+# An <EXAMPLE>'s <HED>: "Example 4.", "Example.", or "Example 1 Non-residential use of property
+# not within the dwelling unit." The label is the word and its number and stops there, because
+# the rest of a Treasury regulation's example heading is a descriptive title that the map must
+# be free to quote rather than to cite.
+EXAMPLE_HEAD = re.compile(r"^Examples?\s*(\d+)?", re.I)
+
+
+def example_label(element):
+    """`Example 4`, or `Example` for an unnumbered one; None where the head is not one.
+
+    A worked example in an eCFR-served regulation is an <EXAMPLE> sibling of the <P>
+    elements, not a designated paragraph, so the designator tree above cannot reach it and
+    a map could not cite one at all: trial 9's first mapping recorded that as its finding 3
+    and declined all four examples paragraphs partly for that reason. Examples in a Treasury
+    regulation are promulgated text and can be the only authority in the corpus for a rule
+    (§ 1.121-1(b)(4) Example 4 is), so they are indexed under the paragraph that introduces
+    them, one level deeper: ("1.121-1", "b", "4", "Example 4").
+    """
+    head = element.find("HED")
+    if head is None:
+        return None
+    match = EXAMPLE_HEAD.match(normalise("".join(head.itertext())))
+    if not match:
+        return None
+    return "Example" + (f" {match.group(1)}" if match.group(1) else "")
 
 
 def corpus_index(xml_path):
@@ -203,6 +240,11 @@ CITE_SUBPART = re.compile(r"\bsubpart\s+([A-Z])\b", re.I)
 # that names the lead-in and nothing under it. Never a designator: CITE_GROUP reads one to four
 # letters or digits.
 LEAD_IN = "introductory text"
+# `Example 4` at the end of a citation item, naming one <EXAMPLE> under the paragraph the rest
+# of the item names: `§ 1.121-1(b)(4) Example 4`. Written after a comma as well, because that is
+# how a regulation's own prose cites one; a bare `Example 4` item extends the item before it
+# rather than being read against the section, which is what the comma means here.
+CITE_EXAMPLE = re.compile(r"\bExamples?(?:\s+(\d+))?\s*\.?\s*$", re.I)
 
 
 def cited_paths(citation):
@@ -217,6 +259,8 @@ def cited_paths(citation):
       `§ 107.29(a)(2), (b)`     a list, each item read against the section
       `§ 107.51(c)-(d)`         a range at the first level
       `subpart D`               every section in a subpart
+      `§ 1.121-1(b)(4) Example 4`   one worked example under a paragraph, and
+      `§ 1.121-1(b)(4), Example 4`  the same, written the way a regulation cites one
     Returns a list of prefixes; a paragraph matches if any prefix is a prefix of its path.
     Returns None for a citation this grammar does not cover -- reported, never assumed ok.
     A paragraph's own introductory text, `§ 107.29(a) introductory text`, is not in the grammar.
@@ -234,6 +278,21 @@ def cited_paths(citation):
 
     prefixes = []
     for item in tail.split(","):
+        example = CITE_EXAMPLE.search(item)
+        if example:
+            label = "Example" + (f" {example.group(1)}" if example.group(1) else "")
+            item = item[: example.start()]
+            if not item.strip():
+                # A bare `, Example 4`: it names an example under the paragraph just cited.
+                if not prefixes:
+                    return None
+                prefixes[-1] = prefixes[-1] + (label,)
+                continue
+            groups = CITE_GROUP.findall(item)
+            if not groups or "-" in item or "–" in item:
+                return None
+            prefixes.append((None, number) + tuple(groups) + (label,))
+            continue
         groups = CITE_GROUP.findall(item)
         if " ".join(item.split()).lower() == LEAD_IN:
             prefixes.append((None, number, LEAD_IN))

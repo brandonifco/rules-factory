@@ -383,6 +383,17 @@ wrong would move what a citation identifies, which is #207's territory and not t
 Recorded for whoever maps a regulation whose examples are load-bearing — which, in title 26, is
 most of them.
 
+**Since resolved, because the blind second mapping found a rule inside one.** An `<EXAMPLE>` is
+now indexed under the paragraph that introduces it and nowhere deeper — `("1.121-1", "b", "4",
+"Example 4")` — and `§ 1.121-1(b)(4) Example 4` is a citation the checker verifies. The question
+this finding held back on, what path an example's own `(i)`/`(ii)` parts take, is still not
+answered and did not have to be: an example is indexed whole, so a quote from any part of it
+verifies against the example, and nothing claims those parts are paragraphs. Eight tests in
+`tools/tests/test_check_locators.py`. See
+[blind-mapping/README.md](blind-mapping/README.md#4-a-coverage-miss-verified-against-the-corpus):
+a grammar that cannot cite a passage quietly decides the passage holds no rules, and that is what
+happened here.
+
 ### 3. Declining the examples is right by the method and costs two real answers
 
 Phase 2 says advice is dropped and the drop is recorded. A Treasury regulation's examples are the
@@ -501,13 +512,30 @@ things blocked that and both were generalised in place, in nine lines:
 Neither touches what a citation *names*. Both Part 107 maps re-verify unchanged (47 and 39
 citations, coverage ok), and `tools/tests` is green at 951 tests.
 
-## What a blind second mapping is owed
+## The blind second mapping, and what it found
 
-[review.json](review.json) records this map as an `exemption` of kind `legacy` naming #8, the same
-misfit trials 7 and 8 recorded and for the same reason. Three things it should attack first — the
-six `scope: out` verdicts, the eight ambiguity verdicts, and the eight citations that name a
-paragraph one level shallower than their rule — are written out in the record rather than here, so
-that a reviewer reading the map's review reads them.
+**Run, adjudicated and recorded: [blind-mapping/](blind-mapping/README.md).** A second mapper who
+had not seen this map mapped the same section; the two were aligned by the text they quote (36
+partnerships), every disagreement was answered from the corpus before any reconciled map existed,
+and the result is [blind-mapping/corpus-map-reconciled.json](blind-mapping/corpus-map-reconciled.json)
+— **Map C, which is the map anything is built from.** This map is not corrected: it is one of the
+two frozen inputs to the comparison, and [review.json](review.json) keeps its `legacy` exemption
+saying so.
+
+The three things the exemption asked a reviewer to attack were the right three, and they came out
+three different ways. Of the six `scope: out` verdicts, one was wrong in a way that lost a rule:
+§ 1.121-1(b)(4) Example 4 nets a $25,000 loss on the dwelling unit against $270,000 of gain on the
+vacant land, no operative sentence says a loss does that, and declining the *Examples* paragraph
+whole is what lost it — finding 3's cost, realised. Of the eight ambiguity verdicts, two of the
+three challenged are upheld ("adjacent to" and "physically or mentally incapable of self-care" are
+both gaps) and one is overturned: `allocation-required` is not ambiguous, because the separateness
+test is stated in (e)(1)'s own third sentence, which **both** mappers read past. And the eighteen
+shallow citations are upheld and tested — written at the regulation's own depth, eighteen of
+thirty-seven fail the locator checker, for exactly the reason finding 1 gives.
+
+The largest single correction is one this map's own review did not think to ask for: § 1.121-1(f)
+gates the whole section and **no entry named it**, so Map C adds 30 `enabledBy` edges. A gate
+recorded with none of its reach passes every check in this repository.
 
 ## How the evidence spans were produced
 

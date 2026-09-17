@@ -20,6 +20,7 @@ import os
 import re
 import tempfile
 import unittest
+import xml.etree.ElementTree as ET
 from contextlib import redirect_stdout, redirect_stderr
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -834,6 +835,79 @@ class TestPdfTextExtraction(TestPdfTextLocators):
         output = self.assert_catches("extraction", lambda d: d["entries"][1]["extraction"]
                                      .update(defect="joined-hyphenation"))
         self.assertIn("is not a defect this checker has a test for", output)
+
+
+# --- worked examples: an <EXAMPLE> is citable, and only under the paragraph it sits in -----
+
+EXAMPLE_CORPUS = """<ROOT><DIV8 N="2.20" TYPE="SECTION"><HEAD>§ 2.20 Widgets.</HEAD>
+<P>(a) <I>In general.</I> A widget adjacent to a token is a widget of the token.</P>
+<P>(b) <I>Examples.</I> The provisions of this paragraph are illustrated by the following:</P>
+<EXAMPLE><HED>Example 1.</HED><PSPACE>A owns a widget and a token. A may keep six.</PSPACE></EXAMPLE>
+<EXAMPLE><HED>Example 2 Widget across a road.</HED><PSPACE>B owns a widget across a road from a \
+token. B may keep none.</PSPACE></EXAMPLE>
+<P>(c) <I>Tokens.</I> A token is counted once.</P>
+<P>(d) <I>Example.</I> The provisions of this paragraph are illustrated by the following:</P>
+<EXAMPLE><HED>Example.</HED><PSPACE>C owns one token and counts it once.</PSPACE></EXAMPLE>
+</DIV8></ROOT>"""
+
+
+class ExampleCase(unittest.TestCase):
+    """A worked example is promulgated text and can be the corpus's only authority for a rule.
+
+    § 1.121-1(b)(4) Example 4 is: it nets a loss on one of two combined transactions against the
+    gain on the other, and no operative sentence of the section says a loss does that. Until the
+    blind second mapping (examples/tax-121-principal-residence/blind-mapping/) the eCFR grammar
+    could not cite one at all, so the first mapping declined all four Examples paragraphs and
+    recorded the cost as its finding 3.
+    """
+
+    def setUp(self):
+        self.root = tempfile.mkdtemp()
+        self.corpus_path = os.path.join(self.root, "corpus.xml")
+        with open(self.corpus_path, "w", encoding="utf-8") as handle:
+            handle.write(EXAMPLE_CORPUS)
+        self.corpus, self.spans, _ = check_locators_section.corpus_index(self.corpus_path)
+
+    def verdict(self, citation, evidence):
+        return check_locators_section.check(
+            entry("x", citation, evidence), self.corpus, self.spans)[0]
+
+    def test_an_example_is_indexed_under_the_paragraph_that_introduces_it(self):
+        paths = [path for path, _, _ in
+                 check_locators_section.paragraphs(ET.parse(self.corpus_path).getroot())]
+        self.assertIn((None, "2.20", "b", "Example 1"), paths)
+        self.assertIn((None, "2.20", "b", "Example 2"), paths)
+        self.assertIn((None, "2.20", "d", "Example"), paths)
+
+    def test_a_quote_from_an_example_verifies_against_its_own_citation(self):
+        self.assertEqual(self.verdict("§ 2.20(b) Example 1", "A may keep six."), "ok")
+        self.assertEqual(self.verdict("§ 2.20(b), Example 1", "A may keep six."), "ok")
+
+    def test_the_paragraph_above_still_covers_its_examples(self):
+        self.assertEqual(self.verdict("§ 2.20(b)", "A may keep six."), "ok")
+
+    def test_a_quote_from_one_example_cited_to_another_fails(self):
+        self.assertEqual(self.verdict("§ 2.20(b) Example 2", "A may keep six."), "bad")
+
+    def test_an_example_cited_to_the_wrong_paragraph_fails(self):
+        self.assertEqual(self.verdict("§ 2.20(d) Example 1", "A may keep six."), "bad")
+
+    def test_a_numbered_example_is_not_reached_by_the_unnumbered_label(self):
+        self.assertEqual(self.verdict("§ 2.20(b) Example", "A may keep six."), "bad")
+        self.assertEqual(self.verdict("§ 2.20(d) Example", "C owns one token"), "ok")
+
+    def test_a_descriptive_heading_is_indexed_with_the_example_and_citable(self):
+        self.assertEqual(self.verdict("§ 2.20(b) Example 2", "Example 2 Widget across a road."),
+                         "ok")
+
+    def test_an_example_without_a_paragraph_is_outside_the_grammar(self):
+        self.assertIsNone(check_locators_section.cited_paths("Example 4"))
+        self.assertIsNone(check_locators_section.cited_paths("§ 2.20(b)-(c) Example 1"))
+
+    def test_the_operative_paragraph_is_unchanged_by_the_examples_beside_it(self):
+        self.assertEqual(
+            self.verdict("§ 2.20(a)", "A widget adjacent to a token is a widget of the token."),
+            "ok")
 
 
 if __name__ == "__main__":
