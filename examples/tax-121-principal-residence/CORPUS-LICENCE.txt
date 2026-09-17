@@ -1,0 +1,17 @@
+Corpus: cfr-26-1.121-1, 26 CFR § 1.121-1 (Exclusion of gain from sale or exchange of a principal
+residence), as the eCFR versioner serves it
+(https://www.ecfr.gov/api/versioner/v1/full/2026-01-01/title-26.xml?part=1&section=1.121-1).
+
+Terms: public domain in the United States. The Code of Federal Regulations is a work of the
+United States Government, and 17 U.S.C. 105 provides that copyright protection is not available
+for any work of the United States Government. No licence is needed to copy it there, and none is
+granted here: rules-factory claims no rights in the quoted text. This statement is about United
+States law only; the quotations are not placed under CC0 or any other licence, and a user outside
+the United States should check the law where they are.
+
+No SPDX licence identifier states this, which is why the package's licence is this file rather
+than an expression.
+
+As the manifest's `licence` field records it:
+
+public-domain-us-government

@@ -30,6 +30,13 @@ stricter rather than looser:
     citation -- that is the ellipsis rule #18 asks for, proposed rather than settled, since
     `docs/` is not this directory's to change.
 
+**It reads any corpus the eCFR versioner serves, not only Part 107.** Two things were title-14
+shaped and are not any more (trial 9, examples/tax-121-principal-residence): a section's subpart
+is read from its ancestry instead of assumed, so a single section served as a bare `DIV8` is
+indexed like one served inside a `DIV5`/`DIV6`; and a section designation may carry a hyphenated
+suffix, so `§ 1.121-1` and `§ 1.121-2` are two sections rather than one. Nothing else about what
+a citation names changed, and no Part 107 path moves.
+
 It does not check that the evidence is the *right* passage for the entry, only that the
 citation names where it is. And it cannot check an entry whose evidence is not a quote:
 such an entry is reported and **fails the run**. It never reports ok for a citation it did
@@ -114,6 +121,22 @@ def continues(token, open_designator, order):
     return at + 1 < len(order) and order[at + 1] == token
 
 
+def subpart_of(section, parents):
+    """The N of the DIV6 a section sits in, or None where it sits in no subpart.
+
+    The eCFR versioner serves a whole part as DIV5/DIV6/DIV8 and a single section as a bare
+    DIV8, so a section's subpart is read from its ancestry rather than assumed. Every Part 107
+    section is inside a subpart and keeps the path it always had; § 1.121-1, fetched on its
+    own, has None there, which `matches` already drops for a section-anchored citation.
+    """
+    node = parents.get(section)
+    while node is not None:
+        if node.tag == "DIV6":
+            return node.get("N")
+        node = parents.get(node)
+    return None
+
+
 def paragraphs(root):
     """Every <P> in document order with its designation path and its normalised text.
 
@@ -121,29 +144,30 @@ def paragraphs(root):
     no designator (a section's lead-in) takes the path of its section.
     """
     out = []
-    for subpart in root.iter("DIV6"):
-        for section in subpart.iter("DIV8"):
-            stack = {}  # level -> designator, for the levels currently open
-            for p in section:
-                if p.tag != "P":
+    parents = {child: parent for parent in root.iter() for child in parent}
+    for section in root.iter("DIV8"):
+        subpart = subpart_of(section, parents)
+        stack = {}  # level -> designator, for the levels currently open
+        for p in section:
+            if p.tag != "P":
+                continue
+            text = normalise("".join(p.itertext()))
+            if not text:
+                continue
+            match = DESIGNATOR.match(text)
+            if match:
+                token = match.group(1)
+                try:
+                    level = level_of(token, stack)
+                except Ambiguous:
+                    out.append((("?",), text, token))
                     continue
-                text = normalise("".join(p.itertext()))
-                if not text:
-                    continue
-                match = DESIGNATOR.match(text)
-                if match:
-                    token = match.group(1)
-                    try:
-                        level = level_of(token, stack)
-                    except Ambiguous:
-                        out.append((("?",), text, token))
-                        continue
-                    stack = {k: v for k, v in stack.items() if k < level}
-                    stack[level] = token
-                path = (subpart.get("N"), section.get("N")) + tuple(
-                    stack[k] for k in sorted(stack)
-                )
-                out.append((path, text, None))
+                stack = {k: v for k, v in stack.items() if k < level}
+                stack[level] = token
+            path = (subpart, section.get("N")) + tuple(
+                stack[k] for k in sorted(stack)
+            )
+            out.append((path, text, None))
     return out
 
 
@@ -167,7 +191,12 @@ def corpus_index(xml_path):
     return " ".join(pieces), spans, refused
 
 
-CITE_SECTION = re.compile(r"§+\s*(\d+\.\d+)")
+# A section designation: `107.29` in title 14, `1.121-1` in title 26, where a Treasury
+# regulation's number carries a hyphenated suffix. The suffix is part of the section number and
+# never a paragraph, so reading it is what lets `§ 1.121-1` and `§ 1.121-2` be two sections
+# rather than one. `tools/checkmap/extent.py` holds the same expression, and
+# `test_check_map.py` runs both over every citation the maps make.
+CITE_SECTION = re.compile(r"§+\s*(\d+\.\d+(?:-\d+)?)")
 CITE_GROUP = re.compile(r"\(([A-Za-z0-9]{1,4})\)")
 CITE_SUBPART = re.compile(r"\bsubpart\s+([A-Z])\b", re.I)
 # The grammar's words for a section's undesignated lead-in, and the last element of a prefix
@@ -328,7 +357,7 @@ def check(entry, corpus, spans, reached=None):
     return "ok", f"{len(fragments)} fragment(s), {seen} occurrence(s), all inside {citation}"
 
 
-EXTENT_SECTION = re.compile(r"^§\s*(\d+\.\d+)$")
+EXTENT_SECTION = re.compile(r"^§\s*(\d+\.\d+(?:-\d+)?)$")
 
 
 def coverage(document, reached):
