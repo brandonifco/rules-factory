@@ -40,6 +40,7 @@ import subprocess
 import sys
 import tempfile
 import unittest
+import unittest.mock
 from contextlib import redirect_stderr, redirect_stdout
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -221,8 +222,8 @@ class TestBytecodeStaysOutOfTheCheckout(unittest.TestCase):
         # Named, so that an emitted script that starts importing the factory fails here rather than
         # being skipped by a check that examined whatever it happened to find.
         self.assertEqual(sorted(importers),
-                         ["scripts/engine-gate.py", "scripts/map-overlay.py", "tools/entry-packet.py",
-                          "tools/pr-policy.py"])
+                         ["scripts/engine-gate.py", "scripts/map-overlay.py", "tools/agent-doctor.py",
+                          "tools/entry-packet.py", "tools/pr-policy.py"])
 
 
 class TestAProducedEngine(unittest.TestCase):
@@ -2045,7 +2046,7 @@ if argv[0] == "repo" and argv[1] == "view":
     raise SystemExit(0)
 
 assert argv[0] == "api", argv
-endpoint = argv[1]
+endpoint, _, query = argv[1].partition("?")
 
 # The app the three required checks are pinned to. `apps` is a host-wide endpoint, not a
 # repository one: `state["app"]` absent is a host that will not say (#186).
@@ -2070,6 +2071,27 @@ elif endpoint.startswith(f"repos/{state['repo']}/labels"):
         print("{}")
     else:
         print(json.dumps([{"name": n} for n in state["labels"]]))
+elif endpoint == f"repos/{state['repo']}/rules/branches/{state['branch']}":
+    # The rules GitHub enforces on the default branch, from every active ruleset at every level
+    # whose conditions reach it. `state["inForce"]` set to an error is a token that may not read them.
+    if "inForce" in state:
+        sys.exit(state["inForce"])
+    rules = []
+    for ruleset in state["rulesets"] + state.get("orgRulesets", []):
+        reference = (ruleset.get("conditions") or {}).get("ref_name") or {}
+        reaches = {"~DEFAULT_BRANCH", "~ALL", f"refs/heads/{state['branch']}"}
+        # `state["unenforced"]` names rulesets GitHub holds and does not enforce -- a private
+        # repository on a plan without rulesets keeps them, active, and enforces none of them.
+        if (ruleset["id"] in state.get("unenforced", [])
+                or ruleset.get("enforcement") != "active" or ruleset.get("target", "branch") != "branch"
+                or not reaches & set(reference.get("include") or [])
+                or reaches & set(reference.get("exclude") or [])):
+            continue
+        level = ruleset.get("source_type", "Repository")
+        for rule in ruleset.get("rules") or []:
+            rules.append({**rule, "ruleset_source_type": level, "ruleset_id": ruleset["id"],
+                          "ruleset_source": ruleset.get("source", state["repo"])})
+    print(json.dumps(rules))
 elif endpoint.startswith(f"repos/{state['repo']}/rulesets"):
     rest = endpoint.split("/rulesets")[1].strip("/")
     if method == "POST":
@@ -2085,10 +2107,15 @@ elif endpoint.startswith(f"repos/{state['repo']}/rulesets"):
         save()
         print(json.dumps(payload))
     elif rest:
-        (found,) = [r for r in state["rulesets"] if r["id"] == int(rest)]
+        # GitHub answers this for a ruleset above the repository too, so a caller that took an
+        # organization's ruleset for its own would read it here and be none the wiser.
+        (found,) = [r for r in state["rulesets"] + state.get("orgRulesets", []) if r["id"] == int(rest)]
         print(json.dumps(found))
     else:
-        print(json.dumps([{"id": r["id"], "name": r["name"]} for r in state["rulesets"]]))
+        # An organization's rulesets come back beside the repository's own only when asked for.
+        parents = state.get("orgRulesets", []) if "includes_parents=true" in query else []
+        print(json.dumps([{"id": r["id"], "name": r["name"], "source_type": r.get("source_type", "Repository"),
+                           "source": r.get("source", state["repo"])} for r in state["rulesets"] + parents]))
 else:
     sys.exit(f"unexpected gh api call: {endpoint}")
 '''
@@ -2311,6 +2338,17 @@ class TestFactoryRails(TestAProducedEngine):
         self.assertIn("Verdict gate", output)
         self.assertIn("not an authentication of who reviewed", output)
 
+    def test_the_verdict_gate_row_is_not_ok_and_does_not_fail_the_check(self):
+        # It examines nothing, so it may not say OK (#211); and nothing `--apply` does changes it,
+        # so it may not fail a repository whose rails are otherwise in place.
+        self.produced()
+        self.assertEqual(self.rails("--apply")[0], 0)
+        code, output = self.rails("--check")
+        self.assertEqual(code, 0, output)
+        line = self.row(output, "Verdict gate")
+        self.assertIn(" NOT AUTHENTICATED ", line)
+        self.assertNotIn(" OK ", line)
+
     def test_a_policy_whose_labels_collide_is_refused(self):
         self.produced()
         path = os.path.join(self.out, ".github", "agent-policy.json")
@@ -2348,6 +2386,174 @@ class TestFactoryRails(TestAProducedEngine):
         self.assertEqual(code, 1, output)
         self.assertIn("squash or rebase merging is still on", output)
         self.assertIn("the repository still allows squash or rebase merging", output)
+
+    # --- #211: a row says OK only about what it examined -------------------------------------
+
+    def write_policy(self, change):
+        path = os.path.join(self.out, ".github", "agent-policy.json")
+        policy = json.loads(generate.agent_policy())
+        change(policy)
+        with open(path, "w", encoding="utf-8") as handle:
+            json.dump(policy, handle, indent=2)
+
+    def doctor_and_gate(self):
+        """What the engine's own two judges of the policy say, run as an agent would run them."""
+        doctor = subprocess.run([sys.executable, os.path.join(self.out, "tools", "agent-doctor.py"), "--local"],
+                                cwd=self.out, capture_output=True, text=True)
+        gate_run = subprocess.run([sys.executable, os.path.join(self.out, "scripts", "engine-gate.py"), "rails"],
+                                  cwd=self.out, capture_output=True, text=True)
+        return doctor.stdout, gate_run.returncode, gate_run.stderr
+
+    def row(self, output, name):
+        (line,) = [line for line in output.splitlines() if line.startswith(name + " ")]
+        return line
+
+    def test_a_chain_link_with_no_context_is_not_ok_and_every_judge_of_the_policy_agrees(self):
+        # `tools/record-verdict.py` records under the link's context, so this reviewer can record
+        # nothing; the engine gate said so and `--check` called the same file OK.
+        self.produced()
+        self.assertEqual(self.rails("--apply")[0], 0)
+        self.write_policy(lambda p: p["review"]["independentFallback"].append({"id": "acme"}))
+        code, output = self.rails("--check")
+        self.assertEqual(code, 1, output)
+        self.assertIn("WRONG", self.row(output, "Policy"))
+        self.assertIn("WRONG", self.row(output, "Review chain"))
+        self.assertIn("{'id': 'acme'}", output)
+        self.assertIn("cannot be told", output)
+        doctor, gate_code, gate_errors = self.doctor_and_gate()
+        self.assertIn("WRONG", self.row(doctor, "Policy"))
+        self.assertIn("cannot be told", doctor)
+        self.assertEqual(gate_code, 1, gate_errors)
+        self.assertIn("cannot be told", gate_errors)
+
+    def test_the_three_judges_of_the_policy_agree_on_every_fixture(self):
+        # One rule, imported by all three, rather than three copies; this is what shows the
+        # engine's vendored copy is the one the factory reads, fixture by fixture.
+        fixtures = {
+            "as the factory ships it": lambda p: None,
+            "a link with no context": lambda p: p["review"]["independentFallback"].append({"id": "acme"}),
+            "a link with no id": lambda p: p["review"]["independentFallback"].append({"context": "rules-verdict/x"}),
+            "a link that is not an object": lambda p: p["review"]["independentFallback"].append("acme"),
+            "no chain": lambda p: p["review"].update(independentFallback=[]),
+            "no semantic context": lambda p: p["review"].pop("semanticContext"),
+            "another schema version": lambda p: p.update(schemaVersion=2),
+        }
+        self.produced()
+        self.assertEqual(self.rails("--apply")[0], 0)
+        for name, change in fixtures.items():
+            with self.subTest(name):
+                self.write_policy(change)
+                expected = generate.policy_problems(json.loads(self.read(".github/agent-policy.json")))
+                self.assertEqual(bool(expected), name != "as the factory ships it", expected)
+                code, output = self.rails("--check")
+                doctor, gate_code, gate_errors = self.doctor_and_gate()
+                self.assertEqual("OK" in self.row(output, "Policy"), not expected, output)
+                self.assertEqual("OK" in self.row(doctor, "Policy"), not expected, doctor)
+                self.assertEqual(gate_code == 0, not expected, gate_errors)
+                self.assertEqual(code == 0, not expected, output)
+                for reason in expected:
+                    self.assertIn(reason, output)
+                    self.assertIn(reason, doctor)
+                    self.assertIn(reason, gate_errors)
+
+    def test_a_hand_edited_rail_is_not_ok(self):
+        # A truncated gate is a file that exists; the row used to say OK about it.
+        self.produced()
+        self.assertEqual(self.rails("--apply")[0], 0)
+        path = os.path.join(self.out, "tools", "conformance-gate.py")
+        with open(path, "r+", encoding="utf-8") as handle:
+            handle.truncate(200)
+        code, output = self.rails("--check")
+        self.assertEqual(code, 1, output)
+        self.assertIn("WRONG", self.row(output, "Agent files"))
+        self.assertIn("tools/conformance-gate.py (edited by hand)", output)
+        self.assertIn("--adopt", output)
+        doctor, _, _ = self.doctor_and_gate()
+        self.assertIn("WRONG", self.row(doctor, "Rail files"))
+        self.assertIn("tools/conformance-gate.py (edited by hand)", doctor)
+
+    def test_a_rail_from_an_earlier_recipe_is_named_for_produce_to_migrate(self):
+        self.produced()
+        self.assertEqual(self.rails("--apply")[0], 0)
+        earlier = b"# what an earlier recipe wrote\n"
+        with open(os.path.join(self.out, "tools", "requeue-gate.py"), "wb") as handle:
+            handle.write(earlier)
+        history = {**ownership.RECIPE_SHA256["tools/requeue-gate.py"], 0: ownership.sha256(earlier)}
+        with unittest.mock.patch.dict(ownership.RECIPE_SHA256, {"tools/requeue-gate.py": history}):
+            code, output = self.rails("--check")
+        self.assertEqual(code, 1, output)
+        self.assertIn("tools/requeue-gate.py (earlier recipe)", output)
+        self.assertIn("migrates them", output)
+
+    def test_an_adopted_rail_is_named_and_is_the_engine_s_own(self):
+        self.produced()
+        with open(os.path.join(self.out, "AGENTS.md"), "a", encoding="utf-8") as handle:
+            handle.write("\n## Our own section\n")
+        self.produced("--adopt", "AGENTS.md")
+        self.assertEqual(self.rails("--apply")[0], 0)
+        code, output = self.rails("--check")
+        self.assertEqual(code, 0, output)
+        self.assertIn("adopted by the engine: AGENTS.md", self.row(output, "Agent files"))
+
+    ORG_SIGNING = {"id": 901, "name": "org-signed-commits", "target": "branch", "enforcement": "active",
+                   "source_type": "Organization", "source": "owner",
+                   "conditions": {"ref_name": {"include": ["~DEFAULT_BRANCH"], "exclude": []}},
+                   "rules": [{"type": "required_signatures"}]}
+
+    def with_state(self, **changes):
+        state = self.read_state()
+        state.update(changes)
+        with open(self.state_path, "w", encoding="utf-8") as handle:
+            json.dump(state, handle)
+
+    def test_an_organization_ruleset_on_the_default_branch_is_read_and_named(self):
+        self.produced()
+        self.assertEqual(self.rails("--apply")[0], 0)
+        self.with_state(orgRulesets=[self.ORG_SIGNING])
+        code, output = self.rails("--check")
+        self.assertEqual(code, 0, output)
+        self.assertIn("org-signed-commits (organization owner): required_signatures",
+                      self.row(output, "Rules in force on main"))
+
+    def test_rules_in_force_that_cannot_be_read_are_not_verified(self):
+        self.produced()
+        self.assertEqual(self.rails("--apply")[0], 0)
+        self.with_state(inForce="HTTP 403: Resource not accessible by integration")
+        code, output = self.rails("--check")
+        self.assertEqual(code, 1, output)
+        line = self.row(output, "Rules in force on main")
+        self.assertIn("NOT VERIFIED", line)
+        self.assertIn("HTTP 403", line)
+        self.assertNotIn("The rails are in place", output)
+
+    def test_an_organization_ruleset_with_the_factory_s_name_is_not_the_factory_s(self):
+        # Shadowing: every rule the factory writes, under its name, one level up where `--apply`
+        # cannot write it. It is not the factory's ruleset, and the repository still has none.
+        self.produced()
+        payload = factory.rails_step.ruleset_payload("main", self.APP)
+        shadow = {**payload, "id": 902, "source_type": "Organization", "source": "owner"}
+        self.with_state(orgRulesets=[shadow])
+        code, output = self.rails("--check")
+        self.assertEqual(code, 1, output)
+        self.assertIn("MISSING", self.row(output, "Ruleset on main"))
+        self.assertIn("rules-factory-agent-rails (organization owner)", self.row(output, "Rules in force on main"))
+        self.assertEqual(self.rails("--apply")[0], 1)
+        state = self.read_state()
+        (ours,) = state["rulesets"]
+        self.assertEqual(ours["name"], "rules-factory-agent-rails")
+        self.assertEqual(state["orgRulesets"], [shadow], "--apply wrote a ruleset above the repository")
+
+    def test_a_ruleset_github_does_not_enforce_on_the_branch_is_not_ok(self):
+        # What a private repository on a plan without rulesets looks like: the ruleset is there,
+        # active and exactly the factory's, and GitHub enforces none of it.
+        self.produced()
+        self.assertEqual(self.rails("--apply")[0], 0)
+        self.with_state(unenforced=[self.read_state()["rulesets"][0]["id"]])
+        code, output = self.rails("--check")
+        self.assertEqual(code, 1, output)
+        self.assertIn("OK", self.row(output, "Ruleset on main"))
+        self.assertIn("WRONG", self.row(output, "Rules in force on main"))
+        self.assertIn("GitHub does not enforce rules-factory-agent-rails's deletion", output)
 
     def test_an_engine_with_no_policy_is_refused(self):
         self.produced()
@@ -2394,4 +2600,4 @@ class TestTheDoctor(TestAProducedEngine):
         self.produced()
         os.remove(os.path.join(self.out, "tools", "record-verdict.py"))
         done = self.doctor("--local")
-        self.assertIn("are not in this engine", done.stdout)
+        self.assertIn("tools/record-verdict.py (absent)", done.stdout)

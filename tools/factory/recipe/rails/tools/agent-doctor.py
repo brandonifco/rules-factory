@@ -15,8 +15,11 @@ anything only when somebody checks.
 So this asks the questions whose answers are not visible in a file listing, and prints one row per
 answer. It changes nothing, ever.
 
-  * **Local** rows come from this checkout: the rails exist, the hook is wired to the tools it
-    guards, the policy parses and configures a chain, and the gate runs the rails check.
+  * **Local** rows come from this checkout: the rails are byte for byte what the factory's recipe
+    wrote, the hook is wired to the tools it guards, the policy is one the rails can record verdicts
+    under, and the gate runs the rails check. The rail bytes and the policy are judged by the
+    factory's own rules, from the copy `produce` vendored under `scripts/factory/`, so this and
+    `factory rails --check` cannot disagree about the same file.
   * **Remote** rows come from GitHub: the labels, the ruleset, and whether the three checks are
     required rather than merely present. `--local` skips them, for an offline machine; the output
     then says the remote half was not examined, because a green report that skipped the half that
@@ -35,6 +38,13 @@ import pathlib
 import subprocess
 import sys
 
+# The rail bytes and the policy are judged by the engine's vendored scripts/factory modules, and an
+# imported module leaves its bytecode behind: scripts/factory/__pycache__/, a path no ownership row
+# covers, so the checkout that ran this goes dirty and tools/dispatch-agent.sh refuses to open a
+# worktree for the next issue. The loader reads this flag when the import happens, so it belongs
+# here and not beside the import it disarms.
+sys.dont_write_bytecode = True
+
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 POLICY = ".github/agent-policy.json"
 RULESET = "rules-factory-agent-rails"
@@ -42,16 +52,6 @@ RULESET = "rules-factory-agent-rails"
 # required check governs nothing.
 REQUIRED_CHECKS = ("validate", "pr-policy", "conformance-gate")
 GUARDED_TOOLS = "Bash|Edit|Write|NotebookEdit"
-RAILS = ("AGENTS.md", "CLAUDE.md", "docs/agent-team.md", POLICY,
-         ".claude/agents/engine-dev.md", ".claude/agents/repo-steward.md", ".claude/agents/rules-conformance.md",
-         ".claude/hooks/primary-checkout-guard.py", ".claude/settings.json",
-         "tools/dispatch-agent.sh", "tools/new-issue.sh", "tools/entry-packet.py", "tools/re-produce.sh",
-         "tools/review-packet.py",
-         "tools/pr-policy.py", "tools/record-verdict.py", "tools/conformance-gate.py",
-         "tools/requeue-gate.py",
-         ".github/pull_request_template.md",
-         ".github/workflows/validate.yml", ".github/workflows/pr-policy.yml",
-         ".github/workflows/conformance-gate.yml", ".github/workflows/verdict-requeue.yml")
 OK, MISSING, WRONG, UNKNOWN = "OK", "MISSING", "WRONG", "NOT EXAMINED"
 
 
@@ -74,15 +74,48 @@ def gh(*args):
         return None, str(error)
 
 
+def factory():
+    """The factory's generator as `produce` vendored it into this engine, or (None, why)."""
+    sys.path.insert(0, str(ROOT / "scripts" / "factory"))
+    try:
+        import generate  # noqa: E402  (the factory's generator and its ownership table, vendored by produce)
+    except ImportError as error:
+        return None, f"scripts/factory/generate.py cannot be imported ({error}); `factory produce` writes it"
+    return generate, None
+
+
 def local_rows():
     rows, problems = [], []
+    generate, error = factory()
 
-    missing = [path for path in RAILS if not (ROOT / path).is_file()]
-    rows.append(row("Rail files", OK if not missing else MISSING,
-                    "" if not missing else f"{len(missing)} missing: {', '.join(missing[:3])}"))
-    if missing:
-        problems.append(f"{len(missing)} rail(s) are not in this engine ({', '.join(missing[:3])}...); "
-                        f"`factory produce` writes them")
+    # A file of the right name is not the rail the factory wrote: a truncated gate reads exactly
+    # like a working one in a listing. So the bytes are compared with every version of the recipe,
+    # the same judgement `produce` refuses a hand edit by.
+    if generate is None:
+        rows.append(row("Rail files", UNKNOWN, error))
+        problems.append(f"the rail files were not examined: {error}")
+    else:
+        ownership = generate.ownership
+        states = ownership.managed_states(str(ROOT), generate.RAILS)
+        wrong = [(path, kind) for path, (kind, _) in sorted(states.items())
+                 if kind not in (ownership.CURRENT, ownership.ADOPTED)]
+        adopted = [path for path, (kind, _) in sorted(states.items()) if kind == ownership.ADOPTED]
+        if not wrong:
+            rows.append(row("Rail files", OK, "byte for byte as the recipe writes them"
+                                              + (f"; adopted by this engine: {', '.join(adopted)}" if adopted else "")))
+        else:
+            absent_only = all(kind == ownership.ABSENT for _, kind in wrong)
+            rows.append(row("Rail files", MISSING if absent_only else WRONG,
+                            f"{len(wrong)} not as the recipe writes them: "
+                            + ", ".join(f"{path} ({kind})" for path, kind in wrong[:3])))
+        for kind, advice in ((ownership.ABSENT, "`factory produce` writes them"),
+                             (ownership.EARLIER, "`factory produce` migrates them to the current recipe"),
+                             (ownership.EDITED, "`factory produce` refuses them until `--adopt` or `--reset` "
+                                                "settles each")):
+            paths = [path for path, found in wrong if found == kind]
+            if paths:
+                problems.append(f"{len(paths)} rail(s) in this engine are {kind} ({', '.join(paths[:3])}"
+                                f"{', ...' if len(paths) > 3 else ''}); {advice}")
 
     # A guard nothing invokes is a guard that stops nothing, and reads exactly like one that works.
     settings_path = ROOT / ".claude" / "settings.json"
@@ -106,18 +139,28 @@ def local_rows():
     if policy_path.is_file():
         try:
             document = json.loads(policy_path.read_text(encoding="utf-8"))
-            review = document.get("review") or {}
-            chain = [link.get("id") for link in review.get("independentFallback") or []]
-            rows.append(row("Policy", OK, f"schemaVersion {document.get('schemaVersion')}, "
-                                          f"{len(document.get('labels') or {})} labels"))
-            rows.append(row("Review chain", OK if chain else WRONG,
-                            f"{review.get('semanticContext')}, then {' -> '.join(chain) or 'nothing'}"))
-            if not chain:
-                problems.append(f"{POLICY} configures no independent reviewer, so an issue that needs one can "
-                                f"never merge")
+            review = (document.get("review") if isinstance(document, dict) else None) or {}
+            chain = [str(link.get("id")) if isinstance(link, dict) else repr(link)
+                     for link in review.get("independentFallback") or []]
+            # The factory's rule, not a second copy of it: `factory rails --check` and
+            # scripts/engine-gate.py rails judge the policy by the same function.
+            if generate is None:
+                rows.append(row("Policy", UNKNOWN, error))
+                problems.append(f"{POLICY} was not judged: {error}")
+            else:
+                found = generate.policy_problems(document, POLICY)
+                chain_found = generate.review_problems(document, POLICY)
+                rows.append(row("Policy", OK if not found else WRONG,
+                                f"schemaVersion {document.get('schemaVersion')}" if not found else found[0]))
+                rows.append(row("Review chain", OK if not chain_found else WRONG,
+                                f"{review.get('semanticContext')}, then {' -> '.join(chain) or 'nothing'}"))
+                problems.extend(found)
         except ValueError as error:
             rows.append(row("Policy", WRONG, f"not JSON: {error}"))
             problems.append(f"{POLICY} does not parse, and every rail reads it")
+    else:
+        rows.append(row("Policy", MISSING, POLICY))
+        problems.append(f"{POLICY} is missing, and every rail reads its labels, contexts and chain from it")
 
     gate = ROOT / "scripts" / "validate.sh"
     runs_rails = gate.is_file() and "rails" in gate.read_text(encoding="utf-8")
@@ -125,6 +168,11 @@ def local_rows():
                     "" if runs_rails else "scripts/validate.sh does not run `engine-gate.py rails`"))
     if not runs_rails:
         problems.append("the gate does not check the rails, so a reviewer charter that can write would pass it")
+    # The gate's workflow is the gate's recipe rather than a rail, so the bytes above do not cover it;
+    # without it the `validate` check the ruleset requires has nothing to post it.
+    if not (ROOT / ".github" / "workflows" / "validate.yml").is_file():
+        rows.append(row("Gate workflow", MISSING, ".github/workflows/validate.yml"))
+        problems.append(".github/workflows/validate.yml is missing, so nothing posts the required validate check")
     return rows, problems
 
 

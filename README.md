@@ -79,8 +79,8 @@ says something is "not yet" or "not done" and cites a closed issue.
 | `rails` | — | implemented | report, or put in place, the rails GitHub itself enforces: the labels, the factory's own branch ruleset, and the three required checks |
 | `rails` | `--repo` | implemented | `owner/name` |
 | `rails` | `--dir` | implemented | the engine directory, for the policy and the rail files |
-| `rails` | `--check` | implemented | read-only: one row per rail, and what is not in place |
-| `rails` | `--apply` | implemented | creates the labels and a ruleset named `rules-factory-agent-rails`, and restricts merging to merge commits; idempotent, and it never reads or writes another ruleset |
+| `rails` | `--check` | implemented | read-only: one row per rail, and what is not in place. The rail files are compared byte for byte with the recipe, the policy is judged by the rule the engine gate uses, and the rules in force on the default branch are read at every level, an organization's included, or reported NOT VERIFIED ([#211](https://github.com/brandonifco/rules-factory/issues/211)) |
+| `rails` | `--apply` | implemented | creates the labels and a ruleset named `rules-factory-agent-rails`, and restricts merging to merge commits; idempotent, and it never writes another ruleset |
 | `provenance` | — | implemented | re-produce in a scratch copy and name every field that does not match |
 | `provenance` | `--engine` | implemented | the engine directory |
 | `provenance` | `--package` | implemented | default: `Id@Version` from `provenance.json` |
