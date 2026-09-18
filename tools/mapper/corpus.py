@@ -233,8 +233,14 @@ CELL_SEPARATOR = " | "
 
 
 def row_text(cells):
-    """A row's text: its cells in column order, empty cells kept as empty (0035)."""
-    return CELL_SEPARATOR.join(cells)
+    """A row's text: its cells in column order, empty cells kept as empty (0035).
+
+    Normalised like every other unit's text, so an empty cell reads as the two separators
+    around it -- `| |` -- rather than as whitespace a quote would have to reproduce exactly.
+    The cell is still there to be quoted, which is the whole point: flattened into prose, a
+    missing column 1 symbol and a missing column 5 packing group are the same absence (#261).
+    """
+    return normalise(CELL_SEPARATOR.join(cells))
 
 
 def row_key_text(pairs):

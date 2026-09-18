@@ -375,8 +375,12 @@ def row_text(cells):
     sentence because a blank cell is a rule: 1,112 rows of the corpus that forced this have
     exactly one empty cell and 419 have thirteen, and joined into prose a missing column 1
     symbol and a missing column 5 packing group are the same absence (#261).
+
+    It is normalised like every other passage this checker indexes, so an empty cell reads as
+    the two separators around it -- `| |` -- and not as whitespace a quote would have to
+    reproduce exactly. The cell is still there to be quoted, which is the point.
     """
-    return CELL_SEPARATOR.join(cells)
+    return normalise(CELL_SEPARATOR.join(cells))
 
 
 def check_table_row(entry, cited, tables):

@@ -402,6 +402,136 @@ class TestSectionCoverage(SectionCase):
         self.assertEqual(code, 1, output)
 
 
+# --- a rule stated in a table row (0035) ----------------------------------------------------
+# The same eCFR shape with two tables in one section. The first prints its columns the way the
+# corpus that forced this prints them -- a (4) heading split into (4A) and (4B), so the columns
+# are the leaves and not the six labels -- has an empty cell in column 1 of its first row, and
+# two rows a column 2 key alone cannot tell apart. Synthetic, like every fixture here: the real
+# corpus is trial 10's to admit, not this test's.
+TABLE_CORPUS = """<ROOT><DIV6 N="B" TYPE="SUBPART">
+<DIV8 N="1.10" TYPE="SECTION"><HEAD>§ 1.10 Widget table.</HEAD>
+<P>Each widget is listed in the widget table with the class and the packing it requires.</P>
+<P>(a) Column 1 states the symbol, column 2 the widget name and column 3 the class.</P>
+<DIV><TABLE>
+<THEAD><TR><TD>(1) Symbols</TD><TD>(2) Widget name</TD><TD>(3) Class</TD><TD>(4) Packing</TD>
+<TD>(4A) Exceptions</TD><TD>(4B) Non-bulk</TD></TR></THEAD>
+<TBODY>
+<TR><TD/><TD>Acetal</TD><TD>3</TD><TD>150</TD><TD>202</TD></TR>
+<TR><TD>G</TD><TD>Ammonia, anhydrous</TD><TD>2.2</TD><TD/><TD>306</TD></TR>
+<TR><TD>G</TD><TD>Ammonia, anhydrous</TD><TD>2.3</TD><TD>T4</TD><TD>314</TD></TR>
+</TBODY></TABLE></DIV>
+<TABLE><THEAD><TR><TD>(1) Code</TD><TD>(2) Meaning</TD></TR></THEAD>
+<TBODY><TR><TD>A3</TD><TD>Aircraft only</TD></TR></TBODY></TABLE>
+</DIV8>
+<DIV8 N="1.11" TYPE="SECTION"><HEAD>§ 1.11 Tokens.</HEAD>
+<P>No person may carry a token into a restricted area.</P>
+</DIV8>
+</DIV6></ROOT>"""
+
+ACETAL_ROW = "| Acetal | 3 | 150 | 202"
+AMMONIA_22_ROW = "G | Ammonia, anhydrous | 2.2 | | 306"
+
+
+class TestTableRows(unittest.TestCase):
+    """0035: a citation reaches a row, a row is named by a cell, and two matches is a refusal."""
+
+    def setUp(self):
+        self.root = tempfile.mkdtemp()
+        self.corpus_path = os.path.join(self.root, "corpus.xml")
+        with open(self.corpus_path, "w", encoding="utf-8") as handle:
+            handle.write(TABLE_CORPUS)
+        self.corpus, self.spans, _ = check_locators_section.corpus_index(self.corpus_path)
+        self.tables = check_locators_section.table_index(self.corpus_path)
+
+    def verdict(self, citation, evidence):
+        return check_locators_section.check(
+            entry("x", citation, evidence), self.corpus, self.spans, None, self.tables)[0]
+
+    def test_the_columns_are_the_ones_the_headings_print(self):
+        # (4) is split into (4A) and (4B), so it names no column of its own.
+        self.assertEqual(self.tables[("1.10", 1)].columns, ["1", "2", "3", "4A", "4B"])
+
+    def test_a_row_is_reached_by_a_cell_that_identifies_it(self):
+        self.assertEqual(
+            self.verdict('§ 1.10 table 1, row [column 2 = "Acetal"]', ACETAL_ROW), "ok")
+
+    def test_an_empty_cell_is_in_the_row_and_can_be_quoted(self):
+        self.assertEqual(self.verdict(
+            '§ 1.10 table 1, row [column 2 = "Ammonia, anhydrous"; column 3 = "2.2"]',
+            AMMONIA_22_ROW), "ok")
+
+    def test_a_key_that_names_two_rows_is_refused_and_not_resolved_to_the_first(self):
+        result, message = check_locators_section.check(
+            entry("x", '§ 1.10 table 1, row [column 2 = "Ammonia, anhydrous"]', AMMONIA_22_ROW),
+            self.corpus, self.spans, None, self.tables)
+        self.assertEqual(result, "bad", message)
+        self.assertIn("names 2 rows", message)
+
+    def test_a_discriminating_column_settles_it(self):
+        self.assertEqual(self.verdict(
+            '§ 1.10 table 1, row [column 2 = "Ammonia, anhydrous"; column 3 = "2.3"]',
+            "G | Ammonia, anhydrous | 2.3 | T4 | 314"), "ok")
+
+    def test_a_quote_from_another_row_fails(self):
+        self.assertEqual(self.verdict(
+            '§ 1.10 table 1, row [column 2 = "Acetal"]', AMMONIA_22_ROW), "bad")
+
+    def test_a_cell_is_named_by_its_column(self):
+        self.assertEqual(
+            self.verdict('§ 1.10 table 1, row [column 2 = "Acetal"], column 4A', "150"), "ok")
+
+    def test_a_quote_from_a_different_column_of_the_same_row_fails(self):
+        self.assertEqual(
+            self.verdict('§ 1.10 table 1, row [column 2 = "Acetal"], column 4A', "202"), "bad")
+
+    def test_a_column_the_table_does_not_print_is_named_as_the_defect(self):
+        # It fails either way -- no row holds a column that is not there -- and "no such column"
+        # and "no such row" are different findings, so the run has to say which it is.
+        result, message = check_locators_section.check(
+            entry("x", '§ 1.10 table 1, row [column 9 = "Acetal"]', ACETAL_ROW),
+            self.corpus, self.spans, None, self.tables)
+        self.assertEqual(result, "bad", message)
+        self.assertIn("prints no column 9", message)
+
+    def test_a_table_the_section_does_not_print_fails(self):
+        result, message = check_locators_section.check(
+            entry("x", '§ 1.10 table 3, row [column 2 = "Acetal"]', ACETAL_ROW),
+            self.corpus, self.spans, None, self.tables)
+        self.assertEqual(result, "bad", message)
+        self.assertIn("prints no table 3", message)
+
+    def test_the_second_table_is_numbered_by_its_position_in_the_section(self):
+        self.assertEqual(
+            self.verdict('§ 1.10 table 2, row [column 1 = "A3"]', "A3 | Aircraft only"), "ok")
+
+    def test_a_run_that_indexed_no_table_does_not_report_ok(self):
+        result, message = check_locators_section.check(
+            entry("x", '§ 1.10 table 1, row [column 2 = "Acetal"]', ACETAL_ROW),
+            self.corpus, self.spans)
+        self.assertEqual(result, "unchecked", message)
+
+    def test_a_row_citation_reaches_its_section_for_coverage(self):
+        document = {
+            "schemaVersion": 1, "corpus": "demo-cfr",
+            "baseline": {"contentHash": "d" * 64, "hashDerivation": "demo-xml"},
+            "extent": {"unit": "section-designation", "sections": ["§ 1.10", "§ 1.11"]},
+            "entries": [
+                entry("acetal-packing", '§ 1.10 table 1, row [column 2 = "Acetal"]', ACETAL_ROW),
+                entry("token-area", "§ 1.11",
+                      "No person may carry a token into a restricted area."),
+            ],
+        }
+        path = os.path.join(self.root, "corpus-map.json")
+        with open(path, "w", encoding="utf-8") as handle:
+            json.dump(document, handle)
+        out = io.StringIO()
+        with redirect_stdout(out), redirect_stderr(out):
+            code = check_locators_section.main(
+                ["check-locators-section.py", path, self.corpus_path])
+        self.assertEqual(code, 0, out.getvalue())
+        self.assertIn("coverage ok (all 2 sections", out.getvalue())
+
+
 # --- examples/srd-52-combat/check-locators-pdf-text.py: page-marked PDF text ----------------
 
 PDF_TEXT_TOOL = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(HERE))),
