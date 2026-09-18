@@ -204,6 +204,22 @@ The descent **loses nothing**: every text-bearing element it reaches is enumerat
 whose tag the table does not name, and a test asserts that over the committed corpora and every
 fixture. A unit nothing counts is a unit no sweep can ever report.
 
+**Nor does the top level** ([#290](https://github.com/brandonifco/rules-factory/issues/290)). That
+guarantee was made of the descent first, and a section's *direct* children were older and
+unchanged: one that is not a `P`, an `EXAMPLE` or a wrapper was dropped with no record. Across the
+committed corpora that is 120 `HEAD`, 30 `CITA`, 12 `DIV`, 2 `EDNOTE` and 1 `HD1` — nothing
+normative, as far as anyone had looked, and nothing checking that. `TOP_LEVEL_PASSED_OVER` is now
+the closed set that may be stepped over, held equal across the two walks by
+`tools/tests/mapper/test_mapper_top_level.py`, and anything outside it that has words in it is
+enumerated with its reason here and **fails the run** in the section locator checker.
+
+Two of its members were already settled — a section's `HEAD` is enumerated as its own unit, and a
+`DIV` is a table addressed by its rows (0035). The other three are a *reading* of what the eCFR
+prints rather than a check: `CITA` is the authority citation, `EDNOTE` the Federal Register's
+editorial annotation, `HD1` a division title. So the checker **prints the tally by tag on every
+run** — `83 top-level element(s) stepped over, by tag: CITA 22, HEAD 61` — because a reading that
+is visible every run is one a corpus can contradict, and a reading buried in a constant is not.
+
 The two walks part company on **one** thing, in a direction that is asserted. The checker builds
 the designator tree and so leaves a wrapper **unplaced** where the markup does not say the wrapper
 is inside the paragraph it follows — an appendix, a wrapper holding a `<P>` that states its own
