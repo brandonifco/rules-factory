@@ -421,14 +421,14 @@
     {
       "name": "method.md",
       "source": "../../../docs/method.md",
-      "sourceSha256": "766c1edb2fc1230de988bb184302828c8290724e6b8428607312f36e6ea9f722",
-      "sha256": "c9c00d05416603cac9dcb390f6b178729116d7deb730e864676c0984d8c6e637",
+      "sourceSha256": "a8e5d777d772d76bd361c0876c056f41bf886c7e06f79456b726d26bed9c71c0",
+      "sha256": "8cb5aaac4614b24c835e577b3ebf0c08f412421e4f8e2d367bf7cdbf122c04d3",
       "edits": 27
     }
   ],
   "record": {
     "path": "REDACTIONS.md",
-    "sha256": "2c2c5243e55a692b124d79345d6065eba78c170dad2ffc4cdba6f740cebc86b5"
+    "sha256": "79997eef0d4645866f02432a8534f17f8eeb9cad27251c5c867452c37b54ff14"
   },
   "acknowledged": [
     {

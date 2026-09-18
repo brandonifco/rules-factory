@@ -388,6 +388,16 @@ first mapper's reading.
 an entry leaks its verdict; so does one rewritten to paraphrase the corpus. Replace examples from
 another corpus, or delete them.
 
+**And staging them is a command, not an instruction.** `python3 tools/mapper stage <spec>` applies
+the declared substitutions and then scans what it wrote for everything the corpus's maps name —
+the neighbouring slices' maps included, because a sibling slice's entry id is this corpus's
+vocabulary. A hyphenated entry id or the corpus id left in fails the staging; a one-word id or an
+entry name, which a document also uses for its own reasons, is NOT VERIFIED until the spec either
+edits it away or acknowledges it with a reason. It writes the redacted documents, `REDACTIONS.md`
+and `staged-inputs.json`, whose digests the blind-second-mapping review names and
+`scripts/validate.sh` re-checks. What no scan sees is paraphrase, which is what the declared
+substitutions are for (#223).
+
 **What is compared,** entry against the entry that quotes the same text:
 
 - `kind`, `scope`, `clarity`, and whether `ambiguity` is present;
@@ -403,7 +413,8 @@ corrected to the answer.
 
 **Where the record lives.** Beside the map, committed with the corrected map: one row per
 disagreement, with the entry, the field, both values, the verdict and the quote. A disagreement
-with no row is unresolved, and the map is not used.
+with no row is unresolved, and the map is not used. Beside it, the staging record: a review
+recorded as `blind-second-mapping` names one, or says out loud that it has none.
 
 **What it does not catch.** Two mappers who share a misreading agree, and agreement is silent.
 
