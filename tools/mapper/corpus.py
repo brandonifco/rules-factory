@@ -116,6 +116,20 @@ class Adapter:
         """
         raise NotImplementedError
 
+    def portion_of(self, extent):
+        """The part of a shared extent this corpus contains, and the part it does not (0042).
+
+        `(portion, mine)`: the extent restricted to what this corpus holds, and the set of extent
+        items it accounts for. A map may cite several corpora and declares **one** extent across
+        them all, so each corpus's walk must be given its own share of it -- handing § 172.101's
+        adapter an extent naming § 172.102 refuses the whole run, and handing it the unrestricted
+        list would make it claim coverage of a section it does not contain.
+
+        The default is the whole extent and no claim about which items are this corpus's: a
+        grammar whose corpus is one document has nothing to divide.
+        """
+        return extent, None
+
     def _refuse_unit(self, extent):
         unit = extent.get("unit") if isinstance(extent, dict) else None
         raise Refused(f"extent.unit is {unit!r}; the {self.name!r} adapter enumerates "
@@ -721,6 +735,39 @@ class EcfrXml(Adapter):
                               f"one of them and account for the other's tables by accident")
             found[number] = section
         return found
+
+    def portion_of(self, extent):
+        """The extent's sections this corpus actually contains, with their table slices.
+
+        A section this corpus does not hold belongs to another cited corpus's walk, or to none --
+        and `units` still refuses one that belongs to none, because the caller checks the union
+        against the whole extent before any walk is trusted.
+        """
+        if not isinstance(extent, dict) or extent.get("unit") != "section-designation":
+            return extent, None
+        listed = extent.get("sections")
+        if not isinstance(listed, list):
+            return extent, None
+        here = set(self._sections())
+        mine, numbers = [], set()
+        for item in listed:
+            match = self.SECTION.search(item) if isinstance(item, str) else None
+            if match and match.group(1) in here:
+                mine.append(item)
+                numbers.add(match.group(1))
+        portion = dict(extent, sections=mine)
+        if isinstance(extent.get("tables"), list):
+            kept = []
+            for slice_ in extent["tables"]:
+                number = slice_.get("section") if isinstance(slice_, dict) else None
+                match = self.SECTION.search(number) if isinstance(number, str) else None
+                if match and match.group(1) in numbers:
+                    kept.append(slice_)
+            if kept or not extent["tables"]:
+                portion["tables"] = kept
+            else:
+                portion.pop("tables", None)
+        return portion, set(mine)
 
     def units(self, extent):
         if not isinstance(extent, dict) or extent.get("unit") != "section-designation":
