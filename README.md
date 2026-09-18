@@ -42,7 +42,7 @@ output before committing it.
 | Subsystem | Where | What it takes | What it produces |
 |---|---|---|---|
 | **Mapper** | [`tools/mapper/`](tools/mapper/__init__.py) and [docs/mapper.md](docs/mapper.md); the map itself is still made by hand, by [the method](docs/method.md) | a pinned corpus, its manifest, an adapter, a mapping protocol | a candidate map, and the record of how it was made |
-| **Validator** | [`tools/mapvalidator/`](tools/mapvalidator/__init__.py) and [docs/validator.md](docs/validator.md), built into `tools/check-map.py`, with the locator checkers, [`tools/check-map-review.py`](tools/check-map-review.py) and [`tools/pack-map.py`](tools/pack-map.py) | a map and its manifest | a verdict, and a map that may become a version |
+| **Validator** | [`tools/mapvalidator/`](tools/mapvalidator/__init__.py) and [docs/validator.md](docs/validator.md), built into `tools/check-map.py`, with the locator checkers, [`tools/check-map-review.py`](tools/check-map-review.py), [`tools/pack-map.py`](tools/pack-map.py) and [`tools/mutate-map.py`](tools/mutate-map.py), which measures what all of that misses | a map and its manifest | a verdict, and a map that may become a version |
 | **Factory** | [`tools/factory/`](tools/factory/__main__.py) | a published map package and the corpus it was made of | a deterministic engine on `rules-kernel` |
 | **Map contract** | [`tools/mapcontract/`](tools/mapcontract/__init__.py) | — | the map's closed vocabularies and the readers that get a field out of an entry |
 

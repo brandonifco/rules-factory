@@ -224,6 +224,18 @@ check_locators() {
     examples/srd-52-conditions/corpus-map.json examples/srd-52-combat/srd-5.2.1.txt || return 1
 }
 
+# The validator, attacked with a damaged map. Every check has been watched failing on a unit
+# fixture; that proves each fires, not how much of a real error reaches the gate. tools/mutate-map.py
+# damages a committed map one named way at a time and measures what is refused (#259,
+# examples/validator-attack/). The measurement is committed, and this re-runs it and fails when a
+# row moves -- a check that grew, a map that was corrected, or a mutation that stopped landing.
+# It is a step here rather than a workflow because the whole run takes about ten seconds; a
+# staleness date would say when somebody last looked, and this says whether what they wrote is
+# still true. No committed map is written to: each run works on a copy in a temporary directory.
+check_validator_attack() {
+  python3 tools/mutate-map.py --check examples/validator-attack/results.json
+}
+
 # Every map that declares a package version passes the gate its publish workflow runs, and
 # packs to the same bytes twice (0015). A map that could not be published is found here, on
 # the pull request, rather than on the tag -- after the version number was already chosen.
@@ -382,6 +394,7 @@ run "every extent's units are enumerated and accounted" check_inventory
 run "every corpus map carries a review of its bytes"   check_map_reviews
 run "every blind mapping was given what it recorded"   check_blind_staging
 run "every citation resolves in its corpus"            check_locators
+run "the measured miss rate still describes the validator" check_validator_attack
 run "every map package passes its publish gate"        check_map_packages
 run "the checkers' own tests"                          check_tool_tests
 run "every repository link resolves"                   check_doc_references
