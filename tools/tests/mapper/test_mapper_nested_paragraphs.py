@@ -183,7 +183,7 @@ def indexed(fixture=FIXTURE):
 
 def unplaced(fixture=FIXTURE):
     """(text, reason) for every paragraph the checker refuses to place."""
-    return [(text, why) for path, text, why in walked(fixture) if why is not None]
+    return [(text, why[0], why[1]) for path, text, why in walked(fixture) if why is not None]
 
 
 def reached_by_the_descent(root):
@@ -309,7 +309,7 @@ class TestAWrapperThatIsNotAContinuationIsUnplaced(unittest.TestCase):
     """
 
     def reason_for(self, opening):
-        found = [why for text, why in unplaced() if text.startswith(opening)]
+        found = [why for text, _, why in unplaced() if text.startswith(opening)]
         self.assertTrue(found, f"{opening!r} was placed, or is not in the corpus at all")
         return found[0]
 
@@ -336,8 +336,11 @@ class TestAWrapperThatIsNotAContinuationIsUnplaced(unittest.TestCase):
         # Not indexed is not the same as passed over: `corpus_index` hands each to `main`, which
         # prints it. A passage the tool cannot address must be visible as one.
         self.assertEqual(len(unplaced()), 5)
-        for text, why in unplaced():
+        for text, code, why in unplaced():
             self.assertTrue(why and text)
+            # The code is what a map's `extent.unreachable` names (0038), so it is not free prose:
+            # every refusal gives one the declaration can be held to.
+            self.assertIn(code, checker.UNREACHABLE_REASONS)
 
 
 class TestANoteTakesTheParagraphItNames(unittest.TestCase):
@@ -352,7 +355,7 @@ class TestANoteTakesTheParagraphItNames(unittest.TestCase):
         self.assertEqual(path_of("For samples of a widget"), ("B", "1.20", "c"))
 
     def test_a_note_naming_a_paragraph_it_is_not_printed_in_is_unplaced(self):
-        found = [why for text, why in unplaced() if text.startswith("The numeric provisions")]
+        found = [why for text, _, why in unplaced() if text.startswith("The numeric provisions")]
         self.assertTrue(found)
         self.assertIn("which is not where the corpus prints it", found[0])
 
@@ -637,7 +640,7 @@ class TestNothingSlipsThroughInheritance(unittest.TestCase):
     """
 
     def reason_for(self, opening):
-        found = [why for text, why in unplaced(ODDITIES) if text.startswith(opening)]
+        found = [why for text, _, why in unplaced(ODDITIES) if text.startswith(opening)]
         self.assertTrue(found, f"{opening!r} was placed, or is not in the corpus at all")
         return found[0]
 
@@ -672,7 +675,7 @@ class TestAttributionIsAskedAtEveryDepth(unittest.TestCase):
     """
 
     def test_a_note_nested_in_a_placed_wrapper_is_judged_on_its_own(self):
-        found = [why for text, why in unplaced(ODDITIES) if text.startswith("A note, inside")]
+        found = [why for text, _, why in unplaced(ODDITIES) if text.startswith("A note, inside")]
         self.assertTrue(found, "the nested note was attributed rather than judged")
         self.assertIn("which is not where the corpus prints it", found[0])
 
@@ -691,7 +694,7 @@ class TestANoteHeadingNamesOneParagraphOrNone(unittest.TestCase):
     """
 
     def reason_for(self, opening):
-        found = [why for text, why in unplaced(ODDITIES) if text.startswith(opening)]
+        found = [why for text, _, why in unplaced(ODDITIES) if text.startswith(opening)]
         self.assertTrue(found, f"{opening!r} was placed")
         return found[0]
 
@@ -719,7 +722,7 @@ class TestADivisionIsRecognisedWithoutReadingItsTag(unittest.TestCase):
     """
 
     def test_an_appendix_titled_at_level_two_is_still_a_division(self):
-        found = [why for text, why in unplaced(ODDITIES)
+        found = [why for text, _, why in unplaced(ODDITIES)
                  if text.startswith("Appendix C to § 1.21")]
         self.assertTrue(found, "the HD2-titled appendix was attributed")
         self.assertIn("is not a designated paragraph", found[0])
@@ -728,7 +731,7 @@ class TestADivisionIsRecognisedWithoutReadingItsTag(unittest.TestCase):
         # All six of § 172.102's captioned runs are this shape, so the test above must not catch
         # them: `Code/Special Provisions` follows the paragraph that introduces the run.
         self.assertEqual(path_of("A1 "), ("B", "1.20", "c", "2"))
-        self.assertEqual([t for t, _ in unplaced() if t == "Code/Special Provisions"], [])
+        self.assertEqual([t for t, _, _ in unplaced() if t == "Code/Special Provisions"], [])
 
 
 class TestTheInventoryCarriesPlacement(unittest.TestCase):
@@ -792,7 +795,7 @@ class TestTheInventoryCarriesPlacement(unittest.TestCase):
                 for unit in adapter._section_units(number, section):
                     if unit.unaddressable:
                         refused.add(unit.text)
-            unplaced_here = {text for text, _ in unplaced(fixture)}
+            unplaced_here = {text for text, _, _ in unplaced(fixture)}
             self.assertTrue(refused <= unplaced_here,
                             f"the adapter refuses more than the checker: "
                             f"{sorted(refused - unplaced_here)[:3]}")
@@ -805,7 +808,7 @@ class TestTheInventoryCarriesPlacement(unittest.TestCase):
                 for unit in adapter._section_units(number, section):
                     if unit.unaddressable:
                         refused.add(unit.text)
-            unplaced_here = {text for text, _ in
+            unplaced_here = {text for text, _, _ in
                              unplaced(open(path, encoding="utf-8").read())}
             self.assertTrue(refused <= unplaced_here, os.path.basename(path))
 
