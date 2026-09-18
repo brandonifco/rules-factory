@@ -193,6 +193,36 @@ def decided_entry():
                  })
 
 
+def section_cited_map():
+    """valid_map, re-cited in the section-designation grammar with an extent of two sections."""
+    document = valid_map()
+    document["extent"] = {"unit": "section-designation", "sections": ["§ 1.10", "§ 1.11"]}
+    for position, item in enumerate(document["entries"]):
+        if "locator" in item:
+            item["locator"]["citation"] = ("§ 1.10(a)", "§ 1.11 introductory text")[position % 2]
+    return document
+
+
+def table_map():
+    """0035: the same map, with one rule read out of a row of a table the extent slices.
+
+    Two tables in § 1.10: one sliced to two rows, one excluded with a reason. Every table of a
+    cited section is named, which is what keeps an extent from shrinking to whatever the walk
+    happened to read.
+    """
+    document = section_cited_map()
+    document["extent"]["tables"] = [
+        {"section": "§ 1.10", "table": 1,
+         "rows": [{"column": 2, "is": "Acetal"},
+                  [{"column": 2, "is": "Ammonia, anhydrous"}, {"column": 1, "is": "G"}]]},
+        {"section": "§ 1.10", "table": 2,
+         "excluded": "code meanings; no mapped row invokes one"},
+    ]
+    document["entries"][0]["locator"]["citation"] = \
+        '§ 1.10 table 1, row [column 2 = "Acetal"], column 4A'
+    return document
+
+
 # --- harness ---------------------------------------------------------------------------
 
 
@@ -292,13 +322,7 @@ class TestExtent(MapCase):
     """0020: the shape of `extent` in each unit, and a section-designation map cites inside it."""
 
     def section_map(self):
-        """valid_map, re-cited in the section-designation grammar with an extent of two sections."""
-        document = valid_map()
-        document["extent"] = {"unit": "section-designation", "sections": ["§ 1.10", "§ 1.11"]}
-        for position, item in enumerate(document["entries"]):
-            if "locator" in item:
-                item["locator"]["citation"] = ("§ 1.10(a)", "§ 1.11 introductory text")[position % 2]
-        return document
+        return section_cited_map()
 
     def assert_section_catches(self, mutate):
         code, output = self.run_tool(self.section_map())
@@ -386,6 +410,14 @@ class TestExtent(MapCase):
             document["entries"][6]["scope"] = "in"
         self.assert_section_catches(mutate)
 
+    def test_a_table_slice_is_a_shape_the_extent_may_carry(self):
+        # 0035: the rows it takes, and the tables it does not, both named.
+        code, output = self.run_tool(table_map())
+        self.assertEqual(self.status_of(output, "extent"), "ok", output)
+        self.assertIn("2 table(s) accounted for, 1 locator(s) naming a row the extent takes",
+                      output)
+        self.assertEqual(code, 0, output)
+
     def test_a_map_declaring_no_extent_is_not_refused_here(self):
         # The omission is refused by the locator checkers' `coverage`, which have the corpus.
         document = valid_map()
@@ -418,6 +450,156 @@ class TestExtent(MapCase):
                 else:
                     expected = ("subpart", prefixes[0][0])
                 self.assertEqual(check_map.cited_section(citation), expected)
+
+
+class TestTableSlice(MapCase):
+    """0035: an extent that slices a table names the rows it takes and accounts for the rest.
+
+    What is checkable without the corpus is the shape of the list, and that an in-scope entry
+    citing a row cites a row the slice took. That *every* table printed inside a cited section
+    appears in the list needs the corpus, and the `ecfr-xml` adapter refuses one the extent
+    passes over in silence (`tools/tests/mapper/test_mapper_table_rows.py`).
+    """
+
+    def assert_table_catches(self, mutate):
+        code, output = self.run_tool(table_map())
+        self.assertEqual(self.status_of(output, "extent"), "ok", output)
+        self.assertEqual(code, 0, output)
+        document = table_map()
+        mutate(document)
+        code, output = self.run_tool(document)
+        self.assertEqual(self.status_of(output, "extent"), "fail", output)
+        self.assertEqual(code, 1, output)
+        return output
+
+    def test_a_row_the_slice_does_not_take_is_outside_the_extent(self):
+        output = self.assert_table_catches(
+            lambda d: d["entries"][0]["locator"].update(
+                citation='§ 1.10 table 1, row [column 2 = "Acetaldehyde"]'))
+        self.assertIn("does not take that row", output)
+
+    def test_the_order_of_a_keys_pairs_is_not_part_of_what_it_names(self):
+        # The pairs are a conjunction; a citation writing them the other way round names the
+        # same row, and an extent that took it took it.
+        document = table_map()
+        document["entries"][0]["locator"]["citation"] = (
+            '§ 1.10 table 1, row [column 1 = "G"; column 2 = "Ammonia, anhydrous"]')
+        code, output = self.run_tool(document)
+        self.assertEqual(self.status_of(output, "extent"), "ok", output)
+        self.assertEqual(code, 0, output)
+
+    def test_a_row_of_an_excluded_table_fails(self):
+        output = self.assert_table_catches(
+            lambda d: d["entries"][0]["locator"].update(
+                citation='§ 1.10 table 2, row [column 1 = "A3"]'))
+        self.assertIn("excludes § 1.10 table 2", output)
+
+    def test_a_row_of_a_table_the_extent_does_not_name_fails(self):
+        output = self.assert_table_catches(
+            lambda d: d["entries"][0]["locator"].update(
+                citation='§ 1.10 table 4, row [column 2 = "Acetal"]'))
+        self.assertIn("declares no slice of § 1.10 table 4", output)
+
+    def test_a_row_of_a_section_outside_the_extent_fails(self):
+        output = self.assert_table_catches(
+            lambda d: d["entries"][0]["locator"].update(
+                citation='§ 1.99 table 1, row [column 2 = "Acetal"]'))
+        self.assertIn("§ 1.99", output)
+
+    def test_a_slice_of_a_section_the_extent_does_not_cite_fails(self):
+        output = self.assert_table_catches(
+            lambda d: d["extent"]["tables"].append({"section": "§ 1.99", "table": 1,
+                                                    "rows": "all"}))
+        self.assertIn("§ 1.99 is not in the declared extent", output)
+
+    def test_the_same_table_sliced_twice_fails(self):
+        output = self.assert_table_catches(
+            lambda d: d["extent"]["tables"].append({"section": "§ 1.10", "table": 1,
+                                                    "rows": "all"}))
+        self.assertIn("declared twice", output)
+
+    def test_a_slice_that_both_takes_and_excludes_fails(self):
+        # The message is asserted, not only the verdict: a slice that says both fails the
+        # placement below too, and "it declares both" is the finding.
+        output = self.assert_table_catches(
+            lambda d: d["extent"]["tables"][0].update(excluded="and also excluded"))
+        self.assertIn("declares both", output)
+
+    def test_a_slice_that_neither_takes_nor_excludes_fails(self):
+        output = self.assert_table_catches(lambda d: d["extent"]["tables"][0].pop("rows"))
+        self.assertIn("declares neither", output)
+
+    def test_an_exclusion_with_no_reason_fails(self):
+        output = self.assert_table_catches(
+            lambda d: d["extent"]["tables"][1].update(excluded="  "))
+        self.assertIn("in words", output)
+
+    def test_an_empty_row_list_fails(self):
+        output = self.assert_table_catches(lambda d: d["extent"]["tables"][0].update(rows=[]))
+        self.assertIn("non-empty list of row keys", output)
+
+    def test_a_rows_value_that_is_neither_all_nor_a_list_fails(self):
+        output = self.assert_table_catches(lambda d: d["extent"]["tables"][0].update(rows="some"))
+        self.assertIn("non-empty list of row keys", output)
+
+    def test_a_row_key_that_is_not_a_column_and_a_value_fails(self):
+        self.assert_table_catches(
+            lambda d: d["extent"]["tables"][0]["rows"].append({"row": 4}))
+
+    def test_a_table_named_by_something_other_than_its_position_fails(self):
+        output = self.assert_table_catches(
+            lambda d: d["extent"]["tables"][0].update(table="Hazardous Materials Table"))
+        self.assertIn("named by its position in the section", output)
+
+    def test_a_table_slice_naming_a_paragraph_rather_than_a_section_fails(self):
+        self.assert_table_catches(
+            lambda d: d["extent"]["tables"][0].update(section="§ 1.10(a)"))
+
+    def test_an_unknown_field_in_a_slice_fails(self):
+        self.assert_table_catches(
+            lambda d: d["extent"]["tables"][0].update(caption="Widget table"))
+
+    def test_an_empty_tables_list_fails(self):
+        output = self.assert_table_catches(lambda d: d["extent"].update(tables=[]))
+        self.assertIn("present and names no table", output)
+
+    def test_tables_on_a_page_extent_is_not_a_field_of_one(self):
+        self.assert_catches("extent", lambda d: d["extent"].update(
+            tables=[{"section": "§ 1.10", "table": 1, "rows": "all"}]))
+
+    def test_an_out_of_scope_entry_may_cite_a_row_beyond_the_slice(self):
+        # Recording what lies beyond the slice is what scope: out is for (0020), and a row is
+        # not an exception to it.
+        document = table_map()
+        document["entries"][6]["locator"]["citation"] = (
+            '§ 1.10 table 2, row [column 1 = "A3"]')       # subpart-d-categories, scope: out
+        code, output = self.run_tool(document)
+        self.assertEqual(self.status_of(output, "extent"), "ok", output)
+        self.assertEqual(code, 0, output)
+
+    def test_the_row_is_read_as_the_locator_checker_reads_it(self):
+        # One grammar in two files, as CITE_SECTION already is: the checker resolves the
+        # citation against the corpus and this places it inside the extent, and the two must
+        # read the same table and the same key out of it.
+        repo = os.path.dirname(os.path.dirname(os.path.dirname(HERE)))
+        spec = importlib.util.spec_from_file_location(
+            "check_locators_section",
+            os.path.join(repo, "examples", "faa-part-107", "check-locators-section.py"))
+        section_tool = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(section_tool)
+        citations = ['§ 1.10 table 1, row [column 2 = "Acetal"]',
+                     '§ 1.10 table 1, row [column 2 = "Acetal"], column 4A',
+                     '§ 1.10 table 1, row [column 2 = "Ammonia, anhydrous"; column 1 = "G"]']
+        for citation in citations:
+            with self.subTest(citation=citation):
+                section, table, pairs, _ = section_tool.table_citation(citation)
+                self.assertEqual(check_map.cited_row(citation),
+                                 (section, table, frozenset(pairs)))
+        for outside in ["§ 1.10(a)", "subpart D", "Part One / p. 1",
+                        '§ 1.10 table 1, row [the second one]']:
+            with self.subTest(citation=outside):
+                self.assertIsNone(section_tool.table_citation(outside))
+                self.assertIsNone(check_map.cited_row(outside))
 
 
 class TestRequiredFields(MapCase):

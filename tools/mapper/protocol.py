@@ -38,8 +38,11 @@ OPTIONAL_FIELDS = ("sweepCues", "sweepCuesReason")
 
 # The shapes a corpus states a rule in. A unit is what a mapper reads one at a time: the walk is
 # bounded, and this says by what.
-UNITS = ("section", "paragraph", "sentence", "list-item", "table", "glossary-definition",
-         "worked-example", "heading", "figure")
+# `table-row` is a unit of its own beside `table` (0035): a corpus that states one rule per row
+# of a 3,687-row table states them in rows, and a unit the inventory counts as reached when one
+# quote lands in it would report such a table read on a single citation.
+UNITS = ("section", "paragraph", "sentence", "list-item", "table", "table-row",
+         "glossary-definition", "worked-example", "heading", "figure")
 
 # How a corpus points at a meaning it gives elsewhere (0026). Each is either detected here or
 # detected somewhere named: a mechanism in neither map is refused.

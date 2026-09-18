@@ -402,6 +402,297 @@ class TestSectionCoverage(SectionCase):
         self.assertEqual(code, 1, output)
 
 
+# --- a rule stated in a table row (0035) ----------------------------------------------------
+# The same eCFR shape with two tables in one section. The first prints its columns the way the
+# corpus that forced this prints them -- a (4) heading split into (4A) and (4B), so the columns
+# are the leaves and not the six labels -- has an empty cell in column 1 of its first row, and
+# two rows a column 2 key alone cannot tell apart. The second is the shape that needs a key of
+# three cells: every value of its first row is printed in another row too, and so is every pair
+# of them. Synthetic, like every fixture here -- and identical to the one
+# `tools/tests/mapper/test_mapper_table_rows.py` writes, which is how the two implementations are
+# held to the same reading. The real corpus is trial 10's to admit, not this test's.
+TABLE_CORPUS = """<ROOT><DIV6 N="B" TYPE="SUBPART">
+<DIV8 N="1.10" TYPE="SECTION"><HEAD>§ 1.10 Widget table.</HEAD>
+<P>Each widget is listed in the widget table with the class and the packing it requires.</P>
+<P>(a) Column 1 states the symbol, column 2 the widget name and column 3 the class.</P>
+<DIV><TABLE>
+<THEAD><TR><TD>(1) Symbols</TD><TD>(2) Widget name</TD><TD>(3) Class</TD><TD>(4) Packing</TD>
+<TD>(4A) Exceptions</TD><TD>(4B) Non-bulk</TD></TR></THEAD>
+<TBODY>
+<TR><TD/><TD>Acetal</TD><TD>3</TD><TD>150</TD><TD>202</TD></TR>
+<TR><TD>G</TD><TD>Ammonia, anhydrous</TD><TD>2.2</TD><TD/><TD>306</TD></TR>
+<TR><TD>G</TD><TD>Ammonia, anhydrous</TD><TD>2.3</TD><TD>T4</TD><TD>314</TD></TR>
+</TBODY></TABLE></DIV>
+<TABLE><THEAD><TR><TD>(1) Code</TD><TD>(2) Mode</TD><TD>(3) Limit</TD></TR></THEAD>
+<TBODY>
+<TR><TD>A3</TD><TD>Aircraft</TD><TD>5 L</TD></TR>
+<TR><TD>A3</TD><TD>Aircraft</TD><TD>60 L</TD></TR>
+<TR><TD>A3</TD><TD>Vessel</TD><TD>5 L</TD></TR>
+<TR><TD>N34</TD><TD>Aircraft</TD><TD>5 L</TD></TR>
+</TBODY></TABLE>
+</DIV8>
+<DIV8 N="1.11" TYPE="SECTION"><HEAD>§ 1.11 Tokens.</HEAD>
+<P>No person may carry a token into a restricted area.</P>
+</DIV8>
+</DIV6></ROOT>"""
+
+ACETAL_ROW = "| Acetal | 3 | 150 | 202"
+AMMONIA_22_ROW = "G | Ammonia, anhydrous | 2.2 | | 306"
+
+# Ten numbered columns with the last split -- the § 172.101 shape, where `10A` is a sub-column
+# of `10` and `1` is a sub-column of nothing -- and a table whose cells span, which carries no
+# column geometry at all.
+WIDE_TABLE = """<TABLE>
+<THEAD><TR><TD>(1) Symbols</TD><TD>(2) Name</TD><TD>(3) Class</TD><TD>(4) ID</TD><TD>(5) PG</TD>
+<TD>(6) Label</TD><TD>(7) Provisions</TD><TD>(8) Packaging</TD><TD>(9) Quantity</TD>
+<TD>(10) Vessel</TD><TD>(10A) Location</TD><TD>(10B) Other</TD></TR></THEAD>
+<TBODY><TR><TD/><TD>Acetal</TD><TD>3</TD><TD>UN1088</TD><TD>II</TD><TD>3</TD><TD>IB2</TD>
+<TD>202</TD><TD>5 L</TD><TD>E</TD><TD>D</TD></TR></TBODY></TABLE>"""
+
+TWO_LEVEL_TABLE = """<TABLE>
+<THEAD>
+<TR><TH ROWSPAN="2">(1)Symbols</TH><TH ROWSPAN="2">(2)Hazardous materials descriptions and \
+proper shipping names</TH><TH ROWSPAN="2">(3)Hazard class or Division</TH>
+<TH ROWSPAN="2">(4)Identification Numbers</TH><TH ROWSPAN="2">(5)PG</TH>
+<TH ROWSPAN="2">(6)Label codes</TH><TH ROWSPAN="2">(7)Special provisions(§ 172.102)</TH>
+<TH COLSPAN="3">(8)Packaging(§ 173.***)</TH><TH COLSPAN="2">(9)Quantity limitations</TH>
+<TH COLSPAN="2">(10)Vesselstowage</TH></TR>
+<TR><TH>Exceptions(8A)</TH><TH>Non-bulk(8B)</TH><TH>Bulk(8C)</TH>
+<TH>Passenger aircraft/rail(9A)</TH><TH>Cargo aircraft only(9B)</TH><TH>Location(10A)</TH>
+<TH>Other(10B)</TH></TR>
+</THEAD>
+<TBODY>
+<TR><TD/><TD>Acetal</TD><TD>3</TD><TD>UN1088</TD><TD>II</TD><TD>3</TD><TD>IB2, T4, TP1</TD>
+<TD>150</TD><TD>202</TD><TD>242</TD><TD>5 L</TD><TD>60 L</TD><TD>E</TD><TD/></TR>
+<TR><TD>D</TD><TD>Acetaldehyde</TD><TD>3</TD><TD>UN1089</TD><TD>I</TD><TD>3</TD><TD>A3, T11</TD>
+<TD>None</TD><TD>201</TD><TD>243</TD><TD>Forbidden</TD><TD>30 L</TD><TD>E</TD><TD/></TR>
+</TBODY></TABLE>"""
+
+# A span in a *body* row: the markup then genuinely stops saying which column a later cell is in.
+FOOTNOTE_MARKER_TABLE = """<TABLE>
+<THEAD><TR><TD>Minimum test pressure (2)</TD><TD>Widget (3)</TD></TR></THEAD>
+<TBODY><TR><TD>4 bar</TD><TD>Acetal</TD></TR></TBODY></TABLE>"""
+
+SPANNED_BODY_TABLE = """<TABLE>
+<THEAD><TR><TD>(1) Code</TD><TD>(2) Mode</TD><TD>(3) Limit</TD></TR></THEAD>
+<TBODY><TR><TD COLSPAN="2">A3, aircraft</TD><TD>5 L</TD></TR></TBODY></TABLE>"""
+
+# A colspan parent with no second heading row under it: the two columns it covers are both
+# labelled `(8)`, which names neither, so the table is numbered by position.
+SPANNED_TABLE = """<TABLE>
+<THEAD><TR><TD COLSPAN="2">(8) Packaging</TD><TD>(9) Quantity</TD></TR></THEAD>
+<TBODY><TR><TD>202</TD><TD>242</TD><TD>5 L</TD></TR></TBODY></TABLE>"""
+
+# A heading that names two columns at once, and one that names none while its neighbours do.
+CROWDED_HEADING_TABLE = """<TABLE>
+<THEAD><TR><TD>(1) Code and (2) Mode</TD><TD>(3) Limit</TD></TR></THEAD>
+<TBODY><TR><TD>A3</TD><TD>5 L</TD></TR></TBODY></TABLE>"""
+
+HALF_NUMBERED_TABLE = """<TABLE>
+<THEAD><TR><TD>Widget</TD><TD>(2) Class</TD></TR></THEAD>
+<TBODY><TR><TD>Acetal</TD><TD>3</TD></TR></TBODY></TABLE>"""
+
+
+class TestTableRows(unittest.TestCase):
+    """0035: a citation reaches a row, a row is named by a cell, and two matches is a refusal."""
+
+    def setUp(self):
+        self.root = tempfile.mkdtemp()
+        self.corpus_path = os.path.join(self.root, "corpus.xml")
+        with open(self.corpus_path, "w", encoding="utf-8") as handle:
+            handle.write(TABLE_CORPUS)
+        self.corpus, self.spans, _ = check_locators_section.corpus_index(self.corpus_path)
+        self.tables = check_locators_section.table_index(self.corpus_path)
+
+    def verdict(self, citation, evidence):
+        return check_locators_section.check(
+            entry("x", citation, evidence), self.corpus, self.spans, None, self.tables)[0]
+
+    def test_the_columns_are_the_ones_the_headings_print(self):
+        # (4) is split into (4A) and (4B), so it names no column of its own.
+        self.assertEqual(self.tables[("1.10", 1)].columns, ["1", "2", "3", "4A", "4B"])
+
+    def test_a_row_is_reached_by_a_cell_that_identifies_it(self):
+        self.assertEqual(
+            self.verdict('§ 1.10 table 1, row [column 2 = "Acetal"]', ACETAL_ROW), "ok")
+
+    def test_an_empty_cell_is_in_the_row_and_can_be_quoted(self):
+        self.assertEqual(self.verdict(
+            '§ 1.10 table 1, row [column 2 = "Ammonia, anhydrous"; column 3 = "2.2"]',
+            AMMONIA_22_ROW), "ok")
+
+    def test_a_key_that_names_two_rows_is_refused_and_not_resolved_to_the_first(self):
+        result, message = check_locators_section.check(
+            entry("x", '§ 1.10 table 1, row [column 2 = "Ammonia, anhydrous"]', AMMONIA_22_ROW),
+            self.corpus, self.spans, None, self.tables)
+        self.assertEqual(result, "bad", message)
+        self.assertIn("names 2 rows", message)
+
+    def test_a_discriminating_column_settles_it(self):
+        self.assertEqual(self.verdict(
+            '§ 1.10 table 1, row [column 2 = "Ammonia, anhydrous"; column 3 = "2.3"]',
+            "G | Ammonia, anhydrous | 2.3 | T4 | 314"), "ok")
+
+    def test_a_quote_from_another_row_fails(self):
+        self.assertEqual(self.verdict(
+            '§ 1.10 table 1, row [column 2 = "Acetal"]', AMMONIA_22_ROW), "bad")
+
+    def test_a_cell_is_named_by_its_column(self):
+        self.assertEqual(
+            self.verdict('§ 1.10 table 1, row [column 2 = "Acetal"], column 4A', "150"), "ok")
+
+    def test_a_quote_from_a_different_column_of_the_same_row_fails(self):
+        self.assertEqual(
+            self.verdict('§ 1.10 table 1, row [column 2 = "Acetal"], column 4A', "202"), "bad")
+
+    def test_a_column_the_table_does_not_print_is_named_as_the_defect(self):
+        # It fails either way -- no row holds a column that is not there -- and "no such column"
+        # and "no such row" are different findings, so the run has to say which it is.
+        result, message = check_locators_section.check(
+            entry("x", '§ 1.10 table 1, row [column 9 = "Acetal"]', ACETAL_ROW),
+            self.corpus, self.spans, None, self.tables)
+        self.assertEqual(result, "bad", message)
+        self.assertIn("prints no column 9", message)
+
+    def test_a_table_the_section_does_not_print_fails(self):
+        result, message = check_locators_section.check(
+            entry("x", '§ 1.10 table 3, row [column 2 = "Acetal"]', ACETAL_ROW),
+            self.corpus, self.spans, None, self.tables)
+        self.assertEqual(result, "bad", message)
+        self.assertIn("prints no table 3", message)
+
+    def test_the_second_table_is_numbered_by_its_position_in_the_section(self):
+        self.assertEqual(self.verdict(
+            '§ 1.10 table 2, row [column 1 = "N34"]', "N34 | Aircraft | 5 L"), "ok")
+
+    def test_a_row_of_the_second_table_needs_all_three_of_its_cells(self):
+        # Every single value of this row, and every pair, is printed in another row too. Two
+        # matches is a refusal; three predicates name the row.
+        self.assertEqual(self.verdict(
+            '§ 1.10 table 2, row [column 1 = "A3"; column 2 = "Aircraft"]',
+            "A3 | Aircraft | 5 L"), "bad")
+        self.assertEqual(self.verdict(
+            '§ 1.10 table 2, row [column 1 = "A3"; column 2 = "Aircraft"; column 3 = "5 L"]',
+            "A3 | Aircraft | 5 L"), "ok")
+
+    def test_a_heading_row_is_citable(self):
+        # 0035: the column semantics of a regulation live in its headings, printed once for
+        # every row of the table, and a map has to be able to cite them.
+        self.assertEqual(self.verdict(
+            '§ 1.10 table 1, row [column 1 = "(1) Symbols"]',
+            "(1) Symbols | (2) Widget name | (3) Class"), "ok")
+
+    def test_a_row_quote_that_elides_its_middle_is_refused(self):
+        # corpus-map.md: `evidence` is one contiguous span. A row is short and its point is
+        # which cell holds what, so an ellipsis inside one drops a column nothing then checks.
+        result, message = check_locators_section.check(
+            entry("x", '§ 1.10 table 1, row [column 2 = "Acetal"]', "| Acetal ... 202"),
+            self.corpus, self.spans, None, self.tables)
+        self.assertEqual(result, "bad", message)
+        self.assertIn("elides its middle", message)
+
+    def test_a_label_is_read_wherever_the_heading_prints_it(self):
+        # The parents are prefixes, the children suffixes: `Exceptions(8A)`. Anchoring the token
+        # at the start of the cell finds none of the children.
+        self.assertEqual(check_locators_section.COLUMN_LABEL.findall("Exceptions(8A)"), ["8A"])
+        self.assertEqual(check_locators_section.COLUMN_LABEL.findall(
+            "(7)Special provisions(§ 172.102)"), ["7"])
+
+    def test_a_column_of_a_ten_way_table_is_not_swallowed_by_column_one(self):
+        # Read as a string prefix, `1` is a parent of `10A`: the labels stop numbering the cells,
+        # the table silently falls back to positional numbering, and `column 9` addresses another
+        # column's cell. This is the § 172.101 shape.
+        table = check_locators_section.Table("1.10", 1, ET.fromstring(WIDE_TABLE))
+        self.assertEqual(table.numbering, "printed")
+        self.assertEqual(table.index_of("10B"), 10)
+        self.assertEqual(table.columns[8], "9")
+
+    def test_a_table_whose_geometry_the_markup_does_not_carry_addresses_nothing(self):
+        tables = {("1.10", 1): check_locators_section.Table(
+            "1.10", 1, ET.fromstring(SPANNED_BODY_TABLE))}
+        result, message = check_locators_section.check(
+            entry("x", '§ 1.10 table 1, row [column 3 = "5 L"]', "A3, aircraft | 5 L"),
+            self.corpus, self.spans, None, tables)
+        self.assertEqual(result, "bad", message)
+        self.assertIn("told apart by column", message)
+
+    def test_a_citation_into_a_table_numbered_by_position_says_so(self):
+        # A table that prints a footnote marker where a column number would be is numbered by
+        # position, and the run says which numbering it used and why, rather than leaving a
+        # reader to assume the corpus's own.
+        tables = {("1.10", 1): check_locators_section.Table(
+            "1.10", 1, ET.fromstring(FOOTNOTE_MARKER_TABLE))}
+        result, message = check_locators_section.check(
+            entry("x", '§ 1.10 table 1, row [column 9 = "4 bar"]', "4 bar"),
+            self.corpus, self.spans, None, tables)
+        self.assertEqual(result, "bad", message)
+        self.assertIn("numbered positional", message)
+        self.assertIn("and not (1)", message)
+
+    def test_a_two_level_heading_resolves_a_citation_into_its_own_column(self):
+        # The Hazardous Materials Table's heading, and the reason this decision exists: a
+        # citation naming column 9A must reach the passenger-aircraft cell and nothing else.
+        tables = {("1.10", 1): check_locators_section.Table(
+            "1.10", 1, ET.fromstring(TWO_LEVEL_TABLE))}
+
+        def verdict(citation, evidence):
+            return check_locators_section.check(
+                entry("x", citation, evidence), self.corpus, self.spans, None, tables)
+
+        self.assertEqual(verdict(
+            '§ 1.10 table 1, row [column 2 = "Acetal"], column 9A', "5 L")[0], "ok")
+        self.assertEqual(verdict(
+            '§ 1.10 table 1, row [column 2 = "Acetal"], column 9B', "60 L")[0], "ok")
+        self.assertEqual(verdict(
+            '§ 1.10 table 1, row [column 2 = "Acetal"], column 8B', "202")[0], "ok")
+        # 9A is not 9B, and the quote is held to the cell the citation names.
+        self.assertEqual(verdict(
+            '§ 1.10 table 1, row [column 2 = "Acetal"], column 9A', "60 L")[0], "bad")
+        # `9` is a split parent: it names no column at all.
+        result, message = verdict(
+            '§ 1.10 table 1, row [column 2 = "Acetal"], column 9', "5 L")
+        self.assertEqual(result, "bad", message)
+        self.assertIn("prints no column 9", message)
+
+    def test_a_corpus_that_prints_a_section_twice_is_refused(self):
+        path = os.path.join(self.root, "twice.xml")
+        with open(path, "w", encoding="utf-8") as handle:
+            handle.write(TABLE_CORPUS.replace(
+                "</DIV6></ROOT>",
+                '<DIV8 N="1.11" TYPE="SECTION"><HEAD>§ 1.11 Again.</HEAD>'
+                "<P>A second printing of the same designation.</P></DIV8></DIV6></ROOT>"))
+        with self.assertRaises(check_locators_section.Duplicated) as caught:
+            check_locators_section.table_index(path)
+        self.assertIn("prints § 1.11 twice", str(caught.exception))
+
+    def test_a_run_that_indexed_no_table_does_not_report_ok(self):
+        result, message = check_locators_section.check(
+            entry("x", '§ 1.10 table 1, row [column 2 = "Acetal"]', ACETAL_ROW),
+            self.corpus, self.spans)
+        self.assertEqual(result, "unchecked", message)
+
+    def test_a_row_citation_reaches_its_section_for_coverage(self):
+        document = {
+            "schemaVersion": 1, "corpus": "demo-cfr",
+            "baseline": {"contentHash": "d" * 64, "hashDerivation": "demo-xml"},
+            "extent": {"unit": "section-designation", "sections": ["§ 1.10", "§ 1.11"]},
+            "entries": [
+                entry("acetal-packing", '§ 1.10 table 1, row [column 2 = "Acetal"]', ACETAL_ROW),
+                entry("token-area", "§ 1.11",
+                      "No person may carry a token into a restricted area."),
+            ],
+        }
+        path = os.path.join(self.root, "corpus-map.json")
+        with open(path, "w", encoding="utf-8") as handle:
+            json.dump(document, handle)
+        out = io.StringIO()
+        with redirect_stdout(out), redirect_stderr(out):
+            code = check_locators_section.main(
+                ["check-locators-section.py", path, self.corpus_path])
+        self.assertEqual(code, 0, out.getvalue())
+        self.assertIn("coverage ok (all 2 sections", out.getvalue())
+
+
 # --- examples/srd-52-combat/check-locators-pdf-text.py: page-marked PDF text ----------------
 
 PDF_TEXT_TOOL = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(HERE))),

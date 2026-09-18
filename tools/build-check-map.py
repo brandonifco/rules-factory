@@ -49,7 +49,8 @@ TARGET = os.path.join(TOOLS, "check-map.py")
 # modules before it, which the build checks, so this order is also a valid definition order.
 # The contract comes first because both packages' checks read it and it reads nothing.
 MODULES = ("mapcontract.vocabulary", "mapcontract.entry",
-           "mapvalidator.diagnostics", "mapvalidator.schema", "mapvalidator.extent",
+           "mapvalidator.diagnostics", "mapvalidator.schema", "mapvalidator.locators",
+           "mapvalidator.extent",
            "mapvalidator.relations", "mapvalidator.manifest", "mapvalidator.extraction",
            "mapvalidator.ambiguity", "mapvalidator.bounds", "mapvalidator.status",
            "mapvalidator.inputs", "mapvalidator.crossrefs", "mapvalidator.correspondence",
