@@ -81,7 +81,19 @@ import sys
 import xml.etree.ElementTree as ET
 
 ELLIPSIS = re.compile(r"\s*(?:\.\.\.|…)\s*")
-DESIGNATOR = re.compile(r"^\(([A-Za-z0-9]{1,4})\)\s")
+#: What opens a designator level: a parenthesised token at the start of a paragraph. **No
+#: trailing whitespace is required.** It used to be, and `(b)(1) Text` and `(b)Text` -- both
+#: designations a reader sees at once -- therefore opened nothing and the paragraph silently took
+#: the designation of the paragraph before it (#289). `tools/mapper/corpus.py`'s
+#: `EcfrXml.DESIGNATOR` never had the `\s`, so one grammar read the same paragraph two ways;
+#: `tools/tests/mapper/test_mapper_designator.py` holds the two equal.
+#:
+#: A **compound** designation opens only its first group: `(b)(1)` is indexed at `(b)`, an
+#: ancestor of its true address, never at a wrong sibling. Withholding precision costs a citation
+#: that names `(b)(1)` a miss it reports; inheriting a neighbour's address hands out a wrong
+#: answer silently. Reading both groups would be a new mechanism, and no admitted corpus prints
+#: the shape -- the standard #265 proposes says to wait for one that forces it.
+DESIGNATOR = re.compile(r"^\(([A-Za-z0-9]{1,4})\)")
 ROMAN = re.compile(r"^(?:i|ii|iii|iv|v|vi|vii|viii|ix|x{1,3}(?:i[xv]|v?i{0,3}))$")
 
 # Which nesting level a designator opens, by its form. CFR numbers paragraphs
@@ -244,13 +256,12 @@ HEADING = re.compile(r"^HD\d+$")
 #: division with an `HD2` would be misread by this alone, which is what `wrapper_reach`'s second
 #: test is for.
 DIVISION_HEADING = "HD1"
-#: A `<P>` inside a wrapper that **states its own designation**. Deliberately broader than
-#: `DESIGNATOR`, which drives the section's designator tree and requires whitespace after the
-#: token: `(b)(1) Text` and `(b)Text` are designations a reader sees and that expression does not
-#: match, and a paragraph that slipped past this test would inherit an address that is not its
-#: own. Refusing too widely only withholds an address; inheriting too widely hands out a wrong
-#: one. `DESIGNATOR` itself is left alone here, because widening it would move the designation of
-#: paragraphs in corpora this change is not about (#289).
+#: A `<P>` inside a wrapper that **states its own designation**. This was deliberately broader
+#: than `DESIGNATOR` while that expression required whitespace after the token, so that a
+#: paragraph stating `(b)(1)` or `(b)Text` could not slip past the refusal test and inherit an
+#: address that is not its own. `DESIGNATOR` has since been widened to the same form (#289), and
+#: the two now agree: what states a designation is what opens one. A test asserts the equality,
+#: because the reason they were once different is the reason they must not silently diverge.
 STATES_A_DESIGNATION = re.compile(r"^\([A-Za-z0-9]{1,4}\)")
 #: A note's heading, naming the one paragraph the note belongs to: `Note to paragraph (c)(11):`.
 #: The whole heading must be that and nothing else, so `Note to paragraphs (a) and (1):` and
