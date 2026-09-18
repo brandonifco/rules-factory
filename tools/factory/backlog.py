@@ -85,7 +85,8 @@ import os
 import re
 import subprocess
 
-import generate
+import agentrails
+import semantics
 import intake
 import overlay as overlay_step
 
@@ -283,7 +284,7 @@ def _criteria(entry, by_id):
         elif ambiguity.get("fate") == "decision":
             out.append(f"The engine follows the recorded decision `{ambiguity.get('decision')}`, "
                        "and a test goes red under the reading it rejected.")
-    out.append(f"A hand-written handler implements `Handlers.{generate.pascal(eid)}`, the partial method "
+    out.append(f"A hand-written handler implements `Handlers.{semantics.pascal(eid)}`, the partial method "
                "`Generated/Contracts.g.cs` declares for this entry, with exactly its signature: once the entry "
                "is `implemented`, a missing or mis-typed handler does not build (#76).")
     out.append(f"`{overlay_step.path_for(eid)}` sets `status: implemented`, with `implementedIn` "
@@ -600,7 +601,7 @@ def label_policy(engine_dir):
     it here and nowhere else. An engine produced before the rails have no policy at all, and its
     issues are synchronised without labels rather than with the factory's guesses.
 
-    What makes a vocabulary usable is `generate.policy_labels`, the same function `rails.py` reads
+    What makes a vocabulary usable is `agentrails.policy_labels`, the same function `rails.py` reads
     it through (#188): the rule that the five are distinct is stated once, where the file is
     written, rather than twice here and there.
     """
@@ -613,8 +614,8 @@ def label_policy(engine_dir):
     except (OSError, ValueError) as error:
         raise BacklogError(f"{POLICY} cannot be read ({error}); it is where the label vocabulary lives")
     try:
-        return generate.policy_labels(document, POLICY)
-    except generate.PolicyError as error:
+        return agentrails.policy_labels(document, POLICY)
+    except agentrails.PolicyError as error:
         raise BacklogError(str(error))
 
 
@@ -700,7 +701,7 @@ def engine_backlog(engine_dir, package=None):
     inputs are exactly the ones `produce` merged: the map package `provenance.json` records
     (`_recorded_package`, which refuses any package whose map and manifest are not the bytes the
     record hashed) and the engine's own `overlay/` (#247), merged under decision 0015 by
-    the factory's own `generate.merge`. So what `create` files, and what `--render` prints, is the
+    the factory's own `semantics.merge`. So what `create` files, and what `--render` prints, is the
     backlog of the engine as it stands -- and an overlay edit shows up in it with no produce at all,
     which is the point of not committing a rendering of the overlay beside the overlay.
 
@@ -733,8 +734,8 @@ def engine_backlog(engine_dir, package=None):
     except overlay_step.OverlayError as error:
         raise BacklogError(str(error))
     try:
-        merged = generate.merge(document_map, overlay, root=engine_dir)
-    except generate.GenerationError as error:
+        merged = semantics.merge(document_map, overlay, root=engine_dir)
+    except semantics.GenerationError as error:
         raise BacklogError(f"the map and {overlay_step.DIRECTORY}/ do not merge, so there is no backlog to "
                            f"render: {error}")
     context = {"name": name, "package": source.get("packageId"), "version": source.get("version")}

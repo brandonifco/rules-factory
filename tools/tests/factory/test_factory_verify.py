@@ -43,6 +43,8 @@ _spec = importlib.util.spec_from_file_location("factory_main_verify", os.path.jo
 factory = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(factory)
 verify_step = factory.verify_step
+import pins  # noqa: E402  (the SDK and kernel pins; tools/factory is on sys.path now)
+import scaffold  # noqa: E402  (the managed recipes)
 
 # What produce appends to the last line of a `--no-verify` run, so the line and the exit code
 # can never be read apart.
@@ -534,8 +536,8 @@ class TestSdkOverride(VerifyCase):
         self.assertEqual(code, 0, recomputed)
 
     def test_repin_writes_global_json_as_generate_does(self):
-        text = factory.generate.managed_files()["global.json"]
-        self.assertEqual(verify_step.repin(text, factory.generate.SDK_VERSION), text)
+        text = scaffold.managed_files()["global.json"]
+        self.assertEqual(verify_step.repin(text, pins.SDK_VERSION), text)
         self.assertEqual(json.loads(verify_step.repin(text, self.OTHER))["sdk"],
                          {"version": self.OTHER, "rollForward": "disable"})
 
@@ -621,8 +623,8 @@ class TestRelock(VerifyCase):
         self.assertEqual(code, 0, output)
         before = self.locks()
         os.remove(self.log)
-        real =factory.generate.packages_props
-        with mock.patch.object(factory.generate, "packages_props", lambda model: real(model) + "<!-- relaid -->\n"):
+        real = pins.packages_props
+        with mock.patch.object(pins, "packages_props", lambda model: real(model) + "<!-- relaid -->\n"):
             code, output = self.produce_verified(self.nupkg)
         self.assertEqual(code, 0, output)
         self.assertIn("restore -- skipped: 2 lock file(s) present", output)

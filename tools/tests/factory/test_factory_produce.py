@@ -47,6 +47,11 @@ _spec = importlib.util.spec_from_file_location("factory_main_produce", os.path.j
 factory = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(factory)
 generate = factory.generate
+import csharp  # noqa: E402
+import entries as entries_step  # noqa: E402
+import correspondence  # noqa: E402
+import registry as registry_step  # noqa: E402
+import semantics  # noqa: E402
 overlay = factory.generate.overlay_step
 
 PART107 = os.path.join(REPO, "examples", "faa-part-107")
@@ -352,7 +357,7 @@ class TestGeneration(ProduceCase):
         tests = self.read(out, GENERATED[2])
         self.assertEqual(len(self.map["entries"]), 47)
         for entry in self.map["entries"]:
-            literal = generate.cs_string(entry["locator"]["citation"])
+            literal = csharp.cs_string(entry["locator"]["citation"])
             self.assertIn(f'new SourceLocator("cfr-14-107", {literal})', entries, entry["id"])
             self.assertIn(f'new("{entry["id"]}", EntryStatus.', registry)
             self.assertIn(f'        "{entry["id"]}",\n', tests)
@@ -417,7 +422,7 @@ class TestGeneration(ProduceCase):
         self.assertIn("internal static partial class Handlers\n", contracts)
         self.assertIn(f"namespace {NAME}.Requests;\n", requests)
         for entry in self.map["entries"]:
-            member = generate.pascal(entry["id"])
+            member = semantics.pascal(entry["id"])
             request = f"global::{NAME}.Requests.{member}Request"
             with self.subTest(entry["id"]):
                 self.assertIn(f"    public static RuleEntry<{request}, object> {member} {{ get; }} =\n"
@@ -462,9 +467,9 @@ class TestGeneration(ProduceCase):
             {"id": "entry-points", "name": "e", "kind": "operation", "scope": "in", "status": "mapped",
              "locator": {"sourceId": "corpus", "citation": "p. 3"}},
         ]
-        model = generate.Model(intake, {"corpus": "corpus", "entries": entries,
+        model = semantics.Model(intake, {"corpus": "corpus", "entries": entries,
                                         "baseline": {"contentHash": "sha256:0", "hashDerivation": "raw", "asOf": None}}, "Test")
-        value, assertion, reserved = (generate.contract(model, item) for item in model.entries)
+        value, assertion, reserved = (semantics.contract(model, item) for item in model.entries)
         self.assertEqual((value["output"], value["asserts"], value["required"]), ("object", False, True))
         self.assertEqual((assertion["output"], assertion["asserts"], assertion["required"]), ("object", True, False))
         # A member may not take the name of a class the generated code declares around it.
@@ -510,7 +515,7 @@ class TestDerivedProvenance(unittest.TestCase):
         intake = type("Intake", (), {"package_id": "RulesFactory.Maps.Test", "version": "1.0.0"})()
         merged = {"corpus": "corpus", "entries": entries,
                   "baseline": {"contentHash": "sha256:0", "hashDerivation": "raw", "asOf": None}}
-        return generate.Model(intake, merged, "Test")
+        return semantics.Model(intake, merged, "Test")
 
     def citations(self, model, entry_id):
         return [model.locator_of(m)["citation"] for m in model.by_id[entry_id]["locators"]]
@@ -528,17 +533,17 @@ class TestDerivedProvenance(unittest.TestCase):
         self.assertEqual(self.citations(model, "top"), ["p. 2", "p. 3", "p. 1"])
         self.assertEqual(self.citations(model, "middle"), ["p. 2", "p. 3"])
 
-        entries = generate.map_entries_cs(model)
+        entries = entries_step.map_entries_cs(model)
         top = entries[entries.index("DerivedMapEntry Top"):]
         top = top[:top.index(");\n") + 3]
         self.assertIn('["middle", "a", "c"]', top)
         self.assertEqual(re.findall(r'new SourceLocator\("corpus", "([^"]+)"\)', top), ["p. 2", "p. 3", "p. 1"])
 
-        registry = generate.registry_cs(model)
+        registry = registry_step.registry_cs(model)
         self.assertIn('new("top", EntryStatus.Mapped, CorrespondenceRow.NotBuilt, '
                       '[MapEntries.B.Locator, MapEntries.C.Locator, MapEntries.A.Locator]),', registry)
 
-        tests = generate.tests_cs(model)
+        tests = correspondence.tests_cs(model)
         self.assertIn("public void top__cites_every_premise()", tests)
         self.assertIn('AssertDeclines("top", UnresolvedReason.UnsupportedRule, EntryPoints.Top.Resolve(global::Test.Requests.TopRequest.Empty), '
                       'new SourceLocator("corpus", "p. 2"), '
@@ -548,8 +553,8 @@ class TestDerivedProvenance(unittest.TestCase):
         model = self.model([self.located("a", "p. 1")])
         self.assertEqual(model.by_id["a"]["locators"], ["A"])
         self.assertIn('new("a", EntryStatus.Mapped, CorrespondenceRow.NotBuilt, [MapEntries.A.Locator]),',
-                      generate.registry_cs(model))
-        tests = generate.tests_cs(model)
+                      registry_step.registry_cs(model))
+        tests = correspondence.tests_cs(model)
         self.assertIn('AssertDeclines("a", UnresolvedReason.UnsupportedRule, EntryPoints.A.Resolve(global::Test.Requests.ARequest.Empty), '
                       'new SourceLocator("corpus", "p. 1"));', tests)
         self.assertNotIn("cites_every_premise", tests)
@@ -558,12 +563,12 @@ class TestDerivedProvenance(unittest.TestCase):
         """0025: assertedBy is exposed on the generated MapEntry and RegisteredEntry, additively."""
         assertion = dict(self.located("ties", "p. 13"), kind="assertion", assertedBy=["GM", "players"])
         model = self.model([assertion, self.located("a", "p. 1")])
-        entries = generate.map_entries_cs(model)
+        entries = entries_step.map_entries_cs(model)
         self.assertIn("public sealed record MapEntry(string Id, string Name, SourceLocator Locator)\n", entries)
         self.assertIn("public ImmutableArray<string> AssertedBy { get; init; } = [];", entries)
         self.assertIn('new SourceLocator("corpus", "p. 13")) { AssertedBy = ["GM", "players"] };', entries)
         self.assertIn('new SourceLocator("corpus", "p. 1"));', entries)
-        registry = generate.registry_cs(model)
+        registry = registry_step.registry_cs(model)
         self.assertIn("public sealed record RegisteredEntry(string Id, EntryStatus Status, CorrespondenceRow Row, "
                       "ImmutableArray<SourceLocator> Locators)\n", registry)
         self.assertIn("public ImmutableArray<string> AssertedBy { get; init; } = [];", registry)
@@ -572,11 +577,11 @@ class TestDerivedProvenance(unittest.TestCase):
         self.assertIn('new("a", EntryStatus.Mapped, CorrespondenceRow.NotBuilt, [MapEntries.A.Locator]),', registry)
 
     def test_a_cycle_is_refused(self):
-        with self.assertRaisesRegex(generate.GenerationError, "through a cycle"):
+        with self.assertRaisesRegex(semantics.GenerationError, "through a cycle"):
             self.model([self.derived("x", "y", "a"), self.derived("y", "x", "a"), self.located("a", "p. 1")])
 
     def test_a_source_the_map_lacks_is_refused_wherever_it_stands(self):
-        with self.assertRaisesRegex(generate.GenerationError, "'missing'"):
+        with self.assertRaisesRegex(semantics.GenerationError, "'missing'"):
             self.model([self.derived("x", "a", "missing"), self.located("a", "p. 1")])
 
 
@@ -807,7 +812,7 @@ class TestTransactional(ProduceCase):
 
         def remove_then_refuse(name, out):
             real(name, out)
-            raise factory.generate.GenerationError("forced after generation and the retired files were removed")
+            raise semantics.GenerationError("forced after generation and the retired files were removed")
         return mock.patch.object(factory, "remove_retired", remove_then_refuse)
 
     def fail_replace_after(self, out, count):

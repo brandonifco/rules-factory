@@ -45,6 +45,8 @@ PACK = os.path.join(TOOLS, "pack-map.py")
 _spec = importlib.util.spec_from_file_location("factory_main_backlog", os.path.join(FACTORY, "__main__.py"))
 factory = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(factory)
+import agentrails  # noqa: E402  (the agent policy the rails read; tools/factory is on sys.path now)
+import semantics  # noqa: E402  (the C# member name an entry takes)
 backlog = factory.backlog_step
 
 CASES = {
@@ -185,7 +187,7 @@ class BacklogCase(unittest.TestCase):
                         self.assertEqual(blocks[2 * i], source["locator"]["citation"].encode("utf-8"))
                         self.assertEqual(blocks[2 * i + 1], source["evidence"].encode("utf-8"))
                     self.assertEqual(blocks[-1], entry["note"].encode("utf-8"))
-                    self.assertIn(f'`Handlers.{factory.generate.pascal(entry["id"])}`'.encode(), data)
+                    self.assertIn(f'`Handlers.{semantics.pascal(entry["id"])}`'.encode(), data)
                     self.assertIn(b"mutation", data)
                     self.assertTrue(data.startswith(f"# {entry['id']}: ".encode()))
 
@@ -416,7 +418,7 @@ class BacklogCase(unittest.TestCase):
         retirement cannot reach it. A guard that called that a conflict would block a legitimate
         retirement; one that missed `*.g.cs` against `*.cs` would admit a lethal one.
         """
-        ownership = factory.generate.ownership
+        ownership = factory.ownership
         self.assertEqual(ownership.retired_conflicts(), [])
         self.assertTrue(ownership._segments_can_overlap("*b.md", "*.md"), "a supported pair, decided exactly")
         for pattern, expected in (("Directory.Packages.props", "Directory.Packages.props"),
@@ -456,7 +458,7 @@ class BacklogCase(unittest.TestCase):
         shape possible -- `*b.md` is still allowed, because `*`-and-a-suffix against
         `*`-and-a-suffix is decided exactly by whether one suffix ends the other.
         """
-        ownership = factory.generate.ownership
+        ownership = factory.ownership
         for pattern in ("backlog/a*.md", "backlog/*.md.*", "backlog/[0-9]*.md", "backlog/00?.md",
                         "{name}/old.md"):
             with self.subTest(pattern=pattern), \
@@ -973,7 +975,7 @@ class TestLabels(CreateCase):
         os.makedirs(os.path.join(self.engine, ".github"), exist_ok=True)
         # The labels the factory ships in the policy it writes, so this reads the defaults from
         # the one place they are decided rather than restating them (#188).
-        labels = dict(json.loads(factory.generate.agent_policy())["labels"], **overrides)
+        labels = dict(json.loads(agentrails.agent_policy())["labels"], **overrides)
         with open(os.path.join(self.engine, ".github", "agent-policy.json"), "w", encoding="utf-8") as handle:
             json.dump({"schemaVersion": 1, "labels": labels}, handle, indent=2)
 
