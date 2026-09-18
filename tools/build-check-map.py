@@ -53,6 +53,7 @@ MODULES = ("mapcontract.vocabulary", "mapcontract.entry",
            "mapvalidator.relations", "mapvalidator.manifest", "mapvalidator.extraction",
            "mapvalidator.ambiguity", "mapvalidator.bounds", "mapvalidator.status",
            "mapvalidator.inputs", "mapvalidator.crossrefs", "mapvalidator.correspondence",
+           "mapvalidator.epistemic",
            "mapvalidator.phases", "mapvalidator.cli")
 
 # The packages MODULES spans, in first-appearance order, and the one whose `__init__.py` is the
