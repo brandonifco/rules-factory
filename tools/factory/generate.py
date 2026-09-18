@@ -154,7 +154,14 @@ def produce(intake, name, out, log=None, adopt=(), reset=()):
             out, name, {p: t.encode("utf-8") for p, t in scaffold.managed_files().items()}, adopt, reset)
     except ownership.OwnershipError as error:
         raise GenerationError(str(error))
-    corpus_file = os.path.basename(str(intake.corpus.get("committedPath") or intake.corpus_name))
+    # Every corpus the map cites is shipped with the engine, not only the principal one: a rule
+    # the map states from § 172.102 is unreadable beside an engine carrying only § 172.101 (0039).
+    corpus_files = {v["sourceId"]: os.path.basename(str(v["corpus"].get("committedPath") or v["name"]))
+                    for v in intake.corpora}
+    if len(set(corpus_files.values())) != len(corpus_files):
+        raise GenerationError(f"two cited corpora are committed under the same file name "
+                              f"({', '.join(sorted(corpus_files.values()))}); an engine's corpus/ "
+                              f"directory would hold one of them")
 
     written = []
     for relative, text in scaffold.engine_owned(model).items():
@@ -168,8 +175,10 @@ def produce(intake, name, out, log=None, adopt=(), reset=()):
         if relative in agentrails.EXECUTABLE:
             os.chmod(path, 0o755)
         written.append(relative)
-    _write(os.path.join(out, "corpus", corpus_file), intake.corpus_bytes)
-    written.append(f"corpus/{corpus_file}")
+    for verified in intake.corpora:
+        name_on_disk = corpus_files[verified["sourceId"]]
+        _write(os.path.join(out, "corpus", name_on_disk), verified["bytes"])
+        written.append(f"corpus/{name_on_disk}")
     for relative, text in generated(model).items():
         _write(os.path.join(out, *relative.split("/")), text.encode("utf-8"))
         written.append(relative)

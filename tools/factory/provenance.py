@@ -19,9 +19,14 @@ The fields, and where each comes from:
   * `map` -- the package id and version from its nuspec, the SHA-256 of the `.nupkg` bytes,
     and the SHA-256 of the map, manifest and consumer checker at the paths the package's
     props name (`map/corpus-map.json`, `map/corpus-manifest.json`, `tools/check-map.py`).
-  * `corpus` -- sourceId, contentHash, hashDerivation and asOf of the one corpus, with
-    `recomputed: true`: intake derived contentHash from the corpus bytes under
-    hashDerivation and it matched; it was not copied from the map.
+  * `corpora` -- one entry per corpus the map cites, **sorted by `sourceId`**: its
+    sourceId, contentHash, hashDerivation, asOf, the `corpus/` path the engine carries it at,
+    and `principal: true` on the one the map's envelope names and its `baseline` stamps. Each
+    carries `recomputed: true`: intake derived contentHash from the bytes in hand under
+    hashDerivation and it matched; it was not copied across from the manifest. A map may cite
+    several corpora (0039), so this is a collection and not one object -- an engine built from a
+    map whose rules cross two served documents depends on both, and a record naming one of them
+    would asserts a correspondence it only half-checked.
   * `kernel` -- the RulesKernel version the engine references.
   * `packs` -- `[]`: no rule packs exist yet, and the empty list says so rather than omitting it.
   * `recipes` -- every file under `tools/factory/` (the factory's templates are its Python
@@ -137,7 +142,8 @@ import pins
 import semantics
 
 FILE_NAME = "provenance.json"
-FORMAT = 4  # 2: buildInputs (#69); 3: managed and engineOwned (#72); 4: the overlay is a directory (#247)
+FORMAT = 5  # 2: buildInputs (#69); 3: managed and engineOwned (#72); 4: the overlay is a directory (#247);
+#            5: `corpora`, every corpus the map cites, replaces the single `corpus` (#300, 0039)
 FACTORY_DIR = os.path.dirname(os.path.abspath(__file__))
 TAG = re.compile(r"^factory/v(\d+)\.(\d+)\.(\d+)$")
 SHORT_SHA = 12
@@ -405,7 +411,6 @@ def emit(model, out):
 
 
 def build(state, result, model, recorder, factory_dir=FACTORY_DIR):
-    corpus = result.corpus
     root = recorder.root
     generated_files = []
     for relative in sorted(recorder.paths, key=lambda p: p.encode("utf-8")):
@@ -445,13 +450,18 @@ def build(state, result, model, recorder, factory_dir=FACTORY_DIR):
                       for role, raw in (("map", result.map_raw), ("manifest", result.manifest_raw),
                                         ("checker", result.checker_raw))],
         },
-        "corpus": {
-            "sourceId": corpus["sourceId"],
-            "contentHash": corpus["contentHash"],
-            "hashDerivation": corpus["hashDerivation"],
-            "asOf": corpus.get("asOf"),
-            "recomputed": True,
-        },
+        "corpora": [
+            {
+                "sourceId": verified["sourceId"],
+                "contentHash": verified["corpus"]["contentHash"],
+                "hashDerivation": verified["corpus"]["hashDerivation"],
+                "asOf": verified["corpus"].get("asOf"),
+                "path": f"corpus/{os.path.basename(str(verified['corpus'].get('committedPath') or verified['name']))}",
+                "principal": verified["sourceId"] == (result.map or {}).get("corpus"),
+                "recomputed": True,
+            }
+            for verified in sorted(result.corpora, key=lambda v: v["sourceId"].encode("utf-8"))
+        ],
         "kernel": {"packageId": "RulesKernel", "version": pins.KERNEL_VERSION},
         "packs": [],
         "recipes": recipes(factory_dir, state["_top"]),
@@ -567,20 +577,39 @@ def recompute(engine_dir, produce_into, package=None):
         on_disk = claimed(recorded_inputs, build_inputs(engine_dir, recorded_generated))
         mismatches.extend(diff(recorded_inputs, on_disk, "buildInputs"))
 
-    corpus = recorded.get("corpus") or {}
-    corpus_files = [g["path"] for g in recorded.get("generated") or [] if str(g.get("path", "")).startswith("corpus/")]
-    if len(corpus_files) != 1:
-        return mismatches + [f"generated: names {len(corpus_files)} corpus/ files; exactly one is the corpus"]
-    corpus_path = os.path.join(engine_dir, *corpus_files[0].split("/"))
-    derive = intake_step.HASH_DERIVATIONS.get(corpus.get("hashDerivation"))
-    if derive is None:
-        mismatches.append(f"corpus.hashDerivation: {corpus.get('hashDerivation')!r} cannot be computed")
-    elif os.path.isfile(corpus_path):
-        with open(corpus_path, "rb") as handle:
-            actual = derive(handle.read())
-        if actual != corpus.get("contentHash"):
-            mismatches.append(f"corpus.contentHash: recorded {corpus.get('contentHash')}, {corpus_files[0]} "
-                              f"gives {actual} under {corpus.get('hashDerivation')}")
+    # Every corpus the record names is re-hashed from the engine's own copy, and the set of
+    # `corpus/` files the record generated has to be exactly the set it names (0039). Changing,
+    # removing or substituting any one of them is a named mismatch, not a silence.
+    corpora = [c for c in recorded.get("corpora") or [] if isinstance(c, dict)]
+    if not corpora:
+        return mismatches + ["corpora: the record names no corpus; provenance written by a factory "
+                             "before provenanceFormat 5 records `corpus` and is not comparable"]
+    generated_corpus = {g["path"] for g in recorded.get("generated") or []
+                        if str(g.get("path", "")).startswith("corpus/")}
+    named = {str(c.get("path")) for c in corpora}
+    if generated_corpus != named:
+        mismatches.append(f"corpora: the record names {sorted(named)} and generated "
+                          f"{sorted(generated_corpus)}; every cited corpus is carried and no other")
+    corpus_files = []
+    for corpus in sorted(corpora, key=lambda c: str(c.get("sourceId")).encode("utf-8")):
+        source_id = corpus.get("sourceId")
+        relative = str(corpus.get("path"))
+        corpus_files.append(relative)
+        corpus_path = os.path.join(engine_dir, *relative.split("/"))
+        derive = intake_step.HASH_DERIVATIONS.get(corpus.get("hashDerivation"))
+        if derive is None:
+            mismatches.append(f"corpora[{source_id}].hashDerivation: "
+                              f"{corpus.get('hashDerivation')!r} cannot be computed")
+        elif not os.path.isfile(corpus_path):
+            mismatches.append(f"corpora[{source_id}]: {relative} is named by the record and is not "
+                              f"in the engine, so its baseline cannot be re-derived")
+        else:
+            with open(corpus_path, "rb") as handle:
+                actual = derive(handle.read())
+            if actual != corpus.get("contentHash"):
+                mismatches.append(f"corpora[{source_id}].contentHash: recorded "
+                                  f"{corpus.get('contentHash')}, {relative} gives {actual} under "
+                                  f"{corpus.get('hashDerivation')}")
 
     source = recorded.get("map") or {}
     name = (recorded.get("engine") or {}).get("name")
@@ -589,7 +618,8 @@ def recompute(engine_dir, produce_into, package=None):
         copy = os.path.join(scratch, "engine")
         shutil.copytree(engine_dir, copy, ignore=COPY_IGNORE)
         try:
-            actual = produce_into(spec, os.path.join(copy, *corpus_files[0].split("/")), name, copy)
+            actual = produce_into(spec, [os.path.join(copy, *f.split("/")) for f in corpus_files],
+                                  name, copy)
         except (intake_step.Refused, intake_step.Usage, semantics.GenerationError) as error:
             return mismatches + [f"produce refused to re-produce the engine, so nothing else was compared: {error}"]
     if isinstance(recorded_inputs, list) and isinstance(actual.get("buildInputs"), list):

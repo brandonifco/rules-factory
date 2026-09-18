@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """The rules factory (#3): produce a .NET engine from a published corpus-map package.
 
-  python3 tools/factory produce --package <nupkg path | Id@Version> --corpus <file>
+  python3 tools/factory produce --package <nupkg path | Id@Version> --corpus <file> [--corpus <file> ...]
                                 --name <PascalName> --out <dir> [--no-verify]
   python3 tools/factory backlog --create --repo <owner/name> --dir <engine dir>
   python3 tools/factory backlog --render --dir <engine dir> [--to <directory>]
@@ -409,8 +409,11 @@ def describe_stale(stale):
 
 def produce_command(args, override):
     """The --no-verify produce command `args` describes, run under `override` when given."""
-    argv = ["python3", "tools/factory", "produce", "--package", args.package, "--corpus", args.corpus,
-            "--name", args.name, "--out", args.out]
+    corpora = args.corpus if isinstance(args.corpus, (list, tuple)) else [args.corpus]
+    argv = ["python3", "tools/factory", "produce", "--package", args.package]
+    for path in corpora:
+        argv += ["--corpus", path]
+    argv += ["--name", args.name, "--out", args.out]
     for flag, values in (("--adopt", getattr(args, "adopt", None)), ("--reset", getattr(args, "reset", None))):
         for value in values or ():
             argv += [flag, value]
@@ -422,9 +425,9 @@ def produce_command(args, override):
 
 def recompute_provenance(engine_dir, package=None):
     """Every provenance field of `engine_dir` that re-producing does not reproduce; [] when all match."""
-    def produce_into(spec, corpus, name, out):
+    def produce_into(spec, corpora, name, out):
         with contextlib.redirect_stdout(io.StringIO()):
-            return produce(argparse.Namespace(package=spec, corpus=corpus, name=name, out=out, allow_dirty=True,
+            return produce(argparse.Namespace(package=spec, corpus=corpora, name=name, out=out, allow_dirty=True,
                                               no_verify=True, check_locks=False))
     return provenance.recompute(engine_dir, produce_into, package)
 
@@ -471,7 +474,8 @@ def build_parser():
     commands = parser.add_subparsers(dest="command", required=True)
     p = commands.add_parser("produce", help="intake a map package and produce an engine")
     p.add_argument("--package", required=True, help="a .nupkg path, or Id@Version")
-    p.add_argument("--corpus", required=True, help="the corpus file the map was made of")
+    p.add_argument("--corpus", required=True, action="append", metavar="FILE",
+                   help="a corpus file the map cites; repeat once per cited corpus (0039)")
     p.add_argument("--name", required=True, help="PascalCase engine name")
     p.add_argument("--out", required=True, help="directory the engine is written to")
     p.add_argument("--allow-dirty", action="store_true",

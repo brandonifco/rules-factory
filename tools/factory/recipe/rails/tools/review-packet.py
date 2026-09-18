@@ -183,10 +183,14 @@ def build(number, base, out_dir, package_map=None):
     parts.append(section("4. What this engine was produced from",
                          f"- map `{record['map']['packageId']}` {record['map']['version']} "
                          f"(`sha256:{record['map'].get('nupkgSha256', '')}`)\n"
-                         f"- corpus `{record['corpus']['sourceId']}`, {record['corpus'].get('hashDerivation', '')}, "
-                         f"content hash `{record['corpus'].get('contentHash', '')}`\n"
-                         f"- randomness declared: `{record.get('randomness')}`\n"
-                         f"- factory `{record['factory'].get('commit', '')[:12]}`"))
+                         + "".join(
+                             f"- corpus `{c.get('sourceId')}`"
+                             + (" (principal)" if c.get("principal") else "")
+                             + f", {c.get('hashDerivation', '')}, "
+                             f"content hash `{c.get('contentHash', '')}`\n"
+                             for c in record.get("corpora") or [])
+                         + f"- randomness declared: `{record.get('randomness')}`\n"
+                         + f"- factory `{record['factory'].get('commit', '')[:12]}`"))
 
     overlay_diff = git("diff", f"{base}...{head}", "--", OVERLAY).rstrip()
     # The whole directory: one file per entry (#247), so a diff of `overlay` is this pull request's

@@ -268,7 +268,8 @@ factory ([0028](docs/decisions/0028-the-factory-admits-only-corpora-whose-licenc
 
 ```
 map package   a corpus map published as a .nupkg (0015): map, manifest, checker
-corpus        the one corpus the map cites, committed-copy, hashing to its baseline
+corpus        each corpus the map cites, committed-copy, hashing to its manifest baseline
+              (--corpus once per cited corpus; one map may cite several, decision 0039)
 name          the engine's PascalCase name
         |
         v

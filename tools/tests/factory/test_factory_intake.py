@@ -138,7 +138,9 @@ class TestAccepts(IntakeCase):
         self.assertEqual(len(result.map["entries"]), 47)
         self.assertEqual(result.corpus["sourceId"], "cfr-14-107")
         with open(PART107_XML, "rb") as handle:
-            self.assertEqual(result.corpus_bytes, handle.read())
+            self.assertEqual(result.corpora[0]["bytes"], handle.read())
+        # One cited corpus, so `corpora` holds exactly it and it is the principal one (0039).
+        self.assertEqual([v["sourceId"] for v in result.corpora], ["cfr-14-107"])
 
     def test_every_example_corpus_licence_is_admitted(self):
         """0028: the committed corpora the factory produces from are all public domain or open."""
@@ -166,7 +168,7 @@ class TestRefuses(IntakeCase):
         changed = os.path.join(self.tmp, "part107.xml")
         with open(changed, "wb") as handle:
             handle.write(data)
-        self.assert_refused(self.part107, changed, "is not cfr-14-107 at the map's baseline")
+        self.assert_refused(self.part107, changed, "is not cfr-14-107 at its declared baseline")
 
     def test_the_other_corpus(self):
         self.assert_refused(self.part107, HOYLE_TEXT, "is not cfr-14-107")

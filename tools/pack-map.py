@@ -15,8 +15,9 @@ The gate, in order:
   * `check-map.py --phase publish` -- every check, structural and status-dependent;
   * the locator checker for the corpus's adapter -- every citation resolves in the
     committed corpus, every absence is searched for, every page of the extent is reached.
-    An adapter with no checker here, a corpus that is not `committed-copy`, or a map citing
-    more than one corpus is refused as NOT VERIFIED: none of those is a pass.
+    An adapter with no checker here, a corpus that is not `committed-copy`, a map citing
+    corpora read by two different adapters, or a map citing several corpora whose adapter's
+    checker reads one per run, is refused as NOT VERIFIED: none of those is a pass.
 
 The package, and why it is byte-for-byte deterministic:
 
@@ -81,6 +82,11 @@ import intake  # noqa: E402  (its licence_class, decision 0028; standard library
 
 # The locator checker for each adapter. A corpus whose adapter is not here cannot have its
 # citations checked, and a map whose citations cannot be checked is not published.
+#: Adapters whose locator checker reads a map citing several corpora, each entry against the one
+#: its own `locator.sourceId` names (#298). The others read one corpus per run, and a map citing
+#: several is refused for them -- accurately, and not for the whole class.
+MULTI_CORPUS_ADAPTERS = {"ecfr-xml"}
+
 LOCATOR_CHECKERS = {
     "plain-text": os.path.join(REPO, "tools", "check-locators.py"),
     "ecfr-xml": os.path.join(REPO, "examples", "faa-part-107", "check-locators-section.py"),
@@ -271,24 +277,39 @@ def gate(inputs, repo_root):
         sys.executable, CHECKER, inputs["map_path"],
         "--manifest", inputs["manifest_path"], "--repo-root", repo_root, "--phase", "publish"])
 
-    cited = cited_corpora(inputs["map"])
-    if len(cited) != 1:
-        raise Refused(f"NOT VERIFIED -- the map cites {sorted(cited)}; every locator checker reads "
-                      f"exactly one corpus, so these citations cannot all be checked")
-    source_id = next(iter(cited))
-    corpus = corpora.get(source_id)
-    if corpus is None:
-        raise Refused(f"the map cites {source_id!r}, which the manifest does not declare")
-    if corpus.get("verification") != "committed-copy":
-        raise Refused(f"NOT VERIFIED -- {source_id} is {corpus.get('verification')!r}, not "
-                      f"`committed-copy`, so no publish job can read the corpus to check a citation")
-    checker = LOCATOR_CHECKERS.get(corpus.get("adapter"))
+    # A map may cite several corpora (0039). Every one of them is gated: declared, committed,
+    # readable by a checker. The refusal this replaced said "every locator checker reads exactly
+    # one corpus", which stopped being true at #301 -- the `section-designation` checker reads a
+    # corpus per `locator.sourceId`. What is still true is narrower and is what is asked here.
+    cited = sorted(cited_corpora(inputs["map"]))
+    if not cited:
+        raise Refused("the map cites no corpus")
+    for source_id in cited:
+        corpus = corpora.get(source_id)
+        if corpus is None:
+            raise Refused(f"the map cites {source_id!r}, which the manifest does not declare")
+        if corpus.get("verification") != "committed-copy":
+            raise Refused(f"NOT VERIFIED -- {source_id} is {corpus.get('verification')!r}, not "
+                          f"`committed-copy`, so no publish job can read the corpus to check a citation")
+    adapters = {corpora[source_id].get("adapter") for source_id in cited}
+    if len(adapters) != 1:
+        raise Refused(f"NOT VERIFIED -- the map cites corpora read by {len(adapters)} adapters "
+                      f"({', '.join(sorted(map(str, adapters)))}); one locator run reads one "
+                      f"grammar, so these citations cannot all be checked in it")
+    adapter = next(iter(adapters))
+    checker = LOCATOR_CHECKERS.get(adapter)
     if checker is None:
-        raise Refused(f"NOT VERIFIED -- no locator checker for adapter {corpus.get('adapter')!r}; "
+        raise Refused(f"NOT VERIFIED -- no locator checker for adapter {adapter!r}; "
                       f"known: {', '.join(sorted(LOCATOR_CHECKERS))}")
-    text = os.path.join(os.path.dirname(inputs["manifest_path"]), str(corpus.get("committedPath")))
-    run_step(f"{os.path.relpath(checker, REPO)} ({corpus.get('adapter')})",
-             [sys.executable, checker, inputs["map_path"], text])
+    if len(cited) > 1 and adapter not in MULTI_CORPUS_ADAPTERS:
+        raise Refused(f"NOT VERIFIED -- the map cites {cited} and {os.path.basename(checker)} reads "
+                      f"one corpus per run, so these citations cannot all be checked")
+    here = os.path.dirname(inputs["manifest_path"])
+    texts = [os.path.join(here, str(corpora[source_id].get("committedPath"))) for source_id in cited]
+    argv = ([f"{source_id}={path}" for source_id, path in zip(cited, texts)]
+            if len(cited) > 1 else texts)
+    run_step(f"{os.path.relpath(checker, REPO)} ({adapter})",
+             [sys.executable, checker, inputs["map_path"], *argv])
 
 
 def packaged_manifest(inputs):
