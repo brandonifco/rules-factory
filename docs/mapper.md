@@ -27,8 +27,23 @@ corpus*; the protocol says what walking this corpus means.
 
 ## The mapping protocol
 
-`mapping-protocol.json`, beside the map. One per map, and `validate.sh` fails a map without one:
-a map with no protocol cannot say how it was read.
+Beside the map, and `validate.sh` fails a map without one: a map with no protocol cannot say how
+it was read.
+
+**One protocol is about one corpus, and a map has one per corpus it cites**
+([0040](decisions/0040-a-protocol-is-about-one-corpus-and-a-map-has-one-per-corpus-it-cites.md)).
+`mapping-protocol.json` for a map citing one corpus — every map committed before trial 10 — and
+`mapping-protocol-<sourceId>.json` once it cites several
+([0039](decisions/0039-the-manifest-pins-every-corpus-a-map-cites.md)). Trial 10's two corpora are
+why: § 172.101 states a rule in a table row and points with a bare code in column 7, § 172.102
+states prose inside an `EXTRACT` and points with a section designation. A single protocol over
+both would have to declare the union of their units and mechanisms, and a union says of each
+corpus things that are true only of the other. The protocol's value is that it is specific enough
+to be wrong.
+
+A cited corpus with no protocol is refused, naming which; so is a
+`mapping-protocol-<sourceId>.json` for a corpus the map does not cite, and a protocol whose
+`corpus` the manifest declares but the map never reads. Declared is not read.
 
 It is **not** packed into the map package
 ([0015](decisions/0015-a-map-is-published-as-a-versioned-package.md)). The package carries the

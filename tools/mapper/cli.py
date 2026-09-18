@@ -57,52 +57,79 @@ def _find_manifest(map_path):
 
 
 def _inputs(args):
+    """(map, [(sourceId, path, protocol)]) -- one protocol per corpus the map cites (0040).
+
+    `--protocol` still names one file, for a map citing one corpus; a map citing several is
+    refused there rather than having one of its protocols silently stand for all of them.
+    """
     document = _read(args.map_path, "map")
-    path = args.protocol or protocol_step.path_beside(args.map_path)
-    if not os.path.exists(path):
-        raise protocol_step.Refused(
-            f"no {protocol_step.PROTOCOL_FILENAME} beside {args.map_path}; a map with no protocol "
-            f"is one that cannot say how its corpus was read (0032)")
-    return document, path, protocol_step.load(path)
+    if getattr(args, "protocol", None):
+        cited = sorted(protocol_step.cited_corpora(document))
+        if len(cited) != 1:
+            raise protocol_step.Refused(
+                f"--protocol names one file and {os.path.basename(args.map_path)} cites "
+                f"{len(cited)} corpora ({', '.join(cited)}); each has its own protocol (0040)")
+        if not os.path.exists(args.protocol):
+            raise protocol_step.Refused(f"no protocol at {args.protocol}")
+        return document, [(cited[0], args.protocol, protocol_step.load(args.protocol))]
+    found = protocol_step.paths_beside(args.map_path, document)
+    return document, [(source_id, path, protocol_step.load(path))
+                      for source_id, path in sorted(found.items())]
 
 
 def command_protocol(args):
-    document, path, protocol = _inputs(args)
+    """Every protocol the map has, each checked against the map and the manifest (0040)."""
+    document, protocols = _inputs(args)
     manifest_path = args.manifest or _find_manifest(args.map_path)
     manifest = _read(manifest_path, "manifest") if manifest_path else None
-    problems = protocol_step.check(protocol, document, manifest)
-    print(f"{path} (corpus {protocol.get('corpus')!r}, {len(entries_of(document))} entries in "
-          f"{os.path.basename(args.map_path)}"
-          + (f", manifest {os.path.basename(manifest_path)}" if manifest_path else ", no manifest")
-          + ")")
-    for line in problems:
-        print(f"  X  {line}")
+    problems = []
+    for _, path, protocol in protocols:
+        found = protocol_step.check(protocol, document, manifest)
+        print(f"{path} (corpus {protocol.get('corpus')!r}, {len(entries_of(document))} entries in "
+              f"{os.path.basename(args.map_path)}"
+              + (f", manifest {os.path.basename(manifest_path)}" if manifest_path else ", no manifest")
+              + ")")
+        for line in found:
+            print(f"  X  {line}")
+        problems += found
     if problems:
-        print(f"\n{len(problems)} problem(s) in the protocol")
+        print(f"\n{len(problems)} problem(s) in {len(protocols)} protocol(s)")
         return 1
 
-    here, elsewhere = [], []
-    for mechanism in protocol_step.mechanisms_of(protocol):
-        name = mechanism.get("mechanism")
-        (here if name in protocol_step.DETECTED_HERE else elsewhere).append(name)
-    print(f"  units: {', '.join(protocol.get('units'))}")
-    print(f"  pointers detected by `mapper pointers`: {', '.join(here) or 'none'}")
-    for name in elsewhere:
-        print(f"  pointers detected elsewhere: {name} -- "
-              f"{protocol_step.DETECTED_ELSEWHERE[name]}")
-    # Said out loud on every run, because a sweep the mapper cannot run must be visible here
-    # rather than absent from the report `mapper sweeps` prints.
-    declared = protocol.get("requiredSweeps")
-    missing = [name for name in declared if name not in sweeps_step.REGISTRY]
-    print(f"  sweeps declared: {', '.join(declared)} -- run by `mapper sweeps`"
-          + (f"; NOT IMPLEMENTED: {', '.join(missing)}" if missing else ""))
-    print(f"  adapter reach: "
-          + ", ".join(f"{k}={v}" for k, v in sorted(protocol.get('adapterReach').items())))
+    for _, path, protocol in protocols:
+        if len(protocols) > 1:
+            print(f"--- {os.path.basename(path)}")
+        here, elsewhere = [], []
+        for mechanism in protocol_step.mechanisms_of(protocol):
+            name = mechanism.get("mechanism")
+            (here if name in protocol_step.DETECTED_HERE else elsewhere).append(name)
+        print(f"  units: {', '.join(protocol.get('units'))}")
+        print(f"  pointers detected by `mapper pointers`: {', '.join(here) or 'none'}")
+        for name in elsewhere:
+            print(f"  pointers detected elsewhere: {name} -- "
+                  f"{protocol_step.DETECTED_ELSEWHERE[name]}")
+        # Said out loud on every run, because a sweep the mapper cannot run must be visible here
+        # rather than absent from the report `mapper sweeps` prints.
+        declared = protocol.get("requiredSweeps")
+        missing = [name for name in declared if name not in sweeps_step.REGISTRY]
+        print(f"  sweeps declared: {', '.join(declared)} -- run by `mapper sweeps`"
+              + (f"; NOT IMPLEMENTED: {', '.join(missing)}" if missing else ""))
+        print(f"  adapter reach: "
+              + ", ".join(f"{k}={v}" for k, v in sorted(protocol.get('adapterReach').items())))
     return 0
 
 
 def command_pointers(args):
-    document, path, protocol = _inputs(args)
+    document, protocols = _inputs(args)
+    worst = 0
+    for _, path, protocol in protocols:
+        if len(protocols) > 1:
+            print(f"--- {os.path.basename(path)}")
+        worst = max(worst, _pointers_for(args, document, path, protocol))
+    return worst
+
+
+def _pointers_for(args, document, path, protocol):
     declared = protocol_step.mechanisms_of(protocol, "defined-term-use")
     print(f"{args.map_path} ({len(entries_of(document))} entries, protocol "
           f"{os.path.basename(path)})")
@@ -231,8 +258,13 @@ def command_sweeps(args):
     what separates this from the phrase scan #208 measured as blind: a cue this misses does not
     hide the unit, because the inventory reports it unaccounted either way.
     """
-    document, path, protocol = _inputs(args)
+    document, protocols = _inputs(args)
     walk = _walk(args)
+    # The walk is over the map's principal corpus, so the protocol run here is that corpus's.
+    # Sweeping every cited corpus needs a walk per corpus, which is #305 and not this change.
+    chosen = [(source_id, path, protocol) for source_id, path, protocol in protocols
+              if source_id == walk.source] or protocols[:1]
+    _, path, protocol = chosen[0]
     results = sweeps_step.run(protocol, walk.units, walk.taken, walk.corpus_entry())
     print(f"{args.map_path} against corpus {walk.source!r} [{walk.adapter.name}], "
           f"{len(walk.taken.unaccounted)} of {len(walk.units)} unit(s) unaccounted, protocol "
