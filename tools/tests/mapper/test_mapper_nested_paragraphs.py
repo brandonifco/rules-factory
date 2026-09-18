@@ -347,10 +347,12 @@ class TestEveryOccurrenceIsHeldToTheCitation(unittest.TestCase):
 
 
 class TestTheWrapperSetIsClosed(unittest.TestCase):
-    """Mutation: descend into every child of a `DIV8` that holds children of its own.
+    """Mutation: name a table a run of paragraphs -- `DIV`/`TABLE`/`TR` as wrappers and `TD` as a
+    paragraph, in both tables at once so they stay equal.
 
-    The set is a decision, and a set that is "whatever has children" is not one. A `DIV` holds a
-    table, whose rows are units of their own (0035).
+    That is the reading 0035 refused, and it is what an open set slides into: a table's rows are
+    units of their own, and a cell flattened into the paragraph index is addressed twice and
+    quotable as prose.
     """
 
     def test_a_table_inside_a_wrapper_is_not_flattened_into_the_paragraph_index(self):
@@ -359,8 +361,8 @@ class TestTheWrapperSetIsClosed(unittest.TestCase):
         self.assertNotIn("5 L", stated)
 
     def test_the_table_is_still_a_table_of_the_section(self):
-        # `table_index` reaches it by `.iter`, so descending into the DIV would index its words
-        # twice, once as prose with a designation and once as a row.
+        # `table_index` reaches it by `.iter` whatever this walk does, so descending into the DIV
+        # indexes its words twice: once as prose with a designation and once as a row.
         directory = tempfile.mkdtemp(prefix="nested-paragraphs-table-")
         self.addCleanup(shutil.rmtree, directory)
         tables = checker.table_index(written(directory))
