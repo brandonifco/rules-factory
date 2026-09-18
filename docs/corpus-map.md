@@ -493,14 +493,32 @@ two through a mapping trial, a build and a review**
 point. They are the measurable symptom of a mapper who stopped reading, and quoting is the only
 part of that a check can reach.
 
-**Contiguous, and no ellipsis.** The checker matches the longest contiguous *prefix* of the
-span, so a `...` in the middle silently reduces what was verified to the words before it — a
-check reporting a pass over a fraction of what it appears to have read. `point-designations`
-was exactly this: a 118-word `evidence` of which 11 words were ever checked. Truncating a
-sentence at either end is fine; eliding its middle is not. Where the intervening text is not
-itself the rule, include it — a shorter honest span beats a longer edited one. **If the rule
-genuinely needs two separated passages, that is evidence the entry is two entries**, which is
-the granularity finding the map already rests on.
+**An ellipsis skips whole paragraphs and never words inside one**
+([0037](decisions/0037-an-ellipsis-skips-whole-paragraphs-and-never-words-inside-one.md),
+[#282](https://github.com/brandonifco/rules-factory/issues/282)). Truncating a span at either end
+is fine; eliding its middle is not, and the line between the two is the corpus's own paragraph
+boundary. At every `...` in a prose `evidence`, the text before it must end where a paragraph
+ends and the text after it must begin where one begins — so a quote may pass over a paragraph the
+citation names, and may never drop a qualifying clause from inside the sentence an entry rests
+on. The words an ellipsis skips this way are visible in the citation, which must name every
+paragraph the quote touches; words dropped from inside a paragraph are visible nowhere.
+
+A **table row** carries no ellipsis at all
+([0035](decisions/0035-a-rule-stated-in-a-table-row-is-cited-by-its-row.md)): a row is short, has
+no paragraphs inside it to skip, and an ellipsis in the middle of one elides a column.
+
+Where the intervening text is not itself the rule, include it — a shorter honest span beats a
+longer edited one. **If the rule genuinely needs two passages the same citation cannot name, that
+is evidence the entry is two entries**, which is the granularity finding the map already rests
+on; whether that holds for a corpus built to break it is trial 10's first hypothesis
+([#262](https://github.com/brandonifco/rules-factory/issues/262)).
+
+A separate weakness, and **not** what the rule above describes: the page-marked checker
+(`check-locators.py`) matches the longest contiguous *prefix* of a span and reports coverage,
+because it was retrofitted onto evidence that was never a quote. `point-designations` was exactly
+that — a 118-word `evidence` of which 11 words were ever checked. That is
+[#18](https://github.com/brandonifco/rules-factory/issues/18)'s unfinished business and is
+recorded as such, rather than being described here as though it were the ellipsis rule.
 
 **A span may straddle a page marker, and carries it verbatim.** The arrangement sentence begins
 on p. 272 and the `{273}` marker falls mid-sentence. Citing either page is honest and the
