@@ -125,7 +125,9 @@ check_pointers() {
 staged_checked=0
 check_blind_staging() {
   local record
-  for record in examples/*/blind-mapping/staged-inputs.json examples/*/*/staged-inputs.json; do
+  # One glob: a staging record sits beside the comparison it belongs to, one level down from the
+  # trial, the way blind-mapping/ already holds results.json and resolutions.json.
+  for record in examples/*/*/staged-inputs.json; do
     [ -e "$record" ] || continue
     printf -- '--- %s\n' "$record"
     python3 tools/mapper stage --verify "$record" || return 1
