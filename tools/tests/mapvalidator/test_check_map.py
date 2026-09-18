@@ -258,8 +258,24 @@ class MapCase(unittest.TestCase):
         self.assertIsNotNone(found, f"check {check!r} did not report at all:\n{output}")
         return found.group(1)
 
-    def assert_catches(self, check, mutate, expect="fail"):
-        """The valid map passes this check; the mutation makes this check report `expect`."""
+    def assert_catches(self, check, mutate, expect="fail", *, message=None):
+        """The valid map passes this check; the mutation makes this check say `message`.
+
+        `message` is **required** and is a fragment of the refusal the mutation must produce
+        ([#283](https://github.com/brandonifco/rules-factory/issues/283)). Asserting only the
+        check's verdict was not enough: a mutation that damages the map in a way *another rule
+        of the same check* also catches still showed red, and the test passed while proving
+        nothing about the rule it was written for. Four of #280's eighteen extent tests did
+        exactly that, and nothing said how many others do.
+
+        It is keyword-only with no usable default, so the next test cannot be written without
+        one -- which is the part of #283 a one-time audit could not deliver.
+        """
+        if not message:
+            raise AssertionError(
+                f"assert_catches({check!r}, ...) names no expected refusal. Assert the message, "
+                f"not only the verdict: a neighbouring rule of the same check can satisfy the "
+                f"verdict while the rule this test is about goes unexercised (#283)")
         code, output = self.run_tool(valid_map())
         self.assertEqual(self.status_of(output, check), "ok", output)
         self.assertEqual(code, 0, output)
@@ -268,9 +284,41 @@ class MapCase(unittest.TestCase):
         code, output = self.run_tool(document)
         self.assertEqual(self.status_of(output, check), expect, output)
         self.assertEqual(code, 1, output)
+        self.assertIn(message, output,
+                      f"the {check!r} check refused the map, but not with the refusal this test "
+                      f"names -- another rule of the same check may be doing the work:\n{output}")
 
 
 # --- one test per check ------------------------------------------------------------------
+
+
+class TestTheHelperCannotBeUsedWithoutNamingARefusal(MapCase):
+    """#283: the verdict alone was never enough, and nothing stopped a test asserting only it.
+
+    `assert_catches` asserted that a named check said `fail`. A mutation caught by a *different
+    rule of the same check* satisfied that, and the test passed while the rule it was written for
+    went unexercised -- measured on #280, where four of eighteen new extent tests stayed green
+    under the mutation that removed the very rule they name.
+
+    An audit fixes the call sites that exist. This fixes the ones that do not exist yet, which is
+    why the argument is required rather than merely present everywhere today.
+
+    Mutation: give `message` a default of `""`, or drop the guard. Both tests here go green while
+    a test asserting nothing about the refusal becomes writable again.
+    """
+
+    def test_assert_catches_refuses_a_call_that_names_no_refusal(self):
+        with self.assertRaises(AssertionError) as caught:
+            self.assert_catches("schema", lambda d: d.pop("baseline"))
+        self.assertIn("names no expected refusal", str(caught.exception))
+
+    def test_the_refusal_must_be_the_one_the_check_actually_gave(self):
+        # A message from a neighbouring rule of the same check does not satisfy it: this is the
+        # shape of the four #280 tests, written out so the guard is demonstrated and not assumed.
+        with self.assertRaises(AssertionError) as caught:
+            self.assert_catches("schema", lambda d: d.pop("baseline"),
+                                message="a schema version this checker does not read")
+        self.assertIn("not with the refusal this test names", str(caught.exception))
 
 
 class TestFixtureIsValid(MapCase):
@@ -287,22 +335,22 @@ class TestFixtureIsValid(MapCase):
 
 class TestSchema(MapCase):
     def test_a_map_without_its_baseline_stamp_fails(self):
-        self.assert_catches("schema", lambda d: d.pop("baseline"))
+        self.assert_catches("schema", lambda d: d.pop("baseline"), message='map is missing `baseline`')
 
     def test_a_baseline_without_its_derivation_fails(self):
-        self.assert_catches("schema", lambda d: d["baseline"].pop("hashDerivation"))
+        self.assert_catches("schema", lambda d: d["baseline"].pop("hashDerivation"), message='baseline is missing `hashDerivation`: a digest without its')
 
     def test_a_schema_version_this_checker_does_not_read_fails(self):
-        self.assert_catches("schema", lambda d: d.update(schemaVersion=2))
+        self.assert_catches("schema", lambda d: d.update(schemaVersion=2), message='schemaVersion 2 is not one this checker reads (1)')
 
 
     def test_an_inline_manifest_is_refused_rather_than_ignored(self):
         # #60: the blind Part 107 map carried `manifest` inline, and the checker reported "no
         # manifest" and skipped every resolution while the key sat there unread.
-        self.assert_catches("schema", lambda d: d.update(manifest=MANIFEST))
+        self.assert_catches("schema", lambda d: d.update(manifest=MANIFEST), message='map carries `manifest` inline')
 
     def test_an_unknown_top_level_field_is_refused(self):
-        self.assert_catches("schema", lambda d: d.update(coverage="twelve sections"))
+        self.assert_catches("schema", lambda d: d.update(coverage="twelve sections"), message='map has top-level `coverage`')
 
     def test_every_example_map_uses_only_known_top_level_fields(self):
         # The closed envelope must not break a map the repository already ships.
@@ -324,7 +372,14 @@ class TestExtent(MapCase):
     def section_map(self):
         return section_cited_map()
 
-    def assert_section_catches(self, mutate):
+    def assert_section_catches(self, mutate, *, message=None):
+        """As `assert_catches`, for the `extent` check. `message` is required for the
+        same reason: a neighbouring rule of one check can satisfy its verdict (#283)."""
+        if not message:
+            raise AssertionError(
+                "assert_section_catches(...) names no expected refusal. Assert the message, not only "
+                "the verdict: a neighbouring rule of `extent` can satisfy it while the "
+                "rule this test is about goes unexercised (#283)")
         code, output = self.run_tool(self.section_map())
         self.assertEqual(self.status_of(output, "extent"), "ok", output)
         self.assertEqual(code, 0, output)
@@ -333,6 +388,9 @@ class TestExtent(MapCase):
         code, output = self.run_tool(document)
         self.assertEqual(self.status_of(output, "extent"), "fail", output)
         self.assertEqual(code, 1, output)
+        self.assertIn(message, output,
+                      f"`extent` refused the map, but not with the refusal this test names -- "
+                      f"another rule of the same check may be doing the work:\n{output}")
         return output
 
     def test_a_page_extent_may_end_before_a_heading(self):
@@ -345,52 +403,52 @@ class TestExtent(MapCase):
         self.assertEqual(code, 0, output)
 
     def test_an_empty_ends_before_fails(self):
-        self.assert_catches("extent", lambda d: d["extent"].update(endsBefore=""))
+        self.assert_catches("extent", lambda d: d["extent"].update(endsBefore=""), message="endsBefore is ''; it names one heading on page `to`, as a")
 
     def test_an_ends_before_that_is_not_one_line_fails(self):
-        self.assert_catches("extent", lambda d: d["extent"].update(endsBefore="Damage\nand Healing"))
+        self.assert_catches("extent", lambda d: d["extent"].update(endsBefore="Damage\nand Healing"), message="endsBefore is 'Damage\\nand Healing'")
 
     def test_an_ends_before_that_is_not_text_fails(self):
-        self.assert_catches("extent", lambda d: d["extent"].update(endsBefore=16))
+        self.assert_catches("extent", lambda d: d["extent"].update(endsBefore=16), message='endsBefore is 16; it names one heading on page `to`, as a')
 
     def test_starts_after_is_not_a_field_of_a_page_extent(self):
         # No real case needs it (0024), so it is refused like any other unknown field.
-        self.assert_catches("extent", lambda d: d["extent"].update(startsAfter="Combat"))
+        self.assert_catches("extent", lambda d: d["extent"].update(startsAfter="Combat"), message='`startsAfter` is not a field of a page extent (unit, from')
 
     def test_a_page_extent_that_is_not_a_range_fails(self):
-        self.assert_catches("extent", lambda d: d["extent"].update({"from": 4, "to": 1}))
+        self.assert_catches("extent", lambda d: d["extent"].update({"from": 4, "to": 1}), message='`to` 1 is before `from` 4')
 
     def test_a_page_extent_with_a_non_integer_bound_fails(self):
-        self.assert_catches("extent", lambda d: d["extent"].update({"to": "280"}))
+        self.assert_catches("extent", lambda d: d["extent"].update({"to": "280"}), message='a page extent names integer `from` and `to`')
 
     def test_an_extent_in_an_unknown_unit_fails(self):
-        self.assert_catches("extent", lambda d: d["extent"].update({"unit": "paragraph"}))
+        self.assert_catches("extent", lambda d: d["extent"].update({"unit": "paragraph"}), message="unit is 'paragraph', outside {page, section-designation}")
 
     def test_an_extent_mixing_the_two_shapes_fails(self):
-        self.assert_catches("extent", lambda d: d["extent"].update({"sections": ["§ 1.10"]}))
+        self.assert_catches("extent", lambda d: d["extent"].update({"sections": ["§ 1.10"]}), message='`sections` is not a field of a page extent (unit, from, to')
 
     def test_a_citation_outside_the_declared_sections_fails(self):
         output = self.assert_section_catches(
-            lambda d: d["entries"][0]["locator"].update(citation="§ 1.12(b)"))
+            lambda d: d["entries"][0]["locator"].update(citation="§ 1.12(b)"), message='cites § 1.12, outside the declared extent (2 sections), and')
         self.assertIn("§ 1.12", output)
 
     def test_a_section_list_holding_a_paragraph_fails(self):
-        self.assert_section_catches(lambda d: d["extent"]["sections"].append("§ 1.12(a)"))
+        self.assert_section_catches(lambda d: d["extent"]["sections"].append("§ 1.12(a)"), message="sections holds '§ 1.12(a)'")
 
     def test_a_section_listed_twice_fails(self):
-        self.assert_section_catches(lambda d: d["extent"]["sections"].append("§ 1.10"))
+        self.assert_section_catches(lambda d: d["extent"]["sections"].append("§ 1.10"), message='§ 1.10 is listed twice')
 
     def test_an_empty_section_list_fails(self):
-        self.assert_section_catches(lambda d: d["extent"].update(sections=[]))
+        self.assert_section_catches(lambda d: d["extent"].update(sections=[]), message='a section-designation extent names a non-empty `sections`')
 
     def test_a_citation_in_no_section_grammar_fails(self):
         self.assert_section_catches(
-            lambda d: d["entries"][0]["locator"].update(citation="Part One / p. 1"))
+            lambda d: d["entries"][0]["locator"].update(citation="Part One / p. 1"), message="citation 'Part One / p. 1' names no section or subpart")
 
     def test_an_in_scope_entry_citing_a_subpart_outside_the_extent_fails(self):
         # speed-limit is scope: in.
         self.assert_section_catches(
-            lambda d: d["entries"][0]["locator"].update(citation="subpart D"))
+            lambda d: d["entries"][0]["locator"].update(citation="subpart D"), message='cites subpart D, outside the declared extent (2 sections)')
 
     def test_an_out_of_scope_entry_may_cite_beyond_the_extent_and_is_reported(self):
         # Part 107's subpart-d-categories cites "subpart D", and #61's waiver entries cite
@@ -408,7 +466,7 @@ class TestExtent(MapCase):
         def mutate(document):
             document["entries"][6]["locator"]["citation"] = "§ 1.200"
             document["entries"][6]["scope"] = "in"
-        self.assert_section_catches(mutate)
+        self.assert_section_catches(mutate, message='cites § 1.200, outside the declared extent (2 sections)')
 
     def test_a_table_slice_is_a_shape_the_extent_may_carry(self):
         # 0035: the rows it takes, and the tables it does not, both named.
@@ -461,7 +519,14 @@ class TestTableSlice(MapCase):
     passes over in silence (`tools/tests/mapper/test_mapper_table_rows.py`).
     """
 
-    def assert_table_catches(self, mutate):
+    def assert_table_catches(self, mutate, *, message=None):
+        """As `assert_catches`, for the `extent` check. `message` is required for the
+        same reason: a neighbouring rule of one check can satisfy its verdict (#283)."""
+        if not message:
+            raise AssertionError(
+                "assert_table_catches(...) names no expected refusal. Assert the message, not only "
+                "the verdict: a neighbouring rule of `extent` can satisfy it while the "
+                "rule this test is about goes unexercised (#283)")
         code, output = self.run_tool(table_map())
         self.assertEqual(self.status_of(output, "extent"), "ok", output)
         self.assertEqual(code, 0, output)
@@ -470,12 +535,15 @@ class TestTableSlice(MapCase):
         code, output = self.run_tool(document)
         self.assertEqual(self.status_of(output, "extent"), "fail", output)
         self.assertEqual(code, 1, output)
+        self.assertIn(message, output,
+                      f"`extent` refused the map, but not with the refusal this test names -- "
+                      f"another rule of the same check may be doing the work:\n{output}")
         return output
 
     def test_a_row_the_slice_does_not_take_is_outside_the_extent(self):
         output = self.assert_table_catches(
             lambda d: d["entries"][0]["locator"].update(
-                citation='§ 1.10 table 1, row [column 2 = "Acetaldehyde"]'))
+                citation='§ 1.10 table 1, row [column 2 = "Acetaldehyde"]'), message='cites § 1.10 table 1, row [column 2 = "Acetaldehyde"], and')
         self.assertIn("does not take that row", output)
 
     def test_the_order_of_a_keys_pairs_is_not_part_of_what_it_names(self):
@@ -491,81 +559,81 @@ class TestTableSlice(MapCase):
     def test_a_row_of_an_excluded_table_fails(self):
         output = self.assert_table_catches(
             lambda d: d["entries"][0]["locator"].update(
-                citation='§ 1.10 table 2, row [column 1 = "A3"]'))
+                citation='§ 1.10 table 2, row [column 1 = "A3"]'), message='cites § 1.10 table 2, row [column 1 = "A3"], and the extent')
         self.assertIn("excludes § 1.10 table 2", output)
 
     def test_a_row_of_a_table_the_extent_does_not_name_fails(self):
         output = self.assert_table_catches(
             lambda d: d["entries"][0]["locator"].update(
-                citation='§ 1.10 table 4, row [column 2 = "Acetal"]'))
+                citation='§ 1.10 table 4, row [column 2 = "Acetal"]'), message='cites § 1.10 table 4, row [column 2 = "Acetal"], and the')
         self.assertIn("declares no slice of § 1.10 table 4", output)
 
     def test_a_row_of_a_section_outside_the_extent_fails(self):
         output = self.assert_table_catches(
             lambda d: d["entries"][0]["locator"].update(
-                citation='§ 1.99 table 1, row [column 2 = "Acetal"]'))
+                citation='§ 1.99 table 1, row [column 2 = "Acetal"]'), message='cites § 1.99, outside the declared extent (2 sections), and')
         self.assertIn("§ 1.99", output)
 
     def test_a_slice_of_a_section_the_extent_does_not_cite_fails(self):
         output = self.assert_table_catches(
             lambda d: d["extent"]["tables"].append({"section": "§ 1.99", "table": 1,
-                                                    "rows": "all"}))
+                                                    "rows": "all"}), message='§ 1.99 is not in the declared extent')
         self.assertIn("§ 1.99 is not in the declared extent", output)
 
     def test_the_same_table_sliced_twice_fails(self):
         output = self.assert_table_catches(
             lambda d: d["extent"]["tables"].append({"section": "§ 1.10", "table": 1,
-                                                    "rows": "all"}))
+                                                    "rows": "all"}), message='§ 1.10 table 1 is declared twice')
         self.assertIn("declared twice", output)
 
     def test_a_slice_that_both_takes_and_excludes_fails(self):
         # The message is asserted, not only the verdict: a slice that says both fails the
         # placement below too, and "it declares both" is the finding.
         output = self.assert_table_catches(
-            lambda d: d["extent"]["tables"][0].update(excluded="and also excluded"))
+            lambda d: d["extent"]["tables"][0].update(excluded="and also excluded"), message='§ 1.10 table 1 is sliced (`rows`), taken whole (`rows')
         self.assertIn("declares both", output)
 
     def test_a_slice_that_neither_takes_nor_excludes_fails(self):
-        output = self.assert_table_catches(lambda d: d["extent"]["tables"][0].pop("rows"))
+        output = self.assert_table_catches(lambda d: d["extent"]["tables"][0].pop("rows"), message='§ 1.10 table 1 is sliced (`rows`), taken whole (`rows')
         self.assertIn("declares neither", output)
 
     def test_an_exclusion_with_no_reason_fails(self):
         output = self.assert_table_catches(
-            lambda d: d["extent"]["tables"][1].update(excluded="  "))
+            lambda d: d["extent"]["tables"][1].update(excluded="  "), message='`excluded` is why this table is outside the slice, in words')
         self.assertIn("in words", output)
 
     def test_an_empty_row_list_fails(self):
-        output = self.assert_table_catches(lambda d: d["extent"]["tables"][0].update(rows=[]))
+        output = self.assert_table_catches(lambda d: d["extent"]["tables"][0].update(rows=[]), message='`rows` is "all" or a non-empty list of row keys')
         self.assertIn("non-empty list of row keys", output)
 
     def test_a_rows_value_that_is_neither_all_nor_a_list_fails(self):
-        output = self.assert_table_catches(lambda d: d["extent"]["tables"][0].update(rows="some"))
+        output = self.assert_table_catches(lambda d: d["extent"]["tables"][0].update(rows="some"), message='`rows` is "all" or a non-empty list of row keys')
         self.assertIn("non-empty list of row keys", output)
 
     def test_a_row_key_that_is_not_a_column_and_a_value_fails(self):
         self.assert_table_catches(
-            lambda d: d["extent"]["tables"][0]["rows"].append({"row": 4}))
+            lambda d: d["extent"]["tables"][0]["rows"].append({"row": 4}), message='rows[2] is not a row key')
 
     def test_a_table_named_by_something_other_than_its_position_fails(self):
         output = self.assert_table_catches(
-            lambda d: d["extent"]["tables"][0].update(table="Hazardous Materials Table"))
+            lambda d: d["extent"]["tables"][0].update(table="Hazardous Materials Table"), message="`table` is 'Hazardous Materials Table'")
         self.assertIn("named by its position in the section", output)
 
     def test_a_table_slice_naming_a_paragraph_rather_than_a_section_fails(self):
         self.assert_table_catches(
-            lambda d: d["extent"]["tables"][0].update(section="§ 1.10(a)"))
+            lambda d: d["extent"]["tables"][0].update(section="§ 1.10(a)"), message="`section` is '§ 1.10(a)', and a table is named inside one")
 
     def test_an_unknown_field_in_a_slice_fails(self):
         self.assert_table_catches(
-            lambda d: d["extent"]["tables"][0].update(caption="Widget table"))
+            lambda d: d["extent"]["tables"][0].update(caption="Widget table"), message='`caption` is not a field of a table slice (section, table')
 
     def test_an_empty_tables_list_fails(self):
-        output = self.assert_table_catches(lambda d: d["extent"].update(tables=[]))
+        output = self.assert_table_catches(lambda d: d["extent"].update(tables=[]), message='`tables` is present and names no table')
         self.assertIn("present and names no table", output)
 
     def test_tables_on_a_page_extent_is_not_a_field_of_one(self):
         self.assert_catches("extent", lambda d: d["extent"].update(
-            tables=[{"section": "§ 1.10", "table": 1, "rows": "all"}]))
+            tables=[{"section": "§ 1.10", "table": 1, "rows": "all"}]), message='`tables` is not a field of a page extent (unit, from, to')
 
     def test_an_out_of_scope_entry_may_cite_a_row_beyond_the_slice(self):
         # Recording what lies beyond the slice is what scope: out is for (0020), and a row is
@@ -604,61 +672,61 @@ class TestTableSlice(MapCase):
 
 class TestRequiredFields(MapCase):
     def test_an_entry_without_a_locator_is_not_an_entry(self):
-        self.assert_catches("required-fields", lambda d: d["entries"][0].pop("locator"))
+        self.assert_catches("required-fields", lambda d: d["entries"][0].pop("locator"), message='missing required field `locator`')
 
     def test_a_locator_without_a_citation_fails(self):
-        self.assert_catches("required-fields", lambda d: d["entries"][0]["locator"].pop("citation"))
+        self.assert_catches("required-fields", lambda d: d["entries"][0]["locator"].pop("citation"), message='locator is missing `citation`')
 
     def test_a_missing_status_fails(self):
-        self.assert_catches("required-fields", lambda d: d["entries"][2].pop("status"))
+        self.assert_catches("required-fields", lambda d: d["entries"][2].pop("status"), message='missing required field `status`')
 
 
 class TestVocabulary(MapCase):
     def test_kind_outside_the_closed_vocabulary_fails(self):
         # The live instance: `direction-of-travel` shipped as kind "rule" in both copies
         # of the backgammon map because nothing consumed `kind`.
-        self.assert_catches("vocabulary", lambda d: d["entries"][0].update(kind="rule"))
+        self.assert_catches("vocabulary", lambda d: d["entries"][0].update(kind="rule"), message="kind is 'rule', outside {assertion, operation, value}")
 
     def test_scope_outside_the_closed_vocabulary_fails(self):
-        self.assert_catches("vocabulary", lambda d: d["entries"][0].update(scope="partial"))
+        self.assert_catches("vocabulary", lambda d: d["entries"][0].update(scope="partial"), message="scope is 'partial', outside {in, out}")
 
     def test_clarity_outside_the_closed_vocabulary_fails(self):
-        self.assert_catches("vocabulary", lambda d: d["entries"][0].update(clarity="murky"))
+        self.assert_catches("vocabulary", lambda d: d["entries"][0].update(clarity="murky"), message="clarity is 'murky', outside {ambiguous, clear}")
 
     def test_status_outside_the_closed_vocabulary_fails(self):
-        self.assert_catches("vocabulary", lambda d: d["entries"][0].update(status="in-progress"))
+        self.assert_catches("vocabulary", lambda d: d["entries"][0].update(status="in-progress"), message="status is 'in-progress', outside {blocked, declined")
 
     def test_fate_outside_the_closed_vocabulary_fails(self):
-        self.assert_catches("vocabulary", lambda d: d["entries"][7]["ambiguity"].update(fate="deferred"))
+        self.assert_catches("vocabulary", lambda d: d["entries"][7]["ambiguity"].update(fate="deferred"), message="ambiguity.fate is 'deferred', outside {decision, unresolved}")
 
     def test_an_unresolved_reason_outside_the_kernel_enum_fails(self):
         self.assert_catches(
             "vocabulary",
-            lambda d: d["entries"][7]["ambiguity"].update(unresolvedReason="CorpusDisagreesWithItself"),
+            lambda d: d["entries"][7]["ambiguity"].update(unresolvedReason="CorpusDisagreesWithItself"), message="unresolvedReason is 'CorpusDisagreesWithItself', outside",
         )
 
     def test_beyond_adapter_without_a_modality_fails(self):
-        self.assert_catches("vocabulary", lambda d: d["entries"][5]["beyondAdapter"].pop("modality"))
+        self.assert_catches("vocabulary", lambda d: d["entries"][5]["beyondAdapter"].pop("modality"), message='beyondAdapter is missing `modality`')
 
 
 class TestUniqueIds(MapCase):
     def test_a_duplicated_id_fails(self):
-        self.assert_catches("unique-ids", lambda d: d["entries"][1].update(id="speed-limit"))
+        self.assert_catches("unique-ids", lambda d: d["entries"][1].update(id="speed-limit"), message='id used by entry[0] as well')
 
 
 class TestReferences(MapCase):
     def test_a_dangling_depends_on_fails(self):
-        self.assert_catches("references", lambda d: d["entries"][1].update(dependsOn=["no-such-entry"]))
+        self.assert_catches("references", lambda d: d["entries"][1].update(dependsOn=["no-such-entry"]), message="dependsOn names 'no-such-entry'")
 
     def test_a_dangling_enabled_by_fails(self):
         # 0003: a gate with no entry means the map is missing an entry.
-        self.assert_catches("references", lambda d: d["entries"][3].update(enabledBy=["all-men-home"]))
+        self.assert_catches("references", lambda d: d["entries"][3].update(enabledBy=["all-men-home"]), message="enabledBy names 'all-men-home'")
 
     def test_a_dangling_suspended_by_fails(self):
-        self.assert_catches("references", lambda d: d["entries"][3].update(suspendedBy=["man-on-bar"]))
+        self.assert_catches("references", lambda d: d["entries"][3].update(suspendedBy=["man-on-bar"]), message="suspendedBy names 'man-on-bar'")
 
     def test_a_gate_holding_a_condition_rather_than_an_id_fails(self):
-        self.assert_catches("references", lambda d: d["entries"][3].update(suspendedBy=[{"onBar": True}]))
+        self.assert_catches("references", lambda d: d["entries"][3].update(suspendedBy=[{"onBar": True}]), message="suspendedBy holds {'onBar': True}")
 
     def test_a_map_with_no_edges_does_not_report_ok(self):
         document = valid_map()
@@ -683,11 +751,11 @@ class TestGates(MapCase):
         def mutate(document):
             gated = document["entries"][self.GATED]
             gated["gatedBy"] = gated.pop("enabledBy") + gated.pop("suspendedBy")
-        self.assert_catches("gates", mutate)
+        self.assert_catches("gates", mutate, message='carries `gatedBy`, which 0011 split by direction')
 
     def test_one_rule_both_enabling_and_suspending_an_entry_fails(self):
         self.assert_catches(
-            "gates", lambda d: d["entries"][self.GATED]["suspendedBy"].append("speed-limit"))
+            "gates", lambda d: d["entries"][self.GATED]["suspendedBy"].append("speed-limit"), message="names 'speed-limit' in both `enabledBy` and `suspendedBy`")
 
     def test_a_map_with_no_gates_does_not_report_ok(self):
         # A map with no gates, like the Part 107 temporal map: nothing was checked, and it proves nothing.
@@ -704,7 +772,7 @@ class TestNoCycles(MapCase):
     def test_a_depends_on_cycle_fails(self):
         def mutate(document):
             document["entries"][0]["dependsOn"] = ["speed-within-limit"]
-        self.assert_catches("no-cycles", mutate)
+        self.assert_catches("no-cycles", mutate, message='dependsOn cycle: speed-limit -> speed-within-limit ->')
 
     def test_mutual_gates_are_not_a_cycle(self):
         # A gate orders nothing, so a mutual gate is legitimate and must still pass.
@@ -729,51 +797,51 @@ class TestDerived(MapCase):
 
     def test_an_entry_without_derived_from_still_needs_its_locator(self):
         # The exemption is keyed on the field, so removing it makes the entry an ordinary one.
-        self.assert_catches("required-fields", lambda d: d["entries"][self.DERIVED].pop("derivedFrom"))
+        self.assert_catches("required-fields", lambda d: d["entries"][self.DERIVED].pop("derivedFrom"), message='missing required field `locator`')
 
     def test_a_derived_entry_that_quotes_a_span_fails(self):
         # `evidence` keeps one meaning: a verbatim span. A derived fact has none to quote.
         self.assert_catches(
-            "derived", lambda d: d["entries"][self.DERIVED].update(evidence="A gammon pays double."))
+            "derived", lambda d: d["entries"][self.DERIVED].update(evidence="A gammon pays double."), message='is derived and carries `evidence`')
 
     def test_a_derived_entry_that_cites_a_passage_fails(self):
         self.assert_catches(
             "derived", lambda d: d["entries"][self.DERIVED].update(
-                locator={"sourceId": "demo-corpus", "citation": "Part One / p. 1"}))
+                locator={"sourceId": "demo-corpus", "citation": "Part One / p. 1"}), message='is derived and carries `locator`')
 
     def test_a_derived_entry_carrying_a_cross_reference_fails(self):
         self.assert_catches(
             "derived", lambda d: d["entries"][self.DERIVED].update(
-                crossReferences=[{"cites": "as at starting", "resolvedBy": "speed-limit"}]))
+                crossReferences=[{"cites": "as at starting", "resolvedBy": "speed-limit"}]), message='is derived and carries `crossReferences`')
 
     def test_a_source_that_is_not_an_entry_fails(self):
         self.assert_catches(
-            "derived", lambda d: d["entries"][self.DERIVED]["derivedFrom"].append("no-such-entry"))
+            "derived", lambda d: d["entries"][self.DERIVED]["derivedFrom"].append("no-such-entry"), message="derivedFrom names 'no-such-entry'")
 
     def test_a_source_out_of_scope_fails(self):
         self.assert_catches(
-            "derived", lambda d: d["entries"][self.DERIVED]["derivedFrom"].append("subpart-d-categories"))
+            "derived", lambda d: d["entries"][self.DERIVED]["derivedFrom"].append("subpart-d-categories"), message="derivedFrom names 'subpart-d-categories'")
 
     def test_deriving_from_an_absent_rule_fails(self):
         # An absence is scope: out, so the scope rule is what refuses it.
         self.assert_catches(
-            "derived", lambda d: d["entries"][self.DERIVED]["derivedFrom"].append("doubling-cube"))
+            "derived", lambda d: d["entries"][self.DERIVED]["derivedFrom"].append("doubling-cube"), message="derivedFrom names 'doubling-cube'")
 
     def test_a_derivation_from_one_source_fails(self):
         # A consequence of one entry is that entry's, discharged as a test it names.
         self.assert_catches(
-            "derived", lambda d: d["entries"][self.DERIVED].update(derivedFrom=["speed-limit"]))
+            "derived", lambda d: d["entries"][self.DERIVED].update(derivedFrom=["speed-limit"]), message='`derivedFrom` names 1 source(s)')
 
     def test_a_derivation_naming_itself_fails(self):
         self.assert_catches(
-            "derived", lambda d: d["entries"][self.DERIVED]["derivedFrom"].append("hit-pays-single-stake"))
+            "derived", lambda d: d["entries"][self.DERIVED]["derivedFrom"].append("hit-pays-single-stake"), message='derivedFrom names itself')
 
     def test_a_circular_derivation_fails(self):
         def mutate(document):
             document["entries"].append(
                 derived_entry("gammon-pays-double", ["hit-pays-single-stake", "speed-limit"]))
             document["entries"][self.DERIVED]["derivedFrom"] = ["gammon-pays-double", "speed-limit"]
-        self.assert_catches("derived", mutate)
+        self.assert_catches("derived", mutate, message='derivedFrom cycle: hit-pays-single-stake ->')
 
     def test_a_map_with_no_derived_entries_does_not_report_ok(self):
         document = valid_map()
@@ -786,18 +854,18 @@ class TestDerived(MapCase):
 
 class TestManifest(MapCase):
     def test_a_locator_source_not_in_the_manifest_fails(self):
-        self.assert_catches("manifest", lambda d: d["entries"][0]["locator"].update(sourceId="unknown-corpus"))
+        self.assert_catches("manifest", lambda d: d["entries"][0]["locator"].update(sourceId="unknown-corpus"), message="locator.sourceId 'unknown-corpus' is not declared in the")
 
     def test_a_beyond_adapter_naming_the_wrong_adapter_fails(self):
         # 0004: the adapter must match the one declared for the entry's source.
-        self.assert_catches("manifest", lambda d: d["entries"][5]["beyondAdapter"].update(adapter="pdf"))
+        self.assert_catches("manifest", lambda d: d["entries"][5]["beyondAdapter"].update(adapter="pdf"), message="beyondAdapter.adapter is 'pdf', but demo-corpus declares")
 
     def test_a_defined_elsewhere_reference_not_in_references_fails(self):
         # 0005: an elsewhere-defined *input* has no corpus to name and would not validate.
-        self.assert_catches("manifest", lambda d: d["entries"][4]["definedElsewhere"].update(reference="airspace"))
+        self.assert_catches("manifest", lambda d: d["entries"][4]["definedElsewhere"].update(reference="airspace"), message="definedElsewhere.reference 'airspace' is not in")
 
     def test_a_baseline_disagreeing_with_the_manifest_fails(self):
-        self.assert_catches("manifest", lambda d: d["baseline"].update(contentHash="b" * 64))
+        self.assert_catches("manifest", lambda d: d["baseline"].update(contentHash="b" * 64), message="baseline contentHash 'bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb")
 
     def test_a_defined_elsewhere_naming_the_maps_own_corpus_fails(self):
         # 0026, #115: the SRD's Rules Glossary is the same corpus as its combat chapter. A term
@@ -854,29 +922,29 @@ class TestExtraction(MapCase):
 
     def test_a_defect_outside_the_closed_list_fails(self):
         self.assert_catches("extraction", lambda d: d["entries"][self.GARBLED]["extraction"]
-                            .update(defect="joined-hyphenation"))
+                            .update(defect="joined-hyphenation"), message="extraction.defect is 'joined-hyphenation', outside")
 
     def test_a_defect_without_a_rendered_reading_fails(self):
         self.assert_catches("extraction", lambda d: d["entries"][self.GARBLED]["extraction"]
-                            .pop("renderedReading"))
+                            .pop("renderedReading"), message='extraction names no `renderedReading`, the passage as read')
 
     def test_a_rendered_reading_that_is_the_evidence_fails(self):
         def mutate(document):
             garbled = document["entries"][self.GARBLED]
             garbled["extraction"]["renderedReading"] = "  " + garbled["evidence"].replace(" ", "\n")
-        self.assert_catches("extraction", mutate)
+        self.assert_catches("extraction", mutate, message='renderedReading is the evidence itself')
 
     def test_an_unknown_field_of_extraction_fails(self):
         self.assert_catches("extraction", lambda d: d["entries"][self.GARBLED]["extraction"]
-                            .update(checkedBy="a person"))
+                            .update(checkedBy="a person"), message='`checkedBy` is not a field of extraction (defect')
 
     def test_an_extraction_that_is_not_an_object_fails(self):
         self.assert_catches("extraction", lambda d: d["entries"][self.GARBLED]
-                            .update(extraction="interleaved-table"))
+                            .update(extraction="interleaved-table"), message='extraction is not an object {defect, renderedReading}')
 
     def test_extraction_beside_beyond_adapter_fails(self):
         self.assert_catches("extraction", lambda d: d["entries"][self.GARBLED].update(
-            beyondAdapter={"adapter": "plain-text", "modality": "table"}))
+            beyondAdapter={"adapter": "plain-text", "modality": "table"}), message='carries both extraction and beyondAdapter')
 
     def test_a_defect_on_a_corpus_not_declaring_quoted_text_fails(self):
         code, output = self.run_tool(valid_map())
@@ -910,7 +978,7 @@ class TestExtraction(MapCase):
 
     def test_a_derived_entry_carrying_extraction_fails(self):
         self.assert_catches("derived", lambda d: d["entries"][10].update(
-            extraction={"defect": "interleaved-table", "renderedReading": "Half | +2"}))
+            extraction={"defect": "interleaved-table", "renderedReading": "Half | +2"}), message='is derived and carries `extraction`')
 
     def test_nothing_declared_skips_without_failing_the_run(self):
         document = valid_map()
@@ -1045,7 +1113,7 @@ class TestExclusions(MapCase):
                 "unresolvedReason": "MissingRulesData",
             }
             document["entries"][4]["clarity"] = "ambiguous"
-        self.assert_catches("exclusions", mutate)
+        self.assert_catches("exclusions", mutate, message='carries `definedElsewhere` and an `ambiguity` block')
 
     def test_an_ambiguity_block_beside_beyond_adapter_fails(self):
         def mutate(document):
@@ -1055,17 +1123,17 @@ class TestExclusions(MapCase):
                 "fate": "unresolved",
                 "unresolvedReason": "MissingRulesData",
             }
-        self.assert_catches("exclusions", mutate)
+        self.assert_catches("exclusions", mutate, message='carries `beyondAdapter` and an `ambiguity` block')
 
     def test_an_ambiguity_block_on_a_clear_entry_fails(self):
         def mutate(document):
             document["entries"][7]["clarity"] = "clear"
-        self.assert_catches("exclusions", mutate)
+        self.assert_catches("exclusions", mutate, message='clarity is `clear` but an `ambiguity` block is present')
 
     def test_an_ambiguous_entry_without_an_ambiguity_block_fails(self):
         def mutate(document):
             document["entries"][7].pop("ambiguity")
-        self.assert_catches("exclusions", mutate)
+        self.assert_catches("exclusions", mutate, message='clarity is `ambiguous` but no `ambiguity` block states the')
 
     def test_a_decision_fate_naming_no_record_fails(self):
         def mutate(document):
@@ -1073,48 +1141,48 @@ class TestExclusions(MapCase):
                 "question": "Two readings.",
                 "fate": "decision",
             }
-        self.assert_catches("exclusions", mutate)
+        self.assert_catches("exclusions", mutate, message='fate is `decision` but no record is named')
 
     def test_an_unresolved_fate_without_its_reason_fails(self):
-        self.assert_catches("exclusions", lambda d: d["entries"][7]["ambiguity"].pop("unresolvedReason"))
+        self.assert_catches("exclusions", lambda d: d["entries"][7]["ambiguity"].pop("unresolvedReason"), message='fate is `unresolved` but no `unresolvedReason` ties it to')
 
 
 class TestStatus(MapCase):
     def test_implemented_without_implemented_in_fails(self):
-        self.assert_catches("status", lambda d: d["entries"][0].pop("implementedIn"))
+        self.assert_catches("status", lambda d: d["entries"][0].pop("implementedIn"), message='status is `implemented` but no `implementedIn` names the')
 
     def test_implemented_in_on_an_unbuilt_entry_fails(self):
-        self.assert_catches("status", lambda d: d["entries"][2].update(implementedIn={"ruleset": "demo", "version": 1}))
+        self.assert_catches("status", lambda d: d["entries"][2].update(implementedIn={"ruleset": "demo", "version": 1}), message="carries `implementedIn` while status is 'mapped'")
 
     def test_implemented_naming_no_tests_fails(self):
         # #2: `implemented` stops being a word someone typed. Without tests it is `mapped`.
-        self.assert_catches("status", lambda d: d["entries"][0].pop("tests"))
+        self.assert_catches("status", lambda d: d["entries"][0].pop("tests"), message='status is `implemented` but `tests` names no test that')
 
     def test_implemented_with_an_empty_tests_list_fails(self):
-        self.assert_catches("status", lambda d: d["entries"][0].update(tests=[]))
+        self.assert_catches("status", lambda d: d["entries"][0].update(tests=[]), message='status is `implemented` but `tests` names no test that')
 
     def test_a_test_with_no_recorded_mutation_fails(self):
         # A test nobody has seen go red is the class of test this repository keeps finding.
-        self.assert_catches("status", lambda d: d["entries"][1]["tests"][1].pop("mutation"))
+        self.assert_catches("status", lambda d: d["entries"][1]["tests"][1].pop("mutation"), message="tests[1] ('SpeedTests.Above_the_limit_is_refused') records")
 
     def test_a_blank_mutation_fails(self):
-        self.assert_catches("status", lambda d: d["entries"][1]["tests"][0].update(mutation="  "))
+        self.assert_catches("status", lambda d: d["entries"][1]["tests"][0].update(mutation="  "), message="tests[0] ('SpeedTests.At_the_limit_is_permitted') records")
 
     def test_a_tests_item_naming_no_test_fails(self):
-        self.assert_catches("status", lambda d: d["entries"][1]["tests"][0].pop("test"))
+        self.assert_catches("status", lambda d: d["entries"][1]["tests"][0].pop("test"), message='tests[0] names no `test`')
 
     def test_a_test_named_twice_fails(self):
         def mutate(document):
             tests = document["entries"][1]["tests"]
             tests[1]["test"] = tests[0]["test"]
-        self.assert_catches("status", mutate)
+        self.assert_catches("status", mutate, message="names test 'SpeedTests.At_the_limit_is_permitted' twice")
 
     def test_a_bare_test_name_without_its_mutation_fails(self):
-        self.assert_catches("status", lambda d: d["entries"][0].update(tests=["SpeedLimitTests.The_limit_is_87_knots"]))
+        self.assert_catches("status", lambda d: d["entries"][0].update(tests=["SpeedLimitTests.The_limit_is_87_knots"]), message='tests[0] is not an object naming a test and its mutation')
 
     def test_malformed_tests_on_an_unbuilt_entry_still_fail(self):
         # The shape holds wherever the field appears, not only where it is required.
-        self.assert_catches("status", lambda d: d["entries"][2].update(tests=[{"test": "WellClearTests.X"}]))
+        self.assert_catches("status", lambda d: d["entries"][2].update(tests=[{"test": "WellClearTests.X"}]), message="tests[0] ('WellClearTests.X') records no `mutation`")
 
     def test_a_map_with_nothing_built_does_not_report_ok(self):
         # All three example maps are in this state. Reporting `ok` would be a gate
@@ -1265,7 +1333,7 @@ class TestBounds(MapCase):
             self.bounded(document).update(dimension="adjacency")
             for example in self.bounded(document)["examples"]:
                 example["value"] = "across a public road"
-        self.assert_catches("bounds", mutate)
+        self.assert_catches("bounds", mutate, message="bounds.dimension is 'adjacency'")
         document = valid_map()
         mutate(document)
         _, output = self.run_tool(document)
@@ -1281,14 +1349,14 @@ class TestBounds(MapCase):
                 {"locator": {"sourceId": "demo-corpus", "citation": "Part One / p. 1 (the longest pause)"},
                  "text": "A pause of eighteen months is a short interruption.",
                  "verdict": "applies", "value": "P18M"})
-        self.assert_catches("bounds", mutate)
+        self.assert_catches("bounds", mutate, message='the bounds contradict each other in duration. The term')
         document = valid_map()
         mutate(document)
         _, output = self.run_tool(document)
         self.assertIn("contradict each other in duration", output)
 
     def test_one_value_with_both_verdicts_is_refused(self):
-        self.assert_catches("bounds", lambda d: self.bounded(d)["examples"][0].update(value="P2M"))
+        self.assert_catches("bounds", lambda d: self.bounded(d)["examples"][0].update(value="P2M"), message='the bounds contradict each other in duration. The term')
 
     def test_one_sided_bounds_pass(self):
         # An example on one side only bounds the term from that side, and contradicts nothing.
@@ -1299,34 +1367,34 @@ class TestBounds(MapCase):
         self.assertEqual(code, 0, output)
 
     def test_a_value_that_is_not_a_duration_is_refused(self):
-        self.assert_catches("bounds", lambda d: self.bounded(d)["examples"][0].update(value="a year"))
+        self.assert_catches("bounds", lambda d: self.bounded(d)["examples"][0].update(value="a year"), message="bounds.examples[1]: value 'a year' is not a duration this")
 
     def test_a_verdict_outside_the_vocabulary_is_refused(self):
-        self.assert_catches("bounds", lambda d: self.bounded(d)["examples"][0].update(verdict="maybe"))
+        self.assert_catches("bounds", lambda d: self.bounded(d)["examples"][0].update(verdict="maybe"), message="bounds.examples[1]: verdict is 'maybe', outside {applies")
 
     def test_a_bound_without_a_locator_is_refused(self):
-        self.assert_catches("bounds", lambda d: self.bounded(d)["examples"][0].pop("locator"))
+        self.assert_catches("bounds", lambda d: self.bounded(d)["examples"][0].pop("locator"), message='bounds.examples[1] carries exactly locator, text, verdict')
 
     def test_a_bound_citing_another_corpus_is_refused(self):
         self.assert_catches("bounds", lambda d: self.bounded(d)["examples"][0]["locator"].update(
-            sourceId="core-rules"))
+            sourceId="core-rules"), message="bounds.examples[1]: cites corpus 'core-rules' and the entry")
 
     def test_a_bound_whose_text_elides_its_middle_is_refused(self):
         self.assert_catches("bounds", lambda d: self.bounded(d)["examples"][0].update(
-            text="A pause of one year ... is not a short interruption."))
+            text="A pause of one year ... is not a short interruption."), message='bounds.examples[1]: `text` elides its middle. One')
 
     def test_a_term_the_evidence_does_not_use_is_refused(self):
-        self.assert_catches("bounds", lambda d: self.bounded(d).update(term="brief interruption"))
+        self.assert_catches("bounds", lambda d: self.bounded(d).update(term="brief interruption"), message="bounds names term 'brief interruption'")
 
     def test_a_field_the_block_does_not_have_is_refused(self):
-        self.assert_catches("bounds", lambda d: self.bounded(d).update(note="why these two"))
+        self.assert_catches("bounds", lambda d: self.bounded(d).update(note="why these two"), message='`ambiguity.bounds` carries exactly term, dimension, examples')
 
     def test_a_field_an_example_does_not_have_is_refused(self):
         self.assert_catches("bounds", lambda d: self.bounded(d)["examples"][0].update(
-            note="the mapper's reading"))
+            note="the mapper's reading"), message='bounds.examples[1] carries exactly locator, text, verdict')
 
     def test_no_examples_is_refused(self):
-        self.assert_catches("bounds", lambda d: self.bounded(d).update(examples=[]))
+        self.assert_catches("bounds", lambda d: self.bounded(d).update(examples=[]), message='bounds.examples is not a non-empty list')
 
     def test_bounds_at_entry_level_are_refused(self):
         document = valid_map()
@@ -1344,7 +1412,7 @@ class TestBounds(MapCase):
             ambiguity.pop("unresolvedReason")
             ambiguity["fate"] = "decision"
             ambiguity["decision"] = "docs/decisions/0007-opposed-test-tie-break.md"
-        self.assert_catches("bounds", mutate)
+        self.assert_catches("bounds", mutate, message='carries `ambiguity.bounds` and `fate: decision`. A bound is')
 
     def test_a_map_with_no_bounds_does_not_report_ok(self):
         document = valid_map()
@@ -1381,23 +1449,23 @@ class TestAbsent(MapCase):
     def test_an_absent_rule_the_map_still_claims_to_cover_fails(self):
         # scope: out is not decoration here -- row 1 must dominate, and 0008's procedure
         # has scope: in as its precondition, so an absent rule must never reach the gates.
-        self.assert_catches("absent", lambda d: d["entries"][self.ABSENT].update(scope="in"))
+        self.assert_catches("absent", lambda d: d["entries"][self.ABSENT].update(scope="in"), message="carries `absentFrom` while scope is 'in'")
 
     def test_an_absent_rule_recorded_as_unbuilt_rather_than_declined_fails(self):
-        self.assert_catches("absent", lambda d: d["entries"][self.ABSENT].update(status="mapped"))
+        self.assert_catches("absent", lambda d: d["entries"][self.ABSENT].update(status="mapped"), message="carries `absentFrom` while status is 'mapped'")
 
     def test_absent_beside_beyond_adapter_fails(self):
         # Nowhere in the corpus and somewhere in it we cannot reach are different claims.
         self.assert_catches(
             "absent",
             lambda d: d["entries"][self.ABSENT].update(
-                beyondAdapter={"adapter": "plain-text", "modality": "illustration"}),
+                beyondAdapter={"adapter": "plain-text", "modality": "illustration"}), message='carries `absentFrom` and `beyondAdapter`',
         )
 
     def test_absent_beside_defined_elsewhere_fails(self):
         self.assert_catches(
             "absent",
-            lambda d: d["entries"][self.ABSENT].update(definedElsewhere={"reference": "other-corpus"}),
+            lambda d: d["entries"][self.ABSENT].update(definedElsewhere={"reference": "other-corpus"}), message='carries `absentFrom` and `definedElsewhere`',
         )
 
     def test_absent_beside_an_ambiguity_block_fails(self):
@@ -1409,30 +1477,30 @@ class TestAbsent(MapCase):
                 "fate": "unresolved",
                 "unresolvedReason": "OutsideCurrentScope",
             }
-        self.assert_catches("absent", mutate)
+        self.assert_catches("absent", mutate, message='carries `absentFrom` and an `ambiguity` block')
 
     def test_an_absent_rule_that_depends_on_something_fails(self):
         self.assert_catches(
-            "absent", lambda d: d["entries"][self.ABSENT].update(dependsOn=["speed-limit"]))
+            "absent", lambda d: d["entries"][self.ABSENT].update(dependsOn=["speed-limit"]), message='carries `absentFrom` and a non-empty `dependsOn`')
 
     def test_depending_on_an_absent_rule_fails(self):
         # The edge can never be satisfied: `blocked` that will never clear.
         self.assert_catches(
-            "absent", lambda d: d["entries"][1].update(dependsOn=["doubling-cube"]))
+            "absent", lambda d: d["entries"][1].update(dependsOn=["doubling-cube"]), message="dependsOn names 'doubling-cube'")
 
     def test_enabling_on_an_absent_rule_fails(self):
         self.assert_catches(
-            "absent", lambda d: d["entries"][3].update(enabledBy=["doubling-cube"]))
+            "absent", lambda d: d["entries"][3].update(enabledBy=["doubling-cube"]), message="enabledBy names 'doubling-cube'")
 
     def test_suspending_on_an_absent_rule_fails(self):
         self.assert_catches(
-            "absent", lambda d: d["entries"][3].update(suspendedBy=["doubling-cube"]))
+            "absent", lambda d: d["entries"][3].update(suspendedBy=["doubling-cube"]), message="suspendedBy names 'doubling-cube'")
 
     def test_an_absence_nobody_searched_for_fails_the_vocabulary(self):
         # An empty `searched` is the "(absent)" locator in a new spelling: a claim with
         # nothing behind it. It is caught where the field's shape is checked.
         self.assert_catches(
-            "vocabulary", lambda d: d["entries"][self.ABSENT]["absentFrom"].update(searched=[]))
+            "vocabulary", lambda d: d["entries"][self.ABSENT]["absentFrom"].update(searched=[]), message='absentFrom is missing a non-empty `searched` list')
 
     def test_a_map_with_no_absent_rules_does_not_report_ok(self):
         document = valid_map()
@@ -1449,31 +1517,42 @@ class TestAssertedBy(MapCase):
     ASSERTION = 2  # well-clear, in valid_map()'s order
 
     def test_an_assertion_that_names_nobody_fails(self):
-        self.assert_catches("asserted-by", lambda d: d["entries"][self.ASSERTION].pop("assertedBy"))
+        self.assert_catches("asserted-by", lambda d: d["entries"][self.ASSERTION].pop("assertedBy"), message='is `kind: assertion` and has no `assertedBy`')
 
     def test_asserted_by_on_an_entry_that_is_not_an_assertion_fails(self):
-        self.assert_catches("asserted-by", lambda d: d["entries"][1].update(assertedBy=["remote pilot"]))
+        self.assert_catches("asserted-by", lambda d: d["entries"][1].update(assertedBy=["remote pilot"]), message="carries `assertedBy` while kind is 'operation'")
 
     def test_an_empty_or_malformed_list_fails(self):
-        for value in ([], "remote pilot", [""], [3]):
+        # Two rules of one check, and the expected refusal is paired with the value rather than
+        # shared across the loop: `[]` and a bare string are not a list of parties, while `[""]`
+        # and `[3]` are a list holding something that is not a name. Asserting one message for
+        # all four would be the very thing #283 is about -- a neighbouring rule satisfying the
+        # verdict while the rule the case is about goes unexercised.
+        for value, refusal in (
+            ([], "`assertedBy` is not a non-empty list of who asserts it"),
+            ("remote pilot", "`assertedBy` is not a non-empty list of who asserts it"),
+            ([""], "`assertedBy` holds something that is not a name"),
+            ([3], "`assertedBy` holds something that is not a name"),
+        ):
             with self.subTest(value=value):
                 self.assert_catches("asserted-by",
-                                    lambda d, v=value: d["entries"][self.ASSERTION].update(assertedBy=v))
+                                    lambda d, v=value: d["entries"][self.ASSERTION].update(assertedBy=v),
+                                    message=refusal)
 
     def test_a_party_named_twice_fails(self):
         self.assert_catches("asserted-by", lambda d: d["entries"][self.ASSERTION].update(
-            assertedBy=["remote pilot", "Remote  Pilot"]))
+            assertedBy=["remote pilot", "Remote  Pilot"]), message='`assertedBy` names one party twice')
 
     def test_a_party_the_evidence_does_not_name_fails(self):
         self.assert_catches("asserted-by", lambda d: d["entries"][self.ASSERTION].update(
-            assertedBy=["visual observer"]))
+            assertedBy=["visual observer"]), message="`assertedBy` names 'visual observer'")
 
     def test_a_party_matches_as_a_whole_word_only(self):
         # "pilot" inside "autopilot" is not the pilot.
         def mutate(document):
             document["entries"][self.ASSERTION].update(
                 assertedBy=["pilot"], evidence="The autopilot must keep the aircraft well clear.")
-        self.assert_catches("asserted-by", mutate)
+        self.assert_catches("asserted-by", mutate, message="`assertedBy` names 'pilot'")
 
     def test_a_party_matches_ignoring_case_and_spacing(self):
         document = valid_map()
@@ -1509,13 +1588,13 @@ class TestAssertedBy(MapCase):
         self.assertEqual(code, 0, output)
 
     def test_the_caller_with_no_reason_fails(self):
-        self.assert_catches("asserted-by", lambda d: d["entries"][self.ASSERTION].update(assertedBy=["caller"]))
+        self.assert_catches("asserted-by", lambda d: d["entries"][self.ASSERTION].update(assertedBy=["caller"]), message='`assertedBy` is `caller` and no `note` says why the corpus')
         self.assert_catches("asserted-by", lambda d: d["entries"][self.ASSERTION].update(
-            assertedBy=["caller"], note="Asserted, never inferred."))
+            assertedBy=["caller"], note="Asserted, never inferred."), message='`assertedBy` is `caller` and no `note` says why the corpus')
 
     def test_the_caller_beside_a_named_party_fails(self):
         self.assert_catches("asserted-by", lambda d: d["entries"][self.ASSERTION].update(
-            assertedBy=["caller", "remote pilot"], note="The caller, or the remote pilot."))
+            assertedBy=["caller", "remote pilot"], note="The caller, or the remote pilot."), message='`assertedBy` names `caller` beside other parties')
 
     def test_a_map_with_no_assertions_does_not_report_ok(self):
         document = valid_map()
@@ -1643,7 +1722,7 @@ class TestCrossReferences(MapCase):
         # The live instance: § 107.29(a) opens "Except as provided in paragraph (d)" and
         # (d) has no entry in either Part 107 map.
         self.assert_catches(
-            "cross-references", lambda d: d["entries"][self.POINTER].pop("crossReferences"))
+            "cross-references", lambda d: d["entries"][self.POINTER].pop("crossReferences"), message="`evidence` says 'as at starting' and no `crossReferences`")
 
     def test_a_pointer_phrased_as_an_exception_is_one_pointer_not_two(self):
         # "except as provided in" contains "as provided in"; demanding two declarations for
@@ -1668,27 +1747,27 @@ class TestCrossReferences(MapCase):
         self.assert_catches(
             "cross-references",
             lambda d: d["entries"][self.POINTER]["crossReferences"][0].update(
-                cites="as provided in paragraph (d)"),
+                cites="as provided in paragraph (d)"), message="crossReferences cites 'as provided in paragraph (d)'",
         )
 
     def test_a_declaration_resolving_to_no_entry_fails(self):
         self.assert_catches(
             "cross-references",
             lambda d: d["entries"][self.POINTER]["crossReferences"][0].update(
-                resolvedBy="no-such-entry"),
+                resolvedBy="no-such-entry"), message="crossReferences 'as at starting' resolves to 'no-such-entry'",
         )
 
     def test_a_declaration_resolving_to_itself_fails(self):
         self.assert_catches(
             "cross-references",
             lambda d: d["entries"][self.POINTER]["crossReferences"][0].update(
-                resolvedBy="next-game-opening"),
+                resolvedBy="next-game-opening"), message="crossReferences 'as at starting' resolves to itself",
         )
 
     def test_a_declaration_resolving_to_nothing_at_all_fails(self):
         self.assert_catches(
             "cross-references",
-            lambda d: d["entries"][self.POINTER]["crossReferences"][0].pop("resolvedBy"),
+            lambda d: d["entries"][self.POINTER]["crossReferences"][0].pop("resolvedBy"), message="crossReferences 'as at starting' resolves to nothing",
         )
 
     def test_a_declaration_claiming_both_arms_fails(self):
@@ -1696,7 +1775,7 @@ class TestCrossReferences(MapCase):
         self.assert_catches(
             "cross-references",
             lambda d: d["entries"][self.POINTER]["crossReferences"][0].update(
-                unmapped="The figure is not a passage."),
+                unmapped="The figure is not a passage."), message="crossReferences 'as at starting' names both `resolvedBy`",
         )
 
     def test_a_recorded_reason_there_is_no_entry_is_accepted(self):
@@ -1936,18 +2015,18 @@ class TestCorrespondence(MapCase):
         # `declined` claims no implemented path at all, so some row owes an answer.
         def mutate(document):
             document["entries"][4].pop("definedElsewhere")
-        self.assert_catches("correspondence", mutate)
+        self.assert_catches("correspondence", mutate, message='status is `declined` -- no implemented path at all -- and')
 
     def test_defined_elsewhere_and_beyond_adapter_together_fail(self):
         def mutate(document):
             document["entries"][4]["beyondAdapter"] = {"adapter": "plain-text", "modality": "illustration"}
-        self.assert_catches("correspondence", mutate)
+        self.assert_catches("correspondence", mutate, message='carries both `definedElsewhere` and `beyondAdapter`')
 
     def test_an_assertion_that_also_declines_fails(self):
         # Row 8: an assertion is a parameter, not a failure to resolve.
         def mutate(document):
             document["entries"][2]["beyondAdapter"] = {"adapter": "plain-text", "modality": "illustration"}
-        self.assert_catches("correspondence", mutate)
+        self.assert_catches("correspondence", mutate, message='is `kind: assertion` and also matches row(s) [4]')
 
     def test_mapped_with_unresolved_fate_matching_two_rows_is_not_an_error(self):
         # 0005: eleven entries across the three maps do this; precedence is what it is for.
@@ -1987,12 +2066,12 @@ class TestUnresolvedReason(MapCase):
         # the caller is sent after data that does not exist when what is missing is a reading.
         def mutate(document):
             document["entries"][self.OPEN]["ambiguity"]["unresolvedReason"] = "MissingRulesData"
-        self.assert_catches("unresolved-reason", mutate)
+        self.assert_catches("unresolved-reason", mutate, message='fate is `unresolved` and unresolvedReason is')
 
     def test_unsupported_rule_on_an_open_question_fails(self):
         def mutate(document):
             document["entries"][self.OPEN]["ambiguity"]["unresolvedReason"] = "UnsupportedRule"
-        self.assert_catches("unresolved-reason", mutate)
+        self.assert_catches("unresolved-reason", mutate, message='fate is `unresolved` and unresolvedReason is')
 
     def test_an_out_of_scope_open_question_may_return_outside_current_scope(self):
         # Row 1 wins before row 6, so both reasons are producible for this entry, and
@@ -2033,7 +2112,7 @@ class TestBoundTermOpen(MapCase):
         def mutate(document):
             ambiguity = document["entries"][self.BOUNDED]["ambiguity"]
             ambiguity["question"] = "The text does not say what happens when only one die is playable."
-        self.assert_catches("bound-term-open", mutate)
+        self.assert_catches("bound-term-open", mutate, message="bounds the term 'short interruption'")
 
     def test_the_term_is_matched_without_regard_to_case(self):
         # § 1.121-1(c)(2)'s question opens with the term: "Short temporary absences" fixes no
