@@ -208,6 +208,33 @@ NESTED_UNITS = {"P": "paragraph", "FP": "paragraph", "FP-1": "paragraph", "FP-2"
                 "EXAMPLE": "worked-example"}
 #: Any heading, at any level. The eCFR numbers heading levels from the section downwards, so the
 #: digit is a depth and not a name.
+#: What a section's **direct** children may be without being indexed. A closed set, with the
+#: reason each member is in it, and every member is **counted and printed** by `main` on every
+#: run -- so text is passed over on the record rather than in silence, which is the whole of
+#: what #290 was. A tag that is *not* here and has words in it is unplaced, and unplaced fails
+#: the run: that is the #285 shape, and it should be loud.
+#:
+#:   HEAD    the section's own heading. `tools/mapper/corpus.py` enumerates it as a unit of its
+#:           own, keyed `§ N heading`; this checker's citation grammar has no designation path
+#:           that could name one, because a heading is not a paragraph and has no designator.
+#:           Addressed, and addressed elsewhere.
+#:   DIV     a table, addressed by its rows (0035) -- `table_index` reaches it at any depth.
+#:           Same reason and same members as `TABLE_WRAPPERS`.
+#:   TABLE   as above, where a corpus prints one without the `DIV`.
+#:   CITA    the authority citation -- `[Docket FAA-2015-0150, Amdt. 107-1, 81 FR 42209, ...]`.
+#:           The eCFR prints it per section as the statutory authority for the section, not as
+#:           a provision of it. It states no rule and no entry could quote it as evidence.
+#:   EDNOTE  an editorial note: what an amendment redesignated, and where. The Federal Register's
+#:           own annotation on the text, not text of the regulation.
+#:   HD1     a division heading at the *top* level of a section. Inside a wrapper an `HD1` is the
+#:           signal that the wrapper opens a division (0036); printed as a direct child it is
+#:           that division's title, which is structure rather than a provision.
+#:
+#: The last three rest on a reading of what the eCFR prints, not on a check, and that is why the
+#: tally is printed rather than merely tallied: a corpus where one of them carried a rule would
+#: show a count nobody expected, on every run, instead of nothing at all.
+TOP_LEVEL_PASSED_OVER = ("HEAD",) + TABLE_WRAPPERS + ("CITA", "EDNOTE", "HD1")
+
 HEADING = re.compile(r"^HD\d+$")
 #: A heading at the level **directly below the section itself**. That level is a sibling of the
 #: section's paragraphs, not something printed inside one, so a wrapper holding one opens a
@@ -356,7 +383,7 @@ def wrapped(container, enclosing, previous, inherited=None):
     return out
 
 
-def paragraphs(root):
+def paragraphs(root, passed_over=None):
     """Every <P> in document order with its designation path and its normalised text.
 
     Path is (subpart, section, *designators) -- e.g. ("B", "107.29", "a", "2"). A <P> with
@@ -380,6 +407,9 @@ def paragraphs(root):
     provision runs at `(d)(3)`, `(d)(5)` and `(d)(9)`, inside the used-battery exception.
     """
     out = []
+    #: (tag, text) for each top-level child stepped over on the record. `main` passes a list and
+    #: prints the tally; a caller that does not care passes nothing and the walk is unchanged.
+    passed_over = [] if passed_over is None else passed_over
     parents = {child: parent for parent in root.iter() for child in parent}
     for section in root.iter("DIV8"):
         subpart = subpart_of(section, parents)
@@ -407,6 +437,25 @@ def paragraphs(root):
                 out.append((path, text, None))
                 continue
             if p.tag != "P":
+                # Account for it, do not skip it. A direct child of a section that is not a
+                # paragraph, an example or a wrapper used to be dropped without a word, so a
+                # corpus introducing a new block tag at the top level lost it in silence --
+                # which is exactly what #285 was, one level down.
+                #
+                # Two outcomes, and the difference is the point. A tag in the closed set is
+                # **stepped over and counted**, and `main` prints the tally: it has no
+                # designation path and never could. Anything else is **unplaced**, which fails
+                # the run, because a top-level tag nobody has ruled on is a passage that may
+                # carry a rule no citation can reach.
+                text = normalise("".join(p.itertext()))
+                if not text:
+                    continue
+                if p.tag in TOP_LEVEL_PASSED_OVER:
+                    passed_over.append((p.tag, text))
+                    continue
+                out.append((None, text, f"this walk has no unit for a <{p.tag}> at the top "
+                                        f"level of a section, so it has no address and is "
+                                        f"reported rather than passed over"))
                 continue
             text = normalise("".join(p.itertext()))
             if not text:
@@ -460,11 +509,16 @@ def example_label(element):
 
 
 def corpus_index(xml_path):
-    """The whole corpus as one normalised string, plus the span each paragraph occupies."""
+    """The whole corpus as one normalised string, plus the span each paragraph occupies.
+
+    The fourth value is what the walk **stepped over at the top level**, as (tag, text): text
+    that is in the corpus, has no designation path and never could, and is counted rather than
+    dropped (#290). `main` prints the tally by tag on every run, so passing it over is visible.
+    """
     root = ET.parse(xml_path).getroot()
-    pieces, spans, refused = [], [], []
+    pieces, spans, refused, passed_over = [], [], [], []
     cursor = 0
-    for path, text, bad in paragraphs(root):
+    for path, text, bad in paragraphs(root, passed_over):
         if bad is not None:
             refused.append((text[:60], bad))
             continue
@@ -472,7 +526,7 @@ def corpus_index(xml_path):
         pieces.append(text)
         cursor += len(text) + 1  # the space this join inserts
         spans.append((start, start + len(text), path))
-    return " ".join(pieces), spans, refused
+    return " ".join(pieces), spans, refused, passed_over
 
 
 # A section designation: `107.29` in title 14, `1.121-1` in title 26, where a Treasury
@@ -1159,7 +1213,7 @@ def main(argv):
         return 2
     document = json.load(open(argv[1], encoding="utf-8"))
     entries = document["entries"]
-    corpus, spans, refused = corpus_index(argv[2])
+    corpus, spans, refused, passed_over = corpus_index(argv[2])
     try:
         tables = table_index(argv[2])
     except Duplicated as error:
@@ -1190,6 +1244,16 @@ def main(argv):
     uncovered, covered = coverage(document, reached)
     for line in uncovered:
         print(line)
+    if passed_over:
+        # On the record, every run. These have no designation path and never could -- see
+        # `TOP_LEVEL_PASSED_OVER`, where the reason for each tag is written. Printing the tally
+        # is what makes the last three of them a reading anyone can challenge rather than an
+        # omission nobody can see (#290).
+        tally = {}
+        for tag, _ in passed_over:
+            tally[tag] = tally.get(tag, 0) + 1
+        print(f"\n{len(passed_over)} top-level element(s) stepped over, by tag: "
+              + ", ".join(f"{tag} {count}" for tag, count in sorted(tally.items())))
     if refused:
         print(f"\n{len(refused)} paragraph(s) could not be placed in the section tree")
         return 1

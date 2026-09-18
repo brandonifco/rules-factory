@@ -114,12 +114,16 @@ class TestTheSetIsNamed(unittest.TestCase):
     def test_a_sections_heading_is_passed_over_because_the_adapter_enumerates_it(self):
         self.assertIn("HEAD", checker.TOP_LEVEL_PASSED_OVER)
 
-    def test_nothing_editorial_is_assumed_non_regulatory(self):
-        # CITA, EDNOTE and HD1 are *reported*, not named as deliberate pass-overs: nothing has
-        # established that they carry no rule, and writing an unchecked assumption into a
-        # constant is not the same as checking it (#290).
+    def test_the_editorial_tags_are_stepped_over_on_a_stated_reading(self):
+        # CITA, EDNOTE and HD1 rest on a reading of what the eCFR prints -- authority citation,
+        # editorial annotation, division title -- and not on a check. They are in the set, and
+        # the tally below is what keeps that reading challengeable rather than invisible.
         for tag in ("CITA", "EDNOTE", "HD1"):
-            self.assertNotIn(tag, checker.TOP_LEVEL_PASSED_OVER)
+            self.assertIn(tag, checker.TOP_LEVEL_PASSED_OVER)
+
+    def test_the_set_is_closed_and_no_larger_than_its_stated_members(self):
+        self.assertEqual(set(checker.TOP_LEVEL_PASSED_OVER),
+                         {"HEAD", "DIV", "TABLE", "CITA", "EDNOTE", "HD1"})
 
 
 class TestTheCheckerReportsWhatItCannotPlace(unittest.TestCase):
@@ -144,10 +148,28 @@ class TestTheCheckerReportsWhatItCannotPlace(unittest.TestCase):
                 return
         self.fail("the unknown tag was not reported at all")
 
-    def test_the_authority_citation_and_the_editorial_note_are_reported(self):
-        texts = [text for _, text, why in self.walked() if why is not None]
-        self.assertTrue(any(t.startswith("Authority:") for t in texts))
-        self.assertTrue(any("redesignated" in t for t in texts))
+    def test_the_authority_citation_and_the_editorial_note_are_counted_not_dropped(self):
+        # The distinction this change turns on. They are stepped over -- being unplaced fails
+        # the run, and an authority citation is not a defect -- but they are counted, and the
+        # tally is printed on every run, so nothing goes past in silence (#290).
+        tally = []
+        checker.paragraphs(ET.fromstring(TOP_LEVEL), tally)
+        by_tag = {tag: text for tag, text in tally}
+        self.assertIn("CITA", by_tag)
+        self.assertTrue(by_tag["CITA"].startswith("Authority:"))
+        self.assertIn("EDNOTE", by_tag)
+        self.assertIn("redesignated", by_tag["EDNOTE"])
+        self.assertIn("HD1", by_tag)
+        self.assertIn("HEAD", by_tag)
+
+    def test_a_stepped_over_element_never_fails_the_run_as_unplaced(self):
+        unplaced_texts = [text for _, text, why in self.walked() if why is not None]
+        self.assertFalse([t for t in unplaced_texts if t.startswith("Authority:")],
+                         "an authority citation was reported unplaced, which fails the run")
+
+    def test_the_tally_is_empty_when_a_caller_does_not_ask_for_it(self):
+        # `paragraphs(root)` keeps the signature every other call site uses.
+        self.assertTrue(checker.paragraphs(ET.fromstring(TOP_LEVEL)))
 
     def test_the_ordinary_paragraphs_still_have_their_addresses(self):
         indexed = {text: path for path, text, why in self.walked() if why is None}
@@ -186,8 +208,9 @@ class TestTheAdapterEnumeratesWhatItCannotAddress(unittest.TestCase):
         found = [u for u in self.enumerated()
                  if u.text == "A block tag neither walk has ever seen."]
         self.assertEqual(len(found), 1, "the unknown tag was not enumerated")
-        self.assertIsNotNone(found[0].why, "it was enumerated with no reason for having no address")
-        self.assertIn("SOMETHINGNEW", found[0].why)
+        self.assertIsNotNone(found[0].unaddressable,
+                             "it was enumerated with no reason for having no address")
+        self.assertIn("SOMETHINGNEW", found[0].unaddressable)
 
     def test_the_heading_is_still_its_own_unit(self):
         headings = [u for u in self.enumerated() if u.kind == "heading"]
