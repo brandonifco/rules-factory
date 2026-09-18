@@ -122,6 +122,48 @@ FIXTURE = """<ROOT><DIV6 N="B" TYPE="SUBPART">
 </DIV8>
 </DIV6></ROOT>"""
 
+# The shapes a review found by construction, none of which either admitted section prints. Each
+# one used to vanish or to inherit an address that is not its own; each is now reported. They sit
+# in a section of their own so that § 1.20's unit numbering stays readable above.
+ODDITIES = """<ROOT>
+<DIV8 N="1.21" TYPE="SECTION"><HEAD>§ 1.21 Odd shapes.</HEAD>
+<P>(a) A paragraph that introduces a run:</P>
+<EXTRACT><FP-1>Alpha rule.</FP-1>
+<P>(b)(1) A compound designation, which DESIGNATOR does not match.</P></EXTRACT>
+<P>(b) Another paragraph:</P>
+<EXTRACT><FP-1>Beta rule.</FP-1>
+<P>(c)An unspaced designation, which DESIGNATOR does not match either.</P></EXTRACT>
+<P>(c) A third:</P>
+<EXTRACT><FP-1>Gamma rule.</FP-1>
+<EXAMPLE><HED>Illustration.</HED><P>A head that does not name an example.</P></EXAMPLE>
+<FOOTNOTE>A tag this walk has no unit for.</FOOTNOTE></EXTRACT>
+<P>(d) A fourth:</P>
+<EXTRACT><FP-1>Delta rule.</FP-1>
+<NOTE><HED>Note to paragraph (z):</HED>
+<P>A note, inside a placed wrapper, naming a paragraph that does not exist.</P></NOTE></EXTRACT>
+<P>(e) A fifth:</P>
+<NOTE><HED>Note to paragraphs (a) and (1):</HED>
+<P>A note naming two paragraphs at once.</P></NOTE>
+<P>(f) A sixth:</P>
+<NOTE><HED>Note to paragraph (a)(12345):</HED>
+<P>A note naming a group this grammar cannot read.</P></NOTE>
+<P>(g) A seventh:</P>
+<DIV><TABLE><THEAD><TR><TD>(1) Code</TD><TD>(2) Limit</TD></TR></THEAD>
+<TBODY><TR><TD>X1</TD><TD>5 L</TD></TR></TBODY></TABLE></DIV>
+<EXTRACT><HD2>Appendix C to § 1.21—Odd widgets</HD2>
+<P>1. An appendix titled at level two rather than level one.</P></EXTRACT>
+</DIV8></ROOT>"""
+
+#: The committed corpora, for the invariant below: a rule measured only on a fixture is a rule
+#: measured on the shapes its author thought of.
+COMMITTED = [
+    os.path.join(REPO, "examples", "faa-part-107", "part107.xml"),
+    os.path.join(REPO, "examples", "faa-part-107-temporal", "part107-2020-01-01.xml"),
+    os.path.join(REPO, "examples", "tax-121-principal-residence", "section-1.121-1.xml"),
+    os.path.join(REPO, "examples", "hazmat-172-table", "section-172.101.xml"),
+    os.path.join(REPO, "examples", "hazmat-172-table", "section-172.102.xml"),
+]
+
 TABLE_TAKEN = {"section": "§ 1.20", "table": 1, "rows": "all"}
 
 
@@ -142,6 +184,31 @@ def indexed(fixture=FIXTURE):
 def unplaced(fixture=FIXTURE):
     """(text, reason) for every paragraph the checker refuses to place."""
     return [(text, why) for path, text, why in walked(fixture) if why is not None]
+
+
+def reached_by_the_descent(root):
+    """Every text-bearing element inside a wrapper, counted **independently of the walk**.
+
+    Written here rather than imported, so that the invariant below is a claim about the corpus
+    and not a restatement of the implementation: this traversal knows only which tags are
+    wrappers and which hold a table, and it collects everything else that has words in it.
+    """
+    found = []
+
+    def visit(node, inside):
+        for child in node:
+            if child.tag in checker.NESTED_CONTAINERS:
+                visit(child, True)
+            elif child.tag in checker.TABLE_WRAPPERS:
+                continue
+            elif inside:
+                text = checker.normalise("".join(child.itertext()))
+                if text:
+                    found.append(text)
+
+    for section in root.iter("DIV8"):
+        visit(section, False)
+    return found
 
 
 def path_of(opening, fixture=FIXTURE):
@@ -268,7 +335,7 @@ class TestAWrapperThatIsNotAContinuationIsUnplaced(unittest.TestCase):
     def test_every_unplaced_paragraph_is_reported_with_its_reason(self):
         # Not indexed is not the same as passed over: `corpus_index` hands each to `main`, which
         # prints it. A passage the tool cannot address must be visible as one.
-        self.assertEqual(len(unplaced()), 4)
+        self.assertEqual(len(unplaced()), 5)
         for text, why in unplaced():
             self.assertTrue(why and text)
 
@@ -460,7 +527,7 @@ class TestTheAdapterSeesTheSameParagraphs(unittest.TestCase):
                          ["§ 1.20 ¶5 heading", "§ 1.20 ¶12 heading", "§ 1.20 ¶21 heading"])
         self.assertEqual([u.key for u in self.units if u.text.startswith("148 ")], ["§ 1.20 ¶6"])
         self.assertEqual([u.key for u in self.units if u.text.startswith("(d) ")],
-                         ["§ 1.20 ¶24 (d)"])
+                         ["§ 1.20 ¶25 (d)"])
 
     def test_the_table_inside_the_wrapper_is_still_enumerated_as_rows(self):
         self.assertEqual([u.key for u in self.units if u.kind == "table-row"],
@@ -506,6 +573,241 @@ class TestTheTwoWalksAreOneWalk(unittest.TestCase):
         # says of each either where it is or why it has no address.
         self.assertEqual([t for t in enumerated if t != "§ 1.20 Special provisions."],
                          [text for _, text, _ in walked()])
+
+
+class TestTheWalkLosesNothing(unittest.TestCase):
+    """The invariant, over the committed corpora and both fixtures.
+
+    Every text-bearing element the descent reaches is **indexed or reported unplaced**. This is
+    worth more than any of the individual shapes below it, because each of those was found by
+    construction and the next one will be too: an element that vanishes is a second copy of a
+    quote nobody counts, and the every-occurrence rule then verifies that quote against whichever
+    copy survived -- the hole this branch closed once already.
+
+    Mutation: `continue` instead of reporting, on any of the three branches of `wrapped` that
+    have no unit to give -- an unrecognised tag, an example with no label, an element inside an
+    unplaced wrapper. Each makes this fail on the fixture that carries the shape.
+
+    Scope, said plainly: the claim is about what the **descent into a wrapper** reaches. A
+    section's direct `CITA`, `EDNOTE` and `HD1` children are passed over as they always were,
+    which is older than this change and is #290.
+    """
+
+    def assert_nothing_vanished(self, root, where):
+        # Everything the descent reaches must come back from the walk, placed or unplaced. The
+        # walk also carries the section's own top-level paragraphs, so this is containment with
+        # multiplicity rather than equality.
+        counted = {}
+        for _, text, _ in checker.paragraphs(root):
+            counted[text] = counted.get(text, 0) + 1
+        for text in sorted(reached_by_the_descent(root)):
+            self.assertIn(text, counted, f"{where}: vanished -- {text[:70]!r}")
+            counted[text] -= 1
+            self.assertGreaterEqual(counted[text], 0, f"{where}: counted too few -- {text[:70]!r}")
+
+    def test_nothing_vanishes_from_either_fixture(self):
+        for name, fixture in (("FIXTURE", FIXTURE), ("ODDITIES", ODDITIES)):
+            self.assert_nothing_vanished(ET.fromstring(fixture), name)
+
+    def test_nothing_vanishes_from_any_committed_corpus(self):
+        for path in COMMITTED:
+            self.assert_nothing_vanished(ET.parse(path).getroot(), os.path.basename(path))
+
+    def test_the_committed_corpora_exercise_the_descent_at_all(self):
+        # A containment test over corpora with no wrapper proves nothing, so this says which
+        # ones carry the shape: only the two hazmat sections do, with 574 wrapped elements in
+        # § 172.102 and 16 in § 172.101 -- the two appendices and the note.
+        counts = {os.path.basename(p): len(reached_by_the_descent(ET.parse(p).getroot()))
+                  for p in COMMITTED}
+        self.assertEqual(counts["part107.xml"], 0)
+        self.assertEqual(counts["section-1.121-1.xml"], 0)
+        self.assertEqual(counts["section-172.102.xml"], 574)
+        self.assertEqual(counts["section-172.101.xml"], 16)
+
+
+class TestNothingSlipsThroughInheritance(unittest.TestCase):
+    """The shapes a review found by construction; every one used to be attributed or to vanish.
+
+    Mutation for the first two: use `DESIGNATOR` for the refusal test instead of
+    `STATES_A_DESIGNATION`. `DESIGNATOR` requires whitespace after the first parenthesised token,
+    so `(b)(1) Text` and `(b)Text` slip past it and inherit an address that is not their own.
+    That expression drives the whole section's designator tree and is deliberately **not**
+    widened here (#289); the refusal test is a separate, broader expression, because refusing too
+    widely only withholds an address while inheriting too widely hands out a wrong one.
+    """
+
+    def reason_for(self, opening):
+        found = [why for text, why in unplaced(ODDITIES) if text.startswith(opening)]
+        self.assertTrue(found, f"{opening!r} was placed, or is not in the corpus at all")
+        return found[0]
+
+    def test_a_compound_designation_is_a_designation(self):
+        self.assertIn("states its own designation, (b)", self.reason_for("Alpha rule."))
+
+    def test_an_unspaced_designation_is_a_designation(self):
+        self.assertIn("states its own designation, (c)", self.reason_for("Beta rule."))
+
+    def test_an_example_whose_head_names_no_example_is_reported(self):
+        # Mutation: `continue` instead of reporting. It then vanishes, and a second copy of any
+        # sentence in it is invisible to the every-occurrence rule.
+        self.assertIn("head does not name an example", self.reason_for("Illustration."))
+
+    def test_an_element_this_walk_has_no_unit_for_is_reported(self):
+        self.assertIn("no unit for a <FOOTNOTE>", self.reason_for("A tag this walk has no unit"))
+
+    def test_the_wrapper_around_them_is_unplaced_whole(self):
+        # The refusal is of the wrapper, not of the offending paragraph alone: a run one of whose
+        # paragraphs designates itself is not a run the paragraph before it continues.
+        self.assertIn("states its own designation", self.reason_for("Alpha rule."))
+        self.assertEqual([p for p, t in indexed(ODDITIES) if t == "Alpha rule."], [])
+
+
+class TestAttributionIsAskedAtEveryDepth(unittest.TestCase):
+    """Mutation: evaluate `wrapper_reach` once, for the outermost wrapper, and let recursion
+    carry that answer down unchecked.
+
+    That is last round's descent defect in its other half: the walk reached every depth and the
+    *check* did not, so a `NOTE` nested inside a placed `EXTRACT` whose heading names a paragraph
+    that does not exist was attributed to the enclosing run.
+    """
+
+    def test_a_note_nested_in_a_placed_wrapper_is_judged_on_its_own(self):
+        found = [why for text, why in unplaced(ODDITIES) if text.startswith("A note, inside")]
+        self.assertTrue(found, "the nested note was attributed rather than judged")
+        self.assertIn("which is not where the corpus prints it", found[0])
+
+    def test_and_the_wrapper_around_it_is_still_placed(self):
+        self.assertEqual(path_of("Delta rule.", ODDITIES), (None, "1.21", "d"))
+
+
+class TestANoteHeadingNamesOneParagraphOrNone(unittest.TestCase):
+    """Mutation: read the heading with `CITE_GROUP.findall` over the whole string.
+
+    `findall` concatenates `Note to paragraphs (a) and (1):` into the single path `(a)(1)`, which
+    names a paragraph nobody wrote, and silently drops the unreadable group from
+    `Note to paragraph (a)(12345):`, attributing the note to `(a)`. The heading is now parsed as
+    a whole address or refused, which is the rule a row key already has (0035): a key that
+    resolves to two rows is never resolved to the first of them.
+    """
+
+    def reason_for(self, opening):
+        found = [why for text, why in unplaced(ODDITIES) if text.startswith(opening)]
+        self.assertTrue(found, f"{opening!r} was placed")
+        return found[0]
+
+    def test_a_heading_naming_two_paragraphs_is_refused(self):
+        self.assertIn("names no single paragraph", self.reason_for("A note naming two"))
+
+    def test_a_heading_naming_a_group_the_grammar_cannot_read_is_refused(self):
+        self.assertIn("names no single paragraph", self.reason_for("A note naming a group"))
+
+    def test_a_heading_that_does_name_one_paragraph_still_works(self):
+        self.assertEqual(path_of("For samples of a widget"), ("B", "1.20", "c"))
+
+
+class TestADivisionIsRecognisedWithoutReadingItsTag(unittest.TestCase):
+    """Mutation: drop the captioned-and-continues-nothing test, leaving only the `HD1` one.
+
+    The tag-literal test alone is true of every division the admitted corpora print and of no
+    other, but it is a statement about a tag rather than about a shape, and a review titled an
+    appendix with an `HD2` to show it. The second test is level-agnostic: a wrapper that carries
+    a caption and is not printed after a designated paragraph continues nothing.
+
+    Computing "the outermost heading level this section prints" instead, which is what the review
+    proposed, would refuse all six of § 172.102's captioned provision runs -- that section prints
+    no `HD1` at all, so its outermost level is 2 -- and 0036 records why that is not the rule.
+    """
+
+    def test_an_appendix_titled_at_level_two_is_still_a_division(self):
+        found = [why for text, why in unplaced(ODDITIES)
+                 if text.startswith("Appendix C to § 1.21")]
+        self.assertTrue(found, "the HD2-titled appendix was attributed")
+        self.assertIn("is not a designated paragraph", found[0])
+
+    def test_and_a_captioned_run_after_its_own_paragraph_is_not(self):
+        # All six of § 172.102's captioned runs are this shape, so the test above must not catch
+        # them: `Code/Special Provisions` follows the paragraph that introduces the run.
+        self.assertEqual(path_of("A1 "), ("B", "1.20", "c", "2"))
+        self.assertEqual([t for t, _ in unplaced() if t == "Code/Special Provisions"], [])
+
+
+class TestTheInventoryCarriesPlacement(unittest.TestCase):
+    """Mutation: drop `Unit.unaddressable`, or stop setting it in `wrapped_elements`.
+
+    Enumerated 3, reached 3, unaccounted 0, exit 0 -- for a section whose appendix the checker
+    refuses to place. A unit no citation can resolve into must never be counted as accounted for
+    by a quotation of it: the locator run would report that entry unchecked and fail, and the two
+    tools would disagree about the same passage with the inventory the more forgiving of the two.
+    """
+
+    def setUp(self):
+        self.directory = tempfile.mkdtemp(prefix="nested-paragraphs-placement-")
+        self.addCleanup(shutil.rmtree, self.directory)
+        self.write("corpus.xml", ODDITIES, raw=True)
+        self.write("corpus-manifest.json", {
+            "schemaVersion": 1,
+            "corpora": [{"sourceId": "fixture", "adapter": "ecfr-xml",
+                         "committedPath": "corpus.xml", "verification": "committed-copy"}],
+        })
+        self.map_path = os.path.join(self.directory, "corpus-map.json")
+
+    def write(self, name, content, raw=False):
+        with open(os.path.join(self.directory, name), "w", encoding="utf-8") as handle:
+            handle.write(content) if raw else json.dump(content, handle)
+
+    def inventory(self, evidence):
+        self.write("corpus-map.json", {
+            "schemaVersion": 1, "corpus": "fixture", "baseline": "fixture",
+            "extent": {"unit": "section-designation", "sections": ["§ 1.21"],
+                       "tables": [{"section": "§ 1.21", "table": 1, "rows": "all"}]},
+            "entries": [{"id": "an-entry", "evidence": evidence}],
+        })
+        out, err = io.StringIO(), io.StringIO()
+        with redirect_stdout(out), redirect_stderr(err):
+            code = cli.main(["inventory", self.map_path, "--list"])
+        return code, out.getvalue() + err.getvalue()
+
+    def test_a_unit_with_no_address_is_enumerated_and_said_out_loud(self):
+        code, output = self.inventory("(a) A paragraph that introduces a run:")
+        self.assertEqual(code, NOT_VERIFIED, output)
+        self.assertIn("no address:", output)
+        self.assertIn("no citation can resolve into", output)
+
+    def test_quoting_one_is_a_failure_not_coverage(self):
+        code, output = self.inventory("Appendix C to § 1.21—Odd widgets")
+        self.assertEqual(code, 1, output)
+        self.assertIn("not coverage of it", output)
+
+    def test_what_the_adapter_calls_unaddressable_the_checker_leaves_unplaced(self):
+        # The one place the two walks part company, pinned in the direction that is safe: the
+        # adapter builds no designator tree, so it decides the three tests that need no path and
+        # not the fourth. Everything it refuses, the checker refuses; not the reverse.
+        for fixture in (FIXTURE, ODDITIES):
+            path = os.path.join(self.directory, "one.xml")
+            with open(path, "w", encoding="utf-8") as handle:
+                handle.write(fixture)
+            adapter = corpus.EcfrXml(path)
+            refused = set()
+            for number, section in adapter._sections().items():
+                for unit in adapter._section_units(number, section):
+                    if unit.unaddressable:
+                        refused.add(unit.text)
+            unplaced_here = {text for text, _ in unplaced(fixture)}
+            self.assertTrue(refused <= unplaced_here,
+                            f"the adapter refuses more than the checker: "
+                            f"{sorted(refused - unplaced_here)[:3]}")
+
+    def test_and_every_committed_corpus_agrees_the_same_way(self):
+        for path in COMMITTED:
+            adapter = corpus.EcfrXml(path)
+            refused = set()
+            for number, section in adapter._sections().items():
+                for unit in adapter._section_units(number, section):
+                    if unit.unaddressable:
+                        refused.add(unit.text)
+            unplaced_here = {text for text, _ in
+                             unplaced(open(path, encoding="utf-8").read())}
+            self.assertTrue(refused <= unplaced_here, os.path.basename(path))
 
 
 class TestAQuoteInANestedParagraphReachesIt(unittest.TestCase):

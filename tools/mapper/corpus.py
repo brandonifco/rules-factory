@@ -73,15 +73,22 @@ class Unit:
     across runs and legible in a report: `p. 177 block 4`, `§ 107.29(a)(2)`.
     """
 
-    def __init__(self, key, kind, text):
+    def __init__(self, key, kind, text, unaddressable=None):
         if kind not in KINDS:
             raise Refused(f"unit kind {kind!r} is outside the closed set: " + ", ".join(KINDS))
         self.key = key
         self.kind = kind
         self.text = text
+        #: why no citation can resolve into this unit, or None where one can (0036). A unit with
+        #: a reason here is text of the corpus that has no address, so a quote of it is not
+        #: coverage of it -- the locator run would report the entry unchecked. The inventory
+        #: counts it, reports it on a line of its own, and fails a map that claims to have
+        #: reached it.
+        self.unaddressable = unaddressable
 
     def __repr__(self):
-        return f"Unit({self.key!r}, {self.kind!r}, {len(self.text)} chars)"
+        return (f"Unit({self.key!r}, {self.kind!r}, {len(self.text)} chars"
+                + (", unaddressable" if self.unaddressable else "") + ")")
 
 
 class Adapter:
@@ -560,50 +567,87 @@ class Table:
 #   NOTE     § 172.101 prints one, directing particular samples to four other provisions. It is
 #            normative text of the section, and it was not merely unaccounted -- it was invisible.
 #
-# Not in it: a DIV, whose text is a table and whose rows are units of their own (0035) --
-# flattening one into a paragraph is the reading that decision refused, and `_tables` already
-# reaches a table inside an EXTRACT.
-#
 # `examples/faa-part-107/check-locators-section.py` descends into the same set, to any depth,
 # because a unit this cannot see is one no inventory counts and a passage that one cannot reach
 # is one no citation names. `tools/tests/mapper/test_mapper_nested_paragraphs.py` holds the two
 # tables equal, the way `test_mapper_table_rows.py` holds the row grammar to the checker's parser.
-#
-# **The two walks part company on one thing, and only one.** The checker asserts *containment* --
-# its whole job is where a citation reaches -- so it leaves a wrapper unplaced where the markup
-# does not say the wrapper is inside the paragraph it follows (0036). A unit key here asserts
-# nothing of the kind: `§ 172.101 ¶94` says where a paragraph sits in the section's reading order
-# and no more. So this enumerates a wrapper the checker leaves unplaced, and reports it
-# unaccounted until something accounts for it -- which is the honest state of a passage that has
-# no address yet, and the opposite of dropping it out of the denominator.
 NESTED_CONTAINERS = ("EXTRACT", "NOTE")
-# What each element inside such a container is. The eCFR's formatted-paragraph tags are block
-# markup rather than section paragraphs -- `FP-1` is one provision of a run, `FP1-2` a sub-item
-# of the provision above it, `FP`/`FP-2` the lead-in and continuation of a formula -- and
-# `HD1`/`HD2` are a heading like a section's.
+#: Elements inside a wrapper whose text is a table: stepped over here because `_tables` already
+#: reaches a table at any depth and enumerates its rows as `table-row` units (0035). The one
+#: place this descent passes text over, named so that it is a decision and not an omission.
+TABLE_WRAPPERS = ("DIV", "TABLE")
+# What each element inside a wrapper is. The eCFR's formatted-paragraph tags are block markup
+# rather than section paragraphs -- `FP-1` is one provision of a run, `FP1-2` a sub-item of the
+# provision above it, `FP`/`FP-2` the lead-in and continuation of a formula -- and `HD1`, `HD2`
+# and `HED` are headings: a division's title, a run's caption, a note's own head.
 #
-# `MATH` is not here: in this markup it carries no text at all, so it would enumerate the empty
-# string, and a unit with no words is one no quote can ever reach. Neither is `HED`, a note's or
-# an example's own head: a note's is *read* rather than indexed, because what it says -- "Note to
-# paragraph (c)(11):" -- is the address the checker gives the note.
+# `MATH` needs no entry: in this markup it carries no text at all, so there is nothing to
+# enumerate, and a unit with no words is one no quote can ever reach. An element that *has* text
+# and no entry here is enumerated anyway, as a paragraph with no address, because a unit nothing
+# counts is a unit no sweep can ever report.
 NESTED_KINDS = {"P": "paragraph", "FP": "paragraph", "FP-1": "paragraph", "FP-2": "paragraph",
-                "FP1-2": "paragraph", "HD1": "heading", "HD2": "heading",
+                "FP1-2": "paragraph", "HD1": "heading", "HD2": "heading", "HED": "heading",
                 "EXAMPLE": "worked-example"}
+HEADING = re.compile(r"^HD\d+$")
+DIVISION_HEADING = "HD1"
+STATES_A_DESIGNATION = re.compile(r"^\([A-Za-z0-9]{1,4}\)")
+NOTE_HEAD = re.compile(r"^note\s+to\s+paragraph\s+((?:\([A-Za-z0-9]{1,4}\))+)\s*[:.]?\s*$", re.I)
+NOTE_NAMES_A_PARAGRAPH = re.compile(r"^note\s+to\s+paragraphs?\b", re.I)
 
 
-def wrapped_elements(container):
-    """(element, kind) for everything inside a wrapper, to any depth, through wrappers only.
+def wrapper_is_addressable(container, previous):
+    """Whether a citation can resolve into this wrapper at all (0036), and why not.
 
-    Descent is through `NESTED_CONTAINERS` and nothing else, so a `DIV` holding a table is
-    stepped over and its rows stay the `table-row` units they are. **To any depth**: one level
-    left an `EXTRACT` inside an `EXTRACT` out of the enumeration entirely, and a unit nothing
-    counts is one no sweep can ever report.
+    **The three tests here are the ones that need no designation**, which is the whole of what
+    this side can honestly decide: a unit key says where a paragraph sits in the section's
+    reading order and asserts no containment, so this file builds no designator tree and has no
+    path to compare against. The section locator checker asks these same three and one more --
+    whether the paragraph a note's heading names is a paragraph the note is printed in -- so what
+    this calls unaddressable the checker always leaves unplaced, and the reverse does not hold.
+    The direction is asserted in `test_mapper_nested_paragraphs.py`, over the committed corpora
+    and every fixture, so it cannot drift into disagreement unnoticed.
     """
+    headings = [child for child in container if HEADING.fullmatch(child.tag)]
+    if any(child.tag == DIVISION_HEADING for child in headings):
+        return False, "it opens a division of the section"
+    designated = (previous is not None and previous.tag == "P"
+                  and STATES_A_DESIGNATION.match(normalise("".join(previous.itertext()))))
+    if headings and not designated:
+        return False, "it is captioned and continues no designated paragraph"
+    for child in container:
+        if child.tag == "P" and STATES_A_DESIGNATION.match(normalise("".join(child.itertext()))):
+            return False, "a paragraph of it states its own designation"
+    if container.tag == "NOTE":
+        head = container.find("HED")
+        text = normalise("".join(head.itertext())) if head is not None else ""
+        if NOTE_NAMES_A_PARAGRAPH.match(text) and not NOTE_HEAD.match(text):
+            return False, "its heading names no single paragraph"
+    return True, None
+
+
+def wrapped_elements(container, previous=None, unaddressable=None):
+    """(element, kind, why it has no address or None) for everything inside a wrapper.
+
+    To **any depth**, through wrappers only: one level left an `EXTRACT` inside an `EXTRACT` out
+    of the enumeration entirely, and a unit nothing counts is one no sweep can ever report. The
+    address test is asked of **every** wrapper reached, not only the outermost, and a wrapper
+    inside an unaddressable one stays unaddressable.
+    """
+    if unaddressable is None:
+        addressable, why = wrapper_is_addressable(container, previous)
+        unaddressable = None if addressable else why
+    before = None
     for child in container:
         if child.tag in NESTED_CONTAINERS:
-            yield from wrapped_elements(child)
+            yield from wrapped_elements(child, before, unaddressable)
+        elif child.tag in TABLE_WRAPPERS:
+            pass
         elif child.tag in NESTED_KINDS:
-            yield child, NESTED_KINDS[child.tag]
+            yield child, NESTED_KINDS[child.tag], unaddressable
+        elif normalise("".join(child.itertext())):
+            yield child, "paragraph", (unaddressable
+                                       or f"this walk has no unit for a <{child.tag}>")
+        before = child
 
 
 class EcfrXml(Adapter):
@@ -804,20 +848,24 @@ class EcfrXml(Adapter):
             designator = self.DESIGNATOR.match(text)
             return f" ({designator.group(1)})" if designator else ""
 
+        previous = None
         for child in section:
             if child.tag in NESTED_CONTAINERS:
                 # A wrapper states nothing of its own; every word in it is in an element below
                 # it, at whatever depth, and each is a unit of the section. The ¶ numbering runs
                 # on through them, so the keys stay the section's own reading order and no two
-                # units share one.
-                for nested, kind in wrapped_elements(child):
+                # units share one. A wrapper no citation can resolve into is enumerated all the
+                # same, with its reason: dropping it would shrink the denominator to what could
+                # be cited, which is the opposite of what an inventory is for.
+                for nested, kind, why in wrapped_elements(child, previous):
                     text = normalise("".join(nested.itertext()))
                     if not text:
                         continue
                     position += 1
                     suffix = {"heading": " heading", "worked-example": " example"}.get(
                         kind, label_of(text))
-                    found.append(Unit(f"§ {number} ¶{position}{suffix}", kind, text))
+                    found.append(Unit(f"§ {number} ¶{position}{suffix}", kind, text, why))
+                previous = child
                 continue
             text = normalise("".join(child.itertext()))
             if not text:
@@ -828,6 +876,7 @@ class EcfrXml(Adapter):
             elif child.tag == "EXAMPLE":
                 position += 1
                 found.append(Unit(f"§ {number} ¶{position} example", "worked-example", text))
+            previous = child
         return found
 
 

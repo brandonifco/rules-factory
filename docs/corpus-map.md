@@ -207,18 +207,26 @@ with every other provision of their run.
   another is the quote, which is held to its citation at every occurrence, exactly as it already
   was for two paragraphs that print the same sentence
   ([0030](decisions/0030-a-repeated-passage-is-identified-by-the-container-its-citation-names.md)).
-- The wrappers are a **closed set** — `EXTRACT` and `NOTE` — descended into to **any depth**. A
-  table's wrapper is not one: a table is cited by its rows, above.
-- A wrapper is printed *after* a paragraph, and the markup does not say it is *inside* it. Two
-  things say it is not, and each leaves the wrapper **unplaced** — in no index, named by no
-  citation, and reported by the run with its reason: it **opens a division of the section** (it
-  holds a heading at the section's outermost level, which is how § 172.101 prints its two
-  appendices), or an ordinary `<P>` inside it **states its own designation**, which the
-  designation it is printed under is not. An address that is confidently wrong is worse than
-  none — 0035's posture towards an unreadable table, applied to a designation.
-- A **note takes the paragraph it names in its own heading**: § 172.101 prints
+- The wrappers are a **closed set** — `EXTRACT` and `NOTE` — descended into to **any depth**, and
+  the descent **loses nothing**: every text-bearing element it reaches is either indexed or
+  reported unplaced with a reason. A table's wrapper is the one exception, because a table is
+  cited by its rows, above.
+- A wrapper is printed *after* a paragraph, and the markup does not say it is *inside* it. Three
+  things say it is not, asked of **every** wrapper at every depth, and each leaves that wrapper
+  **unplaced** — in no index, named by no citation, and reported by the run with its reason:
+  it **opens a division of the section** (it holds a heading at the level directly below the
+  section, or it is captioned and follows no designated paragraph — § 172.101's two appendices
+  answer both); an ordinary `<P>` inside it **states its own designation**, which the designation
+  it is printed under is not; or it is a note whose heading does not name one paragraph it sits
+  in. An address that is confidently wrong is worse than none — 0035's posture towards an
+  unreadable table, applied to a designation.
+- A **note takes the one paragraph it names in its own heading**: § 172.101 prints
   `Note to paragraph (c)(11):` after `(c)(11)(iii)(C)`, and `§ 172.101(c)(11)` is where it is
-  cited from. A note naming a paragraph it is not printed in is unplaced.
+  cited from. A heading naming several paragraphs, none, or one the note is not printed in is
+  refused, exactly as a row key naming two rows is.
+- **A passage with no address is never coverage of itself.** `mapper inventory` counts such a
+  unit, reports it on a `no address` line, and fails a map whose entry quotes one: the locator
+  run would report that entry unchecked, and the two tools may not disagree about one passage.
 
 **Use it where the quote is the lead-in alone.** Part 107's `operating-limitations` cites
 `§ 107.51 introductory text`. Entries that quote the lead-in *together with* designated paragraphs

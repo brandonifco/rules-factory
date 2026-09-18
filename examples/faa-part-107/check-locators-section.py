@@ -173,78 +173,94 @@ def subpart_of(section, parents):
 #
 #   EXTRACT  the eCFR's block set off from the running text. § 172.102(c) states its special
 #            provisions in seven of them -- `A3`, `B2`, `N40`, `TP1`, `148` -- one per element,
-#            under the designated paragraph that introduces the run. The wrapper is a *sibling*
-#            of the section's <P> elements, so the walk below reached none of them, and 12 of
-#            the 20 provisions trial 10's rows invoke were in no index at all (#285, #261).
+#            under the designated paragraph that introduces the run; § 172.101 opens each of its
+#            two appendices with one. The wrapper is a *sibling* of the section's <P> elements,
+#            so the walk below reached none of them, and 12 of the 20 provisions trial 10's rows
+#            invoke were in no index at all (#285, #261).
 #   NOTE     § 172.101 prints one, directing particular samples to four other provisions. It is
-#            normative text inside the section, and it names its own paragraph in its heading:
-#            "Note to paragraph (c)(11):" -- which is the address it takes, see `wrapper_reach`.
-#
-# What is deliberately **not** in it, so that the set stays a decision rather than a habit:
-#
-#   DIV      a table's wrapper. Its text is a table, and a table is addressed by its rows
-#            (0035); flattening one into the paragraph index is the reading that decision
-#            refused, and `table_index` already reaches a table inside an EXTRACT by `.iter`.
+#            normative text of the section, and it names its own paragraph in its heading:
+#            "Note to paragraph (c)(11):" -- which is the address it takes, see `note_reach`.
 NESTED_CONTAINERS = ("EXTRACT", "NOTE")
-# What each element inside such a container is, and what the enumeration in
-# `tools/mapper/corpus.py` calls it. The two tables are held equal by
+#: Elements inside a wrapper whose text is a **table**, and which are therefore stepped over
+#: rather than indexed or reported: `table_index` reaches a table at any depth by `.iter` and
+#: addresses it by its rows (0035). This is the one place the descent passes text over, and it is
+#: named here so that it is a decision rather than an omission -- everything else it reaches is
+#: either indexed or reported unplaced.
+TABLE_WRAPPERS = ("DIV", "TABLE")
+# What each element inside a wrapper is, and what the enumeration in `tools/mapper/corpus.py`
+# calls it. The two tables are held equal by
 # `tools/tests/mapper/test_mapper_nested_paragraphs.py`, because the two files cannot import one
 # another (0032) and a tag one walk indexes and the other does not is a passage one half can cite
 # and the other cannot count.
 #
 # The eCFR's formatted-paragraph tags are block markup, not section paragraphs: `FP-1` is one
 # provision of a run, `FP1-2` a sub-item of the provision above it, `FP`/`FP-2` the lead-in and
-# continuation of a formula. That distinction is what `wrapper_reach` rests on. `HD2` is the
-# run's own heading ("Code/Special Provisions"), text of the regulation like any other; `HD1` is
-# the section's outermost heading level and is reachable here only inside a wrapper that opens a
-# division, which is never placed, so it is listed for the two tables' sake and never indexed.
+# continuation of a formula. That distinction is what `wrapper_reach` rests on. `HD1`, `HD2` and
+# `HED` are headings -- a run's caption ("Code/Special Provisions"), a division's title, a note's
+# own head -- and a heading is printed text of the regulation like any other.
 #
-# `MATH` is in neither table: in this markup it carries no text at all -- the degree-of-filling
-# formula of `TP1` and `TP2` is an image -- so indexing it would enumerate the empty string, and
-# a unit with no words is one no quote can reach. What such a provision states is beyond the
-# adapter, and is recorded that way on an entry that now has a citation to put it on.
+# `MATH` is in neither table and needs no entry: in this markup it carries no text at all -- the
+# degree-of-filling formula of `TP1` and `TP2` is an image -- and the walk indexes nothing that
+# has no words, because a unit with no words is one no quote can reach. An element with text and
+# no entry here is **unplaced**, not skipped.
 NESTED_UNITS = {"P": "paragraph", "FP": "paragraph", "FP-1": "paragraph", "FP-2": "paragraph",
-                "FP1-2": "paragraph", "HD1": "heading", "HD2": "heading",
+                "FP1-2": "paragraph", "HD1": "heading", "HD2": "heading", "HED": "heading",
                 "EXAMPLE": "worked-example"}
-#: A heading at the section's **outermost** level. § 172.101 prints two, and each opens an
-#: appendix: `Appendix A to § 172.101--List of Hazardous Substances and Reportable Quantities`.
+#: Any heading, at any level. The eCFR numbers heading levels from the section downwards, so the
+#: digit is a depth and not a name.
+HEADING = re.compile(r"^HD\d+$")
+#: A heading at the level **directly below the section itself**. That level is a sibling of the
+#: section's paragraphs, not something printed inside one, so a wrapper holding one opens a
+#: division of the section: § 172.101's two appendices are exactly this. The level is read from
+#: the tag because the eCFR states it there, absolutely -- `HD2` means "one level further in",
+#: not "the outermost heading this particular section happens to print". A corpus that titled a
+#: division with an `HD2` would be misread by this alone, which is what `wrapper_reach`'s second
+#: test is for.
 DIVISION_HEADING = "HD1"
-#: A note names the paragraph it belongs to, in its own heading, and this reads it:
-#: `Note to paragraph (c)(11):`. The groups are read by `CITE_GROUP`, the same expression a
-#: citation is read with, so the note and the citation spell a designation the same way.
-NOTE_HEAD = re.compile(r"^note\s+to\s+paragraph\s*", re.I)
+#: A `<P>` inside a wrapper that **states its own designation**. Deliberately broader than
+#: `DESIGNATOR`, which drives the section's designator tree and requires whitespace after the
+#: token: `(b)(1) Text` and `(b)Text` are designations a reader sees and that expression does not
+#: match, and a paragraph that slipped past this test would inherit an address that is not its
+#: own. Refusing too widely only withholds an address; inheriting too widely hands out a wrong
+#: one. `DESIGNATOR` itself is left alone here, because widening it would move the designation of
+#: paragraphs in corpora this change is not about (#289).
+STATES_A_DESIGNATION = re.compile(r"^\([A-Za-z0-9]{1,4}\)")
+#: A note's heading, naming the one paragraph the note belongs to: `Note to paragraph (c)(11):`.
+#: The whole heading must be that and nothing else, so `Note to paragraphs (a) and (1):` and
+#: `Note to paragraph (a)(12345):` do not match -- the first names two paragraphs and the second
+#: a group this grammar cannot read, and concatenating what `findall` happened to catch would
+#: invent `(a)(1)` out of the one and `(a)` out of the other.
+NOTE_HEAD = re.compile(r"^note\s+to\s+paragraph\s+((?:\([A-Za-z0-9]{1,4}\))+)\s*[:.]?\s*$", re.I)
+#: A heading that says it names a paragraph. One that says so and does not match `NOTE_HEAD` is
+#: refused rather than read loosely.
+NOTE_NAMES_A_PARAGRAPH = re.compile(r"^note\s+to\s+paragraphs?\b", re.I)
 
 
-def wrapped_elements(container):
-    """(element, kind) for everything inside a wrapper, to any depth, through wrappers only.
-
-    Descent is through `NESTED_CONTAINERS` and nothing else: a `DIV` holding a table is stepped
-    over, because its rows are units of their own (0035), and so is any element the two walks do
-    not name. **To any depth**, because one level was not enough and the shortfall was silent --
-    an `EXTRACT` inside an `EXTRACT` vanished from the index, and a quote with a copy in each of
-    two wrappers was reported as occurring once and verified against whichever copy survived.
-    That is precisely what the every-occurrence rule exists to stop.
-    """
-    for child in container:
-        if child.tag in NESTED_CONTAINERS:
-            yield from wrapped_elements(child)
-        elif child.tag in NESTED_UNITS:
-            yield child, NESTED_UNITS[child.tag]
+def designates(element):
+    """Whether `element` is a paragraph that opens a designation -- what a run continues."""
+    return (element is not None and element.tag == "P"
+            and bool(STATES_A_DESIGNATION.match(normalise("".join(element.itertext())))))
 
 
-def wrapper_reach(container, enclosing):
+def wrapper_reach(container, enclosing, previous):
     """(path, None) where the wrapper continues the run it sits in, or (None, why not) (0036).
 
     A wrapper is printed *after* a paragraph; the markup does not say it is *inside* it, and
     attributing one to the other is an assertion, not a reading. Decision 0036 settles when the
-    assertion is safe, and this holds the two things that say it is not. Each leaves the whole
-    wrapper **unplaced**: no paragraph of it is indexed, so no citation can resolve into it, and
-    the run reports it by its first words rather than passing over it in silence.
+    assertion is safe, and this holds what says it is not. Each answer leaves that wrapper
+    **unplaced**: no paragraph of it is indexed, so no citation can resolve into it, and the run
+    reports it by its first words rather than passing over it in silence. This is asked of
+    **every** wrapper the descent reaches, at every depth -- a wrapper inside a wrapper is judged
+    on its own children, and one inside a wrapper that is already unplaced stays unplaced.
 
-      * **It opens a division of the section** -- it holds a heading at the section's outermost
-        level. § 172.101's two appendices are `EXTRACT`s printed after `(l)(3)`, a rule about
-        choosing a shipping name, and inheriting that designation made `§ 172.101(l)(3)` accept
-        a quote of Appendix B paragraph 2. A division is not inside the paragraph it follows.
+      * **It opens a division of the section**, and two things say so. It holds a heading at the
+        level directly below the section (`DIVISION_HEADING`), which is a sibling of the
+        section's paragraphs rather than something inside one. Or it holds a heading of **any**
+        level and the element printed before it is not a designated paragraph -- a captioned
+        block continuing nothing. § 172.101's two appendices answer both: each is headed and each
+        follows a table. All six of § 172.102's captioned provision runs follow the designated
+        paragraph that introduces them, and its seventh wrapper, the continuation of the
+        portable-tank run, carries no caption at all.
       * **A paragraph of it states its own designation.** An ordinary `<P>` opening `(b)` after
         an enclosing `(a)` is a *sibling* of the enclosing paragraph, not something under it;
         inheriting would file it beneath its own predecessor and throw its designator away. The
@@ -253,23 +269,22 @@ def wrapper_reach(container, enclosing):
         and not the section's. Measured on the admitted corpus: **every** designator-printing
         element inside a wrapper is an `FP1-2` (54 of them), and no `<P>` inside any wrapper of
         either section prints one.
-
-    A `NOTE` that names its own paragraph takes the paragraph it names, where that is where it
-    sits: § 172.101's note prints `Note to paragraph (c)(11):` and is printed after
-    `(c)(11)(iii)(C)`, so it is indexed at `(c)(11)` -- the corpus's own word about its address,
-    rather than the deepest designator that happens to be open. A note naming a paragraph it is
-    not inside is unplaced: the two statements disagree and neither is guessed at.
+      * **A note's heading does not name exactly one paragraph it sits in** -- see `note_reach`.
     """
-    if any(element.tag == DIVISION_HEADING for element, _ in wrapped_elements(container)):
-        return None, (f"it opens a division of the section -- it holds a {DIVISION_HEADING}, the "
-                      f"section's outermost heading level -- so it is not inside the paragraph "
-                      f"it is printed after")
-    for element, _ in wrapped_elements(container):
-        if element.tag != "P":
+    headings = [child for child in container if HEADING.fullmatch(child.tag)]
+    if any(child.tag == DIVISION_HEADING for child in headings):
+        return None, (f"it holds a {DIVISION_HEADING}, a heading at the level directly below the "
+                      f"section itself, so it opens a division of the section rather than "
+                      f"continuing the paragraph it is printed after")
+    if headings and not designates(previous):
+        return None, (f"it is captioned and what is printed before it is not a designated "
+                      f"paragraph, so there is no run for it to continue")
+    for child in container:
+        if child.tag != "P":
             continue
-        match = DESIGNATOR.match(normalise("".join(element.itertext())))
+        match = STATES_A_DESIGNATION.match(normalise("".join(child.itertext())))
         if match:
-            return None, (f"a paragraph of it states its own designation, ({match.group(1)}), "
+            return None, (f"a paragraph of it states its own designation, {match.group(0)}, "
                           f"which the designation it is printed under is not")
     if container.tag == "NOTE":
         return note_reach(container, enclosing)
@@ -277,16 +292,68 @@ def wrapper_reach(container, enclosing):
 
 
 def note_reach(note, enclosing):
-    """The paragraph a note names in its heading, where that is the paragraph it sits in."""
+    """The paragraph a note names in its heading, where that is a paragraph it sits in.
+
+    § 172.101 prints `Note to paragraph (c)(11):` after `(c)(11)(iii)(C)`, so the note is indexed
+    at `(c)(11)` -- the corpus's own word about its address, rather than the deepest designator
+    that happens to be open when the note is reached. A heading that says it names a paragraph
+    and names several, none, or one the note is not inside is **refused**: that is the rule a row
+    key already gets (0035), where a key matching two rows is never resolved to the first.
+    """
     head = note.find("HED")
     text = normalise("".join(head.itertext())) if head is not None else ""
-    if not NOTE_HEAD.match(text):
+    match = NOTE_HEAD.match(text)
+    if not match:
+        if NOTE_NAMES_A_PARAGRAPH.match(text):
+            return None, (f"its heading names no single paragraph this grammar can read: "
+                          f"{text[:60]!r}")
         return enclosing, None
-    named = enclosing[:2] + tuple(CITE_GROUP.findall(text))
+    named = enclosing[:2] + tuple(CITE_GROUP.findall(match.group(1)))
     if named != enclosing[:len(named)]:
         return None, (f"its heading names {'/'.join(x for x in named[1:] if x)}, which is not "
                       f"where the corpus prints it ({'/'.join(x for x in enclosing[1:] if x)})")
     return named, None
+
+
+def wrapped(container, enclosing, previous, inherited=None):
+    """(path, text, why) for every element inside a wrapper, at any depth. The walk loses nothing.
+
+    Every element this reaches with text in it comes back either **indexed**, with a path, or
+    **unplaced**, with a reason -- including one whose tag `NESTED_UNITS` does not name and a
+    worked example whose head does not name an example. Nothing is dropped for being unrecognised:
+    a vanished element is a second copy of a quote that nobody counts, and the every-occurrence
+    rule then verifies the quote against whichever copy survived. `TABLE_WRAPPERS` is the single
+    exception, and it is an exception because that text is addressed elsewhere, by its rows.
+    """
+    path, why = ((None, inherited) if inherited is not None
+                 else wrapper_reach(container, enclosing, previous))
+    out, before = [], None
+    for child in container:
+        if child.tag in NESTED_CONTAINERS:
+            out += wrapped(child, path if path is not None else enclosing, before, why)
+        elif child.tag in TABLE_WRAPPERS:
+            pass
+        else:
+            text = normalise("".join(child.itertext()))
+            kind = NESTED_UNITS.get(child.tag)
+            if not text:
+                pass
+            elif kind is None:
+                out.append((None, text, f"this walk has no unit for a <{child.tag}>, so it has "
+                                        f"no address and is reported rather than passed over"))
+            elif path is None:
+                out.append((None, text, why))
+            elif kind == "worked-example":
+                label = example_label(child)
+                if label is None:
+                    out.append((None, text, "its head does not name an example, so there is no "
+                                            "label to cite it by"))
+                else:
+                    out.append((path + (label,), text, None))
+            else:
+                out.append((path, text, None))
+        before = child
+    return out
 
 
 def paragraphs(root):
@@ -304,8 +371,8 @@ def paragraphs(root):
     run is an <EXTRACT> beside it, so `A3` is at `§ 172.102(c)(2)` and so is every other code of
     that run. What distinguishes one from another is the quote, which this checker holds to its
     citation at *every* occurrence -- so no citation grammar changes, and none is added. Where
-    the wrapper is **not** a continuation of the run -- `wrapper_reach` -- nothing in it is
-    attributed to anything.
+    the wrapper continues nothing -- `wrapper_reach`, asked of every wrapper at every depth --
+    nothing in it is attributed to anything.
 
     A wrapped paragraph never opens a designator level. `FP1-2` prints `(1)`, `(2)`, `(a)` for
     the sub-items of one provision, and letting those into the stack re-designates every
@@ -317,29 +384,22 @@ def paragraphs(root):
     for section in root.iter("DIV8"):
         subpart = subpart_of(section, parents)
         stack = {}  # level -> designator, for the levels currently open
+        previous = None
         for p in section:
             if p.tag in NESTED_CONTAINERS:
                 here = (subpart, section.get("N")) + tuple(stack[k] for k in sorted(stack))
-                path, why = wrapper_reach(p, here)
-                for element, kind in wrapped_elements(p):
-                    text = normalise("".join(element.itertext()))
-                    if not text:
-                        continue
-                    if path is None:
-                        out.append((None, text, why))
-                        continue
-                    if kind == "worked-example":
-                        label = example_label(element)
-                        if label is None:
-                            continue
-                        out.append((path + (label,), text, None))
-                        continue
-                    out.append((path, text, None))
+                out += wrapped(p, here, previous)
+                previous = p
                 continue
+            previous = p
             if p.tag == "EXAMPLE":
-                label = example_label(p)
                 text = normalise("".join(p.itertext()))
-                if label is None or not text:
+                if not text:
+                    continue
+                label = example_label(p)
+                if label is None:
+                    out.append((None, text, "its head does not name an example, so there is no "
+                                            "label to cite it by"))
                     continue
                 path = (subpart, section.get("N")) + tuple(
                     stack[k] for k in sorted(stack)

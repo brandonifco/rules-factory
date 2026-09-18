@@ -206,10 +206,17 @@ def command_inventory(args):
     if taken.problems:
         print(f"\n{len(taken.problems)} problem(s) with the recorded rejections")
         return 1
+    if taken.unaddressable:
+        print(f"\nNOT VERIFIED: {len(taken.unaddressable)} of {len(units)} unit(s) inside the "
+              f"declared extent are text no citation can resolve into (0036), so no entry can "
+              f"ever cite them and a quote of one is not coverage of it. Accounting for one "
+              f"means recording a rejection against it")
     if taken.unaccounted:
         print(f"\nNOT VERIFIED: {len(taken.unaccounted)} of {len(units)} unit(s) inside the "
               f"declared extent are reached by no entry's quote and recorded as examined by "
               f"nothing. Whether each owed an entry is decided by reading the corpus, not here")
+        return NOT_VERIFIED
+    if taken.unaddressable:
         return NOT_VERIFIED
     print(f"\nall {len(units)} unit(s) of the declared extent are reached by a quote or recorded "
           f"as examined")
