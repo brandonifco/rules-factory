@@ -4,8 +4,8 @@ What was removed from the documents a blind second mapping of `srd-5.2.1` is giv
 
 ## What was staged
 
-- `corpus-map.md` from `../../../docs/corpus-map.md` (e269c3bcbfcf…) -> `dbf56226812d…`, 23 edit(s)
-- `method.md` from `../../../docs/method.md` (a8e5d777d772…) -> `8cb5aaac4614…`, 27 edit(s)
+- `corpus-map.md` from `../../../docs/corpus-map.md` (05edd2f84a38…) -> `8b3ae2f7c8d2…`, 23 edit(s)
+- `method.md` from `../../../docs/method.md` (cb0eb7eb5842…) -> `e9c99c02ffe0…`, 27 edit(s)
 
 ## The vocabulary the scan used
 
@@ -21,53 +21,53 @@ Every map of this corpus, the neighbouring slices included: a sibling slice's en
 - `method.md` L33: corpus id example names this corpus
 - `method.md` L54: boundary-policy example names a CC-BY SRD
 - `method.md` L85: extraction example names the corpus and the table it garbled
-- `method.md` L229: "the GM decides" example: five stated facts of this corpus, four of them entry ids
-- `method.md` L423: executed-map defects: three entries of this corpus, with their draws and dependencies
-- `method.md` L424: the same three entries, named again in what the blind second mapping missed
-- `method.md` L548: affectsDraws instance names this corpus's group Initiative roll
-- `method.md` L551: the six questions building this corpus's slice could not answer, quoted from it
-- `method.md` L554: the four unresolved ambiguities, by entry id, with the corpus's words
-- `method.md` L559: the conflict, by both entry ids and both pages of this corpus
-- `method.md` L562: the clear-entry example: the slice's sentence, the Rules Glossary, two entry ids
-- `method.md` L595: the engine of this corpus named as the carrier of an owner's decision
-- `method.md` L599: the conflict's two entry ids again, in the per-entry ruling rule
-- `method.md` L603: the open-term ruling names its entry id and this corpus's referee
-- `method.md` L651: the batches of this corpus's build, with the nine entry ids they had to build across
-- `method.md` L656: correspondence row 5's example uses this corpus's Speed and size order
-- `method.md` L663: the third engine is named as this corpus's chapter and pages
-- `method.md` L668: the scope: out count names the Rules Glossary, this corpus's chapters and two absences
-- `method.md` L723: the parallel-agents finding names this corpus's slice
-- `method.md` L838: the three worked declines are named as this corpus's engine
-- `method.md` L840: decline example 1: the Cover table entry, its three answers and the corpus's words
-- `method.md` L845: decline example 2: two entry ids and the corpus's Advantage and Disadvantage
-- `method.md` L848: decline example 3: two entry ids, the corpus's saving throw, and what it determines
-- `corpus-map.md` L319: assertedBy history names this corpus's engine and an entry id
-- `corpus-map.md` L355: dice example quotes this corpus's Initiative evidence and its d20 sentence
-- `corpus-map.md` L358: draw-ownership examples name four entry ids, two of them this corpus's
-- `corpus-map.md` L361: affectsDraws instance names this corpus's group Initiative entry
-- `corpus-map.md` L415: heading-path example names the glossary entry whose span ran on
-- `corpus-map.md` L709: extraction defects are each illustrated by an entry id of this corpus
-- `corpus-map.md` L759: definedElsewhere example is this corpus's Rules Glossary and its surprise rule
-- `corpus-map.md` L763: the modifying-passage instance is two entry ids of this corpus and what one says
-- `corpus-map.md` L897: the silent-zero instance names this corpus's map
-- `corpus-map.md` L901: the defined-term JSON example is a term and an entry id of this corpus
-- `corpus-map.md` L58: the page-extent example is this corpus's slice, pages and following heading
-- `corpus-map.md` L64: endsBefore's worked value is the heading this corpus's slice stops at
-- `corpus-map.md` L66: the extent-end example names this corpus's chapter and its last page
-- `corpus-map.md` L409: the heading-path example is a citation into the slice under mapping, entry name and page
-- `corpus-map.md` L1145: the boundary-policy history names this corpus's licence
-- `corpus-map.md` L1221: the pointerPhrases example counts this corpus's pages and names it
-- `corpus-map.md` L1345: the #116 summary names this corpus's pointers
-- `corpus-map.md` L1193: the quotedText example is this corpus's own derivation string and PDF file name
-- `method.md` L582: 0027's four awkwardnesses name the engine built from this corpus
-- `method.md` L199: the value example is a list of conditions and a creature's statistics
-- `method.md` L227: the caller-states heading is this corpus's word for its referee
-- `method.md` L233: the mapper-guessing example prices a move in squares, cites a page and quotes the corpus
-- `corpus-map.md` L322: the assertedBy JSON example is this corpus's deciders
-- `corpus-map.md` L349: the draws JSON examples quote this corpus's dice and two of its rules
-- `corpus-map.md` L357: the draw-ownership rule counts this corpus's die
-- `corpus-map.md` L398: the repetition example is the slice under mapping: a glossary giving five rules one effect
-- `corpus-map.md` L700: the renderedReading example is a sentence of this corpus, verbatim
+- `method.md` L233: "the GM decides" example: five stated facts of this corpus, four of them entry ids
+- `method.md` L427: executed-map defects: three entries of this corpus, with their draws and dependencies
+- `method.md` L428: the same three entries, named again in what the blind second mapping missed
+- `method.md` L552: affectsDraws instance names this corpus's group Initiative roll
+- `method.md` L555: the six questions building this corpus's slice could not answer, quoted from it
+- `method.md` L558: the four unresolved ambiguities, by entry id, with the corpus's words
+- `method.md` L563: the conflict, by both entry ids and both pages of this corpus
+- `method.md` L566: the clear-entry example: the slice's sentence, the Rules Glossary, two entry ids
+- `method.md` L599: the engine of this corpus named as the carrier of an owner's decision
+- `method.md` L603: the conflict's two entry ids again, in the per-entry ruling rule
+- `method.md` L607: the open-term ruling names its entry id and this corpus's referee
+- `method.md` L655: the batches of this corpus's build, with the nine entry ids they had to build across
+- `method.md` L660: correspondence row 5's example uses this corpus's Speed and size order
+- `method.md` L667: the third engine is named as this corpus's chapter and pages
+- `method.md` L672: the scope: out count names the Rules Glossary, this corpus's chapters and two absences
+- `method.md` L727: the parallel-agents finding names this corpus's slice
+- `method.md` L842: the three worked declines are named as this corpus's engine
+- `method.md` L844: decline example 1: the Cover table entry, its three answers and the corpus's words
+- `method.md` L849: decline example 2: two entry ids and the corpus's Advantage and Disadvantage
+- `method.md` L852: decline example 3: two entry ids, the corpus's saving throw, and what it determines
+- `corpus-map.md` L325: assertedBy history names this corpus's engine and an entry id
+- `corpus-map.md` L361: dice example quotes this corpus's Initiative evidence and its d20 sentence
+- `corpus-map.md` L364: draw-ownership examples name four entry ids, two of them this corpus's
+- `corpus-map.md` L367: affectsDraws instance names this corpus's group Initiative entry
+- `corpus-map.md` L421: heading-path example names the glossary entry whose span ran on
+- `corpus-map.md` L715: extraction defects are each illustrated by an entry id of this corpus
+- `corpus-map.md` L765: definedElsewhere example is this corpus's Rules Glossary and its surprise rule
+- `corpus-map.md` L769: the modifying-passage instance is two entry ids of this corpus and what one says
+- `corpus-map.md` L903: the silent-zero instance names this corpus's map
+- `corpus-map.md` L907: the defined-term JSON example is a term and an entry id of this corpus
+- `corpus-map.md` L64: the page-extent example is this corpus's slice, pages and following heading
+- `corpus-map.md` L70: endsBefore's worked value is the heading this corpus's slice stops at
+- `corpus-map.md` L72: the extent-end example names this corpus's chapter and its last page
+- `corpus-map.md` L415: the heading-path example is a citation into the slice under mapping, entry name and page
+- `corpus-map.md` L1151: the boundary-policy history names this corpus's licence
+- `corpus-map.md` L1227: the pointerPhrases example counts this corpus's pages and names it
+- `corpus-map.md` L1351: the #116 summary names this corpus's pointers
+- `corpus-map.md` L1199: the quotedText example is this corpus's own derivation string and PDF file name
+- `method.md` L586: 0027's four awkwardnesses name the engine built from this corpus
+- `method.md` L203: the value example is a list of conditions and a creature's statistics
+- `method.md` L231: the caller-states heading is this corpus's word for its referee
+- `method.md` L237: the mapper-guessing example prices a move in squares, cites a page and quotes the corpus
+- `corpus-map.md` L328: the assertedBy JSON example is this corpus's deciders
+- `corpus-map.md` L355: the draws JSON examples quote this corpus's dice and two of its rules
+- `corpus-map.md` L363: the draw-ownership rule counts this corpus's die
+- `corpus-map.md` L404: the repetition example is the slice under mapping: a glossary giving five rules one effect
+- `corpus-map.md` L706: the renderedReading example is a sentence of this corpus, verbatim
 
 ## Links made plain text
 
@@ -123,6 +123,7 @@ A markdown link to anything but a staged document became its link text: the mapp
 - https://github.com/brandonifco/rules-factory/issues/243 (2)
 - https://github.com/brandonifco/rules-factory/issues/247 (1)
 - https://github.com/brandonifco/rules-factory/issues/25 (1)
+- https://github.com/brandonifco/rules-factory/issues/255 (1)
 - https://github.com/brandonifco/rules-factory/issues/27 (1)
 - https://github.com/brandonifco/rules-factory/issues/28 (2)
 - https://github.com/brandonifco/rules-factory/issues/29 (2)
@@ -141,7 +142,7 @@ A markdown link to anything but a staged document became its link text: the mapp
 - https://github.com/brandonifco/rules-factory/issues/7 (1)
 - https://github.com/brandonifco/rules-factory/issues/76 (1)
 - https://github.com/brandonifco/rules-factory/issues/93 (1)
-- mapper.md (1)
+- mapper.md (3)
 
 ## Named and left in
 

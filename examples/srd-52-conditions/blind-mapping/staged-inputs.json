@@ -414,21 +414,21 @@
     {
       "name": "corpus-map.md",
       "source": "../../../docs/corpus-map.md",
-      "sourceSha256": "e269c3bcbfcf89edcb18f9835ad5d0fdaa249764498a635ad0f5a5590f43044a",
-      "sha256": "dbf56226812d54bdd702ea73c3583fc37d503495e3a3bd43bbc986c2a72bbeb5",
+      "sourceSha256": "05edd2f84a382491f7ef561f911e9fae58f74acc0866e089ccf8d5cd138bc225",
+      "sha256": "8b3ae2f7c8d2a3bfd2391a231a04cd0a37d3034bcb0796bc6caa34cce453fb2b",
       "edits": 23
     },
     {
       "name": "method.md",
       "source": "../../../docs/method.md",
-      "sourceSha256": "a8e5d777d772d76bd361c0876c056f41bf886c7e06f79456b726d26bed9c71c0",
-      "sha256": "8cb5aaac4614b24c835e577b3ebf0c08f412421e4f8e2d367bf7cdbf122c04d3",
+      "sourceSha256": "cb0eb7eb5842a45c63476cfc40cd9f3657e8b197d77323dca9121421631273ce",
+      "sha256": "e9c99c02ffe02975343cd73f38e922600407aeec8ed5b0579fc6419dd10bda38",
       "edits": 27
     }
   ],
   "record": {
     "path": "REDACTIONS.md",
-    "sha256": "79997eef0d4645866f02432a8534f17f8eeb9cad27251c5c867452c37b54ff14"
+    "sha256": "da6111c737ba9c57f0bf6092dce05193b3a731dc9e03996653ac953ac51e0499"
   },
   "acknowledged": [
     {

@@ -39,6 +39,12 @@ entry's located evidence reaches. A page nobody quoted is a page nobody demonstr
 the state — *nobody looked* — a map exists to distinguish from a recorded verdict. It also
 bounds an absence claim: see `absentFrom` below.
 
+`coverage` asks that at the grain of a whole page or a whole section, which a map satisfies by
+reaching one sentence. `mapper inventory` asks it at the grain the
+corpus states rules in: it enumerates the units inside the extent and reports the ones no quote
+reaches and no recorded rejection accounts for
+(#255).
+
 It is a property of the **map**, not of the corpus, and so it does not belong in the manifest.
 `contentHash` and `licence` are true of the text whoever reads it; how far a mapper got is
 true of one mapping.
