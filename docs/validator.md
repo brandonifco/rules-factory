@@ -20,7 +20,7 @@ is not its own only test oracle.
 | [`tools/mapvalidator/`](../tools/mapvalidator/__init__.py) | the checks, as modules |
 | [`tools/check-map.py`](../tools/check-map.py) | what `tools/build-check-map.py` joins them into: one standard-library file, because a map package ships it ([0015](decisions/0015-a-map-is-published-as-a-versioned-package.md)) and the factory imports it ([0016](decisions/0016-a-map-package-is-data-not-code.md)) |
 | [`tools/check-locators.py`](../tools/check-locators.py) and the two per-grammar checkers under `examples/` | the evidentiary half: does the cited text exist where the map says |
-| [`tools/check-map-review.py`](../tools/check-map-review.py) | every map carries a review of its exact bytes ([0017](decisions/0017-a-map-change-carries-a-review-of-its-bytes.md)) |
+| [`tools/check-map-review.py`](../tools/check-map-review.py) | every map carries a review of its exact bytes ([0017](decisions/0017-a-map-change-carries-a-review-of-its-bytes.md)), and a `blind-second-mapping` review names the staging record of what its mapper was given, or says out loud that it has none ([#223](https://github.com/brandonifco/rules-factory/issues/223)) |
 | [`tools/pack-map.py`](../tools/pack-map.py) | a map that passed becomes a version |
 | [`tools/mutate-map.py`](../tools/mutate-map.py) | the adversary turned on itself: it damages a committed map one named way at a time and measures what is refused ([trial 10](../examples/validator-attack/README.md)). Outside the package on purpose, because `build-check-map.py` would ship it inside every map |
 | `tools/tests/mapvalidator/` | its tests |

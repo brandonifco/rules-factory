@@ -234,6 +234,8 @@ python3 tools/mapper protocol <corpus-map.json>   # is this a protocol the mappe
 python3 tools/mapper pointers <corpus-map.json>   # run the interrogation it obliges
 python3 tools/mapper inventory <corpus-map.json>  # what the extent claims, against what the walk reached
 python3 tools/mapper sweeps <corpus-map.json>     # the completeness challenge it owes, over what the walk left
+python3 tools/mapper stage <staging.json>         # stage the inputs a blind second mapping gets
+python3 tools/mapper stage --verify <staged-inputs.json>   # was a blind run given what it says?
 ```
 
 Four exit codes, the factory's four:
@@ -243,13 +245,50 @@ Four exit codes, the factory's four:
 | `0` | every declaration held, and something was actually examined |
 | `1` | a declaration is wrong, or an interrogation that was declared detected nothing at all |
 | `2` | a usage error |
-| `3` | **NOT VERIFIED**: the run found what it cannot judge — a pointer the map does not declare, a unit inside the extent that no quote reaches and no rejection accounts for, a sweep finding, or a required sweep the registry does not implement. Whether each is owed is decided by reading the corpus (0026), not here |
+| `3` | **NOT VERIFIED**: the run found what it cannot judge — a pointer the map does not declare, a unit inside the extent that no quote reaches and no rejection accounts for, a sweep finding, a required sweep the registry does not implement, or a staged document naming a word that is both an entry of this corpus and ordinary English. Whether each is owed, or is a leak, is decided by reading (0026), not here |
 
 A silent zero is a failure, not a pass: a corpus that declares a mechanism and on which nothing
 fires has either the wrong mechanism declared or a map whose evidence spans do not reach its
 pointers. That is the same rule 0026 already applies to phrases, and it is exactly the shape #208
 measured. A sweep whose cues fire nowhere in the extent is the same failure, answered the same
 way: with the corpus's own cues, or with a reason.
+
+## Staging a blind second mapping
+
+[The method](method.md#before-the-map-is-used--a-blind-second-mapping) says a second mapper gets
+the corpus extract and the two specification documents *with every worked example drawn from the
+corpus under mapping removed*. Staging that is mapping — producing both mappings from
+independently staged inputs — so it lives here, and comparison, adjudication and certification
+stay with [the validator](validator.md) ([0032](decisions/0032-mapping-validation-and-generation-are-three-subsystems-over-one-contract.md),
+[0033](decisions/0033-the-validator-is-the-adversary-and-validates-the-uncertainty-too.md)).
+
+`stage` reads a **staging spec** committed with the run and writes a bundle beside it:
+
+| in the spec | what it says |
+|---|---|
+| `map` | the map of the slice being mapped; every committed map of the same `corpus` supplies the scan's vocabulary |
+| `documents` | the documents to stage, by path |
+| `edits` | one declared substitution per worked example, each with a `why`, each required to match its document **exactly once** |
+| `acknowledged` | a term the scan will find that is not a leak, by document, with the reason |
+
+| in the bundle | what it is |
+|---|---|
+| the documents | as redacted, with every link the mapper cannot follow reduced to its text |
+| `REDACTIONS.md` | every edit with its line, every link flattened, everything named and left in, and what the scan did not look for |
+| `staged-inputs.json` | the digests of all of it, the maps the vocabulary came from, and the vocabulary itself |
+
+Which examples are "drawn from the corpus under mapping" is a judgement, and the substitutions
+are where it is made. What is mechanical is **completeness**: an occurrence of a hyphenated entry
+id or of the corpus id is `certain` and fails the staging; a one-word id, an entry `name` or a
+word of the corpus id is `possible`, because a document uses those words for its own reasons, and
+the run is NOT VERIFIED until the spec rules on each. A heuristic that silently missed a leak
+would be worse than no tool, so nothing here passes an occurrence it cannot decide.
+
+`--verify` re-hashes every file a record names *and re-runs the scan over the staged documents*,
+because a digest proves the bytes did not move and not that they were redacted. `validate.sh`
+runs it on every committed record, and `tools/check-map-review.py` requires a
+`blind-second-mapping` review to name one — or to say, out loud and on every run, that it has
+none.
 
 ## What it does not do yet
 
@@ -261,10 +300,12 @@ way: with the corpus's own cues, or with a reason.
   rather than answering it. `check-map.py --only cross-references` and `mapper pointers` still
   own the entry-side question, and neither is re-implemented here
   ([#250](https://github.com/brandonifco/rules-factory/issues/250)).
-- **Nothing stages a blind second mapping**
-  ([#223](https://github.com/brandonifco/rules-factory/issues/223)). The redaction the method
-  requires is enforced by nobody, and the one tool that does it lives inside the trial that
-  needed it.
+- **A staged blind input is checked for what it names, and not for what it means**
+  ([#223](https://github.com/brandonifco/rules-factory/issues/223) is closed; `stage` is below).
+  The scan holds the staged documents to the vocabulary of every map of the corpus. An example
+  that paraphrases a rule of that corpus while naming no entry, no id and not the corpus is
+  invisible to it, and the spec's declared substitutions are the only thing that covers it. Every
+  run says so, and so does every record it writes.
 - **The inventory measures the walk, and nobody has answered it.** Every unit inside every
   committed map's extent is enumerated and counted, and 540 of 806 are unaccounted
   ([#267](https://github.com/brandonifco/rules-factory/issues/267)). No map records a rejection

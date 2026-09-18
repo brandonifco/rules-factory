@@ -59,7 +59,8 @@ import os
 import re
 import subprocess
 
-import generate
+import agentrails
+import ownership as ownership_step
 
 RULESET = "rules-factory-agent-rails"
 # `verdict-requeue` is deliberately not among them (#191). It runs on the `status` event, so its
@@ -143,8 +144,8 @@ def labels_of(engine_dir):
     try:
         # The same check `backlog.py` reads the policy through, stated once where the file is
         # written (#188): five labels, none empty, no two the same.
-        labels = generate.policy_labels(document, path)
-    except generate.PolicyError as error:
+        labels = agentrails.policy_labels(document, path)
+    except agentrails.PolicyError as error:
         raise RailsError(str(error))
     return document, labels
 
@@ -157,14 +158,14 @@ def agent_files(engine_dir):
     `conformance-gate.py` is a file that exists -- and a row that says OK about it was reporting
     on the file listing, not on the rail.
     """
-    return generate.ownership.managed_states(engine_dir, generate.RAILS)
+    return ownership_step.managed_states(engine_dir, agentrails.RAILS)
 
 
 def unfaithful_files(files):
     """The rails whose bytes are not the current recipe's, as (path, state, versions) in path order.
     Adopted rails are the engine's own by its recorded decision, so the row names them and this
     does not."""
-    ownership = generate.ownership
+    ownership = ownership_step
     return [(path, state, versions) for path, (state, versions) in sorted(files.items())
             if state not in (ownership.CURRENT, ownership.ADOPTED)]
 
@@ -272,8 +273,8 @@ def survey(repo, engine_dir, gh):
         "files": agent_files(engine_dir),
         "policy": document,
         # The one rule the engine's gate and tools/agent-doctor.py judge the same file by (#211).
-        "policyProblems": generate.policy_problems(document, POLICY),
-        "reviewProblems": generate.review_problems(document, POLICY),
+        "policyProblems": agentrails.policy_problems(document, POLICY),
+        "reviewProblems": agentrails.review_problems(document, POLICY),
         "labels": labels,
         "missingLabels": [labels[key] for key in sorted(LABEL_COLOURS) if labels[key] not in existing_labels],
         "ruleset": detail,
@@ -309,7 +310,7 @@ def _row(name, state, note=""):
 def report(state):
     """`--check`'s output: one row per thing that is either true of the repository or not."""
     lines = []
-    ownership = generate.ownership
+    ownership = ownership_step
     files = state["files"]
     wrong = unfaithful_files(files)
     adopted = sorted(path for path, (kind, _) in files.items() if kind == ownership.ADOPTED)
@@ -407,7 +408,7 @@ def problems(state):
         if reason not in found:
             found.append(reason)
 
-    ownership = generate.ownership
+    ownership = ownership_step
     wrong = unfaithful_files(state["files"])
     for kind, advice in ((ownership.ABSENT, "`factory produce` writes them"),
                          (ownership.EARLIER, "`factory produce` migrates them to the current recipe"),

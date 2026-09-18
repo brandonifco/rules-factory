@@ -57,6 +57,8 @@ _spec = importlib.util.spec_from_file_location("factory_main_rails", os.path.joi
 factory = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(factory)
 generate = factory.generate
+import agentrails  # noqa: E402
+import scaffold  # noqa: E402
 gate = factory.gate
 ownership = generate.ownership
 
@@ -107,8 +109,8 @@ class TestTheEmittedRails(unittest.TestCase):
     """The recipe bytes, judged without producing an engine."""
 
     def setUp(self):
-        self.rails = generate.rails_files()
-        self.emitted = {**generate.managed_files(), ".github/agent-policy.json": generate.agent_policy()}
+        self.rails = agentrails.rails_files()
+        self.emitted = {**scaffold.managed_files(), ".github/agent-policy.json": agentrails.agent_policy()}
 
     def test_every_rail_is_a_managed_row_of_the_table(self):
         managed = {row.pattern for row in ownership.managed_rows("")}
@@ -156,7 +158,7 @@ class TestTheEmittedRails(unittest.TestCase):
                                  f"{relative} names {vendor!r}; a provider belongs in .github/agent-policy.json")
 
     def test_the_policy_names_the_default_chain(self):
-        policy = json.loads(generate.agent_policy())
+        policy = json.loads(agentrails.agent_policy())
         self.assertEqual(policy["schemaVersion"], 1)
         self.assertEqual([link["id"] for link in policy["review"]["independentFallback"]],
                          ["codex", "gemini", "in-house-independent"])
@@ -208,7 +210,7 @@ class TestBytecodeStaysOutOfTheCheckout(unittest.TestCase):
         """Every .py the factory writes into an engine and something runs as a command. The
         vendored scripts/factory modules are left out: they are the imported side, and a flag in
         them would be read too late to stop their own bytecode."""
-        out = {relative: text for relative, text in generate.managed_files().items() if relative.endswith(".py")}
+        out = {relative: text for relative, text in scaffold.managed_files().items() if relative.endswith(".py")}
         for relative, (data, _) in gate.files(NAME).items():
             if relative.endswith(".py") and not relative.startswith("scripts/factory/"):
                 out[relative] = data.decode("utf-8")
@@ -280,7 +282,7 @@ class TestAProducedEngine(unittest.TestCase):
 
     def test_a_produced_engine_holds_every_rail(self):
         self.produced()
-        for relative in list(generate.rails_files()) + [".github/agent-policy.json"]:
+        for relative in list(agentrails.rails_files()) + [".github/agent-policy.json"]:
             self.assertTrue(os.path.isfile(os.path.join(self.out, *relative.split("/"))), relative)
         self.assertIn("is the governing contract for this repository", self.read("CLAUDE.md"))
 
@@ -321,7 +323,7 @@ class TestAProducedEngine(unittest.TestCase):
         self.assertTrue(any(e["path"] == "AGENTS.md" and e["adopted"] for e in record["engineOwned"]))
 
         output = self.produced("--reset", "AGENTS.md")
-        self.assertEqual(self.read("AGENTS.md"), generate.rails_files()["AGENTS.md"])
+        self.assertEqual(self.read("AGENTS.md"), agentrails.rails_files()["AGENTS.md"])
 
 
 class TestTheGuard(unittest.TestCase):
@@ -1826,8 +1828,8 @@ class TestTheVerdictReRunsTheGate(TestVerdicts):
         # The ruleset the factory applies, and the doctor's reading of it from inside an engine:
         # both leave it out, because it runs on the default branch's commit.
         self.assertNotIn("verdict-requeue", factory.rails_step.REQUIRED_CHECKS)
-        self.assertIn("verdict-requeue", generate.rails_files()["tools/agent-doctor.py"])
-        self.assertNotIn('"verdict-requeue"', generate.rails_files()["tools/agent-doctor.py"])
+        self.assertIn("verdict-requeue", agentrails.rails_files()["tools/agent-doctor.py"])
+        self.assertNotIn('"verdict-requeue"', agentrails.rails_files()["tools/agent-doctor.py"])
 
 
 FACTORY_STUB = '''#!/usr/bin/env python3
@@ -2087,7 +2089,7 @@ class TestEveryCommandARailNamesRunsAsWritten(AFactoryToReProduceFrom, RailsInAG
         return re.sub(r"<[^>]*>|\{[^}]*\}|\"\.\.\.\"|\b\w+\|\w+\b", value, span).split()
 
     def test_no_rail_names_a_command_that_is_refused_for_how_it_was_spelled(self):
-        commands = rail_commands(generate.rails_files())
+        commands = rail_commands(agentrails.rails_files())
         self.assertGreater(len(commands), 5, "no commands were found in the rails -- this check proved nothing")
         environment = {**self.environment(), "RULES_ENGINE_FACTORY_REPO": self.factory,
                        "RULES_ENGINE_PACKET_ROOT": os.path.join(self.tmp, "packets"),
@@ -2533,7 +2535,7 @@ class TestFactoryRails(TestAProducedEngine):
                                     ({"normalRisk": "state:ready"}, "ready and normalRisk are both 'state:ready'")):
             with open(path, encoding="utf-8") as handle:
                 policy = json.load(handle)
-            edited = dict(policy, labels=dict(json.loads(generate.agent_policy())["labels"], **overrides))
+            edited = dict(policy, labels=dict(json.loads(agentrails.agent_policy())["labels"], **overrides))
             with open(path, "w", encoding="utf-8") as handle:
                 json.dump(edited, handle, indent=2)
             code, output = self.rails("--check")
@@ -2568,7 +2570,7 @@ class TestFactoryRails(TestAProducedEngine):
 
     def write_policy(self, change):
         path = os.path.join(self.out, ".github", "agent-policy.json")
-        policy = json.loads(generate.agent_policy())
+        policy = json.loads(agentrails.agent_policy())
         change(policy)
         with open(path, "w", encoding="utf-8") as handle:
             json.dump(policy, handle, indent=2)
@@ -2620,7 +2622,7 @@ class TestFactoryRails(TestAProducedEngine):
         for name, change in fixtures.items():
             with self.subTest(name):
                 self.write_policy(change)
-                expected = generate.policy_problems(json.loads(self.read(".github/agent-policy.json")))
+                expected = agentrails.policy_problems(json.loads(self.read(".github/agent-policy.json")))
                 self.assertEqual(bool(expected), name != "as the factory ships it", expected)
                 code, output = self.rails("--check")
                 doctor, gate_code, gate_errors = self.doctor_and_gate()

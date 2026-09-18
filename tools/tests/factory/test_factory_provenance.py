@@ -61,7 +61,7 @@ GIT_ENV = {"GIT_AUTHOR_NAME": "factory-test", "GIT_AUTHOR_EMAIL": "factory-test@
 
 sys.path.insert(0, FACTORY)
 import provenance  # noqa: E402
-import generate  # noqa: E402  (the managed recipes, to name them once)
+import scaffold  # noqa: E402  (the managed recipes, to name them once)
 
 # What a `--no-verify` produce exits: NOT VERIFIED, never 0. Read from the CLI it names, so the
 # two cannot drift (the factory itself is run as a child process here).
@@ -252,7 +252,7 @@ class TestRecord(ProvenanceCase):
         self.assertIn(PACKAGES_PROPS, generated)
         self.assertEqual(set(inputs) & generated, set(), "a generated file is not listed again as a build input")
         managed = {m["path"]: m for m in record["managed"]}
-        self.assertEqual(set(managed), set(generate.managed_files()))
+        self.assertEqual(set(managed), set(scaffold.managed_files()))
         self.assertIn("AGENTS.md", managed)
         for path, item in managed.items():
             self.assertEqual(item["sha256"], sha256_file(os.path.join(out, *path.split("/"))), path)

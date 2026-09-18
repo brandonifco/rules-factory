@@ -77,7 +77,7 @@ The factory is now code, in standard-library Python under
 | Milestone | Modules | State on `main` |
 |---|---|---|
 | M1 intake | `intake.py` | merged. The package is read as data and never run ([0016](docs/decisions/0016-a-map-package-is-data-not-code.md)); the corpus must hash to the map's baseline |
-| M2 scaffold and generation | `generate.py`, `ownership.py` | merged. The registry, map entries and correspondence tests as `*.g.cs`; one ownership class per file ([0018](docs/decisions/0018-every-file-the-factory-writes-has-one-owner.md)) |
+| M2 scaffold and generation | `generate.py` over `semantics.py`, `csharp.py`, `entries.py`, `registry.py`, `contracts.py`, `correspondence.py`, `pins.py`, `scaffold.py`, `agentrails.py`; `ownership.py` | merged. The registry, map entries and correspondence tests as `*.g.cs`; one ownership class per file ([0018](docs/decisions/0018-every-file-the-factory-writes-has-one-owner.md)). `generate.py` was one 88 KB module until [#171](https://github.com/brandonifco/rules-factory/issues/171) split it by what it emits; it is now the composition, and the name a produced engine imports |
 | M3 gate recipe | `gate.py`, `recipe/` | merged. Every engine carries `scripts/validate.sh` and a CI workflow that runs it |
 | M4 provenance | `provenance.py` | merged. `provenance.json` (format 3), and a command that recomputes it |
 | M5 backlog | `backlog.py` | merged. GitHub issues, one per entry still to build, matched by an entry marker and never by title; one state label and one risk label from the engine's own `.github/agent-policy.json`. Rendered from the map and the overlay on demand and never committed into the engine ([#243](https://github.com/brandonifco/rules-factory/issues/243)) |
@@ -205,7 +205,10 @@ CI proves this on every pull request. The `validate` job runs
   mapping catches most of them, and every map in this repository must carry a review of its exact
   bytes ([0017](docs/decisions/0017-a-map-change-carries-a-review-of-its-bytes.md)). The
   `hoyle-backgammon` map, which the `engine` job builds from, carries a legacy exemption rather
-  than a review.
+  than a review. What the second mapper was *given* is now staged by `tools/mapper stage` and
+  recorded by digest, so an unredacted input is visible
+  ([#223](https://github.com/brandonifco/rules-factory/issues/223)); paraphrase in a staged
+  document is still nobody's check.
 - **That a rule is implemented.** A produced engine answers each entry that is not
   `implemented` with a decline citing its locator. The rules themselves are hand-written
   handlers, and the backlog — the GitHub issues, and `factory backlog --render` — lists the ones
