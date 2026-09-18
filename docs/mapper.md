@@ -222,6 +222,11 @@ contradicts fails too. Hoyle declares two: `except`, `unless`, `other than`, `no
 and `provided that` do not occur anywhere on pages 271–280, and neither does any definitional
 verb.
 
+What the sweeps found on the six committed maps, per map and per sweep, is
+[#277](https://github.com/brandonifco/rules-factory/issues/277). No map was edited to improve
+those numbers, for the reason no map was edited to improve the inventory's: a map's bytes cannot
+change without invalidating its review ([0017](decisions/0017-a-map-change-carries-a-review-of-its-bytes.md)).
+
 ## Commands
 
 ```bash
