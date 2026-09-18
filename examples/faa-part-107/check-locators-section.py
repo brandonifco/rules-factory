@@ -278,7 +278,15 @@ TABLE_CITATION = re.compile(
     r'^\s*§+\s*(?P<section>\d+\.\d+(?:-\d+)?)\s+table\s+(?P<table>\d+)\s*,\s*row\s*'
     r'\[(?P<key>.*)\](?:\s*,\s*column\s+(?P<column>[A-Za-z0-9]{1,4}))?\s*\.?\s*$')
 ROW_KEY_PAIR = re.compile(r'column\s+([A-Za-z0-9]{1,4})\s*=\s*"([^"]*)"')
+#: A heading's own label for a column, as the table prints it: `(1)`, `(8A)`, `(10B)`.
 COLUMN_LABEL = re.compile(r"^\(([A-Za-z0-9]{1,4})\)")
+#: A cell that spans rows or columns. The markup then no longer says which column a later cell
+#: sits in, and there is no honest way to guess: such a table is refused, not addressed (0035).
+SPAN_ATTRIBUTES = ("COLSPAN", "ROWSPAN", "colspan", "rowspan")
+#: The separator between a row's cells in the extraction of a row. Empty cells are kept as
+#: empty, which is what makes a blank cell quotable: 1,112 rows of the corpus that forced this
+#: have exactly one empty cell, and flattened into prose a missing symbol and a missing packing
+#: group are the same absence (#261).
 CELL_SEPARATOR = " | "
 
 
@@ -305,41 +313,127 @@ def table_citation(citation):
             [(c, normalise(v)) for c, v in pairs], match.group("column"))
 
 
-def cells_of(row):
-    return [normalise("".join(cell.itertext())) for cell in row if cell.tag in ("TD", "TH")]
+def sub_column_of(label, other):
+    """True when `other` is a sub-column of `label`: `10A` is one of `10`, `10` is not one of `1`.
+
+    A heading split into sub-columns names no column of its own, and what "split" means is the
+    parent's label plus letters -- not a string prefix. Read as a prefix, column `1` is swallowed
+    by `10A` and the Hazardous Materials Table loses its own numbering: 13 leaves against a width
+    of 14, a silent fall back to positional numbering, and `column 9` addressing column 8B.
+    """
+    return other != label and other.startswith(label) and other[len(label):].isalpha()
+
+
+def row_text(cells):
+    """A row's text: its cells in column order, empty cells kept as empty (0035).
+
+    Normalised like every other unit's text, so an empty cell reads as the two separators
+    around it -- `| |` -- rather than as whitespace a quote would have to reproduce exactly.
+    The cell is still there to be quoted, which is the whole point: flattened into prose, a
+    missing column 1 symbol and a missing column 5 packing group are the same absence (#261).
+    """
+    return normalise(CELL_SEPARATOR.join(cells))
+
+
+def quotable(value):
+    """True when a value can be written into a row key and read back out of it.
+
+    A key delimits its values with `"` and defines no escape, so a cell holding one names
+    nothing. Such a cell is passed over when a key is chosen, rather than written into a
+    citation nothing can parse.
+    """
+    return '"' not in value
 
 
 class Table:
-    """One table of a section: the columns its headings print, and its body rows.
+    """One table of a section: the columns its headings print, its rows, and where it sits.
 
-    Columns are the corpus's own numbering and not this checker's count, because that is the
-    numbering the corpus uses to explain itself -- § 172.101(b)-(l) explains columns 1 to 10 --
-    and the one printed in the table's own headings. A heading split into sub-columns names no
-    column of its own: where the headings print (8), (8A), (8B) and (8C), the columns are the
-    three leaves. A table whose labels do not number its rows' cells one for one is numbered
-    positionally, because a guessed alignment between a heading and a cell addresses the wrong
-    cell and says nothing about it.
+    `columns` is the corpus's own numbering -- the labels its headings print -- because that is
+    the numbering the corpus uses to explain itself (§ 172.101(b)-(l)) and the one a reader sees.
+    A heading split into sub-columns names no column of its own: where the headings print `(8)`,
+    `(8A)`, `(8B)` and `(8C)`, the columns are the three leaves.
+
+    Three outcomes, and the middle one is the point:
+
+      **printed**     the leaf labels number the cells one for one, and they are the columns.
+      **positional**  the table prints no numbering of its own, or prints one label twice; the
+                      columns are `1`..`n` by position, which is all the markup says.
+      **refused**     a cell spans rows or columns, or the labels and the cells do not
+                      correspond. `unresolved` then says so and the table addresses nothing:
+                      a guessed alignment between a heading and a cell names the wrong cell and
+                      says nothing about having done so.
+
+    Rows are the rows of *this* table: a nested table's rows belong to the table that encloses
+    them, not to this one. Heading rows are rows like any other, because the column semantics of
+    a regulation live in its headings and this corpus prints them once for 3,687 rows.
     """
 
     def __init__(self, section, position, element):
         self.section = section
         self.position = position
-        heads = [row for head in element.iter("THEAD") for row in head.iter("TR")]
-        head_rows = {id(row) for row in heads}
-        self.rows = [cells for cells in
-                     (cells_of(row) for row in element.iter("TR") if id(row) not in head_rows)
-                     if cells]
-        labels = [m.group(1) for m in
-                  (COLUMN_LABEL.match(cell) for row in heads for cell in cells_of(row)) if m]
-        leaves = [l for l in labels if not any(o != l and o.startswith(l) for o in labels)]
-        width = len(self.rows[0]) if self.rows else 0
-        self.columns = leaves if (width and len(leaves) == width) \
-            else [str(n) for n in range(1, width + 1)]
+        self.unresolved = None
+        self.numbering = "printed"
+        parents = {child: parent for parent in element.iter() for child in parent}
+
+        def nearest_table(node):
+            node = parents.get(node)
+            while node is not None and node.tag != "TABLE":
+                node = parents.get(node)
+            return node
+
+        def in_head(node):
+            while node is not None and node is not element:
+                if node.tag == "THEAD":
+                    return True
+                node = parents.get(node)
+            return False
+
+        self.rows, self.heads, spanned = [], [], False
+        for row in element.iter("TR"):
+            if nearest_table(row) is not element:
+                continue
+            cells = [cell for cell in row if cell.tag in ("TD", "TH")]
+            spanned = spanned or any(cell.get(attribute) not in (None, "1")
+                                     for cell in cells for attribute in SPAN_ATTRIBUTES)
+            text = [normalise("".join(cell.itertext())) for cell in cells]
+            if not text:
+                continue
+            self.heads.append(in_head(row))
+            self.rows.append(text)
+        self.columns = self._columns(spanned)
+
+    def _columns(self, spanned):
+        body = [cells for cells, head in zip(self.rows, self.heads) if not head]
+        width = len(body[0]) if body else (len(self.rows[0]) if self.rows else 0)
+        positional = [str(n) for n in range(1, width + 1)]
+        if spanned:
+            self.unresolved = ("a cell of it spans rows or columns, so which column a cell sits "
+                               "in is not in the markup")
+            return []
+        labels = [m.group(1) for cells, head in zip(self.rows, self.heads) if head
+                  for m in (COLUMN_LABEL.match(cell) for cell in cells) if m]
+        leaves = [l for l in labels if not any(sub_column_of(l, o) for o in labels)]
+        if not leaves:
+            self.numbering = "positional"
+            return positional
+        if len(set(leaves)) != len(leaves):
+            # The same label twice names no column: taking the first would address a cell the
+            # citation did not name. Position is what is left, and it is said out loud.
+            self.numbering = "positional"
+            return positional
+        if len(leaves) != width:
+            self.unresolved = (f"its headings number {len(leaves)} column(s) and its rows hold "
+                               f"{width} cell(s), so no heading can be matched to a cell")
+            return []
+        return leaves
 
     def index_of(self, column):
+        """Which cell a column names, or None where this table prints no such column."""
+        column = str(column)
         return self.columns.index(column) if column in self.columns else None
 
     def matching(self, pairs):
+        """Every row whose cells hold all of `pairs`, as its cells."""
         found = []
         for cells in self.rows:
             if all(self._holds(cells, column, value) for column, value in pairs):
@@ -348,7 +442,42 @@ class Table:
 
     def _holds(self, cells, column, value):
         at = self.index_of(column)
-        return at is not None and at < len(cells) and cells[at] == value
+        return at is not None and at < len(cells) and cells[at] == normalise(str(value))
+
+    def key_for(self, position):
+        """A key of `column = value` pairs naming row `position` and no other row, or None.
+
+        The narrowest cell first, then the cell that narrows what is left the most, until one
+        row is named: one column where one will do, and as many as it takes where one will not.
+        An empty cell is a legitimate value -- a blank column 1 symbol is a fact about the row,
+        which is the whole reason the extraction keeps the columns -- but it is taken only where
+        it narrows further than a cell that says something, because a row identified by what is
+        absent from it is the weaker name of the two. A cell holding a `"` is passed over
+        altogether: no key written from it could be read back.
+
+        None means no combination of this table's cells names the row: another row holds the
+        same value in every nameable column. That is the refusal 0035 makes for an ambiguous
+        citation, made here, where the citation is written.
+        """
+        cells = self.rows[position]
+        candidates = [(column, cells[at]) for at, column in enumerate(self.columns)
+                      if at < len(cells) and quotable(cells[at])]
+        chosen, matched = [], self.matching([])
+        while len(matched) > 1 or not chosen:
+            rest = [pair for pair in candidates if pair not in chosen]
+            if not rest:
+                return None
+            best = min(rest, key=lambda pair: (len(self.matching(chosen + [pair])),
+                                               pair[1] == "", candidates.index(pair)))
+            narrowed = self.matching(chosen + [best])
+            if chosen and len(narrowed) >= len(matched):
+                return None
+            chosen, matched = chosen + [best], narrowed
+        return chosen
+
+
+class Duplicated(Exception):
+    """A section designation the corpus prints twice. Never resolved by choosing one."""
 
 
 def table_index(xml_path):
@@ -356,31 +485,27 @@ def table_index(xml_path):
 
     A table is numbered by its position in the section it is printed in, counted from 1 in
     document order. That is the one thing about a table this corpus always states: a caption is
-    optional, and the map's `note` is where a caption belongs.
+    optional, and the map's `note` is where a caption belongs. A nested table is a table of the
+    section in its own right and is numbered like any other; its rows belong to it and not to
+    the table that encloses it.
+
+    A designation the corpus prints twice is **refused**. Indexing it would keep one of the two
+    and drop the other's tables out of the corpus entirely -- every check over them would then
+    pass by having nothing to look at, which is the failure this repository exists to catch.
     """
     root = ET.parse(xml_path).getroot()
-    found = {}
+    found, seen = {}, set()
     for section in root.iter("DIV8"):
         number = section.get("N")
+        if not number:
+            continue
+        if number in seen:
+            raise Duplicated(f"the corpus prints § {number} twice; a designation that names two "
+                             f"passages names neither, and indexing it would hide one of them")
+        seen.add(number)
         for position, element in enumerate(section.iter("TABLE"), start=1):
             found[(number, position)] = Table(number, position, element)
     return found
-
-
-def row_text(cells):
-    """A row's text: its cells in column order, empty cells kept as empty.
-
-    This is the extraction of a row, and 0024's rule -- a quote is one contiguous verbatim span
-    of the extraction -- is then applied to it unchanged. It has to be this and not a flattened
-    sentence because a blank cell is a rule: 1,112 rows of the corpus that forced this have
-    exactly one empty cell and 419 have thirteen, and joined into prose a missing column 1
-    symbol and a missing column 5 packing group are the same absence (#261).
-
-    It is normalised like every other passage this checker indexes, so an empty cell reads as
-    the two separators around it -- `| |` -- and not as whitespace a quote would have to
-    reproduce exactly. The cell is still there to be quoted, which is the point.
-    """
-    return normalise(CELL_SEPARATOR.join(cells))
 
 
 def check_table_row(entry, cited, tables):
@@ -395,11 +520,16 @@ def check_table_row(entry, cited, tables):
     citation = entry.get("locator", {}).get("citation", "")
     if table is None:
         return "bad", (f"cited {citation}, and § {number} prints no table {position}"), None
+    if table.unresolved:
+        return "bad", (f"cited {citation}, and § {number} table {position} cannot be addressed: "
+                       f"{table.unresolved}. A table whose geometry the markup does not carry is "
+                       f"refused, not guessed at: a column read off a guessed alignment names the "
+                       f"wrong cell and says nothing about having done so"), None
     unknown = [c for c, _ in pairs if table.index_of(c) is None]
     if unknown:
         return "bad", (f"cited {citation}, and § {number} table {position} prints no column "
                        f"{', '.join(unknown)} (its columns are "
-                       f"{', '.join(table.columns) or 'unreadable'})"), None
+                       f"{', '.join(table.columns)}, numbered {table.numbering})"), None
     hits = table.matching(pairs)
     if len(hits) != 1:
         return "bad", (f"cited {citation}, which names {len(hits)} rows of the table; a row key "
@@ -417,18 +547,20 @@ def check_table_row(entry, cited, tables):
         where = f"column {column} of the row"
 
     evidence = normalise(entry.get("evidence", ""))
-    fragments = [f for f in ELLIPSIS.split(evidence) if f]
-    if not fragments:
+    if not evidence:
         return "unchecked", "evidence is empty", None
-    cursor = 0
-    for fragment in fragments:
-        at = text.find(fragment, cursor)
-        if at == -1:
-            got = "; it does appear earlier in the row" if text.find(fragment) != -1 else ""
-            return "bad", (f"cited {citation}, and the evidence is not a span of {where}"
-                           f"{got}: {fragment[:70]!r} is not in {text[:90]!r}"), None
-        cursor = at + len(fragment)
-    return "ok", f"{len(fragments)} fragment(s), all inside {where} {citation} names", number
+    if len(ELLIPSIS.split(evidence)) > 1:
+        # A row is short, and its whole point is which cell holds what. An ellipsis in the middle
+        # of one elides a column, and corpus-map.md is explicit that a span may be shortened at
+        # either end and never in the middle: `evidence` is one contiguous verbatim span.
+        return "bad", (f"cited {citation}, and the evidence elides its middle; a quote of a row "
+                       f"is one contiguous span of it, and an ellipsis there drops a column "
+                       f"nothing then checks"), None
+    at = text.find(evidence)
+    if at == -1:
+        return "bad", (f"cited {citation}, and the evidence is not a span of {where}: "
+                       f"{evidence[:70]!r} is not in {text[:90]!r}"), None
+    return "ok", f"one contiguous span of {where} {citation} names", number
 
 
 def cited_paths(citation):
@@ -674,7 +806,11 @@ def main(argv):
     document = json.load(open(argv[1], encoding="utf-8"))
     entries = document["entries"]
     corpus, spans, refused = corpus_index(argv[2])
-    tables = table_index(argv[2])
+    try:
+        tables = table_index(argv[2])
+    except Duplicated as error:
+        print(f"  X  {error}")
+        return 1
     for text, token in refused:
         print(f"  !  paragraph designator ({token}) is ambiguous; not indexed: {text}...")
 

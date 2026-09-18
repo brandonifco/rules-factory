@@ -406,8 +406,11 @@ class TestSectionCoverage(SectionCase):
 # The same eCFR shape with two tables in one section. The first prints its columns the way the
 # corpus that forced this prints them -- a (4) heading split into (4A) and (4B), so the columns
 # are the leaves and not the six labels -- has an empty cell in column 1 of its first row, and
-# two rows a column 2 key alone cannot tell apart. Synthetic, like every fixture here: the real
-# corpus is trial 10's to admit, not this test's.
+# two rows a column 2 key alone cannot tell apart. The second is the shape that needs a key of
+# three cells: every value of its first row is printed in another row too, and so is every pair
+# of them. Synthetic, like every fixture here -- and identical to the one
+# `tools/tests/mapper/test_mapper_table_rows.py` writes, which is how the two implementations are
+# held to the same reading. The real corpus is trial 10's to admit, not this test's.
 TABLE_CORPUS = """<ROOT><DIV6 N="B" TYPE="SUBPART">
 <DIV8 N="1.10" TYPE="SECTION"><HEAD>§ 1.10 Widget table.</HEAD>
 <P>Each widget is listed in the widget table with the class and the packing it requires.</P>
@@ -420,8 +423,13 @@ TABLE_CORPUS = """<ROOT><DIV6 N="B" TYPE="SUBPART">
 <TR><TD>G</TD><TD>Ammonia, anhydrous</TD><TD>2.2</TD><TD/><TD>306</TD></TR>
 <TR><TD>G</TD><TD>Ammonia, anhydrous</TD><TD>2.3</TD><TD>T4</TD><TD>314</TD></TR>
 </TBODY></TABLE></DIV>
-<TABLE><THEAD><TR><TD>(1) Code</TD><TD>(2) Meaning</TD></TR></THEAD>
-<TBODY><TR><TD>A3</TD><TD>Aircraft only</TD></TR></TBODY></TABLE>
+<TABLE><THEAD><TR><TD>(1) Code</TD><TD>(2) Mode</TD><TD>(3) Limit</TD></TR></THEAD>
+<TBODY>
+<TR><TD>A3</TD><TD>Aircraft</TD><TD>5 L</TD></TR>
+<TR><TD>A3</TD><TD>Aircraft</TD><TD>60 L</TD></TR>
+<TR><TD>A3</TD><TD>Vessel</TD><TD>5 L</TD></TR>
+<TR><TD>N34</TD><TD>Aircraft</TD><TD>5 L</TD></TR>
+</TBODY></TABLE>
 </DIV8>
 <DIV8 N="1.11" TYPE="SECTION"><HEAD>§ 1.11 Tokens.</HEAD>
 <P>No person may carry a token into a restricted area.</P>
@@ -430,6 +438,20 @@ TABLE_CORPUS = """<ROOT><DIV6 N="B" TYPE="SUBPART">
 
 ACETAL_ROW = "| Acetal | 3 | 150 | 202"
 AMMONIA_22_ROW = "G | Ammonia, anhydrous | 2.2 | | 306"
+
+# Ten numbered columns with the last split -- the § 172.101 shape, where `10A` is a sub-column
+# of `10` and `1` is a sub-column of nothing -- and a table whose cells span, which carries no
+# column geometry at all.
+WIDE_TABLE = """<TABLE>
+<THEAD><TR><TD>(1) Symbols</TD><TD>(2) Name</TD><TD>(3) Class</TD><TD>(4) ID</TD><TD>(5) PG</TD>
+<TD>(6) Label</TD><TD>(7) Provisions</TD><TD>(8) Packaging</TD><TD>(9) Quantity</TD>
+<TD>(10) Vessel</TD><TD>(10A) Location</TD><TD>(10B) Other</TD></TR></THEAD>
+<TBODY><TR><TD/><TD>Acetal</TD><TD>3</TD><TD>UN1088</TD><TD>II</TD><TD>3</TD><TD>IB2</TD>
+<TD>202</TD><TD>5 L</TD><TD>E</TD><TD>D</TD></TR></TBODY></TABLE>"""
+
+SPANNED_TABLE = """<TABLE>
+<THEAD><TR><TD COLSPAN="2">(8) Packaging</TD><TD>(9) Quantity</TD></TR></THEAD>
+<TBODY><TR><TD>202</TD><TD>242</TD><TD>5 L</TD></TR></TBODY></TABLE>"""
 
 
 class TestTableRows(unittest.TestCase):
@@ -501,8 +523,63 @@ class TestTableRows(unittest.TestCase):
         self.assertIn("prints no table 3", message)
 
     def test_the_second_table_is_numbered_by_its_position_in_the_section(self):
-        self.assertEqual(
-            self.verdict('§ 1.10 table 2, row [column 1 = "A3"]', "A3 | Aircraft only"), "ok")
+        self.assertEqual(self.verdict(
+            '§ 1.10 table 2, row [column 1 = "N34"]', "N34 | Aircraft | 5 L"), "ok")
+
+    def test_a_row_of_the_second_table_needs_all_three_of_its_cells(self):
+        # Every single value of this row, and every pair, is printed in another row too. Two
+        # matches is a refusal; three predicates name the row.
+        self.assertEqual(self.verdict(
+            '§ 1.10 table 2, row [column 1 = "A3"; column 2 = "Aircraft"]',
+            "A3 | Aircraft | 5 L"), "bad")
+        self.assertEqual(self.verdict(
+            '§ 1.10 table 2, row [column 1 = "A3"; column 2 = "Aircraft"; column 3 = "5 L"]',
+            "A3 | Aircraft | 5 L"), "ok")
+
+    def test_a_heading_row_is_citable(self):
+        # 0035: the column semantics of a regulation live in its headings, printed once for
+        # every row of the table, and a map has to be able to cite them.
+        self.assertEqual(self.verdict(
+            '§ 1.10 table 1, row [column 1 = "(1) Symbols"]',
+            "(1) Symbols | (2) Widget name | (3) Class"), "ok")
+
+    def test_a_row_quote_that_elides_its_middle_is_refused(self):
+        # corpus-map.md: `evidence` is one contiguous span. A row is short and its point is
+        # which cell holds what, so an ellipsis inside one drops a column nothing then checks.
+        result, message = check_locators_section.check(
+            entry("x", '§ 1.10 table 1, row [column 2 = "Acetal"]', "| Acetal ... 202"),
+            self.corpus, self.spans, None, self.tables)
+        self.assertEqual(result, "bad", message)
+        self.assertIn("elides its middle", message)
+
+    def test_a_column_of_a_ten_way_table_is_not_swallowed_by_column_one(self):
+        # Read as a string prefix, `1` is a parent of `10A`: the labels stop numbering the cells,
+        # the table silently falls back to positional numbering, and `column 9` addresses another
+        # column's cell. This is the § 172.101 shape.
+        table = check_locators_section.Table("1.10", 1, ET.fromstring(WIDE_TABLE))
+        self.assertEqual(table.numbering, "printed")
+        self.assertEqual(table.index_of("10B"), 10)
+        self.assertEqual(table.columns[8], "9")
+
+    def test_a_table_whose_geometry_the_markup_does_not_carry_addresses_nothing(self):
+        tables = {("1.10", 1): check_locators_section.Table(
+            "1.10", 1, ET.fromstring(SPANNED_TABLE))}
+        result, message = check_locators_section.check(
+            entry("x", '§ 1.10 table 1, row [column 9 = "5 L"]', "202 | 242 | 5 L"),
+            self.corpus, self.spans, None, tables)
+        self.assertEqual(result, "bad", message)
+        self.assertIn("spans rows or columns", message)
+
+    def test_a_corpus_that_prints_a_section_twice_is_refused(self):
+        path = os.path.join(self.root, "twice.xml")
+        with open(path, "w", encoding="utf-8") as handle:
+            handle.write(TABLE_CORPUS.replace(
+                "</DIV6></ROOT>",
+                '<DIV8 N="1.11" TYPE="SECTION"><HEAD>§ 1.11 Again.</HEAD>'
+                "<P>A second printing of the same designation.</P></DIV8></DIV6></ROOT>"))
+        with self.assertRaises(check_locators_section.Duplicated) as caught:
+            check_locators_section.table_index(path)
+        self.assertIn("prints § 1.11 twice", str(caught.exception))
 
     def test_a_run_that_indexed_no_table_does_not_report_ok(self):
         result, message = check_locators_section.check(
