@@ -111,7 +111,9 @@ slices small enough to hold, never the whole corpus at once.
 states rules in, the mechanisms it points with, the sweeps a mapping of it owes and how far the
 adapter reaches are its **mapping protocol**, `mapping-protocol.json` beside the map. Every map
 has one and `validate.sh` fails a map without one: a map with no protocol cannot say how it was
-read. The cost of leaving it to each trial is measured — a phrase list went on being the
+read. The sweeps it names are run, over the units the walk left unaccounted
+([the sweeps](mapper.md#the-sweeps)); a sweep the mapper cannot run is reported by name rather
+than skipped. The cost of leaving it to each trial is measured — a phrase list went on being the
 interrogation mechanism for a corpus that points by naming its defined terms, detecting 0
 pointers in passages holding 51 references
 ([#208](https://github.com/brandonifco/rules-factory/issues/208)). The protocol, its closed

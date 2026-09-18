@@ -64,7 +64,8 @@ nothing holds to a set means whatever the last writer thought. The sets are in
 |---|---|
 | `units` | the shapes this corpus states rules in — what a mapper reads one at a time. The walk is bounded ([method](method.md#phase-2--map-the-corpus)); this says by what |
 | `pointerMechanisms` | how this corpus points at a meaning it gives elsewhere ([0026](decisions/0026-a-meaning-the-same-corpus-gives-elsewhere-is-an-entry-and-a-corpus-declares-its-pointers.md)) |
-| `requiredSweeps` | the completeness challenge this mapping owes. Declared and **not yet run**: [#250](https://github.com/brandonifco/rules-factory/issues/250) is where each becomes code, and `mapper protocol` says so on every run so a protocol cannot read as though its sweeps had passed |
+| `requiredSweeps` | the completeness challenge this mapping owes, run by [`mapper sweeps`](#the-sweeps) over the units the walk left unaccounted ([#250](https://github.com/brandonifco/rules-factory/issues/250)). A required sweep the registry does not implement is reported by name and exits NOT VERIFIED |
+| `sweepCues`, `sweepCuesReason` | optional. The cues *this* corpus states a kind of rule with, read in addition to the built-in list, and the account of a sweep whose cues fire nowhere in the extent. Both take `pointerPhrases`' shape ([0026](decisions/0026-a-meaning-the-same-corpus-gives-elsewhere-is-an-entry-and-a-corpus-declares-its-pointers.md)) |
 | `adapterReach` | how far the extraction reaches into each modality ([0004](decisions/0004-adapter-reach-is-a-property-of-the-entry.md), [0024](decisions/0024-a-quote-is-of-the-extraction-and-a-page-extent-can-end-at-a-heading.md)) |
 
 ### Why `pointerMechanisms` exists
@@ -163,9 +164,9 @@ done by parsing each entry's citation and comparing it against the unit's design
 would have put a second citation parser per grammar into the mapper. It is instead done by
 finding the entry's **quoted evidence** in the units' own text: a quote is the same kind of
 object in every corpus, so the measurement is one implementation, and it is the stricter reading
-— a citation naming a section is not a quote sitting in it. `units()` is also what a sweep will
-walk ([#250](https://github.com/brandonifco/rules-factory/issues/250)), which is why it returns
-the text rather than a locator.
+— a citation naming a section is not a quote sitting in it. `units()` is also what [a
+sweep](#the-sweeps) walks, which is why it returns the text rather than a locator: a sweep asks
+what a unit says.
 
 A fourth grammar subclasses `Adapter`, implements `units(extent)`, and registers its manifest
 `adapter` name. A manifest naming an adapter nothing implements is **refused**: a corpus nothing
@@ -177,12 +178,57 @@ Gutenberg wraps lines — so the finest honest cut is the block, and a heading i
 other. A cut that is too fine reports *more* unaccounted units, not fewer: it errs towards
 reporting work as unevidenced.
 
+## The sweeps
+
+`requiredSweeps` named eleven completeness challenges and nothing ran any of them, so
+`mapper protocol` printed `NOT RUN` on every invocation to keep the declaration from reading as
+coverage. `mapper sweeps` is what makes that line stop being true
+([#250](https://github.com/brandonifco/rules-factory/issues/250)).
+
+A sweep is **not** a scan of the corpus for cue phrases. That is the shape
+[#208](https://github.com/brandonifco/rules-factory/issues/208) measured as structurally blind,
+and over a whole corpus it would produce thousands of hits nobody can act on. What changed is the
+**candidate set**: the inventory above sorts every unit of the extent into reached, rejected and
+unaccounted, and a sweep runs over the unaccounted pile alone, asking
+
+> is there an **unaccounted** unit that looks like it states a rule of this kind, and no entry
+> quotes it?
+
+That makes each sweep a recall device over a bounded set, and it changes the risk profile
+completely: **a cue a sweep misses does not hide the unit**, because the inventory reports it as
+unaccounted regardless. The cues sort a pile that is already visible; they are not what makes it
+visible. A finding is **NOT VERIFIED**, never a failure — whether an unaccounted unit owed an
+entry is decided by reading the corpus, which this does not do.
+
+Each sweep carries a built-in cue list, and a corpus adds its own in `sweepCues`, read **in
+addition** to it, in `pointerPhrases`' shape (0026). Two sweeps do not carry cues of their own:
+
+| Sweep | Why it is not a second implementation |
+|---|---|
+| `extent-coverage` | it **delegates to the inventory**. Its candidate set is the whole extent, because its yield *is* the unaccounted pile — the denominator every other sweep is measured against. The name is kept rather than retired because a protocol has to be able to say a mapping owes a coverage challenge, and `mapper inventory` is a separate command `requiredSweeps` cannot oblige. It is also the one sweep a zero yield is a **pass** for |
+| `cross-references` | `mapper pointers` implements `defined-term-use` and `check-map.py --only cross-references` implements `phrase`, and both read **entries' quoted evidence**: they ask whether a pointer the map already quotes is declared. Neither can see a pointer in a passage no entry quotes, which is exactly the unaccounted pile. This sweep asks that other half, and takes its corpus-specific cues from the manifest's own `pointerPhrases` rather than keeping a second copy. It does not count a unit naming **its own** section: 0009 refuses a self-reference as a pointer, and without that it fires on every heading of a designated corpus and has sorted nothing |
+
+### A zero that means something, and a zero that does not
+
+A sweep that fires on no unaccounted unit but fires on units the walk **reached** is not silent:
+its cues work in this corpus, and the walk reached every unit of that kind. That is the outcome a
+completeness challenge is asking for, and the run says how many. Part 107's twelve unaccounted
+units are its twelve section headings, and all six of its cue sweeps report exactly this.
+
+A sweep that fires **nowhere in the extent at all** is the ambiguous one: either the cues are
+wrong for this corpus or it states nothing of that kind, and the two must be distinguishable. So
+it fails (exit 1) unless the protocol declares `sweepCuesReason` for it, and a reason a live cue
+contradicts fails too. Hoyle declares two: `except`, `unless`, `other than`, `notwithstanding`
+and `provided that` do not occur anywhere on pages 271–280, and neither does any definitional
+verb.
+
 ## Commands
 
 ```bash
 python3 tools/mapper protocol <corpus-map.json>   # is this a protocol the mapper can act on?
 python3 tools/mapper pointers <corpus-map.json>   # run the interrogation it obliges
 python3 tools/mapper inventory <corpus-map.json>  # what the extent claims, against what the walk reached
+python3 tools/mapper sweeps <corpus-map.json>     # the completeness challenge it owes, over what the walk left
 ```
 
 Four exit codes, the factory's four:
@@ -192,19 +238,24 @@ Four exit codes, the factory's four:
 | `0` | every declaration held, and something was actually examined |
 | `1` | a declaration is wrong, or an interrogation that was declared detected nothing at all |
 | `2` | a usage error |
-| `3` | **NOT VERIFIED**: the run found what it cannot judge — a pointer the map does not declare, or a unit inside the extent that no quote reaches and no rejection accounts for. Whether each is owed is decided by reading the corpus (0026), not here |
+| `3` | **NOT VERIFIED**: the run found what it cannot judge — a pointer the map does not declare, a unit inside the extent that no quote reaches and no rejection accounts for, a sweep finding, or a required sweep the registry does not implement. Whether each is owed is decided by reading the corpus (0026), not here |
 
 A silent zero is a failure, not a pass: a corpus that declares a mechanism and on which nothing
 fires has either the wrong mechanism declared or a map whose evidence spans do not reach its
 pointers. That is the same rule 0026 already applies to phrases, and it is exactly the shape #208
-measured.
+measured. A sweep whose cues fire nowhere in the extent is the same failure, answered the same
+way: with the corpus's own cues, or with a reason.
 
 ## What it does not do yet
 
 - **It produces no map.** Mapping is still done by hand, by the method. What this makes checkable
   is that the walk was the walk this corpus requires.
-- **No sweep runs** ([#250](https://github.com/brandonifco/rules-factory/issues/250)).
-  `requiredSweeps` is held to its vocabulary and to nothing else, and every run says so.
+- **A sweep sorts the unaccounted pile; it does not read it.** Every finding is a unit the
+  inventory already reports, ordered by what its words look like. Deciding whether one owed an
+  entry is still a mapper's reading of the corpus, and the sweeps make that pile approachable
+  rather than answering it. `check-map.py --only cross-references` and `mapper pointers` still
+  own the entry-side question, and neither is re-implemented here
+  ([#250](https://github.com/brandonifco/rules-factory/issues/250)).
 - **Nothing stages a blind second mapping**
   ([#223](https://github.com/brandonifco/rules-factory/issues/223)). The redaction the method
   requires is enforced by nobody, and the one tool that does it lives inside the trial that
