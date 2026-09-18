@@ -186,11 +186,24 @@ class Walk:
         return None
 
 
-def _walk(args):
-    """The corpus comes from the manifest and not from the command line: the manifest is already
-    the one place that says which adapter read this corpus and where the committed copy is, and
-    a map measured against a corpus its manifest does not name would be measured against bytes
-    nothing pinned."""
+def _walks(args):
+    """One walk per corpus the map cites (0042).
+
+    The corpus comes from the manifest and not from the command line: the manifest is already the
+    one place that says which adapter read this corpus and where the committed copy is, and a map
+    measured against a corpus its manifest does not name would be measured against bytes nothing
+    pinned.
+
+    A map may cite several corpora (0039) and declares **one** extent across them all. Each walk
+    gets its own share of it -- the sections its corpus contains -- its own adapter, its own
+    protocol (0040), and **only the entries that cite it**: an entry of § 172.102 quoted nothing
+    in § 172.101 and counting it unlocated there would report every multi-corpus map as full of
+    quotes it cannot find.
+
+    A section the extent names that **no** cited corpus contains is refused. That is the invariant
+    `units` already held for one corpus -- an extent over a section that is not there claims
+    coverage of nothing -- asked of the union instead, so splitting the extent cannot lose it.
+    """
     document = _read(args.map_path, "map")
     manifest_path = args.manifest or _find_manifest(args.map_path)
     if manifest_path is None:
@@ -198,29 +211,79 @@ def _walk(args):
             f"no corpus manifest beside {args.map_path}; the manifest is what says which adapter "
             f"read this corpus and where the pinned bytes are")
     manifest = _read(manifest_path, "manifest")
-    source = document.get("corpus")
-    adapter = corpus_step.open_corpus(manifest, source,
-                                      os.path.dirname(os.path.abspath(manifest_path)))
     extent = document.get("extent")
     if not isinstance(extent, dict):
         raise protocol_step.Refused(
             f"{args.map_path} declares no `extent`, so it claims no coverage and there is "
             f"nothing to inventory (0009)")
-    units = adapter.units(extent)
-    rejected = inventory_step.load_rejections(inventory_step.path_beside(args.map_path), source)
-    return Walk(document, manifest, source, adapter, extent, units,
-                inventory_step.take(units, document, rejected))
+    here = os.path.dirname(os.path.abspath(manifest_path))
+    rejections = inventory_step.load_rejections
+    walks, claimed = [], set()
+    for source in sorted(protocol_step.cited_corpora(document)):
+        adapter = corpus_step.open_corpus(manifest, source, here)
+        portion, mine = adapter.portion_of(extent)
+        if mine is not None:
+            claimed |= mine
+        entries = [entry for entry in document.get("entries") or []
+                   if not isinstance(entry, dict)
+                   or (entry.get("locator") or {}).get("sourceId") in (None, source)]
+        theirs = dict(document, entries=entries)
+        units = adapter.units(portion)
+        rejected = rejections(inventory_step.path_beside(args.map_path), source)
+        walks.append(Walk(theirs, manifest, source, adapter, portion, units,
+                          inventory_step.take(units, theirs, rejected)))
+    if len(walks) > 1:
+        listed = {item for item in extent.get("sections") or [] if isinstance(item, str)}
+        orphan = sorted(listed - claimed)
+        if orphan:
+            raise protocol_step.Refused(
+                f"the extent names {', '.join(orphan)}, which no corpus this map cites contains; "
+                f"an extent over a section that is not there claims coverage of nothing")
+    return walks
+
+
+def _walk(args):
+    """The map's principal corpus, for a caller that still reads one. Refuses a map citing more."""
+    walks = _walks(args)
+    if len(walks) != 1:
+        raise protocol_step.Refused(
+            f"{os.path.basename(args.map_path)} cites {len(walks)} corpora; this command walks "
+            f"each of them (0042)")
+    return walks[0]
 
 
 def command_inventory(args):
-    """What the extent claims, against what the walk reached (#255)."""
-    walk = _walk(args)
-    document, source, adapter = walk.document, walk.source, walk.adapter
-    extent, units, taken = walk.extent, walk.units, walk.taken
-    for line in inventory_step.lines(taken, os.path.basename(args.map_path), source, adapter.name,
-                                     extent, show_all=args.list):
-        print(line)
+    """What the extent claims, against what the walk reached (#255), for every cited corpus.
 
+    A map citing several corpora is measured once per corpus and once in total (0042). Reporting
+    only the principal corpus's units would be a completeness claim over a smaller universe than
+    the map claims -- formally green and false, which is the one direction this must never be
+    wrong in.
+    """
+    walks = _walks(args)
+    worst, totals = 0, {"units": 0, "unaccounted": 0, "unaddressable": 0, "located": 0}
+    for walk in walks:
+        if len(walks) > 1:
+            print(f"--- {walk.source}")
+        taken, units = walk.taken, walk.units
+        for line in inventory_step.lines(taken, os.path.basename(args.map_path), walk.source,
+                                         walk.adapter.name, walk.extent, show_all=args.list):
+            print(line)
+        totals["units"] += len(units)
+        totals["unaccounted"] += len(taken.unaccounted)
+        totals["unaddressable"] += len(taken.unaddressable)
+        totals["located"] += len(taken.located)
+        worst = max(worst, _inventory_verdict(taken, units, len(walks) > 1))
+    if len(walks) > 1:
+        print(f"\ntotal across {len(walks)} corpora: {totals['units']} unit(s), "
+              f"{totals['unaccounted']} unaccounted, {totals['unaddressable']} unaddressable, "
+              f"{totals['located']} entr(ies) located")
+    return worst
+
+
+def _inventory_verdict(taken, units, several):
+    """One corpus's verdict. The run's is the worst of them: a corpus nobody measured is not a
+    pass because another corpus measured clean."""
     if not units:
         print("\nthe extent enumerated no unit at all; an inventory of nothing accounts for "
               "nothing and is not a pass", file=sys.stderr)
@@ -251,20 +314,35 @@ def command_inventory(args):
 
 
 def command_sweeps(args):
-    """The completeness challenge the protocol requires, run over what the walk left (#250).
+    """The completeness challenge each protocol requires, over its own corpus's leftovers (#250).
 
     Each sweep asks whether an **unaccounted** unit looks like it states a rule of its kind, so
     the candidate set is bounded by the inventory rather than being the whole corpus. That is
     what separates this from the phrase scan #208 measured as blind: a cue this misses does not
     hide the unit, because the inventory reports it unaccounted either way.
+
+    A map citing several corpora runs each corpus's own `requiredSweeps` over that corpus's own
+    unaccounted units (0042). Sweeping only the principal corpus would leave half the mapping's
+    completeness challenge unasked while reporting that it ran.
     """
-    document, protocols = _inputs(args)
-    walk = _walk(args)
-    # The walk is over the map's principal corpus, so the protocol run here is that corpus's.
-    # Sweeping every cited corpus needs a walk per corpus, which is #305 and not this change.
-    chosen = [(source_id, path, protocol) for source_id, path, protocol in protocols
-              if source_id == walk.source] or protocols[:1]
-    _, path, protocol = chosen[0]
+    _, protocols = _inputs(args)
+    walks = _walks(args)
+    by_source = {source: (path, protocol) for source, path, protocol in protocols}
+    worst = 0
+    for walk in walks:
+        found = by_source.get(walk.source)
+        if found is None:
+            raise protocol_step.Refused(
+                f"no protocol for {walk.source}, which this map cites; a corpus swept under "
+                f"another corpus's protocol is swept by the wrong interrogation (0040)")
+        path, protocol = found
+        if len(walks) > 1:
+            print(f"--- {walk.source}")
+        worst = max(worst, _sweeps_for(args, walk, path, protocol))
+    return worst
+
+
+def _sweeps_for(args, walk, path, protocol):
     results = sweeps_step.run(protocol, walk.units, walk.taken, walk.corpus_entry())
     print(f"{args.map_path} against corpus {walk.source!r} [{walk.adapter.name}], "
           f"{len(walk.taken.unaccounted)} of {len(walk.units)} unit(s) unaccounted, protocol "
