@@ -358,6 +358,14 @@ CITE_SECTION = re.compile(r"§+\s*(\d+\.\d+(?:-\d+)?)")
 CITE_SUBPART = re.compile(r"\bsubpart\s+([A-Z])\b", re.I)
 # One item of `extent.sections`: a section and nothing else -- no paragraph, no range.
 EXTENT_SECTION = re.compile(r"^§\s*(\d+\.\d+(?:-\d+)?)$")
+# A citation naming one row of one table (0035), read as the section locator checker reads it:
+# `§ 172.101 table 3, row [column 2 = "Acetal"], column 7`. What this file needs of it is the
+# table it names and the key it names the row by, so that an extent slicing a table can be held
+# to the rows an entry actually cites.
+CITE_TABLE_ROW = re.compile(
+    r'^\s*§+\s*(?P<section>\d+\.\d+(?:-\d+)?)\s+table\s+(?P<table>\d+)\s*,\s*row\s*'
+    r'\[(?P<key>.*)\](?:\s*,\s*column\s+[A-Za-z0-9]{1,4})?\s*\.?\s*$')
+CITE_ROW_KEY_PAIR = re.compile(r'column\s+([A-Za-z0-9]{1,4})\s*=\s*"([^"]*)"')
 
 
 def cited_section(citation):
@@ -392,9 +400,127 @@ def _page_extent(extent, bad):
                        f"as a single line of text with no surrounding whitespace (0024)")
 
 
+def _normalise(value):
+    return re.sub(r"\s+", " ", str(value)).strip()
+
+
+def cited_row(citation):
+    """(section, table position, key) for a table-row citation, or None.
+
+    `key` is the frozen set of `column = value` pairs the citation names the row by, which is
+    what an extent's declared row key is compared against: the pairs are a conjunction, so their
+    order is not part of what they name.
+    """
+    match = CITE_TABLE_ROW.match(str(citation or ""))
+    if not match:
+        return None
+    pairs = CITE_ROW_KEY_PAIR.findall(match.group("key"))
+    if not pairs or _normalise(match.group("key")) != "; ".join(
+            f'column {c} = "{v}"' for c, v in pairs):
+        return None
+    return (match.group("section"), int(match.group("table")),
+            frozenset((c, _normalise(v)) for c, v in pairs))
+
+
+def _row_key(key):
+    """A declared row key as a frozen set of pairs, or None where it is not one."""
+    items = key if isinstance(key, list) else [key]
+    if not items:
+        return None
+    pairs = []
+    for item in items:
+        if not isinstance(item, dict) or set(item) != {"column", "is"}:
+            return None
+        column, value = item.get("column"), item.get("is")
+        if isinstance(column, bool) or not isinstance(column, (str, int)) \
+                or not str(column).strip() or not isinstance(value, str):
+            return None
+        pairs.append((str(column), _normalise(value)))
+    return frozenset(pairs)
+
+
+def _tables_extent(extent, numbers, bad):
+    """`extent.tables` as (section, table) -> "all", "excluded", or the set of row keys (0035).
+
+    Every table of every cited section is sliced, taken whole, or excluded with a reason. Whether
+    a table this list does not name is printed inside the extent needs the corpus, and the
+    `ecfr-xml` adapter is where it is refused (`mapper inventory`); what is checkable here is the
+    shape of the list and the rows an entry cites against the rows the extent took.
+    """
+    declared = extent.get("tables")
+    if declared is None:
+        return {}
+    if not isinstance(declared, list) or not declared:
+        bad.append("  X  extent: `tables` is present and names no table; an extent that slices "
+                   "no table declares no `tables`")
+        return {}
+    taken = {}
+    for position, item in enumerate(declared):
+        where = f"extent.tables[{position}]"
+        if not isinstance(item, dict):
+            bad.append(f"  X  {where} is not an object")
+            continue
+        for field in sorted(set(item) - {"section", "table", "rows", "excluded"}):
+            bad.append(f"  X  {where}: `{field}` is not a field of a table slice "
+                       f"(section, table, rows, excluded)")
+        section = item.get("section")
+        match = EXTENT_SECTION.match(section) if isinstance(section, str) else None
+        if not match:
+            bad.append(f"  X  {where}: `section` is {section!r}, and a table is named inside one "
+                       f"section designation such as \"§ 172.101\"")
+            continue
+        if match.group(1) not in numbers:
+            bad.append(f"  X  {where}: § {match.group(1)} is not in the declared extent, so a "
+                       f"slice of its table takes nothing the map claims to have read")
+            continue
+        number, table = match.group(1), item.get("table")
+        if not isinstance(table, int) or isinstance(table, bool) or table < 1:
+            bad.append(f"  X  {where}: `table` is {table!r}; a table is named by its position in "
+                       f"the section, counted from 1")
+            continue
+        if (number, table) in taken:
+            bad.append(f"  X  {where}: § {number} table {table} is declared twice")
+            continue
+        if ("rows" in item) == ("excluded" in item):
+            bad.append(f"  X  {where}: § {number} table {table} is sliced (`rows`), taken whole "
+                       f"(`rows: \"all\"`) or excluded with a reason (`excluded`), and it "
+                       f"declares " + ("both" if "rows" in item else "neither"))
+            continue
+        if "excluded" in item:
+            reason = item.get("excluded")
+            if not isinstance(reason, str) or not reason.strip():
+                bad.append(f"  X  {where}: `excluded` is why this table is outside the slice, in "
+                           f"words; {reason!r} is not one, and a table left out with no reason is "
+                           f"an extent shrunk to what the walk happened to read")
+                continue
+            taken[(number, table)] = "excluded"
+            continue
+        rows = item.get("rows")
+        if rows == "all":
+            taken[(number, table)] = "all"
+            continue
+        if not isinstance(rows, list) or not rows:
+            bad.append(f"  X  {where}: `rows` is \"all\" or a non-empty list of row keys; "
+                       f"{rows!r} is neither")
+            continue
+        keys = set()
+        for at, key in enumerate(rows):
+            parsed = _row_key(key)
+            if parsed is None:
+                bad.append(f"  X  {where}: rows[{at}] is not a row key -- one or more "
+                           f"{{\"column\": 2, \"is\": \"Acetal\"}} objects, read as a conjunction")
+                continue
+            if parsed in keys:
+                bad.append(f"  X  {where}: rows[{at}] names a row this slice already takes")
+                continue
+            keys.add(parsed)
+        taken[(number, table)] = keys
+    return taken
+
+
 def _section_extent(extent, bad):
     """The declared sections as numbers, or None when the list is malformed."""
-    for field in sorted(set(extent) - {"unit", "sections"}):
+    for field in sorted(set(extent) - {"unit", "sections", "tables"}):
         bad.append(f"  X  extent: `{field}` is not a field of a section-designation extent "
                    f"(unit, sections)")
     sections = extent.get("sections")
@@ -428,6 +554,12 @@ def check_extent(ctx):
     CFR sections are not contiguous in what a mapper reads, so a range would claim the sections
     between. Whether every listed section is reached is `check-locators-section.py`'s `coverage`.
 
+    It may also carry `tables` (0035), one item per table of a cited section: `rows` (a list of
+    row keys, or `"all"`) or `excluded` with a reason. What is checked here is the shape of that
+    list, and that every in-scope entry citing a table row cites a row the slice took. That
+    **every** table printed inside a cited section appears in the list needs the corpus, and the
+    `ecfr-xml` adapter refuses one the extent passes over in silence (`mapper inventory`).
+
     Every `scope: in` entry's locator names a section in that list, parsed by the locator
     grammar; a section outside it, or a whole subpart, fails. A `scope: out` entry may cite
     beyond the extent, because recording what lies beyond the slice is what an out-of-scope entry
@@ -457,14 +589,20 @@ def check_extent(ctx):
                        "the declared extent is malformed")
 
     numbers = _section_extent(extent, bad)
+    taken = _tables_extent(extent, numbers or [], bad)
     if numbers is None or bad:
         return fail(bad, "the declared extent is malformed")
-    placed, beyond = 0, []
+    placed, beyond, rows = 0, [], 0
     for position, entry in enumerate(entries_of(doc)):
         if not isinstance(entry, dict) or "derivedFrom" in entry or "locator" not in entry:
             continue
         name = label(entry, position)
         citation = block(entry, "locator").get("citation")
+        row = cited_row(citation)
+        if row is not None and entry.get("scope") != "out":
+            rows += 1
+            bad += _place_row(name, citation, row, numbers, taken)
+            continue
         cited = cited_section(citation)
         if cited is None:
             bad.append(f"  X  {name}: citation {citation!r} names no section or subpart, so it "
@@ -482,9 +620,37 @@ def check_extent(ctx):
                        f"cited inside what the map claims to have read")
     aside = (f"; {len(beyond)} out-of-scope citation{'' if len(beyond) == 1 else 's'} beyond the "
              f"extent, neither passed nor failed: {', '.join(beyond)}") if beyond else ""
+    sliced = (f"; {len(taken)} table(s) accounted for, {rows} locator(s) naming a row the extent "
+              f"takes") if taken or rows else ""
     return verdict(bad, f"{len(numbers)} sections declared; {placed} locators each name one of "
-                        f"them{aside}",
+                        f"them{sliced}{aside}",
                    "a locator cites a section outside the declared extent")
+
+
+def _place_row(name, citation, row, numbers, taken):
+    """An in-scope table-row citation names a row the extent says it took (0035).
+
+    The extent that slices a table names the rows it takes, so a rule cited from a row the slice
+    does not hold is cited outside what the map claims to have read -- 0020's rule about sections,
+    one unit down, and the reason the row key is the extent's and not an ordinal: both sides name
+    the row by the same cells.
+    """
+    section, table, key = row
+    if section not in numbers:
+        return [f"  X  {name}: cites § {section}, outside the declared extent "
+                f"({len(numbers)} sections), and is not `scope: out`; an in-scope rule is cited "
+                f"inside what the map claims to have read"]
+    slice_of = taken.get((section, table))
+    if slice_of is None:
+        return [f"  X  {name}: cites {citation}, and the extent declares no slice of § {section} "
+                f"table {table}; a table a map reads a rule out of is one it claims to have read"]
+    if slice_of == "excluded":
+        return [f"  X  {name}: cites {citation}, and the extent excludes § {section} table "
+                f"{table} from the slice; a table can be excluded or read, not both"]
+    if slice_of == "all" or key in slice_of:
+        return []
+    return [f"  X  {name}: cites {citation}, and the extent's slice of § {section} table {table} "
+            f"does not take that row; the rows an extent names are the rows it read"]
 
 
 # --- tools/mapvalidator/relations.py ----------------------------------------------------------

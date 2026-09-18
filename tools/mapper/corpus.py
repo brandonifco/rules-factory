@@ -54,7 +54,7 @@ from mapper.protocol import Refused
 # apart from the corpus's own structure. `sentence`, for one, is not in it: a corpus that states
 # rules in sentences is still cut into paragraphs here, because splitting prose into sentences is
 # a judgement, and a wrong split would invent units nothing could ever reach.
-KINDS = ("section", "paragraph", "heading", "worked-example", "table")
+KINDS = ("section", "paragraph", "heading", "worked-example", "table", "table-row")
 
 
 def normalise(text):
@@ -211,6 +211,137 @@ class PageMarkedPdfText(PageMarkedText):
     MARKER = re.compile(r"^\{(\d+)\}$", re.M)
 
 
+# --- table geometry, and the row key a citation names (0035) -----------------------------------
+# A rule stated in a row of a table is cited by a cell that identifies the row, in the corpus's
+# own column numbering, and never by the row's position: a table this corpus amends constantly
+# moves its rows, and an ordinal that silently re-points at a different material is worse than a
+# key that stops resolving. The citation the key is written into is
+#
+#     § 172.101 table 3, row [column 2 = "Acetal"]
+#
+# and `examples/faa-part-107/check-locators-section.py` holds a quote to the row it names. That
+# checker parses the form and this one writes it; the two expressions are held to each other by
+# `tools/tests/mapper/test_mapper_table_rows.py`, the way CITE_SECTION already is.
+
+#: A heading's own label for a column, as the table prints it: `(1)`, `(8A)`, `(10B)`.
+COLUMN_LABEL = re.compile(r"^\(([A-Za-z0-9]{1,4})\)")
+#: The separator between a row's cells in the extraction of a row. Empty cells are kept as
+#: empty, which is what makes a blank cell quotable: 1,112 rows of the corpus that forced this
+#: have exactly one empty cell, and flattened into prose a missing symbol and a missing packing
+#: group are the same absence (#261).
+CELL_SEPARATOR = " | "
+
+
+def row_text(cells):
+    """A row's text: its cells in column order, empty cells kept as empty (0035)."""
+    return CELL_SEPARATOR.join(cells)
+
+
+def row_key_text(pairs):
+    """`column 2 = "Acetal"; column 1 = "I"` for [(column, value), ...]."""
+    return "; ".join(f'column {column} = "{value}"' for column, value in pairs)
+
+
+def row_key_pairs(key):
+    """[(column, value), ...] for a declared row key, or None where it is not one.
+
+    A key is one `{"column": 2, "is": "Acetal"}` object, or a list of them read as a
+    conjunction: the second column is how an ambiguous key is answered.
+    """
+    items = key if isinstance(key, list) else [key]
+    if not items:
+        return None
+    pairs = []
+    for item in items:
+        if not isinstance(item, dict) or set(item) != {"column", "is"}:
+            return None
+        column, value = item.get("column"), item.get("is")
+        if isinstance(column, bool) or not isinstance(column, (str, int)) \
+                or not str(column).strip() or not isinstance(value, str):
+            return None
+        pairs.append((str(column), normalise(value)))
+    return pairs
+
+
+def row_citation(number, position, pairs):
+    """The citation naming one row: `§ 172.101 table 3, row [column 2 = "Acetal"]`."""
+    return f"§ {number} table {position}, row [{row_key_text(pairs)}]"
+
+
+def _cells(row):
+    return [normalise("".join(cell.itertext())) for cell in row if cell.tag in ("TD", "TH")]
+
+
+class Table:
+    """One table of a section: its column labels, its body rows, and where it sits.
+
+    `columns` is the corpus's own numbering -- the labels its headings print -- because that is
+    the numbering the corpus uses to explain itself and the one a reader sees. A heading that is
+    split into sub-columns names no column of its own: where the headings print `(8)`, `(8A)`,
+    `(8B)` and `(8C)`, the columns are the three leaves. A table whose labels do not number its
+    rows' cells one for one is numbered positionally instead, because a guessed alignment
+    between a heading and a cell would address the wrong cell silently.
+    """
+
+    def __init__(self, number, position, element):
+        self.number = number
+        self.position = position
+        heads = [row for head in element.iter("THEAD") for row in head.iter("TR")]
+        head_rows = {id(row) for row in heads}
+        self.rows = [_cells(row) for row in element.iter("TR") if id(row) not in head_rows]
+        self.rows = [row for row in self.rows if row]
+        self.columns = self._columns([cell for row in heads for cell in _cells(row)])
+
+    def _columns(self, headings):
+        labels = []
+        for text in headings:
+            match = COLUMN_LABEL.match(text)
+            if match:
+                labels.append(match.group(1))
+        leaves = [l for l in labels if not any(o != l and o.startswith(l) for o in labels)]
+        width = len(self.rows[0]) if self.rows else 0
+        if len(leaves) == width and width:
+            return leaves
+        return [str(n) for n in range(1, width + 1)]
+
+    def index_of(self, column):
+        """Which cell a column names, or None where this table prints no such column."""
+        column = str(column)
+        return self.columns.index(column) if column in self.columns else None
+
+    def matching(self, pairs):
+        """Every row whose cells hold all of `pairs`, as (position, cells)."""
+        found = []
+        for position, cells in enumerate(self.rows):
+            if all(self._holds(cells, column, value) for column, value in pairs):
+                found.append((position, cells))
+        return found
+
+    def _holds(self, cells, column, value):
+        at = self.index_of(column)
+        return at is not None and at < len(cells) and cells[at] == normalise(str(value))
+
+    def key_for(self, position):
+        """A key of column = value pairs naming row `position` and no other row.
+
+        One column where one will do, taken in the corpus's own column order; a second column
+        beside it where it will not. A row identical to another in every column has no key, and
+        the enumeration is refused rather than keying two rows the same: the refusal 0035 makes
+        for an ambiguous citation is the same refusal made here, where the citation is written.
+        """
+        cells = self.rows[position]
+        singles = [(column, cells[at]) for at, column in enumerate(self.columns)
+                   if at < len(cells) and cells[at]]
+        for pair in singles:
+            if len(self.matching([pair])) == 1:
+                return [pair]
+        for first in singles:
+            for second in singles:
+                if second is not first and len(self.matching([first, second])) == 1:
+                    return [first, second]
+        return None
+
+
 class EcfrXml(Adapter):
     """The eCFR versioner's XML: the unit is a paragraph, an example, or a section's heading.
 
@@ -221,6 +352,13 @@ class EcfrXml(Adapter):
     needs only to enumerate and to key, so a paragraph is keyed by its designator as printed and
     its position in the section: `§ 107.29 ¶4 (a)`. Nothing here can be wrong about the nesting,
     because nothing here asserts any.
+
+    **A table's rows are units too** (0035), where the extent says which of them it takes. A row
+    is keyed by the citation that names it -- `§ 172.101 table 3, row [column 2 = "Acetal"]` --
+    and its text is its cells in column order, empty cells kept as empty. The rows of a section's
+    table are enumerated after that section's paragraphs rather than in the place the table is
+    printed: this grammar walks a section's direct children, a table sits below them, and a
+    reading order this cannot see is not one it should assert.
     """
 
     name = "ecfr-xml"
@@ -258,9 +396,106 @@ class EcfrXml(Adapter):
             raise Refused(f"the extent names {', '.join('§ ' + n for n in missing)}, which the "
                           f"corpus does not contain; an extent over a section that is not there "
                           f"claims coverage of nothing")
+        slices = self._slices(extent, wanted, sections)
         found = []
         for number in wanted:
             found += self._section_units(number, sections[number])
+            found += self._table_units(number, sections[number], slices)
+        return found
+
+    def _tables(self, number, section):
+        """Every table the section prints, in document order, numbered from 1."""
+        return [Table(number, position, element)
+                for position, element in enumerate(section.iter("TABLE"), start=1)]
+
+    def _slices(self, extent, wanted, sections):
+        """`extent.tables` as (section, table position) -> the slice declared for it (0035).
+
+        Every table of every cited section is either sliced, taken whole or excluded with a
+        reason, and `units` refuses one the extent passes over in silence. That is 0020's own
+        principle -- a map may not quietly shrink its extent to match what it happened to read --
+        applied to the unit a table cell now has.
+        """
+        declared = extent.get("tables")
+        if declared is None:
+            return {}
+        if not isinstance(declared, list) or not declared:
+            raise Refused("extent.tables is present and names no table; an extent that slices "
+                          "nothing declares no `tables`")
+        slices = {}
+        for position, item in enumerate(declared):
+            where = f"extent.tables[{position}]"
+            if not isinstance(item, dict):
+                raise Refused(f"{where} is not an object")
+            number = item.get("section")
+            match = self.SECTION.search(number) if isinstance(number, str) else None
+            if not match or match.group(1) not in wanted:
+                raise Refused(f"{where} names section {number!r}, which the extent does not cite; "
+                              f"a slice of a table outside the extent takes nothing")
+            number = match.group(1)
+            table = item.get("table")
+            if not isinstance(table, int) or isinstance(table, bool) or table < 1:
+                raise Refused(f"{where} names table {table!r}; a table is named by its position "
+                              f"in the section, counted from 1")
+            if (number, table) in slices:
+                raise Refused(f"{where}: § {number} table {table} is declared twice")
+            printed = len(self._tables(number, sections[number]))
+            if table > printed:
+                raise Refused(f"{where}: § {number} prints {printed} table(s) and this names "
+                              f"table {table}")
+            if ("rows" in item) == ("excluded" in item):
+                raise Refused(f"{where}: a table is sliced (`rows`), taken whole (`rows: \"all\"`) "
+                              f"or excluded with a reason (`excluded`), and this declares "
+                              + ("both" if "rows" in item else "neither"))
+            slices[(number, table)] = item
+        return slices
+
+    def _table_units(self, number, section, slices):
+        found = []
+        for table in self._tables(number, section):
+            declared = slices.get((number, table.position))
+            if declared is None:
+                raise Refused(f"§ {number} table {table.position} is inside the declared extent "
+                              f"and extent.tables neither slices it, takes it whole nor excludes "
+                              f"it with a reason; a table left out is an extent shrunk to what "
+                              f"the walk happened to read (0035)")
+            if "excluded" in declared:
+                continue
+            found += self._rows_of(table, declared.get("rows"))
+        return found
+
+    def _rows_of(self, table, rows):
+        where = f"§ {table.number} table {table.position}"
+        if rows == "all":
+            taken = list(range(len(table.rows)))
+            keys = []
+            for position in taken:
+                key = table.key_for(position)
+                if key is None:
+                    raise Refused(f"{where} row {position + 1} holds the same value in every "
+                                  f"column as another row, so no cell names it and the citation "
+                                  f"that would reach it names two rows")
+                keys.append(key)
+            return [Unit(row_citation(table.number, table.position, key), "table-row",
+                         row_text(table.rows[position]))
+                    for position, key in zip(taken, keys)]
+        if not isinstance(rows, list) or not rows:
+            raise Refused(f"{where}: `rows` is a non-empty list of row keys, or \"all\"; "
+                          f"{rows!r} is neither")
+        found = []
+        for position, key in enumerate(rows):
+            pairs = row_key_pairs(key)
+            if pairs is None:
+                raise Refused(f"{where}: rows[{position}] is not a row key -- one or more "
+                              f"{{\"column\": 2, \"is\": \"Acetal\"}} objects")
+            hits = table.matching(pairs)
+            if len(hits) != 1:
+                raise Refused(f"{where}, row [{row_key_text(pairs)}] names {len(hits)} rows of "
+                              f"the table; a row key resolves to exactly one row, and a second "
+                              f"match is answered with a discriminating column, never with the "
+                              f"first hit")
+            found.append(Unit(row_citation(table.number, table.position, pairs), "table-row",
+                              row_text(hits[0][1])))
         return found
 
     def _section_units(self, number, section):
