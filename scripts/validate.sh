@@ -116,6 +116,28 @@ check_pointers() {
   printf '%d map(s) interrogated\n' "$pointers_checked"
 }
 
+# What a blind second mapping was given is recorded by digest beside the comparison, and the
+# staged documents are the redacted ones (#223). The comparison tooling compares two maps and
+# cannot see the inputs, so a contaminated run reported as blind manufactures agreement -- which
+# is the evidence the whole procedure produces. `mapper stage --verify` re-hashes every file a
+# record names and re-runs the leak scan over the staged documents, so neither a swapped input
+# nor a record that claims a redaction it did not make passes.
+staged_checked=0
+check_blind_staging() {
+  local record
+  for record in examples/*/blind-mapping/staged-inputs.json examples/*/*/staged-inputs.json; do
+    [ -e "$record" ] || continue
+    printf -- '--- %s\n' "$record"
+    python3 tools/mapper stage --verify "$record" || return 1
+    staged_checked=$((staged_checked + 1))
+  done
+  if [ "$staged_checked" -eq 0 ]; then
+    echo "no blind-mapping staging record found -- this step proved nothing" >&2
+    return 1
+  fi
+  printf '%d staged blind input(s) verified\n' "$staged_checked"
+}
+
 # Every map carries a review of its exact bytes (0017): a blind second mapping, a verdict from a
 # separate context, or an exemption that says why. The checker counts the maps it examined and
 # fails on none, and prints every exemption, so neither an empty glob nor a waiver passes quietly.
@@ -324,6 +346,7 @@ run "every corpus map satisfies the schema"            check_all_maps
 run "every map says how its corpus is read"            check_protocols
 run "every protocol's own detectors find its pointers" check_pointers
 run "every corpus map carries a review of its bytes"   check_map_reviews
+run "every blind mapping was given what it recorded"   check_blind_staging
 run "every citation resolves in its corpus"            check_locators
 run "every map package passes its publish gate"        check_map_packages
 run "the checkers' own tests"                          check_tool_tests
