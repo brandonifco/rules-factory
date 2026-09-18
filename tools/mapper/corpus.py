@@ -547,35 +547,63 @@ class Table:
         return chosen
 
 
-# --- a paragraph the corpus prints inside a wrapper (#285) ------------------------------------
+# --- a paragraph the corpus prints inside a wrapper (#285, decision 0036) ---------------------
 # Elements that hold a run of paragraphs rather than stating one, and are therefore descended
 # into rather than enumerated whole. Closed, and a member is in it because a corpus forced it:
 #
 #   EXTRACT  the eCFR's block set off from the running text. § 172.102(c) states its special
 #            provisions in seven of them, one element per provision, under the designated
-#            paragraph that introduces the run. The wrapper is a *sibling* of the section's <P>
-#            elements, so `_section_units` reached none of them and the inventory's denominator
-#            left out every special provision that is not in a table (#285, #261).
+#            paragraph that introduces the run; § 172.101 opens each of its two appendices with
+#            one. The wrapper is a *sibling* of the section's <P> elements, so `_section_units`
+#            reached none of them and the inventory's denominator left out every special
+#            provision that is not in a table (#285, #261).
+#   NOTE     § 172.101 prints one, directing particular samples to four other provisions. It is
+#            normative text of the section, and it was not merely unaccounted -- it was invisible.
 #
-# Not in it, deliberately: a DIV, whose text is a table and whose rows are units of their own
-# (0035) -- flattening one into a paragraph is the reading that decision refused, and `_tables`
-# already reaches a table inside an EXTRACT; a NOTE, which § 172.101 prints once and which
-# nothing has been measured to need (#265); an EXAMPLE, which is already a unit of its own.
+# Not in it: a DIV, whose text is a table and whose rows are units of their own (0035) --
+# flattening one into a paragraph is the reading that decision refused, and `_tables` already
+# reaches a table inside an EXTRACT.
 #
-# `examples/faa-part-107/check-locators-section.py` descends into the same set, because a unit
-# this cannot see is one no inventory counts and a passage that one cannot reach is one no
-# citation names. `tools/tests/mapper/test_mapper_nested_paragraphs.py` holds the two together,
-# the way `test_mapper_table_rows.py` holds the row grammar to the checker's parser.
-NESTED_CONTAINERS = ("EXTRACT",)
-# What each child of such a container enumerates as. The eCFR's formatted-paragraph tags are the
-# same paragraph with a different indent -- `FP-1` is one provision, `FP1-2` a designated
-# sub-item of the provision above it, `FP`/`FP-2` the lead-in and continuation of a formula --
-# and `HD1`/`HD2` are the run's own heading, which is a heading like a section's.
+# `examples/faa-part-107/check-locators-section.py` descends into the same set, to any depth,
+# because a unit this cannot see is one no inventory counts and a passage that one cannot reach
+# is one no citation names. `tools/tests/mapper/test_mapper_nested_paragraphs.py` holds the two
+# tables equal, the way `test_mapper_table_rows.py` holds the row grammar to the checker's parser.
 #
-# `MATH` is in neither: in this markup it carries no text at all, so it would enumerate the empty
-# string, and a unit with no words is one no quote can ever reach.
+# **The two walks part company on one thing, and only one.** The checker asserts *containment* --
+# its whole job is where a citation reaches -- so it leaves a wrapper unplaced where the markup
+# does not say the wrapper is inside the paragraph it follows (0036). A unit key here asserts
+# nothing of the kind: `§ 172.101 ¶94` says where a paragraph sits in the section's reading order
+# and no more. So this enumerates a wrapper the checker leaves unplaced, and reports it
+# unaccounted until something accounts for it -- which is the honest state of a passage that has
+# no address yet, and the opposite of dropping it out of the denominator.
+NESTED_CONTAINERS = ("EXTRACT", "NOTE")
+# What each element inside such a container is. The eCFR's formatted-paragraph tags are block
+# markup rather than section paragraphs -- `FP-1` is one provision of a run, `FP1-2` a sub-item
+# of the provision above it, `FP`/`FP-2` the lead-in and continuation of a formula -- and
+# `HD1`/`HD2` are a heading like a section's.
+#
+# `MATH` is not here: in this markup it carries no text at all, so it would enumerate the empty
+# string, and a unit with no words is one no quote can ever reach. Neither is `HED`, a note's or
+# an example's own head: a note's is *read* rather than indexed, because what it says -- "Note to
+# paragraph (c)(11):" -- is the address the checker gives the note.
 NESTED_KINDS = {"P": "paragraph", "FP": "paragraph", "FP-1": "paragraph", "FP-2": "paragraph",
-                "FP1-2": "paragraph", "HD1": "heading", "HD2": "heading"}
+                "FP1-2": "paragraph", "HD1": "heading", "HD2": "heading",
+                "EXAMPLE": "worked-example"}
+
+
+def wrapped_elements(container):
+    """(element, kind) for everything inside a wrapper, to any depth, through wrappers only.
+
+    Descent is through `NESTED_CONTAINERS` and nothing else, so a `DIV` holding a table is
+    stepped over and its rows stay the `table-row` units they are. **To any depth**: one level
+    left an `EXTRACT` inside an `EXTRACT` out of the enumeration entirely, and a unit nothing
+    counts is one no sweep can ever report.
+    """
+    for child in container:
+        if child.tag in NESTED_CONTAINERS:
+            yield from wrapped_elements(child)
+        elif child.tag in NESTED_KINDS:
+            yield child, NESTED_KINDS[child.tag]
 
 
 class EcfrXml(Adapter):
@@ -778,16 +806,17 @@ class EcfrXml(Adapter):
 
         for child in section:
             if child.tag in NESTED_CONTAINERS:
-                # A wrapper states nothing of its own; every word in it is in a child, and each
-                # child is a unit of the section. The ¶ numbering runs on through them, so the
-                # keys stay the section's own reading order and no two units share one.
-                for nested in child:
-                    kind = NESTED_KINDS.get(nested.tag)
+                # A wrapper states nothing of its own; every word in it is in an element below
+                # it, at whatever depth, and each is a unit of the section. The ¶ numbering runs
+                # on through them, so the keys stay the section's own reading order and no two
+                # units share one.
+                for nested, kind in wrapped_elements(child):
                     text = normalise("".join(nested.itertext()))
-                    if kind is None or not text:
+                    if not text:
                         continue
                     position += 1
-                    suffix = " heading" if kind == "heading" else label_of(text)
+                    suffix = {"heading": " heading", "worked-example": " example"}.get(
+                        kind, label_of(text))
                     found.append(Unit(f"§ {number} ¶{position}{suffix}", kind, text))
                 continue
             text = normalise("".join(child.itertext()))

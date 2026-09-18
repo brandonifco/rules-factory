@@ -187,18 +187,26 @@ are enumerated after its paragraphs rather than in the place the table is printe
 walks a section's direct children, a table sits below them, and a reading order it cannot see is
 not one it should assert.
 
-**A paragraph the corpus prints inside a wrapper is a unit of its section, at the designation the
-wrapper sits under** ([#285](https://github.com/brandonifco/rules-factory/issues/285)). Walking a
-`DIV8`'s direct children left out every paragraph one level further down, and § 172.102 states its
+**A paragraph the corpus prints inside a wrapper is a unit of its section**
+([#285](https://github.com/brandonifco/rules-factory/issues/285),
+[0036](decisions/0036-a-paragraph-inside-a-wrapper-takes-the-designation-the-wrapper-continues.md)).
+Walking a `DIV8`'s direct children left out every paragraph further down, and § 172.102 states its
 special provisions that way: `A3`, `B2`, `N40`, `TP1` and `148` are `FP-1` and `P` elements inside
-an `<EXTRACT>` beside the paragraph that introduces the run. So `§ 172.102(c)(2)` names every "A"
-code, and which one an entry means is settled by its quote, which the locator checker already
-holds to its citation at every occurrence — no citation grammar was added. The set of wrappers
-descended into is **closed** and lives in `NESTED_CONTAINERS`, with the reason for each member
-beside it; a `DIV` holding a table is not in it, because a table is addressed by its rows and
-flattening one into the paragraph index is the reading 0035 refused. The section locator checker
-descends into the same set, because a unit one half can cite and the other cannot see is a
-denominator that shrinks to fit what was read.
+an `<EXTRACT>` beside the paragraph that introduces the run. The set of wrappers descended into is
+**closed** and lives in `NESTED_CONTAINERS` — `EXTRACT` and `NOTE` — with the reason for each
+member beside it, and the descent is to **any depth**; a `DIV` holding a table is not in it,
+because a table is addressed by its rows and flattening one into the paragraph index is the
+reading 0035 refused. The section locator checker descends into the same wrappers with the same
+table of tags, and a test holds the two equal, because a unit one half can cite and the other
+cannot see is a denominator that shrinks to fit what was read.
+
+The two part company on **one** thing. The checker asserts *containment*, so it leaves a wrapper
+**unplaced** where the markup does not say the wrapper is inside the paragraph it follows — an
+appendix, or a wrapper holding a `<P>` that states its own designation. A unit key asserts nothing
+of the kind: `§ 172.101 ¶94` says where a paragraph sits in the section's reading order and no
+more. So the adapter enumerates what the checker will not place, and the inventory reports it
+**unaccounted** until something accounts for it, which is the honest state of a passage with no
+address yet and the opposite of dropping it out of the denominator.
 
 A fourth grammar subclasses `Adapter`, implements `units(extent)`, and registers its manifest
 `adapter` name. A manifest naming an adapter nothing implements is **refused**: a corpus nothing
