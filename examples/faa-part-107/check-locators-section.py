@@ -278,11 +278,15 @@ TABLE_CITATION = re.compile(
     r'^\s*§+\s*(?P<section>\d+\.\d+(?:-\d+)?)\s+table\s+(?P<table>\d+)\s*,\s*row\s*'
     r'\[(?P<key>.*)\](?:\s*,\s*column\s+(?P<column>[A-Za-z0-9]{1,4}))?\s*\.?\s*$')
 ROW_KEY_PAIR = re.compile(r'column\s+([A-Za-z0-9]{1,4})\s*=\s*"([^"]*)"')
-#: A heading's own label for a column, as the table prints it: `(1)`, `(8A)`, `(10B)`.
-COLUMN_LABEL = re.compile(r"^\(([A-Za-z0-9]{1,4})\)")
-#: A cell that spans rows or columns. The markup then no longer says which column a later cell
-#: sits in, and there is no honest way to guess: such a table is refused, not addressed (0035).
-SPAN_ATTRIBUTES = ("COLSPAN", "ROWSPAN", "colspan", "rowspan")
+#: A heading's own label for a column, read wherever the heading prints it: this corpus writes a
+#: parent as a prefix, `(8)Packaging(§ 173.***)`, and its children as suffixes, `Exceptions(8A)`.
+#: `(§ 173.***)` is not one of these, which is why the token is held to four characters of
+#: letters and digits.
+COLUMN_LABEL = re.compile(r"\(([A-Za-z0-9]{1,4})\)")
+#: A cell that spans rows or columns. In a **heading** that is how a two-level heading is
+#: written, and it is expanded into a grid; in a body row it means the markup no longer says
+#: which column a cell sits in, and the table is refused rather than addressed (0035).
+SPAN_ATTRIBUTES = {"COLSPAN": ("COLSPAN", "colspan"), "ROWSPAN": ("ROWSPAN", "rowspan")}
 #: The separator between a row's cells in the extraction of a row. Empty cells are kept as
 #: empty, which is what makes a blank cell quotable: 1,112 rows of the corpus that forced this
 #: have exactly one empty cell, and flattened into prose a missing symbol and a missing packing
@@ -345,23 +349,62 @@ def quotable(value):
     return '"' not in value
 
 
+def addressable_row(spans):
+    """Whether a body row's cells can be told apart by column.
+
+    A row whose cells each occupy one cell is addressable, and so is a row that is **one cell
+    across the whole width** -- the footnote and sub-heading rows every printed regulation ends a
+    table with; `§ 172.101`'s reportable-quantity table carries four of them, and refusing a
+    1,356-row table because of them would be refusing the table for its footnotes. What is not
+    addressable is a row that spans *part* of its width: a `COLSPAN` in the middle displaces every
+    cell after it, and which column those cells are in is then not in the markup.
+    """
+    if all(across == 1 and down == 1 for across, down in spans):
+        return True
+    return len(spans) == 1 and spans[0][1] == 1
+
+
+def span_of_cell(cell, which):
+    """How many columns or rows a cell covers: 1 where it says nothing, and 1 where what it says
+    is not a count. A span this cannot read is left at 1, and the leaf count then fails to match
+    the body's width, which is a refusal rather than a wrong address."""
+    for attribute in SPAN_ATTRIBUTES[which]:
+        value = cell.get(attribute)
+        if value is not None:
+            return int(value) if value.isdigit() and int(value) > 0 else 1
+    return 1
+
+
 class Table:
     """One table of a section: the columns its headings print, its rows, and where it sits.
 
     `columns` is the corpus's own numbering -- the labels its headings print -- because that is
     the numbering the corpus uses to explain itself (§ 172.101(b)-(l)) and the one a reader sees.
-    A heading split into sub-columns names no column of its own: where the headings print `(8)`,
-    `(8A)`, `(8B)` and `(8C)`, the columns are the three leaves.
+
+    **A two-level heading is read, not refused.** The corpus that forced 0035 prints one: a first
+    heading row of ten cells, seven of them `rowspan="2"` and three of them `colspan="3"`, `"2"`
+    and `"2"`, over a second row of seven. That is 7 + 3 + 2 + 2 = 14 leaves over 14 body cells,
+    and the alignment is stated outright by the markup. The heading rows are expanded into a grid
+    the way any table is laid out -- `colspan` widens a cell, `rowspan` carries it down -- and a
+    column's label is read from the **bottom-most heading cell covering it**.
+
+    A label is read wherever the cell prints it, because this corpus prints the parents as
+    prefixes (`(8)Packaging(§ 173.***)`) and the children as suffixes (`Exceptions(8A)`). A
+    heading cell that names two columns, or names none while its neighbours name theirs, is
+    refused: half a numbering is not one.
 
     Three outcomes, and the middle one is the point:
 
-      **printed**     the leaf labels number the cells one for one, and they are the columns.
+      **printed**     the leaf labels number the body's cells one for one, and they are the
+                      columns. A label split into sub-columns names no column of its own, so
+                      where the headings print `(8)`, `(8A)`, `(8B)` and `(8C)` in one row, the
+                      columns are the three leaves.
       **positional**  the table prints no numbering of its own, or prints one label twice; the
-                      columns are `1`..`n` by position, which is all the markup says.
-      **refused**     a cell spans rows or columns, or the labels and the cells do not
-                      correspond. `unresolved` then says so and the table addresses nothing:
-                      a guessed alignment between a heading and a cell names the wrong cell and
-                      says nothing about having done so.
+                      columns are `1`..`n` by position, which is all the markup then says.
+      **refused**     a cell of a **body** row spans, or the leaf labels do not number the body's
+                      cells. `unresolved` then says so and the table addresses nothing: a guessed
+                      alignment between a heading and a cell names the wrong cell and says
+                      nothing about having done so.
 
     Rows are the rows of *this* table: a nested table's rows belong to the table that encloses
     them, not to this one. Heading rows are rows like any other, because the column semantics of
@@ -373,6 +416,7 @@ class Table:
         self.position = position
         self.unresolved = None
         self.numbering = "printed"
+        self.numbering_note = None
         parents = {child: parent for parent in element.iter() for child in parent}
 
         def nearest_table(node):
@@ -388,44 +432,109 @@ class Table:
                 node = parents.get(node)
             return False
 
-        self.rows, self.heads, spanned = [], [], False
+        self.rows, self.heads, self.addressable, self._headings = [], [], [], []
+        carried = False
         for row in element.iter("TR"):
             if nearest_table(row) is not element:
                 continue
             cells = [cell for cell in row if cell.tag in ("TD", "TH")]
-            spanned = spanned or any(cell.get(attribute) not in (None, "1")
-                                     for cell in cells for attribute in SPAN_ATTRIBUTES)
             text = [normalise("".join(cell.itertext())) for cell in cells]
             if not text:
                 continue
-            self.heads.append(in_head(row))
+            head = in_head(row)
+            spans = [(span_of_cell(cell, "COLSPAN"), span_of_cell(cell, "ROWSPAN"))
+                     for cell in cells]
+            if head:
+                self._headings.append(list(zip(text, spans)))
+            else:
+                carried = carried or any(down != 1 for _, down in spans)
+            self.heads.append(head)
+            self.addressable.append(head or addressable_row(spans))
             self.rows.append(text)
-        self.columns = self._columns(spanned)
+        self.columns = self._columns(carried)
 
-    def _columns(self, spanned):
-        body = [cells for cells, head in zip(self.rows, self.heads) if not head]
-        width = len(body[0]) if body else (len(self.rows[0]) if self.rows else 0)
-        positional = [str(n) for n in range(1, width + 1)]
-        if spanned:
-            self.unresolved = ("a cell of it spans rows or columns, so which column a cell sits "
-                               "in is not in the markup")
+    def _leaf_headings(self):
+        """The heading cell that covers each column, bottom-most first covered wins.
+
+        The ordinary table layout: a cell is placed in the first column free on its row, occupies
+        `colspan` columns, and is carried down `rowspan` rows. The bottom-most cell covering a
+        column is the one that names it -- `Exceptions(8A)` and not the `(8)Packaging` above it.
+        """
+        covered = {}
+        for depth, cells in enumerate(self._headings):
+            at = 0
+            for text, (across, down) in cells:
+                while (depth, at) in covered:
+                    at += 1
+                for column in range(at, at + across):
+                    for row in range(depth, depth + down):
+                        covered[(row, column)] = text
+                at += across
+        if not covered:
             return []
-        labels = [m.group(1) for cells, head in zip(self.rows, self.heads) if head
-                  for m in (COLUMN_LABEL.match(cell) for cell in cells) if m]
-        leaves = [l for l in labels if not any(sub_column_of(l, o) for o in labels)]
-        if not leaves:
+        width = max(column for _, column in covered) + 1
+        leaves = []
+        for column in range(width):
+            depths = [row for row, other in covered if other == column]
+            leaves.append(covered[(max(depths), column)] if depths else None)
+        return leaves
+
+    def _columns(self, carried):
+        body = [cells for cells, head, fit in zip(self.rows, self.heads, self.addressable)
+                if not head and fit and len(cells) > 1]
+        width = len(body[0]) if body else 0
+        positional = [str(n) for n in range(1, width + 1)]
+        if carried:
+            self.unresolved = ("a cell of one of its rows spans rows, carrying it into the row "
+                               "below, so which column a later cell sits in is not in the markup")
+            return []
+        if not width:
+            self.unresolved = ("no row of it has cells that can be told apart by column: every "
+                               "row spans part of its width, or the table has no body row")
+            return []
+        leaves = self._leaf_headings()
+        printed = [COLUMN_LABEL.findall(text or "") for text in leaves]
+        crowded = [text for text, found in zip(leaves, printed) if len(found) > 1]
+        labelled = [found[0] for found in printed if len(found) == 1]
+        unlabelled = [found for found in printed if not found]
+        # A heading split into sub-columns names no column of its own. The grid above already
+        # drops a parent that spans its children; this drops one printed beside them in a single
+        # heading row, which is the same table written flat. It happens after the counting below,
+        # because a parent that names no column of its own is not a heading that prints no number.
+        labels = [l for l in labelled if not any(sub_column_of(l, o) for o in labelled)]
+
+        # Every way the *printed* numbering can fail to be one falls back to position, which is
+        # what the markup still says. None of them is a refusal: which cell is which column is
+        # determined either way, and a table that prints an unusable numbering is not a table
+        # nobody can address. Each reason is recorded, and every message that names the columns
+        # names the numbering and why.
+        if crowded:
             self.numbering = "positional"
-            return positional
-        if len(set(leaves)) != len(leaves):
-            # The same label twice names no column: taking the first would address a cell the
-            # citation did not name. Position is what is left, and it is said out loud.
+            self.numbering_note = (f"one of its headings names more than one column "
+                                   f"({crowded[0][:40]!r})")
+        elif not labelled:
             self.numbering = "positional"
+            self.numbering_note = "it prints no column numbers of its own"
+        elif unlabelled:
+            self.numbering = "positional"
+            self.numbering_note = "some of its headings print a column number and some do not"
+        elif labels[0] != "1":
+            # A corpus that numbers its columns numbers them from 1. A heading whose parenthesised
+            # token is a footnote marker rather than a column number reads exactly like a label,
+            # and this is the one cheap thing that tells the two apart.
+            self.numbering = "positional"
+            self.numbering_note = f"its first numbered heading is ({labels[0]}) and not (1)"
+        elif len(set(labels)) != len(labels):
+            self.numbering = "positional"
+            self.numbering_note = "it prints one column number twice"
+        if self.numbering == "positional":
             return positional
-        if len(leaves) != width:
-            self.unresolved = (f"its headings number {len(leaves)} column(s) and its rows hold "
+
+        if len(labels) != width:
+            self.unresolved = (f"its headings number {len(labels)} column(s) and its rows hold "
                                f"{width} cell(s), so no heading can be matched to a cell")
             return []
-        return leaves
+        return labels
 
     def index_of(self, column):
         """Which cell a column names, or None where this table prints no such column."""
@@ -433,9 +542,16 @@ class Table:
         return self.columns.index(column) if column in self.columns else None
 
     def matching(self, pairs):
-        """Every row whose cells hold all of `pairs`, as its cells."""
+        """Every row whose cells hold all of `pairs`, as its cells.
+
+        A row that spans part of its width is passed over: a key names a column, and that row has
+        no columns to name. It is still a row -- its text is what it is -- and a citation reaching
+        it fails rather than reaching a neighbour.
+        """
         found = []
-        for cells in self.rows:
+        for position, cells in enumerate(self.rows):
+            if not self.addressable[position]:
+                continue
             if all(self._holds(cells, column, value) for column, value in pairs):
                 found.append(cells)
         return found
@@ -459,6 +575,8 @@ class Table:
         same value in every nameable column. That is the refusal 0035 makes for an ambiguous
         citation, made here, where the citation is written.
         """
+        if not self.addressable[position]:
+            return None
         cells = self.rows[position]
         candidates = [(column, cells[at]) for at, column in enumerate(self.columns)
                       if at < len(cells) and quotable(cells[at])]
@@ -529,7 +647,9 @@ def check_table_row(entry, cited, tables):
     if unknown:
         return "bad", (f"cited {citation}, and § {number} table {position} prints no column "
                        f"{', '.join(unknown)} (its columns are "
-                       f"{', '.join(table.columns)}, numbered {table.numbering})"), None
+                       f"{', '.join(table.columns)}, numbered {table.numbering}"
+                       + (f": {table.numbering_note}" if table.numbering_note else "")
+                       + ")"), None
     hits = table.matching(pairs)
     if len(hits) != 1:
         return "bad", (f"cited {citation}, which names {len(hits)} rows of the table; a row key "

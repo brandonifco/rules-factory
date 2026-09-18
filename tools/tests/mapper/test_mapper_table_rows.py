@@ -94,9 +94,44 @@ WIDE_TABLE = """<TABLE>
 <TBODY><TR><TD/><TD>Acetal</TD><TD>3</TD><TD>UN1088</TD><TD>II</TD><TD>3</TD><TD>IB2</TD>
 <TD>202</TD><TD>5 L</TD><TD>E</TD><TD>D</TD></TR></TBODY></TABLE>"""
 
+TWO_LEVEL_TABLE = """<TABLE>
+<THEAD>
+<TR><TH ROWSPAN="2">(1)Symbols</TH><TH ROWSPAN="2">(2)Hazardous materials descriptions and \
+proper shipping names</TH><TH ROWSPAN="2">(3)Hazard class or Division</TH>
+<TH ROWSPAN="2">(4)Identification Numbers</TH><TH ROWSPAN="2">(5)PG</TH>
+<TH ROWSPAN="2">(6)Label codes</TH><TH ROWSPAN="2">(7)Special provisions(§ 172.102)</TH>
+<TH COLSPAN="3">(8)Packaging(§ 173.***)</TH><TH COLSPAN="2">(9)Quantity limitations</TH>
+<TH COLSPAN="2">(10)Vesselstowage</TH></TR>
+<TR><TH>Exceptions(8A)</TH><TH>Non-bulk(8B)</TH><TH>Bulk(8C)</TH>
+<TH>Passenger aircraft/rail(9A)</TH><TH>Cargo aircraft only(9B)</TH><TH>Location(10A)</TH>
+<TH>Other(10B)</TH></TR>
+</THEAD>
+<TBODY>
+<TR><TD/><TD>Acetal</TD><TD>3</TD><TD>UN1088</TD><TD>II</TD><TD>3</TD><TD>IB2, T4, TP1</TD>
+<TD>150</TD><TD>202</TD><TD>242</TD><TD>5 L</TD><TD>60 L</TD><TD>E</TD><TD/></TR>
+<TR><TD>D</TD><TD>Acetaldehyde</TD><TD>3</TD><TD>UN1089</TD><TD>I</TD><TD>3</TD><TD>A3, T11</TD>
+<TD>None</TD><TD>201</TD><TD>243</TD><TD>Forbidden</TD><TD>30 L</TD><TD>E</TD><TD/></TR>
+</TBODY></TABLE>"""
+
+# A span in a *body* row: the markup then genuinely stops saying which column a later cell is in.
+SPANNED_BODY_TABLE = """<TABLE>
+<THEAD><TR><TD>(1) Code</TD><TD>(2) Mode</TD><TD>(3) Limit</TD></TR></THEAD>
+<TBODY><TR><TD COLSPAN="2">A3, aircraft</TD><TD>5 L</TD></TR></TBODY></TABLE>"""
+
+# A colspan parent with no second heading row under it: the two columns it covers are both
+# labelled `(8)`, which names neither, so the table is numbered by position.
 SPANNED_TABLE = """<TABLE>
 <THEAD><TR><TD COLSPAN="2">(8) Packaging</TD><TD>(9) Quantity</TD></TR></THEAD>
 <TBODY><TR><TD>202</TD><TD>242</TD><TD>5 L</TD></TR></TBODY></TABLE>"""
+
+# A heading that names two columns at once, and one that names none while its neighbours do.
+CROWDED_HEADING_TABLE = """<TABLE>
+<THEAD><TR><TD>(1) Code and (2) Mode</TD><TD>(3) Limit</TD></TR></THEAD>
+<TBODY><TR><TD>A3</TD><TD>5 L</TD></TR></TBODY></TABLE>"""
+
+HALF_NUMBERED_TABLE = """<TABLE>
+<THEAD><TR><TD>Widget</TD><TD>(2) Class</TD></TR></THEAD>
+<TBODY><TR><TD>Acetal</TD><TD>3</TD></TR></TBODY></TABLE>"""
 
 DUPLICATE_LABEL_TABLE = """<TABLE>
 <THEAD><TR><TD>(2) Left</TD><TD>(2) Right</TD></TR></THEAD>
@@ -142,6 +177,39 @@ NESTED_FIXTURE = """<ROOT><DIV8 N="1.12" TYPE="SECTION"><HEAD>§ 1.12 Codes.</HE
 <P>Each code has the meaning given in the table.</P>
 """ + NESTED_TABLES + """
 </DIV8></ROOT>"""
+
+# A table that ends with a footnote row spanning its whole width, which is how every printed
+# regulation ends one; a row that spans *part* of its width, which displaces every cell after it;
+# a cell carried into the row below; and a heading whose parenthesised token is a footnote marker.
+FOOTNOTE_ROW_TABLE = """<TABLE>
+<THEAD><TR><TD>(1) Widget</TD><TD>(2) Limit</TD></TR></THEAD>
+<TBODY><TR><TD>Acetal</TD><TD>5 L</TD></TR>
+<TR><TD COLSPAN="2">1 The RQ applies to the whole entry.</TD></TR></TBODY></TABLE>"""
+
+# A heading where the colspan is load-bearing: the cell *after* the split parent starts where
+# the parent's width says it does, so reading the span as one column puts column 5 in the middle
+# of the packaging columns instead of after them.
+SPLIT_PARENT_TABLE = """<TABLE>
+<THEAD>
+<TR><TD ROWSPAN="2">(1) Symbols</TD><TD COLSPAN="2">(2) Packaging</TD>
+<TD ROWSPAN="2">(5) Stowage</TD></TR>
+<TR><TD>Exceptions(2A)</TD><TD>Bulk(2B)</TD></TR>
+</THEAD>
+<TBODY><TR><TD>G</TD><TD>150</TD><TD>202</TD><TD>E</TD></TR></TBODY></TABLE>"""
+
+MIXED_SPAN_TABLE = """<TABLE>
+<THEAD><TR><TD>(1) Code</TD><TD>(2) Mode</TD><TD>(3) Limit</TD></TR></THEAD>
+<TBODY><TR><TD>A3</TD><TD>Aircraft</TD><TD>5 L</TD></TR>
+<TR><TD COLSPAN="2">A3, aircraft</TD><TD>60 L</TD></TR></TBODY></TABLE>"""
+
+CARRIED_ROW_TABLE = """<TABLE>
+<THEAD><TR><TD>(1) Code</TD><TD>(2) Limit</TD></TR></THEAD>
+<TBODY><TR><TD ROWSPAN="2">A3</TD><TD>5 L</TD></TR>
+<TR><TD>60 L</TD></TR></TBODY></TABLE>"""
+
+FOOTNOTE_MARKER_TABLE = """<TABLE>
+<THEAD><TR><TD>Minimum test pressure (2)</TD><TD>Widget (3)</TD></TR></THEAD>
+<TBODY><TR><TD>4 bar</TD><TD>Acetal</TD></TR></TBODY></TABLE>"""
 
 ACETAL = {"column": 2, "is": "Acetal"}
 AMMONIA_23 = [{"column": 2, "is": "Ammonia, anhydrous"}, {"column": 3, "is": "2.3"}]
@@ -304,10 +372,103 @@ class TestTheGeometryIsReadOrRefused(unittest.TestCase):
         self.assertEqual(table.index_of("10B"), 10)
         self.assertEqual(table.matching([("9", "5 L")])[0][1][8], "5 L")
 
-    def test_a_spanned_cell_leaves_the_geometry_unreadable(self):
-        table = table_of(SPANNED_TABLE)
-        self.assertIn("spans rows or columns", table.unresolved or "")
+    def test_a_two_level_heading_is_expanded_and_read(self):
+        # The shape the Hazardous Materials Table prints: seven rowspan=2 cells and three colspan
+        # parents over a second row of seven, which is 7 + 3 + 2 + 2 = 14 leaves over 14 body
+        # cells. The alignment is stated by the markup, and refusing it refuses arithmetic.
+        table = table_of(TWO_LEVEL_TABLE)
+        self.assertIsNone(table.unresolved)
+        self.assertEqual(table.numbering, "printed")
+        self.assertEqual(table.columns, ["1", "2", "3", "4", "5", "6", "7",
+                                         "8A", "8B", "8C", "9A", "9B", "10A", "10B"])
+
+    def test_a_split_parent_widens_the_grid_for_the_cell_after_it(self):
+        table = table_of(SPLIT_PARENT_TABLE)
+        self.assertIsNone(table.unresolved)
+        self.assertEqual(table.columns, ["1", "2A", "2B", "5"])
+        row = table.matching([("1", "G")])[0][1]
+        self.assertEqual(row[table.index_of("5")], "E")
+        self.assertEqual(row[table.index_of("2B")], "202")
+
+    def test_a_split_parent_names_no_column_of_its_own(self):
+        table = table_of(TWO_LEVEL_TABLE)
+        self.assertIsNone(table.index_of("9"))
+        self.assertIsNone(table.index_of("8"))
+        self.assertIsNone(table.index_of("10"))
+
+    def test_each_column_of_the_two_level_heading_addresses_its_own_cell(self):
+        table = table_of(TWO_LEVEL_TABLE)
+        acetal = table.matching([("2", "Acetal")])[0][1]
+        self.assertEqual(acetal[table.index_of("9A")], "5 L")
+        self.assertEqual(acetal[table.index_of("9B")], "60 L")
+        self.assertEqual(acetal[table.index_of("8B")], "202")
+        self.assertEqual(acetal[table.index_of("10A")], "E")
+
+    def test_a_label_is_read_wherever_the_heading_prints_it(self):
+        # The parents are prefixes, `(8)Packaging(§ 173.***)`; the children are suffixes,
+        # `Exceptions(8A)`. Anchoring the token at the start of the cell finds none of the
+        # children, which is the other half of why this table never numbered correctly.
+        self.assertEqual(corpus.COLUMN_LABEL.findall("Exceptions(8A)"), ["8A"])
+        self.assertEqual(corpus.COLUMN_LABEL.findall("(8)Packaging(§ 173.***)"), ["8"])
+        self.assertEqual(corpus.COLUMN_LABEL.findall("(7)Special provisions(§ 172.102)"), ["7"])
+
+    def test_a_row_spanning_part_of_its_width_can_be_told_apart_by_no_column(self):
+        # A COLSPAN in the middle of a row displaces every cell after it. The row is not
+        # addressable; where a table has no other, the table addresses nothing.
+        table = table_of(SPANNED_BODY_TABLE)
+        self.assertEqual(table.addressable, [True, False])
+        self.assertIn("told apart by column", table.unresolved or "")
         self.assertEqual(table.columns, [])
+
+    def test_a_footnote_row_across_the_whole_width_is_a_row_like_any_other(self):
+        # § 172.101's reportable-quantity table ends with four of these, and refusing a
+        # 1,356-row table for its footnotes is refusing the table for its footnotes.
+        table = table_of(FOOTNOTE_ROW_TABLE)
+        self.assertIsNone(table.unresolved)
+        self.assertEqual(table.numbering, "printed")
+        self.assertEqual(table.columns, ["1", "2"])
+        self.assertEqual(table.addressable, [True, True, True])
+        self.assertEqual(len(table.matching([("1", "1 The RQ applies to the whole entry.")])), 1)
+
+    def test_a_cell_carried_into_the_next_row_leaves_the_geometry_unreadable(self):
+        # A ROWSPAN in a body row displaces the rows below it, and which column their cells are
+        # in is then not in the markup at all.
+        table = table_of(CARRIED_ROW_TABLE)
+        self.assertIn("carrying it into the row below", table.unresolved or "")
+        self.assertEqual(table.columns, [])
+
+    def test_an_unaddressable_row_is_matched_by_no_key_and_keyed_by_none(self):
+        table = table_of(MIXED_SPAN_TABLE)
+        self.assertEqual(table.addressable, [True, True, False])
+        self.assertEqual(len(table.matching([("1", "A3, aircraft")])), 0)
+        self.assertIsNone(table.key_for(2))
+
+    def test_a_colspan_parent_with_no_row_under_it_numbers_by_position(self):
+        # Both columns it covers are labelled `(8)`, which names neither of them.
+        table = table_of(SPANNED_TABLE)
+        self.assertIsNone(table.unresolved)
+        self.assertEqual(table.numbering, "positional")
+        self.assertEqual(table.columns, ["1", "2", "3"])
+
+    def test_a_heading_that_names_two_columns_falls_back_to_position(self):
+        # Which cell is which column is still determined; only the printed numbering is not.
+        # That is a fall back to what the markup does say, and never a refusal -- the table is
+        # § 172.102's portable-tank table, whose heading prints a footnote marker.
+        table = table_of(CROWDED_HEADING_TABLE)
+        self.assertIsNone(table.unresolved)
+        self.assertEqual(table.numbering, "positional")
+        self.assertIn("names more than one column", table.numbering_note)
+
+    def test_a_table_numbered_only_in_part_falls_back_to_position(self):
+        table = table_of(HALF_NUMBERED_TABLE)
+        self.assertIsNone(table.unresolved)
+        self.assertEqual(table.numbering, "positional")
+        self.assertIn("some do not", table.numbering_note)
+
+    def test_a_numbering_that_does_not_start_at_one_is_a_footnote_marker(self):
+        table = table_of(FOOTNOTE_MARKER_TABLE)
+        self.assertEqual(table.numbering, "positional")
+        self.assertIn("and not (1)", table.numbering_note)
 
     def test_headings_that_do_not_number_the_cells_are_refused(self):
         table = table_of(MISCOUNTED_TABLE)
@@ -392,22 +553,26 @@ class TestEveryTableIsAccountedFor(AdapterCase):
 
     def test_a_table_whose_geometry_is_unreadable_is_refused_rather_than_addressed(self):
         corpus_path = self.write_corpus(
-            FIXTURE.replace("<TABLE><THEAD><TR><TD>(1) Code</TD><TD>(2) Mode</TD>"
-                            "<TD>(3) Limit</TD></TR></THEAD>",
-                            '<TABLE><THEAD><TR><TD COLSPAN="2">(1) Code</TD><TD>(3) Limit</TD>'
-                            '</TR></THEAD>'), "spanned.xml")
+            FIXTURE.replace("<TR><TD>A3</TD><TD>Aircraft</TD><TD>5 L</TD></TR>\n"
+                            "<TR><TD>A3</TD><TD>Aircraft</TD><TD>60 L</TD></TR>\n"
+                            "<TR><TD>A3</TD><TD>Vessel</TD><TD>5 L</TD></TR>\n"
+                            "<TR><TD>N34</TD><TD>Aircraft</TD><TD>5 L</TD></TR>",
+                            '<TR><TD COLSPAN="2">A3, aircraft</TD><TD>5 L</TD></TR>'),
+            "spanned.xml")
         adapter = corpus.EcfrXml(corpus_path)
         with self.assertRaises(protocol.Refused) as caught:
             adapter.units(extent([{"section": "§ 1.10", "table": 1, "rows": [ACETAL]},
                                   {"section": "§ 1.10", "table": 2, "rows": "all"}]))
-        self.assertIn("spans rows or columns", str(caught.exception))
+        self.assertIn("told apart by column", str(caught.exception))
 
     def test_the_same_table_excluded_with_a_reason_needs_no_geometry(self):
         corpus_path = self.write_corpus(
-            FIXTURE.replace("<TABLE><THEAD><TR><TD>(1) Code</TD><TD>(2) Mode</TD>"
-                            "<TD>(3) Limit</TD></TR></THEAD>",
-                            '<TABLE><THEAD><TR><TD COLSPAN="2">(1) Code</TD><TD>(3) Limit</TD>'
-                            '</TR></THEAD>'), "spanned-excluded.xml")
+            FIXTURE.replace("<TR><TD>A3</TD><TD>Aircraft</TD><TD>5 L</TD></TR>\n"
+                            "<TR><TD>A3</TD><TD>Aircraft</TD><TD>60 L</TD></TR>\n"
+                            "<TR><TD>A3</TD><TD>Vessel</TD><TD>5 L</TD></TR>\n"
+                            "<TR><TD>N34</TD><TD>Aircraft</TD><TD>5 L</TD></TR>",
+                            '<TR><TD COLSPAN="2">A3, aircraft</TD><TD>5 L</TD></TR>'),
+            "spanned-excluded.xml")
         adapter = corpus.EcfrXml(corpus_path)
         rows = adapter.units(extent([{"section": "§ 1.10", "table": 1, "rows": [ACETAL]},
                                      SECOND_TABLE_EXCLUDED]))
@@ -448,6 +613,17 @@ class TestTheTwoGrammarsAreOneGrammar(AdapterCase):
                 self.assertEqual(
                     check_locators_section.row_text(indexed.matching(pairs)[0]), unit.text)
 
+    def test_the_two_read_the_same_two_level_heading(self):
+        for markup in (TWO_LEVEL_TABLE, SPLIT_PARENT_TABLE, FOOTNOTE_ROW_TABLE,
+                       FOOTNOTE_MARKER_TABLE):
+            with self.subTest(markup=markup.split("\n")[0]):
+                mine = corpus.Table("1.10", 1, ET.fromstring(markup))
+                theirs = check_locators_section.Table("1.10", 1, ET.fromstring(markup))
+                self.assertEqual(mine.columns, theirs.columns)
+                self.assertEqual(mine.numbering, theirs.numbering)
+                self.assertEqual(mine.numbering_note, theirs.numbering_note)
+                self.assertEqual(mine.addressable, theirs.addressable)
+
     def test_the_two_read_the_same_columns_out_of_the_same_table(self):
         indexed = check_locators_section.table_index(self.corpus_path)[("1.10", 1)]
         table = corpus.Table("1.10", 1, self.adapter.root.iter("TABLE").__next__())
@@ -455,7 +631,8 @@ class TestTheTwoGrammarsAreOneGrammar(AdapterCase):
         self.assertEqual(indexed.columns, ["1", "2", "3", "4A", "4B"])
 
     def test_the_two_refuse_the_same_geometry(self):
-        for markup in (SPANNED_TABLE, MISCOUNTED_TABLE):
+        for markup in (SPANNED_BODY_TABLE, MISCOUNTED_TABLE, CROWDED_HEADING_TABLE,
+                       HALF_NUMBERED_TABLE):
             with self.subTest(markup=markup.split("\n")[0]):
                 theirs = check_locators_section.Table("1.10", 1, ET.fromstring(markup))
                 self.assertEqual(bool(theirs.unresolved), bool(table_of(markup).unresolved))

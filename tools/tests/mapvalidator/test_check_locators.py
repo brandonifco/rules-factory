@@ -449,9 +449,48 @@ WIDE_TABLE = """<TABLE>
 <TBODY><TR><TD/><TD>Acetal</TD><TD>3</TD><TD>UN1088</TD><TD>II</TD><TD>3</TD><TD>IB2</TD>
 <TD>202</TD><TD>5 L</TD><TD>E</TD><TD>D</TD></TR></TBODY></TABLE>"""
 
+TWO_LEVEL_TABLE = """<TABLE>
+<THEAD>
+<TR><TH ROWSPAN="2">(1)Symbols</TH><TH ROWSPAN="2">(2)Hazardous materials descriptions and \
+proper shipping names</TH><TH ROWSPAN="2">(3)Hazard class or Division</TH>
+<TH ROWSPAN="2">(4)Identification Numbers</TH><TH ROWSPAN="2">(5)PG</TH>
+<TH ROWSPAN="2">(6)Label codes</TH><TH ROWSPAN="2">(7)Special provisions(§ 172.102)</TH>
+<TH COLSPAN="3">(8)Packaging(§ 173.***)</TH><TH COLSPAN="2">(9)Quantity limitations</TH>
+<TH COLSPAN="2">(10)Vesselstowage</TH></TR>
+<TR><TH>Exceptions(8A)</TH><TH>Non-bulk(8B)</TH><TH>Bulk(8C)</TH>
+<TH>Passenger aircraft/rail(9A)</TH><TH>Cargo aircraft only(9B)</TH><TH>Location(10A)</TH>
+<TH>Other(10B)</TH></TR>
+</THEAD>
+<TBODY>
+<TR><TD/><TD>Acetal</TD><TD>3</TD><TD>UN1088</TD><TD>II</TD><TD>3</TD><TD>IB2, T4, TP1</TD>
+<TD>150</TD><TD>202</TD><TD>242</TD><TD>5 L</TD><TD>60 L</TD><TD>E</TD><TD/></TR>
+<TR><TD>D</TD><TD>Acetaldehyde</TD><TD>3</TD><TD>UN1089</TD><TD>I</TD><TD>3</TD><TD>A3, T11</TD>
+<TD>None</TD><TD>201</TD><TD>243</TD><TD>Forbidden</TD><TD>30 L</TD><TD>E</TD><TD/></TR>
+</TBODY></TABLE>"""
+
+# A span in a *body* row: the markup then genuinely stops saying which column a later cell is in.
+FOOTNOTE_MARKER_TABLE = """<TABLE>
+<THEAD><TR><TD>Minimum test pressure (2)</TD><TD>Widget (3)</TD></TR></THEAD>
+<TBODY><TR><TD>4 bar</TD><TD>Acetal</TD></TR></TBODY></TABLE>"""
+
+SPANNED_BODY_TABLE = """<TABLE>
+<THEAD><TR><TD>(1) Code</TD><TD>(2) Mode</TD><TD>(3) Limit</TD></TR></THEAD>
+<TBODY><TR><TD COLSPAN="2">A3, aircraft</TD><TD>5 L</TD></TR></TBODY></TABLE>"""
+
+# A colspan parent with no second heading row under it: the two columns it covers are both
+# labelled `(8)`, which names neither, so the table is numbered by position.
 SPANNED_TABLE = """<TABLE>
 <THEAD><TR><TD COLSPAN="2">(8) Packaging</TD><TD>(9) Quantity</TD></TR></THEAD>
 <TBODY><TR><TD>202</TD><TD>242</TD><TD>5 L</TD></TR></TBODY></TABLE>"""
+
+# A heading that names two columns at once, and one that names none while its neighbours do.
+CROWDED_HEADING_TABLE = """<TABLE>
+<THEAD><TR><TD>(1) Code and (2) Mode</TD><TD>(3) Limit</TD></TR></THEAD>
+<TBODY><TR><TD>A3</TD><TD>5 L</TD></TR></TBODY></TABLE>"""
+
+HALF_NUMBERED_TABLE = """<TABLE>
+<THEAD><TR><TD>Widget</TD><TD>(2) Class</TD></TR></THEAD>
+<TBODY><TR><TD>Acetal</TD><TD>3</TD></TR></TBODY></TABLE>"""
 
 
 class TestTableRows(unittest.TestCase):
@@ -552,6 +591,13 @@ class TestTableRows(unittest.TestCase):
         self.assertEqual(result, "bad", message)
         self.assertIn("elides its middle", message)
 
+    def test_a_label_is_read_wherever_the_heading_prints_it(self):
+        # The parents are prefixes, the children suffixes: `Exceptions(8A)`. Anchoring the token
+        # at the start of the cell finds none of the children.
+        self.assertEqual(check_locators_section.COLUMN_LABEL.findall("Exceptions(8A)"), ["8A"])
+        self.assertEqual(check_locators_section.COLUMN_LABEL.findall(
+            "(7)Special provisions(§ 172.102)"), ["7"])
+
     def test_a_column_of_a_ten_way_table_is_not_swallowed_by_column_one(self):
         # Read as a string prefix, `1` is a parent of `10A`: the labels stop numbering the cells,
         # the table silently falls back to positional numbering, and `column 9` addresses another
@@ -563,12 +609,50 @@ class TestTableRows(unittest.TestCase):
 
     def test_a_table_whose_geometry_the_markup_does_not_carry_addresses_nothing(self):
         tables = {("1.10", 1): check_locators_section.Table(
-            "1.10", 1, ET.fromstring(SPANNED_TABLE))}
+            "1.10", 1, ET.fromstring(SPANNED_BODY_TABLE))}
         result, message = check_locators_section.check(
-            entry("x", '§ 1.10 table 1, row [column 9 = "5 L"]', "202 | 242 | 5 L"),
+            entry("x", '§ 1.10 table 1, row [column 3 = "5 L"]', "A3, aircraft | 5 L"),
             self.corpus, self.spans, None, tables)
         self.assertEqual(result, "bad", message)
-        self.assertIn("spans rows or columns", message)
+        self.assertIn("told apart by column", message)
+
+    def test_a_citation_into_a_table_numbered_by_position_says_so(self):
+        # A table that prints a footnote marker where a column number would be is numbered by
+        # position, and the run says which numbering it used and why, rather than leaving a
+        # reader to assume the corpus's own.
+        tables = {("1.10", 1): check_locators_section.Table(
+            "1.10", 1, ET.fromstring(FOOTNOTE_MARKER_TABLE))}
+        result, message = check_locators_section.check(
+            entry("x", '§ 1.10 table 1, row [column 9 = "4 bar"]', "4 bar"),
+            self.corpus, self.spans, None, tables)
+        self.assertEqual(result, "bad", message)
+        self.assertIn("numbered positional", message)
+        self.assertIn("and not (1)", message)
+
+    def test_a_two_level_heading_resolves_a_citation_into_its_own_column(self):
+        # The Hazardous Materials Table's heading, and the reason this decision exists: a
+        # citation naming column 9A must reach the passenger-aircraft cell and nothing else.
+        tables = {("1.10", 1): check_locators_section.Table(
+            "1.10", 1, ET.fromstring(TWO_LEVEL_TABLE))}
+
+        def verdict(citation, evidence):
+            return check_locators_section.check(
+                entry("x", citation, evidence), self.corpus, self.spans, None, tables)
+
+        self.assertEqual(verdict(
+            '§ 1.10 table 1, row [column 2 = "Acetal"], column 9A', "5 L")[0], "ok")
+        self.assertEqual(verdict(
+            '§ 1.10 table 1, row [column 2 = "Acetal"], column 9B', "60 L")[0], "ok")
+        self.assertEqual(verdict(
+            '§ 1.10 table 1, row [column 2 = "Acetal"], column 8B', "202")[0], "ok")
+        # 9A is not 9B, and the quote is held to the cell the citation names.
+        self.assertEqual(verdict(
+            '§ 1.10 table 1, row [column 2 = "Acetal"], column 9A', "60 L")[0], "bad")
+        # `9` is a split parent: it names no column at all.
+        result, message = verdict(
+            '§ 1.10 table 1, row [column 2 = "Acetal"], column 9', "5 L")
+        self.assertEqual(result, "bad", message)
+        self.assertIn("prints no column 9", message)
 
     def test_a_corpus_that_prints_a_section_twice_is_refused(self):
         path = os.path.join(self.root, "twice.xml")
