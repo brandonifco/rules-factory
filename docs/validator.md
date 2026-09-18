@@ -39,7 +39,7 @@ of the territory, not the territory.
 | **completeness** | did the mapper skip definitions, gates, pointers, tables, examples, applicability clauses, or part of the declared extent? | the producer's half is [#250](https://github.com/brandonifco/rules-factory/issues/250); the adversarial half is owed. `extent` claims coverage and [#255](https://github.com/brandonifco/rules-factory/issues/255) is what would evidence it |
 | **interpretive** | does the evidence actually support the classification? | nothing mechanical, by nature. It is what the blind second mapping exists for ([0014](decisions/0014-a-map-is-checked-by-a-blind-second-mapping.md)), which caught 14 of 15 injected comprehension errors the mechanical checks missed |
 | **relational** | does this gate govern everything the map says it governs — and more than the map noticed? | shape only. `full-table-suspension` reached the throw and everything a throw leads to, recorded none of it, and survived a trial, a build and a review |
-| **epistemic** | was ambiguity preserved where the corpus supports two readings, or collapsed into one? | nothing. [#258](https://github.com/brandonifco/rules-factory/issues/258) |
+| **epistemic** | was ambiguity preserved where the corpus supports two readings, or collapsed into one? | `superposition`, `unresolved-reason` and `bound-term-open` ([0034](decisions/0034-a-valid-unresolved-state-is-established-not-asserted.md)), each reading a record made outside the entry. Measured: 12 of 64 collapses caught, against 4 before ([`examples/collapse-trial/`](../examples/collapse-trial/README.md)) |
 
 ## Validating the uncertainty
 
@@ -61,8 +61,26 @@ resolve between them, the job is not to choose:
 That is a success. A **premature collapse** — a `clear` entry whose evidence supports two
 readings — passes every check that exists, produces a confident engine, and records no doubt for
 anyone to find. It is worse than a wrong answer, because a wrong answer can be disputed.
-`check-map.py` admits the gap in its own docstring: *two `clarity: clear` entries stating
-incompatible rules pass every check here.*
+
+0034 builds what can be built around a judgement that cannot be mechanical. It adds **no field**:
+a field inside the `ambiguity` block can only be carried by an entry that already admits its
+doubt, and is absent exactly where a collapse happens. What it reads instead is the record a
+second reader left — an `ambiguity.conflict` (0007), an `ambiguity.bounds` example (0031), or the
+adjudication of a blind second mapping (0014):
+
+| check | the trace it reads |
+|---|---|
+| `superposition` | a disagreement about certainty adjudicated *the corpus does not settle it*, and no entry the adjudication names is `clarity: ambiguous` |
+| `unresolved-reason` | an open question returning a reason no correspondence row gives that entry |
+| `bound-term-open` | a `bounds` whose `term` the entry's own `ambiguity.question` never states |
+
+A ruling that resolves a question the map never recorded as open is the fourth trace, and it is
+already refused — by `tools/factory/rulings.py` (0027), because a ruling lives in the engine's
+overlay and the validator's publish phase has no overlay to read.
+
+What still passes: `check-map.py` admits the oldest form of the gap in its own docstring — *two
+`clarity: clear` entries stating incompatible rules pass every check here* — and 0034's own
+measurement puts the collapse miss rate at 52 of 64.
 
 ## The blind second mapping, across the boundary
 
@@ -97,7 +115,8 @@ Stated here and in the checker's own docstring, which is the longer version and 
 of the code meets.
 
 - **A conflict nobody recorded is invisible.** Two `clarity: clear` entries stating incompatible
-  rules pass.
+  rules pass. `superposition` reaches the case where a *second mapper* recorded it and the map did
+  not; where both readers made the same silent choice there is no record and no trace (0034).
 - **An absence is claimed here and proved elsewhere.** Nothing in `check-map.py` reads a corpus;
   `absentFrom` is checked for shape, and falsified by the locator checkers.
 - **A cross-reference nobody noticed is invisible** to the phrase list — measured at 0 detected in
@@ -110,4 +129,6 @@ of the code meets.
   deliberately, and measured how much of the damage is noticed
   ([#259](https://github.com/brandonifco/rules-factory/issues/259)). Several of the lines above
   are reasoned rather than measured, and that distinction is not currently visible from reading
-  them.
+  them. It is known for **one** class of damage: the premature collapse, measured at 12 of 64
+  caught over every recorded ambiguity in every committed map
+  ([`examples/collapse-trial/`](../examples/collapse-trial/README.md), 0034).

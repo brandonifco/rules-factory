@@ -143,6 +143,20 @@ queue, and this project archived its predecessor partly for having one.
   caught downstream. Every finding so far surfaced during mapping, which is the cheap place,
   and that is encouraging rather than evidence.
 
+## The collapse trial — what the validator sees when a superposition is collapsed
+
+[`collapse-trial/`](collapse-trial/README.md) takes every recorded ambiguity in every committed
+map, collapses it one at a time into `clarity: clear`, and counts what fails. It is the shape
+[0014](../docs/decisions/0014-a-map-is-checked-by-a-blind-second-mapping.md)'s injection trial
+had, applied to the one error
+[0034](../docs/decisions/0034-a-valid-unresolved-state-is-established-not-asserted.md) is about.
+
+**12 of 64 caught, against 4 before.** Every catch comes from a record a *second* reader left:
+8 from the adjudication of a blind second mapping, 4 from a conflict the corpus creates by
+stating a rule twice. None comes from the entry itself, which is why 0034 adds no field to it.
+On the three maps with a readable adjudication record the rate is 8 of 36; on the three without
+it is 0 of 28, and the ceiling is how much of each corpus was read twice.
+
 ## The build of trial 9 — seven entries of § 1.121-1
 
 The second run downstream of a map, and the first with the rails in place:

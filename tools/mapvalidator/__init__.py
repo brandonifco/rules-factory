@@ -25,7 +25,13 @@ What it cannot do, stated here rather than in a commit message:
     entries that answer one contradicted question, and `conflicts` enforces that a group
     has two or more members, one fate, and one decision record. Nothing detects the
     conflict a mapper never noticed: two `clarity: clear` entries stating incompatible
-    rules pass every check here.
+    rules pass every check here. What `superposition` reaches is narrower and is the one
+    mechanical part (0034): where a *blind second mapping* read the passage as ambiguous
+    and the adjudication answered "the corpus does not settle it", the map must record
+    that doubt somewhere. Where both readers made the same silent choice there is no
+    record, no flag and no trace. Measured at 12 of 64 collapses caught
+    (`examples/collapse-trial/`), and the map carries no field for competing readings
+    because a field inside the `ambiguity` block is absent exactly where one is collapsed.
   * **Correspondence row 7** ("two implemented entries with no entry for their
     combination") is a fact about pairs and about interactions the map does not enumerate.
     It is not evaluated. The `correspondence` check therefore proves that every entry is
