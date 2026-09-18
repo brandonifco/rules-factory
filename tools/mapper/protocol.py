@@ -11,8 +11,12 @@ for that corpus, and nothing could say which was right.
 
 So the generic mapper knows how mapping works, and a protocol says how *this* corpus
 communicates rules: the units it states them in, the mechanisms it points with, the sweeps a
-mapping of it owes, and how far the adapter reaches into each modality. It is a JSON document,
-`mapping-protocol.json`, beside the map.
+mapping of it owes, and how far the adapter reaches into each modality. It is a JSON document
+beside the map: `mapping-protocol.json` for a map citing one corpus, and
+`mapping-protocol-<sourceId>.json` once it cites several (0039, 0040). **One protocol is about
+one corpus**, because two corpora that state rules differently cannot share one account of how
+they are read, and a protocol stretched over both would read as coverage of the one it is not
+about.
 
 Every vocabulary below is closed, for the reason every vocabulary in the map is closed: a value
 nothing holds to a set is a value that means whatever the last writer thought. A protocol that
@@ -78,8 +82,68 @@ class Refused(Exception):
 
 
 def path_beside(map_path):
-    """Where a map's protocol lives: beside it, named for what it is."""
+    """Where a single-corpus map's protocol lives: beside it, named for what it is."""
     return os.path.join(os.path.dirname(os.path.abspath(map_path)) or ".", PROTOCOL_FILENAME)
+
+
+def per_corpus_filename(source_id):
+    return f"mapping-protocol-{source_id}.json"
+
+
+def cited_corpora(document):
+    """Every corpus the map reads: its envelope's, and every entry locator's (0039)."""
+    cited = {document.get("corpus")} if isinstance(document, dict) else set()
+    for item in document.get("entries") or []:
+        locator = item.get("locator") if isinstance(item, dict) else None
+        if isinstance(locator, dict) and locator.get("sourceId"):
+            cited.add(locator["sourceId"])
+    return {c for c in cited if isinstance(c, str)}
+
+
+def paths_beside(map_path, document):
+    """`{sourceId: path}`, one protocol per corpus the map cites (0040).
+
+    A protocol is about **one** corpus -- that is the whole concept, and it is why 49 CFR
+    § 172.101, which states rules in table rows and points with bare codes, cannot share one with
+    § 172.102, which states them as prose and points with section designations. A map may cite
+    several corpora (0039), so it may have several protocols, and each is true of its own.
+
+    `mapping-protocol.json` still serves a map citing one corpus, which is every map committed
+    before trial 10 and none of whose files move. Beyond one, each is
+    `mapping-protocol-<sourceId>.json`.
+
+    Raises Refused when a cited corpus has no protocol, or when a per-corpus protocol sits beside
+    the map for a corpus the map does not cite: a leftover claiming to govern a corpus nobody
+    reads is the state the file exists to make impossible.
+    """
+    directory = os.path.dirname(os.path.abspath(map_path)) or "."
+    cited = cited_corpora(document)
+    if not cited:
+        raise Refused(f"{map_path} cites no corpus, so no protocol could be about it")
+    found, missing = {}, []
+    for source_id in sorted(cited):
+        per_corpus = os.path.join(directory, per_corpus_filename(source_id))
+        if os.path.exists(per_corpus):
+            found[source_id] = per_corpus
+            continue
+        plain = os.path.join(directory, PROTOCOL_FILENAME)
+        if len(cited) == 1 and os.path.exists(plain):
+            found[source_id] = plain
+            continue
+        missing.append(source_id)
+    stray = sorted(name for name in os.listdir(directory)
+                   if name.startswith("mapping-protocol-") and name.endswith(".json")
+                   and name not in {per_corpus_filename(c) for c in cited})
+    if stray:
+        raise Refused(f"{', '.join(stray)} beside {os.path.basename(map_path)} name(s) a corpus "
+                      f"this map does not cite; a protocol is about a corpus that was read")
+    if missing:
+        raise Refused(f"no protocol beside {os.path.basename(map_path)} for "
+                      f"{', '.join(missing)}: expected "
+                      + ", ".join(per_corpus_filename(c) for c in missing)
+                      + (f" (or {PROTOCOL_FILENAME})" if len(cited) == 1 else "")
+                      + ". A corpus with no protocol is one nothing says how it was read (0032)")
+    return found
 
 
 def load(path):
@@ -119,6 +183,13 @@ def check(protocol, document, manifest=None):
         if corpus not in declared:
             problems.append(f"corpus {corpus!r} is not a sourceId the manifest declares "
                             f"({', '.join(repr(d) for d in declared) or 'none'})")
+    # Declared is not read. A protocol about a corpus no entry cites describes a walk this map
+    # never took, and would report as coverage of it (0040).
+    cited = cited_corpora(document)
+    if corpus is not None and cited and corpus not in cited:
+        problems.append(f"corpus {corpus!r} is not cited by this map "
+                        f"({', '.join(sorted(cited))}); a protocol says how a corpus that was "
+                        f"read was read")
 
     units = protocol.get("units")
     if not isinstance(units, list) or not units:
