@@ -6,13 +6,14 @@ from .extent import check_extent
 from .relations import check_derived, check_gates, check_no_cycles, check_references
 from .manifest import check_manifest, check_postures
 from .extraction import check_extraction
-from .ambiguity import check_conflicts, check_decision_records, check_exclusions
-from .bounds import check_bounds
+from .ambiguity import (check_conflicts, check_decision_records, check_exclusions,
+                        check_unresolved_reason)
+from .bounds import check_bound_term_open, check_bounds
 from .status import check_absent, check_status
 from .inputs import check_asserted_by, check_draws
 from .crossrefs import check_cross_references
 from .correspondence import check_correspondence
-from .epistemic import check_bound_term_open, check_superposition, check_unresolved_reason
+from .epistemic import check_superposition
 
 
 # --- where each check runs (0015) ------------------------------------------------------

@@ -248,9 +248,11 @@ class TestFixtureIsValid(MapCase):
         code, output = self.run_tool(valid_map())
         self.assertEqual(code, 0, output)
         self.assertNotIn("[fail]", output, output)
-        # `conflicts` and `decision-records` skip without subject matter; nothing else may.
+        # `conflicts`, `decision-records` and `superposition` skip without subject matter --
+        # the fixture records no conflict, no decision and no blind second mapping beside it.
+        # Nothing else may.
         skipped = re.findall(r"^\[skip\] (\S+):", output, re.M)
-        self.assertEqual(sorted(skipped), ["conflicts", "decision-records"], output)
+        self.assertEqual(sorted(skipped), ["conflicts", "decision-records", "superposition"], output)
 
 
 class TestSchema(MapCase):
@@ -1790,6 +1792,231 @@ class TestCorrespondence(MapCase):
         self.assertEqual(rows, [5])
         unimplemented_value["status"] = "implemented"
         self.assertEqual(check_map.matched_rows(operation, {"limit": unimplemented_value}), [])
+
+
+class TestUnresolvedReason(MapCase):
+    """0034: an open question returns the reason a caller can act on, not merely a reason in the
+    kernel's vocabulary."""
+
+    OPEN = 7  # must-play-whole-throw, in valid_map()'s order
+
+    def test_missing_rules_data_on_an_open_question_fails(self):
+        # In the vocabulary, so `schema` passes it, and produced by no row this entry matches:
+        # the caller is sent after data that does not exist when what is missing is a reading.
+        def mutate(document):
+            document["entries"][self.OPEN]["ambiguity"]["unresolvedReason"] = "MissingRulesData"
+        self.assert_catches("unresolved-reason", mutate)
+
+    def test_unsupported_rule_on_an_open_question_fails(self):
+        def mutate(document):
+            document["entries"][self.OPEN]["ambiguity"]["unresolvedReason"] = "UnsupportedRule"
+        self.assert_catches("unresolved-reason", mutate)
+
+    def test_an_out_of_scope_open_question_may_return_outside_current_scope(self):
+        # Row 1 wins before row 6, so both reasons are producible for this entry, and
+        # srd-52-conditions' `malnutrition-hazard` is the committed instance of the shape.
+        document = valid_map()
+        document["entries"][self.OPEN]["scope"] = "out"
+        document["entries"][self.OPEN]["ambiguity"]["unresolvedReason"] = "OutsideCurrentScope"
+        code, output = self.run_tool(document)
+        self.assertEqual(self.status_of(output, "unresolved-reason"), "ok", output)
+
+    def test_status_does_not_turn_the_verdict(self):
+        # Rows 2 and 5 are status-dependent and this check reads neither, which is why it is
+        # outside STATUS_DEPENDENT.
+        document = valid_map()
+        document["entries"][self.OPEN]["status"] = "mapped"
+        document["entries"][self.OPEN].pop("implementedIn", None)
+        document["entries"][self.OPEN].pop("tests", None)
+        code, output = self.run_tool(document)
+        self.assertEqual(self.status_of(output, "unresolved-reason"), "ok", output)
+
+    def test_a_map_leaving_nothing_open_does_not_report_ok(self):
+        document = valid_map()
+        document["entries"].pop(self.OPEN)
+        code, output = self.run_tool(document)
+        self.assertEqual(self.status_of(output, "unresolved-reason"), "skip", output)
+        self.assertIn("NOT VERIFIED", output)
+
+
+class TestBoundTermOpen(MapCase):
+    """0031 and 0034: a bound narrows a term the map records as open, and the question is where
+    the map records it."""
+
+    BOUNDED = 7  # must-play-whole-throw, in valid_map()'s order
+
+    def test_a_term_the_question_never_states_fails(self):
+        # `bounds` already holds the term to the entry's `evidence`, so the corpus says the
+        # words; nothing held them to the doubt the entry records.
+        def mutate(document):
+            ambiguity = document["entries"][self.BOUNDED]["ambiguity"]
+            ambiguity["question"] = "The text does not say what happens when only one die is playable."
+        self.assert_catches("bound-term-open", mutate)
+
+    def test_the_term_is_matched_without_regard_to_case(self):
+        # § 1.121-1(c)(2)'s question opens with the term: "Short temporary absences" fixes no
+        # length, and the bound's `term` is the lower-case words of the passage.
+        document = valid_map()
+        ambiguity = document["entries"][self.BOUNDED]["ambiguity"]
+        ambiguity["question"] = "Short interruption is fixed at no length by this text."
+        ambiguity["bounds"]["term"] = "short interruption"
+        code, output = self.run_tool(document)
+        self.assertEqual(self.status_of(output, "bound-term-open"), "ok", output)
+
+    def test_a_map_with_no_bound_does_not_report_ok(self):
+        document = valid_map()
+        document["entries"][self.BOUNDED]["ambiguity"].pop("bounds")
+        code, output = self.run_tool(document)
+        self.assertEqual(self.status_of(output, "bound-term-open"), "skip", output)
+        self.assertIn("NOT VERIFIED", output)
+
+
+class TestSuperposition(MapCase):
+    """0034: a disagreement about certainty that the corpus did not settle is recorded in the
+    map as unresolved, or it is a premature collapse with a paper trail."""
+
+    OPEN = 7  # must-play-whole-throw, the fixture's one ambiguous entry
+
+    def write_record(self, document, name="results.json"):
+        directory = os.path.join(self.example, "blind-mapping")
+        os.makedirs(directory, exist_ok=True)
+        with open(os.path.join(directory, name), "w") as handle:
+            json.dump(document, handle)
+
+    def flag_record(self, **resolution):
+        """`compare.py`'s shape: one flag per field, each carrying its adjudication."""
+        base = {"verdict": "U", "reason": "The corpus states the pause twice and differently."}
+        base.update(resolution)
+        return {"flags": [{"entry": "must-play-whole-throw", "field": "clarity",
+                           "detail": "differs", "blind": "whole-throw",
+                           "key": "must-play-whole-throw|clarity|whole-throw|differs",
+                           "resolution": base}]}
+
+    def ruling_record(self, ruling):
+        """Trial 9's shape: a hand-written adjudication with its own verdict legend."""
+        return {"verdicts": {"A": "the first map is right", "B": "the blind map is right",
+                             "open": "the corpus does not settle it"},
+                "disagreements": [{"id": "the-short-interruption", "field": "clarity",
+                                   "entry": {"a": "must-play-whole-throw", "b": "whole-throw"},
+                                   "ruling": ruling}]}
+
+    def test_an_unsettled_verdict_carried_into_the_map_passes(self):
+        self.write_record(self.flag_record())
+        code, output = self.run_tool(valid_map())
+        self.assertEqual(self.status_of(output, "superposition"), "ok", output)
+        self.assertEqual(code, 0, output)
+
+    def test_an_unsettled_verdict_the_map_records_as_clear_fails(self):
+        # The premature collapse itself: two mappers read the passage differently, the corpus
+        # was asked and did not answer, and the map states one reading.
+        self.write_record(self.flag_record())
+        document = valid_map()
+        document["entries"][self.OPEN]["clarity"] = "clear"
+        document["entries"][self.OPEN].pop("ambiguity")
+        code, output = self.run_tool(document)
+        self.assertEqual(self.status_of(output, "superposition"), "fail", output)
+        self.assertIn("premature collapse", output)
+        self.assertEqual(code, 1, output)
+
+    def test_the_doubt_may_be_recorded_on_an_entry_the_adjudication_names(self):
+        # `die-faces` was adjudicated unsettled and the question went to a new `rubber-scoring`
+        # entry, because the doubt was about a sentence inside its span. The rule is that the
+        # doubt is somewhere, not that it is here.
+        self.write_record(self.flag_record(
+            reason="Fixed: the question is recorded on opposed-test-tie, not here."))
+        document = valid_map()
+        document["entries"][self.OPEN]["clarity"] = "clear"
+        document["entries"][self.OPEN].pop("ambiguity")
+        document["entries"].append(decided_entry())
+        code, output = self.run_tool(document)
+        self.assertEqual(self.status_of(output, "superposition"), "ok", output)
+        self.assertEqual(code, 0, output)
+
+    def test_the_two_rows_of_one_disagreement_are_read_together(self):
+        # `compare.py` emits a `clarity` row and an `ambiguity` row from one reading, and the
+        # committed records write the second as "Same as the clarity row." Read apart, the
+        # terser row is a doubt that landed nowhere.
+        record = self.flag_record(reason="Fixed: recorded on opposed-test-tie.")
+        record["flags"].append({"entry": "must-play-whole-throw", "field": "ambiguity",
+                                "detail": "present in one map only", "blind": "whole-throw",
+                                "key": "must-play-whole-throw|ambiguity|whole-throw|present",
+                                "resolution": {"verdict": "U", "reason": "Same as the clarity row."}})
+        self.write_record(record)
+        document = valid_map()
+        document["entries"][self.OPEN]["clarity"] = "clear"
+        document["entries"][self.OPEN].pop("ambiguity")
+        document["entries"].append(decided_entry())
+        code, output = self.run_tool(document)
+        self.assertEqual(self.status_of(output, "superposition"), "ok", output)
+
+    def test_a_disagreement_about_certainty_with_no_verdict_fails(self):
+        # 0014: every disagreement is dispositioned before the map is used.
+        record = self.flag_record()
+        record["flags"][0]["resolution"] = {"reason": "Looked at it."}
+        self.write_record(record)
+        code, output = self.run_tool(valid_map())
+        self.assertEqual(self.status_of(output, "superposition"), "fail", output)
+        self.assertIn("no verdict", output)
+        self.assertEqual(code, 1, output)
+
+    def test_a_settled_verdict_does_not_demand_an_ambiguity(self):
+        # R: the reference is right, so there is nothing to carry.
+        self.write_record(self.flag_record(verdict="R", reason="The reference is right."))
+        document = valid_map()
+        document["entries"][self.OPEN]["clarity"] = "clear"
+        document["entries"][self.OPEN].pop("ambiguity")
+        code, output = self.run_tool(document)
+        self.assertEqual(self.status_of(output, "superposition"), "ok", output)
+
+    def test_the_hand_written_shape_is_read_by_its_own_legend(self):
+        self.write_record({"flags": []}, name="results.json")
+        self.write_record(self.ruling_record("open. Neither reading is eliminated by the text."),
+                          name="resolutions.json")
+        document = valid_map()
+        document["entries"][self.OPEN]["clarity"] = "clear"
+        document["entries"][self.OPEN].pop("ambiguity")
+        code, output = self.run_tool(document)
+        self.assertEqual(self.status_of(output, "superposition"), "fail", output)
+        self.assertIn("premature collapse", output)
+
+    def test_a_hand_written_verdict_for_the_first_map_carries_nothing(self):
+        self.write_record({"flags": []}, name="results.json")
+        self.write_record(self.ruling_record("A. The contrast inside the constituent decides it."),
+                          name="resolutions.json")
+        document = valid_map()
+        document["entries"][self.OPEN]["clarity"] = "clear"
+        document["entries"][self.OPEN].pop("ambiguity")
+        code, output = self.run_tool(document)
+        self.assertEqual(self.status_of(output, "superposition"), "ok", output)
+
+    def test_a_record_of_no_known_shape_is_not_verified(self):
+        self.write_record({"about": "a comparison written some other way"})
+        code, output = self.run_tool(valid_map())
+        self.assertEqual(self.status_of(output, "superposition"), "skip", output)
+        self.assertIn("no shape this knows", output)
+        self.assertEqual(code, 1, output)  # it had subject matter and could not look
+
+    def test_a_map_nobody_mapped_twice_does_not_report_ok(self):
+        code, output = self.run_tool(valid_map())
+        self.assertEqual(self.status_of(output, "superposition"), "skip", output)
+        self.assertIn("NOT VERIFIED", output)
+        self.assertEqual(code, 0, output)
+
+    def test_the_census_counts_ambiguities_nothing_corroborates(self):
+        # 0034 adds no field for competing readings, so the number of ambiguities resting on
+        # `ambiguity.question` alone is printed rather than argued about.
+        self.write_record(self.flag_record())
+        document = valid_map()
+        document["entries"].append(decided_entry())
+        # A third ambiguity with no conflict, no bound, no decision record and no adjudication:
+        # the shape 31 of the 64 ambiguities in the committed maps have.
+        document["entries"].append(entry(
+            "sparsely-populated-area", kind="operation", clarity="ambiguous", status="mapped",
+            ambiguity={"question": "The corpus never defines a sparsely populated area.",
+                       "fate": "unresolved", "unresolvedReason": "RequiresInterpretation"}))
+        code, output = self.run_tool(document)
+        self.assertIn("2 of 3 recorded ambiguities carry a second reading something can read, "
+                      "and 1 rest on `ambiguity.question` alone", output)
 
 
 class TestDriver(MapCase):

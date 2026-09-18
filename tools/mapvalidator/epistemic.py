@@ -18,7 +18,7 @@ import os
 import re
 
 from .diagnostics import skip, verdict
-from mapcontract.entry import block, entries_of, fate_of, label
+from mapcontract.entry import block, entries_of
 
 # The fields of a blind second mapping's comparison whose disagreement is about whether the
 # corpus settles the rule (0014 compares these two among others). A disagreement about
@@ -41,12 +41,6 @@ RULING_UNSETTLED = "open"
 # An entry id is a slug, so it is found in prose by its own characters and nothing adjacent.
 ID_EDGE = r"[A-Za-z0-9_-]"
 
-# What an owner's ruling would be compared against, and so the reasons the correspondence table
-# can produce for an entry whose ambiguity is open. Rows 2 and 5 are deliberately not here: an
-# overlay turns both (0015), so a reason justified by them today is unjustified tomorrow, and
-# this check would then read an overlay field and belong in STATUS_DEPENDENT.
-OPEN_QUESTION_REASON = "RequiresInterpretation"
-OUT_OF_SCOPE_REASON = "OutsideCurrentScope"
 
 
 def find_comparison(map_path):
@@ -249,91 +243,3 @@ def _census(ctx, adjudicated):
             corroborated += 1
     return (f"{corroborated} of {total} recorded ambiguities carry a second reading something can "
             f"read, and {total - corroborated} rest on `ambiguity.question` alone (0034)")
-
-
-def check_unresolved_reason(ctx):
-    """An open question returns the reason a caller can act on.
-
-    `ambiguity.unresolvedReason` is what the engine returns when the declining case is reached,
-    and `schema` already holds it to the kernel's vocabulary. That is not enough: the vocabulary
-    has five values and the correspondence table produces exactly one of them for a question the
-    corpus leaves open. `RequiresInterpretation` tells a caller what to do -- interpret, or rule
-    under 0027. `MissingRulesData` tells them to go and find data that does not exist, and
-    `UnsupportedRule` tells them to wait for an implementation that would not settle it either.
-    An open question wearing either reason is an uncertainty misdescribed to the only party who
-    could act on it.
-
-    So the reason must be one the entry's own rows can produce: `RequiresInterpretation` (row 6),
-    or `OutsideCurrentScope` where the entry is `scope: out` and row 1 wins first. Rows 3 and 4
-    cannot arise -- `exclusions` already refuses `definedElsewhere` or `beyondAdapter` beside an
-    `ambiguity` block -- and rows 2 and 5 are read by no check here on purpose: an overlay turns
-    both, so a reason they justified would stop being justified in a consuming engine.
-
-    What it cannot do: say whether the question is one a caller could act on. That the words of
-    `ambiguity.question` name a point somebody could rule on is what 0027's `span` machinery
-    tests in the factory, on the overlay, and no check of the map alone reaches it.
-    """
-    bad, open_questions = [], 0
-    for position, entry in enumerate(entries_of(ctx["map"])):
-        if not isinstance(entry, dict) or fate_of(entry) != "unresolved":
-            continue
-        open_questions += 1
-        name = label(entry, position)
-        reason = block(entry, "ambiguity").get("unresolvedReason")
-        allowed = {OPEN_QUESTION_REASON}
-        if entry.get("scope") == "out":
-            allowed.add(OUT_OF_SCOPE_REASON)
-        if reason is not None and reason not in allowed:
-            bad.append(f"  X  {name}: fate is `unresolved` and unresolvedReason is {reason!r}. The "
-                       f"correspondence table gives this entry {' or '.join(sorted(allowed))}; a "
-                       f"caller told {reason!r} is sent after data or an implementation, and what "
-                       f"is missing is an interpretation nobody has made")
-    if not open_questions:
-        return skip("no entry carries `ambiguity.fate: unresolved`, so this map leaves no question "
-                    "open and there is no runtime reason to hold to the table", had_subject=False)
-    return verdict(bad, f"{open_questions} open question(s), each returning a reason the "
-                        f"correspondence table produces for it",
-                   "an open question returns a reason no row gives it")
-
-
-def check_bound_term_open(ctx):
-    """A bound bounds a term the map records as open.
-
-    `bounds` (0031) already holds the `term` to the entry's `evidence`, so the term is one the
-    cited passage uses. That proves the corpus says the words; it does not prove the map ever
-    said they were open. An `ambiguity.question` that never mentions the term records a doubt
-    about something else, and the bound then narrows a superposition the map does not have --
-    which is also the shape a collapse takes here, because an owner's ruling under 0027 quotes a
-    span of the question, and a term absent from the question is a term no ruling can be
-    compared against.
-
-    So the term occurs in `ambiguity.question` as well as in `evidence`, matched without regard
-    to case: a question states the term in the corpus's words and may open a sentence with it,
-    as § 1.121-1(c)(2)'s does.
-
-    What it cannot do: judge whether the question leaves the term open or merely mentions it.
-    """
-    bad, bounded = [], 0
-    for position, entry in enumerate(entries_of(ctx["map"])):
-        if not isinstance(entry, dict):
-            continue
-        ambiguity = block(entry, "ambiguity")
-        bounds = ambiguity.get("bounds")
-        if not isinstance(bounds, dict):
-            continue
-        term = bounds.get("term")
-        if not isinstance(term, str) or not term.strip():
-            continue  # reported by `bounds`
-        bounded += 1
-        question = ambiguity.get("question")
-        if not isinstance(question, str) or term.lower() not in question.lower():
-            bad.append(f"  X  {label(entry, position)}: bounds the term {term!r}, which the entry's "
-                       f"`ambiguity.question` never states. A bound narrows a term the map records "
-                       f"as open, and the question is where the map records it; an owner's ruling "
-                       f"quotes a span of that question (0027), so a term the question omits is one "
-                       f"no ruling could be compared against")
-    if not bounded:
-        return skip("no entry carries `ambiguity.bounds`, so no term is bounded and the rule is "
-                    "vacuous over this map", had_subject=False)
-    return verdict(bad, f"{bounded} bounded term(s), each stated as open in the entry's own question",
-                   "a bound narrows a term the map never recorded as open")
