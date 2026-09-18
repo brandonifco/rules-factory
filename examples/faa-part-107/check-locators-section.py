@@ -1078,6 +1078,23 @@ def occurrences(fragment, corpus):
     return found
 
 
+def at_paragraph_edge(position, spans, which):
+    """Whether `position` falls on a paragraph's opening or closing edge.
+
+    An ellipsis may skip **whole paragraphs** and may never drop words from inside one
+    ([0037](../../docs/decisions/0037-an-ellipsis-skips-whole-paragraphs-and-never-words-inside-one.md),
+    #282, #18). So the text before each ellipsis must end where a paragraph ends, and the text
+    after it must begin where one begins. The two ends of the whole quote are exempt: a span may
+    be shortened at either end, which `docs/corpus-map.md` has always said.
+    """
+    for start, end, _ in spans:
+        if which == "start" and position == start:
+            return True
+        if which == "end" and position == end:
+            return True
+    return False
+
+
 def touched(span, spans):
     start, end = span
     return [path for lo, hi, path in spans if lo < end and start < hi]
@@ -1127,7 +1144,7 @@ def check(entry, corpus, spans, reached=None, tables=None):
         return "unchecked", "evidence is empty"
 
     seen, cursor, sections = 0, 0, set()
-    for fragment in fragments:
+    for index, fragment in enumerate(fragments):
         hits = occurrences(fragment, corpus)
         if not hits:
             got = longest_prefix(fragment, corpus)
@@ -1138,6 +1155,25 @@ def check(entry, corpus, spans, reached=None, tables=None):
         ordered = [h for h in hits if h[0] >= cursor]
         if not ordered:
             return "bad", f"evidence fragments are out of corpus order: {fragment[:70]!r}"
+        # An ellipsis skips whole paragraphs and never words inside one (0037). The quote's own
+        # two ends may be short -- a span may be shortened at either end and never in the middle
+        # -- so the first fragment's start and the last one's end are exempt, and every edge that
+        # an ellipsis actually stands next to is not.
+        here = ordered[0]
+        if index > 0 and not at_paragraph_edge(here[0], spans, "start"):
+            return "bad", (
+                f"cited {citation}, and the ellipsis before {fragment[:40]!r} resumes inside a "
+                f"paragraph rather than at the start of one: an ellipsis may skip whole "
+                f"paragraphs and never words within one, or the words it drops are exactly the "
+                f"ones nothing then checks"
+            )
+        if index < len(fragments) - 1 and not at_paragraph_edge(here[1], spans, "end"):
+            return "bad", (
+                f"cited {citation}, and the ellipsis after {fragment[-40:]!r} opens inside a "
+                f"paragraph rather than at the end of one: an ellipsis may skip whole paragraphs "
+                f"and never words within one, or the words it drops are exactly the ones nothing "
+                f"then checks"
+            )
         seen += len(hits)
         for hit in hits:
             for path in touched(hit, spans):
