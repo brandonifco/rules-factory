@@ -1,0 +1,174 @@
+{
+ "caught": 12,
+ "collapses": 64,
+ "maps": [
+  {
+   "ambiguities": 7,
+   "by_check": {},
+   "caught": 0,
+   "clean": [],
+   "fired": {},
+   "map": "examples/faa-part-107-temporal/corpus-map-2020-01-01.json",
+   "missed": [
+    "prominent-objects",
+    "moving-vehicle-operation",
+    "well-clear",
+    "direct-participation",
+    "effective-communication",
+    "control-links-working",
+    "attached-object-secure"
+   ],
+   "only_epistemic": 0
+  },
+  {
+   "ambiguities": 10,
+   "by_check": {
+    "superposition": 3
+   },
+   "caught": 3,
+   "clean": [],
+   "fired": {
+    "cloud-clearance": [
+     "superposition"
+    ],
+    "night-training-completed": [
+     "superposition"
+    ],
+    "speed-limit": [
+     "superposition"
+    ]
+   },
+   "map": "examples/faa-part-107/corpus-map.json",
+   "missed": [
+    "prominent-objects",
+    "moving-vehicle-operation",
+    "well-clear",
+    "direct-participation",
+    "effective-communication",
+    "control-links-working",
+    "attached-object-secure"
+   ],
+   "only_epistemic": 3
+  },
+  {
+   "ambiguities": 7,
+   "by_check": {
+    "superposition": 2
+   },
+   "caught": 2,
+   "clean": [],
+   "fired": {
+    "bearing-off-eligible": [
+     "superposition"
+    ],
+    "game-value": [
+     "superposition"
+    ]
+   },
+   "map": "examples/hoyle-backgammon/corpus-map.json",
+   "missed": [
+    "legal-destination",
+    "enter-from-bar",
+    "full-table-suspension",
+    "must-play-whole-throw",
+    "rubber-scoring"
+   ],
+   "only_epistemic": 2
+  },
+  {
+   "ambiguities": 19,
+   "by_check": {
+    "conflicts": 2,
+    "superposition": 3
+   },
+   "caught": 5,
+   "clean": [],
+   "fired": {
+    "combat-end": [
+     "conflicts"
+    ],
+    "communication-cost": [
+     "superposition"
+    ],
+    "initiative-ties-uncovered": [
+     "superposition"
+    ],
+    "mount-control-requires-training": [
+     "superposition"
+    ],
+    "next-round": [
+     "conflicts"
+    ]
+   },
+   "map": "examples/srd-52-combat/corpus-map.json",
+   "missed": [
+    "round-duration",
+    "group-initiative",
+    "surprised",
+    "brief-or-extended-communication",
+    "side-defeated",
+    "grid-entering-square",
+    "grid-range",
+    "difficult-terrain",
+    "moving-through-creatures",
+    "cover-degree",
+    "total-cover",
+    "appropriate-anatomy",
+    "independent-mount",
+    "falling-off"
+   ],
+   "only_epistemic": 3
+  },
+  {
+   "ambiguities": 13,
+   "by_check": {
+    "conflicts": 2
+   },
+   "caught": 2,
+   "clean": [],
+   "fired": {
+    "exhaustion-removing": [
+     "conflicts"
+    ],
+    "malnutrition-hazard": [
+     "conflicts"
+    ]
+   },
+   "map": "examples/srd-52-conditions/corpus-map.json",
+   "missed": [
+    "condition-definition",
+    "blinded-cant-see",
+    "charmed-cant-harm",
+    "charmed-social-advantage",
+    "deafened-cant-hear",
+    "frightened-checks-attacks",
+    "frightened-cant-approach",
+    "invisible-concealed",
+    "invisible-attacks",
+    "petrified-turned",
+    "unconscious-unaware"
+   ],
+   "only_epistemic": 0
+  },
+  {
+   "ambiguities": 8,
+   "by_check": {},
+   "caught": 0,
+   "clean": [],
+   "fired": {},
+   "map": "examples/tax-121-principal-residence/corpus-map.json",
+   "missed": [
+    "residence-facts-and-circumstances",
+    "principal-residence-facts-and-circumstances",
+    "principal-residence-majority-of-time",
+    "vacant-land-not-principal-residence",
+    "combined-sale-nets-dwelling-loss",
+    "short-temporary-absences",
+    "out-of-residence-care",
+    "method-of-allocation"
+   ],
+   "only_epistemic": 0
+  }
+ ],
+ "only_epistemic": 8
+}

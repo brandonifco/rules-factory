@@ -491,7 +491,12 @@ and `status` below.
 
 `ambiguity.unresolvedReason` names the `UnresolvedReason` the engine will return, and is
 present when the fate is `unresolved`. It is the field that ties an entry to the
-correspondence table below.
+correspondence table below — and it must be a reason that table actually produces for this
+entry: `RequiresInterpretation` (row 6), or `OutsideCurrentScope` where the entry is
+`scope: out` and row 1 wins first. `check-map.py --only unresolved-reason` refuses the rest
+([0034](decisions/0034-a-valid-unresolved-state-is-established-not-asserted.md)). Being in the
+kernel's vocabulary is not enough: a caller told `MissingRulesData` is sent after data that does
+not exist, when what is missing is an interpretation nobody has made.
 
 **The block is never a general decline carrier.** A rule defined in an unadmitted corpus
 takes `definedElsewhere`; a rule the adapter cannot read takes `beyondAdapter`. No entry
@@ -542,6 +547,16 @@ Nothing detects a conflict the mapper never noticed: two `clarity: clear` entrie
 incompatible rules produce a map that validates, which is the same blind spot as an incomplete
 gate list. What these rules buy is that a *recorded* conflict cannot be half-settled.
 
+A conflict a **second mapper** noticed is reached, though, and by the adjudication rather than by
+the map: where a blind second mapping read an entry as ambiguous and the adjudication answered
+*the corpus does not settle it*, `check-map.py --only superposition` requires the map to record
+that doubt — on the flagged entry or on one the adjudication names
+([0034](decisions/0034-a-valid-unresolved-state-is-established-not-asserted.md),
+[0014](decisions/0014-a-map-is-checked-by-a-blind-second-mapping.md)). **The map has no field for
+competing readings, and 0034 decides it will not gain one**: a field inside the `ambiguity` block
+can only be carried by an entry that already admits its doubt, so it would be absent exactly where
+a collapse happens. What is lost by that is stated there, with the count.
+
 ### `ambiguity.bounds` — what an authored example fixes about the open term
 
 An operative rule can leave a term open while the same corpus, in the same authority's words,
@@ -574,7 +589,12 @@ owner's `ruling` (0027) may say. Decided in
 ```
 
 - **`term`** is the open term in the corpus's words, and it must occur verbatim in the entry's
-  own `evidence`. A term the cited passage does not use is the mapper's, not the corpus's.
+  own `evidence`. A term the cited passage does not use is the mapper's, not the corpus's. It
+  must also occur in the entry's own `ambiguity.question`, matched without regard to case, because
+  the question is where the map records the term as **open** and an owner's ruling quotes a span
+  of that question (0027): a term the question omits is one no ruling could be compared against.
+  `check-map.py --only bound-term-open` holds it
+  ([0034](decisions/0034-a-valid-unresolved-state-is-established-not-asserted.md)).
 - **`dimension`** is the scale the example's fact pattern and a later ruling's line are both
   values on. **It is a closed vocabulary, and it holds only what a checker compares**: today
   `duration`, in ISO 8601 (`P1Y`, `P18M`, `P730D`), compared in 30-day months and 12-month years

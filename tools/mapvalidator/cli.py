@@ -7,6 +7,7 @@ import os
 import sys
 
 from .diagnostics import skip
+from .epistemic import find_comparison
 from mapcontract.entry import entries_of
 from .phases import CHECKS, OVERLAY_FIELDS, PHASES, STATUS_DEPENDENT
 
@@ -38,6 +39,9 @@ def main(argv=None):
     parser.add_argument("map_path")
     parser.add_argument("--manifest", help="corpus manifest; found beside the map when unambiguous")
     parser.add_argument("--repo-root", help="root that decision-record paths are relative to")
+    parser.add_argument("--comparison", help="the blind second mapping's adjudication record "
+                                             "(0014), or the directory holding it; found under "
+                                             "blind-mapping/ beside the map by default")
     parser.add_argument("--only", help="run one check: " + ", ".join(name for name, _ in CHECKS))
     parser.add_argument("--verbose", action="store_true", help="also print the row each entry matches")
     parser.add_argument("--phase", choices=PHASES, default="publish",
@@ -71,10 +75,22 @@ def main(argv=None):
             print(f"cannot read manifest {manifest_path}: {error}", file=sys.stderr)
             return 2
 
+    comparison_path = find_comparison(args.comparison or args.map_path)
+    comparison = None
+    if comparison_path:
+        try:
+            with open(comparison_path, encoding="utf-8") as handle:
+                comparison = json.load(handle)
+        except (OSError, ValueError) as error:
+            print(f"cannot read adjudication record {comparison_path}: {error}", file=sys.stderr)
+            return 2
+
     ctx = {
         "map": document,
         "manifest": manifest,
         "manifest_path": manifest_path,
+        "comparison": comparison,
+        "comparison_path": comparison_path,
         "repo_root": args.repo_root or find_repo_root(args.map_path),
         "verbose": args.verbose,
     }

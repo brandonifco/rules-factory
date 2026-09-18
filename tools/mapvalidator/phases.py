@@ -6,12 +6,14 @@ from .extent import check_extent
 from .relations import check_derived, check_gates, check_no_cycles, check_references
 from .manifest import check_manifest, check_postures
 from .extraction import check_extraction
-from .ambiguity import check_conflicts, check_decision_records, check_exclusions
-from .bounds import check_bounds
+from .ambiguity import (check_conflicts, check_decision_records, check_exclusions,
+                        check_unresolved_reason)
+from .bounds import check_bound_term_open, check_bounds
 from .status import check_absent, check_status
 from .inputs import check_asserted_by, check_draws
 from .crossrefs import check_cross_references
 from .correspondence import check_correspondence
+from .epistemic import check_superposition
 
 
 # --- where each check runs (0015) ------------------------------------------------------
@@ -63,4 +65,10 @@ CHECKS = [
     ("draws", check_draws),
     ("cross-references", check_cross_references),
     ("correspondence", check_correspondence),
+    # The epistemic checks (0034). None reads `status`, `implementedIn` or `tests`, and
+    # none may: an overlay must not be able to turn a verdict about whether the corpus
+    # settles a question, because the corpus is the same either way.
+    ("unresolved-reason", check_unresolved_reason),
+    ("bound-term-open", check_bound_term_open),
+    ("superposition", check_superposition),
 ]

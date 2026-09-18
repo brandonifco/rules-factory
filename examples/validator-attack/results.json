@@ -1,5 +1,5 @@
 {
-  "measuredAt": "69167d86e5d6e7d2edb392ca293e132095f4423e",
+  "measuredAt": "145c4850fc3dde1e63e566c6f475a4ff2483b6f8",
   "subjects": [
     {
       "name": "hoyle-backgammon",
@@ -147,10 +147,19 @@
           "mutation": "remove-applicability",
           "applicable": true,
           "damage": "dropped bearing-off-eligible, which 3 entries named in `enabledBy`, and every edge that named it",
-          "detected": false,
-          "refusedBy": [],
+          "detected": true,
+          "refusedBy": [
+            "check-map.py"
+          ],
           "signalled": false,
-          "by": []
+          "by": [
+            {
+              "detector": "check-map.py",
+              "check": "superposition",
+              "status": "fail",
+              "said": "an unsettled reading was adjudicated and the map records one reading"
+            }
+          ]
         },
         {
           "mutation": "hide-cross-reference",
@@ -232,10 +241,19 @@
           "mutation": "ambiguous-to-clear",
           "applicable": true,
           "damage": "speed-limit: ambiguous -> clear, and its recorded question deleted",
-          "detected": false,
-          "refusedBy": [],
+          "detected": true,
+          "refusedBy": [
+            "check-map.py"
+          ],
           "signalled": false,
-          "by": []
+          "by": [
+            {
+              "detector": "check-map.py",
+              "check": "superposition",
+              "status": "fail",
+              "said": "an unsettled reading was adjudicated and the map records one reading"
+            }
+          ]
         },
         {
           "mutation": "assertion-to-operation",
@@ -814,7 +832,7 @@
   ],
   "totals": {
     "applied": 62,
-    "detected": 16,
-    "missed": 46
+    "detected": 18,
+    "missed": 44
   }
 }
