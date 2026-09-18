@@ -20,6 +20,8 @@ import importlib.util
 import io
 import json
 import os
+import shutil
+import tempfile
 import unittest
 from contextlib import redirect_stdout
 
@@ -144,6 +146,40 @@ class ReadingTheSectionChecker(unittest.TestCase):
     def test_an_entry_it_could_not_check_is_not_a_pass(self):
         verdicts = mutate_map.parse_section("  ?  fog: evidence is not a quote\n")
         self.assertEqual(verdicts["locators"][0], "skip")
+
+
+class TheAdjudicationRecordIsStaged(unittest.TestCase):
+    """The map under test is written into a temporary directory, so a check that reads a file
+    beside the committed map finds nothing unless it is told where to look (0034).
+
+    A detector the harness never ran would be recorded as a detector that noticed nothing, which
+    is this tool's worst failure mode and the reason `superposition` is named a comparison
+    directory on every run of a subject that was mapped twice.
+    """
+
+    def test_a_subject_mapped_twice_names_its_record(self):
+        home = mutate_map.comparison_record(
+            os.path.join(ROOT, "examples", "hoyle-backgammon"))
+        self.assertEqual(home, os.path.join(ROOT, "examples", "hoyle-backgammon", "blind-mapping"))
+
+    def test_a_subject_never_mapped_twice_names_none(self):
+        self.assertIsNone(mutate_map.comparison_record(
+            os.path.join(ROOT, "examples", "faa-part-107-temporal")))
+
+    def test_superposition_has_subject_matter_where_the_harness_puts_the_map(self):
+        # The proof that the wiring works, taken where it matters: the map copied into a
+        # temporary directory, as every run of this tool copies it. Without the record's home on
+        # the command line the check says NOT VERIFIED here and says it on every mutation too.
+        subject = next(s for s in mutate_map.SUBJECTS if s["name"] == "hoyle-backgammon")
+        workspace = tempfile.mkdtemp(prefix="mutate-map-test-")
+        try:
+            copied = os.path.join(workspace, "corpus-map.json")
+            shutil.copy(os.path.join(ROOT, subject["dir"], "corpus-map.json"), copied)
+            control = mutate_map.detectors(subject, copied, ROOT)
+        finally:
+            shutil.rmtree(workspace, ignore_errors=True)
+        status, said = control["check-map.py"]["checks"]["superposition"]
+        self.assertEqual(status, "ok", said)
 
 
 class EveryMutationDamagesOrSaysWhy(unittest.TestCase):

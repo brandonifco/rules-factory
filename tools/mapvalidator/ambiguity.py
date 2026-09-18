@@ -6,6 +6,13 @@ import os
 from .diagnostics import skip, verdict
 from mapcontract.entry import block, entries_of, fate_of, label
 
+# What an owner's ruling would be compared against, and so the reasons the correspondence
+# table can produce for an entry whose ambiguity is open (0034). Rows 2 and 5 are deliberately
+# not read: an overlay turns both (0015), so a reason justified by them today is unjustified
+# tomorrow, and the check would then read an overlay field and belong in STATUS_DEPENDENT.
+OPEN_QUESTION_REASON = "RequiresInterpretation"
+OUT_OF_SCOPE_REASON = "OutsideCurrentScope"
+
 
 def check_exclusions(ctx):
     """The `ambiguity` block is not a general decline carrier (0005 D).
@@ -131,3 +138,48 @@ def check_conflicts(ctx):
     return verdict(bad, f"{len(groups)} conflict{'' if len(groups) == 1 else 's'} over {members} "
                         f"entries: each has two or more members, one fate, and one record",
                    "a conflict is not well-formed")
+
+
+def check_unresolved_reason(ctx):
+    """An open question returns the reason a caller can act on.
+
+    `ambiguity.unresolvedReason` is what the engine returns when the declining case is reached,
+    and `schema` already holds it to the kernel's vocabulary. That is not enough: the vocabulary
+    has five values and the correspondence table produces exactly one of them for a question the
+    corpus leaves open. `RequiresInterpretation` tells a caller what to do -- interpret, or rule
+    under 0027. `MissingRulesData` tells them to go and find data that does not exist, and
+    `UnsupportedRule` tells them to wait for an implementation that would not settle it either.
+    An open question wearing either reason is an uncertainty misdescribed to the only party who
+    could act on it.
+
+    So the reason must be one the entry's own rows can produce: `RequiresInterpretation` (row 6),
+    or `OutsideCurrentScope` where the entry is `scope: out` and row 1 wins first. Rows 3 and 4
+    cannot arise -- `exclusions` already refuses `definedElsewhere` or `beyondAdapter` beside an
+    `ambiguity` block -- and rows 2 and 5 are read by no check here on purpose: an overlay turns
+    both, so a reason they justified would stop being justified in a consuming engine.
+
+    What it cannot do: say whether the question is one a caller could act on. That the words of
+    `ambiguity.question` name a point somebody could rule on is what 0027's `span` machinery
+    tests in the factory, on the overlay, and no check of the map alone reaches it.
+    """
+    bad, open_questions = [], 0
+    for position, entry in enumerate(entries_of(ctx["map"])):
+        if not isinstance(entry, dict) or fate_of(entry) != "unresolved":
+            continue
+        open_questions += 1
+        name = label(entry, position)
+        reason = block(entry, "ambiguity").get("unresolvedReason")
+        allowed = {OPEN_QUESTION_REASON}
+        if entry.get("scope") == "out":
+            allowed.add(OUT_OF_SCOPE_REASON)
+        if reason is not None and reason not in allowed:
+            bad.append(f"  X  {name}: fate is `unresolved` and unresolvedReason is {reason!r}. The "
+                       f"correspondence table gives this entry {' or '.join(sorted(allowed))}; a "
+                       f"caller told {reason!r} is sent after data or an implementation, and what "
+                       f"is missing is an interpretation nobody has made")
+    if not open_questions:
+        return skip("no entry carries `ambiguity.fate: unresolved`, so this map leaves no question "
+                    "open and there is no runtime reason to hold to the table", had_subject=False)
+    return verdict(bad, f"{open_questions} open question(s), each returning a reason the "
+                        f"correspondence table produces for it",
+                   "an open question returns a reason no row gives it")

@@ -40,7 +40,7 @@ of the territory, not the territory.
 | **completeness** | did the mapper skip definitions, gates, pointers, tables, examples, applicability clauses, or part of the declared extent? | the producer's half is [#250](https://github.com/brandonifco/rules-factory/issues/250); the adversarial half is owed. `extent` claims coverage and [`mapper inventory`](mapper.md#the-inventory) now measures it — 540 of 806 units across the six maps are reached by no quote ([#255](https://github.com/brandonifco/rules-factory/issues/255), [#267](https://github.com/brandonifco/rules-factory/issues/267)) — but it is the producer measuring its own walk, and nothing adversarial reads that count |
 | **interpretive** | does the evidence actually support the classification? | nothing mechanical, by nature. It is what the blind second mapping exists for ([0014](decisions/0014-a-map-is-checked-by-a-blind-second-mapping.md)), which caught 14 of 15 injected comprehension errors the mechanical checks missed |
 | **relational** | does this gate govern everything the map says it governs — and more than the map noticed? | shape only. `full-table-suspension` reached the throw and everything a throw leads to, recorded none of it, and survived a trial, a build and a review |
-| **epistemic** | was ambiguity preserved where the corpus supports two readings, or collapsed into one? | nothing. [#258](https://github.com/brandonifco/rules-factory/issues/258) |
+| **epistemic** | was ambiguity preserved where the corpus supports two readings, or collapsed into one? | `superposition`, `unresolved-reason` and `bound-term-open` ([0034](decisions/0034-a-valid-unresolved-state-is-established-not-asserted.md)), each reading a record made outside the entry. Measured: 12 of 64 collapses caught, against 4 before ([`examples/collapse-trial/`](../examples/collapse-trial/README.md)) |
 
 ## Validating the uncertainty
 
@@ -62,8 +62,26 @@ resolve between them, the job is not to choose:
 That is a success. A **premature collapse** — a `clear` entry whose evidence supports two
 readings — passes every check that exists, produces a confident engine, and records no doubt for
 anyone to find. It is worse than a wrong answer, because a wrong answer can be disputed.
-`check-map.py` admits the gap in its own docstring: *two `clarity: clear` entries stating
-incompatible rules pass every check here.*
+
+0034 builds what can be built around a judgement that cannot be mechanical. It adds **no field**:
+a field inside the `ambiguity` block can only be carried by an entry that already admits its
+doubt, and is absent exactly where a collapse happens. What it reads instead is the record a
+second reader left — an `ambiguity.conflict` (0007), an `ambiguity.bounds` example (0031), or the
+adjudication of a blind second mapping (0014):
+
+| check | the trace it reads |
+|---|---|
+| `superposition` | a disagreement about certainty adjudicated *the corpus does not settle it*, and no entry the adjudication names is `clarity: ambiguous` |
+| `unresolved-reason` | an open question returning a reason no correspondence row gives that entry |
+| `bound-term-open` | a `bounds` whose `term` the entry's own `ambiguity.question` never states |
+
+A ruling that resolves a question the map never recorded as open is the fourth trace, and it is
+already refused — by `tools/factory/rulings.py` (0027), because a ruling lives in the engine's
+overlay and the validator's publish phase has no overlay to read.
+
+What still passes: `check-map.py` admits the oldest form of the gap in its own docstring — *two
+`clarity: clear` entries stating incompatible rules pass every check here* — and 0034's own
+measurement puts the collapse miss rate at 52 of 64.
 
 ## The blind second mapping, across the boundary
 
@@ -102,17 +120,23 @@ validator was watched not noticing ([trial 10](../examples/validator-attack/READ
 **reasoned**, argued from the code and not yet attacked. The distinction used to be invisible from
 reading them.
 
-- **Its own miss rate is 74%.** Fourteen mutations over five committed maps and three locator
-  grammars: 62 landed, 16 were refused, 46 passed
-  ([#259](https://github.com/brandonifco/rules-factory/issues/259), measured at `69167d8`). Four of
-  the twenty-two checks in `check-map.py` ever turned. Every miss is dispositioned, below or as an
+- **Its own miss rate is 71%.** Fourteen mutations over five committed maps and three locator
+  grammars: 62 landed, 18 are refused, 44 pass
+  ([#259](https://github.com/brandonifco/rules-factory/issues/259); 16 and 46 when first measured
+  at `69167d8`, and the two rows that moved are the epistemic checks 0034 added). Five of the
+  twenty-five checks in `check-map.py` ever turned. Every miss is dispositioned, below or as an
   issue: [#268](https://github.com/brandonifco/rules-factory/issues/268),
   [#269](https://github.com/brandonifco/rules-factory/issues/269),
   [#270](https://github.com/brandonifco/rules-factory/issues/270),
   [#271](https://github.com/brandonifco/rules-factory/issues/271).
 - **A conflict nobody recorded is invisible.** Two `clarity: clear` entries stating incompatible
-  rules pass. *Reasoned.* Its neighbour is measured: deleting a recorded ambiguity and asserting
-  one reading — premature collapse — passed on 5 maps of 5.
+  rules pass. *Reasoned.* Its neighbour is measured, and the measurement moved: deleting a
+  recorded ambiguity and asserting one reading — premature collapse — passed on 5 maps of 5
+  before `superposition` existed and is refused on 1 of 5 now. That check reaches the case where a
+  *second mapper* recorded the doubt and the map did not, which is not a property of the map at
+  all; where both readers made the same silent choice there is no record and no trace. Over every
+  recorded ambiguity rather than one per map, 12 of 64
+  ([`examples/collapse-trial/`](../examples/collapse-trial/README.md), 0034).
 - **A gate is not checked against the corpus at all.** A missing `enabledBy` edge, a missing
   `suspendedBy` edge and an invented `dependsOn` edge leave the map internally consistent, and
   every one passed. *Measured: 0 of 13.*

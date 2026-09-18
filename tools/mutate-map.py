@@ -604,14 +604,32 @@ def run(argv, root):
     return proc.returncode, proc.stdout + proc.stderr
 
 
+def comparison_record(directory):
+    """Where the blind second mapping's adjudication record lives for a committed map, or None.
+
+    The directory, not the file: which of the files in it is the readable record is the
+    validator's to decide, and `--comparison` takes a directory for exactly that reason. A
+    subject that was never mapped twice has no such directory.
+    """
+    home = os.path.join(directory, "blind-mapping")
+    return home if os.path.isdir(home) else None
+
+
 def detectors(subject, map_path, root):
     """Every verdict the validator reaches about this map, by detector and by check name."""
     directory = os.path.join(root, subject["dir"])
     manifest = os.path.join(directory, "corpus-manifest.json")
     results = {}
 
-    code, out = run(["tools/check-map.py", map_path, "--manifest", manifest,
-                     "--repo-root", root], root)
+    argv = ["tools/check-map.py", map_path, "--manifest", manifest, "--repo-root", root]
+    # The map is written into a bare temporary directory, so the checks that find a file beside
+    # the map find nothing there. `superposition` reads the blind second mapping's adjudication
+    # record (0034), and without this it says NOT VERIFIED on the control and on every mutation,
+    # which would report a check this harness never ran as a check that noticed nothing.
+    record = comparison_record(directory)
+    if record:
+        argv += ["--comparison", record]
+    code, out = run(argv, root)
     results["check-map.py"] = {"exit": code, "checks": parse_named(out), "output": out}
 
     argv = [a.format(map=map_path) for a in subject["locators"]]

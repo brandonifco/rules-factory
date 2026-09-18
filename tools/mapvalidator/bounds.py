@@ -200,3 +200,46 @@ def _inconsistent(name, dimension, placed):
             f"{inside} and does not apply at {outside}, and no threshold separates them, so no reading "
             f"of the term satisfies both examples. Two bounds that cannot both hold are a defect in the "
             f"map, not an ambiguity in the corpus"]
+
+
+def check_bound_term_open(ctx):
+    """A bound bounds a term the map records as open.
+
+    `bounds` (0031) already holds the `term` to the entry's `evidence`, so the term is one the
+    cited passage uses. That proves the corpus says the words; it does not prove the map ever
+    said they were open. An `ambiguity.question` that never mentions the term records a doubt
+    about something else, and the bound then narrows a superposition the map does not have --
+    which is also the shape a collapse takes here, because an owner's ruling under 0027 quotes a
+    span of the question, and a term absent from the question is a term no ruling can be
+    compared against.
+
+    So the term occurs in `ambiguity.question` as well as in `evidence`, matched without regard
+    to case: a question states the term in the corpus's words and may open a sentence with it,
+    as § 1.121-1(c)(2)'s does.
+
+    What it cannot do: judge whether the question leaves the term open or merely mentions it.
+    """
+    bad, bounded = [], 0
+    for position, entry in enumerate(entries_of(ctx["map"])):
+        if not isinstance(entry, dict):
+            continue
+        ambiguity = block(entry, "ambiguity")
+        bounds = ambiguity.get("bounds")
+        if not isinstance(bounds, dict):
+            continue
+        term = bounds.get("term")
+        if not isinstance(term, str) or not term.strip():
+            continue  # reported by `bounds`
+        bounded += 1
+        question = ambiguity.get("question")
+        if not isinstance(question, str) or term.lower() not in question.lower():
+            bad.append(f"  X  {label(entry, position)}: bounds the term {term!r}, which the entry's "
+                       f"`ambiguity.question` never states. A bound narrows a term the map records "
+                       f"as open, and the question is where the map records it; an owner's ruling "
+                       f"quotes a span of that question (0027), so a term the question omits is one "
+                       f"no ruling could be compared against")
+    if not bounded:
+        return skip("no entry carries `ambiguity.bounds`, so no term is bounded and the rule is "
+                    "vacuous over this map", had_subject=False)
+    return verdict(bad, f"{bounded} bounded term(s), each stated as open in the entry's own question",
+                   "a bound narrows a term the map never recorded as open")
