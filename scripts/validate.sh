@@ -116,6 +116,37 @@ check_pointers() {
   printf '%d map(s) interrogated\n' "$pointers_checked"
 }
 
+# What each map's extent claims, against what its walk reached (#255). `extent` says how much of
+# the corpus a map read, and until this step nothing evidenced it: the locator checkers' coverage
+# asks only whether every page or section of the extent is touched by some quote, which a map
+# satisfies by reaching one sentence on a page. This enumerates the extent's units through the
+# adapter its manifest names and reports the ones no entry's quote reaches and no recorded
+# rejection accounts for.
+#
+# 3 is the expected outcome on every committed map today: each of the six was walked before
+# anything measured the walk, and the counts are #267. Accepting exactly 3 is what keeps those
+# numbers visible on every run instead of turning them into a red gate nobody can clear by
+# reading a corpus again. A map that enumerates no unit at all, or one no entry's quote is found
+# in, exits 1 here -- an inventory of nothing has nothing unaccounted, which is the shape of
+# "reports ok while examining nothing" this file exists to refuse.
+inventories_taken=0
+check_inventory() {
+  local map status
+  for map in examples/*/corpus-map*.json examples/*/*/corpus-map*.json; do
+    [ -e "$map" ] || continue
+    printf -- '--- %s\n' "$map"
+    status=0
+    python3 tools/mapper inventory "$map" || status=$?
+    [ "$status" -eq 0 ] || [ "$status" -eq 3 ] || return "$status"
+    inventories_taken=$((inventories_taken + 1))
+  done
+  if [ "$inventories_taken" -eq 0 ]; then
+    echo "no corpus maps found -- this step proved nothing" >&2
+    return 1
+  fi
+  printf '%d map(s) inventoried\n' "$inventories_taken"
+}
+
 # What a blind second mapping was given is recorded by digest beside the comparison, and the
 # staged documents are the redacted ones (#223). The comparison tooling compares two maps and
 # cannot see the inputs, so a contaminated run reported as blind manufactures agreement -- which
@@ -347,6 +378,7 @@ run "check-map.py is what the two packages build"      python3 tools/build-check
 run "every corpus map satisfies the schema"            check_all_maps
 run "every map says how its corpus is read"            check_protocols
 run "every protocol's own detectors find its pointers" check_pointers
+run "every extent's units are enumerated and accounted" check_inventory
 run "every corpus map carries a review of its bytes"   check_map_reviews
 run "every blind mapping was given what it recorded"   check_blind_staging
 run "every citation resolves in its corpus"            check_locators

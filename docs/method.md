@@ -160,7 +160,11 @@ separates guidance from obligation — but not reliably, and not sentence by sen
 always an object to do this" sits in the middle of a trial corpus's movement rules. Drop
 advice, and note in the entry that you dropped it: an agent enumerating mechanically will
 otherwise map it as a rule, or drop it silently, and silently is worse because the next
-reader cannot tell which happened.
+reader cannot tell which happened. A passage that produced **no entry at all** has no entry to
+note it in, and that is the passage a reader most needs to know was seen: record it in
+`mapping-inventory.json` beside the map, as a unit with a ground and a note
+([the inventory](mapper.md#the-inventory)). `mapper inventory` counts what neither a quote nor a
+rejection accounts for.
 
 **Record what gates an entry, separately from what it depends on.** A corpus with turn
 structure has rules that only apply in a phase: bearing off begins once every man is home;
