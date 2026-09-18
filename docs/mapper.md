@@ -119,7 +119,7 @@ The six committed maps report 540 unaccounted units of 806
 ([#267](https://github.com/brandonifco/rules-factory/issues/267) holds the numbers and what each
 one is on reading it). None of the maps was edited to improve them: a map's bytes cannot change
 without invalidating its review
-([0017](decisions/0017-a-map-carries-a-review-of-its-exact-bytes.md)), and the walks these
+([0017](decisions/0017-a-map-change-carries-a-review-of-its-bytes.md)), and the walks these
 numbers measure happened months ago.
 
 ### `mapping-inventory.json`
