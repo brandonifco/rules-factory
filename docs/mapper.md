@@ -108,6 +108,43 @@ names; a mechanism in neither is refused. `phrase` is detected by
 checker. They are declared here anyway, so a protocol is the whole account of how a corpus
 points rather than the part this package happens to implement.
 
+### `coded-pointer` — a pointer its column makes
+
+Decided in [0041](decisions/0041-a-coded-pointer-is-made-by-the-column-it-sits-in.md)
+([#307](https://github.com/brandonifco/rules-factory/issues/307)), forced by trial 10.
+
+```json
+{ "mechanism": "coded-pointer", "column": 7, "vocabularyFrom": "column-7-codes" }
+```
+
+49 CFR § 172.101 column 7 holds `IB2, T4, TP1` and nothing else — each a pointer into § 172.102,
+with no pointer phrase and no defined term named anywhere near it. `defined-term-use` was
+declared for it and **run**, over the seven rows the trial settled: it detected all **33** column
+7 occurrences, missed none, and also read the numeric code `148` as a pointer twice where it is
+not one — in **column 14**, whose vessel stowage provisions are § 176.84's, and in *"46 CFR parts
+30 to 40, 70, 98, 148, 151, 153 and 154"*, where it is a part number.
+
+Firing is not the same as being right. A column 7 code is a pointer **because of the column it
+sits in**, and no lexical mechanism can say that, because column membership is not text.
+
+So the detector reads the **structural context** and never the prose: an entry is examined only
+when its citation names a cell in the declared column
+([0035](decisions/0035-a-rule-stated-in-a-table-row-is-cited-by-its-row.md)'s `…, column 7`), and
+each comma- or space-separated token of its evidence is a pointer. The same characters in another
+column are not. A token in the pointer-bearing column that the vocabulary does not declare is
+reported rather than dropped: it is either a pointer nobody recorded or a vocabulary that is
+short.
+
+`vocabularyFrom` is the same key `defined-term-use` uses and resolves the same way, out of the
+map. `column` is a mechanism parameter, not a protocol field — the protocol's shape is a list of
+mechanism objects each carrying its own, and it does not change. `column` on any other mechanism
+is refused, and `coded-pointer` without one is refused: without it the mechanism would be a scan
+of the corpus's words, which is the failure that forced it.
+
+One thing the measurement says about clean runs generally: the **letter** codes do not collide in
+this slice. A seven-row slice chosen without a numeric code would have run clean and concluded
+the existing vocabulary sufficed.
+
 ## The inventory
 
 `extent` claims coverage — pages 177–191, or a list of section designations — and until

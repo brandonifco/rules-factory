@@ -84,6 +84,61 @@ def detect(document, vocabulary_entry):
     return found
 
 
+#: The column a table-cell citation names, as 0035 writes it: `..., column 7`, after the row key
+#: and outside it. Anchored on the key's closing bracket, so the `column 2 = "Acetal"` *inside* the
+#: key can never be read as the cell's column.
+CITED_COLUMN = re.compile(r"\]\s*,\s*column\s+([A-Za-z0-9]{1,4})\s*\.?\s*$")
+
+#: What separates one code from the next in a cell that holds several: `IB2, T4, TP1`. Commas and
+#: whitespace only. Nothing here reads the corpus's prose, which is the point of the mechanism.
+CODE_SEPARATOR = re.compile(r"[,\s]+")
+
+
+def cited_column(entry):
+    """The column an entry's citation names, or None when it names no cell."""
+    match = CITED_COLUMN.search(str((entry.get("locator") or {}).get("citation") or ""))
+    return match.group(1) if match else None
+
+
+def detect_coded(document, mechanism):
+    """Every code in the pointer-bearing column, as pointers (0041).
+
+    The mechanism's `column` says which column of the corpus's own numbering carries pointers.
+    An entry is examined **only** when its citation names a cell in that column; everything else
+    in the map -- another column of the same row, a paragraph of prose -- is not read at all.
+    That is what makes this not a scan: the same token in another column is not a pointer, and
+    the measurement that forced the mechanism is exactly a token that spells like one and is not
+    (#307).
+
+    Tokenising is by comma and whitespace, because that is how the corpus prints a cell holding
+    several codes. A token the vocabulary does not declare is still returned, with `defines` None,
+    so `report` can say so rather than drop it.
+    """
+    wanted = str(mechanism.get("column") or "").strip()
+    if not wanted:
+        return []
+    terms = {}
+    by_id = index(document)
+    source = by_id.get(mechanism.get("vocabularyFrom"))
+    if source is not None:
+        terms = vocabulary_of(source)
+    found = []
+    for entry in entries_of(document):
+        if not isinstance(entry, dict) or cited_column(entry) != wanted:
+            continue
+        declared = {reference.get("cites") for reference in entry.get("crossReferences") or []
+                    if isinstance(reference, dict)}
+        seen = {}
+        for token in CODE_SEPARATOR.split(str(entry.get("evidence") or "")):
+            token = token.strip()
+            if token:
+                seen[token] = seen.get(token, 0) + 1
+        for token, count in sorted(seen.items()):
+            found.append(Naming(entry.get("id"), token, terms.get(token), count,
+                                token in declared))
+    return found
+
+
 def report(protocol, document):
     """Run every `defined-term-use` mechanism the protocol declares.
 
@@ -94,6 +149,26 @@ def report(protocol, document):
     """
     lines, detected, undeclared = [], 0, []
     by_id = index(document)
+    for mechanism in mechanisms_of(protocol, "coded-pointer"):
+        column = mechanism.get("column")
+        namings = detect_coded(document, mechanism)
+        detected += sum(n.count for n in namings)
+        cells = len({n.entry_id for n in namings})
+        lines.append(f"  column {column}: {sum(n.count for n in namings)} code(s) in {cells} "
+                     f"cell(s); a token in another column is not a pointer (0041)")
+        for naming in namings:
+            if naming.defines is None:
+                # Not dropped. A code in the pointer-bearing column that the vocabulary does not
+                # declare is either a pointer nobody recorded or a vocabulary that is short, and
+                # both are findings.
+                undeclared.append(naming)
+                lines.append(f"  ?  {naming.entry_id}: column {column} holds {naming.term!r}, "
+                             f"which the vocabulary does not declare")
+            elif not naming.declared:
+                undeclared.append(naming)
+                lines.append(f"  ?  {naming.entry_id}: column {column} points with "
+                             f"{naming.term!r} and the entry declares no crossReference to "
+                             f"{naming.defines!r}")
     for mechanism in mechanisms_of(protocol, "defined-term-use"):
         source = mechanism.get("vocabularyFrom")
         entry = by_id.get(source)

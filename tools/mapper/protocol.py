@@ -54,7 +54,15 @@ UNITS = ("section", "paragraph", "sentence", "list-item", "table", "table-row",
 # `phrase` and `section-designation` are detected outside this subsystem and are declared here
 # anyway, so that a protocol is the whole account of how a corpus points rather than the part
 # this package happens to implement.
-DETECTED_HERE = ("defined-term-use",)
+#: `coded-pointer` is the mechanism a token gets from **where it is printed**, not from what it
+#: spells (0041). 49 CFR § 172.101 column 7 holds `IB2, T4, TP1` and nothing else; each is a
+#: pointer into § 172.102, with no pointer phrase and no defined term named anywhere near it.
+#: Measured on trial 10's seven rows, `defined-term-use` detects all 33 of them and misses none --
+#: and reads the numeric code `148` as a pointer twice more where it is not one: in column 14's
+#: vessel stowage provisions, which are § 176.84's, and in "46 CFR parts ... 98, 148, 151 ...",
+#: where it is a part number (#307). Firing is not the same as being right, and no lexical
+#: mechanism can be, because column membership is not text.
+DETECTED_HERE = ("defined-term-use", "coded-pointer")
 DETECTED_ELSEWHERE = {
     "phrase": "check-map.py --only cross-references, over the corpus's `pointerPhrases` (0026)",
     "section-designation": "the corpus's own locator checker, which resolves the designation",
@@ -294,12 +302,32 @@ def _check_mechanisms(protocol, document):
             problems.append(f"{where}: mechanism {name!r} is outside the closed set: "
                             + ", ".join(POINTER_MECHANISMS))
             continue
-        if name == "defined-term-use":
+        if name in ("defined-term-use", "coded-pointer"):
             problems += _check_vocabulary(where, declared, document)
         elif "vocabularyFrom" in declared:
-            problems.append(f"{where}: `vocabularyFrom` belongs to defined-term-use, and "
-                            f"{name!r} does not read a vocabulary")
+            problems.append(f"{where}: `vocabularyFrom` belongs to a mechanism that reads a "
+                            f"vocabulary, and {name!r} does not")
+        if name == "coded-pointer":
+            problems += _check_coded_pointer(where, declared)
+        elif "column" in declared:
+            problems.append(f"{where}: `column` belongs to coded-pointer, whose pointers are made "
+                            f"by the column they sit in; {name!r} reads no column")
     return problems
+
+
+def _check_coded_pointer(where, declared):
+    """`coded-pointer` says which column bears the pointers, because that is what makes them.
+
+    A mechanism parameter, exactly as `vocabularyFrom` is for `defined-term-use`: the protocol's
+    shape is a list of mechanism objects each carrying its own, and no protocol field is added
+    (0041). Without it the mechanism would be a regex over prose, which is the thing the
+    measurement refused.
+    """
+    column = declared.get("column")
+    if isinstance(column, bool) or not isinstance(column, (str, int)) or not str(column).strip():
+        return [f"{where}: coded-pointer names no `column`; a pointer made by the column it sits "
+                f"in has to say which column, or it is a scan of the corpus's words"]
+    return []
 
 
 def _check_vocabulary(where, declared, document):
