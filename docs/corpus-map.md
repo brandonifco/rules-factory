@@ -86,6 +86,32 @@ citations run 271–277, and the throw enumeration that #20 is about is on 278�
   is parsed by the locator grammar below. `check-locators-section.py`'s `coverage` names every
   listed section no verified quote reaches.
 
+**A section-designation extent that reads a table says which rows it took.** Decided in
+[0035](decisions/0035-a-rule-stated-in-a-table-row-is-cited-by-its-row.md)
+([#280](https://github.com/brandonifco/rules-factory/issues/280)).
+
+```json
+"extent": {
+  "unit": "section-designation",
+  "sections": ["§ 172.101", "§ 172.102"],
+  "tables": [
+    { "section": "§ 172.101", "table": 3, "rows": [ { "column": 2, "is": "Acetal" } ] },
+    { "section": "§ 172.101", "table": 1,
+      "excluded": "label substitution; no mapped row invokes it" }
+  ]
+}
+```
+
+Each item names a table by its position in the section, counted from 1, and carries either `rows`
+— a list of row keys, or `"all"` — or `excluded` with a reason, never both and never neither. A
+row key is one `{"column": 2, "is": "Acetal"}` object, or a list of them read as a conjunction,
+and it is the same key the row's citation names (below). **Every table printed inside a cited
+section appears in the list**: a map may not quietly shrink its extent to whatever it happened to
+read, which is the rule the section list itself already carries, one unit down. `check-map.py
+--only extent` checks the shape and refuses an in-scope entry citing a row the slice did not take;
+which tables a section prints needs the corpus, and the `ecfr-xml` adapter refuses one the extent
+passes over in silence ([mapper.md](mapper.md#the-adapter-interface)).
+
 `check-map.py` checks each unit's shape and refuses a unit outside the two. A map with no extent
 passes `check-map.py` and fails both locator checkers, which are where what was read can be
 compared with the text.
@@ -110,6 +136,8 @@ A citation names a section and, optionally, what inside it the quote sits in:
 | `§ 107.29(c)(1)-(2)`, `§ 107.51(c)-(d)` | a range at one level |
 | `§ 107.29(a)(2), (b)`, `§ 107.33 introductory text, (a)` | a list, each item read against the section |
 | `subpart D` | every section of a subpart |
+| `§ 172.101 table 3, row [column 2 = "Acetal"]` | one row of one table of the section |
+| `§ 172.101 table 3, row [column 2 = "Acetal"], column 7` | one cell of that row |
 
 **"Introductory text" is part of the grammar**
 ([#59](https://github.com/brandonifco/rules-factory/issues/59), 0020). A CFR section often opens
@@ -122,6 +150,30 @@ section's first designated paragraph**, or the entry fails. The phrase is the CF
 section with no designated paragraph has no introductory text, and citing one fails: cite the
 section. A paragraph's own introductory text (`§ 107.29(a) introductory text`) is not in the
 grammar and is reported unchecked.
+
+**A row of a table has an address, and it is a cell that identifies it**
+([#280](https://github.com/brandonifco/rules-factory/issues/280),
+[0035](decisions/0035-a-rule-stated-in-a-table-row-is-cited-by-its-row.md)). Until then the
+checker indexed a section's `<P>` and `<EXAMPLE>` children and nothing else, which is **6.6%** of
+§ 172.101 — the other 420,000 characters are one table
+([#261](https://github.com/brandonifco/rules-factory/issues/261)).
+
+- The **table** is named by its position in the section, counted from 1 in document order. Its
+  caption, where it has one, goes in the entry's `note`.
+- The **row** is named by `column = value` pairs, separated by `;` inside the brackets, in the
+  corpus's own column numbering — the numbering the table's headings print, `9A` and `10B`
+  included. The pairs are a conjunction and their order does not matter. **Exactly one row must
+  match**: two is a refusal, not a first hit, and the answer is a discriminating column —
+  `row [column 2 = "Ammonia, anhydrous"; column 1 = "I"]`. A row's position is never part of the
+  key, because an amendment moves it and a key that stops resolving is better than one that
+  silently names a different material.
+- A **cell** is named by `, column 7` after the row. The quote is then held to that cell; without
+  it, to the row.
+- **The row is the extraction, and `evidence` is one contiguous verbatim span of it**: the cells
+  in column order joined by ` | `, with the empty cells kept as empty, so a blank cell is
+  quotable. 1,112 rows of § 172.101 have exactly one empty cell and 419 have thirteen; flattened
+  into prose, a missing column 1 symbol and a missing column 5 packing group are the same
+  absence.
 
 **Use it where the quote is the lead-in alone.** Part 107's `operating-limitations` cites
 `§ 107.51 introductory text`. Entries that quote the lead-in *together with* designated paragraphs
@@ -411,6 +463,8 @@ resolves in five places resolves in none. What settles it is what the citation *
 - **`section-designation`** names a container, so `check-locators-section.py` asks whether every
   occurrence lies inside it. The anti-collision sentence is printed in `§ 107.29(a)(2)` and again
   in `(b)`, and each is cited by naming its paragraph. Nothing more is needed, at any depth.
+  **A row of a table is a container too**, once it has a name:
+  `§ 172.101 table 3, row [column 2 = "Acetal"]`, below.
 - **`heading-path-and-printed-page`** names a page, which is positional and contains nothing, so
   the **heading path** is the container. Where a quote also occurs off the cited page,
   `check-locators-pdf-text.py` reads the path: each line matching the citation's last heading

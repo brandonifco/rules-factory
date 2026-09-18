@@ -157,7 +157,7 @@ corpus into the units an extent selects, in reading order, each with a stable ke
 |---|---|---|
 | `plain-text` | `page` | a blank-line-separated block, keyed `p. 271 block 3` |
 | `pdftotext-page-marked` | `page`, with `endsBefore` (0024) | the same, with the marker on a line of its own |
-| `ecfr-xml` | `section-designation` | a paragraph, a worked example, or a section's heading, keyed `§ 107.29 ¶4 (a)` |
+| `ecfr-xml` | `section-designation`, with `tables` (0035) | a paragraph, a worked example, a section's heading, or a **row** of a table the extent slices, keyed `§ 107.29 ¶4 (a)` or `§ 172.101 table 3, row [column 2 = "Acetal"]` |
 
 That is the whole interface, and it is small on purpose. Marking a unit *reached* could have been
 done by parsing each entry's citation and comparing it against the unit's designation, which
@@ -167,6 +167,19 @@ object in every corpus, so the measurement is one implementation, and it is the 
 — a citation naming a section is not a quote sitting in it. `units()` is also what [a
 sweep](#the-sweeps) walks, which is why it returns the text rather than a locator: a sweep asks
 what a unit says.
+
+**A table's rows are units, and the extent says which of them it took**
+([0035](decisions/0035-a-rule-stated-in-a-table-row-is-cited-by-its-row.md),
+[#280](https://github.com/brandonifco/rules-factory/issues/280)). A row's unit key *is* the
+citation that names it, so a rejection, an inventory line and a locator say the same words, and
+its text is its cells in column order with the empty ones kept. Three things are refused rather
+than enumerated: a table of a cited section the extent's `tables` list passes over in silence — a
+3,687-row table counted as one unit reached by one quote is the measurement this exists to make
+impossible — a declared row key that resolves to none or to two rows, and, where a table is taken
+whole, a row identical to another in every column, which no cell can name. A section's table rows
+are enumerated after its paragraphs rather than in the place the table is printed: this grammar
+walks a section's direct children, a table sits below them, and a reading order it cannot see is
+not one it should assert.
 
 A fourth grammar subclasses `Adapter`, implements `units(extent)`, and registers its manifest
 `adapter` name. A manifest naming an adapter nothing implements is **refused**: a corpus nothing
