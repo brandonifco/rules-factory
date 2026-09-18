@@ -115,7 +115,7 @@ class TheRunHoldsTheDeclarationToTheCorpus(unittest.TestCase):
     def test_a_declaration_covering_every_refusal_passes(self):
         code, output = self.run_tool(with_unreachable([declaration(t) for t in APPENDIX]))
         self.assertEqual(code, 0, output)
-        self.assertIn("3 passage(s) with no address, every one declared", output)
+        self.assertIn("3 passage(s) have no address, every one declared", output)
         self.assertIn("locators ok", output)
 
     def test_an_undeclared_refusal_still_fails(self):

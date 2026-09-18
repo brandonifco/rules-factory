@@ -117,6 +117,54 @@ passes over in silence ([mapper.md](mapper.md#the-adapter-interface)).
 passes `check-map.py` and fails both locator checkers, which are where what was read can be
 compared with the text.
 
+**A section-designation extent declares the passages its grammar cannot address.** Decided in
+[0038](decisions/0038-a-map-declares-the-passages-its-grammar-cannot-address.md)
+([#299](https://github.com/brandonifco/rules-factory/issues/299)).
+
+```json
+"extent": {
+  "unit": "section-designation",
+  "sections": ["§ 172.101", "§ 172.102"],
+  "unreachable": [
+    { "sourceId": "cfr-49-172.101",
+      "opensWith": "Appendix A to § 172.101—List of Hazardous Substances and Rep",
+      "reason": "division-wrapper",
+      "requires": "a citation grammar for a section's appendices; 0036 refuses a wrapper holding an HD1" }
+  ]
+}
+```
+
+This is a **positive statement, not an exclusion**. The extent still names § 172.101 whole and
+every in-scope entry is still held to it; `unreachable` says that a passage of the corpus exists
+which *nothing could cite*, and what addressing it would take. An exclusion would delete the
+uncertainty; a declaration carries it where a reader can see it, which is what 0009 does for an
+absence and 0034 for an unsettled reading. Optional, and a list with nothing in it is refused:
+an empty list says nothing a missing field does not.
+
+- **`sourceId`** names the corpus, because a map may cite several and reachability is a property
+  of one document under one grammar.
+- **`opensWith`** is the passage's opening as the walk reports it — the first 60 characters of its
+  normalised text — an identity rather than a quotation, stable because the corpus is pinned by
+  `contentHash`. A prefix the walk refuses twice is refused, never matched to the first
+  declaration, the rule a duplicate row key already gets (0035).
+- **`reason`** is closed to what the walk emits: `ambiguous-designator`,
+  `captioned-after-undesignated`, `division-wrapper`, `example-head-unreadable`,
+  `no-unit-for-element`, `note-heading-elsewhere`, `note-heading-unreadable`,
+  `states-own-designation`. The authority is `check-locators-section.py`'s `UNREACHABLE_REASONS`,
+  which produces each at exactly one place in its walk; `test_unreachable_declaration.py` holds
+  `check-map.py`'s copy equal to it, so a map cannot declare a reason no run can give.
+- **`requires`** is a sentence saying what reaching the passage would take, and may not be empty.
+
+`check-map.py --only extent` checks the shape. **That the declaration is true of the corpus is the
+locator run's**, in both directions: a passage with no address the map does not declare fails, as
+it always did, and a passage the map declares which the walk *reaches* fails too — a declaration
+the corpus no longer supports is not a bound on the map. Only a run of the walk knows what it
+refused, which is 0034's rule that such a state is established rather than asserted.
+
+Only the `section-designation` grammar has the field. The page grammars refuse no passage today,
+and nothing is added to them before a corpus forces it
+([#265](https://github.com/brandonifco/rules-factory/issues/265)).
+
 **A `scope: out` entry may cite beyond the extent.** Recording what lies beyond the slice is what
 an out-of-scope entry is for: Part 107's `subpart-d-categories` cites `subpart D` and quotes
 § 107.100 to decline the subpart an in-scope rule defers to. `check-map.py` names each such entry

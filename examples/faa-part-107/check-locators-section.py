@@ -1344,7 +1344,10 @@ def unreachable_problems(refused, declared, label):
                         f"declaration the corpus no longer supports is not a bound on the map")
     if problems:
         return problems, None
-    return [], f"{len(seen)} passage(s) with no address, every one declared with what it requires"
+    if not seen:
+        return [], "every passage has an address"
+    return [], (f"{len(seen)} passage(s) have no address, every one declared with what reaching "
+                f"it requires")
 
 
 USAGE = ("Usage: check-locators-section.py <corpus-map.json> <corpus.xml>\n"
