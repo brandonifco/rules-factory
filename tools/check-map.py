@@ -343,12 +343,24 @@ def check_unique_ids(ctx):
     return verdict(bad, f"{len(seen)} ids, all distinct", "an id is duplicated or missing")
 
 
-# --- tools/mapvalidator/extent.py -------------------------------------------------------------
-# `extent`, the map's claim about how much of its corpus it read (0009), in the two units a
-# corpus map has: printed pages, and CFR-style section designations (0020).
+# --- tools/mapvalidator/locators.py -----------------------------------------------------------
+# The section-designation locator grammar, as a validator reads it.
+#
+# `examples/faa-part-107/check-locators-section.py` resolves a citation against the corpus; this
+# reads the same citations without one, to place each entry inside the extent its map declares.
+# The expressions are that checker's, and `test_check_map.py` runs both over every citation the
+# committed maps make and over the forms each decision adds, so the two cannot drift apart
+# silently.
+#
+# Two things are named here: a **section** or a subpart
+# ([0020](../../docs/decisions/0020-a-section-citation-names-its-lead-in-and-a-section-map-lists-its-extent.md)),
+# and a **row of a table**
+# ([0035](../../docs/decisions/0035-a-rule-stated-in-a-table-row-is-cited-by-its-row.md)), which is
+# the address a table cell did not have. A row is named by a cell that identifies it, in the
+# corpus's own column numbering, and never by where it sits: the corpus that forced this amends
+# constantly, and an ordinal that silently re-points at a different material is worse than a key
+# that stops resolving.
 
-
-EXTENT_UNITS = ("page", "section-designation")
 
 # The section-designation locator grammar's section and subpart, read the way
 # examples/faa-part-107/check-locators-section.py reads them. `CITE_SECTION` and `CITE_SUBPART`
@@ -358,14 +370,6 @@ CITE_SECTION = re.compile(r"§+\s*(\d+\.\d+(?:-\d+)?)")
 CITE_SUBPART = re.compile(r"\bsubpart\s+([A-Z])\b", re.I)
 # One item of `extent.sections`: a section and nothing else -- no paragraph, no range.
 EXTENT_SECTION = re.compile(r"^§\s*(\d+\.\d+(?:-\d+)?)$")
-# A citation naming one row of one table (0035), read as the section locator checker reads it:
-# `§ 172.101 table 3, row [column 2 = "Acetal"], column 7`. What this file needs of it is the
-# table it names and the key it names the row by, so that an extent slicing a table can be held
-# to the rows an entry actually cites.
-CITE_TABLE_ROW = re.compile(
-    r'^\s*§+\s*(?P<section>\d+\.\d+(?:-\d+)?)\s+table\s+(?P<table>\d+)\s*,\s*row\s*'
-    r'\[(?P<key>.*)\](?:\s*,\s*column\s+[A-Za-z0-9]{1,4})?\s*\.?\s*$')
-CITE_ROW_KEY_PAIR = re.compile(r'column\s+([A-Za-z0-9]{1,4})\s*=\s*"([^"]*)"')
 
 
 def cited_section(citation):
@@ -384,20 +388,14 @@ def cited_section(citation):
     return None
 
 
-def _page_extent(extent, bad):
-    for field in sorted(set(extent) - {"unit", "from", "to", "endsBefore"}):
-        bad.append(f"  X  extent: `{field}` is not a field of a page extent (unit, from, to, endsBefore)")
-    first, last = extent.get("from"), extent.get("to")
-    if not all(isinstance(v, int) and not isinstance(v, bool) for v in (first, last)):
-        bad.append(f"  X  extent: a page extent names integer `from` and `to`; got {first!r}..{last!r}")
-    elif last < first:
-        bad.append(f"  X  extent: `to` {last} is before `from` {first}")
-    if "endsBefore" in extent:
-        heading = extent.get("endsBefore")
-        if not isinstance(heading, str) or not heading.strip() or "\n" in heading \
-                or heading != heading.strip():
-            bad.append(f"  X  extent: endsBefore is {heading!r}; it names one heading on page `to`, "
-                       f"as a single line of text with no surrounding whitespace (0024)")
+# A citation naming one row of one table (0035), read as the section locator checker reads it:
+# `§ 172.101 table 3, row [column 2 = "Acetal"], column 7`. What this file needs of it is the
+# table it names and the key it names the row by, so that an extent slicing a table can be held
+# to the rows an entry actually cites.
+CITE_TABLE_ROW = re.compile(
+    r'^\s*§+\s*(?P<section>\d+\.\d+(?:-\d+)?)\s+table\s+(?P<table>\d+)\s*,\s*row\s*'
+    r'\[(?P<key>.*)\](?:\s*,\s*column\s+[A-Za-z0-9]{1,4})?\s*\.?\s*$')
+CITE_ROW_KEY_PAIR = re.compile(r'column\s+([A-Za-z0-9]{1,4})\s*=\s*"([^"]*)"')
 
 
 def _normalise(value):
@@ -437,6 +435,30 @@ def _row_key(key):
             return None
         pairs.append((str(column), _normalise(value)))
     return frozenset(pairs)
+
+
+# --- tools/mapvalidator/extent.py -------------------------------------------------------------
+# `extent`, the map's claim about how much of its corpus it read (0009), in the two units a
+# corpus map has: printed pages, and CFR-style section designations (0020).
+
+
+EXTENT_UNITS = ("page", "section-designation")
+
+
+def _page_extent(extent, bad):
+    for field in sorted(set(extent) - {"unit", "from", "to", "endsBefore"}):
+        bad.append(f"  X  extent: `{field}` is not a field of a page extent (unit, from, to, endsBefore)")
+    first, last = extent.get("from"), extent.get("to")
+    if not all(isinstance(v, int) and not isinstance(v, bool) for v in (first, last)):
+        bad.append(f"  X  extent: a page extent names integer `from` and `to`; got {first!r}..{last!r}")
+    elif last < first:
+        bad.append(f"  X  extent: `to` {last} is before `from` {first}")
+    if "endsBefore" in extent:
+        heading = extent.get("endsBefore")
+        if not isinstance(heading, str) or not heading.strip() or "\n" in heading \
+                or heading != heading.strip():
+            bad.append(f"  X  extent: endsBefore is {heading!r}; it names one heading on page `to`, "
+                       f"as a single line of text with no surrounding whitespace (0024)")
 
 
 def _tables_extent(extent, numbers, bad):

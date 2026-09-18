@@ -4,43 +4,11 @@ corpus map has: printed pages, and CFR-style section designations (0020).
 import re
 
 from .diagnostics import fail, skip, verdict
+from .locators import EXTENT_SECTION, cited_row, cited_section, _row_key
 from mapcontract.entry import block, entries_of, label
 
 
 EXTENT_UNITS = ("page", "section-designation")
-
-# The section-designation locator grammar's section and subpart, read the way
-# examples/faa-part-107/check-locators-section.py reads them. `CITE_SECTION` and `CITE_SUBPART`
-# are that checker's expressions, verbatim; `test_check_map.py` runs both over every citation in
-# the Part 107 maps and requires them to agree, so the two cannot drift apart silently.
-CITE_SECTION = re.compile(r"§+\s*(\d+\.\d+(?:-\d+)?)")
-CITE_SUBPART = re.compile(r"\bsubpart\s+([A-Z])\b", re.I)
-# One item of `extent.sections`: a section and nothing else -- no paragraph, no range.
-EXTENT_SECTION = re.compile(r"^§\s*(\d+\.\d+(?:-\d+)?)$")
-# A citation naming one row of one table (0035), read as the section locator checker reads it:
-# `§ 172.101 table 3, row [column 2 = "Acetal"], column 7`. What this file needs of it is the
-# table it names and the key it names the row by, so that an extent slicing a table can be held
-# to the rows an entry actually cites.
-CITE_TABLE_ROW = re.compile(
-    r'^\s*§+\s*(?P<section>\d+\.\d+(?:-\d+)?)\s+table\s+(?P<table>\d+)\s*,\s*row\s*'
-    r'\[(?P<key>.*)\](?:\s*,\s*column\s+[A-Za-z0-9]{1,4})?\s*\.?\s*$')
-CITE_ROW_KEY_PAIR = re.compile(r'column\s+([A-Za-z0-9]{1,4})\s*=\s*"([^"]*)"')
-
-
-def cited_section(citation):
-    """("section", "107.29") or ("subpart", "D") or None, for a section-designation citation.
-
-    The section is the first one the citation names, which is the only one the grammar reads:
-    `§ 107.29(a)(2), (b)` is two paragraphs of one section, and a citation cannot name two.
-    """
-    text = str(citation or "")
-    section = CITE_SECTION.search(text)
-    if section:
-        return ("section", section.group(1))
-    subpart = CITE_SUBPART.search(text)
-    if subpart:
-        return ("subpart", subpart.group(1).upper())
-    return None
 
 
 def _page_extent(extent, bad):
@@ -57,45 +25,6 @@ def _page_extent(extent, bad):
                 or heading != heading.strip():
             bad.append(f"  X  extent: endsBefore is {heading!r}; it names one heading on page `to`, "
                        f"as a single line of text with no surrounding whitespace (0024)")
-
-
-def _normalise(value):
-    return re.sub(r"\s+", " ", str(value)).strip()
-
-
-def cited_row(citation):
-    """(section, table position, key) for a table-row citation, or None.
-
-    `key` is the frozen set of `column = value` pairs the citation names the row by, which is
-    what an extent's declared row key is compared against: the pairs are a conjunction, so their
-    order is not part of what they name.
-    """
-    match = CITE_TABLE_ROW.match(str(citation or ""))
-    if not match:
-        return None
-    pairs = CITE_ROW_KEY_PAIR.findall(match.group("key"))
-    if not pairs or _normalise(match.group("key")) != "; ".join(
-            f'column {c} = "{v}"' for c, v in pairs):
-        return None
-    return (match.group("section"), int(match.group("table")),
-            frozenset((c, _normalise(v)) for c, v in pairs))
-
-
-def _row_key(key):
-    """A declared row key as a frozen set of pairs, or None where it is not one."""
-    items = key if isinstance(key, list) else [key]
-    if not items:
-        return None
-    pairs = []
-    for item in items:
-        if not isinstance(item, dict) or set(item) != {"column", "is"}:
-            return None
-        column, value = item.get("column"), item.get("is")
-        if isinstance(column, bool) or not isinstance(column, (str, int)) \
-                or not str(column).strip() or not isinstance(value, str):
-            return None
-        pairs.append((str(column), _normalise(value)))
-    return frozenset(pairs)
 
 
 def _tables_extent(extent, numbers, bad):
