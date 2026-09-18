@@ -157,6 +157,23 @@ sentence on a page and says nothing about the rest of it.
 extent selects, through the adapter the corpus manifest names, and gives each one of three
 verdicts:
 
+**Every corpus the map cites is walked, not only the principal one**
+([0042](decisions/0042-the-mapper-walks-every-corpus-a-map-cites.md),
+[#305](https://github.com/brandonifco/rules-factory/issues/305)). A map may cite several
+([0039](decisions/0039-the-manifest-pins-every-corpus-a-map-cites.md)) and declares **one** extent
+across them all. Each walk gets its own adapter, its own share of that extent — the sections its
+corpus contains, with their table slices — its own protocol
+([0040](decisions/0040-a-protocol-is-about-one-corpus-and-a-map-has-one-per-corpus-it-cites.md)),
+and only the entries that cite it. The report is per corpus and in total, and the run's verdict is
+the **worst** of them: a corpus nobody measured is not measured by another corpus being clean.
+
+Measured on trial 10's two corpora before this: an extent naming both sections was refused
+outright, and an extent naming only § 172.101 while entries cited § 172.102 **ran**, enumerated
+104 units, reported coverage over them, and never enumerated § 172.102's **612**. Formally green,
+and a completeness claim over 15% of the map. A section the extent names that *no* cited corpus
+contains is still refused — the invariant asked of the union, so splitting the extent cannot lose
+it.
+
 | Verdict | What it means |
 |---|---|
 | **reached** | some entry's quoted `evidence` sits in the unit — a quote found in the unit's own text, not a citation naming it |
