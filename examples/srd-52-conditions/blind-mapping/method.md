@@ -30,7 +30,7 @@ the map is wrong.
 Before anything is read, the corpus is pinned. Four questions, answered in the corpus
 manifest and never re-answered informally:
 
-**What is it?** A stable identifier — `srd-5.2.1`, `cfr-26`, `core-rules`. Ordinal and
+**What is it?** A stable identifier — `tax-code-2024`, `cfr-26`, `core-rules`. Ordinal and
 case-sensitive; it is the name every citation will use.
 
 **What exactly?** A content hash, and **what the hash covers**. These are two facts, not
@@ -51,11 +51,11 @@ corpus versioning. Two different temporal things, easily conflated.
 **May it be committed?** This is a property of the corpus's licence, not a house style, and
 the two existing engines answer it in opposite directions and are both right. A commercial
 rulebook is `never-commit`: the repository holds its hash and its metadata and nothing else.
-A CC-BY SRD or a public-domain statute is `pin-in-repo`: committing it is what makes the
+A CC-BY rulebook or a public-domain statute is `pin-in-repo`: committing it is what makes the
 engine reproducible without a licence. Getting this wrong is a legal problem in one
 direction and a reproducibility problem in the other. The factory itself goes further, and uses
 only a corpus whose licence permits committing and publishing its text and its map: public domain,
-or an open licence. See [0028](decisions/0028-the-factory-admits-only-corpora-whose-licence-permits-publishing-them.md).
+or an open licence. See 0028.
 
 **How is it verified, and may the map quote it?** The same question, asked for whoever consumes
 the map — an engine built from it included. A committed corpus is `committed-copy` and anyone
@@ -64,7 +64,7 @@ verifies locally, and every other run — CI above all — reports `NOT VERIFIED
 never `ok`. And because a map quotes its corpus sentence by sentence, whether it may do so at all
 is declared too: `quotation: verbatim`, or `withheld` where the licence forbids it. Both are
 answered per corpus in the manifest, by a person, never inferred. See
-[0013](decisions/0013-verification-posture-belongs-to-the-corpus.md).
+0013.
 
 **Record what the adapter cannot reach.** A corpus states its rules in more than one
 modality. The starting position of a backgammon board, in a trial corpus, is given entirely
@@ -74,7 +74,7 @@ limit of the adapter chosen in this phase. An entry beyond the adapter's reach i
 as `MissingRulesData` and carries `beyondAdapter`, naming the reader that failed and the
 modality that defeated it — structurally, in the entry, not in a sentence the next reader has
 to parse. The field and its limits are specified in [corpus-map.md](corpus-map.md); the
-argument is [0004](decisions/0004-adapter-reach-is-a-property-of-the-entry.md).
+argument is 0004.
 
 Choosing the adapter is therefore choosing which rules the engine can reach, and it happens
 here, before anything is read. A plain-text adapter over a PDF rulebook will lose the tables
@@ -82,13 +82,12 @@ a rules engine most needs, and it will lose them without complaint: the adapter 
 the text is missing a column, and nothing says so. `beyondAdapter` records a limit a human
 recognised. It does not find one nobody recognised.
 
-The first PDF, the SRD 5.2.1, lost no table. It **garbled** one: pdftotext interleaved the Cover
-table's cells, dropped a folio into a sentence and put a sidebar between a sentence's halves. When
+The first PDF a trial admitted lost no table. It **garbled** one: pdftotext interleaved a table's cells, dropped a folio into a sentence and put a sidebar between a sentence's halves. When
 the text is an extraction, the manifest says quotes are of it (`quotedText`), the quote stays
 verbatim of the extraction, and an entry whose passage it garbles carries `extraction`, naming the
 defect and the passage as read from the rendered page. Read the page for every table you map from
 an extraction. The checker prints that reading as not verified, so a reviewer has to read the page
-too ([0024](decisions/0024-a-quote-is-of-the-extraction-and-a-page-extent-can-end-at-a-heading.md)).
+too (0024).
 
 **Record what it defers to.** A corpus routinely defines its own terms by reference to
 another — a regulation citing a different title, a rulebook citing a supplement, a statute
@@ -114,8 +113,8 @@ has one and `validate.sh` fails a map without one: a map with no protocol cannot
 read. The cost of leaving it to each trial is measured — a phrase list went on being the
 interrogation mechanism for a corpus that points by naming its defined terms, detecting 0
 pointers in passages holding 51 references
-([#208](https://github.com/brandonifco/rules-factory/issues/208)). The protocol, its closed
-vocabularies and the interrogation it obliges are [the mapper](mapper.md); this document stays
+(#208). The protocol, its closed
+vocabularies and the interrogation it obliges are the mapper; this document stays
 the part that is judgement.
 
 **Every entry carries a locator.** An entry without one is not an entry. This is the single
@@ -127,7 +126,7 @@ state entail an answer the engine must give — a hit pays the single stake, bec
 a backgammon are both paid as multiples of it — that answer is its own entry, carrying
 `derivedFrom` and no locator or quote: its sources' citations are its citation. Do not put the
 inference inside one of the source entries, where it passes as stated. See
-[0012](decisions/0012-a-fact-the-corpus-implies-is-a-derived-entry.md).
+0012.
 
 **Cite, do not copy.** The map records where a rule lives and what it is called. It does not
 reproduce the corpus. For a licensed corpus that is a legal requirement; for every corpus it
@@ -153,7 +152,7 @@ the entries that use the vocabulary cannot be interpreted at all, and nothing el
 says a board has twenty-four points or that the course has a direction. Both were missed on the
 first pass of the second trial for the same reason: a mapper hunting for rules reads past
 vocabulary. `point-designations` and `direction-of-travel` are the instances
-([#13](https://github.com/brandonifco/rules-factory/issues/13)).
+(#13).
 
 **Advice is not a rule, and it is not always in its own section.** A corpus usually
 separates guidance from obligation — but not reliably, and not sentence by sentence. "It is
@@ -163,7 +162,7 @@ otherwise map it as a rule, or drop it silently, and silently is worse because t
 reader cannot tell which happened. A passage that produced **no entry at all** has no entry to
 note it in, and that is the passage a reader most needs to know was seen: record it in
 `mapping-inventory.json` beside the map, as a unit with a ground and a note
-([the inventory](mapper.md#the-inventory)). `mapper inventory` counts what neither a quote nor a
+(the inventory). `mapper inventory` counts what neither a quote nor a
 rejection accounts for.
 
 **Record what gates an entry, separately from what it depends on.** A corpus with turn
@@ -175,8 +174,8 @@ one reachable, `suspendedBy` for a rule that makes it unreachable while it holds
 the condition and you have written a second implementation of the rule in a format nothing
 executes. A gate is itself a rule the corpus states, so it already has an entry; if the gate you
 want to record has none, the finding is that the map is missing an entry. See
-[0003](decisions/0003-a-phase-gate-names-a-rule-not-a-condition.md) and
-[0011](decisions/0011-a-gate-has-a-direction.md).
+0003 and
+0011.
 
 **Ask of every gate which entries it reaches, not only the obvious ones.** A rule that suspends
 a player's whole turn reaches the throw and everything a throw leads to; the backgammon map
@@ -187,7 +186,7 @@ A stateless corpus has no phases, but it can still have gates. A rule it lets a 
 set aside is one: a Part 107 waiver suspends every regulation § 107.205 lists while it is held.
 Where that rule is outside your slice, name it with a `scope: out` entry. Whether it holds is a
 fact the caller states and the engine never infers
-([0021](decisions/0021-a-gate-outside-the-slice-is-held-by-the-caller.md)).
+(0021).
 
 **Do not classify while walking.** A first pass that is simultaneously deciding value versus
 operation, in scope versus out, produces worse results at both. Enumerate first.
@@ -201,8 +200,7 @@ Each entry gets three verdicts.
 Does the corpus state a **fact**, a **procedure**, or **a condition the engine cannot
 check**?
 
-A fact is a value: a table of thresholds, a list of conditions, a creature's statistics, a
-contribution limit for a given year. Values live in the engine's `Data` layer. They are
+A fact is a value: a table of thresholds, a list of exemptions, a vehicle's specifications, a contribution limit for a given year. Values live in the engine's `Data` layer. They are
 transcribed and verified against the source, and the whole table is verified, never a
 sample — a table is exactly the kind of thing where a spot check passes and the transcription
 is still wrong.
@@ -212,7 +210,7 @@ computed. Operations live in the `Rules` layer and consume values. **In a corpus
 random values, an operation whose own resolution rolls says what it draws and how many times**
 (`draws`). The draw goes on the entry that makes the roll, not on the gates and cross-references that
 lead to it, so that each draw is counted once
-([0025](decisions/0025-an-assertion-names-who-asserts-it-and-an-operation-names-what-it-draws.md)).
+(0025).
 
 An **assertion** is neither: an **open term the corpus deliberately delegated, having said
 what it is measured against or what set of values it may take**. A regulation requiring that a
@@ -228,28 +226,20 @@ names as supplying or deciding the fact, in the corpus's words, found in the evi
 note quotes, such as a section's lead-in. Where the corpus names nobody, as with *"(as may have been
 agreed)"*, the value is `caller` and the note says so. Do not supply a party the text does not name
 because it is the obvious one. See
-[0025](decisions/0025-an-assertion-names-who-asserts-it-and-an-operation-names-what-it-draws.md).
+0025.
 
-**"The GM decides" is the same instruction as "the caller states".** A rulebook hands its referee
-what a regulation hands its operator, and an engine owes both the same contract. The SRD 5.2.1
-combat slice does it five times, and the engine demands a statement for each and infers none:
-whether the table plays on a square grid (`grid-play` — a parameter with no entry of its own, and
-"a Speed in squares asked for is not a grid"), whether a creature is underwater and whether it has
-a Swim Speed (`underwater-melee`), whether a creature the corpus does not name — it names a
-domesticated horse and a mule — is trained to accept a rider
-(`mount-control-requires-training`), and whether the GM requires an action for an activity
-(`gm-requires-action`, an assertion whose decider is checked against the map's `assertedBy`). A
+**"The referee decides" is the same instruction as "the caller states".** A rulebook hands its referee what a regulation hands its operator, and an engine owes both the same contract. One trial slice does it five times, and the engine demands a statement for each and infers none: whether the premises are let furnished (a parameter with no entry of its own), whether a notice was served by hand or by post, whether a party the corpus does not name by description is one its clause reaches, and whether the owner requires consent for a step (an assertion whose decider is checked against the map's `assertedBy`). A
 statement left out is an `ArgumentException` naming it, never a default and never an unresolved
 result.
 
 What goes wrong when an engine infers instead is not that it is wrong more often. It is that
 nothing afterwards says which answers were the corpus's. An engine that assumed the grid would
-price a move in squares and cite p. 13 for it; one that read *"and similar creatures"* for itself
+price a move in units the corpus never fixes and cite a page for it; one that read *"and similar parties"* for itself
 would answer for a giant spider in the corpus's voice. Where the gate is outside the slice the
 caller holds it
-([0021](decisions/0021-a-gate-outside-the-slice-is-held-by-the-caller.md)); where the fact is one
+(0021); where the fact is one
 the rule tests, the caller states it and the answer records who did
-([0025](decisions/0025-an-assertion-names-who-asserts-it-and-an-operation-names-what-it-draws.md)).
+(0025).
 
 *Judgement the corpus deliberately delegates* looks ambiguous and is not. "If the pilot
 determines it would be in the interest of safety" is not a defect in the text — the corpus
@@ -257,7 +247,7 @@ is perfectly clear that the decision belongs to the pilot. Classifying it as amb
 report a deliberate delegation as a defect.
 
 **Whose fact it is decides nothing.** Until
-[0010](decisions/0010-whose-fact-it-is-does-not-decide-the-kind.md) this section also listed
+0010 this section also listed
 *"facts about the physical world"* — whether it was raining, whether a person was under
 cover — as assertions. **That is withdrawn.** It is true that the engine consumes such
 facts and does not derive them, and false that they are therefore rules: the airspace class,
@@ -285,7 +275,7 @@ it. A rule that is simply absent from the map is indistinguishable from one nobo
 **Three states, and the map must tell them apart.** Read and declined; read and *not in the
 corpus at all*; and nobody looked. The first two are both `scope: out` and the third is a
 missing entry, so until
-[0009](decisions/0009-absence-is-a-verdict-with-evidence.md) the map spelled all three the
+0009 the map spelled all three the
 same — and this section asked for the difference in a **reason string**, which is the carrier
 0003, 0004 and 0005 each rejected. It is now structural:
 
@@ -303,7 +293,7 @@ same — and this section asked for the difference in a **reason string**, which
 first.** A section is a unit of the corpus's layout; `scope` is a judgement about a rule. The
 backgammon map excluded *Hints for Play* wholesale as advice and so lost the only authority in
 the corpus for how many faces a die has
-([#20](https://github.com/brandonifco/rules-factory/issues/20)). Two entries citing one section
+(#20). Two entries citing one section
 with opposite verdicts is the correct shape, not a conflict.
 
 **Follow every cross-reference the corpus makes.** *"Except as provided in paragraph (d)"* is a
@@ -311,7 +301,7 @@ reference, and a reference is an entry or a recorded reason there is none. Decla
 `crossReferences`, quoting the words that make it. Before mapping, write the words this corpus
 points with into its manifest's `pointerPhrases`, taken from its text, so the check can see the
 pointers you did not notice
-([0026](decisions/0026-a-meaning-the-same-corpus-gives-elsewhere-is-an-entry-and-a-corpus-declares-its-pointers.md)).
+(0026).
 A term the same corpus defines outside your slice, such as a glossary entry, is a `scope: out`
 entry quoting the definition. Declare it in `crossReferences` anchored on the term, and add it to
 `dependsOn` when the rule cannot be resolved in some case without it. It is never
@@ -336,14 +326,14 @@ at the 2020 date and seven in 2026, and *night* is not among them at either; the
 *"No person may operate a small unmanned aircraft system during night"* — **is** the
 undefined word and nothing else. Both entries are now `definedElsewhere` against 14 CFR
 § 1.1 and both decline with `MissingRulesData`
-([#33](https://github.com/brandonifco/rules-factory/issues/33)).
+(#33).
 
 **What the corpus supports instead:** the amendment **added a delegated standard to a rule
 that was already undecidable, for a different reason, at both dates.** That is weaker than the
 claim withdrawn, and it is the restatement
-[examples/faa-part-107-temporal](../examples/faa-part-107-temporal/README.md) carries. What
+examples/faa-part-107-temporal carries. What
 survives untouched is the reason a map is a statement about one text: under
-[0005](decisions/0005-a-field-earns-its-place-by-being-checkable.md) the newer entry gains an
+0005 the newer entry gains an
 assertion dependency (`flash-rate-sufficient`) that has no 2020 counterpart, without the
 engine changing at all. Re-mapping a revised corpus re-asks `kind`, `clarity` and the
 dependency graph of every entry it touches rather than carrying the previous verdict forward.
@@ -357,8 +347,8 @@ finding, and it is why trial 1's undefined-term sweep exists.
 Regulations and rulebooks illustrate their rules. Most illustrations state no rule and are
 declined: they apply rules the map already has, and Phase 6 is where they belong, as tests. Three
 of them are not, and the mapper decides which this one is
-([0031](decisions/0031-an-example-that-bounds-a-term-is-recorded-as-a-bound.md),
-[#216](https://github.com/brandonifco/rules-factory/issues/216)):
+(0031,
+#216):
 
 - **An example that is the corpus's only authority for a rule no operative sentence states is an
   entry**, in scope, with the example as its `locator` and its `evidence`. § 1.121-1(b)(4)
@@ -391,7 +381,7 @@ what was read.
 Mechanical checks prove a quote is *where* an entry says, never that it *says* what the entry
 says; they caught 1 of 15 injected comprehension errors. So no map goes on to Phase 4 until a
 second mapping of the same slice has been compared with it and every disagreement resolved. See
-[0014](decisions/0014-a-map-is-checked-by-a-blind-second-mapping.md).
+0014.
 
 **Who maps.** Someone who has not seen the first map, its notes, its decision records or its
 findings — and does not get them through a prompt, a brief or a review thread that states the
@@ -410,7 +400,7 @@ entry name, which a document also uses for its own reasons, is NOT VERIFIED unti
 edits it away or acknowledges it with a reason. It writes the redacted documents, `REDACTIONS.md`
 and `staged-inputs.json`, whose digests the blind-second-mapping review names and
 `scripts/validate.sh` re-checks. What no scan sees is paraphrase, which is what the declared
-substitutions are for ([#223](https://github.com/brandonifco/rules-factory/issues/223)).
+substitutions are for (#223).
 
 **What is compared,** entry against the entry that quotes the same text:
 
@@ -432,16 +422,8 @@ recorded as `blind-second-mapping` names one, or says out loud that it has none.
 
 **What it does not catch.** Two mappers who share a misreading agree, and agreement is silent.
 
-**And what only an executed map catches.** Building the SRD 5.2.1 combat engine turned up three
-defects no reading had. `attack-resolution` declares `draws` — a d20 and the attack's damage dice —
-while its `dependsOn`, `attack-rolls` and `damage-rolls`, are both `scope: out`: an engine of this
-extent that drew a bare d20 would have nothing to read it against. `falling-off` declares a d20 for
-a DC 10 Dexterity saving throw whose rule, `saving-throws`, is `scope: out` for the same reason.
-And `wrong-location-misses`' note says *"A seeded engine draws for it"* on an entry with no `draws`
-at all — consistent only once you find that the roll belongs to `attack-resolution`, and a
-contradiction of [0025](decisions/0025-an-assertion-names-who-asserts-it-and-an-operation-names-what-it-draws.md)
-until you do. All three survived the first mapping; `wrong-location-misses`' note survived the
-blind second mapping, which read the entry and agreed it was clear; and the two `draws` fields were
+**And what only an executed map catches.** Building one trial engine turned up three defects no reading had. An operation entry declared `draws` — a die, and the dice of what it resolved — while both entries its `dependsOn` named were `scope: out`: an engine of that extent drawing a bare die would have had nothing to read it against. A second entry declared a die for a test whose own rule was `scope: out` for the same reason. And a third's note said *"A seeded engine draws for it"* on an entry with no `draws` at all — consistent only once you find that the roll belongs to the operation it depends on, and a contradiction of 0025
+until you do. All three survived the first mapping; the third's note survived the blind second mapping, which read the entry and agreed it was clear; and the two `draws` fields were
 added by a change that carried an independent verdict of its own, three rounds of it, and came
 through unremarked. An implementer had to ask "what does this engine actually roll" before any of
 them was a defect. Reading a map checks that it says what the corpus says; executing it checks
@@ -451,7 +433,7 @@ that the parts fit each other.
 bytes the review covers and points at the comparison and resolution record. `validate.sh` fails a
 map whose bytes no longer match, so a map changed after its review is refused until it is
 reviewed again or given a recorded exemption. See
-[0017](decisions/0017-a-map-change-carries-a-review-of-its-bytes.md).
+0017.
 
 ## Phase 4 — Decide the ambiguities
 
@@ -470,9 +452,9 @@ caller's to resolve rather than the engine's.
 **An unresolved question the corpus bounds by worked example carries those bounds.** Phase 3
 decides which examples they are; the fate does not change, because a bound narrows the defensible
 readings without picking one. What it buys is later: an owner who rules on the question under
-[0027](decisions/0027-an-owners-ruling-is-held-by-the-engine-and-checked-by-the-factory.md) states
+0027 states
 the line the ruling draws in the bounded dimension, and a ruling that contradicts an example fails
-the engine's gate, naming it ([0031](decisions/0031-an-example-that-bounds-a-term-is-recorded-as-a-bound.md)).
+the engine's gate, naming it (0031).
 
 **A standard is not a gap, and it is not an ambiguity either.** "Well clear", "reasonable
 protection", "a flash rate sufficient to avoid a collision" — a regulator who writes these has
@@ -492,12 +474,12 @@ Because `kind` is entry-level, split the standard out rather than reclassifying 
 consumes it: `night-operation` states a computable rule about training and lighting *and*
 defers the flash rate. The standard becomes `flash-rate-sufficient`, an assertion, and
 `night-operation` depends on it — the same move as `speed-limit` and `speed-within-limit`.
-Decided in [0005](decisions/0005-a-field-earns-its-place-by-being-checkable.md).
+Decided in 0005.
 
 **There is no test for recognising one. There is a procedure, and it is three gates in order.**
 Five one-sentence tests have failed, three of them after surviving a review; the last two each
 agreed with the corpus they were derived from and were refuted on the other. Decided in
-[0008](decisions/0008-recognising-a-delegated-standard-is-a-procedure-not-a-test.md), which
+0008, which
 carries the counts; `corpus-map.md`'s `kind: assertion` section states the same three gates, and
 the two documents say the same thing deliberately, because when they did not the maps followed
 this one and were wrong.
@@ -530,8 +512,8 @@ states both, one sentence apart and both about the same third party: *"directly
 participating"* is a gap, *"reasonable protection **from a falling small unmanned
 aircraft**"* is an assertion. Deciding by who could answer would have made them the same, and
 they are not. Decided in
-[0010](decisions/0010-whose-fact-it-is-does-not-decide-the-kind.md), which closes the half of
-[#11](https://github.com/brandonifco/rules-factory/issues/11) 0005 left open by finding that
+0010, which closes the half of
+#11 0005 left open by finding that
 there is no "facts a person asserts" category: ten of the twenty measured instances are
 assertions, six are gaps, and two paragraphs split inside themselves.
 
@@ -561,37 +543,29 @@ incompatible terms does not. Every entry bearing on the same contradiction carri
 entry may answer it without contradicting every other member. A conflict's members share a
 fate, and where that fate is `decision` they name the same record; otherwise one side is
 settled and the other left open with nothing noticing. See
-[0007](decisions/0007-a-conflict-is-a-question-not-a-pair.md).
+0007.
 
 **Ask whether the unsettled point changes a draw count.** Under `randomness: seeded`, an engine that
 rolls once where another rolls three times is replaying a different game, not just giving a different
-answer. What counts as a group for a group Initiative roll is the instance. Mark such an ambiguity
+answer. What counts as one party for a jointly made roll is the instance. Mark such an ambiguity
 `affectsDraws: true`, and let the entry's `draws` name the alternatives (0025).
 
-**What stops an engine is the text, and a table never notices.** Fifty-four entries of the SRD
-5.2.1 combat slice were implemented from the prose in one evening. What the engine could not answer
-came down to six questions, and every one is a phrase a human table settles silently and
-continuously: what makes creatures *"a group of identical creatures"*; what *"an appropriate
-anatomy"* for a mount is; who is covered by *"and similar creatures"* beside the horse and the
-mule; whether *"two sizes larger or smaller"* means exactly two; whether combat ends when both
-sides agree and neither is defeated; and how far the Disengage action's protection reaches. They
+**What stops an engine is the text, and a reader never notices.** Fifty-four entries of one trial slice were implemented from the prose in one evening. What the engine could not answer came down to six questions, and every one is a phrase a human reader settles silently and continuously: what makes two things *"of the same description"*; what *"a suitable arrangement"* is; who is covered by *"and similar parties"* beside the two the text names; whether *"two grades higher or lower"* means exactly two; whether a proceeding ends when both sides agree and neither has won; and how far one protective step reaches. They
 sit in three different places in the map, and the difference matters:
 
-- Four are **unresolved ambiguities**, and not all of one shape. Three are open terms the corpus
-  bounds with nothing and delegates to nobody — `group-initiative`, `appropriate-anatomy`,
-  `mount-control-requires-training` — which is this phase's gate 3 returning a gap. The fourth,
-  `moving-through-creatures`, is a sentence that reads two ways: *"two sizes larger or smaller"* is
-  exactly two or at least two, and it permits four kinds of passage without saying that every other
-  creature's space is barred.
-- One is a **conflict**: `next-round` and `combat-end` carry the same question under
-  `does-combat-end-without-a-defeat`, because p. 13 continues the fight while neither side is
-  defeated and p. 14 ends it when both sides agree.
-- One is on an entry the map calls **clear**, and correctly. The slice's sentence — *"You can
-  avoid provoking an Opportunity Attack by taking the Disengage action"* — states no limit, and it
-  is the same corpus's Rules Glossary, outside the extent, that narrows the protection to your own
-  movement and to the rest of your turn. The map records that in `opportunity-attack-avoidance`'s
-  note and names `disengage-action` in `dependsOn`, and asks no question, which is right: the
-  ambiguity is not in the sentence, it is in which of two passages governs.
+- Four are **unresolved ambiguities**, and not all of one shape. Three are open terms the
+  corpus bounds with nothing and delegates to nobody, which is this phase's gate 3 returning a
+  gap. The fourth is a sentence that reads two ways: *"two grades higher or lower"* is
+  exactly two or at least two, and it permits four cases without saying that every other case
+  is barred.
+- One is a **conflict**: two entries carry the same question under one slug, because one page
+  continues the proceeding while neither side has won and the next ends it when both sides
+  agree.
+- One is on an entry the map calls **clear**, and correctly. The slice's sentence stated no
+  limit, and it was a passage of the same corpus outside the extent that narrowed the
+  protection. The map records that in the entry's note and names the outside passage's entry
+  in `dependsOn`, and asks no question, which is right: the ambiguity is not in the sentence,
+  it is in which of two passages governs.
 
 The map had already recorded five of the six; what building added was that these, and nothing in
 the engineering, were what the engine could not get past. Once the owner ruled, applying all six
@@ -605,10 +579,9 @@ engine's overlay, with the words of the question it answers, who ruled, when, th
 decision record, and the tests that show it. Every result that relies on the answer says so. The
 parts not ruled on still decline. The factory refuses a ruling that no longer matches the map's
 question. Decided in
-[0027](decisions/0027-an-owners-ruling-is-held-by-the-engine-and-checked-by-the-factory.md).
+0027.
 
-**Four things 0027 was awkward about the first time an engine adopted it**, found applying the six
-rulings above to `srd-52-combat`. They are observations, not amendments; 0027 stands as written.
+**Four things 0027 was awkward about the first time an engine adopted it**, found applying the six rulings above to one engine. They are observations, not amendments; 0027 stands as written.
 
 - **The bootstrap runs backwards.** A ruling's `tests` must each already be one of the entry's own
   `tests` (§ 5.4), and the engine's code cannot compile until `produce` has written
@@ -620,20 +593,15 @@ rulings above to `srd-52-combat`. They are observations, not amendments; 0027 st
   bootstrap is in, and a script driving it accepts that code rather than reading it as success.
 - **There is no carrier for a ruling on an entry the map calls clear.** Disengage is the case: the
   map is right that the slice's sentence is clear, so there is no `ambiguity.question` for a span
-  to quote, and § 5.1 refuses a ruling there. `srd-52-combat` holds that answer as the engine's own
-  `OwnerDecision`, a type deliberately not `OwnerRuling`, named on every answer that rests on it.
+  to quote, and § 5.1 refuses a ruling there. One engine holds that answer as its own `OwnerDecision`, a type deliberately not `OwnerRuling`, named on every answer that rests on it.
   It is a different claim with a different carrier, which is correct, and it means an owner's six
   answers arrive in two shapes.
 - **A conflict is one question on two entries, and a ruling is held per entry.** § 5.1 allows a
-  ruling only where the overlay says `implemented`. `combat-end` is not built, so the answer that
-  both sides agreeing ends the combat sits on `next-round` alone; `combat-end` declines as an
-  unbuilt in-scope rule and carries nothing. When it is built it takes a second ruling, with the
+  ruling only where the overlay says `implemented`. One of the two is not built, so the answer that both sides agreeing ends the proceeding sits on the other alone; the unbuilt one declines as an unbuilt in-scope rule and carries nothing. When it is built it takes a second ruling, with the
   same answer, its own id and its own span. One decision, two overlay items, and between them a
   period in which one side of a conflict is answered and the other is silent about why.
 - **`declines: []` can sit beside a live declining path.** It means the *question* is fully ruled,
-  which is exactly what `appropriate-anatomy/gm-decides` does: the question named nobody who
-  decides, and the ruling names the GM. The entry still declines whenever the GM has stated
-  nothing — that is a missing fact, not a part of the question, and a decline relies on no ruling
+  which is exactly what one open-term ruling does: the question named nobody who decides, and the ruling names the referee. The entry still declines whenever the referee has stated nothing — that is a missing fact, not a part of the question, and a decline relies on no ruling
   (§ 4). Both readings of `declines: []` are defensible from the words, and the engine's record has
   to say which one it means.
 
@@ -677,43 +645,32 @@ writes one issue per entry still to build, from the map merged with the engine's
 by title. Nothing is committed into the engine: a rendering of the overlay kept beside the overlay
 goes stale between an entry being built and the next `factory produce`, and because every item
 states its position out of the total, building any entry rewrites nearly all of them
-([#243](https://github.com/brandonifco/rules-factory/issues/243)). `factory backlog --render --dir
+(#243). `factory backlog --render --dir
 <engine>` prints the same rendering whenever anyone wants to read it as a document.
 
 **And batch by the dependency graph too, not by subject.** Rules form a web, and a chapter is a
-slice through it that cuts edges. Every batch of the SRD 5.2.1 combat build was named after a
-subject, and every one of them had to build entries that were not in it. *Movement and space* had
-to build `grid-square-size` and `size-categories`, two `kind: value` entries nobody had assigned
-it, because four of its own entries `dependsOn` them. *Mounted combat and underwater*, the fourth
-batch, had to build six more from two directions at once: `cover-degree`, `melee-within-reach`,
-`single-range` and the value `reach`, which the attacks batch had left `attack-modifiers` and
-`attack-target` declining and citing; and `move-up-to-speed` and `movement-deduction`, the movement
-budget its own `mounting-cost` spends.
+slice through it that cuts edges. Every batch of one trial build was named after a subject, and every one of them had to build entries that were not in it. The first had to build two `kind: value` entries nobody had assigned it, because four of its own entries `dependsOn` them. The fourth had to build six more from two directions at once: four values and operations an earlier batch had left two of its own entries declining and citing, and two more that its own budget rule spends.
 
 **Correspondence row 5 is what forces this, and nothing warns anyone in advance.** An operation
 whose `value` dependency is unimplemented answers `MissingRulesData`. So a batch that builds the
 operations of its subject and leaves a value outside it `mapped` has built an engine whose answers
-the map says are unavailable — an engine cannot divide a Speed by a square size it has not built,
-or count "two sizes larger" along an order it does not hold. A backlog item's page lists its
+the map says are unavailable — an engine cannot divide a distance by a unit it has not built, or count "two grades higher" along an order it does not hold. A backlog item's page lists its
 `dependsOn` and says nothing about what row those dependencies put it on. Close the batch under
 `dependsOn` when you cut it, or the first builder discovers the closure and the rest discover it
 one decline at a time.
 
 ## Phase 6 — Implement
 
-**Most of a modern rulebook turns out to be machine-followable, and the map says how much.** The
-third engine the factory produced is the SRD 5.2.1 Combat chapter, pp. 13–16: ninety-five entries,
-seventy of them in scope. Fifty-four are implemented — seventy-seven per cent of the mapped slice —
+**Most of a modern rulebook turns out to be machine-followable, and the map says how much.** The third engine the factory produced is a four-page chapter of one trial corpus: ninety-five entries, seventy of them in scope. Fifty-four are implemented — seventy-seven per cent of the mapped slice —
 and each of the fifty-four answers from the corpus's own words, with its citation. What the
 remaining forty-one are is worth stating exactly, because "not implemented" hides three different
 things:
 
-- **Twenty-five are `scope: out`**, and twenty-one of those are rules this corpus states somewhere
-  the map's extent does not cover: ten in the Rules Glossary, the rest in *Playing the Game*
-  (attack rolls, saving throws, Advantage and Disadvantage, the actions table) and *Damage and
-  Healing*. They are the boundary of a four-page slice, not a limit of the method. Two of the other
-  four are `absentFrom` verdicts — `flanking` and `surprise-round`, rules a reader of another
-  edition expects and this text does not state.
+- **Twenty-five are `scope: out`**, and twenty-one of those are rules this corpus states
+  somewhere the map's extent does not cover: some in a glossary, the rest in earlier chapters
+  the slice builds on. They are the boundary of a four-page slice, not a limit of the method.
+  Two of the other four are `absentFrom` verdicts, rules a reader of another edition expects
+  and this text does not state.
 - **Sixteen are in scope and simply not built yet.** They decline `UnsupportedRule` and name
   themselves, and the backlog — the engine's issues — holds them.
 - **Nineteen in-scope entries carry a question the corpus does not settle** (eleven of them among
@@ -744,15 +701,15 @@ player expects. That reasoning is not stored as prose in the map. It becomes **a
 what it proves** — one that constructs the case and fails if the consequence stops holding —
 and the entry names that test — among its `tests`, with the mutation that turned it red, once
 the entry is `implemented`. No field holds the reasoning itself. Decided on
-[#16](https://github.com/brandonifco/rules-factory/issues/16), for the reason
-[0005](decisions/0005-a-field-earns-its-place-by-being-checkable.md)'s rail E and
-[0004](decisions/0004-adapter-reach-is-a-property-of-the-entry.md) already gave: prose about a
+#16, for the reason
+0005's rail E and
+0004 already gave: prose about a
 claim cannot be shown to have gone wrong, and a test can. "This branch is unreachable" will
 silently become false the day the opening rule changes; as a sentence it rots, as a test it
 fails.
 
 This is different from a derived *entry*
-([0012](decisions/0012-a-fact-the-corpus-implies-is-a-derived-entry.md)). A derived entry is an
+(0012). A derived entry is an
 answer the engine must give that no sentence states, and it follows from two or more rules. A
 derived consequence is a property of answers that are each stated — often of one entry alone —
 and nobody asks the engine for it; it is what a test asserts about the engine's answers.
@@ -764,8 +721,7 @@ shown to have got wrong.
 **Preserve determinism deliberately.** Changes to random consumption, ordering, serialization
 or identity are compatibility events. An extra draw shifts every later result.
 
-**Parallel agents cost coordination, not correctness.** The SRD combat slice went from four
-implemented entries to fifty-four in one evening, four agents working four batches at once: four
+**Parallel agents cost coordination, not correctness.** One trial slice went from four implemented entries to fifty-four in one evening, four agents working four batches at once: four
 pull requests, four decision records, twenty-two findings against the map, three of them faults in
 it. No later batch had to undo an earlier one's work. What it cost was three collisions, all in
 shared bookkeeping:
@@ -781,12 +737,12 @@ shared bookkeeping:
   files while closing sixteen issues. Issues survive it — `backlog --create` matches by the entry
   marker in the body, never by title — but two batches in flight always conflicted in `backlog/`.
   This is the evidence that
-  [#243](https://github.com/brandonifco/rules-factory/issues/243) acted on: the backlog is no
+  #243 acted on: the backlog is no
   longer committed into an engine, so there is nothing left to renumber in a diff.
 - **A message that said something untrue.** `produce` ended with `committed to <engine>: …` while
   making no commit at all. All four agents read it as a git commit and committed by hand each time.
   The wording was fixed to the behaviour in factory 0.8.0
-  ([#158](https://github.com/brandonifco/rules-factory/issues/158)); the behaviour was always right.
+  (#158); the behaviour was always right.
 
 **The recommendation, and it is the only one this pays for:** fewer batches, shaped by the
 dependency graph rather than by subject (Phase 5), and a decision made before dispatch about
@@ -798,7 +754,7 @@ list — the index of the chosen play among the legal plays — then the order a
 list are part of the replay format. The engine states the rule that fixes them where the list is
 produced, and ships a test pinning the whole list for at least one non-trivial position, proven
 able to fail by permuting it. The kernel stays out: the list is the engine's. Decided on
-[#22](https://github.com/brandonifco/rules-factory/issues/22); `hoyle-backgammon` pins
+#22; `hoyle-backgammon` pins
 `LegalPlays.For` this way.
 
 ## Phase 7 — Verify against the source
@@ -850,7 +806,7 @@ has to judge — which is the work, and is not automatable by either diff alone.
 The entry's status advances, and it records which ruleset revision implemented it **and the
 tests that prove it, each with the mutation that was recorded turning it red** — a written
 mutation, not a placeholder standing in for one. Since
-[#239](https://github.com/brandonifco/rules-factory/issues/239) the engine's gate refuses
+#239 the engine's gate refuses
 `PENDING` and its kind on an `implemented` entry, so the two-step of writing a placeholder,
 producing, and coming back with the real mutation no longer passes in the middle
 ([corpus-map.md](corpus-map.md)).
@@ -868,9 +824,9 @@ after the flip.
 
 An entry that
 cannot name a test that has been seen to fail does not advance to `implemented`; it stays
-`mapped`, whatever code exists ([#2](https://github.com/brandonifco/rules-factory/issues/2)),
+`mapped`, whatever code exists (#2),
 **and the engine declines it with `UnsupportedRule` until that test exists**
-([#47](https://github.com/brandonifco/rules-factory/issues/47)). Code for an unproven entry is not
+(#47). Code for an unproven entry is not
 reachable at runtime. An engine that answers an entry its map calls `mapped` breaks row 2 of the
 correspondence table, and the fix is to decline it or prove it, never to list it as an exception.
 That is
@@ -880,23 +836,20 @@ question `UnresolvedReason` answers at runtime, from the other side.
 
 **The declines are the product, not the shortfall.** A decline that names its reason, its citation
 and the entry that stopped it is a finished answer about a question nobody else in the pipeline can
-answer, and it is the part of an engine no rulebook, table or spreadsheet gives you. Three from the
-SRD combat engine, each naming something different:
+answer, and it is the part of an engine no rulebook, table or spreadsheet gives you. Three from one trial engine, each naming something different:
 
-- `cover-degree` answers Half, Three-Quarters or Total wherever the two readings of the Cover table
-  agree, and declines `RequiresInterpretation` for exactly one case: a creature covering *less*
-  than half of the target, where whether *"that covers at least half"* qualifies *"Another
-  creature"* decides the answer and the corpus does not choose. The decline names the one shape of
-  question the table does not settle, and leaves everything else answered.
-- While `cover-degree` was unbuilt, `attack-modifiers` — step 2 of an attack — declined
-  `UnsupportedRule` citing `cover-degree`, with the Advantage and Disadvantage it *had* determined
-  named in the decline. It names the missing dependency, not a failure, and it hands back the work
+- A table-reading entry answers one of three grades wherever the two readings of the table
+  agree, and declines `RequiresInterpretation` for exactly one case, where which of two
+  phrases a qualifier attaches to decides the answer and the corpus does not choose. The
+  decline names the one shape of question the table does not settle, and leaves everything
+  else answered.
+- While that entry was unbuilt, the operation that reads it — step 2 of a longer resolution —
+  declined `UnsupportedRule` citing it, with what it *had* determined named in the decline. It names the missing dependency, not a failure, and it hands back the work
   it did do.
-- `falling-off` states the DC 10 Dexterity saving throw, names `saving-throws` as where that roll
-  is made, draws nothing itself, and on a failed save declines `RequiresInterpretation` with what
-  the rule *did* determine — the rider falls off and lands Prone — in the attempt. What it names is
-  the gap: which unoccupied space within 5 feet, and what happens when there is none, the corpus
-  never says.
+- A third entry states the test to be made, names the `scope: out` entry where that roll is
+  made, draws nothing itself, and on a failure declines `RequiresInterpretation` with what the
+  rule *did* determine in the attempt. What it names is the gap: which of several places the
+  outcome lands in, and what happens when there is none, the corpus never says.
 
 An engine that guessed any of the three would be a better demo and a worse instrument. These are
 the answers a reader cannot get from the book, because the book does not know it is silent.
@@ -904,10 +857,10 @@ the answers a reader cannot get from the book, because the book does not know it
 ## What an engine owes its map's source, over time
 
 An engine does not own its map. The factory publishes it as a versioned package
-([0015](decisions/0015-a-map-is-published-as-a-versioned-package.md)), and the engine
+(0015), and the engine
 **references it and never copies it**, the way it references `rules-kernel`. A copy that goes
 stale does not fail, and it keeps passing indefinitely
-([#27](https://github.com/brandonifco/rules-factory/issues/27)). A dependency that falls behind
+(#27). A dependency that falls behind
 is visible to every tool that already exists. What the engine owes follows from that:
 
 1. **It depends on one exact version and can prove which one.** It references the package at an
@@ -919,13 +872,13 @@ is visible to every tool that already exists. What the engine owes follows from 
    does not get to correct its own copy, because it has no copy. Beside those three fields, the
    overlay holds the engine owner's `rulings` on unresolved questions, and the `declines` that
    say which parts of those questions still decline
-   ([0027](decisions/0027-an-owners-ruling-is-held-by-the-engine-and-checked-by-the-factory.md)).
+   (0027).
    They are the engine's and never the map's, so they are checked and never merged.
 3. **Its gate merges the overlay offline and checks the result.** Every overlay key names an
    entry in the package, and only the three fields are set. The package's own
    `tools/check-map.py --phase consumer` passes on the merge. The engine runs the checker it
    restored, not a copy, so a change to a status-dependent check reaches it with the next version
-   ([#51](https://github.com/brandonifco/rules-factory/issues/51)). The structural checks were run
+   (#51). The structural checks were run
    before the version existed, and an overlay cannot change their verdict, so the engine does not
    repeat them.
 4. **It moves when the source moves, and the version number says how hard that is.** A patch

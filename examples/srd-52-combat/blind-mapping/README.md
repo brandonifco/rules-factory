@@ -29,7 +29,11 @@ below are that material.
   `extent` as the reference (pages 13–16, where "Combat" ends part-way down p. 16), the locator
   grammar and exactly what the citation check tests. It names no entry and no verdict.
 - **Docs the mapper had:** `docs/method.md` and `docs/corpus-map.md` at `62e2d24` (the merge of
-  #108, which changed neither), redacted by [`redact.py`](redact.py). The first map added no SRD
+  #108, which changed neither), redacted by this trial's own `redact.py`. That file is gone:
+  [#223](https://github.com/brandonifco/rules-factory/issues/223) generalised it into
+  `python3 tools/mapper stage`, where staging a blind input is a step something runs and something
+  checks rather than a script inside the trial that needed it. [`REDACTIONS.md`](REDACTIONS.md) is
+  still what it did here. The first map added no SRD
   example to either doc, so the redaction is the backgammon one (54 of its 55 edits still matched;
   the page-extent example's target and replacement changed, because its old replacement, pages
   12–19, would have overlapped this slice) plus 12 edits for this corpus. Two of the kept edits'

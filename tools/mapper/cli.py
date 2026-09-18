@@ -1,12 +1,14 @@
 """The mapper's command line.
 
-Three commands today, and all of them are about the walk, because the walk is the part of the
-method that is mechanical: `protocol` says whether a corpus's protocol is one this mapper can
-act on, `pointers` performs the interrogation the protocol obliges and reports what it found,
-and `inventory` enumerates the units inside the declared extent and reports which of them the
-walk reached (#255). Producing a map is still done by hand (docs/method.md); what this makes
-checkable is that the walk was the walk this corpus requires, and how much of the extent it
-covered.
+What is here is the part of the method that is mechanical. `protocol` says whether a corpus's
+protocol is one this mapper can act on, `pointers` performs the interrogation the protocol
+obliges and reports what it found, `inventory` enumerates the units inside the declared extent
+and reports which of them the walk reached (#255), and `stage` produces the inputs a blind
+second mapping is given -- the documents with every worked example drawn from the corpus under
+mapping removed -- and, with `--verify`, holds a committed run to the digests of what it was
+given (#223). Producing a map is still done by hand (docs/method.md); what this makes checkable
+is that the walk was the walk this corpus requires, how much of the extent it covered, and that
+a second walk was blind.
 
 Four exit codes, the factory's four (README, *What the factory exits with*), because a caller
 that reads only `$?` must be able to tell what happened:
@@ -30,6 +32,7 @@ from mapper import corpus as corpus_step
 from mapper import inventory as inventory_step
 from mapper import pointers as pointers_step
 from mapper import protocol as protocol_step
+from mapper import staging as staging_step
 
 NOT_VERIFIED = 3
 
@@ -177,8 +180,62 @@ def command_inventory(args):
     return 0
 
 
+def command_stage(args):
+    """Stage the inputs a blind second mapping is given, or hold a staged run to them (#223).
+
+    Two directions over one record, because they are one claim: `stage` writes the redacted
+    documents and the digests of what it wrote, and `--verify` re-hashes those files and re-runs
+    the scan over them. The second is what `scripts/validate.sh` runs on every committed record,
+    so a run whose inputs were not the redacted ones is visibly not a blind run.
+    """
+    if args.verify:
+        problems, notes, checked = staging_step.verify(args.spec)
+        print(f"{args.spec}")
+        for note in notes:
+            print(f"  --  {note}")
+        for problem in problems:
+            print(f"  X  {problem}")
+        if problems:
+            print(f"\n{len(problems)} problem(s): this is not a record of a blind staging")
+            return 1
+        if checked == 0:
+            print("nothing was hashed or scanned -- this record proved nothing", file=sys.stderr)
+            return 1
+        print(f"  ok  {checked} file(s) hashed and re-scanned against the vocabulary recorded")
+        return 0
+
+    out = args.out or os.path.dirname(os.path.abspath(args.spec))
+    record, problems, unresolved = staging_step.stage(args.spec, out, args.corpus_root)
+    print(f"{args.spec} -> {out} (corpus {record['corpus']!r}, "
+          f"{len(record['vocabularyFrom'])} map(s) of it)")
+    for document in record["documents"]:
+        print(f"  {document['name']}: {document['edits']} edit(s), sha256 {document['sha256']}")
+    for ack in record["acknowledged"]:
+        print(f"  named and left in: {ack['document']} {ack['term']!r} x{ack['occurrences']}")
+    for problem in problems:
+        print(f"  X  {problem}")
+    # Printed whatever the verdict is: a run with a leak in it still has to be told what else it
+    # will have to rule on, or the next run finds them one at a time.
+    for item in unresolved:
+        print(f"  ?  {item['document']}:{item['line']}: {item['term']!r} is named by this "
+              f"corpus's maps and is a word a document uses for its own reasons")
+    print("  what this did not look for:")
+    for limit in staging_step.LIMITS:
+        print(f"    - {limit}")
+    if problems:
+        print(f"\n{len(problems)} problem(s): these documents are not staged")
+        return 1
+    if unresolved:
+        print(f"\nNOT VERIFIED: {len(unresolved)} occurrence(s) this cannot decide. Each is either "
+              f"an example to edit away or an acknowledgement to declare, with a reason")
+        return NOT_VERIFIED
+    print(f"\nstaged: nothing the corpus's maps coin is left in, "
+          f"{record['residue']['acknowledged']} occurrence(s) named and left in on purpose")
+    return 0
+
+
 COMMANDS = {"protocol": command_protocol, "pointers": command_pointers,
-            "inventory": command_inventory}
+            "inventory": command_inventory, "stage": command_stage}
 
 
 def main(argv=None):
@@ -200,6 +257,17 @@ def main(argv=None):
         if name == "inventory":
             sub.add_argument("--list", action="store_true",
                              help="print every unaccounted unit, not the first ten")
+    # `stage` takes a staging spec and not a map: the map is one of the things the spec names
+    # (#223). Its own parser rather than another arm of the loop above, because it shares no
+    # argument with the three that read a map.
+    stage = subparsers.add_parser("stage", help="stage the inputs a blind second mapping is given")
+    stage.add_argument("spec", help=f"the staging spec, or with --verify a "
+                                    f"{staging_step.RECORD_FILENAME} to check")
+    stage.add_argument("--out", help="where the bundle is written; beside the spec by default")
+    stage.add_argument("--corpus-root", help="where the corpus's other maps are looked for; two "
+                                             "levels above the map by default")
+    stage.add_argument("--verify", action="store_true",
+                       help="check a committed record against the files beside it")
     args = parser.parse_args(argv)
     try:
         return COMMANDS[args.command](args)

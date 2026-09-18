@@ -205,7 +205,10 @@ CI proves this on every pull request. The `validate` job runs
   mapping catches most of them, and every map in this repository must carry a review of its exact
   bytes ([0017](docs/decisions/0017-a-map-change-carries-a-review-of-its-bytes.md)). The
   `hoyle-backgammon` map, which the `engine` job builds from, carries a legacy exemption rather
-  than a review.
+  than a review. What the second mapper was *given* is now staged by `tools/mapper stage` and
+  recorded by digest, so an unredacted input is visible
+  ([#223](https://github.com/brandonifco/rules-factory/issues/223)); paraphrase in a staged
+  document is still nobody's check.
 - **That a rule is implemented.** A produced engine answers each entry that is not
   `implemented` with a decline citing its locator. The rules themselves are hand-written
   handlers, and the backlog — the GitHub issues, and `factory backlog --render` — lists the ones

@@ -29,6 +29,7 @@ _spec.loader.exec_module(check_map_review)
 MAP = b'{"schemaVersion": 1, "entries": []}\n'
 EDITED = b'{"schemaVersion": 1, "entries": [{"id": "new"}]}\n'
 COMMIT = "0" * 40
+UNSET = object()
 
 
 def digest(data):
@@ -49,16 +50,26 @@ class Repo:
         doc = {"reviews": {name: review}}
         (self.dir / "review.json").write_text(json.dumps(doc), encoding="utf-8")
 
-    def blind(self, sha=None, commit=COMMIT):
+    def blind(self, sha=None, commit=COMMIT, staged=UNSET, certain=0):
         (self.dir / "blind").mkdir(exist_ok=True)
         (self.dir / "blind" / "results.json").write_text(
             json.dumps({"reference": {"commit": COMMIT, "path": "x"}}), encoding="utf-8")
         (self.dir / "blind" / "resolutions.json").write_text("[]", encoding="utf-8")
-        self.review({
+        # What the second mapper was given (#223). The record's own digests are `mapper stage
+        # --verify`'s business, run by validate.sh; what this checker asks is that the review
+        # names one and that it does not record a leak.
+        (self.dir / "blind" / "staged-inputs.json").write_text(
+            json.dumps({"recordVersion": 1, "residue": {"certain": certain}}), encoding="utf-8")
+        review = {
             "sha256": sha or digest(MAP), "method": "blind-second-mapping",
             "comparison": "blind/results.json", "resolutions": "blind/resolutions.json",
             "compared": {"commit": commit, "sha256": "1" * 64},
-        })
+        }
+        if staged is not UNSET:
+            review["staged"] = staged
+        else:
+            review["staged"] = "blind/staged-inputs.json"
+        self.review(review)
 
     def run(self):
         out, err = io.StringIO(), io.StringIO()
@@ -75,6 +86,47 @@ class BlindSecondMapping(unittest.TestCase):
             code, out = repo.run()
             self.assertEqual(code, 0, out)
             self.assertIn("ok  examples/widget/corpus-map.json  blind-second-mapping", out)
+
+    def test_a_blind_review_that_names_no_staged_inputs_fails(self):
+        """#223: the comparison compares two maps and cannot see what the mapper was given."""
+        with tempfile.TemporaryDirectory() as tmp:
+            repo = Repo(tmp)
+            repo.blind(staged=None)
+            code, out = repo.run()
+            self.assertEqual(code, 1, out)
+            self.assertIn("blind-second-mapping needs staged", out)
+
+    def test_a_staging_record_that_is_not_there_fails(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            repo = Repo(tmp)
+            repo.blind(staged="blind/nowhere.json")
+            code, out = repo.run()
+            self.assertEqual(code, 1, out)
+            self.assertIn("does not exist", out)
+
+    def test_a_staging_record_that_says_it_leaked_fails(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            repo = Repo(tmp)
+            repo.blind(certain=1)
+            code, out = repo.run()
+            self.assertEqual(code, 1, out)
+            self.assertIn("those inputs were not redacted", out)
+
+    def test_a_run_that_predates_staging_says_so_out_loud(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            repo = Repo(tmp)
+            repo.blind(staged={"notStaged": {"issue": "#250", "reason": "predates the command"}})
+            code, out = repo.run()
+            self.assertEqual(code, 0, out)
+            self.assertIn("NOT STAGED (#250)", out)
+
+    def test_not_staged_without_an_issue_fails(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            repo = Repo(tmp)
+            repo.blind(staged={"notStaged": {"reason": "predates the command"}})
+            code, out = repo.run()
+            self.assertEqual(code, 1, out)
+            self.assertIn("staged.notStaged names the issue", out)
 
     def test_map_changed_without_review_update_fails(self):
         with tempfile.TemporaryDirectory() as tmp:
