@@ -400,36 +400,72 @@ def refuse_unadmitted_licence(corpus):
                       f"committing and publishing their text and maps (docs/decisions/0028)")
 
 
-def verify_corpus(document, manifest, corpus_path):
-    """(corpus, bytes) once the corpus is proved admissible (0028) and to be the map's baseline."""
-    if not isinstance(document, dict) or not isinstance(manifest, dict):
-        raise Refused("the packaged map or manifest is not a JSON object")
-    source_id = document.get("corpus")
-    cited = {source_id}
-    for entry in document.get("entries") or []:
-        locator = entry.get("locator") if isinstance(entry, dict) else None
+def cited_corpora(document):
+    """Every `sourceId` the map depends on: its envelope's, and every entry's locator's.
+
+    The envelope's `corpus` is the map's **principal** corpus -- the one its `baseline` stamps --
+    and it is a dependency like any other. Nothing else in the factory turns on which corpus
+    occupies that field (0039).
+    """
+    cited = {document.get("corpus")} if isinstance(document, dict) else set()
+    for item in document.get("entries") or []:
+        locator = item.get("locator") if isinstance(item, dict) else None
         if isinstance(locator, dict) and locator.get("sourceId"):
             cited.add(locator["sourceId"])
-    if len(cited) != 1:
-        raise Refused(f"the map cites {sorted(map(str, cited))}; an engine is produced from exactly one corpus")
-    corpora = [c for c in manifest.get("corpora") or [] if isinstance(c, dict) and c.get("sourceId") == source_id]
-    if len(corpora) != 1:
-        raise Refused(f"the packaged manifest declares {source_id!r} {len(corpora)} times; it must declare it once")
-    corpus = corpora[0]
+    return {c for c in cited if isinstance(c, str)}
+
+
+def bind_corpora(cited, corpora, corpus_paths):
+    """`{sourceId: path}`, or Refused/Usage saying which corpus has no file and which file no corpus.
+
+    One cited corpus and one file are bound to each other directly, which is what a single-corpus
+    `--corpus` has always meant and keeps every existing invocation working whatever the file is
+    called. Beyond one, a file is bound to the corpus whose manifest `committedPath` it is the
+    basename of: the manifest already says where each corpus is committed, so nothing new is
+    declared and nothing is guessed. A file matching no cited corpus, or two files matching one,
+    is refused rather than resolved.
+    """
+    if len(cited) == 1 and len(corpus_paths) == 1:
+        return {next(iter(cited)): corpus_paths[0]}
+    wanted = {}
+    for source_id in cited:
+        committed = corpora.get(source_id, {}).get("committedPath")
+        if not committed:
+            raise Refused(f"the map cites {source_id!r} and its manifest entry declares no "
+                          f"`committedPath`, so no supplied corpus file can be bound to it")
+        wanted.setdefault(os.path.basename(str(committed)), []).append(source_id)
+    for name, sources in sorted(wanted.items()):
+        if len(sources) > 1:
+            raise Refused(f"the manifest commits {', '.join(sorted(sources))} at the same file "
+                          f"name {name!r}; a supplied corpus could not be bound to one of them")
+    bound, unmatched = {}, []
+    for path in corpus_paths:
+        name = os.path.basename(path)
+        if name not in wanted:
+            unmatched.append(path)
+            continue
+        source_id = wanted[name][0]
+        if source_id in bound:
+            raise Refused(f"two corpus files are named {name!r}; {source_id} takes exactly one")
+        bound[source_id] = path
+    if unmatched:
+        raise Usage(f"{', '.join(sorted(unmatched))}: named by no corpus this map cites "
+                    f"(expected one of {', '.join(sorted(wanted))})")
+    missing = sorted(cited - set(bound))
+    if missing:
+        raise Usage(f"the map cites {', '.join(missing)} and no --corpus was supplied for "
+                    f"{'them' if len(missing) > 1 else 'it'}; every cited corpus is verified here")
+    return bound
+
+
+def verify_one(source_id, corpus, corpus_path):
+    """(corpus, bytes) once this corpus is proved admissible (0028) and to be its own baseline."""
     refuse_unadmitted_licence(corpus)
 
     posture = corpus.get("verification")
     if posture != "committed-copy":
         raise Refused(f"NOT VERIFIED -- {source_id} is {posture!r}, not `committed-copy` (0013): an engine "
                       f"produced from it could not re-derive its baseline wherever it is built")
-
-    baseline = document.get("baseline") or {}
-    for field in ("contentHash", "hashDerivation"):
-        if baseline.get(field) != corpus.get(field):
-            raise Refused(f"the map's baseline.{field} is {baseline.get(field)!r} and the manifest's is "
-                          f"{corpus.get(field)!r}; the map is not of the corpus the manifest declares")
-    if baseline.get("asOf") != corpus.get("asOf"):
-        raise Refused(f"the map's baseline.asOf is {baseline.get('asOf')!r} and the manifest's is {corpus.get('asOf')!r}")
 
     randomness = corpus.get("randomness")
     if isinstance(randomness, bool) or randomness not in RANDOMNESS:
@@ -448,9 +484,55 @@ def verify_corpus(document, manifest, corpus_path):
         raise Usage(f"cannot read corpus {corpus_path}: {error}")
     actual = derive(corpus_bytes)
     if actual != corpus.get("contentHash"):
-        raise Refused(f"{corpus_path} is not {source_id} at the map's baseline: {derivation} gives {actual}, "
-                      f"the map was made of {corpus.get('contentHash')}")
+        raise Refused(f"{corpus_path} is not {source_id} at its declared baseline: {derivation} gives {actual}, "
+                      f"the manifest declares {corpus.get('contentHash')}")
     return corpus, corpus_bytes
+
+
+def verify_corpora(document, manifest, corpus_paths):
+    """Every corpus the map cites, each resolved through the manifest and hashed here (0039).
+
+    The manifest is the authority for the set: a map may cite several corpora, and each one's
+    bytes are pinned by its own manifest entry rather than by the envelope's single `baseline`.
+    The envelope's stamp still has to agree with its own corpus's entry -- that is
+    `check-map.py --only manifest`'s -- and it pins that corpus and no other.
+
+    The hash is **recomputed here from the bytes in hand**, never read across from the manifest:
+    the manifest is what says which bytes are wanted, not evidence that these are they.
+    """
+    if not isinstance(document, dict) or not isinstance(manifest, dict):
+        raise Refused("the packaged map or manifest is not a JSON object")
+    cited = cited_corpora(document)
+    if not cited:
+        raise Refused("the map cites no corpus")
+    principal = document.get("corpus")
+    if principal not in cited:
+        raise Refused(f"the map's envelope names corpus {principal!r}, which is not a string this "
+                      f"factory can resolve")
+    declared = {}
+    for source_id in sorted(cited):
+        matches = [c for c in manifest.get("corpora") or []
+                   if isinstance(c, dict) and c.get("sourceId") == source_id]
+        if len(matches) != 1:
+            raise Refused(f"the packaged manifest declares {source_id!r} {len(matches)} times; every "
+                          f"corpus the map cites is declared exactly once")
+        declared[source_id] = matches[0]
+
+    bound = bind_corpora(cited, declared, list(corpus_paths))
+    verified = []
+    for source_id in sorted(cited):
+        corpus, corpus_bytes = verify_one(source_id, declared[source_id], bound[source_id])
+        verified.append({"sourceId": source_id, "corpus": corpus, "bytes": corpus_bytes,
+                         "path": bound[source_id], "name": os.path.basename(bound[source_id])})
+
+    # An engine has one randomness posture (0019) and nothing says whose it would be. Two corpora
+    # that disagree are refused rather than resolved by taking the envelope's, which would be
+    # behaviour invented for the principal corpus and 0039 declines to invent any.
+    postures = {v["corpus"]["randomness"] for v in verified}
+    if len(postures) > 1:
+        raise Refused(f"the corpora this map cites declare {', '.join(sorted(postures))}; an engine "
+                      f"draws random values as its corpus declares (0019) and these do not agree")
+    return verified
 
 
 # --- the factory's checker ---------------------------------------------------------------
@@ -526,7 +608,7 @@ def run_consumer_checks(parts, log=None):
 # --- the whole of intake -----------------------------------------------------------------
 
 
-def intake(package_spec, corpus_path, log=None):
+def intake(package_spec, corpus_paths, log=None):
     with tempfile.TemporaryDirectory(prefix="factory-download-") as downloads:
         nupkg, nupkg_sha256 = resolve_package(package_spec, downloads, log)
         package_id, version, parts = read_package(nupkg)
@@ -535,9 +617,15 @@ def intake(package_spec, corpus_path, log=None):
     manifest = _json("manifest", parts["manifest"][1])
     schema_version = check_contract(document)
     _note(log, f"map schemaVersion {schema_version}: read by this factory's check-map.py")
-    corpus, corpus_bytes = verify_corpus(document, manifest, corpus_path)
-    _note(log, f"corpus {corpus['sourceId']}: {corpus['hashDerivation']} {corpus['contentHash']} matches {corpus_path}")
-    _note(log, f"corpus {corpus['sourceId']}: randomness {corpus['randomness']} (0019)")
+    if isinstance(corpus_paths, str):
+        corpus_paths = [corpus_paths]
+    corpora = verify_corpora(document, manifest, corpus_paths)
+    for verified in corpora:
+        corpus = verified["corpus"]
+        _note(log, f"corpus {corpus['sourceId']}: {corpus['hashDerivation']} {corpus['contentHash']} "
+                   f"recomputed from {verified['path']}")
+    _note(log, f"randomness {corpora[0]['corpus']['randomness']} (0019), agreed by all "
+               f"{len(corpora)} cited corpus(es)")
     _note(log, "--- intake: the factory's check-map.py --phase consumer (the package's checker is not run)")
     run_consumer_checks(parts, log)
     return Intake(
@@ -546,6 +634,10 @@ def intake(package_spec, corpus_path, log=None):
         manifest=manifest, manifest_raw=parts["manifest"][1],
         checker_raw=parts["checker"][1],  # hashed for provenance, never executed (0016)
         part_paths={label: path for label, (path, _) in parts.items()},
-        corpus=corpus, corpus_bytes=corpus_bytes, corpus_name=os.path.basename(corpus_path),
-        randomness=corpus["randomness"],
+        corpora=corpora,
+        # The principal corpus: the one the map's envelope names and its `baseline` stamps. It is
+        # a dependency like the others, and nothing turns on which corpus occupies the field
+        # beyond the stamp having to agree with it (0039).
+        corpus=next(v["corpus"] for v in corpora if v["sourceId"] == document.get("corpus")),
+        randomness=corpora[0]["corpus"]["randomness"],
     )

@@ -23,10 +23,20 @@ mapper put one there, and the checker, which reads the manifest from its own fil
 ([#60](https://github.com/brandonifco/rules-factory/issues/60)). A field a checker ignores is a
 claim nothing checks.
 
-The stamp is not decoration. A map is true of **one state of one corpus**. Without it, two
+The stamp is not decoration. It fixes **one state of the corpus it names**. Without it, two
 maps cannot be compared, a map cannot be checked against the text it claims to describe, and
 it silently outlives that text. The third trial's differ printed `2020-01-01 -> ?` for
 exactly this reason.
+
+**The stamp covers the principal corpus, and a map may depend on more than one.** `corpus` and
+`baseline` name the map's **principal** corpus and pin its bytes. An entry's `locator.sourceId`
+need only be declared in the manifest, so a map whose rules cross two served documents — trial
+10's, where a code printed in § 172.101's table is stated in § 172.102 — cites both, and the
+manifest pins both. A served-document boundary is a delivery artifact, and
+[0039](decisions/0039-the-manifest-pins-every-corpus-a-map-cites.md) declines to let it split one
+mapping problem into two maps. The factory resolves and independently re-hashes **every** cited
+corpus at intake, carries them all with the engine, and records them all in provenance; nothing
+else turns on which corpus occupies the envelope's field.
 
 ## `extent` — how much of the corpus this map claims to have read
 
@@ -1456,7 +1466,7 @@ own, which are ordinary operations over a date the caller supplies.
 **In the factory, published as a versioned package; never copied into an engine**
 ([0015](decisions/0015-a-map-is-published-as-a-versioned-package.md)). Each map is a NuGet
 package, `RulesFactory.Maps.<MapName>`, carrying `corpus-map.json`, the manifest entries of
-the corpora it cites, and the `tools/check-map.py` its consumer runs, and a version asserts one corpus baseline and one `schemaVersion`.
+the corpora it cites, and the `tools/check-map.py` its consumer runs; a version asserts one `schemaVersion`, one principal corpus baseline, and the manifest-pinned baseline of every other corpus the map cites ([0039](decisions/0039-the-manifest-pins-every-corpus-a-map-cites.md)).
 
 **What a consumer owns** is an overlay of three fields per entry, `status`, `implementedIn` and
 `tests`, because those are build facts only the engine can know, and they are only true of a

@@ -106,7 +106,7 @@ TABLE = (
         "the bounded assignment for one entry, assembled from merge(package, overlay) (0029)"),
     Row("tools/re-produce.sh", MANAGED, 4,
         "an overlay edit is finished by a re-produce, from the factory commit the record names (#192)"),
-    Row("tools/review-packet.py", MANAGED, 2,
+    Row("tools/review-packet.py", MANAGED, 3,
         "everything a reviewer needs about one pull request, in the order it is read (0029)"),
     Row("tools/pr-policy.py", MANAGED, 5,
         "the pull request contract, checked mechanically; a produce update's claim is checked, not taken (#193)"),
@@ -297,6 +297,7 @@ RECIPE_SHA256 = {
     "tools/review-packet.py": {
         1: "2e989c02c1827bf6d3da8fce9a35874e25ea4baf14f62eeb64aab78c30b1f392",
         2: "7dc52854df87a7837deb0cb7373258e4f7516ad23a9984b7ee20813eefbc5d50",
+        3: "5aa2d79176eea614b082653946c8ad48783dc2e8dc3966ae5b5894e83246f59e",
     },
     "tools/pr-policy.py": {
         1: "79a33c7fe1ea8d888e4d6912a43ac60afe285c7a8bf43fbe9f7be87d6947b76e",

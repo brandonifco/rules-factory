@@ -207,9 +207,13 @@ class TestRecord(ProvenanceCase):
                         for role, path in (("map", "map/corpus-map.json"), ("manifest", "map/corpus-manifest.json"),
                                            ("checker", "tools/check-map.py"))]
         self.assertEqual(record["map"]["files"], expected)
-        self.assertEqual(record["corpus"], {"sourceId": "cfr-14-107", "contentHash": sha256_file(PART107_XML),
-                                            "hashDerivation": "ecfr-versioner-xml", "asOf": "2026-01-01",
-                                            "recomputed": True})
+        # One entry per corpus the map cites, sorted by sourceId, the principal one flagged (0039).
+        self.assertEqual(record["corpora"], [{"sourceId": "cfr-14-107",
+                                              "contentHash": sha256_file(PART107_XML),
+                                              "hashDerivation": "ecfr-versioner-xml", "asOf": "2026-01-01",
+                                              "path": "corpus/part107.xml", "principal": True,
+                                              "recomputed": True}])
+        self.assertNotIn("corpus", record)
         self.assertEqual(record["kernel"], {"packageId": "RulesKernel", "version": "0.3.0"})
         self.assertEqual(record["packs"], [])
         self.assertEqual(record["randomness"], "none")
@@ -353,7 +357,8 @@ class TestRecompute(ProvenanceCase):
         data = bytearray(pathlib.Path(path).read_bytes())
         data[len(data) // 2] ^= 1
         pathlib.Path(path).write_bytes(bytes(data))
-        self.assert_recompute_names(out, "corpus.contentHash", "generated[corpus/part107.xml].sha256")
+        self.assert_recompute_names(out, "corpora[cfr-14-107].contentHash",
+                                    "generated[corpus/part107.xml].sha256")
 
     def test_a_changed_recipe(self):
         repo = self.own_repo()
