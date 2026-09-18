@@ -124,7 +124,9 @@ numbers measure happened months ago.
 
 ### `mapping-inventory.json`
 
-Beside the map, like the protocol, and optional — a map that rejected nothing has no file.
+Beside the map, like the protocol, and optional — a map that rejected nothing has no file. It is
+not packed into the map package either ([0015](decisions/0015-a-map-is-published-as-a-versioned-package.md)):
+it is a record of how the map was made, which is the mapper's business and not a consumer's.
 
 ```json
 {
