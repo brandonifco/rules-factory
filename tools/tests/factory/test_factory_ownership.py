@@ -40,6 +40,8 @@ _spec = importlib.util.spec_from_file_location("factory_main_ownership", os.path
 factory = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(factory)
 generate = factory.generate
+import pins  # noqa: E402
+import scaffold  # noqa: E402
 gate = factory.gate
 provenance = factory.provenance
 ownership = generate.ownership
@@ -86,7 +88,7 @@ def tree(root):
 @contextlib.contextmanager
 def bumped(*paths):
     """The managed recipes for `paths` moved to a new version: new bytes, a new row version, and its hash."""
-    real_files, real_table = generate.managed_files, ownership.TABLE
+    real_files, real_table = scaffold.managed_files, ownership.TABLE
     versions = {row.pattern: row.recipe + 1 for row in real_table if row.pattern in paths}
     table = tuple(row._replace(recipe=versions[row.pattern]) if row.pattern in versions else row for row in real_table)
 
@@ -97,7 +99,7 @@ def bumped(*paths):
         return out
 
     history = {path: dict(digests) for path, digests in ownership.RECIPE_SHA256.items()}
-    with mock.patch.object(ownership, "TABLE", table), mock.patch.object(generate, "managed_files", files):
+    with mock.patch.object(ownership, "TABLE", table), mock.patch.object(scaffold, "managed_files", files):
         for path, text in files().items():
             if path in versions:
                 history[path][versions[path]] = hashlib.sha256(text.encode("utf-8")).hexdigest()
@@ -240,18 +242,18 @@ class TestTheTable(OwnershipCase):
 
     def test_generate_and_the_gate_write_each_class_from_the_table(self):
         model = types.SimpleNamespace(name=NAME, header="", package_id="P", version="1")
-        self.assertEqual(set(generate.managed_files()), {r.pattern for r in ownership.rows(NAME) if r.cls == ownership.MANAGED})
+        self.assertEqual(set(scaffold.managed_files()), {r.pattern for r in ownership.rows(NAME) if r.cls == ownership.MANAGED})
         # The lock files are restore's (verify.py); the overlay's files are the engine's own
         # evidence, written when an entry is implemented and by no scaffold (#247).
-        self.assertEqual(set(generate.engine_owned(model)) | set(LOCKS) | {"overlay/*.json"},
+        self.assertEqual(set(scaffold.engine_owned(model)) | set(LOCKS) | {"overlay/*.json"},
                          {r.pattern for r in ownership.rows(NAME) if r.cls == ownership.ENGINE_OWNED})
         # The gate regenerates exactly the generated `*.g.*` files, and vendors what it needs as generated files.
         for relative in list(gate.FILES) + [f"src/{NAME}/Generated/X.g.cs", f"tests/{NAME}.Tests/Generated/X.g.cs",
-                                            generate.PACKAGES_PROPS]:
+                                            pins.PACKAGES_PROPS]:
             self.assertEqual(ownership.classify(relative, NAME).cls, ownership.GENERATED, relative)
 
     def test_each_managed_recipe_is_the_bytes_its_version_records(self):
-        for path, text in generate.managed_files().items():
+        for path, text in scaffold.managed_files().items():
             row = ownership.classify(path, NAME)
             self.assertEqual(hashlib.sha256(text.encode("utf-8")).hexdigest(), ownership.RECIPE_SHA256[path][row.recipe],
                              f"{path} changed without a new recipe version and hash in tools/factory/ownership.py")
@@ -276,7 +278,7 @@ class TestManaged(OwnershipCase):
     def test_an_engine_scaffolded_before_ownership_is_migrated_without_a_flag(self):
         """Version 1 is the write-once scaffold's bytes from before #72; such an engine is unedited."""
         self.produced()
-        current = generate.managed_files()
+        current = scaffold.managed_files()
         legacy = {
             "NuGet.config": re.sub(r"<!-- Restore.*?-->", "<!-- Restore talks to nuget.org and nothing else; "
                                    "packages.lock.json pins every content hash. -->", current["NuGet.config"], flags=re.S),
@@ -322,7 +324,7 @@ class TestManaged(OwnershipCase):
         self.append("global.json", "\n")
         self.produced("--adopt", "global.json")
         self.produced("--reset", "global.json")
-        self.assertEqual(self.read("global.json"), generate.managed_files()["global.json"])
+        self.assertEqual(self.read("global.json"), scaffold.managed_files()["global.json"])
         self.assertIn("global.json", [m["path"] for m in self.record()["managed"]])
         self.assertNotIn("global.json", [e["path"] for e in self.record()["engineOwned"]])
 

@@ -45,6 +45,7 @@ Deterministic: the output depends only on the package map (its id and version in
 overlay, the corpus, the engine name and the factory's own pins. No timestamps, no machine
 paths, no dictionary-order accidents.
 """
+import json
 import os
 
 import agentrails
