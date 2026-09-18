@@ -20,9 +20,9 @@ import pins
 
 # The agent rails whose recipe is a file rather than a string (decision 0029): published path ->
 # template under recipe/rails/. They are documents and a hook, long enough that inlining them here
-# would bury the generator, and worth reading as what they are. Read lazily, inside managed_files:
-# this module is vendored into every engine as scripts/factory/generate.py, where recipe/ does not
-# exist and the engine's gate calls `generated` alone.
+# would bury the generator, and worth reading as what they are. Read lazily, inside
+# scaffold.managed_files: this module is vendored into every engine as scripts/factory/agentrails.py,
+# where recipe/ does not exist and the engine's gate calls `generate.generated` alone.
 RAILS = {
     "AGENTS.md": "AGENTS.md",
     "CLAUDE.md": "CLAUDE.md",
@@ -100,9 +100,9 @@ def policy_labels(document, where=AGENT_POLICY):
     label equal to a risk label, moving the state strips the risk. Either way the issues reach
     GitHub undispatchable, and `rails --check` said OK, because each key was non-empty.
 
-    It lives here because this module writes that file (`agent_policy` below), so what the rails
-    demand of it cannot drift from what the factory ships in it; `rails.py` and `backlog.py` both
-    read it through here and neither states the rule itself.
+    It lives here because this module holds the default that file is written from (`agent_policy`
+    below), so what the rails demand of it cannot drift from what the factory ships in it;
+    `rails.py` and `backlog.py` both read it through here and neither states the rule itself.
     """
     labels = document.get("labels") or {}
     missing = [key for key in LABEL_KEYS if not labels.get(key)]

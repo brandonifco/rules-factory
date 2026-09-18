@@ -7,6 +7,7 @@ contracts.py, correspondence.py), and it is deliberately dull: the engine's gate
 header is a change to every engine's source, and belongs where it can be seen on its own.
 """
 
+
 def cs_string(text):
     out = ['"']
     for ch in text:

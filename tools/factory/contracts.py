@@ -1,6 +1,6 @@
 """`Contracts.g.cs` and `Requests.g.cs`: the typed contract over the registry (#76).
 
-The typed contract (#76). The registry dispatches on a string id and a `RuleRequest` that is a
+The registry (registry.py) dispatches on a string id and a `RuleRequest` that is a
 dictionary of assertion values, and it stays: it is the one mechanism every entry shares, and the
 correspondence tests read it. Over it, each entry gets
 

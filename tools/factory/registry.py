@@ -10,7 +10,7 @@
       8 `kind: assertion`                             -> no decline: the value is demanded of the caller
       no row (a built, clear rule)                    -> nothing; a hand-written handler must answer.
     Row 7 is a fact about pairs of entries and has no single-entry handler.
-    A hand-written handler (the typed partial method below, or an `[Implements("entry-id")]`
+    A hand-written handler (the typed partial method `Handlers` declares, contracts.py, or an `[Implements("entry-id")]`
     method) replaces the default -- **only for an entry whose merged status is `implemented`**.
     A `mapped` entry declines even when its code exists (corpus-map.md, `status`), so the
     override is ignored until the overlay says so;

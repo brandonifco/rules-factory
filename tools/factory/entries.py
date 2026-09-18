@@ -2,7 +2,7 @@
 
   * `MapEntries.g.cs` -- one static per map entry, its citation verbatim, and the baseline. A
     derived entry (0012) has no citation of its own; its `Locators` are every citation it
-    rests on (see `Model._leaf_locators` for which, and in what order). An assertion's static
+    rests on (see `semantics.Model._leaf_locators` for which, and in what order). An assertion's static
     also carries `AssertedBy`, the map's `assertedBy` (decision 0025), as an init property so the
     records' constructors do not change; `draws` is not generated, because its `count` is prose;
   * `Rulings.g.cs` -- only when the overlay holds an owner's ruling (decision 0027, rulings.py):
@@ -12,6 +12,7 @@
     and a produce with no rulings removes the file;
 """
 import csharp
+
 
 def map_entries_cs(model):
     b = model.baseline
