@@ -187,6 +187,19 @@ are enumerated after its paragraphs rather than in the place the table is printe
 walks a section's direct children, a table sits below them, and a reading order it cannot see is
 not one it should assert.
 
+**A paragraph the corpus prints inside a wrapper is a unit of its section, at the designation the
+wrapper sits under** ([#285](https://github.com/brandonifco/rules-factory/issues/285)). Walking a
+`DIV8`'s direct children left out every paragraph one level further down, and § 172.102 states its
+special provisions that way: `A3`, `B2`, `N40`, `TP1` and `148` are `FP-1` and `P` elements inside
+an `<EXTRACT>` beside the paragraph that introduces the run. So `§ 172.102(c)(2)` names every "A"
+code, and which one an entry means is settled by its quote, which the locator checker already
+holds to its citation at every occurrence — no citation grammar was added. The set of wrappers
+descended into is **closed** and lives in `NESTED_CONTAINERS`, with the reason for each member
+beside it; a `DIV` holding a table is not in it, because a table is addressed by its rows and
+flattening one into the paragraph index is the reading 0035 refused. The section locator checker
+descends into the same set, because a unit one half can cite and the other cannot see is a
+denominator that shrinks to fit what was read.
+
 A fourth grammar subclasses `Adapter`, implements `units(extent)`, and registers its manifest
 `adapter` name. A manifest naming an adapter nothing implements is **refused**: a corpus nothing
 can enumerate must not report an inventory of zero unaccounted units.

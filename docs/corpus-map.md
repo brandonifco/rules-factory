@@ -193,6 +193,19 @@ checker indexed a section's `<P>` and `<EXAMPLE>` children and nothing else, whi
   column semantics of a regulation live in its headings, and this corpus prints them once for
   3,687 rows.
 
+**A paragraph the corpus prints inside a wrapper is named by the designation the wrapper sits
+under** ([#285](https://github.com/brandonifco/rules-factory/issues/285)). § 172.102 states its
+special provisions as ordinary paragraphs inside an `<EXTRACT>` — a block set off from the running
+text, beside the designated paragraph that introduces the run — and the checker walked only a
+section's direct children, so `A3`, `B2`, `N40`, `TP1` and `148` were in no index at all. They are
+now at `§ 172.102(c)(2)`, `(c)(3)`, `(c)(5)`, `(c)(8)(ii)` and `(c)(1)`, with every other
+provision of their run. **Nothing was added to the grammar above**: what distinguishes one
+provision from another is the quote, which is held to its citation at every occurrence, exactly as
+it already was for two paragraphs that print the same sentence
+([0030](decisions/0030-a-repeated-passage-is-identified-by-the-container-its-citation-names.md)).
+The wrappers descended into are a closed set named in the checker, and a table's wrapper is not in
+it: a table is cited by its rows, above.
+
 **Use it where the quote is the lead-in alone.** Part 107's `operating-limitations` cites
 `§ 107.51 introductory text`. Entries that quote the lead-in *together with* designated paragraphs
 — `over-human-beings`, `preflight-actions`, `visual-observer-conditions`, both § 107.25 entries —
