@@ -166,7 +166,7 @@ class TestTheVocabularyMustExist(ProtocolCase):
     def test_a_vocabulary_on_a_mechanism_that_reads_none(self):
         self.protocol["pointerMechanisms"] = [{"mechanism": "phrase",
                                                "vocabularyFrom": "condition-list"}]
-        self.assert_refused("`vocabularyFrom` belongs to defined-term-use")
+        self.assert_refused("`vocabularyFrom` belongs to a mechanism that reads a vocabulary")
 
 
 class TestTheDetector(unittest.TestCase):
