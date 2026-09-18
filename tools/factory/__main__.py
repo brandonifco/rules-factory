@@ -111,6 +111,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import backlog as backlog_step  # noqa: E402
 import gate  # noqa: E402
 import generate  # noqa: E402
+import ownership  # noqa: E402
 import intake as intake_step  # noqa: E402
 import provenance  # noqa: E402
 import rails as rails_step  # noqa: E402
@@ -270,16 +271,16 @@ def remove_retired(name, out):
     factory's to remove (ownership.remove_retired) -- but it is now under a pattern nothing
     maintains, which its owner cannot know unless they are told here.
     """
-    removed, kept = generate.ownership.remove_retired(out, name)
+    removed, kept = ownership.remove_retired(out, name)
     lines = []
-    for row in generate.ownership.RETIRED:
-        matched = [p for p in removed if generate.ownership.retired(p, name) == row]
+    for row in ownership.RETIRED:
+        matched = [p for p in removed if ownership.retired(p, name) == row]
         if matched:
             lines.append(f"--- removed {len(matched)} file(s) matching the retired pattern {row.pattern}, which "
                          f"`produce` no longer writes: {row.reason}")
     for path, why in kept:
         lines.append(f"--- kept {path}: it matches the retired pattern "
-                     f"{generate.ownership.retired(path, name).pattern}, but {why}, so it is yours and not this "
+                     f"{ownership.retired(path, name).pattern}, but {why}, so it is yours and not this "
                      f"run's to remove. Nothing writes or checks it any more")
     return lines
 
@@ -301,10 +302,10 @@ def classified_paths(name, added, changed, removed):
     for how, paths in (("added", added), ("changed", changed), ("removed", removed)):
         for path in paths:
             try:
-                row = generate.ownership.classify(path, name)
-            except generate.ownership.OwnershipError:
+                row = ownership.classify(path, name)
+            except ownership.OwnershipError:
                 row = None
-            gone = how == "removed" and generate.ownership.retired(path, name) is not None
+            gone = how == "removed" and ownership.retired(path, name) is not None
             out.append({"path": path, "change": how,
                         "class": row.cls if row else ("retired" if gone else None)})
     return sorted(out, key=lambda item: item["path"].encode("utf-8"))
