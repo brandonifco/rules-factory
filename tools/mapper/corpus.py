@@ -547,6 +547,37 @@ class Table:
         return chosen
 
 
+# --- a paragraph the corpus prints inside a wrapper (#285) ------------------------------------
+# Elements that hold a run of paragraphs rather than stating one, and are therefore descended
+# into rather than enumerated whole. Closed, and a member is in it because a corpus forced it:
+#
+#   EXTRACT  the eCFR's block set off from the running text. § 172.102(c) states its special
+#            provisions in seven of them, one element per provision, under the designated
+#            paragraph that introduces the run. The wrapper is a *sibling* of the section's <P>
+#            elements, so `_section_units` reached none of them and the inventory's denominator
+#            left out every special provision that is not in a table (#285, #261).
+#
+# Not in it, deliberately: a DIV, whose text is a table and whose rows are units of their own
+# (0035) -- flattening one into a paragraph is the reading that decision refused, and `_tables`
+# already reaches a table inside an EXTRACT; a NOTE, which § 172.101 prints once and which
+# nothing has been measured to need (#265); an EXAMPLE, which is already a unit of its own.
+#
+# `examples/faa-part-107/check-locators-section.py` descends into the same set, because a unit
+# this cannot see is one no inventory counts and a passage that one cannot reach is one no
+# citation names. `tools/tests/mapper/test_mapper_nested_paragraphs.py` holds the two together,
+# the way `test_mapper_table_rows.py` holds the row grammar to the checker's parser.
+NESTED_CONTAINERS = ("EXTRACT",)
+# What each child of such a container enumerates as. The eCFR's formatted-paragraph tags are the
+# same paragraph with a different indent -- `FP-1` is one provision, `FP1-2` a designated
+# sub-item of the provision above it, `FP`/`FP-2` the lead-in and continuation of a formula --
+# and `HD1`/`HD2` are the run's own heading, which is a heading like a section's.
+#
+# `MATH` is in neither: in this markup it carries no text at all, so it would enumerate the empty
+# string, and a unit with no words is one no quote can ever reach.
+NESTED_KINDS = {"P": "paragraph", "FP": "paragraph", "FP-1": "paragraph", "FP-2": "paragraph",
+                "FP1-2": "paragraph", "HD1": "heading", "HD2": "heading"}
+
+
 class EcfrXml(Adapter):
     """The eCFR versioner's XML: the unit is a paragraph, an example, or a section's heading.
 
@@ -564,6 +595,14 @@ class EcfrXml(Adapter):
     table are enumerated after that section's paragraphs rather than in the place the table is
     printed: this grammar walks a section's direct children, a table sits below them, and a
     reading order this cannot see is not one it should assert.
+
+    **A paragraph the corpus prints inside a wrapper is a unit of the section like any other**
+    (#285). § 172.102 states its special provisions as ordinary paragraphs inside an `<EXTRACT>`,
+    a sibling of the `<P>` elements, and the walk below descends into it -- see
+    `NESTED_CONTAINERS`, which is the same closed set the section locator checker descends into
+    and is where the reason for each member is written. It has to be the same set: a unit the
+    checker can cite and the inventory cannot see is a denominator that shrinks to fit what was
+    read, which is the mismatch 0035 was careful to avoid.
     """
 
     name = "ecfr-xml"
@@ -732,15 +771,31 @@ class EcfrXml(Adapter):
         if head is not None and normalise("".join(head.itertext())):
             found.append(Unit(f"§ {number} heading", "heading",
                               normalise("".join(head.itertext()))))
+
+        def label_of(text):
+            designator = self.DESIGNATOR.match(text)
+            return f" ({designator.group(1)})" if designator else ""
+
         for child in section:
+            if child.tag in NESTED_CONTAINERS:
+                # A wrapper states nothing of its own; every word in it is in a child, and each
+                # child is a unit of the section. The ¶ numbering runs on through them, so the
+                # keys stay the section's own reading order and no two units share one.
+                for nested in child:
+                    kind = NESTED_KINDS.get(nested.tag)
+                    text = normalise("".join(nested.itertext()))
+                    if kind is None or not text:
+                        continue
+                    position += 1
+                    suffix = " heading" if kind == "heading" else label_of(text)
+                    found.append(Unit(f"§ {number} ¶{position}{suffix}", kind, text))
+                continue
             text = normalise("".join(child.itertext()))
             if not text:
                 continue
             if child.tag == "P":
                 position += 1
-                designator = self.DESIGNATOR.match(text)
-                label = f" ({designator.group(1)})" if designator else ""
-                found.append(Unit(f"§ {number} ¶{position}{label}", "paragraph", text))
+                found.append(Unit(f"§ {number} ¶{position}{label_of(text)}", "paragraph", text))
             elif child.tag == "EXAMPLE":
                 position += 1
                 found.append(Unit(f"§ {number} ¶{position} example", "worked-example", text))

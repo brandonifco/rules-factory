@@ -45,6 +45,14 @@ kept as empty, and `evidence` is one contiguous verbatim span of that. A key tha
 rows is **refused**, never resolved to the first of them. Until this the section tree indexed a
 section's `<P>` and `<EXAMPLE>` children and nothing else, which is 6.6% of § 172.101 (#261).
 
+**A paragraph the corpus prints inside a wrapper is indexed under the designation the wrapper
+sits under** (#285). § 172.102 states its special provisions -- `A3`, `B2`, `N40`, `TP1`, `148` --
+as ordinary paragraphs inside an `<EXTRACT>`, which is a sibling of the `<P>` elements and one
+level below where the walk looked, so none of them was in the index. `§ 172.102(c)(2)` introduces
+the run of "A" codes and now names every paragraph of it; which provision an entry means is
+settled by its quote, as it already was for two paragraphs that print the same sentence. The
+citation grammar is unchanged and `NESTED_CONTAINERS` says which wrappers are descended into.
+
 **An authored example that bounds a term is held to the same standard** (rules-factory decision
 0031). `ambiguity.bounds.examples[].text` is a quotation with a `locator` of its own, so each is
 checked here by the same function as `evidence`, and a bound whose words are not at its citation
@@ -150,11 +158,53 @@ def subpart_of(section, parents):
     return None
 
 
+# --- a paragraph the corpus prints inside a wrapper (#285) ------------------------------------
+# Elements that hold a *run of paragraphs* rather than stating one, and are therefore descended
+# into rather than indexed. Closed, and a member is in it because a corpus forced it:
+#
+#   EXTRACT  the eCFR's block set off from the running text. § 172.102(c) states its special
+#            provisions in seven of them -- `A3`, `B2`, `N40`, `TP1`, `148` -- one per element,
+#            under the designated paragraph that introduces the run. The wrapper is a *sibling*
+#            of the section's <P> elements, so the walk below reached none of them, and 12 of
+#            the 20 provisions trial 10's rows invoke were in no index at all (#285, #261).
+#
+# What is deliberately **not** in it, so that the set stays a decision rather than a habit:
+#
+#   DIV      a table's wrapper. Its text is a table, and a table is addressed by its rows
+#            (0035); flattening one into the paragraph index is the reading that decision
+#            refused, and `table_index` already reaches a table inside an EXTRACT by `.iter`.
+#   NOTE     § 172.101 prints one. Nothing has been measured to need it, and the standard this
+#            repository is adopting (#265) is that a concept is added once a corpus forces it
+#            under mapping, not in anticipation. A corpus that needs it adds it here, by name.
+#   EXAMPLE  already indexed, one level deeper, with a label of its own (0031, trial 9).
+NESTED_CONTAINERS = ("EXTRACT",)
+# The children of such a container that state a paragraph. The eCFR's formatted-paragraph tags
+# are the same paragraph with a different indent: `FP-1` is one provision, `FP1-2` a designated
+# sub-item of the provision above it, `FP`/`FP-2` the lead-in and continuation of a formula.
+# `HD1` and `HD2` are the run's own heading ("Code/Special Provisions"), which is text of the
+# regulation like any other and is quotable at the same address.
+#
+# `MATH` is not here: in this markup it carries no text at all -- the degree-of-filling formula
+# of `TP1` and `TP2` is an image -- so indexing it would enumerate the empty string. What such a
+# provision states is beyond the adapter, and it is recorded that way on an entry that now has a
+# citation to put it on.
+NESTED_PARAGRAPHS = ("P", "FP", "FP-1", "FP-2", "FP1-2", "HD1", "HD2")
+
+
 def paragraphs(root):
     """Every <P> in document order with its designation path and its normalised text.
 
     Path is (subpart, section, *designators) -- e.g. ("B", "107.29", "a", "2"). A <P> with
     no designator (a section's lead-in) takes the path of its section.
+
+    **A paragraph the corpus prints inside a wrapper takes the designation of the paragraph the
+    wrapper sits under** (#285). `§ 172.102(c)(2)` introduces the run of "A" codes and the run
+    is an <EXTRACT> beside it, so `A3` is at `§ 172.102(c)(2)` and so is every other code of that
+    run. What distinguishes one from another is the quote, which this checker already holds to
+    its citation at *every* occurrence -- so no citation grammar changes, and none is added.
+    A nested paragraph never opens a designator level: `FP1-2` prints `(1)`, `(2)`, `(3)` for the
+    sub-items of one provision, and letting those into the stack would re-designate every
+    paragraph of the section after the run.
     """
     out = []
     parents = {child: parent for parent in root.iter() for child in parent}
@@ -162,6 +212,17 @@ def paragraphs(root):
         subpart = subpart_of(section, parents)
         stack = {}  # level -> designator, for the levels currently open
         for p in section:
+            if p.tag in NESTED_CONTAINERS:
+                path = (subpart, section.get("N")) + tuple(
+                    stack[k] for k in sorted(stack)
+                )
+                for nested in p:
+                    if nested.tag not in NESTED_PARAGRAPHS:
+                        continue
+                    text = normalise("".join(nested.itertext()))
+                    if text:
+                        out.append((path, text, None))
+                continue
             if p.tag == "EXAMPLE":
                 label = example_label(p)
                 text = normalise("".join(p.itertext()))
@@ -261,7 +322,7 @@ CITE_EXAMPLE = re.compile(r"\bExamples?(?:\s+(\d+))?\s*\.?\s*$", re.I)
 
 
 # --- a rule stated in a table row (rules-factory decision 0035) --------------------------------
-# A table cell had no address. The section tree above indexes a section's <P> and <EXAMPLE>
+# A table cell had no address. The section tree above indexed a section's <P> and <EXAMPLE>
 # children and nothing else, so of § 172.101 -- 450,000 characters, 3,687 rows -- it could see
 # 6.6% (#261). A citation now reaches a row, and a row is named by a cell that identifies it:
 #
