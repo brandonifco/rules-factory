@@ -12,7 +12,12 @@ name. Every review names `sha256`, the digest of the map it covers, and one `met
 
   `blind-second-mapping`  The 0014 procedure was run. `comparison` is the comparator's output
                           and `resolutions` the row-per-disagreement record, both paths beside
-                          `review.json`. `compared` names the commit and digest of the map the
+                          `review.json`. `staged` says what the second mapper was *given*: the
+                          record `tools/mapper stage` wrote (#223), beside `review.json`, or
+                          `{"notStaged": {"issue", "reason"}}` for a run that predates the
+                          command, printed on every run the way an exemption is. A run whose
+                          inputs were not redacted is not a blind run, and a comparison of two
+                          maps cannot see them. `compared` names the commit and digest of the map the
                           comparator read, and that commit must be the one the comparison
                           itself names. `sha256` is the map as corrected to the resolutions,
                           which is the map that is used; the two digests differ by exactly the
@@ -105,6 +110,35 @@ def check_method(review, base, digest):
                 problems.append(f"blind-second-mapping needs {field}, a path beside {REVIEW_FILE}")
             elif not (base / review[field]).is_file():
                 problems.append(f"{field} {review[field]} does not exist")
+        # What the second mapper was *given*, and not only what it produced (#223). A blind
+        # second mapping is worth something because it is independent; a run whose inputs were
+        # not redacted is not a blind run, and nothing downstream can tell. `staged` is either
+        # the staging record beside review.json -- whose digests and residue
+        # `mapper stage --verify` holds, on every validate.sh run -- or `notStaged`, which says
+        # so out loud and names the issue, the way an exemption does.
+        staged = review.get("staged")
+        if isinstance(staged, dict):
+            not_staged = staged.get("notStaged")
+            if not isinstance(not_staged, dict) or not text(not_staged.get("reason")) \
+                    or not ISSUE.match(str(not_staged.get("issue", ""))):
+                problems.append("staged.notStaged names the issue that tracks the missing "
+                                "staging (#N or an issue URL) and says why")
+        elif not text(staged):
+            problems.append("blind-second-mapping needs staged: the staging record beside "
+                            f"{REVIEW_FILE} (tools/mapper stage), or "
+                            "{\"notStaged\": {\"issue\": ..., \"reason\": ...}} for a run that "
+                            "predates it. A comparison cannot say what its mapper was given")
+        elif not (base / staged).is_file():
+            problems.append(f"staged {staged} does not exist")
+        else:
+            record, err = load_json(base / staged)
+            if err:
+                problems.append(err)
+            elif not isinstance(record, dict) or record.get("residue", {}).get("certain") != 0:
+                problems.append(f"staged {staged} records "
+                                f"{(record or {}).get('residue', {}).get('certain')!r} certain "
+                                f"leak(s); those inputs were not redacted")
+
         compared = review.get("compared")
         if not isinstance(compared, dict) or not text(compared.get("commit")) \
                 or not HEX64.match(str(compared.get("sha256", ""))):
@@ -198,6 +232,11 @@ def check(maps, root):
             exempt += 1
         else:
             print(f"  ok  {rel}  {review['method']}")
+            # A blind run that cannot show what it was given says so here, not nowhere.
+            not_staged = (review.get("staged") or {}).get("notStaged") \
+                if isinstance(review.get("staged"), dict) else None
+            if not_staged:
+                print(f"      NOT STAGED ({not_staged['issue']}): {not_staged['reason']}")
 
     # A review naming a map that is not there is a record of nothing.
     for base, (doc, err) in reviews_by_dir.items():
