@@ -323,7 +323,7 @@ class SectionCase(unittest.TestCase):
         self.corpus_path = os.path.join(self.root, "corpus.xml")
         with open(self.corpus_path, "w", encoding="utf-8") as handle:
             handle.write(SECTION_CORPUS)
-        self.corpus, self.spans, _ = check_locators_section.corpus_index(self.corpus_path)
+        self.corpus, self.spans, _, _ = check_locators_section.corpus_index(self.corpus_path)
 
     def verdict(self, citation, evidence):
         return check_locators_section.check(entry("x", citation, evidence), self.corpus, self.spans)[0]
@@ -501,7 +501,7 @@ class TestTableRows(unittest.TestCase):
         self.corpus_path = os.path.join(self.root, "corpus.xml")
         with open(self.corpus_path, "w", encoding="utf-8") as handle:
             handle.write(TABLE_CORPUS)
-        self.corpus, self.spans, _ = check_locators_section.corpus_index(self.corpus_path)
+        self.corpus, self.spans, _, _ = check_locators_section.corpus_index(self.corpus_path)
         self.tables = check_locators_section.table_index(self.corpus_path)
 
     def verdict(self, citation, evidence):
@@ -1157,7 +1157,7 @@ class ExampleCase(unittest.TestCase):
         self.corpus_path = os.path.join(self.root, "corpus.xml")
         with open(self.corpus_path, "w", encoding="utf-8") as handle:
             handle.write(EXAMPLE_CORPUS)
-        self.corpus, self.spans, _ = check_locators_section.corpus_index(self.corpus_path)
+        self.corpus, self.spans, _, _ = check_locators_section.corpus_index(self.corpus_path)
 
     def verdict(self, citation, evidence):
         return check_locators_section.check(

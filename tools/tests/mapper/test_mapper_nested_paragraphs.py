@@ -324,7 +324,7 @@ class TestAWrapperThatIsNotAContinuationIsUnplaced(unittest.TestCase):
     def test_an_unplaced_paragraph_is_in_no_index_so_no_citation_reaches_it(self):
         directory = tempfile.mkdtemp(prefix="nested-paragraphs-unplaced-")
         self.addCleanup(shutil.rmtree, directory)
-        text, spans, refused = checker.corpus_index(written(directory))
+        text, spans, refused, _ = checker.corpus_index(written(directory))
         self.assertNotIn("This appendix lists widgets", text)
         for citation in ("§ 1.20", "§ 1.20(d)", "§ 1.20(c)(3)"):
             verdict, message = checker.check(
@@ -374,7 +374,7 @@ class TestTheDescentGoesToAnyDepth(unittest.TestCase):
     def setUp(self):
         directory = tempfile.mkdtemp(prefix="nested-paragraphs-depth-")
         self.addCleanup(shutil.rmtree, directory)
-        self.corpus, self.spans, _ = checker.corpus_index(written(directory))
+        self.corpus, self.spans, _, _ = checker.corpus_index(written(directory))
 
     def test_a_wrapper_inside_a_wrapper_is_indexed_at_the_outer_wrappers_address(self):
         self.assertEqual(path_of("A4 A run set off inside a run"), ("B", "1.20", "c", "2"))
@@ -395,7 +395,7 @@ class TestEveryOccurrenceIsHeldToTheCitation(unittest.TestCase):
     def setUp(self):
         directory = tempfile.mkdtemp(prefix="nested-paragraphs-occurrences-")
         self.addCleanup(shutil.rmtree, directory)
-        self.corpus, self.spans, _ = checker.corpus_index(written(directory))
+        self.corpus, self.spans, _, _ = checker.corpus_index(written(directory))
 
     def check(self, citation, evidence):
         return checker.check({"locator": {"citation": citation}, "evidence": evidence},
@@ -449,7 +449,7 @@ class TestACitationOfTheEnclosingParagraphNamesIt(unittest.TestCase):
         directory = tempfile.mkdtemp(prefix="nested-paragraphs-check-")
         self.addCleanup(shutil.rmtree, directory)
         path = written(directory)
-        self.corpus, self.spans, _ = checker.corpus_index(path)
+        self.corpus, self.spans, _, _ = checker.corpus_index(path)
         self.tables = checker.table_index(path)
 
     def check(self, citation, evidence):

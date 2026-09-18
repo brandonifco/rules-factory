@@ -588,6 +588,18 @@ TABLE_WRAPPERS = ("DIV", "TABLE")
 NESTED_KINDS = {"P": "paragraph", "FP": "paragraph", "FP-1": "paragraph", "FP-2": "paragraph",
                 "FP1-2": "paragraph", "HD1": "heading", "HD2": "heading", "HED": "heading",
                 "EXAMPLE": "worked-example"}
+#: What a section's **direct** children may be without being enumerated. A closed set, held equal
+#: to the section locator checker's by `tools/tests/mapper/test_mapper_top_level.py` -- the two
+#: files cannot import one another (0032), so nothing else would notice them drifting apart. The
+#: reason each tag is here is written beside the checker's copy; in short: `HEAD` is already
+#: enumerated above as the section's own `heading` unit, `DIV`/`TABLE` are addressed by their
+#: rows (0035), and `CITA`, `EDNOTE` and `HD1` are the eCFR's authority citation, editorial
+#: annotation and division title -- printed text of the section that states no provision.
+#:
+#: A tag that is **not** here and has words in it is enumerated anyway, with the reason it has no
+#: address, because a unit nothing counts is a unit no sweep can ever report (#290).
+TOP_LEVEL_PASSED_OVER = ("HEAD",) + TABLE_WRAPPERS + ("CITA", "EDNOTE", "HD1")
+
 HEADING = re.compile(r"^HD\d+$")
 DIVISION_HEADING = "HD1"
 STATES_A_DESIGNATION = re.compile(r"^\([A-Za-z0-9]{1,4}\)")
@@ -876,6 +888,14 @@ class EcfrXml(Adapter):
             elif child.tag == "EXAMPLE":
                 position += 1
                 found.append(Unit(f"§ {number} ¶{position} example", "worked-example", text))
+            elif child.tag not in TOP_LEVEL_PASSED_OVER:
+                # Enumerated, with the reason it has no address. It used to be dropped here, so
+                # the denominator left out every top-level block tag this grammar has no unit for
+                # -- the same hole `wrapped_elements` closed one level down (#290).
+                position += 1
+                found.append(Unit(f"§ {number} ¶{position}", "paragraph", text,
+                                  f"this walk has no unit for a <{child.tag}> at the top level "
+                                  f"of a section"))
             previous = child
         return found
 
