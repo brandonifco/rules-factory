@@ -1,10 +1,12 @@
 """The mapper's command line.
 
-Two commands today, and both are about the protocol, because the protocol is the part of the
+Three commands today, and all of them are about the walk, because the walk is the part of the
 method that is mechanical: `protocol` says whether a corpus's protocol is one this mapper can
-act on, and `pointers` performs the interrogation the protocol obliges and reports what it
-found. Producing a map is still done by hand (docs/method.md); what this makes checkable is that
-the walk was the walk this corpus requires.
+act on, `pointers` performs the interrogation the protocol obliges and reports what it found,
+and `inventory` enumerates the units inside the declared extent and reports which of them the
+walk reached (#255). Producing a map is still done by hand (docs/method.md); what this makes
+checkable is that the walk was the walk this corpus requires, and how much of the extent it
+covered.
 
 Four exit codes, the factory's four (README, *What the factory exits with*), because a caller
 that reads only `$?` must be able to tell what happened:
@@ -12,9 +14,10 @@ that reads only `$?` must be able to tell what happened:
   0  every declaration held, and something was actually examined
   1  a declaration is wrong, or an interrogation that was declared detected nothing at all
   2  a usage error
-  3  NOT VERIFIED: the interrogation ran and found what it cannot judge -- a pointer the map
-     does not declare. Whether each one is owed is 0026's question, decided by reading the
-     corpus, and this tool does not decide it. Not a pass, not a failure, and never silent.
+  3  NOT VERIFIED: the run found what it cannot judge -- a pointer the map does not declare, or
+     a unit inside the declared extent that no entry's quote reaches and no rejection accounts
+     for. Whether each one is owed is 0026's question, decided by reading the corpus, and this
+     tool does not decide it. Not a pass, not a failure, and never silent.
 """
 import argparse
 import json

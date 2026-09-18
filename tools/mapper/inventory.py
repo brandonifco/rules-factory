@@ -52,6 +52,7 @@ GROUNDS = (
     "advice",            # guidance, not obligation (method.md, phase 2)
     "preamble",          # a lead-in that states nothing of its own
     "heading",           # the corpus's own structure, not a passage
+    "page-furniture",    # a folio or a running head the extraction placed in the reading order
     "restatement",       # the same rule already mapped from the passage that states it
     "out-of-extent",     # printed inside the extent, about something outside it
     "beyond-adapter",    # the extraction cannot carry it (0004), so it was not examined as text
