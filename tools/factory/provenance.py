@@ -129,10 +129,12 @@ import shutil
 import subprocess
 import tempfile
 
-import generate
+import agentrails
 import intake as intake_step
 import overlay as overlay_step
 import ownership
+import pins
+import semantics
 
 FILE_NAME = "provenance.json"
 FORMAT = 4  # 2: buildInputs (#69); 3: managed and engineOwned (#72); 4: the overlay is a directory (#247)
@@ -146,7 +148,7 @@ COPY_IGNORE = shutil.ignore_patterns(*sorted(SKIP_DIRS))
 # The build-input rule (`buildInputs` above; `is_build_input` applies it). Names compare casefolded.
 BUILD_INPUT_NAMES = frozenset({"global.json", "nuget.config", "packages.lock.json", "directory.build.rsp",
                                ".editorconfig", ".globalconfig",
-                               generate.AGENT_POLICY.rsplit("/", 1)[-1].lower()})
+                               agentrails.AGENT_POLICY.rsplit("/", 1)[-1].lower()})
 BUILD_INPUT_SUFFIXES = (".props", ".targets", ".sln", ".slnx", ".csproj", ".fsproj", ".vbproj")
 LOCK_FILE = "packages.lock.json"
 
@@ -410,9 +412,9 @@ def build(state, result, model, recorder, factory_dir=FACTORY_DIR):
         try:
             row = ownership.classify(relative, model.name)
         except ownership.OwnershipError as error:
-            raise generate.GenerationError(str(error))
+            raise semantics.GenerationError(str(error))
         if row is None:
-            raise generate.GenerationError(f"produce wrote {relative}, which the ownership table "
+            raise semantics.GenerationError(f"produce wrote {relative}, which the ownership table "
                                            f"(tools/factory/ownership.py) does not classify; add it to the table")
         if relative == FILE_NAME or row.cls != ownership.GENERATED:
             continue
@@ -450,7 +452,7 @@ def build(state, result, model, recorder, factory_dir=FACTORY_DIR):
             "asOf": corpus.get("asOf"),
             "recomputed": True,
         },
-        "kernel": {"packageId": "RulesKernel", "version": generate.KERNEL_VERSION},
+        "kernel": {"packageId": "RulesKernel", "version": pins.KERNEL_VERSION},
         "packs": [],
         "recipes": recipes(factory_dir, state["_top"]),
         "generated": generated_files,
@@ -588,7 +590,7 @@ def recompute(engine_dir, produce_into, package=None):
         shutil.copytree(engine_dir, copy, ignore=COPY_IGNORE)
         try:
             actual = produce_into(spec, os.path.join(copy, *corpus_files[0].split("/")), name, copy)
-        except (intake_step.Refused, intake_step.Usage, generate.GenerationError) as error:
+        except (intake_step.Refused, intake_step.Usage, semantics.GenerationError) as error:
             return mismatches + [f"produce refused to re-produce the engine, so nothing else was compared: {error}"]
     if isinstance(recorded_inputs, list) and isinstance(actual.get("buildInputs"), list):
         actual = {**actual, "buildInputs": claimed(recorded_inputs, actual["buildInputs"])}

@@ -1124,7 +1124,8 @@ should enforce once it exists.
 **The map declares no types, and the engine's typed contract says only what the map does.** No
 field names an entry's inputs, outputs, units or value type: a parameter is not a rule and gets
 no entry, and `dependsOn` is not a runtime input. So the factory's generated contract
-([#76](https://github.com/brandonifco/rules-factory/issues/76), `tools/factory/generate.py`) types
+([#76](https://github.com/brandonifco/rules-factory/issues/76), `tools/factory/semantics.py` and
+`tools/factory/contracts.py`) types
 what the map fixes and nothing more. Each entry has a request type of its own, so a request for
 one entry cannot be handed to another. An assertion's request carries the caller's value, which
 is what row 8 resolves to, and its generated entry carries `AssertedBy`, who may assert it (0025). The request type is partial, so what the map leaves unnamed, an

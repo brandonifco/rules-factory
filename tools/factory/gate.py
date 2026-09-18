@@ -14,14 +14,17 @@ The recipe is the factory's, not the engine's, so it is rewritten on every `prod
     every test an implemented entry names exists and ran;
   * `scripts/map-overlay.py` -- merge(package, overlay), 0015 rules 1-5;
   * `scripts/engine-gate.py` -- the gate's non-dotnet checks, one subcommand each;
-  * `scripts/factory/{generate,intake,overlay,ownership,provenance,rulings}.py` -- this factory's generator and
-    the modules it needs to render every `*.g.cs` (ownership.py and rulings.py, which generate.py
-    imports, rulings.py also by map-overlay.py to check the owner's rulings of decision 0027;
-    provenance.py's embedding, which imports intake; and intake.py's HASH_DERIVATIONS, the one
-    table engine-gate.py's posture recomputes a baseline with; and overlay.py, which is where the
-    engine's own evidence is read from and is read by all four), verbatim,
-    so the gate can regenerate without the factory. Every file written here is in
-    provenance.json's `generated`, which is what ties these bytes to a factory version;
+  * `scripts/factory/*.py` -- this factory's generator and the modules it needs to render every
+    `*.g.cs`, verbatim, so the gate can regenerate without the factory. The set is `FILES` below
+    and `generate.py` is the name the engine's own scripts import; the rest are what importing it
+    reaches: the generator's own parts (`semantics`, `csharp`, `entries`, `registry`, `contracts`,
+    `correspondence`, `pins`, `scaffold`, `agentrails` -- #171 split them out of one 88 KB module,
+    and an engine cannot import half a generator), ownership.py and rulings.py, rulings.py also by
+    map-overlay.py to check the owner's rulings of decision 0027; provenance.py's embedding, which
+    imports intake; and intake.py's HASH_DERIVATIONS, the one table engine-gate.py's posture
+    recomputes a baseline with; and overlay.py, which is where the engine's own evidence is read
+    from and is read by all of them. Every file written here is in provenance.json's `generated`,
+    which is what ties these bytes to a factory version;
   * `.github/workflows/validate.yml` -- runs `validate.sh full` and nothing else.
 
 Lock files are not written here: they need a restore, and `produce` runs no dotnet. The emitted
@@ -40,8 +43,17 @@ FILES = {
     "scripts/validate.sh": (os.path.join(RECIPE, "validate.sh"), True),
     "scripts/map-overlay.py": (os.path.join(RECIPE, "map-overlay.py"), True),
     "scripts/engine-gate.py": (os.path.join(RECIPE, "engine-gate.py"), True),
+    "scripts/factory/agentrails.py": (os.path.join(HERE, "agentrails.py"), False),
+    "scripts/factory/contracts.py": (os.path.join(HERE, "contracts.py"), False),
+    "scripts/factory/correspondence.py": (os.path.join(HERE, "correspondence.py"), False),
+    "scripts/factory/csharp.py": (os.path.join(HERE, "csharp.py"), False),
+    "scripts/factory/entries.py": (os.path.join(HERE, "entries.py"), False),
     "scripts/factory/generate.py": (os.path.join(HERE, "generate.py"), False),
     "scripts/factory/intake.py": (os.path.join(HERE, "intake.py"), False),
+    "scripts/factory/pins.py": (os.path.join(HERE, "pins.py"), False),
+    "scripts/factory/registry.py": (os.path.join(HERE, "registry.py"), False),
+    "scripts/factory/scaffold.py": (os.path.join(HERE, "scaffold.py"), False),
+    "scripts/factory/semantics.py": (os.path.join(HERE, "semantics.py"), False),
     "scripts/factory/overlay.py": (os.path.join(HERE, "overlay.py"), False),
     "scripts/factory/ownership.py": (os.path.join(HERE, "ownership.py"), False),
     "scripts/factory/provenance.py": (os.path.join(HERE, "provenance.py"), False),

@@ -45,6 +45,7 @@ PACK = os.path.join(TOOLS, "pack-map.py")
 _spec = importlib.util.spec_from_file_location("factory_main_gate", os.path.join(FACTORY, "__main__.py"))
 factory = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(factory)
+import pins  # noqa: E402  (the kernel pin; tools/factory is on sys.path now)
 
 PART107 = os.path.join(REPO, "examples", "faa-part-107")
 HOYLE = os.path.join(REPO, "examples", "hoyle-backgammon")
@@ -55,7 +56,13 @@ MAP_ENTRIES = f"src/{NAME}/Generated/MapEntries.g.cs"
 REGISTRY = f"src/{NAME}/Generated/Registry.g.cs"
 RECIPE = ("scripts/validate.sh", "scripts/map-overlay.py", "scripts/engine-gate.py",
           "scripts/factory/generate.py", "scripts/factory/intake.py", "scripts/factory/ownership.py",
-          "scripts/factory/provenance.py", "scripts/factory/rulings.py", ".github/workflows/validate.yml")
+          "scripts/factory/provenance.py", "scripts/factory/rulings.py",
+          # The generator is nine modules since #171, and an engine that received only some of
+          # them could not regenerate at all.
+          "scripts/factory/agentrails.py", "scripts/factory/contracts.py", "scripts/factory/correspondence.py",
+          "scripts/factory/csharp.py", "scripts/factory/entries.py", "scripts/factory/pins.py",
+          "scripts/factory/registry.py", "scripts/factory/scaffold.py", "scripts/factory/semantics.py",
+          ".github/workflows/validate.yml")
 IMPLEMENTED_IN = {"ruleset": "faa-part-107", "version": 1}
 # Mutations these fixtures can record. Since #239 the gate refuses a placeholder one, so "m" no
 # longer stands in for a sentence -- and a fixture nobody could have observed is the habit the
@@ -183,7 +190,9 @@ class TestRecipeIsEmitted(GateCase):
         self.assertIn("export PYTHONDONTWRITEBYTECODE=1", gate.split("MODE=")[0],
                       "run by hand, the gate leaves no scripts/factory/__pycache__ in the engine")
         subprocess.run(["bash", "-n", os.path.join(engine, "scripts", "validate.sh")], check=True)
-        for module in ("generate.py", "intake.py", "ownership.py", "provenance.py", "rulings.py"):
+        for module in ("generate.py", "intake.py", "ownership.py", "provenance.py", "rulings.py",
+                       "agentrails.py", "contracts.py", "correspondence.py", "csharp.py", "entries.py",
+                       "pins.py", "registry.py", "scaffold.py", "semantics.py"):
             with open(os.path.join(FACTORY, module), "rb") as a, \
                     open(os.path.join(engine, "scripts", "factory", module), "rb") as b:
                 self.assertEqual(a.read(), b.read(), "the gate regenerates with the factory's own generator")
@@ -635,7 +644,7 @@ class TestRandomnessSeeded(unittest.TestCase):
         engine = self.engine()
         with open(os.path.join(engine, "RulesFactory.Packages.g.props"), encoding="utf-8") as handle:
             props = handle.read()
-        self.assertIn(f'<PackageVersion Include="RulesKernel.Randomness" Version="{factory.generate.KERNEL_VERSION}" />', props)
+        self.assertIn(f'<PackageVersion Include="RulesKernel.Randomness" Version="{pins.KERNEL_VERSION}" />', props)
         self.assertNotIn('<PackageReference Include="RulesKernel.Randomness"', props)
         with open(os.path.join(engine, "provenance.json"), encoding="utf-8") as handle:
             self.assertEqual(json.load(handle)["randomness"], "seeded")
