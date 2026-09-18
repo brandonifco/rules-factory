@@ -147,6 +147,38 @@ check_inventory() {
   printf '%d map(s) inventoried\n' "$inventories_taken"
 }
 
+# The completeness challenge each protocol requires, run over the units the walk left unaccounted
+# (#250). `requiredSweeps` named eleven challenges and nothing ran any of them, so the previous
+# step's report said NOT RUN on every invocation to keep the declaration from reading as coverage.
+# Each sweep now asks whether an unaccounted unit looks like it states a rule of its kind, which
+# is a recall device over a bounded pile and not the corpus-wide phrase scan #208 measured as
+# blind: a cue this misses does not hide the unit, because the inventory reports it unaccounted
+# either way.
+#
+# 3 is the expected outcome on every committed map, for the same reason the inventory's is: the
+# findings are units #267 already counts, and each one is a question only a reading of the corpus
+# answers. What exits 1 is a sweep the protocol requires that fired on no unaccounted unit *and*
+# on no unit the walk reached -- cues that are dead in this corpus, unless the protocol declares
+# why -- and a declared reason that a live cue contradicts. A required sweep the registry does not
+# implement is reported by name and exits 3; it is never skipped.
+sweeps_run=0
+check_sweeps() {
+  local map status
+  for map in examples/*/corpus-map*.json examples/*/*/corpus-map*.json; do
+    [ -e "$map" ] || continue
+    printf -- '--- %s\n' "$map"
+    status=0
+    python3 tools/mapper sweeps "$map" || status=$?
+    [ "$status" -eq 0 ] || [ "$status" -eq 3 ] || return "$status"
+    sweeps_run=$((sweeps_run + 1))
+  done
+  if [ "$sweeps_run" -eq 0 ]; then
+    echo "no corpus maps found -- this step proved nothing" >&2
+    return 1
+  fi
+  printf '%d map(s) swept\n' "$sweeps_run"
+}
+
 # What a blind second mapping was given is recorded by digest beside the comparison, and the
 # staged documents are the redacted ones (#223). The comparison tooling compares two maps and
 # cannot see the inputs, so a contaminated run reported as blind manufactures agreement -- which
@@ -391,6 +423,7 @@ run "every corpus map satisfies the schema"            check_all_maps
 run "every map says how its corpus is read"            check_protocols
 run "every protocol's own detectors find its pointers" check_pointers
 run "every extent's units are enumerated and accounted" check_inventory
+run "every protocol's required sweeps run and report"   check_sweeps
 run "every corpus map carries a review of its bytes"   check_map_reviews
 run "every blind mapping was given what it recorded"   check_blind_staging
 run "every citation resolves in its corpus"            check_locators

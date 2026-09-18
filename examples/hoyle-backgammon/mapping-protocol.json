@@ -19,6 +19,10 @@
     "cross-references",
     "extent-coverage"
   ],
+  "sweepCuesReason": {
+    "definitions": "Hoyle's backgammon article defines its vocabulary by using it -- the points are named ace through six and the tables inner, outer and home, in the sentences that state the moves (`point-designations`, `direction-of-travel`, #13). No definitional verb occurs anywhere on pages 271-280: `means`, `is defined as`, `refers to`, `the term` and `for the purposes of` are absent from the whole extent, in the reached units as well as the unaccounted ones. The definitions sweep therefore fires on nothing here, and the `vocabulary` sweep is the one that carries this corpus's naming.",
+    "exceptions": "`except`, `unless`, `other than`, `notwithstanding` and `provided that` do not occur anywhere on pages 271-280. Hoyle conditions a rule by restating it in the affirmative for the other case -- \"If the winner has borne off all his men before his adversary has begun to do the same\" -- so the corpus states its exceptions as further rules and the map holds them as entries of their own."
+  },
   "adapterReach": {
     "text": "readable",
     "formatting": "unsupported",
