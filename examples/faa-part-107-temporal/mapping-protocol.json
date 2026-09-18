@@ -24,6 +24,11 @@
     "cross-references",
     "extent-coverage"
   ],
+  "sweepCues": {
+    "applicability": [
+      "must comply with"
+    ]
+  },
   "adapterReach": {
     "text": "readable",
     "tables": "unsupported",

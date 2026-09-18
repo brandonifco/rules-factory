@@ -28,6 +28,13 @@ PROTOCOL_VERSIONS = (1,)
 PROTOCOL_FILENAME = "mapping-protocol.json"
 PROTOCOL_FIELDS = ("protocolVersion", "corpus", "units", "pointerMechanisms", "requiredSweeps",
                    "adapterReach")
+# Optional, because a corpus on which every sweep's built-in cues fire declares neither. They
+# take the shape `pointerPhrases` takes (0026): `sweepCues` maps a sweep to the corpus's own cues,
+# read *in addition to* the built-in list, and `sweepCuesReason` says why a sweep this corpus
+# requires is expected to find nothing -- the one thing that distinguishes wrong cues from
+# nothing to say. A reason beside a sweep that fired is refused, as 0026 refuses one beside a
+# non-empty phrase list.
+OPTIONAL_FIELDS = ("sweepCues", "sweepCuesReason")
 
 # The shapes a corpus states a rule in. A unit is what a mapper reads one at a time: the walk is
 # bounded, and this says by what.
@@ -47,11 +54,10 @@ DETECTED_ELSEWHERE = {
 }
 POINTER_MECHANISMS = DETECTED_HERE + tuple(DETECTED_ELSEWHERE)
 
-# The completeness challenge of docs/method.md, as a closed set of named sweeps. None of them is
-# runnable yet: https://github.com/brandonifco/rules-factory/issues/250 is where they become
-# code, and until then `requiredSweeps` is a declaration this checker holds to the vocabulary
-# and to nothing else. That is said out loud by `mapper protocol`, so a protocol cannot read as
-# though its sweeps had run.
+# The completeness challenge of docs/method.md, as a closed set of named sweeps. Each is code the
+# mapper runs over the units the walk left unaccounted (`mapper sweeps`, #250). A name this
+# checker holds to the vocabulary but the registry does not implement is reported by name and
+# exits NOT VERIFIED, never skipped: a declared interrogation nobody performs reads as coverage.
 SWEEPS = ("definitions", "vocabulary", "applicability", "exceptions", "permissions",
           "prohibitions", "undefined-terms", "examples", "tables", "cross-references",
           "extent-coverage")
@@ -99,9 +105,10 @@ def check(protocol, document, manifest=None):
     for field in PROTOCOL_FIELDS:
         if field not in protocol:
             problems.append(f"`{field}` is missing, and every protocol field is required")
-    for extra in sorted(set(protocol) - set(PROTOCOL_FIELDS)):
+    for extra in sorted(set(protocol) - set(PROTOCOL_FIELDS) - set(OPTIONAL_FIELDS)):
         problems.append(f"`{extra}` is not a protocol field; the five are "
-                        + ", ".join(PROTOCOL_FIELDS[1:]))
+                        + ", ".join(PROTOCOL_FIELDS[1:]) + ", and the optional two are "
+                        + ", ".join(OPTIONAL_FIELDS))
 
     corpus = protocol.get("corpus")
     if manifest is not None:
@@ -129,6 +136,7 @@ def check(protocol, document, manifest=None):
         for sweep in sweeps:
             if sweep not in SWEEPS:
                 problems.append(f"sweep {sweep!r} is outside the closed set: " + ", ".join(SWEEPS))
+    problems += _check_sweep_cues(protocol, sweeps if isinstance(sweeps, list) else [])
 
     reach = protocol.get("adapterReach")
     if not isinstance(reach, dict) or not reach:
@@ -142,6 +150,56 @@ def check(protocol, document, manifest=None):
             if verdict not in REACH:
                 problems.append(f"adapterReach[{modality!r}] is {verdict!r}, outside: "
                                 + ", ".join(REACH))
+    return problems
+
+
+def _check_sweep_cues(protocol, required):
+    """`sweepCues` and `sweepCuesReason` are about sweeps this protocol requires, and about cues
+    that compile.
+
+    A cue for a sweep the protocol does not require is read by nothing, which is the shape #60
+    refused for `pointerPhrasesReason`: a declaration nobody reads is worse than none, because it
+    looks like it is doing work.
+    """
+    # Imported here rather than at the top: `sweeps` reads `Refused` and `SWEEPS` from this
+    # module, and the cue grammar belongs beside the sweeps that use it, not in the protocol.
+    from mapper.sweeps import compile_cue
+
+    problems = []
+    for field in OPTIONAL_FIELDS:
+        declared = protocol.get(field)
+        if declared is None:
+            continue
+        if not isinstance(declared, dict) or not declared:
+            problems.append(f"`{field}` is {declared!r}; it maps a sweep name to "
+                            + ("its cues" if field == "sweepCues" else "why it finds nothing")
+                            + ", and an empty one says nothing")
+            continue
+        for name in sorted(declared):
+            where = f"{field}[{name!r}]"
+            if name not in SWEEPS:
+                problems.append(f"{where}: {name!r} is outside the closed set of sweeps: "
+                                + ", ".join(SWEEPS))
+                continue
+            if name not in required:
+                problems.append(f"{where}: this protocol does not require the {name!r} sweep, so "
+                                f"nothing reads this")
+                continue
+            value = declared[name]
+            if field == "sweepCuesReason":
+                if not isinstance(value, str) or not value.strip():
+                    problems.append(f"{where}: a reason is why this corpus states nothing of that "
+                                    f"kind, in words; {value!r} is not one")
+                continue
+            if not isinstance(value, list) or not value:
+                problems.append(f"{where}: cues are a non-empty list of phrases or "
+                                f"{{'regex': ...}} objects (0026); {value!r} is not one")
+                continue
+            for position, item in enumerate(value):
+                try:
+                    compile_cue(item, f"{where}[{position}]")
+                except Refused as error:
+                    problems.append(str(error))
     return problems
 
 

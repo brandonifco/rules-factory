@@ -1,12 +1,13 @@
 """The mapper's command line.
 
-Three commands today, and all of them are about the walk, because the walk is the part of the
+Four commands today, and all of them are about the walk, because the walk is the part of the
 method that is mechanical: `protocol` says whether a corpus's protocol is one this mapper can
 act on, `pointers` performs the interrogation the protocol obliges and reports what it found,
-and `inventory` enumerates the units inside the declared extent and reports which of them the
-walk reached (#255). Producing a map is still done by hand (docs/method.md); what this makes
-checkable is that the walk was the walk this corpus requires, and how much of the extent it
-covered.
+`inventory` enumerates the units inside the declared extent and reports which of them the walk
+reached (#255), and `sweeps` runs the completeness challenge the protocol requires over the
+units the inventory left unaccounted (#250). Producing a map is still done by hand
+(docs/method.md); what this makes checkable is that the walk was the walk this corpus requires,
+how much of the extent it covered, and what is left in the part it did not account for.
 
 Four exit codes, the factory's four (README, *What the factory exits with*), because a caller
 that reads only `$?` must be able to tell what happened:
@@ -30,6 +31,7 @@ from mapper import corpus as corpus_step
 from mapper import inventory as inventory_step
 from mapper import pointers as pointers_step
 from mapper import protocol as protocol_step
+from mapper import sweeps as sweeps_step
 
 NOT_VERIFIED = 3
 
@@ -85,9 +87,12 @@ def command_protocol(args):
     for name in elsewhere:
         print(f"  pointers detected elsewhere: {name} -- "
               f"{protocol_step.DETECTED_ELSEWHERE[name]}")
-    # Said out loud on every run, so a protocol cannot read as though its sweeps had run.
-    print(f"  sweeps declared: {', '.join(protocol.get('requiredSweeps'))} "
-          f"-- NOT RUN: no sweep is implemented (#250)")
+    # Said out loud on every run, because a sweep the mapper cannot run must be visible here
+    # rather than absent from the report `mapper sweeps` prints.
+    declared = protocol.get("requiredSweeps")
+    missing = [name for name in declared if name not in sweeps_step.REGISTRY]
+    print(f"  sweeps declared: {', '.join(declared)} -- run by `mapper sweeps`"
+          + (f"; NOT IMPLEMENTED: {', '.join(missing)}" if missing else ""))
     print(f"  adapter reach: "
           + ", ".join(f"{k}={v}" for k, v in sorted(protocol.get('adapterReach').items())))
     return 0
@@ -125,14 +130,37 @@ def command_pointers(args):
     return 0
 
 
-def command_inventory(args):
-    """What the extent claims, against what the walk reached (#255).
+class Walk:
+    """One map's extent, enumerated, and the inventory of what its walk reached.
 
-    The corpus comes from the manifest and not from the command line: the manifest is already
-    the one place that says which adapter read this corpus and where the committed copy is, and
-    a map inventoried against a corpus its manifest does not name would be measured against
-    bytes nothing pinned.
+    The inventory and the sweeps both need exactly this, and they need it to be the same
+    measurement: a sweep runs over the units the walk left unaccounted (#250), so a sweep that
+    enumerated differently from `mapper inventory` would be sorting a different pile than the one
+    the inventory reports.
     """
+
+    def __init__(self, document, manifest, source, adapter, extent, units, taken):
+        self.document = document
+        self.manifest = manifest
+        self.source = source
+        self.adapter = adapter
+        self.extent = extent
+        self.units = units
+        self.taken = taken
+
+    def corpus_entry(self):
+        """The manifest's declaration of this corpus -- where `pointerPhrases` is (0026)."""
+        for declared in self.manifest.get("corpora") or []:
+            if isinstance(declared, dict) and declared.get("sourceId") == self.source:
+                return declared
+        return None
+
+
+def _walk(args):
+    """The corpus comes from the manifest and not from the command line: the manifest is already
+    the one place that says which adapter read this corpus and where the committed copy is, and
+    a map measured against a corpus its manifest does not name would be measured against bytes
+    nothing pinned."""
     document = _read(args.map_path, "map")
     manifest_path = args.manifest or _find_manifest(args.map_path)
     if manifest_path is None:
@@ -150,7 +178,15 @@ def command_inventory(args):
             f"nothing to inventory (0009)")
     units = adapter.units(extent)
     rejected = inventory_step.load_rejections(inventory_step.path_beside(args.map_path), source)
-    taken = inventory_step.take(units, document, rejected)
+    return Walk(document, manifest, source, adapter, extent, units,
+                inventory_step.take(units, document, rejected))
+
+
+def command_inventory(args):
+    """What the extent claims, against what the walk reached (#255)."""
+    walk = _walk(args)
+    document, source, adapter = walk.document, walk.source, walk.adapter
+    extent, units, taken = walk.extent, walk.units, walk.taken
     for line in inventory_step.lines(taken, os.path.basename(args.map_path), source, adapter.name,
                                      extent, show_all=args.list):
         print(line)
@@ -177,8 +213,56 @@ def command_inventory(args):
     return 0
 
 
+def command_sweeps(args):
+    """The completeness challenge the protocol requires, run over what the walk left (#250).
+
+    Each sweep asks whether an **unaccounted** unit looks like it states a rule of its kind, so
+    the candidate set is bounded by the inventory rather than being the whole corpus. That is
+    what separates this from the phrase scan #208 measured as blind: a cue this misses does not
+    hide the unit, because the inventory reports it unaccounted either way.
+    """
+    document, path, protocol = _inputs(args)
+    walk = _walk(args)
+    results = sweeps_step.run(protocol, walk.units, walk.taken, walk.corpus_entry())
+    print(f"{args.map_path} against corpus {walk.source!r} [{walk.adapter.name}], "
+          f"{len(walk.taken.unaccounted)} of {len(walk.units)} unit(s) unaccounted, protocol "
+          f"{os.path.basename(path)}")
+    if not results:
+        raise protocol_step.Refused(
+            f"{os.path.basename(path)} requires no sweep, so this step examined nothing; "
+            f"`requiredSweeps` is empty and `mapper protocol` refuses that")
+    for line in sweeps_step.lines(results, show_all=args.list):
+        print(line)
+
+    if not walk.units:
+        print("\nthe extent enumerated no unit at all; a sweep over no candidate has nothing to "
+              "find and is not a pass", file=sys.stderr)
+        return 1
+    problems = sweeps_step.problems(results)
+    for line in problems:
+        print(line)
+    if problems:
+        print(f"\n{len(problems)} sweep(s) reported a zero nothing accounts for", file=sys.stderr)
+        return 1
+    missing = sweeps_step.unimplemented(results)
+    total = sweeps_step.total_findings(results)
+    if missing:
+        print(f"\nNOT VERIFIED: {len(missing)} required sweep(s) are not implemented -- "
+              f"{', '.join(missing)}. A sweep the mapper cannot run is reported by name, never "
+              f"skipped: the declaration would otherwise read as coverage")
+        return NOT_VERIFIED
+    if total:
+        print(f"\nNOT VERIFIED: {total} finding(s) across {len(results)} sweep(s). Each is an "
+              f"unaccounted unit that looks like it states a rule of that kind and that no "
+              f"entry's quote reaches; whether it owed an entry is decided by reading the corpus, "
+              f"not here")
+        return NOT_VERIFIED
+    print(f"\n{len(results)} sweep(s) ran and found nothing the map does not hold")
+    return 0
+
+
 COMMANDS = {"protocol": command_protocol, "pointers": command_pointers,
-            "inventory": command_inventory}
+            "inventory": command_inventory, "sweeps": command_sweeps}
 
 
 def main(argv=None):
@@ -187,19 +271,21 @@ def main(argv=None):
     for name, help_text in (("protocol", "check the mapping protocol governing a map"),
                             ("pointers", "detect the pointers the protocol says this corpus makes"),
                             ("inventory", "enumerate the extent's units and report what the walk "
-                                          "reached")):
+                                          "reached"),
+                            ("sweeps", "run the completeness challenge the protocol requires over "
+                                       "the units the walk left unaccounted")):
         sub = subparsers.add_parser(name, help=help_text)
         sub.add_argument("map_path", help="the corpus map the protocol governs")
         if name != "inventory":
             sub.add_argument("--protocol", help=f"the protocol; "
                                                 f"{protocol_step.PROTOCOL_FILENAME} beside the "
                                                 f"map by default")
-        if name in ("protocol", "inventory"):
+        if name in ("protocol", "inventory", "sweeps"):
             sub.add_argument("--manifest", help="corpus manifest; found beside the map when "
                                                 "unambiguous")
-        if name == "inventory":
+        if name in ("inventory", "sweeps"):
             sub.add_argument("--list", action="store_true",
-                             help="print every unaccounted unit, not the first ten")
+                             help="print every finding, not the first few")
     args = parser.parse_args(argv)
     try:
         return COMMANDS[args.command](args)
