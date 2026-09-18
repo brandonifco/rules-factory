@@ -129,10 +129,10 @@ ODDITIES = """<ROOT>
 <DIV8 N="1.21" TYPE="SECTION"><HEAD>§ 1.21 Odd shapes.</HEAD>
 <P>(a) A paragraph that introduces a run:</P>
 <EXTRACT><FP-1>Alpha rule.</FP-1>
-<P>(b)(1) A compound designation, which DESIGNATOR does not match.</P></EXTRACT>
+<P>(b)(1) A compound designation, which states a designation of its own.</P></EXTRACT>
 <P>(b) Another paragraph:</P>
 <EXTRACT><FP-1>Beta rule.</FP-1>
-<P>(c)An unspaced designation, which DESIGNATOR does not match either.</P></EXTRACT>
+<P>(c)An unspaced designation, which states one too.</P></EXTRACT>
 <P>(c) A third:</P>
 <EXTRACT><FP-1>Gamma rule.</FP-1>
 <EXAMPLE><HED>Illustration.</HED><P>A head that does not name an example.</P></EXAMPLE>
@@ -628,12 +628,12 @@ class TestTheWalkLosesNothing(unittest.TestCase):
 class TestNothingSlipsThroughInheritance(unittest.TestCase):
     """The shapes a review found by construction; every one used to be attributed or to vanish.
 
-    Mutation for the first two: use `DESIGNATOR` for the refusal test instead of
-    `STATES_A_DESIGNATION`. `DESIGNATOR` requires whitespace after the first parenthesised token,
-    so `(b)(1) Text` and `(b)Text` slip past it and inherit an address that is not their own.
-    That expression drives the whole section's designator tree and is deliberately **not**
-    widened here (#289); the refusal test is a separate, broader expression, because refusing too
-    widely only withholds an address while inheriting too widely hands out a wrong one.
+    Mutation for the first two: narrow either expression so a compound or unspaced designation
+    stops matching. When this was written `DESIGNATOR` required whitespace after the first
+    parenthesised token, so `(b)(1) Text` and `(b)Text` slipped past it and inherited an address
+    that was not their own, and the refusal test used a separate, broader expression for exactly
+    that reason. #289 widened `DESIGNATOR` to the same form -- measured, no committed paragraph
+    moved -- so the two agree now and `test_mapper_designator.py` holds them equal.
     """
 
     def reason_for(self, opening):
