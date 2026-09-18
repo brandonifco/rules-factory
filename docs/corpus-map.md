@@ -193,6 +193,41 @@ checker indexed a section's `<P>` and `<EXAMPLE>` children and nothing else, whi
   column semantics of a regulation live in its headings, and this corpus prints them once for
   3,687 rows.
 
+**A paragraph the corpus prints inside a wrapper is named by the designation the wrapper
+continues, or by nothing at all**
+([#285](https://github.com/brandonifco/rules-factory/issues/285),
+[0036](decisions/0036-a-paragraph-inside-a-wrapper-takes-the-designation-the-wrapper-continues.md)).
+§ 172.102 states its special provisions as ordinary paragraphs inside an `<EXTRACT>` — a block set
+off from the running text, beside the designated paragraph that introduces the run — and the
+checker walked only a section's direct children, so `A3`, `B2`, `N40`, `TP1` and `148` were in no
+index at all. They are now at `§ 172.102(c)(2)`, `(c)(3)`, `(c)(5)`, `(c)(8)(ii)` and `(c)(1)`,
+with every other provision of their run.
+
+- **Nothing was added to the grammar above.** What distinguishes one provision of a run from
+  another is the quote, which is held to its citation at every occurrence, exactly as it already
+  was for two paragraphs that print the same sentence
+  ([0030](decisions/0030-a-repeated-passage-is-identified-by-the-container-its-citation-names.md)).
+- The wrappers are a **closed set** — `EXTRACT` and `NOTE` — descended into to **any depth**, and
+  the descent **loses nothing**: every text-bearing element it reaches is either indexed or
+  reported unplaced with a reason. A table's wrapper is the one exception, because a table is
+  cited by its rows, above.
+- A wrapper is printed *after* a paragraph, and the markup does not say it is *inside* it. Three
+  things say it is not, asked of **every** wrapper at every depth, and each leaves that wrapper
+  **unplaced** — in no index, named by no citation, and reported by the run with its reason:
+  it **opens a division of the section** (it holds a heading at the level directly below the
+  section, or it is captioned and follows no designated paragraph — § 172.101's two appendices
+  answer both); an ordinary `<P>` inside it **states its own designation**, which the designation
+  it is printed under is not; or it is a note whose heading does not name one paragraph it sits
+  in. An address that is confidently wrong is worse than none — 0035's posture towards an
+  unreadable table, applied to a designation.
+- A **note takes the one paragraph it names in its own heading**: § 172.101 prints
+  `Note to paragraph (c)(11):` after `(c)(11)(iii)(C)`, and `§ 172.101(c)(11)` is where it is
+  cited from. A heading naming several paragraphs, none, or one the note is not printed in is
+  refused, exactly as a row key naming two rows is.
+- **A passage with no address is never coverage of itself.** `mapper inventory` counts such a
+  unit, reports it on a `no address` line, and fails a map whose entry quotes one: the locator
+  run would report that entry unchecked, and the two tools may not disagree about one passage.
+
 **Use it where the quote is the lead-in alone.** Part 107's `operating-limitations` cites
 `§ 107.51 introductory text`. Entries that quote the lead-in *together with* designated paragraphs
 — `over-human-beings`, `preflight-actions`, `visual-observer-conditions`, both § 107.25 entries —

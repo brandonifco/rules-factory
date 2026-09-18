@@ -20,6 +20,15 @@ by construction:
                     map whether it was read and dismissed or never opened, and that is the state
                     -- "nobody looked" -- a map exists to distinguish from a recorded verdict.
 
+A fourth thing cuts across those three. A unit may be text the corpus prints that **no citation
+can resolve into** (0036): an appendix the section's designation grammar does not reach, a
+wrapper whose contents state designations of their own. The enumeration counts it, because
+dropping it would shrink the denominator to what happened to be citable. But a quote of it is
+**not coverage of it** -- the locator run would report that entry unchecked and fail -- so a map
+that claims to have reached one is a `problem` here, and a run that merely contains one is NOT
+VERIFIED with the count said out loud. Accounting for such a unit means recording a rejection
+against it, which is the one verdict that does not require an address.
+
 Unaccounted units are reported as **NOT VERIFIED** (exit 3), never as a failure. Whether a
 passage owed an entry is decided by reading the corpus, and this tool does not read it.
 
@@ -76,6 +85,11 @@ class Inventory:
     @property
     def unaccounted(self):
         return [u for u in self.units if u.key not in self.reached and u.key not in self.rejected]
+
+    @property
+    def unaddressable(self):
+        """Units no citation can resolve into (0036), whatever else is true of them."""
+        return [u for u in self.units if u.unaddressable]
 
     def by_kind(self):
         counts = {}
@@ -196,6 +210,18 @@ def take(units, document, rejected):
             problems.append(f"  X  {key!r} is recorded as examined and rejected, and "
                             f"{', '.join(sorted(reached[key]))} quotes it; a passage cannot have "
                             f"produced no entry and be the evidence for one")
+    for unit in units:
+        if unit.unaddressable and unit.key in reached:
+            # The contradiction 0036 makes visible: no citation resolves into this unit, so the
+            # locator run reports the entry that quotes it unchecked and fails. Counting it as
+            # reached here would have the two tools disagree about the same passage, with the
+            # inventory the more forgiving of the two -- which is the direction this repository
+            # must never be wrong in.
+            problems.append(f"  X  {unit.key!r} is quoted by "
+                            f"{', '.join(sorted(reached[unit.key]))} and no citation can resolve "
+                            f"into it -- {unit.unaddressable}. A quote of a passage with no "
+                            f"address is not coverage of it: record a rejection against it, or "
+                            f"give it an address")
     return Inventory(units, reached, rejected, problems, located, unlocated)
 
 
@@ -212,6 +238,14 @@ def lines(inventory, map_name, corpus_name, adapter, extent, show_all=False):
         f"  rejected:    {len(inventory.rejected)} examined and recorded as producing no entry",
         f"  unaccounted: {len(unaccounted)}",
     ]
+    if inventory.unaddressable:
+        out.append(f"  no address:  {len(inventory.unaddressable)} unit(s) no citation can "
+                   f"resolve into (0036), so a quote of one is not coverage of it")
+        for unit in inventory.unaddressable[:5] if not show_all else inventory.unaddressable:
+            out.append(f"  -  {unit.key} [{unit.kind}]: {unit.unaddressable}")
+        if not show_all and len(inventory.unaddressable) > 5:
+            out.append(f"  -  ... and {len(inventory.unaddressable) - 5} more; --list prints "
+                       f"every one")
     if inventory.unlocated:
         # Not an inventory failure: a `scope: out` entry quotes beyond the extent by design
         # (0020), and an entry whose evidence is a summary rather than a quote is unlocatable

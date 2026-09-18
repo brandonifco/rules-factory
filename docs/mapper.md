@@ -187,6 +187,38 @@ are enumerated after its paragraphs rather than in the place the table is printe
 walks a section's direct children, a table sits below them, and a reading order it cannot see is
 not one it should assert.
 
+**A paragraph the corpus prints inside a wrapper is a unit of its section**
+([#285](https://github.com/brandonifco/rules-factory/issues/285),
+[0036](decisions/0036-a-paragraph-inside-a-wrapper-takes-the-designation-the-wrapper-continues.md)).
+Walking a `DIV8`'s direct children left out every paragraph further down, and § 172.102 states its
+special provisions that way: `A3`, `B2`, `N40`, `TP1` and `148` are `FP-1` and `P` elements inside
+an `<EXTRACT>` beside the paragraph that introduces the run. The set of wrappers descended into is
+**closed** and lives in `NESTED_CONTAINERS` — `EXTRACT` and `NOTE` — with the reason for each
+member beside it, and the descent is to **any depth**; a `DIV` holding a table is not in it,
+because a table is addressed by its rows and flattening one into the paragraph index is the
+reading 0035 refused. The section locator checker descends into the same wrappers with the same
+table of tags, and a test holds the two equal, because a unit one half can cite and the other
+cannot see is a denominator that shrinks to fit what was read.
+
+The descent **loses nothing**: every text-bearing element it reaches is enumerated, including one
+whose tag the table does not name, and a test asserts that over the committed corpora and every
+fixture. A unit nothing counts is a unit no sweep can ever report.
+
+The two walks part company on **one** thing, in a direction that is asserted. The checker builds
+the designator tree and so leaves a wrapper **unplaced** where the markup does not say the wrapper
+is inside the paragraph it follows — an appendix, a wrapper holding a `<P>` that states its own
+designation, a note whose heading names the wrong paragraph. This file builds no tree, because a
+unit key says where a paragraph sits in the section's reading order and asserts no containment, so
+it decides the three of those tests that need no designation and not the fourth. Everything it
+calls unaddressable the checker leaves unplaced; the reverse does not hold, and a test pins the
+containment.
+
+Such a unit is enumerated and carries its reason (`Unit.unaddressable`). The inventory counts it,
+prints it on a `no address` line, exits NOT VERIFIED while any exist, and **fails** a map whose
+entry quotes one: a quote of a passage no citation can name is not coverage of it, and the locator
+run would report that entry unchecked. Accounting for one means recording a rejection against it,
+the one verdict that needs no address.
+
 A fourth grammar subclasses `Adapter`, implements `units(extent)`, and registers its manifest
 `adapter` name. A manifest naming an adapter nothing implements is **refused**: a corpus nothing
 can enumerate must not report an inventory of zero unaccounted units.
