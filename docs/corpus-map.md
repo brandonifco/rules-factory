@@ -163,12 +163,20 @@ checker indexed a section's `<P>` and `<EXAMPLE>` children and nothing else, whi
   caption, where it has one, goes in the entry's `note`.
 - The **row** is named by `column = value` pairs, separated by `;` inside the brackets, in the
   corpus's own column numbering — the numbering the table's headings print, `9A` and `10B`
-  included. A heading split into sub-columns names no column of its own, and split means the
-  label plus letters: `10A` is a sub-column of `10`, and `1` is a sub-column of nothing. A table
-  whose cells span rows or columns, or whose labels do not number its cells one for one, carries
-  no geometry a reader can resolve and is **refused**: it addresses nothing, and a map that does
-  not read it excludes it in `extent.tables` with a reason. A table that prints a label twice, or
-  prints no numbering at all, is numbered by position. The pairs are a conjunction and their order does not matter. **Exactly one row must
+  included, and read wherever the heading prints them — the corpus writes a parent as a prefix,
+  `(8)Packaging(§ 173.***)`, and its children as suffixes, `Exceptions(8A)`. A two-level heading
+  is expanded into a grid (`colspan` widens a cell, `rowspan` carries it down) and a column's
+  label is the bottom-most heading cell covering it; a heading split into sub-columns names no
+  column of its own, and split means the label plus letters, so `10A` is a sub-column of `10` and
+  `1` is a sub-column of nothing. Two things are **refused**, because they leave a body cell's
+  column undetermined: a cell of a body row carried into the row below, and leaf labels that do
+  not number the body's cells one for one. Such a table addresses nothing, and a map that does not
+  read it excludes it in `extent.tables` with a reason. A row that spans *part* of its width is
+  unaddressable on its own — no key names it — while a row that is one cell across the whole
+  width, the footnote row a regulation ends a table with, is a row like any other. Every other way
+  a printed numbering can fail — a heading naming two columns, a table numbered only in part, a
+  numbering that does not begin at `(1)`, a label printed twice — falls back to numbering **by
+  position**, and the run says which numbering it used and why. The pairs are a conjunction and their order does not matter. **Exactly one row must
   match**: two is a refusal, not a first hit, and the answer is a discriminating column —
   `row [column 2 = "Ammonia, anhydrous"; column 1 = "I"]`. A row's position is never part of the
   key, because an amendment moves it and a key that stops resolving is better than one that

@@ -91,13 +91,32 @@ absence.
   prefix, `1` is swallowed by `10A`, the Hazardous Materials Table's 14 columns come out as 13,
   and the table silently falls back to position — the one corpus this decision was written for,
   addressed wrongly, with `column 9` naming column 8B.
-- **Where the markup does not carry the geometry, the table addresses nothing.** A cell that
-  spans rows or columns, or headings whose leaf labels do not number the cells one for one, leave
-  no honest way to say which column a cell is in: the table is **refused** — by the adapter, which
-  will not enumerate it, and by the checker, which will not resolve a citation into it — and a map
-  that does not read it excludes it with a reason. A label printed twice names no column either,
-  and such a table is numbered **positionally**, which is what the markup does say; so is a table
-  that prints no numbering at all. Each table says which of the two numberings it got.
+- **A two-level heading is read, not refused.** The corpus prints one: ten heading cells, seven
+  of them `rowspan="2"` and three of them `colspan` parents, over a second row of seven — 7 + 3 +
+  2 + 2 = 14 leaves over 14 body cells, an alignment the markup states outright. The heading rows
+  are expanded into a grid the way any table is laid out (`colspan` widens a cell, `rowspan`
+  carries it into the row below), and a column's label is read from the **bottom-most heading cell
+  covering it**. A label is read **wherever the cell prints it**, because this corpus writes the
+  parents as prefixes, `(8)Packaging(§ 173.***)`, and the children as suffixes, `Exceptions(8A)`;
+  anchoring the token at the start of the cell finds none of the children, which is half of why
+  this table never numbered correctly.
+- **Two things, and only two, leave a body cell's column undetermined, and they are refused**: a
+  cell of a body row carried into the row below (`rowspan`), which displaces every row after it,
+  and leaf labels that do not number the body's cells one for one. The table then addresses
+  nothing — the adapter will not enumerate it, the checker will not resolve a citation into it —
+  and a map that does not read it excludes it with a reason.
+- **A row that spans part of its width is unaddressable; the table is not.** A `COLSPAN` in the
+  middle of a row displaces every cell after it, so no column names its cells: no key matches it
+  and none is written for it. A row that is **one cell across the whole width** is a row like any
+  other — the footnote and sub-heading rows every printed regulation ends a table with, four of
+  them in § 172.101's reportable-quantity table. Refusing 1,356 rows for their footnotes is not a
+  check; it is a tool that cannot read its corpus.
+- **Everything else that can go wrong with a printed numbering falls back to position**, which is
+  what the markup still says, and never to a refusal: a heading that names two columns at once (a
+  footnote marker beside a column number), a table where some headings are numbered and some are
+  not, a numbering that does not begin at `(1)`, and a label printed twice. Each table records
+  which numbering it got and, when it is positional, why — and every message that names a table's
+  columns names the numbering and the reason with them.
 
 Ordinals were the obvious alternative and are the wrong answer; see below.
 
@@ -158,7 +177,7 @@ The rule spans a boundary, and each half is checked where its evidence is:
 | Held by | What it holds |
 |---|---|
 | `examples/faa-part-107/check-locators-section.py` | the table geometry, the row a citation resolves to, and the quote against the row or the cell. A key that names 0 or 2 rows, a table or a column the section does not print, a table whose geometry the markup does not carry, a quote that is not a span of the row, a quote that elides its middle, and a corpus printing one section designation twice, each fail |
-| `tools/mapper/corpus.py` (`ecfr-xml`) | the enumeration: a sliced table's rows as `table-row` units, and the **refusal** of a table the extent passes over in silence, a table whose geometry is unreadable, a slice of an uncited section or an absent table, a key that resolves to 0 or 2 rows, and a corpus printing one section designation twice |
+| `tools/mapper/corpus.py` (`ecfr-xml`) | the enumeration: a sliced table's rows as `table-row` units, and the **refusal** of a table the extent passes over in silence, a table whose geometry is undetermined, a slice of an uncited section or an absent table, a key that resolves to 0 or 2 rows or names an unaddressable row, and a corpus printing one section designation twice |
 | `tools/check-map.py --only extent` | the shape of `tables`, and that every in-scope row citation names a row the slice took. It has no corpus, so *which* tables a section prints is not its question |
 
 ## Alternatives considered
@@ -197,11 +216,22 @@ temporal map and § 1.121-1 are byte-identical before and after — which was re
 change and compared after it, and again after every correction.
 
 **It was reviewed against the real corpus, and against a second model, before it was merged**
-(AGENTS.md §6). Both passes confirmed that no path moved and that a seven-row slice of the real
-§ 172.101 enumerates; both found the column-containment defect above, and between them the spanned
-cells, the nested table, the heading rows, the duplicated designation and the elided row quote. A
-decision whose code is wrong about its own corpus is the defect this repository exists to catch,
-and the record says so here rather than in a commit message.
+(AGENTS.md §6). Both passes confirmed that no path moved and that a slice of the real § 172.101
+enumerates; both found the column-containment defect above, and between them the nested table, the
+heading rows, the duplicated designation and the elided row quote. A first answer to the spanned
+cells then **refused the Hazardous Materials Table itself**, and was caught the same way, by
+running the code against the corpus the decision is about: a refusal whose premise is false is
+worse than the address it withholds, and both the grid above and the narrowing of what is refused
+came out of that.
+
+**What the real corpus says about it, on 2026-01-01.** All six tables of § 172.101 and all seven
+of § 172.102 resolve; none is refused. § 172.101 table 3 is `1 2 3 4 5 6 7 8A 8B 8C 9A 9B 10A 10B`
+in the corpus's own numbering, `column 9` is not a column, and on the Acetal row `9A` is `5 L`,
+`9B` is `60 L` and `8B` is `202`. The row renders as
+`| Acetal | 3 | UN1088 | II | 3 | IB2, T4, TP1 | 150 | 202 | 242 | 5 L | 60 L | E |`, and 1,112
+rows hold exactly one empty cell — #261's own count, reproduced by reading the table a second
+time. A decision whose code is wrong about its own corpus is the defect this repository exists to
+catch, and the record says so here rather than in a commit message.
 
 **The punctuation is the issue's, with one adjustment, stated here.** The design comment writes a
 row's rendering with its leading and trailing spaces intact (` | Acetal | … | E | `). Every quote
