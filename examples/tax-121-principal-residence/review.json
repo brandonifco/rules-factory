@@ -6,6 +6,12 @@
       "method": "blind-second-mapping",
       "comparison": "blind-mapping/results.json",
       "resolutions": "blind-mapping/resolutions.json",
+      "staged": {
+        "notStaged": {
+          "issue": "#250",
+          "reason": "This run predates `tools/mapper stage` (#223). Its inputs were staged by hand and were not committed, so there is nothing to hold to a digest: unlike trials 7 and 8, which each wrote a blind-mapping/REDACTIONS.md, this directory has no record of what the second mapper was given. What can be said is what blind-mapping/README.md says -- the mapper was given the pinned extract and had not seen Map A -- and that rests on the runner's word, which is exactly the gap #223 is about. It is recorded here rather than left blank so that the one blind-second-mapping review this repository currently rests on says out loud that its inputs cannot be checked."
+        }
+      },
       "compared": {
         "commit": "c9ec1b73469fd510d85ea62fab062683d25c63b0",
         "sha256": "d5b4f0979d902c7099da85aa59e64444fea9ecd5e39059f37b1f0d597b0262ba"

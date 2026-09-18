@@ -1,0 +1,344 @@
+{
+  "stagingVersion": 1,
+  "about": "What is removed from docs/method.md and docs/corpus-map.md before a second mapper of examples/srd-52-conditions/ reads them (docs/method.md, *Before the map is used*; #223). Run: python3 tools/mapper stage examples/srd-52-conditions/blind-mapping/staging.json",
+  "map": "../corpus-map.json",
+  "documents": [
+    "../../../docs/method.md",
+    "../../../docs/corpus-map.md"
+  ],
+  "flattenLinks": true,
+  "edits": [
+    {
+      "document": "method.md",
+      "why": "corpus id example names this corpus",
+      "find": "A stable identifier — `srd-5.2.1`, `cfr-26`, `core-rules`.",
+      "replace": "A stable identifier — `tax-code-2024`, `cfr-26`, `core-rules`."
+    },
+    {
+      "document": "method.md",
+      "why": "boundary-policy example names a CC-BY SRD",
+      "find": "A CC-BY SRD or a public-domain statute is `pin-in-repo`:",
+      "replace": "A CC-BY rulebook or a public-domain statute is `pin-in-repo`:"
+    },
+    {
+      "document": "method.md",
+      "why": "extraction example names the corpus and the table it garbled",
+      "find": "The first PDF, the SRD 5.2.1, lost no table. It **garbled** one: pdftotext interleaved the Cover table's cells, dropped a folio into a sentence and put a sidebar between a sentence's halves.",
+      "replace": "The first PDF a trial admitted lost no table. It **garbled** one: pdftotext interleaved a table's cells, dropped a folio into a sentence and put a sidebar between a sentence's halves."
+    },
+    {
+      "document": "method.md",
+      "why": "\"the GM decides\" example: five stated facts of this corpus, four of them entry ids",
+      "find": "The SRD 5.2.1 combat slice does it five times, and the engine demands a statement for each and infers none: whether the table plays on a square grid (`grid-play` — a parameter with no entry of its own, and \"a Speed in squares asked for is not a grid\"), whether a creature is underwater and whether it has a Swim Speed (`underwater-melee`), whether a creature the corpus does not name — it names a domesticated horse and a mule — is trained to accept a rider (`mount-control-requires-training`), and whether the GM requires an action for an activity (`gm-requires-action`, an assertion whose decider is checked against the map's `assertedBy`).",
+      "replace": "One trial slice does it five times, and the engine demands a statement for each and infers none: whether the premises are let furnished (a parameter with no entry of its own), whether a notice was served by hand or by post, whether a party the corpus does not name by description is one its clause reaches, and whether the owner requires consent for a step (an assertion whose decider is checked against the map's `assertedBy`)."
+    },
+    {
+      "document": "method.md",
+      "why": "executed-map defects: three entries of this corpus, with their draws and dependencies",
+      "find": "Building the SRD 5.2.1 combat engine turned up three defects no reading had. `attack-resolution` declares `draws` — a d20 and the attack's damage dice — while its `dependsOn`, `attack-rolls` and `damage-rolls`, are both `scope: out`: an engine of this extent that drew a bare d20 would have nothing to read it against. `falling-off` declares a d20 for a DC 10 Dexterity saving throw whose rule, `saving-throws`, is `scope: out` for the same reason. And `wrong-location-misses`' note says *\"A seeded engine draws for it\"* on an entry with no `draws` at all — consistent only once you find that the roll belongs to `attack-resolution`, and a contradiction of",
+      "replace": "Building one trial engine turned up three defects no reading had. An operation entry declared `draws` — a die, and the dice of what it resolved — while both entries its `dependsOn` named were `scope: out`: an engine of that extent drawing a bare die would have had nothing to read it against. A second entry declared a die for a test whose own rule was `scope: out` for the same reason. And a third's note said *\"A seeded engine draws for it\"* on an entry with no `draws` at all — consistent only once you find that the roll belongs to the operation it depends on, and a contradiction of"
+    },
+    {
+      "document": "method.md",
+      "why": "the same three entries, named again in what the blind second mapping missed",
+      "find": "All three survived the first mapping; `wrong-location-misses`' note survived the blind second mapping, which read the entry and agreed it was clear;",
+      "replace": "All three survived the first mapping; the third's note survived the blind second mapping, which read the entry and agreed it was clear;"
+    },
+    {
+      "document": "method.md",
+      "why": "affectsDraws instance names this corpus's group Initiative roll",
+      "find": "What counts as a group for a group Initiative roll is the instance.",
+      "replace": "What counts as one party for a jointly made roll is the instance."
+    },
+    {
+      "document": "method.md",
+      "why": "the six questions building this corpus's slice could not answer, quoted from it",
+      "find": "**What stops an engine is the text, and a table never notices.** Fifty-four entries of the SRD 5.2.1 combat slice were implemented from the prose in one evening. What the engine could not answer came down to six questions, and every one is a phrase a human table settles silently and continuously: what makes creatures *\"a group of identical creatures\"*; what *\"an appropriate anatomy\"* for a mount is; who is covered by *\"and similar creatures\"* beside the horse and the mule; whether *\"two sizes larger or smaller\"* means exactly two; whether combat ends when both sides agree and neither is defeated; and how far the Disengage action's protection reaches.",
+      "replace": "**What stops an engine is the text, and a reader never notices.** Fifty-four entries of one trial slice were implemented from the prose in one evening. What the engine could not answer came down to six questions, and every one is a phrase a human reader settles silently and continuously: what makes two things *\"of the same description\"*; what *\"a suitable arrangement\"* is; who is covered by *\"and similar parties\"* beside the two the text names; whether *\"two grades higher or lower\"* means exactly two; whether a proceeding ends when both sides agree and neither has won; and how far one protective step reaches."
+    },
+    {
+      "document": "method.md",
+      "why": "the four unresolved ambiguities, by entry id, with the corpus's words",
+      "find": "- Four are **unresolved ambiguities**, and not all of one shape. Three are open terms the corpus bounds with nothing and delegates to nobody — `group-initiative`, `appropriate-anatomy`, `mount-control-requires-training` — which is this phase's gate 3 returning a gap. The fourth, `moving-through-creatures`, is a sentence that reads two ways: *\"two sizes larger or smaller\"* is exactly two or at least two, and it permits four kinds of passage without saying that every other creature's space is barred.",
+      "replace": "- Four are **unresolved ambiguities**, and not all of one shape. Three are open terms the\n  corpus bounds with nothing and delegates to nobody, which is this phase's gate 3 returning a\n  gap. The fourth is a sentence that reads two ways: *\"two grades higher or lower\"* is\n  exactly two or at least two, and it permits four cases without saying that every other case\n  is barred."
+    },
+    {
+      "document": "method.md",
+      "why": "the conflict, by both entry ids and both pages of this corpus",
+      "find": "- One is a **conflict**: `next-round` and `combat-end` carry the same question under `does-combat-end-without-a-defeat`, because p. 13 continues the fight while neither side is defeated and p. 14 ends it when both sides agree.",
+      "replace": "- One is a **conflict**: two entries carry the same question under one slug, because one page\n  continues the proceeding while neither side has won and the next ends it when both sides\n  agree."
+    },
+    {
+      "document": "method.md",
+      "why": "the clear-entry example: the slice's sentence, the Rules Glossary, two entry ids",
+      "find": "- One is on an entry the map calls **clear**, and correctly. The slice's sentence — *\"You can avoid provoking an Opportunity Attack by taking the Disengage action\"* — states no limit, and it is the same corpus's Rules Glossary, outside the extent, that narrows the protection to your own movement and to the rest of your turn. The map records that in `opportunity-attack-avoidance`'s note and names `disengage-action` in `dependsOn`, and asks no question, which is right: the ambiguity is not in the sentence, it is in which of two passages governs.",
+      "replace": "- One is on an entry the map calls **clear**, and correctly. The slice's sentence stated no\n  limit, and it was a passage of the same corpus outside the extent that narrowed the\n  protection. The map records that in the entry's note and names the outside passage's entry\n  in `dependsOn`, and asks no question, which is right: the ambiguity is not in the sentence,\n  it is in which of two passages governs."
+    },
+    {
+      "document": "method.md",
+      "why": "the engine of this corpus named as the carrier of an owner's decision",
+      "find": "`srd-52-combat` holds that answer as the engine's own `OwnerDecision`, a type deliberately not `OwnerRuling`, named on every answer that rests on it.",
+      "replace": "One engine holds that answer as its own `OwnerDecision`, a type deliberately not `OwnerRuling`, named on every answer that rests on it."
+    },
+    {
+      "document": "method.md",
+      "why": "the conflict's two entry ids again, in the per-entry ruling rule",
+      "find": "`combat-end` is not built, so the answer that both sides agreeing ends the combat sits on `next-round` alone; `combat-end` declines as an unbuilt in-scope rule and carries nothing. When it is built it takes a second ruling,",
+      "replace": "One of the two is not built, so the answer that both sides agreeing ends the proceeding sits on the other alone; the unbuilt one declines as an unbuilt in-scope rule and carries nothing. When it is built it takes a second ruling,"
+    },
+    {
+      "document": "method.md",
+      "why": "the open-term ruling names its entry id and this corpus's referee",
+      "find": "which is exactly what `appropriate-anatomy/gm-decides` does: the question named nobody who decides, and the ruling names the GM. The entry still declines whenever the GM has stated nothing",
+      "replace": "which is exactly what one open-term ruling does: the question named nobody who decides, and the ruling names the referee. The entry still declines whenever the referee has stated nothing"
+    },
+    {
+      "document": "method.md",
+      "why": "the batches of this corpus's build, with the nine entry ids they had to build across",
+      "find": "Every batch of the SRD 5.2.1 combat build was named after a subject, and every one of them had to build entries that were not in it. *Movement and space* had to build `grid-square-size` and `size-categories`, two `kind: value` entries nobody had assigned it, because four of its own entries `dependsOn` them. *Mounted combat and underwater*, the fourth batch, had to build six more from two directions at once: `cover-degree`, `melee-within-reach`, `single-range` and the value `reach`, which the attacks batch had left `attack-modifiers` and `attack-target` declining and citing; and `move-up-to-speed` and `movement-deduction`, the movement budget its own `mounting-cost` spends.",
+      "replace": "Every batch of one trial build was named after a subject, and every one of them had to build entries that were not in it. The first had to build two `kind: value` entries nobody had assigned it, because four of its own entries `dependsOn` them. The fourth had to build six more from two directions at once: four values and operations an earlier batch had left two of its own entries declining and citing, and two more that its own budget rule spends."
+    },
+    {
+      "document": "method.md",
+      "why": "correspondence row 5's example uses this corpus's Speed and size order",
+      "find": "an engine cannot divide a Speed by a square size it has not built, or count \"two sizes larger\" along an order it does not hold.",
+      "replace": "an engine cannot divide a distance by a unit it has not built, or count \"two grades higher\" along an order it does not hold."
+    },
+    {
+      "document": "method.md",
+      "why": "the third engine is named as this corpus's chapter and pages",
+      "find": "The third engine the factory produced is the SRD 5.2.1 Combat chapter, pp. 13–16: ninety-five entries, seventy of them in scope.",
+      "replace": "The third engine the factory produced is a four-page chapter of one trial corpus: ninety-five entries, seventy of them in scope."
+    },
+    {
+      "document": "method.md",
+      "why": "the scope: out count names the Rules Glossary, this corpus's chapters and two absences",
+      "find": "- **Twenty-five are `scope: out`**, and twenty-one of those are rules this corpus states somewhere the map's extent does not cover: ten in the Rules Glossary, the rest in *Playing the Game* (attack rolls, saving throws, Advantage and Disadvantage, the actions table) and *Damage and Healing*. They are the boundary of a four-page slice, not a limit of the method. Two of the other four are `absentFrom` verdicts — `flanking` and `surprise-round`, rules a reader of another edition expects and this text does not state.",
+      "replace": "- **Twenty-five are `scope: out`**, and twenty-one of those are rules this corpus states\n  somewhere the map's extent does not cover: some in a glossary, the rest in earlier chapters\n  the slice builds on. They are the boundary of a four-page slice, not a limit of the method.\n  Two of the other four are `absentFrom` verdicts, rules a reader of another edition expects\n  and this text does not state."
+    },
+    {
+      "document": "method.md",
+      "why": "the parallel-agents finding names this corpus's slice",
+      "find": "The SRD combat slice went from four implemented entries to fifty-four in one evening,",
+      "replace": "One trial slice went from four implemented entries to fifty-four in one evening,"
+    },
+    {
+      "document": "method.md",
+      "why": "the three worked declines are named as this corpus's engine",
+      "find": "Three from the SRD combat engine, each naming something different:",
+      "replace": "Three from one trial engine, each naming something different:"
+    },
+    {
+      "document": "method.md",
+      "why": "decline example 1: the Cover table entry, its three answers and the corpus's words",
+      "find": "- `cover-degree` answers Half, Three-Quarters or Total wherever the two readings of the Cover table agree, and declines `RequiresInterpretation` for exactly one case: a creature covering *less* than half of the target, where whether *\"that covers at least half\"* qualifies *\"Another creature\"* decides the answer and the corpus does not choose. The decline names the one shape of question the table does not settle, and leaves everything else answered.",
+      "replace": "- A table-reading entry answers one of three grades wherever the two readings of the table\n  agree, and declines `RequiresInterpretation` for exactly one case, where which of two\n  phrases a qualifier attaches to decides the answer and the corpus does not choose. The\n  decline names the one shape of question the table does not settle, and leaves everything\n  else answered."
+    },
+    {
+      "document": "method.md",
+      "why": "decline example 2: two entry ids and the corpus's Advantage and Disadvantage",
+      "find": "- While `cover-degree` was unbuilt, `attack-modifiers` — step 2 of an attack — declined `UnsupportedRule` citing `cover-degree`, with the Advantage and Disadvantage it *had* determined named in the decline.",
+      "replace": "- While that entry was unbuilt, the operation that reads it — step 2 of a longer resolution —\n  declined `UnsupportedRule` citing it, with what it *had* determined named in the decline."
+    },
+    {
+      "document": "method.md",
+      "why": "decline example 3: two entry ids, the corpus's saving throw, and what it determines",
+      "find": "- `falling-off` states the DC 10 Dexterity saving throw, names `saving-throws` as where that roll is made, draws nothing itself, and on a failed save declines `RequiresInterpretation` with what the rule *did* determine — the rider falls off and lands Prone — in the attempt. What it names is the gap: which unoccupied space within 5 feet, and what happens when there is none, the corpus never says.",
+      "replace": "- A third entry states the test to be made, names the `scope: out` entry where that roll is\n  made, draws nothing itself, and on a failure declines `RequiresInterpretation` with what the\n  rule *did* determine in the attempt. What it names is the gap: which of several places the\n  outcome lands in, and what happens when there is none, the corpus never says."
+    },
+    {
+      "document": "corpus-map.md",
+      "why": "assertedBy history names this corpus's engine and an entry id",
+      "find": "so the SRD engine checked `initiative-ties`' deciders against its own reading.",
+      "replace": "so one engine checked an assertion entry's deciders against its own reading."
+    },
+    {
+      "document": "corpus-map.md",
+      "why": "dice example quotes this corpus's Initiative evidence and its d20 sentence",
+      "find": "- `dice` names what is rolled, anchored as `assertedBy` is. The SRD's Initiative evidence says only \"a Dexterity check\", so the note quotes p. 6's *\"the game uses a d20 roll\"*. Hoyle has no notation, and its dice are `die` and `dice`.",
+      "replace": "- `dice` names what is rolled, anchored as `assertedBy` is. Where a slice's evidence names only the kind of test, the note quotes the earlier page that says which die the game uses. A corpus with no notation names its dice in words."
+    },
+    {
+      "document": "corpus-map.md",
+      "why": "draw-ownership examples name four entry ids, two of them this corpus's",
+      "find": "`full-table-suspension` suspends `throw-two-dice`, `attack-structure` depends on `attack-resolution`, and `next-game-opening`'s *\"as at starting\"* is `opening-roll`'s throw.",
+      "replace": "a suspension entry suspends the entry that throws, a structure entry depends on the resolution entry that makes its roll, and a pointer *\"as at starting\"* is the opening entry's throw."
+    },
+    {
+      "document": "corpus-map.md",
+      "why": "affectsDraws instance names this corpus's group Initiative entry",
+      "find": "`group-initiative` does not say what a group is, and so does not say how many rolls there are.",
+      "replace": "An entry that does not say what a group is does not say how many rolls there are."
+    },
+    {
+      "document": "corpus-map.md",
+      "why": "heading-path example names the glossary entry whose span ran on",
+      "find": "it produced a `round-down` whose span carried the whole of the next glossary entry and passed every check.",
+      "replace": "it produced an entry whose span carried the whole of the next glossary entry and passed every check."
+    },
+    {
+      "document": "corpus-map.md",
+      "why": "extraction defects are each illustrated by an entry id of this corpus",
+      "find": "with the three values trial 7's SRD map gave: - `interrupted-by-page-furniture` — a folio or running header sits inside the quote (`initiative-ties`); - `split-by-sidebar` — a sidebar lies between a sentence's halves, so the quote begins or ends mid-sentence (`attack-structure`); - `interleaved-table` — a table's cells come out out of order (`cover-bonuses`).",
+      "replace": "with the three values one PDF-extracted trial map gave:\n\n- `interrupted-by-page-furniture` — a folio or running header sits inside the quote;\n- `split-by-sidebar` — a sidebar lies between a sentence's halves, so the quote begins or ends\n  mid-sentence;\n- `interleaved-table` — a table's cells come out out of order."
+    },
+    {
+      "document": "corpus-map.md",
+      "why": "definedElsewhere example is this corpus's Rules Glossary and its surprise rule",
+      "find": "The SRD's Rules Glossary is the same admitted corpus as its combat chapter, and it says when a creature is surprised.",
+      "replace": "A rulebook's glossary is the same admitted corpus as its chapters, and it can state when a rule of a chapter applies."
+    },
+    {
+      "document": "corpus-map.md",
+      "why": "the modifying-passage instance is two entry ids of this corpus and what one says",
+      "find": "`initiative-roll` depends on `incapacitated-condition`, whose glossary text gives Disadvantage on Initiative.",
+      "replace": "an in-slice entry depends on a glossary entry whose text modifies the rule it states."
+    },
+    {
+      "document": "corpus-map.md",
+      "why": "the silent-zero instance names this corpus's map",
+      "find": "That silent zero is how the SRD map's 22 declared cross-references went unchecked.",
+      "replace": "That silent zero is how one map's 22 declared cross-references went unchecked."
+    },
+    {
+      "document": "corpus-map.md",
+      "why": "the defined-term JSON example is a term and an entry id of this corpus",
+      "find": "`cites` quotes the term as the evidence uses it, and `resolvedBy` names the `scope: out` entry that quotes the definition: `{ \"cites\": \"surprised\", \"resolvedBy\": \"surprise-glossary\" }`.",
+      "replace": "`cites` quotes the term as the evidence uses it, and `resolvedBy` names the `scope: out` entry that quotes the definition: `{ \"cites\": \"the defined term\", \"resolvedBy\": \"term-glossary\" }`."
+    },
+    {
+      "document": "corpus-map.md",
+      "why": "the page-extent example is this corpus's slice, pages and following heading",
+      "find": "\"extent\": { \"unit\": \"page\", \"from\": 13, \"to\": 16, \"endsBefore\": \"Damage and Healing\" }",
+      "replace": "\"extent\": { \"unit\": \"page\", \"from\": 40, \"to\": 47, \"endsBefore\": \"Schedule of Charges\" }"
+    },
+    {
+      "document": "corpus-map.md",
+      "why": "endsBefore's worked value is the heading this corpus's slice stops at",
+      "find": "**It may end before a heading on its last page**, `\"endsBefore\": \"Damage and Healing\"`",
+      "replace": "**It may end before a heading on its last page**, `\"endsBefore\": \"Schedule of Charges\"`"
+    },
+    {
+      "document": "corpus-map.md",
+      "why": "the extent-end example names this corpus's chapter and its last page",
+      "find": "the SRD combat chapter ends halfway down p. 16, and a whole-page range claims the section after it.",
+      "replace": "the chapter ends halfway down its last page, and a whole-page range claims the section after it."
+    },
+    {
+      "document": "corpus-map.md",
+      "why": "the heading-path example is a citation into the slice under mapping, entry name and page",
+      "find": "`Rules Glossary / Round Down / p. 187` resolves and `Playing the Game / Round Down / p. 5` does not, because `Playing the Game` precedes both printings;",
+      "replace": "`Glossary / Repeated Heading / p. 187` resolves and `Introduction / Repeated Heading / p. 5` does not, because `Introduction` precedes both printings;"
+    },
+    {
+      "document": "corpus-map.md",
+      "why": "the boundary-policy history names this corpus's licence",
+      "find": "one commits its extracted corpus because the SRD is CC-BY, the other commits nothing because its rulebook is commercial.",
+      "replace": "one commits its extracted corpus because its licence is CC-BY, the other commits nothing because its rulebook is commercial."
+    },
+    {
+      "document": "corpus-map.md",
+      "why": "the pointerPhrases example counts this corpus's pages and names it",
+      "find": "Two of the SRD's, which came from searching its 364 pages for \"see\", \"explained in\" and \"later in\", and one of Hoyle's:",
+      "replace": "Two from one corpus, which came from searching its pages for \"see\", \"explained in\" and \"later in\", and one from another:"
+    },
+    {
+      "document": "corpus-map.md",
+      "why": "the #116 summary names this corpus's pointers",
+      "find": "term the same corpus defines outside the slice, and a pointer phrase list that detected none of the SRD's pointers.",
+      "replace": "term the same corpus defines outside the slice, and a pointer phrase list that detected none of that corpus's pointers."
+    },
+    {
+      "document": "corpus-map.md",
+      "why": "the quotedText example is this corpus's own derivation string and PDF file name",
+      "find": "\"quotedText\": { \"derivation\": \"srd-5.2.1-pdftotext-24.02.0-page-marked\", \"extractedFrom\": \"SRD_CC_v5.2.1.pdf\" }",
+      "replace": "\"quotedText\": { \"derivation\": \"tax-code-2024-pdftotext-24.02.0-page-marked\", \"extractedFrom\": \"TaxCode_2024.pdf\" }"
+    },
+    {
+      "document": "method.md",
+      "why": "0027's four awkwardnesses name the engine built from this corpus",
+      "find": "found applying the six rulings above to `srd-52-combat`.",
+      "replace": "found applying the six rulings above to one engine."
+    },
+    {
+      "document": "method.md",
+      "why": "the value example is a list of conditions and a creature's statistics",
+      "find": "A fact is a value: a table of thresholds, a list of conditions, a creature's statistics, a contribution limit for a given year.",
+      "replace": "A fact is a value: a table of thresholds, a list of exemptions, a vehicle's specifications, a contribution limit for a given year."
+    },
+    {
+      "document": "method.md",
+      "why": "the caller-states heading is this corpus's word for its referee",
+      "find": "**\"The GM decides\" is the same instruction as \"the caller states\".** A rulebook hands its referee what a regulation hands its operator,",
+      "replace": "**\"The referee decides\" is the same instruction as \"the caller states\".** A rulebook hands its referee what a regulation hands its operator,"
+    },
+    {
+      "document": "method.md",
+      "why": "the mapper-guessing example prices a move in squares, cites a page and quotes the corpus",
+      "find": "price a move in squares and cite p. 13 for it; one that read *\"and similar creatures\"* for itself",
+      "replace": "price a move in units the corpus never fixes and cite a page for it; one that read *\"and similar parties\"* for itself"
+    },
+    {
+      "document": "corpus-map.md",
+      "why": "the assertedBy JSON example is this corpus's deciders",
+      "find": "\"assertedBy\": [\"GM\", \"players\"]",
+      "replace": "\"assertedBy\": [\"referee\", \"players\"]"
+    },
+    {
+      "document": "corpus-map.md",
+      "why": "the draws JSON examples quote this corpus's dice and two of its rules",
+      "find": "\"draws\": { \"dice\": \"d20\", \"count\": \"one per participant not in a group of identical creatures, …\" } \"draws\": [ { \"dice\": \"d20\", \"count\": \"one attack roll; …\" }, { \"dice\": \"damage dice\", \"count\": \"the attack's own damage dice, on a hit only, …\" } ]",
+      "replace": "\"draws\": { \"dice\": \"d6\", \"count\": \"one per party not acting as a single body, …\" }\n\"draws\": [ { \"dice\": \"d6\", \"count\": \"one test roll; …\" },\n           { \"dice\": \"effect dice\", \"count\": \"the step's own effect dice, on a success only, …\" } ]"
+    },
+    {
+      "document": "corpus-map.md",
+      "why": "the draw-ownership rule counts this corpus's die",
+      "find": "Otherwise one d20 is declared three times.",
+      "replace": "Otherwise one die is declared three times."
+    },
+    {
+      "document": "corpus-map.md",
+      "why": "the repetition example is the slice under mapping: a glossary giving five rules one effect",
+      "find": "A corpus repeats itself — a regulation restates a proviso, a glossary gives five conditions the same effect — and a quote that",
+      "replace": "A corpus repeats itself — a regulation restates a proviso, a schedule restates a rate in two tables — and a quote that"
+    },
+    {
+      "document": "corpus-map.md",
+      "why": "the renderedReading example is a sentence of this corpus, verbatim",
+      "find": "\"renderedReading\": \"The GM decides the order if the tie is between a monster and a player character.\" }",
+      "replace": "\"renderedReading\": \"The registrar decides the order if the two applications are filed on one day.\" }"
+    }
+  ],
+  "acknowledged": [
+    {
+      "document": "method.md",
+      "term": "speed",
+      "reason": "`speed-limit` and `speed-within-limit`, the hypothetical pair the delegated-standard example uses. The corpus under mapping has an entry named `Speed`; these are not it."
+    },
+    {
+      "document": "corpus-map.md",
+      "term": "speed",
+      "reason": "The same hypothetical pair, three times on one line."
+    },
+    {
+      "document": "method.md",
+      "term": "reach",
+      "reason": "The ordinary verb and the noun in \"adapter reach\", four times: what an adapter cannot reach, an entry beyond its reach, and an operation that can reach an out-of-scope entry. The slice under mapping has an entry id `reach`; none of these is it."
+    },
+    {
+      "document": "method.md",
+      "term": "invisible",
+      "reason": "\"invisible to a plain-text adapter\", of an illustration in another corpus. The slice has an entry id `invisible`; this is the English adjective."
+    },
+    {
+      "document": "corpus-map.md",
+      "term": "reach",
+      "reason": "The ordinary verb, four times: a quote that does not reach a page, a rule somewhere we cannot reach, what a check can reach, an entry beyond the adapter's reach."
+    },
+    {
+      "document": "corpus-map.md",
+      "term": "action",
+      "reason": "\"that a pilot judged an action safe\", in the assertion example, which is drawn from the CFR corpus. The slice has an entry id `action`; this is the English noun."
+    }
+  ]
+}

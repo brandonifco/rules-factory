@@ -40,7 +40,8 @@ def main(argv=None):
     parser.add_argument("--manifest", help="corpus manifest; found beside the map when unambiguous")
     parser.add_argument("--repo-root", help="root that decision-record paths are relative to")
     parser.add_argument("--comparison", help="the blind second mapping's adjudication record "
-                                             "(0014); found under blind-mapping/ beside the map")
+                                             "(0014), or the directory holding it; found under "
+                                             "blind-mapping/ beside the map by default")
     parser.add_argument("--only", help="run one check: " + ", ".join(name for name, _ in CHECKS))
     parser.add_argument("--verbose", action="store_true", help="also print the row each entry matches")
     parser.add_argument("--phase", choices=PHASES, default="publish",
@@ -74,7 +75,7 @@ def main(argv=None):
             print(f"cannot read manifest {manifest_path}: {error}", file=sys.stderr)
             return 2
 
-    comparison_path = args.comparison or find_comparison(args.map_path)
+    comparison_path = find_comparison(args.comparison or args.map_path)
     comparison = None
     if comparison_path:
         try:

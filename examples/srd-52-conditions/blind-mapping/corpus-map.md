@@ -20,7 +20,7 @@ declared in a **separate file**, the [corpus manifest](#the-corpus-manifest)
 schema` refuses any other key, and names an inline `manifest` in particular: the Part 107 blind
 mapper put one there, and the checker, which reads the manifest from its own file, reported
 "no manifest" and skipped every resolution against it while the key sat unread
-([#60](https://github.com/brandonifco/rules-factory/issues/60)). A field a checker ignores is a
+(#60). A field a checker ignores is a
 claim nothing checks.
 
 The stamp is not decoration. A map is true of **one state of one corpus**. Without it, two
@@ -31,7 +31,7 @@ exactly this reason.
 ## `extent` — how much of the corpus this map claims to have read
 
 The baseline says *which text*. `extent` says *how much of it*, in the corpus's own units.
-Added in [0009](decisions/0009-absence-is-a-verdict-with-evidence.md).
+Added in 0009.
 
 It is the field that makes "no entry anywhere cites this section" a **fact** rather than a
 hope: `check-locators.py`'s `coverage` check names every page inside the extent that no
@@ -40,10 +40,10 @@ the state — *nobody looked* — a map exists to distinguish from a recorded ve
 bounds an absence claim: see `absentFrom` below.
 
 `coverage` asks that at the grain of a whole page or a whole section, which a map satisfies by
-reaching one sentence. [`mapper inventory`](mapper.md#the-inventory) asks it at the grain the
+reaching one sentence. `mapper inventory` asks it at the grain the
 corpus states rules in: it enumerates the units inside the extent and reports the ones no quote
 reaches and no recorded rejection accounts for
-([#255](https://github.com/brandonifco/rules-factory/issues/255)).
+(#255).
 
 It is a property of the **map**, not of the corpus, and so it does not belong in the manifest.
 `contentHash` and `licence` are true of the text whoever reads it; how far a mapper got is
@@ -56,21 +56,20 @@ read, which deriving the extent from the citations would have allowed: the backg
 citations run 271–277, and the throw enumeration that #20 is about is on 278–280.
 
 **Two units, one per locator grammar.** Decided in
-[0020](decisions/0020-a-section-citation-names-its-lead-in-and-a-section-map-lists-its-extent.md)
-([#58](https://github.com/brandonifco/rules-factory/issues/58)).
+0020
+(#58).
 
 ```json
 "extent": { "unit": "page", "from": 271, "to": 280 }
-"extent": { "unit": "page", "from": 13, "to": 16, "endsBefore": "Damage and Healing" }
+"extent": { "unit": "page", "from": 40, "to": 47, "endsBefore": "Schedule of Charges" }
 "extent": { "unit": "section-designation", "sections": ["§ 107.25", "§ 107.29", "§ 107.31"] }
 ```
 
 - **`page`** — a range of printed pages, `from` ≤ `to`, for a corpus with page markers in its
   text. `check-locators.py`'s `coverage` names every page in it no verified quote reaches.
-  **It may end before a heading on its last page**, `"endsBefore": "Damage and Healing"`
-  ([0024](decisions/0024-a-quote-is-of-the-extraction-and-a-page-extent-can-end-at-a-heading.md),
-  [#114](https://github.com/brandonifco/rules-factory/issues/114)): the SRD combat chapter ends
-  halfway down p. 16, and a whole-page range claims the section after it. `check-map.py` checks
+  **It may end before a heading on its last page**, `"endsBefore": "Schedule of Charges"`
+  (0024,
+  #114): the chapter ends halfway down its last page, and a whole-page range claims the section after it. `check-map.py` checks
   that it is one line of text. `check-locators-pdf-text.py`'s `extent-end` requires the heading
   to occur exactly once as a line on page `to` and fails any `scope: in` quote on that page at or
   after it, or running across it. `absence` searches only up to the heading, and a quote after it
@@ -112,7 +111,7 @@ A citation names a section and, optionally, what inside it the quote sits in:
 | `subpart D` | every section of a subpart |
 
 **"Introductory text" is part of the grammar**
-([#59](https://github.com/brandonifco/rules-factory/issues/59), 0020). A CFR section often opens
+(#59, 0020). A CFR section often opens
 with an undesignated sentence before paragraph (a) — § 107.51's *"A remote pilot in command and
 the person manipulating the flight controls … must comply with all of the following operating
 limitations"*. The bare section covers that sentence, and covers everything else in the section
@@ -224,8 +223,8 @@ gap while (b) is an assertion, because only (b) says what the term is measured a
 § 107.49 settles it the other way — (a)'s *"assess … considering risks to …"* and
 (c)'s *"working properly"* are two obligations on the same person, both of them things only
 that person could report, and only the first states a measure. This is the half of
-[#11](https://github.com/brandonifco/rules-factory/issues/11) 0005 left open, and it is
-decided in [0010](decisions/0010-whose-fact-it-is-does-not-decide-the-kind.md): ten of the
+#11 0005 left open, and it is
+decided in 0010: ten of the
 twenty measured instances are assertions, six are gaps, two split inside one paragraph, and
 two turned out not to be open terms at all.
 
@@ -247,13 +246,13 @@ does not cover, which is a different runtime reason entirely. Split them the way
 split: the standard becomes its own assertion entry — `well-clear`, `reasonable-protection`,
 `flash-rate-sufficient` — and the rule that consumes it depends on it. Every entry then has
 exactly one runtime reason, which is what makes the correspondence table below checkable.
-Decided in [0005](decisions/0005-a-field-earns-its-place-by-being-checkable.md).
+Decided in 0005.
 
 **There is no test. Recognising one is a procedure, and it is three gates in order.** Five
 one-sentence tests have failed — names-a-decider, standard-of-conduct, has-a-bearer, and the two
 successors proposed to replace it, each of which agreed with the corpus it was derived from and
 was refuted on the other. Decided in
-[0008](decisions/0008-recognising-a-delegated-standard-is-a-procedure-not-a-test.md), which
+0008, which
 carries the counts.
 
 **It runs only on an entry that is `scope: in` and normative.** Advice is not a rule —
@@ -273,7 +272,7 @@ disposes of both, before the gates. The procedure is not self-standing, and that
    open degree, both are gaps, and a gate written only for undefined terms cannot see either.
 2. **Unsupplied by the corpus, or only to us?** Readable but not by this adapter →
    `beyondAdapter`. Fixed in a corpus that was not admitted → `definedElsewhere`. Supplied twice,
-   differently → a conflict under [0007](decisions/0007-a-conflict-is-a-question-not-a-pair.md).
+   differently → a conflict under 0007.
 3. **Whose hands?** The caller's own determination or agreement is operative **and the corpus
    states, in the same constituent as the open term, either what the term is measured against or
    the set of values it may take** → `kind: assertion`. A third party whose determination is a
@@ -306,7 +305,7 @@ the ground `surprising: true` was rejected on. Both maps now agree with the proc
 **Four more terms sit in that residue**, and they are where the operator is plainly the only
 person who could answer: `effective-communication`, `control-links-working`,
 `direct-participation`, `attached-object-secure`.
-[0010](decisions/0010-whose-fact-it-is-does-not-decide-the-kind.md) rules that being the only
+0010 rules that being the only
 possible source is not a reason to reclassify. An operator asserting a conclusion the engine
 cannot check, where the corpus gave no warrant to delegate, is the substitution of judgement
 `never infer it` exists to prevent, arriving from the other side.
@@ -320,14 +319,13 @@ instances per map, and filed rather than decided.
 ### `assertedBy` — who asserts it
 
 **An assertion names who the corpus lets assert it, in the corpus's words.** Decided in
-[0025](decisions/0025-an-assertion-names-who-asserts-it-and-an-operation-names-what-it-draws.md)
-([#117](https://github.com/brandonifco/rules-factory/issues/117)). *Attribute it* is the second
-thing an engine owes an assertion, and until 0025 the map did not say to whom, so the SRD engine
-checked `initiative-ties`' deciders against its own reading.
+0025
+(#117). *Attribute it* is the second
+thing an engine owes an assertion, and until 0025 the map did not say to whom, so one engine checked an assertion entry's deciders against its own reading.
 
 ```json
 "kind": "assertion",
-"assertedBy": ["GM", "players"]
+"assertedBy": ["referee", "players"]
 ```
 
 A non-empty list, on every `kind: assertion` entry and on no other. **Each value is anchored**: it
@@ -349,24 +347,23 @@ instead of others.
 ### `draws` — what an operation draws
 
 **An operation whose own resolution draws random values says how many draws of what.** Decided in
-[0025](decisions/0025-an-assertion-names-who-asserts-it-and-an-operation-names-what-it-draws.md)
-([#118](https://github.com/brandonifco/rules-factory/issues/118)). Under `randomness: seeded`, one
+0025
+(#118). Under `randomness: seeded`, one
 extra or missing draw changes every later one, so the count is part of what a replay means.
 
 ```json
-"draws": { "dice": "d20", "count": "one per participant not in a group of identical creatures, …" }
-"draws": [ { "dice": "d20", "count": "one attack roll; …" },
-           { "dice": "damage dice", "count": "the attack's own damage dice, on a hit only, …" } ]
+"draws": { "dice": "d6", "count": "one per party not acting as a single body, …" }
+"draws": [ { "dice": "d6", "count": "one test roll; …" },
+           { "dice": "effect dice", "count": "the step's own effect dice, on a success only, …" } ]
 ```
 
-- `dice` names what is rolled, anchored as `assertedBy` is. The SRD's Initiative evidence says only "a Dexterity check", so the note quotes p. 6's *"the game uses a d20 roll"*. Hoyle has no notation, and its dice are `die` and `dice`.
+- `dice` names what is rolled, anchored as `assertedBy` is. Where a slice's evidence names only the kind of test, the note quotes the earlier page that says which die the game uses. A corpus with no notation names its dice in words.
 - `count` is a positive number, or a short statement.
 - Only an in-scope `operation` carries it. It is refused under `randomness: none`.
-- **A draw belongs to the entry whose own resolution makes it.** A gate, a dependency or a cross-reference that leads to a roll does not declare it: `full-table-suspension` suspends `throw-two-dice`, `attack-structure` depends on `attack-resolution`, and `next-game-opening`'s *"as at starting"* is `opening-roll`'s throw. Otherwise one d20 is declared three times. The count may name the other entry, so a draw is counted once.
+- **A draw belongs to the entry whose own resolution makes it.** A gate, a dependency or a cross-reference that leads to a roll does not declare it: a suspension entry suspends the entry that throws, a structure entry depends on the resolution entry that makes its roll, and a pointer *"as at starting"* is the opening entry's throw. Otherwise one die is declared three times. The count may name the other entry, so a draw is counted once.
 
 **`ambiguity.affectsDraws: true`** marks an ambiguity whose unsettled point changes how many draws
-*this entry* makes. `group-initiative` does not say what a group is, and so does not say how many
-rolls there are. Such an entry must declare `draws`, and its `count` may name the alternatives.
+*this entry* makes. An entry that does not say what a group is does not say how many rolls there are. Such an entry must declare `draws`, and its `count` may name the alternatives.
 `check-map.py --only draws` enforces the shape, the anchor, the kind, the corpus's randomness and
 this requirement.
 
@@ -384,7 +381,7 @@ the corpus, walks back to the nearest page marker and compares it against the ci
 `evidence` held a summary — "Both figures.", "Both elections." — nothing was findable, so
 nothing was checkable, and **thirteen of the backgammon map's citations were wrong by a page or
 two through a mapping trial, a build and a review**
-([#18](https://github.com/brandonifco/rules-factory/issues/18)). The wrong pages are not the
+(#18). The wrong pages are not the
 point. They are the measurable symptom of a mapper who stopped reading, and quoting is the only
 part of that a check can reach.
 
@@ -403,9 +400,8 @@ checker accepts both; dropping the marker to make the quote read cleanly would b
 
 **A span the corpus prints more than once is identified by the container the citation names, and
 never by extending the span until it is unique.** Decided in
-[0030](decisions/0030-a-repeated-passage-is-identified-by-the-container-its-citation-names.md)
-([#207](https://github.com/brandonifco/rules-factory/issues/207)). A corpus repeats itself — a
-regulation restates a proviso, a glossary gives five conditions the same effect — and a quote that
+0030
+(#207). A corpus repeats itself — a regulation restates a proviso, a schedule restates a rate in two tables — and a quote that
 resolves in five places resolves in none. What settles it is what the citation *names*:
 
 - **`section-designation`** names a container, so `check-locators-section.py` asks whether every
@@ -415,13 +411,10 @@ resolves in five places resolves in none. What settles it is what the citation *
   the **heading path** is the container. Where a quote also occurs off the cited page,
   `check-locators-pdf-text.py` reads the path: each line matching the citation's last heading
   selects the first occurrence after it, counted only where the earlier headings occur as lines
-  before it, and **exactly one occurrence must be selected**. `Rules Glossary / Round Down / p. 187`
-  resolves and `Playing the Game / Round Down / p. 5` does not, because `Playing the Game` precedes
-  both printings; a citation the path does not narrow to one passage **fails**, and the checker
+  before it, and **exactly one occurrence must be selected**. `Glossary / Repeated Heading / p. 187` resolves and `Introduction / Repeated Heading / p. 5` does not, because `Introduction` precedes both printings; a citation the path does not narrow to one passage **fails**, and the checker
   never picks a printing for the mapper.
 
-Extending a span until it is unique is what this replaces, and it is not a fallback: it produced a
-`round-down` whose span carried the whole of the next glossary entry and passed every check.
+Extending a span until it is unique is what this replaces, and it is not a fallback: it produced an entry whose span carried the whole of the next glossary entry and passed every check.
 
 **What must be demonstrated is a mapper's reading, and it goes in `note`.** "Both figures",
 "the worked distribution, for both the quatre and the trois", "a throw fully playable, partly
@@ -440,7 +433,7 @@ that a test can assert and that will silently become false if the opening rule c
 in `note` it rots, and nothing notices. Such a consequence is discharged as a test named for what
 it proves, and the entry names the test — the rule 0005's rail E already set for a surprising
 reading, extended to every derived consequence
-([#16](https://github.com/brandonifco/rules-factory/issues/16),
+(#16,
 [method.md Phase 6](method.md#phase-6--implement)). The test for whether a sentence belongs in
 `note`: if a test could fail because the sentence became false, the sentence is the test's, not
 the note's. What cannot be reduced to a test is lost, and that cost is accepted.
@@ -451,20 +444,20 @@ verdict about a passage, and a passage nobody can locate is a verdict about noth
 of the engine. A rule the corpus does not state at all — `doubling-cube`, which this 1909 text
 predates — quotes **the passage the rule would be in**, and carries `absentFrom` to say that is
 what the span is. There is no exception and no entry without a span. Until
-[0009](decisions/0009-absence-is-a-verdict-with-evidence.md) there was: the citation read
+0009 there was: the citation read
 `(absent)`, the checker special-cased it, and the gate's line "all 29 checked" meant
 twenty-eight.
 
 **An `evidence` a licence forbids quoting is recorded as absent, never as a summary.** Phase 2
 of [method.md](method.md) says *cite, do not copy*, and for a licensed corpus a span in the map
 may be a licence problem rather than a discipline one. The corpus's manifest entry then declares
-`quotation: withheld` ([0013](decisions/0013-verification-posture-belongs-to-the-corpus.md)),
+`quotation: withheld` (0013),
 its entries carry no `evidence`, and `check-map.py --only postures` fails any that do. The
 citation is unverifiable — which `check-locators.py` reports, because an unlocatable entry
 fails the run and is never counted as ok. What is not acceptable is a summary occupying the field
 and looking like evidence. No trial has produced this case; every mapped corpus is public domain
 and declares `quotation: verbatim`. The factory admits no corpus whose licence forbids the
-quote ([0028](decisions/0028-the-factory-admits-only-corpora-whose-licence-permits-publishing-them.md)), so this case
+quote (0028), so this case
 describes a manifest the checker reads, never a map the factory packs.
 
 **What a verified span does not prove.** Only that the page cited is the page the quoted words
@@ -486,17 +479,12 @@ field exists to prevent.
 part of an `unresolved` question for that engine. The answer lives in the entry's own overlay file
 as a `ruling` that quotes the part it answers from `question`, and the map still says `unresolved`,
 because the corpus still does not settle it. The engine names the ruling on every result that
-relies on it. See [0027](decisions/0027-an-owners-ruling-is-held-by-the-engine-and-checked-by-the-factory.md)
+relies on it. See 0027
 and `status` below.
 
 `ambiguity.unresolvedReason` names the `UnresolvedReason` the engine will return, and is
 present when the fate is `unresolved`. It is the field that ties an entry to the
-correspondence table below — and it must be a reason that table actually produces for this
-entry: `RequiresInterpretation` (row 6), or `OutsideCurrentScope` where the entry is
-`scope: out` and row 1 wins first. `check-map.py --only unresolved-reason` refuses the rest
-([0034](decisions/0034-a-valid-unresolved-state-is-established-not-asserted.md)). Being in the
-kernel's vocabulary is not enough: a caller told `MissingRulesData` is sent after data that does
-not exist, when what is missing is an interpretation nobody has made.
+correspondence table below.
 
 **The block is never a general decline carrier.** A rule defined in an unadmitted corpus
 takes `definedElsewhere`; a rule the adapter cannot read takes `beyondAdapter`. No entry
@@ -515,7 +503,7 @@ declines.
 A slug naming the question the corpus answers twice. Entries carrying the same slug are the
 members of one conflict. Absent on an ambiguity that is a gap rather than a contradiction,
 which is most of them. Decided in
-[0007](decisions/0007-a-conflict-is-a-question-not-a-pair.md).
+0007.
 
 ```json
 "ambiguity": {
@@ -547,16 +535,6 @@ Nothing detects a conflict the mapper never noticed: two `clarity: clear` entrie
 incompatible rules produce a map that validates, which is the same blind spot as an incomplete
 gate list. What these rules buy is that a *recorded* conflict cannot be half-settled.
 
-A conflict a **second mapper** noticed is reached, though, and by the adjudication rather than by
-the map: where a blind second mapping read an entry as ambiguous and the adjudication answered
-*the corpus does not settle it*, `check-map.py --only superposition` requires the map to record
-that doubt — on the flagged entry or on one the adjudication names
-([0034](decisions/0034-a-valid-unresolved-state-is-established-not-asserted.md),
-[0014](decisions/0014-a-map-is-checked-by-a-blind-second-mapping.md)). **The map has no field for
-competing readings, and 0034 decides it will not gain one**: a field inside the `ambiguity` block
-can only be carried by an entry that already admits its doubt, so it would be absent exactly where
-a collapse happens. What is lost by that is stated there, with the count.
-
 ### `ambiguity.bounds` — what an authored example fixes about the open term
 
 An operative rule can leave a term open while the same corpus, in the same authority's words,
@@ -565,8 +543,8 @@ temporary absences" as use and fixes no length; § 1.121-1(c)(4) Example 4 state
 sabbatical is not one and Example 5 that a 2-month vacation is. Those two are not entries — they
 answer no caller's request and state no rule — and they are not prose either: they decide what an
 owner's `ruling` (0027) may say. Decided in
-[0031](decisions/0031-an-example-that-bounds-a-term-is-recorded-as-a-bound.md)
-([#216](https://github.com/brandonifco/rules-factory/issues/216)).
+0031
+(#216).
 
 ```json
 "ambiguity": {
@@ -589,12 +567,7 @@ owner's `ruling` (0027) may say. Decided in
 ```
 
 - **`term`** is the open term in the corpus's words, and it must occur verbatim in the entry's
-  own `evidence`. A term the cited passage does not use is the mapper's, not the corpus's. It
-  must also occur in the entry's own `ambiguity.question`, matched without regard to case, because
-  the question is where the map records the term as **open** and an owner's ruling quotes a span
-  of that question (0027): a term the question omits is one no ruling could be compared against.
-  `check-map.py --only bound-term-open` holds it
-  ([0034](decisions/0034-a-valid-unresolved-state-is-established-not-asserted.md)).
+  own `evidence`. A term the cited passage does not use is the mapper's, not the corpus's.
 - **`dimension`** is the scale the example's fact pattern and a later ruling's line are both
   values on. **It is a closed vocabulary, and it holds only what a checker compares**: today
   `duration`, in ISO 8601 (`P1Y`, `P18M`, `P730D`), compared in 30-day months and 12-month years
@@ -617,7 +590,7 @@ that it draws no line in that dimension, and `tools/factory/rulings.py` evaluate
 example's value. A ruling that "short temporary absence" means eighteen months or less makes a
 1-year sabbatical short, Example 4 says it is not, and the engine fails its gate naming the
 example rather than answering. That comparison is the whole of what the field earns its place by
-under [0005](decisions/0005-a-field-earns-its-place-by-being-checkable.md), which is why the
+under 0005, which is why the
 dimension must be comparable.
 
 **A bound is admitted only where the dimension is comparable, and the rest stays prose.**
@@ -638,8 +611,8 @@ check makes.
 `dependsOn` orders *implementation*. A rule that applies only in a phase — bearing off
 begins once every man is home; entry from the bar suspends every other move — has a
 **runtime precondition**, which is a different fact. The gate fields are where it lives.
-Decided in [0003](decisions/0003-a-phase-gate-names-a-rule-not-a-condition.md), and split by
-direction in [0011](decisions/0011-a-gate-has-a-direction.md).
+Decided in 0003, and split by
+direction in 0011.
 
 The two relations coincide often enough to be confused, and they are not derivable from each
 other. In the backgammon map, `bearing-off-doublets` has six `dependsOn` ancestors and
@@ -672,7 +645,7 @@ independent, so inheriting along one of them would be a guess. Expect repetition
 They order nothing. `dependsOn` remains the only input to backlog order.
 
 **A gate outside the slice is a `scope: out` entry, and whether it holds is the caller's to
-state.** Decided in [0021](decisions/0021-a-gate-outside-the-slice-is-held-by-the-caller.md). A gate
+state.** Decided in 0021. A gate
 field can name an out-of-scope entry the way `dependsOn` names `subpart-d-categories`. In Part 107,
 27 entries name `waivable-regulations` (§ 107.205, subpart E) in `suspendedBy`. The corpus states
 the rule and does not say whether a waiver is held. That is the Administrator's determination, a
@@ -692,7 +665,7 @@ written down where a reviewer reads it, which is all.
 ### `beyondAdapter`
 
 The rule is in the corpus, stated in a modality the declared adapter cannot read. Decided in
-[0004](decisions/0004-adapter-reach-is-a-property-of-the-entry.md).
+0004.
 
 ```json
 "beyondAdapter": { "adapter": "plain-text", "modality": "illustration" }
@@ -725,24 +698,22 @@ field can help with an entry that does not exist.
 ### `extraction`
 
 The rule is readable, and the extraction the corpus is quoted from reads it wrongly. Decided in
-[0024](decisions/0024-a-quote-is-of-the-extraction-and-a-page-extent-can-end-at-a-heading.md)
-([#113](https://github.com/brandonifco/rules-factory/issues/113)).
+0024
+(#113).
 
 ```json
 "extraction": { "defect": "interrupted-by-page-furniture",
-                "renderedReading": "The GM decides the order if the tie is between a monster and a player character." }
+                "renderedReading": "The registrar decides the order if the two applications are filed on one day." }
 ```
 
 **`evidence` stays verbatim of the extraction**, because that is what a checker can hold it to,
 and the manifest says so with `quotedText` (below). Where the extraction differs from the page in
-a way that changes what the passage says, the entry declares it. `defect` is closed, with the
-three values trial 7's SRD map gave:
+a way that changes what the passage says, the entry declares it. `defect` is closed, with the three values one PDF-extracted trial map gave:
 
-- `interrupted-by-page-furniture` — a folio or running header sits inside the quote
-  (`initiative-ties`);
+- `interrupted-by-page-furniture` — a folio or running header sits inside the quote;
 - `split-by-sidebar` — a sidebar lies between a sentence's halves, so the quote begins or ends
-  mid-sentence (`attack-structure`);
-- `interleaved-table` — a table's cells come out out of order (`cover-bonuses`).
+  mid-sentence;
+- `interleaved-table` — a table's cells come out out of order.
 
 `renderedReading` is the passage as read from the rendered page, and must differ from `evidence`.
 `check-map.py --only extraction` refuses the field on a corpus with no `quotedText`, beside
@@ -761,7 +732,7 @@ word of a rule, so neither is a defect. Both are covered by `quotedText`.
 ### `definedElsewhere`
 
 The rule is stated here and its *meaning* is fixed in a corpus that was not admitted. Added
-in [0005](decisions/0005-a-field-earns-its-place-by-being-checkable.md).
+in 0005.
 
 ```json
 "definedElsewhere": { "reference": "cfr-49-171" }
@@ -781,19 +752,17 @@ instance and checkable only after reading its own discriminator.
 a reference the corpus makes, and `definedElsewhere` is its answer: it names the manifest
 reference and gives the entry its runtime row. A `crossReferences` item for the same pointer
 answers it a second time, as prose, and `check-map.py --only cross-references` refuses it
-([#62](https://github.com/brandonifco/rules-factory/issues/62)). The entry may still declare its
+(#62). The entry may still declare its
 *other* pointers: `night-waiver-bar` routes "at night" to § 1.1 and answers "under § 107.200" as
 a cross-reference, because § 107.200 is a different passage.
 
 **It never names the corpus the map was made of.** Decided in
-[0026](decisions/0026-a-meaning-the-same-corpus-gives-elsewhere-is-an-entry-and-a-corpus-declares-its-pointers.md)
-([#115](https://github.com/brandonifco/rules-factory/issues/115)). The SRD's Rules Glossary is the
-same admitted corpus as its combat chapter, and it says when a creature is surprised. A meaning the
+0026
+(#115). A rulebook's glossary is the same admitted corpus as its chapters, and it can state when a rule of a chapter applies. A meaning the
 same corpus gives outside the slice is a **`scope: out` entry** citing and quoting that passage,
 checked by the locator checker like any entry. The in-scope entry names it in `crossReferences`
 (see below). Where the passage **modifies** the rule, meaning the engine cannot resolve the rule
-in some case without it, the entry names it in `dependsOn` too: `initiative-roll` depends on
-`incapacitated-condition`, whose glossary text gives Disadvantage on Initiative. Where the slice
+in some case without it, the entry names it in `dependsOn` too: an in-slice entry depends on a glossary entry whose text modifies the rule it states. Where the slice
 already decides every case the passage does, the
 cross-reference is enough. `check-map.py --only manifest` refuses a `definedElsewhere` naming a
 corpus the manifest declares, or a reference marked `admitted: true`.
@@ -810,7 +779,7 @@ altitude. `definedElsewhere` is wrong (there is no airspace corpus to name) and 
 ### `absentFrom`
 
 The corpus does **not** state the rule. Added in
-[0009](decisions/0009-absence-is-a-verdict-with-evidence.md).
+0009.
 
 ```json
 "absentFrom": { "searched": ["doubling", "doubling cube", "redouble", "offer to double"] }
@@ -839,13 +808,13 @@ entry in `dependsOn`, `enabledBy` or `suspendedBy`: that edge can never be satis
 
 **What it does not buy.** A term absent is not a rule absent. The corpus could state the rule
 in words nobody searched for. What the check catches is a mapper who declared an absence
-without looking — which is what [#29](https://github.com/brandonifco/rules-factory/issues/29)
+without looking — which is what #29
 was.
 
 ### `derivedFrom`
 
 A fact the corpus entails and never states. Added in
-[0012](decisions/0012-a-fact-the-corpus-implies-is-a-derived-entry.md).
+0012.
 
 ```json
 { "id": "hit-pays-single-stake", "kind": "value", "scope": "in", "clarity": "clear",
@@ -898,7 +867,7 @@ coverage: every page inside the declared extent is reached by some entry's locat
 ### `crossReferences`
 
 A reference the corpus makes is an entry, or a recorded reason there is none. Added in
-[0009](decisions/0009-absence-is-a-verdict-with-evidence.md).
+0009.
 
 ```json
 "crossReferences": [
@@ -908,7 +877,7 @@ A reference the corpus makes is an entry, or a recorded reason there is none. Ad
 ```
 
 § 107.29(a) opens *"Except as provided in paragraph (d) of this section"* and (d) has no entry
-in either Part 107 map ([#28](https://github.com/brandonifco/rules-factory/issues/28)). Nothing
+in either Part 107 map (#28). Nothing
 detected it, because a cross-reference was a sentence inside an `evidence` span and no field
 made a mapper answer it.
 
@@ -919,20 +888,19 @@ resolved by exactly one of `resolvedBy` (an entry id in this map) or `unmapped` 
 none).
 
 **The phrases are per corpus.** Decided in
-[0026](decisions/0026-a-meaning-the-same-corpus-gives-elsewhere-is-an-entry-and-a-corpus-declares-its-pointers.md)
-([#116](https://github.com/brandonifco/rules-factory/issues/116)). A short built-in list, written
+0026
+(#116). A short built-in list, written
 from CFR and Hoyle wording, is read for every corpus. Each manifest corpus adds the words its own
 text points with, as `pointerPhrases` (see [the manifest](#the-corpus-manifest)). Matches that
 overlap, or that only whitespace separates, are one pointer. A pointer naming the entry's own
 `definedElsewhere` reference is answered by that field. The check prints, for each corpus, how many
 pointers it detected in the spans the map quotes and how many declarations sit on one, and it
 **fails a corpus that declares no `pointerPhrases` and on which the built-in list detects nothing**.
-That silent zero is how the SRD map's 22 declared cross-references went unchecked.
+That silent zero is how one map's 22 declared cross-references went unchecked.
 
 **A term defined elsewhere in the same corpus is declared here, anchored on the term.** Where the
 chapter uses a word the corpus defines outside the slice and no words point at the definition,
-`cites` quotes the term as the evidence uses it, and `resolvedBy` names the `scope: out` entry
-that quotes the definition: `{ "cites": "surprised", "resolvedBy": "surprise-glossary" }`. See
+`cites` quotes the term as the evidence uses it, and `resolvedBy` names the `scope: out` entry that quotes the definition: `{ "cites": "the defined term", "resolvedBy": "term-glossary" }`. See
 `definedElsewhere` above for when `dependsOn` names it too.
 
 What an *"except as provided in"* clause obliges a mapper to do is therefore: **follow it, and
@@ -941,7 +909,7 @@ the target matters.
 
 **A pointer into a corpus that was not admitted is `definedElsewhere`'s, not this field's.** An
 item naming the entry's own `definedElsewhere` reference is refused
-([#62](https://github.com/brandonifco/rules-factory/issues/62), see above). The check recognises
+(#62, see above). The check recognises
 the reference by the designation in the manifest reference's `citation` (`§ 171.8` in
 "49 CFR 171.8") or by its `sourceId` read as words (`air-almanac` in "the Air Almanac"), and by
 nothing else, so an item naming it some other way passes.
@@ -965,7 +933,7 @@ declined     no implemented path at all: scope is out, the rule is unreadable,
 
 `status` answers **has the engine built this entry**. `ambiguity.fate` answers **what happens
 at runtime when the declining case is reached**. They were coupled and are not
-([0005](decisions/0005-a-field-earns-its-place-by-being-checkable.md)):
+(0005):
 `implemented` with `fate: unresolved` is legal and means *built, and declines the stated
 case*. `must-play-whole-throw` is the instance — the engine implements the compulsion and
 declines only where two maximal plays are incomparable, which is neither `declined` nor a
@@ -982,7 +950,7 @@ and row 2 of the correspondence table holds for it as written: the engine return
 `UnsupportedRule` for that entry until a test that has been seen to fail exists and the entry
 is `implemented`. The code stays behind the decline; it does not answer. `mapped` keeps one
 runtime meaning, so the table stays true without a list of exceptions to it. Decided on
-[#47](https://github.com/brandonifco/rules-factory/issues/47): refuse until proven.
+#47: refuse until proven.
 `check-map.py` cannot enforce this. The map records no code, so an entry that is built and
 unproven looks exactly like one that was never built. Whether the engine actually declines is
 checked in the engine, against its own runtime.
@@ -990,7 +958,7 @@ checked in the engine, against its own runtime.
 **Where `fate: unresolved`
 accompanies it, the verdict covers every case except the one `ambiguity.question` names, and the
 declining case ships a test** — which is one of the tests named. **Or the engine's owner has ruled
-on part or all of that case** ([0027](decisions/0027-an-owners-ruling-is-held-by-the-engine-and-checked-by-the-factory.md)).
+on part or all of that case** (0027).
 Then the engine's overlay file for that entry (`overlay/<entry id>.json`) carries `rulings` and
 `declines` beside its `tests`. Each ruling
 quotes the part of `question` it answers and names the tests that show it. Each decline quotes a
@@ -1006,7 +974,7 @@ map on every `produce` and in the engine's gate.
 ]
 ```
 
-Decided on [#2](https://github.com/brandonifco/rules-factory/issues/2). Until then `implemented`
+Decided on #2. Until then `implemented`
 was a word someone typed: 26 backgammon entries claimed it in the engine's copy with nothing
 behind any of them. Every real defect this project has found in its own checks was found by
 mutation — five tests that could not fail, a checker counting an entry it had not checked — and
@@ -1035,7 +1003,7 @@ one spelling is refused whatever script the spelling is in, and mixing spellings
 **It reads the merge, not the overlay.** `tests` is a field of the merged entry, and a package map
 may carry one, so checking only the overlay would leave an implemented entry whose evidence came
 from upstream unexamined — the same shape of hole. Filed as
-[#239](https://github.com/brandonifco/rules-factory/issues/239): the first implementer of
+#239: the first implementer of
 `tax-121-principal-residence` had to produce twice, because a handler cannot compile until a
 re-produce marks the entry `implemented`, so it wrote `PENDING`, produced, ran the real mutations
 and produced again — and `validate.sh full` passed on the intermediate run. The threshold is set
@@ -1054,7 +1022,7 @@ was copied from another entry; `not yet recorded` passes it, and so does a real 
 someone who ran nothing. That part rests on the implementer's word, as it did before — see
 immediately below. `tools/mapvalidator/status.py`, and the `check-map.py` built from it, is the
 checker a **published map** carries and the one this repository runs over its own maps; it does
-not yet carry the rule ([#240](https://github.com/brandonifco/rules-factory/issues/240)), which is
+not yet carry the rule (#240), which is
 now about a map before any engine merges it rather than a second line under the engine's gate.
 
 `check-map.py --only status` enforces what a map alone can show: `tests` is present and
@@ -1109,7 +1077,7 @@ have to share. The distinction the map preserves is the mapper's, not the runtim
 A gate that is `scope: out` adds no row either. The table classifies an entry by its own fields.
 An entry suspended by an out-of-scope gate answers by its own row while the caller states that the
 gate does not hold, and `OutsideCurrentScope`, citing the gate, while the caller states that it holds
-([0021](decisions/0021-a-gate-outside-the-slice-is-held-by-the-caller.md)).
+(0021).
 
 Row 8 is the one that is easy to get wrong. An assertion is not a failure to resolve; it is a
 parameter. An engine returning `RequiresInterpretation` where the corpus named a decider is
@@ -1124,12 +1092,12 @@ should enforce once it exists.
 **The map declares no types, and the engine's typed contract says only what the map does.** No
 field names an entry's inputs, outputs, units or value type: a parameter is not a rule and gets
 no entry, and `dependsOn` is not a runtime input. So the factory's generated contract
-([#76](https://github.com/brandonifco/rules-factory/issues/76), `tools/factory/generate.py`) types
+(#76, `tools/factory/generate.py`) types
 what the map fixes and nothing more. Each entry has a request type of its own, so a request for
 one entry cannot be handed to another. An assertion's request carries the caller's value, which
 is what row 8 resolves to, and its generated entry carries `AssertedBy`, who may assert it (0025). The request type is partial, so what the map leaves unnamed, an
 operation's inputs, the engine declares on it in its own code
-([#93](https://github.com/brandonifco/rules-factory/issues/93)), and the typed entry point passes
+(#93), and the typed entry point passes
 that request, inputs included, to the handler. Each entry's handler is a declared method, so an `implemented` entry
 that needs one (any not on row 8) and lacks it does not build. The value itself, and every output, is `object` until a field
 declares otherwise.
@@ -1179,11 +1147,10 @@ Beside the entries, the corpora they cite:
 `hashDerivation` and `boundaryPolicy` are the two fields most likely to be thought
 redundant, and both are load-bearing. A digest without its derivation does not say what it
 covers. A boundary policy is a property of the licence, and the two engines this method was
-derived from answer it in opposite directions — one commits its extracted corpus because the
-SRD is CC-BY, the other commits nothing because its rulebook is commercial.
+derived from answer it in opposite directions — one commits its extracted corpus because its licence is CC-BY, the other commits nothing because its rulebook is commercial.
 
 `verification` and `quotation` are the same question asked of a map's *consumers*, and are
-answered per corpus for the same reason ([0013](decisions/0013-verification-posture-belongs-to-the-corpus.md)):
+answered per corpus for the same reason (0013):
 
 - **`verification`** — how anyone checks the baseline hash. `committed-copy`: the bytes are at
   `committedPath` beside the manifest, and CI can verify them. `local-copy`: they are not
@@ -1199,16 +1166,16 @@ answered per corpus for the same reason ([0013](decisions/0013-verification-post
   `boundaryPolicy`.
 
 **`randomness`** is the same kind of fact about the engine
-([0019](decisions/0019-randomness-is-declared-by-the-corpus.md)): whether the rules call for
+(0019): whether the rules call for
 chance. `none`: a conforming engine draws no random value, and its gate refuses
 `RulesKernel.Randomness`. `seeded`: it may draw, only through the kernel's seeded, replayable
 source; the factory pins that package at the kernel's version and references nothing. A person
 declares it from the rules. Nothing infers it, and a missing value is a failure, never `none`. Which
 entries draw, and how many of what, is the map's `draws` field, which is refused under `none`
-([0025](decisions/0025-an-assertion-names-who-asserts-it-and-an-operation-names-what-it-draws.md)).
+(0025).
 
 **`licence` decides whether the factory uses the corpus at all**
-([0028](decisions/0028-the-factory-admits-only-corpora-whose-licence-permits-publishing-them.md)).
+(0028).
 The factory admits only a corpus whose licence permits committing and publishing its text and its
 map. The class is read from the licence's leading
 identifier: `public-domain` or `public-domain-<whose>` is public domain, and `CC-BY-4.0` or `CC0-1.0`
@@ -1225,10 +1192,10 @@ reporting the posture in force is an engine gate's job.
 
 **`quotedText`** says what a quote is verbatim of when the committed text is derived from what
 was published
-([0024](decisions/0024-a-quote-is-of-the-extraction-and-a-page-extent-can-end-at-a-heading.md)):
+(0024):
 
 ```json
-"quotedText": { "derivation": "srd-5.2.1-pdftotext-24.02.0-page-marked", "extractedFrom": "SRD_CC_v5.2.1.pdf" }
+"quotedText": { "derivation": "tax-code-2024-pdftotext-24.02.0-page-marked", "extractedFrom": "TaxCode_2024.pdf" }
 ```
 
 `derivation` must be the corpus's `hashDerivation`, since quotes are held to the bytes
@@ -1252,12 +1219,11 @@ admitted.
 ```
 
 `pointerPhrases` lists the words this corpus points at another of its passages with
-([0026](decisions/0026-a-meaning-the-same-corpus-gives-elsewhere-is-an-entry-and-a-corpus-declares-its-pointers.md)).
+(0026).
 An item is a literal phrase or `{"regex": "..."}`. Both match case-insensitively, and a literal
 matches across any run of whitespace. `check-map.py --only cross-references` reads them, in addition
 to its built-in list, for entries citing this corpus and no other. Derive them from the corpus's
-text rather than from memory. Two of the SRD's, which came from searching its 364 pages for "see",
-"explained in" and "later in", and one of Hoyle's:
+text rather than from memory. Two from one corpus, which came from searching its pages for "see", "explained in" and "later in", and one from another:
 
 ```json
 "pointerPhrases": [
@@ -1280,24 +1246,24 @@ own, which are ordinary operations over a date the caller supplies.
 ## Where the map lives
 
 **In the factory, published as a versioned package; never copied into an engine**
-([0015](decisions/0015-a-map-is-published-as-a-versioned-package.md)). Each map is a NuGet
+(0015). Each map is a NuGet
 package, `RulesFactory.Maps.<MapName>`, carrying `corpus-map.json`, the manifest entries of
 the corpora it cites, and the `tools/check-map.py` its consumer runs, and a version asserts one corpus baseline and one `schemaVersion`.
 
 **What a consumer owns** is an overlay of three fields per entry, `status`, `implementedIn` and
 `tests`, because those are build facts only the engine can know, and they are only true of a
 particular engine commit. It is one file per entry, `overlay/<entry id>.json`, read in the package
-map's entry order ([#247](https://github.com/brandonifco/rules-factory/issues/247)): an entry's
+map's entry order (#247): an entry's
 evidence is its own file, so two entry branches never write the same one. The factory is canonical
 for everything else. The engine's gate checks
 that the overlay names only entries the package has and sets only those three fields, and runs
 the package's own `tools/check-map.py --phase consumer` on the merge, never a copy
-([#51](https://github.com/brandonifco/rules-factory/issues/51)). Any other difference is drift.
+(#51). Any other difference is drift.
 
 ## Open questions
 
 Recorded rather than decided. The first trial —
-[examples/faa-part-107](../examples/faa-part-107/README.md) — answered some and sharpened
+examples/faa-part-107 — answered some and sharpened
 the rest.
 
 **Granularity.** Partly answered. Twelve sections of regulation produced twenty-four
@@ -1308,90 +1274,89 @@ cases.
 
 Open questions are tracked as issues so they are worked rather than admired:
 
-- [#5](https://github.com/brandonifco/rules-factory/issues/5) — `dependsOn` conflates
+- #5 — `dependsOn` conflates
   implementation order with runtime precondition. Decided:
-  [0003](decisions/0003-a-phase-gate-names-a-rule-not-a-condition.md) adds `gatedBy`.
-- [#32](https://github.com/brandonifco/rules-factory/issues/32) — a gate that suspends seven
+  0003 adds `gatedBy`.
+- #32 — a gate that suspends seven
   entries was named by none of them, and the one field could not say which way a gate points.
-  Decided: [0011](decisions/0011-a-gate-has-a-direction.md) splits `gatedBy` into `enabledBy`
+  Decided: 0011 splits `gatedBy` into `enabledBy`
   and `suspendedBy`.
-- [#61](https://github.com/brandonifco/rules-factory/issues/61) — a waiver suspends rules from a
+- #61 — a waiver suspends rules from a
   section outside the map's slice, and `suspendedBy` could not name it. Decided:
-  [0021](decisions/0021-a-gate-outside-the-slice-is-held-by-the-caller.md). The gate is a `scope: out`
+  0021. The gate is a `scope: out`
   entry, and whether it holds is a fact the caller states and the engine never infers.
-- [#31](https://github.com/brandonifco/rules-factory/issues/31) — an entry claimed a rate the
+- #31 — an entry claimed a rate the
   corpus implies and never states. Decided:
-  [0012](decisions/0012-a-fact-the-corpus-implies-is-a-derived-entry.md) adds `derivedFrom`; a
+  0012 adds `derivedFrom`; a
   derived entry cites nothing.
-- [#15](https://github.com/brandonifco/rules-factory/issues/15) — where a corpus lives when a
+- #15 — where a corpus lives when a
   map moves into an engine. Decided:
-  [0013](decisions/0013-verification-posture-belongs-to-the-corpus.md) extends 0002 — each
+  0013 extends 0002 — each
   corpus declares its `verification` posture and its `quotation` policy.
-- [#6](https://github.com/brandonifco/rules-factory/issues/6) — a standard is not a gap.
-  Decided: [0005](decisions/0005-a-field-earns-its-place-by-being-checkable.md) — a delegated
+- #6 — a standard is not a gap.
+  Decided: 0005 — a delegated
   standard is `kind: assertion`, and it is an entry of its own.
-- [#24](https://github.com/brandonifco/rules-factory/issues/24) — six reasons an entry is not
+- #24 — six reasons an entry is not
   a plain rule, and three fields carrying them. Decided:
-  [0005](decisions/0005-a-field-earns-its-place-by-being-checkable.md).
-- [#7](https://github.com/brandonifco/rules-factory/issues/7) — an entry beyond the
+  0005.
+- #7 — an entry beyond the
   adapter's reach has no field to say so. Decided:
-  [0004](decisions/0004-adapter-reach-is-a-property-of-the-entry.md) adds `beyondAdapter`.
-- [#25](https://github.com/brandonifco/rules-factory/issues/25) — a conflict is a relation
+  0004 adds `beyondAdapter`.
+- #25 — a conflict is a relation
   between entries and nothing records it. Decided:
-  [0007](decisions/0007-a-conflict-is-a-question-not-a-pair.md) adds `ambiguity.conflict`, and
+  0007 adds `ambiguity.conflict`, and
   rules that the relation is a grouping rather than a pair.
-- [#18](https://github.com/brandonifco/rules-factory/issues/18) — `evidence` held a summary, so
+- #18 — `evidence` held a summary, so
   no citation was checkable and thirteen wrong ones survived a build. Decided above: `evidence`
   is a contiguous verbatim span and the summary moves to `note`.
-- [#29](https://github.com/brandonifco/rules-factory/issues/29) — three states, two words for
-  them. Decided: [0009](decisions/0009-absence-is-a-verdict-with-evidence.md) adds `absentFrom`,
+- #29 — three states, two words for
+  them. Decided: 0009 adds `absentFrom`,
   and rules that an absence is an entry rather than a manifest record because `references` is
   bounded by the corpus and absence is not.
-- [#20](https://github.com/brandonifco/rules-factory/issues/20) — `scope: out` applied to a
+- #20 — `scope: out` applied to a
   section cost the map the number of faces on a die. Decided:
-  [0009](decisions/0009-absence-is-a-verdict-with-evidence.md) — `scope` is per rule, and
+  0009 — `scope` is per rule, and
   `extent` coverage is what records that a section was read.
-- [#28](https://github.com/brandonifco/rules-factory/issues/28) — a carve-out with no entry in
-  either direction. Decided: [0009](decisions/0009-absence-is-a-verdict-with-evidence.md) adds
+- #28 — a carve-out with no entry in
+  either direction. Decided: 0009 adds
   `crossReferences`; the Part 107 data fix is
-  [0010](decisions/0010-whose-fact-it-is-does-not-decide-the-kind.md) § 3 —
+  0010 § 3 —
   `night-waiver-termination`, `scope: in`, because a rule whose condition can no longer be met
   is not a rule that is no longer in force.
-- [#11](https://github.com/brandonifco/rules-factory/issues/11) — nothing used
+- #11 — nothing used
   `kind: assertion`, and the half about facts a *person* asserts outlived 0005 and 0008.
-  Decided: [0010](decisions/0010-whose-fact-it-is-does-not-decide-the-kind.md) — whose fact
+  Decided: 0010 — whose fact
   it is does not decide the kind, so the family dissolves into assertions and gaps under the
   gate that already exists, and no new `kind` or field is added.
 
-- [#58](https://github.com/brandonifco/rules-factory/issues/58),
-  [#59](https://github.com/brandonifco/rules-factory/issues/59),
-  [#60](https://github.com/brandonifco/rules-factory/issues/60),
-  [#62](https://github.com/brandonifco/rules-factory/issues/62) — four schema points the Part 107
+- #58,
+  #59,
+  #60,
+  #62 — four schema points the Part 107
   blind second mapping found unclear. Decided:
-  [0020](decisions/0020-a-section-citation-names-its-lead-in-and-a-section-map-lists-its-extent.md)
+  0020
   — a `section-designation` extent is a list of sections and every locator cites inside it;
   "introductory text" is in the grammar and means the lead-in only; the manifest is never inline;
   and `definedElsewhere` alone answers a pointer to an unadmitted corpus.
-- [#113](https://github.com/brandonifco/rules-factory/issues/113),
-  [#114](https://github.com/brandonifco/rules-factory/issues/114) — in the first PDF, a quote is
+- #113,
+  #114 — in the first PDF, a quote is
   verbatim of the extraction and not of the page, and a page extent could not end mid-page.
   Decided:
-  [0024](decisions/0024-a-quote-is-of-the-extraction-and-a-page-extent-can-end-at-a-heading.md)
+  0024
   — the manifest declares `quotedText`, an entry the extraction garbles declares `extraction`
   with its rendered reading (printed as not verified), and a page extent may name `endsBefore`.
-- [#115](https://github.com/brandonifco/rules-factory/issues/115),
-  [#116](https://github.com/brandonifco/rules-factory/issues/116) — trial 7 found no field for a
-  term the same corpus defines outside the slice, and a pointer phrase list that detected none of
-  the SRD's pointers. Decided:
-  [0026](decisions/0026-a-meaning-the-same-corpus-gives-elsewhere-is-an-entry-and-a-corpus-declares-its-pointers.md)
+- #115,
+  #116 — trial 7 found no field for a
+  term the same corpus defines outside the slice, and a pointer phrase list that detected none of that corpus's pointers. Decided:
+  0026
   — a `scope: out` entry named by `crossReferences`, and by `dependsOn` where it modifies the rule;
   `definedElsewhere` never names an admitted corpus; each corpus declares its `pointerPhrases`, and
   a corpus on which nothing is detected and nothing is declared fails.
 
-- [#117](https://github.com/brandonifco/rules-factory/issues/117),
-  [#118](https://github.com/brandonifco/rules-factory/issues/118) — an assertion named nobody who
+- #117,
+  #118 — an assertion named nobody who
   may make it, and an ambiguous draw count changes a replay. Decided:
-  [0025](decisions/0025-an-assertion-names-who-asserts-it-and-an-operation-names-what-it-draws.md)
+  0025
   adds `assertedBy`, `draws` and `ambiguity.affectsDraws`, each anchored in the corpus's words.
 
 **Where a decline's runtime reason lives.** Opened by 0004, answered by 0005: an entry whose
@@ -1400,8 +1365,8 @@ meaning is fixed in an unadmitted corpus takes `definedElsewhere`, parallel to
 
 **`kind: assertion` is fully adopted.** 0005 settled that the maps were behind the schema,
 not that the category was too wide, and reclassified the delegated standards.
-[0010](decisions/0010-whose-fact-it-is-does-not-decide-the-kind.md) closes the other half of
-[#11](https://github.com/brandonifco/rules-factory/issues/11) — facts a *person* asserts,
+0010 closes the other half of
+#11 — facts a *person* asserts,
 in `visual-line-of-sight`, `preflight-actions`, `visual-observer-conditions` and
 `over-human-beings` — and the answer is that the family is not a category. It is a mixture
 of the two answers gate 3 already gives, and the four entries were mis-split: ten assertion

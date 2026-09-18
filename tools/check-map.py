@@ -9,19 +9,48 @@
 backgammon map, and it is the gap this tool closes for everything the spec states
 *structurally*. It does not read the corpus: `check-locators.py` does that.
 
-What it cannot do, stated here rather than in a commit message:
+What it cannot do, stated here rather than in a commit message. Each item says whether it is
+**measured** -- a committed map was damaged that exact way and this file was watched not
+noticing -- or **reasoned**, argued from the code and not yet attacked. `tools/mutate-map.py`
+is what damages them, and `examples/validator-attack/` is the record.
 
+  * **The measured miss rate of everything below is 74%.** Fourteen mutations over five
+    committed maps and three locator grammars: 62 landed, 18 are refused, 44 pass (#259;
+    16 and 46 when first measured at 69167d8, the two rows that moved being the epistemic
+    checks 0034 added). Five of the twenty-five checks in this file ever turned. Read
+    the list below as what a reader should expect to get away with, not as a list of
+    theoretical gaps.
   * **A conflict nobody recorded is invisible.** `ambiguity.conflict` (0007) groups the
     entries that answer one contradicted question, and `conflicts` enforces that a group
     has two or more members, one fate, and one decision record. Nothing detects the
     conflict a mapper never noticed: two `clarity: clear` entries stating incompatible
-    rules pass every check here. What `superposition` reaches is narrower and is the one
-    mechanical part (0034): where a *blind second mapping* read the passage as ambiguous
-    and the adjudication answered "the corpus does not settle it", the map must record
-    that doubt somewhere. Where both readers made the same silent choice there is no
-    record, no flag and no trace. Measured at 12 of 64 collapses caught
-    (`examples/collapse-trial/`), and the map carries no field for competing readings
-    because a field inside the `ambiguity` block is absent exactly where one is collapsed.
+    rules pass every check here. *Reasoned.* Its neighbour is measured, and the measurement
+    moved: deleting a recorded ambiguity and asserting one reading -- premature collapse --
+    passed on 5 maps of 5 before `superposition` existed, and is refused on 1 of 5 now; over
+    every recorded ambiguity rather than one per map it is 12 of 64
+    (`examples/collapse-trial/`). What that check reaches is narrower
+    than the general case and is the one mechanical part of it (0034): where a *blind second
+    mapping* read the passage as ambiguous and the adjudication answered "the corpus does not
+    settle it", the map must record that doubt somewhere. Where both readers made the same
+    silent choice there is no record, no flag and no trace. Inventing an ambiguity the corpus
+    settles passes on 5 of 5, and is catchable and is #271: `ambiguity.question` is free prose,
+    where `crossReferences.cites` on the same entry must appear verbatim in the evidence.
+  * **A gate is not checked against the corpus at all.** A missing `enabledBy` edge, a
+    missing `suspendedBy` edge and an invented `dependsOn` edge each leave the map
+    internally consistent, and `gates`, `references` and `no-cycles` all pass.
+    *Measured: 0 of 13.*
+  * **An entry can quote the wrong sentence of the right passage.** The locator resolves and
+    the quote is verbatim of the extraction, so nothing here and nothing in the locator
+    checkers can say the entry is about a different sentence than the one it cites.
+    *Measured: 1 of 5, and that one caught by `cross-references` bookkeeping rather than by
+    anything having read the corpus.*
+  * **A rule nobody mapped leaves no trace.** An omitted definition, and an applicability
+    rule removed together with the edges that named it, both pass every check here; the
+    entry that is gone is not owed by anything that remains. *Measured: 0 of 4 and 0 of 4.*
+  * **A check whose subject matter the damage removed says NOT VERIFIED and the run stays
+    green,** because such a check declares it had no subject. Turning a map's only assertion
+    into an operation silences `asserted-by`; removing the rule every other entry was
+    suspended by silences `gates`. *Measured, and filed as #268.*
   * **Correspondence row 7** ("two implemented entries with no entry for their
     combination") is a fact about pairs and about interactions the map does not enumerate.
     It is not evaluated. The `correspondence` check therefore proves that every entry is
@@ -2154,6 +2183,11 @@ def find_comparison(map_path):
     ship it -- the package's bytes are what passed (0015) -- so a consumer finds nothing here
     and the check says so rather than passing.
 
+    Given a directory rather than a map, that directory is searched instead -- which is what
+    `--comparison` accepts, so a caller holding the map somewhere else (the mutation laboratory
+    writes it into a temporary directory) names the record's home and does not have to know which
+    of the two files below is the readable one.
+
     Two file names, because the record has two committed shapes and they are not in the same
     file: `compare.py` writes its flags and their resolutions into `results.json`, and trial 9's
     hand-written adjudication is `resolutions.json` beside a `results.json` that carries the
@@ -2161,9 +2195,10 @@ def find_comparison(map_path):
     is the record; where neither can be read, the first that exists is returned, and the check
     reports that it could not read it rather than reporting nothing was there.
     """
-    directory = os.path.dirname(os.path.abspath(map_path)) or "."
-    present = [os.path.join(directory, "blind-mapping", name)
-               for name in ("results.json", "resolutions.json")]
+    directory = os.path.abspath(map_path)
+    directory = directory if os.path.isdir(directory) else os.path.join(
+        os.path.dirname(directory) or ".", "blind-mapping")
+    present = [os.path.join(directory, name) for name in ("results.json", "resolutions.json")]
     present = [path for path in present if os.path.isfile(path)]
     for path in present:
         try:
@@ -2445,7 +2480,8 @@ def main(argv=None):
     parser.add_argument("--manifest", help="corpus manifest; found beside the map when unambiguous")
     parser.add_argument("--repo-root", help="root that decision-record paths are relative to")
     parser.add_argument("--comparison", help="the blind second mapping's adjudication record "
-                                             "(0014); found under blind-mapping/ beside the map")
+                                             "(0014), or the directory holding it; found under "
+                                             "blind-mapping/ beside the map by default")
     parser.add_argument("--only", help="run one check: " + ", ".join(name for name, _ in CHECKS))
     parser.add_argument("--verbose", action="store_true", help="also print the row each entry matches")
     parser.add_argument("--phase", choices=PHASES, default="publish",
@@ -2479,7 +2515,7 @@ def main(argv=None):
             print(f"cannot read manifest {manifest_path}: {error}", file=sys.stderr)
             return 2
 
-    comparison_path = args.comparison or find_comparison(args.map_path)
+    comparison_path = find_comparison(args.comparison or args.map_path)
     comparison = None
     if comparison_path:
         try:

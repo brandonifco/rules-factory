@@ -80,6 +80,22 @@ nothing for a collapse there to contradict. The other two maps were never mapped
 and it is not a rate for any other corpus: it is 64 collapses in six maps of four corpora, where
 the second reading exists for 36 of them.
 
+## How this relates to trial 10
+
+[`validator-attack/`](../validator-attack/README.md) measures a different thing and the two numbers
+are not versions of each other.
+
+| | that table | this one |
+|---|---|---|
+| asks | what does the whole validator catch, across fourteen kinds of damage | what fraction of premature collapses does it catch |
+| damages | one entry per map, once per mutation | **every** recorded ambiguity, one at a time |
+| denominator for a collapse | 5 (`ambiguous-to-clear`, one per map) | 64 |
+| result | 1 of 5 refused, where it was 0 of 5 before 0034 | 12 of 64, where it was 4 of 64 |
+
+Trial 10 asks whether the validator notices a *kind* of error at all; this asks how often it
+notices *that* error. The 1 of 5 there is one of the 12 here, and the disagreement between "1 of 5"
+and "12 of 64" is arithmetic about different subjects, not two answers to one question.
+
 ## Limits
 
 - **A collapse of an ambiguity nobody recorded is not in the denominator.** This collapses

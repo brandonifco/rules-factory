@@ -42,7 +42,7 @@ output before committing it.
 | Subsystem | Where | What it takes | What it produces |
 |---|---|---|---|
 | **Mapper** | [`tools/mapper/`](tools/mapper/__init__.py) and [docs/mapper.md](docs/mapper.md); the map itself is still made by hand, by [the method](docs/method.md) | a pinned corpus, its manifest, an adapter, a mapping protocol | a candidate map, and the record of how it was made |
-| **Validator** | [`tools/mapvalidator/`](tools/mapvalidator/__init__.py) and [docs/validator.md](docs/validator.md), built into `tools/check-map.py`, with the locator checkers, [`tools/check-map-review.py`](tools/check-map-review.py) and [`tools/pack-map.py`](tools/pack-map.py) | a map and its manifest | a verdict, and a map that may become a version |
+| **Validator** | [`tools/mapvalidator/`](tools/mapvalidator/__init__.py) and [docs/validator.md](docs/validator.md), built into `tools/check-map.py`, with the locator checkers, [`tools/check-map-review.py`](tools/check-map-review.py), [`tools/pack-map.py`](tools/pack-map.py) and [`tools/mutate-map.py`](tools/mutate-map.py), which measures what all of that misses | a map and its manifest | a verdict, and a map that may become a version |
 | **Factory** | [`tools/factory/`](tools/factory/__main__.py) | a published map package and the corpus it was made of | a deterministic engine on `rules-kernel` |
 | **Map contract** | [`tools/mapcontract/`](tools/mapcontract/__init__.py) | — | the map's closed vocabularies and the readers that get a field out of an entry |
 
@@ -205,7 +205,10 @@ CI proves this on every pull request. The `validate` job runs
   mapping catches most of them, and every map in this repository must carry a review of its exact
   bytes ([0017](docs/decisions/0017-a-map-change-carries-a-review-of-its-bytes.md)). The
   `hoyle-backgammon` map, which the `engine` job builds from, carries a legacy exemption rather
-  than a review.
+  than a review. What the second mapper was *given* is now staged by `tools/mapper stage` and
+  recorded by digest, so an unredacted input is visible
+  ([#223](https://github.com/brandonifco/rules-factory/issues/223)); paraphrase in a staged
+  document is still nobody's check.
 - **That a rule is implemented.** A produced engine answers each entry that is not
   `implemented` with a decline citing its locator. The rules themselves are hand-written
   handlers, and the backlog — the GitHub issues, and `factory backlog --render` — lists the ones

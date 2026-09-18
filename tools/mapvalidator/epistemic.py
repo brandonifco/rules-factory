@@ -50,6 +50,11 @@ def find_comparison(map_path):
     ship it -- the package's bytes are what passed (0015) -- so a consumer finds nothing here
     and the check says so rather than passing.
 
+    Given a directory rather than a map, that directory is searched instead -- which is what
+    `--comparison` accepts, so a caller holding the map somewhere else (the mutation laboratory
+    writes it into a temporary directory) names the record's home and does not have to know which
+    of the two files below is the readable one.
+
     Two file names, because the record has two committed shapes and they are not in the same
     file: `compare.py` writes its flags and their resolutions into `results.json`, and trial 9's
     hand-written adjudication is `resolutions.json` beside a `results.json` that carries the
@@ -57,9 +62,10 @@ def find_comparison(map_path):
     is the record; where neither can be read, the first that exists is returned, and the check
     reports that it could not read it rather than reporting nothing was there.
     """
-    directory = os.path.dirname(os.path.abspath(map_path)) or "."
-    present = [os.path.join(directory, "blind-mapping", name)
-               for name in ("results.json", "resolutions.json")]
+    directory = os.path.abspath(map_path)
+    directory = directory if os.path.isdir(directory) else os.path.join(
+        os.path.dirname(directory) or ".", "blind-mapping")
+    present = [os.path.join(directory, name) for name in ("results.json", "resolutions.json")]
     present = [path for path in present if os.path.isfile(path)]
     for path in present:
         try:

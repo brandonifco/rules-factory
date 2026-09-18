@@ -116,6 +116,61 @@ check_pointers() {
   printf '%d map(s) interrogated\n' "$pointers_checked"
 }
 
+# What each map's extent claims, against what its walk reached (#255). `extent` says how much of
+# the corpus a map read, and until this step nothing evidenced it: the locator checkers' coverage
+# asks only whether every page or section of the extent is touched by some quote, which a map
+# satisfies by reaching one sentence on a page. This enumerates the extent's units through the
+# adapter its manifest names and reports the ones no entry's quote reaches and no recorded
+# rejection accounts for.
+#
+# 3 is the expected outcome on every committed map today: each of the six was walked before
+# anything measured the walk, and the counts are #267. Accepting exactly 3 is what keeps those
+# numbers visible on every run instead of turning them into a red gate nobody can clear by
+# reading a corpus again. A map that enumerates no unit at all, or one no entry's quote is found
+# in, exits 1 here -- an inventory of nothing has nothing unaccounted, which is the shape of
+# "reports ok while examining nothing" this file exists to refuse.
+inventories_taken=0
+check_inventory() {
+  local map status
+  for map in examples/*/corpus-map*.json examples/*/*/corpus-map*.json; do
+    [ -e "$map" ] || continue
+    printf -- '--- %s\n' "$map"
+    status=0
+    python3 tools/mapper inventory "$map" || status=$?
+    [ "$status" -eq 0 ] || [ "$status" -eq 3 ] || return "$status"
+    inventories_taken=$((inventories_taken + 1))
+  done
+  if [ "$inventories_taken" -eq 0 ]; then
+    echo "no corpus maps found -- this step proved nothing" >&2
+    return 1
+  fi
+  printf '%d map(s) inventoried\n' "$inventories_taken"
+}
+
+# What a blind second mapping was given is recorded by digest beside the comparison, and the
+# staged documents are the redacted ones (#223). The comparison tooling compares two maps and
+# cannot see the inputs, so a contaminated run reported as blind manufactures agreement -- which
+# is the evidence the whole procedure produces. `mapper stage --verify` re-hashes every file a
+# record names and re-runs the leak scan over the staged documents, so neither a swapped input
+# nor a record that claims a redaction it did not make passes.
+staged_checked=0
+check_blind_staging() {
+  local record
+  # One glob: a staging record sits beside the comparison it belongs to, one level down from the
+  # trial, the way blind-mapping/ already holds results.json and resolutions.json.
+  for record in examples/*/*/staged-inputs.json; do
+    [ -e "$record" ] || continue
+    printf -- '--- %s\n' "$record"
+    python3 tools/mapper stage --verify "$record" || return 1
+    staged_checked=$((staged_checked + 1))
+  done
+  if [ "$staged_checked" -eq 0 ]; then
+    echo "no blind-mapping staging record found -- this step proved nothing" >&2
+    return 1
+  fi
+  printf '%d staged blind input(s) verified\n' "$staged_checked"
+}
+
 # Every map carries a review of its exact bytes (0017): a blind second mapping, a verdict from a
 # separate context, or an exemption that says why. The checker counts the maps it examined and
 # fails on none, and prints every exemption, so neither an empty glob nor a waiver passes quietly.
@@ -167,6 +222,18 @@ check_locators() {
   # in step, not a second corpus.
   python3 examples/srd-52-combat/check-locators-pdf-text.py \
     examples/srd-52-conditions/corpus-map.json examples/srd-52-combat/srd-5.2.1.txt || return 1
+}
+
+# The validator, attacked with a damaged map. Every check has been watched failing on a unit
+# fixture; that proves each fires, not how much of a real error reaches the gate. tools/mutate-map.py
+# damages a committed map one named way at a time and measures what is refused (#259,
+# examples/validator-attack/). The measurement is committed, and this re-runs it and fails when a
+# row moves -- a check that grew, a map that was corrected, or a mutation that stopped landing.
+# It is a step here rather than a workflow because the whole run takes about ten seconds; a
+# staleness date would say when somebody last looked, and this says whether what they wrote is
+# still true. No committed map is written to: each run works on a copy in a temporary directory.
+check_validator_attack() {
+  python3 tools/mutate-map.py --check examples/validator-attack/results.json
 }
 
 # Every map that declares a package version passes the gate its publish workflow runs, and
@@ -323,8 +390,11 @@ run "check-map.py is what the two packages build"      python3 tools/build-check
 run "every corpus map satisfies the schema"            check_all_maps
 run "every map says how its corpus is read"            check_protocols
 run "every protocol's own detectors find its pointers" check_pointers
+run "every extent's units are enumerated and accounted" check_inventory
 run "every corpus map carries a review of its bytes"   check_map_reviews
+run "every blind mapping was given what it recorded"   check_blind_staging
 run "every citation resolves in its corpus"            check_locators
+run "the measured miss rate still describes the validator" check_validator_attack
 run "every map package passes its publish gate"        check_map_packages
 run "the checkers' own tests"                          check_tool_tests
 run "every repository link resolves"                   check_doc_references

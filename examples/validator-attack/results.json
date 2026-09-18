@@ -1,0 +1,838 @@
+{
+  "measuredAt": "145c4850fc3dde1e63e566c6f475a4ff2483b6f8",
+  "subjects": [
+    {
+      "name": "hoyle-backgammon",
+      "genre": "rulebook",
+      "grammar": "page-marker (Gutenberg plain text)",
+      "map": "examples/hoyle-backgammon/corpus-map.json",
+      "runs": [
+        {
+          "mutation": "drop-entry",
+          "applicable": true,
+          "damage": "dropped inner-table-handedness (BACKGAMMON / The Board and Men / p. 272), which no other entry names",
+          "detected": false,
+          "refusedBy": [],
+          "signalled": false,
+          "by": []
+        },
+        {
+          "mutation": "drop-enabled-by",
+          "applicable": true,
+          "damage": "dropped opening-thrower-option.enabledBy -> opening-roll",
+          "detected": false,
+          "refusedBy": [],
+          "signalled": false,
+          "by": []
+        },
+        {
+          "mutation": "drop-suspended-by",
+          "applicable": true,
+          "damage": "dropped throw-two-dice.suspendedBy -> full-table-suspension",
+          "detected": false,
+          "refusedBy": [],
+          "signalled": false,
+          "by": []
+        },
+        {
+          "mutation": "clear-to-ambiguous",
+          "applicable": true,
+          "damage": "player-count: clear -> ambiguous, with a full and false `ambiguity` block",
+          "detected": false,
+          "refusedBy": [],
+          "signalled": false,
+          "by": []
+        },
+        {
+          "mutation": "ambiguous-to-clear",
+          "applicable": true,
+          "damage": "must-play-whole-throw: ambiguous -> clear, and its recorded question deleted",
+          "detected": false,
+          "refusedBy": [],
+          "signalled": false,
+          "by": []
+        },
+        {
+          "mutation": "assertion-to-operation",
+          "applicable": true,
+          "damage": "agreed-backgammon-multiple: assertion -> operation, and `assertedBy` removed with it",
+          "detected": false,
+          "refusedBy": [],
+          "signalled": true,
+          "by": [
+            {
+              "detector": "check-map.py",
+              "check": "asserted-by",
+              "status": "skip",
+              "said": "NOT VERIFIED -- no entry is `kind: assertion`, so nobody was attributed"
+            }
+          ]
+        },
+        {
+          "mutation": "invent-depends-on",
+          "applicable": true,
+          "damage": "invented player-count.dependsOn -> strategy-advice, an order the corpus does not state",
+          "detected": false,
+          "refusedBy": [],
+          "signalled": false,
+          "by": []
+        },
+        {
+          "mutation": "neighbour-evidence",
+          "applicable": true,
+          "damage": "player-count (BACKGAMMON / The Board and Men / p. 271) now quotes board-tables (BACKGAMMON / The Board and Men / p. 272)'s passage",
+          "detected": true,
+          "refusedBy": [
+            "check-map.py",
+            "check-locators.py"
+          ],
+          "signalled": false,
+          "by": [
+            {
+              "detector": "check-map.py",
+              "check": "cross-references",
+              "status": "fail",
+              "said": "a cross-reference the corpus makes is unanswered, or a corpus's pointer phrases are missing or malformed"
+            },
+            {
+              "detector": "check-locators.py",
+              "check": "locators",
+              "status": "fail",
+              "said": "32 of 32 citations verified; 0 unlocatable, 0 citing no page; 1 derived entry (hit-pays-single-stake) not located, because a derived entry cites nothing"
+            }
+          ]
+        },
+        {
+          "mutation": "same-passage-evidence",
+          "applicable": true,
+          "damage": "point-designations (BACKGAMMON / The Board and Men / p. 272) now quotes board-tables (BACKGAMMON / The Board and Men / p. 272)'s passage",
+          "detected": true,
+          "refusedBy": [
+            "check-map.py"
+          ],
+          "signalled": false,
+          "by": [
+            {
+              "detector": "check-map.py",
+              "check": "cross-references",
+              "status": "fail",
+              "said": "a cross-reference the corpus makes is unanswered, or a corpus's pointer phrases are missing or malformed"
+            }
+          ]
+        },
+        {
+          "mutation": "move-locator",
+          "applicable": true,
+          "damage": "player-count: p. 271 -> p. 272, evidence untouched",
+          "detected": true,
+          "refusedBy": [
+            "check-locators.py"
+          ],
+          "signalled": false,
+          "by": [
+            {
+              "detector": "check-locators.py",
+              "check": "locators",
+              "status": "fail",
+              "said": "32 of 32 citations verified; 0 unlocatable, 0 citing no page; 1 derived entry (hit-pays-single-stake) not located, because a derived entry cites nothing"
+            }
+          ]
+        },
+        {
+          "mutation": "omit-definition",
+          "applicable": false,
+          "why": "no entry quotes a definition"
+        },
+        {
+          "mutation": "remove-applicability",
+          "applicable": true,
+          "damage": "dropped bearing-off-eligible, which 3 entries named in `enabledBy`, and every edge that named it",
+          "detected": true,
+          "refusedBy": [
+            "check-map.py"
+          ],
+          "signalled": false,
+          "by": [
+            {
+              "detector": "check-map.py",
+              "check": "superposition",
+              "status": "fail",
+              "said": "an unsettled reading was adjudicated and the map records one reading"
+            }
+          ]
+        },
+        {
+          "mutation": "hide-cross-reference",
+          "applicable": true,
+          "damage": "hid board-tables's cross-reference to 'as in Fig. 1'",
+          "detected": true,
+          "refusedBy": [
+            "check-map.py"
+          ],
+          "signalled": false,
+          "by": [
+            {
+              "detector": "check-map.py",
+              "check": "cross-references",
+              "status": "fail",
+              "said": "a cross-reference the corpus makes is unanswered, or a corpus's pointer phrases are missing or malformed"
+            }
+          ]
+        },
+        {
+          "mutation": "narrow-extent",
+          "applicable": true,
+          "damage": "extent narrowed from 271-280 to 271-279",
+          "detected": false,
+          "refusedBy": [],
+          "signalled": false,
+          "by": []
+        }
+      ]
+    },
+    {
+      "name": "faa-part-107",
+      "genre": "regulation",
+      "grammar": "section-designation (eCFR XML)",
+      "map": "examples/faa-part-107/corpus-map.json",
+      "runs": [
+        {
+          "mutation": "drop-entry",
+          "applicable": true,
+          "damage": "dropped restricted-area-permitted (§ 107.45), which no other entry names",
+          "detected": true,
+          "refusedBy": [
+            "check-locators-section.py"
+          ],
+          "signalled": false,
+          "by": [
+            {
+              "detector": "check-locators-section.py",
+              "check": "coverage",
+              "status": "fail",
+              "said": "X  § 107.45: inside the declared extent and reached by no entry's verified evidence"
+            }
+          ]
+        },
+        {
+          "mutation": "drop-enabled-by",
+          "applicable": false,
+          "why": "no entry carries an `enabledBy` edge"
+        },
+        {
+          "mutation": "drop-suspended-by",
+          "applicable": true,
+          "damage": "dropped speed-limit.suspendedBy -> waivable-regulations",
+          "detected": false,
+          "refusedBy": [],
+          "signalled": false,
+          "by": []
+        },
+        {
+          "mutation": "clear-to-ambiguous",
+          "applicable": true,
+          "damage": "altitude-limit: clear -> ambiguous, with a full and false `ambiguity` block",
+          "detected": false,
+          "refusedBy": [],
+          "signalled": false,
+          "by": []
+        },
+        {
+          "mutation": "ambiguous-to-clear",
+          "applicable": true,
+          "damage": "speed-limit: ambiguous -> clear, and its recorded question deleted",
+          "detected": true,
+          "refusedBy": [
+            "check-map.py"
+          ],
+          "signalled": false,
+          "by": [
+            {
+              "detector": "check-map.py",
+              "check": "superposition",
+              "status": "fail",
+              "said": "an unsettled reading was adjudicated and the map records one reading"
+            }
+          ]
+        },
+        {
+          "mutation": "assertion-to-operation",
+          "applicable": true,
+          "damage": "collision-hazard-proximity: assertion -> operation, and `assertedBy` removed with it",
+          "detected": false,
+          "refusedBy": [],
+          "signalled": false,
+          "by": []
+        },
+        {
+          "mutation": "invent-depends-on",
+          "applicable": true,
+          "damage": "invented speed-limit.dependsOn -> waivable-regulations, an order the corpus does not state",
+          "detected": false,
+          "refusedBy": [],
+          "signalled": false,
+          "by": []
+        },
+        {
+          "mutation": "neighbour-evidence",
+          "applicable": true,
+          "damage": "speed-limit (§ 107.51(a)) now quotes altitude-limit (§ 107.51(b))'s passage",
+          "detected": true,
+          "refusedBy": [
+            "check-locators-section.py"
+          ],
+          "signalled": false,
+          "by": [
+            {
+              "detector": "check-locators-section.py",
+              "check": "locators",
+              "status": "fail",
+              "said": "X  speed-limit: cited § 107.51(a), evidence also sits in 107.51/b (1 occurrence(s) of this fragment)"
+            }
+          ]
+        },
+        {
+          "mutation": "same-passage-evidence",
+          "applicable": true,
+          "damage": "visibility-minimum (§ 107.51(c)) now quotes prominent-objects (§ 107.51(c))'s passage",
+          "detected": false,
+          "refusedBy": [],
+          "signalled": false,
+          "by": []
+        },
+        {
+          "mutation": "move-locator",
+          "applicable": true,
+          "damage": "speed-limit: (a) -> (b), evidence untouched",
+          "detected": true,
+          "refusedBy": [
+            "check-locators-section.py"
+          ],
+          "signalled": false,
+          "by": [
+            {
+              "detector": "check-locators-section.py",
+              "check": "locators",
+              "status": "fail",
+              "said": "X  speed-limit: cited § 107.51(b), evidence also sits in 107.51/a (1 occurrence(s) of this fragment)"
+            }
+          ]
+        },
+        {
+          "mutation": "omit-definition",
+          "applicable": true,
+          "damage": "dropped visibility-minimum (§ 107.51(c)), which quotes a definition, and its inbound edges",
+          "detected": false,
+          "refusedBy": [],
+          "signalled": false,
+          "by": []
+        },
+        {
+          "mutation": "remove-applicability",
+          "applicable": true,
+          "damage": "dropped waivable-regulations, which 27 entries named in `suspendedBy`, and every edge that named it",
+          "detected": false,
+          "refusedBy": [],
+          "signalled": true,
+          "by": [
+            {
+              "detector": "check-map.py",
+              "check": "gates",
+              "status": "skip",
+              "said": "NOT VERIFIED -- no entry carries `enabledBy` or `suspendedBy`, so no gate's direction was checked -- the right outcome for a stateless corpus"
+            }
+          ]
+        },
+        {
+          "mutation": "hide-cross-reference",
+          "applicable": true,
+          "damage": "hid night-operation's cross-reference to 'Except as provided in paragraph (d) of this section'",
+          "detected": true,
+          "refusedBy": [
+            "check-map.py"
+          ],
+          "signalled": false,
+          "by": [
+            {
+              "detector": "check-map.py",
+              "check": "cross-references",
+              "status": "fail",
+              "said": "a cross-reference the corpus makes is unanswered, or a corpus's pointer phrases are missing or malformed"
+            }
+          ]
+        },
+        {
+          "mutation": "narrow-extent",
+          "applicable": true,
+          "damage": "extent narrowed by dropping § 107.51, which the map still cites",
+          "detected": true,
+          "refusedBy": [
+            "check-map.py"
+          ],
+          "signalled": false,
+          "by": [
+            {
+              "detector": "check-map.py",
+              "check": "extent",
+              "status": "fail",
+              "said": "a locator cites a section outside the declared extent"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "tax-121-principal-residence",
+      "genre": "regulation",
+      "grammar": "section-designation (eCFR XML)",
+      "map": "examples/tax-121-principal-residence/corpus-map.json",
+      "runs": [
+        {
+          "mutation": "drop-entry",
+          "applicable": true,
+          "damage": "dropped residence-may-include (§ 1.121-1(b)), which no other entry names",
+          "detected": false,
+          "refusedBy": [],
+          "signalled": false,
+          "by": []
+        },
+        {
+          "mutation": "drop-enabled-by",
+          "applicable": true,
+          "damage": "dropped exclusion-of-gain.enabledBy -> effective-date",
+          "detected": false,
+          "refusedBy": [],
+          "signalled": false,
+          "by": []
+        },
+        {
+          "mutation": "drop-suspended-by",
+          "applicable": true,
+          "damage": "dropped allocation-required.suspendedBy -> no-allocation-within-dwelling-unit",
+          "detected": false,
+          "refusedBy": [],
+          "signalled": false,
+          "by": []
+        },
+        {
+          "mutation": "clear-to-ambiguous",
+          "applicable": true,
+          "damage": "exclusion-of-gain: clear -> ambiguous, with a full and false `ambiguity` block",
+          "detected": false,
+          "refusedBy": [],
+          "signalled": false,
+          "by": []
+        },
+        {
+          "mutation": "ambiguous-to-clear",
+          "applicable": true,
+          "damage": "residence-facts-and-circumstances: ambiguous -> clear, and its recorded question deleted",
+          "detected": false,
+          "refusedBy": [],
+          "signalled": false,
+          "by": []
+        },
+        {
+          "mutation": "assertion-to-operation",
+          "applicable": false,
+          "why": "no entry is `kind: assertion`"
+        },
+        {
+          "mutation": "invent-depends-on",
+          "applicable": true,
+          "damage": "invented exclusion-of-gain.dependsOn -> retroactive-election, an order the corpus does not state",
+          "detected": false,
+          "refusedBy": [],
+          "signalled": false,
+          "by": []
+        },
+        {
+          "mutation": "neighbour-evidence",
+          "applicable": true,
+          "damage": "residence-facts-and-circumstances (§ 1.121-1(b)) now quotes exclusion-of-gain (§ 1.121-1(a))'s passage",
+          "detected": true,
+          "refusedBy": [
+            "check-map.py",
+            "check-locators-section.py"
+          ],
+          "signalled": false,
+          "by": [
+            {
+              "detector": "check-map.py",
+              "check": "cross-references",
+              "status": "fail",
+              "said": "a cross-reference the corpus makes is unanswered, or a corpus's pointer phrases are missing or malformed"
+            },
+            {
+              "detector": "check-locators-section.py",
+              "check": "locators",
+              "status": "fail",
+              "said": "X  residence-facts-and-circumstances: cited § 1.121-1(b), evidence also sits in 1.121-1/a (1 occurrence(s) of this fragment)"
+            }
+          ]
+        },
+        {
+          "mutation": "same-passage-evidence",
+          "applicable": true,
+          "damage": "residence-facts-and-circumstances (§ 1.121-1(b)) now quotes residence-may-include (§ 1.121-1(b))'s passage",
+          "detected": false,
+          "refusedBy": [],
+          "signalled": false,
+          "by": []
+        },
+        {
+          "mutation": "move-locator",
+          "applicable": true,
+          "damage": "exclusion-of-gain: (a) -> (b), evidence untouched",
+          "detected": true,
+          "refusedBy": [
+            "check-locators-section.py"
+          ],
+          "signalled": false,
+          "by": [
+            {
+              "detector": "check-locators-section.py",
+              "check": "locators",
+              "status": "fail",
+              "said": "X  exclusion-of-gain: cited § 1.121-1(b), evidence also sits in 1.121-1/a (1 occurrence(s) of this fragment)"
+            }
+          ]
+        },
+        {
+          "mutation": "omit-definition",
+          "applicable": true,
+          "damage": "dropped vacant-land-single-sale (§ 1.121-1(b)(3)(ii)), which quotes a definition, and its inbound edges",
+          "detected": false,
+          "refusedBy": [],
+          "signalled": false,
+          "by": []
+        },
+        {
+          "mutation": "remove-applicability",
+          "applicable": true,
+          "damage": "dropped effective-date, which 31 entries named in `enabledBy`, and every edge that named it",
+          "detected": false,
+          "refusedBy": [],
+          "signalled": false,
+          "by": []
+        },
+        {
+          "mutation": "hide-cross-reference",
+          "applicable": true,
+          "damage": "hid exclusion-of-gain's cross-reference to 'Section 121'",
+          "detected": true,
+          "refusedBy": [
+            "check-map.py"
+          ],
+          "signalled": false,
+          "by": [
+            {
+              "detector": "check-map.py",
+              "check": "cross-references",
+              "status": "fail",
+              "said": "a cross-reference the corpus makes is unanswered, or a corpus's pointer phrases are missing or malformed"
+            }
+          ]
+        },
+        {
+          "mutation": "narrow-extent",
+          "applicable": false,
+          "why": "the section extent names fewer than two sections"
+        }
+      ]
+    },
+    {
+      "name": "srd-52-combat",
+      "genre": "rulebook",
+      "grammar": "page-marker (PDF-extracted text)",
+      "map": "examples/srd-52-combat/corpus-map.json",
+      "runs": [
+        {
+          "mutation": "drop-entry",
+          "applicable": true,
+          "damage": "dropped round-duration (Combat / The Order of Combat / p. 13), which no other entry names",
+          "detected": false,
+          "refusedBy": [],
+          "signalled": false,
+          "by": []
+        },
+        {
+          "mutation": "drop-enabled-by",
+          "applicable": true,
+          "damage": "dropped grid-square-size.enabledBy -> grid-play",
+          "detected": false,
+          "refusedBy": [],
+          "signalled": false,
+          "by": []
+        },
+        {
+          "mutation": "drop-suspended-by",
+          "applicable": true,
+          "damage": "dropped initiative-roll.suspendedBy -> initiative-score-option",
+          "detected": false,
+          "refusedBy": [],
+          "signalled": false,
+          "by": []
+        },
+        {
+          "mutation": "clear-to-ambiguous",
+          "applicable": true,
+          "damage": "combat-rounds: clear -> ambiguous, with a full and false `ambiguity` block",
+          "detected": false,
+          "refusedBy": [],
+          "signalled": false,
+          "by": []
+        },
+        {
+          "mutation": "ambiguous-to-clear",
+          "applicable": true,
+          "damage": "round-duration: ambiguous -> clear, and its recorded question deleted",
+          "detected": false,
+          "refusedBy": [],
+          "signalled": false,
+          "by": []
+        },
+        {
+          "mutation": "assertion-to-operation",
+          "applicable": true,
+          "damage": "initiative-ties: assertion -> operation, and `assertedBy` removed with it",
+          "detected": false,
+          "refusedBy": [],
+          "signalled": false,
+          "by": []
+        },
+        {
+          "mutation": "invent-depends-on",
+          "applicable": true,
+          "damage": "invented combat-rounds.dependsOn -> resistance, an order the corpus does not state",
+          "detected": false,
+          "refusedBy": [],
+          "signalled": false,
+          "by": []
+        },
+        {
+          "mutation": "neighbour-evidence",
+          "applicable": true,
+          "damage": "combat-rounds (Combat / The Order of Combat / p. 13) now quotes combat-steps (Combat / Combat Step by Step / p. 13)'s passage",
+          "detected": false,
+          "refusedBy": [],
+          "signalled": false,
+          "by": []
+        },
+        {
+          "mutation": "same-passage-evidence",
+          "applicable": true,
+          "damage": "combat-rounds (Combat / The Order of Combat / p. 13) now quotes next-round (Combat / The Order of Combat / p. 13)'s passage",
+          "detected": false,
+          "refusedBy": [],
+          "signalled": false,
+          "by": []
+        },
+        {
+          "mutation": "move-locator",
+          "applicable": true,
+          "damage": "combat-rounds: p. 13 -> p. 14, evidence untouched",
+          "detected": true,
+          "refusedBy": [
+            "check-locators-pdf-text.py"
+          ],
+          "signalled": false,
+          "by": [
+            {
+              "detector": "check-locators-pdf-text.py",
+              "check": "locators",
+              "status": "fail",
+              "said": "95 of 95 entries located exactly"
+            }
+          ]
+        },
+        {
+          "mutation": "omit-definition",
+          "applicable": true,
+          "damage": "dropped ranged-in-close-combat (Combat / Ranged Attacks in Close Combat / p. 15), which quotes a definition, and its inbound edges",
+          "detected": false,
+          "refusedBy": [],
+          "signalled": false,
+          "by": []
+        },
+        {
+          "mutation": "remove-applicability",
+          "applicable": true,
+          "damage": "dropped grid-play, which 5 entries named in `enabledBy`, and every edge that named it",
+          "detected": false,
+          "refusedBy": [],
+          "signalled": false,
+          "by": []
+        },
+        {
+          "mutation": "hide-cross-reference",
+          "applicable": true,
+          "damage": "hid initiative-roll's cross-reference to 'rolls Initiative'",
+          "detected": false,
+          "refusedBy": [],
+          "signalled": false,
+          "by": []
+        },
+        {
+          "mutation": "narrow-extent",
+          "applicable": true,
+          "damage": "extent narrowed from 13-16 to 13-15",
+          "detected": true,
+          "refusedBy": [
+            "check-locators-pdf-text.py"
+          ],
+          "signalled": false,
+          "by": [
+            {
+              "detector": "check-locators-pdf-text.py",
+              "check": "extent-end",
+              "status": "fail",
+              "said": "the heading the extent ends before is not on its last page"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "srd-52-conditions",
+      "genre": "rulebook",
+      "grammar": "page-marker (PDF-extracted text)",
+      "map": "examples/srd-52-conditions/corpus-map.json",
+      "runs": [
+        {
+          "mutation": "drop-entry",
+          "applicable": true,
+          "damage": "dropped condition-list (Rules Glossary / Condition / p. 179), which no other entry names",
+          "detected": false,
+          "refusedBy": [],
+          "signalled": false,
+          "by": []
+        },
+        {
+          "mutation": "drop-enabled-by",
+          "applicable": false,
+          "why": "no entry carries an `enabledBy` edge"
+        },
+        {
+          "mutation": "drop-suspended-by",
+          "applicable": false,
+          "why": "no entry carries a `suspendedBy` edge"
+        },
+        {
+          "mutation": "clear-to-ambiguous",
+          "applicable": true,
+          "damage": "condition-list: clear -> ambiguous, with a full and false `ambiguity` block",
+          "detected": false,
+          "refusedBy": [],
+          "signalled": false,
+          "by": []
+        },
+        {
+          "mutation": "ambiguous-to-clear",
+          "applicable": true,
+          "damage": "condition-definition: ambiguous -> clear, and its recorded question deleted",
+          "detected": false,
+          "refusedBy": [],
+          "signalled": false,
+          "by": []
+        },
+        {
+          "mutation": "assertion-to-operation",
+          "applicable": false,
+          "why": "no entry is `kind: assertion`"
+        },
+        {
+          "mutation": "invent-depends-on",
+          "applicable": true,
+          "damage": "invented condition-definition.dependsOn -> surprise, an order the corpus does not state",
+          "detected": false,
+          "refusedBy": [],
+          "signalled": false,
+          "by": []
+        },
+        {
+          "mutation": "neighbour-evidence",
+          "applicable": true,
+          "damage": "condition-definition (Rules Glossary / Condition / p. 179) now quotes blinded (Rules Glossary / Blinded [Condition] / p. 177)'s passage",
+          "detected": true,
+          "refusedBy": [
+            "check-locators-pdf-text.py"
+          ],
+          "signalled": false,
+          "by": [
+            {
+              "detector": "check-locators-pdf-text.py",
+              "check": "locators",
+              "status": "fail",
+              "said": "100 of 100 entries located exactly"
+            }
+          ]
+        },
+        {
+          "mutation": "same-passage-evidence",
+          "applicable": true,
+          "damage": "condition-definition (Rules Glossary / Condition / p. 179) now quotes condition-list (Rules Glossary / Condition / p. 179)'s passage",
+          "detected": false,
+          "refusedBy": [],
+          "signalled": false,
+          "by": []
+        },
+        {
+          "mutation": "move-locator",
+          "applicable": true,
+          "damage": "condition-definition: p. 179 -> p. 180, evidence untouched",
+          "detected": true,
+          "refusedBy": [
+            "check-locators-pdf-text.py"
+          ],
+          "signalled": false,
+          "by": [
+            {
+              "detector": "check-locators-pdf-text.py",
+              "check": "locators",
+              "status": "fail",
+              "said": "100 of 100 entries located exactly"
+            }
+          ]
+        },
+        {
+          "mutation": "omit-definition",
+          "applicable": true,
+          "damage": "dropped blinded, the entry for 'Blinded' -- a term the protocol's vocabulary (condition-list) names",
+          "detected": false,
+          "refusedBy": [],
+          "signalled": false,
+          "by": []
+        },
+        {
+          "mutation": "remove-applicability",
+          "applicable": false,
+          "why": "no entry gates another, so the map records no applicability rule"
+        },
+        {
+          "mutation": "hide-cross-reference",
+          "applicable": true,
+          "damage": "hid condition-list's cross-reference to 'Blinded'",
+          "detected": false,
+          "refusedBy": [],
+          "signalled": false,
+          "by": []
+        },
+        {
+          "mutation": "narrow-extent",
+          "applicable": true,
+          "damage": "extent narrowed from 177-191 to 177-190",
+          "detected": false,
+          "refusedBy": [],
+          "signalled": false,
+          "by": []
+        }
+      ]
+    }
+  ],
+  "totals": {
+    "applied": 62,
+    "detected": 18,
+    "missed": 44
+  }
+}

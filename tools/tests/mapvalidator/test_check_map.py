@@ -1996,6 +1996,35 @@ class TestSuperposition(MapCase):
         self.assertIn("no shape this knows", output)
         self.assertEqual(code, 1, output)  # it had subject matter and could not look
 
+    def test_comparison_takes_the_directory_the_record_lives_in(self):
+        # The mutation laboratory writes the map under test into a temporary directory, where
+        # nothing sits beside it, and names the record's home instead. Which file in it is the
+        # readable one is the validator's to decide, not the caller's.
+        # The record's home is named on the command line, so it need not be called
+        # `blind-mapping` and need not be beside anything.
+        home = os.path.join(self.root, "adjudication")
+        os.makedirs(home, exist_ok=True)
+        with open(os.path.join(home, "results.json"), "w") as handle:
+            json.dump({"flags": []}, handle)
+        with open(os.path.join(home, "resolutions.json"), "w") as handle:
+            json.dump(self.ruling_record("open. Neither reading is eliminated by the text."), handle)
+        elsewhere = os.path.join(self.root, "moved")
+        os.makedirs(elsewhere, exist_ok=True)
+        document = valid_map()
+        document["entries"][self.OPEN]["clarity"] = "clear"
+        document["entries"][self.OPEN].pop("ambiguity")
+        path = os.path.join(elsewhere, "corpus-map.json")
+        with open(path, "w") as handle:
+            json.dump(document, handle)
+        out, err = io.StringIO(), io.StringIO()
+        with redirect_stdout(out), redirect_stderr(err):
+            code = check_map.main([path, "--repo-root", self.root, "--manifest", self.manifest_path,
+                                   "--comparison", home])
+        output = out.getvalue() + err.getvalue()
+        self.assertEqual(self.status_of(output, "superposition"), "fail", output)
+        self.assertIn("premature collapse", output)
+        self.assertEqual(code, 1, output)
+
     def test_a_map_nobody_mapped_twice_does_not_report_ok(self):
         code, output = self.run_tool(valid_map())
         self.assertEqual(self.status_of(output, "superposition"), "skip", output)
