@@ -415,6 +415,15 @@ corrected to the answer.
 disagreement, with the entry, the field, both values, the verdict and the quote. A disagreement
 with no row is unresolved, and the map is not used.
 
+**And the validator reads it.** `check-map.py --only superposition` finds the record under
+`blind-mapping/` beside the map and holds two things to it
+([0034](decisions/0034-a-valid-unresolved-state-is-established-not-asserted.md)): every
+disagreement about `clarity` or the presence of an `ambiguity` block carries a verdict a program
+can read, and every *the corpus does not settle it* is recorded in the map as `clarity:
+ambiguous` — on that entry or on one the resolution names. An adjudicated doubt that reaches no
+entry is a premature collapse with a paper trail, and it is the one form of collapse that is
+mechanical, because the second reading is already in a committed file.
+
 **What it does not catch.** Two mappers who share a misreading agree, and agreement is silent.
 
 **And what only an executed map catches.** Building the SRD 5.2.1 combat engine turned up three
