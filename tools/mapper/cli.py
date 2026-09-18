@@ -1,10 +1,12 @@
 """The mapper's command line.
 
-Two commands today, and both are about the protocol, because the protocol is the part of the
+Three commands today, and all of them are about the walk, because the walk is the part of the
 method that is mechanical: `protocol` says whether a corpus's protocol is one this mapper can
-act on, and `pointers` performs the interrogation the protocol obliges and reports what it
-found. Producing a map is still done by hand (docs/method.md); what this makes checkable is that
-the walk was the walk this corpus requires.
+act on, `pointers` performs the interrogation the protocol obliges and reports what it found,
+and `inventory` enumerates the units inside the declared extent and reports which of them the
+walk reached (#255). Producing a map is still done by hand (docs/method.md); what this makes
+checkable is that the walk was the walk this corpus requires, and how much of the extent it
+covered.
 
 Four exit codes, the factory's four (README, *What the factory exits with*), because a caller
 that reads only `$?` must be able to tell what happened:
@@ -12,9 +14,10 @@ that reads only `$?` must be able to tell what happened:
   0  every declaration held, and something was actually examined
   1  a declaration is wrong, or an interrogation that was declared detected nothing at all
   2  a usage error
-  3  NOT VERIFIED: the interrogation ran and found what it cannot judge -- a pointer the map
-     does not declare. Whether each one is owed is 0026's question, decided by reading the
-     corpus, and this tool does not decide it. Not a pass, not a failure, and never silent.
+  3  NOT VERIFIED: the run found what it cannot judge -- a pointer the map does not declare, or
+     a unit inside the declared extent that no entry's quote reaches and no rejection accounts
+     for. Whether each one is owed is 0026's question, decided by reading the corpus, and this
+     tool does not decide it. Not a pass, not a failure, and never silent.
 """
 import argparse
 import json
@@ -23,6 +26,8 @@ import sys
 
 from mapcontract.entry import entries_of
 
+from mapper import corpus as corpus_step
+from mapper import inventory as inventory_step
 from mapper import pointers as pointers_step
 from mapper import protocol as protocol_step
 
@@ -120,21 +125,81 @@ def command_pointers(args):
     return 0
 
 
-COMMANDS = {"protocol": command_protocol, "pointers": command_pointers}
+def command_inventory(args):
+    """What the extent claims, against what the walk reached (#255).
+
+    The corpus comes from the manifest and not from the command line: the manifest is already
+    the one place that says which adapter read this corpus and where the committed copy is, and
+    a map inventoried against a corpus its manifest does not name would be measured against
+    bytes nothing pinned.
+    """
+    document = _read(args.map_path, "map")
+    manifest_path = args.manifest or _find_manifest(args.map_path)
+    if manifest_path is None:
+        raise protocol_step.Refused(
+            f"no corpus manifest beside {args.map_path}; the manifest is what says which adapter "
+            f"read this corpus and where the pinned bytes are")
+    manifest = _read(manifest_path, "manifest")
+    source = document.get("corpus")
+    adapter = corpus_step.open_corpus(manifest, source,
+                                      os.path.dirname(os.path.abspath(manifest_path)))
+    extent = document.get("extent")
+    if not isinstance(extent, dict):
+        raise protocol_step.Refused(
+            f"{args.map_path} declares no `extent`, so it claims no coverage and there is "
+            f"nothing to inventory (0009)")
+    units = adapter.units(extent)
+    rejected = inventory_step.load_rejections(inventory_step.path_beside(args.map_path), source)
+    taken = inventory_step.take(units, document, rejected)
+    for line in inventory_step.lines(taken, os.path.basename(args.map_path), source, adapter.name,
+                                     extent, show_all=args.list):
+        print(line)
+
+    if not units:
+        print("\nthe extent enumerated no unit at all; an inventory of nothing accounts for "
+              "nothing and is not a pass", file=sys.stderr)
+        return 1
+    if not taken.located:
+        print("\nno entry's quoted evidence was found in the enumerated units, so every unit is "
+              "unaccounted by default. Either the map's evidence is not quotation or the "
+              "enumeration is of the wrong bytes; a silent zero is not a pass", file=sys.stderr)
+        return 1
+    if taken.problems:
+        print(f"\n{len(taken.problems)} problem(s) with the recorded rejections")
+        return 1
+    if taken.unaccounted:
+        print(f"\nNOT VERIFIED: {len(taken.unaccounted)} of {len(units)} unit(s) inside the "
+              f"declared extent are reached by no entry's quote and recorded as examined by "
+              f"nothing. Whether each owed an entry is decided by reading the corpus, not here")
+        return NOT_VERIFIED
+    print(f"\nall {len(units)} unit(s) of the declared extent are reached by a quote or recorded "
+          f"as examined")
+    return 0
+
+
+COMMANDS = {"protocol": command_protocol, "pointers": command_pointers,
+            "inventory": command_inventory}
 
 
 def main(argv=None):
     parser = argparse.ArgumentParser(prog="mapper", description="The mapper subsystem (0032).")
     subparsers = parser.add_subparsers(dest="command", required=True)
     for name, help_text in (("protocol", "check the mapping protocol governing a map"),
-                            ("pointers", "detect the pointers the protocol says this corpus makes")):
+                            ("pointers", "detect the pointers the protocol says this corpus makes"),
+                            ("inventory", "enumerate the extent's units and report what the walk "
+                                          "reached")):
         sub = subparsers.add_parser(name, help=help_text)
         sub.add_argument("map_path", help="the corpus map the protocol governs")
-        sub.add_argument("--protocol", help=f"the protocol; {protocol_step.PROTOCOL_FILENAME} "
-                                            f"beside the map by default")
-        if name == "protocol":
+        if name != "inventory":
+            sub.add_argument("--protocol", help=f"the protocol; "
+                                                f"{protocol_step.PROTOCOL_FILENAME} beside the "
+                                                f"map by default")
+        if name in ("protocol", "inventory"):
             sub.add_argument("--manifest", help="corpus manifest; found beside the map when "
                                                 "unambiguous")
+        if name == "inventory":
+            sub.add_argument("--list", action="store_true",
+                             help="print every unaccounted unit, not the first ten")
     args = parser.parse_args(argv)
     try:
         return COMMANDS[args.command](args)

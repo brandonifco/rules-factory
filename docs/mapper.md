@@ -92,11 +92,97 @@ names; a mechanism in neither is refused. `phrase` is detected by
 checker. They are declared here anyway, so a protocol is the whole account of how a corpus
 points rather than the part this package happens to implement.
 
+## The inventory
+
+`extent` claims coverage — pages 177–191, or a list of section designations — and until
+[#255](https://github.com/brandonifco/rules-factory/issues/255) nothing evidenced the claim. The
+locator checkers' `coverage` comes closest and asks a much coarser question: is every *page*, or
+every *section*, of the extent touched by some quote? A map satisfies that by reaching one
+sentence on a page and says nothing about the rest of it.
+
+`mapper inventory` asks it at the grain the corpus states rules in. It enumerates the units the
+extent selects, through the adapter the corpus manifest names, and gives each one of three
+verdicts:
+
+| Verdict | What it means |
+|---|---|
+| **reached** | some entry's quoted `evidence` sits in the unit — a quote found in the unit's own text, not a citation naming it |
+| **rejected** | the mapper examined it, it produced no entry, and the reason is recorded. [method.md](method.md) says to drop advice and *note in the entry that you dropped it*; a passage that produced no entry at all has no entry to note it in, and that note lives in `mapping-inventory.json` |
+| **unaccounted** | neither. Nobody can tell from the map whether it was read and dismissed or never opened, which is the state a map exists to distinguish from a recorded verdict |
+
+Unaccounted units are **NOT VERIFIED** (exit 3), never a failure: whether a passage owed an entry
+is decided by reading the corpus, and this tool does not read it. What *is* a failure is an
+enumeration of no units, or a run in which no entry's quote is found at all — an inventory of
+nothing has nothing unaccounted.
+
+The six committed maps report 540 unaccounted units of 806
+([#267](https://github.com/brandonifco/rules-factory/issues/267) holds the numbers and what each
+one is on reading it). None of the maps was edited to improve them: a map's bytes cannot change
+without invalidating its review
+([0017](decisions/0017-a-map-change-carries-a-review-of-its-bytes.md)), and the walks these
+numbers measure happened months ago.
+
+### `mapping-inventory.json`
+
+Beside the map, like the protocol, and optional — a map that rejected nothing has no file. It is
+not packed into the map package either ([0015](decisions/0015-a-map-is-published-as-a-versioned-package.md)):
+it is a record of how the map was made, which is the mapper's business and not a consumer's.
+
+```json
+{
+  "inventoryVersion": 1,
+  "corpus": "hoyle-1909",
+  "rejected": [
+    { "unit": "p. 277 block 2", "ground": "heading", "note": "the chapter's own heading line" },
+    { "unit": "p. 277 block 3", "ground": "advice",
+      "note": "counsel on which point to make first; it obliges nothing" }
+  ]
+}
+```
+
+`ground` is closed (`advice`, `preamble`, `heading`, `page-furniture`, `restatement`,
+`out-of-extent`, `beyond-adapter`), and a `note` is required: a ground alone is a label, not a
+reading. A rejection naming a unit the extent does not enumerate is a claim about nothing, and
+one naming a unit an entry quotes is a contradiction; both fail the run.
+
+### The adapter interface
+
+The three corpus grammars already had three locator checkers, and each answers *where is the
+passage this citation names*. None could answer *what is in the extent that no citation named*.
+[`tools/mapper/corpus.py`](../tools/mapper/corpus.py) is the other half: an `Adapter` cuts a
+corpus into the units an extent selects, in reading order, each with a stable key and its text.
+
+| Manifest `adapter` | Extent it reads | What a unit is |
+|---|---|---|
+| `plain-text` | `page` | a blank-line-separated block, keyed `p. 271 block 3` |
+| `pdftotext-page-marked` | `page`, with `endsBefore` (0024) | the same, with the marker on a line of its own |
+| `ecfr-xml` | `section-designation` | a paragraph, a worked example, or a section's heading, keyed `§ 107.29 ¶4 (a)` |
+
+That is the whole interface, and it is small on purpose. Marking a unit *reached* could have been
+done by parsing each entry's citation and comparing it against the unit's designation, which
+would have put a second citation parser per grammar into the mapper. It is instead done by
+finding the entry's **quoted evidence** in the units' own text: a quote is the same kind of
+object in every corpus, so the measurement is one implementation, and it is the stricter reading
+— a citation naming a section is not a quote sitting in it. `units()` is also what a sweep will
+walk ([#250](https://github.com/brandonifco/rules-factory/issues/250)), which is why it returns
+the text rather than a locator.
+
+A fourth grammar subclasses `Adapter`, implements `units(extent)`, and registers its manifest
+`adapter` name. A manifest naming an adapter nothing implements is **refused**: a corpus nothing
+can enumerate must not report an inventory of zero unaccounted units.
+
+An enumeration is not a claim that each unit states a rule, nor that the cut is the one a human
+would make. A page-marked plain text has no hierarchy at all — pdftotext linearises columns,
+Gutenberg wraps lines — so the finest honest cut is the block, and a heading is a block like any
+other. A cut that is too fine reports *more* unaccounted units, not fewer: it errs towards
+reporting work as unevidenced.
+
 ## Commands
 
 ```bash
 python3 tools/mapper protocol <corpus-map.json>   # is this a protocol the mapper can act on?
 python3 tools/mapper pointers <corpus-map.json>   # run the interrogation it obliges
+python3 tools/mapper inventory <corpus-map.json>  # what the extent claims, against what the walk reached
 ```
 
 Four exit codes, the factory's four:
@@ -106,7 +192,7 @@ Four exit codes, the factory's four:
 | `0` | every declaration held, and something was actually examined |
 | `1` | a declaration is wrong, or an interrogation that was declared detected nothing at all |
 | `2` | a usage error |
-| `3` | **NOT VERIFIED**: the interrogation found what it cannot judge — a pointer the map does not declare. Whether each is owed is decided by reading the corpus (0026), not here |
+| `3` | **NOT VERIFIED**: the run found what it cannot judge — a pointer the map does not declare, or a unit inside the extent that no quote reaches and no rejection accounts for. Whether each is owed is decided by reading the corpus (0026), not here |
 
 A silent zero is a failure, not a pass: a corpus that declares a mechanism and on which nothing
 fires has either the wrong mechanism declared or a map whose evidence spans do not reach its
@@ -123,9 +209,11 @@ measured.
   ([#223](https://github.com/brandonifco/rules-factory/issues/223)). The redaction the method
   requires is enforced by nobody, and the one tool that does it lives inside the trial that
   needed it.
-- **There is no inventory** — no record of which passages were examined, which were rejected and
-  why, and which the adapter could not inspect. `extent` claims coverage and nothing evidences
-  it ([#255](https://github.com/brandonifco/rules-factory/issues/255)).
+- **The inventory measures the walk, and nobody has answered it.** Every unit inside every
+  committed map's extent is enumerated and counted, and 540 of 806 are unaccounted
+  ([#267](https://github.com/brandonifco/rules-factory/issues/267)). No map records a rejection
+  yet, so *examined and dismissed* and *never opened* still read the same for those units — what
+  changed is that the number is now a fact rather than an impression.
 - **The detector reads `evidence`,** which is the corpus's words for one rule and not the whole
   passage, so a naming outside every entry's quoted span is invisible to it. And it matches a
   term exactly, so a corpus that inflects its defined terms needs a mechanism this is not.
