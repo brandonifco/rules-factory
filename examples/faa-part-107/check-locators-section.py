@@ -72,7 +72,15 @@ citation names where it is. And it cannot check an entry whose evidence is not a
 such an entry is reported and **fails the run**. It never reports ok for a citation it did
 not check.
 
+**A map may cite several corpora, and each entry is checked against its own** (#298). The eCFR
+serves each section as its own document with its own hash, so a map whose rules cross between two
+sections -- trial 10's, where a code printed in § 172.101's table is stated in § 172.102 -- names
+two `locator.sourceId`s. One file per run could never check it: the other corpus's entries report
+unchecked and `coverage` then fails on an extent naming a section that is not in the file. Give
+each corpus the `sourceId` its entries cite, and `coverage` is computed over all of them together.
+
 Usage: check-locators-section.py <corpus-map.json> <corpus.xml>
+       check-locators-section.py <corpus-map.json> <sourceId>=<corpus.xml> ...
 Exit 0 if every entry was checked and agreed, 1 otherwise, 2 on a usage error.
 """
 import json
@@ -1254,44 +1262,128 @@ def coverage(document, reached):
     return problems, f"all {len(numbers)} sections of the declared extent are reached"
 
 
+USAGE = ("Usage: check-locators-section.py <corpus-map.json> <corpus.xml>\n"
+         "       check-locators-section.py <corpus-map.json> <sourceId>=<corpus.xml> ...")
+
+
+class Usage(Exception):
+    """A command line this tool cannot read."""
+
+
+def named_corpora(args):
+    """`{sourceId: path}`, or `{None: path}` for the one-corpus form.
+
+    One bare path means *this file serves every entry*, which is what every single-corpus map has
+    always meant and what the four committed eCFR runs pass. Two or more corpora each name the
+    `locator.sourceId` their entries cite, because nothing else in the run says which file is
+    which: the manifest binds a `sourceId` to a `committedPath`, and the manifest is not this
+    tool's input. Nothing new is declared anywhere (#298).
+    """
+    if len(args) == 1 and "=" not in args[0]:
+        return {None: args[0]}
+    named = {}
+    for arg in args:
+        source, sep, path = arg.partition("=")
+        if not sep or not source or not path:
+            raise Usage(f"{arg!r} is not <sourceId>=<corpus.xml>. With more than one corpus, "
+                        f"every one names the sourceId its entries cite")
+        if source in named:
+            raise Usage(f"sourceId {source!r} is given twice")
+        named[source] = path
+    return named
+
+
+def cited_sources(entries):
+    """Every `locator.sourceId` the map's entries name, in the order they first appear."""
+    seen = []
+    for entry in entries:
+        source = (entry.get("locator") or {}).get("sourceId")
+        if source is not None and source not in seen:
+            seen.append(source)
+    return seen
+
+
 def main(argv):
-    if len(argv) != 3:
-        print(__doc__.strip().splitlines()[-2], file=sys.stderr)
+    if len(argv) < 3:
+        print(USAGE, file=sys.stderr)
+        return 2
+    try:
+        wanted = named_corpora(argv[2:])
+    except Usage as error:
+        print(f"{error}\n{USAGE}", file=sys.stderr)
         return 2
     document = json.load(open(argv[1], encoding="utf-8"))
     entries = document["entries"]
-    corpus, spans, refused, passed_over = corpus_index(argv[2])
-    try:
-        tables = table_index(argv[2])
-    except Duplicated as error:
-        print(f"  X  {error}")
-        return 1
-    for text, why in refused:
-        print(f"  !  not indexed, so no citation reaches it -- {why}: {text}...")
+    cited = cited_sources(entries)
+
+    # The one-corpus form on a map that cites two is the silent failure this refuses: every entry
+    # would be checked against whichever file the operator happened to hand over, and the entries
+    # of the corpus that was not given would report unchecked for the one reason the run cannot
+    # tell from a wrong quote.
+    if None in wanted and len(cited) > 1:
+        print(f"the map's entries cite {len(cited)} corpora ({', '.join(cited)}) and this run was "
+              f"given one file naming no sourceId, so every entry would be checked against "
+              f"whichever corpus that file is. Name each one: <sourceId>=<corpus.xml>",
+              file=sys.stderr)
+        return 2
+
+    indexes = {}
+    for source, path in wanted.items():
+        corpus, spans, refused, passed_over = corpus_index(path)
+        try:
+            tables = table_index(path)
+        except Duplicated as error:
+            print(f"  X  {error}")
+            return 1
+        indexes[source] = (corpus, spans, tables, refused, passed_over)
+
+    label = (lambda source: "") if None in indexes else (lambda source: f"{source}: ")
+    refused_total = 0
+    for source in wanted:
+        _, _, _, refused, _ = indexes[source]
+        refused_total += len(refused)
+        for text, why in refused:
+            print(f"  !  {label(source)}not indexed, so no citation reaches it -- {why}: {text}...")
 
     bad = unchecked = bounds = bad_bounds = 0
     reached = set()
     for entry in entries:
+        source = (entry.get("locator") or {}).get("sourceId")
+        index = indexes.get(None if None in indexes else source)
+        if index is None:
+            # Not `unchecked`. An entry citing a corpus this run never read is an entry nothing
+            # verified, and a run that passed would be saying it had.
+            bad += 1
+            print(f"  X  {entry['id']}: cites corpus {source!r}, which this run was not given "
+                  f"(given: {', '.join(sorted(wanted))})")
+            continue
+        corpus, spans, tables, _, _ = index
         verdict, message = check(entry, corpus, spans, reached, tables)
         if verdict == "bad":
             bad += 1
-            print(f"  X  {entry['id']}: {message}")
+            print(f"  X  {label(source)}{entry['id']}: {message}")
         elif verdict != "ok":
             unchecked += 1
-            print(f"  ?  {entry['id']}: {message}")
+            print(f"  ?  {label(source)}{entry['id']}: {message}")
         for name, quoting in bounds_of(entry):
             bounds += 1
             verdict, message = check(quoting, corpus, spans, None, tables)
             if verdict != "ok":
                 bad_bounds += 1
-                print(f"  {'X' if verdict == 'bad' else '?'}  {name}: {message}")
+                print(f"  {'X' if verdict == 'bad' else '?'}  {label(source)}{name}: {message}")
 
     total = len(entries)
     checked = total - unchecked
+    # `coverage` asks the extent's question over every corpus of the run at once: a section is
+    # reached by evidence wherever that evidence sits, and which document the eCFR served it in
+    # is not something the extent states.
     uncovered, covered = coverage(document, reached)
     for line in uncovered:
         print(line)
-    if passed_over:
+    for source in wanted:
+        _, _, _, _, passed_over = indexes[source]
+        if not passed_over:
+            continue
         # On the record, every run. These have no designation path and never could -- see
         # `TOP_LEVEL_PASSED_OVER`, where the reason for each tag is written. Printing the tally
         # is what makes the last three of them a reading anyone can challenge rather than an
@@ -1299,10 +1391,10 @@ def main(argv):
         tally = {}
         for tag, _ in passed_over:
             tally[tag] = tally.get(tag, 0) + 1
-        print(f"\n{len(passed_over)} top-level element(s) stepped over, by tag: "
+        print(f"\n{label(source)}{len(passed_over)} top-level element(s) stepped over, by tag: "
               + ", ".join(f"{tag} {count}" for tag, count in sorted(tally.items())))
-    if refused:
-        print(f"\n{len(refused)} paragraph(s) could not be placed in the section tree")
+    if refused_total:
+        print(f"\n{refused_total} paragraph(s) could not be placed in the section tree")
         return 1
     if bad_bounds:
         print(f"\n{bad_bounds} of {bounds} authored example(s) in `ambiguity.bounds` do not quote "
@@ -1326,6 +1418,7 @@ def main(argv):
               f"{len(uncovered)} problem(s) with the declared extent")
         return 1
     print(f"locators ok (all {total} checked against the section tree"
+          + (f" of {len(indexes)} corpora" if None not in indexes and len(indexes) > 1 else "")
           + (f", and {bounds} authored example(s) bounding a term" if bounds else "")
           + f"); coverage ok ({covered})")
     return 0
