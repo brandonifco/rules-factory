@@ -105,7 +105,8 @@ citations run 271–277, and the throw enumeration that #20 is about is on 278�
 Each item names a table by its position in the section, counted from 1, and carries either `rows`
 — a list of row keys, or `"all"` — or `excluded` with a reason, never both and never neither. A
 row key is one `{"column": 2, "is": "Acetal"}` object, or a list of them read as a conjunction,
-and it is the same key the row's citation names (below). **Every table printed inside a cited
+and it is the same key the row's citation names (below). A nested table is a table of its section
+in its own right, listed separately: its rows are its own. **Every table printed inside a cited
 section appears in the list**: a map may not quietly shrink its extent to whatever it happened to
 read, which is the rule the section list itself already carries, one unit down. `check-map.py
 --only extent` checks the shape and refuses an in-scope entry citing a row the slice did not take;
@@ -162,7 +163,12 @@ checker indexed a section's `<P>` and `<EXAMPLE>` children and nothing else, whi
   caption, where it has one, goes in the entry's `note`.
 - The **row** is named by `column = value` pairs, separated by `;` inside the brackets, in the
   corpus's own column numbering — the numbering the table's headings print, `9A` and `10B`
-  included. The pairs are a conjunction and their order does not matter. **Exactly one row must
+  included. A heading split into sub-columns names no column of its own, and split means the
+  label plus letters: `10A` is a sub-column of `10`, and `1` is a sub-column of nothing. A table
+  whose cells span rows or columns, or whose labels do not number its cells one for one, carries
+  no geometry a reader can resolve and is **refused**: it addresses nothing, and a map that does
+  not read it excludes it in `extent.tables` with a reason. A table that prints a label twice, or
+  prints no numbering at all, is numbered by position. The pairs are a conjunction and their order does not matter. **Exactly one row must
   match**: two is a refusal, not a first hit, and the answer is a discriminating column —
   `row [column 2 = "Ammonia, anhydrous"; column 1 = "I"]`. A row's position is never part of the
   key, because an amendment moves it and a key that stops resolving is better than one that
@@ -173,7 +179,11 @@ checker indexed a section's `<P>` and `<EXAMPLE>` children and nothing else, whi
   in column order joined by ` | `, with the empty cells kept as empty, so a blank cell is
   quotable. 1,112 rows of § 172.101 have exactly one empty cell and 419 have thirteen; flattened
   into prose, a missing column 1 symbol and a missing column 5 packing group are the same
-  absence.
+  absence. **Contiguous is held strictly here**: an ellipsis inside a row quote elides a column,
+  and the checker refuses it rather than checking the halves.
+- **A heading row is a row**, and citable like any other: `row [column 1 = "(1)Symbols"]`. The
+  column semantics of a regulation live in its headings, and this corpus prints them once for
+  3,687 rows.
 
 **Use it where the quote is the lead-in alone.** Part 107's `operating-limitations` cites
 `§ 107.51 introductory text`. Entries that quote the lead-in *together with* designated paragraphs

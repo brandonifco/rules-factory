@@ -86,11 +86,33 @@ absence.
   them. Where a citation names a column, the quote is held to that cell and not to the whole row.
 - **The columns are the labels the table's own headings print, and a heading split into
   sub-columns names no column of its own**: where the headings print `(8)`, `(8A)`, `(8B)` and
-  `(8C)`, the columns are the three leaves. A table whose labels do not number its rows' cells one
-  for one is numbered positionally, because a guessed alignment between a heading and a cell
-  addresses the wrong cell and says nothing about having done so.
+  `(8C)`, the columns are the three leaves. **Split means the parent's label plus letters**, never
+  a string prefix: `10A` is a sub-column of `10`, and `1` is a sub-column of nothing. Read as a
+  prefix, `1` is swallowed by `10A`, the Hazardous Materials Table's 14 columns come out as 13,
+  and the table silently falls back to position — the one corpus this decision was written for,
+  addressed wrongly, with `column 9` naming column 8B.
+- **Where the markup does not carry the geometry, the table addresses nothing.** A cell that
+  spans rows or columns, or headings whose leaf labels do not number the cells one for one, leave
+  no honest way to say which column a cell is in: the table is **refused** — by the adapter, which
+  will not enumerate it, and by the checker, which will not resolve a citation into it — and a map
+  that does not read it excludes it with a reason. A label printed twice names no column either,
+  and such a table is numbered **positionally**, which is what the markup does say; so is a table
+  that prints no numbering at all. Each table says which of the two numberings it got.
 
 Ordinals were the obvious alternative and are the wrong answer; see below.
+
+**A heading row is a row.** The column semantics of a regulation live in its headings —
+§ 172.102(b)(1)–(8) explains what a code shape means, and the HMT prints its 17 heading cells once
+for 3,687 rows — so the passage a map most needs to cite must be citable:
+`row [column 1 = "(1) Symbols"]` names the heading row of table 1. It is also what keeps a
+heading-only table from passing every check by holding no unit at all.
+
+**A row quote carries no ellipsis.** `evidence` is one contiguous verbatim span
+([corpus-map.md](../corpus-map.md)), and a row is short: an ellipsis inside one elides a column,
+and the check then passes over the very cell the entry is about. The row path refuses it. (The
+prose path's ellipsis handling is older than this decision and is proposed rather than settled —
+[#18](https://github.com/brandonifco/rules-factory/issues/18),
+[#282](https://github.com/brandonifco/rules-factory/issues/282).)
 
 ### 3. `table-row` is a unit
 
@@ -99,10 +121,14 @@ key above — a row's unit key *is* the citation that names it, so a rejection, 
 and a locator all say the same words. The whole-table `table` unit stays, for a table cited as one
 thing.
 
-Where an extent takes a table whole, the adapter keys each row itself: one column where one will
-do, taken in the corpus's own column order, a second column beside it where it will not, and a
-**refusal** where two rows are identical in every column — the same refusal the citation gets,
-made where the citation is written.
+Where an extent takes a table whole, the adapter keys each row itself: the cell that narrows the
+table furthest first, then the cell that narrows what is left the most, until one row is named —
+as many cells as it takes, and not a cell more. An empty cell is a value a key may name, because a
+blank column 1 symbol is a fact about the row and two rows differing only in one are not alike; it
+is taken only where it narrows further than a cell that says something, since a row named by what
+is absent from it is the weaker name. A cell holding a `"` is passed over altogether, because no
+key written from it could be read back. What remains is a **refusal**: a row another row matches in
+every nameable cell — the same refusal the citation gets, made where the citation is written.
 
 ### 4. An extent that slices a table names the rows it takes, and accounts for every table it does not
 
@@ -131,8 +157,8 @@ The rule spans a boundary, and each half is checked where its evidence is:
 
 | Held by | What it holds |
 |---|---|
-| `examples/faa-part-107/check-locators-section.py` | the table geometry, the row a citation resolves to, and the quote against the row or the cell. A key that names 0 or 2 rows, a table or a column the section does not print, and a quote that is not a span of the row, each fail |
-| `tools/mapper/corpus.py` (`ecfr-xml`) | the enumeration: a sliced table's rows as `table-row` units, and the **refusal** of a table the extent passes over in silence, a slice of an uncited section or an absent table, and a key that resolves to 0 or 2 rows |
+| `examples/faa-part-107/check-locators-section.py` | the table geometry, the row a citation resolves to, and the quote against the row or the cell. A key that names 0 or 2 rows, a table or a column the section does not print, a table whose geometry the markup does not carry, a quote that is not a span of the row, a quote that elides its middle, and a corpus printing one section designation twice, each fail |
+| `tools/mapper/corpus.py` (`ecfr-xml`) | the enumeration: a sliced table's rows as `table-row` units, and the **refusal** of a table the extent passes over in silence, a table whose geometry is unreadable, a slice of an uncited section or an absent table, a key that resolves to 0 or 2 rows, and a corpus printing one section designation twice |
 | `tools/check-map.py --only extent` | the shape of `tables`, and that every in-scope row citation names a row the slice took. It has no corpus, so *which* tables a section prints is not its question |
 
 ## Alternatives considered
@@ -168,13 +194,28 @@ mechanical and always there. The caption belongs in the map's `note`, where a re
 **No existing path moves, and nothing in any committed map changes.** No eCFR corpus committed to
 this repository prints a table, so the enumeration and the locator runs for Part 107, the 2020
 temporal map and § 1.121-1 are byte-identical before and after — which was recorded before the
-change and compared after it.
+change and compared after it, and again after every correction.
+
+**It was reviewed against the real corpus, and against a second model, before it was merged**
+(AGENTS.md §6). Both passes confirmed that no path moved and that a seven-row slice of the real
+§ 172.101 enumerates; both found the column-containment defect above, and between them the spanned
+cells, the nested table, the heading rows, the duplicated designation and the elided row quote. A
+decision whose code is wrong about its own corpus is the defect this repository exists to catch,
+and the record says so here rather than in a commit message.
 
 **The punctuation is the issue's, with one adjustment, stated here.** The design comment writes a
 row's rendering with its leading and trailing spaces intact (` | Acetal | … | E | `). Every quote
 in this repository is compared after whitespace normalisation, so those spaces cannot survive to
 be quoted; the rendering is normalised, an empty cell reads as `| |`, and a leading empty cell
 reads as a leading `|`. The citation form itself is unchanged.
+
+**A nested table is a table of its section in its own right.** Its rows are its own — the table
+that encloses it does not admit them — and the extent accounts for it separately. Taking or
+excluding the outer table says nothing about the inner one.
+
+**A section designation the corpus prints twice is refused.** Indexing it keeps one of the two and
+drops the other's paragraphs and tables out of the corpus, so every check over them passes by
+having nothing to look at — and the accounting this decision adds would rest on that silence.
 
 **A value containing a double quote cannot be written as a row key.** The key's values are
 delimited by `"`, and no escape is defined, because no corpus has needed one. A row whose

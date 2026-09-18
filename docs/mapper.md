@@ -176,7 +176,12 @@ its text is its cells in column order with the empty ones kept. Three things are
 than enumerated: a table of a cited section the extent's `tables` list passes over in silence — a
 3,687-row table counted as one unit reached by one quote is the measurement this exists to make
 impossible — a declared row key that resolves to none or to two rows, and, where a table is taken
-whole, a row identical to another in every column, which no cell can name. A section's table rows
+whole, a row another row matches in every nameable cell. Two more are refused for the same reason:
+a table whose cells span rows or columns, or whose headings do not number its cells one for one,
+because which column a cell sits in is then not in the markup and a guessed alignment names the
+wrong cell silently; and a corpus that prints one section designation twice, because indexing it
+would drop the other printing's paragraphs and tables out of the corpus and every check over them
+would pass by having nothing to look at. A heading row is a unit like any other. A section's table rows
 are enumerated after its paragraphs rather than in the place the table is printed: this grammar
 walks a section's direct children, a table sits below them, and a reading order it cannot see is
 not one it should assert.
