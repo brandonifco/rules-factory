@@ -406,7 +406,7 @@ def check_table_row(entry, cited, tables):
                        f"resolves to exactly one row, and a second match is answered with a "
                        f"discriminating column, never with the first hit"), None
     cells = hits[0]
-    where = f"the row"
+    where = "the row"
     text = row_text(cells)
     if column is not None:
         at = table.index_of(column)
