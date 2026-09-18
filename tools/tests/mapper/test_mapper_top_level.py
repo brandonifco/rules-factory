@@ -137,12 +137,12 @@ class TestTheCheckerReportsWhatItCannotPlace(unittest.TestCase):
         return checker.paragraphs(ET.fromstring(TOP_LEVEL))
 
     def test_an_unknown_top_level_tag_is_reported_rather_than_dropped(self):
-        unplaced = [(text, why) for _, text, why in self.walked() if why is not None]
+        unplaced = [(text, why[1]) for _, text, why in self.walked() if why is not None]
         texts = [text for text, _ in unplaced]
         self.assertIn("A block tag neither walk has ever seen.", texts)
 
     def test_the_reason_names_the_tag(self):
-        for text, why in [(t, w) for _, t, w in self.walked() if w is not None]:
+        for text, why in [(t, w[1]) for _, t, w in self.walked() if w is not None]:
             if text.startswith("A block tag"):
                 self.assertIn("SOMETHINGNEW", why)
                 return

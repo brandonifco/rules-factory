@@ -319,18 +319,18 @@ def wrapper_reach(container, enclosing, previous):
     """
     headings = [child for child in container if HEADING.fullmatch(child.tag)]
     if any(child.tag == DIVISION_HEADING for child in headings):
-        return None, (f"it holds a {DIVISION_HEADING}, a heading at the level directly below the "
+        return None, ("division-wrapper", f"it holds a {DIVISION_HEADING}, a heading at the level directly below the "
                       f"section itself, so it opens a division of the section rather than "
                       f"continuing the paragraph it is printed after")
     if headings and not designates(previous):
-        return None, (f"it is captioned and what is printed before it is not a designated "
+        return None, ("captioned-after-undesignated", f"it is captioned and what is printed before it is not a designated "
                       f"paragraph, so there is no run for it to continue")
     for child in container:
         if child.tag != "P":
             continue
         match = STATES_A_DESIGNATION.match(normalise("".join(child.itertext())))
         if match:
-            return None, (f"a paragraph of it states its own designation, {match.group(0)}, "
+            return None, ("states-own-designation", f"a paragraph of it states its own designation, {match.group(0)}, "
                           f"which the designation it is printed under is not")
     if container.tag == "NOTE":
         return note_reach(container, enclosing)
@@ -351,12 +351,12 @@ def note_reach(note, enclosing):
     match = NOTE_HEAD.match(text)
     if not match:
         if NOTE_NAMES_A_PARAGRAPH.match(text):
-            return None, (f"its heading names no single paragraph this grammar can read: "
+            return None, ("note-heading-unreadable", f"its heading names no single paragraph this grammar can read: "
                           f"{text[:60]!r}")
         return enclosing, None
     named = enclosing[:2] + tuple(CITE_GROUP.findall(match.group(1)))
     if named != enclosing[:len(named)]:
-        return None, (f"its heading names {'/'.join(x for x in named[1:] if x)}, which is not "
+        return None, ("note-heading-elsewhere", f"its heading names {'/'.join(x for x in named[1:] if x)}, which is not "
                       f"where the corpus prints it ({'/'.join(x for x in enclosing[1:] if x)})")
     return named, None
 
@@ -385,15 +385,17 @@ def wrapped(container, enclosing, previous, inherited=None):
             if not text:
                 pass
             elif kind is None:
-                out.append((None, text, f"this walk has no unit for a <{child.tag}>, so it has "
-                                        f"no address and is reported rather than passed over"))
+                out.append((None, text, ("no-unit-for-element",
+                                        f"this walk has no unit for a <{child.tag}>, so it has "
+                                        f"no address and is reported rather than passed over")))
             elif path is None:
                 out.append((None, text, why))
             elif kind == "worked-example":
                 label = example_label(child)
                 if label is None:
-                    out.append((None, text, "its head does not name an example, so there is no "
-                                            "label to cite it by"))
+                    out.append((None, text, ("example-head-unreadable",
+                                            "its head does not name an example, so there is no "
+                                            "label to cite it by")))
                 else:
                     out.append((path + (label,), text, None))
             else:
@@ -447,8 +449,9 @@ def paragraphs(root, passed_over=None):
                     continue
                 label = example_label(p)
                 if label is None:
-                    out.append((None, text, "its head does not name an example, so there is no "
-                                            "label to cite it by"))
+                    out.append((None, text, ("example-head-unreadable",
+                                            "its head does not name an example, so there is no "
+                                            "label to cite it by")))
                     continue
                 path = (subpart, section.get("N")) + tuple(
                     stack[k] for k in sorted(stack)
@@ -472,9 +475,9 @@ def paragraphs(root, passed_over=None):
                 if p.tag in TOP_LEVEL_PASSED_OVER:
                     passed_over.append((p.tag, text))
                     continue
-                out.append((None, text, f"this walk has no unit for a <{p.tag}> at the top "
+                out.append((None, text, ("no-unit-for-element", f"this walk has no unit for a <{p.tag}> at the top "
                                         f"level of a section, so it has no address and is "
-                                        f"reported rather than passed over"))
+                                        f"reported rather than passed over")))
                 continue
             text = normalise("".join(p.itertext()))
             if not text:
@@ -485,7 +488,7 @@ def paragraphs(root, passed_over=None):
                 try:
                     level = level_of(token, stack)
                 except Ambiguous:
-                    out.append((None, text, f"its designator ({token}) is ambiguous"))
+                    out.append((None, text, ("ambiguous-designator", f"its designator ({token}) is ambiguous")))
                     continue
                 stack = {k: v for k, v in stack.items() if k < level}
                 stack[level] = token
@@ -539,7 +542,7 @@ def corpus_index(xml_path):
     cursor = 0
     for path, text, bad in paragraphs(root, passed_over):
         if bad is not None:
-            refused.append((text[:60], bad))
+            refused.append((text[:60], bad[0], bad[1]))
             continue
         start = cursor
         pieces.append(text)
@@ -1262,6 +1265,88 @@ def coverage(document, reached):
     return problems, f"all {len(numbers)} sections of the declared extent are reached"
 
 
+#: The reasons this grammar can give for having no address for a passage. Each is produced at
+#: exactly one place in the walk above, and a map's `extent.unreachable` names one of them, so
+#: the declaration and the refusal have a single source of truth rather than a prose string
+#: compared against a prose string.
+UNREACHABLE_REASONS = {
+    "division-wrapper": "a wrapper holding a heading directly below the section, so it opens a "
+                        "division of the section (0036)",
+    "captioned-after-undesignated": "a captioned wrapper printed after something that is not a "
+                                    "designated paragraph, so there is no run for it to continue",
+    "states-own-designation": "a wrapper one of whose ordinary paragraphs prints its own "
+                              "designation, which the designation it sits under is not",
+    "note-heading-unreadable": "a note whose heading says it names a paragraph and names none "
+                               "this grammar can read",
+    "note-heading-elsewhere": "a note whose heading names a paragraph the corpus does not print "
+                              "it in",
+    "ambiguous-designator": "a designator that could open two different levels, never resolved "
+                            "by guessing",
+    "no-unit-for-element": "an element this walk has no unit for",
+    "example-head-unreadable": "a worked example whose head names no example, so there is no "
+                              "label to cite it by",
+}
+
+
+def declared_unreachable(document, source):
+    """`{opensWith: (reason, requires)}` for one corpus, from `extent.unreachable` (0038).
+
+    A map says which passages of its corpus the citation grammar has no address for, and what
+    addressing each would need. The shape is `check-map.py --only extent`'s; this reads it.
+    """
+    extent = document.get("extent")
+    if not isinstance(extent, dict):
+        return {}
+    out = {}
+    for item in extent.get("unreachable") or []:
+        if not isinstance(item, dict):
+            continue
+        if item.get("sourceId") == source:
+            out[item.get("opensWith")] = (item.get("reason"), item.get("requires"))
+    return out
+
+
+def unreachable_problems(refused, declared, label):
+    """(problems, summary): what the walk could not place is exactly what the map declares.
+
+    Held in **both** directions. A passage with no address that the map does not declare fails,
+    which is the invariant as it stood: a passage no citation can name is one a quote could
+    silently be verified against. A passage the map declares and the walk *reaches* fails too,
+    because a declaration that has gone stale is a claim about the corpus that is no longer true
+    -- and a corpus whose grammar improved is exactly when a map must be re-read, not when a
+    leftover line may keep standing.
+
+    A prefix the walk refuses twice is refused rather than matched to the first declaration, the
+    rule a duplicate row key already gets (0035).
+    """
+    problems = []
+    seen = {}
+    for text, reason, why in refused:
+        if text in seen:
+            problems.append(f"  X  {label}the walk refuses two passages opening {text!r}, so a "
+                            f"declaration naming it could not say which; neither is matched")
+            continue
+        seen[text] = (reason, why)
+    for text, (reason, why) in sorted(seen.items()):
+        if text not in declared:
+            problems.append(f"  X  {label}no address, and the map does not declare it -- "
+                            f"{why}: {text}...")
+            continue
+        said, requires = declared[text]
+        if said != reason:
+            problems.append(f"  X  {label}declared unreachable for {said!r}; the walk refuses it "
+                            f"for {reason!r}: {text}...")
+        elif not requires:
+            problems.append(f"  X  {label}declared unreachable and says nothing about what "
+                            f"reaching it would require: {text}...")
+    for text in sorted(set(declared) - set(seen)):
+        problems.append(f"  X  {label}declared unreachable, and this run places it: {text!r}. A "
+                        f"declaration the corpus no longer supports is not a bound on the map")
+    if problems:
+        return problems, None
+    return [], f"{len(seen)} passage(s) with no address, every one declared with what it requires"
+
+
 USAGE = ("Usage: check-locators-section.py <corpus-map.json> <corpus.xml>\n"
          "       check-locators-section.py <corpus-map.json> <sourceId>=<corpus.xml> ...")
 
@@ -1338,12 +1423,17 @@ def main(argv):
         indexes[source] = (corpus, spans, tables, refused, passed_over)
 
     label = (lambda source: "") if None in indexes else (lambda source: f"{source}: ")
-    refused_total = 0
+    # The bare-path form names no sourceId, so the corpus it serves is the one the map's envelope
+    # names: that is what a single-corpus map has always meant.
+    named_as = (lambda source: document.get("corpus")) if None in indexes else (lambda source: source)
+    unreachable, unreachable_ok = [], []
     for source in wanted:
         _, _, _, refused, _ = indexes[source]
-        refused_total += len(refused)
-        for text, why in refused:
-            print(f"  !  {label(source)}not indexed, so no citation reaches it -- {why}: {text}...")
+        problems, summary = unreachable_problems(
+            refused, declared_unreachable(document, named_as(source)), label(source))
+        unreachable.extend(problems)
+        if summary:
+            unreachable_ok.append(f"  ok {label(source)}{summary}")
 
     bad = unchecked = bounds = bad_bounds = 0
     reached = set()
@@ -1393,8 +1483,14 @@ def main(argv):
             tally[tag] = tally.get(tag, 0) + 1
         print(f"\n{label(source)}{len(passed_over)} top-level element(s) stepped over, by tag: "
               + ", ".join(f"{tag} {count}" for tag, count in sorted(tally.items())))
-    if refused_total:
-        print(f"\n{refused_total} paragraph(s) could not be placed in the section tree")
+    for line in unreachable:
+        print(line)
+    for line in unreachable_ok:
+        print(line)
+    if unreachable:
+        print(f"\n{len(unreachable)} problem(s) with what the section tree has no address for. "
+              f"A passage no citation can name is one a quote could silently be verified "
+              f"against, so the map declares each one and what reaching it would require (0038)")
         return 1
     if bad_bounds:
         print(f"\n{bad_bounds} of {bounds} authored example(s) in `ambiguity.bounds` do not quote "

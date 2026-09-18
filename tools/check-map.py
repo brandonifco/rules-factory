@@ -540,11 +540,69 @@ def _tables_extent(extent, numbers, bad):
     return taken
 
 
+#: The reasons a `section-designation` citation grammar can have no address for a passage. The
+#: authority is `examples/faa-part-107/check-locators-section.py`'s `UNREACHABLE_REASONS`, which
+#: produces each at exactly one place in its walk; `test_check_map.py` holds the two sets equal,
+#: the way `CITE_SECTION` is already held to the checker's own expression. A vocabulary copied
+#: and left to drift would let a map declare a reason no run can give.
+UNREACHABLE_REASONS = (
+    "ambiguous-designator",
+    "captioned-after-undesignated",
+    "division-wrapper",
+    "example-head-unreadable",
+    "no-unit-for-element",
+    "note-heading-elsewhere",
+    "note-heading-unreadable",
+    "states-own-designation",
+)
+
+
+def _unreachable(extent, bad):
+    """`extent.unreachable`: the passages this grammar has no address for, and what each needs.
+
+    Decided in [0038]. Shape only -- that the declaration is *true of the corpus* is the locator
+    run's to establish, in both directions, because only a run of the walk knows what it refused.
+    A map may omit the field; a map whose corpus has an unreachable passage and omits it fails
+    there, not here.
+    """
+    items = extent.get("unreachable")
+    if items is None:
+        return
+    if not isinstance(items, list) or not items:
+        bad.append("  X  extent: `unreachable` is a non-empty list, or is absent. An empty list "
+                   "says nothing a missing field does not")
+        return
+    seen = set()
+    for position, item in enumerate(items, start=1):
+        where = f"extent: unreachable[{position}]"
+        if not isinstance(item, dict):
+            bad.append(f"  X  {where} is not an object")
+            continue
+        for field in sorted(set(item) - {"sourceId", "opensWith", "reason", "requires"}):
+            bad.append(f"  X  {where}: `{field}` is not a field of an unreachable passage "
+                       f"(sourceId, opensWith, reason, requires)")
+        for field in ("sourceId", "opensWith", "reason", "requires"):
+            value = item.get(field)
+            if not isinstance(value, str) or not value.strip():
+                bad.append(f"  X  {where}: `{field}` is a non-empty string")
+        reason = item.get("reason")
+        if isinstance(reason, str) and reason not in UNREACHABLE_REASONS:
+            bad.append(f"  X  {where}: reason {reason!r} is outside the closed set "
+                       f"({', '.join(UNREACHABLE_REASONS)}); a reason no walk can give is a "
+                       f"declaration nothing could ever hold to the corpus")
+        key = (item.get("sourceId"), item.get("opensWith"))
+        if all(isinstance(part, str) for part in key):
+            if key in seen:
+                bad.append(f"  X  {where}: {key[1]!r} in {key[0]} is declared twice")
+            seen.add(key)
+
+
 def _section_extent(extent, bad):
     """The declared sections as numbers, or None when the list is malformed."""
-    for field in sorted(set(extent) - {"unit", "sections", "tables"}):
+    for field in sorted(set(extent) - {"unit", "sections", "tables", "unreachable"}):
         bad.append(f"  X  extent: `{field}` is not a field of a section-designation extent "
-                   f"(unit, sections)")
+                   f"(unit, sections, tables, unreachable)")
+    _unreachable(extent, bad)
     sections = extent.get("sections")
     if not isinstance(sections, list) or not sections:
         bad.append("  X  extent: a section-designation extent names a non-empty `sections` list")
