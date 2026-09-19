@@ -160,3 +160,12 @@ reading them.
   unseen.
 - **Nothing checks that an entry is the right decomposition,** that a gate list is complete, or
   that `evidence` is sufficient. Those are review.
+
+
+### Definition-continuation fate
+
+`definition-continuations` treats the relation as an operative semantic assertion, not only
+metadata. In this contract version it therefore refuses an entry that carries
+`continuesDefinition` while its `ambiguity.fate` is `unresolved`. A source may remain
+`clarity: ambiguous`; if the map adopts the continuation reading, the ambiguity is settled by a
+named `fate: decision`. This is the invariant exposed by the independent review of PR #329.
