@@ -132,7 +132,7 @@ points rather than the part this package happens to implement.
 Decided in [0041](decisions/0041-a-coded-pointer-is-made-by-the-column-it-sits-in.md), with its
 defining set extended by [0046](decisions/0046-an-additional-rule-can-continue-a-definition.md)
 ([#321](https://github.com/brandonifco/rules-factory/issues/321)). The mechanism itself was forced by
-[#307](https://github.com/brandonifco/rules-factory/issues/307)), forced by trial 10.
+[#307](https://github.com/brandonifco/rules-factory/issues/307) in trial 10.
 
 ```json
 { "mechanism": "coded-pointer", "column": 7, "vocabulary": "special-provision-codes" }
