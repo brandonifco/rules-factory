@@ -347,25 +347,65 @@ def _check_vocabulary(where, declared, document):
     terms = vocabulary_of(entry)
     if not terms:
         return [f"{where}: entry {source!r} states no vocabulary -- defined-term-use reads its "
-                f"`crossReferences` as term -> defining entry, and it has none"]
-    unresolved = sorted(t for t, resolved in terms.items() if resolved not in index(document))
-    return [f"{where}: term {t!r} in {source!r} resolves to {terms[t]!r}, which is not an entry"
-            for t in unresolved]
+                f"`crossReferences` as term -> defining entries, and it has none"]
+    known = index(document)
+    problems = [f"{where}: term {term!r} in {source!r} resolves to {target!r}, which is not an "
+                f"entry"
+                for term in sorted(terms) for target in terms[term] if target not in known]
+    return problems + _repeated_targets(where, source, entry)
+
+
+def _repeated_targets(where, source, entry):
+    """A `crossReferences` pair the entry declares twice, reported rather than collapsed (0044).
+
+    A term may name several entries, so two declarations of one term are ordinary. Two
+    declarations of the *same* term and the *same* entry are not: they add nothing, and the
+    likeliest reason one is there is that a second target was meant. Silence would make the two
+    cases indistinguishable, which is the failure #311 is about, one step along.
+    """
+    seen, repeated = set(), []
+    for reference in entry.get("crossReferences") or []:
+        if not isinstance(reference, dict):
+            continue
+        pair = (reference.get("cites"), reference.get("resolvedBy"))
+        if not all(isinstance(half, str) for half in pair):
+            continue
+        if pair in seen and pair not in repeated:
+            repeated.append(pair)
+        seen.add(pair)
+    return [f"{where}: {source!r} declares term {cites!r} -> {target!r} more than once; a term "
+            f"may name several entries, and naming one of them twice says nothing the first "
+            f"declaration does not"
+            for cites, target in repeated]
 
 
 def vocabulary_of(entry):
-    """The terms an entry states, as term -> the id of the entry that defines it.
+    """The terms an entry states, as term -> **the ids of every entry that defines it** (0044).
 
     A vocabulary entry is one whose `crossReferences` are term-anchored (0026): each names the
     term as the corpus prints it and the entry that gives its meaning. That is already how a
     list-of-defined-things entry is written, so the vocabulary needs no new field.
+
+    **One printed code can name more than one rule**, and this returns all of them in the order
+    the entry declares them. 49 CFR § 172.102(c)(4) says so outright -- *"Large Packagings are
+    authorized for the Packing Group III entries of specific proper shipping names when either
+    special provision IB3 or IB8 is assigned to that entry"* -- so `IB3` in column 7 of the
+    § 172.101 table authorises IBCs unconditionally and Large Packagings for PG III only, two
+    rules the corpus states in two of its tables. Keeping a `dict` of one target each discarded
+    the first silently, and every check passed: both targets were real entries, so nothing could
+    see that a declaration had been dropped (#311).
+
+    A target declared twice for one term is **not** collapsed here either -- it is returned once,
+    and `_check_vocabulary` reports the repetition, because a second identical declaration is
+    either a mistake or a second target someone meant to write.
     """
     terms = {}
     for reference in entry.get("crossReferences") or []:
         if isinstance(reference, dict):
             cites, resolved = reference.get("cites"), reference.get("resolvedBy")
             if isinstance(cites, str) and isinstance(resolved, str):
-                terms[cites] = resolved
+                if resolved not in terms.setdefault(cites, []):
+                    terms[cites].append(resolved)
     return terms
 
 

@@ -37,13 +37,34 @@ class Naming:
     def __init__(self, entry_id, term, defines, count, declared):
         self.entry_id = entry_id
         self.term = term
-        self.defines = defines      # the entry the term's own definition is in
-        self.count = count          # how many times the entry's evidence names it
-        self.declared = declared    # whether a crossReferences item already names this term
+        self.defines = list(defines)     # every entry the term's own definition is in (0044)
+        self.count = count               # how many times the entry's evidence names it
+        self.declared = set(declared)    # the targets this entry's crossReferences already name
+
+    @property
+    def missing(self):
+        """The defining entries this entry points at none of.
+
+        A term that names several rules is accounted for only when **all** of them are, because
+        a pointer satisfied by one of two targets is trial 9's failure -- a gate recorded with
+        none of its reach, and no check able to see the rest (#311).
+        """
+        return [target for target in self.defines if target not in self.declared]
 
     def __repr__(self):
         return (f"Naming({self.entry_id!r}, {self.term!r}, x{self.count}, "
-                f"declared={self.declared})")
+                f"defines={self.defines!r}, missing={self.missing!r})")
+
+
+def _declared_targets(entry):
+    """`{term: {the entry ids its crossReferences resolve it to}}` for one entry."""
+    declared = {}
+    for reference in entry.get("crossReferences") or []:
+        if isinstance(reference, dict):
+            cites, resolved = reference.get("cites"), reference.get("resolvedBy")
+            if isinstance(cites, str):
+                declared.setdefault(cites, set()).add(resolved)
+    return declared
 
 
 def _names(text, term):
@@ -60,27 +81,33 @@ def detect(document, vocabulary_entry):
     entries = entries_of(document)
     by_id = index(document)
     terms = vocabulary_of(vocabulary_entry)
-    # Where each term is defined, as a citation: every entry citing it is inside that definition.
+    # Where each term is defined, as citations: every entry citing one of them is inside that
+    # definition. A term may be defined in more than one passage (0044), and a naming inside any
+    # of them is the definition rather than a pointer.
     home = {}
     for term, defining in terms.items():
-        entry = by_id.get(defining)
-        if entry is not None:
-            home[term] = citation_of(entry)
+        citations = {citation_of(by_id[target]) for target in defining if target in by_id}
+        if citations:
+            home[term] = citations
 
     found = []
     for entry in entries:
         if not isinstance(entry, dict):
             continue
         citation = citation_of(entry)
-        declared = {reference.get("cites") for reference in entry.get("crossReferences") or []
-                    if isinstance(reference, dict)}
         for term in sorted(terms):
-            if term not in home or citation == home[term]:
+            if term not in home or citation in home[term]:
                 continue
             count = _names(entry.get("evidence"), term)
-            if count:
-                found.append(Naming(entry.get("id"), term, terms[term], count,
-                                    any(term in (cites or "") for cites in declared)))
+            if not count:
+                continue
+            # Which entries this one's crossReferences resolve the term to. A declaration is
+            # about this term when its `cites` names it, which is the reading 0026 already had --
+            # a corpus writes `the Exhaustion condition` as readily as `Exhaustion`.
+            declared = {reference.get("resolvedBy")
+                        for reference in entry.get("crossReferences") or []
+                        if isinstance(reference, dict) and term in (reference.get("cites") or "")}
+            found.append(Naming(entry.get("id"), term, terms[term], count, declared))
     return found
 
 
@@ -126,16 +153,15 @@ def detect_coded(document, mechanism):
     for entry in entries_of(document):
         if not isinstance(entry, dict) or cited_column(entry) != wanted:
             continue
-        declared = {reference.get("cites") for reference in entry.get("crossReferences") or []
-                    if isinstance(reference, dict)}
+        declared = _declared_targets(entry)
         seen = {}
         for token in CODE_SEPARATOR.split(str(entry.get("evidence") or "")):
             token = token.strip()
             if token:
                 seen[token] = seen.get(token, 0) + 1
         for token, count in sorted(seen.items()):
-            found.append(Naming(entry.get("id"), token, terms.get(token), count,
-                                token in declared))
+            found.append(Naming(entry.get("id"), token, terms.get(token) or [], count,
+                                declared.get(token, ())))
     return found
 
 
@@ -157,18 +183,24 @@ def report(protocol, document):
         lines.append(f"  column {column}: {sum(n.count for n in namings)} code(s) in {cells} "
                      f"cell(s); a token in another column is not a pointer (0041)")
         for naming in namings:
-            if naming.defines is None:
+            if not naming.defines:
                 # Not dropped. A code in the pointer-bearing column that the vocabulary does not
                 # declare is either a pointer nobody recorded or a vocabulary that is short, and
                 # both are findings.
                 undeclared.append(naming)
                 lines.append(f"  ?  {naming.entry_id}: column {column} holds {naming.term!r}, "
                              f"which the vocabulary does not declare")
-            elif not naming.declared:
+            elif naming.missing:
+                # A code the corpus gives two rules is accounted for only when the entry points
+                # at both (0044): § 172.102's `IB3` authorises IBCs in one table and Large
+                # Packagings in another, and a pointer satisfied by one of them leaves the other
+                # obliged by nothing.
                 undeclared.append(naming)
                 lines.append(f"  ?  {naming.entry_id}: column {column} points with "
                              f"{naming.term!r} and the entry declares no crossReference to "
-                             f"{naming.defines!r}")
+                             + ", ".join(repr(target) for target in naming.missing)
+                             + (f" ({len(naming.defines)} entries state it)"
+                                if len(naming.defines) > 1 else ""))
     for mechanism in mechanisms_of(protocol, "defined-term-use"):
         source = mechanism.get("vocabularyFrom")
         entry = by_id.get(source)
@@ -182,9 +214,11 @@ def report(protocol, document):
                      f"{sum(n.count for n in namings)} naming(s) of one outside its own passage, "
                      f"in {len({n.entry_id for n in namings})} entr(ies)")
         for naming in namings:
-            if not naming.declared:
+            if naming.missing:
                 undeclared.append(naming)
                 lines.append(f"  ?  {naming.entry_id}: names {naming.term!r} "
                              f"x{naming.count} and declares no crossReference to "
-                             f"{naming.defines!r}")
+                             + ", ".join(repr(target) for target in naming.missing)
+                             + (f" ({len(naming.defines)} entries state it)"
+                                if len(naming.defines) > 1 else ""))
     return lines, detected, undeclared
