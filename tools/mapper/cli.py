@@ -130,26 +130,35 @@ def command_pointers(args):
 
 
 def _pointers_for(args, document, path, protocol):
-    declared = protocol_step.mechanisms_of(protocol, "defined-term-use")
+    mechanisms = protocol_step.mechanisms_of(protocol)
+    unsupported = [mechanism.get("mechanism") for mechanism in mechanisms
+                   if mechanism.get("mechanism") not in protocol_step.POINTER_MECHANISMS]
+    if unsupported:
+        raise protocol_step.Refused(
+            "pointer mechanism(s) " + ", ".join(repr(name) for name in unsupported)
+            + " are unsupported: no detector owns them")
+    declared = [mechanism for mechanism in mechanisms
+                if mechanism.get("mechanism") in protocol_step.DETECTED_HERE]
     print(f"{args.map_path} ({len(entries_of(document))} entries, protocol "
           f"{os.path.basename(path)})")
     if not declared:
         # Not a silent skip: a corpus that does not point this way says so, and the run says
         # which detector would have been used and was not.
-        print("  this corpus declares no defined-term-use mechanism; nothing here detects the "
-              "ways it does point")
-        for mechanism in protocol_step.mechanisms_of(protocol):
+        print("  this corpus declares no mechanism detected by `mapper pointers`; nothing here "
+              "detects the ways it does point")
+        for mechanism in mechanisms:
             name = mechanism.get("mechanism")
-            print(f"  {name}: {protocol_step.DETECTED_ELSEWHERE.get(name, 'detected here')}")
+            print(f"  {name}: {protocol_step.DETECTED_ELSEWHERE[name]}")
         return 0
 
     lines, detected, undeclared = pointers_step.report(protocol, document)
     for line in lines:
         print(line)
     if not detected:
-        print("\nthis protocol declares defined-term-use and nothing fired; either the mechanism "
-              "is wrong for this corpus or the map's evidence spans do not reach its pointers. "
-              "A silent zero is not a pass (0026)", file=sys.stderr)
+        names = ", ".join(mechanism.get("mechanism") for mechanism in declared)
+        print(f"\nthis protocol declares {names} and nothing fired; either the mechanism is "
+              "wrong for this corpus or the map's evidence spans do not reach its pointers. A "
+              "silent zero is not a pass (0026)", file=sys.stderr)
         return 1
     if undeclared:
         print(f"\nNOT VERIFIED: {len(undeclared)} naming(s) of a defined term that the entry "

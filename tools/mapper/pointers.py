@@ -168,12 +168,12 @@ def detect_coded(document, mechanism):
 
 
 def report(protocol, document):
-    """Run every `defined-term-use` mechanism the protocol declares.
+    """Run every pointer mechanism this subsystem detects that the protocol declares.
 
     Returns (lines, detected, undeclared). `detected` is what makes a silent zero visible: a
-    corpus that declares this mechanism and on which nothing fires has either the wrong mechanism
-    declared or a map whose evidence spans do not reach the pointers, and 0026 already refuses
-    that shape for phrases.
+    corpus that declares one of these mechanisms and on which nothing fires has either the wrong
+    mechanism declared or a map whose evidence spans do not reach the pointers, and 0026 already
+    refuses that shape for phrases.
     """
     lines, detected, undeclared = [], 0, []
     by_id = index(document)
