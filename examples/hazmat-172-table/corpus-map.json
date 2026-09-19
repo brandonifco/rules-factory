@@ -1,0 +1,3521 @@
+{
+  "schemaVersion": 1,
+  "corpus": "cfr-49-172.101",
+  "baseline": {
+    "contentHash": "979bfc51b90b56ce337662ff6cb39d159c460e79a61f9b716a97be3cd0ee8227",
+    "hashDerivation": "ecfr-versioner-xml",
+    "asOf": "2026-01-01"
+  },
+  "extent": {
+    "unit": "section-designation",
+    "sections": [
+      "§ 172.101",
+      "§ 172.102"
+    ],
+    "tables": [
+      {
+        "section": "§ 172.101",
+        "table": 1,
+        "rows": [
+          {
+            "column": 1,
+            "is": "3"
+          },
+          {
+            "column": 1,
+            "is": "4.3"
+          },
+          {
+            "column": 1,
+            "is": "8"
+          }
+        ]
+      },
+      {
+        "section": "§ 172.101",
+        "table": 2,
+        "excluded": "the solid-to-liquid packaging section correspondence under (i)(4); none of the seven mapped rows is offered in a physical state its column 8 sections do not cover, so no mapped rule is read through it"
+      },
+      {
+        "section": "§ 172.101",
+        "table": 3,
+        "rows": [
+          {
+            "column": 2,
+            "is": "Acetal"
+          },
+          {
+            "column": 2,
+            "is": "Acetaldehyde"
+          },
+          {
+            "column": 2,
+            "is": "Acetic acid, glacial or Acetic acid solution, with more than 80 percent acid, by mass"
+          },
+          {
+            "column": 2,
+            "is": "Acetic acid solution, not less than 50 percent but not more than 80 percent acid, by mass"
+          },
+          {
+            "column": 2,
+            "is": "Acetic acid solution, with more than 10 percent and less than 50 percent acid, by mass"
+          },
+          {
+            "column": 2,
+            "is": "Acetyl acetone peroxide with more than 9 percent by mass active oxygen"
+          },
+          {
+            "column": 2,
+            "is": "Alkali metal amalgam, solid"
+          }
+        ]
+      },
+      {
+        "section": "§ 172.101",
+        "table": 4,
+        "excluded": "appendix A's reportable-quantity table, 1,356 rows; appendix A is outside the slice settled on #262 and has no address under this grammar"
+      },
+      {
+        "section": "§ 172.101",
+        "table": 5,
+        "excluded": "appendix A's radionuclide table, 770 rows; same appendix, same reason"
+      },
+      {
+        "section": "§ 172.101",
+        "table": 6,
+        "excluded": "appendix B's marine-pollutant table, 555 rows; appendix B is outside the slice settled on #262 and has no address under this grammar"
+      },
+      {
+        "section": "§ 172.102",
+        "table": 1,
+        "excluded": "the ASTM volatility table printed inside numeric provision 14; no mapped row invokes provision 14"
+      },
+      {
+        "section": "§ 172.102",
+        "table": 2,
+        "rows": "all"
+      },
+      {
+        "section": "§ 172.102",
+        "table": 3,
+        "rows": [
+          {
+            "column": 1,
+            "is": "IP1"
+          }
+        ]
+      },
+      {
+        "section": "§ 172.102",
+        "table": 4,
+        "rows": [
+          {
+            "column": 1,
+            "is": "IB3"
+          }
+        ]
+      },
+      {
+        "section": "§ 172.102",
+        "table": 5,
+        "excluded": "the Large Packagings table for solids, reached by IB8; no mapped row invokes IB8"
+      },
+      {
+        "section": "§ 172.102",
+        "table": 6,
+        "rows": [
+          {
+            "column": 1,
+            "is": "T4"
+          },
+          {
+            "column": 1,
+            "is": "T7"
+          },
+          {
+            "column": 1,
+            "is": "T9"
+          },
+          {
+            "column": 1,
+            "is": "T11"
+          }
+        ]
+      },
+      {
+        "section": "§ 172.102",
+        "table": 7,
+        "excluded": "the hydrogen-peroxide venting-capacity table printed inside TP37; no mapped row invokes TP37"
+      }
+    ],
+    "unreachable": [
+      {
+        "sourceId": "cfr-49-172.101",
+        "opensWith": "(i) Such a change does not apply to the shipment of any pack",
+        "reason": "ambiguous-designator",
+        "requires": "a citation grammar that can tell a paragraph designated (i) at the third level from a roman (i) at the second; 0036 refuses a designator two levels could claim"
+      },
+      {
+        "sourceId": "cfr-49-172.101",
+        "opensWith": "Appendix A to § 172.101—List of Hazardous Substances and Rep",
+        "reason": "division-wrapper",
+        "requires": "a citation grammar for a section's appendices; 0036 refuses a wrapper that opens a division of the section"
+      },
+      {
+        "sourceId": "cfr-49-172.101",
+        "opensWith": "1. This appendix lists materials and their corresponding rep",
+        "reason": "division-wrapper",
+        "requires": "a citation grammar for a section's appendices; 0036 refuses a wrapper that opens a division of the section"
+      },
+      {
+        "sourceId": "cfr-49-172.101",
+        "opensWith": "2. This appendix is divided into two TABLES which are entitl",
+        "reason": "division-wrapper",
+        "requires": "a citation grammar for a section's appendices; 0036 refuses a wrapper that opens a division of the section"
+      },
+      {
+        "sourceId": "cfr-49-172.101",
+        "opensWith": "3. The procedure for selecting a proper shipping name for a ",
+        "reason": "division-wrapper",
+        "requires": "a citation grammar for a section's appendices; 0036 refuses a wrapper that opens a division of the section"
+      },
+      {
+        "sourceId": "cfr-49-172.101",
+        "opensWith": "4. Column 1 of TABLE 1, entitled “Hazardous substance”, cont",
+        "reason": "division-wrapper",
+        "requires": "a citation grammar for a section's appendices; 0036 refuses a wrapper that opens a division of the section"
+      },
+      {
+        "sourceId": "cfr-49-172.101",
+        "opensWith": "5. A series of notes is used throughout TABLE 1 and TABLE 2 ",
+        "reason": "division-wrapper",
+        "requires": "a citation grammar for a section's appendices; 0036 refuses a wrapper that opens a division of the section"
+      },
+      {
+        "sourceId": "cfr-49-172.101",
+        "opensWith": "6. TABLE 2 lists radionuclides that are hazardous substances",
+        "reason": "division-wrapper",
+        "requires": "a citation grammar for a section's appendices; 0036 refuses a wrapper that opens a division of the section"
+      },
+      {
+        "sourceId": "cfr-49-172.101",
+        "opensWith": "7. For mixtures of radionuclides, the following requirements",
+        "reason": "division-wrapper",
+        "requires": "a citation grammar for a section's appendices; 0036 refuses a wrapper that opens a division of the section"
+      },
+      {
+        "sourceId": "cfr-49-172.101",
+        "opensWith": "Appendix B to § 172.101—List of Marine Pollutants",
+        "reason": "division-wrapper",
+        "requires": "a citation grammar for a section's appendices; 0036 refuses a wrapper that opens a division of the section"
+      },
+      {
+        "sourceId": "cfr-49-172.101",
+        "opensWith": "1. See § 171.4 of this subchapter for applicability to marin",
+        "reason": "division-wrapper",
+        "requires": "a citation grammar for a section's appendices; 0036 refuses a wrapper that opens a division of the section"
+      },
+      {
+        "sourceId": "cfr-49-172.101",
+        "opensWith": "2. Marine pollutants listed in this appendix are not necessa",
+        "reason": "division-wrapper",
+        "requires": "a citation grammar for a section's appendices; 0036 refuses a wrapper that opens a division of the section"
+      },
+      {
+        "sourceId": "cfr-49-172.101",
+        "opensWith": "3. This appendix contains two columns. The first column, ent",
+        "reason": "division-wrapper",
+        "requires": "a citation grammar for a section's appendices; 0036 refuses a wrapper that opens a division of the section"
+      },
+      {
+        "sourceId": "cfr-49-172.101",
+        "opensWith": "4. If a material is not listed in this appendix and meets th",
+        "reason": "division-wrapper",
+        "requires": "a citation grammar for a section's appendices; 0036 refuses a wrapper that opens a division of the section"
+      },
+      {
+        "sourceId": "cfr-49-172.101",
+        "opensWith": "5. If a material or a solution meeting the definition of a m",
+        "reason": "division-wrapper",
+        "requires": "a citation grammar for a section's appendices; 0036 refuses a wrapper that opens a division of the section"
+      }
+    ]
+  },
+  "entries": [
+    {
+      "id": "table-designates-hazardous-materials",
+      "name": "The Table designates the materials it lists as hazardous materials",
+      "locator": {
+        "sourceId": "cfr-49-172.101",
+        "citation": "§ 172.101(a)"
+      },
+      "kind": "value",
+      "scope": "in",
+      "clarity": "clear",
+      "evidence": "(a) The Hazardous Materials Table (Table) in this section designates the materials listed therein as hazardous materials for the purpose of transportation of those materials. For each listed material, the Table identifies the hazard class or specifies that the material is forbidden in transportation, and gives the proper shipping name or directs the user to the preferred proper shipping name. In addition, the Table specifies or references requirements in this subchapter pertaining to labeling, packaging, quantity limits aboard aircraft and stowage of hazardous materials aboard vessels.",
+      "status": "mapped",
+      "note": "The whole grid rests on this sentence: a material is a hazardous material for transportation because the Table lists it, and the Table is also where its class, its proper shipping name, its labelling, its packaging, its aircraft quantity limits and its vessel stowage are stated or referenced. A test must show that a material not listed in the Table is not designated by this section."
+    },
+    {
+      "id": "column-1-symbols",
+      "name": "Column 1 holds six symbols",
+      "locator": {
+        "sourceId": "cfr-49-172.101",
+        "citation": "§ 172.101(b)"
+      },
+      "kind": "value",
+      "scope": "in",
+      "clarity": "clear",
+      "evidence": "(b) Column 1: Symbols. Column 1 of the Table contains six symbols (“ + ”, “A”, “D”, “G”, “I” and “W”) as follows:",
+      "status": "mapped",
+      "note": "The closed set of six. All seven mapped rows leave column 1 empty, which 0035 keeps quotable; a test must show that the empty symbol cell means none of the six applies and not that the column was unread.",
+      "crossReferences": [
+        {
+          "cites": "Column 1 of the Table",
+          "unmapped": "this entry is § 172.101(b), the paragraph about column 1; the words name the column the paragraph is about and point at no other passage"
+        }
+      ]
+    },
+    {
+      "id": "symbol-plus-fixes-classification",
+      "name": "Column 1 symbol “+”",
+      "locator": {
+        "sourceId": "cfr-49-172.101",
+        "citation": "§ 172.101(b)(1)"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [
+        "column-1-symbols"
+      ],
+      "evidence": "(1) The plus (+) sign fixes the proper shipping name, hazard class and packing group for that entry without regard to whether the material meets the definition of that class, packing group or any other hazard class definition. When the plus sign is assigned to a proper shipping name in Column (1) of the § 172.101 Table, it means that the material is known to pose a risk to humans. When a plus sign is assigned to mixtures or solutions containing a material where the hazard to humans is significantly different from that of the pure material or where no hazard to humans is posed, the material may be described using an alternative shipping name that represents the hazards posed by the material. An appropriate alternate proper shipping name and hazard class may be authorized by the Associate Administrator.",
+      "status": "mapped",
+      "note": "The symbol fixes the proper shipping name, hazard class and packing group. None of the seven mapped rows carries it, so a test must exercise it against a row outside this slice or against a constructed entry; what the mapped rows show is only that the symbol is absent.",
+      "crossReferences": [
+        {
+          "cites": "§ 172.101",
+          "resolvedBy": "table-designates-hazardous-materials"
+        }
+      ]
+    },
+    {
+      "id": "symbol-a-aircraft-only",
+      "name": "Column 1 symbol “A”",
+      "locator": {
+        "sourceId": "cfr-49-172.101",
+        "citation": "§ 172.101(b)(2)"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [
+        "column-1-symbols"
+      ],
+      "evidence": "(2) The letter “A” denotes a material that is subject to the requirements of this subchapter only when offered or intended for transportation by aircraft, unless the material is a hazardous substance or a hazardous waste. A shipping description entry preceded by an “A” may be used to describe a material for other modes of transportation provided all applicable requirements for the entry are met.",
+      "status": "mapped",
+      "note": "The symbol restricts the entry to transportation by aircraft. None of the seven mapped rows carries it, so a test must exercise it against a row outside this slice or against a constructed entry; what the mapped rows show is only that the symbol is absent.",
+      "crossReferences": [
+        {
+          "cites": "of this subchapter",
+          "unmapped": "“this subchapter” is 49 CFR subchapter C, of which the manifest admits § 172.101 and § 172.102 and nothing else; what this phrase carries is outside both and no entry of this map states it"
+        }
+      ]
+    },
+    {
+      "id": "symbol-d-domestic-names",
+      "name": "Column 1 symbol “D”",
+      "locator": {
+        "sourceId": "cfr-49-172.101",
+        "citation": "§ 172.101(b)(3)"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [
+        "column-1-symbols"
+      ],
+      "evidence": "(3) The letter “D” identifies proper shipping names which are appropriate for describing materials for domestic transportation but may be inappropriate for international transportation under the provisions of international regulations (e.g., IMO, ICAO). An alternate proper shipping name may be selected when either domestic or international transportation is involved.",
+      "status": "mapped",
+      "note": "The symbol marks a name fit for domestic transportation. None of the seven mapped rows carries it, so a test must exercise it against a row outside this slice or against a constructed entry; what the mapped rows show is only that the symbol is absent."
+    },
+    {
+      "id": "symbol-g-technical-names",
+      "name": "Column 1 symbol “G”",
+      "locator": {
+        "sourceId": "cfr-49-172.101",
+        "citation": "§ 172.101(b)(4)"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [
+        "column-1-symbols"
+      ],
+      "evidence": "(4) The letter “G” identifies proper shipping names for which one or more technical names of the hazardous material must be entered in parentheses, in association with the basic description. (See § 172.203(k).)",
+      "status": "mapped",
+      "note": "The symbol requires a technical name in parentheses. None of the seven mapped rows carries it, so a test must exercise it against a row outside this slice or against a constructed entry; what the mapped rows show is only that the symbol is absent.",
+      "crossReferences": [
+        {
+          "cites": "(See § 172.203(k)",
+          "unmapped": "§ 172.203 is in part 172, outside the two sections the manifest admits, which this map does not admit and no entry of it states; the manifest records the boundary"
+        }
+      ]
+    },
+    {
+      "id": "symbol-i-international-names",
+      "name": "Column 1 symbol “I”",
+      "locator": {
+        "sourceId": "cfr-49-172.101",
+        "citation": "§ 172.101(b)(5)"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [
+        "column-1-symbols"
+      ],
+      "evidence": "(5) The letter “I” identifies proper shipping names which are appropriate for describing materials in international transportation. An alternate proper shipping name may be selected when only domestic transportation is involved.",
+      "status": "mapped",
+      "note": "The symbol marks a name fit for international transportation. None of the seven mapped rows carries it, so a test must exercise it against a row outside this slice or against a constructed entry; what the mapped rows show is only that the symbol is absent."
+    },
+    {
+      "id": "symbol-w-vessel-only",
+      "name": "Column 1 symbol “W”",
+      "locator": {
+        "sourceId": "cfr-49-172.101",
+        "citation": "§ 172.101(b)(6)"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [
+        "column-1-symbols"
+      ],
+      "evidence": "(6) The letter “W” denotes a material that is subject to the requirements of this subchapter only when offered or intended for transportation by vessel, unless the material is a hazardous substance or a hazardous waste. A shipping description entry preceded by a “W” may be used to describe a material for other modes of transportation provided all applicable requirements for the entry are met.",
+      "status": "mapped",
+      "note": "The symbol restricts the entry to transportation by vessel. None of the seven mapped rows carries it, so a test must exercise it against a row outside this slice or against a constructed entry; what the mapped rows show is only that the symbol is absent.",
+      "crossReferences": [
+        {
+          "cites": "of this subchapter",
+          "unmapped": "“this subchapter” is 49 CFR subchapter C, of which the manifest admits § 172.101 and § 172.102 and nothing else; what this phrase carries is outside both and no entry of this map states it"
+        }
+      ]
+    },
+    {
+      "id": "column-2-proper-shipping-names",
+      "name": "Column 2 lists the proper shipping names, in Roman type only",
+      "locator": {
+        "sourceId": "cfr-49-172.101",
+        "citation": "§ 172.101(c)"
+      },
+      "kind": "value",
+      "scope": "in",
+      "clarity": "clear",
+      "evidence": "(c) Column 2: Hazardous materials descriptions and proper shipping names. Column 2 lists the hazardous materials descriptions and proper shipping names of materials designated as hazardous materials. Modification of a proper shipping name may otherwise be required or authorized by this section. Proper shipping names are limited to those shown in Roman type (not italics).",
+      "status": "mapped",
+      "note": "The sentence that makes typography normative: “Proper shipping names are limited to those shown in Roman type (not italics).” The rule is readable; applying it to a particular column 2 cell is not, because the `ecfr-xml` adapter flattens <E T=\"03\">. The two mapped rows that carry italics declare `beyondAdapter` on their own column 2 entries rather than here, because the defect is in reading the cell and not in reading this paragraph."
+    },
+    {
+      "id": "psn-singular-plural-spelling",
+      "name": "A proper shipping name may be inflected and respelled",
+      "locator": {
+        "sourceId": "cfr-49-172.101",
+        "citation": "§ 172.101(c)(1)"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [
+        "column-2-proper-shipping-names"
+      ],
+      "evidence": "(1) Proper shipping names may be used in the singular or plural and in either capital or lower case letters. Words may be alternatively spelled in the same manner as they appear in the ICAO Technical Instructions or the IMDG Code. For example “aluminum” may be spelled “aluminium” and “sulfur” may be spelled “sulphur”. However, the word “inflammable” may not be used in place of the word “flammable”.",
+      "status": "mapped",
+      "note": "Singular or plural, either case, ICAO or IMDG spelling — and “inflammable” is refused outright. A test must show the refusal as well as the three permissions."
+    },
+    {
+      "id": "italics-not-part-of-psn",
+      "name": "Words in italics are not part of the proper shipping name",
+      "locator": {
+        "sourceId": "cfr-49-172.101",
+        "citation": "§ 172.101(c)(2)"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [
+        "column-2-proper-shipping-names"
+      ],
+      "evidence": "(2) Punctuation marks and words in italics are not part of the proper shipping name, but may be used in addition to the proper shipping name. The word “or” in italics indicates that there is a choice of terms in the sequence that may alternately be used as the proper shipping name or as part of the proper shipping name, as appropriate. For example, for the hazardous materials description “Carbon dioxide, solid or Dry ice” either “Carbon dioxide, solid” or “Dry ice” may be used as the proper shipping name; and for the hazardous materials description “Articles, pressurized pneumatic or hydraulic,” either “Articles, pressurized pneumatic” or “Articles, pressurized hydraulic” may be used as the proper shipping name.",
+      "status": "mapped",
+      "note": "This is the rule the protocol's `formatting: \"rendered-page-required\"` exists for. It also fixes what an italic “or” does: it offers a choice of names. A test must show both halves — that italic qualifying words drop out, and that an italic “or” splits one cell into two usable names."
+    },
+    {
+      "id": "poison-toxic-interchangeable",
+      "name": "“Poison” and “toxic” are interchangeable domestically",
+      "locator": {
+        "sourceId": "cfr-49-172.101",
+        "citation": "§ 172.101(c)(3)"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [
+        "column-2-proper-shipping-names"
+      ],
+      "evidence": "(3) The word “poison” or “poisonous” may be used interchangeably with the word “toxic” when only domestic transportation is involved. The abbreviation “n.o.i.” or “n.o.i.b.n.” may be used interchangeably with “n.o.s.”.",
+      "status": "mapped",
+      "note": "Two substitutions in one sentence, and only one of them is limited to domestic transportation. A test must show that the n.o.i./n.o.i.b.n. substitution carries no such limit."
+    },
+    {
+      "id": "qualifying-word-sequence",
+      "name": "The sequence of qualifying words is optional",
+      "locator": {
+        "sourceId": "cfr-49-172.101",
+        "citation": "§ 172.101(c)(4)"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [
+        "column-2-proper-shipping-names"
+      ],
+      "evidence": "(4) Except for hazardous wastes, when qualifying words are used as part of the proper shipping name, their sequence in the package markings and shipping paper description is optional. However, the entry in the Table reflects the preferred sequence.",
+      "status": "mapped",
+      "note": "Except for hazardous wastes. A test must show the exception, not only the permission."
+    },
+    {
+      "id": "see-reference-either-name",
+      "name": "A “see” reference between entries makes either name usable",
+      "locator": {
+        "sourceId": "cfr-49-172.101",
+        "citation": "§ 172.101(c)(5)"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [
+        "column-2-proper-shipping-names",
+        "italics-not-part-of-psn"
+      ],
+      "evidence": "(5) When one entry references another entry by use of the word “see”, if both names are in Roman type, either name may be used as the proper shipping name (e.g., Ethyl alcohol, see Ethanol).",
+      "status": "mapped",
+      "note": "Conditional on both names being in Roman type, which is the second place in (c) where the answer turns on typography the extraction cannot carry."
+    },
+    {
+      "id": "concentration-range-actual-value",
+      "name": "An actual concentration may replace a printed range",
+      "locator": {
+        "sourceId": "cfr-49-172.101",
+        "citation": "§ 172.101(c)(6)"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [
+        "column-2-proper-shipping-names"
+      ],
+      "evidence": "(6) When a proper shipping name includes a concentration range as part of the shipping description, the actual concentration, if it is within the range stated, may be used in place of the concentration range. For example, an aqueous solution of hydrogen peroxide containing 30 percent peroxide may be described as “Hydrogen peroxide, aqueous solution with not less than 20 percent but not more than 40 percent hydrogen peroxide” or “Hydrogen peroxide, aqueous solution with 30 percent hydrogen peroxide.” Also, the percent sign (%) may be used in place of the word “percent” when words in italics containing the word “percent” are used in addition to the proper shipping name.",
+      "status": "mapped",
+      "note": "The concentration is a caller-supplied parameter and gets no entry of its own (corpus-map.md, gate 1). Three of the seven mapped rows are concentration bands of one acid, so a test must show the substitution accepted inside the band and refused outside it."
+    },
+    {
+      "id": "mono-prefix-optional",
+      "name": "The prefix “mono” is optional",
+      "locator": {
+        "sourceId": "cfr-49-172.101",
+        "citation": "§ 172.101(c)(7)"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [
+        "column-2-proper-shipping-names"
+      ],
+      "evidence": "(7) Use of the prefix “mono” is optional in any shipping name, when appropriate. Thus, Iodine monochloride may be used interchangeably with Iodine chloride. In “Glycerol alpha-monochlorohydrin” the term “mono” is considered a prefix to the term “chlorohydrin” and may be deleted.",
+      "status": "mapped",
+      "note": "Two cases: dropping it from a compound word and dropping it as a separate prefix."
+    },
+    {
+      "id": "liquid-or-solid-added-to-psn",
+      "name": "“Liquid” or “solid” may be added where the state differs",
+      "locator": {
+        "sourceId": "cfr-49-172.101",
+        "citation": "§ 172.101(c)(8)"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [
+        "column-2-proper-shipping-names"
+      ],
+      "evidence": "(8) Use of the word “liquid” or “solid”. The word “liquid” or “solid” may be added to a proper shipping name when a hazardous material specifically listed by name may, due to differing physical states, be a liquid or solid. When the packaging specified in Column 8 is inappropriate for the physical state of the material, the table provided in paragraph (i)(4) of this section should be used to determine the appropriate packaging section.",
+      "status": "mapped",
+      "note": "The second sentence sends a reader to the table in (i)(4) when column 8's packaging is wrong for the state. That table is excluded from this map's extent with a reason, so the entry answers the pointer and declines to follow it.",
+      "crossReferences": [
+        {
+          "cites": "paragraph (i)(4) of this section",
+          "resolvedBy": "packaging-section-for-physical-state"
+        }
+      ]
+    },
+    {
+      "id": "waste-prefix-in-psn",
+      "name": "A hazardous waste takes the word “Waste” before its name",
+      "locator": {
+        "sourceId": "cfr-49-172.101",
+        "citation": "§ 172.101(c)(9)"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [
+        "column-2-proper-shipping-names"
+      ],
+      "evidence": "(9) Hazardous wastes. If the word “waste” is not included in the hazardous material description in Column 2 of the Table, the proper shipping name for a hazardous waste (as defined in § 171.8 of this subchapter), shall include the word “Waste” preceding the proper shipping name of the material. For example: Waste acetone.",
+      "status": "mapped",
+      "note": "Whether the material is a hazardous waste is fixed by § 171.8, which is referenced and not admitted; the naming rule itself is complete here, so the entry is an operation with a parameter rather than a `definedElsewhere`.",
+      "crossReferences": [
+        {
+          "cites": "Column 2 of the Table",
+          "resolvedBy": "column-2-proper-shipping-names"
+        },
+        {
+          "cites": "as defined in § 171.8 of this subchapter",
+          "unmapped": "§ 171.8 is in part 171, the subchapter's definitions and incorporations by reference, which this map does not admit and no entry of it states; the manifest records the boundary"
+        }
+      ]
+    },
+    {
+      "id": "mixture-named-for-predominant-material",
+      "name": "A mixture is named for its predominant hazardous material unless one of six conditions holds",
+      "locator": {
+        "sourceId": "cfr-49-172.101",
+        "citation": "§ 172.101(c)(10)"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [
+        "column-2-proper-shipping-names"
+      ],
+      "evidence": "(10) Mixtures and solutions. (i) A mixture or solution meeting the definition of one or more hazard class that is not identified specifically by name, comprised of a single predominant hazardous material identified in the Table by technical name and one or more hazardous and/or non-hazardous material, must be described using the proper shipping name of the hazardous material and the qualifying word “mixture” or “solution”, as appropriate, unless— (A) Except as provided in § 172.101(i)(4) the packaging specified in Column 8 is inappropriate to the physical state of the material; (B) The shipping description indicates that the proper shipping name applies only to the pure or technically pure hazardous material; (C) The hazard class, packing group, or subsidiary hazard of the mixture or solution is different from that specified for the entry; (D) There is a significant change in the measures to be taken in emergencies; (E) The material is identified by special provision in Column 7 of the § 172.101 Table as a material poisonous by inhalation; however, it no longer meets the definition of poisonous by inhalation or it falls within a different hazard zone than that specified in the special provision; or (F) The material can be appropriately described by a shipping name that describes its intended application, such as “Coating solution”, “Extracts, flavoring” or “Compound, cleaning liquid.”. (ii) If one or more of the conditions in paragraphs (c)(10)(i)(A) through (F) of this section is satisfied then the proper shipping name selection process in (c)(12)(ii) must be used.",
+      "status": "mapped",
+      "note": "The six conditions are stated exhaustively, so this is a closed enumeration and not an open term: gate 1 of the assertion procedure stops here. A test must exercise all six and the fall-through to (c)(12)(ii).",
+      "crossReferences": [
+        {
+          "cites": "Except as provided in § 172.101(i)(4)",
+          "resolvedBy": "packaging-section-for-physical-state"
+        },
+        {
+          "cites": "Column 7 of the § 172.101 Table",
+          "resolvedBy": "column-7-special-provisions"
+        },
+        {
+          "cites": "paragraphs (c)(10)(i)(A) through (F) of this section",
+          "unmapped": "the six conditions are (A) through (F) of this entry's own quoted span; the pointer is internal to the passage the citation names and resolves to no other entry"
+        }
+      ]
+    },
+    {
+      "id": "mixture-of-same-class-materials",
+      "name": "A mixture of two or more materials of one hazard class takes a generic description",
+      "locator": {
+        "sourceId": "cfr-49-172.101",
+        "citation": "§ 172.101(c)(10)"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "ambiguous",
+      "ambiguity": {
+        "question": "“The name that most appropriately describes the material shall be used” fixes no test for appropriateness, names no decider, and states nothing the choice is measured against. Some mixtures “may be more appropriately described according to their application” states a preference and not a rule. Gate 3 of the assertion procedure returns a gap: the corpus delegates to nobody.",
+        "fate": "unresolved",
+        "unresolvedReason": "RequiresInterpretation"
+      },
+      "dependsOn": [
+        "column-2-proper-shipping-names"
+      ],
+      "evidence": "(iii) A mixture or solution meeting the definition of one or more hazard class that is not identified in the Table specifically by name, comprised of two or more hazardous materials in the same hazard class, must be described using an appropriate shipping description (e.g., “Flammable liquid, n.o.s.”). The name that most appropriately describes the material shall be used; e.g., an alcohol not listed by its technical name in the Table shall be described as “Alcohol, n.o.s.” rather than “Flammable liquid, n.o.s.”. Some mixtures may be more appropriately described according to their application, such as “Coating solution” or “Extracts, flavoring liquid” rather than by an n.o.s. entry. Under the provisions of subparts C and D of this part, the technical names of at least two components most predominately contributing to the hazards of the mixture or solution may be required in association with the proper shipping name.",
+      "status": "mapped",
+      "note": "Split from (c)(10)(i) deliberately: (i) states a closed enumeration and is clear, and (iii) states an open standard. One entry over both would have carried the ambiguity of the weaker half into the stronger.",
+      "crossReferences": [
+        {
+          "cites": "of this part",
+          "unmapped": "“this part” is 49 CFR part 172, of which the manifest admits § 172.101 and § 172.102 and nothing else; the subparts this phrase names have no entry here"
+        }
+      ]
+    },
+    {
+      "id": "tentative-classification-by-shipper",
+      "name": "A shipper may assign a tentative classification to an uncertain material",
+      "locator": {
+        "sourceId": "cfr-49-172.101",
+        "citation": "§ 172.101(c)(11)"
+      },
+      "kind": "assertion",
+      "scope": "in",
+      "clarity": "clear",
+      "assertedBy": [
+        "shipper"
+      ],
+      "dependsOn": [
+        "column-2-proper-shipping-names"
+      ],
+      "evidence": "(11) Except for a material subject to or prohibited by § 173.21, § 173.54, § 173.56(d), § 173.56(e), § 173.224(c) or § 173.225(b) of this subchapter, a material that is considered to be a hazardous waste or a sample of a material for which the hazard class is uncertain and must be determined by testing may be assigned a tentative proper shipping name, hazard class, identification number and packing group, if applicable, based on the shipper's tentative determination according to: (i) Defining criteria in this subchapter; (ii) The hazard precedence prescribed in § 173.2a of this subchapter; (iii) The shipper's knowledge of the material;",
+      "status": "mapped",
+      "note": "Gate 1: applying the rule requires fixing a classification the corpus does not fix. Gate 3: the determination is the shipper's own and the corpus states, in the same constituent, what it is measured against — the defining criteria of the subchapter, the hazard precedence of § 173.2a, and the shipper's knowledge of the material. That is a stated measure, so this is an assertion and not a gap. `assertedBy` is anchored on “the shipper's tentative determination” in the evidence.",
+      "crossReferences": [
+        {
+          "cites": "§ 173.21",
+          "unmapped": "§ 173.21 is in part 173, the shippers' packaging requirements, which this map does not admit and no entry of it states; the manifest records the boundary"
+        },
+        {
+          "cites": "§ 173.54",
+          "unmapped": "§ 173.54 is in part 173, the shippers' packaging requirements, which this map does not admit and no entry of it states; the manifest records the boundary"
+        },
+        {
+          "cites": "§ 173.56(d)",
+          "unmapped": "§ 173.56 is in part 173, the shippers' packaging requirements, which this map does not admit and no entry of it states; the manifest records the boundary"
+        },
+        {
+          "cites": "§ 173.56(e)",
+          "unmapped": "§ 173.56 is in part 173, the shippers' packaging requirements, which this map does not admit and no entry of it states; the manifest records the boundary"
+        },
+        {
+          "cites": "§ 173.224(c)",
+          "unmapped": "§ 173.224 is in part 173, the shippers' packaging requirements, which this map does not admit and no entry of it states; the manifest records the boundary"
+        },
+        {
+          "cites": "§ 173.225(b) of this subchapter",
+          "unmapped": "§ 173.225 is in part 173, the shippers' packaging requirements, which this map does not admit and no entry of it states; the manifest records the boundary"
+        },
+        {
+          "cites": "prescribed in § 173.2",
+          "unmapped": "the hazard precedence is § 173.2a's, in part 173, referenced and not admitted. The detected words stop at § 173.2 because the pointer pattern's designation does not read a letter suffix, which is why the reason names the section the corpus actually cites"
+        },
+        {
+          "cites": "of this subchapter",
+          "unmapped": "“this subchapter” is 49 CFR subchapter C, of which the manifest admits § 172.101 and § 172.102 and nothing else; what this phrase carries is outside both and no entry of this map states it"
+        }
+      ]
+    },
+    {
+      "id": "sample-additional-requirements",
+      "name": "A sample that is not a waste carries three further requirements",
+      "locator": {
+        "sourceId": "cfr-49-172.101",
+        "citation": "§ 172.101(c)(11)"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [
+        "tentative-classification-by-shipper"
+      ],
+      "evidence": "(iv) In addition to paragraphs (c)(11)(i) through (iii) of this section, for a sample of a material other than a waste, the following must be met: (A) Except when the word “Sample” already appears in the proper shipping name, the word “Sample” must appear as part of the proper shipping name or in association with the basic description on the shipping paper. (B) When the proper shipping description for a sample is assigned a “G” in Column (1) of the § 172.101 Table, and the primary constituent(s) for which the tentative classification is based are not known, the provisions requiring a technical name for the constituent(s) do not apply; and (C) A sample must be transported in a combination packaging that conforms to the requirements of this subchapter that are applicable to the tentative packing group assigned, and may not exceed a net mass of 2.5 kg (5.5 pounds) per package.",
+      "status": "mapped",
+      "note": "Separated from the assertion it hangs off because these three are computable: the word “Sample”, the “G” exemption from technical names, and a 2.5 kg ceiling. A test must show the ceiling refused at 2.5 kg plus one gram.",
+      "crossReferences": [
+        {
+          "cites": "paragraphs (c)(11)(i) through (iii) of this section",
+          "resolvedBy": "tentative-classification-by-shipper"
+        },
+        {
+          "cites": "§ 172.101",
+          "resolvedBy": "table-designates-hazardous-materials"
+        },
+        {
+          "cites": "of this subchapter",
+          "unmapped": "“this subchapter” is 49 CFR subchapter C, of which the manifest admits § 172.101 and § 172.102 and nothing else; what this phrase carries is outside both and no entry of this map states it"
+        }
+      ]
+    },
+    {
+      "id": "sample-transport-cross-references",
+      "name": "Where to look for samples of self-reactive materials, peroxides, explosives and lighters",
+      "locator": {
+        "sourceId": "cfr-49-172.101",
+        "citation": "§ 172.101(c)(11)"
+      },
+      "kind": "operation",
+      "scope": "out",
+      "clarity": "clear",
+      "evidence": "For the transportation of samples of self-reactive materials, organic peroxides, explosives or lighters, see § 173.224(c)(3), § 173.225(c)(2), § 173.56(d) or § 173.308(b)(2) of this subchapter, respectively.",
+      "status": "declined",
+      "note": "The note printed after (c)(11)(iv)(C), cited from the paragraph its own heading names (0036). It states no rule of its own: every one of the four readings it directs to is in part 173, which is referenced and not admitted. Declined as a pointer rather than declared absent, because the passage is here and was read.",
+      "crossReferences": [
+        {
+          "cites": "§ 173.224(c)(3)",
+          "unmapped": "§ 173.224 is in part 173, the shippers' packaging requirements, which this map does not admit and no entry of it states; the manifest records the boundary"
+        },
+        {
+          "cites": "§ 173.225(c)(2)",
+          "unmapped": "§ 173.225 is in part 173, the shippers' packaging requirements, which this map does not admit and no entry of it states; the manifest records the boundary"
+        },
+        {
+          "cites": "§ 173.56(d)",
+          "unmapped": "§ 173.56 is in part 173, the shippers' packaging requirements, which this map does not admit and no entry of it states; the manifest records the boundary"
+        },
+        {
+          "cites": "§ 173.308(b)(2) of this subchapter",
+          "unmapped": "§ 173.308 is in part 173, the shippers' packaging requirements, which this map does not admit and no entry of it states; the manifest records the boundary"
+        }
+      ]
+    },
+    {
+      "id": "reclassification-to-correct-class",
+      "name": "A material determined to be of another class is described by that class's name",
+      "locator": {
+        "sourceId": "cfr-49-172.101",
+        "citation": "§ 172.101(c)(12)"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [
+        "column-2-proper-shipping-names",
+        "symbol-plus-fixes-classification"
+      ],
+      "evidence": "(12) Except when the proper shipping name in the Table is preceded by a plus (+)— (i) If it is specifically determined that a material meets the definition of a hazard class, packing group or hazard zone, other than the class, packing group or hazard zone shown in association with the proper shipping name, or does not meet the defining criteria for a subsidiary hazard shown in Column 6 of the Table, the material shall be described by an appropriate proper shipping name listed in association with the correct hazard class, packing group, hazard zone, or subsidiary hazard for the material. (ii) Generic or n.o.s. descriptions. If an appropriate technical name is not shown in the Table, selection of a proper shipping name shall be made from the generic or n.o.s. descriptions corresponding to the specific hazard class, packing group, hazard zone, or subsidiary hazard, if any, for the material. The name that most appropriately describes the material shall be used, e.g., an alcohol not listed by its technical name in the Table shall be described as “Alcohol, n.o.s.” rather than “Flammable liquid, n.o.s.” Some mixtures may be more appropriately described according to their application, such as “Coating solution” or “Extracts, liquid, for flavor or aroma,” rather than by an n.o.s. entry, such as “Flammable liquid, n.o.s.” It should be noted, however, that an n.o.s. description as a proper shipping name may not provide sufficient information for shipping papers and package markings. Under the provisions of subparts C and D of this part, the technical name of one or more constituents that makes the product a hazardous material may be required in association with the proper shipping name. (iii) Multiple hazard materials. If a material meets the definition of more than one hazard class, and is not identified in the Table specifically by name (e.g., acetyl chloride), the hazard class of the material shall be determined by using the precedence specified in § 173.2a of this subchapter, and an appropriate shipping description (e.g., “Flammable liquid, corrosive n.o.s.”) shall be selected as described in paragraph (c)(12)(ii) of this section. (iv) If it is specifically determined that a material is not a forbidden material and does not meet the definition of any hazard class, the material is not a hazardous material.",
+      "status": "mapped",
+      "note": "The opening words make this rule unavailable wherever column 1 prints a plus sign, which is why `symbol-plus-fixes-classification` is a dependency rather than a gate: it is not a rule that opens or closes a phase, it is the rule this one is expressly subject to. A test must show a plus-signed entry keeping its printed class against a contrary determination.",
+      "crossReferences": [
+        {
+          "cites": "Column 6 of the Table",
+          "resolvedBy": "column-6-label-codes"
+        },
+        {
+          "cites": "of this part",
+          "unmapped": "“this part” is 49 CFR part 172, of which the manifest admits § 172.101 and § 172.102 and nothing else; the subparts this phrase names have no entry here"
+        },
+        {
+          "cites": "§ 173.2",
+          "unmapped": "the same § 173.2a as in § 172.101(c)(11), in part 173, referenced and not admitted; the detected words stop at § 173.2 for the same reason"
+        },
+        {
+          "cites": "of this subchapter",
+          "unmapped": "“this subchapter” is 49 CFR subchapter C, of which the manifest admits § 172.101 and § 172.102 and nothing else; what this phrase carries is outside both and no entry of this map states it"
+        },
+        {
+          "cites": "paragraph (c)(12)(ii) of this section",
+          "unmapped": "(c)(12)(ii) is inside this entry's own quoted span; the pointer is internal to the passage the citation names"
+        }
+      ]
+    },
+    {
+      "id": "self-reactive-and-peroxide-names",
+      "name": "A self-reactive material or organic peroxide is named from its technical name and concentration",
+      "locator": {
+        "sourceId": "cfr-49-172.101",
+        "citation": "§ 172.101(c)(13)"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [
+        "column-2-proper-shipping-names"
+      ],
+      "evidence": "(13) Self-reactive materials and organic peroxides. A generic proper shipping name for a self-reactive material or an organic peroxide, as listed in Column 2 of the Table, must be selected based on the material's technical name and concentration, in accordance with the provisions of § 173.224 or § 173.225 of this subchapter, respectively.",
+      "status": "mapped",
+      "note": "The selection procedure is in § 173.224 and § 173.225, both referenced and not admitted, so an engine over this slice can say that the name is generic and not which one. One of the seven mapped rows is an organic peroxide, and it is Forbidden.",
+      "crossReferences": [
+        {
+          "cites": "Column 2 of the Table",
+          "resolvedBy": "column-2-proper-shipping-names"
+        },
+        {
+          "cites": "§ 173.224",
+          "unmapped": "§ 173.224 is in part 173, the shippers' packaging requirements, which this map does not admit and no entry of it states; the manifest records the boundary"
+        },
+        {
+          "cites": "§ 173.225 of this subchapter",
+          "unmapped": "§ 173.225 is in part 173, the shippers' packaging requirements, which this map does not admit and no entry of it states; the manifest records the boundary"
+        }
+      ]
+    },
+    {
+      "id": "isomer-name-reuse",
+      "name": "One isomer's name may be used for another",
+      "locator": {
+        "sourceId": "cfr-49-172.101",
+        "citation": "§ 172.101(c)(14)"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [
+        "column-2-proper-shipping-names"
+      ],
+      "evidence": "(14) A proper shipping name that describes all isomers of a material may be used to identify any isomer of that material if the isomer meets criteria for the same hazard class or division, subsidiary risk(s) and packing group, unless the isomer is specifically identified in the Table.",
+      "status": "mapped",
+      "note": "Three conditions joined by “and”, plus an exception where the isomer is listed itself. A test must show the exception."
+    },
+    {
+      "id": "anhydrous-name-for-hydrate",
+      "name": "A hydrate may take the anhydrous substance's name",
+      "locator": {
+        "sourceId": "cfr-49-172.101",
+        "citation": "§ 172.101(c)(15)"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [
+        "column-2-proper-shipping-names"
+      ],
+      "evidence": "(15) Unless a hydrate is specifically listed in the Table, a proper shipping name for the equivalent anhydrous substance may be used, if the hydrate meets the same hazard class or division, subsidiary risk(s) and packing group.",
+      "status": "mapped",
+      "note": "Same shape as (c)(14) and a different subject; kept apart because the conditions differ."
+    },
+    {
+      "id": "liquid-solid-molten-qualifiers",
+      "name": "“Liquid”, “solid” and “molten” may qualify a printed name",
+      "locator": {
+        "sourceId": "cfr-49-172.101",
+        "citation": "§ 172.101(c)(16)"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [
+        "column-2-proper-shipping-names",
+        "liquid-or-solid-added-to-psn"
+      ],
+      "evidence": "(16) Unless it is already included in the proper shipping name in the § 172.101 Table, the qualifying words “liquid” or “solid” may be added in association with the proper shipping name when a hazardous material specifically listed by name in the § 172.101 Table may, due to the differing physical states of the various isomers of the material, be either a liquid or a solid (for example “Dinitrotoluenes, liquid” and “Dinitrotoluenes, solid”). Use of the words “liquid” or “solid” is subject to the limitations specified for the use of the words “mixture” or “solution” in paragraph (c)(10) of this section. The qualifying word “molten” may be added in association with the proper shipping name when a hazardous material, which is a solid in accordance with the definition in § 171.8 of this subchapter, is offered for transportation in the molten state (for example, “Alkylphenols, solid, n.o.s., molten”).",
+      "status": "mapped",
+      "note": "Distinct from (c)(8): (8) is about a material that may be either state, (16) about isomers that differ in state, and (16) adds “molten”. Both are limited by (c)(10).",
+      "crossReferences": [
+        {
+          "cites": "§ 172.101",
+          "resolvedBy": "table-designates-hazardous-materials"
+        },
+        {
+          "cites": "paragraph (c)(10) of this section",
+          "resolvedBy": "mixture-named-for-predominant-material"
+        },
+        {
+          "cites": "§ 171.8 of this subchapter",
+          "unmapped": "§ 171.8 is in part 171, the subchapter's definitions and incorporations by reference, which this map does not admit and no entry of it states; the manifest records the boundary"
+        }
+      ]
+    },
+    {
+      "id": "stabilized-qualifier",
+      "name": "“Stabilized” may qualify a name where stabilisation is required",
+      "locator": {
+        "sourceId": "cfr-49-172.101",
+        "citation": "§ 172.101(c)(17)"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [
+        "column-2-proper-shipping-names"
+      ],
+      "evidence": "(17) Unless it is already included in the proper shipping name in the § 172.101 Table, the qualifying word “stabilized” may be added in association with the proper shipping name, as appropriate, where without stabilization the substance would be forbidden for transportation according to § 173.21(f) of this subchapter.",
+      "status": "mapped",
+      "note": "Turns on § 173.21(f), referenced and not admitted, so the engine can say the qualifier is available and not when it is owed.",
+      "crossReferences": [
+        {
+          "cites": "§ 172.101",
+          "resolvedBy": "table-designates-hazardous-materials"
+        },
+        {
+          "cites": "§ 173.21(f) of this subchapter",
+          "unmapped": "§ 173.21 is in part 173, the shippers' packaging requirements, which this map does not admit and no entry of it states; the manifest records the boundary"
+        }
+      ]
+    },
+    {
+      "id": "column-3-hazard-class",
+      "name": "Column 3 states the hazard class or “Forbidden”",
+      "locator": {
+        "sourceId": "cfr-49-172.101",
+        "citation": "§ 172.101(d)"
+      },
+      "kind": "value",
+      "scope": "in",
+      "clarity": "clear",
+      "evidence": "(d) Column 3: Hazard class or Division. Column 3 contains a designation of the hazard class or division corresponding to each proper shipping name, or the word “Forbidden”.",
+      "status": "mapped",
+      "note": "Two kinds of value in one column: a class or division designation, and the word “Forbidden”. Six of the seven mapped rows print a class; the seventh prints “Forbidden”."
+    },
+    {
+      "id": "forbidden-materials-prohibited",
+      "name": "A material whose column 3 says “Forbidden” may not be offered or transported",
+      "locator": {
+        "sourceId": "cfr-49-172.101",
+        "citation": "§ 172.101(d)(1)"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [
+        "column-3-hazard-class"
+      ],
+      "evidence": "(1) A material for which the entry in this column is “Forbidden” may not be offered for transportation or transported. This prohibition does not apply if the material is diluted, stabilized or incorporated in a device and it is classed in accordance with the definitions of hazardous materials contained in part 173 of this subchapter.",
+      "status": "mapped",
+      "note": "The prohibition and its own carve-out in one paragraph: dilution, stabilisation or incorporation in a device lifts it if the result is classed under part 173. A test must show the carve-out, because an engine that implements only the first sentence forbids a diluted material the corpus permits.",
+      "crossReferences": [
+        {
+          "cites": "part 173 of this subchapter",
+          "unmapped": "part 173 is in part 173, the shippers' packaging requirements, which this map does not admit and no entry of it states; the manifest records the boundary"
+        }
+      ]
+    },
+    {
+      "id": "forbidden-designation-reevaluation",
+      "name": "New test data bearing on a “Forbidden” designation should be submitted to the Associate Administrator",
+      "locator": {
+        "sourceId": "cfr-49-172.101",
+        "citation": "§ 172.101(d)(2)"
+      },
+      "kind": "operation",
+      "scope": "out",
+      "clarity": "clear",
+      "evidence": "(2) When a reevaluation of test data or new data indicates a need to modify the “Forbidden” designation or the hazard class or packing group specified for a material specifically identified in the Table, this data should be submitted to the Associate Administrator.",
+      "status": "declined",
+      "note": "Advice, not a rule: “should be submitted” obliges nobody and settles no question an engine is asked. Declined under method.md's rule that advice is dropped and the dropping is recorded. It sits between two rules that are in scope, which is why `scope` is decided per rule and never per paragraph run."
+    },
+    {
+      "id": "hazard-class-definitions-elsewhere",
+      "name": "The hazard class definitions are in § 173.2",
+      "locator": {
+        "sourceId": "cfr-49-172.101",
+        "citation": "§ 172.101(d)(3)"
+      },
+      "kind": "value",
+      "scope": "out",
+      "clarity": "clear",
+      "definedElsewhere": {
+        "reference": "cfr-49-173.2"
+      },
+      "evidence": "(3) A basic description of each hazard class and the section reference for class definitions appear in § 173.2 of this subchapter.",
+      "status": "declined",
+      "note": "What a class *is* is fixed in part 173, which the manifest lists as referenced and not admitted. The entry records the boundary rather than leaving it to be inferred from whichever rules happen to decline."
+    },
+    {
+      "id": "class-3-reclassed-combustible-liquid",
+      "name": "A Class 3 material reclassified or above 60 °C flash point reads as a combustible liquid",
+      "locator": {
+        "sourceId": "cfr-49-172.101",
+        "citation": "§ 172.101(d)(4)"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [
+        "column-3-hazard-class"
+      ],
+      "evidence": "(4) Each reference to a Class 3 material is modified to read “Combustible liquid” when that material is reclassified in accordance with § 173.150(e) or (f) of this subchapter or has a flash point above 60 °C (140 °F) but below 93 °C (200 °F).",
+      "status": "mapped",
+      "note": "Two independent triggers — a reclassification under § 173.150(e) or (f), and a flash point in a stated band — and the band is closed at both ends. Two of the mapped rows are Class 3, so a test can exercise the rewrite on them.",
+      "crossReferences": [
+        {
+          "cites": "in accordance with § 173.150(e)",
+          "unmapped": "§ 173.150 is in part 173, the shippers' packaging requirements, which this map does not admit and no entry of it states; the manifest records the boundary"
+        },
+        {
+          "cites": "of this subchapter",
+          "unmapped": "“this subchapter” is 49 CFR subchapter C, of which the manifest admits § 172.101 and § 172.102 and nothing else; what this phrase carries is outside both and no entry of this map states it"
+        }
+      ]
+    },
+    {
+      "id": "column-4-identification-number",
+      "name": "Column 4 states the identification number and its prefix",
+      "locator": {
+        "sourceId": "cfr-49-172.101",
+        "citation": "§ 172.101(e)"
+      },
+      "kind": "value",
+      "scope": "in",
+      "clarity": "clear",
+      "evidence": "(e) Column 4: Identification number. Column 4 lists the identification number assigned to each proper shipping name. Those preceded by the letters “UN” are associated with proper shipping names considered appropriate for international transportation as well as domestic transportation. Those preceded by the letters “NA” are associated with proper shipping names not recognized for transportation outside of the United States. Identification numbers in the “NA9000” series are associated with proper shipping names not appropriately covered by international hazardous materials (dangerous goods) transportation standards, or not appropriately addressed by international transportation standards for emergency response information purposes, except for transportation in the United States. Those preceded by the letters “ID” are associated with proper shipping names recognized by the ICAO Technical Instructions (see § 171.7 of this subchapter for availability).",
+      "status": "mapped",
+      "note": "Four prefixes, each with a different reach: UN, NA, the NA9000 series, and ID. Two of the mapped rows print the same UN2790 at different concentrations, which is the case a test must cover: the identification number does not determine the row.",
+      "crossReferences": [
+        {
+          "cites": "(see § 171.7 of this subchapter for availability)",
+          "unmapped": "§ 171.7 is in part 171, the subchapter's definitions and incorporations by reference, which this map does not admit and no entry of it states; the manifest records the boundary"
+        }
+      ]
+    },
+    {
+      "id": "column-5-packing-group",
+      "name": "Column 5 states the packing group",
+      "locator": {
+        "sourceId": "cfr-49-172.101",
+        "citation": "§ 172.101(f)"
+      },
+      "kind": "value",
+      "scope": "in",
+      "clarity": "clear",
+      "evidence": "(f) Column 5: Packing group. Column 5 specifies one or more packing groups assigned to a material corresponding to the proper shipping name and hazard class for that material. Class 2, Class 7, and Division 6.2 do not have packing groups. Articles in classes other than Class 1 are not assigned to packing groups. For packing purposes, any requirement for a specific packaging performance level is set out in the applicable packing authorizations of part 173. Packing Groups I, II, and III indicate the degree of danger presented by the material is great, medium, or minor, respectively. If more than one packing group is indicated for an entry, the packing group for the hazardous material is determined using the criteria for assignment of packing groups specified in subpart D of part 173. When a reevaluation of test data or new data indicates a need to modify the specified packing group(s), the data should be submitted to the Associate Administrator. Each reference in this column to a material that is a hazardous waste or a hazardous substance, and whose proper shipping name preceded in Column 1 of the Table by the letter “A” or “W,” is modified to read “III” on those occasions when the material is offered for transportation or transported by a mode in which its transportation is not otherwise subject to requirements of this subchapter.",
+      "status": "mapped",
+      "note": "Three degrees of danger, three classes with no packing group at all, and a rule for an entry showing more than one. The criteria for choosing between several are in subpart D of part 173, referenced and not admitted; none of the seven mapped rows prints more than one packing group, so the engine's answer over this slice is complete.",
+      "crossReferences": [
+        {
+          "cites": "Column 1 of the Table",
+          "resolvedBy": "column-1-symbols"
+        },
+        {
+          "cites": "of this subchapter",
+          "unmapped": "“this subchapter” is 49 CFR subchapter C, of which the manifest admits § 172.101 and § 172.102 and nothing else; what this phrase carries is outside both and no entry of this map states it"
+        }
+      ]
+    },
+    {
+      "id": "packing-group-modified-for-mode",
+      "name": "An “A” or “W” entry's packing group reads as III where the mode is unregulated",
+      "locator": {
+        "sourceId": "cfr-49-172.101",
+        "citation": "§ 172.101(f)"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [
+        "column-5-packing-group",
+        "symbol-a-aircraft-only",
+        "symbol-w-vessel-only"
+      ],
+      "evidence": "Each reference in this column to a material that is a hazardous waste or a hazardous substance, and whose proper shipping name preceded in Column 1 of the Table by the letter “A” or “W,” is modified to read “III” on those occasions when the material is offered for transportation or transported by a mode in which its transportation is not otherwise subject to requirements of this subchapter.",
+      "status": "mapped",
+      "note": "A separate rule inside the same paragraph, and quotable as a contiguous tail of it. It rewrites a printed value rather than stating one, which is why it is an operation beside a value; a single entry over the whole of (f) would have made the rewrite invisible.",
+      "crossReferences": [
+        {
+          "cites": "Column 1 of the Table",
+          "resolvedBy": "column-1-symbols"
+        },
+        {
+          "cites": "of this subchapter",
+          "unmapped": "“this subchapter” is 49 CFR subchapter C, of which the manifest admits § 172.101 and § 172.102 and nothing else; what this phrase carries is outside both and no entry of this map states it"
+        }
+      ]
+    },
+    {
+      "id": "column-6-label-codes",
+      "name": "Column 6 states the label codes required for a package",
+      "locator": {
+        "sourceId": "cfr-49-172.101",
+        "citation": "§ 172.101(g)"
+      },
+      "kind": "value",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [
+        "column-3-hazard-class"
+      ],
+      "evidence": "(g) Column 6: Labels. Column 6 specifies codes which represent the hazard warning labels required for a package filled with a material conforming to the associated hazard class and proper shipping name, unless the package is otherwise excepted from labeling by a provision in subpart E of this part, or part 173 of this subchapter. The first code is indicative of the primary hazard of the material. Additional label codes are indicative of subsidiary hazards. Provisions in § 172.402 may require that a label other than that specified in Column 6 be affixed to the package in addition to that specified in Column 6. No label is required for a material classed as a combustible liquid or for a Class 3 material that is reclassed as a combustible liquid. For “Empty” label requirements, see § 173.428 of this subchapter. The codes contained in Column 6 are defined according to the following table:",
+      "status": "mapped",
+      "note": "The paragraph that makes column 6 a pointer-bearing column: it ends “The codes contained in Column 6 are defined according to the following table:”, and that table is § 172.101 table 1, the Label Substitution Table. The protocol's second `coded-pointer` reads column 6 against the `hazard-label-codes` vocabulary for that reason. First code is the primary hazard; the rest are subsidiary, which one mapped row (column 6 = “8, 3”) exercises.",
+      "crossReferences": [
+        {
+          "cites": "of this part",
+          "unmapped": "“this part” is 49 CFR part 172, of which the manifest admits § 172.101 and § 172.102 and nothing else; the subparts this phrase names have no entry here"
+        },
+        {
+          "cites": "part 173 of this subchapter",
+          "unmapped": "part 173 is in part 173, the shippers' packaging requirements, which this map does not admit and no entry of it states; the manifest records the boundary"
+        },
+        {
+          "cites": "§ 172.402",
+          "unmapped": "§ 172.402 is in part 172, outside the two sections the manifest admits, which this map does not admit and no entry of it states; the manifest records the boundary"
+        },
+        {
+          "cites": "§ 173.428 of this subchapter",
+          "unmapped": "§ 173.428 is in part 173, the shippers' packaging requirements, which this map does not admit and no entry of it states; the manifest records the boundary"
+        }
+      ]
+    },
+    {
+      "id": "column-7-special-provisions",
+      "name": "Column 7 states the special provision codes",
+      "locator": {
+        "sourceId": "cfr-49-172.101",
+        "citation": "§ 172.101(h)"
+      },
+      "kind": "value",
+      "scope": "in",
+      "clarity": "clear",
+      "evidence": "(h) Column 7: Special provisions. Column 7 specifies codes for special provisions applicable to hazardous materials. When Column 7 refers to a special provision for a hazardous material, the meaning and requirements of that special provision are as set forth in § 172.102 of this subpart.",
+      "status": "mapped",
+      "note": "Two sentences and the whole of H2: the codes are pointers, and what they point at is § 172.102. Nothing in the sentence says which characters in the cell are codes — that is the column the token sits in, which is why the pointer mechanism is structural (0041) and not lexical.",
+      "crossReferences": [
+        {
+          "cites": "set forth in § 172.102",
+          "resolvedBy": "special-provision-meaning"
+        }
+      ]
+    },
+    {
+      "id": "column-8-packaging-authorizations",
+      "name": "Columns 8A, 8B and 8C reference packaging sections",
+      "locator": {
+        "sourceId": "cfr-49-172.101",
+        "citation": "§ 172.101(i)"
+      },
+      "kind": "value",
+      "scope": "in",
+      "clarity": "clear",
+      "evidence": "(i) Column 8: Packaging authorizations. Columns 8A, 8B and 8C specify the applicable sections for exceptions, non-bulk packaging requirements and bulk packaging requirements, respectively, in part 173 of this subchapter. Columns 8A, 8B and 8C are completed in a manner which indicates that “§ 173.” precedes the designated numerical entry. For example, the entry “202” in Column 8B associated with the proper shipping name “Gasoline” indicates that for this material conformance to non-bulk packaging requirements prescribed in § 173.202 of this subchapter is required. When packaging requirements are specified, they are in addition to the standard requirements for all packagings prescribed in § 173.24 of this subchapter and any other applicable requirements in subparts A and B of part 173 of this subchapter.",
+      "status": "mapped",
+      "note": "The column holds a numeral and means a section: “§ 173.” is elided and the reader restores it. A test must show that restoration, because an engine that returns “202” has answered nothing.",
+      "crossReferences": [
+        {
+          "cites": "part 173 of this subchapter",
+          "unmapped": "part 173 is in part 173, the shippers' packaging requirements, which this map does not admit and no entry of it states; the manifest records the boundary"
+        },
+        {
+          "cites": "prescribed in § 173.202 of this subchapter",
+          "unmapped": "§ 173.202 is in part 173, the shippers' packaging requirements, which this map does not admit and no entry of it states; the manifest records the boundary"
+        },
+        {
+          "cites": "prescribed in § 173.24 of this subchapter",
+          "unmapped": "§ 173.24 is in part 173, the shippers' packaging requirements, which this map does not admit and no entry of it states; the manifest records the boundary"
+        }
+      ]
+    },
+    {
+      "id": "column-8a-exceptions",
+      "name": "Column 8A references packaging exceptions",
+      "locator": {
+        "sourceId": "cfr-49-172.101",
+        "citation": "§ 172.101(i)(1)"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [
+        "column-8-packaging-authorizations"
+      ],
+      "evidence": "(1) Exceptions. Column 8A contains exceptions from some of the requirements of this subchapter. The referenced exceptions are in addition to those specified in subpart A of part 173 and elsewhere in this subchapter. A “None” in this column means no packaging exceptions are authorized, except as may be provided by special provisions in Column 7.",
+      "status": "mapped",
+      "note": "“None” is a stated value with a stated meaning, and it carries its own exception: a column 7 special provision may still authorise one. Two of the mapped rows print “None” in 8A.",
+      "crossReferences": [
+        {
+          "cites": "of this subchapter",
+          "unmapped": "“this subchapter” is 49 CFR subchapter C, of which the manifest admits § 172.101 and § 172.102 and nothing else; what this phrase carries is outside both and no entry of this map states it"
+        }
+      ]
+    },
+    {
+      "id": "column-8b-non-bulk-packaging",
+      "name": "Column 8B references non-bulk packaging requirements",
+      "locator": {
+        "sourceId": "cfr-49-172.101",
+        "citation": "§ 172.101(i)(2)"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [
+        "column-8-packaging-authorizations"
+      ],
+      "evidence": "(2) Non-bulk packaging. Column 8B references the section in part 173 of this subchapter which prescribes packaging requirements for non-bulk packagings. A “None” in this column means non-bulk packagings are not authorized, except as may be provided by special provisions in Column 7. Each reference in this column to a material which is a hazardous waste or a hazardous substance, and whose proper shipping name is preceded in Column 1 of the Table by the letter “A” or “W”, is modified to include “§ 173.203” or “§ 173.213”, as appropriate for liquids and solids, respectively, on those occasions when the material is offered for transportation or transported by a mode in which its transportation is not otherwise subject to the requirements of this subchapter.",
+      "status": "mapped",
+      "note": "Same “None” rule as 8A, plus the A/W rewrite to § 173.203 or § 173.213. A test must show the rewrite choosing between liquid and solid.",
+      "crossReferences": [
+        {
+          "cites": "part 173 of this subchapter",
+          "unmapped": "part 173 is in part 173, the shippers' packaging requirements, which this map does not admit and no entry of it states; the manifest records the boundary"
+        },
+        {
+          "cites": "Column 1 of the Table",
+          "resolvedBy": "column-1-symbols"
+        },
+        {
+          "cites": "§ 173.203",
+          "unmapped": "§ 173.203 is in part 173, the shippers' packaging requirements, which this map does not admit and no entry of it states; the manifest records the boundary"
+        },
+        {
+          "cites": "§ 173.213",
+          "unmapped": "§ 173.213 is in part 173, the shippers' packaging requirements, which this map does not admit and no entry of it states; the manifest records the boundary"
+        },
+        {
+          "cites": "of this subchapter",
+          "unmapped": "“this subchapter” is 49 CFR subchapter C, of which the manifest admits § 172.101 and § 172.102 and nothing else; what this phrase carries is outside both and no entry of this map states it"
+        }
+      ]
+    },
+    {
+      "id": "column-8c-bulk-packaging",
+      "name": "Column 8C references bulk packaging requirements",
+      "locator": {
+        "sourceId": "cfr-49-172.101",
+        "citation": "§ 172.101(i)(3)"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [
+        "column-8-packaging-authorizations",
+        "column-8b-non-bulk-packaging"
+      ],
+      "evidence": "(3) Bulk packaging. Column (8C) specifies the section in part 173 of this subchapter that prescribes packaging requirements for bulk packagings, subject to the limitations, requirements, and additional authorizations of Columns (7) and (8B). A “None” in Column (8C) means bulk packagings are not authorized, except as may be provided by special provisions in Column (7) and in packaging authorizations Column (8B). Additional authorizations and limitations for use of UN portable tanks are set forth in Column 7. For each reference in this column to a material that is a hazardous waste or a hazardous substance, and whose proper shipping name is preceded in Column 1 of the Table by the letter “A” or “W” and that is offered for transportation or transported by a mode in which its transportation is not otherwise subject to the requirements of this subchapter: (i) The column reference is § 173.240 or § 173.241, as appropriate. (ii) For a solid material, the exception provided in special provision B54 is applicable. (iii) For a Class 9 material, which meets the definition of an elevated temperature material, the column reference is § 173.247.",
+      "status": "mapped",
+      "note": "The only column paragraph that states its own subordination in terms: 8C is “subject to the limitations, requirements, and additional authorizations of Columns (7) and (8B)”. That is the § 172.101 side of the precedence § 172.102(a)(2) states from the other side.",
+      "crossReferences": [
+        {
+          "cites": "part 173 of this subchapter",
+          "unmapped": "part 173 is in part 173, the shippers' packaging requirements, which this map does not admit and no entry of it states; the manifest records the boundary"
+        },
+        {
+          "cites": "set forth in Column 7",
+          "resolvedBy": "column-7-special-provisions"
+        },
+        {
+          "cites": "Column 1 of the Table",
+          "resolvedBy": "column-1-symbols"
+        },
+        {
+          "cites": "of this subchapter",
+          "unmapped": "“this subchapter” is 49 CFR subchapter C, of which the manifest admits § 172.101 and § 172.102 and nothing else; what this phrase carries is outside both and no entry of this map states it"
+        },
+        {
+          "cites": "§ 173.240",
+          "unmapped": "§ 173.240 is in part 173, the shippers' packaging requirements, which this map does not admit and no entry of it states; the manifest records the boundary"
+        },
+        {
+          "cites": "§ 173.241",
+          "unmapped": "§ 173.241 is in part 173, the shippers' packaging requirements, which this map does not admit and no entry of it states; the manifest records the boundary"
+        },
+        {
+          "cites": "§ 173.247",
+          "unmapped": "§ 173.247 is in part 173, the shippers' packaging requirements, which this map does not admit and no entry of it states; the manifest records the boundary"
+        }
+      ]
+    },
+    {
+      "id": "packaging-section-for-physical-state",
+      "name": "A table gives the packaging section for a material offered in the other physical state",
+      "locator": {
+        "sourceId": "cfr-49-172.101",
+        "citation": "§ 172.101(i)(4)"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [
+        "column-8-packaging-authorizations"
+      ],
+      "evidence": "(4) For a hazardous material which is specifically named in the Table and whose packaging sections specify packagings not applicable to the form of the material (e.g., packaging specified is for solid material and the material is being offered for transportation in a liquid form) the following table should be used to determine the appropriate packaging section:",
+      "status": "mapped",
+      "note": "The rule is stated here and the values are in § 172.101 table 2, which this map's extent excludes with a reason: none of the seven mapped rows is offered in a state its own column 8 sections do not cover. An engine over this slice answers `MissingRulesData` for any request that needs the table, which is the correct answer and not a silence."
+    },
+    {
+      "id": "cylinder-packaging-authorization",
+      "name": "A cylinder's authorisations are all in column 8B",
+      "locator": {
+        "sourceId": "cfr-49-172.101",
+        "citation": "§ 172.101(i)(5)"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [
+        "column-8-packaging-authorizations",
+        "column-8c-bulk-packaging"
+      ],
+      "evidence": "(5) Cylinders. For cylinders, both non-bulk and bulk packaging authorizations are set forth in Column (8B). Notwithstanding a designation of “None” in Column (8C), a bulk cylinder may be used when specified through the section reference in Column (8B).",
+      "status": "mapped",
+      "note": "It overrides the ordinary meaning of “None” in 8C, which `column-8c-bulk-packaging` states. A test must show a bulk cylinder authorised against a “None” in 8C.",
+      "crossReferences": [
+        {
+          "cites": "set forth in Column (8B)",
+          "resolvedBy": "column-8b-non-bulk-packaging"
+        }
+      ]
+    },
+    {
+      "id": "column-9-quantity-limitations",
+      "name": "Columns 9A and 9B state the maximum quantity per package",
+      "locator": {
+        "sourceId": "cfr-49-172.101",
+        "citation": "§ 172.101(j)"
+      },
+      "kind": "value",
+      "scope": "in",
+      "clarity": "clear",
+      "evidence": "(j) Column 9: Quantity limitations. Columns 9A and 9B specify the maximum quantities that may be offered for transportation in one package by passenger-carrying aircraft or passenger-carrying rail car (Column 9A) or by cargo aircraft only (Column 9B), subject to the following:",
+      "status": "mapped",
+      "note": "Two modes in two columns: passenger aircraft or passenger rail car in 9A, cargo aircraft only in 9B. One mapped row prints “Forbidden” in 9A and “30 L” in 9B, which is the pair a test must carry."
+    },
+    {
+      "id": "forbidden-quantity-limit",
+      "name": "“Forbidden” in column 9 bars the mode",
+      "locator": {
+        "sourceId": "cfr-49-172.101",
+        "citation": "§ 172.101(j)(1)"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [
+        "column-9-quantity-limitations"
+      ],
+      "evidence": "(1) “Forbidden” means the material may not be offered for transportation or transported in the applicable mode of transport.",
+      "status": "mapped",
+      "note": "It bars “the applicable mode”, not transportation as such: a row Forbidden in 9A and limited in 9B is still carried by cargo aircraft. That is the distinction this entry exists to keep away from `forbidden-materials-prohibited`, which is column 3's and bars everything."
+    },
+    {
+      "id": "quantity-limitation-is-net",
+      "name": "A column 9 quantity is net unless the cell says otherwise",
+      "locator": {
+        "sourceId": "cfr-49-172.101",
+        "citation": "§ 172.101(j)(2)"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [
+        "column-9-quantity-limitations"
+      ],
+      "evidence": "(2) The quantity limitation is “net” except where otherwise specified, such as for “Consumer commodity” which specifies “30 kg gross.”",
+      "status": "mapped",
+      "note": "The exception is carried in the cell's own words (“30 kg gross”), so an engine reading column 9 has to read the units and not only the number."
+    },
+    {
+      "id": "article-quantity-limitation",
+      "name": "An article's limit applies to the whole article",
+      "locator": {
+        "sourceId": "cfr-49-172.101",
+        "citation": "§ 172.101(j)(3)"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [
+        "column-9-quantity-limitations",
+        "quantity-limitation-is-net"
+      ],
+      "evidence": "(3) When articles or devices are specifically listed by name, the net quantity limitation applies to the entire article or device (less packaging and packaging materials) rather than only to its hazardous components.",
+      "status": "mapped",
+      "note": "Less packaging and packaging materials, and not only the hazardous components. None of the seven mapped rows is an article, so a test needs a constructed one."
+    },
+    {
+      "id": "cargo-aircraft-only-label",
+      "name": "A package over the passenger limit takes the CARGO AIRCRAFT ONLY label",
+      "locator": {
+        "sourceId": "cfr-49-172.101",
+        "citation": "§ 172.101(j)(4)"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [
+        "column-9-quantity-limitations",
+        "forbidden-quantity-limit"
+      ],
+      "evidence": "(4) A package offered or intended for transportation by aircraft and which is filled with a material forbidden on passenger-carrying aircraft but permitted on cargo aircraft only, or which exceeds the maximum net quantity authorized on passenger-carrying aircraft, shall be labelled with the CARGO AIRCRAFT ONLY label specified in § 172.448 of this part.",
+      "status": "mapped",
+      "note": "Two triggers: forbidden on passenger aircraft, or over the 9A quantity. The Acetaldehyde row is the first and the Alkali metal amalgam row is the first as well, so a test must construct the second.",
+      "crossReferences": [
+        {
+          "cites": "§ 172.448 of this part",
+          "unmapped": "§ 172.448 is in part 172, outside the two sections the manifest admits, which this map does not admit and no entry of it states; the manifest records the boundary"
+        }
+      ]
+    },
+    {
+      "id": "mixed-contents-quantity-limit",
+      "name": "An outer packaging with several materials takes the lowest limit",
+      "locator": {
+        "sourceId": "cfr-49-172.101",
+        "citation": "§ 172.101(j)(5)"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [
+        "column-9-quantity-limitations"
+      ],
+      "evidence": "(5) The total net quantity of hazardous material for an outer non-bulk packaging that contains more than one hazardous material may not exceed the lowest permitted maximum net quantity per package as shown in Column 9A or 9B, as appropriate. If one material is a liquid and one is a solid, the maximum net quantity must be calculated in kilograms. See § 173.24a(c)(1)(iv).",
+      "status": "mapped",
+      "note": "And where one material is a liquid and another a solid, the total is computed in kilograms. A test must show the unit conversion, not only the minimum.",
+      "crossReferences": [
+        {
+          "cites": "§ 173.24",
+          "unmapped": "§ 173.24 is in part 173, the shippers' packaging requirements, which this map does not admit and no entry of it states; the manifest records the boundary"
+        }
+      ]
+    },
+    {
+      "id": "column-10-vessel-stowage",
+      "name": "Column 10 states the vessel stowage location and provisions",
+      "locator": {
+        "sourceId": "cfr-49-172.101",
+        "citation": "§ 172.101(k)"
+      },
+      "kind": "value",
+      "scope": "out",
+      "clarity": "clear",
+      "evidence": "(k) Column 10: Vessel stowage requirements. Column 10A [Vessel stowage] specifies the authorized stowage locations on board cargo and passenger vessels. Column 10B [Other provisions] specifies codes for stowage and handling requirements for specific hazardous materials. Hazardous materials offered for transportation as limited quantities are allocated stowage category A and are not subject to the stowage codes assigned by column 10B. The meaning of each code in Column 10B is set forth in § 176.84 of this subchapter. Section 176.63 of this subchapter sets forth the physical requirements for each of the authorized locations listed in Column 10A. (For bulk transportation by vessel, see 46 CFR parts 30 to 40, 70, 98, 148, 151, 153 and 154.) The authorized stowage locations specified in Column 10A are defined as follows:",
+      "status": "declined",
+      "note": "Outside the slice settled in examples/hazmat-172-table/README.md. The seven mapped rows still print their 10A and 10B cells, because 0035 keeps a row's columns, and the meanings of the 10B codes are § 176.84's, which the manifest lists as referenced and not admitted. Read and declined, which is not the same verdict as unread: this entry is what records the difference for (k) and its ten stowage categories.",
+      "crossReferences": [
+        {
+          "cites": "set forth in § 176.84 of this subchapter",
+          "unmapped": "§ 176.84 is in part 176, carriage by vessel, which this map does not admit and no entry of it states; the manifest records the boundary"
+        },
+        {
+          "cites": "of this subchapter",
+          "unmapped": "“this subchapter” is 49 CFR subchapter C, of which the manifest admits § 172.101 and § 172.102 and nothing else; what this phrase carries is outside both and no entry of this map states it"
+        }
+      ]
+    },
+    {
+      "id": "changes-to-the-table",
+      "name": "Changes to the Table, and their transitional effect",
+      "locator": {
+        "sourceId": "cfr-49-172.101",
+        "citation": "§ 172.101(l)"
+      },
+      "kind": "value",
+      "scope": "out",
+      "clarity": "clear",
+      "evidence": "(l) Changes to the Table. (1) Unless specifically stated otherwise in a rule document published in the Federal Register amending the Table—",
+      "status": "declined",
+      "note": "Outside the slice settled in the admission record. It is corpus versioning stated inside the corpus — which package a change reaches, and for how long preprinted paperwork stays usable — and this map is pinned to one baseline, so nothing in it can be true or false of another. Its (l)(1)(i) is also the one paragraph of § 172.101 the citation grammar refuses outright, declared in `extent.unreachable`."
+    },
+    {
+      "id": "label-code-3-flammable-liquid",
+      "name": "Label code 3 names the Flammable Liquid label",
+      "locator": {
+        "sourceId": "cfr-49-172.101",
+        "citation": "§ 172.101 table 1, row [column 1 = \"3\"]"
+      },
+      "kind": "value",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [
+        "column-6-label-codes"
+      ],
+      "defines": [
+        {
+          "vocabulary": "hazard-label-codes",
+          "term": "3"
+        }
+      ],
+      "evidence": "3 | Flammable Liquid",
+      "status": "mapped",
+      "note": "A row of the Label Substitution Table, the table § 172.101(g) says defines the column 6 codes. Its caption is “Label Substitution Table”. It is one of the two vocabularies the protocol's `coded-pointer` mechanisms read, and it is distributed over these rows rather than stated in a list anywhere (0045): no passage of § 172.101 prints the codes together."
+    },
+    {
+      "id": "label-code-4-3-dangerous-when-wet",
+      "name": "Label code 4.3 names the Dangerous When Wet label",
+      "locator": {
+        "sourceId": "cfr-49-172.101",
+        "citation": "§ 172.101 table 1, row [column 1 = \"4.3\"]"
+      },
+      "kind": "value",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [
+        "column-6-label-codes"
+      ],
+      "defines": [
+        {
+          "vocabulary": "hazard-label-codes",
+          "term": "4.3"
+        }
+      ],
+      "evidence": "4.3 | Dangerous When Wet",
+      "status": "mapped",
+      "note": "A row of the Label Substitution Table, the table § 172.101(g) says defines the column 6 codes. Its caption is “Label Substitution Table”. It is one of the two vocabularies the protocol's `coded-pointer` mechanisms read, and it is distributed over these rows rather than stated in a list anywhere (0045): no passage of § 172.101 prints the codes together."
+    },
+    {
+      "id": "label-code-8-corrosive",
+      "name": "Label code 8 names the Corrosive label",
+      "locator": {
+        "sourceId": "cfr-49-172.101",
+        "citation": "§ 172.101 table 1, row [column 1 = \"8\"]"
+      },
+      "kind": "value",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [
+        "column-6-label-codes"
+      ],
+      "defines": [
+        {
+          "vocabulary": "hazard-label-codes",
+          "term": "8"
+        }
+      ],
+      "evidence": "8 | Corrosive",
+      "status": "mapped",
+      "note": "A row of the Label Substitution Table, the table § 172.101(g) says defines the column 6 codes. Its caption is “Label Substitution Table”. It is one of the two vocabularies the protocol's `coded-pointer` mechanisms read, and it is distributed over these rows rather than stated in a list anywhere (0045): no passage of § 172.101 prints the codes together."
+    },
+    {
+      "id": "acetal-proper-shipping-name",
+      "name": "Proper shipping name: Acetal",
+      "locator": {
+        "sourceId": "cfr-49-172.101",
+        "citation": "§ 172.101 table 3, row [column 2 = \"Acetal\"], column 2"
+      },
+      "kind": "value",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [
+        "column-2-proper-shipping-names",
+        "italics-not-part-of-psn"
+      ],
+      "evidence": "Acetal",
+      "status": "mapped",
+      "note": "The whole cell is the proper shipping name; nothing in it is italic, so the extraction and the printed page agree. The rule is row x column: the cell's words are the proper shipping name because the cell sits in column 2 of the Hazardous Materials Table, and what carries that is the citation (0035), not the quote."
+    },
+    {
+      "id": "acetaldehyde-proper-shipping-name",
+      "name": "Proper shipping name: Acetaldehyde",
+      "locator": {
+        "sourceId": "cfr-49-172.101",
+        "citation": "§ 172.101 table 3, row [column 2 = \"Acetaldehyde\"], column 2"
+      },
+      "kind": "value",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [
+        "column-2-proper-shipping-names",
+        "italics-not-part-of-psn"
+      ],
+      "evidence": "Acetaldehyde",
+      "status": "mapped",
+      "note": "The whole cell is the proper shipping name, with no italics. The rule is row x column: the cell's words are the proper shipping name because the cell sits in column 2 of the Hazardous Materials Table, and what carries that is the citation (0035), not the quote."
+    },
+    {
+      "id": "acetic-acid-glacial-proper-shipping-name",
+      "name": "Proper shipping name: Acetic acid, glacial (over 80 percent)",
+      "locator": {
+        "sourceId": "cfr-49-172.101",
+        "citation": "§ 172.101 table 3, row [column 2 = \"Acetic acid, glacial or Acetic acid solution, with more than 80 percent acid, by mass\"], column 2"
+      },
+      "kind": "value",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [
+        "column-2-proper-shipping-names",
+        "italics-not-part-of-psn"
+      ],
+      "beyondAdapter": {
+        "adapter": "ecfr-xml",
+        "modality": "italic emphasis"
+      },
+      "evidence": "Acetic acid, glacial or Acetic acid solution, with more than 80 percent acid, by mass",
+      "status": "mapped",
+      "note": "The printed page sets “or” and “with more than 80 percent acid, by mass” in italics (<E T=\"03\"> in the corpus), and § 172.101(c)(2) makes that load-bearing: the italic “or” offers a choice of two names and the italic qualifier is not part of either. The `ecfr-xml` adapter's cell text is \"\".join(cell.itertext()), which flattens the tag, so the extraction cannot tell which words are italic and this entry cannot be resolved from it. The rendered reading is that the proper shipping name is either “Acetic acid, glacial” or “Acetic acid solution”. The rule is row x column: the cell's words are the proper shipping name because the cell sits in column 2 of the Hazardous Materials Table, and what carries that is the citation (0035), not the quote."
+    },
+    {
+      "id": "acetic-acid-50-to-80-proper-shipping-name",
+      "name": "Proper shipping name: Acetic acid solution, 50 to 80 percent",
+      "locator": {
+        "sourceId": "cfr-49-172.101",
+        "citation": "§ 172.101 table 3, row [column 2 = \"Acetic acid solution, not less than 50 percent but not more than 80 percent acid, by mass\"], column 2"
+      },
+      "kind": "value",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [
+        "column-2-proper-shipping-names",
+        "italics-not-part-of-psn"
+      ],
+      "evidence": "Acetic acid solution, not less than 50 percent but not more than 80 percent acid, by mass",
+      "status": "mapped",
+      "note": "No italics on the printed page: the concentration band is part of the proper shipping name here, which is what distinguishes this row from the glacial row above it. The rule is row x column: the cell's words are the proper shipping name because the cell sits in column 2 of the Hazardous Materials Table, and what carries that is the citation (0035), not the quote."
+    },
+    {
+      "id": "acetic-acid-10-to-50-proper-shipping-name",
+      "name": "Proper shipping name: Acetic acid solution, over 10 and under 50 percent",
+      "locator": {
+        "sourceId": "cfr-49-172.101",
+        "citation": "§ 172.101 table 3, row [column 2 = \"Acetic acid solution, with more than 10 percent and less than 50 percent acid, by mass\"], column 2"
+      },
+      "kind": "value",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [
+        "column-2-proper-shipping-names",
+        "italics-not-part-of-psn"
+      ],
+      "evidence": "Acetic acid solution, with more than 10 percent and less than 50 percent acid, by mass",
+      "status": "mapped",
+      "note": "No italics, as with the 50-to-80 band. Three rows of one acid state three bands, two identification numbers and two packing groups between them, and the only thing telling them apart is this cell. The rule is row x column: the cell's words are the proper shipping name because the cell sits in column 2 of the Hazardous Materials Table, and what carries that is the citation (0035), not the quote."
+    },
+    {
+      "id": "acetyl-acetone-peroxide-proper-shipping-name",
+      "name": "Proper shipping name: Acetyl acetone peroxide over 9 percent active oxygen",
+      "locator": {
+        "sourceId": "cfr-49-172.101",
+        "citation": "§ 172.101 table 3, row [column 2 = \"Acetyl acetone peroxide with more than 9 percent by mass active oxygen\"], column 2"
+      },
+      "kind": "value",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [
+        "column-2-proper-shipping-names",
+        "italics-not-part-of-psn"
+      ],
+      "beyondAdapter": {
+        "adapter": "ecfr-xml",
+        "modality": "italic emphasis"
+      },
+      "evidence": "Acetyl acetone peroxide with more than 9 percent by mass active oxygen",
+      "status": "mapped",
+      "note": "The whole cell is italic on the printed page, so by § 172.101(c)(2) none of it is part of a proper shipping name — which is coherent with column 3 saying “Forbidden”, since a material that may not be offered has nothing to be named on a shipping paper. The extraction flattens the tag and cannot carry that, so the entry is beyond this adapter's reach and its rendered reading is not verified by anything mechanical. The rule is row x column: the cell's words are the proper shipping name because the cell sits in column 2 of the Hazardous Materials Table, and what carries that is the citation (0035), not the quote."
+    },
+    {
+      "id": "alkali-metal-amalgam-proper-shipping-name",
+      "name": "Proper shipping name: Alkali metal amalgam, solid",
+      "locator": {
+        "sourceId": "cfr-49-172.101",
+        "citation": "§ 172.101 table 3, row [column 2 = \"Alkali metal amalgam, solid\"], column 2"
+      },
+      "kind": "value",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [
+        "column-2-proper-shipping-names",
+        "italics-not-part-of-psn"
+      ],
+      "evidence": "Alkali metal amalgam, solid",
+      "status": "mapped",
+      "note": "No italics. “solid” is part of the printed name rather than a qualifier added under § 172.101(c)(8). The rule is row x column: the cell's words are the proper shipping name because the cell sits in column 2 of the Hazardous Materials Table, and what carries that is the citation (0035), not the quote."
+    },
+    {
+      "id": "acetal-classification",
+      "name": "Classification: Acetal",
+      "locator": {
+        "sourceId": "cfr-49-172.101",
+        "citation": "§ 172.101 table 3, row [column 2 = \"Acetal\"]"
+      },
+      "kind": "value",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [
+        "column-3-hazard-class",
+        "column-4-identification-number",
+        "column-5-packing-group"
+      ],
+      "evidence": "3 | UN1088 | II",
+      "status": "mapped",
+      "note": "Class 3, UN1088, packing group II. The ordinary case, and the one a test should use as its control. Three cells in one contiguous span of the row, which the row citation holds the quote to. Splitting them into three entries would have produced three quotes of one token each, and the corpus states one classification."
+    },
+    {
+      "id": "acetaldehyde-classification",
+      "name": "Classification: Acetaldehyde",
+      "locator": {
+        "sourceId": "cfr-49-172.101",
+        "citation": "§ 172.101 table 3, row [column 2 = \"Acetaldehyde\"]"
+      },
+      "kind": "value",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [
+        "column-3-hazard-class",
+        "column-4-identification-number",
+        "column-5-packing-group"
+      ],
+      "evidence": "3 | UN1089 | I",
+      "status": "mapped",
+      "note": "Class 3, UN1089, packing group I — the only packing group I row in the slice, and the row whose aircraft limits disagree with each other. Three cells in one contiguous span of the row, which the row citation holds the quote to. Splitting them into three entries would have produced three quotes of one token each, and the corpus states one classification."
+    },
+    {
+      "id": "acetic-acid-glacial-classification",
+      "name": "Classification: Acetic acid, glacial (over 80 percent)",
+      "locator": {
+        "sourceId": "cfr-49-172.101",
+        "citation": "§ 172.101 table 3, row [column 2 = \"Acetic acid, glacial or Acetic acid solution, with more than 80 percent acid, by mass\"]"
+      },
+      "kind": "value",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [
+        "column-3-hazard-class",
+        "column-4-identification-number",
+        "column-5-packing-group"
+      ],
+      "evidence": "8 | UN2789 | II",
+      "status": "mapped",
+      "note": "Class 8, UN2789, packing group II. Three cells in one contiguous span of the row, which the row citation holds the quote to. Splitting them into three entries would have produced three quotes of one token each, and the corpus states one classification."
+    },
+    {
+      "id": "acetic-acid-50-to-80-classification",
+      "name": "Classification: Acetic acid solution, 50 to 80 percent",
+      "locator": {
+        "sourceId": "cfr-49-172.101",
+        "citation": "§ 172.101 table 3, row [column 2 = \"Acetic acid solution, not less than 50 percent but not more than 80 percent acid, by mass\"]"
+      },
+      "kind": "value",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [
+        "column-3-hazard-class",
+        "column-4-identification-number",
+        "column-5-packing-group"
+      ],
+      "evidence": "8 | UN2790 | II",
+      "status": "mapped",
+      "note": "Class 8, UN2790, packing group II. The identification number changes between this row and the glacial row above it while the class and packing group do not. Three cells in one contiguous span of the row, which the row citation holds the quote to. Splitting them into three entries would have produced three quotes of one token each, and the corpus states one classification."
+    },
+    {
+      "id": "acetic-acid-10-to-50-classification",
+      "name": "Classification: Acetic acid solution, over 10 and under 50 percent",
+      "locator": {
+        "sourceId": "cfr-49-172.101",
+        "citation": "§ 172.101 table 3, row [column 2 = \"Acetic acid solution, with more than 10 percent and less than 50 percent acid, by mass\"]"
+      },
+      "kind": "value",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [
+        "column-3-hazard-class",
+        "column-4-identification-number",
+        "column-5-packing-group"
+      ],
+      "evidence": "8 | UN2790 | III",
+      "status": "mapped",
+      "note": "Class 8, UN2790, packing group III. The identification number is the same as the 50-to-80 band and the packing group is not, which is the pair that makes a wrong concentration threshold look like a plausible map. Three cells in one contiguous span of the row, which the row citation holds the quote to. Splitting them into three entries would have produced three quotes of one token each, and the corpus states one classification."
+    },
+    {
+      "id": "alkali-metal-amalgam-classification",
+      "name": "Classification: Alkali metal amalgam, solid",
+      "locator": {
+        "sourceId": "cfr-49-172.101",
+        "citation": "§ 172.101 table 3, row [column 2 = \"Alkali metal amalgam, solid\"]"
+      },
+      "kind": "value",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [
+        "column-3-hazard-class",
+        "column-4-identification-number",
+        "column-5-packing-group"
+      ],
+      "evidence": "4.3 | UN3401 | I",
+      "status": "mapped",
+      "note": "Division 4.3, UN3401, packing group I. Three cells in one contiguous span of the row, which the row citation holds the quote to. Splitting them into three entries would have produced three quotes of one token each, and the corpus states one classification."
+    },
+    {
+      "id": "acetyl-acetone-peroxide-forbidden",
+      "name": "Acetyl acetone peroxide over 9 percent active oxygen is forbidden",
+      "locator": {
+        "sourceId": "cfr-49-172.101",
+        "citation": "§ 172.101 table 3, row [column 2 = \"Acetyl acetone peroxide with more than 9 percent by mass active oxygen\"], column 3"
+      },
+      "kind": "value",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [
+        "column-3-hazard-class",
+        "forbidden-materials-prohibited"
+      ],
+      "evidence": "Forbidden",
+      "status": "mapped",
+      "note": "Column 3 prints “Forbidden” and every cell after it is empty: no identification number, no packing group, no label code, no special provision, no packaging section and no quantity limit. The empty cells are quotable (0035) and quoting them would state no rule, so this row produces two entries rather than the six every other mapped row produces. That the row is short is the corpus's decision, not the mapper's."
+    },
+    {
+      "id": "acetal-label-codes",
+      "name": "Label codes: Acetal",
+      "locator": {
+        "sourceId": "cfr-49-172.101",
+        "citation": "§ 172.101 table 3, row [column 2 = \"Acetal\"], column 6"
+      },
+      "kind": "value",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [
+        "column-6-label-codes",
+        "label-code-3-flammable-liquid"
+      ],
+      "crossReferences": [
+        {
+          "cites": "3",
+          "resolvedBy": "label-code-3-flammable-liquid"
+        }
+      ],
+      "evidence": "3",
+      "status": "mapped",
+      "note": "Each token is a pointer into § 172.101 table 1 because of the column it sits in and not because of anything in its own text (0041): the same characters in column 3 are a hazard class and in column 7 a special provision. This entry is one of the cells the protocol's column 6 `coded-pointer` reads."
+    },
+    {
+      "id": "acetaldehyde-label-codes",
+      "name": "Label codes: Acetaldehyde",
+      "locator": {
+        "sourceId": "cfr-49-172.101",
+        "citation": "§ 172.101 table 3, row [column 2 = \"Acetaldehyde\"], column 6"
+      },
+      "kind": "value",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [
+        "column-6-label-codes",
+        "label-code-3-flammable-liquid"
+      ],
+      "crossReferences": [
+        {
+          "cites": "3",
+          "resolvedBy": "label-code-3-flammable-liquid"
+        }
+      ],
+      "evidence": "3",
+      "status": "mapped",
+      "note": "Each token is a pointer into § 172.101 table 1 because of the column it sits in and not because of anything in its own text (0041): the same characters in column 3 are a hazard class and in column 7 a special provision. This entry is one of the cells the protocol's column 6 `coded-pointer` reads."
+    },
+    {
+      "id": "acetic-acid-glacial-label-codes",
+      "name": "Label codes: Acetic acid, glacial (over 80 percent)",
+      "locator": {
+        "sourceId": "cfr-49-172.101",
+        "citation": "§ 172.101 table 3, row [column 2 = \"Acetic acid, glacial or Acetic acid solution, with more than 80 percent acid, by mass\"], column 6"
+      },
+      "kind": "value",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [
+        "column-6-label-codes",
+        "label-code-8-corrosive",
+        "label-code-3-flammable-liquid"
+      ],
+      "crossReferences": [
+        {
+          "cites": "8",
+          "resolvedBy": "label-code-8-corrosive"
+        },
+        {
+          "cites": "3",
+          "resolvedBy": "label-code-3-flammable-liquid"
+        }
+      ],
+      "evidence": "8, 3",
+      "status": "mapped",
+      "note": "The first code is the primary hazard and any that follow are subsidiary (§ 172.101(g)). Each token is a pointer into § 172.101 table 1 because of the column it sits in and not because of anything in its own text (0041): the same characters in column 3 are a hazard class and in column 7 a special provision. This entry is one of the cells the protocol's column 6 `coded-pointer` reads."
+    },
+    {
+      "id": "acetic-acid-50-to-80-label-codes",
+      "name": "Label codes: Acetic acid solution, 50 to 80 percent",
+      "locator": {
+        "sourceId": "cfr-49-172.101",
+        "citation": "§ 172.101 table 3, row [column 2 = \"Acetic acid solution, not less than 50 percent but not more than 80 percent acid, by mass\"], column 6"
+      },
+      "kind": "value",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [
+        "column-6-label-codes",
+        "label-code-8-corrosive"
+      ],
+      "crossReferences": [
+        {
+          "cites": "8",
+          "resolvedBy": "label-code-8-corrosive"
+        }
+      ],
+      "evidence": "8",
+      "status": "mapped",
+      "note": "Each token is a pointer into § 172.101 table 1 because of the column it sits in and not because of anything in its own text (0041): the same characters in column 3 are a hazard class and in column 7 a special provision. This entry is one of the cells the protocol's column 6 `coded-pointer` reads."
+    },
+    {
+      "id": "acetic-acid-10-to-50-label-codes",
+      "name": "Label codes: Acetic acid solution, over 10 and under 50 percent",
+      "locator": {
+        "sourceId": "cfr-49-172.101",
+        "citation": "§ 172.101 table 3, row [column 2 = \"Acetic acid solution, with more than 10 percent and less than 50 percent acid, by mass\"], column 6"
+      },
+      "kind": "value",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [
+        "column-6-label-codes",
+        "label-code-8-corrosive"
+      ],
+      "crossReferences": [
+        {
+          "cites": "8",
+          "resolvedBy": "label-code-8-corrosive"
+        }
+      ],
+      "evidence": "8",
+      "status": "mapped",
+      "note": "Each token is a pointer into § 172.101 table 1 because of the column it sits in and not because of anything in its own text (0041): the same characters in column 3 are a hazard class and in column 7 a special provision. This entry is one of the cells the protocol's column 6 `coded-pointer` reads."
+    },
+    {
+      "id": "alkali-metal-amalgam-label-codes",
+      "name": "Label codes: Alkali metal amalgam, solid",
+      "locator": {
+        "sourceId": "cfr-49-172.101",
+        "citation": "§ 172.101 table 3, row [column 2 = \"Alkali metal amalgam, solid\"], column 6"
+      },
+      "kind": "value",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [
+        "column-6-label-codes",
+        "label-code-4-3-dangerous-when-wet"
+      ],
+      "crossReferences": [
+        {
+          "cites": "4.3",
+          "resolvedBy": "label-code-4-3-dangerous-when-wet"
+        }
+      ],
+      "evidence": "4.3",
+      "status": "mapped",
+      "note": "Each token is a pointer into § 172.101 table 1 because of the column it sits in and not because of anything in its own text (0041): the same characters in column 3 are a hazard class and in column 7 a special provision. This entry is one of the cells the protocol's column 6 `coded-pointer` reads."
+    },
+    {
+      "id": "acetal-special-provisions",
+      "name": "Special provisions: Acetal",
+      "locator": {
+        "sourceId": "cfr-49-172.101",
+        "citation": "§ 172.101 table 3, row [column 2 = \"Acetal\"], column 7"
+      },
+      "kind": "value",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [
+        "column-7-special-provisions"
+      ],
+      "crossReferences": [
+        {
+          "cites": "IB2",
+          "resolvedBy": "ib2-authorized-ibcs"
+        },
+        {
+          "cites": "IB2",
+          "resolvedBy": "ib2-vapour-pressure-limit"
+        },
+        {
+          "cites": "T4",
+          "resolvedBy": "t4-portable-tank-instruction"
+        },
+        {
+          "cites": "TP1",
+          "resolvedBy": "sp-tp1-degree-of-filling"
+        }
+      ],
+      "evidence": "IB2, T4, TP1",
+      "status": "mapped",
+      "note": "Three codes, one of each shape the slice reaches: an IB code, a T code and a TP code. This is the cell the trial's H1 decomposition was attempted on — see the `ib2-authorized-ibcs` and `ib2-vapour-pressure-limit` notes for what it cost. The cell states which provisions are assigned; what each one requires is stated in § 172.102 and is a separate entry there, so the pointer is answered in `crossReferences` and the rule is not restated here."
+    },
+    {
+      "id": "acetaldehyde-special-provisions",
+      "name": "Special provisions: Acetaldehyde",
+      "locator": {
+        "sourceId": "cfr-49-172.101",
+        "citation": "§ 172.101 table 3, row [column 2 = \"Acetaldehyde\"], column 7"
+      },
+      "kind": "value",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [
+        "column-7-special-provisions"
+      ],
+      "crossReferences": [
+        {
+          "cites": "B16",
+          "resolvedBy": "sp-b16-lading-covered-with-inert-gas"
+        },
+        {
+          "cites": "T11",
+          "resolvedBy": "t11-portable-tank-instruction"
+        },
+        {
+          "cites": "TP2",
+          "resolvedBy": "sp-tp2-degree-of-filling"
+        },
+        {
+          "cites": "TP7",
+          "resolvedBy": "sp-tp7-vapour-space-purged"
+        }
+      ],
+      "evidence": "B16, T11, TP2, TP7",
+      "status": "mapped",
+      "note": "A bulk code, a portable tank instruction and two portable tank provisions. The cell states which provisions are assigned; what each one requires is stated in § 172.102 and is a separate entry there, so the pointer is answered in `crossReferences` and the rule is not restated here."
+    },
+    {
+      "id": "acetic-acid-glacial-special-provisions",
+      "name": "Special provisions: Acetic acid, glacial (over 80 percent)",
+      "locator": {
+        "sourceId": "cfr-49-172.101",
+        "citation": "§ 172.101 table 3, row [column 2 = \"Acetic acid, glacial or Acetic acid solution, with more than 80 percent acid, by mass\"], column 7"
+      },
+      "kind": "value",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [
+        "column-7-special-provisions"
+      ],
+      "crossReferences": [
+        {
+          "cites": "A3",
+          "resolvedBy": "sp-a3-glass-inner-packagings"
+        },
+        {
+          "cites": "A7",
+          "resolvedBy": "sp-a7-steel-corrosion-resistance"
+        },
+        {
+          "cites": "A10",
+          "resolvedBy": "sp-a10-aluminium-corrosion-resistance"
+        },
+        {
+          "cites": "B2",
+          "resolvedBy": "sp-b2-cargo-tanks-not-authorized"
+        },
+        {
+          "cites": "IB2",
+          "resolvedBy": "ib2-authorized-ibcs"
+        },
+        {
+          "cites": "IB2",
+          "resolvedBy": "ib2-vapour-pressure-limit"
+        },
+        {
+          "cites": "T7",
+          "resolvedBy": "t7-portable-tank-instruction"
+        },
+        {
+          "cites": "TP2",
+          "resolvedBy": "sp-tp2-degree-of-filling"
+        }
+      ],
+      "evidence": "A3, A7, A10, B2, IB2, T7, TP2",
+      "status": "mapped",
+      "note": "Seven codes and three modal shapes — three A codes binding air alone, one B code binding bulk alone, and an IB/T/TP group. The cell states which provisions are assigned; what each one requires is stated in § 172.102 and is a separate entry there, so the pointer is answered in `crossReferences` and the rule is not restated here."
+    },
+    {
+      "id": "acetic-acid-50-to-80-special-provisions",
+      "name": "Special provisions: Acetic acid solution, 50 to 80 percent",
+      "locator": {
+        "sourceId": "cfr-49-172.101",
+        "citation": "§ 172.101 table 3, row [column 2 = \"Acetic acid solution, not less than 50 percent but not more than 80 percent acid, by mass\"], column 7"
+      },
+      "kind": "value",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [
+        "column-7-special-provisions"
+      ],
+      "crossReferences": [
+        {
+          "cites": "148",
+          "resolvedBy": "sp-148-blasting-materials"
+        },
+        {
+          "cites": "A3",
+          "resolvedBy": "sp-a3-glass-inner-packagings"
+        },
+        {
+          "cites": "A7",
+          "resolvedBy": "sp-a7-steel-corrosion-resistance"
+        },
+        {
+          "cites": "A10",
+          "resolvedBy": "sp-a10-aluminium-corrosion-resistance"
+        },
+        {
+          "cites": "B2",
+          "resolvedBy": "sp-b2-cargo-tanks-not-authorized"
+        },
+        {
+          "cites": "IB2",
+          "resolvedBy": "ib2-authorized-ibcs"
+        },
+        {
+          "cites": "IB2",
+          "resolvedBy": "ib2-vapour-pressure-limit"
+        },
+        {
+          "cites": "T7",
+          "resolvedBy": "t7-portable-tank-instruction"
+        },
+        {
+          "cites": "TP2",
+          "resolvedBy": "sp-tp2-degree-of-filling"
+        }
+      ],
+      "evidence": "148, A3, A7, A10, B2, IB2, T7, TP2",
+      "status": "mapped",
+      "note": "The same seven as the glacial row plus numeric provision 148, which is the multi-modal shape. The numeral is the token that made a lexical detector wrong (#307): `148` also occurs in this map in column 10B of another row, where it is a vessel stowage code. The cell states which provisions are assigned; what each one requires is stated in § 172.102 and is a separate entry there, so the pointer is answered in `crossReferences` and the rule is not restated here."
+    },
+    {
+      "id": "acetic-acid-10-to-50-special-provisions",
+      "name": "Special provisions: Acetic acid solution, over 10 and under 50 percent",
+      "locator": {
+        "sourceId": "cfr-49-172.101",
+        "citation": "§ 172.101 table 3, row [column 2 = \"Acetic acid solution, with more than 10 percent and less than 50 percent acid, by mass\"], column 7"
+      },
+      "kind": "value",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [
+        "column-7-special-provisions"
+      ],
+      "crossReferences": [
+        {
+          "cites": "148",
+          "resolvedBy": "sp-148-blasting-materials"
+        },
+        {
+          "cites": "IB3",
+          "resolvedBy": "ib3-authorized-ibcs"
+        },
+        {
+          "cites": "IB3",
+          "resolvedBy": "ib3-authorized-large-packagings"
+        },
+        {
+          "cites": "IB3",
+          "resolvedBy": "ib3-vapour-pressure-limit"
+        },
+        {
+          "cites": "T4",
+          "resolvedBy": "t4-portable-tank-instruction"
+        },
+        {
+          "cites": "TP1",
+          "resolvedBy": "sp-tp1-degree-of-filling"
+        }
+      ],
+      "evidence": "148, IB3, T4, TP1",
+      "status": "mapped",
+      "note": "Four codes, and the packing group III band takes IB3 where the two stronger bands take IB2. IB3 is the code § 172.102 states twice, in two tables, so this cell declares two defining entries for one printed token (0044). The cell states which provisions are assigned; what each one requires is stated in § 172.102 and is a separate entry there, so the pointer is answered in `crossReferences` and the rule is not restated here."
+    },
+    {
+      "id": "alkali-metal-amalgam-special-provisions",
+      "name": "Special provisions: Alkali metal amalgam, solid",
+      "locator": {
+        "sourceId": "cfr-49-172.101",
+        "citation": "§ 172.101 table 3, row [column 2 = \"Alkali metal amalgam, solid\"], column 7"
+      },
+      "kind": "value",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [
+        "column-7-special-provisions"
+      ],
+      "crossReferences": [
+        {
+          "cites": "IB4",
+          "resolvedBy": "ib4-authorized-ibcs"
+        },
+        {
+          "cites": "IP1",
+          "resolvedBy": "ip1-closed-freight-containers"
+        },
+        {
+          "cites": "N40",
+          "resolvedBy": "sp-n40-packagings-not-authorized"
+        },
+        {
+          "cites": "T9",
+          "resolvedBy": "t9-portable-tank-instruction"
+        },
+        {
+          "cites": "TP7",
+          "resolvedBy": "sp-tp7-vapour-space-purged"
+        },
+        {
+          "cites": "TP33",
+          "resolvedBy": "sp-tp33-molten-solids"
+        },
+        {
+          "cites": "W31",
+          "resolvedBy": "sp-w31-non-bulk-hermetically-sealed"
+        }
+      ],
+      "evidence": "IB4, IP1, N40, T9, TP7, TP33, W31",
+      "status": "mapped",
+      "note": "Seven codes and the widest modal spread in the slice: N40 binds non-bulk packagings only and W31 water only, which is what H3 is about. Both reach this row and neither is visible in the cell's text — the letters are the corpus's own encoding and § 172.102(b) is where it is stated. The cell states which provisions are assigned; what each one requires is stated in § 172.102 and is a separate entry there, so the pointer is answered in `crossReferences` and the rule is not restated here."
+    },
+    {
+      "id": "acetal-packaging-authorizations",
+      "name": "Packaging authorisations: Acetal",
+      "locator": {
+        "sourceId": "cfr-49-172.101",
+        "citation": "§ 172.101 table 3, row [column 2 = \"Acetal\"]"
+      },
+      "kind": "value",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [
+        "column-8a-exceptions",
+        "column-8b-non-bulk-packaging",
+        "column-8c-bulk-packaging",
+        "special-provision-governs-column-8",
+        "acetal-special-provisions"
+      ],
+      "evidence": "150 | 202 | 242",
+      "status": "mapped",
+      "note": "§ 173.150 for exceptions, § 173.202 for non-bulk, § 173.242 for bulk. The three cells are quoted as one contiguous span of the row because the corpus states one packaging authorisation over three columns and § 172.101(i) explains all three together. `special-provision-governs-column-8` is a dependency and not a gate: it does not make this rule reachable or unreachable, it changes the answer, and an engine cannot compute the authorisation without it."
+    },
+    {
+      "id": "acetaldehyde-packaging-authorizations",
+      "name": "Packaging authorisations: Acetaldehyde",
+      "locator": {
+        "sourceId": "cfr-49-172.101",
+        "citation": "§ 172.101 table 3, row [column 2 = \"Acetaldehyde\"]"
+      },
+      "kind": "value",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [
+        "column-8a-exceptions",
+        "column-8b-non-bulk-packaging",
+        "column-8c-bulk-packaging",
+        "special-provision-governs-column-8",
+        "acetaldehyde-special-provisions"
+      ],
+      "evidence": "None | 201 | 243",
+      "status": "mapped",
+      "note": "“None” in 8A means no packaging exception is authorised except through column 7, which is § 172.101(i)(1)'s rule reaching a printed cell. The three cells are quoted as one contiguous span of the row because the corpus states one packaging authorisation over three columns and § 172.101(i) explains all three together. `special-provision-governs-column-8` is a dependency and not a gate: it does not make this rule reachable or unreachable, it changes the answer, and an engine cannot compute the authorisation without it."
+    },
+    {
+      "id": "acetic-acid-glacial-packaging-authorizations",
+      "name": "Packaging authorisations: Acetic acid, glacial (over 80 percent)",
+      "locator": {
+        "sourceId": "cfr-49-172.101",
+        "citation": "§ 172.101 table 3, row [column 2 = \"Acetic acid, glacial or Acetic acid solution, with more than 80 percent acid, by mass\"]"
+      },
+      "kind": "value",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [
+        "column-8a-exceptions",
+        "column-8b-non-bulk-packaging",
+        "column-8c-bulk-packaging",
+        "special-provision-governs-column-8",
+        "acetic-acid-glacial-special-provisions"
+      ],
+      "evidence": "154 | 202 | 243",
+      "status": "mapped",
+      "note": "§ 173.154, § 173.202, § 173.243. The three cells are quoted as one contiguous span of the row because the corpus states one packaging authorisation over three columns and § 172.101(i) explains all three together. `special-provision-governs-column-8` is a dependency and not a gate: it does not make this rule reachable or unreachable, it changes the answer, and an engine cannot compute the authorisation without it."
+    },
+    {
+      "id": "acetic-acid-50-to-80-packaging-authorizations",
+      "name": "Packaging authorisations: Acetic acid solution, 50 to 80 percent",
+      "locator": {
+        "sourceId": "cfr-49-172.101",
+        "citation": "§ 172.101 table 3, row [column 2 = \"Acetic acid solution, not less than 50 percent but not more than 80 percent acid, by mass\"]"
+      },
+      "kind": "value",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [
+        "column-8a-exceptions",
+        "column-8b-non-bulk-packaging",
+        "column-8c-bulk-packaging",
+        "special-provision-governs-column-8",
+        "acetic-acid-50-to-80-special-provisions"
+      ],
+      "evidence": "154 | 202 | 242",
+      "status": "mapped",
+      "note": "The same exceptions and non-bulk section as the glacial row and a different bulk section: 242 where the glacial row says 243. The three cells are quoted as one contiguous span of the row because the corpus states one packaging authorisation over three columns and § 172.101(i) explains all three together. `special-provision-governs-column-8` is a dependency and not a gate: it does not make this rule reachable or unreachable, it changes the answer, and an engine cannot compute the authorisation without it."
+    },
+    {
+      "id": "acetic-acid-10-to-50-packaging-authorizations",
+      "name": "Packaging authorisations: Acetic acid solution, over 10 and under 50 percent",
+      "locator": {
+        "sourceId": "cfr-49-172.101",
+        "citation": "§ 172.101 table 3, row [column 2 = \"Acetic acid solution, with more than 10 percent and less than 50 percent acid, by mass\"]"
+      },
+      "kind": "value",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [
+        "column-8a-exceptions",
+        "column-8b-non-bulk-packaging",
+        "column-8c-bulk-packaging",
+        "special-provision-governs-column-8",
+        "acetic-acid-10-to-50-special-provisions"
+      ],
+      "evidence": "154 | 203 | 242",
+      "status": "mapped",
+      "note": "Packing group III takes § 173.203 for non-bulk where the two stronger bands take § 173.202. The three cells are quoted as one contiguous span of the row because the corpus states one packaging authorisation over three columns and § 172.101(i) explains all three together. `special-provision-governs-column-8` is a dependency and not a gate: it does not make this rule reachable or unreachable, it changes the answer, and an engine cannot compute the authorisation without it."
+    },
+    {
+      "id": "alkali-metal-amalgam-packaging-authorizations",
+      "name": "Packaging authorisations: Alkali metal amalgam, solid",
+      "locator": {
+        "sourceId": "cfr-49-172.101",
+        "citation": "§ 172.101 table 3, row [column 2 = \"Alkali metal amalgam, solid\"]"
+      },
+      "kind": "value",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [
+        "column-8a-exceptions",
+        "column-8b-non-bulk-packaging",
+        "column-8c-bulk-packaging",
+        "special-provision-governs-column-8",
+        "alkali-metal-amalgam-special-provisions"
+      ],
+      "evidence": "None | 211 | 242",
+      "status": "mapped",
+      "note": "“None” in 8A, § 173.211 for non-bulk, § 173.242 for bulk — and column 7's N40 states that three of § 173.211's packagings are not authorised, which is § 172.102(a)(2) working. The three cells are quoted as one contiguous span of the row because the corpus states one packaging authorisation over three columns and § 172.101(i) explains all three together. `special-provision-governs-column-8` is a dependency and not a gate: it does not make this rule reachable or unreachable, it changes the answer, and an engine cannot compute the authorisation without it."
+    },
+    {
+      "id": "acetal-quantity-limitations",
+      "name": "Aircraft quantity limits: Acetal",
+      "locator": {
+        "sourceId": "cfr-49-172.101",
+        "citation": "§ 172.101 table 3, row [column 2 = \"Acetal\"]"
+      },
+      "kind": "value",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [
+        "column-9-quantity-limitations",
+        "quantity-limitation-is-net"
+      ],
+      "evidence": "5 L | 60 L",
+      "status": "mapped",
+      "note": "5 L on passenger aircraft, 60 L on cargo aircraft only. Two cells, one contiguous span, one citation naming the row. The quantity is net unless the cell says otherwise (§ 172.101(j)(2)), and none of these cells says otherwise."
+    },
+    {
+      "id": "acetaldehyde-quantity-limitations",
+      "name": "Aircraft quantity limits: Acetaldehyde",
+      "locator": {
+        "sourceId": "cfr-49-172.101",
+        "citation": "§ 172.101 table 3, row [column 2 = \"Acetaldehyde\"]"
+      },
+      "kind": "value",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [
+        "column-9-quantity-limitations",
+        "forbidden-quantity-limit",
+        "cargo-aircraft-only-label"
+      ],
+      "evidence": "Forbidden | 30 L",
+      "status": "mapped",
+      "note": "The two limits disagree inside one row: “Forbidden” on passenger aircraft and 30 L on cargo aircraft only. That is not a contradiction — § 172.101(j)(1) says “Forbidden” bars the applicable mode and not transportation as such — and an engine that read column 9A as a prohibition would refuse a shipment the corpus permits. Two cells, one contiguous span, one citation naming the row. The quantity is net unless the cell says otherwise (§ 172.101(j)(2)), and none of these cells says otherwise."
+    },
+    {
+      "id": "acetic-acid-glacial-quantity-limitations",
+      "name": "Aircraft quantity limits: Acetic acid, glacial (over 80 percent)",
+      "locator": {
+        "sourceId": "cfr-49-172.101",
+        "citation": "§ 172.101 table 3, row [column 2 = \"Acetic acid, glacial or Acetic acid solution, with more than 80 percent acid, by mass\"]"
+      },
+      "kind": "value",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [
+        "column-9-quantity-limitations",
+        "quantity-limitation-is-net"
+      ],
+      "evidence": "1 L | 30 L",
+      "status": "mapped",
+      "note": "1 L and 30 L. Two cells, one contiguous span, one citation naming the row. The quantity is net unless the cell says otherwise (§ 172.101(j)(2)), and none of these cells says otherwise."
+    },
+    {
+      "id": "acetic-acid-50-to-80-quantity-limitations",
+      "name": "Aircraft quantity limits: Acetic acid solution, 50 to 80 percent",
+      "locator": {
+        "sourceId": "cfr-49-172.101",
+        "citation": "§ 172.101 table 3, row [column 2 = \"Acetic acid solution, not less than 50 percent but not more than 80 percent acid, by mass\"]"
+      },
+      "kind": "value",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [
+        "column-9-quantity-limitations",
+        "quantity-limitation-is-net"
+      ],
+      "evidence": "1 L | 30 L",
+      "status": "mapped",
+      "note": "1 L and 30 L, the same as the glacial row. Two cells, one contiguous span, one citation naming the row. The quantity is net unless the cell says otherwise (§ 172.101(j)(2)), and none of these cells says otherwise."
+    },
+    {
+      "id": "acetic-acid-10-to-50-quantity-limitations",
+      "name": "Aircraft quantity limits: Acetic acid solution, over 10 and under 50 percent",
+      "locator": {
+        "sourceId": "cfr-49-172.101",
+        "citation": "§ 172.101 table 3, row [column 2 = \"Acetic acid solution, with more than 10 percent and less than 50 percent acid, by mass\"]"
+      },
+      "kind": "value",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [
+        "column-9-quantity-limitations",
+        "quantity-limitation-is-net"
+      ],
+      "evidence": "5 L | 60 L",
+      "status": "mapped",
+      "note": "5 L and 60 L: the packing group III band carries five times the packing group II limit at both columns. Two cells, one contiguous span, one citation naming the row. The quantity is net unless the cell says otherwise (§ 172.101(j)(2)), and none of these cells says otherwise."
+    },
+    {
+      "id": "alkali-metal-amalgam-quantity-limitations",
+      "name": "Aircraft quantity limits: Alkali metal amalgam, solid",
+      "locator": {
+        "sourceId": "cfr-49-172.101",
+        "citation": "§ 172.101 table 3, row [column 2 = \"Alkali metal amalgam, solid\"]"
+      },
+      "kind": "value",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [
+        "column-9-quantity-limitations",
+        "forbidden-quantity-limit",
+        "cargo-aircraft-only-label"
+      ],
+      "evidence": "Forbidden | 15 kg",
+      "status": "mapped",
+      "note": "“Forbidden” on passenger aircraft and 15 kg on cargo aircraft only — and the units are mass here where every other mapped row states volume, which § 172.101(j)(5) makes load-bearing for a mixed outer packaging. Two cells, one contiguous span, one citation naming the row. The quantity is net unless the cell says otherwise (§ 172.101(j)(2)), and none of these cells says otherwise."
+    },
+    {
+      "id": "alkali-metal-amalgam-vessel-stowage-codes",
+      "name": "Vessel stowage provisions: Alkali metal amalgam, solid",
+      "locator": {
+        "sourceId": "cfr-49-172.101",
+        "citation": "§ 172.101 table 3, row [column 2 = \"Alkali metal amalgam, solid\"], column 10B"
+      },
+      "kind": "value",
+      "scope": "out",
+      "clarity": "clear",
+      "definedElsewhere": {
+        "reference": "cfr-49-176.84"
+      },
+      "evidence": "13, 52, 148",
+      "status": "declined",
+      "note": "Column 10 is outside the slice settled on #262, and this cell is mapped anyway for one reason: it prints “148”, which is also a special provision code, and it is in column 10B rather than column 7. The protocol's `coded-pointer` reads column 7 and column 6 and nothing else, so this cell's “148” is not detected as a special provision — which is the claim 0041 makes and the measurement #307 recorded when a lexical detector read the same numeral as a pointer twice. What these three codes mean is § 176.84's, referenced and not admitted."
+    },
+    {
+      "id": "special-provision-meaning",
+      "name": "A column 7 special provision means what § 172.102 says it means",
+      "locator": {
+        "sourceId": "cfr-49-172.102",
+        "citation": "§ 172.102(a)"
+      },
+      "kind": "value",
+      "scope": "in",
+      "clarity": "clear",
+      "evidence": "(a) General. When column 7 of the § 172.101 table refers to a special provision for a hazardous material, the meaning and requirements of that provision are as set forth in this section. When a special provision specifies packaging or packaging requirements—",
+      "status": "mapped",
+      "note": "The sentence that closes the loop § 172.101(h) opens, from the other section. It also opens the two-part rule (a)(1) and (a)(2) complete, which is why the lead-in is its own entry: it states where the meaning is, and they state what a packaging provision does.",
+      "crossReferences": [
+        {
+          "cites": "column 7 of the § 172.101 table",
+          "resolvedBy": "column-7-special-provisions"
+        }
+      ]
+    },
+    {
+      "id": "special-provision-additional-to-standard",
+      "name": "A packaging special provision is in addition to the standard packaging requirements",
+      "locator": {
+        "sourceId": "cfr-49-172.102",
+        "citation": "§ 172.102(a)(1)"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [
+        "special-provision-meaning"
+      ],
+      "evidence": "(1) The special provision is in addition to the standard requirements for all packagings prescribed in § 173.24 of this subchapter and any other applicable packaging requirements in subparts A and B of part 173 of this subchapter; and",
+      "status": "mapped",
+      "note": "Additive, not substitutive: § 173.24 and subparts A and B of part 173 still apply. Both are referenced and not admitted, so an engine over this slice can say the provision does not displace them and cannot say what they require.",
+      "crossReferences": [
+        {
+          "cites": "§ 173.24 of this subchapter",
+          "unmapped": "§ 173.24 is in part 173, the shippers' packaging requirements, which this map does not admit and no entry of it states; the manifest records the boundary"
+        },
+        {
+          "cites": "part 173 of this subchapter",
+          "unmapped": "part 173 is in part 173, the shippers' packaging requirements, which this map does not admit and no entry of it states; the manifest records the boundary"
+        }
+      ]
+    },
+    {
+      "id": "special-provision-governs-column-8",
+      "name": "Where a special provision limits column 8, the special provision governs",
+      "locator": {
+        "sourceId": "cfr-49-172.102",
+        "citation": "§ 172.102(a)(2)"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [
+        "special-provision-meaning",
+        "special-provision-additional-to-standard"
+      ],
+      "evidence": "(2) To the extent a special provision imposes limitations or additional requirements on the packaging provisions set forth in column 8 of the § 172.101 table, packagings must conform to the requirements of the special provision.",
+      "status": "mapped",
+      "note": "The precedence rule the admission record calls out as neither a `dependsOn` nor a gate. It is neither: a gate makes a rule reachable or unreachable and this changes the answer a reachable rule gives, so it is an ordinary operation that the affected entries depend on. Every one of the six mapped rows' packaging entries names it in `dependsOn` for that reason, and the `alkali-metal-amalgam-packaging-authorizations` note carries the worked instance: column 8B says § 173.211 and column 7's N40 takes three packagings out of it.",
+      "crossReferences": [
+        {
+          "cites": "column 8 of the § 172.101 table",
+          "resolvedBy": "column-8-packaging-authorizations"
+        }
+      ]
+    },
+    {
+      "id": "special-provision-code-descriptions",
+      "name": "What the shapes of a special provision code mean",
+      "locator": {
+        "sourceId": "cfr-49-172.102",
+        "citation": "§ 172.102(b)"
+      },
+      "kind": "value",
+      "scope": "in",
+      "clarity": "clear",
+      "evidence": "(b) Description of codes for special provisions. Special provisions contain packaging provisions, prohibitions, exceptions from requirements for particular quantities or forms of materials and requirements or prohibitions applicable to specific modes of transportation, as follows:",
+      "status": "mapped",
+      "note": "The lead-in that makes the nine following paragraphs one closed enumeration of what a code can be: packaging provisions, prohibitions, exceptions for particular quantities or forms, and mode-specific requirements or prohibitions."
+    },
+    {
+      "id": "code-numeric-multimodal",
+      "name": "A numeric code is multi-modal",
+      "locator": {
+        "sourceId": "cfr-49-172.102",
+        "citation": "§ 172.102(b)(1)"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [
+        "special-provision-code-descriptions"
+      ],
+      "evidence": "(1) A code consisting only of numbers (for example, “11”) is multi-modal in application and may apply to bulk and non-bulk packagings.",
+      "status": "mapped",
+      "note": "This is the corpus stating in ordinary prose what the shape of a token in another section's table cell does — the general rule H3 is about, and the reason the map records modal reach in `enabledBy` rather than deriving it from the letters. It constrains no mode and names two packaging kinds. Recorded in `enabledBy` on numeric provision 148 for the same reason the letter codes are: the paragraph says what transportation the provision reaches, and the reach of a code is not written in the cell that assigns it."
+    },
+    {
+      "id": "code-a-aircraft-only",
+      "name": "An “A” code applies only to transportation by aircraft",
+      "locator": {
+        "sourceId": "cfr-49-172.102",
+        "citation": "§ 172.102(b)(2)"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [
+        "special-provision-code-descriptions"
+      ],
+      "evidence": "(2) A code containing the letter “A” refers to a special provision which applies only to transportation by aircraft.",
+      "status": "mapped",
+      "note": "This is the corpus stating in ordinary prose what the shape of a token in another section's table cell does — the general rule H3 is about, and the reason the map records modal reach in `enabledBy` rather than deriving it from the letters. Reaches sp-a3-glass-inner-packagings, sp-a7-steel-corrosion-resistance and sp-a10-aluminium-corrosion-resistance in this map. H3's failure mode is a gate recorded with none of its reach, so every A-code entry of the slice names this one in `enabledBy` and a mutation deleting any of those edges is what a test must catch."
+    },
+    {
+      "id": "code-b-bulk-only",
+      "name": "A “B” code applies only to bulk packaging requirements",
+      "locator": {
+        "sourceId": "cfr-49-172.102",
+        "citation": "§ 172.102(b)(3)"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [
+        "special-provision-code-descriptions"
+      ],
+      "evidence": "(3) A code containing the letter “B” refers to a special provision that applies only to bulk packaging requirements. Unless otherwise provided in this subchapter, these special provisions do not apply to UN, IM Specification portable tanks or IBCs.",
+      "status": "mapped",
+      "note": "This is the corpus stating in ordinary prose what the shape of a token in another section's table cell does — the general rule H3 is about, and the reason the map records modal reach in `enabledBy` rather than deriving it from the letters. Reaches sp-b2-cargo-tanks-not-authorized and sp-b16-lading-covered-with-inert-gas. It carries its own carve-out — these provisions do not reach UN or IM portable tanks or IBCs unless the subchapter says otherwise — which is why a B code and a T code on one row do not overlap."
+    },
+    {
+      "id": "code-ib-ip-ibcs-only",
+      "name": "An “IB” or “IP” code applies only to transportation in IBCs",
+      "locator": {
+        "sourceId": "cfr-49-172.102",
+        "citation": "§ 172.102(b)(4)"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "ambiguous",
+      "ambiguity": {
+        "question": "(b)(4) says an IB code applies **only** to transportation in IBCs, and § 172.102(c)(4) says that table 3 of the section's own numbering “authorizes Large Packagings for specific proper shipping names through the use of IB Codes”, with Large Packagings authorised for packing group III entries whenever IB3 or IB8 is assigned. A Large Packaging is not an IBC — § 172.102(c)(4) names the two apart in one sentence — so the corpus states the reach of an IB code twice, incompatibly. The map does not choose: either (b)(4) is a summary its own paragraph (c)(4) qualifies, or IB3's Large Packaging authorisation is outside what (b)(4) permits.",
+        "fate": "unresolved",
+        "unresolvedReason": "RequiresInterpretation",
+        "conflict": "what-an-ib-code-reaches"
+      },
+      "dependsOn": [
+        "special-provision-code-descriptions"
+      ],
+      "evidence": "(4) A code containing the letters “IB” or “IP” refers to a special provision that applies only to transportation in IBCs.",
+      "status": "mapped",
+      "note": "This is the corpus stating in ordinary prose what the shape of a token in another section's table cell does — the general rule H3 is about, and the reason the map records modal reach in `enabledBy` rather than deriving it from the letters. Reaches ib2-authorized-ibcs, ib3-authorized-ibcs, ib4-authorized-ibcs, ip1-closed-freight-containers and ib3-authorized-large-packagings. The last of those is where the corpus contradicts itself, and the `ambiguity` block says how."
+    },
+    {
+      "id": "code-n-non-bulk-only",
+      "name": "An “N” code applies only to non-bulk packaging requirements",
+      "locator": {
+        "sourceId": "cfr-49-172.102",
+        "citation": "§ 172.102(b)(5)"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [
+        "special-provision-code-descriptions"
+      ],
+      "evidence": "(5) A code containing the letter “N” refers to a special provision which applies only to non-bulk packaging requirements.",
+      "status": "mapped",
+      "note": "This is the corpus stating in ordinary prose what the shape of a token in another section's table cell does — the general rule H3 is about, and the reason the map records modal reach in `enabledBy` rather than deriving it from the letters. Reaches sp-n40-packagings-not-authorized, which is on the Alkali metal amalgam row. The letter is the whole of the encoding: nothing in the cell “IB4, IP1, N40, T9, TP7, TP33, W31” says that N40 stops at non-bulk packagings."
+    },
+    {
+      "id": "code-r-rail-only",
+      "name": "An “R” code applies only to transportation by rail",
+      "locator": {
+        "sourceId": "cfr-49-172.102",
+        "citation": "§ 172.102(b)(6)"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [
+        "special-provision-code-descriptions"
+      ],
+      "evidence": "(6) A code containing the letter “R” refers to a special provision which applies only to transportation by rail.",
+      "status": "mapped",
+      "note": "This is the corpus stating in ordinary prose what the shape of a token in another section's table cell does — the general rule H3 is about, and the reason the map records modal reach in `enabledBy` rather than deriving it from the letters. No mapped row carries an R code, so this entry gates nothing in this map. It is in scope and stated, and an engine asked about an R code answers from it; recording it only where it happened to be used would have made the enumeration look shorter than the corpus's."
+    },
+    {
+      "id": "code-t-portable-tanks-only",
+      "name": "A “T” code applies only to transportation in UN or IM Specification portable tanks",
+      "locator": {
+        "sourceId": "cfr-49-172.102",
+        "citation": "§ 172.102(b)(7)"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [
+        "special-provision-code-descriptions"
+      ],
+      "evidence": "(7) A code containing the letter “T” refers to a special provision which applies only to transportation in UN or IM Specification portable tanks.",
+      "status": "mapped",
+      "note": "This is the corpus stating in ordinary prose what the shape of a token in another section's table cell does — the general rule H3 is about, and the reason the map records modal reach in `enabledBy` rather than deriving it from the letters. Reaches t4-, t7-, t9- and t11-portable-tank-instruction."
+    },
+    {
+      "id": "code-tp-portable-tank-provisions",
+      "name": "A “TP” code is a portable tank special provision additional to the tank instruction",
+      "locator": {
+        "sourceId": "cfr-49-172.102",
+        "citation": "§ 172.102(b)(8)"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [
+        "special-provision-code-descriptions"
+      ],
+      "evidence": "(8) A code containing the letters “TP” refers to a portable tank special provision for UN or IM Specification portable tanks that is in addition to those provided by the portable tank instructions or the requirements in part 178 of this subchapter.",
+      "status": "mapped",
+      "note": "This is the corpus stating in ordinary prose what the shape of a token in another section's table cell does — the general rule H3 is about, and the reason the map records modal reach in `enabledBy` rather than deriving it from the letters. Reaches sp-tp1-, sp-tp2-, sp-tp7- and sp-tp33-. It is the one modal paragraph that states a relation rather than a restriction: a TP code adds to what the T code's instruction and part 178 already require, which is why every mapped row carrying a TP code also carries a T code.",
+      "crossReferences": [
+        {
+          "cites": "part 178 of this subchapter",
+          "unmapped": "part 178 is in part 178, packaging specifications, which this map does not admit and no entry of it states; the manifest records the boundary"
+        }
+      ]
+    },
+    {
+      "id": "code-w-water-only",
+      "name": "A “W” code applies only to transportation by water",
+      "locator": {
+        "sourceId": "cfr-49-172.102",
+        "citation": "§ 172.102(b)(9)"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [
+        "special-provision-code-descriptions"
+      ],
+      "evidence": "(9) A code containing the letter “W” refers to a special provision that applies only to transportation by water.",
+      "status": "mapped",
+      "note": "This is the corpus stating in ordinary prose what the shape of a token in another section's table cell does — the general rule H3 is about, and the reason the map records modal reach in `enabledBy` rather than deriving it from the letters. Reaches sp-w31-non-bulk-hermetically-sealed. The admission record notes that #261 and #262 both wrote the run as (b)(1)-(8); (b)(9) is what gives W31 its reach, and W31 is on one of the seven rows."
+    },
+    {
+      "id": "tables-of-special-provisions",
+      "name": "The tables that set out the special provisions",
+      "locator": {
+        "sourceId": "cfr-49-172.102",
+        "citation": "§ 172.102(c)"
+      },
+      "kind": "value",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [
+        "special-provision-meaning"
+      ],
+      "evidence": "(c) Tables of special provisions. The following tables list, and set forth the requirements of, the special provisions referred to in column 7 of the § 172.101 table.",
+      "status": "mapped",
+      "note": "The whole of the paragraph is one sentence and it prints no code. 0045 is the decision this passage forced: an entry here indexing the twenty codes would be a registry the mapper wrote, and `check-map.py --only cross-references` refuses it, so the `special-provision-codes` vocabulary is distributed over the entries that define its terms instead.",
+      "crossReferences": [
+        {
+          "cites": "column 7 of the § 172.101 table",
+          "resolvedBy": "column-7-special-provisions"
+        }
+      ]
+    },
+    {
+      "id": "ib-and-ip-code-authorizations",
+      "name": "What IB and IP codes authorise, and where each is stated",
+      "locator": {
+        "sourceId": "cfr-49-172.102",
+        "citation": "§ 172.102(c)(4)"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "ambiguous",
+      "ambiguity": {
+        "question": "The same question (b)(4) raises, from this side: this paragraph authorises Large Packagings through IB codes while (b)(4) says an IB code applies only to transportation in IBCs. The paragraph also numbers the section's tables 1, 2 and 3 where document order numbers them 2, 3 and 4 — the ASTM volatility table printed inside numeric provision 14 is document-order table 1 — so a citation written from the corpus's prose names a different table from a citation written from its markup.",
+        "fate": "unresolved",
+        "unresolvedReason": "RequiresInterpretation",
+        "conflict": "what-an-ib-code-reaches"
+      },
+      "dependsOn": [
+        "code-ib-ip-ibcs-only"
+      ],
+      "evidence": "(4) IB Codes and IP Codes. These provisions apply only to transportation in IBCs and Large Packagings. Table 1 authorizes IBCs for specific proper shipping names through the use of IB Codes assigned in the § 172.101 table of this subchapter. Table 2 defines IP Codes on the use of IBCs that are assigned to specific commodities in the § 172.101 Table of this subchapter. Table 3 authorizes Large Packagings for specific proper shipping names through the use of IB Codes assigned in the § 172.101 table of this subchapter. Large Packagings are authorized for the Packing Group III entries of specific proper shipping names when either special provision IB3 or IB8 is assigned to that entry in the § 172.101 Table. When no IB code is assigned in the § 172.101 Table for a specific proper shipping name, or in § 173.185 or § 173.225(e) Organic Peroxide Table for Type F organic peroxides, use of an IBC or Large Packaging for the material may be authorized when approved by the Associate Administrator. The letter “Z” shown in the marking code for composite IBCs must be replaced with a capital code letter designation found in § 178.702(a)(2) of this subchapter to specify the material used for the other packaging. Tables 1, 2, and 3 follow:",
+      "status": "mapped",
+      "note": "The authority for 0044: IB3 and IB8 each name two rules, in two tables, under one printed code. The table-numbering hazard is stated here rather than in every affected entry's note: this map's citations use document order, which is the numbering 0035 fixes, and the corpus's own prose numbering is one lower throughout.",
+      "crossReferences": [
+        {
+          "cites": "§ 172.101",
+          "resolvedBy": "table-designates-hazardous-materials"
+        },
+        {
+          "cites": "of this subchapter",
+          "unmapped": "“this subchapter” is 49 CFR subchapter C, of which the manifest admits § 172.101 and § 172.102 and nothing else; what this phrase carries is outside both and no entry of this map states it"
+        },
+        {
+          "cites": "§ 173.185",
+          "unmapped": "§ 173.185 is in part 173, the shippers' packaging requirements, which this map does not admit and no entry of it states; the manifest records the boundary"
+        },
+        {
+          "cites": "§ 173.225(e)",
+          "unmapped": "§ 173.225 is in part 173, the shippers' packaging requirements, which this map does not admit and no entry of it states; the manifest records the boundary"
+        },
+        {
+          "cites": "§ 178.702(a)(2) of this subchapter",
+          "unmapped": "§ 178.702 is in part 178, packaging specifications, which this map does not admit and no entry of it states; the manifest records the boundary"
+        }
+      ]
+    },
+    {
+      "id": "portable-tank-instructions",
+      "name": "What a portable tank instruction specifies",
+      "locator": {
+        "sourceId": "cfr-49-172.102",
+        "citation": "§ 172.102(c)(7)"
+      },
+      "kind": "value",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [
+        "code-t-portable-tanks-only"
+      ],
+      "evidence": "(7) “T” codes. (i) These provisions apply to the transportation of hazardous materials in UN portable tanks. Portable tank instructions specify the requirements applicable to a portable tank when used for the transportation of a specific hazardous material. These requirements must be met in addition to the design and construction specifications in part 178 of this subchapter. Portable tank instructions T1 through T22 specify the applicable minimum test pressure, the minimum shell thickness (in reference steel), bottom opening requirements and pressure relief requirements. Liquefied compressed gases are assigned to portable tank instruction T50. Refrigerated liquefied gases that are authorized to be transported in portable tanks are specified in tank instruction T75.",
+      "status": "mapped",
+      "note": "T1 through T22 specify four things — test pressure, shell thickness, bottom openings and pressure relief — and T50 and T75 are named separately. All four T codes the slice reaches are inside T1-T22.",
+      "crossReferences": [
+        {
+          "cites": "part 178 of this subchapter",
+          "unmapped": "part 178 is in part 178, packaging specifications, which this map does not admit and no entry of it states; the manifest records the boundary"
+        }
+      ]
+    },
+    {
+      "id": "portable-tank-table-columns",
+      "name": "What each column of the portable tank table states",
+      "locator": {
+        "sourceId": "cfr-49-172.102",
+        "citation": "§ 172.102(c)(7)(ii)"
+      },
+      "kind": "value",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [
+        "portable-tank-instructions"
+      ],
+      "evidence": "(ii) The following table specifies the portable tank requirements applicable to “T” Codes T1 through T22. Column 1 specifies the “T” Code. Column 2 specifies the minimum test pressure, in bar (1 bar = 14.5 psig), at which the periodic hydrostatic testing required by § 180.605 of this subchapter must be conducted. Column 3 specifies the section reference for minimum shell thickness or, alternatively, the minimum shell thickness value. Column 4 specifies the applicability of § 178.275(g)(3) of this subchapter for the pressure relief devices. When the word “Normal” is indicated, § 178.275(g)(3) of this subchapter does not apply. Column 5 references applicable requirements for bottom openings in part 178 of this subchapter. “Prohibited” means bottom openings are prohibited, and “Prohibited for liquids” means bottom openings are authorized for solid material only. The table follows:",
+      "status": "mapped",
+      "note": "The column semantics for § 172.102 table 6, printed once for its rows, exactly as § 172.101(b)-(j) are printed once for 3,687. It also fixes two values a cell states in words rather than numbers — “Normal” and “Prohibited for liquids” — and T9, which is on a mapped row, prints both.",
+      "crossReferences": [
+        {
+          "cites": "§ 180.605 of this subchapter",
+          "unmapped": "§ 180.605 is in part 180, continuing qualification and maintenance of packagings, which this map does not admit and no entry of it states; the manifest records the boundary"
+        },
+        {
+          "cites": "§ 178.275(g)(3) of this subchapter",
+          "unmapped": "§ 178.275 is in part 178, packaging specifications, which this map does not admit and no entry of it states; the manifest records the boundary"
+        },
+        {
+          "cites": "part 178 of this subchapter",
+          "unmapped": "part 178 is in part 178, packaging specifications, which this map does not admit and no entry of it states; the manifest records the boundary"
+        }
+      ]
+    },
+    {
+      "id": "sp-148-blasting-materials",
+      "name": "Special provision 148: blasting materials in bulk",
+      "locator": {
+        "sourceId": "cfr-49-172.102",
+        "citation": "§ 172.102(c)(1)"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [
+        "tables-of-special-provisions"
+      ],
+      "enabledBy": [
+        "code-numeric-multimodal"
+      ],
+      "defines": [
+        {
+          "vocabulary": "special-provision-codes",
+          "term": "148"
+        }
+      ],
+      "evidence": "148 For domestic transportation, this entry directs to § 173.66 of this subchapter for:",
+      "status": "mapped",
+      "note": "The numeric provision on two of the mapped acetic acid rows. Its own two sub-items — the cargo tank motor vehicle standards and the multipurpose bulk truck — are printed as separate paragraphs under the same designation (c)(1), and the quote stops at the colon: what they direct to is § 173.66, referenced and not admitted, so extending the span would add words no engine over this slice can act on. This is the code whose digits also appear in column 10B of the Alkali metal amalgam row, where they are a vessel stowage provision; see `alkali-metal-amalgam-vessel-stowage-codes`.",
+      "crossReferences": [
+        {
+          "cites": "§ 173.66 of this subchapter",
+          "unmapped": "§ 173.66 is in part 173, the shippers' packaging requirements, which this map does not admit and no entry of it states; the manifest records the boundary"
+        }
+      ]
+    },
+    {
+      "id": "sp-a3-glass-inner-packagings",
+      "name": "Special provision A3: Glass inner packagings need absorbent material",
+      "locator": {
+        "sourceId": "cfr-49-172.102",
+        "citation": "§ 172.102(c)(2)"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [
+        "tables-of-special-provisions"
+      ],
+      "enabledBy": [
+        "code-a-aircraft-only"
+      ],
+      "defines": [
+        {
+          "vocabulary": "special-provision-codes",
+          "term": "A3"
+        }
+      ],
+      "evidence": "A3 For combination packagings, if glass inner packagings (including ampoules) are used, they must be packed with absorbent material in tightly closed rigid and leakproof receptacles before packing in outer packagings.",
+      "status": "mapped",
+      "note": "Applies to combination packagings only, and only where the inner packagings are glass. It binds transportation by aircraft and nothing else, and that is stated in § 172.102(b)(2) rather than here: the paragraph's own text says nothing about mode. `enabledBy` is where the map records it, which is H3's claim."
+    },
+    {
+      "id": "sp-a7-steel-corrosion-resistance",
+      "name": "Special provision A7: Steel packagings must resist corrosion",
+      "locator": {
+        "sourceId": "cfr-49-172.102",
+        "citation": "§ 172.102(c)(2)"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [
+        "tables-of-special-provisions"
+      ],
+      "enabledBy": [
+        "code-a-aircraft-only"
+      ],
+      "defines": [
+        {
+          "vocabulary": "special-provision-codes",
+          "term": "A7"
+        }
+      ],
+      "evidence": "A7 Steel packagings must be corrosion-resistant or have protection against corrosion.",
+      "status": "mapped",
+      "note": "Two ways to satisfy it — corrosion-resistant steel, or protection against corrosion — which is a disjunction a test must show both arms of. It binds transportation by aircraft and nothing else, and that is stated in § 172.102(b)(2) rather than here: the paragraph's own text says nothing about mode. `enabledBy` is where the map records it, which is H3's claim."
+    },
+    {
+      "id": "sp-a10-aluminium-corrosion-resistance",
+      "name": "Special provision A10: Aluminium construction materials must resist corrosion",
+      "locator": {
+        "sourceId": "cfr-49-172.102",
+        "citation": "§ 172.102(c)(2)"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [
+        "tables-of-special-provisions"
+      ],
+      "enabledBy": [
+        "code-a-aircraft-only"
+      ],
+      "defines": [
+        {
+          "vocabulary": "special-provision-codes",
+          "term": "A10"
+        }
+      ],
+      "evidence": "A10 When aluminum or aluminum alloy construction materials are used, they must be resistant to corrosion.",
+      "status": "mapped",
+      "note": "Conditional on aluminium being used at all; it forbids no material. It binds transportation by aircraft and nothing else, and that is stated in § 172.102(b)(2) rather than here: the paragraph's own text says nothing about mode. `enabledBy` is where the map records it, which is H3's claim."
+    },
+    {
+      "id": "sp-b2-cargo-tanks-not-authorized",
+      "name": "Special provision B2: Seven named cargo tanks are not authorized",
+      "locator": {
+        "sourceId": "cfr-49-172.102",
+        "citation": "§ 172.102(c)(3)"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [
+        "tables-of-special-provisions"
+      ],
+      "enabledBy": [
+        "code-b-bulk-only"
+      ],
+      "defines": [
+        {
+          "vocabulary": "special-provision-codes",
+          "term": "B2"
+        }
+      ],
+      "evidence": "B2 MC 300, MC 301, MC 302, MC 303, MC 305, and MC 306 and DOT 406 cargo tanks are not authorized.",
+      "status": "mapped",
+      "note": "A closed list of seven specifications, and three other B codes in the same run print nearly the same sentence with a different list; the quote is held to this paragraph by its citation and its own words (0030). Bulk packagings only, and not UN or IM portable tanks or IBCs, which § 172.102(b)(3) states and this paragraph does not."
+    },
+    {
+      "id": "sp-b16-lading-covered-with-inert-gas",
+      "name": "Special provision B16: The lading must be covered with nitrogen or another inert material",
+      "locator": {
+        "sourceId": "cfr-49-172.102",
+        "citation": "§ 172.102(c)(3)"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [
+        "tables-of-special-provisions"
+      ],
+      "enabledBy": [
+        "code-b-bulk-only"
+      ],
+      "defines": [
+        {
+          "vocabulary": "special-provision-codes",
+          "term": "B16"
+        }
+      ],
+      "evidence": "B16 The lading must be completely covered with nitrogen, inert gas or other inert materials.",
+      "status": "mapped",
+      "note": "One sentence, three named alternatives, the last of them open (“other inert materials”). That openness is a property of a material and not a blank in the rule, so gate 1 stops it and no assertion entry is owed. Bulk packagings only, and not UN or IM portable tanks or IBCs, which § 172.102(b)(3) states and this paragraph does not."
+    },
+    {
+      "id": "sp-n40-packagings-not-authorized",
+      "name": "Special provision N40: three packagings are not authorized",
+      "locator": {
+        "sourceId": "cfr-49-172.102",
+        "citation": "§ 172.102(c)(5)"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [
+        "tables-of-special-provisions"
+      ],
+      "enabledBy": [
+        "code-n-non-bulk-only"
+      ],
+      "defines": [
+        {
+          "vocabulary": "special-provision-codes",
+          "term": "N40"
+        }
+      ],
+      "evidence": "N40 This material is not authorized in the following packagings: a. A combination packaging consisting of a 4G fiberboard box with inner receptacles of glass or earthenware; b. A single packaging of a 4C2 sift-proof, natural wood box; or c. A composite packaging 6PG2 (glass, porcelain or stoneware receptacles within a fiberboard box).",
+      "status": "mapped",
+      "note": "A prohibition with a closed list of three packagings, printed as a lead-in and three lettered items under one designation. The whole rule is one contiguous span because the corpus prints the four paragraphs consecutively; quoting only the lead-in would have left the prohibition empty. It binds non-bulk packagings only (§ 172.102(b)(5)), and it is one of the two modal codes on the Alkali metal amalgam row."
+    },
+    {
+      "id": "sp-w31-non-bulk-hermetically-sealed",
+      "name": "Special provision W31: non-bulk packagings must be hermetically sealed",
+      "locator": {
+        "sourceId": "cfr-49-172.102",
+        "citation": "§ 172.102(c)(9)"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [
+        "tables-of-special-provisions"
+      ],
+      "enabledBy": [
+        "code-w-water-only"
+      ],
+      "defines": [
+        {
+          "vocabulary": "special-provision-codes",
+          "term": "W31"
+        }
+      ],
+      "evidence": "W31 Non-bulk packagings must be hermetically sealed.",
+      "status": "mapped",
+      "note": "Six words, and every one of them about packaging rather than about water. That it applies only to transportation by water is § 172.102(b)(9)'s, and it is the clearest instance in the slice of a rule whose applicability is nowhere in its own text."
+    },
+    {
+      "id": "sp-tp1-degree-of-filling",
+      "name": "Special provision TP1: the maximum degree of filling",
+      "locator": {
+        "sourceId": "cfr-49-172.102",
+        "citation": "§ 172.102(c)(8)(ii)"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [
+        "tables-of-special-provisions"
+      ],
+      "enabledBy": [
+        "code-tp-portable-tank-provisions"
+      ],
+      "beyondAdapter": {
+        "adapter": "ecfr-xml",
+        "modality": "formula served as an image"
+      },
+      "defines": [
+        {
+          "vocabulary": "special-provision-codes",
+          "term": "TP1"
+        }
+      ],
+      "evidence": "TP1 The maximum degree of filling must not exceed the degree of filling determined by the following: Where: tr is the maximum mean bulk temperature during transport, and tf is the temperature in degrees celsius of the liquid during filling.",
+      "status": "mapped",
+      "note": "The rule is a formula, and the corpus serves the formula as a <MATH> element whose only text is the variable glosses: the prose says “determined by the following:” and then the expression itself is not in the extraction at all. So the paragraph is readable and the rule is not, which is exactly what `beyondAdapter` records (0004). The entry is still cited and still quoted — it is unreadable, not uncitable — and an engine declines it `MissingRulesData` naming the reader that failed."
+    },
+    {
+      "id": "sp-tp2-degree-of-filling",
+      "name": "Special provision TP2: the maximum degree of filling, with a coefficient of expansion",
+      "locator": {
+        "sourceId": "cfr-49-172.102",
+        "citation": "§ 172.102(c)(8)(ii)"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [
+        "tables-of-special-provisions"
+      ],
+      "enabledBy": [
+        "code-tp-portable-tank-provisions"
+      ],
+      "beyondAdapter": {
+        "adapter": "ecfr-xml",
+        "modality": "formula served as an image"
+      },
+      "defines": [
+        {
+          "vocabulary": "special-provision-codes",
+          "term": "TP2"
+        }
+      ],
+      "evidence": "TP2 a. The maximum degree of filling must not exceed the degree of filling determined by the following: Where: tr is the maximum mean bulk temperature during transport, tf is the temperature in degrees celsius of the liquid during filling, and α is the mean coefficient of cubical expansion of the liquid between the mean temperature of the liquid during filling (tf) and the maximum mean bulk temperature during transportation (tr) both in degrees celsius. b. For liquids transported under ambient conditions α may be calculated using the formula:",
+      "status": "mapped",
+      "note": "Two formulae rather than TP1's one — the degree of filling, and a calculation of the mean coefficient of cubical expansion for liquids carried at ambient conditions — and neither is in the extraction. Same verdict as TP1 and a wider one: an engine that implemented TP1 from a rendered page would still owe TP2 a second reading."
+    },
+    {
+      "id": "sp-tp7-vapour-space-purged",
+      "name": "Special provision TP7: the vapour space must be purged of air",
+      "locator": {
+        "sourceId": "cfr-49-172.102",
+        "citation": "§ 172.102(c)(8)(ii)"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [
+        "tables-of-special-provisions"
+      ],
+      "enabledBy": [
+        "code-tp-portable-tank-provisions"
+      ],
+      "defines": [
+        {
+          "vocabulary": "special-provision-codes",
+          "term": "TP7"
+        }
+      ],
+      "evidence": "TP7 The vapor space must be purged of air by nitrogen or other means.",
+      "status": "mapped",
+      "note": "“by nitrogen or other means” leaves the means open and states the result it is measured by — the vapour space is purged of air — so the openness is in how the duty is discharged and not in whether it is. Gate 1 returns no blank and the entry stays an operation."
+    },
+    {
+      "id": "sp-tp33-molten-solids",
+      "name": "Special provision TP33: portable tanks for granular, powdered and molten solids",
+      "locator": {
+        "sourceId": "cfr-49-172.102",
+        "citation": "§ 172.102(c)(8)(ii)"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "ambiguous",
+      "ambiguity": {
+        "question": "A solid carried above its melting point may go in a tank conforming to T4 or T7 “unless a tank with more stringent requirements for minimum shell thickness, maximum allowable working pressure, pressure-relief devices or bottom outlets are assigned”. The four dimensions are named and no rule orders them, so where an assigned instruction is more stringent in one and less in another — T9 assigns a 6 mm shell where T4 assigns § 178.274(d)(2), and bottom openings “Prohibited for liquids” where T4 assigns § 178.275(d)(3) — the corpus does not say which tank instruction applies. The Alkali metal amalgam row carries TP33 and T9 together, so the question is reachable inside this slice and not a constructed one.",
+        "fate": "unresolved",
+        "unresolvedReason": "RequiresInterpretation"
+      },
+      "dependsOn": [
+        "tables-of-special-provisions",
+        "t4-portable-tank-instruction",
+        "t7-portable-tank-instruction"
+      ],
+      "enabledBy": [
+        "code-tp-portable-tank-provisions"
+      ],
+      "defines": [
+        {
+          "vocabulary": "special-provision-codes",
+          "term": "TP33"
+        }
+      ],
+      "evidence": "TP33 The portable tank instruction assigned for this substance applies for granular and powdered solids and for solids which are filled and discharged at temperatures above their melting point which are cooled and transported as a solid mass. Solid substances transported or offered for transport above their melting point are authorized for transportation in portable tanks conforming to the provisions of portable tank instruction T4 for solid substances of packing group III or T7 for solid substances of packing group II, unless a tank with more stringent requirements for minimum shell thickness, maximum allowable working pressure, pressure-relief devices or bottom outlets are assigned in which case the more stringent tank instruction and special provisions shall apply. Filling limits must be in accordance with portable tank special provision TP3. Solids meeting the definition of an elevated temperature material must be transported in accordance with the applicable requirements of this subchapter.",
+      "status": "mapped",
+      "note": "The longest provision in the slice and the only one that reads two other provisions by name. Its filling limits sentence points at TP3, which no mapped row invokes and which this map therefore records as an unanswered pointer rather than an entry.",
+      "crossReferences": [
+        {
+          "cites": "in accordance with",
+          "unmapped": "TP33 points twice with these words: at portable tank special provision TP3, which no mapped row invokes and which has no entry here, and at the applicable requirements of this subchapter, which lie outside the two admitted sections"
+        },
+        {
+          "cites": "of this subchapter",
+          "unmapped": "“this subchapter” is 49 CFR subchapter C, of which the manifest admits § 172.101 and § 172.102 and nothing else; what this phrase carries is outside both and no entry of this map states it"
+        }
+      ]
+    },
+    {
+      "id": "ib2-authorized-ibcs",
+      "name": "IB2 authorises three families of IBC",
+      "locator": {
+        "sourceId": "cfr-49-172.102",
+        "citation": "§ 172.102 table 2, row [column 1 = \"IB2\"]"
+      },
+      "kind": "value",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [
+        "ib-and-ip-code-authorizations"
+      ],
+      "enabledBy": [
+        "code-ib-ip-ibcs-only"
+      ],
+      "defines": [
+        {
+          "vocabulary": "special-provision-codes",
+          "term": "IB2"
+        }
+      ],
+      "evidence": "IB2 | Authorized IBCs: Metal (31A, 31B and 31N); Rigid plastics (31H1 and 31H2); Composite (31HZ1).",
+      "status": "mapped",
+      "note": "A row of the table the corpus's own prose calls table 1 and document order numbers 2 (0044's recorded hazard; see `ib-and-ip-code-authorizations`). Three mapped rows assign IB2. This row is half of the code's rule: the row printed under it states an additional requirement and leaves column 1 blank, and `ib2-vapour-pressure-limit` is that half. The two cannot be one entry, because `evidence` is one contiguous span of one row and the two rows are two units."
+    },
+    {
+      "id": "ib2-vapour-pressure-limit",
+      "name": "The additional requirement printed under IB2: a vapour pressure ceiling",
+      "locator": {
+        "sourceId": "cfr-49-172.102",
+        "citation": "§ 172.102 table 2, row blank in column 1 below row [column 1 = \"IB2\"]"
+      },
+      "kind": "value",
+      "scope": "in",
+      "clarity": "ambiguous",
+      "ambiguity": {
+        "question": "The row leaves column 1 blank and states an “Additional Requirement”, and the corpus nowhere says what it is additional *to*. § 172.102 states no convention for a blank code cell; the markup carries no rowspan, no grouping and no distinguishing class (measured on 0043); and this row's text is byte-identical to the one printed under IB1, so the words themselves cannot say which code they qualify. That a row blank in the code column continues the row above it is the reader's inference and not the regulation's statement. If it is wrong, every IB2 assignment in the § 172.101 table carries a vapour-pressure ceiling it does not have.",
+        "fate": "unresolved",
+        "unresolvedReason": "RequiresInterpretation"
+      },
+      "dependsOn": [
+        "ib2-authorized-ibcs"
+      ],
+      "enabledBy": [
+        "code-ib-ip-ibcs-only"
+      ],
+      "evidence": "| Additional Requirement: Only liquids with a vapor pressure less than or equal to 110 kPa at 50 °C (1.1 bar at 122 °F), or 130 kPa at 55 °C (1.3 bar at 131 °F) are authorized.",
+      "status": "mapped",
+      "note": "It declares no `defines`, and that is a finding rather than an omission: 0045 anchors a definition in the defining entry's own evidence, and this row does not print the code it states a rule for. So one of IB2's two rules is in the `special-provision-codes` vocabulary and the other cannot be, and a coded pointer to IB2 is reported accounted for once the entry names `ib2-authorized-ibcs` alone. The three column 7 cells that assign IB2 name this entry in `crossReferences` as well, which is what keeps the second rule reachable at all."
+    },
+    {
+      "id": "ib3-authorized-ibcs",
+      "name": "IB3 authorises metal, rigid plastics and composite IBCs",
+      "locator": {
+        "sourceId": "cfr-49-172.102",
+        "citation": "§ 172.102 table 2, row [column 1 = \"IB3\"]"
+      },
+      "kind": "value",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [
+        "ib-and-ip-code-authorizations"
+      ],
+      "enabledBy": [
+        "code-ib-ip-ibcs-only"
+      ],
+      "defines": [
+        {
+          "vocabulary": "special-provision-codes",
+          "term": "IB3"
+        }
+      ],
+      "evidence": "IB3 | Authorized IBCs: Metal (31A, 31B and 31N); Rigid plastics (31H1 and 31H2); Composite (31HZ1 and 31HA2, 31HB2, 31HN2, 31HD2 and 31HH2).",
+      "status": "mapped",
+      "note": "A wider list of composite IBCs than IB2's, and the difference between the two rows is the whole reason the packing group III acetic acid band takes a different code from the two stronger bands. One of the two entries the `special-provision-codes` vocabulary resolves IB3 to (0044)."
+    },
+    {
+      "id": "ib3-vapour-pressure-limit",
+      "name": "The additional requirement printed under IB3: a vapour pressure ceiling, except for UN2672",
+      "locator": {
+        "sourceId": "cfr-49-172.102",
+        "citation": "§ 172.102 table 2, row [column 2 = \"Additional Requirement: Only liquids with a vapor pressure less than or equal to 110 kPa at 50 °C (1.1 bar at 122 °F), or 130 kPa at 55 °C (1.3 bar at 131 °F) are authorized, except for UN2672 (also see special provision IP8 in Table 2 for UN2672).\"]"
+      },
+      "kind": "value",
+      "scope": "in",
+      "clarity": "ambiguous",
+      "ambiguity": {
+        "question": "The same question as `ib2-vapour-pressure-limit`: the row leaves column 1 blank and nothing in § 172.102 says which code an “Additional Requirement” row qualifies. This one is addressable by an ordinary column 2 key only because its trailing UN2672 clause makes its text unique — IB2's is byte-identical to IB1's and needs 0043's selector — and an address is not a reading. The map records both rows the same way for that reason.",
+        "fate": "unresolved",
+        "unresolvedReason": "RequiresInterpretation"
+      },
+      "dependsOn": [
+        "ib3-authorized-ibcs"
+      ],
+      "enabledBy": [
+        "code-ib-ip-ibcs-only"
+      ],
+      "evidence": "| Additional Requirement: Only liquids with a vapor pressure less than or equal to 110 kPa at 50 °C (1.1 bar at 122 °F), or 130 kPa at 55 °C (1.3 bar at 131 °F) are authorized, except for UN2672 (also see special provision IP8 in Table 2 for UN2672).",
+      "status": "mapped",
+      "note": "It prints “IP8” and “Table 2” and not “IB3”, so like `ib2-vapour-pressure-limit` it declares no `defines`. Its own pointer at IP8 is answered as unmapped: IP8 is not one of the twenty codes the seven mapped rows invoke."
+    },
+    {
+      "id": "ib4-authorized-ibcs",
+      "name": "IB4 authorises metal IBCs of nine specifications",
+      "locator": {
+        "sourceId": "cfr-49-172.102",
+        "citation": "§ 172.102 table 2, row [column 1 = \"IB4\"]"
+      },
+      "kind": "value",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [
+        "ib-and-ip-code-authorizations"
+      ],
+      "enabledBy": [
+        "code-ib-ip-ibcs-only"
+      ],
+      "defines": [
+        {
+          "vocabulary": "special-provision-codes",
+          "term": "IB4"
+        }
+      ],
+      "evidence": "IB4 | Authorized IBCs: Metal (11A, 11B, 11N, 21A, 21B, 21N, 31A, 31B and 31N).",
+      "status": "mapped",
+      "note": "Metal only, and nine specifications where IB2 names three. No “Additional Requirement” row follows it, which is what makes the two that do follow IB2 and IB3 a reading rather than a layout convention: the corpus prints one where it means one."
+    },
+    {
+      "id": "ib3-authorized-large-packagings",
+      "name": "IB3 also authorises Large Packagings for packing group III liquids",
+      "locator": {
+        "sourceId": "cfr-49-172.102",
+        "citation": "§ 172.102 table 4, row [column 1 = \"IB3\"]"
+      },
+      "kind": "value",
+      "scope": "in",
+      "clarity": "ambiguous",
+      "ambiguity": {
+        "question": "A Large Packaging is not an IBC, and § 172.102(b)(4) says an IB code applies **only** to transportation in IBCs. This row is the corpus authorising something else under the same code, and § 172.102(c)(4) says so in terms. The map records the contradiction and chooses neither reading.",
+        "fate": "unresolved",
+        "unresolvedReason": "RequiresInterpretation",
+        "conflict": "what-an-ib-code-reaches"
+      },
+      "dependsOn": [
+        "ib-and-ip-code-authorizations"
+      ],
+      "enabledBy": [
+        "code-ib-ip-ibcs-only"
+      ],
+      "defines": [
+        {
+          "vocabulary": "special-provision-codes",
+          "term": "IB3"
+        }
+      ],
+      "evidence": "IB3 | Authorized Large Packagings (LIQUIDS)(PG III materials only) 2",
+      "status": "mapped",
+      "note": "The second entry `special-provision-codes` resolves IB3 to, and the instance 0044 was decided on: a pointer that names only `ib3-authorized-ibcs` leaves this rule obliged by nothing, and `mapper pointers` says so by name. The row quoted is the table's header row — it is the row that carries the code, and the inner and outer packagings it authorises are stated in the rows under it, which this map does not take: the extent lists this row alone, so an engine answering from this entry can say that Large Packagings are authorised for packing group III liquids and not which ones."
+    },
+    {
+      "id": "ip1-closed-freight-containers",
+      "name": "IP1 requires IBCs to be packed in a closed freight container or transport vehicle",
+      "locator": {
+        "sourceId": "cfr-49-172.102",
+        "citation": "§ 172.102 table 3, row [column 1 = \"IP1\"]"
+      },
+      "kind": "value",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [
+        "ib-and-ip-code-authorizations"
+      ],
+      "enabledBy": [
+        "code-ib-ip-ibcs-only"
+      ],
+      "defines": [
+        {
+          "vocabulary": "special-provision-codes",
+          "term": "IP1"
+        }
+      ],
+      "evidence": "IP1 | IBCs must be packed in closed freight containers or a closed transport vehicle.",
+      "status": "mapped",
+      "note": "A row of the IP code table — the corpus's prose calls it table 2 and document order numbers it 3. It is on the Alkali metal amalgam row beside IB4, which is the pair § 172.102(c)(4) describes: the IB code says which IBCs, the IP code says how they travel."
+    },
+    {
+      "id": "t4-portable-tank-instruction",
+      "name": "Portable tank instruction T4",
+      "locator": {
+        "sourceId": "cfr-49-172.102",
+        "citation": "§ 172.102 table 6, row [column 1 = \"T4\"]"
+      },
+      "kind": "value",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [
+        "portable-tank-table-columns"
+      ],
+      "enabledBy": [
+        "code-t-portable-tanks-only"
+      ],
+      "defines": [
+        {
+          "vocabulary": "special-provision-codes",
+          "term": "T4"
+        }
+      ],
+      "evidence": "T4 | 2.65 | § 178.274(d)(2) | Normal | § 178.275(d)(3)",
+      "status": "mapped",
+      "note": "2.65 bar, § 178.274(d)(2) shell thickness, normal pressure relief, § 178.275(d)(3) bottom openings. It is on two mapped rows and is also named inside TP33. Five cells in one row, and the row is the container the citation names, so the quote is held to it without being unique in the table: T2 and T7 print the same three trailing cells (0030).",
+      "crossReferences": [
+        {
+          "cites": "§ 178.274(d)(2)",
+          "unmapped": "§ 178.274 is in part 178, packaging specifications, which this map does not admit and no entry of it states; the manifest records the boundary"
+        },
+        {
+          "cites": "§ 178.275(d)(3)",
+          "unmapped": "§ 178.275 is in part 178, packaging specifications, which this map does not admit and no entry of it states; the manifest records the boundary"
+        }
+      ]
+    },
+    {
+      "id": "t7-portable-tank-instruction",
+      "name": "Portable tank instruction T7",
+      "locator": {
+        "sourceId": "cfr-49-172.102",
+        "citation": "§ 172.102 table 6, row [column 1 = \"T7\"]"
+      },
+      "kind": "value",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [
+        "portable-tank-table-columns"
+      ],
+      "enabledBy": [
+        "code-t-portable-tanks-only"
+      ],
+      "defines": [
+        {
+          "vocabulary": "special-provision-codes",
+          "term": "T7"
+        }
+      ],
+      "evidence": "T7 | 4 | § 178.274(d)(2) | Normal | § 178.275(d)(3)",
+      "status": "mapped",
+      "note": "4 bar where T4 says 2.65, and otherwise identical to T4 in this table. Two mapped acetic acid rows carry it, and TP33 names it as the packing group II alternative. Five cells in one row, and the row is the container the citation names, so the quote is held to it without being unique in the table: T2 and T7 print the same three trailing cells (0030).",
+      "crossReferences": [
+        {
+          "cites": "§ 178.274(d)(2)",
+          "unmapped": "§ 178.274 is in part 178, packaging specifications, which this map does not admit and no entry of it states; the manifest records the boundary"
+        },
+        {
+          "cites": "§ 178.275(d)(3)",
+          "unmapped": "§ 178.275 is in part 178, packaging specifications, which this map does not admit and no entry of it states; the manifest records the boundary"
+        }
+      ]
+    },
+    {
+      "id": "t9-portable-tank-instruction",
+      "name": "Portable tank instruction T9",
+      "locator": {
+        "sourceId": "cfr-49-172.102",
+        "citation": "§ 172.102 table 6, row [column 1 = \"T9\"]"
+      },
+      "kind": "value",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [
+        "portable-tank-table-columns"
+      ],
+      "enabledBy": [
+        "code-t-portable-tanks-only"
+      ],
+      "defines": [
+        {
+          "vocabulary": "special-provision-codes",
+          "term": "T9"
+        }
+      ],
+      "evidence": "T9 | 4 | 6 mm | Normal | Prohibited for liquids.",
+      "status": "mapped",
+      "note": "The only mapped T code whose shell thickness is a number rather than a section reference (6 mm) and whose bottom openings are “Prohibited for liquids”. Both are what § 172.102(c)(7)(ii) explains, and both are what make TP33's “more stringent” question reachable on the Alkali metal amalgam row. Five cells in one row, and the row is the container the citation names, so the quote is held to it without being unique in the table: T2 and T7 print the same three trailing cells (0030)."
+    },
+    {
+      "id": "t11-portable-tank-instruction",
+      "name": "Portable tank instruction T11",
+      "locator": {
+        "sourceId": "cfr-49-172.102",
+        "citation": "§ 172.102 table 6, row [column 1 = \"T11\"]"
+      },
+      "kind": "value",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [
+        "portable-tank-table-columns"
+      ],
+      "enabledBy": [
+        "code-t-portable-tanks-only"
+      ],
+      "defines": [
+        {
+          "vocabulary": "special-provision-codes",
+          "term": "T11"
+        }
+      ],
+      "evidence": "T11 | 6 | § 178.274(d)(2) | Normal | § 178.275(d)(3)",
+      "status": "mapped",
+      "note": "6 bar, the highest test pressure in the slice, on the packing group I Acetaldehyde row. Five cells in one row, and the row is the container the citation names, so the quote is held to it without being unique in the table: T2 and T7 print the same three trailing cells (0030).",
+      "crossReferences": [
+        {
+          "cites": "§ 178.274(d)(2)",
+          "unmapped": "§ 178.274 is in part 178, packaging specifications, which this map does not admit and no entry of it states; the manifest records the boundary"
+        },
+        {
+          "cites": "§ 178.275(d)(3)",
+          "unmapped": "§ 178.275 is in part 178, packaging specifications, which this map does not admit and no entry of it states; the manifest records the boundary"
+        }
+      ]
+    }
+  ]
+}
