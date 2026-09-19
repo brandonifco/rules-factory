@@ -283,7 +283,16 @@ done by parsing each entry's citation and comparing it against the unit's design
 would have put a second citation parser per grammar into the mapper. It is instead done by
 finding the entry's **quoted evidence** in the units' own text: a quote is the same kind of
 object in every corpus, so the measurement is one implementation, and it is the stricter reading
-— a citation naming a section is not a quote sitting in it. `units()` is also what [a
+— a citation naming a section is not a quote sitting in it.
+
+The ordinary evidence search keeps a **four-word minimum fragment** so a short prose phrase cannot
+wander across unrelated units and manufacture reach. A `table-row` is structurally narrower:
+0035 makes the row unit's key the citation that names it. For one-, two- and three-word table
+evidence, the inventory therefore searches only the `table-row` unit structurally named by the
+entry's citation, and still requires the quoted words to occur in that unit's own text. The
+citation narrows the search domain; it never establishes reach by itself. Four-word-or-longer
+evidence keeps the corpus-wide search, including its existing behavior for repeated identical
+unit text. `units()` is also what [a
 sweep](#the-sweeps) walks, which is why it returns the text rather than a locator: a sweep asks
 what a unit says.
 

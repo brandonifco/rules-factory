@@ -352,5 +352,41 @@ class TestEveryCommittedMapIsInventoried(unittest.TestCase):
         self.assertEqual(used, set(corpus.ADAPTERS))
 
 
+class TestShortEvidenceKeepsItsSafetyBoundary(unittest.TestCase):
+    def test_a_short_prose_fragment_is_not_enough_to_reach_a_unit(self):
+        units = [
+            corpus.Unit("p. 1 block 1", "paragraph", "A common short phrase appears here."),
+            corpus.Unit("p. 1 block 2", "paragraph", "Later the common short phrase appears again."),
+        ]
+        measured = inventory.take(units, {"entries": [{
+            "id": "ambiguous-prose",
+            "locator": {"sourceId": "fixture", "citation": "p. 1"},
+            "evidence": "common short phrase",
+        }]}, {})
+        self.assertEqual(measured.reached, {})
+        self.assertEqual(measured.unlocated, ["ambiguous-prose"])
+
+    def test_trial_10_short_table_quotes_are_not_reported_unlocated(self):
+        path = os.path.join(REPO, "examples", "hazmat-172-table", "corpus-map.json")
+        _, output = run(["inventory", path])
+        short_entries = (
+            "label-code-8-corrosive",
+            "acetal-proper-shipping-name",
+            "acetaldehyde-proper-shipping-name",
+            "acetyl-acetone-peroxide-forbidden",
+            "acetal-label-codes",
+            "acetaldehyde-label-codes",
+            "acetic-acid-glacial-label-codes",
+            "acetic-acid-50-to-80-label-codes",
+            "acetic-acid-10-to-50-label-codes",
+            "alkali-metal-amalgam-label-codes",
+            "acetal-special-provisions",
+            "alkali-metal-amalgam-vessel-stowage-codes",
+        )
+        for entry in short_entries:
+            with self.subTest(entry=entry):
+                self.assertNotIn(entry, output, output)
+
+
 if __name__ == "__main__":
     unittest.main()
