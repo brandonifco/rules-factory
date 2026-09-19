@@ -131,7 +131,10 @@ def valid_map():
             # 0025: an assertion names who asserts it, in the corpus's words.
             entry("well-clear", kind="assertion", status="mapped", assertedBy=["remote pilot"],
                   evidence="The remote pilot must keep the aircraft well clear of other aircraft."),
+            # 0045: the entry defines a term of a named vocabulary, anchored in its own
+            # evidence -- "The sentence stating yield-right-of-way." prints the term.
             entry("yield-right-of-way", kind="operation", dependsOn=["well-clear"],
+                  defines=[{"vocabulary": "demo-codes", "term": "yield-right-of-way"}],
                   enabledBy=["speed-limit"], suspendedBy=["speed-within-limit"],
                   status="implemented",
                   implementedIn={"ruleset": "demo", "version": 1},
@@ -2015,6 +2018,111 @@ class TestCrossReferences(MapCase):
                 self.assertEqual(code, 0, output)
                 self.assertRegex(output, r"\[ok\] cross-references: [\w.-]+: [1-9]\d* pointers? in ")
                 self.assertIn("declared phrase", output)
+
+
+class TestDefines(MapCase):
+    """0045: a term an entry defines is declared by that entry, anchored in its own evidence.
+
+    `crossReferences` records a pointer the passage **makes**; `defines` records a term the
+    passage **gives a meaning to**. One rule governs both, and it is 0026's: the declaration
+    appears verbatim in the evidence of the entry that makes it. #314 refused to buy
+    `coded-pointer` a vocabulary by exempting anything from that rule.
+    """
+
+    DEFINING = 3   # yield-right-of-way, which the fixture already has define a term
+    SECOND = 1     # speed-within-limit, whose evidence prints its own id too
+
+    @staticmethod
+    def defining_map():
+        return valid_map()
+
+    def assert_catches_defines(self, mutate, message):
+        """The defining map passes `defines`; the mutation makes it say `message`."""
+        code, output = self.run_tool(self.defining_map())
+        self.assertEqual(self.status_of(output, "defines"), "ok", output)
+        self.assertEqual(code, 0, output)
+        document = self.defining_map()
+        mutate(document)
+        code, output = self.run_tool(document)
+        self.assertEqual(self.status_of(output, "defines"), "fail", output)
+        self.assertEqual(code, 1, output)
+        self.assertIn(message, output)
+
+    def test_a_map_declaring_nothing_is_not_verified_rather_than_ok(self):
+        # The field is optional, and a check with no subject has not passed. Every map
+        # committed before 0045 is this case.
+        document = valid_map()
+        document["entries"][self.DEFINING].pop("defines")
+        code, output = self.run_tool(document)
+        self.assertEqual(self.status_of(output, "defines"), "skip", output)
+        self.assertEqual(code, 0, output)
+
+    def test_a_term_absent_from_the_entrys_own_evidence_fails(self):
+        # The live instance: `special-provision-codes` quoting "The following tables list ..."
+        # and declaring twenty codes it does not print.
+        self.assert_catches_defines(
+            lambda d: d["entries"][self.DEFINING]["defines"][0].update(term="IB3"),
+            "defines 'IB3', which does not appear in this entry's `evidence`")
+
+    def test_two_entries_defining_one_term_are_both_accepted(self):
+        # 0044's cardinality, as the ordinary result of two entries declaring the same term.
+        document = self.defining_map()
+        document["entries"][self.SECOND]["defines"] = [
+            {"vocabulary": "demo-codes", "term": "speed-within-limit"}]
+        code, output = self.run_tool(document)
+        self.assertEqual(self.status_of(output, "defines"), "ok", output)
+        self.assertEqual(code, 0, output)
+
+    def test_the_same_declaration_twice_on_one_entry_fails(self):
+        self.assert_catches_defines(
+            lambda d: d["entries"][self.DEFINING]["defines"].append(
+                {"vocabulary": "demo-codes", "term": "yield-right-of-way"}),
+            "declares 'yield-right-of-way' in vocabulary 'demo-codes' more than once")
+
+    def test_the_same_term_in_two_vocabularies_on_one_entry_is_accepted(self):
+        document = self.defining_map()
+        document["entries"][self.DEFINING]["defines"].append(
+            {"vocabulary": "other-codes", "term": "yield-right-of-way"})
+        code, output = self.run_tool(document)
+        self.assertEqual(self.status_of(output, "defines"), "ok", output)
+        self.assertEqual(code, 0, output)
+
+    def test_an_empty_list_fails(self):
+        self.assert_catches_defines(
+            lambda d: d["entries"][self.DEFINING].update(defines=[]),
+            "`defines` is []")
+
+    def test_a_list_that_is_not_a_list_fails(self):
+        self.assert_catches_defines(
+            lambda d: d["entries"][self.DEFINING].update(defines={"term": "yield-right-of-way"}),
+            "it is a non-empty list of the terms this passage defines")
+
+    def test_an_item_with_a_third_key_fails(self):
+        # An unread key looks like it is doing work, which is #60's shape.
+        self.assert_catches_defines(
+            lambda d: d["entries"][self.DEFINING]["defines"][0].update(resolvedBy="speed-limit"),
+            "an item is exactly `vocabulary` and `term`")
+
+    def test_an_item_missing_the_vocabulary_fails(self):
+        self.assert_catches_defines(
+            lambda d: d["entries"][self.DEFINING]["defines"][0].pop("vocabulary"),
+            "an item is exactly `vocabulary` and `term`")
+
+    def test_an_empty_term_fails(self):
+        self.assert_catches_defines(
+            lambda d: d["entries"][self.DEFINING]["defines"][0].update(term="   "),
+            "that is not a non-empty string")
+
+    def test_a_derived_entry_carrying_defines_is_refused(self):
+        # By `derived`, which refuses every passage field on one: no sentence states a derived
+        # fact, so there is no evidence for a definition to be anchored in.
+        document = valid_map()
+        derived = next(e for e in document["entries"] if "derivedFrom" in e)
+        derived["defines"] = [{"vocabulary": "demo-codes", "term": "speed-limit"}]
+        code, output = self.run_tool(document)
+        self.assertEqual(self.status_of(output, "derived"), "fail", output)
+        self.assertIn("is derived and carries `defines`", output)
+        self.assertEqual(code, 1, output)
 
 
 class TestCorrespondence(MapCase):

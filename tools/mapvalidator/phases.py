@@ -12,6 +12,7 @@ from .bounds import check_bound_term_open, check_bounds
 from .status import check_absent, check_status
 from .inputs import check_asserted_by, check_draws
 from .crossrefs import check_cross_references
+from .defines import check_defines
 from .correspondence import check_correspondence
 from .epistemic import check_superposition
 
@@ -64,6 +65,7 @@ CHECKS = [
     ("asserted-by", check_asserted_by),
     ("draws", check_draws),
     ("cross-references", check_cross_references),
+    ("defines", check_defines),
     ("correspondence", check_correspondence),
     # The epistemic checks (0034). None reads `status`, `implementedIn` or `tests`, and
     # none may: an overlay must not be able to turn a verdict about whether the corpus

@@ -76,24 +76,24 @@ def cell_entry(eid, row_name, column, text):
             "evidence": text}
 
 
-def vocabulary_entry():
-    return {"id": "column-7-codes", "name": "The column 7 special provision codes",
-            "locator": {"sourceId": SECTION, "citation": "§ 172.101(h)"},
-            "evidence": "Column 7 lists the special provisions that apply to the material.",
-            "crossReferences": [{"cites": code, "resolvedBy": f"provision-{code.lower()}"}
-                                for code in sorted(PROVISIONS)]}
+#: The vocabulary the column 7 codes belong to. It is a **name**, not an entry: § 172.102 prints
+#: no passage listing its codes, so the vocabulary is distributed over the entries that define
+#: them, each declaring its own in `defines` and anchored in its own evidence (0045, #314).
+VOCABULARY = "special-provision-codes"
 
 
 def provision_entries():
+    """One entry per code, each declaring the one term its own passage prints."""
     return [{"id": f"provision-{code.lower()}", "name": f"Special provision {code}",
              "locator": {"sourceId": "cfr-49-172.102",
                          "citation": f"§ 172.102(c) [{code}]"},
-             "evidence": f"{code} states a special provision."}
+             "evidence": f"{code} states a special provision.",
+             "defines": [{"vocabulary": VOCABULARY, "term": code}]}
             for code in PROVISIONS]
 
 
 def a_map(extra=()):
-    entries = provision_entries() + [vocabulary_entry()]
+    entries = provision_entries()
     for i, (row_name, cell) in enumerate(COLUMN_7.items(), 1):
         entries.append(cell_entry(f"row-{i}-col7", row_name, 7, cell))
     entries.extend(extra)
@@ -111,7 +111,7 @@ def a_protocol(mechanisms):
                              "illustrations": "unsupported"}}
 
 
-CODED = {"mechanism": "coded-pointer", "column": 7, "vocabularyFrom": "column-7-codes"}
+CODED = {"mechanism": "coded-pointer", "column": 7, "vocabulary": VOCABULARY}
 
 
 def found(document, mechanisms=(CODED,)):
@@ -175,8 +175,14 @@ class TheColumnMakesThePointer(unittest.TestCase):
         self.assertTrue(any("ZZ9" in line for line in lines), lines)
 
     def test_defined_term_use_is_unchanged_beside_it(self):
+        """A protocol may declare both, each reading the vocabulary its own way (0045)."""
+        listing = {"id": "column-7-codes", "name": "The column 7 special provision codes",
+                   "locator": {"sourceId": SECTION, "citation": "§ 172.101(h)"},
+                   "evidence": "Column 7 lists IB2 and T4 among the special provisions.",
+                   "crossReferences": [{"cites": "IB2", "resolvedBy": "provision-ib2"},
+                                       {"cites": "T4", "resolvedBy": "provision-t4"}]}
         both = [CODED, {"mechanism": "defined-term-use", "vocabularyFrom": "column-7-codes"}]
-        problems = protocol.check(a_protocol(both), a_map(), None)
+        problems = protocol.check(a_protocol(both), a_map([listing]), None)
         self.assertEqual(problems, [])
 
 

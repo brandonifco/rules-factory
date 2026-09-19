@@ -333,6 +333,38 @@ a phrase would pass the checker while stating something false — the
 [#208](https://github.com/brandonifco/rules-factory/issues/208) failure repeated with the
 mechanism known in advance.
 
+## H2, as it stands after #307, #311 and #314
+
+Recorded here because the admission record above says *"no vocabulary was extended and no decision
+record was written"*, and three have been since. H2 is **qualified, not confirmed**, and the
+wording it was filed in — *"the protocol's shape holds and only its vocabulary grows"* — is half
+right:
+
+```
+coded-pointer concept:          forced        (0041, measured on this corpus, #307)
+protocol mechanism-list shape:  held          (a mechanism object with its own parameters)
+pointerMechanisms vocabulary:   +1            (coded-pointer)
+single vocabularyFrom entry:    falsified     (#314: this corpus prints no such passage)
+map contract:                   needs one evidence-anchored definition declaration (`defines`, 0045)
+equations proposal:             rejected by evidence (0041: an image-served formula is
+                                              `illustrations: unsupported` and `beyondAdapter`)
+```
+
+The falsified line is the one worth keeping in view. 0041 assumed `coded-pointer` could reuse
+`defined-term-use`'s vocabulary — one entry whose `crossReferences` list the corpus's terms — and
+that assumption held for the SRD by an accident of that corpus: its glossary list prints all
+fifteen condition names in one sentence. § 172.102 prints no equivalent, so the entry could only
+be written by inventing the list, and `check-map.py --only cross-references` refuses it. The
+alternative was to exempt that entry from the anchoring rule, which would have kept H2's wording
+clean at the cost of letting a map assert references its evidence does not make. It was rejected
+([0045](../../docs/decisions/0045-a-vocabulary-is-distributed-over-the-entries-that-define-its-terms.md)).
+
+**A qualified H2 is a better trial result than a clean one bought that way**, and this is what the
+trial was for: the corpus attacked a part of the contract the previous nine did not reach.
+[0044](../../docs/decisions/0044-one-printed-code-can-name-more-than-one-rule.md) is unchanged and
+[0026](../../docs/decisions/0026-a-meaning-the-same-corpus-gives-elsewhere-is-an-entry-and-a-corpus-declares-its-pointers.md)
+is untouched. H1 and H3–H6 remain open; nothing here is evidence about them.
+
 ## What happens next
 
 Steps 2 to 4 of #262: map the slice by the method, blind-map it a second time, adjudicate, mutate,

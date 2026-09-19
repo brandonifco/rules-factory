@@ -17,7 +17,9 @@ is what damages them, and `examples/validator-attack/` is the record.
   * **The measured miss rate of everything below is 74%.** Fourteen mutations over five
     committed maps and three locator grammars: 62 landed, 18 are refused, 44 pass (#259;
     16 and 46 when first measured at 69167d8, the two rows that moved being the epistemic
-    checks 0034 added). Five of the twenty-five checks in this file ever turned. Read
+    checks 0034 added). Five of the twenty-five checks this file held when it was
+    measured ever turned; there are twenty-six now, `defines` (0045) being the
+    newest and unmeasured. Read
     the list below as what a reader should expect to get away with, not as a list of
     theoretical gaps.
   * **A conflict nobody recorded is invisible.** `ambiguity.conflict` (0007) groups the
@@ -123,9 +125,15 @@ REQUIRED_ENTRY_FIELDS = ["id", "name", "locator", "kind", "scope", "clarity", "e
 # A derived entry (0012) cites nothing: no sentence contains its fact, so it has no passage
 # to locate or quote. Its sources' locators and evidence are its citation.
 CITING_FIELDS = ("locator", "evidence")
-# What only a passage can carry, and so what a derived entry may not.
-PASSAGE_FIELDS = CITING_FIELDS + ("crossReferences", "absentFrom", "beyondAdapter", "definedElsewhere",
-                                  "extraction")
+# What only a passage can carry, and so what a derived entry may not. `defines` is among them
+# for the reason `crossReferences` is: a definition is anchored in the passage that makes it
+# (0045), and a derived entry quotes no passage.
+PASSAGE_FIELDS = CITING_FIELDS + ("crossReferences", "defines", "absentFrom", "beyondAdapter",
+                                  "definedElsewhere", "extraction")
+# The two halves of one `defines` item, and both of them: the vocabulary the term belongs to, and
+# the term as the corpus prints it (0045). Exactly these, because an item with a third key is one
+# whose author expected something to read it.
+DEFINES_FIELDS = ("vocabulary", "term")
 # The relations that hold entry ids and nothing else. `gatedBy` is not among them: 0011 split
 # it into the two gate fields, and `gates` refuses it by name.
 GATE_FIELDS = ("enabledBy", "suspendedBy")
@@ -173,6 +181,86 @@ def block(entry, name):
 
 def fate_of(entry):
     return block(entry, "ambiguity").get("fate")
+
+
+def canonical_vocabulary(name):
+    """A vocabulary name as every reader of the map sees it: surrounding whitespace removed.
+
+    One canonical interpretation, here, because two of them is the defect (#314 review): the
+    checker normalised a declaration before judging it and the reader returned the raw strings,
+    so `" special-provision-codes "` could be proved and `"special-provision-codes"` looked up,
+    and a code the map declared was read as undeclared with nothing saying so. **What the
+    validator accepts, every consumer must read the same way**, so the canonical form lives at
+    the contract boundary and validation, the protocol and the detector all read it.
+
+    Not a string is `""`, which no vocabulary is: the caller reports the malformation it owns.
+    """
+    return name.strip() if isinstance(name, str) else ""
+
+
+def canonical_term(term):
+    """A term as every reader sees it: whitespace-normalised, as `crossReferences.cites` is.
+
+    A term is quoted from the corpus, and a quote's internal spacing is the extraction's rather
+    than the corpus's -- which is why the anchoring checks compare against evidence read the same
+    way. `canonical_vocabulary` only strips, because a vocabulary name is the map's own word and
+    not a quotation.
+    """
+    return " ".join(term.split()) if isinstance(term, str) else ""
+
+
+def definition_of(item):
+    """One `defines` item as `(vocabulary, term)`, canonically, or None when it is not one."""
+    if not isinstance(item, dict):
+        return None
+    vocabulary = canonical_vocabulary(item.get("vocabulary"))
+    term = canonical_term(item.get("term"))
+    return (vocabulary, term) if vocabulary and term else None
+
+
+def defines_of(entry):
+    """The `(vocabulary, term)` pairs an entry declares it defines, in declaration order (0045).
+
+    A vocabulary is distributed over the entries that define its terms: the corpus that forced
+    `coded-pointer` prints its codes one per table row and has no passage that lists them, so
+    there is no entry a protocol could name as *the* vocabulary. Each defining entry declares
+    the term it defines instead, and the vocabulary is what those declarations add up to.
+
+    Malformed items are skipped rather than reported here -- `check-map.py --only defines` owns
+    the judgement, and a reader that raised would make every other check depend on this one.
+    """
+    declared = entry.get("defines") if isinstance(entry, dict) else None
+    found = []
+    for item in declared if isinstance(declared, list) else []:
+        canonical = definition_of(item)
+        if canonical is not None:
+            found.append(canonical)
+    return found
+
+
+def defined_vocabulary(doc, name):
+    """One named vocabulary, as `{term: [the ids of every entry that defines it]}` (0045).
+
+    **One printed code can name more than one rule** (0044), and here that cardinality is not a
+    special case: `IB3` has two defining entries because two entries declare they define it, in
+    § 172.102's table 2 and its table 4. The ids are in the order the map states them, and an id
+    that declares one term twice appears once -- `check-map.py --only defines` reports the
+    repetition, so the two cases stay distinguishable.
+
+    A vocabulary no entry defines is `{}`, which is what makes a protocol naming one refusable.
+    The name is canonicalised on the way in, so a caller holding the protocol's spelling and an
+    entry holding its own reach the same vocabulary.
+    """
+    wanted, terms = canonical_vocabulary(name), {}
+    if not wanted:
+        return terms
+    for entry in entries_of(doc):
+        if not isinstance(entry, dict) or not isinstance(entry.get("id"), str):
+            continue
+        for vocabulary, term in defines_of(entry):
+            if vocabulary == wanted and entry["id"] not in terms.setdefault(term, []):
+                terms[term].append(entry["id"])
+    return terms
 
 
 # --- tools/mapvalidator/diagnostics.py --------------------------------------------------------
@@ -2303,6 +2391,102 @@ def check_cross_references(ctx):
                                  "pointer phrases are missing or malformed")
 
 
+# --- tools/mapvalidator/defines.py ------------------------------------------------------------
+# A term an entry defines is declared by that entry, and anchored in its own evidence (0045).
+#
+# `crossReferences` records a pointer the entry's passage *makes*. `defines` records a term the
+# entry's passage *gives a meaning to*. They are opposite directions, and neither implies the
+# other: the § 172.101 row cell that prints `IB3` points at the two § 172.102 rows that define it,
+# and those two rows point at nothing.
+#
+# The two share one rule, which is 0026's and is why `defines` is a field and not a list in the
+# protocol: **the declaration is anchored in the corpus's words.** A `cites` appears verbatim in
+# the evidence of the entry that makes the reference; a `term` appears verbatim in the evidence of
+# the entry that defines it. An entry whose evidence reads *"The following tables list … the
+# special provisions referred to in column 7"* and whose declarations name twenty codes it does not
+# print is a registry someone wrote, not a passage of the corpus, and that is the shape #314
+# refused to create.
+
+
+def check_defines(ctx):
+    """Every `defines` declaration: its shape, and its anchor in the entry's own evidence.
+
+    Optional, and checked entirely where it appears. What it must be, and why each half of it:
+
+      * a **non-empty list** -- an empty one declares nothing and reads as a vocabulary the entry
+        belongs to;
+      * each item **exactly** `vocabulary` and `term`, both non-empty strings. A third key is
+        refused rather than ignored, for the reason the map's envelope refuses one (#60): an
+        unread key looks like it is doing work;
+      * the `term` **verbatim in this entry's `evidence`**, whitespace-normalised as
+        `crossReferences` normalises a `cites`. An entry defines a term by printing it. The
+        normalising is `mapcontract.entry.definition_of`'s and not this file's, so the
+        `(vocabulary, term)` proved here is the one every reader of the map sees;
+      * the same `(vocabulary, term)` **once** per entry. A second identical declaration adds
+        nothing, and the likeliest reason it is there is that another term or another vocabulary
+        was meant -- the reasoning 0044 already applied to a repeated `crossReferences` pair.
+
+    Two things it deliberately does not check. That the vocabulary is one some protocol reads:
+    the protocol is the mapper's and this subsystem does not read it (0032), and
+    `tools/mapper/protocol.py` refuses a `coded-pointer` naming a vocabulary no entry defines.
+    And that the passage really does define the term rather than merely printing it -- that is
+    interpretive, and the anchor is what can be held mechanically.
+
+    A derived entry carrying `defines` is refused by `--only derived`, which refuses every
+    passage field on one, so nothing here reads a derived entry.
+    """
+    bad, entries, declaring, declarations = [], entries_of(ctx["map"]), 0, 0
+    for position, entry in enumerate(entries):
+        if not isinstance(entry, dict) or "defines" not in entry or "derivedFrom" in entry:
+            continue
+        name = label(entry, position)
+        declaring += 1
+        declared = entry["defines"]
+        if not isinstance(declared, list) or not declared:
+            bad.append(f"  X  {name}: `defines` is {declared!r}; it is a non-empty list of the "
+                       f"terms this passage defines, and an empty one declares nothing")
+            continue
+        evidence = " ".join(str(entry.get("evidence") or "").split())
+        seen = set()
+        for item in declared:
+            declarations += 1
+            if not isinstance(item, dict):
+                bad.append(f"  X  {name}: defines holds {item!r}, which is not an object")
+                continue
+            if set(item) != set(DEFINES_FIELDS):
+                held = ", ".join(f"`{field}`" for field in sorted(item)) or "nothing"
+                bad.append(f"  X  {name}: a defines item holds {held}; an item is exactly "
+                           f"`vocabulary` and `term`, and a key nothing reads is refused rather "
+                           f"than ignored")
+                continue
+            # Canonicalised by the contract, not here. Judging a normalised value and
+            # returning a raw one to every other reader is the defect this shares one
+            # implementation to prevent: what is accepted here is what `defines_of` returns.
+            canonical = definition_of(item)
+            if canonical is None:
+                bad.append(f"  X  {name}: defines item {item!r} has a `vocabulary` or `term` "
+                           f"that is not a non-empty string")
+                continue
+            vocabulary, term = canonical
+            if term not in evidence:
+                bad.append(f"  X  {name}: defines {term!r}, which does not appear in this "
+                           f"entry's `evidence`; a definition is anchored in the passage that "
+                           f"makes it, as a reference is (0026, 0045)")
+                continue
+            if (vocabulary, term) in seen:
+                bad.append(f"  X  {name}: declares {term!r} in vocabulary {vocabulary!r} more "
+                           f"than once; a term may be defined by several entries, and one entry "
+                           f"declaring it twice says nothing the first declaration does not")
+                continue
+            seen.add((vocabulary, term))
+    if not declaring:
+        return skip("no entry declares `defines`, so there is no definition to anchor",
+                    had_subject=False)
+    return verdict(bad, f"{declarations} definition(s) declared by {declaring} entr(ies), each "
+                        f"naming one vocabulary and a term its own evidence prints",
+                   "a `defines` declaration is malformed or unanchored")
+
+
 # --- tools/mapvalidator/correspondence.py -----------------------------------------------------
 # The correspondence table: which runtime row each entry reaches, and the overlaps that are
 # data errors rather than precedence.
@@ -2697,6 +2881,7 @@ CHECKS = [
     ("asserted-by", check_asserted_by),
     ("draws", check_draws),
     ("cross-references", check_cross_references),
+    ("defines", check_defines),
     ("correspondence", check_correspondence),
     # The epistemic checks (0034). None reads `status`, `implementedIn` or `tests`, and
     # none may: an overlay must not be able to turn a verdict about whether the corpus

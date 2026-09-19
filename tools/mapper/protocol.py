@@ -26,7 +26,8 @@ interrogation nobody performs is worse than none -- it reads as coverage.
 import json
 import os
 
-from mapcontract.entry import block, entries_of, index
+from mapcontract.entry import (block, canonical_vocabulary, defined_vocabulary,
+                               entries_of, index)
 
 PROTOCOL_VERSIONS = (1,)
 PROTOCOL_FILENAME = "mapping-protocol.json"
@@ -302,16 +303,26 @@ def _check_mechanisms(protocol, document):
             problems.append(f"{where}: mechanism {name!r} is outside the closed set: "
                             + ", ".join(POINTER_MECHANISMS))
             continue
-        if name in ("defined-term-use", "coded-pointer"):
+        if name == "defined-term-use":
             problems += _check_vocabulary(where, declared, document)
         elif "vocabularyFrom" in declared:
-            problems.append(f"{where}: `vocabularyFrom` belongs to a mechanism that reads a "
-                            f"vocabulary, and {name!r} does not")
+            problems.append(f"{where}: `vocabularyFrom` names the one entry that prints a "
+                            f"corpus's terms, which is defined-term-use's vocabulary; "
+                            f"{name!r} does not read one"
+                            + (". coded-pointer's vocabulary is distributed over the entries "
+                               "that define its codes, and it names that vocabulary in "
+                               "`vocabulary` (0045)" if name == "coded-pointer" else ""))
         if name == "coded-pointer":
             problems += _check_coded_pointer(where, declared)
-        elif "column" in declared:
-            problems.append(f"{where}: `column` belongs to coded-pointer, whose pointers are made "
-                            f"by the column they sit in; {name!r} reads no column")
+            problems += _check_defined_vocabulary(where, declared, document)
+        else:
+            if "column" in declared:
+                problems.append(f"{where}: `column` belongs to coded-pointer, whose pointers are "
+                                f"made by the column they sit in; {name!r} reads no column")
+            if "vocabulary" in declared:
+                problems.append(f"{where}: `vocabulary` names a vocabulary the map's entries "
+                                f"declare with `defines` (0045), which is coded-pointer's; "
+                                f"{name!r} reads no such vocabulary")
     return problems
 
 
@@ -327,6 +338,33 @@ def _check_coded_pointer(where, declared):
     if isinstance(column, bool) or not isinstance(column, (str, int)) or not str(column).strip():
         return [f"{where}: coded-pointer names no `column`; a pointer made by the column it sits "
                 f"in has to say which column, or it is a scan of the corpus's words"]
+    return []
+
+
+def _check_defined_vocabulary(where, declared, document):
+    """`coded-pointer` names a vocabulary, and the entries that define its terms make it (0045).
+
+    `defined-term-use` reads its vocabulary out of **one** entry, because the corpus that forced
+    it prints one: the SRD's glossary list names all fifteen conditions in a sentence. 49 CFR
+    § 172.101 prints no such passage -- its codes are one per table row -- and the nearest
+    candidate, § 172.102(c), says only *"The following tables list … the special provisions
+    referred to in column 7"*. An entry indexing twenty codes it does not print would be a
+    registry disguised as a passage, which 0026's anchoring rule exists to refuse (#314).
+
+    So the vocabulary is a **name**, and it is distributed: every entry declaring
+    `defines: [{"vocabulary": name, "term": code}]` states one of its terms, anchored in its own
+    evidence. A name no entry defines is refused rather than read as an empty vocabulary, for the
+    reason a declared sweep nobody runs is refused: it reads as coverage.
+    """
+    name = declared.get("vocabulary")
+    if not canonical_vocabulary(name):
+        return [f"{where}: coded-pointer names no `vocabulary`; a mechanism that reads a cell's "
+                f"codes as pointers must say which vocabulary they are codes of"]
+    terms = defined_vocabulary(document, name)
+    if not terms:
+        return [f"{where}: no entry in this map declares `defines` for vocabulary {name!r}; a "
+                f"vocabulary is what the entries that define its terms add up to (0045), and one "
+                f"nothing defines would report every code in the column as undeclared"]
     return []
 
 
