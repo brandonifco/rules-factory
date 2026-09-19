@@ -721,9 +721,9 @@ class TestAQuoteInARowReachesIt(unittest.TestCase):
         self.assertIn("reached:     1", output)
         self.assertNotIn("not located inside the extent", output)
 
-    def test_a_three_token_cell_is_locatable_inside_its_cited_row(self):
+    def test_three_token_evidence_is_locatable_inside_its_cited_row(self):
         citation = '§ 1.10 table 1, row [column 3 = "2.3"]'
-        code, output = self.inventory("Ammonia, anhydrous 2.3", citation)
+        code, output = self.inventory("Ammonia, anhydrous |", citation)
         self.assertEqual(code, NOT_VERIFIED, output)
         self.assertIn("reached:     1", output)
         self.assertNotIn("not located inside the extent", output)
