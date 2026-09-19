@@ -124,9 +124,10 @@ reading them.
   grammars: 62 landed, 18 are refused, 44 pass
   ([#259](https://github.com/brandonifco/rules-factory/issues/259); 16 and 46 when first measured
   at `69167d8`, and the two rows that moved are the epistemic checks 0034 added). Five of the
-  twenty-five checks `check-map.py` held when it was measured ever turned; there are twenty-six
-  now, `defines` ([0045](decisions/0045-a-vocabulary-is-distributed-over-the-entries-that-define-its-terms.md))
-  remaining unchanged by 0046. Every miss is dispositioned, below or as an
+  twenty-five checks `check-map.py` held when it was measured ever turned; there are twenty-seven
+  now. `definition-continuations` ([0046](decisions/0046-an-additional-rule-can-continue-a-definition.md))
+  is the newest and unmeasured; `defines` ([0045](decisions/0045-a-vocabulary-is-distributed-over-the-entries-that-define-its-terms.md))
+  remains unchanged by 0046. Every miss is dispositioned, below or as an
   issue: [#268](https://github.com/brandonifco/rules-factory/issues/268),
   [#269](https://github.com/brandonifco/rules-factory/issues/269),
   [#270](https://github.com/brandonifco/rules-factory/issues/270),
