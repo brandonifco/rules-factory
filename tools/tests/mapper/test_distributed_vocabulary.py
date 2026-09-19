@@ -20,8 +20,9 @@ Watched here:
     its `crossReferences.cites` are absent from its evidence. Nothing here exempts anything;
   * the map that replaces it -- one `defines` declaration per defining entry -- passes the
     complete validator, and `mapper protocol` accepts its two protocols;
-  * `IB2`'s defining entry passes, both `IB3` defining entries survive and are **both** required
-    (0044), and deleting either is visible;
+  * `IB2`'s additional requirement and `IB3`'s analogous row join their direct definitions
+    through `continuesDefinition` (0046); all defining entries are required and deleting any
+    pointer edge is visible;
   * reversing the order the map states the defining entries in changes nothing;
   * column 6 and column 7 read two different vocabularies, and a token of one does not satisfy
     the other because the text matches;
@@ -102,12 +103,42 @@ def defining_entries():
               "IB2 Authorized IBCs: Metal (31A, 31B and 31N); Rigid plastics (31H1 and 31H2); "
               "Composite (31HZ1).",
               defines=defines(CODES, "IB2")),
+        entry("ib2-vapour-pressure-limit", PROVISIONS,
+              '§ 172.102 table 2, row blank in column 1 below row [column 1 = "IB2"]',
+              "| Additional Requirement: Only liquids with a vapor pressure less than or equal "
+              "to 110 kPa at 50 °C (1.1 bar at 122 °F), or 130 kPa at 55 °C "
+              "(1.3 bar at 131 °F) are authorized.",
+              continuesDefinition={
+                  "definedBy": "ib2-authorized-ibcs",
+                  "anchor": {
+                      "sourceId": PROVISIONS,
+                      "citation": '§ 172.102 table 2, row blank in column 1 below row '
+                                  '[column 1 = "IB2"]',
+                  },
+              }),
         entry("ib3-authorized-ibcs", PROVISIONS,
               '§ 172.102 table 2, row [column 1 = "IB3"]',
               "IB3 Authorized IBCs: Metal (31A, 31B and 31N); Rigid plastics (31H1 and 31H2); "
               "Composite (31HZ1 and 31HA2, 31HB2, 31HN2, 31HD2 and 31HH2).",
               defines=defines(CODES, "IB3")),
-        # 0044: the same printed code, a second rule, a second table. Two entries, one term.
+        entry("ib3-vapour-pressure-limit", PROVISIONS,
+              '§ 172.102 table 2, row [column 2 = "Additional Requirement: Only liquids with a '
+              'vapor pressure less than or equal to 110 kPa at 50 °C (1.1 bar at 122 °F), or '
+              '130 kPa at 55 °C (1.3 bar at 131 °F) are authorized, except for UN2672 (also see '
+              'special provision IP8 in Table 2 for UN2672)."]',
+              "| Additional Requirement: Only liquids with a vapor pressure less than or equal "
+              "to 110 kPa at 50 °C (1.1 bar at 122 °F), or 130 kPa at 55 °C "
+              "(1.3 bar at 131 °F) are authorized, except for UN2672 (also see special provision "
+              "IP8 in Table 2 for UN2672).",
+              continuesDefinition={
+                  "definedBy": "ib3-authorized-ibcs",
+                  "anchor": {
+                      "sourceId": PROVISIONS,
+                      "citation": '§ 172.102 table 2, row blank in column 1 below row '
+                                  '[column 1 = "IB3"]',
+                  },
+              }),
+        # 0044: the same printed code, a second rule, a second table. Three entries, one term.
         entry("ib3-authorized-large-packagings", PROVISIONS,
               '§ 172.102 table 4, row [column 1 = "IB3"]',
               "IB3 Authorized Large Packagings (LIQUIDS) (PG III materials only)",
@@ -144,7 +175,9 @@ def defining_entries():
 def pointing_entries():
     return [
         entry("acetal-column-7", TABLE, f"{ACETAL}, column 7", "IB2, T4, TP1",
-              crossReferences=cites(("IB2", "ib2-authorized-ibcs"), ("T4", "t4-portable-tank"),
+              crossReferences=cites(("IB2", "ib2-authorized-ibcs"),
+                                    ("IB2", "ib2-vapour-pressure-limit"),
+                                    ("T4", "t4-portable-tank"),
                                     ("TP1", "tp1-degree-of-filling"))),
         entry("acetal-column-6", TABLE, f"{ACETAL}, column 6", "3",
               crossReferences=cites(("3", "class-3-flammable-liquid"))),
@@ -152,6 +185,7 @@ def pointing_entries():
               crossReferences=cites(("148", "provision-148-bulk-blasting"),
                                     ("IB3", "ib3-authorized-ibcs"),
                                     ("IB3", "ib3-authorized-large-packagings"),
+                                    ("IB3", "ib3-vapour-pressure-limit"),
                                     ("T4", "t4-portable-tank"),
                                     ("TP1", "tp1-degree-of-filling"))),
         entry("acetic-acid-10-50-column-6", TABLE, f"{ACETIC}, column 6", "8",
@@ -160,7 +194,7 @@ def pointing_entries():
 
 
 def trial_map():
-    """The map, as trial 10 would write it under 0045."""
+    """The map, as trial 10 writes this slice under 0045-0046."""
     return {
         "schemaVersion": 1,
         "corpus": TABLE,
@@ -189,8 +223,7 @@ def trial_map():
                 {"section": "§ 172.102", "table": 1,
                  "excluded": "the ASTM maximum ambient temperature table inside numeric "
                              "provision 14; no mapped row invokes it"},
-                {"section": "§ 172.102", "table": 2,
-                 "rows": [{"column": 1, "is": "IB2"}, {"column": 1, "is": "IB3"}]},
+                {"section": "§ 172.102", "table": 2, "rows": "all"},
                 {"section": "§ 172.102", "table": 3,
                  "excluded": "IP codes; no mapped row carries one"},
                 {"section": "§ 172.102", "table": 4, "rows": [{"column": 1, "is": "IB3"}]},
@@ -284,6 +317,7 @@ class TheRealCasePassesTheCompleteValidator(ValidatorCase):
         code, output = self.run_checks(trial_map())
         self.assertEqual(self.status_of(output, "defines"), "ok", output)
         self.assertIn("8 definition(s) declared by 8 entr(ies)", output)
+        self.assertEqual(self.status_of(output, "definition-continuations"), "ok", output)
 
     def test_the_cross_references_of_the_pointing_cells_are_anchored(self):
         code, output = self.run_checks(trial_map())
@@ -321,21 +355,30 @@ class TheSyntheticVocabularyEntryStillFails(ValidatorCase):
 
 
 class TheVocabularyIsWhatTheDefiningEntriesAddUpTo(ValidatorCase):
-    """0044 through 0045: two entries define `IB3`, and the cell owes both."""
+    """0044 through 0046: direct definitions plus continuations, and the cell owes all."""
 
     @staticmethod
     def column_7(document):
         return {n.term: n for n in pointers.detect_coded(document, COLUMN_7)
                 if n.entry_id == "acetic-acid-10-50-column-7"}
 
-    def test_ib2_defines_one_rule_and_ib3_two(self):
+    def test_ib3_defines_three_rules(self):
         found = self.column_7(trial_map())
         self.assertEqual(found["IB3"].defines,
-                         ["ib3-authorized-ibcs", "ib3-authorized-large-packagings"])
+                         ["ib3-authorized-ibcs", "ib3-vapour-pressure-limit",
+                          "ib3-authorized-large-packagings"])
         self.assertEqual(found["IB3"].missing, [])
 
+    def test_ib2_defines_the_direct_and_additional_rules(self):
+        found = {n.term: n for n in pointers.detect_coded(trial_map(), COLUMN_7)
+                 if n.entry_id == "acetal-column-7"}
+        self.assertEqual(found["IB2"].defines,
+                         ["ib2-authorized-ibcs", "ib2-vapour-pressure-limit"])
+        self.assertEqual(found["IB2"].missing, [])
+
     def test_deleting_either_ib3_declaration_is_visible(self):
-        for dropped in ("ib3-authorized-ibcs", "ib3-authorized-large-packagings"):
+        for dropped in ("ib3-authorized-ibcs", "ib3-vapour-pressure-limit",
+                        "ib3-authorized-large-packagings"):
             with self.subTest(dropped=dropped):
                 document = trial_map()
                 for item in document["entries"]:
@@ -349,7 +392,7 @@ class TheVocabularyIsWhatTheDefiningEntriesAddUpTo(ValidatorCase):
                 self.assertIn("IB3", [n.term for n in undeclared])
 
     def test_deleting_a_defining_entry_is_visible(self):
-        """The rule, not the pointer: `IB3` stops naming two rules and nothing else changes."""
+        """The rule, not the pointer: deleting table 4 leaves IB3's table-2 pair."""
         document = trial_map()
         document["entries"] = [e for e in document["entries"]
                                if e["id"] != "ib3-authorized-large-packagings"]
@@ -362,8 +405,9 @@ class TheVocabularyIsWhatTheDefiningEntriesAddUpTo(ValidatorCase):
         document["extent"]["tables"].append(
             {"section": "§ 172.102", "table": 4, "excluded": "dropped, for this measurement"})
         lines, _, _ = pointers.report(table_protocol(), document)
-        self.assertEqual(self.column_7(document)["IB3"].defines, ["ib3-authorized-ibcs"])
-        self.assertTrue(any("5 term(s) declared by 5 entr(ies)" in line for line in lines), lines)
+        self.assertEqual(self.column_7(document)["IB3"].defines,
+                         ["ib3-authorized-ibcs", "ib3-vapour-pressure-limit"])
+        self.assertTrue(any("5 term(s) defined by 7 entr(ies)" in line for line in lines), lines)
 
     def test_the_order_the_map_states_the_defining_entries_in_changes_nothing(self):
         forwards = trial_map()
@@ -406,7 +450,7 @@ class TwoColumnsReadTwoVocabularies(ValidatorCase):
             table_protocol([{"mechanism": "coded-pointer", "column": 9,
                              "vocabulary": "column-9-codes"}]),
             trial_map(), None)
-        self.assertTrue(any("no entry in this map declares `defines` for vocabulary "
+        self.assertTrue(any("no entry in this map establishes vocabulary "
                             "'column-9-codes'" in line for line in problems), problems)
 
 
@@ -448,7 +492,8 @@ class TheValidatorAndTheReadersAgree(ValidatorCase):
         naming = {n.term: n for n in pointers.detect_coded(document, COLUMN_7)
                   if n.entry_id == "acetic-acid-10-50-column-7"}["IB3"]
         self.assertEqual(naming.defines,
-                         ["ib3-authorized-ibcs", "ib3-authorized-large-packagings"])
+                         ["ib3-authorized-ibcs", "ib3-vapour-pressure-limit",
+                          "ib3-authorized-large-packagings"])
         self.assertEqual(naming.missing, [])
 
     def test_whitespace_around_a_term_is_canonicalised(self):

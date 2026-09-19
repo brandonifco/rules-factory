@@ -329,11 +329,13 @@ class TestFixtureIsValid(MapCase):
         code, output = self.run_tool(valid_map())
         self.assertEqual(code, 0, output)
         self.assertNotIn("[fail]", output, output)
-        # `conflicts`, `decision-records` and `superposition` skip without subject matter --
-        # the fixture records no conflict, no decision and no blind second mapping beside it.
-        # Nothing else may.
+        # `conflicts`, `decision-records`, `definition-continuations` and `superposition`
+        # skip without subject matter -- the fixture records no conflict, no decision, no
+        # continued definition and no blind second mapping beside it. Nothing else may.
         skipped = re.findall(r"^\[skip\] (\S+):", output, re.M)
-        self.assertEqual(sorted(skipped), ["conflicts", "decision-records", "superposition"], output)
+        self.assertEqual(sorted(skipped),
+                         ["conflicts", "decision-records", "definition-continuations",
+                          "superposition"], output)
 
 
 class TestSchema(MapCase):

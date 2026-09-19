@@ -1092,6 +1092,99 @@ def check_table_row(entry, cited, tables):
     return "ok", f"one contiguous span of {where} {citation} names", number
 
 
+def table_row_identity(citation, tables):
+    """((section, table, row-position), selector), or (None, why), for one table-row locator.
+
+    This is the identity comparison 0046 needs. It deliberately reuses `table_citation` and the
+    same `Table` resolution methods as ordinary locator checking, so a continuation witness and
+    an entry locator cannot disagree about what row a citation names.
+    """
+    cited = table_citation(citation)
+    if cited is None:
+        return None, f"citation {citation!r} is not a table-row locator this grammar reads"
+    number, position, selector, column = cited
+    if column is not None:
+        return None, f"citation {citation!r} names a cell; a definition continuation anchors rows"
+    table = tables.get((number, position))
+    if table is None:
+        return None, f"§ {number} prints no table {position}"
+    if table.unresolved:
+        return None, f"§ {number} table {position} cannot be addressed: {table.unresolved}"
+    named = list(selector[2]) + list(selector[3]) if selector[0] == "below" else list(selector[1])
+    unknown = [column for column, _ in named if table.index_of(column) is None]
+    if unknown:
+        return None, (f"§ {number} table {position} prints no column "
+                      f"{', '.join(unknown)}")
+    if selector[0] == "below":
+        _, blank, anchor, discriminators = selector
+        at, why = table.resolve_below(blank, anchor, discriminators)
+        if at is None:
+            return None, f"§ {number} table {position} {why}"
+    else:
+        pairs = selector[1]
+        positions = [at for at, cells in enumerate(table.rows)
+                     if table.addressable[at]
+                     and all(table._holds(cells, column, value) for column, value in pairs)]
+        if len(positions) != 1:
+            return None, (f"citation {citation!r} names {len(positions)} rows; exactly one is "
+                          f"required")
+        at = positions[0]
+    return ((number, position, at), selector), None
+
+
+def check_definition_continuation_anchor(entry, target, tables):
+    """('ok'|'bad', message) for 0046's structural witness.
+
+    The map-level validator proves `definedBy` directly defines one term. This checker proves
+    the corpus-side anchor: the relation's locator names this entry's row, and its `below`
+    anchor names the target entry's row. A free edge therefore cannot make unrelated evidence
+    join a vocabulary.
+    """
+    relation = entry.get("continuesDefinition")
+    if not isinstance(relation, dict) or not isinstance(relation.get("anchor"), dict):
+        return "bad", "continuesDefinition has no structural anchor locator"
+    anchor = relation["anchor"]
+    current_source = (entry.get("locator") or {}).get("sourceId")
+    target_source = (target.get("locator") or {}).get("sourceId") if isinstance(target, dict) else None
+    if anchor.get("sourceId") != current_source or target_source != current_source:
+        return "bad", "definition continuation, its anchor, and definedBy do not name one corpus"
+
+    witnessed, why = table_row_identity(anchor.get("citation"), tables)
+    if witnessed is None:
+        return "bad", f"definition continuation anchor is not mechanically resolvable: {why}"
+    witness_identity, selector = witnessed
+    if selector[0] != "below":
+        return "bad", ("definition continuation anchor is not a structural `row blank ... below "
+                       "row [...]` witness; 0046 supports no free locator edge")
+
+    current, why = table_row_identity((entry.get("locator") or {}).get("citation"), tables)
+    if current is None:
+        return "bad", f"continuation entry's locator cannot be compared to its anchor: {why}"
+    if current[0] != witness_identity:
+        return "bad", ("definition continuation anchor resolves to a different row than the "
+                       "continuation entry's locator")
+
+    target_row, why = table_row_identity((target.get("locator") or {}).get("citation"), tables)
+    if target_row is None:
+        return "bad", f"definedBy entry's locator cannot be compared to the anchor: {why}"
+
+    number, position, _ = witness_identity
+    _, _, anchor_pairs, _ = selector
+    table = tables[(number, position)]
+    anchor_positions = [at for at, cells in enumerate(table.rows)
+                        if table.addressable[at]
+                        and all(table._holds(cells, column, value)
+                                for column, value in anchor_pairs)]
+    if len(anchor_positions) != 1:
+        return "bad", (f"definition continuation's structural anchor names "
+                       f"{len(anchor_positions)} defining rows; exactly one is required")
+    structurally_defined_by = (number, position, anchor_positions[0])
+    if target_row[0] != structurally_defined_by:
+        return "bad", ("definition continuation's structural anchor is under a different row "
+                       "than continuesDefinition.definedBy")
+    return "ok", "definition continuation anchor resolves to this row under its definedBy row"
+
+
 def cited_paths(citation):
     """The set of designation-path prefixes a citation names.
 
@@ -1537,8 +1630,9 @@ def main(argv):
         if summary:
             unreachable_ok.append(f"  ok {label(source)}{summary}")
 
-    bad = unchecked = bounds = bad_bounds = 0
+    bad = unchecked = bounds = bad_bounds = continuation_anchors = 0
     reached = set()
+    by_id = {entry.get("id"): entry for entry in entries if isinstance(entry, dict)}
     for entry in entries:
         source = (entry.get("locator") or {}).get("sourceId")
         index = indexes.get(None if None in indexes else source)
@@ -1557,6 +1651,14 @@ def main(argv):
         elif verdict != "ok":
             unchecked += 1
             print(f"  ?  {label(source)}{entry['id']}: {message}")
+        if "continuesDefinition" in entry:
+            continuation_anchors += 1
+            target_id = (entry.get("continuesDefinition") or {}).get("definedBy")
+            anchor_verdict, anchor_message = check_definition_continuation_anchor(
+                entry, by_id.get(target_id), tables)
+            if anchor_verdict != "ok":
+                bad += 1
+                print(f"  X  {label(source)}{entry['id']}: {anchor_message}")
         for name, quoting in bounds_of(entry):
             bounds += 1
             verdict, message = check(quoting, corpus, spans, None, tables)
@@ -1617,6 +1719,7 @@ def main(argv):
         return 1
     print(f"locators ok (all {total} checked against the section tree"
           + (f" of {len(indexes)} corpora" if None not in indexes and len(indexes) > 1 else "")
+          + (f", {continuation_anchors} definition continuation anchor(s)" if continuation_anchors else "")
           + (f", and {bounds} authored example(s) bounding a term" if bounds else "")
           + f"); coverage ok ({covered})")
     return 0
