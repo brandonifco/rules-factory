@@ -365,6 +365,55 @@ trial was for: the corpus attacked a part of the contract the previous nine did 
 [0026](../../docs/decisions/0026-a-meaning-the-same-corpus-gives-elsewhere-is-an-entry-and-a-corpus-declares-its-pointers.md)
 is untouched. H1 and H3–H6 remain open; nothing here is evidence about them.
 
+## The two protocols, finalized before the map
+
+[`mapping-protocol-cfr-49-172.101.json`](mapping-protocol-cfr-49-172.101.json) and
+[`mapping-protocol-cfr-49-172.102.json`](mapping-protocol-cfr-49-172.102.json), one per corpus
+([0040](../../docs/decisions/0040-a-protocol-is-about-one-corpus-and-a-map-has-one-per-corpus-it-cites.md)).
+They are written **before** the map for the reason the hypotheses were: a protocol written after a
+map describes the walk that happened rather than the walk that was owed, and nothing would catch
+the difference.
+
+Four choices are not obvious, and each was settled against the committed bytes rather than argued:
+
+1. **`formatting: "rendered-page-required"`, on both.** § 172.101(c)(10) makes italics
+   load-bearing — italicised words in column 2 are **not part of the proper shipping name** — and
+   two of the seven rows carry them: *"Acetic acid, glacial `or` Acetic acid solution, `with more
+   than 80 percent acid, by mass`"*, and the whole of *"Acetyl acetone peroxide with more than 9
+   percent by mass active oxygen"*. The corpus marks them `<E T="03">`, and the `ecfr-xml`
+   adapter's cell text is `"".join(cell.itertext())`, which flattens the tag. So the extraction
+   does not carry the distinction, the rendered page does, and an entry that turns on which words
+   are italic owes a rendered reading ([0004](../../docs/decisions/0004-adapter-reach-is-a-property-of-the-entry.md)).
+2. **Column 6 gets its own `coded-pointer` and its own vocabulary.** § 172.101(g) ends *"The codes
+   contained in Column 6 are defined according to the following table:"* — the corpus itself says
+   those codes are defined by table 1, the Label Substitution Table. That is exactly the shape
+   [0045](../../docs/decisions/0045-a-vocabulary-is-distributed-over-the-entries-that-define-its-terms.md)
+   is for, and `hazard-label-codes` is a different vocabulary from `special-provision-codes`
+   because a token of one does not answer the other: column 6's `3` is a hazard label, and column
+   7 holds numeric special provisions such as `148`.
+3. **§ 172.102 declares no `coded-pointer`.** Its tables' column 1 holds the codes, but there they
+   are **defined**, not pointed with. It points the ordinary two ways — `phrase`, over the
+   manifest's declared phrases, and `section-designation`, which its provisions use heavily
+   (`§ 178.274(d)(2)`).
+4. **Neither declares `defined-term-use`.** Both corpora use terms § 171.8 defines, and § 171.8 is
+   listed in the manifest as referenced and **not admitted**, so no entry of this map can be its
+   vocabulary; a pointer into it is `definedElsewhere`'s
+   ([0026](../../docs/decisions/0026-a-meaning-the-same-corpus-gives-elsewhere-is-an-entry-and-a-corpus-declares-its-pointers.md)).
+
+Run against a map that declares both vocabularies, `protocol.check` returns nothing for either.
+Run against an empty map, § 172.101's is refused twice, and those two refusals are the obligation
+the protocol places on the mapper:
+
+```
+pointerMechanisms[2]: no entry in this map declares `defines` for vocabulary 'hazard-label-codes'
+pointerMechanisms[3]: no entry in this map declares `defines` for vocabulary 'special-provision-codes'
+```
+
+`requiredSweeps` names ten of the eleven challenges for each corpus; `examples` is the one neither
+requires, because neither states a worked example. Whether any of the ten is silent on this corpus
+— fires on nothing anywhere, which is the outcome that needs a `sweepCuesReason` — cannot be known
+before a map exists, and is measured when Mapper A's sweeps run.
+
 ## What happens next
 
 Steps 2 to 4 of #262: map the slice by the method, blind-map it a second time, adjudicate, mutate,
