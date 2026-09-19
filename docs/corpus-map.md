@@ -389,6 +389,7 @@ before either has been implemented.
 | `absentFrom` | Present only when the corpus does **not** state the rule at all. Names the terms searched for. See below. |
 | `derivedFrom` | Present only when no sentence states the fact and two or more in-scope entries entail it. Entry ids. The entry then carries no `locator` and no `evidence`. See below. |
 | `crossReferences` | The pointers this entry's `evidence` makes, each resolved to an entry or to a recorded reason there is none. See below. |
+| `defines` | The terms this entry's `evidence` defines, each in a named vocabulary. Optional, and the opposite direction to `crossReferences`. See below. |
 | `evidence` | One contiguous verbatim span of the corpus: the passage that *states* this rule. Not a summary of it. Absent on a derived entry, and only there. See below. |
 | `status` | Whether the engine has built this entry. Independent of `ambiguity.fate`. See below. |
 | `implementedIn` | The ruleset revision that implemented it. Set when status becomes `implemented`. |
@@ -1171,6 +1172,50 @@ because the page marker fell inside the phrase, and Hoyle's own regex reaches it
 prose, the carrier 0003 and 0004 both rejected. What is checked is that a mapper was made to write
 one and anchored it, not that it is true. And a term-anchored item is checked for its anchor and
 its target, not for whether the target defines the term.
+
+### `defines`
+
+A term an entry defines is declared by that entry, and anchored in that entry's own evidence.
+Added in [0045](decisions/0045-a-vocabulary-is-distributed-over-the-entries-that-define-its-terms.md).
+
+```json
+"defines": [
+  { "vocabulary": "special-provision-codes", "term": "IB3" }
+]
+```
+
+**It is the opposite direction to `crossReferences`, and neither implies the other.**
+`crossReferences` records a pointer the passage *makes*; `defines` records a term the passage
+*gives a meaning to*. 49 CFR § 172.101's column 7 cell prints `IB3` and points at the two
+§ 172.102 rows that define it; those two rows point at nothing by defining it. Deriving one from
+the other would make a defining entry assert a reference its passage does not make.
+
+**Why it exists.** A mechanism that reads a corpus's codes as pointers has to know what the codes
+are ([`coded-pointer`](mapper.md#coded-pointer--a-pointer-its-column-makes)). `defined-term-use`
+reads them out of one entry, because the SRD prints its glossary list in a sentence. § 172.102
+prints no such passage — its codes are one per table row, and § 172.102(c) says only *"The
+following tables list … the special provisions referred to in column 7"* — so an entry carrying
+that list would be indexing twenty codes it does not print, which the anchoring rule refuses
+([#314](https://github.com/brandonifco/rules-factory/issues/314)). The vocabulary is therefore
+distributed: each defining entry declares its own term, and `(vocabulary, term)` resolves to
+**every** entry that declares it. That is where
+[0044](decisions/0044-one-printed-code-can-name-more-than-one-rule.md)'s cardinality now comes
+from: `IB3` names two rules because two entries define it, in § 172.102's table 2 and its table 4.
+
+`check-map.py --only defines` holds the declaration, and only what can be held mechanically: a
+non-empty list; each item exactly `vocabulary` and `term`, both non-empty strings; the `term`
+**verbatim in this entry's own `evidence`**; and the same `(vocabulary, term)` once per entry. A
+derived entry may not carry it, for the reason it may not carry `crossReferences` — it quotes no
+passage. Several entries **may** define the same term; that is the case the field exists for.
+
+**Three limits.** That the passage really *defines* the term rather than printing it is
+interpretive, as `unmapped` is, and is not checked. That some protocol reads the vocabulary is
+not checked here either — the protocol belongs to the mapper
+([0032](decisions/0032-mapping-validation-and-generation-are-three-subsystems-over-one-contract.md)),
+and `mapper protocol` is what refuses a `coded-pointer` naming a vocabulary no entry defines. And
+a vocabulary name is free text: two entries that meant the same vocabulary and spelled it
+differently make two vocabularies, and what says so is the pointer report listing the codes
+neither declares.
 
 ### `status`
 

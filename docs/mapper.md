@@ -133,7 +133,7 @@ Decided in [0041](decisions/0041-a-coded-pointer-is-made-by-the-column-it-sits-i
 ([#307](https://github.com/brandonifco/rules-factory/issues/307)), forced by trial 10.
 
 ```json
-{ "mechanism": "coded-pointer", "column": 7, "vocabularyFrom": "column-7-codes" }
+{ "mechanism": "coded-pointer", "column": 7, "vocabulary": "special-provision-codes" }
 ```
 
 49 CFR § 172.101 column 7 holds `IB2, T4, TP1` and nothing else — each a pointer into § 172.102,
@@ -154,8 +154,27 @@ column are not. A token in the pointer-bearing column that the vocabulary does n
 reported rather than dropped: it is either a pointer nobody recorded or a vocabulary that is
 short.
 
-`vocabularyFrom` is the same key `defined-term-use` uses and resolves the same way, out of the
-map. `column` is a mechanism parameter, not a protocol field — the protocol's shape is a list of
+`vocabulary` names a vocabulary **distributed over the entries that define its terms**
+([0045](decisions/0045-a-vocabulary-is-distributed-over-the-entries-that-define-its-terms.md),
+[#314](https://github.com/brandonifco/rules-factory/issues/314)), and this is where it differs
+from `defined-term-use`. That mechanism reads its terms out of **one** entry, because the corpus
+that forced it prints one — the SRD's glossary list names all fifteen conditions in a sentence.
+§ 172.102 prints no such passage: its codes are one per table row, and § 172.102(c) says only
+*"The following tables list … the special provisions referred to in column 7"*. An entry indexing
+twenty codes it does not print would be refused by the anchoring rule
+([0026](decisions/0026-a-meaning-the-same-corpus-gives-elsewhere-is-an-entry-and-a-corpus-declares-its-pointers.md)),
+and rightly: it would be a registry someone wrote, not a passage of the corpus.
+
+So each defining entry declares its own term, anchored in its own evidence
+([`defines`](corpus-map.md#defines)), and the vocabulary is what those declarations add up to:
+`(vocabulary, term) → one or more entry ids`. `vocabularyFrom` on a `coded-pointer` is refused,
+and `vocabulary` on any other mechanism is refused — each names a different kind of vocabulary,
+and a mechanism reading the wrong one would report a clean run over nothing. A name no entry
+defines is refused too, because it would report every code in the column as undeclared. Two
+columns may read two vocabularies, and a token of one does not satisfy the other because the text
+matches: column 6's `3` is a hazard label, and column 7's numeric codes are special provisions.
+
+`column` is a mechanism parameter, not a protocol field — the protocol's shape is a list of
 mechanism objects each carrying its own, and it does not change. `column` on any other mechanism
 is refused, and `coded-pointer` without one is refused: without it the mechanism would be a scan
 of the corpus's words, which is the failure that forced it.

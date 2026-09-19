@@ -14,6 +14,19 @@ names the column this mechanism reads. **Satisfies the standard
 refused in advance, attempted under mapping with the existing vocabulary, and added only after
 the attempt was measured failing. The specification is [mapper.md](../mapper.md).
 
+**Amended 2026-09-19** by
+[0045](0045-a-vocabulary-is-distributed-over-the-entries-that-define-its-terms.md)
+([#314](https://github.com/brandonifco/rules-factory/issues/314)): § 2 below reuses
+`vocabularyFrom`, one entry whose `crossReferences` index the corpus's codes. **That part is
+falsified.** § 172.102 prints no passage listing its codes, so such an entry could only be
+written by inventing the list, which 0026's anchoring rule refuses — and 0026 is right. The
+mechanism names a `vocabulary` instead, distributed over the entries that declare they `defines`
+its terms, and `vocabularyFrom` on a `coded-pointer` is now refused. Everything else here stands:
+the pointer is made by the column, `column` is a mechanism parameter, and the protocol's shape
+does not change. The reason this was not caught at the time is stated in 0045 and is a fact about
+how 0041 was measured — a proposition test and `protocol.check`, neither of which runs
+`check-map.py --only cross-references`.
+
 ## Context
 
 49 CFR § 172.101 column 7 holds `IB2, T4, TP1` and nothing else. Each is a pointer into
@@ -65,6 +78,11 @@ is worse than none — it reads as coverage.* Firing is not the same as being ri
 
 ### 2. Vocabulary growth, not schema growth
 
+> **Amended by [0045](0045-a-vocabulary-is-distributed-over-the-entries-that-define-its-terms.md).**
+> The mechanism is `{ "mechanism": "coded-pointer", "column": 7, "vocabulary":
+> "special-provision-codes" }`, and the vocabulary is what the entries declaring `defines` add up
+> to. The paragraph below is what was decided here and what the corpus falsified.
+
 ```json
 { "mechanism": "coded-pointer", "column": 7, "vocabularyFrom": "column-7-codes" }
 ```
@@ -77,7 +95,8 @@ is worse than none — it reads as coverage.* Firing is not the same as being ri
   shape does not change. **No protocol field is added, and no new document.**
 
 H2 said the shape would hold and only the vocabulary would grow. That is what happened, by one
-member.
+member — and 0045 qualifies the claim: the shape held, and the new member could **not** reuse a
+single `vocabularyFrom` entry on the corpus it was added for.
 
 ### 3. The detector reads the context, never the prose
 

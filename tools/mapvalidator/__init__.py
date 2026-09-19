@@ -27,7 +27,9 @@ is what damages them, and `examples/validator-attack/` is the record.
   * **The measured miss rate of everything below is 74%.** Fourteen mutations over five
     committed maps and three locator grammars: 62 landed, 18 are refused, 44 pass (#259;
     16 and 46 when first measured at 69167d8, the two rows that moved being the epistemic
-    checks 0034 added). Five of the twenty-five checks in this file ever turned. Read
+    checks 0034 added). Five of the twenty-five checks this file held when it was
+    measured ever turned; there are twenty-six now, `defines` (0045) being the
+    newest and unmeasured. Read
     the list below as what a reader should expect to get away with, not as a list of
     theoretical gaps.
   * **A conflict nobody recorded is invisible.** `ambiguity.conflict` (0007) groups the
