@@ -131,7 +131,10 @@ def valid_map():
             # 0025: an assertion names who asserts it, in the corpus's words.
             entry("well-clear", kind="assertion", status="mapped", assertedBy=["remote pilot"],
                   evidence="The remote pilot must keep the aircraft well clear of other aircraft."),
+            # 0045: the entry defines a term of a named vocabulary, anchored in its own
+            # evidence -- "The sentence stating yield-right-of-way." prints the term.
             entry("yield-right-of-way", kind="operation", dependsOn=["well-clear"],
+                  defines=[{"vocabulary": "demo-codes", "term": "yield-right-of-way"}],
                   enabledBy=["speed-limit"], suspendedBy=["speed-within-limit"],
                   status="implemented",
                   implementedIn={"ruleset": "demo", "version": 1},
@@ -2026,15 +2029,12 @@ class TestDefines(MapCase):
     `coded-pointer` a vocabulary by exempting anything from that rule.
     """
 
-    DEFINING = 0   # speed-limit, whose evidence prints "speed-limit"
-    SECOND = 1     # speed-within-limit, which defines the same term in the same vocabulary
+    DEFINING = 3   # yield-right-of-way, which the fixture already has define a term
+    SECOND = 1     # speed-within-limit, whose evidence prints its own id too
 
     @staticmethod
-    def defining_map(items=None):
-        document = valid_map()
-        document["entries"][0]["defines"] = items if items is not None else [
-            {"vocabulary": "demo-codes", "term": "speed-limit"}]
-        return document
+    def defining_map():
+        return valid_map()
 
     def assert_catches_defines(self, mutate, message):
         """The defining map passes `defines`; the mutation makes it say `message`."""
@@ -2049,8 +2049,11 @@ class TestDefines(MapCase):
         self.assertIn(message, output)
 
     def test_a_map_declaring_nothing_is_not_verified_rather_than_ok(self):
-        # The field is optional, and a check with no subject has not passed.
-        code, output = self.run_tool(valid_map())
+        # The field is optional, and a check with no subject has not passed. Every map
+        # committed before 0045 is this case.
+        document = valid_map()
+        document["entries"][self.DEFINING].pop("defines")
+        code, output = self.run_tool(document)
         self.assertEqual(self.status_of(output, "defines"), "skip", output)
         self.assertEqual(code, 0, output)
 
@@ -2073,13 +2076,13 @@ class TestDefines(MapCase):
     def test_the_same_declaration_twice_on_one_entry_fails(self):
         self.assert_catches_defines(
             lambda d: d["entries"][self.DEFINING]["defines"].append(
-                {"vocabulary": "demo-codes", "term": "speed-limit"}),
-            "declares 'speed-limit' in vocabulary 'demo-codes' more than once")
+                {"vocabulary": "demo-codes", "term": "yield-right-of-way"}),
+            "declares 'yield-right-of-way' in vocabulary 'demo-codes' more than once")
 
     def test_the_same_term_in_two_vocabularies_on_one_entry_is_accepted(self):
         document = self.defining_map()
         document["entries"][self.DEFINING]["defines"].append(
-            {"vocabulary": "other-codes", "term": "speed-limit"})
+            {"vocabulary": "other-codes", "term": "yield-right-of-way"})
         code, output = self.run_tool(document)
         self.assertEqual(self.status_of(output, "defines"), "ok", output)
         self.assertEqual(code, 0, output)
@@ -2091,7 +2094,7 @@ class TestDefines(MapCase):
 
     def test_a_list_that_is_not_a_list_fails(self):
         self.assert_catches_defines(
-            lambda d: d["entries"][self.DEFINING].update(defines={"term": "speed-limit"}),
+            lambda d: d["entries"][self.DEFINING].update(defines={"term": "yield-right-of-way"}),
             "it is a non-empty list of the terms this passage defines")
 
     def test_an_item_with_a_third_key_fails(self):
