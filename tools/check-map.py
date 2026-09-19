@@ -123,9 +123,15 @@ REQUIRED_ENTRY_FIELDS = ["id", "name", "locator", "kind", "scope", "clarity", "e
 # A derived entry (0012) cites nothing: no sentence contains its fact, so it has no passage
 # to locate or quote. Its sources' locators and evidence are its citation.
 CITING_FIELDS = ("locator", "evidence")
-# What only a passage can carry, and so what a derived entry may not.
-PASSAGE_FIELDS = CITING_FIELDS + ("crossReferences", "absentFrom", "beyondAdapter", "definedElsewhere",
-                                  "extraction")
+# What only a passage can carry, and so what a derived entry may not. `defines` is among them
+# for the reason `crossReferences` is: a definition is anchored in the passage that makes it
+# (0045), and a derived entry quotes no passage.
+PASSAGE_FIELDS = CITING_FIELDS + ("crossReferences", "defines", "absentFrom", "beyondAdapter",
+                                  "definedElsewhere", "extraction")
+# The two halves of one `defines` item, and both of them: the vocabulary the term belongs to, and
+# the term as the corpus prints it (0045). Exactly these, because an item with a third key is one
+# whose author expected something to read it.
+DEFINES_FIELDS = ("vocabulary", "term")
 # The relations that hold entry ids and nothing else. `gatedBy` is not among them: 0011 split
 # it into the two gate fields, and `gates` refuses it by name.
 GATE_FIELDS = ("enabledBy", "suspendedBy")
@@ -173,6 +179,49 @@ def block(entry, name):
 
 def fate_of(entry):
     return block(entry, "ambiguity").get("fate")
+
+
+def defines_of(entry):
+    """The `(vocabulary, term)` pairs an entry declares it defines, in declaration order (0045).
+
+    A vocabulary is distributed over the entries that define its terms: the corpus that forced
+    `coded-pointer` prints its codes one per table row and has no passage that lists them, so
+    there is no entry a protocol could name as *the* vocabulary. Each defining entry declares
+    the term it defines instead, and the vocabulary is what those declarations add up to.
+
+    Malformed items are skipped rather than reported here -- `check-map.py --only defines` owns
+    the judgement, and a reader that raised would make every other check depend on this one.
+    """
+    declared = entry.get("defines") if isinstance(entry, dict) else None
+    found = []
+    for item in declared if isinstance(declared, list) else []:
+        if not isinstance(item, dict):
+            continue
+        name, term = item.get("vocabulary"), item.get("term")
+        if isinstance(name, str) and name and isinstance(term, str) and term:
+            found.append((name, term))
+    return found
+
+
+def defined_vocabulary(doc, name):
+    """One named vocabulary, as `{term: [the ids of every entry that defines it]}` (0045).
+
+    **One printed code can name more than one rule** (0044), and here that cardinality is not a
+    special case: `IB3` has two defining entries because two entries declare they define it, in
+    § 172.102's table 2 and its table 4. The ids are in the order the map states them, and an id
+    that declares one term twice appears once -- `check-map.py --only defines` reports the
+    repetition, so the two cases stay distinguishable.
+
+    A vocabulary no entry defines is `{}`, which is what makes a protocol naming one refusable.
+    """
+    terms = {}
+    for entry in entries_of(doc):
+        if not isinstance(entry, dict) or not isinstance(entry.get("id"), str):
+            continue
+        for vocabulary, term in defines_of(entry):
+            if vocabulary == name and entry["id"] not in terms.setdefault(term, []):
+                terms[term].append(entry["id"])
+    return terms
 
 
 # --- tools/mapvalidator/diagnostics.py --------------------------------------------------------
@@ -2303,6 +2352,98 @@ def check_cross_references(ctx):
                                  "pointer phrases are missing or malformed")
 
 
+# --- tools/mapvalidator/defines.py ------------------------------------------------------------
+# A term an entry defines is declared by that entry, and anchored in its own evidence (0045).
+#
+# `crossReferences` records a pointer the entry's passage *makes*. `defines` records a term the
+# entry's passage *gives a meaning to*. They are opposite directions, and neither implies the
+# other: the § 172.101 row cell that prints `IB3` points at the two § 172.102 rows that define it,
+# and those two rows point at nothing.
+#
+# The two share one rule, which is 0026's and is why `defines` is a field and not a list in the
+# protocol: **the declaration is anchored in the corpus's words.** A `cites` appears verbatim in
+# the evidence of the entry that makes the reference; a `term` appears verbatim in the evidence of
+# the entry that defines it. An entry whose evidence reads *"The following tables list … the
+# special provisions referred to in column 7"* and whose declarations name twenty codes it does not
+# print is a registry someone wrote, not a passage of the corpus, and that is the shape #314
+# refused to create.
+
+
+def check_defines(ctx):
+    """Every `defines` declaration: its shape, and its anchor in the entry's own evidence.
+
+    Optional, and checked entirely where it appears. What it must be, and why each half of it:
+
+      * a **non-empty list** -- an empty one declares nothing and reads as a vocabulary the entry
+        belongs to;
+      * each item **exactly** `vocabulary` and `term`, both non-empty strings. A third key is
+        refused rather than ignored, for the reason the map's envelope refuses one (#60): an
+        unread key looks like it is doing work;
+      * the `term` **verbatim in this entry's `evidence`**, whitespace-normalised as
+        `crossReferences` normalises a `cites`. An entry defines a term by printing it;
+      * the same `(vocabulary, term)` **once** per entry. A second identical declaration adds
+        nothing, and the likeliest reason it is there is that another term or another vocabulary
+        was meant -- the reasoning 0044 already applied to a repeated `crossReferences` pair.
+
+    Two things it deliberately does not check. That the vocabulary is one some protocol reads:
+    the protocol is the mapper's and this subsystem does not read it (0032), and
+    `tools/mapper/protocol.py` refuses a `coded-pointer` naming a vocabulary no entry defines.
+    And that the passage really does define the term rather than merely printing it -- that is
+    interpretive, and the anchor is what can be held mechanically.
+
+    A derived entry carrying `defines` is refused by `--only derived`, which refuses every
+    passage field on one, so nothing here reads a derived entry.
+    """
+    bad, entries, declaring, declarations = [], entries_of(ctx["map"]), 0, 0
+    for position, entry in enumerate(entries):
+        if not isinstance(entry, dict) or "defines" not in entry or "derivedFrom" in entry:
+            continue
+        name = label(entry, position)
+        declaring += 1
+        declared = entry["defines"]
+        if not isinstance(declared, list) or not declared:
+            bad.append(f"  X  {name}: `defines` is {declared!r}; it is a non-empty list of the "
+                       f"terms this passage defines, and an empty one declares nothing")
+            continue
+        evidence = " ".join(str(entry.get("evidence") or "").split())
+        seen = set()
+        for item in declared:
+            declarations += 1
+            if not isinstance(item, dict):
+                bad.append(f"  X  {name}: defines holds {item!r}, which is not an object")
+                continue
+            if set(item) != set(DEFINES_FIELDS):
+                held = ", ".join(f"`{field}`" for field in sorted(item)) or "nothing"
+                bad.append(f"  X  {name}: a defines item holds {held}; an item is exactly "
+                           f"`vocabulary` and `term`, and a key nothing reads is refused rather "
+                           f"than ignored")
+                continue
+            vocabulary, term = item["vocabulary"], item["term"]
+            if not isinstance(vocabulary, str) or not vocabulary.strip() \
+                    or not isinstance(term, str) or not term.strip():
+                bad.append(f"  X  {name}: defines item {item!r} has a `vocabulary` or `term` "
+                           f"that is not a non-empty string")
+                continue
+            vocabulary, term = vocabulary.strip(), " ".join(term.split())
+            if term not in evidence:
+                bad.append(f"  X  {name}: defines {term!r}, which does not appear in this "
+                           f"entry's `evidence`; a definition is anchored in the passage that "
+                           f"makes it, as a reference is (0026, 0045)")
+                continue
+            if (vocabulary, term) in seen:
+                bad.append(f"  X  {name}: declares {term!r} in vocabulary {vocabulary!r} more "
+                           f"than once; a term may be defined by several entries, and one entry "
+                           f"declaring it twice says nothing the first declaration does not")
+                continue
+            seen.add((vocabulary, term))
+    if not declaring:
+        return skip("no entry declares `defines`, so there is no definition to anchor",
+                    had_subject=False)
+    return verdict(bad, f"{declarations} definition(s) declared by {declaring} entr(ies), each "
+                        f"naming one vocabulary and a term its own evidence prints",
+                   "a `defines` declaration is malformed or unanchored")
+
+
 # --- tools/mapvalidator/correspondence.py -----------------------------------------------------
 # The correspondence table: which runtime row each entry reaches, and the overlaps that are
 # data errors rather than precedence.
@@ -2697,6 +2838,7 @@ CHECKS = [
     ("asserted-by", check_asserted_by),
     ("draws", check_draws),
     ("cross-references", check_cross_references),
+    ("defines", check_defines),
     ("correspondence", check_correspondence),
     # The epistemic checks (0034). None reads `status`, `implementedIn` or `tests`, and
     # none may: an overlay must not be able to turn a verdict about whether the corpus

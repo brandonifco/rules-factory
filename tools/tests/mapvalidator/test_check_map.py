@@ -2017,6 +2017,111 @@ class TestCrossReferences(MapCase):
                 self.assertIn("declared phrase", output)
 
 
+class TestDefines(MapCase):
+    """0045: a term an entry defines is declared by that entry, anchored in its own evidence.
+
+    `crossReferences` records a pointer the passage **makes**; `defines` records a term the
+    passage **gives a meaning to**. One rule governs both, and it is 0026's: the declaration
+    appears verbatim in the evidence of the entry that makes it. #314 refused to buy
+    `coded-pointer` a vocabulary by exempting anything from that rule.
+    """
+
+    DEFINING = 0   # speed-limit, whose evidence prints "speed-limit"
+    SECOND = 1     # speed-within-limit, which defines the same term in the same vocabulary
+
+    @staticmethod
+    def defining_map(items=None):
+        document = valid_map()
+        document["entries"][0]["defines"] = items if items is not None else [
+            {"vocabulary": "demo-codes", "term": "speed-limit"}]
+        return document
+
+    def assert_catches_defines(self, mutate, message):
+        """The defining map passes `defines`; the mutation makes it say `message`."""
+        code, output = self.run_tool(self.defining_map())
+        self.assertEqual(self.status_of(output, "defines"), "ok", output)
+        self.assertEqual(code, 0, output)
+        document = self.defining_map()
+        mutate(document)
+        code, output = self.run_tool(document)
+        self.assertEqual(self.status_of(output, "defines"), "fail", output)
+        self.assertEqual(code, 1, output)
+        self.assertIn(message, output)
+
+    def test_a_map_declaring_nothing_is_not_verified_rather_than_ok(self):
+        # The field is optional, and a check with no subject has not passed.
+        code, output = self.run_tool(valid_map())
+        self.assertEqual(self.status_of(output, "defines"), "skip", output)
+        self.assertEqual(code, 0, output)
+
+    def test_a_term_absent_from_the_entrys_own_evidence_fails(self):
+        # The live instance: `special-provision-codes` quoting "The following tables list ..."
+        # and declaring twenty codes it does not print.
+        self.assert_catches_defines(
+            lambda d: d["entries"][self.DEFINING]["defines"][0].update(term="IB3"),
+            "defines 'IB3', which does not appear in this entry's `evidence`")
+
+    def test_two_entries_defining_one_term_are_both_accepted(self):
+        # 0044's cardinality, as the ordinary result of two entries declaring the same term.
+        document = self.defining_map()
+        document["entries"][self.SECOND]["defines"] = [
+            {"vocabulary": "demo-codes", "term": "speed-within-limit"}]
+        code, output = self.run_tool(document)
+        self.assertEqual(self.status_of(output, "defines"), "ok", output)
+        self.assertEqual(code, 0, output)
+
+    def test_the_same_declaration_twice_on_one_entry_fails(self):
+        self.assert_catches_defines(
+            lambda d: d["entries"][self.DEFINING]["defines"].append(
+                {"vocabulary": "demo-codes", "term": "speed-limit"}),
+            "declares 'speed-limit' in vocabulary 'demo-codes' more than once")
+
+    def test_the_same_term_in_two_vocabularies_on_one_entry_is_accepted(self):
+        document = self.defining_map()
+        document["entries"][self.DEFINING]["defines"].append(
+            {"vocabulary": "other-codes", "term": "speed-limit"})
+        code, output = self.run_tool(document)
+        self.assertEqual(self.status_of(output, "defines"), "ok", output)
+        self.assertEqual(code, 0, output)
+
+    def test_an_empty_list_fails(self):
+        self.assert_catches_defines(
+            lambda d: d["entries"][self.DEFINING].update(defines=[]),
+            "`defines` is []")
+
+    def test_a_list_that_is_not_a_list_fails(self):
+        self.assert_catches_defines(
+            lambda d: d["entries"][self.DEFINING].update(defines={"term": "speed-limit"}),
+            "it is a non-empty list of the terms this passage defines")
+
+    def test_an_item_with_a_third_key_fails(self):
+        # An unread key looks like it is doing work, which is #60's shape.
+        self.assert_catches_defines(
+            lambda d: d["entries"][self.DEFINING]["defines"][0].update(resolvedBy="speed-limit"),
+            "an item is exactly `vocabulary` and `term`")
+
+    def test_an_item_missing_the_vocabulary_fails(self):
+        self.assert_catches_defines(
+            lambda d: d["entries"][self.DEFINING]["defines"][0].pop("vocabulary"),
+            "an item is exactly `vocabulary` and `term`")
+
+    def test_an_empty_term_fails(self):
+        self.assert_catches_defines(
+            lambda d: d["entries"][self.DEFINING]["defines"][0].update(term="   "),
+            "that is not a non-empty string")
+
+    def test_a_derived_entry_carrying_defines_is_refused(self):
+        # By `derived`, which refuses every passage field on one: no sentence states a derived
+        # fact, so there is no evidence for a definition to be anchored in.
+        document = valid_map()
+        derived = next(e for e in document["entries"] if "derivedFrom" in e)
+        derived["defines"] = [{"vocabulary": "demo-codes", "term": "speed-limit"}]
+        code, output = self.run_tool(document)
+        self.assertEqual(self.status_of(output, "derived"), "fail", output)
+        self.assertIn("is derived and carries `defines`", output)
+        self.assertEqual(code, 1, output)
+
+
 class TestCorrespondence(MapCase):
     def test_a_declined_entry_with_no_row_fails(self):
         # `declined` claims no implemented path at all, so some row owes an answer.

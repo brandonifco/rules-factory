@@ -26,7 +26,7 @@ term exactly, so a corpus that inflects its defined terms needs a mechanism this
 """
 import re
 
-from mapcontract.entry import entries_of, index
+from mapcontract.entry import defined_vocabulary, entries_of, index
 
 from mapper.protocol import citation_of, mechanisms_of, vocabulary_of
 
@@ -138,17 +138,19 @@ def detect_coded(document, mechanism):
     (#307).
 
     Tokenising is by comma and whitespace, because that is how the corpus prints a cell holding
-    several codes. A token the vocabulary does not declare is still returned, with `defines` None,
-    so `report` can say so rather than drop it.
+    several codes. A token the vocabulary does not declare is still returned, with `defines`
+    empty, so `report` can say so rather than drop it.
+
+    The vocabulary is the mechanism's **named** one, assembled from every entry that declares it
+    `defines` a term of it (0045). A code is therefore accounted for only against the vocabulary
+    it belongs to: two vocabularies may print the same token -- column 6's `3` is a hazard label
+    and column 7 holds numeric special provisions -- and a token of one does not satisfy the
+    other because their names differ.
     """
     wanted = str(mechanism.get("column") or "").strip()
     if not wanted:
         return []
-    terms = {}
-    by_id = index(document)
-    source = by_id.get(mechanism.get("vocabularyFrom"))
-    if source is not None:
-        terms = vocabulary_of(source)
+    terms = defined_vocabulary(document, str(mechanism.get("vocabulary") or "").strip())
     found = []
     for entry in entries_of(document):
         if not isinstance(entry, dict) or cited_column(entry) != wanted:
@@ -176,12 +178,16 @@ def report(protocol, document):
     lines, detected, undeclared = [], 0, []
     by_id = index(document)
     for mechanism in mechanisms_of(protocol, "coded-pointer"):
-        column = mechanism.get("column")
+        column, named = mechanism.get("column"), mechanism.get("vocabulary")
         namings = detect_coded(document, mechanism)
         detected += sum(n.count for n in namings)
         cells = len({n.entry_id for n in namings})
+        vocabulary = defined_vocabulary(document, str(named or "").strip())
+        defining = {target for targets in vocabulary.values() for target in targets}
         lines.append(f"  column {column}: {sum(n.count for n in namings)} code(s) in {cells} "
-                     f"cell(s); a token in another column is not a pointer (0041)")
+                     f"cell(s), against vocabulary {named!r} -- {len(vocabulary)} term(s) "
+                     f"declared by {len(defining)} entr(ies) (0045); a token in another column "
+                     f"is not a pointer (0041)")
         for naming in namings:
             if not naming.defines:
                 # Not dropped. A code in the pointer-bearing column that the vocabulary does not
@@ -189,7 +195,7 @@ def report(protocol, document):
                 # both are findings.
                 undeclared.append(naming)
                 lines.append(f"  ?  {naming.entry_id}: column {column} holds {naming.term!r}, "
-                             f"which the vocabulary does not declare")
+                             f"which no entry declares it defines in vocabulary {named!r}")
             elif naming.missing:
                 # A code the corpus gives two rules is accounted for only when the entry points
                 # at both (0044): § 172.102's `IB3` authorises IBCs in one table and Large

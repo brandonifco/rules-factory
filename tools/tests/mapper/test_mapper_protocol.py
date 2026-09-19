@@ -166,7 +166,19 @@ class TestTheVocabularyMustExist(ProtocolCase):
     def test_a_vocabulary_on_a_mechanism_that_reads_none(self):
         self.protocol["pointerMechanisms"] = [{"mechanism": "phrase",
                                                "vocabularyFrom": "condition-list"}]
-        self.assert_refused("`vocabularyFrom` belongs to a mechanism that reads a vocabulary")
+        self.assert_refused("which is defined-term-use's vocabulary; 'phrase' does not read one")
+
+    def test_coded_pointer_may_not_name_a_single_vocabulary_entry(self):
+        """0045: its vocabulary is distributed, and `vocabularyFrom` names one entry."""
+        self.protocol["pointerMechanisms"] = [{"mechanism": "coded-pointer", "column": 7,
+                                               "vocabularyFrom": "condition-list"}]
+        self.assert_refused("coded-pointer's vocabulary is distributed over the entries")
+
+    def test_a_named_vocabulary_on_a_mechanism_that_reads_none(self):
+        self.protocol["pointerMechanisms"] = [{"mechanism": "defined-term-use",
+                                               "vocabularyFrom": "condition-list",
+                                               "vocabulary": "condition-names"}]
+        self.assert_refused("'defined-term-use' reads no such vocabulary")
 
 
 class TestTheDetector(unittest.TestCase):

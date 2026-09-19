@@ -53,7 +53,8 @@ MODULES = ("mapcontract.vocabulary", "mapcontract.entry",
            "mapvalidator.extent",
            "mapvalidator.relations", "mapvalidator.manifest", "mapvalidator.extraction",
            "mapvalidator.ambiguity", "mapvalidator.bounds", "mapvalidator.status",
-           "mapvalidator.inputs", "mapvalidator.crossrefs", "mapvalidator.correspondence",
+           "mapvalidator.inputs", "mapvalidator.crossrefs", "mapvalidator.defines",
+           "mapvalidator.correspondence",
            "mapvalidator.epistemic",
            "mapvalidator.phases", "mapvalidator.cli")
 

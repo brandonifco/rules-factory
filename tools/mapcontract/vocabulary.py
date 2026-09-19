@@ -32,9 +32,15 @@ REQUIRED_ENTRY_FIELDS = ["id", "name", "locator", "kind", "scope", "clarity", "e
 # A derived entry (0012) cites nothing: no sentence contains its fact, so it has no passage
 # to locate or quote. Its sources' locators and evidence are its citation.
 CITING_FIELDS = ("locator", "evidence")
-# What only a passage can carry, and so what a derived entry may not.
-PASSAGE_FIELDS = CITING_FIELDS + ("crossReferences", "absentFrom", "beyondAdapter", "definedElsewhere",
-                                  "extraction")
+# What only a passage can carry, and so what a derived entry may not. `defines` is among them
+# for the reason `crossReferences` is: a definition is anchored in the passage that makes it
+# (0045), and a derived entry quotes no passage.
+PASSAGE_FIELDS = CITING_FIELDS + ("crossReferences", "defines", "absentFrom", "beyondAdapter",
+                                  "definedElsewhere", "extraction")
+# The two halves of one `defines` item, and both of them: the vocabulary the term belongs to, and
+# the term as the corpus prints it (0045). Exactly these, because an item with a third key is one
+# whose author expected something to read it.
+DEFINES_FIELDS = ("vocabulary", "term")
 # The relations that hold entry ids and nothing else. `gatedBy` is not among them: 0011 split
 # it into the two gate fields, and `gates` refuses it by name.
 GATE_FIELDS = ("enabledBy", "suspendedBy")
