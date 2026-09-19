@@ -141,8 +141,8 @@ def detect_coded(document, mechanism):
     several codes. A token the vocabulary does not declare is still returned, with `defines`
     empty, so `report` can say so rather than drop it.
 
-    The vocabulary is the mechanism's **named** one, assembled from every entry that declares it
-    `defines` a term of it (0045). A code is therefore accounted for only against the vocabulary
+    The vocabulary is the mechanism's **named** one, assembled from every entry that directly `defines` a term or validly continues one
+    of those definitions (0045, 0046). A code is therefore accounted for only against the vocabulary
     it belongs to: two vocabularies may print the same token -- column 6's `3` is a hazard label
     and column 7 holds numeric special provisions -- and a token of one does not satisfy the
     other because their names differ.
@@ -186,7 +186,7 @@ def report(protocol, document):
         defining = {target for targets in vocabulary.values() for target in targets}
         lines.append(f"  column {column}: {sum(n.count for n in namings)} code(s) in {cells} "
                      f"cell(s), against vocabulary {named!r} -- {len(vocabulary)} term(s) "
-                     f"declared by {len(defining)} entr(ies) (0045); a token in another column "
+                     f"defined by {len(defining)} entr(ies) (0045-0046); a token in another column "
                      f"is not a pointer (0041)")
         for naming in namings:
             if not naming.defines:
