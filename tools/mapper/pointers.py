@@ -150,7 +150,7 @@ def detect_coded(document, mechanism):
     wanted = str(mechanism.get("column") or "").strip()
     if not wanted:
         return []
-    terms = defined_vocabulary(document, str(mechanism.get("vocabulary") or "").strip())
+    terms = defined_vocabulary(document, mechanism.get("vocabulary"))
     found = []
     for entry in entries_of(document):
         if not isinstance(entry, dict) or cited_column(entry) != wanted:
@@ -182,7 +182,7 @@ def report(protocol, document):
         namings = detect_coded(document, mechanism)
         detected += sum(n.count for n in namings)
         cells = len({n.entry_id for n in namings})
-        vocabulary = defined_vocabulary(document, str(named or "").strip())
+        vocabulary = defined_vocabulary(document, named)
         defining = {target for targets in vocabulary.values() for target in targets}
         lines.append(f"  column {column}: {sum(n.count for n in namings)} code(s) in {cells} "
                      f"cell(s), against vocabulary {named!r} -- {len(vocabulary)} term(s) "

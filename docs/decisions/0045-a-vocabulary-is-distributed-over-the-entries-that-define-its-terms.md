@@ -152,6 +152,17 @@ Narrow and mechanical. `defines` is optional; when present:
 What it does not hold: that the passage really *defines* the term rather than printing it. That is
 interpretive, as `unmapped` is, and the anchor is the mechanical part.
 
+### 6. One canonical form, at the contract boundary
+
+A `vocabulary` is taken stripped; a `term` is whitespace-normalised, as `crossReferences.cites`
+is. **That canonicalisation is written once**, in `mapcontract.entry.definition_of`, and
+validation, the protocol check and the detector all read it. The first implementation normalised
+inside the check and returned raw strings from the contract reader, so a map could pass
+`--only defines` under `" special-provision-codes "` and be read under
+`"special-provision-codes"` — the declaration proved, the code undeclared, and no diagnostic
+anywhere. **Anything the validator accepts must be read by every consumer with the same meaning**,
+and two normalisations cannot hold that, however carefully each is written.
+
 ## What was rejected
 
 **Exempting the entry a protocol names in `vocabularyFrom` from the anchoring rule** (#314's

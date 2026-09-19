@@ -1208,6 +1208,14 @@ non-empty list; each item exactly `vocabulary` and `term`, both non-empty string
 derived entry may not carry it, for the reason it may not carry `crossReferences` — it quotes no
 passage. Several entries **may** define the same term; that is the case the field exists for.
 
+**One canonical form, read by everyone.** A `vocabulary` is the map's own word and is taken
+stripped of surrounding whitespace; a `term` is a quotation and is whitespace-normalised, as a
+`cites` is and as the evidence it is matched against is. That canonical form is the contract's,
+in `mapcontract.entry.definition_of`, and the check, the protocol and the pointer detector all
+read it rather than normalising their own — because a declaration proved under one
+`(vocabulary, term)` and consumed under another is a code the map declared and the detector reads
+as undeclared, with nothing able to say so.
+
 **Three limits.** That the passage really *defines* the term rather than printing it is
 interpretive, as `unmapped` is, and is not checked. That some protocol reads the vocabulary is
 not checked here either — the protocol belongs to the mapper

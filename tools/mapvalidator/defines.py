@@ -15,7 +15,7 @@ refused to create.
 """
 from .diagnostics import skip, verdict
 from mapcontract.vocabulary import DEFINES_FIELDS
-from mapcontract.entry import entries_of, label
+from mapcontract.entry import definition_of, entries_of, label
 
 
 def check_defines(ctx):
@@ -29,7 +29,9 @@ def check_defines(ctx):
         refused rather than ignored, for the reason the map's envelope refuses one (#60): an
         unread key looks like it is doing work;
       * the `term` **verbatim in this entry's `evidence`**, whitespace-normalised as
-        `crossReferences` normalises a `cites`. An entry defines a term by printing it;
+        `crossReferences` normalises a `cites`. An entry defines a term by printing it. The
+        normalising is `mapcontract.entry.definition_of`'s and not this file's, so the
+        `(vocabulary, term)` proved here is the one every reader of the map sees;
       * the same `(vocabulary, term)` **once** per entry. A second identical declaration adds
         nothing, and the likeliest reason it is there is that another term or another vocabulary
         was meant -- the reasoning 0044 already applied to a repeated `crossReferences` pair.
@@ -67,13 +69,15 @@ def check_defines(ctx):
                            f"`vocabulary` and `term`, and a key nothing reads is refused rather "
                            f"than ignored")
                 continue
-            vocabulary, term = item["vocabulary"], item["term"]
-            if not isinstance(vocabulary, str) or not vocabulary.strip() \
-                    or not isinstance(term, str) or not term.strip():
+            # Canonicalised by the contract, not here. Judging a normalised value and
+            # returning a raw one to every other reader is the defect this shares one
+            # implementation to prevent: what is accepted here is what `defines_of` returns.
+            canonical = definition_of(item)
+            if canonical is None:
                 bad.append(f"  X  {name}: defines item {item!r} has a `vocabulary` or `term` "
                            f"that is not a non-empty string")
                 continue
-            vocabulary, term = vocabulary.strip(), " ".join(term.split())
+            vocabulary, term = canonical
             if term not in evidence:
                 bad.append(f"  X  {name}: defines {term!r}, which does not appear in this "
                            f"entry's `evidence`; a definition is anchored in the passage that "

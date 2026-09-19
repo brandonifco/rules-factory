@@ -26,7 +26,8 @@ interrogation nobody performs is worse than none -- it reads as coverage.
 import json
 import os
 
-from mapcontract.entry import block, defined_vocabulary, entries_of, index
+from mapcontract.entry import (block, canonical_vocabulary, defined_vocabulary,
+                               entries_of, index)
 
 PROTOCOL_VERSIONS = (1,)
 PROTOCOL_FILENAME = "mapping-protocol.json"
@@ -356,10 +357,10 @@ def _check_defined_vocabulary(where, declared, document):
     reason a declared sweep nobody runs is refused: it reads as coverage.
     """
     name = declared.get("vocabulary")
-    if not isinstance(name, str) or not name.strip():
+    if not canonical_vocabulary(name):
         return [f"{where}: coded-pointer names no `vocabulary`; a mechanism that reads a cell's "
                 f"codes as pointers must say which vocabulary they are codes of"]
-    terms = defined_vocabulary(document, name.strip())
+    terms = defined_vocabulary(document, name)
     if not terms:
         return [f"{where}: no entry in this map declares `defines` for vocabulary {name!r}; a "
                 f"vocabulary is what the entries that define its terms add up to (0045), and one "

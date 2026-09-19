@@ -56,6 +56,7 @@ MANIFEST = os.path.join(TRIAL, "corpus-manifest.json")
 
 sys.path.insert(0, TOOLS)
 try:
+    from mapcontract.entry import defined_vocabulary, defines_of
     from mapper import pointers, protocol
 finally:
     sys.path.remove(TOOLS)
@@ -407,6 +408,96 @@ class TwoColumnsReadTwoVocabularies(ValidatorCase):
             trial_map(), None)
         self.assertTrue(any("no entry in this map declares `defines` for vocabulary "
                             "'column-9-codes'" in line for line in problems), problems)
+
+
+class TheValidatorAndTheReadersAgree(ValidatorCase):
+    """What `check-map.py --only defines` accepts is what every contract reader sees.
+
+    The validator normalised a declaration before judging it and the contract reader returned
+    the raw strings, so a map could pass the check under one `(vocabulary, term)` and be read
+    under another -- `" special-provision-codes "` proved, `"special-provision-codes"` looked up,
+    and the code silently undeclared. One canonical interpretation now lives at the contract
+    boundary (`mapcontract.entry.definition_of`) and both sides read it.
+
+    Each case walks the whole chain: accepted by check-map -> `defined_vocabulary` returns
+    exactly that vocabulary and term -> the coded pointer resolves against it.
+    """
+
+    TERMS = "provision-terms"
+
+    def declaring(self, entry_id, items, also=None):
+        document = trial_map()
+        for item in document["entries"]:
+            if item["id"] == entry_id:
+                item["defines"] = items
+            if also is not None and item["id"] == also[0]:
+                item["defines"] = also[1]
+        return document
+
+    def assert_chain(self, document, vocabulary, term, defined_by):
+        """Accepted, read as exactly this, and resolved as exactly this."""
+        code, output = self.run_checks(document)
+        self.assertEqual(self.status_of(output, "defines"), "ok", output)
+        self.assertEqual(code, 0, output)
+        self.assertIn(defined_by, defined_vocabulary(document, vocabulary).get(term, []))
+
+    def test_whitespace_around_a_vocabulary_name_is_canonicalised(self):
+        document = self.declaring("ib3-authorized-large-packagings",
+                                  [{"vocabulary": f"  {CODES}  ", "term": "IB3"}])
+        self.assert_chain(document, CODES, "IB3", "ib3-authorized-large-packagings")
+        naming = {n.term: n for n in pointers.detect_coded(document, COLUMN_7)
+                  if n.entry_id == "acetic-acid-10-50-column-7"}["IB3"]
+        self.assertEqual(naming.defines,
+                         ["ib3-authorized-ibcs", "ib3-authorized-large-packagings"])
+        self.assertEqual(naming.missing, [])
+
+    def test_whitespace_around_a_term_is_canonicalised(self):
+        document = self.declaring("ib2-authorized-ibcs",
+                                  [{"vocabulary": CODES, "term": "  IB2\n"}])
+        self.assert_chain(document, CODES, "IB2", "ib2-authorized-ibcs")
+        naming = {n.term: n for n in pointers.detect_coded(document, COLUMN_7)
+                  if n.entry_id == "acetal-column-7"}["IB2"]
+        self.assertEqual(naming.missing, [])
+
+    def test_repeated_whitespace_inside_a_term_is_canonicalised(self):
+        """A multi-word term, as the evidence prints it once the map's own spacing is read."""
+        document = self.declaring(
+            "ib3-authorized-large-packagings",
+            [{"vocabulary": CODES, "term": "IB3"},
+             {"vocabulary": self.TERMS, "term": "Large   Packagings"}])
+        self.assert_chain(document, self.TERMS, "Large Packagings",
+                          "ib3-authorized-large-packagings")
+        self.assertEqual(sorted(defined_vocabulary(document, self.TERMS)), ["Large Packagings"])
+
+    def test_a_declaration_the_check_accepts_is_one_the_reader_returns(self):
+        """The invariant itself, over every declaration in the map."""
+        document = trial_map()
+        code, output = self.run_checks(document)
+        self.assertEqual(self.status_of(output, "defines"), "ok", output)
+        for item in document["entries"]:
+            if "defines" not in item:
+                continue
+            with self.subTest(entry=item["id"]):
+                self.assertEqual(len(defines_of(item)), len(item["defines"]))
+                for vocabulary, term in defines_of(item):
+                    self.assertIn(item["id"],
+                                  defined_vocabulary(document, vocabulary).get(term, []))
+
+    def test_two_declarations_differing_only_by_whitespace_are_a_duplicate(self):
+        document = self.declaring("ib3-authorized-ibcs",
+                                  [{"vocabulary": CODES, "term": "IB3"},
+                                   {"vocabulary": f" {CODES}", "term": " IB3 "}])
+        code, output = self.run_checks(document)
+        self.assertEqual(self.status_of(output, "defines"), "fail", output)
+        self.assertIn("more than once", output)
+        self.assertEqual(code, 1, output)
+
+    def test_a_term_that_is_only_whitespace_is_refused_and_read_by_nobody(self):
+        document = self.declaring("ib2-authorized-ibcs",
+                                  [{"vocabulary": CODES, "term": "   "}])
+        code, output = self.run_checks(document)
+        self.assertEqual(self.status_of(output, "defines"), "fail", output)
+        self.assertEqual(defined_vocabulary(document, CODES).get("IB2"), None)
 
 
 class TheDeclarationIsAnchoredOrItIsRefused(ValidatorCase):
