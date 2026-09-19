@@ -43,7 +43,7 @@ REPO = os.path.dirname(TOOLS)
 
 sys.path.insert(0, TOOLS)
 try:
-    from mapper import cli, corpus, protocol
+    from mapper import cli, corpus, inventory, protocol
 finally:
     sys.path.remove(TOOLS)
 
@@ -672,12 +672,14 @@ class TestAQuoteInARowReachesIt(unittest.TestCase):
         with open(os.path.join(self.directory, name), "w", encoding="utf-8") as handle:
             handle.write(content) if raw else json.dump(content, handle)
 
-    def inventory(self, evidence):
+    def inventory(self, evidence, citation=ACETAL_KEY):
         self.write("corpus-map.json", {
             "schemaVersion": 1, "corpus": "fixture", "baseline": "fixture",
             "extent": extent([{"section": "§ 1.10", "table": 1, "rows": "all"},
                               SECOND_TABLE_EXCLUDED]),
-            "entries": [{"id": "acetal-packing", "evidence": evidence}],
+            "entries": [{"id": "acetal-packing",
+                         "locator": {"sourceId": "fixture", "citation": citation},
+                         "evidence": evidence}],
         })
         out, err = io.StringIO(), io.StringIO()
         with redirect_stdout(out), redirect_stderr(err):
@@ -695,6 +697,74 @@ class TestAQuoteInARowReachesIt(unittest.TestCase):
         code, output = self.inventory("| Acetal | 3 |")
         self.assertEqual(code, NOT_VERIFIED, output)
         self.assertIn("reached:     1", output)
+
+    def test_a_one_word_cell_quote_reaches_only_its_cited_row(self):
+        code, output = self.inventory("Acetal", ACETAL_KEY + ", column 2")
+        self.assertEqual(code, NOT_VERIFIED, output)
+        self.assertIn("reached:     1", output)
+
+    def test_a_one_token_numeric_cell_quote_does_not_wander_to_other_rows(self):
+        # "3" also occurs in the heading and inside the two ammonia class values. The citation
+        # bounds this evidence to Acetal's class cell; a short quote must not search every row.
+        code, output = self.inventory("3", ACETAL_KEY + ", column 3")
+        self.assertEqual(code, NOT_VERIFIED, output)
+        self.assertIn("reached:     1", output)
+
+    def test_a_two_word_cell_quote_is_bounded_by_the_cited_row(self):
+        # The same two words are printed in two rows. Column 3 distinguishes the cited row.
+        citation = '§ 1.10 table 1, row [column 3 = "2.3"], column 2'
+        code, output = self.inventory("Ammonia, anhydrous", citation)
+        self.assertEqual(code, NOT_VERIFIED, output)
+        self.assertIn("reached:     1", output)
+
+    def test_a_three_word_cell_quote_is_locatable(self):
+        self.write("corpus.xml", FIXTURE.replace(">Acetal<", ">Red Widget Prime<"), raw=True)
+        citation = '§ 1.10 table 1, row [column 2 = "Red Widget Prime"], column 2'
+        code, output = self.inventory("Red Widget Prime", citation)
+        self.assertEqual(code, NOT_VERIFIED, output)
+        self.assertIn("reached:     1", output)
+
+    def test_a_short_quote_in_a_different_row_does_not_reach_that_row(self):
+        citation = '§ 1.10 table 1, row [column 3 = "2.3"], column 2'
+        code, output = self.inventory("Acetal", citation)
+        self.assertEqual(code, 1, output)
+        self.assertIn("silent zero", output)
+
+    def test_a_short_quote_in_a_different_cell_does_not_reach_the_row(self):
+        code, output = self.inventory("3", ACETAL_KEY + ", column 4A")
+        self.assertEqual(code, 1, output)
+        self.assertIn("silent zero", output)
+
+
+class TestShortEvidenceDoesNotRelaxProseOrLongEvidence(unittest.TestCase):
+    def test_short_prose_remains_insufficient_evidence_of_reach(self):
+        units = [
+            corpus.Unit("p. 1", "paragraph", "Red Widget Prime occurs in this paragraph."),
+            corpus.Unit("p. 2", "paragraph", "Red Widget Prime occurs in another paragraph."),
+        ]
+        document = {"entries": [{"id": "short-prose", "evidence": "Red Widget Prime"}]}
+        measured = inventory.take(units, document, {})
+        self.assertEqual(measured.reached, {})
+        self.assertEqual(measured.unlocated, ["short-prose"])
+
+    def test_long_duplicate_table_text_still_reaches_both_rows(self):
+        # #322 is deliberately not solved here. Long evidence keeps the existing global matching
+        # semantics, so byte-identical rows remain independently observable as that issue.
+        quote = "This repeated table row has enough words to match"
+        units = [
+            corpus.Unit("table row A", "table-row", quote),
+            corpus.Unit("table row B", "table-row", quote),
+        ]
+        document = {
+            "entries": [{
+                "id": "duplicate-row",
+                "locator": {"sourceId": "fixture", "citation": "table row B"},
+                "evidence": quote,
+            }]
+        }
+        measured = inventory.take(units, document, {})
+        self.assertEqual(set(measured.reached), {"table row A", "table row B"})
+        self.assertEqual(measured.located, ["duplicate-row"])
 
 
 if __name__ == "__main__":
