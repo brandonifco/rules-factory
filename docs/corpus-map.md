@@ -1263,10 +1263,18 @@ the one below the IB3 row.
 
 0043 remains structural only: a blank-row locator does not imply continuation merely by existing.
 0045 also remains literal: `check-map.py --only defines` still requires a direct
-`defines.term` verbatim in **that entry's own evidence**. The new
-`definition-continuations` check validates the relation's map-level shape and target; the corpus
-locator checker validates its structural witness. A grammar with no implemented structural
-witness cannot use the relation yet.
+`defines.term` verbatim in **that entry's own evidence**.
+
+**The relation is a semantic choice, not an unresolved hypothesis.** In this contract version an
+entry carrying `continuesDefinition` may not also carry `ambiguity.fate: unresolved`. Where the
+source is still ambiguous about the association — Trial 10's blank code cells are the forcing
+case — the entry stays `clarity: ambiguous` but uses `fate: decision` and names the record that
+made the reading. That distinction says both things honestly: the corpus leaves the convention
+implicit, and the map has chosen one interpretation strongly enough to make it operative.
+
+The `definition-continuations` check validates the relation's map-level shape, target, and this
+cross-field fate rule; the corpus locator checker validates its structural witness. A grammar with
+no implemented structural witness cannot use the relation yet.
 
 The field is optional in schema version 1. Existing maps that omit it keep exactly their prior
 meaning; this is the same additive versioning treatment used for `defines`.
