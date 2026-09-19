@@ -96,7 +96,6 @@ import sys
 #
 # Closed is the point: `kind: "rule"` shipped in both copies of the backgammon map because
 # nothing held a value to a set. A value absent from a set here is not a value of the map.
-#
 
 
 # The `schemaVersion`s this contract describes. A map in any other version is not one these
@@ -153,7 +152,6 @@ ID_LIST_FIELDS = ("dependsOn",) + GATE_FIELDS
 # Every reader takes what it was given and answers anyway: a caller that has not yet proved the
 # document well-formed can still ask these questions, and gets an empty answer rather than an
 # exception it would have to distinguish from a real verdict.
-#
 
 
 def corpora_of(manifest):
@@ -2555,7 +2553,6 @@ def check_defines(ctx):
 # The corpus locator checker proves the other half: that the structural anchor resolves to this
 # entry's passage under the directly defining passage. This check deliberately does not parse a
 # locator grammar; a locator is evidence-side truth, while this package owns the map contract.
-#
 
 
 def check_definition_continuations(ctx):
@@ -2976,7 +2973,6 @@ def _census(ctx, adjudicated):
 # --- tools/mapvalidator/phases.py -------------------------------------------------------------
 # The phase registry: every check by name, in the order it runs, and the overlay rule that
 # decides which of them an engine re-runs on its merged map (0015).
-#
 
 
 # --- where each check runs (0015) ------------------------------------------------------
