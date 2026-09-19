@@ -99,8 +99,27 @@ so two entries citing the same container are inside the same definition.
 
 The vocabulary is read **out of the map**, never out of the protocol: the corpus already states
 its defined terms somewhere, that statement is an entry, and its term-anchored `crossReferences`
-are already term → defining entry. A second copy in the protocol would be a second definition to
+are already term → defining entries. A second copy in the protocol would be a second definition to
 keep in step.
+
+**A term names one or more defining entries, and a pointer is accounted for only when it names
+them all** ([0044](decisions/0044-one-printed-code-can-name-more-than-one-rule.md),
+[#311](https://github.com/brandonifco/rules-factory/issues/311)). § 172.102(c)(4) says `IB3` in
+column 7 authorises IBCs unconditionally and Large Packagings for Packing Group III only — two
+rules, in two of its tables, under one printed code. Two term-anchored references say so and
+nothing is added to the map:
+
+```json
+{ "cites": "IB3", "resolvedBy": "ib3-authorized-ibcs" },
+{ "cites": "IB3", "resolvedBy": "ib3-authorized-large-packagings" }
+```
+
+The reader kept a `dict` of one target per term, so the **last** declaration won, the first was
+discarded, and every check passed: both were real entries, so nothing could see that a declaration
+had been dropped. Now both are kept, declaration order decides nothing, a finding names each
+target the entry points at none of, and the same target declared twice is **reported** rather than
+collapsed — a term may name several entries, and naming one of them twice says nothing the first
+declaration does not.
 
 A mechanism is either detected by this subsystem or detected somewhere the protocol checker
 names; a mechanism in neither is refused. `phrase` is detected by
