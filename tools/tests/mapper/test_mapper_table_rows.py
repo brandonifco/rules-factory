@@ -43,7 +43,7 @@ REPO = os.path.dirname(TOOLS)
 
 sys.path.insert(0, TOOLS)
 try:
-    from mapper import cli, corpus, protocol
+    from mapper import cli, corpus, inventory, protocol
 finally:
     sys.path.remove(TOOLS)
 
@@ -672,12 +672,14 @@ class TestAQuoteInARowReachesIt(unittest.TestCase):
         with open(os.path.join(self.directory, name), "w", encoding="utf-8") as handle:
             handle.write(content) if raw else json.dump(content, handle)
 
-    def inventory(self, evidence):
+    def inventory(self, evidence, citation=ACETAL_KEY):
         self.write("corpus-map.json", {
             "schemaVersion": 1, "corpus": "fixture", "baseline": "fixture",
             "extent": extent([{"section": "§ 1.10", "table": 1, "rows": "all"},
                               SECOND_TABLE_EXCLUDED]),
-            "entries": [{"id": "acetal-packing", "evidence": evidence}],
+            "entries": [{"id": "acetal-packing",
+                         "locator": {"sourceId": "fixture", "citation": citation},
+                         "evidence": evidence}],
         })
         out, err = io.StringIO(), io.StringIO()
         with redirect_stdout(out), redirect_stderr(err):
@@ -695,6 +697,48 @@ class TestAQuoteInARowReachesIt(unittest.TestCase):
         code, output = self.inventory("| Acetal | 3 |")
         self.assertEqual(code, NOT_VERIFIED, output)
         self.assertIn("reached:     1", output)
+
+    def test_a_one_token_cell_reaches_only_the_row_its_citation_names(self):
+        # The token occurs elsewhere in the table and headings too. Its citation bounds the
+        # search to one structural row; merely lowering the global four-word floor would make
+        # those other occurrences look reached.
+        code, output = self.inventory("3")
+        self.assertEqual(code, NOT_VERIFIED, output)
+        self.assertIn("reached:     1", output)
+        self.assertNotIn("not located inside the extent", output)
+
+    def test_a_two_token_cell_does_not_reach_the_other_row_that_prints_it(self):
+        citation = '§ 1.10 table 1, row [column 3 = "2.2"]'
+        code, output = self.inventory("Ammonia, anhydrous", citation)
+        self.assertEqual(code, NOT_VERIFIED, output)
+        self.assertIn("reached:     1", output)
+        self.assertNotIn("not located inside the extent", output)
+
+    def test_a_three_token_cell_is_locatable_inside_its_cited_row(self):
+        citation = '§ 1.10 table 1, row [column 3 = "2.3"]'
+        code, output = self.inventory("Ammonia, anhydrous 2.3", citation)
+        self.assertEqual(code, NOT_VERIFIED, output)
+        self.assertIn("reached:     1", output)
+        self.assertNotIn("not located inside the extent", output)
+
+    def test_a_short_fragment_in_the_wrong_row_does_not_reach_the_cited_row(self):
+        citation = '§ 1.10 table 1, row [column 3 = "2.2"]'
+        code, output = self.inventory("T4", citation)
+        self.assertEqual(code, 1, output)
+        self.assertIn("not located inside the extent: 1 entry", output)
+
+    def test_duplicate_long_row_text_remains_the_separate_322_problem(self):
+        text = "the same long evidence appears in both structurally distinct rows"
+        units = [
+            corpus.Unit('§ 1.10 table 1, row [column 1 = "left"]', "table-row", text),
+            corpus.Unit('§ 1.10 table 1, row [column 1 = "right"]', "table-row", text),
+        ]
+        measured = inventory.take(units, {"entries": [{
+            "id": "left-only",
+            "locator": {"sourceId": "fixture", "citation": units[0].key},
+            "evidence": text,
+        }]}, {})
+        self.assertEqual(set(measured.reached), {units[0].key, units[1].key})
 
 
 if __name__ == "__main__":
