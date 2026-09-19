@@ -417,7 +417,7 @@ before a map exists, and is measured when Mapper A's sweeps run.
 
 ## Step 2 — the map, as first mapped
 
-[`corpus-map.json`](corpus-map.json): **135 entries**, 130 of them `scope: in`, 7 carrying an
+[`corpus-map.json`](corpus-map.json): **135 entries**, 129 of them `scope: in`, 7 carrying an
 unresolved question, 1 `kind: assertion`, 2 `beyondAdapter` for a formula the extraction does not
 carry and 2 for italics it flattens. Every quote was cut out of the committed XML through this
 repository's own readers; none was typed by hand.
@@ -429,13 +429,16 @@ repository's own readers; none was typed by hand.
 | § 172.101 table 1, the three label codes the mapped rows invoke | 3 |
 | § 172.101 table 3, the seven settled rows | 39 |
 | § 172.102(a) and (b)(1)–(9) | 13 |
-| § 172.102(c), its table leads, and the twenty invoked provisions | 27 |
+| § 172.102(c) and three table leads, and the twelve provisions stated as prose | 16 |
+| § 172.102 tables 2, 3, 4 and 6, the eight table-stated codes | 11 |
 
 The seven rows decompose into **six entries each** — the proper shipping name (column 2), the
 classification (columns 3–5 as one contiguous span), the label codes (column 6), the special
 provisions (column 7), the packaging authorisations (8A–8C) and the aircraft quantity limits
 (9A–9B) — except the Forbidden row, which produces **two**, because column 3 says `Forbidden` and
-the eleven cells after it are empty. That asymmetry is the corpus's and not the mapper's.
+the eleven cells after it are empty. That asymmetry is the corpus's and not the mapper's. The
+thirty-ninth entry is `alkali-metal-amalgam-vessel-stowage-codes`, a column 10B cell the slice
+puts out of scope and which is mapped anyway because it prints `148`.
 
 ### H1 — held, and the IB2 decomposition is where it strained
 
