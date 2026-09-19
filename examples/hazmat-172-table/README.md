@@ -598,6 +598,42 @@ are 4 of 64.
 Nothing under `tools/` was changed to make this map pass, and neither protocol was edited: both
 were run against the map as committed and neither needed a word altered.
 
+
+### Subsequent resolution of #321 — 0046
+
+This section supersedes only the #321 finding above; it does not rewrite the first-mapping record.
+
+[0046](../../docs/decisions/0046-an-additional-rule-can-continue-a-definition.md) adds
+`continuesDefinition` for the case the map exposed. `ib2-vapour-pressure-limit` now explicitly
+continues `ib2-authorized-ibcs`, and `ib3-vapour-pressure-limit` analogously continues
+`ib3-authorized-ibcs`. Neither entry gains a direct `defines`: 0045 still requires a direct
+term to occur in that entry's own evidence.
+
+The relation carries a second locator as its structural witness. For IB2 it is the same 0043
+`row blank ... below row [column 1 = "IB2"]` locator as the entry itself. For IB3 the entry keeps
+its stronger ordinary column-2 row key, while the witness independently resolves that same row
+below the IB3 row. The locator checker proves both ends: the witness reaches the continuation's
+row, and its structural anchor reaches the directly defining row. 0043 itself still says nothing
+semantic merely because a row has that address.
+
+The distributed vocabulary therefore reads:
+
+```text
+IB2
+  ├── ib2-authorized-ibcs
+  └── ib2-vapour-pressure-limit
+
+IB3
+  ├── ib3-authorized-ibcs
+  ├── ib3-vapour-pressure-limit
+  └── ib3-authorized-large-packagings
+```
+
+The column-7 entries already named those targets voluntarily. After 0046 they are obligations:
+deleting the `resolvedBy` edge to either additional-requirement entry makes `mapper pointers`
+report that defining entry missing. That is the failure #321 could not express when this trial was
+first mapped.
+
 ## What happens next
 
 Steps 3 and 4 of #262: blind-map the slice a second time, adjudicate, mutate, and report every
