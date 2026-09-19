@@ -177,13 +177,35 @@ def load_rejections(path, corpora):
     return rejected
 
 
-def _fragments(evidence):
-    """A quote's fragments: the whole of it, or the pieces an ellipsis divides it into."""
+def _fragments(evidence, minimum_words=4):
+    """A quote's fragments: the whole of it, or the pieces an ellipsis divides it into.
+
+    Four words is the ordinary floor: below that, a prose fragment is too easy to find in an
+    unrelated unit. A caller may ask for the shorter pieces only when it has a narrower
+    structural search domain of its own.
+    """
     text = normalise(evidence) if isinstance(evidence, str) else ""
     pieces = [text]
     for mark in ELLIPSIS:
         pieces = [p for piece in pieces for p in piece.split(mark)]
-    return [normalise(p) for p in pieces if len(normalise(p).split()) >= 4]
+    fragments = [normalise(p) for p in pieces]
+    return [p for p in fragments if p and len(p.split()) >= minimum_words]
+
+
+def _cited_table_rows(units, entry):
+    """Table-row units structurally named by this entry's citation (0035).
+
+    A table row's Unit.key is the citation that names that row. A cell citation extends the
+    same row citation with ", column ...". That gives short table evidence a bounded search
+    domain without teaching the inventory the table locator grammar: the quote still has to be
+    present in the unit's own text, so a citation alone never establishes reach.
+    """
+    citation = block(entry, "locator").get("citation")
+    if not isinstance(citation, str):
+        return []
+    return [unit for unit in units
+            if unit.kind == "table-row"
+            and (citation == unit.key or citation.startswith(unit.key + ", column "))]
 
 
 def _joined(units):
@@ -222,12 +244,28 @@ def take(units, document, rejected):
             continue
         name = label(entry, position)
         hit = False
-        for fragment in _fragments(entry.get("evidence")):
+        evidence = entry.get("evidence")
+        # Long fragments retain the original corpus-wide search. That is what permits a quote
+        # to cross a unit boundary, and changing it here would also collapse the separate #322
+        # question about byte-identical text in distinct units.
+        for fragment in _fragments(evidence):
             for start, end in _occurrences(fragment, corpus):
                 for lo, hi, unit in spans:
                     if lo < end and start < hi:
                         reached.setdefault(unit.key, set()).add(name)
                         hit = True
+
+        # A short prose fragment still proves nothing: the four-word floor above is unchanged.
+        # 0035 gives table rows a stronger boundary, however. A row Unit.key is its citation, so
+        # a one-, two- or three-word quote can be searched only inside the row the entry names.
+        # The quote must still occur there; a citation by itself never makes a unit reached.
+        short = [fragment for fragment in _fragments(evidence, minimum_words=1)
+                 if len(fragment.split()) < 4]
+        if short:
+            for unit in _cited_table_rows(units, entry):
+                if any(_occurrences(fragment, unit.text) for fragment in short):
+                    reached.setdefault(unit.key, set()).add(name)
+                    hit = True
         (located if hit else unlocated).append(name)
 
     problems = []
