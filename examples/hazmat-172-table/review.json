@@ -1,7 +1,7 @@
 {
   "reviews": {
     "corpus-map.json": {
-      "sha256": "cf277786dfd62ddfea4722598751e92c3b54da7038a943dffe38a54ef635ddac",
+      "sha256": "c753e3f4974084606204f25eaba262fa307a90d9d1f07f92f156c86df2319400",
       "method": "exemption",
       "exemption": {
         "kind": "legacy",

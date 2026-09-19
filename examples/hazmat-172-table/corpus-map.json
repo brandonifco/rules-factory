@@ -1603,7 +1603,7 @@
         "modality": "italic emphasis"
       },
       "evidence": "Acetic acid, glacial or Acetic acid solution, with more than 80 percent acid, by mass",
-      "status": "mapped",
+      "status": "declined",
       "note": "The printed page sets “or” and “with more than 80 percent acid, by mass” in italics (<E T=\"03\"> in the corpus), and § 172.101(c)(2) makes that load-bearing: the italic “or” offers a choice of two names and the italic qualifier is not part of either. The `ecfr-xml` adapter's cell text is \"\".join(cell.itertext()), which flattens the tag, so the extraction cannot tell which words are italic and this entry cannot be resolved from it. The rendered reading is that the proper shipping name is either “Acetic acid, glacial” or “Acetic acid solution”. The rule is row x column: the cell's words are the proper shipping name because the cell sits in column 2 of the Hazardous Materials Table, and what carries that is the citation (0035), not the quote."
     },
     {
@@ -1661,7 +1661,7 @@
         "modality": "italic emphasis"
       },
       "evidence": "Acetyl acetone peroxide with more than 9 percent by mass active oxygen",
-      "status": "mapped",
+      "status": "declined",
       "note": "The whole cell is italic on the printed page, so by § 172.101(c)(2) none of it is part of a proper shipping name — which is coherent with column 3 saying “Forbidden”, since a material that may not be offered has nothing to be named on a shipping paper. The extraction flattens the tag and cannot carry that, so the entry is beyond this adapter's reach and its rendered reading is not verified by anything mechanical. The rule is row x column: the cell's words are the proper shipping name because the cell sits in column 2 of the Hazardous Materials Table, and what carries that is the citation (0035), not the quote."
     },
     {
@@ -3095,7 +3095,7 @@
         }
       ],
       "evidence": "TP1 The maximum degree of filling must not exceed the degree of filling determined by the following: Where: tr is the maximum mean bulk temperature during transport, and tf is the temperature in degrees celsius of the liquid during filling.",
-      "status": "mapped",
+      "status": "declined",
       "note": "The rule is a formula, and the corpus serves the formula as a <MATH> element whose only text is the variable glosses: the prose says “determined by the following:” and then the expression itself is not in the extraction at all. So the paragraph is readable and the rule is not, which is exactly what `beyondAdapter` records (0004). The entry is still cited and still quoted — it is unreadable, not uncitable — and an engine declines it `MissingRulesData` naming the reader that failed."
     },
     {
@@ -3125,7 +3125,7 @@
         }
       ],
       "evidence": "TP2 a. The maximum degree of filling must not exceed the degree of filling determined by the following: Where: tr is the maximum mean bulk temperature during transport, tf is the temperature in degrees celsius of the liquid during filling, and α is the mean coefficient of cubical expansion of the liquid between the mean temperature of the liquid during filling (tf) and the maximum mean bulk temperature during transportation (tr) both in degrees celsius. b. For liquids transported under ambient conditions α may be calculated using the formula:",
-      "status": "mapped",
+      "status": "declined",
       "note": "Two formulae rather than TP1's one — the degree of filling, and a calculation of the mean coefficient of cubical expansion for liquids carried at ambient conditions — and neither is in the extraction. Same verdict as TP1 and a wider one: an engine that implemented TP1 from a rendered page would still owe TP2 a second reading."
     },
     {
