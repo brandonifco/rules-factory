@@ -2595,6 +2595,10 @@ def check_definition_continuations(ctx):
         if "defines" in entry:
             bad.append(f"  X  {name}: carries both `defines` and `continuesDefinition`; a "
                        f"continuation inherits one direct definition and does not declare another")
+        if fate_of(entry) == "unresolved":
+            bad.append(f"  X  {name}: carries `continuesDefinition` while its ambiguity fate is "
+                       f"`unresolved`; the relation is a semantic choice, so this contract "
+                       f"requires that ambiguity to be settled by a named decision (0046)")
         target = by_id.get(target_id)
         if target is None:
             bad.append(f"  X  {name}: continuesDefinition.definedBy names {target_id!r}, which is "
