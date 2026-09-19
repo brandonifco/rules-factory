@@ -518,16 +518,23 @@ the command returns early unless the protocol declares `defined-term-use`, so a 
 only detected-here mechanism is `coded-pointer` prints *"nothing here detects the ways it does
 point"* beside *"coded-pointer: detected here"* and exits 0 having examined nothing.
 
-**The map carries no `mapping-inventory.json`, and cannot.** `mapping-inventory.json` names one
-`corpus` and `mapper inventory` walks every corpus a map cites (0042), so the file is refused with
-exit 2 for whichever corpus it does not name — watched failing, and filed as
-[#319](https://github.com/brandonifco/rules-factory/issues/319). About forty of the 615
-unaccounted units were read and declined by this mapping — § 172.101's two appendices, the ten
-stowage categories of (k), the four paragraphs of (l), seven headings, six `(c)(n)` code-run leads
-of § 172.102 that restate § 172.102(b), and the nine rows of § 172.102 table 2 the extent had to
-take whole under 0043 — and not one of them can be recorded as such. **That is H4's sharpest
-result:** for a map citing two corpora, the inventory cannot tell *read and dismissed* from
-*never opened* at all.
+**At first mapping the map carried no `mapping-inventory.json`, because the version 1 file could
+name only one `corpus`.** `mapper inventory` walks every corpus a map cites (0042), so such a file
+was refused with exit 2 for whichever corpus it did not name — watched failing, and filed as
+[#319](https://github.com/brandonifco/rules-factory/issues/319). Version 2 now puts `sourceId` on
+each rejection, validates it against the map's cited corpora, and accounts for it only in that
+corpus's walk. The format can therefore distinguish *read and dismissed* from *never opened* for
+both corpora without cross-contamination.
+
+No inventory is reconstructed here after the fact. The first mapper recorded only an approximate
+account in prose: about forty of the 615 unaccounted units were read and declined — § 172.101's
+two appendices, the ten stowage categories of (k), the four paragraphs of (l), seven headings, six
+`(c)(n)` code-run leads of § 172.102 that restate § 172.102(b), and the nine rows of § 172.102
+table 2 the extent had to take whole under 0043. That is enough to demonstrate the old loss of
+evidence, but not enough to recreate every exact (`sourceId`, `unit`, `ground`, `note`) verdict
+without inventing evidence. The committed measurement consequently remains the honest original:
+615 unaccounted and 0 rejected. H4 found the representational limit; #319 removes it for future
+and contemporaneously recorded verdicts.
 
 ### H2 and H3, as the map bears on them
 
@@ -573,8 +580,9 @@ are 4 of 64.
 
 - [#318](https://github.com/brandonifco/rules-factory/issues/318) — `mapper pointers` never runs
   the coded-pointer detector.
-- [#319](https://github.com/brandonifco/rules-factory/issues/319) — `mapping-inventory.json` is
-  single-corpus, so a two-corpus map can record no rejection at all.
+- [#319](https://github.com/brandonifco/rules-factory/issues/319) — the version 1
+  `mapping-inventory.json` was single-corpus, so this two-corpus map could record no rejection at
+  all; version 2 subsequently attached corpus identity to each rejection.
 - [#320](https://github.com/brandonifco/rules-factory/issues/320) — `mapper inventory` drops a
   quote under four words, so 12 of the map's 135 entries — every single-cell entry — are *not
   located inside the extent* although the locator checker verifies each exactly.

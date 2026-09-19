@@ -10,7 +10,9 @@ here, because each of them is a way this tool could report coverage it did not m
   * a unit is reached by a **quote** found in its text, including a quote that runs from one unit
     into the next, and a run in which no entry's quote is found at all fails;
   * a recorded rejection is held to the units that exist: one naming a unit the extent does not
-    contain accounts for nothing, and one naming a unit an entry quotes is a contradiction.
+    contain accounts for nothing, and one naming a unit an entry quotes is a contradiction;
+  * a version 2 rejection's unit identity includes its corpus `sourceId`; version 1 remains the
+    original single-corpus representation and an empty file is still not evidence.
 
 The six committed maps are then run through it, because a checker nobody has watched over real
 corpora is one that has only ever seen its own fixtures.
@@ -188,6 +190,12 @@ class TestARejectionIsHeldToTheUnitsThatExist(unittest.TestCase):
         self.fixture.write("mapping-inventory.json",
                            {"inventoryVersion": 1, "corpus": "fixture", "rejected": list(items)})
 
+    def reject_v2(self, *items):
+        self.fixture.write("mapping-inventory.json", {
+            "inventoryVersion": 2,
+            "rejected": [dict(item, sourceId="fixture") for item in items],
+        })
+
     def test_a_rejected_unit_accounts_for_itself(self):
         self.reject({"unit": "p. 9 block 2", "ground": "advice",
                      "note": "guidance on how to play well; it obliges nothing"})
@@ -195,6 +203,35 @@ class TestARejectionIsHeldToTheUnitsThatExist(unittest.TestCase):
         self.assertEqual(code, 0, out)
         self.assertIn("rejected:    1", out)
         self.assertIn("unaccounted: 0", out)
+
+    def test_version_two_is_valid_for_one_corpus_too(self):
+        self.reject_v2({"unit": "p. 9 block 2", "ground": "advice",
+                        "note": "guidance on how to play well; it obliges nothing"})
+        code, out = run(["inventory", self.fixture.map_path])
+        self.assertEqual(code, 0, out)
+        self.assertIn("rejected:    1", out)
+        self.assertIn("unaccounted: 0", out)
+
+    def test_a_version_two_file_with_zero_rejections_is_refused(self):
+        self.reject_v2()
+        code, out = run(["inventory", self.fixture.map_path])
+        self.assertEqual(code, 2, out)
+        self.assertIn("records no rejection", out)
+
+    def test_the_same_unit_key_in_two_corpora_is_two_rejections(self):
+        self.fixture.write("mapping-inventory.json", {
+            "inventoryVersion": 2,
+            "rejected": [
+                {"sourceId": source, "unit": "p. 9 block 2", "ground": "advice",
+                 "note": "the same local key can identify a unit in each separate corpus"}
+                for source in ("first", "second")
+            ],
+        })
+        loaded = inventory.load_rejections(
+            os.path.join(self.fixture.directory, "mapping-inventory.json"), ("first", "second"))
+        self.assertEqual(set(loaded), {"first", "second"})
+        self.assertEqual(set(loaded["first"]), {"p. 9 block 2"})
+        self.assertEqual(set(loaded["second"]), {"p. 9 block 2"})
 
     def test_a_rejection_of_a_unit_the_extent_does_not_contain_fails(self):
         self.reject({"unit": "p. 9 block 44", "ground": "advice", "note": "no such block"})
