@@ -144,6 +144,31 @@ The field is optional and additive. Every schema-version-1 map that does not car
 same meaning and the same reader behavior. This follows the versioning treatment used when 0045
 added optional `defines`; no existing representation is reinterpreted.
 
+
+### 7. The Trial 10 blank-row reading is ambiguous in the corpus and decided in the map
+
+The regulation never states in prose that a blank IBC-code cell continues the code printed on the
+row above, and 0043 deliberately records that limitation. The repeated table pattern is nonetheless
+strong enough to choose that reading for IB2 and IB3: otherwise each printed
+`Additional Requirement` is an orphan restriction with nothing to qualify.
+
+That means the two Trial 10 continuation entries remain `clarity: ambiguous` — a competent reader
+can see that the source leaves the convention implicit — but their `ambiguity.fate` is
+`decision`, naming **this record**. They do not remain `fate: unresolved`, and they carry no
+`unresolvedReason`. A `continuesDefinition` is itself the semantic choice that the additional
+rule belongs to the direct definition; asserting that relation while saying the same relationship
+is unresolved is contradictory.
+
+This correction was required by the independent review of PR #329. The reviewer agreed with both
+IB2 and IB3 continuation relationships from the repeated table pattern, but rejected the first
+implementation's simultaneous `continuesDefinition` plus `RequiresInterpretation` state.
+
+The rule is intentionally narrow in this contract version: an entry carrying
+`continuesDefinition` may not have `ambiguity.fate: unresolved`. No admitted corpus currently
+forces the separate case where a continuation relationship is settled but an unrelated aspect of
+that same entry remains open. If one does, it must force a representation that distinguishes those
+questions rather than silently weakening this invariant.
+
 ## Mechanical invariants
 
 Validation refuses a continuation when:
@@ -202,5 +227,8 @@ relationship and one structural witness, not arbitrary graph edges.
   through the existing 0044 completeness rule.
 * Direct `defines`, `crossReferences`, `dependsOn`, and 0043 locators keep their existing
   meanings.
+* The two Trial 10 continuation entries stay `clarity: ambiguous` but use
+  `ambiguity.fate: decision` naming this ADR; they no longer return
+  `RequiresInterpretation` for the association this relation has chosen.
 * No support is added for continuation chains, multiple terms per continuation, non-local
   corpora, arbitrary semantic graphs, generic row grouping, or multi-span evidence.
