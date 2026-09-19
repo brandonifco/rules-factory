@@ -148,15 +148,13 @@ def defined_vocabulary(doc, name):
     for entry in entries:
         if not isinstance(entry, dict) or not isinstance(entry.get("id"), str):
             continue
-        for vocabulary, term in defines_of(entry):
-            if vocabulary == wanted and entry["id"] not in terms.setdefault(term, []):
-                terms[term].append(entry["id"])
+        direct = defines_of(entry)
+        if direct:
+            for vocabulary, term in direct:
+                if vocabulary == wanted and entry["id"] not in terms.setdefault(term, []):
+                    terms[term].append(entry["id"])
+            continue
 
-    for entry in entries:
-        if not isinstance(entry, dict) or not isinstance(entry.get("id"), str):
-            continue
-        if defines_of(entry):
-            continue
         continuation = definition_continuation_of(entry)
         if continuation is None:
             continue
