@@ -129,8 +129,10 @@ points rather than the part this package happens to implement.
 
 ### `coded-pointer` — a pointer its column makes
 
-Decided in [0041](decisions/0041-a-coded-pointer-is-made-by-the-column-it-sits-in.md)
-([#307](https://github.com/brandonifco/rules-factory/issues/307)), forced by trial 10.
+Decided in [0041](decisions/0041-a-coded-pointer-is-made-by-the-column-it-sits-in.md), with its
+defining set extended by [0046](decisions/0046-an-additional-rule-can-continue-a-definition.md)
+([#321](https://github.com/brandonifco/rules-factory/issues/321)). The mechanism itself was forced by
+[#307](https://github.com/brandonifco/rules-factory/issues/307)), forced by trial 10.
 
 ```json
 { "mechanism": "coded-pointer", "column": 7, "vocabulary": "special-provision-codes" }
@@ -165,12 +167,16 @@ twenty codes it does not print would be refused by the anchoring rule
 ([0026](decisions/0026-a-meaning-the-same-corpus-gives-elsewhere-is-an-entry-and-a-corpus-declares-its-pointers.md)),
 and rightly: it would be a registry someone wrote, not a passage of the corpus.
 
-So each defining entry declares its own term, anchored in its own evidence
-([`defines`](corpus-map.md#defines)), and the vocabulary is what those declarations add up to:
-`(vocabulary, term) → one or more entry ids`. `vocabularyFrom` on a `coded-pointer` is refused,
-and `vocabulary` on any other mechanism is refused — each names a different kind of vocabulary,
-and a mechanism reading the wrong one would report a clean run over nothing. A name no entry
-defines is refused too, because it would report every code in the column as undeclared. Two
+So a passage that prints a term declares it directly, anchored in its own evidence
+([`defines`](corpus-map.md#defines)). Where a second passage states an additional defining rule
+without repeating the term, it can join that direct definition only through an explicitly
+[anchored `continuesDefinition`](corpus-map.md#continuesdefinition) (0046). The vocabulary is what
+those direct and continued definitions add up to: `(vocabulary, term) → one or more entry ids`.
+The continuation copies neither vocabulary nor term, so it cannot become a second registry.
+
+`vocabularyFrom` on a `coded-pointer` is refused, and `vocabulary` on any other mechanism is
+refused — each names a different kind of vocabulary, and a mechanism reading the wrong one would
+report a clean run over nothing. A name no direct definition establishes is refused too. Two
 columns may read two vocabularies, and a token of one does not satisfy the other because the text
 matches: column 6's `3` is a hazard label, and column 7's numeric codes are special provisions.
 
