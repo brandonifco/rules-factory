@@ -215,7 +215,7 @@ it.
 | Verdict | What it means |
 |---|---|
 | **reached** | some entry's quoted `evidence` sits in the unit — a quote found in the unit's own text, not a citation naming it |
-| **rejected** | the mapper examined it, it produced no entry, and the reason is recorded. [method.md](method.md) says to drop advice and *note in the entry that you dropped it*; a passage that produced no entry at all has no entry to note it in, and that note lives in `mapping-inventory.json` |
+| **rejected** | the mapper examined it, it produced no entry, and the reason is recorded. Its identity is (`sourceId`, `unit`), because a unit key has meaning inside the corpus whose adapter enumerated it. [method.md](method.md) says to drop advice and *note in the entry that you dropped it*; a passage that produced no entry at all has no entry to note it in, and that note lives in `mapping-inventory.json` |
 | **unaccounted** | neither. Nobody can tell from the map whether it was read and dismissed or never opened, which is the state a map exists to distinguish from a recorded verdict |
 
 Unaccounted units are **NOT VERIFIED** (exit 3), never a failure: whether a passage owed an entry
@@ -238,20 +238,32 @@ it is a record of how the map was made, which is the mapper's business and not a
 
 ```json
 {
-  "inventoryVersion": 1,
-  "corpus": "hoyle-1909",
+  "inventoryVersion": 2,
   "rejected": [
-    { "unit": "p. 277 block 2", "ground": "heading", "note": "the chapter's own heading line" },
-    { "unit": "p. 277 block 3", "ground": "advice",
+    { "sourceId": "hoyle-1909", "unit": "p. 277 block 2",
+      "ground": "heading", "note": "the chapter's own heading line" },
+    { "sourceId": "hoyle-1909", "unit": "p. 277 block 3", "ground": "advice",
       "note": "counsel on which point to make first; it obliges nothing" }
   ]
 }
 ```
 
+`sourceId` is required on every version 2 rejection and must be a corpus the map cites. Rejections
+are partitioned by it before any walk is accounted: a rejection of corpus A cannot satisfy corpus
+B, even when their adapters emit the same unit key. A duplicate (`sourceId`, `unit`) is refused.
+This is the unit identity 0039 and 0042 already require, not a claim that every cited corpus had a
+rejection; the file still contains only explicit examined-and-rejected verdicts.
+
 `ground` is closed (`advice`, `preamble`, `heading`, `page-furniture`, `restatement`,
 `out-of-extent`, `beyond-adapter`), and a `note` is required: a ground alone is a label, not a
-reading. A rejection naming a unit the extent does not enumerate is a claim about nothing, and
-one naming a unit an entry quotes is a contradiction; both fail the run.
+reading. A rejection naming a unit that corpus's extent does not enumerate is a claim about
+nothing, and one naming a unit an entry quotes is a contradiction; both fail the run.
+
+Version 1 bound the whole document to one top-level `corpus`. It remains readable, without
+reinterpretation, for a single-corpus map. A map citing several corpora is refused until its file
+is migrated to version 2 by moving that `corpus` value onto every rejection as `sourceId`; no
+version 1 inventory can truthfully account for a multi-corpus walk. No committed inventory file
+uses version 1.
 
 ### The adapter interface
 

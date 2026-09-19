@@ -226,9 +226,11 @@ def _walks(args):
             f"{args.map_path} declares no `extent`, so it claims no coverage and there is "
             f"nothing to inventory (0009)")
     here = os.path.dirname(os.path.abspath(manifest_path))
-    rejections = inventory_step.load_rejections
+    cited = sorted(protocol_step.cited_corpora(document))
+    rejections = inventory_step.load_rejections(
+        inventory_step.path_beside(args.map_path), cited)
     walks, claimed = [], set()
-    for source in sorted(protocol_step.cited_corpora(document)):
+    for source in cited:
         adapter = corpus_step.open_corpus(manifest, source, here)
         portion, mine = adapter.portion_of(extent)
         if mine is not None:
@@ -238,7 +240,7 @@ def _walks(args):
                    or (entry.get("locator") or {}).get("sourceId") in (None, source)]
         theirs = dict(document, entries=entries)
         units = adapter.units(portion)
-        rejected = rejections(inventory_step.path_beside(args.map_path), source)
+        rejected = rejections[source]
         walks.append(Walk(theirs, manifest, source, adapter, portion, units,
                           inventory_step.take(units, theirs, rejected)))
     if len(walks) > 1:

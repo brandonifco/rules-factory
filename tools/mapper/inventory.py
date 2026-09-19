@@ -11,7 +11,9 @@ by construction:
 
   **reached**       some entry's quoted evidence sits in it. The strongest of the three: a quote
                     found in the unit's own text, not a citation naming it.
-  **rejected**      the mapper examined it and produced no entry, and recorded why. `method.md`
+  **rejected**      the mapper examined it and produced no entry, and recorded why. Its identity
+                    is (`sourceId`, `unit`): unit keys are stable only inside the corpus whose
+                    adapter enumerated them. `method.md`
                     says to drop advice and note in the entry that you dropped it -- and a
                     passage that produced no entry at all has no entry to note it in, which is
                     exactly the passage a reader most needs to know was seen. That note lives in
@@ -51,8 +53,11 @@ from mapper.protocol import Refused
 #: Beside the map, like the protocol. Optional: a map that rejected nothing has no file, and
 #: every unit is then reached or unaccounted.
 INVENTORY_FILENAME = "mapping-inventory.json"
-INVENTORY_VERSIONS = (1,)
-INVENTORY_FIELDS = ("inventoryVersion", "corpus", "rejected")
+INVENTORY_VERSIONS = (1, 2)
+INVENTORY_FIELDS = {
+    1: ("inventoryVersion", "corpus", "rejected"),
+    2: ("inventoryVersion", "rejected"),
+}
 
 # Why a passage examined in the extent produced no entry. Closed, for the reason every
 # vocabulary here is closed: a ground nothing holds to a set means whatever the last writer
@@ -102,10 +107,18 @@ def path_beside(map_path):
     return os.path.join(os.path.dirname(os.path.abspath(map_path)) or ".", INVENTORY_FILENAME)
 
 
-def load_rejections(path, corpus):
-    """The examined-and-rejected verdicts recorded beside a map; `{}` when there is no file."""
+def load_rejections(path, corpora):
+    """The examined-and-rejected verdicts, partitioned by every corpus the map cites.
+
+    Version 1 bound the whole document to one corpus. It remains readable for a single-corpus
+    map with exactly that meaning, and is refused for a multi-corpus map rather than silently
+    supplying one corpus's accounting to a walk of several. Version 2 puts `sourceId` on each
+    rejection, because a rejection is a verdict about one unit and a unit key has meaning only
+    inside the corpus whose adapter enumerated it (0009, 0039, 0042).
+    """
+    cited = tuple(sorted(set(corpora)))
     if not os.path.exists(path):
-        return {}
+        return {corpus: {} for corpus in cited}
     try:
         with open(path, encoding="utf-8") as handle:
             document = json.load(handle)
@@ -113,24 +126,41 @@ def load_rejections(path, corpus):
         raise Refused(f"cannot read {path}: {error}")
     if not isinstance(document, dict):
         raise Refused(f"{path} is not a JSON object")
-    if document.get("inventoryVersion") not in INVENTORY_VERSIONS:
+    version = document.get("inventoryVersion")
+    if version not in INVENTORY_VERSIONS:
         raise Refused(f"{os.path.basename(path)} is version "
-                      f"{document.get('inventoryVersion')!r}, which this reader does not read")
-    for extra in sorted(set(document) - set(INVENTORY_FIELDS)):
-        raise Refused(f"`{extra}` is not an inventory field; the three are "
-                      + ", ".join(INVENTORY_FIELDS))
-    if document.get("corpus") != corpus:
-        raise Refused(f"{os.path.basename(path)} records rejections in corpus "
-                      f"{document.get('corpus')!r}; the map's corpus is {corpus!r}")
+                      f"{version!r}, which this reader does not read")
+    fields = INVENTORY_FIELDS[version]
+    for extra in sorted(set(document) - set(fields)):
+        raise Refused(f"`{extra}` is not an inventory version {version} field; the fields are "
+                      + ", ".join(fields))
     listed = document.get("rejected")
     if not isinstance(listed, list) or not listed:
         raise Refused(f"{os.path.basename(path)} records no rejection; a file that rejects "
                       f"nothing says less than no file at all")
-    rejected = {}
+
+    if version == 1:
+        corpus = document.get("corpus")
+        if len(cited) != 1:
+            raise Refused(f"{os.path.basename(path)} version 1 records rejections in one corpus "
+                          f"({corpus!r}), but the map cites {len(cited)} corpora; version 2 puts "
+                          f"`sourceId` on each rejection")
+        if not cited or corpus != cited[0]:
+            expected = cited[0] if cited else None
+            raise Refused(f"{os.path.basename(path)} records rejections in corpus {corpus!r}; "
+                          f"the map's corpus is {expected!r}")
+
+    rejected = {corpus: {} for corpus in cited}
     for position, item in enumerate(listed):
         where = f"rejected[{position}]"
         if not isinstance(item, dict):
             raise Refused(f"{where} is not an object")
+        source = document.get("corpus") if version == 1 else item.get("sourceId")
+        if not isinstance(source, str) or not source:
+            raise Refused(f"{where} names no `sourceId`; a unit has identity only inside the "
+                          f"corpus whose adapter enumerated it")
+        if source not in rejected:
+            raise Refused(f"{where}: sourceId {source!r} names a corpus the map does not cite")
         key, ground = item.get("unit"), item.get("ground")
         if not isinstance(key, str) or not key:
             raise Refused(f"{where} names no `unit`")
@@ -141,9 +171,9 @@ def load_rejections(path, corpus):
         if not isinstance(note, str) or not note.strip():
             raise Refused(f"{where}: a rejection carries a `note` saying what was examined and "
                           f"why it produced no entry; {ground!r} alone is a label, not a reading")
-        if key in rejected:
-            raise Refused(f"{where}: unit {key!r} is rejected twice")
-        rejected[key] = {"ground": ground, "note": note}
+        if key in rejected[source]:
+            raise Refused(f"{where}: unit {key!r} in corpus {source!r} is rejected twice")
+        rejected[source][key] = {"ground": ground, "note": note}
     return rejected
 
 

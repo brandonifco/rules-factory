@@ -164,7 +164,7 @@ advice, and note in the entry that you dropped it: an agent enumerating mechanic
 otherwise map it as a rule, or drop it silently, and silently is worse because the next
 reader cannot tell which happened. A passage that produced **no entry at all** has no entry to
 note it in, and that is the passage a reader most needs to know was seen: record it in
-`mapping-inventory.json` beside the map, as a unit with a ground and a note
+`mapping-inventory.json` beside the map, as a unit with the corpus's `sourceId`, a ground and a note
 ([the inventory](mapper.md#the-inventory)). `mapper inventory` counts what neither a quote nor a
 rejection accounts for.
 

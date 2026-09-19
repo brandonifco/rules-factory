@@ -22,6 +22,10 @@ Watched here:
   * two corpora are walked, each with its own adapter and its own share of the extent;
   * each walk sees **only the entries that cite its corpus**, so an entry of the second corpus is
     not reported unlocated in the first;
+  * each recorded rejection names its corpus and accounts only for that corpus's unit, while a
+    foreign corpus, a missing identity and a duplicate (`sourceId`, `unit`) are refused;
+  * the representation has no two-corpus cardinality hidden in it -- a three-corpus walk is
+    partitioned and accounted by the same path;
   * the inventory reports per corpus **and** a total;
   * the run's verdict is the **worst** of the corpora, so one clean corpus cannot carry another;
   * an extent section **no** cited corpus contains is still refused -- the invariant `units` held
@@ -67,6 +71,10 @@ SECTIONS = (("cfr-9-9.101", "section-9.101.xml", FIRST), ("cfr-9-9.102", "sectio
 
 FIRST_QUOTE = "Each material is listed in the table with the provisions that apply to it."
 SECOND_QUOTE = "A code containing the letter W applies only to transportation by water."
+THIRD = """<ROOT><DIV8 N="9.103" TYPE="SECTION"><HEAD>&#167; 9.103 Exceptions.</HEAD>
+<P>(a) An exception applies only when its stated condition holds.</P>
+</DIV8></ROOT>"""
+THIRD_QUOTE = "An exception applies only when its stated condition holds."
 
 
 def a_protocol(source_id, sweeps=("cross-references",)):
@@ -99,6 +107,32 @@ class TwoCorpusWalk(unittest.TestCase):
         with open(path, "w", encoding="utf-8") as handle:
             json.dump(document, handle)
         return path
+
+    def reject(self, *items):
+        return self.write("mapping-inventory.json", {
+            "inventoryVersion": 2,
+            "rejected": list(items),
+        })
+
+    @staticmethod
+    def rejection(source_id, unit, ground="heading"):
+        return {"sourceId": source_id, "unit": unit, "ground": ground,
+                "note": "examined in this corpus and deliberately produced no entry"}
+
+    def reject_everything_but_the_quotes(self, *sources):
+        items = []
+        if "cfr-9-9.101" in sources:
+            items += [
+                self.rejection("cfr-9-9.101", "§ 9.101 heading"),
+                self.rejection("cfr-9-9.101", "§ 9.101 ¶2 (b)", "restatement"),
+            ]
+        if "cfr-9-9.102" in sources:
+            items += [
+                self.rejection("cfr-9-9.102", "§ 9.102 heading"),
+                self.rejection("cfr-9-9.102", "§ 9.102 ¶1 (a)", "preamble"),
+                self.rejection("cfr-9-9.102", "§ 9.102 ¶3 (c)", "restatement"),
+            ]
+        self.reject(*items)
 
     def a_map(self, sections=("§ 9.101", "§ 9.102"), entries=None):
         return self.write("corpus-map.json", {
@@ -162,6 +196,109 @@ class TwoCorpusWalk(unittest.TestCase):
                         "evidence": SECOND_QUOTE})
         code, output = self.run_cli("inventory", self.a_map(entries=entries))
         self.assertNotEqual(code, 0, output)
+
+    def test_rejections_only_for_the_first_corpus_stay_in_the_first(self):
+        self.reject_everything_but_the_quotes("cfr-9-9.101")
+        code, output = self.run_cli("inventory", self.a_map())
+        first, second = output.split("--- cfr-9-9.102")
+        self.assertEqual(code, NOT_VERIFIED, output)
+        self.assertIn("rejected:    2", first)
+        self.assertIn("unaccounted: 0", first)
+        self.assertIn("rejected:    0", second)
+        self.assertIn("unaccounted: 3", second)
+
+    def test_rejections_only_for_the_second_corpus_stay_in_the_second(self):
+        self.reject_everything_but_the_quotes("cfr-9-9.102")
+        code, output = self.run_cli("inventory", self.a_map())
+        first, second = output.split("--- cfr-9-9.102")
+        self.assertEqual(code, NOT_VERIFIED, output)
+        self.assertIn("rejected:    0", first)
+        self.assertIn("unaccounted: 2", first)
+        self.assertIn("rejected:    3", second)
+        self.assertIn("unaccounted: 0", second)
+
+    def test_legitimate_rejections_in_both_corpora_account_for_each_own_walk(self):
+        self.reject_everything_but_the_quotes("cfr-9-9.101", "cfr-9-9.102")
+        code, output = self.run_cli("inventory", self.a_map())
+        first, second = output.split("--- cfr-9-9.102")
+        self.assertEqual(code, 0, output)
+        self.assertIn("rejected:    2", first)
+        self.assertIn("unaccounted: 0", first)
+        self.assertIn("rejected:    3", second)
+        self.assertIn("unaccounted: 0", second)
+
+    def test_a_rejection_naming_a_corpus_the_map_does_not_cite_is_refused(self):
+        self.reject(self.rejection("cfr-9-9.999", "§ 9.999 heading"))
+        code, output = self.run_cli("inventory", self.a_map())
+        self.assertEqual(code, 2, output)
+        self.assertIn("cfr-9-9.999", output)
+        self.assertIn("does not cite", output)
+
+    def test_a_version_two_rejection_without_source_identity_is_refused(self):
+        item = self.rejection("cfr-9-9.101", "§ 9.101 heading")
+        del item["sourceId"]
+        self.reject(item)
+        code, output = self.run_cli("inventory", self.a_map())
+        self.assertEqual(code, 2, output)
+        self.assertIn("sourceId", output)
+
+    def test_the_same_corpus_and_unit_cannot_be_rejected_twice(self):
+        item = self.rejection("cfr-9-9.101", "§ 9.101 heading")
+        self.reject(item, item)
+        code, output = self.run_cli("inventory", self.a_map())
+        self.assertEqual(code, 2, output)
+        self.assertIn("rejected twice", output)
+
+    def test_a_version_one_inventory_is_refused_for_a_multi_corpus_map(self):
+        self.write("mapping-inventory.json", {
+            "inventoryVersion": 1,
+            "corpus": "cfr-9-9.101",
+            "rejected": [{"unit": "§ 9.101 heading", "ground": "heading",
+                          "note": "the section heading states no rule of its own"}],
+        })
+        code, output = self.run_cli("inventory", self.a_map())
+        self.assertEqual(code, 2, output)
+        self.assertIn("version 1 records rejections in one corpus", output)
+        self.assertIn("map cites 2 corpora", output)
+
+    def test_three_corpora_are_partitioned_by_source_identity(self):
+        with open(os.path.join(self.tmp, "corpus-manifest.json"), encoding="utf-8") as handle:
+            manifest = json.load(handle)
+        manifest["corpora"].append({
+            "sourceId": "cfr-9-9.103", "adapter": "ecfr-xml",
+            "locatorGrammar": "section-designation", "committedPath": "section-9.103.xml",
+            "contentHash": "x" * 64, "hashDerivation": "ecfr-versioner-xml",
+            "asOf": "2026-01-01", "verification": "committed-copy",
+            "licence": "public-domain-us-government", "quotation": "verbatim",
+            "randomness": "none", "boundaryPolicy": "pin-in-repo",
+        })
+        self.write("corpus-manifest.json", manifest)
+        with open(os.path.join(self.tmp, "section-9.103.xml"), "w", encoding="utf-8") as handle:
+            handle.write(THIRD)
+        self.write(protocol.per_corpus_filename("cfr-9-9.103"), a_protocol("cfr-9-9.103"))
+        entries = [
+            {"id": "listed-in-the-table",
+             "locator": {"sourceId": "cfr-9-9.101", "citation": "§ 9.101(a)"},
+             "evidence": FIRST_QUOTE},
+            {"id": "w-is-water-only",
+             "locator": {"sourceId": "cfr-9-9.102", "citation": "§ 9.102(b)"},
+             "evidence": SECOND_QUOTE},
+            {"id": "exception-condition",
+             "locator": {"sourceId": "cfr-9-9.103", "citation": "§ 9.103(a)"},
+             "evidence": THIRD_QUOTE},
+        ]
+        self.reject_everything_but_the_quotes("cfr-9-9.101", "cfr-9-9.102")
+        inventory_path = os.path.join(self.tmp, "mapping-inventory.json")
+        with open(inventory_path, encoding="utf-8") as handle:
+            inventory_document = json.load(handle)
+        inventory_document["rejected"].append(
+            self.rejection("cfr-9-9.103", "§ 9.103 heading"))
+        self.write("mapping-inventory.json", inventory_document)
+        code, output = self.run_cli(
+            "inventory", self.a_map(("§ 9.101", "§ 9.102", "§ 9.103"), entries))
+        self.assertEqual(code, 0, output)
+        self.assertIn("--- cfr-9-9.103", output)
+        self.assertIn("total across 3 corpora", output)
 
     # --- the sweeps ------------------------------------------------------------------------
 
