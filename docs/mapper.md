@@ -214,7 +214,7 @@ it.
 
 | Verdict | What it means |
 |---|---|
-| **reached** | some entry's quoted `evidence` sits in the unit — a quote found in the unit's own text, not a citation naming it |
+| **reached** | some entry's quoted `evidence` sits in the unit — a quote found in the unit's own text, not a citation naming it. A fragment of four or more words is safe for the corpus-wide search; a shorter fragment reaches a unit only inside an exact structural region that unit's adapter exposes for the entry's own citation |
 | **rejected** | the mapper examined it, it produced no entry, and the reason is recorded. Its identity is (`sourceId`, `unit`), because a unit key has meaning inside the corpus whose adapter enumerated it. [method.md](method.md) says to drop advice and *note in the entry that you dropped it*; a passage that produced no entry at all has no entry to note it in, and that note lives in `mapping-inventory.json` |
 | **unaccounted** | neither. Nobody can tell from the map whether it was read and dismissed or never opened, which is the state a map exists to distinguish from a recorded verdict |
 
@@ -271,6 +271,9 @@ The three corpus grammars already had three locator checkers, and each answers *
 passage this citation names*. None could answer *what is in the extent that no citation named*.
 [`tools/mapper/corpus.py`](../tools/mapper/corpus.py) is the other half: an `Adapter` cuts a
 corpus into the units an extent selects, in reading order, each with a stable key and its text.
+Where the corpus gives a smaller structural container inside a unit, the adapter may also expose
+the exact citation and text of that region. Today only an addressable eCFR table row does so: its
+row citation bounds the row, and the same citation with `, column N` bounds that cell (0035).
 
 | Manifest `adapter` | Extent it reads | What a unit is |
 |---|---|---|
@@ -278,20 +281,29 @@ corpus into the units an extent selects, in reading order, each with a stable ke
 | `pdftotext-page-marked` | `page`, with `endsBefore` (0024) | the same, with the marker on a line of its own |
 | `ecfr-xml` | `section-designation`, with `tables` (0035) | a paragraph, a worked example, a section's heading, or a **row** of a table the extent slices, keyed `§ 107.29 ¶4 (a)` or `§ 172.101 table 3, row [column 2 = "Acetal"]` |
 
-That is the whole interface, and it is small on purpose. Marking a unit *reached* could have been
-done by parsing each entry's citation and comparing it against the unit's designation, which
-would have put a second citation parser per grammar into the mapper. It is instead done by
-finding the entry's **quoted evidence** in the units' own text: a quote is the same kind of
-object in every corpus, so the measurement is one implementation, and it is the stricter reading
-— a citation naming a section is not a quote sitting in it. `units()` is also what [a
-sweep](#the-sweeps) walks, which is why it returns the text rather than a locator: a sweep asks
-what a unit says.
+That is the whole interface, and it is small on purpose. Marking a unit *reached* is not done by
+accepting its citation as proof: the **quoted evidence still has to occur in text the adapter
+exposed**. For fragments of four words or more, inventory keeps the original corpus-wide search,
+including quotes that cross unit boundaries. The four-word floor remains for free prose because
+a shorter phrase can occur in many unrelated passages. A shorter fragment is considered only
+when the adapter exposes an exact structural region for that entry's citation, and only the unit
+owning that region can be reached. The adapter writes those canonical row/cell citation forms; the
+inventory does not parse their grammar.
+
+This is 0035's existing container rule applied to the inventory, not a new evidence rule. A table
+cell such as `3` can establish reach when the locator names that cell and `3` occurs there; the
+same token cannot wander into another row or ordinary prose. Conversely, a citation naming a
+section is still not a quote sitting in it. `units()` is also what [a sweep](#the-sweeps) walks,
+which is why it returns the text too: a sweep asks what a unit says.
 
 **A table's rows are units, and the extent says which of them it took**
 ([0035](decisions/0035-a-rule-stated-in-a-table-row-is-cited-by-its-row.md),
 [#280](https://github.com/brandonifco/rules-factory/issues/280)). A row's unit key *is* the
 citation that names it, so a rejection, an inventory line and a locator say the same words, and
-its text is its cells in column order with the empty ones kept. Three things are refused rather
+its text is its cells in column order with the empty ones kept. The unit also exposes that row and
+each addressable cell as citation-bounded evidence regions; that is what lets a one-, two- or
+three-word cell quote reach the cited row without relaxing the prose floor or searching another
+row. Three things are refused rather
 than enumerated: a table of a cited section the extent's `tables` list passes over in silence — a
 3,687-row table counted as one unit reached by one quote is the measurement this exists to make
 impossible — a declared row key that resolves to none or to two rows, and, where a table is taken
