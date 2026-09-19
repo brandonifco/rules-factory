@@ -191,7 +191,7 @@ class DeletingEitherTargetIsVisible(unittest.TestCase):
         """
         lines, _, _ = self.report([("IB3", IB3_IBCS)], definitions=[(IB3_IBCS, "IB3")])
         self.assertEqual([line for line in lines if IB3_LARGE in line], [])
-        self.assertIn("1 term(s) declared by 1 entr(ies)", lines[0])
+        self.assertIn("1 term(s) defined by 1 entr(ies) (0045-0046)", lines[0])
 
     def test_a_one_target_code_says_nothing_about_a_count(self):
         """The count is printed only where it tells the reader something."""
