@@ -325,11 +325,20 @@ class TestEveryCommittedMapIsSwept(unittest.TestCase):
     def test_every_sweep_in_the_closed_set_is_exercised_by_some_committed_map(self):
         """A sweep no map requires has only ever run on a fixture, and the closed set would be
         holding a name nothing in the repository reads."""
-        required = set()
+        required, read = set(), 0
         for path in maps():
             directory = os.path.dirname(path)
-            with open(os.path.join(directory, "mapping-protocol.json"), encoding="utf-8") as f:
-                required.update(json.load(f).get("requiredSweeps") or [])
+            # A map citing several corpora has one protocol per corpus (0040), named
+            # `mapping-protocol-<sourceId>.json`; a map citing one has `mapping-protocol.json`.
+            # Reading only the second name made this test open a file trial 10's map does not
+            # have, and it would have gone on missing whatever sweeps such a map required.
+            for name in sorted(os.listdir(directory)):
+                if not (name.startswith("mapping-protocol") and name.endswith(".json")):
+                    continue
+                with open(os.path.join(directory, name), encoding="utf-8") as handle:
+                    required.update(json.load(handle).get("requiredSweeps") or [])
+                read += 1
+        self.assertTrue(read, "no protocol was read -- this test proved nothing")
         self.assertEqual(required, set(protocol.SWEEPS))
 
 
