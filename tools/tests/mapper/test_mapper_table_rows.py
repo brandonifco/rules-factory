@@ -707,6 +707,13 @@ class TestAQuoteInARowReachesIt(unittest.TestCase):
         self.assertIn("reached:     1", output)
         self.assertNotIn("not located inside the extent", output)
 
+    def test_a_one_token_cell_citation_reaches_its_row(self):
+        citation = ACETAL_KEY + ", column 3"
+        code, output = self.inventory("3", citation)
+        self.assertEqual(code, NOT_VERIFIED, output)
+        self.assertIn("reached:     1", output)
+        self.assertNotIn("not located inside the extent", output)
+
     def test_a_two_token_cell_does_not_reach_the_other_row_that_prints_it(self):
         citation = '§ 1.10 table 1, row [column 3 = "2.2"]'
         code, output = self.inventory("Ammonia, anhydrous", citation)
