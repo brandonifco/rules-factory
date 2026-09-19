@@ -1,0 +1,30 @@
+{
+  "protocolVersion": 1,
+  "corpus": "cfr-49-172.101",
+  "units": ["section", "paragraph", "table", "table-row", "heading"],
+  "pointerMechanisms": [
+    { "mechanism": "phrase" },
+    { "mechanism": "section-designation" },
+    { "mechanism": "coded-pointer", "column": 6, "vocabulary": "hazard-label-codes" },
+    { "mechanism": "coded-pointer", "column": 7, "vocabulary": "special-provision-codes" }
+  ],
+  "requiredSweeps": [
+    "definitions",
+    "vocabulary",
+    "applicability",
+    "exceptions",
+    "permissions",
+    "prohibitions",
+    "undefined-terms",
+    "tables",
+    "cross-references",
+    "extent-coverage"
+  ],
+  "adapterReach": {
+    "text": "readable",
+    "tables": "readable",
+    "columns": "readable",
+    "formatting": "rendered-page-required",
+    "illustrations": "unsupported"
+  }
+}

@@ -1,0 +1,28 @@
+{
+  "protocolVersion": 1,
+  "corpus": "cfr-49-172.102",
+  "units": ["section", "paragraph", "table", "table-row", "heading"],
+  "pointerMechanisms": [
+    { "mechanism": "phrase" },
+    { "mechanism": "section-designation" }
+  ],
+  "requiredSweeps": [
+    "definitions",
+    "vocabulary",
+    "applicability",
+    "exceptions",
+    "permissions",
+    "prohibitions",
+    "undefined-terms",
+    "tables",
+    "cross-references",
+    "extent-coverage"
+  ],
+  "adapterReach": {
+    "text": "readable",
+    "tables": "readable",
+    "columns": "readable",
+    "formatting": "rendered-page-required",
+    "illustrations": "unsupported"
+  }
+}
