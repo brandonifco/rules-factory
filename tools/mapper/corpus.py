@@ -11,18 +11,18 @@ until something enumerates the units inside it, nothing evidences the claim.
 ## The interface, and why it is this small
 
 An adapter does one thing: **cut a corpus into the units the extent selects**, in reading
-order, each with a stable key and its text. Everything after that -- finding which units an
-entry's quoted evidence reaches, reading declared rejections, counting what is left -- is the
-same work in every grammar and lives in `inventory.py`, over `Unit`s.
+order, each with a stable key and its text. Where the corpus itself provides a smaller structural
+container inside a unit -- a cited table cell, for example -- the unit may also expose that
+citation and the exact text it bounds. Everything after that -- finding which units an entry's
+quoted evidence reaches, reading declared rejections, counting what is left -- remains common
+work in `inventory.py`, over `Unit`s.
 
-That split is deliberate, and it is why no citation grammar appears in this file. Marking a
-unit *reached* could have been done by parsing each entry's citation and comparing it against
-the unit's designation, which is what the section checker does; it would have put a second
-citation parser per grammar in here and made the inventory as grammar-specific as the
-checkers. It is instead done by finding the entry's **quoted evidence** in the units' own text.
-A quote is the same kind of object in every corpus, so the measurement is one implementation,
-and it is the stricter of the two readings: a citation naming a section is not a quote sitting
-in it.
+That split is deliberate. Marking a unit *reached* is still not done by treating a citation as
+evidence: the entry's **quoted evidence** has to occur in text the adapter actually exposed.
+Ordinary matching therefore needs no citation parser. A bounded structural region is different:
+the adapter already writes the table-row citation and knows its columns, so it can expose the
+row and cell citation forms it created without asking inventory to understand that grammar. A
+citation naming a section is still not a quote sitting in it.
 
 What an adapter therefore has to know is only its corpus's shape: where the units are, and
 which of them an extent selects. `units()` is also what a sweep walks
@@ -73,18 +73,37 @@ class Unit:
     across runs and legible in a report: `p. 177 block 4`, `§ 107.29(a)(2)`.
     """
 
-    def __init__(self, key, kind, text, unaddressable=None):
+    def __init__(self, key, kind, text, unaddressable=None, evidence_regions=None):
         if kind not in KINDS:
             raise Refused(f"unit kind {kind!r} is outside the closed set: " + ", ".join(KINDS))
         self.key = key
         self.kind = kind
         self.text = text
+        #: Exact citation -> exact structural text the adapter can prove that citation bounds.
+        #: Ordinary prose has none. A table-row unit has its row and each addressable cell (0035),
+        #: which lets inventory test a short quote without letting it wander through the corpus.
+        self.evidence_regions = dict(evidence_regions or {})
         #: why no citation can resolve into this unit, or None where one can (0036). A unit with
         #: a reason here is text of the corpus that has no address, so a quote of it is not
         #: coverage of it -- the locator run would report the entry unchecked. The inventory
         #: counts it, reports it on a line of its own, and fails a map that claims to have
         #: reached it.
         self.unaddressable = unaddressable
+
+    def evidence_region(self, citation):
+        """The exact text this unit can prove `citation` bounds, or None.
+
+        The adapter supplies canonical citation forms rather than a parser. A locator checker may
+        accept harmless presentation latitude (today, a final period); failing to recognise other
+        spellings here is a conservative false negative, never evidence assigned to the wrong
+        unit.
+        """
+        if not isinstance(citation, str) or not self.evidence_regions:
+            return None
+        canonical = citation.strip()
+        if canonical.endswith("."):
+            canonical = canonical[:-1].rstrip()
+        return self.evidence_regions.get(canonical)
 
     def __repr__(self):
         return (f"Unit({self.key!r}, {self.kind!r}, {len(self.text)} chars"
@@ -321,6 +340,20 @@ def row_key_pairs(key):
 def row_citation(number, position, pairs):
     """The citation naming one row: `§ 172.101 table 3, row [column 2 = "Acetal"]`."""
     return f"§ {number} table {position}, row [{row_key_text(pairs)}]"
+
+
+def _table_row_unit(table, position, citation):
+    """One row unit, including the structural regions its own citation can bound (0035).
+
+    The row is still the accounting unit. The regions do not make a citation evidence; they say
+    where inventory may look for evidence too short to search safely across unrelated units.
+    """
+    cells = table.rows[position]
+    regions = {citation: row_text(cells)}
+    for at, column in enumerate(table.columns):
+        if at < len(cells):
+            regions[f"{citation}, column {column}"] = cells[at]
+    return Unit(citation, "table-row", row_text(cells), evidence_regions=regions)
 
 
 def row_below_citation(number, position, column, anchor, discriminators=()):
@@ -1031,7 +1064,7 @@ class EcfrXml(Adapter):
                             f"selector reaches it. The row is "
                             f"{row_text(table.rows[position])[:70]!r}")
                     citation = row_below_citation(table.number, table.position, *below)
-                found.append(Unit(citation, "table-row", row_text(table.rows[position])))
+                found.append(_table_row_unit(table, position, citation))
             return found
         if not isinstance(rows, list) or not rows:
             raise Refused(f"{where}: `rows` is a non-empty list of row keys, or \"all\"; "
@@ -1048,8 +1081,8 @@ class EcfrXml(Adapter):
                               f"the table; a row key resolves to exactly one row, and a second "
                               f"match is answered with a discriminating column, never with the "
                               f"first hit")
-            found.append(Unit(row_citation(table.number, table.position, pairs), "table-row",
-                              row_text(hits[0][1])))
+            citation = row_citation(table.number, table.position, pairs)
+            found.append(_table_row_unit(table, hits[0][0], citation))
         return found
 
     def _section_units(self, number, section):
