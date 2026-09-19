@@ -10,7 +10,9 @@ extent selects; here each unit is marked by one of three verdicts, and the three
 by construction:
 
   **reached**       some entry's quoted evidence sits in it. The strongest of the three: a quote
-                    found in the unit's own text, not a citation naming it.
+                    found in the unit's own text, not a citation naming it. A fragment under four
+                    words is searched only inside an adapter-proved structural region named by
+                    that entry's citation; ordinary prose keeps the four-word safety floor.
   **rejected**      the mapper examined it and produced no entry, and recorded why. Its identity
                     is (`sourceId`, `unit`): unit keys are stable only inside the corpus whose
                     adapter enumerated them. `method.md`
@@ -177,13 +179,23 @@ def load_rejections(path, corpora):
     return rejected
 
 
-def _fragments(evidence):
-    """A quote's fragments: the whole of it, or the pieces an ellipsis divides it into."""
+def _pieces(evidence):
+    """A quote's non-empty fragments: the whole of it, or pieces an ellipsis divides it into."""
     text = normalise(evidence) if isinstance(evidence, str) else ""
     pieces = [text]
     for mark in ELLIPSIS:
         pieces = [p for piece in pieces for p in piece.split(mark)]
-    return [normalise(p) for p in pieces if len(normalise(p).split()) >= 4]
+    return [normalise(piece) for piece in pieces if normalise(piece)]
+
+
+def _fragments(evidence):
+    """Fragments safe to search across unrelated units: four words or longer."""
+    return [piece for piece in _pieces(evidence) if len(piece.split()) >= 4]
+
+
+def _bounded_fragments(evidence):
+    """Short fragments usable only inside a structural region the cited unit exposes."""
+    return [piece for piece in _pieces(evidence) if len(piece.split()) < 4]
 
 
 def _joined(units):
@@ -222,12 +234,30 @@ def take(units, document, rejected):
             continue
         name = label(entry, position)
         hit = False
-        for fragment in _fragments(entry.get("evidence")):
+        evidence = entry.get("evidence")
+        # Four-or-more-word fragments keep the original corpus-wide matching semantics. In
+        # particular, a long quote may still reach byte-identical rows (#322); this issue does
+        # not redefine unit identity or the global matcher.
+        for fragment in _fragments(evidence):
             for start, end in _occurrences(fragment, corpus):
                 for lo, hi, unit in spans:
                     if lo < end and start < hi:
                         reached.setdefault(unit.key, set()).add(name)
                         hit = True
+
+        # A short fragment is unsafe in free prose: "must be able" can occur all over a corpus.
+        # It is evidence only when the adapter can prove the entry's own citation bounds a
+        # smaller structural region, such as one row or one cell of an addressable table (0035).
+        # The citation is therefore a boundary on where to test the quote, never proof of reach:
+        # the fragment still has to occur in the exact region the unit exposes.
+        locator = entry.get("locator")
+        citation = locator.get("citation") if isinstance(locator, dict) else None
+        for fragment in _bounded_fragments(evidence):
+            for unit in units:
+                region = unit.evidence_region(citation)
+                if region is not None and fragment in normalise(region):
+                    reached.setdefault(unit.key, set()).add(name)
+                    hit = True
         (located if hit else unlocated).append(name)
 
     problems = []
