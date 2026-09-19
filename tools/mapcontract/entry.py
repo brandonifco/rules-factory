@@ -96,26 +96,82 @@ def defines_of(entry):
     return found
 
 
+def definition_continuation_of(entry):
+    """One `continuesDefinition` as `(definedBy, sourceId, citation)`, or None (0046).
+
+    A continuation writes no vocabulary or term of its own. It names the entry that directly
+    defines the term and carries a structural locator witnessing that this passage sits under that
+    defining passage. Shape errors are reported by the validator; every consumer reads this one
+    tolerant canonical form.
+    """
+    if not isinstance(entry, dict):
+        return None
+    declared = entry.get("continuesDefinition")
+    if not isinstance(declared, dict):
+        return None
+    target = declared.get("definedBy")
+    anchor = declared.get("anchor")
+    if not isinstance(target, str) or not target:
+        return None
+    if not isinstance(anchor, dict):
+        return None
+    source = anchor.get("sourceId")
+    citation = anchor.get("citation")
+    if not isinstance(source, str) or not source or not isinstance(citation, str) or not citation:
+        return None
+    return target, source, citation
+
+
 def defined_vocabulary(doc, name):
-    """One named vocabulary, as `{term: [the ids of every entry that defines it]}` (0045).
+    """One named vocabulary as `{term: [every entry that defines it]}` (0044-0046).
 
-    **One printed code can name more than one rule** (0044), and here that cardinality is not a
-    special case: `IB3` has two defining entries because two entries declare they define it, in
-    § 172.102's table 2 and its table 4. The ids are in the order the map states them, and an id
-    that declares one term twice appears once -- `check-map.py --only defines` reports the
-    repetition, so the two cases stay distinguishable.
+    Direct definitions come from evidence-anchored `defines` exactly as 0045 specifies.
+    A `continuesDefinition` entry then joins the **one** direct definition made by its
+    `definedBy` target. It copies neither vocabulary nor term: both are inherited from that
+    target, which is why an additional rule whose own evidence omits the printed code can join
+    the same defining set without weakening direct anchoring.
 
-    A vocabulary no entry defines is `{}`, which is what makes a protocol naming one refusable.
-    The name is canonicalised on the way in, so a caller holding the protocol's spelling and an
-    entry holding its own reach the same vocabulary.
+    Readers apply the map-level invariants here too: the continuation has no direct `defines`,
+    its target exists, directly defines exactly one term, is not itself a continuation, and all
+    three locators name the same corpus. The locator checker separately proves the structural
+    anchor resolves to this passage under that target (0046).
+
+    A vocabulary no entry defines is `{}`. Declaration order decides nothing semantically, but
+    ids are returned in map order for stable diagnostics.
     """
     wanted, terms = canonical_vocabulary(name), {}
     if not wanted:
         return terms
-    for entry in entries_of(doc):
+    entries = entries_of(doc)
+    by_id = index(doc)
+
+    for entry in entries:
         if not isinstance(entry, dict) or not isinstance(entry.get("id"), str):
             continue
         for vocabulary, term in defines_of(entry):
             if vocabulary == wanted and entry["id"] not in terms.setdefault(term, []):
                 terms[term].append(entry["id"])
+
+    for entry in entries:
+        if not isinstance(entry, dict) or not isinstance(entry.get("id"), str):
+            continue
+        if defines_of(entry):
+            continue
+        continuation = definition_continuation_of(entry)
+        if continuation is None:
+            continue
+        target_id, anchor_source, _ = continuation
+        target = by_id.get(target_id)
+        if not isinstance(target, dict) or definition_continuation_of(target) is not None:
+            continue
+        target_definitions = defines_of(target)
+        if len(target_definitions) != 1:
+            continue
+        entry_source = block(entry, "locator").get("sourceId")
+        target_source = block(target, "locator").get("sourceId")
+        if not entry_source or entry_source != target_source or entry_source != anchor_source:
+            continue
+        vocabulary, term = target_definitions[0]
+        if vocabulary == wanted and entry["id"] not in terms.setdefault(term, []):
+            terms[term].append(entry["id"])
     return terms
