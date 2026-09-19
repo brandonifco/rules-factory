@@ -157,6 +157,14 @@ first pass of the second trial for the same reason: a mapper hunting for rules r
 vocabulary. `point-designations` and `direction-of-travel` are the instances
 ([#13](https://github.com/brandonifco/rules-factory/issues/13)).
 
+**Keep a printed term and an unprinted continuation as two anchored claims.** A direct definition
+uses `defines` only when that entry's own evidence prints the term (0045). If another passage
+states an additional rule under that definition without repeating the term, do not copy the term
+into its evidence or `defines`, do not infer meaning from adjacency, and do not merge the rules
+for convenience. Where the corpus gives a mechanically checkable structural relationship, record
+an explicit `continuesDefinition` with its structural witness (0046). The vocabulary reader then
+inherits the direct target's one term and 0044 makes every pointer owe every defining entry.
+
 **Advice is not a rule, and it is not always in its own section.** A corpus usually
 separates guidance from obligation — but not reliably, and not sentence by sentence. "It is
 always an object to do this" sits in the middle of a trial corpus's movement rules. Drop
