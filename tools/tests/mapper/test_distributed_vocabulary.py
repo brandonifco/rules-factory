@@ -194,7 +194,7 @@ def pointing_entries():
 
 
 def trial_map():
-    """The map, as trial 10 would write it under 0045."""
+    """The map, as trial 10 writes this slice under 0045-0046."""
     return {
         "schemaVersion": 1,
         "corpus": TABLE,
@@ -223,8 +223,7 @@ def trial_map():
                 {"section": "§ 172.102", "table": 1,
                  "excluded": "the ASTM maximum ambient temperature table inside numeric "
                              "provision 14; no mapped row invokes it"},
-                {"section": "§ 172.102", "table": 2,
-                 "rows": [{"column": 1, "is": "IB2"}, {"column": 1, "is": "IB3"}]},
+                {"section": "§ 172.102", "table": 2, "rows": "all"},
                 {"section": "§ 172.102", "table": 3,
                  "excluded": "IP codes; no mapped row carries one"},
                 {"section": "§ 172.102", "table": 4, "rows": [{"column": 1, "is": "IB3"}]},
