@@ -363,7 +363,8 @@ def _check_defined_vocabulary(where, declared, document):
     terms = defined_vocabulary(document, name)
     if not terms:
         return [f"{where}: no entry in this map establishes vocabulary {name!r}; a "
-                f"vocabulary is what the entries that define its terms add up to (0045), and one "
+                f"vocabulary is what its direct definitions and anchored continuations add up to "
+                f"(0045-0046), and one "
                 f"nothing defines would report every code in the column as undeclared"]
     return []
 
