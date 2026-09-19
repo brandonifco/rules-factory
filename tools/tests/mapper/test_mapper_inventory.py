@@ -260,22 +260,31 @@ class TestUnitKeysIdentifyOneUnit(unittest.TestCase):
         examined = 0
         for path in maps():
             with self.subTest(map=os.path.relpath(path, REPO)):
-                units = units_of(path)
-                keys = [unit.key for unit in units]
+                keys = [unit.key for unit in units_of(path)]
                 self.assertEqual(len(keys), len(set(keys)))
                 examined += len(keys)
         self.assertTrue(examined, "no units enumerated -- this test proved nothing")
 
 
 def units_of(map_path):
+    """Every unit of every corpus the map cites, the way `mapper inventory` enumerates them.
+
+    A map may cite several corpora and declares one extent across them all (0039, 0042), so each
+    corpus gets its own adapter and its own share of that extent. Opening only
+    `document["corpus"]` and handing it the whole extent refused trial 10's map outright -- the
+    principal corpus does not contain § 172.102 -- and would have measured 15% of a two-corpus
+    map's units had it not.
+    """
     document = json.load(open(map_path, encoding="utf-8"))
-    directory = os.path.dirname(map_path)
     manifest_path = cli._find_manifest(map_path)
     manifest = json.load(open(manifest_path, encoding="utf-8"))
-    adapter = corpus.open_corpus(manifest, document.get("corpus"),
-                                 os.path.dirname(os.path.abspath(manifest_path)))
-    assert directory
-    return adapter.units(document.get("extent"))
+    here = os.path.dirname(os.path.abspath(manifest_path))
+    units = []
+    for source in sorted(protocol.cited_corpora(document)):
+        adapter = corpus.open_corpus(manifest, source, here)
+        portion, _ = adapter.portion_of(document.get("extent"))
+        units.extend(adapter.units(portion))
+    return units
 
 
 class TestEveryCommittedMapIsInventoried(unittest.TestCase):

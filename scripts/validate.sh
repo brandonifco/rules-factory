@@ -241,6 +241,17 @@ check_locators() {
   # is frozen evidence at blind-mapping/first-map.json and is checked nowhere else, which this
   # covers -- its bytes cannot change without the map they build stopping matching.
   python3 examples/tax-121-principal-residence/blind-mapping/build-map-c.py --check || return 1
+  # A fourth corpus through the same eCFR checker, and the first map that cites two of them
+  # (0039, 0042): trial 10's § 172.101 and § 172.102, whose rules cross a served-document
+  # boundary. Every corpus a map cites names the sourceId its entries cite, because a single
+  # positional argument cannot say which of two documents a citation belongs to. It is also the
+  # first map whose citations name table rows and cells (0035) and a row the corpus leaves blank
+  # in the column that names the row above (0043), and the first to declare `extent.unreachable`
+  # (0038) -- fifteen passages of § 172.101 no citation can resolve into.
+  python3 examples/faa-part-107/check-locators-section.py \
+    examples/hazmat-172-table/corpus-map.json \
+    cfr-49-172.101=examples/hazmat-172-table/section-172.101.xml \
+    cfr-49-172.102=examples/hazmat-172-table/section-172.102.xml || return 1
   # A third grammar: page markers over text extracted from a PDF. extract.py first holds the
   # committed text to the manifest's contentHash and the committed PDF to sourcePdf.sha256, and
   # re-derives the text from the PDF where the pinned pdftotext is installed (NOT VERIFIED,
