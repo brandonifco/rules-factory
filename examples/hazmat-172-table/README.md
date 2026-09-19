@@ -634,6 +634,15 @@ deleting the `resolvedBy` edge to either additional-requirement entry makes `map
 report that defining entry missing. That is the failure #321 could not express when this trial was
 first mapped.
 
+
+The source-level uncertainty is not erased: the regulation still never states the blank-cell
+continuation convention in prose, so both additional-requirement entries remain
+`clarity: ambiguous`. The first independent review of #329 agreed that the repeated table pattern
+supports the IB2 and IB3 associations, but correctly rejected the original map's simultaneous
+`continuesDefinition` plus `fate: unresolved`. The map therefore records the adopted reading as
+`ambiguity.fate: decision`, naming 0046, and no longer reports `RequiresInterpretation` for the
+same relationship it has made operative.
+
 ## What happens next
 
 Steps 3 and 4 of #262: blind-map the slice a second time, adjudicate, mutate, and report every
