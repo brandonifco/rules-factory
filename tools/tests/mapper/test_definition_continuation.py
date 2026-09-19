@@ -185,6 +185,19 @@ class TheSemanticRelationIsNarrow(unittest.TestCase):
         self.assertTrue(any("both `defines` and `continuesDefinition`" in line
                             for line in result.details), result.details)
 
+    def test_a_semantic_continuation_cannot_leave_its_relationship_unresolved(self):
+        doc = document()
+        doc["entries"][1]["clarity"] = "ambiguous"
+        doc["entries"][1]["ambiguity"] = {
+            "question": "Does this blank-code row continue IB2?",
+            "fate": "unresolved",
+            "unresolvedReason": "RequiresInterpretation",
+        }
+        result = self.result(doc)
+        self.assertEqual(result.status, "fail")
+        self.assertTrue(any("semantic choice" in line and "named decision" in line
+                            for line in result.details), result.details)
+
     def test_a_chain_is_refused(self):
         doc = document()
         second = continuation("second-additional-rule", target=CONTINUATION)
@@ -299,6 +312,12 @@ class Trial10UsesTheWitnessOnBothRows(unittest.TestCase):
             with self.subTest(entry=entry_id):
                 entry = by_id[entry_id]
                 self.assertEqual(entry["continuesDefinition"]["definedBy"], target_id)
+                self.assertEqual(entry["clarity"], "ambiguous")
+                self.assertEqual(entry["ambiguity"]["fate"], "decision")
+                self.assertEqual(
+                    entry["ambiguity"]["decision"],
+                    "docs/decisions/0046-an-additional-rule-can-continue-a-definition.md")
+                self.assertNotIn("unresolvedReason", entry["ambiguity"])
                 verdict, message = check_locators.check_definition_continuation_anchor(
                     entry, by_id[target_id], tables)
                 self.assertEqual(verdict, "ok", message)
