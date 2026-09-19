@@ -3235,8 +3235,8 @@
       "clarity": "ambiguous",
       "ambiguity": {
         "question": "The row leaves column 1 blank and states an “Additional Requirement”, and the corpus nowhere says what it is additional *to*. § 172.102 states no convention for a blank code cell; the markup carries no rowspan, no grouping and no distinguishing class (measured on 0043); and this row's text is byte-identical to the one printed under IB1, so the words themselves cannot say which code they qualify. That a row blank in the code column continues the row above it is the reader's inference and not the regulation's statement. If it is wrong, every IB2 assignment in the § 172.101 table carries a vapour-pressure ceiling it does not have.",
-        "fate": "unresolved",
-        "unresolvedReason": "RequiresInterpretation"
+        "fate": "decision",
+        "decision": "docs/decisions/0046-an-additional-rule-can-continue-a-definition.md"
       },
       "dependsOn": [
         "ib2-authorized-ibcs"
@@ -3253,7 +3253,7 @@
       },
       "evidence": "| Additional Requirement: Only liquids with a vapor pressure less than or equal to 110 kPa at 50 °C (1.1 bar at 122 °F), or 130 kPa at 55 °C (1.3 bar at 131 °F) are authorized.",
       "status": "mapped",
-      "note": "0046 records the semantic relationship separately from 0043's structural locator: this passage continues the one direct `special-provision-codes / IB2` definition at `ib2-authorized-ibcs`, while the row's own ambiguity remains explicit because the regulation never states the blank-cell convention in prose. The continuation copies neither vocabulary nor term; its structural anchor resolves this row under the IB2 row. The three column 7 cells assigning IB2 already resolve to both entries, and 0044 now mechanically requires both."
+      "note": "0046 records the semantic relationship separately from 0043's structural locator. The regulation never states the blank-cell convention in prose, so `clarity` remains `ambiguous`; 0046 is the explicit `fate: decision` that chooses the well-supported table reading and records this passage as continuing the one direct `special-provision-codes / IB2` definition at `ib2-authorized-ibcs`. The continuation copies neither vocabulary nor term; its structural anchor resolves this row under the IB2 row. The three column 7 cells assigning IB2 already resolve to both entries, and 0044 now mechanically requires both."
     },
     {
       "id": "ib3-authorized-ibcs",
@@ -3293,8 +3293,8 @@
       "clarity": "ambiguous",
       "ambiguity": {
         "question": "The same question as `ib2-vapour-pressure-limit`: the row leaves column 1 blank and nothing in § 172.102 says which code an “Additional Requirement” row qualifies. This one is addressable by an ordinary column 2 key only because its trailing UN2672 clause makes its text unique — IB2's is byte-identical to IB1's and needs 0043's selector — and an address is not a reading. The map records both rows the same way for that reason.",
-        "fate": "unresolved",
-        "unresolvedReason": "RequiresInterpretation"
+        "fate": "decision",
+        "decision": "docs/decisions/0046-an-additional-rule-can-continue-a-definition.md"
       },
       "dependsOn": [
         "ib3-authorized-ibcs"
@@ -3311,7 +3311,7 @@
       },
       "evidence": "| Additional Requirement: Only liquids with a vapor pressure less than or equal to 110 kPa at 50 °C (1.1 bar at 122 °F), or 130 kPa at 55 °C (1.3 bar at 131 °F) are authorized, except for UN2672 (also see special provision IP8 in Table 2 for UN2672).",
       "status": "mapped",
-      "note": "0046 records the same continuation as IB2 without replacing this entry's better ordinary row key. The primary locator remains the unique column 2 key; the relation's structural anchor independently resolves that same row below `ib3-authorized-ibcs`. It prints “IP8” and “Table 2” and not “IB3”, so it still carries no direct `defines`; the inherited definition comes only through the anchored continuation. Its own pointer at IP8 remains unmapped because IP8 is outside the twenty codes this slice invokes."
+      "note": "0046 records the same explicit decision as IB2 without replacing this entry's better ordinary row key. The regulation never states the blank-cell convention in prose, so `clarity` remains `ambiguous`; `fate: decision` names 0046 rather than leaving the association unresolved. The primary locator remains the unique column 2 key, while the relation's structural anchor independently resolves that same row below `ib3-authorized-ibcs`. It prints “IP8” and “Table 2” and not “IB3”, so it still carries no direct `defines`; the inherited definition comes only through the anchored continuation. Its own pointer at IP8 remains unmapped because IP8 is outside the twenty codes this slice invokes."
     },
     {
       "id": "ib4-authorized-ibcs",
