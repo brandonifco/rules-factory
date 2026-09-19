@@ -395,6 +395,13 @@ def cited_section(citation):
 CITE_TABLE_ROW = re.compile(
     r'^\s*§+\s*(?P<section>\d+\.\d+(?:-\d+)?)\s+table\s+(?P<table>\d+)\s*,\s*row\s*'
     r'\[(?P<key>.*)\](?:\s*,\s*column\s+[A-Za-z0-9]{1,4})?\s*\.?\s*$')
+# A row the corpus leaves blank in the column that names the row above it (0043). What this file
+# needs of it is only the table, because no declared row key names such a row: it is inside the
+# extent where the extent takes its table **whole**, and nowhere else.
+CITE_TABLE_ROW_BELOW = re.compile(
+    r'^\s*§+\s*(?P<section>\d+\.\d+(?:-\d+)?)\s+table\s+(?P<table>\d+)\s*,\s*row\s+'
+    r'blank\s+in\s+column\s+[A-Za-z0-9]{1,4}\s*(?:\[[^\]]*\]\s*)?'
+    r'below\s+row\s*\[[^\]]*\](?:\s*,\s*column\s+[A-Za-z0-9]{1,4})?\s*\.?\s*$')
 CITE_ROW_KEY_PAIR = re.compile(r'column\s+([A-Za-z0-9]{1,4})\s*=\s*"([^"]*)"')
 
 
@@ -407,9 +414,15 @@ def cited_row(citation):
 
     `key` is the frozen set of `column = value` pairs the citation names the row by, which is
     what an extent's declared row key is compared against: the pairs are a conjunction, so their
-    order is not part of what they name.
+    order is not part of what they name. It is **None** for a row named below the row above it
+    (0043), which no declared row key can name -- such a row is inside the extent only where the
+    extent takes its table whole.
     """
-    match = CITE_TABLE_ROW.match(str(citation or ""))
+    text = str(citation or "")
+    below = CITE_TABLE_ROW_BELOW.match(text)
+    if below:
+        return (below.group("section"), int(below.group("table")), None)
+    match = CITE_TABLE_ROW.match(text)
     if not match:
         return None
     pairs = CITE_ROW_KEY_PAIR.findall(match.group("key"))
@@ -727,10 +740,11 @@ def _place_row(name, citation, row, numbers, taken):
     if slice_of == "excluded":
         return [f"  X  {name}: cites {citation}, and the extent excludes § {section} table "
                 f"{table} from the slice; a table can be excluded or read, not both"]
-    if slice_of == "all" or key in slice_of:
+    if slice_of == "all" or (key and key in slice_of):
         return []
     return [f"  X  {name}: cites {citation}, and the extent's slice of § {section} table {table} "
-            f"does not take that row; the rows an extent names are the rows it read"]
+            + ("does not take that row; the rows an extent names are the rows it read" if key else
+               "lists row keys, and no key names a row below the row above it (0043)")]
 
 
 # --- tools/mapvalidator/relations.py ----------------------------------------------------------

@@ -660,9 +660,16 @@ class TestTableSlice(MapCase):
                      '§ 1.10 table 1, row [column 2 = "Ammonia, anhydrous"; column 1 = "G"]']
         for citation in citations:
             with self.subTest(citation=citation):
-                section, table, pairs, _ = section_tool.table_citation(citation)
+                section, table, selector, _ = section_tool.table_citation(citation)
+                self.assertEqual(selector[0], "key")
                 self.assertEqual(check_map.cited_row(citation),
-                                 (section, table, frozenset(pairs)))
+                                 (section, table, frozenset(selector[1])))
+        # A row named below the row above it (0043) is read by both, and this file keeps only the
+        # table: no declared row key names such a row, so there is no key to compare.
+        below = '§ 1.10 table 1, row blank in column 2 below row [column 2 = "Acetal"]'
+        section, table, selector, _ = section_tool.table_citation(below)
+        self.assertEqual(selector, ("below", "2", [("2", "Acetal")], []))
+        self.assertEqual(check_map.cited_row(below), (section, table, None))
         for outside in ["§ 1.10(a)", "subpart D", "Part One / p. 1",
                         '§ 1.10 table 1, row [the second one]']:
             with self.subTest(citation=outside):

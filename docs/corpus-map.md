@@ -197,6 +197,7 @@ A citation names a section and, optionally, what inside it the quote sits in:
 | `subpart D` | every section of a subpart |
 | `§ 172.101 table 3, row [column 2 = "Acetal"]` | one row of one table of the section |
 | `§ 172.101 table 3, row [column 2 = "Acetal"], column 7` | one cell of that row |
+| `§ 172.102 table 2, row blank in column 1 below row [column 1 = "IB2"]` | a row the corpus leaves blank in the column that names the row above it |
 
 **"Introductory text" is part of the grammar**
 ([#59](https://github.com/brandonifco/rules-factory/issues/59), 0020). A CFR section often opens
@@ -250,6 +251,41 @@ checker indexed a section's `<P>` and `<EXAMPLE>` children and nothing else, whi
 - **A heading row is a row**, and citable like any other: `row [column 1 = "(1)Symbols"]`. The
   column semantics of a regulation live in its headings, and this corpus prints them once for
   3,687 rows.
+
+**A row the corpus leaves blank in a column an earlier row fills is addressed relative to that
+earlier row** ([#310](https://github.com/brandonifco/rules-factory/issues/310),
+[0043](decisions/0043-a-row-blank-in-the-column-that-names-the-row-above-is-named-below-it.md)).
+§ 172.102 table 2 states `IB2` in two rows — the authorised IBCs, then an `Additional Requirement`
+whose code cell is blank — and that second row is **byte-identical** to `IB1`'s, so no
+`column = value` key names either and the table could not be taken whole at all. 258 rows of
+§ 172.101's Hazardous Materials Table are in the same position.
+
+```
+§ 172.102 table 2, row blank in column 1 below row [column 1 = "IB2"]
+§ 172.101 table 3, row blank in column 2 [column 5 = "II"] below row [column 2 = "Adhesives, containing a flammable liquid"]
+```
+
+- The **anchor** is named by an ordinary row key and must resolve to **exactly one row**, as any
+  row key must. Both halves of the address are the grammar above; **no ordinal and no occurrence
+  selector**, because an amendment repoints one silently and 0035 refused it for that reason.
+- The **run** is the rows immediately after the anchor whose cell in the named column is blank. It
+  ends at the first row that fills it, and at the first row of another width or one spanning part
+  of it — such a row has no cell in that column to be blank.
+- **Exactly one row must resolve.** An empty run is refused, and two matches are answered with an
+  ordinary `column = value` **discriminator** written before `below`, never with the first hit. So
+  a deleted target, a second blank row inserted under the same anchor, a renamed anchor and an
+  anchor printed twice each make the citation stop resolving rather than resolve to something else.
+- Where a row leaves several columns blank, the column is the one whose anchor is **nearest above**,
+  then the one whose **run is shortest**, then the table's own order. § 172.101's Symbols column is
+  blank on 3,139 of 3,689 rows, and column order alone addresses *Adhesives* PG II as
+  `blank in column 1 below row [column 2 = "Acetaldehyde ammonia"]` — unique, stable, and naming a
+  material twenty rows away.
+- **The locator claims nothing about meaning.** It says the row leaves a column blank and sits
+  below the anchor; whether it *continues* the anchor is a reading, and readings live in entries.
+  That is why the grammar says `blank in column` and not `continuation of`.
+- An ordinary row key is tried first and is the better address where there is one. Such a row is
+  inside an extent that takes its table **whole**: no declared row key names it, so
+  `extent.tables[].rows` cannot list it, and `check-map.py --only extent` says so.
 
 **A paragraph the corpus prints inside a wrapper is named by the designation the wrapper
 continues, or by nothing at all**

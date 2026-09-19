@@ -293,7 +293,8 @@ def _place_row(name, citation, row, numbers, taken):
     if slice_of == "excluded":
         return [f"  X  {name}: cites {citation}, and the extent excludes § {section} table "
                 f"{table} from the slice; a table can be excluded or read, not both"]
-    if slice_of == "all" or key in slice_of:
+    if slice_of == "all" or (key and key in slice_of):
         return []
     return [f"  X  {name}: cites {citation}, and the extent's slice of § {section} table {table} "
-            f"does not take that row; the rows an extent names are the rows it read"]
+            + ("does not take that row; the rows an extent names are the rows it read" if key else
+               "lists row keys, and no key names a row below the row above it (0043)")]

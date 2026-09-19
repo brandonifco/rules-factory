@@ -323,6 +323,18 @@ def row_citation(number, position, pairs):
     return f"§ {number} table {position}, row [{row_key_text(pairs)}]"
 
 
+def row_below_citation(number, position, column, anchor, discriminators=()):
+    """The citation naming a row the corpus leaves blank in the column that names the row above.
+
+    `§ 172.102 table 2, row blank in column 1 below row [column 1 = "IB2"]` (0043). The anchor is
+    named by an ordinary row key, so both halves of the address are the grammar 0035 already has,
+    and neither half is an ordinal.
+    """
+    discriminating = f" [{row_key_text(discriminators)}]" if discriminators else ""
+    return (f"§ {number} table {position}, row blank in column {column}{discriminating} "
+            f"below row [{row_key_text(anchor)}]")
+
+
 def addressable_row(spans):
     """Whether a body row's cells can be told apart by column.
 
@@ -533,6 +545,142 @@ class Table:
     def _holds(self, cells, column, value):
         at = self.index_of(column)
         return at is not None and at < len(cells) and cells[at] == normalise(str(value))
+
+    def run_below(self, anchor, column):
+        """The rows immediately after `anchor` that leave `column` blank, as positions (0043).
+
+        The run ends at the first row whose cell in that column says something -- and at the
+        first row this table cannot tell apart by column at all, because a row of another width
+        or one spanning part of it has no cell in that column to be blank. Nothing here reads
+        what any of them mean: the run is where the corpus stopped printing the value, and a
+        reading of *why* belongs to the map.
+        """
+        at = self.index_of(column)
+        if at is None:
+            return []
+        width = len(self.columns)
+        found = []
+        for position in range(anchor + 1, len(self.rows)):
+            cells = self.rows[position]
+            if len(cells) != width or not self.addressable[position] or cells[at].strip():
+                break
+            found.append(position)
+        return found
+
+    def resolve_below(self, column, anchor, discriminators=()):
+        """(position, None) for the one row the selector names, or (None, why it names no row).
+
+        Zero matches and two matches are both refusals, the rule an ordinary row key already
+        gets: an address that resolves to the first of two is an address that is confidently
+        wrong.
+        """
+        if self.index_of(column) is None:
+            return None, (f"prints no column {column} (its columns are "
+                          f"{', '.join(self.columns)})")
+        anchors = self.matching(anchor)
+        if len(anchors) != 1:
+            return None, (f"its anchor [{row_key_text(anchor)}] names {len(anchors)} rows of the "
+                          f"table, and an anchor names exactly one")
+        run = self.run_below(anchors[0][0], column)
+        if not run:
+            return None, (f"no row below [{row_key_text(anchor)}] leaves column {column} blank, "
+                          f"so the selector names nothing")
+        hits = [position for position in run
+                if all(self._holds(self.rows[position], c, v) for c, v in discriminators)]
+        if len(hits) != 1:
+            return None, (f"{len(hits)} of the {len(run)} row(s) below [{row_key_text(anchor)}] "
+                          f"blank in column {column} match"
+                          + (f" [{row_key_text(discriminators)}]" if discriminators else "")
+                          + "; exactly one must, and a second match is answered with a "
+                            "discriminating column")
+        return hits[0], None
+
+    def _anchor_above(self, position, at, width):
+        """The nearest row above `position` whose cell at `at` says something, or None."""
+        for other in range(position - 1, -1, -1):
+            cells = self.rows[other]
+            if len(cells) != width or not self.addressable[other]:
+                return None
+            if cells[at].strip():
+                return other
+        return None
+
+    def _discriminate(self, position, run):
+        """The narrowest `column = value` pairs telling this row from the rest of its run."""
+        cells = self.rows[position]
+        candidates = [(column, cells[at]) for at, column in enumerate(self.columns)
+                      if at < len(cells) and cells[at].strip() and quotable(cells[at])]
+
+        def narrow(pairs):
+            return [other for other in run
+                    if all(self._holds(self.rows[other], c, v) for c, v in pairs)]
+
+        chosen, matched = [], list(run)
+        while len(matched) > 1:
+            rest = [pair for pair in candidates if pair not in chosen]
+            if not rest:
+                return None
+            best = min(rest, key=lambda pair: (len(narrow(chosen + [pair])),
+                                               candidates.index(pair)))
+            narrowed = narrow(chosen + [best])
+            if len(narrowed) >= len(matched):
+                return None
+            chosen, matched = chosen + [best], narrowed
+        return chosen if matched == [position] else None
+
+    def key_below(self, position):
+        """(column, anchor key, discriminators) naming this row below the row above it, or None.
+
+        Tried only where `key_for` returns None: an ordinary key is the better address, and this
+        one is reached when no combination of the row's own cells names it. The column is one the
+        row leaves **blank** and the nearest row above fills, and that row must have an ordinary
+        key of its own -- so the address is anchored to a row a reader can recognise, and an
+        amendment that moves, renames or duplicates either end makes it stop resolving rather
+        than resolve to something else.
+
+        The column taken is the one whose anchor is **nearest above**; among those, the one whose
+        run is **shortest**; and among those, the table's own column order. Both orderings are
+        there because a measurement demanded them, not for elegance.
+
+        *Nearest.* § 172.101's Symbols column is blank on 3,139 of its 3,689 rows, so the first
+        column a continuation row of the Hazardous Materials Table leaves blank is column 1, whose
+        nearest filled row is a different material twenty rows up. Read in column order,
+        `Adhesives, containing a flammable liquid` PG II addresses as *blank in column 1 below row
+        [column 2 = "Acetaldehyde ammonia"]* -- unique, stable, and confidently wrong, which is
+        the address 0035 refuses.
+
+        *Shortest run.* Where the material row does carry a symbol, column 1 and column 2 have the
+        same anchor, and column 1's run swallows every following material whose symbol column is
+        also blank. The run is what a reader has to look through, so the narrower one is the
+        better address.
+        """
+        if not self.addressable[position]:
+            return None
+        width = len(self.columns)
+        cells = self.rows[position]
+        if len(cells) != width:
+            return None
+        blank = []
+        for at, column in enumerate(self.columns):
+            if cells[at].strip():
+                continue
+            anchor = self._anchor_above(position, at, width)
+            if anchor is not None:
+                blank.append((position - anchor, len(self.run_below(anchor, column)), at,
+                              column, anchor))
+        for _, _, _, column, anchor in sorted(blank):
+            key = self.key_for(anchor)
+            if key is None:
+                continue
+            run = self.run_below(anchor, column)
+            if position not in run:
+                continue
+            if len(run) == 1:
+                return column, key, []
+            discriminators = self._discriminate(position, run)
+            if discriminators is not None:
+                return column, key, discriminators
+        return None
 
     def key_for(self, position):
         """A key of `column = value` pairs naming row `position` and no other row, or None.
@@ -864,19 +1012,27 @@ class EcfrXml(Adapter):
     def _rows_of(self, table, rows):
         where = f"§ {table.number} table {table.position}"
         if rows == "all":
-            taken = list(range(len(table.rows)))
-            keys = []
-            for position in taken:
+            found = []
+            for position in range(len(table.rows)):
                 key = table.key_for(position)
-                if key is None:
-                    raise Refused(f"{where} holds a row no combination of its cells names: "
-                                  f"another row holds the same value in every column that can be "
-                                  f"written into a key, so the citation that would reach it names "
-                                  f"two rows. The row is {row_text(table.rows[position])[:70]!r}")
-                keys.append(key)
-            return [Unit(row_citation(table.number, table.position, key), "table-row",
-                         row_text(table.rows[position]))
-                    for position, key in zip(taken, keys)]
+                if key is not None:
+                    citation = row_citation(table.number, table.position, key)
+                else:
+                    # No combination of the row's own cells names it. Where the corpus leaves
+                    # blank the column that names the row above, the row still has an address,
+                    # anchored to that row (0043); where it does not, it has none and the table
+                    # is refused rather than enumerated with a row nothing can cite.
+                    below = table.key_below(position)
+                    if below is None:
+                        raise Refused(
+                            f"{where} holds a row no combination of its cells names, and no "
+                            f"column it leaves blank is filled by a row above that has a key of "
+                            f"its own, so neither a row key nor a `blank in column ... below` "
+                            f"selector reaches it. The row is "
+                            f"{row_text(table.rows[position])[:70]!r}")
+                    citation = row_below_citation(table.number, table.position, *below)
+                found.append(Unit(citation, "table-row", row_text(table.rows[position])))
+            return found
         if not isinstance(rows, list) or not rows:
             raise Refused(f"{where}: `rows` is a non-empty list of row keys, or \"all\"; "
                           f"{rows!r} is neither")
