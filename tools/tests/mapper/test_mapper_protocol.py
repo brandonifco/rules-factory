@@ -230,6 +230,92 @@ class TestTheDetector(unittest.TestCase):
 
 
 class TestTheCommandsExitCodes(unittest.TestCase):
+    def pointer_case(self, mechanisms, *, coded=True, defined=True):
+        """Run `mapper pointers` on a mechanism-neutral synthetic map.
+
+        The two pointer kinds coexist in one map so these tests exercise command dispatch rather
+        than either detector's corpus-specific details.
+        """
+        import tempfile, shutil
+        tmp = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, tmp, True)
+        entries = [
+            {"id": "code-a", "locator": {"sourceId": "example", "citation": "section 1"},
+             "evidence": "A defines one code.",
+             "defines": [{"vocabulary": "codes", "term": "A"}]},
+            {"id": "blue", "locator": {"sourceId": "example", "citation": "section 2"},
+             "evidence": "Blue defines one term."},
+            {"id": "terms", "locator": {"sourceId": "example", "citation": "section 3"},
+             "evidence": "The terms include Blue.",
+             "crossReferences": [{"cites": "Blue", "resolvedBy": "blue"}]},
+        ]
+        if coded:
+            entries.append({
+                "id": "coded-use",
+                "locator": {"sourceId": "example",
+                            "citation": 'table 1, row [column 1 = "thing"], column 7'},
+                "evidence": "A",
+                "crossReferences": [{"cites": "A", "resolvedBy": "code-a"}],
+            })
+        if defined:
+            entries.append({
+                "id": "defined-use",
+                "locator": {"sourceId": "example", "citation": "section 4"},
+                "evidence": "Blue applies.",
+                "crossReferences": [{"cites": "Blue", "resolvedBy": "blue"}],
+            })
+        document = {"schemaVersion": 1, "corpus": "example", "entries": entries}
+        declared = {"protocolVersion": 1, "corpus": "example",
+                    "units": ["paragraph"], "pointerMechanisms": mechanisms,
+                    "requiredSweeps": ["cross-references"],
+                    "adapterReach": {"text": "readable"}}
+        map_path = os.path.join(tmp, "corpus-map.json")
+        protocol_path = os.path.join(tmp, protocol.PROTOCOL_FILENAME)
+        with io.open(map_path, "w", encoding="utf-8", newline="\n") as handle:
+            json.dump(document, handle)
+        with io.open(protocol_path, "w", encoding="utf-8", newline="\n") as handle:
+            json.dump(declared, handle)
+        return run(["pointers", map_path])
+
+    def test_a_protocol_declaring_only_coded_pointer_runs_its_detector(self):
+        mechanism = {"mechanism": "coded-pointer", "column": 7, "vocabulary": "codes"}
+        code, out, err = self.pointer_case([mechanism])
+        self.assertEqual(code, 0, out + err)
+        self.assertIn("column 7: 1 code(s)", out)
+
+    def test_a_protocol_declaring_only_defined_term_use_runs_its_detector(self):
+        mechanism = {"mechanism": "defined-term-use", "vocabularyFrom": "terms"}
+        code, out, err = self.pointer_case([mechanism])
+        self.assertEqual(code, 0, out + err)
+        self.assertIn("term(s) declared by 'terms'", out)
+
+    def test_a_protocol_declaring_both_runs_both_detectors(self):
+        mechanisms = [
+            {"mechanism": "coded-pointer", "column": 7, "vocabulary": "codes"},
+            {"mechanism": "defined-term-use", "vocabularyFrom": "terms"},
+        ]
+        code, out, err = self.pointer_case(mechanisms)
+        self.assertEqual(code, 0, out + err)
+        self.assertIn("column 7: 1 code(s)", out)
+        self.assertIn("term(s) declared by 'terms'", out)
+
+    def test_a_protocol_declaring_no_locally_detected_mechanism_says_so(self):
+        code, out, err = self.pointer_case([{"mechanism": "phrase"}])
+        self.assertEqual(code, 0, out + err)
+        self.assertIn("declares no mechanism detected by `mapper pointers`", out)
+        self.assertIn("phrase:", out)
+
+    def test_a_pointer_mechanism_no_detector_owns_is_refused(self):
+        code, _, err = self.pointer_case([{"mechanism": "vibes"}])
+        self.assertEqual(code, 2)
+        self.assertIn("no detector owns", err)
+
+    def test_a_coded_pointer_silent_zero_fails(self):
+        mechanism = {"mechanism": "coded-pointer", "column": 7, "vocabulary": "codes"}
+        code, _, err = self.pointer_case([mechanism], coded=False)
+        self.assertEqual(code, 1)
+        self.assertIn("A silent zero is not a pass", err)
+
     def test_a_map_naming_an_undeclared_term_is_not_verified(self):
         code, out, _ = run(["pointers", CONDITIONS])
         self.assertEqual(code, 3, out)
@@ -239,7 +325,7 @@ class TestTheCommandsExitCodes(unittest.TestCase):
         backgammon = os.path.join(REPO, "examples", "hoyle-backgammon", "corpus-map.json")
         code, out, _ = run(["pointers", backgammon])
         self.assertEqual(code, 0, out)
-        self.assertIn("declares no defined-term-use", out)
+        self.assertIn("declares no mechanism detected by `mapper pointers`", out)
         self.assertIn("phrase:", out)
 
     def test_a_silent_zero_fails(self):
