@@ -537,23 +537,38 @@ class TheDeclarationIsAnchoredOrItIsRefused(ValidatorCase):
         self.assertIn("is derived and carries `defines`", output)
         self.assertEqual(code, 1, output)
 
-    def test_no_committed_map_carries_defines(self):
-        """The field is new and optional, so every committed map's verdict is unchanged.
+    #: The only committed map that declares `defines`: trial 10's, whose corpus forced 0045.
+    #: Every other map predates the field, so its verdict is `NOT VERIFIED -- no entry declares
+    #: `defines``, a skip with no subject that fails nothing.
+    DECLARING = {os.path.join("examples", "hazmat-172-table", "corpus-map.json")}
 
-        What the check says of them is `NOT VERIFIED -- no entry declares `defines``, which is a
-        skip with no subject and fails nothing; `scripts/validate.sh` runs all of them.
+    def test_only_the_map_that_forced_the_field_carries_defines(self):
+        """A map gaining `defines` is a change to how a vocabulary is read, and it is named here.
+
+        This asserted that **no** committed map carried the field, which was true while 0045 had
+        no corpus mapped against it and stopped being true the day one was. The guard it was
+        written for -- that adopting the field is deliberate rather than incidental -- is kept by
+        naming which maps declare it; `check-map.py --only defines` is what holds each
+        declaration to its own evidence.
         """
         root = os.path.join(ROOT, "examples")
         maps = [os.path.join(directory, name)
                 for directory, _, names in os.walk(root) for name in names
                 if name.startswith("corpus-map") and name.endswith(".json")]
         self.assertTrue(maps, "no committed map was examined -- this test proves nothing")
+        declaring = set()
         for path in maps:
             with self.subTest(map=os.path.relpath(path, ROOT)):
                 with open(path, encoding="utf-8") as handle:
                     document = json.load(handle)
-                self.assertEqual([e.get("id") for e in document.get("entries") or []
-                                  if isinstance(e, dict) and "defines" in e], [])
+                declared = [e.get("id") for e in document.get("entries") or []
+                            if isinstance(e, dict) and "defines" in e]
+                if os.path.relpath(path, ROOT) in self.DECLARING:
+                    self.assertTrue(declared, "the map 0045 was decided on declares no `defines`")
+                    declaring.add(os.path.relpath(path, ROOT))
+                else:
+                    self.assertEqual(declared, [])
+        self.assertEqual(declaring, self.DECLARING)
 
 
 if __name__ == "__main__":

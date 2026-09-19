@@ -1,16 +1,17 @@
-# Trial 10 — 49 CFR § 172.101 and § 172.102, admitted
+# Trial 10 — 49 CFR § 172.101 and § 172.102
 
-**Nothing here is mapped.** This directory is phase 1 of [the method](../../docs/method.md) and
-nothing else: the corpus is pinned, the slice is settled, the hypotheses are written down, and
-what the corpus is expected to attack is stated **before** a single entry exists. There is no
-`corpus-map.json`, no `mapping-protocol.json`, and no reading of what any rule means. That is
-deliberate and it is the point of [#262](https://github.com/brandonifco/rules-factory/issues/262):
-a trial that states its hypotheses after it has mapped its corpus has tested nothing. A different
-mapper writes the map next, and anything written here about what a rule *means* would contaminate
-it.
+**The admission record below was written before anything was mapped, and is unchanged.** The
+corpus was pinned, the slice settled, the two protocols finalized and the hypotheses written down
+**before** a single entry existed, which is the point of
+[#262](https://github.com/brandonifco/rules-factory/issues/262): a trial that states its
+hypotheses after it has mapped its corpus has tested nothing. Nothing in that record says what any
+rule *means*, so a second mapper can still be staged against it.
 
-The map steps of `scripts/validate.sh` iterate `examples/*/corpus-map*.json`. This directory has
-none, so it is invisible to every one of them — confirmed by running the script, not assumed.
+[`corpus-map.json`](corpus-map.json) is **step 2** of the same issue, written by a different
+mapper against the settled slice, and [what the map found](#step-2--the-map-as-first-mapped) is
+at the end of this file. Steps 3 and 4 — the blind second mapping and the mutation run — are
+still to come, and [`review.json`](review.json) says so out loud rather than claiming a review the
+trial has not run.
 
 ## Why this corpus
 
@@ -414,8 +415,183 @@ requires, because neither states a worked example. Whether any of the ten is sil
 — fires on nothing anywhere, which is the outcome that needs a `sweepCuesReason` — cannot be known
 before a map exists, and is measured when Mapper A's sweeps run.
 
+## Step 2 — the map, as first mapped
+
+[`corpus-map.json`](corpus-map.json): **135 entries**, 129 of them `scope: in`, 7 carrying an
+unresolved question, 1 `kind: assertion`, 2 `beyondAdapter` for a formula the extraction does not
+carry and 2 for italics it flattens. Every quote was cut out of the committed XML through this
+repository's own readers; none was typed by hand.
+
+| where | entries |
+|---|---:|
+| § 172.101(a)–(j), the paragraphs that give the columns their meaning | 51 |
+| § 172.101(k) and (l), read and declined | 2 |
+| § 172.101 table 1, the three label codes the mapped rows invoke | 3 |
+| § 172.101 table 3, the seven settled rows | 39 |
+| § 172.102(a) and (b)(1)–(9) | 13 |
+| § 172.102(c) and three table leads, and the twelve provisions stated as prose | 16 |
+| § 172.102 tables 2, 3, 4 and 6, the eight table-stated codes | 11 |
+
+The seven rows decompose into **six entries each** — the proper shipping name (column 2), the
+classification (columns 3–5 as one contiguous span), the label codes (column 6), the special
+provisions (column 7), the packaging authorisations (8A–8C) and the aircraft quantity limits
+(9A–9B) — except the Forbidden row, which produces **two**, because column 3 says `Forbidden` and
+the eleven cells after it are empty. That asymmetry is the corpus's and not the mapper's. The
+thirty-ninth entry is `alkali-metal-amalgam-vessel-stowage-codes`, a column 10B cell the slice
+puts out of scope and which is mapped anyway because it prints `148`.
+
+### H1 — held, and the IB2 decomposition is where it strained
+
+**H1 as filed:** an entry can be supported by one contiguous verbatim span even where meaning
+comes from row × column. **Falsified if** an entry of the slice needs evidence from two
+non-contiguous places at once and splitting it into two entries produces two entries neither of
+which states a rule.
+
+**Verdict: held, and it is the *citation* that holds it, not the quote.** The Acetal row's column
+7 cell prints `IB2, T4, TP1` and nothing else. Those four tokens state no rule by themselves; what
+makes them one is `§ 172.101 table 3, row [column 2 = "Acetal"], column 7`, which names the row
+and the column that a reader would otherwise have to get from a heading 400,000 characters away.
+0035 moved the row × column into the locator, and H1 survives **because of that** — on a corpus
+where a cell had no address, the same entry would need the cell and its heading at once and would
+falsify H1 immediately. So the honest statement is narrower than H1's wording: the evidence model
+survives a grid **once the grid is addressable**.
+
+Attempted explicitly, as the brief asked. The IB2 chain is:
+
+```
+acetal-special-provisions   § 172.101 table 3, row [column 2 = "Acetal"], column 7   "IB2, T4, TP1"
+  -> ib2-authorized-ibcs    § 172.102 table 2, row [column 1 = "IB2"]
+                            "IB2 | Authorized IBCs: Metal (31A, 31B and 31N); Rigid plastics ..."
+  -> ib2-vapour-pressure-limit
+                            § 172.102 table 2, row blank in column 1 below row [column 1 = "IB2"]
+                            "| Additional Requirement: Only liquids with a vapor pressure ..."
+```
+
+Three entries, three contiguous spans, three citations that each resolve to exactly one passage.
+Two things strained, and both are worth more than the confirmation:
+
+1. **`ib2-vapour-pressure-limit` barely states a rule on its own.** Read apart from the row above
+   it, *"Additional Requirement: Only liquids with a vapor pressure less than or equal to 110 kPa
+   … are authorized"* does not say what it is additional **to**, and its text is byte-identical to
+   the row printed under `IB1`. That the entry is nonetheless not H1's falsification is a close
+   call: the split produces one entry that plainly states a rule (`ib2-authorized-ibcs`) and one
+   that states half of one, where the falsification condition asks for two that state **neither**.
+   The map records the gap where it belongs — as `clarity: ambiguous` on that entry, because
+   § 172.102 nowhere states the convention that a row blank in the code column continues the row
+   above it, and 0043 measured that the markup does not carry it either.
+2. **The vocabulary cannot hold the second rule.** 0045 anchors `defines` in the defining entry's
+   own evidence, and that row does not print `IB2`, so one of the code's two rules is outside
+   `special-provision-codes` and 0044's *name every defining entry* invariant cannot reach it.
+   `acetal-special-provisions` declares both targets anyway, and the second declaration is obliged
+   by nothing: deleting it leaves `mapper pointers` clean. Filed as
+   [#321](https://github.com/brandonifco/rules-factory/issues/321). `IB3` is the same shape from
+   the other side — its additional-requirement row has an ordinary key only because a trailing
+   *except for UN2672* clause makes its text unique.
+
+One more thing H1 did not predict: **a contiguous span can cover several cells**, because 0035
+renders a row as its cells joined by ` | `. `3 | UN1088 | II` is one span of the Acetal row and it
+states one rule — the classification — where three cell entries would have stated three tokens.
+Six of the map's entries are such multi-cell spans (classification, packaging, quantity limits),
+and the rule they state is the corpus's, not the mapper's: § 172.101(i) explains 8A, 8B and 8C
+together and § 172.101(j) explains 9A and 9B together.
+
+### What the runs say
+
+| run | verdict |
+|---|---|
+| `check-map.py` | 18 ok, 0 failed, 8 not verified |
+| `check-locators-section.py` | all 135 citations resolve; coverage ok; 15 passages of § 172.101 have no address, every one declared in `extent.unreachable` |
+| `mapper protocol` | both protocols act on; `hazard-label-codes` and `special-provision-codes` both declared by entries |
+| `mapper pointers` | **runs nothing** — see [#318](https://github.com/brandonifco/rules-factory/issues/318) |
+| `mapper inventory` | 747 units, 615 unaccounted, 14 unaddressable, 123 of 135 entries located (exit 3) |
+| `mapper sweeps` | all 10 sweeps fire on both corpora; 87 findings on § 172.101, 1,203 on § 172.102 (exit 3) |
+
+**No sweep is silent on either corpus**, so neither protocol owes a `sweepCuesReason` — the
+question the admission record left open, answered. The smallest yield is `vocabulary`, 1 finding
+on § 172.101 and 2 on § 172.102, and both corpora also have accounted units the same cues fire on.
+
+**The coded-pointer interrogation is clean when it is run by hand**: 7 codes in 6 cells against
+`hazard-label-codes`, 33 codes in 6 cells against `special-provision-codes`, 0 undeclared —
+matching the 33 column 7 occurrences #307 measured over the same seven rows. It is not run by
+`mapper pointers`, and that is [#318](https://github.com/brandonifco/rules-factory/issues/318):
+the command returns early unless the protocol declares `defined-term-use`, so a protocol whose
+only detected-here mechanism is `coded-pointer` prints *"nothing here detects the ways it does
+point"* beside *"coded-pointer: detected here"* and exits 0 having examined nothing.
+
+**The map carries no `mapping-inventory.json`, and cannot.** `mapping-inventory.json` names one
+`corpus` and `mapper inventory` walks every corpus a map cites (0042), so the file is refused with
+exit 2 for whichever corpus it does not name — watched failing, and filed as
+[#319](https://github.com/brandonifco/rules-factory/issues/319). About forty of the 615
+unaccounted units were read and declined by this mapping — § 172.101's two appendices, the ten
+stowage categories of (k), the four paragraphs of (l), seven headings, six `(c)(n)` code-run leads
+of § 172.102 that restate § 172.102(b), and the nine rows of § 172.102 table 2 the extent had to
+take whole under 0043 — and not one of them can be recorded as such. **That is H4's sharpest
+result:** for a map citing two corpora, the inventory cannot tell *read and dismissed* from
+*never opened* at all.
+
+### H2 and H3, as the map bears on them
+
+**H2** is qualified as the section above already records, and the map adds one thing: the
+`coded-pointer`'s column restriction is load-bearing and demonstrable inside the slice.
+`alkali-metal-amalgam-vessel-stowage-codes` quotes `13, 52, 148` from **column 10B**, where `148`
+is a vessel stowage provision of § 176.84 and not special provision 148 — which two of the mapped
+rows do carry, in column 7. The detector reads column 6 and column 7 and never sees it. That is
+0041's claim, and it is the measurement #307 made when a lexical detector read the same numeral as
+a pointer twice.
+
+**H3** is recorded and not yet tested. Modal reach is in `enabledBy` on every provision entry —
+`code-a-aircraft-only` reaches three, `code-b-bulk-only` two, `code-ib-ip-ibcs-only` five,
+`code-n-non-bulk-only` one, `code-t-portable-tanks-only` four, `code-tp-portable-tank-provisions`
+four, `code-w-water-only` one, `code-numeric-multimodal` one — 23 gated entries in all, and
+`code-r-rail-only` reaches none because no mapped row carries an R code. Nothing in a column 7
+cell says any of this; § 172.102(b)(1)–(9) states it in prose and the map points at the paragraph
+rather than deriving it from the letter. Whether a mutation deleting one of those edges is caught
+is step 4, and trial 9's answer for `drop-enabled-by` was **missed**.
+
+### The seven unresolved questions
+
+`what-an-ib-code-reaches` is a **conflict** with three members — `code-ib-ip-ibcs-only`,
+`ib-and-ip-code-authorizations` and `ib3-authorized-large-packagings`. § 172.102(b)(4) says an IB
+code applies **only** to transportation in IBCs; § 172.102(c)(4) authorises Large Packagings
+through IB codes, and § 172.102 table 4 states that rule for `IB3`. A Large Packaging is not an
+IBC, and the same paragraph names the two apart. The map chooses neither reading.
+
+The other four: `ib2-vapour-pressure-limit` and `ib3-vapour-pressure-limit` (which code does a
+blank-coded row qualify — a gap, not a contradiction, so no conflict slug);
+`mixture-of-same-class-materials` (§ 172.101(c)(10)(iii)'s *"the name that most appropriately
+describes the material"* fixes no test, names no decider, and states nothing the choice is
+measured against — gate 3 returns a gap); and `sp-tp33-molten-solids`, where a tank with *"more
+stringent requirements"* is named over four dimensions with no rule ordering them, and the Alkali
+metal amalgam row carries TP33 and T9 together so the question is reachable inside the slice.
+
+Five per cent of in-scope entries carry a question, against trial 7's 27% and trial 9's 25%. That
+is not a claim that this corpus is clearer: 39 of the 135 entries are cells of a table that states
+a value and nothing else, and a value has little to be unclear about. The prose paragraphs alone
+are 4 of 64.
+
+### What else is recorded and not fixed
+
+- [#318](https://github.com/brandonifco/rules-factory/issues/318) — `mapper pointers` never runs
+  the coded-pointer detector.
+- [#319](https://github.com/brandonifco/rules-factory/issues/319) — `mapping-inventory.json` is
+  single-corpus, so a two-corpus map can record no rejection at all.
+- [#320](https://github.com/brandonifco/rules-factory/issues/320) — `mapper inventory` drops a
+  quote under four words, so 12 of the map's 135 entries — every single-cell entry — are *not
+  located inside the extent* although the locator checker verifies each exactly.
+- [#321](https://github.com/brandonifco/rules-factory/issues/321) — a code's second rule, stated
+  in a row that leaves the code column blank, cannot join its vocabulary.
+- [#322](https://github.com/brandonifco/rules-factory/issues/322) — `mapper inventory` marks the
+  byte-identical row under `IB1` reached because the entry for the row under `IB2` quotes the same
+  words.
+- [#323](https://github.com/brandonifco/rules-factory/issues/323) — the manifest's `references`
+  are short of six sections the mapped spans point at, and `§ 173.2a` matches the declared
+  designation pattern as `§ 173.2`.
+
+Nothing under `tools/` was changed to make this map pass, and neither protocol was edited: both
+were run against the map as committed and neither needed a word altered.
+
 ## What happens next
 
-Steps 2 to 4 of #262: map the slice by the method, blind-map it a second time, adjudicate, mutate,
-and report every hypothesis as held or falsified with what it cost to find out. #262 is not closed
-by this directory; admission is one of its four steps.
+Steps 3 and 4 of #262: blind-map the slice a second time, adjudicate, mutate, and report every
+hypothesis as held or falsified with what it cost to find out. #262 is not closed by this
+directory; the map is the second of its four steps.
