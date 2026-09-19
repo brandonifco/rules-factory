@@ -407,7 +407,7 @@ class TheVocabularyIsWhatTheDefiningEntriesAddUpTo(ValidatorCase):
             {"section": "§ 172.102", "table": 4, "excluded": "dropped, for this measurement"})
         lines, _, _ = pointers.report(table_protocol(), document)
         self.assertEqual(self.column_7(document)["IB3"].defines, ["ib3-authorized-ibcs"])
-        self.assertTrue(any("5 term(s) declared by 7 entr(ies)" in line for line in lines), lines)
+        self.assertTrue(any("5 term(s) defined by 7 entr(ies)" in line for line in lines), lines)
 
     def test_the_order_the_map_states_the_defining_entries_in_changes_nothing(self):
         forwards = trial_map()
@@ -450,7 +450,7 @@ class TwoColumnsReadTwoVocabularies(ValidatorCase):
             table_protocol([{"mechanism": "coded-pointer", "column": 9,
                              "vocabulary": "column-9-codes"}]),
             trial_map(), None)
-        self.assertTrue(any("no entry in this map declares `defines` for vocabulary "
+        self.assertTrue(any("no entry in this map establishes vocabulary "
                             "'column-9-codes'" in line for line in problems), problems)
 
 
