@@ -393,7 +393,7 @@ class TheVocabularyIsWhatTheDefiningEntriesAddUpTo(ValidatorCase):
                 self.assertIn("IB3", [n.term for n in undeclared])
 
     def test_deleting_a_defining_entry_is_visible(self):
-        """The rule, not the pointer: `IB3` stops naming two rules and nothing else changes."""
+        """The rule, not the pointer: deleting table 4 leaves IB3's table-2 pair."""
         document = trial_map()
         document["entries"] = [e for e in document["entries"]
                                if e["id"] != "ib3-authorized-large-packagings"]
@@ -406,7 +406,8 @@ class TheVocabularyIsWhatTheDefiningEntriesAddUpTo(ValidatorCase):
         document["extent"]["tables"].append(
             {"section": "§ 172.102", "table": 4, "excluded": "dropped, for this measurement"})
         lines, _, _ = pointers.report(table_protocol(), document)
-        self.assertEqual(self.column_7(document)["IB3"].defines, ["ib3-authorized-ibcs"])
+        self.assertEqual(self.column_7(document)["IB3"].defines,
+                         ["ib3-authorized-ibcs", "ib3-vapour-pressure-limit"])
         self.assertTrue(any("5 term(s) defined by 7 entr(ies)" in line for line in lines), lines)
 
     def test_the_order_the_map_states_the_defining_entries_in_changes_nothing(self):
