@@ -605,13 +605,20 @@ class TestTheTwoGrammarsAreOneGrammar(AdapterCase):
             with self.subTest(key=unit.key):
                 read = check_locators_section.table_citation(unit.key)
                 self.assertIsNotNone(read, unit.key)
-                section, table, pairs, column = read
+                section, table, selector, column = read
                 self.assertEqual(section, "1.10")
                 self.assertIsNone(column)
                 indexed = check_locators_section.table_index(self.corpus_path)[(section, table)]
-                self.assertEqual(len(indexed.matching(pairs)), 1)
-                self.assertEqual(
-                    check_locators_section.row_text(indexed.matching(pairs)[0]), unit.text)
+                # The selector is a row key, or the anchor-relative one 0043 added; the checker
+                # resolves either to exactly the row the adapter enumerated.
+                if selector[0] == "below":
+                    at, why = indexed.resolve_below(selector[1], selector[2], selector[3])
+                    self.assertIsNone(why, unit.key)
+                    cells = indexed.rows[at]
+                else:
+                    self.assertEqual(len(indexed.matching(selector[1])), 1)
+                    cells = indexed.matching(selector[1])[0]
+                self.assertEqual(check_locators_section.row_text(cells), unit.text)
 
     def test_the_two_read_the_same_two_level_heading(self):
         for markup in (TWO_LEVEL_TABLE, SPLIT_PARENT_TABLE, FOOTNOTE_ROW_TABLE,

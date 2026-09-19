@@ -587,6 +587,20 @@ CITE_EXAMPLE = re.compile(r"\bExamples?(?:\s+(\d+))?\s*\.?\s*$", re.I)
 TABLE_CITATION = re.compile(
     r'^\s*§+\s*(?P<section>\d+\.\d+(?:-\d+)?)\s+table\s+(?P<table>\d+)\s*,\s*row\s*'
     r'\[(?P<key>.*)\](?:\s*,\s*column\s+(?P<column>[A-Za-z0-9]{1,4}))?\s*\.?\s*$')
+# A row the corpus leaves blank in the column that names the row above it (0043). The address is
+# anchored to that row, which is named by an ordinary key, and never to an ordinal:
+#
+#     § 172.102 table 2, row blank in column 1 below row [column 1 = "IB2"]
+#     § 172.101 table 3, row blank in column 2 [column 5 = "II"] below row [column 2 = "Adhesives, containing a flammable liquid"]
+#
+# It says nothing about the row *continuing* the anchor. That reading is the map's; this only
+# identifies the passage.
+TABLE_BELOW_CITATION = re.compile(
+    r'^\s*§+\s*(?P<section>\d+\.\d+(?:-\d+)?)\s+table\s+(?P<table>\d+)\s*,\s*row\s+'
+    r'blank\s+in\s+column\s+(?P<blank>[A-Za-z0-9]{1,4})\s*'
+    r'(?:\[(?P<discriminators>[^\]]*)\]\s*)?'
+    r'below\s+row\s*\[(?P<anchor>[^\]]*)\]'
+    r'(?:\s*,\s*column\s+(?P<column>[A-Za-z0-9]{1,4}))?\s*\.?\s*$')
 ROW_KEY_PAIR = re.compile(r'column\s+([A-Za-z0-9]{1,4})\s*=\s*"([^"]*)"')
 #: A heading's own label for a column, read wherever the heading prints it: this corpus writes a
 #: parent as a prefix, `(8)Packaging(§ 173.***)`, and its children as suffixes, `Exceptions(8A)`.
@@ -604,27 +618,60 @@ SPAN_ATTRIBUTES = {"COLSPAN": ("COLSPAN", "colspan"), "ROWSPAN": ("ROWSPAN", "ro
 CELL_SEPARATOR = " | "
 
 
+def row_key_text(pairs):
+    """`column 2 = "Acetal"; column 1 = "I"` for [(column, value), ...], as a citation prints it."""
+    return "; ".join(f'column {column} = "{value}"' for column, value in pairs)
+
+
+def row_key_of(key):
+    """[(column, value), ...] for the inside of a `[...]`, or None where it is not a whole key.
+
+    The pairs must be the whole of it, separated by semicolons: a key this read only part of
+    would resolve on the part it understood.
+    """
+    pairs = ROW_KEY_PAIR.findall(key)
+    if not pairs:
+        return None
+    if normalise(key) != "; ".join(f'column {c} = "{v}"' for c, v in pairs):
+        return None
+    return [(c, normalise(v)) for c, v in pairs]
+
+
 def table_citation(citation):
-    """(section, table position, [(column, value)...], column or None), or None.
+    """(section, table position, selector, column or None), or None.
+
+    The selector is `("key", pairs)` for an ordinary row key, or
+    `("below", blank column, anchor pairs, discriminators)` for a row the corpus leaves blank in
+    the column that names the row above it (0043).
 
     None means the citation is not a table-row citation at all, and the designation grammar
     above reads it. A citation that is one but whose key is malformed returns None too and is
     reported unchecked by `check`, which is what every citation outside a grammar gets: this
     checker never reports ok for a citation it did not read.
     """
-    match = TABLE_CITATION.match(str(citation or ""))
+    text = str(citation or "")
+    match = TABLE_BELOW_CITATION.match(text)
+    if match:
+        anchor = row_key_of(match.group("anchor"))
+        if anchor is None:
+            return None
+        declared = match.group("discriminators")
+        discriminators = []
+        if declared is not None:
+            discriminators = row_key_of(declared)
+            if discriminators is None:
+                return None
+        return (match.group("section"), int(match.group("table")),
+                ("below", match.group("blank"), anchor, discriminators),
+                match.group("column"))
+    match = TABLE_CITATION.match(text)
     if not match:
         return None
-    key = match.group("key")
-    pairs = ROW_KEY_PAIR.findall(key)
-    if not pairs:
+    pairs = row_key_of(match.group("key"))
+    if pairs is None:
         return None
-    # The pairs must be the whole of the key, separated by semicolons: a key this read only
-    # part of would resolve on the part it understood.
-    if normalise(key) != "; ".join(f'column {c} = "{v}"' for c, v in pairs):
-        return None
-    return (match.group("section"), int(match.group("table")),
-            [(c, normalise(v)) for c, v in pairs], match.group("column"))
+    return (match.group("section"), int(match.group("table")), ("key", pairs),
+            match.group("column"))
 
 
 def sub_column_of(label, other):
@@ -870,6 +917,50 @@ class Table:
         at = self.index_of(column)
         return at is not None and at < len(cells) and cells[at] == normalise(str(value))
 
+    def run_below(self, anchor, column):
+        """The rows immediately after `anchor` that leave `column` blank, as positions (0043).
+
+        Held equal to `tools/mapper/corpus.py`'s by
+        `tools/tests/mapper/test_row_below.py`: a row one half can cite and the other cannot
+        enumerate is a denominator that shrinks to fit what was read.
+        """
+        at = self.index_of(column)
+        if at is None:
+            return []
+        width = len(self.columns)
+        found = []
+        for position in range(anchor + 1, len(self.rows)):
+            cells = self.rows[position]
+            if len(cells) != width or not self.addressable[position] or cells[at].strip():
+                break
+            found.append(position)
+        return found
+
+    def resolve_below(self, column, anchor, discriminators=()):
+        """(position, None) for the one row the selector names, or (None, why it names no row)."""
+        if self.index_of(column) is None:
+            return None, (f"prints no column {column} (its columns are "
+                          f"{', '.join(self.columns)})")
+        anchors = [position for position, cells in enumerate(self.rows)
+                   if self.addressable[position]
+                   and all(self._holds(cells, c, v) for c, v in anchor)]
+        if len(anchors) != 1:
+            return None, (f"its anchor [{row_key_text(anchor)}] names {len(anchors)} rows of the "
+                          f"table, and an anchor names exactly one")
+        run = self.run_below(anchors[0], column)
+        if not run:
+            return None, (f"no row below [{row_key_text(anchor)}] leaves column {column} blank, "
+                          f"so the selector names nothing")
+        hits = [position for position in run
+                if all(self._holds(self.rows[position], c, v) for c, v in discriminators)]
+        if len(hits) != 1:
+            return None, (f"{len(hits)} of the {len(run)} row(s) below [{row_key_text(anchor)}] "
+                          f"blank in column {column} match"
+                          + (f" [{row_key_text(discriminators)}]" if discriminators else "")
+                          + "; exactly one must, and a second match is answered with a "
+                            "discriminating column")
+        return hits[0], None
+
     def key_for(self, position):
         """A key of `column = value` pairs naming row `position` and no other row, or None.
 
@@ -943,7 +1034,7 @@ def check_table_row(entry, cited, tables):
     nothing to disambiguate by uniqueness: 0030's rule that a repeated passage is identified by
     the container its citation names is what a row key gives a table, which had none.
     """
-    number, position, pairs, column = cited
+    number, position, selector, column = cited
     table = tables.get((number, position))
     citation = entry.get("locator", {}).get("citation", "")
     if table is None:
@@ -953,19 +1044,27 @@ def check_table_row(entry, cited, tables):
                        f"{table.unresolved}. A table whose geometry the markup does not carry is "
                        f"refused, not guessed at: a column read off a guessed alignment names the "
                        f"wrong cell and says nothing about having done so"), None
-    unknown = [c for c, _ in pairs if table.index_of(c) is None]
+    named = list(selector[2]) + list(selector[3]) if selector[0] == "below" else list(selector[1])
+    unknown = [c for c, _ in named if table.index_of(c) is None]
     if unknown:
         return "bad", (f"cited {citation}, and § {number} table {position} prints no column "
                        f"{', '.join(unknown)} (its columns are "
                        f"{', '.join(table.columns)}, numbered {table.numbering}"
                        + (f": {table.numbering_note}" if table.numbering_note else "")
                        + ")"), None
-    hits = table.matching(pairs)
-    if len(hits) != 1:
-        return "bad", (f"cited {citation}, which names {len(hits)} rows of the table; a row key "
-                       f"resolves to exactly one row, and a second match is answered with a "
-                       f"discriminating column, never with the first hit"), None
-    cells = hits[0]
+    if selector[0] == "below":
+        _, blank, anchor, discriminators = selector
+        at, why = table.resolve_below(blank, anchor, discriminators)
+        if at is None:
+            return "bad", (f"cited {citation}, and § {number} table {position} {why}"), None
+        cells = table.rows[at]
+    else:
+        hits = table.matching(selector[1])
+        if len(hits) != 1:
+            return "bad", (f"cited {citation}, which names {len(hits)} rows of the table; a row "
+                           f"key resolves to exactly one row, and a second match is answered with "
+                           f"a discriminating column, never with the first hit"), None
+        cells = hits[0]
     where = "the row"
     text = row_text(cells)
     if column is not None:

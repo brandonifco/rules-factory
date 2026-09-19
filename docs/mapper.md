@@ -245,7 +245,14 @@ its text is its cells in column order with the empty ones kept. Three things are
 than enumerated: a table of a cited section the extent's `tables` list passes over in silence — a
 3,687-row table counted as one unit reached by one quote is the measurement this exists to make
 impossible — a declared row key that resolves to none or to two rows, and, where a table is taken
-whole, a row another row matches in every nameable cell. Two more are refused for the same reason:
+whole, a row another row matches in every nameable cell **and that no anchor reaches**. A row the
+corpus leaves blank in a column an earlier row fills is addressed relative to that earlier row
+rather than refused
+([0043](decisions/0043-a-row-blank-in-the-column-that-names-the-row-above-is-named-below-it.md)):
+`§ 172.102 table 2, row blank in column 1 below row [column 1 = "IB2"]`, with an ordinary
+`column = value` discriminator where the run holds more than one. The anchor is an ordinary row
+key, so there is still no ordinal, and the refusal now says both addresses were tried.
+Two more are refused for the same reason:
 a table whose body carries a cell into the row below, or whose headings do not number its body's
 cells one for one, because which column a cell sits in is then not in the markup and a guessed
 alignment names the wrong cell silently; and a corpus that prints one section designation twice,
