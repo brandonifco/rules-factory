@@ -161,9 +161,15 @@ vocabulary. `point-designations` and `direction-of-travel` are the instances
 uses `defines` only when that entry's own evidence prints the term (0045). If another passage
 states an additional rule under that definition without repeating the term, do not copy the term
 into its evidence or `defines`, do not infer meaning from adjacency, and do not merge the rules
-for convenience. Where the corpus gives a mechanically checkable structural relationship, record
-an explicit `continuesDefinition` with its structural witness (0046). The vocabulary reader then
-inherits the direct target's one term and 0044 makes every pointer owe every defining entry.
+for convenience. Where the corpus gives a mechanically checkable structural relationship and the
+map chooses the semantic reading, record an explicit `continuesDefinition` with its structural
+witness (0046). The vocabulary reader then inherits the direct target's one term and 0044 makes
+every pointer owe every defining entry.
+
+If the source leaves that association implicit, `clarity: ambiguous` may remain, but
+`continuesDefinition` means the map has **made** the reading: use `ambiguity.fate: decision`
+and name the decision record. Do not combine an operative continuation with `fate: unresolved`;
+that says the map both chose and declined the same semantic relationship.
 
 **Advice is not a rule, and it is not always in its own section.** A corpus usually
 separates guidance from obligation — but not reliably, and not sentence by sentence. "It is
