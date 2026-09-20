@@ -35,6 +35,7 @@ deterministic `*.review.json` manifest. Format 1 names:
 - pull request number;
 - exact reviewed commit SHA;
 - exact resolved base commit SHA used for the diff;
+- SHA-256 of the complete raw `git diff <base>...<head>` output;
 - SHA-256 of the human Markdown packet;
 - the produced map package identity from reviewed `provenance.json`;
 - SHA-256 identities of the reviewed tree's `provenance.json`, review policy, and
@@ -86,9 +87,10 @@ A newly recorded verdict requires `--packet <manifest>`. Before posting anything
 3. re-hashes the human Markdown packet;
 4. re-hashes every bound entry packet and external input;
 5. obtains the exact reviewed Git commit if necessary;
-6. re-reads and hashes every bound repository source from that commit;
-7. reads the reviewer/context policy from that reviewed commit; and
-8. posts the status only to the manifest's `reviewedCommit`.
+6. re-computes the diff from the manifest's immutable base/head and verifies its digest;
+7. re-reads and hashes every bound repository source from that commit;
+8. reads the reviewer/context policy from that reviewed commit; and
+9. posts the status only to the manifest's `reviewedCommit`.
 
 Self-reported digests are never enough. Duplicate source, entry-packet or external-input
 identities are refused, as are unknown required shapes.
