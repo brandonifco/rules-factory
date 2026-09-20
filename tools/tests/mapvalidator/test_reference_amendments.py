@@ -23,9 +23,9 @@ BASE_CORPUS = {
 }
 
 
-def context(corpus):
+def context(corpus, *other_corpora):
     return {
-        "manifest": {"schemaVersion": 1, "corpora": [corpus]},
+        "manifest": {"schemaVersion": 1, "corpora": [corpus, *other_corpora]},
         "map": {
             "corpus": corpus["sourceId"],
             "baseline": {
@@ -147,6 +147,17 @@ class TestReferenceBoundaryAmendments(unittest.TestCase):
         result = check_manifest(context(corpus))
         self.assertEqual(result.status, "fail")
         self.assertTrue(any("already declared" in line for line in result.details))
+
+    def test_an_admitted_corpus_cannot_be_added_as_a_mapping_time_boundary(self):
+        corpus = copy.deepcopy(BASE_CORPUS)
+        add_amendment(
+            corpus,
+            {"sourceId": "cfr-49-180", "citation": "part 180", "admitted": False},
+        )
+        admitted = {"sourceId": "cfr-49-180"}
+        result = check_manifest(context(corpus, admitted))
+        self.assertEqual(result.status, "fail")
+        self.assertTrue(any("already admitted" in line for line in result.details))
 
     def test_trial_10_operational_boundary_covers_every_newly_observed_external_section(self):
         repo = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
