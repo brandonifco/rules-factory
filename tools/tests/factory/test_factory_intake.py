@@ -319,10 +319,10 @@ class TestVerificationBinding(IntakeCase):
             recertify=False)
 
     def test_map_tampering_is_refused_against_bound_digest(self):
-        changed = bytearray(self.member(self.hoyle, "map/corpus-map.json"))
-        changed[-2] = changed[-2] ^ 1
+        changed = self.member(self.hoyle, "map/corpus-map.json").replace(
+            b'"name":', b'"name" :', 1)
         package = rewrite(self.hoyle, os.path.join(self.tmp, "map-tamper.nupkg"),
-                          {"map/corpus-map.json": bytes(changed)}, recertify=False)
+                          {"map/corpus-map.json": changed}, recertify=False)
         self.assert_refused(package, HOYLE_TEXT, "verification map.sha256")
 
     def test_manifest_tampering_is_refused_against_bound_digest(self):
