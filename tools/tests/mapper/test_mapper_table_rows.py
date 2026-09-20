@@ -734,7 +734,21 @@ class TestAQuoteInARowReachesIt(unittest.TestCase):
         self.assertEqual(code, 1, output)
         self.assertIn("not located inside the extent: 1 entry", output)
 
-    def test_duplicate_long_row_text_remains_the_separate_322_problem(self):
+    def test_duplicate_long_row_text_reaches_only_the_row_its_citation_names(self):
+        text = "the same long evidence appears in both structurally distinct rows"
+        units = [
+            corpus.Unit('§ 1.10 table 1, row [column 1 = "left"]', "table-row", text),
+            corpus.Unit('§ 1.10 table 1, row [column 1 = "right"]', "table-row", text),
+        ]
+        measured = inventory.take(units, {"entries": [{
+            "id": "right-only",
+            "locator": {"sourceId": "fixture", "citation": units[1].key},
+            "evidence": text,
+        }]}, {})
+        self.assertEqual(set(measured.reached), {units[1].key})
+        self.assertEqual(measured.located, ["right-only"])
+
+    def test_duplicate_long_row_text_is_not_biased_toward_the_first_or_last_row(self):
         text = "the same long evidence appears in both structurally distinct rows"
         units = [
             corpus.Unit('§ 1.10 table 1, row [column 1 = "left"]', "table-row", text),
@@ -743,6 +757,35 @@ class TestAQuoteInARowReachesIt(unittest.TestCase):
         measured = inventory.take(units, {"entries": [{
             "id": "left-only",
             "locator": {"sourceId": "fixture", "citation": units[0].key},
+            "evidence": text,
+        }]}, {})
+        self.assertEqual(set(measured.reached), {units[0].key})
+        self.assertEqual(measured.located, ["left-only"])
+
+    def test_a_long_quote_in_the_wrong_structurally_cited_row_reaches_neither_row(self):
+        units = [
+            corpus.Unit('§ 1.10 table 1, row [column 1 = "left"]', "table-row",
+                        "the left row has its own sufficiently long evidence"),
+            corpus.Unit('§ 1.10 table 1, row [column 1 = "right"]', "table-row",
+                        "the right row has different sufficiently long evidence"),
+        ]
+        measured = inventory.take(units, {"entries": [{
+            "id": "wrong-row",
+            "locator": {"sourceId": "fixture", "citation": units[0].key},
+            "evidence": units[1].text,
+        }]}, {})
+        self.assertEqual(measured.reached, {})
+        self.assertEqual(measured.unlocated, ["wrong-row"])
+
+    def test_duplicate_long_prose_without_structural_unit_identity_keeps_current_behavior(self):
+        text = "the same sufficiently long prose evidence appears in both units"
+        units = [
+            corpus.Unit("p. 1 block 1", "paragraph", text),
+            corpus.Unit("p. 1 block 2", "paragraph", text),
+        ]
+        measured = inventory.take(units, {"entries": [{
+            "id": "prose",
+            "locator": {"sourceId": "fixture", "citation": "p. 1"},
             "evidence": text,
         }]}, {})
         self.assertEqual(set(measured.reached), {units[0].key, units[1].key})
