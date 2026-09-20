@@ -68,7 +68,7 @@ High-reasoning, **read-only**, semantic review: does this implementation actuall
 mapped rule says?
 
 **Reads the entry packet before it reads the implementation** (`tools/review-packet.py <pr>`
-assembles both, in that order). Anchoring is the failure this role
+assembles both, in that order, from a detached worktree pinned to the reviewed commit). Anchoring is the failure this role
 exists to catch, and a reviewer who reads the code first will find the code's reading of the rule
 persuasive, because it was written to be.
 
@@ -97,9 +97,10 @@ visible by recording the verdict under its own context rather than a generic one
 acceptance criteria. **It does not receive any other reviewer's conclusions** before producing
 its own.
 
-A verdict is recorded with `tools/record-verdict.py --pr <n> --reviewer <id> --verdict pass|fail`,
-under that provider's own context, and `tools/conformance-gate.py` requires it at the commit being
-merged. Recording it is the whole of the step: `.github/workflows/verdict-requeue.yml` asks the
+A saved packet includes a `*.review.json` identity manifest beside the Markdown and any entry packets.
+A verdict is recorded with `tools/record-verdict.py --pr <n> --packet <manifest> --reviewer <id> --verdict pass|fail`.
+The recorder re-hashes the bound packet artifacts and records under that provider's own context on the
+manifest's reviewed commit; `tools/conformance-gate.py` requires a successful verdict at the commit being merged. Recording it is the whole of the step: `.github/workflows/verdict-requeue.yml` asks the
 gate to report again at that commit, so a gate still red for a moment afterwards is bookkeeping
 catching up, not the verdict failing to register.
 
