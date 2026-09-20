@@ -5,6 +5,7 @@ built-in list plus the phrases each corpus declares in the manifest (0026).
 import re
 
 from .diagnostics import skip, verdict
+from .locators import section_pointer_match_is_complete
 from mapcontract.entry import block, corpora_of, entries_of, index, label, references_of
 
 
@@ -90,11 +91,7 @@ def pointer_spans(text, patterns):
         (m.start(), m.end())
         for p in patterns
         for m in p.finditer(text)
-        if m.end() > m.start()
-        # A corpus regex is a declaration, not permission to rename what the corpus printed.
-        # If a match containing a section sign stops inside an alphanumeric token, it is a
-        # prefix of a longer designation/word and is not a pointer at all (#323).
-        and not ("§" in m.group(0) and m.end() < len(text) and text[m.end()].isalnum())
+        if m.end() > m.start() and section_pointer_match_is_complete(text, m)
     )
     spans = []
     for start, end in found:
