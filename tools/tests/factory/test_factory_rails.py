@@ -1489,8 +1489,49 @@ if argv_api := [a for a in sys.argv[1:] if a.startswith("repos/")]:
             handle.write(GH_STATUS_STUB)
         os.chmod(self.gh, 0o755)
 
-    def record(self, *args):
-        return subprocess.run([sys.executable, os.path.join(self.out, "tools", "record-verdict.py"), *args],
+    def packet_manifest(self, sha=None, *, pr=5):
+        sha = sha or self.head
+        directory = os.path.join(self.tmp, "verdict-packets", sha[:12])
+        os.makedirs(directory, exist_ok=True)
+        packet = os.path.join(directory, f"pr-{pr}-{sha[:12]}.md")
+        with open(packet, "w", encoding="utf-8") as handle:
+            handle.write(f"review packet for {sha}\n")
+
+        def blob(relative):
+            return subprocess.run(["git", "show", f"{sha}:{relative}"], cwd=self.out, check=True,
+                                  stdout=subprocess.PIPE).stdout
+
+        provenance = json.loads(blob("provenance.json").decode("utf-8"))
+        manifest = {
+            "formatVersion": 1,
+            "pullRequest": pr,
+            "reviewedCommit": sha,
+            "baseCommit": sha,
+            "packet": {"file": os.path.basename(packet),
+                       "sha256": hashlib.sha256(open(packet, "rb").read()).hexdigest()},
+            "map": {"packageId": provenance["map"]["packageId"],
+                    "version": provenance["map"]["version"],
+                    "nupkgSha256": provenance["map"].get("nupkgSha256", "")},
+            "sources": [
+                {"role": "policy", "path": ".github/agent-policy.json",
+                 "sha256": hashlib.sha256(blob(".github/agent-policy.json")).hexdigest()},
+                {"role": "provenance", "path": "provenance.json",
+                 "sha256": hashlib.sha256(blob("provenance.json")).hexdigest()},
+            ],
+            "artifacts": [],
+            "context": {"pullRequestSha256": "1" * 64, "issueSha256": "2" * 64},
+        }
+        path = os.path.join(directory, f"pr-{pr}-{sha[:12]}.review.json")
+        with open(path, "w", encoding="utf-8") as handle:
+            json.dump(manifest, handle, indent=2, sort_keys=True)
+            handle.write("\n")
+        return path
+
+    def record(self, *args, with_packet=True, packet=None):
+        call = list(args)
+        if with_packet and "--packet" not in call:
+            call += ["--packet", packet or self.packet_manifest()]
+        return subprocess.run([sys.executable, os.path.join(self.out, "tools", "record-verdict.py"), *call],
                               cwd=self.out, capture_output=True, text=True,
                               env={**self.environment(), "GH_STATUSES": self.statuses})
 
@@ -1499,11 +1540,18 @@ if argv_api := [a for a in sys.argv[1:] if a.startswith("repos/")]:
                               cwd=self.out, capture_output=True, text=True,
                               env={**self.environment(), "GH_STATUSES": self.statuses})
 
-    def scenario(self, head="a" * 40, labels=("state:ready", "risk:normal"), files=None, changed_files=None):
+    def scenario(self, head=None, labels=("state:ready", "risk:normal"), files=None, changed_files=None):
         self.gh_with_statuses()
+        if not os.path.isdir(os.path.join(self.out, ".git")):
+            git(self.out, "init", "-q", "-b", "main")
+            git(self.out, "config", "user.email", "t@example.invalid")
+            git(self.out, "config", "user.name", "t")
+            git(self.out, "add", ".")
+            git(self.out, "commit", "-qm", "the produced engine")
+        self.head = head or git(self.out, "rev-parse", "HEAD")
         files = files if files is not None else [{"path": f"src/{NAME}/Rules/AltitudeLimit.cs"}]
         self.fixture({
-            "pr": {"5": {"number": 5, "headRefOid": head, "state": "OPEN",
+            "pr": {"5": {"number": 5, "headRefOid": self.head, "state": "OPEN",
                          "files": files,
                          "changedFiles": len(files) if changed_files is None else changed_files,
                          "closingIssuesReferences": [{"number": 27}]}},
@@ -1519,7 +1567,7 @@ if argv_api := [a for a in sys.argv[1:] if a.startswith("repos/")]:
         done = self.record("--pr", "5", "--reviewer", "semantic", "--verdict", "pass")
         self.assertEqual(done.returncode, 0, done.stderr)
         recorded = json.load(open(self.statuses, encoding="utf-8"))
-        self.assertEqual(recorded["a" * 40]["rules-verdict/semantic"], "success")
+        self.assertEqual(recorded[self.head]["rules-verdict/semantic"], "success")
 
     def test_a_review_cannot_float_to_a_later_pr_head(self):
         """#334 watched failure B: the documented path must not attach review A to head B."""
@@ -1530,12 +1578,104 @@ if argv_api := [a for a in sys.argv[1:] if a.startswith("repos/")]:
 
         # The reviewer formed PASS on reviewed; before the fix the documented/default
         # command ignores that fact and silently chooses the PR's now-current head.
-        done = self.record("--pr", "5", "--reviewer", "semantic", "--verdict", "pass")
+        done = self.record("--pr", "5", "--reviewer", "semantic", "--verdict", "pass",
+                           with_packet=False)
         recorded = json.load(open(self.statuses, encoding="utf-8"))
         self.assertNotEqual(done.returncode, 0,
                             "record-verdict accepted a verdict with no reviewed packet identity")
         self.assertNotIn(later, recorded,
                          "PASS formed on A was recorded on later head B")
+
+    def test_a_stale_packet_records_only_on_the_reviewed_commit(self):
+        self.produced()
+        self.scenario()
+        reviewed = self.head
+        packet = self.packet_manifest(reviewed)
+        git(self.out, "commit", "--allow-empty", "-qm", "advance after review")
+        later = git(self.out, "rev-parse", "HEAD")
+        self.scenario(head=later)
+        done = self.record("--pr", "5", "--reviewer", "semantic", "--verdict", "pass", packet=packet)
+        self.assertEqual(done.returncode, 0, done.stderr)
+        recorded = json.load(open(self.statuses, encoding="utf-8"))
+        self.assertEqual(recorded[reviewed]["rules-verdict/semantic"], "success")
+        self.assertNotIn(later, recorded)
+        self.assertIn("historical evidence", done.stderr + done.stdout)
+
+    def test_modified_human_packet_is_refused(self):
+        self.produced()
+        self.scenario()
+        manifest = self.packet_manifest()
+        document = json.load(open(manifest, encoding="utf-8"))
+        packet = os.path.join(os.path.dirname(manifest), document["packet"]["file"])
+        with open(packet, "a", encoding="utf-8") as handle:
+            handle.write("changed after review\n")
+        done = self.record("--pr", "5", "--reviewer", "semantic", "--verdict", "pass", packet=manifest)
+        self.assertEqual(done.returncode, 1, done.stdout)
+        self.assertIn("hashes to", done.stderr)
+        self.assertEqual(json.load(open(self.statuses, encoding="utf-8")), {})
+
+    def test_wrong_pr_and_wrong_sha_override_are_refused(self):
+        self.produced()
+        self.scenario()
+        manifest = self.packet_manifest()
+        wrong_pr = self.record("--pr", "6", "--reviewer", "semantic", "--verdict", "pass", packet=manifest)
+        self.assertEqual(wrong_pr.returncode, 1, wrong_pr.stdout)
+        self.assertIn("belongs to PR #5", wrong_pr.stderr)
+        wrong_sha = self.record("--pr", "5", "--reviewer", "semantic", "--verdict", "pass",
+                                "--sha", "b" * 40, packet=manifest)
+        self.assertEqual(wrong_sha.returncode, 1, wrong_sha.stdout)
+        self.assertIn("disagrees with review packet commit", wrong_sha.stderr)
+
+    def test_modified_manifest_source_digest_is_refused_against_reviewed_tree(self):
+        self.produced()
+        self.scenario()
+        manifest = self.packet_manifest()
+        document = json.load(open(manifest, encoding="utf-8"))
+        source = next(item for item in document["sources"] if item["role"] == "provenance")
+        source["sha256"] = "f" * 64
+        with open(manifest, "w", encoding="utf-8") as handle:
+            json.dump(document, handle, indent=2, sort_keys=True)
+            handle.write("\n")
+        done = self.record("--pr", "5", "--reviewer", "semantic", "--verdict", "pass", packet=manifest)
+        self.assertEqual(done.returncode, 1, done.stdout)
+        self.assertIn("reviewed source provenance.json hashes to", done.stderr)
+
+    def test_modified_bound_entry_packet_is_refused(self):
+        self.produced()
+        self.scenario()
+        manifest = self.packet_manifest()
+        document = json.load(open(manifest, encoding="utf-8"))
+        directory = os.path.dirname(manifest)
+        entry = os.path.join(directory, "entry-altitude-limit.md")
+        with open(entry, "w", encoding="utf-8") as handle:
+            handle.write("entry packet\n")
+        tool = subprocess.run(["git", "show", f"{self.head}:tools/entry-packet.py"], cwd=self.out,
+                              check=True, stdout=subprocess.PIPE).stdout
+        document["artifacts"] = [{
+            "role": "entry-packet", "entryId": "altitude-limit",
+            "file": os.path.basename(entry),
+            "sha256": hashlib.sha256(open(entry, "rb").read()).hexdigest(),
+        }]
+        document["sources"].append({
+            "role": "entry-packet-tool", "path": "tools/entry-packet.py",
+            "sha256": hashlib.sha256(tool).hexdigest(),
+        })
+        with open(manifest, "w", encoding="utf-8") as handle:
+            json.dump(document, handle, indent=2, sort_keys=True)
+            handle.write("\n")
+        with open(entry, "a", encoding="utf-8") as handle:
+            handle.write("tampered\n")
+        done = self.record("--pr", "5", "--reviewer", "semantic", "--verdict", "fail", packet=manifest)
+        self.assertEqual(done.returncode, 1, done.stdout)
+        self.assertIn("bound entry packet", done.stderr)
+
+    def test_legacy_no_packet_path_is_refused(self):
+        self.produced()
+        self.scenario()
+        done = self.record("--pr", "5", "--reviewer", "semantic", "--verdict", "pass",
+                           with_packet=False)
+        self.assertNotEqual(done.returncode, 0)
+        self.assertEqual(json.load(open(self.statuses, encoding="utf-8")), {})
 
     def test_an_unconfigured_reviewer_is_refused_and_says_what_is_configured(self):
         self.produced()
@@ -1558,12 +1698,17 @@ if argv_api := [a for a in sys.argv[1:] if a.startswith("repos/")]:
 
     def test_a_verdict_at_one_commit_does_not_satisfy_the_gate_at_another(self):
         self.produced()
-        self.scenario(head="a" * 40)
-        self.assertEqual(self.record("--pr", "5", "--reviewer", "semantic", "--verdict", "pass").returncode, 0)
+        self.scenario()
+        reviewed = self.head
+        packet = self.packet_manifest(reviewed)
+        self.assertEqual(self.record("--pr", "5", "--reviewer", "semantic", "--verdict", "pass",
+                                     packet=packet).returncode, 0)
         self.assertEqual(self.gate().returncode, 0)
-        # One more commit on the pull request: the verdict is on the bytes nobody is merging now.
-        self.scenario(head="b" * 40)
-        recorded = {"a" * 40: {"rules-verdict/semantic": "success"}}
+        # One more commit on the pull request: the verdict remains evidence on A, never B.
+        git(self.out, "commit", "--allow-empty", "-qm", "advance the pull request")
+        later = git(self.out, "rev-parse", "HEAD")
+        self.scenario(head=later)
+        recorded = {reviewed: {"rules-verdict/semantic": "success"}}
         with open(self.statuses, "w", encoding="utf-8") as handle:
             json.dump(recorded, handle)
         done = self.gate()
