@@ -175,8 +175,10 @@ named `fate: decision`. This is the invariant exposed by the independent review 
 
 The manifest check reads the current external boundary as the Phase-1 `references` plus any
 0047 `referenceAmendments`. An amendment is additive and mapping-time only: it may add only
-referenced-but-not-admitted targets and provenance naming the decision. It cannot change corpus
-pinning or admission facts. This preserves the distinction between what admission declared and
+referenced-but-not-admitted targets and provenance naming the decision. Its reference source and
+citation must name one coherent boundary, it may not duplicate an existing boundary, and it may
+not target a corpus already admitted by the manifest. It cannot change corpus pinning or admission
+facts. This preserves the distinction between what admission declared and
 what mapping later discovered while keeping the operational boundary machine-readable. Broad
 part references cover their child sections; exact section references do not act as prefix
 wildcards.
