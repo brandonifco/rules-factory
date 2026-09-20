@@ -1567,7 +1567,15 @@ none of its entries may carry `extraction`.
 `references` lists corpora this one defers to — a regulation citing another title, a
 rulebook citing a supplement — each marked admitted or not. Those references are the
 boundary of any engine built from the corpus, and naming them makes that boundary
-inspectable rather than inferred from whichever entries happen to be declined. In the first
+inspectable rather than inferred from whichever entries happen to be declined. A broad
+part-level reference is a boundary declaration for its child sections; it is not necessary to
+duplicate every section pointer beneath it. A section-level reference remains exact.
+
+The Phase-1 list is historical evidence. If Phase 2 discovers an external corpus boundary it
+omitted, 0047 adds `referenceAmendments`: an additive, mapping-time correction whose references
+must remain `admitted: false`. Consumers read the operational union of `references` and those
+amendments. The correction cannot carry baseline, date, licence, adapter or verification fields,
+so correcting a boundary cannot silently rewrite what was admitted or which bytes were pinned. In the first
 trial, three of twelve sections deferred their meaning to a corpus that had not been
 admitted.
 
