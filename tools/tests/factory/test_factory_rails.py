@@ -1691,7 +1691,7 @@ if argv_api := [a for a in sys.argv[1:] if a.startswith("repos/")]:
         os.makedirs(packet_dir)
         packet_path = os.path.join(packet_dir, f"pr-5-{reviewed[:12]}.md")
         with open(packet_path, "w", encoding="utf-8") as handle:
-            handle.write(f"# Review packet\n\nHead commit \`{reviewed}\`.\n")
+            handle.write(f"# Review packet\n\nHead commit `{reviewed}`.\n")
         policy_path = os.path.join(self.out, ".github", "agent-policy.json")
         provenance_path = os.path.join(self.out, "provenance.json")
         manifest_path = os.path.join(packet_dir, f"pr-5-{reviewed[:12]}.review.json")
