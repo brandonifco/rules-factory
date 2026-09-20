@@ -196,9 +196,9 @@ def _cited_table_rows(units, entry):
     """Table-row units structurally named by this entry's citation (0035).
 
     A table row's Unit.key is the citation that names that row. A cell citation extends the
-    same row citation with ", column ...". That gives short table evidence a bounded search
-    domain without teaching the inventory the table locator grammar: the quote still has to be
-    present in the unit's own text, so a citation alone never establishes reach.
+    same row citation with ", column ...". That gives table evidence a bounded search domain
+    without teaching the inventory the table locator grammar: the quote still has to be present
+    in the unit's own text, so a citation alone never establishes reach.
     """
     citation = block(entry, "locator").get("citation")
     if not isinstance(citation, str):
@@ -245,10 +245,21 @@ def take(units, document, rejected):
         name = label(entry, position)
         hit = False
         evidence = entry.get("evidence")
-        # Long fragments retain the original corpus-wide search. That is what permits a quote
-        # to cross a unit boundary, and changing it here would also collapse the separate #322
-        # question about byte-identical text in distinct units.
+        cited_rows = _cited_table_rows(units, entry)
+
+        # 0035 makes a table-row Unit.key the citation that names that row, and 0030 identifies
+        # repeated text by the container its citation names. When that structural identity is
+        # available, search the actual cited row rather than letting identical bytes in another
+        # row manufacture reach. The quote must still occur there: citation is a search boundary,
+        # never evidence. Entries whose locators do not identify a table-row keep the original
+        # joined-corpus search, including legitimate evidence that crosses unit boundaries.
         for fragment in _fragments(evidence):
+            if cited_rows:
+                for unit in cited_rows:
+                    if _occurrences(fragment, unit.text):
+                        reached.setdefault(unit.key, set()).add(name)
+                        hit = True
+                continue
             for start, end in _occurrences(fragment, corpus):
                 for lo, hi, unit in spans:
                     if lo < end and start < hi:
@@ -256,13 +267,13 @@ def take(units, document, rejected):
                         hit = True
 
         # A short prose fragment still proves nothing: the four-word floor above is unchanged.
-        # 0035 gives table rows a stronger boundary, however. A row Unit.key is its citation, so
-        # a one-, two- or three-word quote can be searched only inside the row the entry names.
-        # The quote must still occur there; a citation by itself never makes a unit reached.
+        # #320 established the narrower table-row path for one-, two- and three-word evidence.
+        # Reuse the same cited_rows boundary as long table evidence, and still require the quote
+        # to occur in that row.
         short = [fragment for fragment in _fragments(evidence, minimum_words=1)
                  if len(fragment.split()) < 4]
         if short:
-            for unit in _cited_table_rows(units, entry):
+            for unit in cited_rows:
                 if any(_occurrences(fragment, unit.text) for fragment in short):
                     reached.setdefault(unit.key, set()).add(name)
                     hit = True
