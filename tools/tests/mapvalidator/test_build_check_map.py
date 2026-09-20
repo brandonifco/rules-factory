@@ -177,8 +177,8 @@ class TestRefused(BuildCase):
 
     def test_a_name_read_but_never_imported(self):
         self.edit("mapvalidator.crossrefs",
-                  "from mapcontract.entry import block, corpora_of, entries_of, index, label\n",
-                  "from mapcontract.entry import block, corpora_of, entries_of, index\n")
+                  "from mapcontract.entry import block, corpora_of, entries_of, index, label, reference_of\n",
+                  "from mapcontract.entry import block, corpora_of, entries_of, index, reference_of\n")
         self.assert_refused("mapvalidator/crossrefs.py", "reads label")
 
     def test_a_package_init_that_holds_code(self):
