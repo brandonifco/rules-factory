@@ -6,7 +6,7 @@ import re
 
 from .diagnostics import skip, verdict
 from .locators import section_pointer_match_is_complete
-from mapcontract.entry import block, corpora_of, entries_of, index, label, references_of
+from mapcontract.entry import block, corpora_of, entries_of, index, label, reference_of
 
 
 # The pointers the first corpora made, in the words they used to make them. Each phrase points
@@ -133,10 +133,8 @@ def defined_elsewhere_names(ctx, entry):
     reference_id = block(entry, "definedElsewhere").get("reference")
     if not reference_id:
         return []
-    source = corpora_of(ctx.get("manifest")).get(block(entry, "locator").get("sourceId")) or {}
-    declared = next((r for r in references_of(source)
-                     if isinstance(r, dict) and r.get("sourceId") == reference_id), None)
-    return reference_names(reference_id, declared)
+    source = corpora_of(ctx.get("manifest")).get(block(entry, "locator").get("sourceId"))
+    return reference_names(reference_id, reference_of(source, reference_id))
 
 
 def duplicates_defined_elsewhere(ctx, entry, item):
