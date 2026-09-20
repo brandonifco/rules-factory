@@ -139,7 +139,7 @@ def main(argv=None):
     if touched and recorded.get(semantic_context) != "success":
         problems.append(f"{semantic_context} is not recorded as a success at {sha[:12]}, and this change touches the "
                         f"semantic surface. Review the head commit and record the verdict "
-                        f"(`tools/record-verdict.py --pr {args.pr} --reviewer semantic --verdict pass`). "
+                        f"(`tools/record-verdict.py --pr {args.pr} --packet <review.json> --reviewer semantic --verdict pass`). "
                         f"A verdict on an earlier commit is a verdict on bytes nobody is merging.")
 
     if independent_required:
