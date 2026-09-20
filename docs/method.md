@@ -94,7 +94,11 @@ too ([0024](decisions/0024-a-quote-is-of-the-extraction-and-a-page-extent-can-en
 another — a regulation citing a different title, a rulebook citing a supplement, a statute
 citing a schedule. Those references are the boundary of any engine built from it, and the
 manifest should name them as referenced-but-not-admitted rather than leave the boundary to
-be inferred from whichever entries happen to be declined. In one trial slice, a quarter of
+be inferred from whichever entries happen to be declined. The Phase-1 `references` list is the
+record of what admission knew. If mapping later discovers an omitted external corpus boundary,
+do not rewrite that list to make the earlier record look complete: add the mapping-time
+`referenceAmendments` correction defined by 0047. A broad part declaration covers child sections;
+an amendment is needed only when the external corpus boundary itself was absent. In one trial slice, a quarter of
 the sections deferred their meaning to a corpus that had not been admitted.
 
 Choose the adapter that can read the format, and the locator grammar it produces. Page
