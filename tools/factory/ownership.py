@@ -92,7 +92,7 @@ TABLE = (
     Row("CLAUDE.md", MANAGED, 1,
         "a pointer to AGENTS.md and the Claude adapters; it states no rule of its own (0029)"),
     Row("docs/agent-team.md", MANAGED, 5, "the four roles, and what each may not do (0029)"),
-    Row(".claude/agents/engine-dev.md", MANAGED, 8, "the implementer's charter (0029)"),
+    Row(".claude/agents/engine-dev.md", MANAGED, 9, "the implementer's charter (0029)"),
     Row(".claude/agents/repo-steward.md", MANAGED, 1, "the structural reviewer's charter, read-only (0029)"),
     Row(".claude/agents/rules-conformance.md", MANAGED, 4, "the semantic reviewer's charter, read-only (0029)"),
     Row(".claude/hooks/primary-checkout-guard.py", MANAGED, 1,
@@ -236,6 +236,7 @@ RECIPE_SHA256 = {
         6: "5e88a1d896a9f9528f038f6daffb990e03bdcfe5f9d39f60c88723c8ee8247ca",
         7: "8f26f1270af1eeaa12f471018cb8bf590265c573d690954b8cb942f64315746b",
         8: "d7838a14be85667f9f97e5a483be681a4a3a2ae969399aa7437762631639cc7c",
+        9: "2d0e0329b2b992e306740e418fd4990dac94af3f011ac9d8cd57af78983b804d",
     },
     ".claude/agents/repo-steward.md": {
         1: "6a2662ac958da76bb02263914d4e3b293a8dc15837e8a6ffccb14177b013bde7",
