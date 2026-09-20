@@ -72,6 +72,13 @@ def git(*args, cwd=ROOT):
     return git_run(*args, cwd=cwd).stdout.strip()
 
 
+def git_bytes(*args, cwd=ROOT):
+    done = subprocess.run(["git", *args], stdout=subprocess.PIPE, stderr=subprocess.PIPE, cwd=cwd)
+    if done.returncode != 0:
+        raise Refused(f"git {' '.join(args)} failed: {done.stderr.decode('utf-8', 'replace').strip()}")
+    return done.stdout
+
+
 def ensure_commit(number, sha):
     """Ensure GitHub's exact reviewed SHA exists locally without switching the caller's checkout."""
     if not SHA_RE.fullmatch(sha):
@@ -353,8 +360,9 @@ def build(number, base, out_dir, package_map=None):
             }),
         }
 
-    return ("\n".join(parts), head, base_sha, packet_artifacts, sources, external_inputs,
-            map_identity, context)
+    full_diff_digest = sha256_bytes(git_bytes("diff", f"{base_sha}...{head}"))
+    return ("\n".join(parts), head, base_sha, full_diff_digest, packet_artifacts, sources,
+            external_inputs, map_identity, context)
 
 
 def destination(out):
@@ -368,12 +376,14 @@ def destination(out):
     return resolved
 
 
-def manifest_for(number, head, base_sha, packet_path, artifacts, sources, inputs, map_identity, context):
+def manifest_for(number, head, base_sha, diff_digest, packet_path, artifacts, sources, inputs,
+                 map_identity, context):
     return {
         "formatVersion": PACKET_FORMAT,
         "pullRequest": number,
         "reviewedCommit": head,
         "baseCommit": base_sha,
+        "diffSha256": diff_digest,
         "packet": {"file": packet_path.name, "sha256": sha256_file(packet_path)},
         "map": map_identity,
         "sources": sorted(sources, key=lambda item: (item["role"], item["path"])),
@@ -399,7 +409,7 @@ def main(argv=None):
     stage = pathlib.Path(tempfile.mkdtemp(prefix="rules-review-packet-"))
     try:
         out_dir = destination(args.out)
-        text, head, base_sha, artifacts, sources, inputs, map_identity, context = build(
+        text, head, base_sha, diff_digest, artifacts, sources, inputs, map_identity, context = build(
             args.pr, args.base, stage, args.package_map)
         if args.stdout:
             sys.stdout.write(text)
@@ -408,8 +418,8 @@ def main(argv=None):
         packet = stage / f"pr-{args.pr}-{head[:12]}.md"
         packet.write_text(text, encoding="utf-8")
         manifest = stage / f"pr-{args.pr}-{head[:12]}.review.json"
-        document = manifest_for(args.pr, head, base_sha, packet, artifacts, sources, inputs,
-                                map_identity, context)
+        document = manifest_for(args.pr, head, base_sha, diff_digest, packet, artifacts, sources,
+                                inputs, map_identity, context)
         manifest.write_text(json.dumps(document, indent=2, sort_keys=True) + "\n", encoding="utf-8")
 
         out_dir.mkdir(parents=True, exist_ok=True)
