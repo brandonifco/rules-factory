@@ -790,7 +790,8 @@ class TestTheReviewPacket(RailsInAGitEngine):
     def pull_request(self, head, *, labels=("state:ready", "risk:normal"), issues=1, body="## Linked Issue\nCloses #27"):
         self.fixture({
             "pr": {"5": {"number": 5, "title": "Implement the altitude limit", "body": body,
-                         "headRefOid": head, "headRefName": "issue-27", "baseRefName": "main",
+                         "headRefOid": head, "headRefName": "issue-27",
+                         "baseRefOid": git(self.out, "rev-parse", "main"), "baseRefName": "main",
                          "files": [{"path": "overlay/altitude-limit.json"},
                                    {"path": f"src/{NAME}/Rules/AltitudeLimit.cs"},
                                    {"path": "README.md"}],
@@ -800,12 +801,17 @@ class TestTheReviewPacket(RailsInAGitEngine):
                              "labels": [{"name": name} for name in labels]}},
         })
 
-    def packet(self, *extra):
+    def packet(self, *extra, use_base=True, **environment):
         # --package-map because the test has no restored package: in an engine it asks MSBuild, as the
         # gate does. Everything else about the packet is the same either way.
-        return subprocess.run([sys.executable, os.path.join(self.out, "tools", "review-packet.py"), "5",
-                               "--base", "main", "--package-map", os.path.join(PART107, "corpus-map.json"), *extra],
-                              cwd=self.out, capture_output=True, text=True, env=self.environment())
+        command = [sys.executable, os.path.join(self.out, "tools", "review-packet.py"), "5"]
+        if use_base:
+            command += ["--base", "main"]
+        command += ["--package-map", os.path.join(PART107, "corpus-map.json"), *extra]
+        return subprocess.run(
+            command, cwd=self.out, capture_output=True, text=True,
+            env=self.environment(**environment),
+        )
 
     def rendered(self, *extra):
         done = self.packet("--stdout", *extra)
@@ -865,20 +871,130 @@ class TestTheReviewPacket(RailsInAGitEngine):
         self.assertEqual(done.returncode, 1, done.stdout)
         self.assertIn("closes 0 issues", done.stderr)
 
-    def test_the_packet_is_written_outside_the_repository_with_the_entry_packets(self):
+    def test_the_packet_is_written_with_a_machine_bound_manifest(self):
         self.commit_engine()
+        base = git(self.out, "rev-parse", "HEAD")
         head = self.change()
         self.pull_request(head)
         out = os.path.join(self.tmp, "packets")
-        done = self.packet("--out", out)
+        done = self.packet("--out", out, use_base=False)
         self.assertEqual(done.returncode, 0, done.stderr)
         written = done.stdout.split()
         self.assertEqual(written[0], os.path.join(out, f"pr-5-{head[:12]}.md"))
-        self.assertEqual(written[1], os.path.join(out, "entry-altitude-limit.md"))
-        with open(written[0], encoding="utf-8") as handle:
-            body = handle.read()
-        digest = hashlib.sha256(open(written[1], "rb").read()).hexdigest()
-        self.assertIn(digest, body, "the entry packet's digest, so two reviewers can prove they read the same entry")
+        self.assertEqual(written[1], os.path.join(out, f"pr-5-{head[:12]}.review.json"))
+        self.assertEqual(written[2], os.path.join(out, "entry-altitude-limit.md"))
+        self.assertTrue(os.path.basename(written[3]).startswith("package-map-"))
+
+        manifest = json.load(open(written[1], encoding="utf-8"))
+        self.assertEqual(manifest["reviewPacketFormat"], 1)
+        self.assertEqual(manifest["pullRequest"], 5)
+        self.assertEqual(manifest["reviewedCommit"], head)
+        self.assertEqual(manifest["baseCommit"], base)
+        self.assertEqual(
+            manifest["packet"]["sha256"],
+            hashlib.sha256(open(written[0], "rb").read()).hexdigest(),
+        )
+        self.assertEqual(
+            manifest["entryPackets"][0]["sha256"],
+            hashlib.sha256(open(written[2], "rb").read()).hexdigest(),
+        )
+        self.assertEqual(
+            manifest["inputs"][0]["sha256"],
+            hashlib.sha256(open(written[3], "rb").read()).hexdigest(),
+        )
+        self.assertEqual(
+            {a["role"] for a in manifest["artifacts"]},
+            {"policy", "provenance", "entry-packet-tool"},
+        )
+        body = open(written[0], encoding="utf-8").read()
+        self.assertIn(manifest["entryPackets"][0]["sha256"], body)
+        self.assertNotIn(out, body, "output location must not contaminate review packet identity")
+
+    def test_entry_packet_and_policy_come_from_head_b_not_checkout_a_or_dirty_files(self):
+        self.commit_engine()
+        checkout_a = git(self.out, "rev-parse", "HEAD")
+        head_b = self.change()
+        self.pull_request(head_b, labels=("state:ready", "risk:independent-review"))
+        git(self.out, "checkout", "-q", "main")
+        policy_path = os.path.join(self.out, ".github", "agent-policy.json")
+        dirty = json.load(open(policy_path, encoding="utf-8"))
+        dirty["review"]["independentFallback"] = [{"id": "dirty", "context": "rules-verdict/dirty"}]
+        with open(policy_path, "w", encoding="utf-8") as handle:
+            json.dump(dirty, handle, indent=2)
+            handle.write("\n")
+        before = git(self.out, "status", "--porcelain")
+        self.assertEqual(git(self.out, "rev-parse", "HEAD"), checkout_a)
+
+        text = self.rendered()
+        self.assertIn("AltitudeLimit_DeclinesAboveTheCeiling", text, "entry packet came from checkout A")
+        self.assertIn("rules-verdict/codex", text, "policy came from dirty checkout A")
+        self.assertNotIn("rules-verdict/dirty", text)
+        self.assertEqual(git(self.out, "status", "--porcelain"), before, "packet mutated the caller checkout")
+        self.assertEqual(git(self.out, "rev-parse", "HEAD"), checkout_a)
+
+    def test_manifest_is_deterministic_across_output_locations(self):
+        self.commit_engine()
+        head = self.change()
+        self.pull_request(head)
+        outputs = []
+        for name in ("one", "two"):
+            out = os.path.join(self.tmp, name)
+            done = self.packet("--out", out)
+            self.assertEqual(done.returncode, 0, done.stderr)
+            outputs.append(done.stdout.split())
+        for first, second in zip(outputs[0], outputs[1]):
+            self.assertEqual(
+                open(first, "rb").read(),
+                open(second, "rb").read(),
+                f"{os.path.basename(first)} changed only because the output directory changed",
+            )
+
+    def test_temporary_review_tree_is_removed_after_success_and_failures(self):
+        self.commit_engine()
+        head = self.change()
+        self.pull_request(head)
+        done = self.packet("--stdout", TMPDIR=self.tmp)
+        self.assertEqual(done.returncode, 0, done.stderr)
+        self.assertFalse(
+            [n for n in os.listdir(self.tmp) if n.startswith("rules-engine-review-tree-")],
+            "successful packet left its detached review tree behind",
+        )
+
+        git(self.out, "checkout", "-q", "issue-27")
+        git(self.out, "rm", "-q", "provenance.json")
+        git(self.out, "commit", "-qm", "head without required provenance")
+        broken = git(self.out, "rev-parse", "HEAD")
+        self.pull_request(broken)
+        git(self.out, "checkout", "-q", "main")
+        done = self.packet("--stdout", TMPDIR=self.tmp)
+        self.assertEqual(done.returncode, 1, done.stdout)
+        self.assertIn("provenance.json", done.stderr)
+        self.assertFalse(
+            [n for n in os.listdir(self.tmp) if n.startswith("rules-engine-review-tree-")],
+            "failed packet left its detached review tree behind",
+        )
+
+    def test_temporary_review_tree_is_removed_after_entry_packet_failure(self):
+        self.commit_engine()
+        head = self.change()
+        body = "## Linked Issue\nCloses #27\n<!-- rules-factory-entry: no-such-entry -->"
+        self.pull_request(head, body=body)
+        done = self.packet("--stdout", TMPDIR=self.tmp)
+        self.assertEqual(done.returncode, 1, done.stdout)
+        self.assertIn("no-such-entry", done.stderr)
+        self.assertFalse(
+            [n for n in os.listdir(self.tmp) if n.startswith("rules-engine-review-tree-")],
+            "entry-packet failure left its detached review tree behind",
+        )
+
+    def test_missing_pr_head_object_is_refused_without_checkout_fallback(self):
+        self.commit_engine()
+        missing = "f" * 40
+        self.pull_request(missing)
+        done = self.packet("--stdout")
+        self.assertEqual(done.returncode, 1, done.stdout)
+        self.assertIn("cannot obtain exact PR head commit", done.stderr)
+        self.assertEqual(git(self.out, "rev-parse", "--abbrev-ref", "HEAD"), "main")
 
     def test_watched_pr_head_b_never_uses_checkout_a_provenance(self):
         """#334 failure A: the named head and packet evidence must be the same tree."""
