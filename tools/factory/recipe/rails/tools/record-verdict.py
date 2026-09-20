@@ -112,6 +112,28 @@ def verify_file(directory, item, field):
     return path
 
 
+def verify_inputs(directory, inputs):
+    if not isinstance(inputs, list):
+        raise Refused("review packet inputs must be a list")
+    seen = set()
+    for index, item in enumerate(inputs):
+        if not isinstance(item, dict) or set(item) != {"role", "file", "sha256"}:
+            raise Refused(f"review packet inputs[{index}] has an unknown shape")
+        if item.get("role") != "package-map":
+            raise Refused(f"review packet inputs[{index}] has unknown role {item.get('role')!r}")
+        name = safe_file(item.get("file"), f"inputs[{index}].file")
+        if name in seen:
+            raise Refused("review packet contains a duplicate external input identity")
+        seen.add(name)
+        expected = exact_digest(item.get("sha256"), f"inputs[{index}].sha256")
+        try:
+            actual = digest((directory / name).read_bytes())
+        except OSError as error:
+            raise Refused(f"bound external input {name} cannot be read ({error})")
+        if actual != expected:
+            raise Refused(f"bound external input {name} hashes to {actual}, not manifest digest {expected}")
+
+
 def verify_artifacts(directory, artifacts):
     if not isinstance(artifacts, list):
         raise Refused("review packet artifacts must be a list")
@@ -196,7 +218,7 @@ def verify_sources(sha, sources, has_entries):
 
 def validate_manifest(pr, path, document, sha_override):
     allowed = {"formatVersion", "pullRequest", "reviewedCommit", "baseCommit", "packet",
-               "map", "sources", "artifacts", "context"}
+               "map", "sources", "inputs", "artifacts", "context"}
     if set(document) != allowed:
         extra = sorted(set(document) - allowed)
         missing = sorted(allowed - set(document))
@@ -216,6 +238,7 @@ def validate_manifest(pr, path, document, sha_override):
         raise Refused("review packet packet identity must be an object")
     verify_file(path.parent, packet, "packet")
 
+    verify_inputs(path.parent, document.get("inputs"))
     artifacts = document.get("artifacts")
     verify_artifacts(path.parent, artifacts)
 
