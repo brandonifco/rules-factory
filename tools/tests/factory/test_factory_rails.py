@@ -939,6 +939,30 @@ class TestTheReviewPacket(RailsInAGitEngine):
         self.assertEqual(manifest["entryPackets"][0]["sha256"],
                          hashlib.sha256(open(entry_path, "rb").read()).hexdigest())
 
+    def test_the_reviewed_snapshot_is_removed_on_success_and_refusal(self):
+        self.commit_engine()
+        head = self.change()
+        self.pull_request(head)
+        before = git(self.out, "worktree", "list", "--porcelain")
+        done = self.packet("--stdout")
+        self.assertEqual(done.returncode, 0, done.stderr)
+        self.assertEqual(git(self.out, "worktree", "list", "--porcelain"), before,
+                         "successful packet assembly left its reviewed snapshot attached")
+
+        policy_path = os.path.join(self.out, ".github", "agent-policy.json")
+        with open(policy_path, "w", encoding="utf-8") as handle:
+            handle.write("{ not valid json\n")
+        git(self.out, "add", ".github/agent-policy.json")
+        git(self.out, "commit", "-qm", "break the policy at the reviewed head")
+        broken = git(self.out, "rev-parse", "HEAD")
+        self.pull_request(broken)
+        before = git(self.out, "worktree", "list", "--porcelain")
+        done = self.packet("--stdout")
+        self.assertEqual(done.returncode, 1, done.stdout + done.stderr)
+        self.assertIn("cannot be read at reviewed commit", done.stderr)
+        self.assertEqual(git(self.out, "worktree", "list", "--porcelain"), before,
+                         "refused packet assembly left its reviewed snapshot attached")
+
     def test_a_pull_request_closing_no_single_issue_is_refused(self):
         self.commit_engine()
         head = self.change()
@@ -1732,6 +1756,32 @@ if argv_api := [a for a in sys.argv[1:] if a.startswith("repos/")]:
                            "--packet", identity)
         self.assertEqual(done.returncode, 1, done.stdout + done.stderr)
         self.assertIn("review packet digest does not match", done.stderr)
+        self.assertEqual(json.load(open(self.statuses, encoding="utf-8")), {})
+
+    def test_a_tampered_entry_packet_cannot_record_a_verdict(self):
+        self.produced()
+        self.scenario()
+        identity = self.review_identity()
+        directory = os.path.dirname(identity)
+        entry_path = os.path.join(directory, "entry-altitude-limit.md")
+        with open(entry_path, "w", encoding="utf-8") as handle:
+            handle.write("# Entry packet: altitude-limit\n")
+        document = json.load(open(identity, encoding="utf-8"))
+        document["entryPackets"] = [{
+            "entryId": "altitude-limit",
+            "path": os.path.basename(entry_path),
+            "sha256": hashlib.sha256(open(entry_path, "rb").read()).hexdigest(),
+        }]
+        with open(identity, "w", encoding="utf-8") as handle:
+            json.dump(document, handle, indent=2)
+            handle.write("\n")
+        with open(entry_path, "a", encoding="utf-8") as handle:
+            handle.write("changed after review\n")
+
+        done = self.record("--pr", "5", "--reviewer", "semantic", "--verdict", "pass",
+                           "--packet", identity)
+        self.assertEqual(done.returncode, 1, done.stdout + done.stderr)
+        self.assertIn("entry packet 'altitude-limit' digest does not match", done.stderr)
         self.assertEqual(json.load(open(self.statuses, encoding="utf-8")), {})
 
     def test_the_verdict_context_is_the_reviewed_packet_s_not_the_caller_checkout_s(self):
