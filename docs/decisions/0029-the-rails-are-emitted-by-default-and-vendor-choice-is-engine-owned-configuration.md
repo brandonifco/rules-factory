@@ -24,6 +24,14 @@ checks are pinned to the app that posts them. See *Amendment — the verdict gat
 check, not an authentication* below. Nothing about the chain, the contexts or the commit binding
 changes; §10's ruleset gains the pin, and `AGENTS.md` moves a recipe version.
 
+**Amended 2026-09-20** by
+[0049](0049-a-review-verdict-is-bound-to-one-immutable-review-packet.md) for
+[#334](https://github.com/brandonifco/rules-factory/issues/334): the intended exact-commit binding
+in §§6-7 is now carried by a deterministic review-packet manifest. Packet assembly reads one
+detached immutable reviewed tree, and verdict recording consumes and verifies that packet identity
+rather than selecting the mutable current PR head. The provider-authentication boundary above is
+unchanged.
+
 ## Amendment — the verdict gate is an integrity check, not an authentication
 
 A verdict is a commit status under a policy-named context, and **anyone who can write commit
@@ -354,15 +362,21 @@ quietly overrule the map makes the map stop being the interface.
 `tools/review-packet.py` is separate and assembles what a reviewer needs: the issue and its
 acceptance criteria, the PR body, changed files, a bounded diff, the entry ids and their packet
 digest, the map version and provenance, the overlay before and after, the applicable ADRs, the
-determinism prompt, the expected gates and the risk classification. Packets are written outside
-the repository and are never committed.
+determinism prompt, the expected gates and the risk classification. Under 0049 it reads all
+repository evidence from a detached worktree pinned to the exact reviewed head, and writes a
+deterministic `*.review.json` manifest binding the Markdown packet, reviewed base/head,
+provenance, policy, entry-packet tooling, generated entry packets and their package-map input.
+Packets are written outside the repository and are never committed.
 
-### 7. A verdict names a commit, and the chain advances only on unavailability
+### 7. A verdict consumes one packet identity, and the chain advances only on unavailability
 
-A review that exists only in a transcript is not a review anyone can check later. A verdict is a
-commit status recorded against the exact PR head SHA (`tools/record-verdict.py`), and
-`tools/conformance-gate.py` requires it at the head being merged. A further commit therefore
-invalidates the review that preceded it, because the status is on the old SHA.
+A review that exists only in a transcript is not a review anyone can check later. Under 0049 a
+verdict requires the format-1 `*.review.json` emitted with the packet. `tools/record-verdict.py`
+re-hashes the human packet and its bound companion artifacts and records the status only against
+the manifest's exact reviewed SHA; the current PR head never supplies the identity of what was
+reviewed. `tools/conformance-gate.py` still requires the verdict at the head being merged. A
+further commit therefore makes the old packet and status stale for the gate while preserving them
+as historical evidence on the old SHA.
 
 A change touching `review.semanticPaths` requires `review.semanticContext`. An issue carrying the
 independent risk label additionally requires one of `review.independentFallback`'s contexts. The
