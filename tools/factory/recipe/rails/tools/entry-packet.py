@@ -37,6 +37,7 @@ Standard library only, plus the factory's own generator vendored under `scripts/
 entry, the handler signature and the packet cannot drift from what the build actually generates.
 """
 import argparse
+import hashlib
 import json
 import os
 import pathlib
@@ -117,8 +118,8 @@ def package_map_from_msbuild(name):
     return path
 
 
-def model_for(package_map_path, name, package_id, version, randomness):
-    """The factory's own model of merge(package map, overlay), from the generator this engine vendors."""
+def model_for(package_map_path, name, package_id, version, randomness, package_document=None):
+    """The factory's model of merge(package map, overlay), from one exact package-map read."""
     sys.path.insert(0, str(ROOT / "scripts" / "factory"))
     try:
         import generate  # noqa: E402  (the factory's generator, vendored by produce)
@@ -126,7 +127,9 @@ def model_for(package_map_path, name, package_id, version, randomness):
         import rulings  # noqa: E402  (the owner's rulings the overlay holds, decision 0027)
     except ImportError as error:
         raise Refused(f"scripts/factory is not importable ({error}); run `factory produce` again")
-    package = read_json(package_map_path, "the map package's map")
+    package = package_document
+    if package is None:
+        package = read_json(package_map_path, "the map package's map")
     try:
         overlay = overlay_step.load(str(ROOT), package)
     except overlay_step.OverlayError as error:
@@ -346,13 +349,22 @@ def main(argv=None):
     parser.add_argument("--out", help=f"directory to write into (default: ${PACKET_ROOT_VARIABLE}, "
                                       f"else a directory beside the system temporary one)")
     parser.add_argument("--package-map", help="the restored map package's corpus-map.json (default: ask MSBuild)")
+    parser.add_argument("--identity-out", help=argparse.SUPPRESS)
     parser.add_argument("--stdout", action="store_true", help="write the packet to stdout and no file")
     args = parser.parse_args(argv)
 
     try:
         name, package_id, version, nupkg, randomness = engine()
         package_map = args.package_map or package_map_from_msbuild(name)
-        generate, model, overlay = model_for(package_map, name, package_id, version, randomness)
+        package_path = pathlib.Path(package_map).expanduser().resolve()
+        try:
+            package_bytes = package_path.read_bytes()
+            package_document = json.loads(package_bytes.decode("utf-8"))
+        except (OSError, UnicodeDecodeError, ValueError) as error:
+            raise Refused(f"the map package's map cannot be read ({package_path}: {error})")
+        generate, model, overlay = model_for(
+            str(package_path), name, package_id, version, randomness, package_document=package_document
+        )
         item = model.by_id.get(args.entry)
         if item is None:
             near = [entry_id for entry_id in model.by_id if args.entry.lower() in entry_id.lower()]
@@ -360,6 +372,19 @@ def main(argv=None):
                           + (f". Did you mean: {', '.join(sorted(near)[:5])}?" if near else
                              f" (the map has {len(model.by_id)} entries)"))
         text = packet(generate, model, overlay, item, (name, package_id, version, nupkg))
+        if args.identity_out:
+            identity = {
+                "entryPacketInputFormat": 1,
+                "packageMapPath": str(package_path),
+                "packageMapSha256": hashlib.sha256(package_bytes).hexdigest(),
+                "packageId": package_id,
+                "packageVersion": version,
+                "mapPackageSha256": nupkg,
+            }
+            pathlib.Path(args.identity_out).write_text(
+                json.dumps(identity, indent=2, sort_keys=True, ensure_ascii=False) + "\n",
+                encoding="utf-8",
+            )
         if args.stdout:
             sys.stdout.write(text)
             return 0
