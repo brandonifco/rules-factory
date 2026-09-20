@@ -1575,8 +1575,8 @@ The Phase-1 list is historical evidence. If Phase 2 discovers an external corpus
 omitted, 0047 adds `referenceAmendments`: an additive, mapping-time correction whose references
 must remain `admitted: false`. Consumers read the operational union of `references` and those
 amendments. The correction cannot carry baseline, date, licence, adapter or verification fields,
-so correcting a boundary cannot silently rewrite what was admitted or which bytes were pinned. In the first
-trial, three of twelve sections deferred their meaning to a corpus that had not been
+so correcting a boundary cannot silently rewrite what was admitted or which bytes were pinned.
+In the first trial, three of twelve sections deferred their meaning to a corpus that had not been
 admitted.
 
 ```json
