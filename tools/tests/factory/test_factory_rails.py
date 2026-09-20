@@ -963,6 +963,45 @@ class TestTheReviewPacket(RailsInAGitEngine):
         self.assertEqual(git(self.out, "worktree", "list", "--porcelain"), before,
                          "refused packet assembly left its reviewed snapshot attached")
 
+    def test_a_real_packet_for_a_cannot_record_pass_after_the_pr_moves_to_b(self):
+        # #334 end to end: the actual packet producer binds A; after the PR moves, the actual
+        # recorder consumes that identity and refuses rather than posting a success to B.
+        self.commit_engine()
+        reviewed = self.change()
+        self.pull_request(reviewed)
+        out = os.path.join(self.tmp, "review-then-move")
+        done = self.packet("--out", out)
+        self.assertEqual(done.returncode, 0, done.stderr)
+        identity = os.path.join(out, f"pr-5-{reviewed[:12]}.review.json")
+        self.assertTrue(os.path.isfile(identity))
+
+        with open(os.path.join(self.out, "README.md"), "a", encoding="utf-8") as handle:
+            handle.write("\nadvance after review\n")
+        git(self.out, "add", "README.md")
+        git(self.out, "commit", "-qm", "advance after review")
+        advanced = git(self.out, "rev-parse", "HEAD")
+
+        with open(self.gh, "w", encoding="utf-8") as handle:
+            handle.write(GH_STATUS_STUB)
+        os.chmod(self.gh, 0o755)
+        statuses = os.path.join(self.tmp, "review-then-move-statuses.json")
+        with open(statuses, "w", encoding="utf-8") as handle:
+            json.dump({}, handle)
+        self.fixture({
+            "pr": {"5": {"number": 5, "headRefOid": advanced, "state": "OPEN"}},
+            "repo": {"nameWithOwner": "owner/engine"},
+        })
+        recorded = subprocess.run(
+            [sys.executable, os.path.join(self.out, "tools", "record-verdict.py"),
+             "--pr", "5", "--packet", identity, "--reviewer", "semantic", "--verdict", "pass"],
+            cwd=self.out, capture_output=True, text=True,
+            env={**self.environment(), "GH_STATUSES": statuses})
+        self.assertEqual(recorded.returncode, 1, recorded.stdout + recorded.stderr)
+        self.assertIn(reviewed[:12], recorded.stderr)
+        self.assertIn(advanced[:12], recorded.stderr)
+        self.assertEqual(json.load(open(statuses, encoding="utf-8")), {},
+                         "the real stale packet posted a status after the PR moved")
+
     def test_a_pull_request_closing_no_single_issue_is_refused(self):
         self.commit_engine()
         head = self.change()
@@ -1743,6 +1782,17 @@ if argv_api := [a for a in sys.argv[1:] if a.startswith("repos/")]:
         self.assertIn(advanced[:12], done.stderr)
         self.assertEqual(json.load(open(self.statuses, encoding="utf-8")), {},
                          "a stale review posted a status to the newer head")
+
+    def test_sha_is_only_an_assertion_and_cannot_select_another_commit(self):
+        self.produced()
+        self.scenario(head="a" * 40)
+        identity = self.review_identity()
+        done = self.record("--pr", "5", "--reviewer", "semantic", "--verdict", "pass",
+                           "--packet", identity, "--sha", "b" * 40)
+        self.assertEqual(done.returncode, 1, done.stdout + done.stderr)
+        self.assertIn("--sha says", done.stderr)
+        self.assertIn("reviewed packet says", done.stderr)
+        self.assertEqual(json.load(open(self.statuses, encoding="utf-8")), {})
 
     def test_a_tampered_human_packet_cannot_record_a_verdict(self):
         self.produced()
