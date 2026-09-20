@@ -4,6 +4,11 @@ Every reader takes what it was given and answers anyway: a caller that has not y
 document well-formed can still ask these questions, and gets an empty answer rather than an
 exception it would have to distinguish from a real verdict.
 """
+import re
+
+
+REFERENCE_PART_CITATION = re.compile(r"^part\s+(\d+)$", re.I)
+REFERENCE_SECTION_CITATION = re.compile(r"^§\s*(\d+\.\d+(?:[A-Za-z]|-\d+)?)$")
 
 
 def corpora_of(manifest):
@@ -31,12 +36,39 @@ def references_of(corpus):
     return found
 
 
+def reference_identity(reference):
+    """A reference's structural grain and source id, or None when its citation disagrees.
+
+    Part and section citations carry identity in both `citation` and `sourceId`; reading them
+    structurally keeps a broad part boundary from becoming a textual-prefix wildcard. Other
+    citation forms are exact references and retain their declared source id.
+    """
+    if not isinstance(reference, dict):
+        return None
+    source_id, citation = reference.get("sourceId"), reference.get("citation")
+    if (not isinstance(source_id, str) or not source_id
+            or not isinstance(citation, str) or not citation.strip()):
+        return None
+    citation = citation.strip()
+    part = REFERENCE_PART_CITATION.fullmatch(citation)
+    if part:
+        return ("part", source_id) if source_id.endswith("-" + part.group(1)) else None
+    if citation.lower().startswith("part "):
+        return None
+    section = REFERENCE_SECTION_CITATION.fullmatch(citation)
+    if section:
+        return ("section", source_id) if source_id.endswith("-" + section.group(1)) else None
+    if citation.startswith("§"):
+        return None
+    return ("exact", source_id)
+
+
 def reference_covers(corpus, source_id):
     """Whether the operational boundary declares `source_id`.
 
-    Exact reference ids cover themselves. A reference whose citation is `part N` is explicitly
-    a corpus boundary at part grain and covers child section ids beneath that source id. Other
-    references remain exact; a section declaration never expands itself by prefix accident.
+    Exact source ids cover themselves. Only a structurally coherent `part N` reference expands
+    to child section ids. A section declaration stays exact and cannot cover a longer section by
+    textual prefix accident.
     """
     if not isinstance(source_id, str) or not source_id:
         return False
@@ -44,10 +76,8 @@ def reference_covers(corpus, source_id):
         declared = reference.get("sourceId")
         if declared == source_id:
             return True
-        citation = reference.get("citation")
-        if (isinstance(declared, str) and isinstance(citation, str)
-                and citation.lower().startswith("part ")
-                and source_id.startswith(declared + ".")):
+        identity = reference_identity(reference)
+        if identity and identity[0] == "part" and source_id.startswith(identity[1] + "."):
             return True
     return False
 
