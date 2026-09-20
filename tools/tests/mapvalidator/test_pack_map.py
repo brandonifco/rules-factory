@@ -92,8 +92,8 @@ class TestPacksTheExample(PackCase):
             self.assertEqual(
                 sorted(n for n in names if not n.endswith(".psmdcp")),
                 sorted(["_rels/.rels", "[Content_Types].xml", f"{PACKAGE}.nuspec",
-                        "map/corpus-map.json", "map/corpus-manifest.json", "tools/check-map.py",
-                        f"build/{PACKAGE}.props", "LICENCE.txt"]))
+                        "map/corpus-map.json", "map/corpus-manifest.json", "map/verification.json",
+                        "tools/check-map.py", f"build/{PACKAGE}.props", "LICENCE.txt"]))
             self.assertEqual(len([n for n in names if n.endswith(".psmdcp")]), 1, names)
             with open(os.path.join(HOYLE, "corpus-map.json"), "rb") as handle:
                 self.assertEqual(archive.read("map/corpus-map.json"), handle.read())
@@ -104,6 +104,17 @@ class TestPacksTheExample(PackCase):
             self.assertIn(f"<version>{VERSION}</version>", nuspec)
             self.assertIn("schemaVersion 1", nuspec)
             self.assertIn("5d505fa9f6202340eb55313b8ef607b816087a860d3d51b1bf92b5f65240645e", nuspec)
+            verification = json.loads(archive.read("map/verification.json"))
+            self.assertEqual(verification["verificationFormat"], 1)
+            self.assertEqual([item["role"] for item in verification["artifacts"]],
+                             ["map", "manifest", "checker"])
+            for item in verification["artifacts"]:
+                self.assertEqual(item["sha256"], hashlib.sha256(archive.read(item["path"])).hexdigest())
+            self.assertEqual(verification["corpora"], [{
+                "sourceId": "hoyle-1909",
+                "hashDerivation": "gutenberg-plain-text-including-boilerplate",
+                "contentHash": "5d505fa9f6202340eb55313b8ef607b816087a860d3d51b1bf92b5f65240645e",
+            }])
 
     def test_two_packs_are_byte_identical(self):
         second = os.path.join(self.tmp, "again")
@@ -155,6 +166,7 @@ class TestCarriesTheConsumerChecker(PackCase):
                 self.assertEqual(archive.read("tools/check-map.py"), handle.read())
             props = archive.read(f"build/{PACKAGE}.props").decode("utf-8")
         self.assertIn('ConsumerChecker="$(MSBuildThisFileDirectory)../tools/check-map.py"', props)
+        self.assertIn('Verification="$(MSBuildThisFileDirectory)../map/verification.json"', props)
 
     def test_the_packaged_checker_passes_the_packaged_map_in_the_consumer_phase(self):
         root = self.extract()
@@ -224,6 +236,50 @@ class TestRefuses(PackCase):
         self.assertIn("hoyle-1909's manifest `licence` is 'commercial'", output)
         self.assertIn("docs/decisions/0028", output)
         self.assertNotIn("check-map.py --phase publish", output, "the licence is refused before any gate runs")
+
+    def test_altered_corpus_and_matching_evidence_with_old_declared_hash_is_refused(self):
+        corpus_path = os.path.join(self.map_dir, "hoyle.txt")
+        with open(corpus_path, "r", encoding="utf-8") as handle:
+            text = handle.read()
+        text = text.replace("Backgammon is played by two persons",
+                            "Backgammon is played by three persons", 1)
+        with open(corpus_path, "w", encoding="utf-8") as handle:
+            handle.write(text)
+
+        def alter(document):
+            for entry in document["entries"]:
+                if isinstance(entry.get("evidence"), str):
+                    entry["evidence"] = entry["evidence"].replace(
+                        "Backgammon is played by two persons",
+                        "Backgammon is played by three persons")
+                if isinstance(entry.get("name"), str):
+                    entry["name"] = entry["name"].replace(
+                        "Backgammon is played by two persons",
+                        "Backgammon is played by three persons")
+        self.edit("corpus-map.json", alter)
+        code, output = self.pack()
+        self.assert_refused(code, output)
+        self.assertIn("is not hoyle-1909 at its declared baseline", output)
+        self.assertNotIn("--- gate: check-map.py", output,
+                         "corpus identity is established before any publish validator runs")
+
+    def test_a_malformed_declared_corpus_digest_is_refused(self):
+        self.edit("corpus-manifest.json",
+                  lambda m: m["corpora"][0].__setitem__("contentHash", "not-a-sha256"))
+        self.edit("corpus-map.json",
+                  lambda m: m["baseline"].__setitem__("contentHash", "not-a-sha256"))
+        code, output = self.pack()
+        self.assert_refused(code, output)
+        self.assertIn("malformed contentHash", output)
+
+    def test_an_unsupported_hash_derivation_is_refused_by_the_canonical_digest_table(self):
+        self.edit("corpus-manifest.json",
+                  lambda m: m["corpora"][0].__setitem__("hashDerivation", "unknown-derivation"))
+        self.edit("corpus-map.json",
+                  lambda m: m["baseline"].__setitem__("hashDerivation", "unknown-derivation"))
+        code, output = self.pack()
+        self.assert_refused(code, output)
+        self.assertIn("no way to compute hashDerivation 'unknown-derivation'", output)
 
     def test_an_adapter_with_no_locator_checker_is_refused(self):
         self.edit("corpus-manifest.json", lambda m: m["corpora"][0].__setitem__("adapter", "pdf"))
