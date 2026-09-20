@@ -366,6 +366,24 @@ class TestShortEvidenceKeepsItsSafetyBoundary(unittest.TestCase):
         self.assertEqual(measured.reached, {})
         self.assertEqual(measured.unlocated, ["ambiguous-prose"])
 
+    def test_trial_10_duplicate_ib1_row_remains_unaccounted(self):
+        path = os.path.join(REPO, "examples", "hazmat-172-table", "corpus-map.json")
+        code, output = run(["inventory", path, "--list"])
+        self.assertEqual(code, NOT_VERIFIED, output)
+        self.assertIn(
+            "total across 2 corpora: 747 unit(s), 615 unaccounted, 14 unaddressable, "
+            "135 entr(ies) located",
+            output,
+        )
+        self.assertIn(
+            '§ 172.102 table 2, row blank in column 1 below row [column 1 = "IB1"]',
+            output,
+        )
+        self.assertNotIn(
+            '?  § 172.102 table 2, row blank in column 1 below row [column 1 = "IB2"]',
+            output,
+        )
+
     def test_trial_10_short_table_quotes_are_not_reported_unlocated(self):
         path = os.path.join(REPO, "examples", "hazmat-172-table", "corpus-map.json")
         _, output = run(["inventory", path])

@@ -293,12 +293,14 @@ object in every corpus, so the measurement is one implementation, and it is the 
 
 The ordinary evidence search keeps a **four-word minimum fragment** so a short prose phrase cannot
 wander across unrelated units and manufacture reach. A `table-row` is structurally narrower:
-0035 makes the row unit's key the citation that names it. For one-, two- and three-word table
-evidence, the inventory therefore searches only the `table-row` unit structurally named by the
-entry's citation, and still requires the quoted words to occur in that unit's own text. The
-citation narrows the search domain; it never establishes reach by itself. Four-word-or-longer
-evidence keeps the corpus-wide search, including its existing behavior for repeated identical
-unit text. `units()` is also what [a
+0035 makes the row unit's key the citation that names it, and 0030 identifies repeated text by
+the container its citation names. For table-row evidence of any length, the inventory therefore
+searches only the `table-row` unit structurally named by the entry's citation, and still requires
+the quoted words to occur in that unit's own text. Byte-identical text in another row earns no
+reach merely by matching. The citation narrows the search domain; it never establishes reach by
+itself. Where the locator does not mechanically identify a table-row unit, four-word-or-longer
+evidence keeps the corpus-wide search, including the existing behavior that lets one quote span
+unit boundaries; short prose remains below the floor. `units()` is also what [a
 sweep](#the-sweeps) walks, which is why it returns the text rather than a locator: a sweep asks
 what a unit says.
 
