@@ -1416,8 +1416,67 @@ class FakeGitHub:
         env = dict(os.environ, RULES_ENGINE_GH=self.script, VALIDATE_ENGINE_FAKE_GH_STATE=self.state)
         return run_to(log, [PYTHON, *command], cwd=railed, env=env, both=True)
 
+    def review_identity(self, railed):
+        """A packet identity for the fake PR head, carrying the produced engine's exact review context.
+
+        The fake GitHub uses synthetic commit ids so review-packet.py cannot make a real detached
+        worktree for them. review-packet.py itself is exercised in the Python rail tests; this
+        engine smoke test needs the recorder's real format and exact-head discipline.
+        """
+        with open(self.state, encoding="utf-8") as handle:
+            state = json.load(handle)
+        head = state["pulls"][PR]["headRefOid"]
+
+        packet_dir = os.path.join(os.path.dirname(self.state), "review-packets")
+        os.makedirs(packet_dir, exist_ok=True)
+        human = os.path.join(packet_dir, f"pr-{PR}-{head[:12]}.md")
+        write(human, f"# Review packet\n\nHead commit `{head}`.\n")
+
+        policy_path = os.path.join(railed, ".github", "agent-policy.json")
+        provenance_path = os.path.join(railed, "provenance.json")
+        with open(policy_path, "rb") as handle:
+            policy_bytes = handle.read()
+        with open(provenance_path, "rb") as handle:
+            provenance_bytes = handle.read()
+        policy = json.loads(policy_bytes)
+        provenance = json.loads(provenance_bytes)
+
+        identity = {
+            "reviewPacketFormat": 1,
+            "pullRequest": int(PR),
+            "reviewedCommit": head,
+            "baseCommit": COMMIT_BASE,
+            "reviewPacket": {
+                "path": os.path.basename(human),
+                "sha256": hashlib.sha256(open(human, "rb").read()).hexdigest(),
+            },
+            "reviewContext": {
+                "policy": {
+                    "path": ".github/agent-policy.json",
+                    "sha256": hashlib.sha256(policy_bytes).hexdigest(),
+                    "semanticContext": policy["review"]["semanticContext"],
+                    "independentFallback": policy["review"]["independentFallback"],
+                },
+                "provenance": {
+                    "path": "provenance.json",
+                    "sha256": hashlib.sha256(provenance_bytes).hexdigest(),
+                },
+                "map": {
+                    "packageId": provenance["map"]["packageId"],
+                    "version": provenance["map"]["version"],
+                    "nupkgSha256": provenance["map"].get("nupkgSha256", ""),
+                },
+            },
+            "entryPackets": [],
+        }
+        path = os.path.join(packet_dir, f"pr-{PR}-{head[:12]}.review.json")
+        write(path, json.dumps(identity, indent=2) + "\n")
+        return path
+
     def record(self, railed, log, reviewer):
-        if self.tool(railed, log, "tools/record-verdict.py", "--pr", PR, "--reviewer", reviewer, "--verdict", "pass") != 0:
+        packet = self.review_identity(railed)
+        if self.tool(railed, log, "tools/record-verdict.py", "--pr", PR, "--packet", packet,
+                     "--reviewer", reviewer, "--verdict", "pass") != 0:
             cat(log)
             fail(f"tools/record-verdict.py could not record a pass by {reviewer} in a produced engine")
 
