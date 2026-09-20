@@ -698,9 +698,33 @@ def step_tool_tests(run: Run) -> bool:
     had not done.
 
     Every scope runs every test. They are what says the checkers still work, and which of them
-    a diff could have broken is not a question a path table can answer honestly."""
+    a diff could have broken is not a question a path table can answer honestly.
+
+    The suite is distributed over the cores the machine has (#344). `-n auto` reads the process
+    CPU affinity, so it is four on a GitHub runner and whatever a developer's machine gives.
+    Nothing is skipped or reordered away by that -- but a distributed run can lose a worker in a
+    way a serial one cannot, and "1400 passed" reads exactly like "1750 passed" to a grep. So the
+    suite is collected first and the run is held to the count: a run that passed fewer tests than
+    were collected fails, whatever pytest's own exit code said.
+    """
+    collected = subprocess.run(
+        [sys.executable, "-m", "pytest", "-p", "no:cacheprovider", "tools/tests", "-q",
+         "--collect-only"],
+        cwd=run.root, capture_output=True, text=True,
+    )
+    if collected.returncode != 0:
+        sys.stdout.write(collected.stdout)
+        sys.stderr.write(collected.stderr)
+        print("the suite could not be collected -- nothing was proven", file=sys.stderr)
+        return False
+    wanted = _count(collected.stdout, r"(\d+) tests? collected")
+    if not wanted:
+        print("collection reported no tests -- nothing was proven", file=sys.stderr)
+        return False
+
     proc = subprocess.run(
-        [sys.executable, "-m", "pytest", "-p", "no:cacheprovider", "tools/tests", "-q"],
+        [sys.executable, "-m", "pytest", "-p", "no:cacheprovider", "tools/tests", "-q",
+         "-n", "auto"],
         cwd=run.root, capture_output=True, text=True,
     )
     if proc.returncode != 0:
@@ -710,11 +734,33 @@ def step_tool_tests(run: Run) -> bool:
     lines = proc.stdout.rstrip().splitlines()
     if lines:
         print(lines[-1])
-    # A green pytest run over an empty suite is the same lie as a check with no inputs.
-    if not re.search(r"\d+ passed", proc.stdout):
+    # A green pytest run over an empty suite is the same lie as a check with no inputs, and a
+    # distributed run that lost a worker is the same lie with a plausible number on it. So every
+    # collected test must be accounted for by one of pytest's own outcome counters.
+    #
+    # A skip is an outcome, so it accounts for a test -- and it is never absorbed silently. This
+    # job has no .NET SDK, so the tests that need one skip here and the `engine` job runs them
+    # for real; that is a deliberate two, and a third would be a test nobody is running. The
+    # count is printed on every run for the same reason the map counts are.
+    outcomes = {name: _count(proc.stdout, rf"(\d+) {name}")
+                for name in ("passed", "skipped", "xfailed", "xpassed", "deselected")}
+    accounted = sum(outcomes.values())
+    if not outcomes["passed"]:
         print("pytest reported no passing tests -- nothing was proven", file=sys.stderr)
         return False
+    if accounted < wanted:
+        print(f"{wanted} test(s) were collected and {accounted} were accounted for -- "
+              f"{wanted - accounted} of them neither ran nor were skipped", file=sys.stderr)
+        return False
+    said = ", ".join(f"{n} {name}" for name, n in outcomes.items() if n)
+    print(f"{wanted} collected test(s), all accounted for: {said}")
     return True
+
+
+def _count(output: str, pattern: str) -> int:
+    """The number pytest printed, or 0 if it printed none."""
+    match = re.search(pattern, output)
+    return int(match.group(1)) if match else 0
 
 
 # Every markdown link to a file in this repository resolves. The predecessor repo shipped

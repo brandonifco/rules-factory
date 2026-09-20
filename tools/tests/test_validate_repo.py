@@ -308,5 +308,116 @@ class TestTheWrapper(unittest.TestCase):
         self.assertEqual(2, proc.returncode)
 
 
+class TestTheSuiteIsDistributedAndHeldToItsCollection(unittest.TestCase):
+    """The tests run on every core the machine gives, and a lost worker is not a pass (#344).
+
+    Serial, "N passed" with a plausible N was evidence the suite ran. Distributed, it is not:
+    a worker that dies takes its tests with it and the number left is still plausible. So the
+    step collects first and holds the run to the count, and these are the shapes that must fail.
+    """
+
+    class FakePytest:
+        """Stands in for subprocess.run, answering collection and the run separately."""
+
+        def __init__(self, collected="1750 tests collected in 0.5s\n",
+                     ran="1750 passed, 1204 subtests passed in 78.2s\n",
+                     collect_code=0, run_code=0):
+            self.collected, self.ran = collected, ran
+            self.collect_code, self.run_code = collect_code, run_code
+            self.calls = []
+
+        def __call__(self, argv, **kwargs):
+            self.calls.append(argv)
+            collecting = "--collect-only" in argv
+            return subprocess.CompletedProcess(
+                argv,
+                self.collect_code if collecting else self.run_code,
+                self.collected if collecting else self.ran,
+                "",
+            )
+
+    def _step(self, fake):
+        run = vr.Run(vr.ROOT, vr.full_scope())
+        original = vr.subprocess.run
+        vr.subprocess.run = fake
+        try:
+            return vr.step_tool_tests(run)
+        finally:
+            vr.subprocess.run = original
+
+    def test_the_run_asks_for_every_core(self):
+        fake = self.FakePytest()
+        self.assertTrue(self._step(fake))
+        run_argv = [a for a in fake.calls if "--collect-only" not in a][0]
+        self.assertIn("-n", run_argv)
+        self.assertEqual("auto", run_argv[run_argv.index("-n") + 1])
+
+    def test_the_collection_is_taken_before_the_run(self):
+        fake = self.FakePytest()
+        self._step(fake)
+        self.assertIn("--collect-only", fake.calls[0])
+
+    def test_fewer_accounted_for_than_collected_is_a_failure(self):
+        # The shape of a lost worker: pytest's own exit code is 0 and the number reads fine.
+        self.assertFalse(self._step(self.FakePytest(ran="1400 passed in 60s\n")))
+
+    def test_a_skip_accounts_for_its_test(self):
+        # This job has no .NET SDK, so the tests that need one skip and the engine job runs them.
+        # A skip is an outcome; refusing it here would fail every CI run for telling the truth.
+        self.assertTrue(self._step(self.FakePytest(ran="1748 passed, 2 skipped in 174s\n")))
+
+    def test_a_skip_does_not_cover_a_test_that_vanished(self):
+        self.assertFalse(self._step(self.FakePytest(ran="1400 passed, 2 skipped in 60s\n")))
+
+    def test_a_run_in_which_everything_skipped_proves_nothing(self):
+        # Every test accounted for and not one of them run. Accounting alone would call this a
+        # pass, which is the "reports ok while examining nothing" shape in its purest form.
+        self.assertFalse(self._step(self.FakePytest(ran="1750 skipped in 3.1s\n")))
+
+    def test_the_other_outcome_counters_account_too(self):
+        self.assertTrue(self._step(
+            self.FakePytest(ran="1745 passed, 2 skipped, 2 xfailed, 1 xpassed in 174s\n")))
+
+    def test_a_collection_that_found_nothing_proves_nothing(self):
+        self.assertFalse(self._step(self.FakePytest(collected="no tests ran in 0.1s\n")))
+
+    def test_a_collection_that_failed_proves_nothing(self):
+        self.assertFalse(self._step(self.FakePytest(collect_code=2)))
+
+    def test_a_run_that_reports_no_passing_tests_proves_nothing(self):
+        self.assertFalse(self._step(self.FakePytest(ran="no tests ran in 0.1s\n")))
+
+    def test_more_passed_than_collected_is_not_a_failure(self):
+        # Collection and the run can legitimately disagree upward; only downward is a loss.
+        self.assertTrue(self._step(self.FakePytest(ran="1751 passed in 78s\n")))
+
+    def test_the_counts_are_read_from_pytest_s_own_lines(self):
+        self.assertEqual(1750, vr._count("1750 tests collected in 0.51s", r"(\d+) tests? collected"))
+        self.assertEqual(1, vr._count("1 test collected in 0.1s", r"(\d+) tests? collected"))
+        self.assertEqual(1750, vr._count("1750 passed, 1204 subtests passed", r"(\d+) passed"))
+        self.assertEqual(0, vr._count("no tests ran in 0.1s", r"(\d+) passed"))
+
+
+class TestTheRunnerIsLocked(unittest.TestCase):
+    """The packages that decide this repository's verdict are pinned and hashed (#173, #344)."""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.text = open(os.path.join(ROOT, "tools", "requirements-dev.txt"), encoding="utf-8").read()
+
+    def test_the_distributed_runner_is_in_the_locked_list(self):
+        self.assertIn("pytest-xdist==", self.text)
+        self.assertIn("execnet==", self.text)
+
+    def test_every_pinned_package_carries_hashes(self):
+        pinned = [line for line in self.text.splitlines()
+                  if line and not line.startswith(("#", " ")) and "==" in line]
+        self.assertGreaterEqual(len(pinned), 7)
+        for line in pinned:
+            with self.subTest(line=line):
+                self.assertTrue(line.rstrip().endswith("\\"),
+                                f"{line} names no hash continuation")
+
+
 if __name__ == "__main__":
     unittest.main()
