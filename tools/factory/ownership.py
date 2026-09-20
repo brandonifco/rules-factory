@@ -311,7 +311,7 @@ RECIPE_SHA256 = {
     },
     "tools/record-verdict.py": {
         1: "48f7b11f7fc829cdaebd776a3eb5db04e27cade97c427c6806b72f58805d83db",
-        2: "efc73dc84ef4f9e02aee7f61f0bb3094b6aa9f74e227e5530d883bd2b0a42df8",
+        2: "1dc71ba17c723dab2c79a7cb42b1470acc84e29a4a45ec15a5b97709d61a49de",
     },
     "tools/conformance-gate.py": {
         1: "567972b60f16d1f86c661e97efa56fa2878c9a5aa92fb820c4aea07a402cbd24",
