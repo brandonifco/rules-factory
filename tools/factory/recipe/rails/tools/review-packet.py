@@ -1,34 +1,33 @@
 #!/usr/bin/env python3
-"""Everything a reviewer needs about one pull request, assembled once.
+"""Everything a reviewer needs about one pull request, assembled from one immutable commit.
 
     tools/review-packet.py <pr-number> [--out DIR] [--stdout] [--base main]
 
 Emitted by rules-factory as a managed file (decision 0029). `AGENTS.md` is the contract, and
 `docs/agent-team.md` says which reviewer reads what.
 
-**Why.** "Review this PR, figure out the context" makes every reviewer rediscover the same facts,
-badly and differently: which entry this is, what the map says, what the issue asked for, what
-changed, what the gate already proved. That is expensive where it is merely wasteful, and wrong
-where a reviewer reconstructs the context from the diff -- which is the implementer's reading of
-the rule, restated.
+A saved review packet is evidence, not merely prose. The tool resolves the PR head and diff base
+once, makes a detached temporary worktree at that exact head, and reads every repository artifact
+from that immutable tree. It also writes a deterministic JSON identity manifest beside the human
+Markdown. `tools/record-verdict.py` consumes that manifest; it never infers what was reviewed from
+the PR's later head.
 
-So the context is assembled mechanically, once, from the issue, the pull request, git and the
-map. What a reviewer then adds is judgement, which is the part that cannot be assembled.
+The caller's branch, index and uncommitted files are never switched or read as review evidence.
+Temporary worktrees and staging directories are removed on success and failure.
 
-**Order matters, and the packet is built to enforce it.** A semantic reviewer reads the entry
-packet (`tools/entry-packet.py`, section 3 here) and forms its own reading of the rule BEFORE the
-diff (section 5). Reading the implementation first destroys the review: the code was written to be
-persuasive about its own interpretation. The sections are in the order they are meant to be read.
-
-**Ephemeral**, for the reason an entry packet is: written outside the repository, never committed.
+`--stdout` is a preview only. It prints the human packet but deliberately emits no identity
+manifest, so it cannot authorize a verdict.
 
 Standard library only, plus `gh` (or `$RULES_ENGINE_GH`) and `git`.
 """
 import argparse
+import contextlib
 import hashlib
 import json
 import os
 import pathlib
+import re
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -39,14 +38,14 @@ OVERLAY = "overlay"
 PROVENANCE = "provenance.json"
 ENTRY_PACKET = "tools/entry-packet.py"
 PACKET_ROOT_VARIABLE = "RULES_ENGINE_PACKET_ROOT"
-# The marker `factory backlog --create` puts under an item's title: the one thing about an item the
-# map never changes, and therefore what ties a pull request back to an entry.
 ENTRY_MARKER = "<!-- rules-factory-entry:"
 DIFF_LINE_BUDGET = 2000
+PACKET_FORMAT = 1
+SHA_RE = re.compile(r"^[0-9a-f]{40}$")
 
 
 class Refused(Exception):
-    """Something the packet cannot honestly assemble. Nothing is written."""
+    """Something the packet cannot honestly assemble. Nothing is published."""
 
 
 def gh(*args):
@@ -61,23 +60,95 @@ def gh(*args):
     return done.stdout
 
 
-def git(*args):
-    done = subprocess.run(["git", *args], stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, cwd=ROOT)
-    if done.returncode != 0:
-        raise Refused(f"git {' '.join(args)} failed: {done.stderr.strip()}")
-    return done.stdout
+def git_run(*args, cwd=ROOT, check=True):
+    done = subprocess.run(["git", *args], stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                          cwd=cwd, text=True)
+    if check and done.returncode != 0:
+        raise Refused(f"git {' '.join(args)} failed: {done.stderr.strip() or done.stdout.strip()}")
+    return done
 
 
-def policy():
+def git(*args, cwd=ROOT):
+    return git_run(*args, cwd=cwd).stdout.strip()
+
+
+def ensure_commit(number, sha):
+    """Ensure GitHub's exact reviewed SHA exists locally without switching the caller's checkout."""
+    if not SHA_RE.fullmatch(sha):
+        raise Refused(f"PR #{number} reported {sha!r}, not a 40-character commit SHA")
+    if git_run("cat-file", "-e", f"{sha}^{{commit}}", check=False).returncode == 0:
+        return
+
+    attempts = [f"pull/{number}/head", sha]
+    errors = []
+    for spec in attempts:
+        done = git_run("fetch", "--no-tags", "origin", spec, check=False)
+        if done.returncode != 0:
+            errors.append(done.stderr.strip() or done.stdout.strip())
+        if git_run("cat-file", "-e", f"{sha}^{{commit}}", check=False).returncode == 0:
+            return
+    detail = "; ".join(error for error in errors if error) or "the object is still absent after fetch"
+    raise Refused(f"cannot obtain exact reviewed commit {sha} for PR #{number}: {detail}. "
+                  "The packet will not fall back to the caller's checkout.")
+
+
+@contextlib.contextmanager
+def immutable_tree(number, sha):
+    """A detached worktree pinned to sha, removed by exact path on every exit."""
+    ensure_commit(number, sha)
+    parent = pathlib.Path(tempfile.mkdtemp(prefix="rules-review-tree-"))
+    tree = parent / "tree"
+    added = False
     try:
-        with open(ROOT / POLICY, encoding="utf-8") as handle:
-            return json.load(handle)
+        done = git_run("worktree", "add", "--detach", str(tree), sha, check=False)
+        if done.returncode != 0:
+            raise Refused(f"cannot create immutable worktree for {sha}: "
+                          f"{done.stderr.strip() or done.stdout.strip()}")
+        added = True
+        actual = git("rev-parse", "HEAD", cwd=tree)
+        if actual != sha:
+            raise Refused(f"immutable worktree resolved to {actual}, not reviewed commit {sha}")
+        yield tree
+    finally:
+        if added:
+            removed = git_run("worktree", "remove", "--force", str(tree), check=False)
+            if removed.returncode != 0:
+                git_run("worktree", "prune", check=False)
+        if parent.exists():
+            shutil.rmtree(parent, ignore_errors=True)
+
+
+def sha256_bytes(data):
+    return hashlib.sha256(data).hexdigest()
+
+
+def sha256_file(path):
+    return sha256_bytes(path.read_bytes())
+
+
+def canonical_digest(value):
+    data = json.dumps(value, sort_keys=True, separators=(",", ":"), ensure_ascii=False).encode("utf-8")
+    return sha256_bytes(data)
+
+
+def policy(root):
+    try:
+        return json.loads((root / POLICY).read_text(encoding="utf-8"))
     except (OSError, ValueError) as error:
-        raise Refused(f"{POLICY} cannot be read ({error}); it holds the labels and the review contexts")
+        raise Refused(f"{POLICY} cannot be read from reviewed commit ({error}); "
+                      "it holds the labels and review contexts")
+
+
+def source_identity(root, role, relative):
+    path = root / relative
+    try:
+        data = path.read_bytes()
+    except OSError as error:
+        raise Refused(f"review source {relative} cannot be read from reviewed commit ({error})")
+    return {"role": role, "path": relative, "sha256": sha256_bytes(data)}
 
 
 def entry_ids(*texts):
-    """Every entry id named by a marker in `texts`, in first-seen order."""
     found = []
     for text in texts:
         for part in (text or "").split(ENTRY_MARKER)[1:]:
@@ -87,30 +158,31 @@ def entry_ids(*texts):
     return found
 
 
-def entry_packet(entry_id, out_dir, package_map=None):
-    """The entry packet for `entry_id`, and its digest, or the reason there is none.
-
-    The digest is what makes "the reviewer read the same entry the implementer did" checkable: two
-    packets of the same entry at the same map version have the same sha256.
-    """
+def entry_packet(root, entry_id, out_dir, package_map=None):
+    """Generate one entry packet using the reviewed tree's implementation and inputs."""
     target = out_dir / f"entry-{entry_id}.md"
-    command = [sys.executable, str(ROOT / ENTRY_PACKET), entry_id, "--out", str(out_dir)]
+    command = [sys.executable, str(root / ENTRY_PACKET), entry_id, "--out", str(out_dir)]
     if package_map:
         command += ["--package-map", package_map]
-    done = subprocess.run(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, cwd=ROOT)
+    done = subprocess.run(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, cwd=root)
     if done.returncode != 0 or not target.is_file():
         return None, None, (done.stderr.strip() or "entry-packet.py produced nothing")
-    data = target.read_bytes()
-    return target, hashlib.sha256(data).hexdigest(), None
+    return target, sha256_file(target), None
 
 
 def section(title, body):
     return f"## {title}\n\n{body.rstrip()}\n"
 
 
-def bounded_diff(base, head):
-    """The diff, with a line budget: a reviewer that skims a 6000-line diff reviewed nothing."""
-    text = git("diff", f"{base}...{head}")
+def diff_text(base_sha, head, *paths):
+    args = ["diff", f"{base_sha}...{head}"]
+    if paths:
+        args += ["--", *paths]
+    return git(*args)
+
+
+def bounded_diff(base_sha, head):
+    text = diff_text(base_sha, head)
     lines = text.splitlines()
     if len(lines) <= DIFF_LINE_BUDGET:
         return "```diff\n" + text.rstrip() + "\n```"
@@ -118,129 +190,155 @@ def bounded_diff(base, head):
     return ("```diff\n" + kept + "\n```\n\n"
             f"**The diff is {len(lines)} lines and was cut at {DIFF_LINE_BUDGET}.** A change this size against one "
             f"issue is itself a finding: say so rather than reviewing the visible part and calling it a review. "
-            f"The whole diff: `git diff {base}...{head}`.")
-
-
-def build(number, base, out_dir, package_map=None):
-    settings = policy()
-    labels = settings.get("labels") or {}
-    review = settings.get("review") or {}
-
-    pull = json.loads(gh("pr", "view", str(number), "--json",
-                         "number,title,body,headRefOid,headRefName,baseRefName,files,closingIssuesReferences"))
-    head = pull.get("headRefOid") or ""
-    issues = pull.get("closingIssuesReferences") or []
-    if len(issues) != 1:
-        raise Refused(f"PR #{number} closes {len(issues)} issues; the rails allow exactly one "
-                      f"(`AGENTS.md`). Fix the PR body before reviewing it.")
-    issue_number = issues[0]["number"]
-    issue = json.loads(gh("issue", "view", str(issue_number), "--json", "number,title,body,labels,state"))
-    issue_labels = [label["name"] for label in issue.get("labels") or []]
-
-    risk = [label for label in issue_labels
-            if label in (labels.get("normalRisk"), labels.get("independentRisk"))]
-    independent = labels.get("independentRisk") in issue_labels
-
-    changed = [f["path"] for f in pull.get("files") or []]
-    semantic = [path for path in changed if is_semantic(path, review.get("semanticPaths") or [])]
-
-    record = json.loads((ROOT / PROVENANCE).read_text(encoding="utf-8"))
-    entries = entry_ids(issue.get("body"), pull.get("body"))
-
-    parts = [f"# Review packet: PR #{number} — {pull.get('title', '')}\n",
-             f"Head commit `{head}`. **Every verdict is recorded against this exact commit.** If the pull request "
-             f"gains another commit, this packet and any verdict recorded from it no longer apply to it.\n",
-             section("1. The issue this closes",
-                     f"**#{issue_number} — {issue.get('title', '')}** ({issue.get('state', '')})\n\n"
-                     f"Labels: {', '.join(issue_labels) or 'none'}\n\n"
-                     f"Risk: {', '.join(risk) if risk else 'no risk label — that is itself a finding'}"
-                     + ("\n\n**Independent review is required for this issue.** A semantic verdict alone does not "
-                        "satisfy the gate." if independent else "") +
-                     f"\n\n---\n\n{issue.get('body') or '(empty)'}"),
-             section("2. What the pull request claims",
-                     (pull.get("body") or "(empty — the PR template is not optional)")),
-             ]
-
-    packets = []
-    if entries:
-        rendered = []
-        for entry_id in entries:
-            path, digest, problem = entry_packet(entry_id, out_dir, package_map)
-            if problem:
-                rendered.append(f"- `{entry_id}`: **no packet** — {problem}")
-            else:
-                packets.append(path)
-                rendered.append(f"- `{entry_id}`: `{path}` (sha256 `{digest}`)")
-        body = ("Read these **before** the diff. They are the map's own bytes for the entries this change names; "
-                "your reading of the rule is formed from them, not from the implementation.\n\n"
-                + "\n".join(rendered))
-    else:
-        body = ("The issue and the pull request name no entry (no `rules-factory-entry` marker). For a change to "
-                "the rules surface that is a finding: the reviewer cannot check an implementation against a rule "
-                "nobody named.")
-    parts.append(section("3. The entries, as the map has them", body))
-
-    parts.append(section("4. What this engine was produced from",
-                         f"- map `{record['map']['packageId']}` {record['map']['version']} "
-                         f"(`sha256:{record['map'].get('nupkgSha256', '')}`)\n"
-                         + "".join(
-                             f"- corpus `{c.get('sourceId')}`"
-                             + (" (principal)" if c.get("principal") else "")
-                             + f", {c.get('hashDerivation', '')}, "
-                             f"content hash `{c.get('contentHash', '')}`\n"
-                             for c in record.get("corpora") or [])
-                         + f"- randomness declared: `{record.get('randomness')}`\n"
-                         + f"- factory `{record['factory'].get('commit', '')[:12]}`"))
-
-    overlay_diff = git("diff", f"{base}...{head}", "--", OVERLAY).rstrip()
-    # The whole directory: one file per entry (#247), so a diff of `overlay` is this pull request's
-    # own entry file and, if it touched more than one entry, each of the others.
-    parts.append(section("5. The overlay, before and after",
-                         ("```diff\n" + overlay_diff + "\n```\n\nEvery test named here carries the mutation that "
-                          "makes it fail. A mutation too vague to re-run is a finding.")
-                         if overlay_diff else
-                         f"`{OVERLAY}/` is unchanged. A change that adds a test without naming it here, or "
-                         f"implements an entry without moving its status, is a finding."))
-
-    parts.append(section("6. What changed",
-                         "\n".join(f"- `{path}`" + ("  ← semantic surface" if path in semantic else "")
-                                   for path in changed) or "(no files)"))
-    parts.append(section("7. The diff", bounded_diff(base, head)))
-
-    parts.append(section("8. Determinism",
-                         "Check, in the diff above: wall-clock time; ambient locale, culture or encoding; "
-                         "environment-dependent ordering (dictionary or set iteration, file-system order); unseeded "
-                         "randomness; hash codes or object identity in anything observable; anything that reads the "
-                         "machine rather than the request. The engine's declared randomness is in section 4: an "
-                         "engine declaring `none` may not reference a randomness package at all."))
-
-    gates = [f"- `validate` — `./scripts/validate.sh full`",
-             f"- `{review.get('semanticContext', '(unset)')}` — required for this change"
-             if semantic else f"- `{review.get('semanticContext', '(unset)')}` — not required: nothing here touches "
-                              f"the semantic surface"]
-    if independent:
-        chain = " → ".join(link.get("context", "?") for link in review.get("independentFallback") or [])
-        gates.append(f"- one of: {chain} — required, because the issue is {labels.get('independentRisk')}")
-    parts.append(section("9. What must be green before this merges",
-                         "\n".join(gates) +
-                         "\n\nA verdict is recorded against the head commit above, and a later commit invalidates "
-                         "it. The chain advances only when a provider is unavailable — never because its verdict "
-                         "was unwelcome."))
-    return "\n".join(parts), head, packets
+            f"The exact diff is `git diff {base_sha}...{head}`.")
 
 
 def is_semantic(path, patterns):
-    """Whether `path` is on the semantic surface, by the policy's glob patterns.
-
-    `**` spans directories and `*` does not, which is what the patterns in `agent-policy.json`
-    mean; fnmatch alone would treat `src/*` as matching `src/a/b.cs`.
-    """
-    import re
     for pattern in patterns:
         regex = re.escape(pattern).replace(r"\*\*/", "(?:.*/)?").replace(r"\*\*", ".*").replace(r"\*", "[^/]*")
         if re.fullmatch(regex, path):
             return True
     return False
+
+
+def build(number, base, out_dir, package_map=None):
+    pull = json.loads(gh("pr", "view", str(number), "--json",
+                         "number,title,body,headRefOid,headRefName,baseRefName,files,closingIssuesReferences"))
+    head = pull.get("headRefOid") or ""
+    if not SHA_RE.fullmatch(head):
+        raise Refused(f"PR #{number} has no exact 40-character head commit")
+    base_sha = git("rev-parse", f"{base}^{{commit}}")
+    if not SHA_RE.fullmatch(base_sha):
+        raise Refused(f"base {base!r} did not resolve to one commit")
+
+    issues = pull.get("closingIssuesReferences") or []
+    if len(issues) != 1:
+        raise Refused(f"PR #{number} closes {len(issues)} issues; the rails allow exactly one (`AGENTS.md`). "
+                      "Fix the PR body before reviewing it.")
+    issue_number = issues[0]["number"]
+    issue = json.loads(gh("issue", "view", str(issue_number), "--json", "number,title,body,labels,state"))
+
+    with immutable_tree(number, head) as reviewed:
+        settings = policy(reviewed)
+        labels = settings.get("labels") or {}
+        review = settings.get("review") or {}
+        issue_labels = [label["name"] for label in issue.get("labels") or []]
+        risk = [label for label in issue_labels
+                if label in (labels.get("normalRisk"), labels.get("independentRisk"))]
+        independent = labels.get("independentRisk") in issue_labels
+
+        changed = [f["path"] for f in pull.get("files") or []]
+        semantic = [path for path in changed if is_semantic(path, review.get("semanticPaths") or [])]
+
+        try:
+            record_bytes = (reviewed / PROVENANCE).read_bytes()
+            record = json.loads(record_bytes.decode("utf-8"))
+        except (OSError, ValueError) as error:
+            raise Refused(f"{PROVENANCE} cannot be read from reviewed commit {head[:12]} ({error})")
+
+        entries = entry_ids(issue.get("body"), pull.get("body"))
+        parts = [
+            f"# Review packet: PR #{number} — {pull.get('title', '')}\n",
+            f"Reviewed commit `{head}`. Resolved diff base `{base_sha}`. "
+            "**Every verdict from this packet belongs only to this immutable commit.** "
+            "If the pull request advances, the packet remains historical evidence and satisfies no gate for the new head.\n",
+            section("1. The issue this closes",
+                    f"**#{issue_number} — {issue.get('title', '')}** ({issue.get('state', '')})\n\n"
+                    f"Labels: {', '.join(issue_labels) or 'none'}\n\n"
+                    f"Risk: {', '.join(risk) if risk else 'no risk label — that is itself a finding'}"
+                    + ("\n\n**Independent review is required for this issue.** A semantic verdict alone does not "
+                       "satisfy the gate." if independent else "") +
+                    f"\n\n---\n\n{issue.get('body') or '(empty)'}"),
+            section("2. What the pull request claims", pull.get("body") or "(empty — the PR template is not optional)")
+        ]
+
+        packet_artifacts = []
+        if entries:
+            rendered = []
+            for entry_id in entries:
+                path, digest, problem = entry_packet(reviewed, entry_id, out_dir, package_map)
+                if problem:
+                    rendered.append(f"- `{entry_id}`: **no packet** — {problem}")
+                else:
+                    packet_artifacts.append({"role": "entry-packet", "entryId": entry_id,
+                                             "file": path.name, "sha256": digest})
+                    rendered.append(f"- `{entry_id}`: `{path.name}` (sha256 `{digest}`)")
+            body = ("Read these **before** the diff. They are the map's own bytes for the entries this change names; "
+                    "your reading of the rule is formed from them, not from the implementation.\n\n"
+                    + "\n".join(rendered))
+        else:
+            body = ("The issue and the pull request name no entry (no `rules-factory-entry` marker). For a change "
+                    "to the rules surface that is a finding: the reviewer cannot check an implementation against a "
+                    "rule nobody named.")
+        parts.append(section("3. The entries, as the map has them", body))
+
+        parts.append(section("4. What this engine was produced from",
+                             f"- map `{record['map']['packageId']}` {record['map']['version']} "
+                             f"(`sha256:{record['map'].get('nupkgSha256', '')}`)\n"
+                             + "".join(
+                                 f"- corpus `{c.get('sourceId')}`"
+                                 + (" (principal)" if c.get("principal") else "")
+                                 + f", {c.get('hashDerivation', '')}, content hash `{c.get('contentHash', '')}`\n"
+                                 for c in record.get("corpora") or [])
+                             + f"- randomness declared: `{record.get('randomness')}`\n"
+                             + f"- factory `{record['factory'].get('commit', '')[:12]}`"))
+
+        overlay_diff = diff_text(base_sha, head, OVERLAY).rstrip()
+        parts.append(section("5. The overlay, before and after",
+                             ("```diff\n" + overlay_diff + "\n```\n\nEvery test named here carries the mutation "
+                              "that makes it fail. A mutation too vague to re-run is a finding.")
+                             if overlay_diff else
+                             f"`{OVERLAY}/` is unchanged. A change that adds a test without naming it here, or "
+                             "implements an entry without moving its status, is a finding."))
+
+        parts.append(section("6. What changed",
+                             "\n".join(f"- `{path}`" + ("  ← semantic surface" if path in semantic else "")
+                                       for path in changed) or "(no files)"))
+        parts.append(section("7. The diff", bounded_diff(base_sha, head)))
+        parts.append(section("8. Determinism",
+                             "Check, in the diff above: wall-clock time; ambient locale, culture or encoding; "
+                             "environment-dependent ordering (dictionary or set iteration, file-system order); "
+                             "unseeded randomness; hash codes or object identity in anything observable; anything "
+                             "that reads the machine rather than the request. The engine's declared randomness is in "
+                             "section 4: an engine declaring `none` may not reference a randomness package at all."))
+
+        gates = ["- `validate` — `./scripts/validate.sh full`",
+                 f"- `{review.get('semanticContext', '(unset)')}` — required for this change"
+                 if semantic else
+                 f"- `{review.get('semanticContext', '(unset)')}` — not required: nothing here touches the semantic surface"]
+        if independent:
+            chain = " → ".join(link.get("context", "?") for link in review.get("independentFallback") or [])
+            gates.append(f"- one of: {chain} — required, because the issue is {labels.get('independentRisk')}")
+        parts.append(section("9. What must be green before this merges",
+                             "\n".join(gates) +
+                             "\n\nA saved verdict is recorded from this packet's JSON identity manifest, on the reviewed "
+                             "commit above. A later head never inherits it. The chain advances only when a provider is "
+                             "unavailable — never because its verdict was unwelcome."))
+
+        sources = [
+            source_identity(reviewed, "provenance", PROVENANCE),
+            source_identity(reviewed, "policy", POLICY),
+        ]
+        if entries:
+            sources.append(source_identity(reviewed, "entry-packet-tool", ENTRY_PACKET))
+
+        map_identity = {
+            "packageId": record["map"].get("packageId"),
+            "version": record["map"].get("version"),
+            "nupkgSha256": record["map"].get("nupkgSha256", ""),
+        }
+        context = {
+            "pullRequestSha256": canonical_digest({
+                key: pull.get(key) for key in
+                ("number", "title", "body", "headRefOid", "headRefName", "baseRefName", "files",
+                 "closingIssuesReferences")
+            }),
+            "issueSha256": canonical_digest({
+                key: issue.get(key) for key in ("number", "title", "body", "labels", "state")
+            }),
+        }
+
+    return "\n".join(parts), head, base_sha, packet_artifacts, sources, map_identity, context
 
 
 def destination(out):
@@ -254,31 +352,63 @@ def destination(out):
     return resolved
 
 
+def manifest_for(number, head, base_sha, packet_path, artifacts, sources, map_identity, context):
+    return {
+        "formatVersion": PACKET_FORMAT,
+        "pullRequest": number,
+        "reviewedCommit": head,
+        "baseCommit": base_sha,
+        "packet": {"file": packet_path.name, "sha256": sha256_file(packet_path)},
+        "map": map_identity,
+        "sources": sorted(sources, key=lambda item: (item["role"], item["path"])),
+        "artifacts": sorted(artifacts, key=lambda item: (item["role"], item["file"])),
+        "context": context,
+    }
+
+
 def main(argv=None):
     parser = argparse.ArgumentParser(prog="review-packet.py", description=__doc__.split("\n")[0])
     parser.add_argument("pr", type=int, help="the pull request number")
     parser.add_argument("--out", help=f"directory to write into (default: ${PACKET_ROOT_VARIABLE}, else a "
-                                      f"directory beside the system temporary one)")
+                                      "directory beside the system temporary one)")
     parser.add_argument("--package-map", help="the restored map package's corpus-map.json, passed to "
-                                                  "entry-packet.py (default: it asks MSBuild)")
-    parser.add_argument("--base", default="origin/main", help="what the change is diffed against (default: origin/main)")
-    parser.add_argument("--stdout", action="store_true", help="write the packet to stdout and no file")
+                                              "entry-packet.py")
+    parser.add_argument("--base", default="origin/main",
+                        help="ref resolved once to the immutable diff base (default: origin/main)")
+    parser.add_argument("--stdout", action="store_true",
+                        help="preview the human packet; emits no manifest and cannot authorize a verdict")
     args = parser.parse_args(argv)
 
+    stage = pathlib.Path(tempfile.mkdtemp(prefix="rules-review-packet-"))
     try:
         out_dir = destination(args.out)
-        out_dir.mkdir(parents=True, exist_ok=True)
-        text, head, packets = build(args.pr, args.base, out_dir, args.package_map)
+        text, head, base_sha, artifacts, sources, map_identity, context = build(
+            args.pr, args.base, stage, args.package_map)
         if args.stdout:
             sys.stdout.write(text)
             return 0
-        target = out_dir / f"pr-{args.pr}-{head[:12]}.md"
-        target.write_text(text, encoding="utf-8")
+
+        packet = stage / f"pr-{args.pr}-{head[:12]}.md"
+        packet.write_text(text, encoding="utf-8")
+        manifest = stage / f"pr-{args.pr}-{head[:12]}.review.json"
+        document = manifest_for(args.pr, head, base_sha, packet, artifacts, sources, map_identity, context)
+        manifest.write_text(json.dumps(document, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+
+        out_dir.mkdir(parents=True, exist_ok=True)
+        publish = [packet] + [stage / item["file"] for item in artifacts] + [manifest]
+        published = []
+        for source in publish:
+            target = out_dir / source.name
+            os.replace(source, target)
+            published.append(target)
     except Refused as error:
         print(f"review-packet: REFUSED -- {error}", file=sys.stderr)
         return 1
-    print(target)
-    for path in packets:
+    finally:
+        if stage.exists():
+            shutil.rmtree(stage, ignore_errors=True)
+
+    for path in published:
         print(path)
     return 0
 
