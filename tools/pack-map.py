@@ -9,10 +9,13 @@ flag that packs without gating, because a package built without its gate is the 
 
 The gate, in order:
 
-  * the corpus's licence -- the manifest's `licence` for the corpus the map cites is public domain
-    or an open licence the factory admits (intake's `licence_class`, decision 0028); any other is
-    refused before anything runs, since its map could never be published;
-  * `check-map.py --phase publish` -- every check, structural and status-dependent;
+  * every cited corpus's licence -- the manifest's `licence` is public domain or an open licence
+    the factory admits (intake's shared admission contract, decision 0028); any other is refused;
+  * every cited corpus's committed bytes are read and recomputed through intake's one
+    `hashDerivation` table. Unknown derivations, malformed digests and mismatches are refusals;
+  * exact map, packaged-manifest and verified-corpus bytes are written to a private immutable
+    snapshot for the verification run (0048);
+  * `check-map.py --phase publish` -- every check, structural and status-dependent, against that snapshot;
   * the locator checker for the corpus's adapter -- every citation resolves in the
     committed corpus, every absence is searched for, every page of the extent is reached.
     An adapter with no checker here, a corpus that is not `committed-copy`, a map citing
@@ -26,12 +29,17 @@ The package, and why it is byte-for-byte deterministic:
   * `map/corpus-map.json` -- the reviewed file's bytes, verbatim;
   * `map/corpus-manifest.json` -- the manifest's bytes verbatim when it declares exactly the
     corpora the map cites, otherwise only those corpora;
-  * `tools/check-map.py` -- the checker's bytes, verbatim (#51). An engine runs its
+  * `tools/check-map.py` -- the checker's bytes, verbatim (#51). Those same bytes run the
+    publish structural gate from the private snapshot and their SHA-256 is bound by 0048. An engine runs its
     `--phase consumer` checks from the restored package rather than from a copy of its own, so
     a change to a status-dependent check reaches the engine with the next version. It imports
     only the standard library, so it is the whole of what that phase needs;
+  * `map/verification.json` -- verificationFormat 1: SHA-256 identities of the packaged map,
+    manifest and checker, plus sourceId/hashDerivation/contentHash for every cited corpus whose
+    exact bytes the locator run read (0048);
   * `build/<id>.props` -- one `RulesFactoryMap` item, so an engine finds the files (the
-    checker included, as `ConsumerChecker`) without knowing where NuGet extracts packages;
+    checker as `ConsumerChecker`, the relationship record as `Verification`) without knowing
+    where NuGet extracts packages;
   * `LICENCE.txt` -- the package's licence, which the nuspec names with `<license type="file">`
     (0023). The map quotes its corpus verbatim, so the package cannot be under the factory's
     Apache-2.0 alone: the file gives the corpus's terms for the quotations, in the words of the
@@ -69,6 +77,7 @@ import os
 import re
 import subprocess
 import sys
+import tempfile
 import zipfile
 
 TOOLS = os.path.dirname(os.path.abspath(__file__))
@@ -76,6 +85,7 @@ REPO = os.path.dirname(TOOLS)
 # The consumer-phase checker the package carries (#51), and where it sits inside the package.
 CHECKER = os.path.join(TOOLS, "check-map.py")
 CHECKER_IN_PACKAGE = "tools/check-map.py"
+VERIFICATION_IN_PACKAGE = "map/verification.json"
 PROJECT_URL = "https://github.com/brandonifco/rules-factory"
 sys.path.insert(0, os.path.join(TOOLS, "factory"))
 import intake  # noqa: E402  (its licence_class, decision 0028; standard library only)
@@ -266,21 +276,8 @@ def run_step(what, argv):
 
 
 def gate(inputs, repo_root):
-    """Run every gate, raising Refused at the first that fails."""
+    """Run every gate against immutable snapshots, returning every verified cited corpus (0048)."""
     corpora = {c.get("sourceId"): c for c in inputs["manifest"].get("corpora") or [] if isinstance(c, dict)}
-    for source_id in sorted(cited_corpora(inputs["map"]) & set(corpora), key=str):
-        try:
-            intake.refuse_unadmitted_licence(corpora[source_id])
-        except intake.Refused as error:
-            raise Refused(str(error))
-    run_step("check-map.py --phase publish", [
-        sys.executable, CHECKER, inputs["map_path"],
-        "--manifest", inputs["manifest_path"], "--repo-root", repo_root, "--phase", "publish"])
-
-    # A map may cite several corpora (0039). Every one of them is gated: declared, committed,
-    # readable by a checker. The refusal this replaced said "every locator checker reads exactly
-    # one corpus", which stopped being true at #301 -- the `section-designation` checker reads a
-    # corpus per `locator.sourceId`. What is still true is narrower and is what is asked here.
     cited = sorted(cited_corpora(inputs["map"]))
     if not cited:
         raise Refused("the map cites no corpus")
@@ -288,9 +285,14 @@ def gate(inputs, repo_root):
         corpus = corpora.get(source_id)
         if corpus is None:
             raise Refused(f"the map cites {source_id!r}, which the manifest does not declare")
+        try:
+            intake.refuse_unadmitted_licence(corpus)
+        except intake.Refused as error:
+            raise Refused(str(error))
         if corpus.get("verification") != "committed-copy":
             raise Refused(f"NOT VERIFIED -- {source_id} is {corpus.get('verification')!r}, not "
-                          f"`committed-copy`, so no publish job can read the corpus to check a citation")
+                          f"committed-copy, so no publish job can read the corpus to check a citation")
+
     adapters = {corpora[source_id].get("adapter") for source_id in cited}
     if len(adapters) != 1:
         raise Refused(f"NOT VERIFIED -- the map cites corpora read by {len(adapters)} adapters "
@@ -304,12 +306,51 @@ def gate(inputs, repo_root):
     if len(cited) > 1 and adapter not in MULTI_CORPUS_ADAPTERS:
         raise Refused(f"NOT VERIFIED -- the map cites {cited} and {os.path.basename(checker)} reads "
                       f"one corpus per run, so these citations cannot all be checked")
+
     here = os.path.dirname(inputs["manifest_path"])
-    texts = [os.path.join(here, str(corpora[source_id].get("committedPath"))) for source_id in cited]
-    argv = ([f"{source_id}={path}" for source_id, path in zip(cited, texts)]
-            if len(cited) > 1 else texts)
-    run_step(f"{os.path.relpath(checker, REPO)} ({adapter})",
-             [sys.executable, checker, inputs["map_path"], *argv])
+    live_paths = [os.path.join(here, str(corpora[source_id].get("committedPath"))) for source_id in cited]
+    try:
+        verified = intake.verify_corpora(inputs["map"], inputs["manifest"], live_paths)
+    except intake.Usage as error:
+        raise Usage(str(error))
+    except intake.Refused as error:
+        raise Refused(str(error))
+
+    # The publish validators must see the exact bytes whose identities the package records. The
+    # live files are never passed to either validator: the bytes already read and hash-verified
+    # above are written once to a private snapshot and both checks run there (0048).
+    with tempfile.TemporaryDirectory(prefix="rules-factory-pack-") as stage:
+        stage_map = os.path.join(stage, "map", "corpus-map.json")
+        stage_manifest = os.path.join(stage, "map", "corpus-manifest.json")
+        stage_checker = os.path.join(stage, CHECKER_IN_PACKAGE)
+        for path, data in ((stage_map, inputs["map_raw"]),
+                           (stage_manifest, inputs["packaged_manifest_raw"]),
+                           (stage_checker, inputs["checker_raw"])):
+            os.makedirs(os.path.dirname(path), exist_ok=True)
+            with open(path, "wb") as handle:
+                handle.write(data)
+
+        staged_corpora = {}
+        for item in sorted(verified, key=lambda v: v["sourceId"]):
+            committed = str(item["corpus"]["committedPath"])
+            path = os.path.abspath(os.path.join(os.path.dirname(stage_manifest), committed))
+            base = os.path.abspath(os.path.dirname(stage_manifest))
+            if os.path.commonpath((base, path)) != base:
+                raise Refused(f"{item['sourceId']} committedPath {committed!r} escapes the map directory")
+            os.makedirs(os.path.dirname(path), exist_ok=True)
+            with open(path, "wb") as handle:
+                handle.write(item["bytes"])
+            staged_corpora[item["sourceId"]] = path
+
+        run_step("check-map.py --phase publish", [
+            sys.executable, stage_checker, stage_map,
+            "--manifest", stage_manifest, "--repo-root", repo_root,
+            "--comparison", inputs["map_path"], "--phase", "publish"])
+        argv = ([f"{source_id}={staged_corpora[source_id]}" for source_id in cited]
+                if len(cited) > 1 else [staged_corpora[cited[0]]])
+        run_step(f"{os.path.relpath(checker, REPO)} ({adapter})",
+                 [sys.executable, checker, stage_map, *argv])
+    return verified
 
 
 def packaged_manifest(inputs):
@@ -321,6 +362,32 @@ def packaged_manifest(inputs):
         return inputs["manifest_raw"]
     narrowed = dict(manifest, corpora=[c for c in corpora if c.get("sourceId") in cited])
     return (json.dumps(narrowed, indent=2, ensure_ascii=False) + "\n").encode("utf-8")
+
+
+def verification_record(inputs, verified):
+    """Deterministic identity of package members and exact corpus bytes the gate verified (0048)."""
+    def digest(data):
+        return hashlib.sha256(data).hexdigest()
+
+    document = {
+        "verificationFormat": intake.VERIFICATION_FORMAT,
+        "artifacts": [
+            {"role": "map", "path": "map/corpus-map.json", "sha256": digest(inputs["map_raw"])},
+            {"role": "manifest", "path": "map/corpus-manifest.json",
+             "sha256": digest(inputs["packaged_manifest_raw"])},
+            {"role": "checker", "path": CHECKER_IN_PACKAGE, "sha256": digest(inputs["checker_raw"])},
+        ],
+        "corpora": [
+            {
+                "sourceId": item["sourceId"],
+                "hashDerivation": item["corpus"]["hashDerivation"],
+                "contentHash": intake.verify_declared_corpus_digest(
+                    item["sourceId"], item["corpus"], item["bytes"], item["path"]),
+            }
+            for item in sorted(verified, key=lambda value: value["sourceId"].encode("utf-8"))
+        ],
+    }
+    return (json.dumps(document, indent=2, ensure_ascii=False) + "\n").encode("utf-8")
 
 
 def xml_escape(text):
@@ -337,8 +404,9 @@ def description(inputs):
             f"{baseline.get('contentHash')}"
             + (f" as of {as_of}" if as_of else " (timeless: no asOf)")
             + f", schemaVersion {document.get('schemaVersion')}. Carries corpus-map.json, the "
-              f"manifest entry of the corpus it cites, and tools/check-map.py for an engine's "
-              f"--phase consumer checks. Published by rules-factory; see "
+              f"manifest entries of the corpora it cites, tools/check-map.py for an engine's "
+              f"--phase consumer checks, and map/verification.json binding those package artifacts "
+              f"to the exact cited-corpus identities verified at publish. Published by rules-factory; see "
               f"docs/decisions/0015 for what a version asserts and what a consumer may overlay. "
               f"Licence: {LICENCE_IN_PACKAGE}. The map quotes its corpus verbatim, and those quotations "
               f"are under the corpus's own terms, not Apache-2.0 (docs/decisions/0023).")
@@ -370,12 +438,14 @@ def parts(inputs, commit):
     props = (
         "<Project>\n"
         "  <!-- Generated by rules-factory tools/pack-map.py. The map this package carries, for an\n"
-        "       engine's gate to merge its overlay onto, and the checker that gate runs on the merge\n"
-        "       in its consumer phase (docs/decisions/0015). -->\n"
+        "       engine's gate to merge its overlay onto; the checker that gate runs on the merge;\n"
+        "       and the verification record intake uses to bind package artifacts to the exact\n"
+        "       corpus identities verified at publish (docs/decisions/0015, 0048). -->\n"
         "  <ItemGroup>\n"
         f'    <RulesFactoryMap Include="$(MSBuildThisFileDirectory)../map/corpus-map.json"\n'
         f'                     Manifest="$(MSBuildThisFileDirectory)../map/corpus-manifest.json"\n'
         f'                     ConsumerChecker="$(MSBuildThisFileDirectory)../{CHECKER_IN_PACKAGE}"\n'
+        f'                     Verification="$(MSBuildThisFileDirectory)../{VERIFICATION_IN_PACKAGE}"\n'
         f'                     PackageId="{pid}"\n'
         f'                     PackageVersion="{version}" />\n'
         "  </ItemGroup>\n"
@@ -384,8 +454,9 @@ def parts(inputs, commit):
     content = [
         (f"{pid}.nuspec", nuspec),
         ("map/corpus-map.json", inputs["map_raw"]),
-        ("map/corpus-manifest.json", packaged_manifest(inputs)),
+        ("map/corpus-manifest.json", inputs["packaged_manifest_raw"]),
         (CHECKER_IN_PACKAGE, inputs["checker_raw"]),
+        (VERIFICATION_IN_PACKAGE, inputs["verification_raw"]),
         (f"build/{pid}.props", props),
         (LICENCE_IN_PACKAGE, licence_file(inputs)),
     ]
@@ -462,7 +533,9 @@ def main(argv=None):
                         f"from map-package.json; bump the version in a reviewed commit, then tag that commit")
         print(f"{inputs['id']} {inputs['version']} from {inputs['map_path']}")
         inputs["corpus_terms"] = corpus_terms(inputs)
-        gate(inputs, args.repo_root)
+        inputs["packaged_manifest_raw"] = packaged_manifest(inputs)
+        verified = gate(inputs, args.repo_root)
+        inputs["verification_raw"] = verification_record(inputs, verified)
     except Usage as error:
         print(f"pack-map: {error}", file=sys.stderr)
         return 2

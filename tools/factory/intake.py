@@ -1,33 +1,35 @@
 """M1 of #3: intake. Open a map package, prove the corpus in hand is the one it was mapped from.
 
 An engine is only as right as the correspondence between its map and its corpus, so nothing
-is scaffolded until five things are shown, in this order, and any one that is not shown is a
+is scaffolded until seven things are shown, in this order, and any one that is not shown is a
 refusal rather than a warning:
 
   1. **The package is a map package.** A `.nupkg` built by `tools/pack-map.py` (0015): its
-     `build/<id>.props` declares exactly one `RulesFactoryMap` item, and the map, manifest and
-     `ConsumerChecker` that item names are all inside the archive. A package without its
+     `build/<id>.props` declares exactly one `RulesFactoryMap` item, and the map, manifest,
+     `ConsumerChecker` and `Verification` record that item names are all inside the archive. A package without its
      checker (pre-2.0.0 backgammon, or a hand-built zip) is not one an engine's gate can use
      (#51), so it is refused, not tolerated. The checker's bytes are read so provenance can
      record their digest; they are never run (below).
   2. **The map is in a schemaVersion this factory reads.** The supported set is
      `SCHEMA_VERSIONS` in the factory's own `tools/check-map.py`, not a copy kept here. A map in
      any other version is refused, naming the versions that would be accepted.
-  3. **The corpus may be committed and published, and is verifiable here.** The map cites
-     exactly one corpus, and the manifest declares it. Its `licence` is public domain or an open
-     licence the factory admits (`licence_class`, decision 0028): a corpus whose licence does not
-     permit committing and publishing its text and its map is refused, whatever else it declares.
-     Its `verification` is `committed-copy` (0013). A `local-copy` corpus is NOT VERIFIED: an
-     engine produced from it could not re-derive its own baseline in CI.
-  4. **The corpus file is the baseline.** The map's `baseline` agrees with the manifest, and
-     the file given on the command line hashes to `contentHash` under `hashDerivation`. A
-     derivation this module does not know is refused -- a digest computed the wrong way is
-     indistinguishable from a changed corpus.
-  5. **The corpus declares whether its engine may draw random values** (0019): `randomness` is
+  3. **The package binds the artifacts its publish gate verified.** Its decision-0048
+     verification record names the map, manifest and packaged checker by SHA-256 and names every
+     corpus the map cites by sourceId, hashDerivation and contentHash. Those artifact digests are
+     compared with the actual package members; a legacy package with no binding is refused.
+  4. **Every cited corpus may be committed and published, and is verifiable here.** Its
+     `licence` is public domain or an admitted open licence (0028), and its `verification` is
+     `committed-copy` (0013). A local-copy corpus is NOT VERIFIED.
+  5. **Every resolved corpus file is the exact identity this package was verified against.**
+     The map's principal `baseline` agrees with the manifest; each supplied file is recomputed
+     under the one canonical `hashDerivation` table, must equal its manifest contentHash, and
+     must equal the package verification record's contentHash for that same sourceId. Unknown
+     derivations and malformed declared digests fail closed.
+  6. **The corpora agree on whether the engine may draw random values** (0019): `randomness` is
      `none` or `seeded`. A package whose manifest predates the field declares nothing, and is
      refused rather than read as `none`: the answer is the corpus's, and a default would be the
      factory's.
-  6. **The factory's own checker passes, in its consumer phase**, on the packaged map and
+  7. **The factory's own checker passes, in its consumer phase**, on the packaged map and
      manifest. Before any overlay exists this is the map exactly as published, so a failure
      here means the map does not hold under the checks its engine will run, and no engine
      should be built on it.
@@ -40,7 +42,7 @@ which chose that package by exact version and lock-file hash. The factory has ch
 yet when it opens a package, so running what the package names would hand the package the
 privileges of whoever runs the factory before a single claim in it had been checked.
 
-**Nothing is read without a limit (#187).** All six checks above run on bytes intake already
+**Nothing is read without a limit (#187).** All seven checks above run on bytes intake already
 holds, so the size of what it takes in is the one thing it must decide before it has verified
 anything. A download is streamed to disk under `MAX_PACKAGE_BYTES` and hashed as it streams; a
 member is refused unread when it declares more than `MAX_MEMBER_BYTES` or a compression ratio
@@ -107,6 +109,8 @@ HASH_DERIVATIONS = {
     # manifest's `sourcePdf.sha256`, and `extract.py --check` holds the two together.
     "srd-5.2.1-pdftotext-24.02.0-page-marked": _sha256_of_bytes,
 }
+SHA256_HEX = re.compile(r"^[0-9a-f]{64}$")
+VERIFICATION_FORMAT = 1
 
 # What a manifest may declare as a corpus's `randomness` (decision 0019). `seeded`: an engine may
 # draw, and only through RulesKernel.Randomness's seeded, replayable source.
@@ -350,19 +354,24 @@ def read_package(nupkg):
         if len(items) != 1:
             raise Refused(f"{props_name} declares {len(items)} RulesFactoryMap items; a map package declares one")
         item = items[0].attrib
-        for field in ("Include", "Manifest", "ConsumerChecker"):
+        for field in ("Include", "Manifest", "ConsumerChecker", "Verification"):
             if not item.get(field):
-                raise Refused(f"{props_name}: the RulesFactoryMap item has no {field}")
+                detail = ("; packages published before decision 0048 are legacy/unbound and cannot "
+                          "establish which corpus bytes their publish gate checked"
+                          if field == "Verification" else "")
+                raise Refused(f"{props_name}: the RulesFactoryMap item has no {field}{detail}")
         if item.get("PackageId") != package_id or item.get("PackageVersion") != version:
             raise Refused(f"{props_name} says {item.get('PackageId')} {item.get('PackageVersion')}; "
                           f"the nuspec says {package_id} {version}")
 
         parts = {}
-        for field, label in (("Include", "map"), ("Manifest", "manifest"), ("ConsumerChecker", "checker")):
+        for field, label in (("Include", "map"), ("Manifest", "manifest"), ("ConsumerChecker", "checker"),
+                             ("Verification", "verification")):
             path = _props_path(item[field])
             if path not in names:
                 what = ("the consumer-phase checker (#51), so an engine built on it could not run the "
-                        "checks its own overlay can change" if label == "checker" else f"its {label}")
+                        "checks its own overlay can change" if label == "checker" else
+                        "its package verification record (0048)" if label == "verification" else f"its {label}")
                 raise Refused(f"{package_id} {version} names {path} as {what}, and the package does not contain it")
             parts[label] = (path, _read_member(archive, path))
     return package_id, version, parts
@@ -458,34 +467,44 @@ def bind_corpora(cited, corpora, corpus_paths):
     return bound
 
 
+def verify_declared_corpus_digest(source_id, corpus, corpus_bytes, where):
+    """Return the canonical digest after proving bytes equal the manifest declaration (0048)."""
+    derivation = corpus.get("hashDerivation") if isinstance(corpus, dict) else None
+    derive = HASH_DERIVATIONS.get(derivation)
+    if derive is None:
+        raise Refused(f"NOT VERIFIED -- no way to compute hashDerivation {derivation!r}; known: "
+                      f"{', '.join(sorted(HASH_DERIVATIONS))}")
+    expected = corpus.get("contentHash") if isinstance(corpus, dict) else None
+    if not isinstance(expected, str) or SHA256_HEX.fullmatch(expected) is None:
+        raise Refused(f"{source_id} declares malformed contentHash {expected!r}; expected 64 lower-case "
+                      f"hexadecimal SHA-256 characters for {derivation}")
+    actual = derive(corpus_bytes)
+    if actual != expected:
+        raise Refused(f"{where} is not {source_id} at its declared baseline: {derivation} gives {actual}, "
+                      f"the manifest declares {expected}")
+    return actual
+
+
 def verify_one(source_id, corpus, corpus_path):
     """(corpus, bytes) once this corpus is proved admissible (0028) and to be its own baseline."""
     refuse_unadmitted_licence(corpus)
 
     posture = corpus.get("verification")
     if posture != "committed-copy":
-        raise Refused(f"NOT VERIFIED -- {source_id} is {posture!r}, not `committed-copy` (0013): an engine "
+        raise Refused(f"NOT VERIFIED -- {source_id} is {posture!r}, not committed-copy (0013): an engine "
                       f"produced from it could not re-derive its baseline wherever it is built")
 
     randomness = corpus.get("randomness")
     if isinstance(randomness, bool) or randomness not in RANDOMNESS:
-        raise Refused(f"{source_id} declares randomness {randomness!r}; a corpus declares `none` or `seeded` "
-                      f"(0019), and a manifest without the field is refused, not read as `none`")
+        raise Refused(f"{source_id} declares randomness {randomness!r}; a corpus declares none or seeded "
+                      f"(0019), and a manifest without the field is refused, not read as none")
 
-    derivation = corpus.get("hashDerivation")
-    derive = HASH_DERIVATIONS.get(derivation)
-    if derive is None:
-        raise Refused(f"NOT VERIFIED -- no way to compute hashDerivation {derivation!r}; known: "
-                      f"{', '.join(sorted(HASH_DERIVATIONS))}")
     try:
         with open(corpus_path, "rb") as handle:
             corpus_bytes = handle.read()
     except OSError as error:
         raise Usage(f"cannot read corpus {corpus_path}: {error}")
-    actual = derive(corpus_bytes)
-    if actual != corpus.get("contentHash"):
-        raise Refused(f"{corpus_path} is not {source_id} at its declared baseline: {derivation} gives {actual}, "
-                      f"the manifest declares {corpus.get('contentHash')}")
+    verify_declared_corpus_digest(source_id, corpus, corpus_bytes, corpus_path)
     return corpus, corpus_bytes
 
 
@@ -533,6 +552,99 @@ def verify_corpora(document, manifest, corpus_paths):
         raise Refused(f"the corpora this map cites declare {', '.join(sorted(postures))}; an engine "
                       f"draws random values as its corpus declares (0019) and these do not agree")
     return verified
+
+
+# --- package/corpus relationship ----------------------------------------------------------
+
+
+def _verification_digest(label, value):
+    if not isinstance(value, str) or SHA256_HEX.fullmatch(value) is None:
+        raise Refused(f"package verification {label} is {value!r}; a SHA-256 identity is 64 lower-case "
+                      f"hexadecimal characters")
+    return value
+
+
+def read_verification_binding(parts, document, manifest):
+    """Validate package members and declarations named by verificationFormat 1 (0048)."""
+    record = _json("verification", parts["verification"][1])
+    if not isinstance(record, dict) or record.get("verificationFormat") != VERIFICATION_FORMAT:
+        found = record.get("verificationFormat") if isinstance(record, dict) else None
+        raise Refused(f"package verificationFormat is {found!r}; this factory reads {VERIFICATION_FORMAT}")
+
+    artifacts = record.get("artifacts")
+    if not isinstance(artifacts, list):
+        raise Refused("package verification artifacts is not a list")
+    expected_roles = {"map", "manifest", "checker"}
+    by_role = {}
+    for item in artifacts:
+        role = item.get("role") if isinstance(item, dict) else None
+        if role not in expected_roles or role in by_role:
+            raise Refused(f"package verification has invalid or duplicate artifact role {role!r}; expected "
+                          f"exactly {', '.join(sorted(expected_roles))}")
+        by_role[role] = item
+    if set(by_role) != expected_roles:
+        raise Refused(f"package verification artifact roles are {sorted(by_role)}; expected "
+                      f"{sorted(expected_roles)}")
+    for role in sorted(expected_roles):
+        item = by_role[role]
+        path, raw = parts[role]
+        if item.get("path") != path:
+            raise Refused(f"package verification {role}.path is {item.get('path')!r}; package props name {path!r}")
+        expected = _verification_digest(f"{role}.sha256", item.get("sha256"))
+        actual = hashlib.sha256(raw).hexdigest()
+        if actual != expected:
+            raise Refused(f"package verification {role}.sha256 is {expected}, but {path} is {actual}")
+
+    cited = cited_corpora(document)
+    records = record.get("corpora")
+    if not isinstance(records, list):
+        raise Refused("package verification corpora is not a list")
+    by_source = {}
+    for item in records:
+        source_id = item.get("sourceId") if isinstance(item, dict) else None
+        if not isinstance(source_id, str) or source_id in by_source:
+            raise Refused(f"package verification has malformed or duplicate corpus sourceId {source_id!r}")
+        by_source[source_id] = item
+    if set(by_source) != cited:
+        raise Refused(f"package verification corpus set is {sorted(by_source)}; map cites {sorted(cited)}")
+
+    declarations = {}
+    for item in ((manifest.get("corpora") or []) if isinstance(manifest, dict) else []):
+        if isinstance(item, dict) and item.get("sourceId") in cited:
+            source_id = item["sourceId"]
+            if source_id in declarations:
+                raise Refused(f"the packaged manifest declares {source_id!r} more than once")
+            declarations[source_id] = item
+    if set(declarations) != cited:
+        raise Refused(f"packaged manifest corpus set is {sorted(declarations)}; map cites {sorted(cited)}")
+
+    for source_id in sorted(cited):
+        bound, declared = by_source[source_id], declarations[source_id]
+        derivation = bound.get("hashDerivation")
+        if derivation != declared.get("hashDerivation"):
+            raise Refused(f"package verification {source_id}.hashDerivation is {derivation!r}; manifest declares "
+                          f"{declared.get('hashDerivation')!r}")
+        expected = _verification_digest(f"{source_id}.contentHash", bound.get("contentHash"))
+        if expected != declared.get("contentHash"):
+            raise Refused(f"package verification {source_id}.contentHash is {expected}; manifest declares "
+                          f"{declared.get('contentHash')!r}")
+    return record, by_source
+
+
+def verify_resolved_corpora_binding(bound, verified):
+    """Require intake-resolved corpus bytes to be the exact identities certified by the package."""
+    actual_sources = {item["sourceId"] for item in verified}
+    if actual_sources != set(bound):
+        raise Refused(f"intake resolved corpora {sorted(actual_sources)} but package verification binds "
+                      f"{sorted(bound)}")
+    for item in verified:
+        source_id = item["sourceId"]
+        declaration = item["corpus"]
+        actual = HASH_DERIVATIONS[declaration["hashDerivation"]](item["bytes"])
+        expected = bound[source_id]["contentHash"]
+        if actual != expected:
+            raise Refused(f"{item['path']} resolves {source_id} as {actual}, but this package was verified "
+                          f"against {expected}")
 
 
 # --- the factory's checker ---------------------------------------------------------------
@@ -615,11 +727,15 @@ def intake(package_spec, corpus_paths, log=None):
     _note(log, f"--- intake: {package_id} {version}")
     document = _json("map", parts["map"][1])
     manifest = _json("manifest", parts["manifest"][1])
+    verification, bound_corpora = read_verification_binding(parts, document, manifest)
+    _note(log, f"package verificationFormat {verification['verificationFormat']}: map, manifest and checker "
+               f"digests match package members")
     schema_version = check_contract(document)
     _note(log, f"map schemaVersion {schema_version}: read by this factory's check-map.py")
     if isinstance(corpus_paths, str):
         corpus_paths = [corpus_paths]
     corpora = verify_corpora(document, manifest, corpus_paths)
+    verify_resolved_corpora_binding(bound_corpora, corpora)
     for verified in corpora:
         corpus = verified["corpus"]
         _note(log, f"corpus {corpus['sourceId']}: {corpus['hashDerivation']} {corpus['contentHash']} "
@@ -633,6 +749,7 @@ def intake(package_spec, corpus_paths, log=None):
         map=document, map_raw=parts["map"][1],
         manifest=manifest, manifest_raw=parts["manifest"][1],
         checker_raw=parts["checker"][1],  # hashed for provenance, never executed (0016)
+        verification=verification, verification_raw=parts["verification"][1],
         part_paths={label: path for label, (path, _) in parts.items()},
         corpora=corpora,
         # The principal corpus: the one the map's envelope names and its `baseline` stamps. It is

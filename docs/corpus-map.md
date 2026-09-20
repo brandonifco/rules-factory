@@ -34,9 +34,13 @@ need only be declared in the manifest, so a map whose rules cross two served doc
 10's, where a code printed in § 172.101's table is stated in § 172.102 — cites both, and the
 manifest pins both. A served-document boundary is a delivery artifact, and
 [0039](decisions/0039-the-manifest-pins-every-corpus-a-map-cites.md) declines to let it split one
-mapping problem into two maps. The factory resolves and independently re-hashes **every** cited
-corpus at intake, carries them all with the engine, and records them all in provenance; nothing
-else turns on which corpus occupies the envelope's field.
+mapping problem into two maps. Packaging and factory intake independently re-hash **every** cited
+corpus under the one canonical hashDerivation implementation. Packaging runs citation checks on an
+immutable snapshot of those exact bytes and records their identities in map/verification.json;
+intake requires its resolved corpus bytes to re-derive to those same identities before accepting
+the package ([0048](decisions/0048-a-verified-map-package-binds-the-exact-artifacts-its-publish-gate-read.md)).
+The engine carries them all and records them all in provenance; nothing else turns on which corpus
+occupies the envelope's field.
 
 ## `extent` — how much of the corpus this map claims to have read
 
@@ -1619,7 +1623,12 @@ own, which are ordinary operations over a date the caller supplies.
 **In the factory, published as a versioned package; never copied into an engine**
 ([0015](decisions/0015-a-map-is-published-as-a-versioned-package.md)). Each map is a NuGet
 package, `RulesFactory.Maps.<MapName>`, carrying `corpus-map.json`, the manifest entries of
-the corpora it cites, and the `tools/check-map.py` its consumer runs; a version asserts one `schemaVersion`, one principal corpus baseline, and the manifest-pinned baseline of every other corpus the map cites ([0039](decisions/0039-the-manifest-pins-every-corpus-a-map-cites.md)).
+the corpora it cites, the `tools/check-map.py` its consumer runs, and `map/verification.json`.
+The verification record binds the SHA-256 of those three package artifacts to every cited corpus's
+sourceId, hashDerivation and verified contentHash; intake compares the record to the actual package
+members and to the corpus bytes it resolves ([0048](decisions/0048-a-verified-map-package-binds-the-exact-artifacts-its-publish-gate-read.md)).
+A version therefore asserts one `schemaVersion`, one principal corpus baseline, and the
+manifest-pinned baseline of every other corpus the map cites ([0039](decisions/0039-the-manifest-pins-every-corpus-a-map-cites.md)).
 
 **What a consumer owns** is an overlay of three fields per entry, `status`, `implementedIn` and
 `tests`, because those are build facts only the engine can know, and they are only true of a

@@ -76,7 +76,7 @@ The factory is now code, in standard-library Python under
 
 | Milestone | Modules | State on `main` |
 |---|---|---|
-| M1 intake | `intake.py` | merged. The package is read as data and never run ([0016](docs/decisions/0016-a-map-package-is-data-not-code.md)); the corpus must hash to the map's baseline |
+| M1 intake | `intake.py` | merged. The package is read as data and never run ([0016](docs/decisions/0016-a-map-package-is-data-not-code.md)); every cited corpus is re-hashed, and [0048](docs/decisions/0048-a-verified-map-package-binds-the-exact-artifacts-its-publish-gate-read.md) binds those resolved bytes to the exact map, manifest and packaged checker that passed the publish gate |
 | M2 scaffold and generation | `generate.py` over `semantics.py`, `csharp.py`, `entries.py`, `registry.py`, `contracts.py`, `correspondence.py`, `pins.py`, `scaffold.py`, `agentrails.py`; `ownership.py` | merged. The registry, map entries and correspondence tests as `*.g.cs`; one ownership class per file ([0018](docs/decisions/0018-every-file-the-factory-writes-has-one-owner.md)). `generate.py` was one 88 KB module until [#171](https://github.com/brandonifco/rules-factory/issues/171) split it by what it emits; it is now the composition, and the name a produced engine imports |
 | M3 gate recipe | `gate.py`, `recipe/` | merged. Every engine carries `scripts/validate.sh` and a CI workflow that runs it |
 | M4 provenance | `provenance.py` | merged. `provenance.json` (format 3), and a command that recomputes it |
@@ -102,7 +102,7 @@ the diff ([AGENTS.md](AGENTS.md) §3).
 |---|---|---|---|
 | `produce` | — | implemented | intake, generation, gate, provenance, verify, write out. It writes no backlog, and removes one an earlier produce committed ([#243](https://github.com/brandonifco/rules-factory/issues/243)) |
 | `produce` | `--package` | implemented | a `.nupkg` path, or `Id@Version` |
-| `produce` | `--corpus` | implemented | the corpus file: `committed-copy`, public domain or openly licensed ([0028](docs/decisions/0028-the-factory-admits-only-corpora-whose-licence-permits-publishing-them.md)), hashing to the map's baseline |
+| `produce` | `--corpus` | implemented | one file per cited corpus: `committed-copy`, public domain or openly licensed ([0028](docs/decisions/0028-the-factory-admits-only-corpora-whose-licence-permits-publishing-them.md)), hashing to its manifest identity and to the same identity bound into the package by [0048](docs/decisions/0048-a-verified-map-package-binds-the-exact-artifacts-its-publish-gate-read.md) |
 | `produce` | `--name` | implemented | the engine's PascalCase name |
 | `produce` | `--out` | implemented | the engine directory: created when absent, updated when it exists |
 | `produce` | `--allow-dirty` | implemented | produce from a factory with uncommitted changes, recorded as `dirty: true` |
@@ -163,11 +163,13 @@ What never happens again is `NOT VERIFIED` on stdout and `0` in `$?`.
 
 ### What a verified `produce` proves
 
-- **The inputs.** The package is a map package with its checker inside. The map is in a schema
-  version this factory reads. The corpus is public domain or openly licensed
-  ([0028](docs/decisions/0028-the-factory-admits-only-corpora-whose-licence-permits-publishing-them.md)),
-  and is the committed copy the map was made of. The factory's own `check-map.py --phase consumer`
-  passes on the packaged map.
+- **The inputs.** The package is a map package with its checker and deterministic verification
+  record inside. The record's map, manifest and checker digests match those actual package members,
+  and every cited corpus supplied to intake re-derives to the same sourceId/hashDerivation/contentHash
+  identity the package says its publish gate verified ([0048](docs/decisions/0048-a-verified-map-package-binds-the-exact-artifacts-its-publish-gate-read.md)).
+  The map is in a schema version this factory reads. Every cited corpus is public domain or openly
+  licensed ([0028](docs/decisions/0028-the-factory-admits-only-corpora-whose-licence-permits-publishing-them.md)).
+  The factory's own `check-map.py --phase consumer` then passes on the packaged map.
 - **The build.** `verify` recomputes provenance, restores (writing the lock files the first
   time, and re-locking them when the run changed the generated pins, as a map version bump
   does), then runs the engine's own gate, `scripts/validate.sh full`: the SDK pin, a locked
@@ -267,7 +269,7 @@ factory ([0028](docs/decisions/0028-the-factory-admits-only-corpora-whose-licenc
 ## The shape of a run
 
 ```
-map package   a corpus map published as a .nupkg (0015): map, manifest, checker
+map package   a corpus map published as a .nupkg (0015, 0048): map, manifest, checker,\n              deterministic verification record binding those bytes to every cited corpus
 corpus        each corpus the map cites, committed-copy, hashing to its manifest baseline
               (--corpus once per cited corpus; one map may cite several, decision 0039)
 name          the engine's PascalCase name

@@ -448,7 +448,8 @@ def build(state, result, model, recorder, factory_dir=FACTORY_DIR):
             "nupkgSha256": result.nupkg_sha256,
             "files": [{"role": role, "path": result.part_paths[role], "sha256": sha256(raw)}
                       for role, raw in (("map", result.map_raw), ("manifest", result.manifest_raw),
-                                        ("checker", result.checker_raw))],
+                                        ("checker", result.checker_raw),
+                                        ("verification", result.verification_raw))],
         },
         "corpora": [
             {

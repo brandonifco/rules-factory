@@ -205,7 +205,8 @@ class TestRecord(ProvenanceCase):
         with zipfile.ZipFile(self.part107) as archive:
             expected = [{"role": role, "path": path, "sha256": hashlib.sha256(archive.read(path)).hexdigest()}
                         for role, path in (("map", "map/corpus-map.json"), ("manifest", "map/corpus-manifest.json"),
-                                           ("checker", "tools/check-map.py"))]
+                                           ("checker", "tools/check-map.py"),
+                                           ("verification", "map/verification.json"))]
         self.assertEqual(record["map"]["files"], expected)
         # One entry per corpus the map cites, sorted by sourceId, the principal one flagged (0039).
         self.assertEqual(record["corpora"], [{"sourceId": "cfr-14-107",

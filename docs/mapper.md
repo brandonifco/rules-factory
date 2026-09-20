@@ -47,9 +47,10 @@ A cited corpus with no protocol is refused, naming which; so is a
 
 It is **not** packed into the map package
 ([0015](decisions/0015-a-map-is-published-as-a-versioned-package.md)). The package carries the
-map, the manifest and the checker, because those are what a consumer needs to judge and build
-from the map. The protocol is how the map was *made*, which is the mapper's business and not the
-factory's — the factory asks for a valid, certified map and nothing about how it was read.
+map, the manifest, the checker and the deterministic verification record that binds those artifacts
+to every cited corpus the publish locator run actually read ([0048](decisions/0048-a-verified-map-package-binds-the-exact-artifacts-its-publish-gate-read.md)).
+The protocol is how the map was *made*, which is the mapper's business and not the factory's — the
+factory asks for a valid, verified map and nothing about how it was read.
 
 ```json
 {
