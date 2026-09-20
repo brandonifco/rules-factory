@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 """Reference-boundary amendment contract regressions (#323, 0047)."""
 import copy
+import json
+import os
 import unittest
 
 from mapcontract.entry import reference_covers, references_of
@@ -91,6 +93,26 @@ class TestReferenceBoundaryAmendments(unittest.TestCase):
                 result = check_manifest(context(corpus))
                 self.assertEqual(result.status, "fail")
                 self.assertTrue(any("may only record" in line for line in result.details))
+
+    def test_trial_10_operational_boundary_covers_every_newly_observed_external_section(self):
+        repo = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
+        with open(os.path.join(repo, "examples", "hazmat-172-table", "corpus-manifest.json"),
+                  encoding="utf-8") as handle:
+            manifest = json.load(handle)
+        corpora = {item["sourceId"]: item for item in manifest["corpora"]}
+        observed = {
+            "cfr-49-172.101": [
+                "cfr-49-173.150", "cfr-49-173.308",
+            ],
+            "cfr-49-172.102": [
+                "cfr-49-173.185", "cfr-49-173.225",
+                "cfr-49-178.702", "cfr-49-180.605",
+            ],
+        }
+        for source, targets in observed.items():
+            for target in targets:
+                with self.subTest(source=source, target=target):
+                    self.assertTrue(reference_covers(corpora[source], target))
 
 
 if __name__ == "__main__":
