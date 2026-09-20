@@ -9,10 +9,12 @@ which the answer is silently nothing", and "does --full still refuse to skip".
 Run: python3 -m pytest tools/tests/test_validate_repo.py
 """
 import importlib.util
+import io
 import os
 import subprocess
 import sys
 import unittest
+from contextlib import redirect_stdout
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(os.path.dirname(HERE))
@@ -61,7 +63,9 @@ class TestEveryRowOfTheTable(unittest.TestCase):
         self.assertEqual("changed", scope.name)
         self.assertEqual(("examples/hoyle-backgammon/corpus-map.json",), scope.maps)
         self.assertEqual(("examples/hoyle-backgammon/map-package.json",), scope.packages)
-        self.assertFalse(scope.engine)
+        # It is packable, and an engine is produced from a package: see
+        # TestTheEngineJobIsOwedByWhatProducesAnEngine. This asserted False until #347.
+        self.assertTrue(scope.engine)
 
     def test_a_shared_corpus_narrows_to_every_map_that_reads_it(self):
         # srd-52-conditions cites the text committed under srd-52-combat. Deriving the affected
@@ -417,6 +421,82 @@ class TestTheRunnerIsLocked(unittest.TestCase):
             with self.subTest(line=line):
                 self.assertTrue(line.rstrip().endswith("\\"),
                                 f"{line} names no hash continuation")
+
+
+class TestTheEngineJobIsOwedByWhatProducesAnEngine(unittest.TestCase):
+    """`Scope.engine` says whether an engine produced from scratch is owed (#347).
+
+    #342 set it for `tools/factory/` only. An engine is produced from a packable map, so that was
+    wrong in the direction that matters: a map change would have told a workflow the engine job
+    could be skipped.
+    """
+
+    @classmethod
+    def setUpClass(cls):
+        cls.engine_source = open(os.path.join(ROOT, "tools", "validate-engine.py"),
+                                 encoding="utf-8").read()
+
+    def test_the_engine_is_owed_by_the_map_it_is_produced_from(self):
+        # The claim in validate-repo.py, held to the file that makes it true rather than trusted.
+        self.assertIn(f'MAP_DIR = "{vr.ENGINE_MAP}"', self.engine_source)
+
+    def test_the_engine_reads_every_packable_map(self):
+        # Which is why every packable map owes it, not only the one it produces from.
+        self.assertIn('glob.glob("examples/*/map-package.json")', self.engine_source)
+
+    def test_a_change_to_the_produced_map_owes_an_engine(self):
+        scope = vr.classify([f"{vr.ENGINE_MAP}/corpus-map.json"])
+        self.assertEqual("changed", scope.name)
+        self.assertTrue(scope.engine)
+
+    def test_a_change_to_any_packable_map_owes_an_engine(self):
+        for settings in vr.discover(vr.ROOT, vr.PACKAGE_GLOB):
+            with self.subTest(package=settings):
+                scope = vr.classify([os.path.join(os.path.dirname(settings), "corpus-map.json")])
+                self.assertTrue(scope.engine, settings)
+
+    def test_a_map_that_is_not_packable_owes_no_engine(self):
+        # srd-52-conditions declares no map-package.json, so no engine is produced from it.
+        scope = vr.classify(["examples/srd-52-conditions/corpus-map.json"])
+        self.assertEqual(("examples/srd-52-conditions/corpus-map.json",), scope.maps)
+        self.assertEqual((), scope.packages)
+        self.assertFalse(scope.engine)
+
+    def test_full_and_release_always_owe_an_engine(self):
+        self.assertTrue(vr.full_scope().engine)
+        self.assertTrue(vr.release_scope("hoyle-backgammon").engine)
+
+
+class TestTheNetworkStepRunsWhereItsSubjectChanges(unittest.TestCase):
+    """check-status-issues.py reads GitHub, and asks about the README, not about code (#347)."""
+
+    def test_it_runs_under_full(self):
+        run = vr.Run(vr.ROOT, vr.full_scope())
+        with self.assertRaises(AssertionError):
+            # Under --full the step may not skip at all; that it tries is the bug this catches.
+            run.skip("reading GitHub for the state of the issues the README cites")
+
+    def test_it_does_not_run_under_a_changed_scope(self):
+        # Asserting only that the step passed would be satisfied by it running and succeeding,
+        # which is what it does on a healthy README. What it must do is say it did not run.
+        scope = vr.classify(["tools/factory/generate.py"])
+        run = vr.Run(vr.ROOT, scope)
+        printed = io.StringIO()
+        with redirect_stdout(printed):
+            self.assertTrue(vr.step_status_issues(run))
+        self.assertIn("not owed by this change", printed.getvalue())
+        self.assertNotIn("NOT CHECKED", printed.getvalue())
+        self.assertFalse(run.failed)
+
+    def test_a_readme_change_widens_to_full_so_it_is_still_reached(self):
+        # The case the step exists for: prose that cites an issue as open. No rule places
+        # README.md, so the diff widens and the step runs.
+        self.assertEqual("full", vr.classify(["README.md"]).name)
+
+    def test_the_parser_half_keeps_running_at_every_scope(self):
+        # check-readme-status.py needs no network and a code change is what moves it.
+        run = vr.Run(vr.ROOT, vr.classify(["tools/factory/generate.py"]))
+        self.assertTrue(vr.step_readme_status(run))
 
 
 if __name__ == "__main__":

@@ -15,13 +15,15 @@ name: publish-map
 # says nothing about another's.
 #
 # A published version can be unlisted and never deleted, so nothing is pushed unless the
-# gate passed. The gate is tools/pack-map.py, which refuses to write a package at all unless
+# gate passed. The `gate` job runs tools/validate-repo.py --release <map>: every structural and
+# corpus check over every map, and only the tagged map packed (0049). Then the gate proper for
+# this map is tools/pack-map.py, which refuses to write a package at all unless
 # check-map.py (every check, --phase publish) and the corpus's locator checker pass; there
 # is no flag that packs without gating. It is proven to refuse trial 5's dependsOn cycle in
 # tools/tests/mapvalidator/test_pack_map.py.
 #
 # `id-token: write` is granted only to the `publish` job. The `gate` job, which runs the
-# whole of validate.sh, never holds it. `publish` re-packs from its own checkout (the jobs
+# repository's whole gate, never holds it. `publish` re-packs from its own checkout (the jobs
 # share no filesystem) and refuses to push unless the bytes it built hash identically to the
 # bytes `gate` built and checked -- pack-map.py is deterministic, so any difference means the
 # two jobs did not pack the same thing.
@@ -85,10 +87,19 @@ jobs:
         run: python3 -m pip install --quiet --disable-pip-version-check --require-hashes -r tools/requirements-dev.txt
 
       # The repository's one definition of acceptable, over every map, before any one of them
-      # is published.
+      # is published. --release narrows exactly one thing and nothing else (0049, #347): every
+      # structural and corpus check still runs over all seven maps, because a map is certified
+      # against this repository's rules and not its own, and only the tagged map is packed.
+      #
+      # Packing the other three proved nothing about this tag. They are packed twice on every
+      # pull request that touches them, and a release is not the occasion to re-establish that.
+      # What is not narrowed is this map's own double pack: the step below packs it, the publish
+      # job packs it again from a separate checkout, and the two digests are compared before
+      # anything is pushed.
       - name: Validate
-        run: ./scripts/validate.sh
+        run: python3 tools/validate-repo.py --release "$MAP"
         env:
+          MAP: ${{ steps.tag.outputs.map }}
           # The README is not what this workflow publishes, so a README sentence citing an issue
           # closed since is not a reason to hold a map back. Pull requests and main still run
           # check-status-issues.py for real; here it says NOT CHECKED.
@@ -114,7 +125,7 @@ jobs:
     permissions:
       contents: read
       # Required to mint the OIDC token Trusted Publishing exchanges for a short-lived API key.
-      # This job only; `gate`, where validate.sh runs, never has it.
+      # This job only; `gate`, where the repository's gate runs, never has it.
       id-token: write
     steps:
       - name: Checkout

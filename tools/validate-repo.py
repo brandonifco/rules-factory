@@ -245,6 +245,10 @@ CORE_FILES = (
 )
 FACTORY_PREFIXES = ("tools/factory/", "scripts/validate-engine.sh", "tools/validate-engine.py")
 
+# The map tools/validate-engine.py produces its engine from. Declared here because the scope has
+# to know whether a diff owes that job, and held to the source by the tests rather than trusted.
+ENGINE_MAP = "examples/hoyle-backgammon"
+
 
 @dataclasses.dataclass(frozen=True)
 class Scope:
@@ -323,6 +327,13 @@ def classify(paths, root: pathlib.Path = ROOT) -> Scope:
 
     if not maps and not engine:
         return widen(paths[0], "nothing in the diff narrowed the scope")
+    if packages:
+        # An engine is produced from a packable map, so a change to one owes the engine job the
+        # same way a change to the factory does. tools/validate-engine.py produces from
+        # ENGINE_MAP and reads every examples/*/map-package.json;
+        # `test_the_engine_is_owed_by_the_map_it_is_produced_from` holds this claim to that file.
+        engine = True
+        reasons.append("a packable map changed: an engine is produced from one")
     order = discover_maps(root)
     return Scope(
         name="changed",
@@ -850,7 +861,18 @@ def step_readme_status(run: Run) -> bool:
 def step_status_issues(run: Run) -> bool:
     """A README sentence that something is "not yet" or "not done" cites an open issue (#170). The
     prose beside #75's table drifted within days of it; this reads GitHub, fails when a state
-    cannot be read, and says NOT CHECKED only when RULES_FACTORY_OFFLINE=1 asks it to."""
+    cannot be read, and says NOT CHECKED only when RULES_FACTORY_OFFLINE=1 asks it to.
+
+    It is the one step in the gate that needs the network, and what it asks about is a fact about
+    two things a diff of code touches neither of: a README sentence, and whether an issue closed.
+    So it runs under `--full` -- which is `scripts/validate.sh`, a push to main, and the scheduled
+    run -- and not under `--changed`. A diff that touches README.md is placed by no rule and
+    widens to `--full` anyway, so the case it exists for still reaches it (#347).
+
+    check-readme-status.py is the other half and stays at every scope: it imports the factory's
+    parser rather than reading the network, and a code change is exactly what moves it."""
+    if not run.scope.is_full:
+        return run.skip("reading GitHub for the state of the issues the README cites")
     return run.python("tools/check-status-issues.py")
 
 
