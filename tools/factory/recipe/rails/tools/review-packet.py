@@ -207,7 +207,7 @@ def build(number, base, out_dir, package_map=None):
                     rendered.append(f"- `{entry_id}`: **no packet** — {problem}")
                 else:
                     packets.append({"entryId": entry_id, "path": path, "sha256": digest})
-                    rendered.append(f"- `{entry_id}`: `{path}` (sha256 `{digest}`)")
+                    rendered.append(f"- `{entry_id}`: `{path.name}` (sha256 `{digest}`)")
             body = ("Read these **before** the diff. They are the reviewed commit's own map/overlay bytes for the "
                     "entries this change names; your reading of the rule is formed from them, not from the "
                     "implementation.\n\n" + "\n".join(rendered))
