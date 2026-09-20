@@ -1004,9 +1004,9 @@ class TestTheReviewPacket(RailsInAGitEngine):
         provenance_path = os.path.join(self.out, "provenance.json")
         with open(provenance_path, encoding="utf-8") as handle:
             record = json.load(handle)
-        reviewed_version = "99.99.334"
-        self.assertNotEqual(record["map"]["version"], reviewed_version)
-        record["map"]["version"] = reviewed_version
+        reviewed_content_hash = "b" * 64
+        self.assertNotEqual(record["corpora"][0]["contentHash"], reviewed_content_hash)
+        record["corpora"][0]["contentHash"] = reviewed_content_hash
         with open(provenance_path, "w", encoding="utf-8") as handle:
             json.dump(record, handle, indent=2)
             handle.write("\n")
@@ -1020,7 +1020,7 @@ class TestTheReviewPacket(RailsInAGitEngine):
         text = self.rendered()
         self.assertIn(head_b, text, "the packet did not name the PR head under review")
         self.assertIn(
-            reviewed_version,
+            reviewed_content_hash,
             text,
             "watched #334 failure A: packet names head B but provenance came from checkout A",
         )
