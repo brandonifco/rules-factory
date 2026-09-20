@@ -628,6 +628,7 @@ Final boundary accounting:
 | § 178.702(a)(2) | Phase-1 `part 178` | `unmapped` |
 | § 180.605 | 0047 mapping-time amendment: `part 180` | `unmapped` |
 | § 173.2a | Phase-1 `part 173`; detector now preserves the full designation | `unmapped` |
+| § 173.24a(c)(1)(iv) | Phase-1 `part 173`; the same parser correction exposed this previously truncated § 173.24 pointer | `unmapped` |
 
 No § 173, § 178 or § 180 text was admitted, no extent or corpus hash moved, and no Trial 10
 hypothesis or selected HMT row changed.
