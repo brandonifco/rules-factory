@@ -530,6 +530,6 @@ A corpus-declared pointer regex is an interrogation, not permission to rename a 
 section designation, detection must preserve the complete section identity the corpus printed.
 The shared CFR grammar reads ordinary numeric sections, bare-letter suffixes such as `§ 173.2a`,
 hyphenated suffixes such as `§ 1.121-1`, and their paragraph chains. A regex match containing
-`§` that stops inside an alphanumeric token is discarded rather than reported as a shorter
-section. Thus `§ 173.2a` can never be reported as `§ 173.2`; malformed longer suffixes are not
+`§` that stops inside an alphanumeric-or-hyphen designation token is discarded rather than
+reported as a shorter section. Thus `§ 173.2a` can never be reported as `§ 173.2`; malformed longer suffixes are not
 accepted by prefix either. (#323)
