@@ -38,6 +38,14 @@ def context(corpus):
     }
 
 
+def add_amendment(corpus, *references):
+    corpus["referenceAmendments"] = [{
+        "discoveredDuring": "mapping",
+        "decision": "0047",
+        "references": list(references),
+    }]
+
+
 class TestReferenceBoundaryAmendments(unittest.TestCase):
     def test_broad_part_reference_covers_child_sections(self):
         self.assertTrue(reference_covers(BASE_CORPUS, "cfr-49-173.150"))
@@ -54,26 +62,20 @@ class TestReferenceBoundaryAmendments(unittest.TestCase):
     def test_an_undeclared_part_is_missing_until_an_amendment_adds_it(self):
         self.assertFalse(reference_covers(BASE_CORPUS, "cfr-49-180.605"))
         corpus = copy.deepcopy(BASE_CORPUS)
-        corpus["referenceAmendments"] = [{
-            "discoveredDuring": "mapping",
-            "decision": "0047",
-            "references": [
-                {"sourceId": "cfr-49-180", "citation": "part 180", "admitted": False}
-            ],
-        }]
+        add_amendment(
+            corpus,
+            {"sourceId": "cfr-49-180", "citation": "part 180", "admitted": False},
+        )
         self.assertTrue(reference_covers(corpus, "cfr-49-180.605"))
         self.assertEqual(BASE_CORPUS["references"], corpus["references"])
         self.assertIn("cfr-49-180", {r["sourceId"] for r in references_of(corpus)})
 
     def test_a_correction_cannot_admit_the_new_corpus(self):
         corpus = copy.deepcopy(BASE_CORPUS)
-        corpus["referenceAmendments"] = [{
-            "discoveredDuring": "mapping",
-            "decision": "0047",
-            "references": [
-                {"sourceId": "cfr-49-180", "citation": "part 180", "admitted": True}
-            ],
-        }]
+        add_amendment(
+            corpus,
+            {"sourceId": "cfr-49-180", "citation": "part 180", "admitted": True},
+        )
         result = check_manifest(context(corpus))
         self.assertEqual(result.status, "fail")
         self.assertTrue(any("referenced-but-not-admitted" in line for line in result.details))
@@ -82,17 +84,69 @@ class TestReferenceBoundaryAmendments(unittest.TestCase):
         for forbidden in ("contentHash", "asOf", "licence"):
             with self.subTest(forbidden=forbidden):
                 corpus = copy.deepcopy(BASE_CORPUS)
-                corpus["referenceAmendments"] = [{
-                    "discoveredDuring": "mapping",
-                    "decision": "0047",
-                    "references": [
-                        {"sourceId": "cfr-49-180", "citation": "part 180", "admitted": False}
-                    ],
-                    forbidden: "changed",
-                }]
+                add_amendment(
+                    corpus,
+                    {"sourceId": "cfr-49-180", "citation": "part 180", "admitted": False},
+                )
+                corpus["referenceAmendments"][0][forbidden] = "changed"
                 result = check_manifest(context(corpus))
                 self.assertEqual(result.status, "fail")
                 self.assertTrue(any("may only record" in line for line in result.details))
+
+    def test_a_correction_reference_requires_a_nonempty_citation(self):
+        for bad in (None, "", 180):
+            with self.subTest(citation=bad):
+                corpus = copy.deepcopy(BASE_CORPUS)
+                add_amendment(
+                    corpus,
+                    {"sourceId": "cfr-49-180", "citation": bad, "admitted": False},
+                )
+                result = check_manifest(context(corpus))
+                self.assertEqual(result.status, "fail")
+                self.assertTrue(any("citation" in line for line in result.details))
+
+    def test_a_part_boundary_citation_must_match_its_source_id(self):
+        corpus = copy.deepcopy(BASE_CORPUS)
+        add_amendment(
+            corpus,
+            {"sourceId": "cfr-49-180", "citation": "part 181", "admitted": False},
+        )
+        result = check_manifest(context(corpus))
+        self.assertEqual(result.status, "fail")
+        self.assertTrue(any("does not match" in line for line in result.details))
+
+    def test_an_existing_or_duplicate_boundary_cannot_be_amended_again(self):
+        corpus = copy.deepcopy(BASE_CORPUS)
+        add_amendment(
+            corpus,
+            {"sourceId": "cfr-49-173", "citation": "part 173", "admitted": False},
+        )
+        result = check_manifest(context(corpus))
+        self.assertEqual(result.status, "fail")
+        self.assertTrue(any("already declared" in line for line in result.details))
+
+        corpus = copy.deepcopy(BASE_CORPUS)
+        add_amendment(
+            corpus,
+            {"sourceId": "cfr-49-180", "citation": "part 180", "admitted": False},
+            {"sourceId": "cfr-49-180", "citation": "part 181", "admitted": False},
+        )
+        result = check_manifest(context(corpus))
+        self.assertEqual(result.status, "fail")
+        self.assertTrue(any("already declared" in line for line in result.details))
+
+    def test_an_already_admitted_boundary_cannot_be_amended(self):
+        corpus = copy.deepcopy(BASE_CORPUS)
+        corpus["references"].append(
+            {"sourceId": "cfr-49-180", "citation": "part 180", "admitted": True}
+        )
+        add_amendment(
+            corpus,
+            {"sourceId": "cfr-49-180", "citation": "part 180", "admitted": False},
+        )
+        result = check_manifest(context(corpus))
+        self.assertEqual(result.status, "fail")
+        self.assertTrue(any("already declared" in line for line in result.details))
 
     def test_trial_10_operational_boundary_covers_every_newly_observed_external_section(self):
         repo = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
