@@ -69,6 +69,7 @@ import os
 import re
 import subprocess
 import sys
+import tempfile
 import zipfile
 
 TOOLS = os.path.dirname(os.path.abspath(__file__))
@@ -76,6 +77,7 @@ REPO = os.path.dirname(TOOLS)
 # The consumer-phase checker the package carries (#51), and where it sits inside the package.
 CHECKER = os.path.join(TOOLS, "check-map.py")
 CHECKER_IN_PACKAGE = "tools/check-map.py"
+VERIFICATION_IN_PACKAGE = "map/verification.json"
 PROJECT_URL = "https://github.com/brandonifco/rules-factory"
 sys.path.insert(0, os.path.join(TOOLS, "factory"))
 import intake  # noqa: E402  (its licence_class, decision 0028; standard library only)
@@ -266,21 +268,8 @@ def run_step(what, argv):
 
 
 def gate(inputs, repo_root):
-    """Run every gate, raising Refused at the first that fails."""
+    """Run every gate against immutable snapshots, returning every verified cited corpus (0048)."""
     corpora = {c.get("sourceId"): c for c in inputs["manifest"].get("corpora") or [] if isinstance(c, dict)}
-    for source_id in sorted(cited_corpora(inputs["map"]) & set(corpora), key=str):
-        try:
-            intake.refuse_unadmitted_licence(corpora[source_id])
-        except intake.Refused as error:
-            raise Refused(str(error))
-    run_step("check-map.py --phase publish", [
-        sys.executable, CHECKER, inputs["map_path"],
-        "--manifest", inputs["manifest_path"], "--repo-root", repo_root, "--phase", "publish"])
-
-    # A map may cite several corpora (0039). Every one of them is gated: declared, committed,
-    # readable by a checker. The refusal this replaced said "every locator checker reads exactly
-    # one corpus", which stopped being true at #301 -- the `section-designation` checker reads a
-    # corpus per `locator.sourceId`. What is still true is narrower and is what is asked here.
     cited = sorted(cited_corpora(inputs["map"]))
     if not cited:
         raise Refused("the map cites no corpus")
@@ -288,9 +277,14 @@ def gate(inputs, repo_root):
         corpus = corpora.get(source_id)
         if corpus is None:
             raise Refused(f"the map cites {source_id!r}, which the manifest does not declare")
+        try:
+            intake.refuse_unadmitted_licence(corpus)
+        except intake.Refused as error:
+            raise Refused(str(error))
         if corpus.get("verification") != "committed-copy":
             raise Refused(f"NOT VERIFIED -- {source_id} is {corpus.get('verification')!r}, not "
-                          f"`committed-copy`, so no publish job can read the corpus to check a citation")
+                          f"committed-copy, so no publish job can read the corpus to check a citation")
+
     adapters = {corpora[source_id].get("adapter") for source_id in cited}
     if len(adapters) != 1:
         raise Refused(f"NOT VERIFIED -- the map cites corpora read by {len(adapters)} adapters "
@@ -304,12 +298,46 @@ def gate(inputs, repo_root):
     if len(cited) > 1 and adapter not in MULTI_CORPUS_ADAPTERS:
         raise Refused(f"NOT VERIFIED -- the map cites {cited} and {os.path.basename(checker)} reads "
                       f"one corpus per run, so these citations cannot all be checked")
+
     here = os.path.dirname(inputs["manifest_path"])
-    texts = [os.path.join(here, str(corpora[source_id].get("committedPath"))) for source_id in cited]
-    argv = ([f"{source_id}={path}" for source_id, path in zip(cited, texts)]
-            if len(cited) > 1 else texts)
-    run_step(f"{os.path.relpath(checker, REPO)} ({adapter})",
-             [sys.executable, checker, inputs["map_path"], *argv])
+    live_paths = [os.path.join(here, str(corpora[source_id].get("committedPath"))) for source_id in cited]
+    try:
+        verified = intake.verify_corpora(inputs["map"], inputs["manifest"], live_paths)
+    except intake.Usage as error:
+        raise Usage(str(error))
+    except intake.Refused as error:
+        raise Refused(str(error))
+
+    # The publish validators must see the exact bytes whose identities the package records. The
+    # live files are never passed to either validator: the bytes already read and hash-verified
+    # above are written once to a private snapshot and both checks run there (0048).
+    with tempfile.TemporaryDirectory(prefix="rules-factory-pack-") as stage:
+        stage_map = os.path.join(stage, "map", "corpus-map.json")
+        stage_manifest = os.path.join(stage, "map", "corpus-manifest.json")
+        stage_checker = os.path.join(stage, CHECKER_IN_PACKAGE)
+        for path, data in ((stage_map, inputs["map_raw"]),
+                           (stage_manifest, inputs["packaged_manifest_raw"]),
+                           (stage_checker, inputs["checker_raw"])):
+            os.makedirs(os.path.dirname(path), exist_ok=True)
+            with open(path, "wb") as handle:
+                handle.write(data)
+
+        staged_corpora = {}
+        for index, item in enumerate(sorted(verified, key=lambda v: v["sourceId"])):
+            path = os.path.join(stage, "corpora", f"{index}.bin")
+            os.makedirs(os.path.dirname(path), exist_ok=True)
+            with open(path, "wb") as handle:
+                handle.write(item["bytes"])
+            staged_corpora[item["sourceId"]] = path
+
+        run_step("check-map.py --phase publish", [
+            sys.executable, stage_checker, stage_map,
+            "--manifest", stage_manifest, "--repo-root", repo_root, "--phase", "publish"])
+        argv = ([f"{source_id}={staged_corpora[source_id]}" for source_id in cited]
+                if len(cited) > 1 else [staged_corpora[cited[0]]])
+        run_step(f"{os.path.relpath(checker, REPO)} ({adapter})",
+                 [sys.executable, checker, stage_map, *argv])
+    return verified
 
 
 def packaged_manifest(inputs):
@@ -321,6 +349,32 @@ def packaged_manifest(inputs):
         return inputs["manifest_raw"]
     narrowed = dict(manifest, corpora=[c for c in corpora if c.get("sourceId") in cited])
     return (json.dumps(narrowed, indent=2, ensure_ascii=False) + "\n").encode("utf-8")
+
+
+def verification_record(inputs, verified):
+    """Deterministic identity of package members and exact corpus bytes the gate verified (0048)."""
+    def digest(data):
+        return hashlib.sha256(data).hexdigest()
+
+    document = {
+        "verificationFormat": intake.VERIFICATION_FORMAT,
+        "artifacts": [
+            {"role": "map", "path": "map/corpus-map.json", "sha256": digest(inputs["map_raw"])},
+            {"role": "manifest", "path": "map/corpus-manifest.json",
+             "sha256": digest(inputs["packaged_manifest_raw"])},
+            {"role": "checker", "path": CHECKER_IN_PACKAGE, "sha256": digest(inputs["checker_raw"])},
+        ],
+        "corpora": [
+            {
+                "sourceId": item["sourceId"],
+                "hashDerivation": item["corpus"]["hashDerivation"],
+                "contentHash": intake.verify_declared_corpus_digest(
+                    item["sourceId"], item["corpus"], item["bytes"], item["path"]),
+            }
+            for item in sorted(verified, key=lambda value: value["sourceId"].encode("utf-8"))
+        ],
+    }
+    return (json.dumps(document, indent=2, ensure_ascii=False) + "\n").encode("utf-8")
 
 
 def xml_escape(text):
@@ -376,6 +430,7 @@ def parts(inputs, commit):
         f'    <RulesFactoryMap Include="$(MSBuildThisFileDirectory)../map/corpus-map.json"\n'
         f'                     Manifest="$(MSBuildThisFileDirectory)../map/corpus-manifest.json"\n'
         f'                     ConsumerChecker="$(MSBuildThisFileDirectory)../{CHECKER_IN_PACKAGE}"\n'
+        f'                     Verification="$(MSBuildThisFileDirectory)../{VERIFICATION_IN_PACKAGE}"\n'
         f'                     PackageId="{pid}"\n'
         f'                     PackageVersion="{version}" />\n'
         "  </ItemGroup>\n"
@@ -384,8 +439,9 @@ def parts(inputs, commit):
     content = [
         (f"{pid}.nuspec", nuspec),
         ("map/corpus-map.json", inputs["map_raw"]),
-        ("map/corpus-manifest.json", packaged_manifest(inputs)),
+        ("map/corpus-manifest.json", inputs["packaged_manifest_raw"]),
         (CHECKER_IN_PACKAGE, inputs["checker_raw"]),
+        (VERIFICATION_IN_PACKAGE, inputs["verification_raw"]),
         (f"build/{pid}.props", props),
         (LICENCE_IN_PACKAGE, licence_file(inputs)),
     ]
@@ -462,7 +518,9 @@ def main(argv=None):
                         f"from map-package.json; bump the version in a reviewed commit, then tag that commit")
         print(f"{inputs['id']} {inputs['version']} from {inputs['map_path']}")
         inputs["corpus_terms"] = corpus_terms(inputs)
-        gate(inputs, args.repo_root)
+        inputs["packaged_manifest_raw"] = packaged_manifest(inputs)
+        verified = gate(inputs, args.repo_root)
+        inputs["verification_raw"] = verification_record(inputs, verified)
     except Usage as error:
         print(f"pack-map: {error}", file=sys.stderr)
         return 2
