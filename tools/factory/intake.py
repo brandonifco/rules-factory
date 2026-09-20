@@ -13,21 +13,23 @@ refusal rather than a warning:
   2. **The map is in a schemaVersion this factory reads.** The supported set is
      `SCHEMA_VERSIONS` in the factory's own `tools/check-map.py`, not a copy kept here. A map in
      any other version is refused, naming the versions that would be accepted.
-  3. **The corpus may be committed and published, and is verifiable here.** The map cites
-     exactly one corpus, and the manifest declares it. Its `licence` is public domain or an open
-     licence the factory admits (`licence_class`, decision 0028): a corpus whose licence does not
-     permit committing and publishing its text and its map is refused, whatever else it declares.
-     Its `verification` is `committed-copy` (0013). A `local-copy` corpus is NOT VERIFIED: an
-     engine produced from it could not re-derive its own baseline in CI.
-  4. **The corpus file is the baseline.** The map's `baseline` agrees with the manifest, and
-     the file given on the command line hashes to `contentHash` under `hashDerivation`. A
-     derivation this module does not know is refused -- a digest computed the wrong way is
-     indistinguishable from a changed corpus.
-  5. **The corpus declares whether its engine may draw random values** (0019): `randomness` is
+  3. **The package binds the artifacts its publish gate verified.** Its decision-0048
+     verification record names the map, manifest and packaged checker by SHA-256 and names every
+     corpus the map cites by sourceId, hashDerivation and contentHash. Those artifact digests are
+     compared with the actual package members; a legacy package with no binding is refused.
+  4. **Every cited corpus may be committed and published, and is verifiable here.** Its
+     `licence` is public domain or an admitted open licence (0028), and its `verification` is
+     `committed-copy` (0013). A local-copy corpus is NOT VERIFIED.
+  5. **Every resolved corpus file is the exact identity this package was verified against.**
+     The map's principal `baseline` agrees with the manifest; each supplied file is recomputed
+     under the one canonical `hashDerivation` table, must equal its manifest contentHash, and
+     must equal the package verification record's contentHash for that same sourceId. Unknown
+     derivations and malformed declared digests fail closed.
+  6. **The corpora agree on whether the engine may draw random values** (0019): `randomness` is
      `none` or `seeded`. A package whose manifest predates the field declares nothing, and is
      refused rather than read as `none`: the answer is the corpus's, and a default would be the
      factory's.
-  6. **The factory's own checker passes, in its consumer phase**, on the packaged map and
+  7. **The factory's own checker passes, in its consumer phase**, on the packaged map and
      manifest. Before any overlay exists this is the map exactly as published, so a failure
      here means the map does not hold under the checks its engine will run, and no engine
      should be built on it.
