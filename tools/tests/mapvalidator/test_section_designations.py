@@ -9,7 +9,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 TOOLS = os.path.dirname(os.path.dirname(HERE))
 REPO = os.path.dirname(TOOLS)
 
-from mapvalidator import locators
+from mapvalidator import crossrefs, locators
 
 
 def section_checker():
@@ -66,6 +66,10 @@ class TestSectionDesignationIdentity(unittest.TestCase):
         ):
             with self.subTest(text=text):
                 self.assertEqual(locators.CITE_SECTION.search(text).group(1), wanted)
+
+    def test_corpus_regex_cannot_report_a_section_prefix_as_the_pointer(self):
+        incomplete = re.compile(r"§+\\s?\\d+\\.\\d+(?:\\([A-Za-z0-9]+\\))*", re.I)
+        self.assertEqual(crossrefs.pointers_in("See § 173.2a.", [incomplete]), [])
 
 
 if __name__ == "__main__":
