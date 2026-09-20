@@ -217,7 +217,7 @@ def verify_sources(sha, sources, has_entries):
 
 
 def validate_manifest(pr, path, document, sha_override):
-    allowed = {"formatVersion", "pullRequest", "reviewedCommit", "baseCommit", "packet",
+    allowed = {"formatVersion", "pullRequest", "reviewedCommit", "baseCommit", "diffSha256", "packet",
                "map", "sources", "inputs", "artifacts", "context"}
     if set(document) != allowed:
         extra = sorted(set(document) - allowed)
@@ -229,7 +229,8 @@ def validate_manifest(pr, path, document, sha_override):
     if packet_pr != pr:
         raise Refused(f"review packet belongs to PR #{packet_pr}, not requested PR #{pr}")
     sha = exact_sha(document.get("reviewedCommit"), "reviewedCommit")
-    exact_sha(document.get("baseCommit"), "baseCommit")
+    base = exact_sha(document.get("baseCommit"), "baseCommit")
+    expected_diff = exact_digest(document.get("diffSha256"), "diffSha256")
     if sha_override is not None and sha_override != sha:
         raise Refused(f"--sha {sha_override} disagrees with review packet commit {sha}")
 
@@ -258,6 +259,11 @@ def validate_manifest(pr, path, document, sha_override):
     exact_digest(context.get("issueSha256"), "context.issueSha256")
 
     ensure_commit(pr, sha)
+    if git("cat-file", "-e", f"{base}^{commit}", check=False).returncode != 0:
+        raise Refused(f"review packet base commit {base} is not present locally")
+    actual_diff = digest(git("diff", f"{base}...{sha}").stdout)
+    if actual_diff != expected_diff:
+        raise Refused(f"review packet diff hashes to {actual_diff}, not manifest digest {expected_diff}")
     verify_sources(sha, document.get("sources"), bool(artifacts))
     return sha
 
