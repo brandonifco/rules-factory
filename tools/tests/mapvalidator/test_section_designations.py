@@ -68,8 +68,10 @@ class TestSectionDesignationIdentity(unittest.TestCase):
                 self.assertEqual(locators.CITE_SECTION.search(text).group(1), wanted)
 
     def test_corpus_regex_cannot_report_a_section_prefix_as_the_pointer(self):
-        incomplete = re.compile(r"§+\\s?\\d+\\.\\d+(?:\\([A-Za-z0-9]+\\))*", re.I)
-        self.assertEqual(crossrefs.pointers_in("See § 173.2a.", [incomplete]), [])
+        incomplete = re.compile(r"§+\s?\d+\.\d+(?:\([A-Za-z0-9]+\))*", re.I)
+        for text in ("See § 173.2a.", "See § 1.121-1(b)(4)."):
+            with self.subTest(text=text):
+                self.assertEqual(crossrefs.pointers_in(text, [incomplete]), [])
 
 
 if __name__ == "__main__":
