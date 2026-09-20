@@ -941,6 +941,56 @@ class TestTheReviewPacket(RailsInAGitEngine):
         self.assertIn("334-reviewed-head", text,
                       "a packet naming head B incorporated provenance from checkout A")
 
+    def test_temporary_review_worktree_is_removed_after_success(self):
+        self.commit_engine()
+        head = self.change()
+        self.pull_request(head)
+        git(self.out, "checkout", "-q", "main")
+        before = git(self.out, "worktree", "list", "--porcelain")
+        done = self.packet("--out", os.path.join(self.tmp, "packets-cleanup-success"))
+        self.assertEqual(done.returncode, 0, done.stderr)
+        self.assertEqual(git(self.out, "worktree", "list", "--porcelain"), before)
+
+    def test_temporary_review_worktree_is_removed_after_packet_failure(self):
+        self.commit_engine()
+        git(self.out, "checkout", "-qb", "bad-provenance")
+        with open(os.path.join(self.out, "provenance.json"), "w", encoding="utf-8") as handle:
+            handle.write("{not json}\n")
+        git(self.out, "add", "provenance.json")
+        git(self.out, "commit", "-qm", "make reviewed provenance unreadable")
+        head = git(self.out, "rev-parse", "HEAD")
+        git(self.out, "checkout", "-q", "main")
+        self.pull_request(head)
+        before = git(self.out, "worktree", "list", "--porcelain")
+        done = self.packet("--out", os.path.join(self.tmp, "packets-cleanup-failure"))
+        self.assertEqual(done.returncode, 1, done.stdout)
+        self.assertIn("provenance.json cannot be read from reviewed commit", done.stderr)
+        self.assertEqual(git(self.out, "worktree", "list", "--porcelain"), before)
+
+    def test_temporary_review_worktree_is_removed_after_entry_packet_failure(self):
+        self.commit_engine()
+        git(self.out, "checkout", "-qb", "missing-entry-packet")
+        os.remove(os.path.join(self.out, "tools", "entry-packet.py"))
+        git(self.out, "add", "-A")
+        git(self.out, "commit", "-qm", "remove reviewed entry packet tool")
+        head = git(self.out, "rev-parse", "HEAD")
+        git(self.out, "checkout", "-q", "main")
+        self.pull_request(head)
+        before = git(self.out, "worktree", "list", "--porcelain")
+        done = self.packet("--out", os.path.join(self.tmp, "packets-entry-failure"))
+        self.assertEqual(done.returncode, 1, done.stdout)
+        self.assertIn("entry packet for altitude-limit could not be assembled", done.stderr)
+        self.assertEqual(git(self.out, "worktree", "list", "--porcelain"), before)
+
+    def test_missing_exact_pr_head_object_refuses_without_checkout_fallback(self):
+        self.commit_engine()
+        missing = "a" * 40
+        self.pull_request(missing)
+        done = self.packet("--out", os.path.join(self.tmp, "packets-missing-head"))
+        self.assertEqual(done.returncode, 1, done.stdout)
+        self.assertIn("cannot obtain exact reviewed commit", done.stderr)
+        self.assertFalse(os.path.exists(os.path.join(self.tmp, "packets-missing-head")))
+
     def test_a_packet_inside_the_repository_is_refused(self):
         self.commit_engine()
         head = self.change()
