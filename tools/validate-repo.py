@@ -19,7 +19,8 @@ What the script had no vocabulary for is a narrower question that is nonetheless
 Scoping a gate is how a gate stops examining things, so the rules here are built to fail towards
 running more:
 
-  * The scope is decided by a table of paths, `RULES`, and every row of it is covered by a test.
+  * The scope is decided by three tables of paths -- CORE_PREFIXES, CORE_FILES and
+    FACTORY_PREFIXES -- and every row of each is covered by a test.
   * A path that matches no row widens to `full`. So does a missing base SHA, an unreadable diff,
     and any exception raised while classifying. There is no input for which "run less" is the
     accidental answer.
