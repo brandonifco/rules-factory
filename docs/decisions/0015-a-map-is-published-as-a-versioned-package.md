@@ -31,7 +31,7 @@ instead of the `Apache-2.0` expression, and `map-package.json` names the map's c
 which must restate the manifest's `licence`. The next versions of `hoyle-backgammon` and
 `faa-part-107` are major for it.
 
-**Amended by [0016](0016-a-map-package-is-data-not-code.md)** (#65): the packaged checker is for
+**Amended by [0048](0048-a-verified-map-package-binds-the-exact-artifacts-its-publish-gate-read.md)** (#333): a verified package carries `map/verification.json`, binding the exact map, manifest and packaged checker bytes to the exact bytes of every cited corpus against which the publish locator run executed. Factory intake re-establishes the relationship and refuses legacy unbound packages. Adding the record is a major package-content change; existing map versions are not rewritten, and the next publication of each existing map takes the major bump this decision already requires.\n\n**Amended by [0016](0016-a-map-package-is-data-not-code.md)** (#65): the packaged checker is for
 the engine's build only. The factory's intake never runs it; it checks a package with its own
 `tools/check-map.py` and refuses a `schemaVersion` that checker does not read.
 
@@ -60,8 +60,8 @@ that states the version. [`tools/pack-map.py`](../../tools/pack-map.py) builds t
 |---|---|
 | `map/corpus-map.json` | the reviewed map, **byte for byte** |
 | `map/corpus-manifest.json` | the manifest entries for the corpora the map cites. It is the manifest's own bytes when that is all the manifest declares, which is true of every map today |
-| `tools/check-map.py` | the checker, **byte for byte** from the commit that was gated. It imports only the standard library, so this one file is everything `--phase consumer` needs. The engine runs the status-dependent checks from here (#51) |
-| `build/<id>.props` | one MSBuild item, `RulesFactoryMap`, pointing at the map and manifest, with `ConsumerChecker` (the path of `tools/check-map.py`), `PackageId` and `PackageVersion` as metadata. An engine's gate finds the map and its checker without knowing where NuGet extracts packages |
+| `tools/check-map.py` | the checker, **byte for byte** from the commit that was gated. The same bytes run the publish structural gate and are bound by 0048. It imports only the standard library, so this one file is everything `--phase consumer` needs. The engine runs the status-dependent checks from here (#51) |
+| `map/verification.json` | 0048's deterministic relationship record: SHA-256 of the packaged map, manifest and checker, and the sourceId/hashDerivation/contentHash of every cited corpus whose exact bytes the publish locator run read |\n| `build/<id>.props` | one MSBuild item, `RulesFactoryMap`, pointing at the map and manifest, with `ConsumerChecker`, `Verification`, `PackageId` and `PackageVersion` as metadata. An engine and intake find the package parts without knowing where NuGet extracts them |
 | `LICENCE.txt` | the package's licence (0023): the corpus's terms for the quoted text, from the map's corpus terms file, and Apache-2.0 for the rest. The nuspec names it with `<license type="file">` |
 | `<id>.nuspec` | id, version, and a description stating the corpus, baseline, `asOf` and `schemaVersion`. `<repository commit>` names the factory commit that was gated |
 
@@ -95,11 +95,7 @@ A published `id@version` asserts four things:
 
 1. **These bytes, forever.** nuget.org lets a version be unlisted but never replaced or deleted.
 2. **They passed the publish gate** at the commit named in the nuspec (below).
-3. **The map is true of exactly one corpus baseline**: `baseline.contentHash` under
-   `baseline.hashDerivation`, and `baseline.asOf` where the corpus is revised over time. A map
-   with no `asOf` is of a timeless corpus. That means timeless, never unknown
-   ([corpus-map.md](../corpus-map.md)).
-4. **It is written in `schemaVersion`** as that file states it.
+3. **The map depends on the exact manifest-pinned bytes of every corpus it cites.** The envelope's `baseline` stamps the principal corpus; 0039 makes the manifest authoritative for every cited corpus; and 0048 records the exact corpus identities used by the publish locator run and binds them to the packaged map, manifest and checker.\n4. **It is written in `schemaVersion`** as that file states it.
 
 **The baseline and the schema are read from the file, not encoded in the version number.** A
 date-shaped version (`2026.1.1`) was rejected. A timeless corpus has no date, and two corrections
