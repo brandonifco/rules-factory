@@ -881,6 +881,9 @@ class TestTheReviewPacket(RailsInAGitEngine):
         document = json.load(open(manifest, encoding="utf-8"))
         self.assertEqual(document["reviewedCommit"], head)
         self.assertEqual(document["baseCommit"], git(self.out, "rev-parse", "main"))
+        raw_diff = subprocess.run(["git", "diff", f"{document['baseCommit']}...{head}"], cwd=self.out,
+                                  check=True, stdout=subprocess.PIPE).stdout
+        self.assertEqual(document["diffSha256"], hashlib.sha256(raw_diff).hexdigest())
         self.assertEqual(document["packet"]["sha256"], hashlib.sha256(open(markdown, "rb").read()).hexdigest())
         self.assertEqual(document["artifacts"][0]["sha256"], hashlib.sha256(open(entry, "rb").read()).hexdigest())
         self.assertEqual(document["inputs"][0]["sha256"], hashlib.sha256(open(package_map, "rb").read()).hexdigest())
@@ -1597,6 +1600,9 @@ if argv_api := [a for a in sys.argv[1:] if a.startswith("repos/")]:
             "pullRequest": pr,
             "reviewedCommit": sha,
             "baseCommit": sha,
+            "diffSha256": hashlib.sha256(subprocess.run(
+                ["git", "diff", f"{sha}...{sha}"], cwd=self.out, check=True,
+                stdout=subprocess.PIPE).stdout).hexdigest(),
             "packet": {"file": os.path.basename(packet),
                        "sha256": hashlib.sha256(open(packet, "rb").read()).hexdigest()},
             "map": {"packageId": provenance["map"]["packageId"],
