@@ -224,7 +224,7 @@ decline that names why and cites where — that is the engine working, not the e
     mutations you then observe, in the change that follows.
 - **Report what happened, not what should have happened.** Paste the command and its actual
   output. "Tests pass" is not evidence; a run is.
-- **A reviewer is given the context, not asked to find it.** `tools/review-packet.py <pr number>`
+- **A reviewer is given the context, not asked to find it.** `tools/review-packet.py <pr number>` (saved packets include the `*.review.json` identity consumed by `tools/record-verdict.py`)
   assembles the issue, the claim, the entries as the map has them, the overlay's before and after,
   the bounded diff and what must be green. Its sections are in the order a semantic reviewer reads
   them: the entry before the implementation, always.
