@@ -224,17 +224,23 @@ decline that names why and cites where — that is the engine working, not the e
     mutations you then observe, in the change that follows.
 - **Report what happened, not what should have happened.** Paste the command and its actual
   output. "Tests pass" is not evidence; a run is.
-- **A reviewer is given the context, not asked to find it.** `tools/review-packet.py <pr number>`
-  assembles the issue, the claim, the entries as the map has them, the overlay's before and after,
-  the bounded diff and what must be green. Its sections are in the order a semantic reviewer reads
-  them: the entry before the implementation, always.
-- **A verdict names a commit.** `tools/record-verdict.py --pr <n> --reviewer <id> --verdict
-  pass|fail` records it as a commit status on the pull request's head SHA, and
-  `tools/conformance-gate.py` requires it there. A further commit therefore invalidates the review
-  that preceded it, automatically, because the status is on the bytes that were actually read. A
-  verdict that lives only in a conversation is worth nothing to this repository.
+- **A reviewer is given one immutable context, not asked to find it.** `tools/review-packet.py
+  <pr number>` reads the PR head once, assembles every repository-derived section from a detached
+  worktree pinned to that exact commit, and writes a Markdown packet plus a deterministic
+  `*.review.json` manifest. The manifest binds the exact base/head, human packet, provenance,
+  review policy, entry-packet tool, every generated entry packet and its exact package-map input.
+  Its sections are in the order a semantic reviewer reads them: the entry before the
+  implementation, always. The caller's branch, index and dirty files are not evidence.
+- **A verdict consumes that packet identity.** `tools/record-verdict.py --pr <n> --packet
+  <packet.review.json> --reviewer <id> --verdict pass|fail` re-hashes the packet and bound
+  artifacts, reads the review policy from the reviewed Git tree, and records the result only on
+  the manifest's reviewed SHA. It never chooses the reviewed commit from the PR's mutable current
+  head. A later commit leaves the old status as historical evidence but `tools/conformance-gate.py`
+  requires a fresh verdict on the new head. Markdown-only legacy packets cannot create a gating
+  verdict. A verdict that lives only in a conversation is worth nothing to this repository.
 
-  **What the verdict gate proves, and what it does not.** A verdict is a commit status, and
+  **What the verdict gate proves, and what it does not.** The packet manifest is an integrity
+  binding, not a signature. A verdict is still a commit status, and
   **anyone who can write a commit status on this repository can post one**: any collaborator with
   write access, any workflow whose token carries `statuses: write`, anyone holding a leaked token.
   Nothing in the mechanism attributes a verdict to the reviewer it names. So the gate is an
