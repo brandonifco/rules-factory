@@ -95,7 +95,7 @@ class TestReferenceBoundaryAmendments(unittest.TestCase):
                 self.assertTrue(any("may only record" in line for line in result.details))
 
     def test_trial_10_operational_boundary_covers_every_newly_observed_external_section(self):
-        repo = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
+        repo = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
         with open(os.path.join(repo, "examples", "hazmat-172-table", "corpus-manifest.json"),
                   encoding="utf-8") as handle:
             manifest = json.load(handle)
