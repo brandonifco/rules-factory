@@ -1,12 +1,18 @@
 {
   "reviews": {
     "corpus-map.json": {
-      "sha256": "c753e3f4974084606204f25eaba262fa307a90d9d1f07f92f156c86df2319400",
-      "method": "exemption",
-      "exemption": {
-        "kind": "legacy",
-        "issue": "#262",
-        "reason": "Not reviewed, and deliberately so: this is the first mapping of trial 10's slice, written as step 2 of #262, and step 3 of the same issue is the blind second mapping that reviews it. Recording anything else here would claim a review the trial has not run. `legacy` is the wrong word and is used for the reason examples/srd-52-conditions/review.json already records: it is the only exemption kind that names a tracking issue, and `non-semantic` needs a reviewed map to depart from, which a first mapping does not have. The map is trial evidence and is used for nothing downstream -- there is no map-package.json, nothing packs it, and no engine consumes it. The blind second mapping should look hardest at four things this mapping's own report names as unsettled: whether a column cell is an entry or a mapper's cut of a row (35 of the 135 entries are cells or contiguous groups of cells, and the contract's answer to distributed meaning is that an entry needing two places is two entries); whether `ib2-vapour-pressure-limit` and `ib3-vapour-pressure-limit` state rules at all when read apart from the coded row above them, which is the H1 strain; whether the conflict recorded under `what-an-ib-code-reaches` is a contradiction or a general rule its own paragraph qualifies; and whether the seven ambiguity verdicts are the right seven."
+      "sha256": "02742574b9bd0c3eb68e62f1afe80297d41ef5317167682145cc55f20810729c",
+      "method": "independent-verdict",
+      "verdict": "independent-verdict-329.json",
+      "note": "PR #329 semantic review: Gemini independently re-reviewed the remediated continuesDefinition relationships against the supplied pinned § 172.102 corpus material and accepted the final map bytes.",
+      "previousReview": {
+        "sha256": "c753e3f4974084606204f25eaba262fa307a90d9d1f07f92f156c86df2319400",
+        "method": "exemption",
+        "exemption": {
+          "kind": "legacy",
+          "issue": "#262",
+          "reason": "Not reviewed, and deliberately so: this is the first mapping of trial 10's slice, written as step 2 of #262, and step 3 of the same issue is the blind second mapping that reviews it. Recording anything else here would claim a review the trial has not run. `legacy` is the wrong word and is used for the reason examples/srd-52-conditions/review.json already records: it is the only exemption kind that names a tracking issue, and `non-semantic` needs a reviewed map to depart from, which a first mapping does not have. The map is trial evidence and is used for nothing downstream -- there is no map-package.json, nothing packs it, and no engine consumes it. The blind second mapping should look hardest at four things this mapping's own report names as unsettled: whether a column cell is an entry or a mapper's cut of a row (35 of the 135 entries are cells or contiguous groups of cells, and the contract's answer to distributed meaning is that an entry needing two places is two entries); whether `ib2-vapour-pressure-limit` and `ib3-vapour-pressure-limit` state rules at all when read apart from the coded row above them, which is the H1 strain; whether the conflict recorded under `what-an-ib-code-reaches` is a contradiction or a general rule its own paragraph qualifies; and whether the seven ambiguity verdicts are the right seven."
+        }
       }
     }
   }
