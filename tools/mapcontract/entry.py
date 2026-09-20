@@ -36,6 +36,11 @@ def references_of(corpus):
     return found
 
 
+def reference_of(corpus, source_id):
+    """One operational reference by source id, or None."""
+    return next((item for item in references_of(corpus) if item.get("sourceId") == source_id), None)
+
+
 def reference_identity(reference):
     """A reference's structural grain and source id, or None when its citation disagrees.
 
