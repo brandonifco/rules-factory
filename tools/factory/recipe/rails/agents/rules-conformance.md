@@ -58,10 +58,12 @@ A verdict — **pass** or **fail** — and then the findings that justify it, mo
 with the entry id, the locator, what the rule requires, what the code does, and the input that
 separates them. A pass with unstated reservations is a fail you did not have the nerve to record.
 
-Your verdict is recorded against the exact commit you reviewed
-(`tools/record-verdict.py --pr <n> --reviewer semantic --verdict pass|fail`). If the pull request
-gains another commit, your verdict no longer applies to it, and that is the mechanism working:
-review the new head or say you have not. Recording it is the whole of the step:
+Your verdict is recorded against the exact packet and commit you reviewed
+(`tools/record-verdict.py --pr <n> --packet <packet.review.json> --reviewer semantic --verdict
+pass|fail`). The manifest is the machine-readable identity of the Markdown and entry packets you
+read; the recorder re-hashes them instead of trusting the PR's current head. If the pull request
+gains another commit, your old verdict remains only on the old SHA and no longer applies to the
+new head: review the new packet or say you have not. Recording it is the whole of the step:
 `.github/workflows/verdict-requeue.yml` asks the gate to report again at that commit, so a gate
 still red for a moment afterwards is bookkeeping catching up, not your verdict failing to register.
 
