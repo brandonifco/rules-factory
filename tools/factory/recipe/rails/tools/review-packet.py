@@ -272,7 +272,8 @@ def build(number, base, out_dir, package_map=None):
                 path, digest, problem = entry_packet(reviewed, entry_id, out_dir,
                                                      str(staged_package_map) if staged_package_map else None)
                 if problem:
-                    rendered.append(f"- `{entry_id}`: **no packet** — {problem}")
+                    raise Refused(f"entry packet for {entry_id} could not be assembled from reviewed commit "
+                                  f"{head[:12]}: {problem}")
                 else:
                     packet_artifacts.append({"role": "entry-packet", "entryId": entry_id,
                                              "file": path.name, "sha256": digest})
