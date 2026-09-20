@@ -1574,8 +1574,10 @@ duplicate every section pointer beneath it. A section-level reference remains ex
 The Phase-1 list is historical evidence. If Phase 2 discovers an external corpus boundary it
 omitted, 0047 adds `referenceAmendments`: an additive, mapping-time correction whose references
 must remain `admitted: false`. Consumers read the operational union of `references` and those
-amendments. The correction cannot carry baseline, date, licence, adapter or verification fields,
-so correcting a boundary cannot silently rewrite what was admitted or which bytes were pinned.
+amendments. An amended reference must have exactly one coherent source/citation identity, cannot
+repeat an existing boundary, and cannot target a corpus the manifest already admits. The correction
+cannot carry baseline, date, licence, adapter or verification fields, so correcting a boundary
+cannot silently rewrite what was admitted or which bytes were pinned.
 In the first trial, three of twelve sections deferred their meaning to a corpus that had not been
 admitted.
 
