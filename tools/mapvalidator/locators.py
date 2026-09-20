@@ -28,6 +28,17 @@ CITE_SUBPART = re.compile(r"\bsubpart\s+([A-Z])\b", re.I)
 EXTENT_SECTION = re.compile(r"^§\s*(\d+\.\d+(?:[A-Za-z]|-\d+)?)$")
 
 
+def section_pointer_match_is_complete(text, match):
+    """Whether a section-sign match ends at a complete designation token (#323).
+
+    Corpus regexes are interrogations, not permission to rename a citation. A match may end
+    before punctuation or prose, but not while the printed designation continues with an
+    alphanumeric character or a hyphen.
+    """
+    return ("§" not in match.group(0) or match.end() >= len(text)
+            or not (text[match.end()].isalnum() or text[match.end()] == "-"))
+
+
 def cited_section(citation):
     """("section", "107.29") or ("subpart", "D") or None, for a section-designation citation.
 
