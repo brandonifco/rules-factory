@@ -19,6 +19,7 @@ leaves a sentinel file and lies about the verdict, and asserts intake ignores it
 
 Run: python3 -m unittest discover -s tools/tests -t tools
 """
+import hashlib
 import importlib.util
 import io
 import json
@@ -56,15 +57,49 @@ def pack(map_dir, out):
     return os.path.join(out, name)
 
 
-def rewrite(source, target, replace):
-    """Copy a package, replacing (bytes) or dropping (None) the named entries."""
-    with zipfile.ZipFile(source) as src, zipfile.ZipFile(target, "w", zipfile.ZIP_STORED) as dst:
-        for info in src.infolist():
-            if info.filename in replace:
-                if replace[info.filename] is not None:
-                    dst.writestr(info, replace[info.filename])
-            else:
-                dst.writestr(info, src.read(info.filename))
+def rewrite(source, target, replace, recertify=True):
+    """Copy a package with named replacements; by default keep 0048 binding internally coherent.
+
+    Most intake tests are about a boundary *after* package identity. Recertifying their deliberate
+    mutations lets them reach that boundary. Tests of the binding itself pass recertify=False.
+    """
+    with zipfile.ZipFile(source) as src:
+        infos = src.infolist()
+        members = {info.filename: src.read(info.filename) for info in infos}
+
+    for name, data in replace.items():
+        if data is None:
+            members.pop(name, None)
+        else:
+            members[name] = data
+
+    if recertify and "map/verification.json" in members:
+        verification = json.loads(members["map/verification.json"])
+        roles = {item["role"]: item for item in verification.get("artifacts") or [] if isinstance(item, dict)}
+        for role, path in (("map", "map/corpus-map.json"), ("manifest", "map/corpus-manifest.json"),
+                           ("checker", "tools/check-map.py")):
+            if role in roles and path in members:
+                roles[role]["sha256"] = hashlib.sha256(members[path]).hexdigest()
+        if "map/corpus-manifest.json" in members:
+            manifest = json.loads(members["map/corpus-manifest.json"])
+            declared = {item.get("sourceId"): item for item in manifest.get("corpora") or []
+                        if isinstance(item, dict)}
+            for item in verification.get("corpora") or []:
+                corpus = declared.get(item.get("sourceId"))
+                if corpus is not None:
+                    item["hashDerivation"] = corpus.get("hashDerivation")
+                    item["contentHash"] = corpus.get("contentHash")
+        members["map/verification.json"] = (
+            json.dumps(verification, indent=2, ensure_ascii=False) + "\n").encode("utf-8")
+
+    with zipfile.ZipFile(target, "w", zipfile.ZIP_STORED) as dst:
+        seen = set()
+        for info in infos:
+            if info.filename in members:
+                dst.writestr(info, members[info.filename])
+                seen.add(info.filename)
+        for name in sorted(set(members) - seen):
+            dst.writestr(name, members[name])
     return target
 
 
@@ -124,6 +159,7 @@ class TestAccepts(IntakeCase):
         self.assertIn("gutenberg-plain-text-including-boilerplate", output)
         self.assertIn("the factory's check-map.py --phase consumer", output)
         self.assertIn("map schemaVersion 1", output)
+        self.assertIn("package verificationFormat 1", output)
 
     def test_part_107(self):
         output = self.assert_passes(self.part107, PART107_XML)
@@ -156,7 +192,8 @@ class TestAccepts(IntakeCase):
                               f"{HOYLE_ID.lower()}.{HOYLE_VERSION}.nupkg")
         if not os.path.isfile(cached):
             self.skipTest(f"{HOYLE_ID} {HOYLE_VERSION} as served by nuget.org is not in the global packages folder")
-        self.assert_passes(f"{HOYLE_ID}@{HOYLE_VERSION}", HOYLE_TEXT)
+        self.assert_refused(f"{HOYLE_ID}@{HOYLE_VERSION}", HOYLE_TEXT,
+                            "no Verification", "legacy/unbound")
 
 
 class TestRefuses(IntakeCase):
@@ -266,6 +303,74 @@ class TestRefuses(IntakeCase):
                           {"map/corpus-map.json": self.map_with(schemaVersion=2)})
         self.assert_refused(package, HOYLE_TEXT, "schemaVersion 2",
                             "reads schemaVersion " + ", ".join(map(str, intake.checker().SCHEMA_VERSIONS)))
+
+
+class TestVerificationBinding(IntakeCase):
+    def member(self, package, name):
+        with zipfile.ZipFile(package) as archive:
+            return archive.read(name)
+
+    def mutate_verification(self, change):
+        record = json.loads(self.member(self.hoyle, "map/verification.json"))
+        change(record)
+        return rewrite(
+            self.hoyle, os.path.join(self.tmp, "binding.nupkg"),
+            {"map/verification.json": (json.dumps(record, indent=2) + "\n").encode("utf-8")},
+            recertify=False)
+
+    def test_map_tampering_is_refused_against_bound_digest(self):
+        changed = bytearray(self.member(self.hoyle, "map/corpus-map.json"))
+        changed[-2] = changed[-2] ^ 1
+        package = rewrite(self.hoyle, os.path.join(self.tmp, "map-tamper.nupkg"),
+                          {"map/corpus-map.json": bytes(changed)}, recertify=False)
+        self.assert_refused(package, HOYLE_TEXT, "verification map.sha256")
+
+    def test_manifest_tampering_is_refused_against_bound_digest(self):
+        changed = self.member(self.hoyle, "map/corpus-manifest.json").replace(
+            b'"title":', b'"title" :', 1)
+        package = rewrite(self.hoyle, os.path.join(self.tmp, "manifest-tamper.nupkg"),
+                          {"map/corpus-manifest.json": changed}, recertify=False)
+        self.assert_refused(package, HOYLE_TEXT, "verification manifest.sha256")
+
+    def test_checker_tampering_is_refused_against_bound_digest(self):
+        changed = self.member(self.hoyle, "tools/check-map.py") + b"\n# tampered\n"
+        package = rewrite(self.hoyle, os.path.join(self.tmp, "checker-tamper.nupkg"),
+                          {"tools/check-map.py": changed}, recertify=False)
+        self.assert_refused(package, HOYLE_TEXT, "verification checker.sha256")
+
+    def test_missing_verification_member_is_refused(self):
+        package = rewrite(self.hoyle, os.path.join(self.tmp, "no-verification.nupkg"),
+                          {"map/verification.json": None}, recertify=False)
+        self.assert_refused(package, HOYLE_TEXT, "verification record", "does not contain it")
+
+    def test_missing_corpus_binding_is_refused(self):
+        package = self.mutate_verification(lambda r: r.__setitem__("corpora", []))
+        self.assert_refused(package, HOYLE_TEXT, "verification corpus set", "map cites")
+
+    def test_extra_unknown_corpus_binding_is_refused(self):
+        def add(record):
+            extra = dict(record["corpora"][0], sourceId="unknown-corpus")
+            record["corpora"].append(extra)
+        package = self.mutate_verification(add)
+        self.assert_refused(package, HOYLE_TEXT, "verification corpus set", "unknown-corpus")
+
+    def test_duplicate_corpus_binding_is_refused(self):
+        package = self.mutate_verification(lambda r: r["corpora"].append(dict(r["corpora"][0])))
+        self.assert_refused(package, HOYLE_TEXT, "duplicate corpus sourceId")
+
+    def test_substituted_corpus_source_id_is_refused(self):
+        package = self.mutate_verification(
+            lambda r: r["corpora"][0].__setitem__("sourceId", "some-other-corpus"))
+        self.assert_refused(package, HOYLE_TEXT, "verification corpus set")
+
+    def test_changed_attestation_digest_is_not_trusted(self):
+        package = self.mutate_verification(
+            lambda r: r["corpora"][0].__setitem__("contentHash", "0" * 64))
+        self.assert_refused(package, HOYLE_TEXT, "contentHash", "manifest declares")
+
+    def test_unknown_verification_format_is_refused(self):
+        package = self.mutate_verification(lambda r: r.__setitem__("verificationFormat", 2))
+        self.assert_refused(package, HOYLE_TEXT, "verificationFormat is 2", "reads 1")
 
 
 class TestPackageIsData(IntakeCase):
