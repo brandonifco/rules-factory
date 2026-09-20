@@ -6,7 +6,7 @@ import os
 
 from .diagnostics import skip, verdict
 from mapcontract.entry import (block, corpora_of, entries_of, label, quotes_withheld,
-                               references_of)
+                               reference_identity, references_of)
 
 
 def check_manifest(ctx):
@@ -67,20 +67,29 @@ def check_manifest(ctx):
                 continue
             for pos, reference in enumerate(refs, start=1):
                 item = f"{where}.references[{pos}]"
-                if not isinstance(reference, dict) or set(reference) - {"sourceId", "citation", "admitted"}:
-                    bad.append(f"  X  {item}: a correction reference has only sourceId, citation "
+                if not isinstance(reference, dict) or set(reference) != {"sourceId", "citation", "admitted"}:
+                    bad.append(f"  X  {item}: a correction reference has exactly sourceId, citation "
                                f"and admitted")
                     continue
-                target = reference.get("sourceId")
+                target, citation = reference.get("sourceId"), reference.get("citation")
                 if not isinstance(target, str) or not target:
                     bad.append(f"  X  {item}: sourceId is a non-empty string")
+                if not isinstance(citation, str) or not citation.strip():
+                    bad.append(f"  X  {item}: citation is a non-empty string")
+                elif reference_identity(reference) is None:
+                    bad.append(f"  X  {item}: citation {citation!r} does not match sourceId "
+                               f"{target!r} as one reference boundary")
                 if reference.get("admitted") is not False:
                     bad.append(f"  X  {item}: a boundary correction is referenced-but-not-admitted; "
                                f"admission is a separate Phase-1 act")
+                if target in corpora:
+                    bad.append(f"  X  {item}: {target!r} is already admitted; a mapping-time "
+                               f"boundary amendment cannot retroactively admit or reclassify it")
                 if target in historical or target in amended:
                     bad.append(f"  X  {item}: {target!r} is already declared; an amendment records "
                                f"a newly discovered boundary, not a rewrite")
-                amended.add(target)
+                if isinstance(target, str) and target:
+                    amended.add(target)
     corpus_id = doc.get("corpus")
     declared = corpora.get(corpus_id)
     if declared is None:
