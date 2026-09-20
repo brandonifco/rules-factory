@@ -51,8 +51,9 @@ You do not need to read the whole corpus, and you should not try. The packet is 
 - Run the gate, whole: `./scripts/validate.sh full`. Paste what it printed.
 - Open one pull request that closes exactly that one issue, filling in every section of
   `.github/pull_request_template.md` with real command output. `tools/pr-policy.py` checks it as a
-  required check, and your verdicts are recorded against the head commit — so another commit after
-  a review means that review no longer applies, and the gate will say so.
+  required check. Reviewers receive an immutable packet bundle, and verdict recording re-hashes
+  that bundle and posts only to the commit its manifest identifies — so another commit after a
+  review means that review no longer applies to the new head, and the gate will say so.
 
 ## What you must not do
 
