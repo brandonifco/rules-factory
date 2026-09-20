@@ -3,7 +3,9 @@
 
 Run: python3 -m unittest tools.tests.mapvalidator.test_package_corpus_identity
 """
+import hashlib
 import importlib.util
+import json
 import io
 import os
 import shutil
@@ -70,6 +72,26 @@ class PackageCorpusIdentityReproduction(unittest.TestCase):
             code = pack_map.main([self.map_dir, "--out", self.out])
         return code, buffer.getvalue()
 
+    def bind_declarations_to_current_mutated_corpus(self):
+        corpus_path = os.path.join(self.map_dir, "hoyle.txt")
+        with open(corpus_path, "rb") as handle:
+            digest = hashlib.sha256(handle.read()).hexdigest()
+        manifest_path = os.path.join(self.map_dir, "corpus-manifest.json")
+        with open(manifest_path, encoding="utf-8") as handle:
+            manifest = json.load(handle)
+        manifest["corpora"][0]["contentHash"] = digest
+        with open(manifest_path, "w", encoding="utf-8") as handle:
+            json.dump(manifest, handle, indent=2, ensure_ascii=False)
+            handle.write("\n")
+        map_path = os.path.join(self.map_dir, "corpus-map.json")
+        with open(map_path, encoding="utf-8") as handle:
+            document = json.load(handle)
+        document["baseline"]["contentHash"] = digest
+        with open(map_path, "w", encoding="utf-8") as handle:
+            json.dump(document, handle, indent=2, ensure_ascii=False)
+            handle.write("\n")
+        return digest
+
     def test_original_cross_stage_identity_break_is_refused(self):
         self.mutate_corpus_and_matching_map_evidence_but_not_declared_hash()
 
@@ -93,6 +115,19 @@ class PackageCorpusIdentityReproduction(unittest.TestCase):
             "and altered evidence while retaining corpus A's declared hash, then intake accepted "
             "that package alongside original corpus A"
         )
+
+    def test_intake_refuses_original_corpus_a_for_a_package_validly_bound_to_corpus_b(self):
+        self.mutate_corpus_and_matching_map_evidence_but_not_declared_hash()
+        digest_b = self.bind_declarations_to_current_mutated_corpus()
+        code, pack_output = self.pack()
+        self.assertEqual(code, 0, pack_output)
+        (name,) = [n for n in os.listdir(self.out) if n.endswith(".nupkg")]
+        package = os.path.join(self.out, name)
+        with self.assertRaises(intake.Refused) as caught:
+            intake.intake(package, ORIGINAL_CORPUS, log=None)
+        self.assertIn("is not hoyle-1909 at its declared baseline", str(caught.exception))
+        self.assertIn(digest_b, str(caught.exception))
+
 
 
 if __name__ == "__main__":
