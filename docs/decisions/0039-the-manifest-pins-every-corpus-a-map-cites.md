@@ -10,7 +10,7 @@ posture on the corpus, and **[0015](0015-a-map-is-published-as-a-versioned-packa
 put the manifest inside the package beside the map. **Sibling of
 [0038](0038-a-map-declares-the-passages-its-grammar-cannot-address.md)**, which is the other half
 of what trial 10's corpus forced. The specification is [corpus-map.md](../corpus-map.md).
-
+\n\n**Amended by [0048](0048-a-verified-map-package-binds-the-exact-artifacts-its-publish-gate-read.md)** (#333): packaging now re-hashes every cited corpus before publication, runs locator verification against an immutable snapshot of those exact bytes, and records the per-corpus identities in a package binding that intake must independently match. 0039's manifest authority and every-corpus cardinality remain unchanged.\n
 ## Context
 
 The eCFR serves 49 CFR § 172.101 and § 172.102 as **two documents with two hashes**, and every
@@ -49,7 +49,7 @@ restriction, not a hole behind it.
 **A map may cite several corpora. The manifest is the authority for which, and for the bytes of
 each. The envelope's `corpus`/`baseline` remains the map's principal stamp, pinning that corpus
 and claiming nothing about the others. Intake resolves and independently hashes every cited
-corpus, the engine carries them all, and provenance records them all.**
+corpus. Packaging also binds every one of those identities to the exact corpus bytes its locator run read (0048); the engine carries them all, and provenance records them all.**
 
 ### 1. No per-corpus baseline is added to the map
 
