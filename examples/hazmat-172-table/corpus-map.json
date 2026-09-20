@@ -690,8 +690,8 @@
           "unmapped": "§ 173.225 is in part 173, the shippers' packaging requirements, which this map does not admit and no entry of it states; the manifest records the boundary"
         },
         {
-          "cites": "prescribed in § 173.2",
-          "unmapped": "the hazard precedence is § 173.2a's, in part 173, referenced and not admitted. The detected words stop at § 173.2 because the pointer pattern's designation does not read a letter suffix, which is why the reason names the section the corpus actually cites"
+          "cites": "prescribed in § 173.2a of this subchapter",
+          "unmapped": "§ 173.2a is in part 173, the shippers' packaging requirements, which this map does not admit and no entry of it states; the manifest records the part-173 boundary"
         },
         {
           "cites": "of this subchapter",
@@ -789,8 +789,8 @@
           "unmapped": "“this part” is 49 CFR part 172, of which the manifest admits § 172.101 and § 172.102 and nothing else; the subparts this phrase names have no entry here"
         },
         {
-          "cites": "§ 173.2",
-          "unmapped": "the same § 173.2a as in § 172.101(c)(11), in part 173, referenced and not admitted; the detected words stop at § 173.2 for the same reason"
+          "cites": "§ 173.2a of this subchapter",
+          "unmapped": "§ 173.2a is in part 173, the shippers' packaging requirements, which this map does not admit and no entry of it states; the manifest records the part-173 boundary"
         },
         {
           "cites": "of this subchapter",
@@ -1436,8 +1436,8 @@
       "note": "And where one material is a liquid and another a solid, the total is computed in kilograms. A test must show the unit conversion, not only the minimum.",
       "crossReferences": [
         {
-          "cites": "§ 173.24",
-          "unmapped": "§ 173.24 is in part 173, the shippers' packaging requirements, which this map does not admit and no entry of it states; the manifest records the boundary"
+          "cites": "§ 173.24a(c)(1)(iv)",
+          "unmapped": "§ 173.24a is in part 173, the shippers' packaging requirements, which this map does not admit and no entry of it states; the manifest records the part-173 boundary"
         }
       ]
     },

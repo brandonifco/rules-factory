@@ -524,3 +524,14 @@ none.
 - **The detector reads `evidence`,** which is the corpus's words for one rule and not the whole
   passage, so a naming outside every entry's quoted span is invisible to it. And it matches a
   term exactly, so a corpus that inflects its defined terms needs a mechanism this is not.
+
+
+### Section-designation pointer identity
+
+A corpus-declared pointer regex is an interrogation, not permission to rename a citation. For a
+section designation, detection must preserve the complete section identity the corpus printed.
+The shared CFR grammar reads ordinary numeric sections, bare-letter suffixes such as `§ 173.2a`,
+hyphenated suffixes such as `§ 1.121-1`, and their paragraph chains. A regex match containing
+`§` that stops inside an alphanumeric-or-hyphen designation token is discarded rather than
+reported as a shorter section. Thus `§ 173.2a` can never be reported as `§ 173.2`; malformed longer suffixes are not
+accepted by prefix either. (#323)

@@ -154,11 +154,84 @@ ID_LIST_FIELDS = ("dependsOn",) + GATE_FIELDS
 # exception it would have to distinguish from a real verdict.
 
 
+REFERENCE_PART_CITATION = re.compile(r"^part\s+(\d+)$", re.I)
+REFERENCE_SECTION_CITATION = re.compile(r"^§\s*(\d+\.\d+(?:[A-Za-z]|-\d+)?)$")
+
+
 def corpora_of(manifest):
     if not isinstance(manifest, dict):
         return {}
     return {c.get("sourceId"): c for c in manifest.get("corpora") or [] if isinstance(c, dict)}
 
+
+
+def references_of(corpus):
+    """The corpus's operational external references, including provenance-preserving amendments.
+
+    `references` is the Phase-1 admission record. A later mapping may discover that record was
+    incomplete; 0047 keeps that historical list intact and layers additive `referenceAmendments`
+    over it. Readers that need the current boundary use this function rather than silently
+    choosing the historical list or the correction.
+    """
+    if not isinstance(corpus, dict):
+        return []
+    found = [item for item in corpus.get("references") or [] if isinstance(item, dict)]
+    for amendment in corpus.get("referenceAmendments") or []:
+        if not isinstance(amendment, dict):
+            continue
+        found.extend(item for item in amendment.get("references") or [] if isinstance(item, dict))
+    return found
+
+
+def reference_of(corpus, source_id):
+    """One operational reference by source id, or None."""
+    return next((item for item in references_of(corpus) if item.get("sourceId") == source_id), None)
+
+
+def reference_identity(reference):
+    """A reference's structural grain and source id, or None when its citation disagrees.
+
+    Part and section citations carry identity in both `citation` and `sourceId`; reading them
+    structurally keeps a broad part boundary from becoming a textual-prefix wildcard. Other
+    citation forms are exact references and retain their declared source id.
+    """
+    if not isinstance(reference, dict):
+        return None
+    source_id, citation = reference.get("sourceId"), reference.get("citation")
+    if (not isinstance(source_id, str) or not source_id
+            or not isinstance(citation, str) or not citation.strip()):
+        return None
+    citation = citation.strip()
+    part = REFERENCE_PART_CITATION.fullmatch(citation)
+    if part:
+        return ("part", source_id) if source_id.endswith("-" + part.group(1)) else None
+    if citation.lower().startswith("part "):
+        return None
+    section = REFERENCE_SECTION_CITATION.fullmatch(citation)
+    if section:
+        return ("section", source_id) if source_id.endswith("-" + section.group(1)) else None
+    if citation.startswith("§"):
+        return None
+    return ("exact", source_id)
+
+
+def reference_covers(corpus, source_id):
+    """Whether the operational boundary declares `source_id`.
+
+    Exact source ids cover themselves. Only a structurally coherent `part N` reference expands
+    to child section ids. A section declaration stays exact and cannot cover a longer section by
+    textual prefix accident.
+    """
+    if not isinstance(source_id, str) or not source_id:
+        return False
+    for reference in references_of(corpus):
+        declared = reference.get("sourceId")
+        if declared == source_id:
+            return True
+        identity = reference_identity(reference)
+        if identity and identity[0] == "part" and source_id.startswith(identity[1] + "."):
+            return True
+    return False
 
 def quotes_withheld(manifest, entry):
     """True when the entry's corpus declares `quotation: withheld` (0013)."""
@@ -514,10 +587,21 @@ def check_unique_ids(ctx):
 # examples/faa-part-107/check-locators-section.py reads them. `CITE_SECTION` and `CITE_SUBPART`
 # are that checker's expressions, verbatim; `test_check_map.py` runs both over every citation in
 # the Part 107 maps and requires them to agree, so the two cannot drift apart silently.
-CITE_SECTION = re.compile(r"§+\s*(\d+\.\d+(?:-\d+)?)")
+CITE_SECTION = re.compile(r"§+\s*(\d+\.\d+(?:[A-Za-z]|-\d+)?)(?![A-Za-z0-9-])")
 CITE_SUBPART = re.compile(r"\bsubpart\s+([A-Z])\b", re.I)
 # One item of `extent.sections`: a section and nothing else -- no paragraph, no range.
-EXTENT_SECTION = re.compile(r"^§\s*(\d+\.\d+(?:-\d+)?)$")
+EXTENT_SECTION = re.compile(r"^§\s*(\d+\.\d+(?:[A-Za-z]|-\d+)?)$")
+
+
+def section_pointer_match_is_complete(text, match):
+    """Whether a section-sign match ends at a complete designation token (#323).
+
+    Corpus regexes are interrogations, not permission to rename a citation. A match may end
+    before punctuation or prose, but not while the printed designation continues with an
+    alphanumeric character or a hyphen.
+    """
+    return ("§" not in match.group(0) or match.end() >= len(text)
+            or not (text[match.end()].isalnum() or text[match.end()] == "-"))
 
 
 def cited_section(citation):
@@ -541,13 +625,13 @@ def cited_section(citation):
 # table it names and the key it names the row by, so that an extent slicing a table can be held
 # to the rows an entry actually cites.
 CITE_TABLE_ROW = re.compile(
-    r'^\s*§+\s*(?P<section>\d+\.\d+(?:-\d+)?)\s+table\s+(?P<table>\d+)\s*,\s*row\s*'
+    r'^\s*§+\s*(?P<section>\d+\.\d+(?:[A-Za-z]|-\d+)?)\s+table\s+(?P<table>\d+)\s*,\s*row\s*'
     r'\[(?P<key>.*)\](?:\s*,\s*column\s+[A-Za-z0-9]{1,4})?\s*\.?\s*$')
 # A row the corpus leaves blank in the column that names the row above it (0043). What this file
 # needs of it is only the table, because no declared row key names such a row: it is inside the
 # extent where the extent takes its table **whole**, and nowhere else.
 CITE_TABLE_ROW_BELOW = re.compile(
-    r'^\s*§+\s*(?P<section>\d+\.\d+(?:-\d+)?)\s+table\s+(?P<table>\d+)\s*,\s*row\s+'
+    r'^\s*§+\s*(?P<section>\d+\.\d+(?:[A-Za-z]|-\d+)?)\s+table\s+(?P<table>\d+)\s*,\s*row\s+'
     r'blank\s+in\s+column\s+[A-Za-z0-9]{1,4}\s*(?:\[[^\]]*\]\s*)?'
     r'below\s+row\s*\[[^\]]*\](?:\s*,\s*column\s+[A-Za-z0-9]{1,4})?\s*\.?\s*$')
 CITE_ROW_KEY_PAIR = re.compile(r'column\s+([A-Za-z0-9]{1,4})\s*=\s*"([^"]*)"')
@@ -1114,6 +1198,64 @@ def check_manifest(ctx):
         return skip("the manifest declares no corpora, so nothing could be resolved against it")
 
     doc, bad, checked = ctx["map"], [], 0
+
+    # 0047: the Phase-1 `references` list is historical evidence. Mapping-time discoveries are
+    # additive only, live in `referenceAmendments`, and may not admit a corpus or mutate any
+    # baseline/licensing fact because the amendment shape has nowhere to put those fields.
+    for source_id, corpus in corpora.items():
+        amendments = corpus.get("referenceAmendments")
+        if amendments is None:
+            continue
+        checked += 1
+        if not isinstance(amendments, list) or not amendments:
+            bad.append(f"  X  manifest {source_id}: `referenceAmendments` is a non-empty list")
+            continue
+        historical = {r.get("sourceId") for r in corpus.get("references") or []
+                      if isinstance(r, dict)}
+        amended = set()
+        for at, amendment in enumerate(amendments, start=1):
+            where = f"manifest {source_id}: referenceAmendments[{at}]"
+            if not isinstance(amendment, dict):
+                bad.append(f"  X  {where} is not an object")
+                continue
+            extra = sorted(set(amendment) - {"discoveredDuring", "decision", "references"})
+            if extra:
+                bad.append(f"  X  {where}: amendment may only record discoveredDuring, decision "
+                           f"and references; got {', '.join(extra)}")
+            if amendment.get("discoveredDuring") != "mapping":
+                bad.append(f"  X  {where}: discoveredDuring must be 'mapping'")
+            decision = amendment.get("decision")
+            if not isinstance(decision, str) or not decision:
+                bad.append(f"  X  {where}: decision names the record authorising the correction")
+            refs = amendment.get("references")
+            if not isinstance(refs, list) or not refs:
+                bad.append(f"  X  {where}: references is a non-empty list")
+                continue
+            for pos, reference in enumerate(refs, start=1):
+                item = f"{where}.references[{pos}]"
+                if not isinstance(reference, dict) or set(reference) != {"sourceId", "citation", "admitted"}:
+                    bad.append(f"  X  {item}: a correction reference has exactly sourceId, citation "
+                               f"and admitted")
+                    continue
+                target, citation = reference.get("sourceId"), reference.get("citation")
+                if not isinstance(target, str) or not target:
+                    bad.append(f"  X  {item}: sourceId is a non-empty string")
+                if not isinstance(citation, str) or not citation.strip():
+                    bad.append(f"  X  {item}: citation is a non-empty string")
+                elif reference_identity(reference) is None:
+                    bad.append(f"  X  {item}: citation {citation!r} does not match sourceId "
+                               f"{target!r} as one reference boundary")
+                if reference.get("admitted") is not False:
+                    bad.append(f"  X  {item}: a boundary correction is referenced-but-not-admitted; "
+                               f"admission is a separate Phase-1 act")
+                if target in corpora:
+                    bad.append(f"  X  {item}: {target!r} is already admitted; a mapping-time "
+                               f"boundary amendment cannot retroactively admit or reclassify it")
+                if target in historical or target in amended:
+                    bad.append(f"  X  {item}: {target!r} is already declared; an amendment records "
+                               f"a newly discovered boundary, not a rewrite")
+                if isinstance(target, str) and target:
+                    amended.add(target)
     corpus_id = doc.get("corpus")
     declared = corpora.get(corpus_id)
     if declared is None:
@@ -1151,7 +1293,7 @@ def check_manifest(ctx):
         if "definedElsewhere" in entry:
             checked += 1
             reference = block(entry, "definedElsewhere").get("reference")
-            declared_references = [r for r in (source or {}).get("references") or [] if isinstance(r, dict)]
+            declared_references = references_of(source)
             known = {r.get("sourceId") for r in declared_references}
             admitted = reference in corpora or any(
                 r.get("sourceId") == reference and r.get("admitted") is True for r in declared_references)
@@ -2241,7 +2383,12 @@ def pointer_spans(text, patterns):
     in" contains "as provided in", and a corpus's "paragraph (d) of this section" follows it.
     Reporting them apart would demand two declarations for one pointer.
     """
-    found = sorted((m.start(), m.end()) for p in patterns for m in p.finditer(text) if m.end() > m.start())
+    found = sorted(
+        (m.start(), m.end())
+        for p in patterns
+        for m in p.finditer(text)
+        if m.end() > m.start() and section_pointer_match_is_complete(text, m)
+    )
     spans = []
     for start, end in found:
         if spans and (start <= spans[-1][1] or not text[spans[-1][1]:start].strip()):
@@ -2282,10 +2429,8 @@ def defined_elsewhere_names(ctx, entry):
     reference_id = block(entry, "definedElsewhere").get("reference")
     if not reference_id:
         return []
-    source = corpora_of(ctx.get("manifest")).get(block(entry, "locator").get("sourceId")) or {}
-    declared = next((r for r in source.get("references") or []
-                     if isinstance(r, dict) and r.get("sourceId") == reference_id), None)
-    return reference_names(reference_id, declared)
+    source = corpora_of(ctx.get("manifest")).get(block(entry, "locator").get("sourceId"))
+    return reference_names(reference_id, reference_of(source, reference_id))
 
 
 def duplicates_defined_elsewhere(ctx, entry, item):

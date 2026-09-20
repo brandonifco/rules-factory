@@ -5,7 +5,8 @@ built-in list plus the phrases each corpus declares in the manifest (0026).
 import re
 
 from .diagnostics import skip, verdict
-from mapcontract.entry import block, corpora_of, entries_of, index, label
+from .locators import section_pointer_match_is_complete
+from mapcontract.entry import block, corpora_of, entries_of, index, label, reference_of
 
 
 # The pointers the first corpora made, in the words they used to make them. Each phrase points
@@ -86,7 +87,12 @@ def pointer_spans(text, patterns):
     in" contains "as provided in", and a corpus's "paragraph (d) of this section" follows it.
     Reporting them apart would demand two declarations for one pointer.
     """
-    found = sorted((m.start(), m.end()) for p in patterns for m in p.finditer(text) if m.end() > m.start())
+    found = sorted(
+        (m.start(), m.end())
+        for p in patterns
+        for m in p.finditer(text)
+        if m.end() > m.start() and section_pointer_match_is_complete(text, m)
+    )
     spans = []
     for start, end in found:
         if spans and (start <= spans[-1][1] or not text[spans[-1][1]:start].strip()):
@@ -127,10 +133,8 @@ def defined_elsewhere_names(ctx, entry):
     reference_id = block(entry, "definedElsewhere").get("reference")
     if not reference_id:
         return []
-    source = corpora_of(ctx.get("manifest")).get(block(entry, "locator").get("sourceId")) or {}
-    declared = next((r for r in source.get("references") or []
-                     if isinstance(r, dict) and r.get("sourceId") == reference_id), None)
-    return reference_names(reference_id, declared)
+    source = corpora_of(ctx.get("manifest")).get(block(entry, "locator").get("sourceId"))
+    return reference_names(reference_id, reference_of(source, reference_id))
 
 
 def duplicates_defined_elsewhere(ctx, entry, item):

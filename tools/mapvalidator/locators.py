@@ -22,10 +22,21 @@ import re
 # examples/faa-part-107/check-locators-section.py reads them. `CITE_SECTION` and `CITE_SUBPART`
 # are that checker's expressions, verbatim; `test_check_map.py` runs both over every citation in
 # the Part 107 maps and requires them to agree, so the two cannot drift apart silently.
-CITE_SECTION = re.compile(r"§+\s*(\d+\.\d+(?:-\d+)?)")
+CITE_SECTION = re.compile(r"§+\s*(\d+\.\d+(?:[A-Za-z]|-\d+)?)(?![A-Za-z0-9-])")
 CITE_SUBPART = re.compile(r"\bsubpart\s+([A-Z])\b", re.I)
 # One item of `extent.sections`: a section and nothing else -- no paragraph, no range.
-EXTENT_SECTION = re.compile(r"^§\s*(\d+\.\d+(?:-\d+)?)$")
+EXTENT_SECTION = re.compile(r"^§\s*(\d+\.\d+(?:[A-Za-z]|-\d+)?)$")
+
+
+def section_pointer_match_is_complete(text, match):
+    """Whether a section-sign match ends at a complete designation token (#323).
+
+    Corpus regexes are interrogations, not permission to rename a citation. A match may end
+    before punctuation or prose, but not while the printed designation continues with an
+    alphanumeric character or a hyphen.
+    """
+    return ("§" not in match.group(0) or match.end() >= len(text)
+            or not (text[match.end()].isalnum() or text[match.end()] == "-"))
 
 
 def cited_section(citation):
@@ -49,13 +60,13 @@ def cited_section(citation):
 # table it names and the key it names the row by, so that an extent slicing a table can be held
 # to the rows an entry actually cites.
 CITE_TABLE_ROW = re.compile(
-    r'^\s*§+\s*(?P<section>\d+\.\d+(?:-\d+)?)\s+table\s+(?P<table>\d+)\s*,\s*row\s*'
+    r'^\s*§+\s*(?P<section>\d+\.\d+(?:[A-Za-z]|-\d+)?)\s+table\s+(?P<table>\d+)\s*,\s*row\s*'
     r'\[(?P<key>.*)\](?:\s*,\s*column\s+[A-Za-z0-9]{1,4})?\s*\.?\s*$')
 # A row the corpus leaves blank in the column that names the row above it (0043). What this file
 # needs of it is only the table, because no declared row key names such a row: it is inside the
 # extent where the extent takes its table **whole**, and nowhere else.
 CITE_TABLE_ROW_BELOW = re.compile(
-    r'^\s*§+\s*(?P<section>\d+\.\d+(?:-\d+)?)\s+table\s+(?P<table>\d+)\s*,\s*row\s+'
+    r'^\s*§+\s*(?P<section>\d+\.\d+(?:[A-Za-z]|-\d+)?)\s+table\s+(?P<table>\d+)\s*,\s*row\s+'
     r'blank\s+in\s+column\s+[A-Za-z0-9]{1,4}\s*(?:\[[^\]]*\]\s*)?'
     r'below\s+row\s*\[[^\]]*\](?:\s*,\s*column\s+[A-Za-z0-9]{1,4})?\s*\.?\s*$')
 CITE_ROW_KEY_PAIR = re.compile(r'column\s+([A-Za-z0-9]{1,4})\s*=\s*"([^"]*)"')

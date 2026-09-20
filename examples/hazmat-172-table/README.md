@@ -1,6 +1,7 @@
 # Trial 10 — 49 CFR § 172.101 and § 172.102
 
-**The admission record below was written before anything was mapped, and is unchanged.** The
+**The Phase-1 admission record below was written before anything was mapped and remains intact.**
+Mapping later found one omitted external boundary; under [0047](../../docs/decisions/0047-a-mapping-discovered-corpus-boundary-amends-admission-without-rewriting-it.md), the manifest records that separately in `referenceAmendments` rather than rewriting the original `references` list. The
 corpus was pinned, the slice settled, the two protocols finalized and the hypotheses written down
 **before** a single entry existed, which is the point of
 [#262](https://github.com/brandonifco/rules-factory/issues/262): a trial that states its
@@ -598,6 +599,39 @@ are 4 of 64.
 Nothing under `tools/` was changed to make this map pass, and neither protocol was edited: both
 were run against the map as committed and neither needed a word altered.
 
+
+### Subsequent resolution of #323 — 0047 and complete section designations
+
+This section supersedes only the #323 finding above; it does not rewrite the first-mapping record.
+
+The six newly observed external section pointers did **not** mean six missing boundary items.
+`part 173` already covers § 173.150(e)/(f), § 173.308(b)(2), § 173.185 and § 173.225(e);
+`part 178` already covers § 178.702(a)(2). The genuinely absent boundary was part 180, exposed
+by § 180.605 in § 172.102(c)(7)(ii). Decision 0047 leaves the Phase-1 `references` arrays intact
+and adds one mapping-time `referenceAmendments` item for `cfr-49-180`, not admitted.
+
+The section-designation grammar now preserves bare-letter suffixes as well as the already-supported
+hyphenated form. Trial 10's declared pointer regex reads `§ 173.2a` whole, and generic pointer
+detection discards a corpus-regex match containing `§` when it stops inside an alphanumeric
+token. The two map declarations that previously recorded `§ 173.2` solely because tooling
+truncated the corpus's `§ 173.2a` now cite `§ 173.2a` and keep it `unmapped`: part 173 remains
+external and unadmitted.
+
+Final boundary accounting:
+
+| pointer | operational boundary | map status |
+|---|---|---|
+| § 173.150(e), (f) | Phase-1 `part 173` (plus exact § 173.150 already present) | `unmapped` |
+| § 173.308(b)(2) | Phase-1 `part 173` | `unmapped` |
+| § 173.185 | Phase-1 `part 173` | `unmapped` |
+| § 173.225(e) | Phase-1 `part 173` (plus exact § 173.225 already present) | `unmapped` |
+| § 178.702(a)(2) | Phase-1 `part 178` | `unmapped` |
+| § 180.605 | 0047 mapping-time amendment: `part 180` | `unmapped` |
+| § 173.2a | Phase-1 `part 173`; detector now preserves the full designation | `unmapped` |
+| § 173.24a(c)(1)(iv) | Phase-1 `part 173`; the same parser correction exposed this previously truncated § 173.24 pointer | `unmapped` |
+
+No § 173, § 178 or § 180 text was admitted, no extent or corpus hash moved, and no Trial 10
+hypothesis or selected HMT row changed.
 
 ### Subsequent resolution of #321 — 0046
 

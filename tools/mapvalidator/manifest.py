@@ -5,7 +5,8 @@ references and the baseline stamp, and each corpus's verification posture and qu
 import os
 
 from .diagnostics import skip, verdict
-from mapcontract.entry import block, corpora_of, entries_of, label, quotes_withheld
+from mapcontract.entry import (block, corpora_of, entries_of, label, quotes_withheld,
+                               reference_identity, references_of)
 
 
 def check_manifest(ctx):
@@ -31,6 +32,64 @@ def check_manifest(ctx):
         return skip("the manifest declares no corpora, so nothing could be resolved against it")
 
     doc, bad, checked = ctx["map"], [], 0
+
+    # 0047: the Phase-1 `references` list is historical evidence. Mapping-time discoveries are
+    # additive only, live in `referenceAmendments`, and may not admit a corpus or mutate any
+    # baseline/licensing fact because the amendment shape has nowhere to put those fields.
+    for source_id, corpus in corpora.items():
+        amendments = corpus.get("referenceAmendments")
+        if amendments is None:
+            continue
+        checked += 1
+        if not isinstance(amendments, list) or not amendments:
+            bad.append(f"  X  manifest {source_id}: `referenceAmendments` is a non-empty list")
+            continue
+        historical = {r.get("sourceId") for r in corpus.get("references") or []
+                      if isinstance(r, dict)}
+        amended = set()
+        for at, amendment in enumerate(amendments, start=1):
+            where = f"manifest {source_id}: referenceAmendments[{at}]"
+            if not isinstance(amendment, dict):
+                bad.append(f"  X  {where} is not an object")
+                continue
+            extra = sorted(set(amendment) - {"discoveredDuring", "decision", "references"})
+            if extra:
+                bad.append(f"  X  {where}: amendment may only record discoveredDuring, decision "
+                           f"and references; got {', '.join(extra)}")
+            if amendment.get("discoveredDuring") != "mapping":
+                bad.append(f"  X  {where}: discoveredDuring must be 'mapping'")
+            decision = amendment.get("decision")
+            if not isinstance(decision, str) or not decision:
+                bad.append(f"  X  {where}: decision names the record authorising the correction")
+            refs = amendment.get("references")
+            if not isinstance(refs, list) or not refs:
+                bad.append(f"  X  {where}: references is a non-empty list")
+                continue
+            for pos, reference in enumerate(refs, start=1):
+                item = f"{where}.references[{pos}]"
+                if not isinstance(reference, dict) or set(reference) != {"sourceId", "citation", "admitted"}:
+                    bad.append(f"  X  {item}: a correction reference has exactly sourceId, citation "
+                               f"and admitted")
+                    continue
+                target, citation = reference.get("sourceId"), reference.get("citation")
+                if not isinstance(target, str) or not target:
+                    bad.append(f"  X  {item}: sourceId is a non-empty string")
+                if not isinstance(citation, str) or not citation.strip():
+                    bad.append(f"  X  {item}: citation is a non-empty string")
+                elif reference_identity(reference) is None:
+                    bad.append(f"  X  {item}: citation {citation!r} does not match sourceId "
+                               f"{target!r} as one reference boundary")
+                if reference.get("admitted") is not False:
+                    bad.append(f"  X  {item}: a boundary correction is referenced-but-not-admitted; "
+                               f"admission is a separate Phase-1 act")
+                if target in corpora:
+                    bad.append(f"  X  {item}: {target!r} is already admitted; a mapping-time "
+                               f"boundary amendment cannot retroactively admit or reclassify it")
+                if target in historical or target in amended:
+                    bad.append(f"  X  {item}: {target!r} is already declared; an amendment records "
+                               f"a newly discovered boundary, not a rewrite")
+                if isinstance(target, str) and target:
+                    amended.add(target)
     corpus_id = doc.get("corpus")
     declared = corpora.get(corpus_id)
     if declared is None:
@@ -68,7 +127,7 @@ def check_manifest(ctx):
         if "definedElsewhere" in entry:
             checked += 1
             reference = block(entry, "definedElsewhere").get("reference")
-            declared_references = [r for r in (source or {}).get("references") or [] if isinstance(r, dict)]
+            declared_references = references_of(source)
             known = {r.get("sourceId") for r in declared_references}
             admitted = reference in corpora or any(
                 r.get("sourceId") == reference and r.get("admitted") is True for r in declared_references)

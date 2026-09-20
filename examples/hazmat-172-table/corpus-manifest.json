@@ -17,7 +17,7 @@
       "randomness": "none",
       "retrievedFrom": "https://www.ecfr.gov/api/versioner/v1/full/2026-01-01/title-49.xml?part=172&section=172.101",
       "pointerPhrases": [
-        { "regex": "§+\\s?\\d+\\.\\d+(?:\\([A-Za-z0-9]+\\))*" },
+        { "regex": "§+\\s?\\d+\\.\\d+(?:[A-Za-z]|-\\d+)?(?:\\([A-Za-z0-9]+\\))*(?![A-Za-z0-9-])" },
         { "regex": "\\bcolumns? \\d+[A-C]?(?:(?:,| and| or| through) \\d+[A-C]?)* of (?:the|this) (?:§ 172\\.101 )?[Tt]able" },
         { "regex": "\\bparagraphs? \\([a-z0-9]+\\)(?:\\([a-z0-9]+\\))*(?:(?:,| and| or| through) \\([a-z0-9]+\\)(?:\\([a-z0-9]+\\))*)* of this section" },
         "of this subchapter",
@@ -80,7 +80,7 @@
       "randomness": "none",
       "retrievedFrom": "https://www.ecfr.gov/api/versioner/v1/full/2026-01-01/title-49.xml?part=172&section=172.102",
       "pointerPhrases": [
-        { "regex": "§+\\s?\\d+\\.\\d+(?:\\([A-Za-z0-9]+\\))*" },
+        { "regex": "§+\\s?\\d+\\.\\d+(?:[A-Za-z]|-\\d+)?(?:\\([A-Za-z0-9]+\\))*(?![A-Za-z0-9-])" },
         { "regex": "\\bcolumns? \\d+[A-C]?(?:(?:,| and| or| through) \\d+[A-C]?)* of the § 172\\.101 table" },
         { "regex": "\\bparagraphs? \\([a-z0-9]+\\)(?:\\([a-z0-9]+\\))*(?:(?:,| and| or| through) \\([a-z0-9]+\\)(?:\\([a-z0-9]+\\))*)* of this section" },
         "of this subchapter",
@@ -113,6 +113,15 @@
         { "sourceId": "cfr-49-178.274", "citation": "§ 178.274", "admitted": false },
         { "sourceId": "cfr-49-178.275", "citation": "§ 178.275", "admitted": false },
         { "sourceId": "cfr-49-172.101", "citation": "§ 172.101", "admitted": true }
+      ],
+      "referenceAmendments": [
+        {
+          "discoveredDuring": "mapping",
+          "decision": "0047",
+          "references": [
+            { "sourceId": "cfr-49-180", "citation": "part 180", "admitted": false }
+          ]
+        }
       ]
     }
   ]
