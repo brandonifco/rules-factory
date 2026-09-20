@@ -865,7 +865,7 @@ class TestTheReviewPacket(RailsInAGitEngine):
         self.assertEqual(done.returncode, 1, done.stdout)
         self.assertIn("closes 0 issues", done.stderr)
 
-    def test_the_packet_is_written_outside_the_repository_with_the_entry_packets(self):
+    def test_the_packet_is_written_outside_the_repository_with_bound_identity(self):
         self.commit_engine()
         head = self.change()
         self.pull_request(head)
@@ -873,12 +873,52 @@ class TestTheReviewPacket(RailsInAGitEngine):
         done = self.packet("--out", out)
         self.assertEqual(done.returncode, 0, done.stderr)
         written = done.stdout.split()
-        self.assertEqual(written[0], os.path.join(out, f"pr-5-{head[:12]}.md"))
-        self.assertEqual(written[1], os.path.join(out, "entry-altitude-limit.md"))
-        with open(written[0], encoding="utf-8") as handle:
-            body = handle.read()
-        digest = hashlib.sha256(open(written[1], "rb").read()).hexdigest()
-        self.assertIn(digest, body, "the entry packet's digest, so two reviewers can prove they read the same entry")
+        markdown = os.path.join(out, f"pr-5-{head[:12]}.md")
+        entry = os.path.join(out, "entry-altitude-limit.md")
+        package_map = os.path.join(out, "package-map.json")
+        manifest = os.path.join(out, f"pr-5-{head[:12]}.review.json")
+        self.assertEqual(written, [markdown, entry, package_map, manifest])
+        document = json.load(open(manifest, encoding="utf-8"))
+        self.assertEqual(document["reviewedCommit"], head)
+        self.assertEqual(document["baseCommit"], git(self.out, "rev-parse", "main"))
+        self.assertEqual(document["packet"]["sha256"], hashlib.sha256(open(markdown, "rb").read()).hexdigest())
+        self.assertEqual(document["artifacts"][0]["sha256"], hashlib.sha256(open(entry, "rb").read()).hexdigest())
+        self.assertEqual(document["inputs"][0]["sha256"], hashlib.sha256(open(package_map, "rb").read()).hexdigest())
+        provenance = next(source for source in document["sources"] if source["role"] == "provenance")
+        expected = subprocess.run(["git", "show", f"{head}:provenance.json"], cwd=self.out, check=True,
+                                  stdout=subprocess.PIPE).stdout
+        self.assertEqual(provenance["sha256"], hashlib.sha256(expected).hexdigest())
+
+    def test_packet_identity_is_deterministic_for_the_same_reviewed_inputs(self):
+        self.commit_engine()
+        head = self.change()
+        self.pull_request(head)
+        first = os.path.join(self.tmp, "packets-one")
+        second = os.path.join(self.tmp, "packets-two")
+        self.assertEqual(self.packet("--out", first).returncode, 0)
+        self.assertEqual(self.packet("--out", second).returncode, 0)
+        names = [f"pr-5-{head[:12]}.md", "entry-altitude-limit.md", "package-map.json",
+                 f"pr-5-{head[:12]}.review.json"]
+        for name in names:
+            self.assertEqual(open(os.path.join(first, name), "rb").read(),
+                             open(os.path.join(second, name), "rb").read(), name)
+
+    def test_dirty_caller_checkout_is_neither_consumed_nor_mutated(self):
+        self.commit_engine()
+        head = self.change()
+        self.pull_request(head)
+        git(self.out, "checkout", "-q", "main")
+        dirty = os.path.join(self.out, "provenance.json")
+        original = open(dirty, "rb").read()
+        with open(dirty, "ab") as handle:
+            handle.write(b"\ncaller-only dirt\n")
+        before = open(dirty, "rb").read()
+        text = self.rendered()
+        self.assertNotIn("caller-only dirt", text)
+        self.assertEqual(open(dirty, "rb").read(), before)
+        with open(dirty, "wb") as handle:
+            handle.write(original)
+
 
     def test_packet_material_comes_from_the_reviewed_head_not_the_caller_checkout(self):
         """#334 watched failure A: PR head B must never carry checkout A's provenance."""
@@ -1518,6 +1558,7 @@ if argv_api := [a for a in sys.argv[1:] if a.startswith("repos/")]:
                 {"role": "provenance", "path": "provenance.json",
                  "sha256": hashlib.sha256(blob("provenance.json")).hexdigest()},
             ],
+            "inputs": [],
             "artifacts": [],
             "context": {"pullRequestSha256": "1" * 64, "issueSha256": "2" * 64},
         }
