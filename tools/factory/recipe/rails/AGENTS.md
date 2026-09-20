@@ -228,11 +228,15 @@ decline that names why and cites where — that is the engine working, not the e
   assembles the issue, the claim, the entries as the map has them, the overlay's before and after,
   the bounded diff and what must be green. Its sections are in the order a semantic reviewer reads
   them: the entry before the implementation, always.
-- **A verdict names a commit.** `tools/record-verdict.py --pr <n> --reviewer <id> --verdict
-  pass|fail` records it as a commit status on the pull request's head SHA, and
-  `tools/conformance-gate.py` requires it there. A further commit therefore invalidates the review
-  that preceded it, automatically, because the status is on the bytes that were actually read. A
-  verdict that lives only in a conversation is worth nothing to this repository.
+- **A verdict is derived from the saved packet identity.** Save `tools/review-packet.py <pr
+  number>`; beside the Markdown and entry packets it writes a `*.review.json` manifest binding
+  the reviewed commit, resolved diff base and the packet artifacts by digest. Record with
+  `tools/record-verdict.py --pr <n> --packet <review.json> --reviewer <id> --verdict pass|fail`.
+  The recorder verifies those relationships and posts only to the manifest's reviewed commit.
+  `tools/conformance-gate.py` requires the needed verdict at the current head. If the PR has moved,
+  recording the old packet leaves historical evidence on the old commit and satisfies no current
+  gate; it never floats that review onto the new head. A verdict that lives only in a conversation,
+  or a legacy Markdown packet with no identity manifest, is worth nothing to this gate.
 
   **What the verdict gate proves, and what it does not.** A verdict is a commit status, and
   **anyone who can write a commit status on this repository can post one**: any collaborator with
@@ -240,8 +244,8 @@ decline that names why and cites where — that is the engine working, not the e
   Nothing in the mechanism attributes a verdict to the reviewer it names. So the gate is an
   integrity check — against a review that was skipped, forgotten, or formed on other bytes — and
   **not an authentication of who reviewed**. What it does prove is worth keeping and is exactly the
-  commit binding above: a verdict names one SHA, so it cannot be replayed onto a commit nobody
-  read, and a further commit ends it. The three required checks are pinned to the app that posts
+  commit binding above: the manifest binds one reviewed SHA to the packet bytes, the recorder
+  re-verifies that relationship, and a further commit makes that evidence stale for the gate. The three required checks are pinned to the app that posts
   them, so a hand-posted status cannot impersonate one; a verdict context cannot be pinned the same
   way, because it is posted by a person's token and the pin names an app. Recording a verdict that
   was never formed is therefore stopped by honesty and by review, not by permissions — which is
