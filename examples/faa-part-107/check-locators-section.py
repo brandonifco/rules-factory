@@ -556,7 +556,7 @@ def corpus_index(xml_path):
 # never a paragraph, so reading it is what lets `§ 1.121-1` and `§ 1.121-2` be two sections
 # rather than one. `tools/mapvalidator/extent.py` holds the same expression, and
 # `test_check_map.py` runs both over every citation the maps make.
-CITE_SECTION = re.compile(r"§+\s*(\d+\.\d+(?:-\d+)?)")
+CITE_SECTION = re.compile(r"§+\s*(\d+\.\d+(?:[A-Za-z]|-\d+)?)(?![A-Za-z0-9-])")
 CITE_GROUP = re.compile(r"\(([A-Za-z0-9]{1,4})\)")
 CITE_SUBPART = re.compile(r"\bsubpart\s+([A-Z])\b", re.I)
 # The grammar's words for a section's undesignated lead-in, and the last element of a prefix
@@ -585,7 +585,7 @@ CITE_EXAMPLE = re.compile(r"\bExamples?(?:\s+(\d+))?\s*\.?\s*$", re.I)
 # discriminating column. `tools/mapper/corpus.py` writes the same form when it enumerates a row
 # as a unit, and `tools/tests/mapper/test_mapper_table_rows.py` holds the two to each other.
 TABLE_CITATION = re.compile(
-    r'^\s*§+\s*(?P<section>\d+\.\d+(?:-\d+)?)\s+table\s+(?P<table>\d+)\s*,\s*row\s*'
+    r'^\s*§+\s*(?P<section>\d+\.\d+(?:[A-Za-z]|-\d+)?)\s+table\s+(?P<table>\d+)\s*,\s*row\s*'
     r'\[(?P<key>.*)\](?:\s*,\s*column\s+(?P<column>[A-Za-z0-9]{1,4}))?\s*\.?\s*$')
 # A row the corpus leaves blank in the column that names the row above it (0043). The address is
 # anchored to that row, which is named by an ordinary key, and never to an ordinal:
@@ -596,7 +596,7 @@ TABLE_CITATION = re.compile(
 # It says nothing about the row *continuing* the anchor. That reading is the map's; this only
 # identifies the passage.
 TABLE_BELOW_CITATION = re.compile(
-    r'^\s*§+\s*(?P<section>\d+\.\d+(?:-\d+)?)\s+table\s+(?P<table>\d+)\s*,\s*row\s+'
+    r'^\s*§+\s*(?P<section>\d+\.\d+(?:[A-Za-z]|-\d+)?)\s+table\s+(?P<table>\d+)\s*,\s*row\s+'
     r'blank\s+in\s+column\s+(?P<blank>[A-Za-z0-9]{1,4})\s*'
     r'(?:\[(?P<discriminators>[^\]]*)\]\s*)?'
     r'below\s+row\s*\[(?P<anchor>[^\]]*)\]'
@@ -1425,7 +1425,7 @@ def bounds_of(entry):
     return out
 
 
-EXTENT_SECTION = re.compile(r"^§\s*(\d+\.\d+(?:-\d+)?)$")
+EXTENT_SECTION = re.compile(r"^§\s*(\d+\.\d+(?:[A-Za-z]|-\d+)?)$")
 
 
 def coverage(document, reached):
