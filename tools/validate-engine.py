@@ -1052,6 +1052,7 @@ def the_rails_run_in_a_produced_engine(r):
     the_entry_packet_resolves_through_msbuild(r, railed)
     the_doctor_names_the_remote_half_unexamined(r, railed)
     the_entry_packet_leaves_the_checkout_clean(r, railed)
+    prepare_railed_review_history(railed)
     the_guard_refuses_a_primary_checkout_commit(r, railed)
     github = FakeGitHub(r.s("fake-gh"))
     a_malformed_pull_request_is_refused_by_the_contract(r, railed, github)
@@ -1167,6 +1168,31 @@ def the_entry_packet_leaves_the_checkout_clean(r, railed):
        ".gitignore does not name __pycache__, where an unsuppressed import does not")
 
 
+def prepare_railed_review_history(railed):
+    """Give the produced-engine rail tests three real immutable commits: base, reviewed A, later B.
+
+    record-verdict.py now verifies the packet's reviewed tree, so invented 40-character strings
+    would prove exactly the defect #334 removes. The checkout deliberately stays at B: packet
+    generation for A must use its detached immutable snapshot, not this caller tree.
+    """
+    global COMMIT_BASE, COMMIT_A, COMMIT_B
+    write(os.path.join(railed, ".gitignore"), ENGINE_GITIGNORE)
+    identity = ["-c", "user.email=t@example.invalid", "-c", "user.name=t"]
+    with open(os.devnull, "wb") as null:
+        check(run(["git", "-C", railed, "init", "-q", "-b", "main"]))
+        check(run(["git", "-C", railed, *identity, "add", "-A"], stdout=null))
+        check(run(["git", "-C", railed, *identity, "commit", "-qm", "produced base"], stdout=null))
+        COMMIT_BASE = subprocess.check_output(["git", "-C", railed, "rev-parse", "HEAD"], text=True).strip()
+        check(run(["git", "-C", railed, *identity, "commit", "--allow-empty", "-qm", "reviewed head A"], stdout=null))
+        COMMIT_A = subprocess.check_output(["git", "-C", railed, "rev-parse", "HEAD"], text=True).strip()
+        check(run(["git", "-C", railed, *identity, "commit", "--allow-empty", "-qm", "later head B"], stdout=null))
+        COMMIT_B = subprocess.check_output(["git", "-C", railed, "rev-parse", "HEAD"], text=True).strip()
+    if len({COMMIT_BASE, COMMIT_A, COMMIT_B}) != 3:
+        fail("the produced-engine review history did not create three distinct commits")
+    if porcelain(railed):
+        fail("the produced-engine review history is not clean after creating base, A and B")
+
+
 def guard(railed, **extra):
     """The primary-checkout guard, asked about `git commit` in the railed engine, with `extra` in its environment."""
     env = dict(os.environ, CLAUDE_PROJECT_DIR=railed, **extra)
@@ -1177,11 +1203,6 @@ def guard(railed, **extra):
 # The guard, in the produced engine's own checkout: a commit on the primary checkout is refused,
 # and the escape hatch AGENTS.md documents is the thing that lifts it.
 def the_guard_refuses_a_primary_checkout_commit(r, railed):
-    identity = ["-c", "user.email=t@example.invalid", "-c", "user.name=t"]
-    with open(os.devnull, "wb") as null:
-        check(run(["git", "-C", railed, "init", "-q", "-b", "main"]))
-        check(run(["git", "-C", railed, *identity, "add", "AGENTS.md"], stdout=null))
-        check(run(["git", "-C", railed, *identity, "commit", "-qm", "first"], stdout=null))
     log = r.s("guard.log")
     command, env, event = guard(railed, IGNORED="1")
     if run_to(log, command, cwd=railed, env=env, both=True, stdin=event) == 0:
@@ -1371,10 +1392,13 @@ class FakeGitHub:
             # under a retired pattern is the factory's (#243); `contents` is the base commit's
             # provenance.json, which nothing here asks for until a test puts a retired path in the diff.
             "pulls": {PR: {"number": int(PR), "title": "Implement the player count", "body": body, "state": "OPEN",
-                           "headRefOid": head, "baseRefOid": COMMIT_BASE, "files": changed,
+                           "headRefOid": head, "headRefName": "issue-27",
+                           "baseRefOid": COMMIT_BASE, "baseRefName": "main", "files": changed,
                            "changedFiles": len(changed),
                            "closingIssuesReferences": [{"number": ISSUE}]}},
-            "issues": {str(ISSUE): {"number": ISSUE, "state": "OPEN", "labels": [{"name": name} for name in labels]}},
+            "issues": {str(ISSUE): {"number": ISSUE, "title": "Implement the player count",
+                                    "body": "## Acceptance criteria\n- [ ] player count follows the mapped rule",
+                                    "state": "OPEN", "labels": [{"name": name} for name in labels]}},
             "statuses": {},
             "runs": {head: [{"id": GATE_RUN, "run_number": 1, "status": "completed", "conclusion": "failure"}]},
             "reruns": [],
@@ -1417,9 +1441,23 @@ class FakeGitHub:
         return run_to(log, [PYTHON, *command], cwd=railed, env=env, both=True)
 
     def record(self, railed, log, reviewer):
-        if self.tool(railed, log, "tools/record-verdict.py", "--pr", PR, "--reviewer", reviewer, "--verdict", "pass") != 0:
+        """Form an emitted review packet, then record only the identity that packet names."""
+        with open(self.state, encoding="utf-8") as handle:
+            head = json.load(handle)["pulls"][PR]["headRefOid"]
+        bundle = os.path.join(os.path.dirname(self.state), f"packet-{head[:12]}")
+        os.makedirs(bundle, exist_ok=True)
+        packet_log = log + ".packet"
+        if self.tool(railed, packet_log, "tools/review-packet.py", PR, "--out", bundle) != 0:
+            cat(packet_log)
+            fail(f"tools/review-packet.py could not form the exact packet for {head[:12]} in a produced engine")
+        manifest = os.path.join(bundle, f"pr-{PR}-{head[:12]}.review.json")
+        if not os.path.isfile(manifest):
+            cat(packet_log)
+            fail(f"tools/review-packet.py produced no format-1 manifest for {head[:12]}")
+        if self.tool(railed, log, "tools/record-verdict.py", "--pr", PR, "--packet", manifest,
+                     "--reviewer", reviewer, "--verdict", "pass") != 0:
             cat(log)
-            fail(f"tools/record-verdict.py could not record a pass by {reviewer} in a produced engine")
+            fail(f"tools/record-verdict.py could not record a packet-bound pass by {reviewer} in a produced engine")
 
     def gate(self, railed, log):
         return self.tool(railed, log, "tools/conformance-gate.py", PR)
@@ -1730,16 +1768,29 @@ def swapping_the_provider_chain_is_an_edit_to_the_policy_alone(r, railed, github
     if changed != [os.path.join(".github", "agent-policy.json")]:
         fail(f"swapping the provider chain changed {', '.join(changed) or 'nothing'}, not .github/agent-policy.json alone")
 
+    identity = ["-c", "user.email=t@example.invalid", "-c", "user.name=t"]
+    with open(os.devnull, "wb") as null:
+        check(run(["git", "-C", railed, *identity, "add", ".github/agent-policy.json"], stdout=null))
+        check(run(["git", "-C", railed, *identity, "commit", "-qm", "swap review provider chain"], stdout=null))
+    swapped_head = subprocess.check_output(["git", "-C", railed, "rev-parse", "HEAD"], text=True).strip()
+
     log = r.s("provider-swap.log")
-    github.serve(railed, COMMIT_A, ready(policy, "independentRisk"))
-    if github.tool(railed, log, "tools/record-verdict.py", "--pr", PR, "--reviewer", old[0]["id"], "--verdict", "pass") != 1:
+    github.serve(railed, swapped_head, ready(policy, "independentRisk"))
+    bundle = os.path.join(os.path.dirname(github.state), f"packet-{swapped_head[:12]}")
+    packet_log = log + ".packet"
+    if github.tool(railed, packet_log, "tools/review-packet.py", PR, "--out", bundle) != 0:
+        cat(packet_log)
+        fail("the swapped-policy head could not produce its review packet")
+    manifest = os.path.join(bundle, f"pr-{PR}-{swapped_head[:12]}.review.json")
+    if github.tool(railed, log, "tools/record-verdict.py", "--pr", PR, "--packet", manifest,
+                   "--reviewer", old[0]["id"], "--verdict", "pass") != 1:
         cat(log)
-        fail(f"tools/record-verdict.py still records for {old[0]['id']}, which the swapped policy no longer names")
+        fail(f"tools/record-verdict.py still records for {old[0]['id']}, which the swapped reviewed policy no longer names")
     github.record(railed, log, "semantic")
     # The old chain's context, recorded as a success at the head as though the rail had never changed.
     with open(github.state, encoding="utf-8") as handle:
         document = json.load(handle)
-    document["statuses"][COMMIT_A].insert(0, {"context": old[0]["context"], "state": "success"})
+    document["statuses"][swapped_head].insert(0, {"context": old[0]["context"], "state": "success"})
     write(github.state, json.dumps(document, indent=2))
     if github.gate(railed, log) != 1:
         cat(log)
