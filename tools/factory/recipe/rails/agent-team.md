@@ -93,15 +93,18 @@ second verdict exists to catch — so a fallback to another in-house pass is a r
 accepted deliberately to avoid every merge being blocked by one provider's outage, and made
 visible by recording the verdict under its own context rather than a generic one.
 
-**The independent reviewer receives** the entry packet, the review packet and the issue's
-acceptance criteria. **It does not receive any other reviewer's conclusions** before producing
-its own.
+**The independent reviewer receives** the entry packet, the review packet, its companion
+`*.review.json` manifest and the issue's acceptance criteria. **It does not receive any other
+reviewer's conclusions** before producing its own. The packet bundle is one immutable evidence
+object: do not substitute files from another checkout or regenerate only part of it.
 
-A verdict is recorded with `tools/record-verdict.py --pr <n> --reviewer <id> --verdict pass|fail`,
-under that provider's own context, and `tools/conformance-gate.py` requires it at the commit being
-merged. Recording it is the whole of the step: `.github/workflows/verdict-requeue.yml` asks the
-gate to report again at that commit, so a gate still red for a moment afterwards is bookkeeping
-catching up, not the verdict failing to register.
+A verdict is recorded with `tools/record-verdict.py --pr <n> --packet <packet.review.json>
+--reviewer <id> --verdict pass|fail`, under that provider's own context and on the commit the
+manifest says was reviewed. If the PR advanced meanwhile, the old verdict may be retained on that
+old SHA as historical evidence but satisfies no gate for the new head. Recording it is the whole
+of the step: `.github/workflows/verdict-requeue.yml` asks the gate to report again at that commit,
+so a gate still red for a moment afterwards is bookkeeping catching up, not the verdict failing to
+register.
 
 **The chain advances because a provider was unavailable, never because its verdict was
 unwelcome.** Unavailable means it could not be reached or returned no verdict at all. A provider
