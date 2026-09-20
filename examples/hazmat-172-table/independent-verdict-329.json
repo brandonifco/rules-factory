@@ -1,0 +1,36 @@
+{
+  "about": "Independent round-2 verdict on PR #329 after remediation of the ambiguity-fate inconsistency.",
+  "sha256": "02742574b9bd0c3eb68e62f1afe80297d41ef5317167682145cc55f20810729c",
+  "reviewer": "Gemini, independent reviewer in a separate context",
+  "read": [
+    "offline round-2 packet: pinned § 172.102 source excerpt",
+    "offline round-2 packet: Gemini round-1 findings",
+    "offline round-2 packet: remediated IB2 and IB3 entries",
+    "offline round-2 packet: ADR 0043/0045/0046 behavior",
+    "offline round-2 packet: remediation validator/test behavior"
+  ],
+  "summary": "The remediations successfully correct the logical contradiction identified in Round 1. The entries now accurately reflect source-level ambiguity while successfully committing to a documented interpretation via ADR 0046. The newly introduced validator effectively enforces this invariant without overreaching.",
+  "verdicts": [
+    {
+      "entry": "ib2-vapour-pressure-limit",
+      "field": "round-1 remediation",
+      "verdict": "agree",
+      "reason": "The ambiguity fate was correctly updated to 'decision' pointing to ADR 0046, and 'unresolvedReason' was appropriately removed."
+    },
+    {
+      "entry": "ib3-vapour-pressure-limit",
+      "field": "round-1 remediation",
+      "verdict": "agree",
+      "reason": "The ambiguity fate was correctly updated to 'decision' pointing to ADR 0046, matching the logical correction made to IB2."
+    },
+    {
+      "entry": "definition-continuations contract",
+      "field": "continuesDefinition versus ambiguity fate",
+      "verdict": "agree",
+      "reason": "Retaining 'clarity: ambiguous' accurately captures the source text's reliance on unstated conventions, while 'fate: decision' correctly logs the mapper's resolution. The new validator invariant enforces this logic perfectly."
+    }
+  ],
+  "omissions": [],
+  "nits": [],
+  "acceptableAsReviewed": true
+}
