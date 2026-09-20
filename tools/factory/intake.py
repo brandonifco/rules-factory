@@ -1,12 +1,12 @@
 """M1 of #3: intake. Open a map package, prove the corpus in hand is the one it was mapped from.
 
 An engine is only as right as the correspondence between its map and its corpus, so nothing
-is scaffolded until five things are shown, in this order, and any one that is not shown is a
+is scaffolded until seven things are shown, in this order, and any one that is not shown is a
 refusal rather than a warning:
 
   1. **The package is a map package.** A `.nupkg` built by `tools/pack-map.py` (0015): its
-     `build/<id>.props` declares exactly one `RulesFactoryMap` item, and the map, manifest and
-     `ConsumerChecker` that item names are all inside the archive. A package without its
+     `build/<id>.props` declares exactly one `RulesFactoryMap` item, and the map, manifest,
+     `ConsumerChecker` and `Verification` record that item names are all inside the archive. A package without its
      checker (pre-2.0.0 backgammon, or a hand-built zip) is not one an engine's gate can use
      (#51), so it is refused, not tolerated. The checker's bytes are read so provenance can
      record their digest; they are never run (below).
@@ -42,7 +42,7 @@ which chose that package by exact version and lock-file hash. The factory has ch
 yet when it opens a package, so running what the package names would hand the package the
 privileges of whoever runs the factory before a single claim in it had been checked.
 
-**Nothing is read without a limit (#187).** All six checks above run on bytes intake already
+**Nothing is read without a limit (#187).** All seven checks above run on bytes intake already
 holds, so the size of what it takes in is the one thing it must decide before it has verified
 anything. A download is streamed to disk under `MAX_PACKAGE_BYTES` and hashed as it streams; a
 member is refused unread when it declares more than `MAX_MEMBER_BYTES` or a compression ratio
