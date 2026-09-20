@@ -41,9 +41,12 @@ boundary that list did not declare, the corpus may add `referenceAmendments`:
 ```
 
 The amendment is **additive only**. It can contain only the provenance above and new
-referenced-but-not-admitted references. It cannot change `contentHash`, `hashDerivation`,
-`asOf`, `licence`, verification, quotation, adapter, locator grammar, or admission status.
-Admitting a corpus remains a separate Phase-1 act.
+referenced-but-not-admitted references. Each correction reference has exactly `sourceId`,
+`citation` and `admitted: false`; a CFR part or section citation must name the same structural
+identity as its source id. An amendment cannot repeat an existing boundary or target a corpus
+already admitted by the manifest. It cannot change `contentHash`, `hashDerivation`, `asOf`,
+`licence`, verification, quotation, adapter, locator grammar, or admission status. Admitting a
+corpus remains a separate Phase-1 act.
 
 Every consumer asking for the current boundary reads the original `references` plus all valid
 `referenceAmendments`. The original list remains the mechanically inspectable statement of what
