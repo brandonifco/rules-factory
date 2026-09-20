@@ -13,6 +13,7 @@ from .status import check_absent, check_status
 from .inputs import check_asserted_by, check_draws
 from .crossrefs import check_cross_references
 from .defines import check_defines
+from .definition_continuations import check_definition_continuations
 from .correspondence import check_correspondence
 from .epistemic import check_superposition
 
@@ -66,6 +67,7 @@ CHECKS = [
     ("draws", check_draws),
     ("cross-references", check_cross_references),
     ("defines", check_defines),
+    ("definition-continuations", check_definition_continuations),
     ("correspondence", check_correspondence),
     # The epistemic checks (0034). None reads `status`, `implementedIn` or `tests`, and
     # none may: an overlay must not be able to turn a verdict about whether the corpus

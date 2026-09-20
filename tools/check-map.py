@@ -18,7 +18,7 @@ is what damages them, and `examples/validator-attack/` is the record.
     committed maps and three locator grammars: 62 landed, 18 are refused, 44 pass (#259;
     16 and 46 when first measured at 69167d8, the two rows that moved being the epistemic
     checks 0034 added). Five of the twenty-five checks this file held when it was
-    measured ever turned; there are twenty-six now, `defines` (0045) being the
+    measured ever turned; there are twenty-seven now; `definition-continuations` (0046) is the
     newest and unmeasured. Read
     the list below as what a reader should expect to get away with, not as a list of
     theoretical gaps.
@@ -127,13 +127,19 @@ REQUIRED_ENTRY_FIELDS = ["id", "name", "locator", "kind", "scope", "clarity", "e
 CITING_FIELDS = ("locator", "evidence")
 # What only a passage can carry, and so what a derived entry may not. `defines` is among them
 # for the reason `crossReferences` is: a definition is anchored in the passage that makes it
-# (0045), and a derived entry quotes no passage.
-PASSAGE_FIELDS = CITING_FIELDS + ("crossReferences", "defines", "absentFrom", "beyondAdapter",
-                                  "definedElsewhere", "extraction")
+# (0045), and a derived entry quotes no passage. `continuesDefinition` is anchored twice: by
+# this passage and by its structural witness to the directly defining passage (0046).
+PASSAGE_FIELDS = CITING_FIELDS + ("crossReferences", "defines", "continuesDefinition",
+                                  "absentFrom", "beyondAdapter", "definedElsewhere", "extraction")
 # The two halves of one `defines` item, and both of them: the vocabulary the term belongs to, and
 # the term as the corpus prints it (0045). Exactly these, because an item with a third key is one
 # whose author expected something to read it.
 DEFINES_FIELDS = ("vocabulary", "term")
+# A continuation writes neither vocabulary nor term. It names the directly defining entry and a
+# second locator that mechanically witnesses the structural relationship (0046). Unknown keys are
+# refused rather than ignored, so metadata cannot look operative while no reader consumes it.
+CONTINUES_DEFINITION_FIELDS = ("definedBy", "anchor")
+DEFINITION_ANCHOR_FIELDS = ("sourceId", "citation")
 # The relations that hold entry ids and nothing else. `gatedBy` is not among them: 0011 split
 # it into the two gate fields, and `gates` refuses it by name.
 GATE_FIELDS = ("enabledBy", "suspendedBy")
@@ -238,28 +244,82 @@ def defines_of(entry):
     return found
 
 
+def definition_continuation_of(entry):
+    """One `continuesDefinition` as `(definedBy, sourceId, citation)`, or None (0046).
+
+    A continuation writes no vocabulary or term of its own. It names the entry that directly
+    defines the term and carries a structural locator witnessing that this passage sits under that
+    defining passage. Shape errors are reported by the validator; every consumer reads this one
+    tolerant canonical form.
+    """
+    if not isinstance(entry, dict):
+        return None
+    declared = entry.get("continuesDefinition")
+    if not isinstance(declared, dict):
+        return None
+    target = declared.get("definedBy")
+    anchor = declared.get("anchor")
+    if not isinstance(target, str) or not target:
+        return None
+    if not isinstance(anchor, dict):
+        return None
+    source = anchor.get("sourceId")
+    citation = anchor.get("citation")
+    if not isinstance(source, str) or not source or not isinstance(citation, str) or not citation:
+        return None
+    return target, source, citation
+
+
 def defined_vocabulary(doc, name):
-    """One named vocabulary, as `{term: [the ids of every entry that defines it]}` (0045).
+    """One named vocabulary as `{term: [every entry that defines it]}` (0044-0046).
 
-    **One printed code can name more than one rule** (0044), and here that cardinality is not a
-    special case: `IB3` has two defining entries because two entries declare they define it, in
-    § 172.102's table 2 and its table 4. The ids are in the order the map states them, and an id
-    that declares one term twice appears once -- `check-map.py --only defines` reports the
-    repetition, so the two cases stay distinguishable.
+    Direct definitions come from evidence-anchored `defines` exactly as 0045 specifies.
+    A `continuesDefinition` entry then joins the **one** direct definition made by its
+    `definedBy` target. It copies neither vocabulary nor term: both are inherited from that
+    target, which is why an additional rule whose own evidence omits the printed code can join
+    the same defining set without weakening direct anchoring.
 
-    A vocabulary no entry defines is `{}`, which is what makes a protocol naming one refusable.
-    The name is canonicalised on the way in, so a caller holding the protocol's spelling and an
-    entry holding its own reach the same vocabulary.
+    Readers apply the map-level invariants here too: the continuation has no direct `defines`,
+    its target exists, directly defines exactly one term, is not itself a continuation, and all
+    three locators name the same corpus. The locator checker separately proves the structural
+    anchor resolves to this passage under that target (0046).
+
+    A vocabulary no entry defines is `{}`. Declaration order decides nothing semantically, but
+    ids are returned in map order for stable diagnostics.
     """
     wanted, terms = canonical_vocabulary(name), {}
     if not wanted:
         return terms
-    for entry in entries_of(doc):
+    entries = entries_of(doc)
+    by_id = index(doc)
+
+    for entry in entries:
         if not isinstance(entry, dict) or not isinstance(entry.get("id"), str):
             continue
-        for vocabulary, term in defines_of(entry):
-            if vocabulary == wanted and entry["id"] not in terms.setdefault(term, []):
-                terms[term].append(entry["id"])
+        direct = defines_of(entry)
+        if direct:
+            for vocabulary, term in direct:
+                if vocabulary == wanted and entry["id"] not in terms.setdefault(term, []):
+                    terms[term].append(entry["id"])
+            continue
+
+        continuation = definition_continuation_of(entry)
+        if continuation is None:
+            continue
+        target_id, anchor_source, _ = continuation
+        target = by_id.get(target_id)
+        if not isinstance(target, dict) or definition_continuation_of(target) is not None:
+            continue
+        target_definitions = defines_of(target)
+        if len(target_definitions) != 1:
+            continue
+        entry_source = block(entry, "locator").get("sourceId")
+        target_source = block(target, "locator").get("sourceId")
+        if not entry_source or entry_source != target_source or entry_source != anchor_source:
+            continue
+        vocabulary, term = target_definitions[0]
+        if vocabulary == wanted and entry["id"] not in terms.setdefault(term, []):
+            terms[term].append(entry["id"])
     return terms
 
 
@@ -2487,6 +2547,92 @@ def check_defines(ctx):
                    "a `defines` declaration is malformed or unanchored")
 
 
+# --- tools/mapvalidator/definition_continuations.py -------------------------------------------
+# The semantic half of a definition continuation: its target and map-level anchor (0046).
+#
+# The corpus locator checker proves the other half: that the structural anchor resolves to this
+# entry's passage under the directly defining passage. This check deliberately does not parse a
+# locator grammar; a locator is evidence-side truth, while this package owns the map contract.
+
+
+def check_definition_continuations(ctx):
+    """Every `continuesDefinition` has one direct defining target and one structural witness.
+
+    The continuation writes no vocabulary or term. Those are inherited from exactly one direct
+    `defines` declaration on `definedBy`, which keeps 0045's own-evidence anchor unchanged.
+    Chains and multi-term targets are refused until a corpus forces them.
+    """
+    by_id, bad, carriers = index(ctx["map"]), [], []
+    for position, entry in enumerate(entries_of(ctx["map"])):
+        if not isinstance(entry, dict) or "continuesDefinition" not in entry:
+            continue
+        name = label(entry, position)
+        carriers.append(name)
+        declared = entry.get("continuesDefinition")
+        if not isinstance(declared, dict):
+            bad.append(f"  X  {name}: `continuesDefinition` is not an object")
+            continue
+        if set(declared) != set(CONTINUES_DEFINITION_FIELDS):
+            held = ", ".join(f"`{field}`" for field in sorted(declared)) or "nothing"
+            bad.append(f"  X  {name}: continuesDefinition holds {held}; it is exactly "
+                       f"`definedBy` and `anchor`, and an unknown key is refused")
+            continue
+        anchor = declared.get("anchor")
+        if not isinstance(anchor, dict):
+            bad.append(f"  X  {name}: continuesDefinition.anchor is not a locator object")
+            continue
+        if set(anchor) != set(DEFINITION_ANCHOR_FIELDS):
+            held = ", ".join(f"`{field}`" for field in sorted(anchor)) or "nothing"
+            bad.append(f"  X  {name}: continuesDefinition.anchor holds {held}; an anchor is "
+                       f"exactly `sourceId` and `citation`")
+            continue
+        continuation = definition_continuation_of(entry)
+        if continuation is None:
+            bad.append(f"  X  {name}: continuesDefinition needs non-empty string `definedBy`, "
+                       f"`anchor.sourceId`, and `anchor.citation`")
+            continue
+        target_id, anchor_source, _ = continuation
+        if "defines" in entry:
+            bad.append(f"  X  {name}: carries both `defines` and `continuesDefinition`; a "
+                       f"continuation inherits one direct definition and does not declare another")
+        if fate_of(entry) == "unresolved":
+            bad.append(f"  X  {name}: carries `continuesDefinition` while its ambiguity fate is "
+                       f"`unresolved`; the relation is a semantic choice, so this contract "
+                       f"requires that ambiguity to be settled by a named decision (0046)")
+        target = by_id.get(target_id)
+        if target is None:
+            bad.append(f"  X  {name}: continuesDefinition.definedBy names {target_id!r}, which is "
+                       f"not an entry in this map")
+            continue
+        if target_id == entry.get("id"):
+            bad.append(f"  X  {name}: continuesDefinition.definedBy names itself")
+            continue
+        if "continuesDefinition" in target:
+            bad.append(f"  X  {name}: continues a definition through {target_id!r}, which is "
+                       f"itself a continuation; continuation chains are not supported (0046)")
+        target_definitions = defines_of(target)
+        if len(target_definitions) != 1:
+            bad.append(f"  X  {name}: continues {target_id!r}, which has "
+                       f"{len(target_definitions)} direct definition(s); the target has exactly "
+                       f"one until a corpus forces multi-term continuation")
+        source = block(entry, "locator").get("sourceId")
+        target_source = block(target, "locator").get("sourceId")
+        if not source or source != target_source:
+            bad.append(f"  X  {name}: continuation and directly defining entry are not in the "
+                       f"same corpus ({source!r} versus {target_source!r})")
+        if anchor_source != source:
+            bad.append(f"  X  {name}: continuation anchor names corpus {anchor_source!r}, not "
+                       f"the continuation's corpus {source!r}")
+
+    if not carriers:
+        return skip("no entry carries `continuesDefinition`, so no continuation was checked",
+                    had_subject=False)
+    return verdict(bad,
+                   f"{len(carriers)} definition continuation(s) have one direct defining target "
+                   f"and a same-corpus structural anchor",
+                   "a definition continuation is malformed or is not tied to one direct definition")
+
+
 # --- tools/mapvalidator/correspondence.py -----------------------------------------------------
 # The correspondence table: which runtime row each entry reaches, and the overlaps that are
 # data errors rather than precedence.
@@ -2882,6 +3028,7 @@ CHECKS = [
     ("draws", check_draws),
     ("cross-references", check_cross_references),
     ("defines", check_defines),
+    ("definition-continuations", check_definition_continuations),
     ("correspondence", check_correspondence),
     # The epistemic checks (0034). None reads `status`, `implementedIn` or `tests`, and
     # none may: an overlay must not be able to turn a verdict about whether the corpus

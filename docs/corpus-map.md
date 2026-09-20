@@ -390,6 +390,7 @@ before either has been implemented.
 | `derivedFrom` | Present only when no sentence states the fact and two or more in-scope entries entail it. Entry ids. The entry then carries no `locator` and no `evidence`. See below. |
 | `crossReferences` | The pointers this entry's `evidence` makes, each resolved to an entry or to a recorded reason there is none. See below. |
 | `defines` | The terms this entry's `evidence` defines, each in a named vocabulary. Optional, and the opposite direction to `crossReferences`. See below. |
+| `continuesDefinition` | This passage states an additional defining rule for the one term directly defined by another entry. Names that entry and a structural locator witness; it carries no vocabulary or term of its own (0046). See below. |
 | `evidence` | One contiguous verbatim span of the corpus: the passage that *states* this rule. Not a summary of it. Absent on a derived entry, and only there. See below. |
 | `status` | Whether the engine has built this entry. Independent of `ambiguity.fate`. See below. |
 | `implementedIn` | The ruleset revision that implemented it. Set when status becomes `implemented`. |
@@ -1186,8 +1187,8 @@ Added in [0045](decisions/0045-a-vocabulary-is-distributed-over-the-entries-that
 
 **It is the opposite direction to `crossReferences`, and neither implies the other.**
 `crossReferences` records a pointer the passage *makes*; `defines` records a term the passage
-*gives a meaning to*. 49 CFR § 172.101's column 7 cell prints `IB3` and points at the two
-§ 172.102 rows that define it; those two rows point at nothing by defining it. Deriving one from
+*gives a meaning to*. 49 CFR § 172.101's column 7 cell prints `IB3` and points at the § 172.102
+entries that define it; those entries point at nothing merely by defining it. Deriving one from
 the other would make a defining entry assert a reference its passage does not make.
 
 **Why it exists.** A mechanism that reads a corpus's codes as pointers has to know what the codes
@@ -1196,11 +1197,13 @@ reads them out of one entry, because the SRD prints its glossary list in a sente
 prints no such passage — its codes are one per table row, and § 172.102(c) says only *"The
 following tables list … the special provisions referred to in column 7"* — so an entry carrying
 that list would be indexing twenty codes it does not print, which the anchoring rule refuses
-([#314](https://github.com/brandonifco/rules-factory/issues/314)). The vocabulary is therefore
-distributed: each defining entry declares its own term, and `(vocabulary, term)` resolves to
-**every** entry that declares it. That is where
-[0044](decisions/0044-one-printed-code-can-name-more-than-one-rule.md)'s cardinality now comes
-from: `IB3` names two rules because two entries define it, in § 172.102's table 2 and its table 4.
+([#314](https://github.com/brandonifco/rules-factory/issues/314)). The vocabulary is therefore distributed. A passage that prints its term declares it directly;
+where a second passage states an additional rule without repeating that term, 0046 may attach it
+through an independently anchored `continuesDefinition`. `(vocabulary, term)` resolves to **every**
+direct and continued defining entry. That is where
+[0044](decisions/0044-one-printed-code-can-name-more-than-one-rule.md)'s cardinality comes from:
+trial 10's `IB3` now reaches its table-2 IBC rule, the additional-requirement row beneath it, and
+the separate table-4 Large Packagings rule.
 
 `check-map.py --only defines` holds the declaration, and only what can be held mechanically: a
 non-empty list; each item exactly `vocabulary` and `term`, both non-empty strings; the `term`
@@ -1224,6 +1227,57 @@ and `mapper protocol` is what refuses a `coded-pointer` naming a vocabulary no e
 a vocabulary name is free text: two entries that meant the same vocabulary and spelled it
 differently make two vocabularies, and what says so is the pointer report listing the codes
 neither declares.
+
+
+### `continuesDefinition`
+
+A passage can state an additional defining rule under a term that another passage prints without
+repeating that term. [0046](decisions/0046-an-additional-rule-can-continue-a-definition.md) gives
+that relationship its own field instead of weakening `defines`:
+
+```json
+"continuesDefinition": {
+  "definedBy": "ib2-authorized-ibcs",
+  "anchor": {
+    "sourceId": "cfr-49-172.102",
+    "citation": "§ 172.102 table 2, row blank in column 1 below row [column 1 = \"IB2\"]"
+  }
+}
+```
+
+It means **this passage adds one defining rule to the one direct vocabulary term
+`definedBy` defines**. The continuation carries neither `vocabulary` nor `term`; the canonical
+reader inherits both from that target. The target must exist in the same corpus, have exactly one
+direct `defines` declaration, and not itself be a continuation. The continuation may not also
+carry `defines`. Several entries may continue one direct definition, but chains, multi-term
+targets, and one continuation joining several terms are deliberately unsupported until a corpus
+forces them.
+
+**The `anchor` is a structural witness, not evidence.** It must resolve to the continuation's
+own passage in a way that also identifies the directly defining passage. For the case that forced
+0046, the section locator checker requires a `row blank ... below row [...]` locator: that
+locator must resolve to the same table row as this entry's ordinary `locator`, and its
+`below row [...]` anchor must resolve to the same row as `definedBy`. This lets IB3 retain its
+better ordinary column-2 row key while separately proving that its additional-requirement row is
+the one below the IB3 row.
+
+0043 remains structural only: a blank-row locator does not imply continuation merely by existing.
+0045 also remains literal: `check-map.py --only defines` still requires a direct
+`defines.term` verbatim in **that entry's own evidence**.
+
+**The relation is a semantic choice, not an unresolved hypothesis.** In this contract version an
+entry carrying `continuesDefinition` may not also carry `ambiguity.fate: unresolved`. Where the
+source is still ambiguous about the association — Trial 10's blank code cells are the forcing
+case — the entry stays `clarity: ambiguous` but uses `fate: decision` and names the record that
+made the reading. That distinction says both things honestly: the corpus leaves the convention
+implicit, and the map has chosen one interpretation strongly enough to make it operative.
+
+The `definition-continuations` check validates the relation's map-level shape, target, and this
+cross-field fate rule; the corpus locator checker validates its structural witness. A grammar with
+no implemented structural witness cannot use the relation yet.
+
+The field is optional in schema version 1. Existing maps that omit it keep exactly their prior
+meaning; this is the same additive versioning treatment used for `defines`.
 
 ### `status`
 

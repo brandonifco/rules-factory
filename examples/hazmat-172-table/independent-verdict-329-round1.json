@@ -1,0 +1,49 @@
+{
+  "about": "Independent verdict on PR #329, reviewing the two Trial 10 continuesDefinition relationships against the supplied pinned § 172.102 corpus excerpt and contract material.",
+  "sha256": "157182c2ed1a05a24885de082337ce8bd258a7d8e500df7dd3f14185c4c12d70",
+  "reviewer": "Gemini, independent reviewer in a separate context",
+  "read": [
+    "offline review packet: pinned § 172.102(c)(4) prose",
+    "offline review packet: raw XML excerpt of the IB-Code table",
+    "offline review packet: base and PR #329 map entries",
+    "offline review packet: ADR 0043/0044/0045/0046 contract summary and mechanical checks"
+  ],
+  "summary": "The application of continuesDefinition correctly models the implicit table semantics of the source corpus. However, keeping the ambiguity fate as 'unresolved' introduces a critical contradiction, as the map has explicitly resolved the relationship by deploying the continuesDefinition pointer.",
+  "verdicts": [
+    {
+      "entry": "ib2-vapour-pressure-limit",
+      "field": "continuesDefinition",
+      "verdict": "agree",
+      "corpusEvidence": "The row physically follows IB2 and states a regulatory constraint that would otherwise be orphaned.",
+      "reason": "The table pattern strongly implies the blank row continues the code above it. continuesDefinition correctly maps this structural reality to a semantic rule without violating ADR 0045."
+    },
+    {
+      "entry": "ib3-vapour-pressure-limit",
+      "field": "continuesDefinition",
+      "verdict": "agree",
+      "corpusEvidence": "The row physically follows IB3 and states a regulatory constraint that would otherwise be orphaned.",
+      "reason": "The table pattern strongly implies the blank row continues the code above it. continuesDefinition correctly maps this structural reality to a semantic rule without violating ADR 0045."
+    },
+    {
+      "entry": "ib2-vapour-pressure-limit",
+      "field": "clarity/ambiguity consistency with continuesDefinition",
+      "verdict": "disagree",
+      "corpusEvidence": "The entry asserts fate: unresolved while simultaneously asserting continuesDefinition.",
+      "reason": "A map cannot hold a relationship as both semantically definitive and unresolved. The clarity can remain 'ambiguous' to document the source text's omission of a prose convention, but the fate must be updated to reflect that the map has made a definitive associative reading."
+    },
+    {
+      "entry": "ib3-vapour-pressure-limit",
+      "field": "clarity/ambiguity consistency with continuesDefinition",
+      "verdict": "disagree",
+      "corpusEvidence": "The entry asserts fate: unresolved while simultaneously asserting continuesDefinition.",
+      "reason": "A map cannot hold a relationship as both semantically definitive and unresolved. The clarity can remain 'ambiguous' to document the source text's omission of a prose convention, but the fate must be updated to reflect that the map has made a definitive associative reading."
+    }
+  ],
+  "omissions": [
+    "The PR failed to update the ambiguity fate to reflect a resolved state after committing to a semantic link."
+  ],
+  "nits": [
+    "The note fields use the lack of prose convention to justify an unresolved fate; they should instead use it to justify why an explicit reading was forced."
+  ],
+  "acceptableAsReviewed": false
+}

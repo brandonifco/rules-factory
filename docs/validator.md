@@ -35,8 +35,8 @@ of the territory, not the territory.
 
 | Kind | The question | Today |
 |---|---|---|
-| **structural** | does the object obey the map contract? | most of what exists: `schema`, `vocabulary`, `required-fields`, `unique-ids`, `gates`, `references`, `derived`, `exclusions`, `conflicts`, `defines` |
-| **evidentiary** | does the cited text exist where the map says it does? | the three locator checkers and `test_map_anchors.py` — outside the package, and belonging inside it |
+| **structural** | does the object obey the map contract? | most of what exists: `schema`, `vocabulary`, `required-fields`, `unique-ids`, `gates`, `references`, `derived`, `exclusions`, `conflicts`, `defines`, `definition-continuations` |
+| **evidentiary** | does the cited text exist where the map says it does? | the three locator checkers and `test_map_anchors.py` — outside the package, and belonging inside it; the section checker also proves 0046 structural continuation anchors |
 | **completeness** | did the mapper skip definitions, gates, pointers, tables, examples, applicability clauses, or part of the declared extent? | the producer's half now runs — [`mapper sweeps`](mapper.md#the-sweeps) asks each declared sweep of the units the walk left unaccounted ([#250](https://github.com/brandonifco/rules-factory/issues/250)) — and the adversarial half is owed. `extent` claims coverage and [`mapper inventory`](mapper.md#the-inventory) now measures it — 540 of 806 units across the six maps are reached by no quote ([#255](https://github.com/brandonifco/rules-factory/issues/255), [#267](https://github.com/brandonifco/rules-factory/issues/267)) — but it is the producer measuring its own walk, and nothing adversarial reads that count |
 | **interpretive** | does the evidence actually support the classification? | nothing mechanical, by nature. It is what the blind second mapping exists for ([0014](decisions/0014-a-map-is-checked-by-a-blind-second-mapping.md)), which caught 14 of 15 injected comprehension errors the mechanical checks missed |
 | **relational** | does this gate govern everything the map says it governs — and more than the map noticed? | shape only. `full-table-suspension` reached the throw and everything a throw leads to, recorded none of it, and survived a trial, a build and a review |
@@ -124,9 +124,10 @@ reading them.
   grammars: 62 landed, 18 are refused, 44 pass
   ([#259](https://github.com/brandonifco/rules-factory/issues/259); 16 and 46 when first measured
   at `69167d8`, and the two rows that moved are the epistemic checks 0034 added). Five of the
-  twenty-five checks `check-map.py` held when it was measured ever turned; there are twenty-six
-  now, `defines` ([0045](decisions/0045-a-vocabulary-is-distributed-over-the-entries-that-define-its-terms.md))
-  being the newest and unmeasured. Every miss is dispositioned, below or as an
+  twenty-five checks `check-map.py` held when it was measured ever turned; there are twenty-seven
+  now. `definition-continuations` ([0046](decisions/0046-an-additional-rule-can-continue-a-definition.md))
+  is the newest and unmeasured; `defines` ([0045](decisions/0045-a-vocabulary-is-distributed-over-the-entries-that-define-its-terms.md))
+  remains unchanged by 0046. Every miss is dispositioned, below or as an
   issue: [#268](https://github.com/brandonifco/rules-factory/issues/268),
   [#269](https://github.com/brandonifco/rules-factory/issues/269),
   [#270](https://github.com/brandonifco/rules-factory/issues/270),
@@ -159,3 +160,12 @@ reading them.
   unseen.
 - **Nothing checks that an entry is the right decomposition,** that a gate list is complete, or
   that `evidence` is sufficient. Those are review.
+
+
+### Definition-continuation fate
+
+`definition-continuations` treats the relation as an operative semantic assertion, not only
+metadata. In this contract version it therefore refuses an entry that carries
+`continuesDefinition` while its `ambiguity.fate` is `unresolved`. A source may remain
+`clarity: ambiguous`; if the map adopts the continuation reading, the ambiguity is settled by a
+named `fate: decision`. This is the invariant exposed by the independent review of PR #329.

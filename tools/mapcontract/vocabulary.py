@@ -34,13 +34,19 @@ REQUIRED_ENTRY_FIELDS = ["id", "name", "locator", "kind", "scope", "clarity", "e
 CITING_FIELDS = ("locator", "evidence")
 # What only a passage can carry, and so what a derived entry may not. `defines` is among them
 # for the reason `crossReferences` is: a definition is anchored in the passage that makes it
-# (0045), and a derived entry quotes no passage.
-PASSAGE_FIELDS = CITING_FIELDS + ("crossReferences", "defines", "absentFrom", "beyondAdapter",
-                                  "definedElsewhere", "extraction")
+# (0045), and a derived entry quotes no passage. `continuesDefinition` is anchored twice: by
+# this passage and by its structural witness to the directly defining passage (0046).
+PASSAGE_FIELDS = CITING_FIELDS + ("crossReferences", "defines", "continuesDefinition",
+                                  "absentFrom", "beyondAdapter", "definedElsewhere", "extraction")
 # The two halves of one `defines` item, and both of them: the vocabulary the term belongs to, and
 # the term as the corpus prints it (0045). Exactly these, because an item with a third key is one
 # whose author expected something to read it.
 DEFINES_FIELDS = ("vocabulary", "term")
+# A continuation writes neither vocabulary nor term. It names the directly defining entry and a
+# second locator that mechanically witnesses the structural relationship (0046). Unknown keys are
+# refused rather than ignored, so metadata cannot look operative while no reader consumes it.
+CONTINUES_DEFINITION_FIELDS = ("definedBy", "anchor")
+DEFINITION_ANCHOR_FIELDS = ("sourceId", "citation")
 # The relations that hold entry ids and nothing else. `gatedBy` is not among them: 0011 split
 # it into the two gate fields, and `gates` refuses it by name.
 GATE_FIELDS = ("enabledBy", "suspendedBy")
