@@ -12,6 +12,45 @@ def corpora_of(manifest):
     return {c.get("sourceId"): c for c in manifest.get("corpora") or [] if isinstance(c, dict)}
 
 
+
+def references_of(corpus):
+    """The corpus's operational external references, including provenance-preserving amendments.
+
+    `references` is the Phase-1 admission record. A later mapping may discover that record was
+    incomplete; 0047 keeps that historical list intact and layers additive `referenceAmendments`
+    over it. Readers that need the current boundary use this function rather than silently
+    choosing the historical list or the correction.
+    """
+    if not isinstance(corpus, dict):
+        return []
+    found = [item for item in corpus.get("references") or [] if isinstance(item, dict)]
+    for amendment in corpus.get("referenceAmendments") or []:
+        if not isinstance(amendment, dict):
+            continue
+        found.extend(item for item in amendment.get("references") or [] if isinstance(item, dict))
+    return found
+
+
+def reference_covers(corpus, source_id):
+    """Whether the operational boundary declares `source_id`.
+
+    Exact reference ids cover themselves. A reference whose citation is `part N` is explicitly
+    a corpus boundary at part grain and covers child section ids beneath that source id. Other
+    references remain exact; a section declaration never expands itself by prefix accident.
+    """
+    if not isinstance(source_id, str) or not source_id:
+        return False
+    for reference in references_of(corpus):
+        declared = reference.get("sourceId")
+        if declared == source_id:
+            return True
+        citation = reference.get("citation")
+        if (isinstance(declared, str) and isinstance(citation, str)
+                and citation.lower().startswith("part ")
+                and source_id.startswith(declared + ".")):
+            return True
+    return False
+
 def quotes_withheld(manifest, entry):
     """True when the entry's corpus declares `quotation: withheld` (0013)."""
     source = corpora_of(manifest).get(block(entry, "locator").get("sourceId"))
