@@ -288,8 +288,8 @@ def context_for(reviewer, settings):
         if isinstance(link, dict) and link.get("id") == reviewer and link.get("context"):
             return link["context"]
     known = ", ".join([SEMANTIC] + [link.get("id", "?") for link in chain if isinstance(link, dict)])
-    raise Refused(f"{reviewer!r} is not a reviewer the reviewed commit configures. Known: {known}. "
-                  f"Adding one is an edit to {POLICY}, not to this script.")
+    raise Refused(f"{reviewer!r} is not a reviewer this engine configures at the reviewed commit. "
+                  f"Known: {known}. Adding one is an edit to {POLICY}, not to this script.")
 
 
 def main(argv=None):
@@ -337,8 +337,9 @@ def main(argv=None):
     if head != sha:
         print("The pull request has moved; this verdict is retained only as evidence about the reviewed bytes.")
     if args.verdict == "fail":
-        print("A FAIL remains evidence about these exact reviewed bytes. A changed head still requires fresh review; "
-              "moving the branch never turns this failure into a pass on different bytes.")
+        print("A recorded failure blocks the merge outright wherever these reviewed bytes are the commit being "
+              "gated. A changed head still requires fresh review; moving the branch never turns this failure into "
+              "a pass on different bytes.")
     return 0
 
 
