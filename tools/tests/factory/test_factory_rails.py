@@ -899,6 +899,46 @@ class TestTheReviewPacket(RailsInAGitEngine):
         self.assertIn("rules-verdict/acme", text)
         self.assertNotIn("codex", text, "no script names a provider; the policy does")
 
+    def test_packet_context_comes_from_the_pr_head_not_the_caller_checkout(self):
+        # #334: the old packet put head B in its heading while reading policy, provenance and
+        # entry context from checkout A. The review then named bytes it had not actually shown.
+        self.commit_engine()
+        head = self.change()
+        policy_path = os.path.join(self.out, ".github", "agent-policy.json")
+        policy = json.load(open(policy_path, encoding="utf-8"))
+        policy["review"]["semanticContext"] = "rules-verdict/head-b"
+        with open(policy_path, "w", encoding="utf-8") as handle:
+            json.dump(policy, handle, indent=2)
+            handle.write("\n")
+        git(self.out, "add", ".github/agent-policy.json")
+        git(self.out, "commit", "-qm", "change the review context on the pull request")
+        head = git(self.out, "rev-parse", "HEAD")
+        self.pull_request(head)
+
+        # The object for B exists, but the process is deliberately launched from A.
+        git(self.out, "checkout", "-q", "main")
+        out = os.path.join(self.tmp, "head-bound-packet")
+        done = self.packet("--out", out)
+        self.assertEqual(done.returncode, 0, done.stderr)
+
+        review_path = os.path.join(out, f"pr-5-{head[:12]}.md")
+        entry_path = os.path.join(out, "entry-altitude-limit.md")
+        manifest_path = os.path.join(out, f"pr-5-{head[:12]}.review.json")
+        self.assertTrue(os.path.isfile(manifest_path), "the human packet has no machine-readable identity")
+        review = open(review_path, encoding="utf-8").read()
+        entry = open(entry_path, encoding="utf-8").read()
+        self.assertIn("rules-verdict/head-b", review,
+                      "the packet named B but read review policy from checkout A")
+        self.assertIn('"status": "implemented"', entry,
+                      "the entry packet named B but was generated from checkout A's overlay")
+
+        manifest = json.load(open(manifest_path, encoding="utf-8"))
+        self.assertEqual(manifest["reviewedCommit"], head)
+        self.assertEqual(manifest["reviewPacket"]["sha256"],
+                         hashlib.sha256(open(review_path, "rb").read()).hexdigest())
+        self.assertEqual(manifest["entryPackets"][0]["sha256"],
+                         hashlib.sha256(open(entry_path, "rb").read()).hexdigest())
+
     def test_a_pull_request_closing_no_single_issue_is_refused(self):
         self.commit_engine()
         head = self.change()
@@ -1541,6 +1581,60 @@ if argv_api := [a for a in sys.argv[1:] if a.startswith("repos/")]:
         self.assertEqual(done.returncode, 0, done.stderr)
         recorded = json.load(open(self.statuses, encoding="utf-8"))
         self.assertEqual(recorded["a" * 40]["rules-verdict/semantic"], "success")
+
+    def test_a_packet_for_an_earlier_head_cannot_pass_a_newer_head(self):
+        # #334: a reviewer forms a verdict on A, the pull request advances to B, and the recorder
+        # must consume A's packet identity rather than silently selecting B because it is current.
+        self.commit_engine()
+        git(self.out, "checkout", "-qb", "issue-27")
+        with open(os.path.join(self.out, "README.md"), "a", encoding="utf-8") as handle:
+            handle.write("\nreviewed A\n")
+        git(self.out, "add", "README.md")
+        git(self.out, "commit", "-qm", "reviewed state A")
+        reviewed = git(self.out, "rev-parse", "HEAD")
+
+        self.scenario(head=reviewed, files=[{"path": "README.md"}])
+        packet_dir = os.path.join(self.tmp, "verdict-packet")
+        os.makedirs(packet_dir)
+        packet_path = os.path.join(packet_dir, f"pr-5-{reviewed[:12]}.md")
+        with open(packet_path, "w", encoding="utf-8") as handle:
+            handle.write(f"# Review packet\n\nHead commit \`{reviewed}\`.\n")
+        policy_path = os.path.join(self.out, ".github", "agent-policy.json")
+        provenance_path = os.path.join(self.out, "provenance.json")
+        manifest_path = os.path.join(packet_dir, f"pr-5-{reviewed[:12]}.review.json")
+        manifest = {
+            "reviewPacketFormat": 1,
+            "pullRequest": 5,
+            "reviewedCommit": reviewed,
+            "baseCommit": git(self.out, "rev-parse", "main"),
+            "reviewPacket": {"path": os.path.basename(packet_path),
+                             "sha256": hashlib.sha256(open(packet_path, "rb").read()).hexdigest()},
+            "commitArtifacts": [
+                {"path": ".github/agent-policy.json",
+                 "sha256": hashlib.sha256(open(policy_path, "rb").read()).hexdigest()},
+                {"path": "provenance.json",
+                 "sha256": hashlib.sha256(open(provenance_path, "rb").read()).hexdigest()},
+            ],
+            "entryPackets": [],
+        }
+        with open(manifest_path, "w", encoding="utf-8") as handle:
+            json.dump(manifest, handle, indent=2)
+            handle.write("\n")
+
+        with open(os.path.join(self.out, "README.md"), "a", encoding="utf-8") as handle:
+            handle.write("advanced B\n")
+        git(self.out, "add", "README.md")
+        git(self.out, "commit", "-qm", "advance to state B")
+        advanced = git(self.out, "rev-parse", "HEAD")
+        self.scenario(head=advanced, files=[{"path": "README.md"}])
+
+        done = self.record("--pr", "5", "--reviewer", "semantic", "--verdict", "pass",
+                           "--packet", manifest_path)
+        self.assertEqual(done.returncode, 1, done.stdout + done.stderr)
+        self.assertIn(reviewed[:12], done.stderr)
+        self.assertIn(advanced[:12], done.stderr)
+        self.assertEqual(json.load(open(self.statuses, encoding="utf-8")), {},
+                         "a stale review posted a status to the newer head")
 
     def test_an_unconfigured_reviewer_is_refused_and_says_what_is_configured(self):
         self.produced()
