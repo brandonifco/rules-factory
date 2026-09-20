@@ -344,7 +344,8 @@ def gate(inputs, repo_root):
 
         run_step("check-map.py --phase publish", [
             sys.executable, stage_checker, stage_map,
-            "--manifest", stage_manifest, "--repo-root", repo_root, "--phase", "publish"])
+            "--manifest", stage_manifest, "--repo-root", repo_root,
+            "--comparison", inputs["map_path"], "--phase", "publish"])
         argv = ([f"{source_id}={staged_corpora[source_id]}" for source_id in cited]
                 if len(cited) > 1 else [staged_corpora[cited[0]]])
         run_step(f"{os.path.relpath(checker, REPO)} ({adapter})",
