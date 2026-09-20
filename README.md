@@ -194,7 +194,13 @@ What never happens again is `NOT VERIFIED` on stdout and `0` in `$?`.
   never writes: only `produce` authors that record.
 
 CI proves this on every pull request. The `validate` job runs
-[`scripts/validate.sh`](scripts/validate.sh). The `engine` job runs
+[`scripts/validate.sh`](scripts/validate.sh), a wrapper that passes `--full` to
+[`tools/validate-repo.py`](tools/validate-repo.py) — the orchestrator that owns the steps and can
+also be asked what a diff owes (`--changed --base <sha>`) or what a release owes
+(`--release <map>`). Every rule that narrows the run is a row in a path table a test covers, and anything
+the table cannot place widens back to `--full`
+([0049](docs/decisions/0049-the-gate-can-say-which-of-its-checks-a-change-owes.md)). CI asks for
+`--full` today. The `engine` job runs
 [`scripts/validate-engine.sh`](scripts/validate-engine.sh), which produces an engine from the
 `hoyle-backgammon` package on the pinned SDK and verifies it.
 
