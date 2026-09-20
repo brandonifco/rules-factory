@@ -357,9 +357,26 @@ class TestTheSuiteIsDistributedAndHeldToItsCollection(unittest.TestCase):
         self._step(fake)
         self.assertIn("--collect-only", fake.calls[0])
 
-    def test_fewer_passed_than_collected_is_a_failure(self):
+    def test_fewer_accounted_for_than_collected_is_a_failure(self):
         # The shape of a lost worker: pytest's own exit code is 0 and the number reads fine.
         self.assertFalse(self._step(self.FakePytest(ran="1400 passed in 60s\n")))
+
+    def test_a_skip_accounts_for_its_test(self):
+        # This job has no .NET SDK, so the tests that need one skip and the engine job runs them.
+        # A skip is an outcome; refusing it here would fail every CI run for telling the truth.
+        self.assertTrue(self._step(self.FakePytest(ran="1748 passed, 2 skipped in 174s\n")))
+
+    def test_a_skip_does_not_cover_a_test_that_vanished(self):
+        self.assertFalse(self._step(self.FakePytest(ran="1400 passed, 2 skipped in 60s\n")))
+
+    def test_a_run_in_which_everything_skipped_proves_nothing(self):
+        # Every test accounted for and not one of them run. Accounting alone would call this a
+        # pass, which is the "reports ok while examining nothing" shape in its purest form.
+        self.assertFalse(self._step(self.FakePytest(ran="1750 skipped in 3.1s\n")))
+
+    def test_the_other_outcome_counters_account_too(self):
+        self.assertTrue(self._step(
+            self.FakePytest(ran="1745 passed, 2 skipped, 2 xfailed, 1 xpassed in 174s\n")))
 
     def test_a_collection_that_found_nothing_proves_nothing(self):
         self.assertFalse(self._step(self.FakePytest(collected="no tests ran in 0.1s\n")))

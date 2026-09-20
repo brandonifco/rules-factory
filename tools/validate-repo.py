@@ -735,15 +735,25 @@ def step_tool_tests(run: Run) -> bool:
     if lines:
         print(lines[-1])
     # A green pytest run over an empty suite is the same lie as a check with no inputs, and a
-    # distributed run that lost a worker is the same lie with a plausible number on it. One
-    # comparison refuses both: nothing passed is nothing proven, and fewer passed than were
-    # collected is the rest of the suite gone missing.
-    passed = _count(proc.stdout, r"(\d+) passed")
-    if passed < wanted:
-        print(f"{wanted} test(s) were collected and {passed} passed -- "
-              f"{wanted - passed} of them did not run", file=sys.stderr)
+    # distributed run that lost a worker is the same lie with a plausible number on it. So every
+    # collected test must be accounted for by one of pytest's own outcome counters.
+    #
+    # A skip is an outcome, so it accounts for a test -- and it is never absorbed silently. This
+    # job has no .NET SDK, so the tests that need one skip here and the `engine` job runs them
+    # for real; that is a deliberate two, and a third would be a test nobody is running. The
+    # count is printed on every run for the same reason the map counts are.
+    outcomes = {name: _count(proc.stdout, rf"(\d+) {name}")
+                for name in ("passed", "skipped", "xfailed", "xpassed", "deselected")}
+    accounted = sum(outcomes.values())
+    if not outcomes["passed"]:
+        print("pytest reported no passing tests -- nothing was proven", file=sys.stderr)
         return False
-    print(f"{passed} of {wanted} collected test(s) ran and passed")
+    if accounted < wanted:
+        print(f"{wanted} test(s) were collected and {accounted} were accounted for -- "
+              f"{wanted - accounted} of them neither ran nor were skipped", file=sys.stderr)
+        return False
+    said = ", ".join(f"{n} {name}" for name, n in outcomes.items() if n)
+    print(f"{wanted} collected test(s), all accounted for: {said}")
     return True
 
 
