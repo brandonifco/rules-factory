@@ -9,10 +9,13 @@ flag that packs without gating, because a package built without its gate is the 
 
 The gate, in order:
 
-  * the corpus's licence -- the manifest's `licence` for the corpus the map cites is public domain
-    or an open licence the factory admits (intake's `licence_class`, decision 0028); any other is
-    refused before anything runs, since its map could never be published;
-  * `check-map.py --phase publish` -- every check, structural and status-dependent;
+  * every cited corpus's licence -- the manifest's `licence` is public domain or an open licence
+    the factory admits (intake's shared admission contract, decision 0028); any other is refused;
+  * every cited corpus's committed bytes are read and recomputed through intake's one
+    `hashDerivation` table. Unknown derivations, malformed digests and mismatches are refusals;
+  * exact map, packaged-manifest and verified-corpus bytes are written to a private immutable
+    snapshot for the verification run (0048);
+  * `check-map.py --phase publish` -- every check, structural and status-dependent, against that snapshot;
   * the locator checker for the corpus's adapter -- every citation resolves in the
     committed corpus, every absence is searched for, every page of the extent is reached.
     An adapter with no checker here, a corpus that is not `committed-copy`, a map citing
@@ -26,12 +29,17 @@ The package, and why it is byte-for-byte deterministic:
   * `map/corpus-map.json` -- the reviewed file's bytes, verbatim;
   * `map/corpus-manifest.json` -- the manifest's bytes verbatim when it declares exactly the
     corpora the map cites, otherwise only those corpora;
-  * `tools/check-map.py` -- the checker's bytes, verbatim (#51). An engine runs its
+  * `tools/check-map.py` -- the checker's bytes, verbatim (#51). Those same bytes run the
+    publish structural gate from the private snapshot and their SHA-256 is bound by 0048. An engine runs its
     `--phase consumer` checks from the restored package rather than from a copy of its own, so
     a change to a status-dependent check reaches the engine with the next version. It imports
     only the standard library, so it is the whole of what that phase needs;
+  * `map/verification.json` -- verificationFormat 1: SHA-256 identities of the packaged map,
+    manifest and checker, plus sourceId/hashDerivation/contentHash for every cited corpus whose
+    exact bytes the locator run read (0048);
   * `build/<id>.props` -- one `RulesFactoryMap` item, so an engine finds the files (the
-    checker included, as `ConsumerChecker`) without knowing where NuGet extracts packages;
+    checker as `ConsumerChecker`, the relationship record as `Verification`) without knowing
+    where NuGet extracts packages;
   * `LICENCE.txt` -- the package's licence, which the nuspec names with `<license type="file">`
     (0023). The map quotes its corpus verbatim, so the package cannot be under the factory's
     Apache-2.0 alone: the file gives the corpus's terms for the quotations, in the words of the
