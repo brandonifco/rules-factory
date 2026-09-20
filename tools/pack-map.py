@@ -323,8 +323,12 @@ def gate(inputs, repo_root):
                 handle.write(data)
 
         staged_corpora = {}
-        for index, item in enumerate(sorted(verified, key=lambda v: v["sourceId"])):
-            path = os.path.join(stage, "corpora", f"{index}.bin")
+        for item in sorted(verified, key=lambda v: v["sourceId"]):
+            committed = str(item["corpus"]["committedPath"])
+            path = os.path.abspath(os.path.join(os.path.dirname(stage_manifest), committed))
+            base = os.path.abspath(os.path.dirname(stage_manifest))
+            if os.path.commonpath((base, path)) != base:
+                raise Refused(f"{item['sourceId']} committedPath {committed!r} escapes the map directory")
             os.makedirs(os.path.dirname(path), exist_ok=True)
             with open(path, "wb") as handle:
                 handle.write(item["bytes"])
