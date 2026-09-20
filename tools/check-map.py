@@ -154,6 +154,10 @@ ID_LIST_FIELDS = ("dependsOn",) + GATE_FIELDS
 # exception it would have to distinguish from a real verdict.
 
 
+REFERENCE_PART_CITATION = re.compile(r"^part\s+(\d+)$", re.I)
+REFERENCE_SECTION_CITATION = re.compile(r"^§\s*(\d+\.\d+(?:[A-Za-z]|-\d+)?)$")
+
+
 def corpora_of(manifest):
     if not isinstance(manifest, dict):
         return {}
@@ -179,12 +183,44 @@ def references_of(corpus):
     return found
 
 
+def reference_of(corpus, source_id):
+    """One operational reference by source id, or None."""
+    return next((item for item in references_of(corpus) if item.get("sourceId") == source_id), None)
+
+
+def reference_identity(reference):
+    """A reference's structural grain and source id, or None when its citation disagrees.
+
+    Part and section citations carry identity in both `citation` and `sourceId`; reading them
+    structurally keeps a broad part boundary from becoming a textual-prefix wildcard. Other
+    citation forms are exact references and retain their declared source id.
+    """
+    if not isinstance(reference, dict):
+        return None
+    source_id, citation = reference.get("sourceId"), reference.get("citation")
+    if (not isinstance(source_id, str) or not source_id
+            or not isinstance(citation, str) or not citation.strip()):
+        return None
+    citation = citation.strip()
+    part = REFERENCE_PART_CITATION.fullmatch(citation)
+    if part:
+        return ("part", source_id) if source_id.endswith("-" + part.group(1)) else None
+    if citation.lower().startswith("part "):
+        return None
+    section = REFERENCE_SECTION_CITATION.fullmatch(citation)
+    if section:
+        return ("section", source_id) if source_id.endswith("-" + section.group(1)) else None
+    if citation.startswith("§"):
+        return None
+    return ("exact", source_id)
+
+
 def reference_covers(corpus, source_id):
     """Whether the operational boundary declares `source_id`.
 
-    Exact reference ids cover themselves. A reference whose citation is `part N` is explicitly
-    a corpus boundary at part grain and covers child section ids beneath that source id. Other
-    references remain exact; a section declaration never expands itself by prefix accident.
+    Exact source ids cover themselves. Only a structurally coherent `part N` reference expands
+    to child section ids. A section declaration stays exact and cannot cover a longer section by
+    textual prefix accident.
     """
     if not isinstance(source_id, str) or not source_id:
         return False
@@ -192,10 +228,8 @@ def reference_covers(corpus, source_id):
         declared = reference.get("sourceId")
         if declared == source_id:
             return True
-        citation = reference.get("citation")
-        if (isinstance(declared, str) and isinstance(citation, str)
-                and citation.lower().startswith("part ")
-                and source_id.startswith(declared + ".")):
+        identity = reference_identity(reference)
+        if identity and identity[0] == "part" and source_id.startswith(identity[1] + "."):
             return True
     return False
 
@@ -557,6 +591,17 @@ CITE_SECTION = re.compile(r"§+\s*(\d+\.\d+(?:[A-Za-z]|-\d+)?)(?![A-Za-z0-9-])")
 CITE_SUBPART = re.compile(r"\bsubpart\s+([A-Z])\b", re.I)
 # One item of `extent.sections`: a section and nothing else -- no paragraph, no range.
 EXTENT_SECTION = re.compile(r"^§\s*(\d+\.\d+(?:[A-Za-z]|-\d+)?)$")
+
+
+def section_pointer_match_is_complete(text, match):
+    """Whether a section-sign match ends at a complete designation token (#323).
+
+    Corpus regexes are interrogations, not permission to rename a citation. A match may end
+    before punctuation or prose, but not while the printed designation continues with an
+    alphanumeric character or a hyphen.
+    """
+    return ("§" not in match.group(0) or match.end() >= len(text)
+            or not (text[match.end()].isalnum() or text[match.end()] == "-"))
 
 
 def cited_section(citation):
@@ -1188,20 +1233,29 @@ def check_manifest(ctx):
                 continue
             for pos, reference in enumerate(refs, start=1):
                 item = f"{where}.references[{pos}]"
-                if not isinstance(reference, dict) or set(reference) - {"sourceId", "citation", "admitted"}:
-                    bad.append(f"  X  {item}: a correction reference has only sourceId, citation "
+                if not isinstance(reference, dict) or set(reference) != {"sourceId", "citation", "admitted"}:
+                    bad.append(f"  X  {item}: a correction reference has exactly sourceId, citation "
                                f"and admitted")
                     continue
-                target = reference.get("sourceId")
+                target, citation = reference.get("sourceId"), reference.get("citation")
                 if not isinstance(target, str) or not target:
                     bad.append(f"  X  {item}: sourceId is a non-empty string")
+                if not isinstance(citation, str) or not citation.strip():
+                    bad.append(f"  X  {item}: citation is a non-empty string")
+                elif reference_identity(reference) is None:
+                    bad.append(f"  X  {item}: citation {citation!r} does not match sourceId "
+                               f"{target!r} as one reference boundary")
                 if reference.get("admitted") is not False:
                     bad.append(f"  X  {item}: a boundary correction is referenced-but-not-admitted; "
                                f"admission is a separate Phase-1 act")
+                if target in corpora:
+                    bad.append(f"  X  {item}: {target!r} is already admitted; a mapping-time "
+                               f"boundary amendment cannot retroactively admit or reclassify it")
                 if target in historical or target in amended:
                     bad.append(f"  X  {item}: {target!r} is already declared; an amendment records "
                                f"a newly discovered boundary, not a rewrite")
-                amended.add(target)
+                if isinstance(target, str) and target:
+                    amended.add(target)
     corpus_id = doc.get("corpus")
     declared = corpora.get(corpus_id)
     if declared is None:
@@ -2333,11 +2387,7 @@ def pointer_spans(text, patterns):
         (m.start(), m.end())
         for p in patterns
         for m in p.finditer(text)
-        if m.end() > m.start()
-        # A corpus regex is a declaration, not permission to rename what the corpus printed.
-        # If a match containing a section sign stops inside an alphanumeric token, it is a
-        # prefix of a longer designation/word and is not a pointer at all (#323).
-        and not ("§" in m.group(0) and m.end() < len(text) and text[m.end()].isalnum())
+        if m.end() > m.start() and section_pointer_match_is_complete(text, m)
     )
     spans = []
     for start, end in found:
@@ -2379,10 +2429,8 @@ def defined_elsewhere_names(ctx, entry):
     reference_id = block(entry, "definedElsewhere").get("reference")
     if not reference_id:
         return []
-    source = corpora_of(ctx.get("manifest")).get(block(entry, "locator").get("sourceId")) or {}
-    declared = next((r for r in references_of(source)
-                     if isinstance(r, dict) and r.get("sourceId") == reference_id), None)
-    return reference_names(reference_id, declared)
+    source = corpora_of(ctx.get("manifest")).get(block(entry, "locator").get("sourceId"))
+    return reference_names(reference_id, reference_of(source, reference_id))
 
 
 def duplicates_defined_elsewhere(ctx, entry, item):
