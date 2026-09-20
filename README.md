@@ -193,16 +193,20 @@ What never happens again is `NOT VERIFIED` on stdout and `0` in `$?`.
   ([0018](docs/decisions/0018-every-file-the-factory-writes-has-one-owner.md)). It compares and
   never writes: only `produce` authors that record.
 
-CI proves this on every pull request. The `validate` job runs
-[`scripts/validate.sh`](scripts/validate.sh), a wrapper that passes `--full` to
-[`tools/validate-repo.py`](tools/validate-repo.py) — the orchestrator that owns the steps and can
-also be asked what a diff owes (`--changed --base <sha>`) or what a release owes
-(`--release <map>`). Every rule that narrows the run is a row in a path table a test covers, and anything
-the table cannot place widens back to `--full`
-([0049](docs/decisions/0049-the-gate-can-say-which-of-its-checks-a-change-owes.md)). CI asks for
-`--full` today. The `engine` job runs
-[`scripts/validate-engine.sh`](scripts/validate-engine.sh), which produces an engine from the
-`hoyle-backgammon` package on the pinned SDK and verifies it.
+CI proves this on every pull request. The steps are
+[`tools/validate-repo.py`](tools/validate-repo.py)'s, and
+[`scripts/validate.sh`](scripts/validate.sh) is the wrapper that asks for all of them
+(`--full`). The `validate` job asks a pull request's own diff what it owes
+(`--changed --base <sha>`); a push to `main` and a weekly schedule ask for `--full`, and the
+schedule is what reaches the one check no diff ever owes — the README's prose against the state
+of the issues it cites, which needs the network. A tag asks `--release <map>`: every structural
+check over every map, and only the map being published is packed. Every rule that narrows a run
+is a row in a path table a test covers, and anything the table cannot place widens back to
+`--full`
+([0049](docs/decisions/0049-the-gate-can-say-which-of-its-checks-a-change-owes.md),
+[0050](docs/decisions/0050-a-pull-request-is-gated-on-what-its-own-diff-owes.md)). The `engine`
+job runs [`scripts/validate-engine.sh`](scripts/validate-engine.sh), which produces an engine
+from the `hoyle-backgammon` package on the pinned SDK and verifies it.
 
 ### What it does not prove
 
