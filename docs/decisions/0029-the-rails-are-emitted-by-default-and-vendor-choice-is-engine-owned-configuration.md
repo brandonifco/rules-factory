@@ -24,7 +24,7 @@ checks are pinned to the app that posts them. See *Amendment — the verdict gat
 check, not an authentication* below. Nothing about the chain, the contexts or the commit binding
 changes; §10's ruleset gains the pin, and `AGENTS.md` moves a recipe version.
 
-## Amendment — the verdict gate is an integrity check, not an authentication
+**Amended 2026-09-20** for [#334](https://github.com/brandonifco/rules-factory/issues/334): the intended exact-commit verdict binding was not mechanically true. [0049](0049-a-review-verdict-is-derived-from-one-immutable-review-packet-identity.md) makes a saved review packet a deterministic identity manifest assembled from one detached reviewed tree, and verdict recording now consumes that manifest rather than the mutable PR head. The provider-authentication boundary below is unchanged.\n\n## Amendment — the verdict gate is an integrity check, not an authentication
 
 A verdict is a commit status under a policy-named context, and **anyone who can write commit
 statuses on the repository can post one**: any collaborator with write access, any workflow whose
@@ -34,9 +34,9 @@ verdict; what was missing is that the trust boundary was not stated where the ra
 here — nor where they are read, in the emitted `AGENTS.md` §7. A reader of either could reasonably
 have concluded that a recorded verdict proves a review happened.
 
-**So it is stated, and it is not overstated.** The commit binding is real and does the work claimed
-for it in §7: a verdict names one SHA, so it cannot be replayed onto bytes nobody read, and a
-further commit ends it. What the gate is, exactly, is an integrity check — against a review that
+**So it is stated, and it is not overstated.** With 0049, the commit binding is mechanically real and does the work claimed
+for it in §7: a verdict is derived from a manifest that binds one reviewed SHA and the packet bytes,
+so it cannot be floated onto bytes nobody read, and a further commit leaves it as historical evidence only. What the gate is, exactly, is an integrity check — against a review that
 was skipped, forgotten, or formed on an earlier commit — and not an authentication of who reviewed.
 An invented verdict is stopped by honesty and by the review of the pull request it sits on, not by
 permissions.
