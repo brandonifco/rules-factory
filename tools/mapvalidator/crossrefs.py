@@ -5,7 +5,7 @@ built-in list plus the phrases each corpus declares in the manifest (0026).
 import re
 
 from .diagnostics import skip, verdict
-from mapcontract.entry import block, corpora_of, entries_of, index, label
+from mapcontract.entry import block, corpora_of, entries_of, index, label, references_of
 
 
 # The pointers the first corpora made, in the words they used to make them. Each phrase points
@@ -137,7 +137,7 @@ def defined_elsewhere_names(ctx, entry):
     if not reference_id:
         return []
     source = corpora_of(ctx.get("manifest")).get(block(entry, "locator").get("sourceId")) or {}
-    declared = next((r for r in source.get("references") or []
+    declared = next((r for r in references_of(source)
                      if isinstance(r, dict) and r.get("sourceId") == reference_id), None)
     return reference_names(reference_id, declared)
 
