@@ -880,6 +880,27 @@ class TestTheReviewPacket(RailsInAGitEngine):
         digest = hashlib.sha256(open(written[1], "rb").read()).hexdigest()
         self.assertIn(digest, body, "the entry packet's digest, so two reviewers can prove they read the same entry")
 
+    def test_packet_material_comes_from_the_reviewed_head_not_the_caller_checkout(self):
+        """#334 watched failure A: PR head B must never carry checkout A's provenance."""
+        self.commit_engine()
+        git(self.out, "checkout", "-qb", "reviewed-head")
+        path = os.path.join(self.out, "provenance.json")
+        record = json.load(open(path, encoding="utf-8"))
+        record["map"]["version"] = "334-reviewed-head"
+        with open(path, "w", encoding="utf-8") as handle:
+            json.dump(record, handle, indent=2)
+            handle.write("\n")
+        git(self.out, "add", "provenance.json")
+        git(self.out, "commit", "-qm", "make reviewed head provenance distinct")
+        head = git(self.out, "rev-parse", "HEAD")
+
+        # The caller is deliberately back on A while GitHub reports B as the PR head.
+        git(self.out, "checkout", "-q", "main")
+        self.pull_request(head)
+        text = self.rendered()
+        self.assertIn("334-reviewed-head", text,
+                      "a packet naming head B incorporated provenance from checkout A")
+
     def test_a_packet_inside_the_repository_is_refused(self):
         self.commit_engine()
         head = self.change()
@@ -1499,6 +1520,22 @@ if argv_api := [a for a in sys.argv[1:] if a.startswith("repos/")]:
         self.assertEqual(done.returncode, 0, done.stderr)
         recorded = json.load(open(self.statuses, encoding="utf-8"))
         self.assertEqual(recorded["a" * 40]["rules-verdict/semantic"], "success")
+
+    def test_a_review_cannot_float_to_a_later_pr_head(self):
+        """#334 watched failure B: the documented path must not attach review A to head B."""
+        self.produced()
+        reviewed = "a" * 40
+        later = "b" * 40
+        self.scenario(head=later)
+
+        # The reviewer formed PASS on reviewed; before the fix the documented/default
+        # command ignores that fact and silently chooses the PR's now-current head.
+        done = self.record("--pr", "5", "--reviewer", "semantic", "--verdict", "pass")
+        recorded = json.load(open(self.statuses, encoding="utf-8"))
+        self.assertNotEqual(done.returncode, 0,
+                            "record-verdict accepted a verdict with no reviewed packet identity")
+        self.assertNotIn(later, recorded,
+                         "PASS formed on A was recorded on later head B")
 
     def test_an_unconfigured_reviewer_is_refused_and_says_what_is_configured(self):
         self.produced()
