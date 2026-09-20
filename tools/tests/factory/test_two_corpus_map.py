@@ -190,6 +190,16 @@ class TwoCorpusMap(unittest.TestCase):
         self.assertEqual(sorted(c["sourceId"] for c in manifest["corpora"]),
                          ["cfr-9-9.101", "cfr-9-9.102"])
 
+    def test_the_verification_record_binds_every_cited_corpus_in_source_id_order(self):
+        with zipfile.ZipFile(self.nupkg) as archive:
+            record = json.loads(archive.read("map/verification.json"))
+        self.assertEqual([item["sourceId"] for item in record["corpora"]],
+                         ["cfr-9-9.101", "cfr-9-9.102"])
+        for item in record["corpora"]:
+            self.assertEqual(item["hashDerivation"], "ecfr-versioner-xml")
+            source = next(source for source in SECTIONS if source[0] == item["sourceId"])
+            self.assertEqual(item["contentHash"], sha256(source[2].encode("utf-8")))
+
     def test_a_manifest_corpus_the_map_does_not_cite_is_left_out_of_the_package(self):
         directory = os.path.join(self.tmp, "extra-corpus-fixture")
         extra = corpus_entry("cfr-9-9.999", "section-9.101.xml", sha256(FIRST.encode("utf-8")))
@@ -211,6 +221,14 @@ class TwoCorpusMap(unittest.TestCase):
             self.assertIn("recomputed from", output)
         self.assertIn("agreed by all 2 cited corpus(es)", output)
 
+    def test_a_wrong_principal_corpus_is_refused_by_name(self):
+        tampered = os.path.join(self.tmp, "section-9.101.xml")
+        with open(tampered, "w", encoding="utf-8") as handle:
+            handle.write(FIRST.replace("listed in the table", "listed in this table"))
+        code, output, _ = self.produce(tampered, self.corpus("section-9.102.xml"))
+        self.assertNotEqual(code, NOT_VERIFIED, output)
+        self.assertIn("is not cfr-9-9.101 at its declared baseline", output)
+
     def test_a_wrong_second_corpus_is_refused_by_name(self):
         tampered = os.path.join(self.tmp, "section-9.102.xml")
         with open(tampered, "w", encoding="utf-8") as handle:
@@ -224,6 +242,25 @@ class TwoCorpusMap(unittest.TestCase):
         self.assertNotEqual(code, NOT_VERIFIED, output)
         self.assertIn("cfr-9-9.102", output)
         self.assertIn("no --corpus was supplied", output)
+
+    def test_one_of_three_resolved_corpora_cannot_hide_behind_two_clean_ones(self):
+        values = [(f"cfr-9-9.{n}", data) for n, data in
+                  ((101, b"one"), (102, b"two"), (103, b"three"))]
+        bound = {
+            source_id: {"contentHash": sha256(data), "hashDerivation": "ecfr-versioner-xml"}
+            for source_id, data in values
+        }
+        verified = [
+            {"sourceId": source_id,
+             "corpus": {"hashDerivation": "ecfr-versioner-xml"},
+             "bytes": (b"changed" if source_id == "cfr-9-9.103" else data),
+             "path": source_id + ".xml"}
+            for source_id, data in values
+        ]
+        with self.assertRaises(intake_step.Refused) as caught:
+            intake_step.verify_resolved_corpora_binding(bound, verified)
+        self.assertIn("cfr-9-9.103", str(caught.exception))
+        self.assertIn("verified against", str(caught.exception))
 
     def test_an_undeclared_source_id_is_refused(self):
         document = {"corpus": "cfr-9-9.101",
