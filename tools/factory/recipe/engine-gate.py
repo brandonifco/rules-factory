@@ -393,7 +393,7 @@ def sdk_override_declaration(environ=None):
 def repin_problems(on_disk, item, declared):
     """Whether global.json on disk is the recorded file re-pinned to the declared SDK, and nothing else.
 
-    Two proofs, and the declaration buys exactly one byte of freedom between them: the declared
+    Two proofs, and the declaration buys exactly one field of freedom between them: the declared
     original must hash to what the record hashes, and what is on disk must be that original with its
     SDK version replaced. So a declaration can neither hand the gate a global.json the record never
     saw, nor cover an edit to anything else in the file -- `rollForward: disable` above all, which is
