@@ -285,6 +285,17 @@ found is in [docs/evidence-inventory.md](docs/evidence-inventory.md): 11.9 MB re
   pin, environment variables, MSBuild or NuGet files outside the engine directory, or that a
   given assembly was built from the tree. The limits are listed in
   [`provenance.py`](tools/factory/provenance.py).
+- **That the inputs were the ones you were meant to build from.** Provenance records what it
+  read, not that anyone authorised it. The version label comes from a `factory/vX.Y.Z` tag in the
+  local repository, and those tags are unsigned, so a tag made or moved locally is recorded as a
+  released version
+  ([#175](https://github.com/brandonifco/rules-factory/issues/175)); a package named as
+  `Id@Version` carries no expected digest, so intake re-hashes and binds the bytes it resolved
+  ([0048](docs/decisions/0048-a-verified-map-package-binds-the-exact-artifacts-its-publish-gate-read.md))
+  without being able to say those were the intended bytes
+  ([#176](https://github.com/brandonifco/rules-factory/issues/176)). Both are limits of the claim,
+  not defects in it: what provenance states is true, and it states less than authorisation.
+  Signing, and trusting a signature, is a change of distribution model and is post-1.0.
 - **Anything, under `--no-verify`.** The engine is written without being built or tested, and the
   run says so twice and exits 3, NOT VERIFIED, so no caller can read it as a verified produce.
   Lock files the generated pins have moved past, in the version they resolve or the range they
