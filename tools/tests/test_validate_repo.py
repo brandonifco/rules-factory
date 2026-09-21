@@ -13,6 +13,7 @@ import io
 import os
 import subprocess
 import sys
+import tempfile
 import unittest
 from contextlib import redirect_stdout
 
@@ -471,7 +472,34 @@ class TestTheEngineJobIsOwedByWhatProducesAnEngine(unittest.TestCase):
 
 
 class TestTheEvidenceStepAsksTheRightVerifier(unittest.TestCase):
-    """--with-evidence verifies the artifacts wherever the lock says they live (#349)."""
+    """--with-evidence verifies the artifacts wherever the lock says they live (#349).
+
+    The step stands down when EVIDENCE_MEASURING is set, because a measurement is rewriting the
+    lock it reads and a failing step changes what the run opens (#408). These clear that rather
+    than stand down with it: what they hold is the ordinary behaviour, and it has to keep being
+    held during a measurement too -- a step that stood down for every caller would be a step
+    nobody is running, which is the shape this repository keeps finding.
+    """
+
+    def setUp(self):
+        self._measuring = os.environ.pop("EVIDENCE_MEASURING", None)
+
+    def tearDown(self):
+        if self._measuring is not None:
+            os.environ["EVIDENCE_MEASURING"] = self._measuring
+
+    def test_the_step_stands_down_for_a_measurement_and_says_so(self):
+        """The other half, asserted here rather than left to the measurement to discover."""
+        os.environ["EVIDENCE_MEASURING"] = "1"
+        try:
+            run = vr.Run(vr.ROOT, vr.full_scope())
+            run.python = lambda *argv, **kw: self.fail(f"the step ran {argv} while measuring")
+            printed = io.StringIO()
+            with redirect_stdout(printed):
+                self.assertTrue(vr.step_evidence(run))
+            self.assertIn("not run:", printed.getvalue())
+        finally:
+            os.environ.pop("EVIDENCE_MEASURING")
 
     def _argv(self, with_evidence):
         run = vr.Run(vr.ROOT, vr.full_scope(), with_evidence=with_evidence)
@@ -710,16 +738,40 @@ class TestNoBytecodeReachesTheCheckout(unittest.TestCase):
         self.assertIn('"PYTHONDONTWRITEBYTECODE": "1"', step)
         self.assertEqual(2, step.count("env=bare"), "both the collection and the run")
 
+    def wrote_bytecode(self, argv):
+        """Whether running `argv` writes any bytecode, measured in a directory of its own.
+
+        Not by looking at the checkout: the suite is distributed (`-n auto`), so another worker
+        is writing there while this one measures, and a test that compared paths in a shared tree
+        fails on files it has nothing to do with. `PYTHONPYCACHEPREFIX` sends every `.pyc` this
+        process would write into a private temporary tree instead, so what is measured is this
+        process's own behaviour and nothing else's -- and the checkout is not touched either way.
+
+        The environment is otherwise the one a reader following the tool's own usage line has:
+        PYTHONDONTWRITEBYTECODE unset, so what is proved is the tool's own
+        `sys.dont_write_bytecode` rather than the caller's habits (#384).
+        """
+        with tempfile.TemporaryDirectory() as prefix:
+            env = {k: v for k, v in os.environ.items() if k != "PYTHONDONTWRITEBYTECODE"}
+            env["PYTHONPYCACHEPREFIX"] = prefix
+            proc = subprocess.run(argv, cwd=ROOT, env=env, capture_output=True, text=True)
+            # The prefix tree mirrors absolute paths, so the standard library's own bytecode
+            # lands there too when the interpreter's copy is not already cached. Only this
+            # repository's modules are the subject: a tool cannot suppress the stdlib's caching
+            # and is not asked to.
+            inside = os.path.join(prefix, ROOT.lstrip(os.sep))
+            written = [os.path.relpath(os.path.join(base, name), inside)
+                       for base, _, names in os.walk(inside) for name in names]
+        return proc, sorted(written)
+
     def test_a_path_importer_run_bare_leaves_nothing(self):
         """The acceptance criterion itself, on the cheapest importer: run it the way its own
-        usage line describes, with nothing exported, and the checkout is as it was."""
-        env = {k: v for k, v in os.environ.items() if k != "PYTHONDONTWRITEBYTECODE"}
-        before = set(vr.leftovers(__import__("pathlib").Path(ROOT)))
-        proc = subprocess.run([sys.executable, os.path.join(ROOT, "tools", "fetch-evidence.py"),
-                               "--help"], cwd=ROOT, env=env, capture_output=True, text=True)
+        usage line describes, with nothing exported, and it writes no bytecode."""
+        proc, written = self.wrote_bytecode(
+            [sys.executable, os.path.join(ROOT, "tools", "fetch-evidence.py"), "--help"])
         self.assertEqual(0, proc.returncode, proc.stderr)
-        added = set(vr.leftovers(__import__("pathlib").Path(ROOT))) - before
-        self.assertEqual(set(), added, "running a path importer bare left files in the checkout")
+        self.assertEqual([], written,
+                         "running a path importer bare wrote bytecode for the modules it imported")
 
     def test_the_gate_runs_the_mapper_as_a_file_and_not_as_a_directory(self):
         """Executing a directory imports `__main__` and caches it before the file's own
@@ -732,16 +784,16 @@ class TestNoBytecodeReachesTheCheckout(unittest.TestCase):
                          "tools/mapper/__pycache__/__main__.cpython-*.pyc whatever the file says")
 
     def test_the_mapper_run_as_a_file_leaves_nothing(self):
-        """The behavioural half, with nothing exported: the form the gate uses is clean."""
-        import pathlib as _pathlib
-        env = {k: v for k, v in os.environ.items() if k != "PYTHONDONTWRITEBYTECODE"}
-        before = set(vr.leftovers(_pathlib.Path(ROOT)))
-        proc = subprocess.run([sys.executable, os.path.join(ROOT, vr.MAPPER), "protocol",
-                               os.path.join(ROOT, "examples", "faa-part-107", "corpus-map.json")],
-                              cwd=ROOT, env=env, capture_output=True, text=True)
+        """The behavioural half, with nothing exported: the form the gate uses is clean.
+
+        What the gate's own first sighted run found it leaving was tools/mapper/__pycache__ and
+        tools/mapcontract/__pycache__; here neither is written at all."""
+        proc, written = self.wrote_bytecode(
+            [sys.executable, os.path.join(ROOT, vr.MAPPER), "protocol",
+             os.path.join(ROOT, "examples", "faa-part-107", "corpus-map.json")])
         self.assertEqual(0, proc.returncode, proc.stderr[-2000:])
-        self.assertEqual(set(), set(vr.leftovers(_pathlib.Path(ROOT))) - before,
-                         "the mapper run as a file left bytecode in the checkout")
+        self.assertEqual([], written, "the mapper run as a file wrote bytecode for mapper.cli "
+                                      "and mapcontract")
 
 
 class TestTheSkipsAreNotExplainedByAStaleComment(unittest.TestCase):

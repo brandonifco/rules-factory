@@ -64,7 +64,7 @@ A reader deciding what could be retired should know which of the two they are lo
 
 ## By trial
 
-Measured at `bc94b5c`, over a gate run that failed no step but the evidence step and the
+Measured at `46023be`, over a gate run that failed no step but the evidence step and the
 lock's own tests, which fail by construction while the lock is being rewritten
 (`measuredOver` in the lock says so, and `--measure` refuses a run with any other failing
 step; [#408](https://github.com/brandonifco/rules-factory/issues/408)):

@@ -43,7 +43,21 @@ fetch = _load("fetch_evidence", "fetch-evidence.py")
 LOCK = json.loads(open(os.path.join(ROOT, "tools", "evidence-lock.json"), encoding="utf-8").read())
 
 
+# The tests below compare the **committed** lock with the tree. While
+# `check-evidence.py --measure` is rewriting that lock they are comparing a map with the ground
+# it is being redrawn from, so they fail by construction -- and #408 measured what their failing
+# costs: the gate opens a different set of files when it is red, so the roles the measurement
+# records are not the roles an ordinary green run produces. They stand down for the duration and
+# say so, which is an outcome the run accounts for rather than a silence.
+#
+# Nothing but `--measure` sets this. CI does not, and a developer running the gate does not, so
+# these run everywhere the lock is a finished thing.
+MEASURING = bool(os.environ.get("EVIDENCE_MEASURING"))
+WHILE_MEASURING = "the lock is being rewritten by --measure, so the committed one describes the tree before it (#408)"
+
+
 class TestTheLockDescribesThisTree(unittest.TestCase):
+    @unittest.skipIf(MEASURING, WHILE_MEASURING)
     def test_the_committed_lock_verifies(self):
         self.assertEqual([], evidence.verify(pathlib.Path(ROOT), LOCK))
 
@@ -179,6 +193,7 @@ class TestFetchingVerifiesWhereverTheBytesAre(unittest.TestCase):
         cache.mkdir(exist_ok=True)
         return fetch.verify(lock, pathlib.Path(ROOT), cache)
 
+    @unittest.skipIf(MEASURING, WHILE_MEASURING)
     def test_the_committed_lock_verifies_from_the_repository(self):
         problems, examined, fetched = self.run_verify(LOCK)
         self.assertEqual([], problems)
@@ -216,6 +231,7 @@ class TestFetchingVerifiesWhereverTheBytesAre(unittest.TestCase):
         self.assertEqual(1, code)
         self.assertIn("proved nothing", err.getvalue())
 
+    @unittest.skipIf(MEASURING, WHILE_MEASURING)
     def test_the_cache_does_not_survive_the_run(self):
         out = io.StringIO()
         before = set(os.listdir(tempfile.gettempdir()))
@@ -307,6 +323,7 @@ class TestTheGateRunsIt(unittest.TestCase):
         self.assertIn("--with-evidence", text)
         self.assertIn("tools/fetch-evidence.py", text)
 
+    @unittest.skipIf(MEASURING, WHILE_MEASURING)
     def test_verifying_the_whole_tree_is_cheap_enough_to_always_run(self):
         # 15.5 MB of sha256. If this ever stops being true the step needs a scope, not a skip.
         proc = subprocess.run([sys.executable, os.path.join(ROOT, "tools", "check-evidence.py")],
@@ -332,6 +349,7 @@ class TestTheCommitTheLockNamesIsOneThisRepositoryHas(unittest.TestCase):
     def root(self):
         return pathlib.Path(ROOT)
 
+    @unittest.skipIf(MEASURING, WHILE_MEASURING)
     def test_the_committed_lock_names_a_commit_this_repository_has(self):
         self.assertEqual([], evidence.measured_at_problems(self.root(), LOCK))
 
@@ -391,6 +409,7 @@ class TestAMeasurementSaysWhatItWasTakenOver(unittest.TestCase):
     over, and a run with any other failing step is refused unless the caller says otherwise.
     """
 
+    @unittest.skipIf(MEASURING, WHILE_MEASURING)
     def test_the_committed_lock_records_what_it_was_measured_over(self):
         self.assertIn("measuredOver", LOCK, "the lock does not say what run produced it (#408)")
         self.assertIn("complete", LOCK["measuredOver"])
@@ -401,34 +420,67 @@ class TestAMeasurementSaysWhatItWasTakenOver(unittest.TestCase):
                               None, [])
         self.assertEqual({"gateStepsFailed": [], "complete": True}, lock["measuredOver"])
 
-    def test_the_evidence_step_alone_does_not_make_a_run_partial(self):
-        """It fails by construction while the lock is being rewritten, so counting it would
-        refuse every measurement there is."""
+    def test_the_evidence_step_failing_now_makes_a_run_partial_too(self):
+        """It used to be excused, because it fails while the lock is being rewritten. It no
+        longer fails then -- it stands down -- so a measurement that sees it fail saw something
+        else go wrong, and that is a partial run like any other (#408)."""
         lock = evidence.build(pathlib.Path(ROOT), {p: [] for p in evidence.tracked(pathlib.Path(ROOT))},
                               None, [evidence.EVIDENCE_STEP])
-        self.assertEqual({"gateStepsFailed": [], "complete": True}, lock["measuredOver"])
+        self.assertEqual({"gateStepsFailed": [evidence.EVIDENCE_STEP], "complete": False},
+                         lock["measuredOver"])
 
-    def test_any_other_failing_step_makes_it_partial_and_is_recorded(self):
+    def test_every_failing_step_is_recorded(self):
         lock = evidence.build(pathlib.Path(ROOT), {p: [] for p in evidence.tracked(pathlib.Path(ROOT))},
-                              None, [evidence.EVIDENCE_STEP, "every citation resolves in its corpus"])
-        self.assertEqual({"gateStepsFailed": ["every citation resolves in its corpus"],
+                              None, [evidence.TESTS_STEP, "every citation resolves in its corpus"])
+        self.assertEqual({"gateStepsFailed": ["every citation resolves in its corpus",
+                                              evidence.TESTS_STEP],
                           "complete": False}, lock["measuredOver"])
 
 
-class TestWhatIsFailingByConstructionWhileTheLockIsRewritten(unittest.TestCase):
-    """The evidence step fails while the lock is stale, and so do the lock's own tests, which
-    hold the committed lock to the tree. Excusing the second only in the first's company keeps
-    the guard from excusing a real test failure -- which is the step whose absence moves a role,
-    because a file read only by a test is read by nothing when the tests do not run."""
+class TestAMeasurementIsTakenOverAGreenGate(unittest.TestCase):
+    """#408: the two steps that fail while the lock is being rewritten were excused, and that was
+    the wrong remedy for the right observation -- they are the perturbation, not a nuisance.
 
-    def test_the_evidence_step_alone_is_excused(self):
-        self.assertEqual([], evidence.partial_steps([evidence.EVIDENCE_STEP]))
+    A failing gate opens a different set of files from a green one: `check-provenance.sh` is read
+    by a `python3 -c` process when the gate is red and by nothing when it is green, so the role
+    alternated with the state of the lock being replaced. `--measure` now stands both steps down
+    for the duration, so the gate it measures is green and every failing step is a real one."""
 
-    def test_the_tests_step_is_excused_only_beside_it(self):
-        self.assertEqual([], evidence.partial_steps([evidence.EVIDENCE_STEP, evidence.TESTS_STEP]))
-        self.assertEqual([evidence.TESTS_STEP], evidence.partial_steps([evidence.TESTS_STEP]))
+    def test_no_step_is_excused_any_more(self):
+        for step in (evidence.EVIDENCE_STEP, evidence.TESTS_STEP,
+                     "every citation resolves in its corpus"):
+            with self.subTest(step=step):
+                self.assertEqual([step], evidence.partial_steps([step]),
+                                 f"{step!r} is excused again, and an excused failure is what "
+                                 f"moved the roles (#408)")
 
-    def test_any_other_step_makes_it_partial(self):
-        self.assertEqual(["every citation resolves in its corpus"],
-                         evidence.partial_steps([evidence.EVIDENCE_STEP,
-                                                 "every citation resolves in its corpus"]))
+    def test_a_measurement_tells_the_gate_it_is_being_measured(self):
+        """The whole mechanism in one line: without it the lock's own step and tests fail, and
+        what they read while failing is what the measurement records."""
+        source = open(os.path.join(ROOT, "tools", "check-evidence.py"), encoding="utf-8").read()
+        trace = source.split("def _trace(", 1)[1].split("\ndef ", 1)[0]
+        self.assertIn('env["EVIDENCE_MEASURING"] = "1"', trace)
+
+    def test_the_gate_step_stands_down_only_for_a_measurement(self):
+        source = open(os.path.join(ROOT, "tools", "validate-repo.py"), encoding="utf-8").read()
+        step = source.split("def step_evidence(", 1)[1].split("\ndef ", 1)[0]
+        self.assertIn('os.environ.get("EVIDENCE_MEASURING")', step)
+        self.assertIn("not run:", step, "a step that stands down says so; it does not report ok")
+
+    def test_nothing_in_ci_sets_the_flag(self):
+        """It is a measurement's own signal. A workflow that set it would turn the evidence step
+        off in the one place it most needs to run."""
+        import glob
+        for path in sorted(glob.glob(os.path.join(ROOT, ".github", "workflows", "*.yml"))):
+            with self.subTest(workflow=os.path.basename(path)):
+                self.assertNotIn("EVIDENCE_MEASURING", open(path, encoding="utf-8").read())
+
+    def test_the_lock_s_own_tests_stand_down_while_it_is_rewritten(self):
+        """Named, so a seventh test comparing the committed lock with the tree is not quietly
+        left running -- it would fail during every measurement and perturb it again."""
+        decorator = "@unittest.skipIf(MEASURING, " + "WHILE_MEASURING)"
+        lines = [line for line in open(__file__, encoding="utf-8").read().splitlines()
+                 if line.strip() == decorator]
+        self.assertEqual(6, len(lines),
+                         "a test comparing the committed lock with the tree is left running "
+                         "during a measurement, and would perturb it (#408)")
