@@ -4145,19 +4145,16 @@ class TestFactoryRails(TestAProducedEngine):
 
     def test_the_doctor_reads_every_page_of_the_labels_too(self):
         self.produced()
-        # A restore, because the doctor's machine rows are problems like any other and a produced
-        # engine has never been restored (#195). This test is about the labels page, on a machine
-        # that is otherwise able to do the work.
-        assets = os.path.join(self.out, "src", NAME, "obj")
-        os.makedirs(assets, exist_ok=True)
-        with open(os.path.join(assets, "project.assets.json"), "w", encoding="utf-8") as handle:
-            handle.write("{}")
         self.assertEqual(self.rails("--apply")[0], 0)
         self.with_state(perPage=4, labels=self.FILLERS + self.read_state()["labels"])
         code, output = self.doctor()
-        self.assertEqual(code, 0, output)
+        # The row and the problem list, not the exit code: since #195 the doctor also reports the
+        # machine -- the pinned SDK, a restore, `gh` -- and a machine without the pinned SDK is a
+        # problem like any other, so the exit code here would be a fact about the runner rather
+        # than about the labels page this test is for.
         self.assertIn("OK", self.row(output, "Labels"))
         self.assertNotIn("the repository has no", output)
+        self.assertNotIn("labels", "\n".join(line for line in output.splitlines() if line.startswith("  X  ")))
 
     # --- #231: the doctor judges a check by its pin, and the ruleset by its level --------------
 
@@ -4299,16 +4296,16 @@ class TestTheDoctor(TestAProducedEngine):
     def test_the_machine_is_reported_before_the_rails(self):
         """#195: every rail can be in place on a machine that cannot run the gate.
 
-        A freshly produced engine has never been restored, so the restore row is the deterministic
-        one to assert on; the SDK row's state depends on what the machine has installed, and what
-        is asserted about it is that it is asked at all, and asked first.
+        What each row *says* depends on the machine, and is not what this asserts. What it asserts
+        is that all three are asked, and asked before the rails: a report that every rail is in
+        place, made on a machine that cannot run the gate, is the failure #195 is about.
         """
         self.produced()
         done = self.doctor("--local")
         printed = done.stdout.splitlines()
         self.assertTrue(printed[0].startswith("SDK pinned by global.json"), done.stdout)
         self.assertIn("Restore ", done.stdout)
-        self.assertIn("run `dotnet restore`", done.stdout)
+        self.assertIn("gh reads the packet's fields", done.stdout)
         self.assertLess(printed.index(next(line for line in printed if line.startswith("Restore "))),
                         printed.index(next(line for line in printed if line.startswith("Rail files "))),
                         done.stdout)
