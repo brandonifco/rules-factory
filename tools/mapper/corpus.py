@@ -765,7 +765,7 @@ TOP_LEVEL_PASSED_OVER = ("HEAD",) + TABLE_WRAPPERS + ("CITA", "EDNOTE", "HD1")
 HEADING = re.compile(r"^HD\d+$")
 DIVISION_HEADING = "HD1"
 #: A wrapper heading that states an address of its own -- `Appendix A to § 172.101—…`,
-#: `Subpart B—…`. The third thing that says a wrapper opens a division (0052, #291), and the only
+#: `Subpart B—…`. The third thing that says a wrapper opens a division (0056, #291), and the only
 #: one that reads the heading's words: a wrapper titled `HD2`, printed directly after a
 #: designated paragraph, defeats the other two together and is otherwise indistinguishable from
 #: § 172.102's six captioned provision runs. Held equal to the section locator checker's copy by
@@ -777,7 +777,7 @@ STATES_A_DESIGNATION = re.compile(r"^\([A-Za-z0-9]{1,4}\)")
 NOTE_HEAD = re.compile(r"^note\s+to\s+paragraph\s+((?:\([A-Za-z0-9]{1,4}\))+)\s*[:.]?\s*$", re.I)
 #: A note heading that claims an address. Deliberately far broader than `NOTE_HEAD`, which reads
 #: exactly the one form § 172.101 prints: a heading this cannot parse leaves the note unplaced
-#: rather than inheriting the designation it is printed under (#293, 0052).
+#: rather than inheriting the designation it is printed under (#293, 0056).
 NOTE_CLAIMS_AN_ADDRESS = re.compile(r"^note\s+to\b", re.I)
 #: An `<EXAMPLE>`'s `<HED>`, read for the label a citation names it by. The same expression the
 #: section locator checker reads it with, held equal by `test_mapper_nested_paragraphs.py`: this
@@ -808,7 +808,7 @@ def example_is_unaddressable(element):
 
 
 def wrapper_is_addressable(container, previous):
-    """Whether a citation can resolve into this wrapper at all (0036, 0052), and why not.
+    """Whether a citation can resolve into this wrapper at all (0036, 0056), and why not.
 
     **Every test here is one that needs no designation**, which is the whole of what this side
     can honestly decide: a unit key says where a paragraph sits in the section's reading order
@@ -818,7 +818,7 @@ def wrapper_is_addressable(container, previous):
     so what this calls unaddressable the checker always leaves unplaced, and the reverse holds
     for everything but that one test.
 
-    That is #292's answer and 0052 records it: the gap is not closed by giving the adapter
+    That is #292's answer and 0056 records it: the gap is not closed by giving the adapter
     designations, which 0032's subsystem boundary is part of why it has none, but by asking here
     **every** test that can be asked without them, and by pinning what is left.
     `test_mapper_nested_paragraphs.py` asserts, over the committed corpora and every fixture,

@@ -19,6 +19,12 @@ a table, and a map could hold the column 7 pointer and not its target
     attributed ([0036](../../../docs/decisions/0036-a-paragraph-inside-a-wrapper-takes-the-designation-the-wrapper-continues.md)):
     one that opens a division of the section, and one whose ordinary paragraph states its own
     designation. Nothing in it is indexed, so no citation resolves into it;
+  * a wrapper whose **own heading names a division of the corpus** is unplaced whatever it is
+    printed after ([0056](../../../docs/decisions/0056-a-wrapper-whose-heading-names-a-division-continues-nothing.md)).
+    The two structural tests above are defeated *together* by an appendix titled `HD2` and
+    printed directly under a designated paragraph, and that was the one shape of
+    [#290](https://github.com/brandonifco/rules-factory/issues/290) that handed out a wrong
+    address rather than withholding one ([#291](https://github.com/brandonifco/rules-factory/issues/291));
   * a `NOTE` takes the paragraph **it names in its own heading**, where that is where the corpus
     prints it, and is unplaced where the two disagree;
   * the descent is to **any depth**, because one level was silently not enough: a second copy of
@@ -32,7 +38,13 @@ a table, and a map could hold the column 7 pointer and not its target
   * the **adapter walks the same wrappers with the same table of tags**, and parts company on
     exactly one thing: a unit key asserts no containment, so the adapter enumerates what the
     checker leaves unplaced and reports it unaccounted rather than dropping it from the
-    denominator.
+    denominator. The one *test* it cannot ask is `note-heading-elsewhere`, which needs a
+    designator path, and that bound is asserted rather than described
+    ([#292](https://github.com/brandonifco/rules-factory/issues/292));
+  * each grammar that reads **one printed form** refuses every other, and says which words it
+    could not read. Neither is widened in advance
+    ([#293](https://github.com/brandonifco/rules-factory/issues/293),
+    [#265](https://github.com/brandonifco/rules-factory/issues/265)).
 
 The corpus is a synthetic eCFR-shaped fixture written here, in the shapes § 172.101 and § 172.102
 print. No real corpus is admitted by this test: that is trial 10's work (#262), not this one's.
@@ -573,7 +585,7 @@ class TestTheTwoWalksAreOneWalk(unittest.TestCase):
 
     def test_the_grammars_the_refusals_read_are_the_same(self):
         # Every expression a refusal rests on, held in one place. `DIVISION_TITLE` reads the
-        # heading's words (0052) and `NOTE_CLAIMS_AN_ADDRESS` decides what claims an address at
+        # heading's words (0056) and `NOTE_CLAIMS_AN_ADDRESS` decides what claims an address at
         # all: an expression one walk widened and the other did not is a passage one half
         # refuses and the other files under a designation that is not its own.
         for name in ("DIVISION_TITLE", "NOTE_CLAIMS_AN_ADDRESS", "NOTE_HEAD",

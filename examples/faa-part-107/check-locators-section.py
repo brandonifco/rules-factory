@@ -269,7 +269,7 @@ DIVISION_HEADING = "HD1"
 #: this way opens that division and continues nothing, **whatever it is printed after**.
 #:
 #: This is the third signal [#291](https://github.com/brandonifco/rules-factory/issues/291)
-#: needed, and 0052 records why it must read words where the two tests above deliberately do not.
+#: needed, and 0056 records why it must read words where the two tests above deliberately do not.
 #: The two are defeated together by one shape -- a wrapper that opens a division, is titled `HD2`
 #: rather than `HD1`, and is printed directly after a designated paragraph -- and that shape is
 #: structurally identical to § 172.102's six captioned provision runs, which must keep their
@@ -359,7 +359,7 @@ def wrapper_reach(container, enclosing, previous):
         them and are captioned `Code/Special Provisions`, and its seventh wrapper, the
         continuation of the portable-tank run, carries no caption at all.
 
-        The third was added by 0052 for #291: the first two are defeated **together** by a
+        The third was added by 0056 for #291: the first two are defeated **together** by a
         wrapper that opens a division, is titled `HD2` rather than `HD1`, and is printed
         directly after a designated paragraph. That shape is structurally identical to
         § 172.102's runs, so no further reading of the markup could separate them, and it was
@@ -385,7 +385,7 @@ def wrapper_reach(container, enclosing, previous):
     titles = [normalise("".join(head.itertext())) for head in headings]
     named = [title for title in titles if DIVISION_TITLE.search(title)]
     if named:
-        # The third signal, and the only one of the three that reads the heading's words (0052).
+        # The third signal, and the only one of the three that reads the heading's words (0056).
         # Without it a wrapper that opens a division, is titled `HD2` rather than `HD1`, and is
         # printed directly after a designated paragraph defeats both tests above and inherits
         # that paragraph's designation -- the one shape of #290 that handed out a wrong address
@@ -414,7 +414,7 @@ def note_reach(note, enclosing):
     key already gets (0035), where a key matching two rows is never resolved to the first.
 
     What counts as *saying* it names a paragraph is `NOTE_CLAIMS_AN_ADDRESS`, and it is far
-    broader than what `NOTE_HEAD` can read (#293, 0052). Anything opening `Note to …` states an
+    broader than what `NOTE_HEAD` can read (#293, 0056). Anything opening `Note to …` states an
     address; a note stating one this grammar cannot parse is unplaced, not left to inherit the
     designation it is printed under, because that would prefer position over the corpus's own
     word -- which is the reading this function exists to refuse.
@@ -1638,7 +1638,7 @@ UNREACHABLE_REASONS = {
     "division-wrapper": "a wrapper that opens a division of the section rather than continuing "
                         "the paragraph it is printed after: it holds a heading directly below "
                         "the section, or its heading names a division of the corpus (0036, "
-                        "0052)",
+                        "0056)",
     "captioned-after-undesignated": "a captioned wrapper printed after something that is not a "
                                     "designated paragraph, so there is no run for it to continue",
     "states-own-designation": "a wrapper one of whose ordinary paragraphs prints its own "
