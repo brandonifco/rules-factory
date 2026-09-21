@@ -418,6 +418,84 @@ class TestTheCommittedBackgammonMapQuotesItsCorpus(unittest.TestCase):
         self.assertIn("unaccounted: 9", output)
 
 
+class TestABoundIsAQuoteOfTheUnitItNames(unittest.TestCase):
+    """0031 gives a worked example three fates, and a bound is the one the inventory could not see.
+
+    An entry, a bound on an entry's ambiguity, or declined with the reading in a note: the first
+    is `evidence`, the third is `mapping-inventory.json`, and the second is `ambiguity.bounds`,
+    which `check-locators.py` already holds to the corpus the way it holds `evidence`. Before
+    #393 the passage a map quoted for the strongest reason it has -- the corpus's only authority
+    on an open term -- was counted as read by nobody.
+    """
+
+    def entry(self, evidence, bound_text):
+        return {
+            "id": "open-term",
+            "locator": {"sourceId": "fixture", "citation": "p. 9"},
+            "evidence": evidence,
+            "ambiguity": {"question": "How short is short?", "fate": "unresolved",
+                          "bounds": {"term": "short temporary absences", "dimension": "duration",
+                                     "examples": [{"locator": {"sourceId": "fixture",
+                                                               "citation": "p. 9 block 3"},
+                                                   "text": bound_text, "verdict": "outside",
+                                                   "value": "1 year"}]}},
+        }
+
+    def test_a_unit_quoted_only_by_a_bound_is_reached(self):
+        units = [
+            corpus.Unit("p. 9 block 1", "paragraph",
+                        "Short temporary absences are counted as periods of use."),
+            corpus.Unit("p. 9 block 3", "paragraph",
+                        "Example 4. He goes abroad for a 1-year sabbatical leave, which is not "
+                        "a short temporary absence."),
+        ]
+        measured = inventory.take(units, {"entries": [self.entry(
+            "Short temporary absences are counted as periods of use.",
+            "He goes abroad for a 1-year sabbatical leave, which is not a short temporary "
+            "absence.")]}, {})
+        self.assertEqual(sorted(measured.reached), ["p. 9 block 1", "p. 9 block 3"])
+        self.assertEqual(measured.unaccounted, [])
+
+    def test_a_bound_does_not_rescue_an_entry_whose_own_quote_is_missing(self):
+        """`evidence` is what an entry claims to quote. A bound that locates while the entry's
+        own quote does not would hide exactly the defect this line reports."""
+        units = [corpus.Unit("p. 9 block 3", "paragraph",
+                             "Example 4. He goes abroad for a 1-year sabbatical leave.")]
+        measured = inventory.take(units, {"entries": [self.entry(
+            "A sentence this corpus does not contain anywhere at all.",
+            "He goes abroad for a 1-year sabbatical leave.")]}, {})
+        self.assertEqual(sorted(measured.reached), ["p. 9 block 3"])
+        self.assertEqual(measured.unlocated, ["open-term"])
+
+    def test_a_rejection_of_a_unit_only_a_bound_quotes_is_a_contradiction(self):
+        """The map cannot say both that it read this passage and produced nothing, and that the
+        passage is what bounds an open term."""
+        units = [
+            corpus.Unit("p. 9 block 1", "paragraph",
+                        "Short temporary absences are counted as periods of use."),
+            corpus.Unit("p. 9 block 3", "paragraph",
+                        "Example 4. He goes abroad for a 1-year sabbatical leave."),
+        ]
+        measured = inventory.take(units, {"entries": [self.entry(
+            "Short temporary absences are counted as periods of use.",
+            "He goes abroad for a 1-year sabbatical leave.")]},
+            {"p. 9 block 3": {"ground": "restatement", "note": "an illustration"}})
+        self.assertTrue(any("cannot have produced no entry and be the evidence for one"
+                            in problem for problem in measured.problems), measured.problems)
+
+
+class TestTheCommittedTaxMapAccountsForItsBoundedExamples(unittest.TestCase):
+    def test_the_two_bounded_examples_are_no_longer_unaccounted(self):
+        """Measured: (c)(4) Examples 4 and 5 are the corpus's only authority on `short temporary
+        absences`, and the map quotes both in `bounds`."""
+        path = os.path.join(REPO, "examples", "tax-121-principal-residence", "corpus-map.json")
+        code, output = run(["inventory", path, "--list"])
+        self.assertEqual(code, NOT_VERIFIED, output)
+        self.assertIn("unaccounted: 14", output)
+        self.assertNotIn("?  \u00a7 1.121-1 \u00b632 example", output)
+        self.assertNotIn("?  \u00a7 1.121-1 \u00b633 example", output)
+
+
 class TestShortEvidenceKeepsItsSafetyBoundary(unittest.TestCase):
     def test_a_short_prose_fragment_is_not_enough_to_reach_a_unit(self):
         units = [
