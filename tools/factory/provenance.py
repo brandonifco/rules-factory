@@ -30,9 +30,9 @@ The fields, and where each comes from:
   * `kernel` -- the RulesKernel version the engine references.
   * `packs` -- `[]`: no rule packs exist yet, and the empty list says so rather than omitting it.
   * `recipes` -- every file under `tools/factory/` (the factory's templates are its Python
-    modules) and `tools/check-map.py` beside it (the
-    checker intake runs decides whether there is any output, so it is factory code too, and a
-    factory without it is refused), each with its SHA-256, sorted by
+    modules) and `tools/check-map.py` beside it (the checker intake runs decides whether there
+    is any output, so it is factory code too, and a factory without it is refused), each with
+    its SHA-256, sorted by
     repository-relative POSIX path in ascending byte order; and `digest`, the SHA-256 of the
     UTF-8 text made of one line `<sha256>  <path>\\n` per file in that order (`sha256sum` format).
     Every one of those files is in the commit `factory.commit` names, or the run is refused
