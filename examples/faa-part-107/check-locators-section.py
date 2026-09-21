@@ -1323,10 +1323,13 @@ def longest_prefix(fragment, corpus):
     return 0.0
 
 
-def check(entry, corpus, spans, reached=None, tables=None):
+def check(entry, corpus, spans, reached=None, tables=None, quoted=None):
     """(verdict, message) where verdict is 'ok', 'bad' or 'unchecked'.
 
-    On 'ok', the section of every paragraph the evidence touched is added to `reached`.
+    On 'ok', the section of every paragraph the evidence touched is added to `reached`,
+    and every occurrence of every fragment to `quoted` -- the spans #270's fraction is the
+    union of. A table-row citation adds nothing to `quoted`: a row is not in this flat text
+    at all, and what the extent claims to have read of a table is the rows it names (0035).
 
     A citation naming a table row is resolved against `tables` instead of the section tree: the
     row is a container of its own, and the quote is held to the row's cells in column order. A
@@ -1357,7 +1360,7 @@ def check(entry, corpus, spans, reached=None, tables=None):
     if not fragments:
         return "unchecked", "evidence is empty"
 
-    seen, cursor, sections = 0, 0, set()
+    seen, cursor, sections, found = 0, 0, set(), []
     for index, fragment in enumerate(fragments):
         hits = occurrences(fragment, corpus)
         if not hits:
@@ -1389,6 +1392,7 @@ def check(entry, corpus, spans, reached=None, tables=None):
                 f"then checks"
             )
         seen += len(hits)
+        found.extend(hits)
         for hit in hits:
             for path in touched(hit, spans):
                 sections.add(path[1])
@@ -1401,6 +1405,8 @@ def check(entry, corpus, spans, reached=None, tables=None):
         cursor = ordered[0][1]
     if reached is not None:
         reached.update(sections)
+    if quoted is not None:
+        quoted.extend(found)
     return "ok", f"{len(fragments)} fragment(s), {seen} occurrence(s), all inside {citation}"
 
 
@@ -1428,7 +1434,80 @@ def bounds_of(entry):
 EXTENT_SECTION = re.compile(r"^§\s*(\d+\.\d+(?:[A-Za-z]|-\d+)?)$")
 
 
-def coverage(document, reached):
+def merged(spans):
+    """The union of `spans` as disjoint (start, end) pairs in order."""
+    union = []
+    for start, end in sorted(spans):
+        if end <= start:
+            continue
+        if union and start <= union[-1][1]:
+            union[-1][1] = max(union[-1][1], end)
+        else:
+            union.append([start, end])
+    return [(start, end) for start, end in union]
+
+
+def quoted_of(region, spans):
+    """(quoted characters, characters in `region`) for the union of `spans` inside it (#270).
+
+    The section-designation counterpart of `tools/check-locators.py`'s measure of the same name.
+    `region` is the extent: one span per paragraph of every section the extent names, which is
+    what the section tree gives this grammar in place of a page range. A character quoted twice
+    was read once, so the union and not the sum.
+
+    A sliced table's rows are **not** in `region` and a row quote is not in `spans`: a row is not
+    in this flat text at all, and 0035's `extent.tables` already accounts for a table row by row
+    -- which is a finer statement than a fraction, not a coarser one. So the fraction here is of
+    the extent's *paragraph* text, and the summary says so.
+    """
+    size = sum(end - start for start, end in region)
+    inside = merged([(max(start, low), min(end, high))
+                     for low, high in region for start, end in spans])
+    return sum(end - start for start, end in inside), size
+
+
+def declared_floor(extent):
+    """`extent.quoted`, the fraction a map claims its verified evidence quotes, or None (0054)."""
+    floor = extent.get("quoted") if isinstance(extent, dict) else None
+    ok_type = isinstance(floor, (int, float)) and not isinstance(floor, bool)
+    return floor if ok_type and 0 < floor <= 1 else None
+
+
+def extent_sections(document):
+    """The section numbers a `section-designation` extent names, or [] where it names none.
+
+    `coverage` reads the same list and says what is wrong with it; this only needs the numbers,
+    so that the extent's paragraphs can be measured before the verdict is composed.
+    """
+    extent = document.get("extent")
+    if not isinstance(extent, dict) or extent.get("unit") != "section-designation":
+        return []
+    sections = extent.get("sections")
+    if not isinstance(sections, list):
+        return []
+    matched = [EXTENT_SECTION.match(s) for s in sections if isinstance(s, str)]
+    return [m.group(1) for m in matched if m]
+
+
+def quoted_extent(numbers, indexes, quoted):
+    """(quoted characters, characters) over every corpus of the run, for the sections named.
+
+    The extent's question asked over all of them at once, exactly as `coverage` asks its own
+    (0042): a section is read in whichever corpus the eCFR served it, and the extent says
+    nothing about which. `quoted` is {sourceId: [spans]}, each span an offset into that
+    corpus's own flat text, so the two are never added across corpora by accident.
+    """
+    total = covered = 0
+    for source, index in indexes.items():
+        _, spans, _, _, _ = index
+        region = [(start, end) for start, end, path in spans if path[1] in numbers]
+        got, size = quoted_of(region, quoted.get(source, []))
+        covered += got
+        total += size
+    return covered, total
+
+
+def coverage(document, reached, measured=None):
     """(problems, summary): every section of the declared extent is reached by a verified quote.
 
     The section-designation counterpart of `tools/check-locators.py`'s `coverage` (0009, 0020).
@@ -1437,6 +1516,13 @@ def coverage(document, reached):
     naming a section is not a quote sitting in it. A map declaring no extent, or one in another
     unit, is a problem: what it claims to have read is unstated. The shape of the list itself is
     `check-map.py --only extent`.
+
+    `measured` is (quoted characters, characters in the extent's paragraphs) from
+    `quoted_extent` above, and carries #270's half of the question: a section is reached by one
+    quote, so `coverage` alone could not see an entry deleted from a map whose other entries
+    still reach its section -- 4 of the 5 committed maps, measured. The fraction is reported on
+    every run and **fails** a map only against the floor the map declares in `extent.quoted`,
+    for 0054's reason.
     """
     extent = document.get("extent")
     if not isinstance(extent, dict):
@@ -1454,7 +1540,23 @@ def coverage(document, reached):
     missing = [n for n in numbers if n not in reached]
     problems = [f"  X  § {n}: inside the declared extent and reached by no entry's verified "
                 f"evidence" for n in missing]
-    return problems, f"all {len(numbers)} sections of the declared extent are reached"
+    phrase = ""
+    if measured is not None and measured[1]:
+        quoted, size = measured
+        fraction, floor = quoted / size, declared_floor(extent)
+        if floor is None:
+            phrase = (f"; verified evidence quotes {fraction:.0%} of their text; the map declares "
+                      f"no floor (`extent.quoted`) to be held to")
+        elif fraction < floor:
+            problems.append(
+                f"  X  extent.quoted: the map declares its verified evidence quotes at least "
+                f"{floor:.0%} of the declared extent, and it quotes {fraction:.0%} ({quoted} of "
+                f"{size} characters of its sections' paragraphs). A map shows the reading it "
+                f"claims, or lowers the claim")
+        else:
+            phrase = (f"; verified evidence quotes {fraction:.0%} of their text, above the "
+                      f"{floor:.0%} the map declares")
+    return problems, f"all {len(numbers)} sections of the declared extent are reached{phrase}"
 
 
 #: The reasons this grammar can give for having no address for a passage. Each is produced at
@@ -1632,6 +1734,9 @@ def main(argv):
 
     bad = unchecked = bounds = bad_bounds = continuation_anchors = 0
     reached = set()
+    # #270: the spans every verified quote occupies, kept per corpus because each corpus has its
+    # own flat text and an offset means nothing outside the one it was measured in.
+    quoted = {source: [] for source in indexes}
     by_id = {entry.get("id"): entry for entry in entries if isinstance(entry, dict)}
     for entry in entries:
         source = (entry.get("locator") or {}).get("sourceId")
@@ -1644,7 +1749,8 @@ def main(argv):
                   f"(given: {', '.join(sorted(wanted))})")
             continue
         corpus, spans, tables, _, _ = index
-        verdict, message = check(entry, corpus, spans, reached, tables)
+        verdict, message = check(entry, corpus, spans, reached, tables,
+                                 quoted[None if None in indexes else source])
         if verdict == "bad":
             bad += 1
             print(f"  X  {label(source)}{entry['id']}: {message}")
@@ -1671,7 +1777,8 @@ def main(argv):
     # `coverage` asks the extent's question over every corpus of the run at once: a section is
     # reached by evidence wherever that evidence sits, and which document the eCFR served it in
     # is not something the extent states.
-    uncovered, covered = coverage(document, reached)
+    uncovered, covered = coverage(document, reached, quoted_extent(
+        extent_sections(document), indexes, quoted))
     for line in uncovered:
         print(line)
     for source in wanted:

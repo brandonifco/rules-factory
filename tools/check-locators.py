@@ -101,6 +101,15 @@ def pages_spanned(span, index):
     return {p for p in pages if p is not None}
 
 
+def extent_span(corpus, index, first, last):
+    """(start, end) of the slice between the marker for `first` and the one after `last`."""
+    start = next((offset for offset, number in index if number == first), None)
+    if start is None:
+        return None
+    end = next((offset for offset, number in index if offset > start and number > last), len(corpus))
+    return (start, end)
+
+
 def extent_text(corpus, index, first, last):
     """The slice of the corpus between the marker for `first` and the one after `last`.
 
@@ -109,11 +118,53 @@ def extent_text(corpus, index, first, last):
     chapter and does occur elsewhere in the same book, so a whole-volume search would
     refuse a true absence and a mapper would learn to write vaguer terms.
     """
-    start = next((offset for offset, number in index if number == first), None)
-    if start is None:
-        return None
-    end = next((offset for offset, number in index if offset > start and number > last), len(corpus))
-    return corpus[start:end]
+    span = extent_span(corpus, index, first, last)
+    return None if span is None else corpus[span[0]:span[1]]
+
+
+def merged(spans):
+    """The union of `spans` as disjoint (start, end) pairs in order.
+
+    Two entries quoting overlapping text quote one stretch of the corpus between them, not two:
+    what the fraction below measures is how much of the extent the map can show it read, and a
+    character read twice was read once.
+    """
+    union = []
+    for start, end in sorted(spans):
+        if end <= start:
+            continue
+        if union and start <= union[-1][1]:
+            union[-1][1] = max(union[-1][1], end)
+        else:
+            union.append([start, end])
+    return [(start, end) for start, end in union]
+
+
+def quoted_of(region, spans):
+    """(quoted characters, characters in `region`) for the union of `spans` inside it (#270).
+
+    `region` is the extent, as disjoint spans of the same string `spans` are offsets into: one
+    span for a page range, one per paragraph for a list of sections. The fraction of the extent
+    a map's verified evidence quotes is the measure `coverage` did not have -- `coverage` asks
+    whether every *unit* was touched, and one sentence touches a page, so deleting a rule from a
+    ten-page map carrying 33 entries is invisible to it.
+    """
+    size = sum(end - start for start, end in region)
+    inside = merged([(max(start, low), min(end, high))
+                     for low, high in region for start, end in spans])
+    return sum(end - start for start, end in inside), size
+
+
+def declared_floor(extent):
+    """`extent.quoted`, the fraction a map claims its verified evidence quotes, or None.
+
+    Optional, and a map that declares none is reported and not failed (0054). Only its shape is
+    checked in `check-map.py --only extent`; whether the map meets it needs the corpus, which is
+    this file.
+    """
+    floor = extent.get("quoted") if isinstance(extent, dict) else None
+    ok_type = isinstance(floor, (int, float)) and not isinstance(floor, bool)
+    return floor if ok_type and 0 < floor <= 1 else None
 
 
 class Result:
@@ -202,7 +253,7 @@ def check_extent_bounds(document, located):
               f"(pages {first}-{last}){aside}")
 
 
-def check_locators(entries, corpus, index, page_re, reached, located=None):
+def check_locators(entries, corpus, index, page_re, reached, located=None, spans=None):
     """Each entry's cited page against the page its evidence sits on.
 
     A derived entry (0012) is not located: no sentence states its fact, so it carries no
@@ -237,6 +288,8 @@ def check_locators(entries, corpus, index, page_re, reached, located=None):
         reached.update(actual)
         if located is not None:
             located[name] = (entry, actual)
+        if spans is not None:
+            spans.append(span)
         if int(claimed.group(1)) not in actual:
             partial = "" if coverage > 0.95 else f" (matched {coverage:.0%} of the evidence)"
             found = " or ".join(f"p. {p}" for p in sorted(actual))
@@ -303,8 +356,42 @@ def check_absence(entries, extent):
         f"entr{'y' if len(carriers) == 1 else 'ies'} occur nowhere in the declared extent")
 
 
-def check_coverage(document, reached):
-    """Every page of the declared extent is reached by some entry's verified evidence."""
+def quoted_summary(extent, region, spans):
+    """(problems, phrase) for the quoted fraction of a declared extent (#270, 0054).
+
+    The number is reported on every run. It **fails** a map only against `extent.quoted`, the
+    floor the map itself declares, for the reason 0054 records: measured across the five
+    committed maps the fraction runs from 20% to 99.9%, so no single threshold could be right
+    for all of them, and a threshold nobody argued for would be worse than the number alone.
+    What the field buys is 0009's own bargain, one level down -- the claim is written down and
+    can be argued with.
+    """
+    if region is None or spans is None:
+        return [], ""
+    quoted, size = quoted_of(region, spans)
+    if not size:
+        return [], ""
+    fraction = quoted / size
+    floor = declared_floor(extent)
+    if floor is None:
+        return [], (f"; verified evidence quotes {fraction:.0%} of it; the map declares no floor "
+                    f"(`extent.quoted`) to be held to")
+    if fraction < floor:
+        return ([f"  X  extent.quoted: the map declares its verified evidence quotes at least "
+                 f"{floor:.0%} of the declared extent, and it quotes {fraction:.0%} "
+                 f"({quoted} of {size} characters). A map shows the reading it claims, or "
+                 f"lowers the claim"], "")
+    return [], f"; verified evidence quotes {fraction:.0%} of it, above the {floor:.0%} the map declares"
+
+
+def check_coverage(document, reached, region=None, spans=None):
+    """Every page of the declared extent is reached by some entry's verified evidence, and how
+    much of it that evidence quotes (#270).
+
+    `region` is the extent as spans of the corpus and `spans` are the verified quotes' spans in
+    it; given both, the summary carries the quoted fraction and a declared `extent.quoted` floor
+    is enforced. Given neither, the check is what it always was.
+    """
     extent = document.get("extent")
     if not isinstance(extent, dict):
         return skip("the map declares no `extent`, so what it claims to have read is unstated "
@@ -323,8 +410,12 @@ def check_coverage(document, reached):
              f"evidence" for page in missing],
             f"{len(missing)} of {last - first + 1} pages in the extent are reached by no entry",
         )
+    short, phrase = quoted_summary(extent, region, spans)
+    if short:
+        return fail(short, f"the map quotes less of the declared extent ({first}-{last}) than it "
+                           f"declares it can show")
     return ok(f"all {last - first + 1} pages of the declared extent ({first}-{last}) are reached "
-              f"by some entry's verified evidence")
+              f"by some entry's verified evidence{phrase}")
 
 
 def main(argv=None):
@@ -349,18 +440,20 @@ def main(argv=None):
         print("no page markers found; nothing to check", file=sys.stderr)
         return 2
 
-    extent = None
+    extent, region = None, None
     declared = document.get("extent")
     if isinstance(declared, dict) and isinstance(declared.get("from"), int) \
             and isinstance(declared.get("to"), int):
         extent = extent_text(corpus, index, declared["from"], declared["to"])
+        span = extent_span(corpus, index, declared["from"], declared["to"])
+        region = None if span is None else [span]
 
-    reached, located = set(), {}
+    reached, located, spans = set(), {}, []
     print(f"{args.map_path} ({len(entries)} entries) against {args.corpus_path}")
     results = [
-        ("locators", check_locators(entries, corpus, index, args.page_re, reached, located)),
+        ("locators", check_locators(entries, corpus, index, args.page_re, reached, located, spans)),
         ("absence", check_absence(entries, extent)),
-        ("coverage", check_coverage(document, reached)),
+        ("coverage", check_coverage(document, reached, region, spans)),
         ("extent-bounds", check_extent_bounds(document, located)),
     ]
     if isinstance(declared, dict) and "endsBefore" in declared:

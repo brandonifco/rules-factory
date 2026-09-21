@@ -714,74 +714,13 @@ def _row_key(key):
     return frozenset(pairs)
 
 
-# --- tools/mapvalidator/extent.py -------------------------------------------------------------
-# `extent`, the map's claim about how much of its corpus it read (0009), in the two units a
-# corpus map has: printed pages, and CFR-style section designations (0020).
-
-
-EXTENT_UNITS = ("page", "section-designation")
-
-
-def _page_extent(extent, bad):
-    for field in sorted(set(extent) - {"unit", "from", "to", "endsBefore"}):
-        bad.append(f"  X  extent: `{field}` is not a field of a page extent (unit, from, to, endsBefore)")
-    first, last = extent.get("from"), extent.get("to")
-    if not all(isinstance(v, int) and not isinstance(v, bool) for v in (first, last)):
-        bad.append(f"  X  extent: a page extent names integer `from` and `to`; got {first!r}..{last!r}")
-    elif last < first:
-        bad.append(f"  X  extent: `to` {last} is before `from` {first}")
-    if "endsBefore" in extent:
-        heading = extent.get("endsBefore")
-        if not isinstance(heading, str) or not heading.strip() or "\n" in heading \
-                or heading != heading.strip():
-            bad.append(f"  X  extent: endsBefore is {heading!r}; it names one heading on page `to`, "
-                       f"as a single line of text with no surrounding whitespace (0024)")
-
-
-def _placed_entries(doc):
-    """(name, citation, entry) for every entry a declared extent has to place.
-
-    A derived entry cites nothing and is not placed (0012); an entry with no locator has no
-    citation to read. Both exemptions are the section branch's, taken here so that the two units
-    exempt the same entries.
-    """
-    for position, entry in enumerate(entries_of(doc)):
-        if not isinstance(entry, dict) or "derivedFrom" in entry or "locator" not in entry:
-            continue
-        yield label(entry, position), block(entry, "locator").get("citation"), entry
-
-
-def _place_pages(doc, first, last, bad):
-    """Every `scope: in` citation names a page inside `first`..`last` (#269).
-
-    The page unit's half of what this check has always done for section designations. A page
-    citation carries an integer page number the locator grammar already reads, so a map that
-    narrows its declared extent below what it cites is as visible here as a map that drops a
-    section it cites -- and `coverage` cannot see it either way round, because narrowing the
-    extent makes coverage *easier* to satisfy: there are fewer units to reach.
-
-    The three exemptions are the section branch's, for the same three reasons: a `scope: out`
-    entry may cite beyond the extent, because recording what lies beyond the slice is what it is
-    for (the SRD combat map cites the Rules Glossary at pp. 178-189 from an extent of 13-16), and
-    is named in the summary rather than passed or failed; a derived entry cites nothing; and an
-    entry with no locator has no citation to place.
-    """
-    placed, beyond = 0, []
-    for name, citation, entry in _placed_entries(doc):
-        page = cited_page(citation)
-        if page is None:
-            bad.append(f"  X  {name}: citation {citation!r} names no page, so it cannot be "
-                       f"placed inside the extent")
-            continue
-        if first <= page <= last:
-            placed += 1
-        elif entry.get("scope") == "out":
-            beyond.append(f"{name} ({citation})")
-        else:
-            bad.append(f"  X  {name}: cites p. {page}, outside the declared extent "
-                       f"(pages {first}-{last}), and is not `scope: out`; an in-scope rule is "
-                       f"cited inside what the map claims to have read")
-    return placed, beyond
+# --- tools/mapvalidator/extent_tables.py ------------------------------------------------------
+# `extent.tables`, the rows a section-designation extent took from each table it read (0035).
+#
+# Split from `extent.py` so that neither file grows past the size the build holds a joined module
+# to. What lives here is the table half of an extent: the shape of the declared slice, and the
+# placement of a locator that cites a row against the rows the slice took. The section and page
+# halves stay in `extent.py`, which imports these two.
 
 
 def _tables_extent(extent, numbers, bad):
@@ -863,6 +802,125 @@ def _tables_extent(extent, numbers, bad):
     return taken
 
 
+def _place_row(name, citation, row, numbers, taken):
+    """An in-scope table-row citation names a row the extent says it took (0035).
+
+    The extent that slices a table names the rows it takes, so a rule cited from a row the slice
+    does not hold is cited outside what the map claims to have read -- 0020's rule about sections,
+    one unit down, and the reason the row key is the extent's and not an ordinal: both sides name
+    the row by the same cells.
+    """
+    section, table, key = row
+    if section not in numbers:
+        return [f"  X  {name}: cites § {section}, outside the declared extent "
+                f"({len(numbers)} sections), and is not `scope: out`; an in-scope rule is cited "
+                f"inside what the map claims to have read"]
+    slice_of = taken.get((section, table))
+    if slice_of is None:
+        return [f"  X  {name}: cites {citation}, and the extent declares no slice of § {section} "
+                f"table {table}; a table a map reads a rule out of is one it claims to have read"]
+    if slice_of == "excluded":
+        return [f"  X  {name}: cites {citation}, and the extent excludes § {section} table "
+                f"{table} from the slice; a table can be excluded or read, not both"]
+    if slice_of == "all" or (key and key in slice_of):
+        return []
+    return [f"  X  {name}: cites {citation}, and the extent's slice of § {section} table {table} "
+            + ("does not take that row; the rows an extent names are the rows it read" if key else
+               "lists row keys, and no key names a row below the row above it (0043)")]
+
+
+# --- tools/mapvalidator/extent.py -------------------------------------------------------------
+# `extent`, the map's claim about how much of its corpus it read (0009), in the two units a
+# corpus map has: printed pages, and CFR-style section designations (0020).
+
+
+EXTENT_UNITS = ("page", "section-designation")
+
+
+def _quoted(extent, bad):
+    """`extent.quoted`: the fraction of the extent the map claims it can show quoted (0054).
+
+    Optional, and a map declaring none is reported by the locator checkers and not failed --
+    measured across the five committed maps the fraction runs from 20% to 99.9%, so no single
+    threshold could be right for all of them. Shape only here: whether the map meets its own
+    floor needs the corpus, and `coverage` in each of the three locator checkers is what
+    measures it. The same bargain `extent` itself makes (0009), one level down: nothing sizes
+    the claim, and what the field buys is that the claim is written down.
+    """
+    if "quoted" not in extent:
+        return ""
+    value = extent.get("quoted")
+    if isinstance(value, bool) or not isinstance(value, (int, float)) or not 0 < value <= 1:
+        bad.append(f"  X  extent: `quoted` is {value!r}; it is the fraction of the extent this "
+                   f"map claims its verified evidence quotes, above 0 and at most 1. A map "
+                   f"claiming none claims nothing, which is what omitting the field already says")
+        return ""
+    return f", declaring at least {value:.0%} of it quoted"
+
+
+def _page_extent(extent, bad):
+    for field in sorted(set(extent) - {"unit", "from", "to", "endsBefore", "quoted"}):
+        bad.append(f"  X  extent: `{field}` is not a field of a page extent (unit, from, to, "
+                   f"endsBefore, quoted)")
+    first, last = extent.get("from"), extent.get("to")
+    if not all(isinstance(v, int) and not isinstance(v, bool) for v in (first, last)):
+        bad.append(f"  X  extent: a page extent names integer `from` and `to`; got {first!r}..{last!r}")
+    elif last < first:
+        bad.append(f"  X  extent: `to` {last} is before `from` {first}")
+    if "endsBefore" in extent:
+        heading = extent.get("endsBefore")
+        if not isinstance(heading, str) or not heading.strip() or "\n" in heading \
+                or heading != heading.strip():
+            bad.append(f"  X  extent: endsBefore is {heading!r}; it names one heading on page `to`, "
+                       f"as a single line of text with no surrounding whitespace (0024)")
+
+
+def _placed_entries(doc):
+    """(name, citation, entry) for every entry a declared extent has to place.
+
+    A derived entry cites nothing and is not placed (0012); an entry with no locator has no
+    citation to read. Both exemptions are the section branch's, taken here so that the two units
+    exempt the same entries.
+    """
+    for position, entry in enumerate(entries_of(doc)):
+        if not isinstance(entry, dict) or "derivedFrom" in entry or "locator" not in entry:
+            continue
+        yield label(entry, position), block(entry, "locator").get("citation"), entry
+
+
+def _place_pages(doc, first, last, bad):
+    """Every `scope: in` citation names a page inside `first`..`last` (#269).
+
+    The page unit's half of what this check has always done for section designations. A page
+    citation carries an integer page number the locator grammar already reads, so a map that
+    narrows its declared extent below what it cites is as visible here as a map that drops a
+    section it cites -- and `coverage` cannot see it either way round, because narrowing the
+    extent makes coverage *easier* to satisfy: there are fewer units to reach.
+
+    The three exemptions are the section branch's, for the same three reasons: a `scope: out`
+    entry may cite beyond the extent, because recording what lies beyond the slice is what it is
+    for (the SRD combat map cites the Rules Glossary at pp. 178-189 from an extent of 13-16), and
+    is named in the summary rather than passed or failed; a derived entry cites nothing; and an
+    entry with no locator has no citation to place.
+    """
+    placed, beyond = 0, []
+    for name, citation, entry in _placed_entries(doc):
+        page = cited_page(citation)
+        if page is None:
+            bad.append(f"  X  {name}: citation {citation!r} names no page, so it cannot be "
+                       f"placed inside the extent")
+            continue
+        if first <= page <= last:
+            placed += 1
+        elif entry.get("scope") == "out":
+            beyond.append(f"{name} ({citation})")
+        else:
+            bad.append(f"  X  {name}: cites p. {page}, outside the declared extent "
+                       f"(pages {first}-{last}), and is not `scope: out`; an in-scope rule is "
+                       f"cited inside what the map claims to have read")
+    return placed, beyond
+
+
 #: The reasons a `section-designation` citation grammar can have no address for a passage. The
 #: authority is `examples/faa-part-107/check-locators-section.py`'s `UNREACHABLE_REASONS`, which
 #: produces each at exactly one place in its walk; `test_check_map.py` holds the two sets equal,
@@ -922,9 +980,9 @@ def _unreachable(extent, bad):
 
 def _section_extent(extent, bad):
     """The declared sections as numbers, or None when the list is malformed."""
-    for field in sorted(set(extent) - {"unit", "sections", "tables", "unreachable"}):
+    for field in sorted(set(extent) - {"unit", "sections", "tables", "unreachable", "quoted"}):
         bad.append(f"  X  extent: `{field}` is not a field of a section-designation extent "
-                   f"(unit, sections, tables, unreachable)")
+                   f"(unit, sections, tables, unreachable, quoted)")
     _unreachable(extent, bad)
     sections = extent.get("sections")
     if not isinstance(sections, list) or not sections:
@@ -973,6 +1031,10 @@ def check_extent(ctx):
     out-of-scope citation beyond the extent, and neither passes nor fails. A derived entry cites
     nothing and is not placed (0012). A map declaring no extent is not refused here: `coverage`, which
     has the corpus, is where an undeclared extent fails.
+
+    Either unit may carry `quoted` (0054, #270), the fraction of the extent the map claims its
+    verified evidence quotes. Only its shape is checked here; each locator checker's `coverage`
+    measures the fraction and holds the map to the floor it declared.
     """
     doc = ctx["map"]
     if "extent" not in doc:
@@ -988,6 +1050,7 @@ def check_extent(ctx):
                     "the declared extent is in no unit a map may use")
     if unit == "page":
         _page_extent(extent, bad)
+        claim = _quoted(extent, bad)
         end = (f", ending before the heading {extent['endsBefore']!r} on p. {extent.get('to')}"
                if isinstance(extent.get("endsBefore"), str) else "")
         if bad:
@@ -995,11 +1058,13 @@ def check_extent(ctx):
         placed, beyond = _place_pages(doc, extent["from"], extent["to"], bad)
         aside = (f"; {len(beyond)} out-of-scope citation{'' if len(beyond) == 1 else 's'} beyond "
                  f"the extent, neither passed nor failed: {', '.join(beyond)}") if beyond else ""
-        return verdict(bad, f"page extent {extent.get('from')}-{extent.get('to')}{end} is well formed; "
-                            f"{placed} locators each name a page inside it{aside}; whether each "
-                            f"page is reached is check-locators' `coverage`",
+        return verdict(bad, f"page extent {extent.get('from')}-{extent.get('to')}{end} is well formed"
+                            f"{claim}; {placed} locators each name a page inside it{aside}; whether "
+                            f"each page is reached, and how much of it is quoted, is "
+                            f"check-locators' `coverage`",
                        "a locator cites a page outside the declared extent")
 
+    claim = _quoted(extent, bad)
     numbers = _section_extent(extent, bad)
     taken = _tables_extent(extent, numbers or [], bad)
     if numbers is None or bad:
@@ -1030,36 +1095,9 @@ def check_extent(ctx):
              f"extent, neither passed nor failed: {', '.join(beyond)}") if beyond else ""
     sliced = (f"; {len(taken)} table(s) accounted for, {rows} locator(s) naming a row the extent "
               f"takes") if taken or rows else ""
-    return verdict(bad, f"{len(numbers)} sections declared; {placed} locators each name one of "
-                        f"them{sliced}{aside}",
+    return verdict(bad, f"{len(numbers)} sections declared{claim}; {placed} locators each name "
+                        f"one of them{sliced}{aside}",
                    "a locator cites a section outside the declared extent")
-
-
-def _place_row(name, citation, row, numbers, taken):
-    """An in-scope table-row citation names a row the extent says it took (0035).
-
-    The extent that slices a table names the rows it takes, so a rule cited from a row the slice
-    does not hold is cited outside what the map claims to have read -- 0020's rule about sections,
-    one unit down, and the reason the row key is the extent's and not an ordinal: both sides name
-    the row by the same cells.
-    """
-    section, table, key = row
-    if section not in numbers:
-        return [f"  X  {name}: cites § {section}, outside the declared extent "
-                f"({len(numbers)} sections), and is not `scope: out`; an in-scope rule is cited "
-                f"inside what the map claims to have read"]
-    slice_of = taken.get((section, table))
-    if slice_of is None:
-        return [f"  X  {name}: cites {citation}, and the extent declares no slice of § {section} "
-                f"table {table}; a table a map reads a rule out of is one it claims to have read"]
-    if slice_of == "excluded":
-        return [f"  X  {name}: cites {citation}, and the extent excludes § {section} table "
-                f"{table} from the slice; a table can be excluded or read, not both"]
-    if slice_of == "all" or (key and key in slice_of):
-        return []
-    return [f"  X  {name}: cites {citation}, and the extent's slice of § {section} table {table} "
-            + ("does not take that row; the rows an extent names are the rows it read" if key else
-               "lists row keys, and no key names a row below the row above it (0043)")]
 
 
 # --- tools/mapvalidator/relations.py ----------------------------------------------------------

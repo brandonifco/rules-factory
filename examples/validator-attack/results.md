@@ -13,4 +13,4 @@
 | `omit-definition` | n/a | **missed** | **missed** | **missed** | **missed** |
 | `remove-applicability` | superposition | signalled only: gates | **missed** | **missed** | n/a |
 | `hide-cross-reference` | cross-references | cross-references | cross-references | **missed** | **missed** |
-| `narrow-extent` | **missed** | extent | n/a | extent-end | **missed** |
+| `narrow-extent` | extent-bounds | extent | n/a | extent, extent-bounds, extent-end | extent, extent-bounds |

@@ -1,5 +1,5 @@
 {
-  "measuredAt": "145c4850fc3dde1e63e566c6f475a4ff2483b6f8",
+  "measuredAt": "1d66d7d09e1718c6d3fe487b8cf4a74699ee5231",
   "subjects": [
     {
       "name": "hoyle-backgammon",
@@ -183,10 +183,19 @@
           "mutation": "narrow-extent",
           "applicable": true,
           "damage": "extent narrowed from 271-280 to 271-279",
-          "detected": false,
-          "refusedBy": [],
+          "detected": true,
+          "refusedBy": [
+            "check-locators.py"
+          ],
           "signalled": false,
-          "by": []
+          "by": [
+            {
+              "detector": "check-locators.py",
+              "check": "extent-bounds",
+              "status": "fail",
+              "said": "a quote lies outside the declared extent (pages 271-279)"
+            }
+          ]
         }
       ]
     },
@@ -679,10 +688,23 @@
           "damage": "extent narrowed from 13-16 to 13-15",
           "detected": true,
           "refusedBy": [
+            "check-map.py",
             "check-locators-pdf-text.py"
           ],
           "signalled": false,
           "by": [
+            {
+              "detector": "check-map.py",
+              "check": "extent",
+              "status": "fail",
+              "said": "a locator cites a page outside the declared extent"
+            },
+            {
+              "detector": "check-locators-pdf-text.py",
+              "check": "extent-bounds",
+              "status": "fail",
+              "said": "a quote lies outside the declared extent (pages 13-15)"
+            },
             {
               "detector": "check-locators-pdf-text.py",
               "check": "extent-end",
@@ -822,17 +844,33 @@
           "mutation": "narrow-extent",
           "applicable": true,
           "damage": "extent narrowed from 177-191 to 177-190",
-          "detected": false,
-          "refusedBy": [],
+          "detected": true,
+          "refusedBy": [
+            "check-map.py",
+            "check-locators-pdf-text.py"
+          ],
           "signalled": false,
-          "by": []
+          "by": [
+            {
+              "detector": "check-map.py",
+              "check": "extent",
+              "status": "fail",
+              "said": "a locator cites a page outside the declared extent"
+            },
+            {
+              "detector": "check-locators-pdf-text.py",
+              "check": "extent-bounds",
+              "status": "fail",
+              "said": "a quote lies outside the declared extent (pages 177-190)"
+            }
+          ]
         }
       ]
     }
   ],
   "totals": {
     "applied": 62,
-    "detected": 18,
-    "missed": 44
+    "detected": 20,
+    "missed": 42
   }
 }

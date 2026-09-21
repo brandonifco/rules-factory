@@ -426,6 +426,40 @@ class TestExtent(MapCase):
     def test_a_page_extent_with_a_non_integer_bound_fails(self):
         self.assert_catches("extent", lambda d: d["extent"].update({"to": "280"}), message='a page extent names integer `from` and `to`')
 
+    def test_a_page_extent_may_declare_the_fraction_of_it_the_map_quotes(self):
+        # #270, 0054: the floor a map can be held to by the locator checkers, which have the
+        # corpus. Only its shape is checked here.
+        document = valid_map()
+        document["extent"]["quoted"] = 0.8
+        code, output = self.run_tool(document)
+        self.assertEqual(self.status_of(output, "extent"), "ok", output)
+        self.assertIn("declaring at least 80% of it quoted", output)
+        self.assertEqual(code, 0, output)
+
+    def test_a_section_extent_may_declare_one_too(self):
+        document = self.section_map()
+        document["extent"]["quoted"] = 0.5
+        code, output = self.run_tool(document)
+        self.assertEqual(self.status_of(output, "extent"), "ok", output)
+        self.assertIn("declaring at least 50% of it quoted", output)
+        self.assertEqual(code, 0, output)
+
+    def test_a_quoted_fraction_above_one_fails(self):
+        self.assert_catches("extent", lambda d: d["extent"].update(quoted=1.4),
+            message="`quoted` is 1.4; it is the fraction of the extent this map claims its "
+                    "verified evidence quotes, above 0 and at most 1")
+
+    def test_a_quoted_fraction_of_zero_fails(self):
+        # A map claiming it can show none of its extent quoted claims nothing, and says it in a
+        # field: the omission already means "not held to a floor", and saying so twice, in two
+        # ways, is a distinction nothing could act on.
+        self.assert_catches("extent", lambda d: d["extent"].update(quoted=0),
+            message="`quoted` is 0; it is the fraction of the extent this map claims")
+
+    def test_a_quoted_fraction_that_is_not_a_number_fails(self):
+        self.assert_catches("extent", lambda d: d["extent"].update(quoted="80%"),
+            message="`quoted` is '80%'; it is the fraction of the extent this map claims")
+
     def test_an_in_scope_entry_citing_a_page_outside_the_extent_fails(self):
         # #269: the page unit's half of what this check already did for sections. Narrowing
         # `hoyle-backgammon`'s extent from 271-280 to 271-279 left every citation in place and

@@ -113,7 +113,7 @@ class LocatorCase(unittest.TestCase):
         self.assertIsNotNone(found, f"check {check!r} did not report at all:\n{output}")
         return found.group(1)
 
-    def assert_catches(self, check, mutate, expect="fail", *, message=None):
+    def assert_catches(self, check, mutate, expect="fail", *, message=None, base=None):
         """The valid map passes this check; the mutation makes this check say `message`.
 
         `message` is **required** and is a fragment of the refusal the mutation must produce
@@ -130,10 +130,11 @@ class LocatorCase(unittest.TestCase):
                 f"assert_catches({check!r}, ...) names no expected refusal. Assert the message, "
                 f"not only the verdict: a neighbouring rule of the same check can satisfy the "
                 f"verdict while the rule this test is about goes unexercised (#283)")
-        code, output = self.run_tool(valid_map())
+        base = base or valid_map
+        code, output = self.run_tool(base())
         self.assertEqual(self.status_of(output, check), "ok", output)
         self.assertEqual(code, 0, output)
-        document = valid_map()
+        document = base()
         mutate(document)
         code, output = self.run_tool(document)
         self.assertEqual(self.status_of(output, check), expect, output)
@@ -323,6 +324,99 @@ class TestCoverage(LocatorCase):
             message="p. 3: inside the declared extent and reached by no entry's verified evidence")
 
 
+# #270: a corpus whose pages hold more than the map quotes, so that "every page is reached" and
+# "how much of the extent is quoted" are visibly different numbers. Each page carries one mapped
+# sentence and a paragraph of prose nobody quotes; page 1 carries two mapped sentences, so an
+# entry can be deleted without leaving its page unreached -- which is exactly the damage
+# `drop-entry` does to four of the five committed maps.
+QUOTING_CORPUS = """
+{1}
+A widget is played by two persons with a pair of tokens.
+The tokens are made of bone or of boxwood, and the older sets are the heavier ones, which
+some players prefer and others do not; the matter has never been settled and is not settled
+here, and nothing in this paragraph states a rule about any of it.
+Each token is entered at the near end of the board.
+
+{2}
+The right to move a token is subject to the number shown.
+The number is shown on the upper face, which is the face a player reads, and the lower face
+is read by nobody at all; the custom is old and the reason for it is not recorded anywhere
+in this volume, so it is repeated here without one and states no rule either.
+"""
+
+
+def quoting_map(**extent):
+    """A map reaching both pages of QUOTING_CORPUS and quoting part of each."""
+    document = {
+        "schemaVersion": 1,
+        "corpus": "demo-corpus",
+        "baseline": {"contentHash": "a" * 64, "hashDerivation": "demo-plain-text"},
+        "extent": {"unit": "page", "from": 1, "to": 2},
+        "entries": [
+            entry("player-count", "Part One / p. 1",
+                  "A widget is played by two persons with a pair of tokens."),
+            entry("entry-point", "Part One / p. 1",
+                  "Each token is entered at the near end of the board."),
+            entry("legal-destination", "Part One / p. 2",
+                  "The right to move a token is subject to the number shown."),
+        ],
+    }
+    document["extent"].update(extent)
+    return document
+
+
+class TestQuotedFraction(LocatorCase):
+    """#270: `coverage` says how much of the extent the map can show it read, not how many
+    pages something touched.
+
+    One quote reaches a page, so an entry can be deleted from a map of 33 entries over ten pages
+    and nothing notices. Measured with `drop-entry`: caught on `faa-part-107`, where the dropped
+    entry was the only quote in its section, and missed on the other four.
+
+    The fraction is reported on every run. It **fails** a map only against a floor the map
+    itself declares, `extent.quoted` -- 0054, and the reason is in this class's last test.
+    """
+
+    def setUp(self):
+        super().setUp()
+        self.quoting_path = os.path.join(self.root, "quoting.txt")
+        with open(self.quoting_path, "w", encoding="utf-8") as handle:
+            handle.write(QUOTING_CORPUS)
+
+    def run_tool(self, document, corpus_path=None):
+        return super().run_tool(document, corpus_path or self.quoting_path)
+
+    def test_the_fraction_is_reported_whether_or_not_the_map_declares_one(self):
+        code, output = self.run_tool(quoting_map())
+        self.assertEqual(self.status_of(output, "coverage"), "ok", output)
+        self.assertIn("verified evidence quotes 24% of it; the map declares no floor", output)
+        self.assertEqual(code, 0, output)
+
+    def test_a_map_quoting_less_than_it_declares_fails(self):
+        # The harness's `drop-entry`, on a fixture: `entry-point` is deleted, p. 1 is still
+        # reached by `player-count`, and `coverage`'s unit rule stays green.
+        self.assert_catches("coverage", lambda d: d["entries"].pop(1),
+            base=lambda: quoting_map(quoted=0.2),
+            message="the map declares its verified evidence quotes at least 20% of the declared "
+                    "extent, and it quotes 17%")
+
+    def test_a_map_quoting_at_least_what_it_declares_passes_and_says_so(self):
+        code, output = self.run_tool(quoting_map(quoted=0.2))
+        self.assertEqual(self.status_of(output, "coverage"), "ok", output)
+        self.assertIn("verified evidence quotes 24% of it, above the 20% the map declares", output)
+        self.assertEqual(code, 0, output)
+
+    def test_no_threshold_is_imposed_on_a_map_that_declares_none(self):
+        # 0054, and the measurement that decided it: across the five committed maps the quoted
+        # fraction runs from 20% (`srd-52-conditions`, whose extent is the whole Rules Glossary
+        # and whose map is the conditions in it) to 99.9% (`faa-part-107`). No single floor could
+        # be right for both, and a threshold nobody argued for would be worse than the number
+        # alone -- so the number is reported and the map says what it can be held to.
+        code, output = self.run_tool(quoting_map())
+        self.assertEqual(code, 0, output)
+        self.assertNotIn("[fail]", output)
+
+
 class TestExtentBounds(LocatorCase):
     """#269: no `scope: in` quote lies outside the declared page range.
 
@@ -483,6 +577,28 @@ class TestSectionCoverage(SectionCase):
         document["extent"] = {"unit": "page", "from": 1, "to": 2}
         code, output = self.run_tool(document)
         self.assertEqual(code, 1, output)
+
+    def test_the_quoted_fraction_of_the_sections_is_reported(self):
+        # #270: a section extent is not finer than a page one -- `§ 1.121-1` is one section and
+        # the whole tax-121 map lies inside it -- so the same measure is owed here. The unit is
+        # the section; the fraction is of its text.
+        code, output = self.run_tool(section_map())
+        self.assertEqual(code, 0, output)
+        self.assertIn("verified evidence quotes 78% of their text", output)
+
+    def test_a_map_quoting_less_of_its_sections_than_it_declares_fails(self):
+        # The harness's `drop-entry`: `token-limit` goes, § 1.10 is still reached by the lead-in
+        # entry, and `coverage`'s section rule stays green while a rule has gone missing.
+        document = section_map()
+        document["extent"]["quoted"] = 0.7
+        code, output = self.run_tool(document)
+        self.assertEqual(code, 0, output)
+        document["entries"].pop(1)
+        code, output = self.run_tool(document)
+        self.assertEqual(code, 1, output)
+        self.assertIn("extent.quoted: the map declares its verified evidence quotes at least "
+                      "70% of the declared extent, and it quotes 58%", output)
+        self.assertNotIn("§ 1.10: inside the declared extent", output)
 
 
 # --- a rule stated in a table row (0035) ----------------------------------------------------
