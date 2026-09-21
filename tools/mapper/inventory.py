@@ -177,14 +177,16 @@ def load_rejections(path, corpora):
     return rejected
 
 
-def _fragments(evidence, minimum_words=4):
+def _fragments(evidence, minimum_words=4, adapter=None):
     """A quote's fragments: the whole of it, or the pieces an ellipsis divides it into.
 
     Four words is the ordinary floor: below that, a prose fragment is too easy to find in an
     unrelated unit. A caller may ask for the shorter pieces only when it has a narrower
     structural search domain of its own.
     """
-    text = normalise(evidence) if isinstance(evidence, str) else ""
+    if not isinstance(evidence, str):
+        return []
+    text = normalise(adapter.unmarked(evidence) if adapter is not None else evidence)
     pieces = [text]
     for mark in ELLIPSIS:
         pieces = [p for piece in pieces for p in piece.split(mark)]
@@ -231,7 +233,7 @@ def _occurrences(fragment, corpus):
     return found
 
 
-def take(units, document, rejected):
+def take(units, document, rejected, adapter=None):
     """Measure the walk: which units its quotes reach, and which its rejections account for."""
     corpus, spans = _joined(units)
     known = {unit.key for unit in units}
@@ -253,7 +255,7 @@ def take(units, document, rejected):
         # row manufacture reach. The quote must still occur there: citation is a search boundary,
         # never evidence. Entries whose locators do not identify a table-row keep the original
         # joined-corpus search, including legitimate evidence that crosses unit boundaries.
-        for fragment in _fragments(evidence):
+        for fragment in _fragments(evidence, adapter=adapter):
             if cited_rows:
                 for unit in cited_rows:
                     if _occurrences(fragment, unit.text):
@@ -270,7 +272,8 @@ def take(units, document, rejected):
         # #320 established the narrower table-row path for one-, two- and three-word evidence.
         # Reuse the same cited_rows boundary as long table evidence, and still require the quote
         # to occur in that row.
-        short = [fragment for fragment in _fragments(evidence, minimum_words=1)
+        short = [fragment for fragment in _fragments(evidence, minimum_words=1,
+                                                     adapter=adapter)
                  if len(fragment.split()) < 4]
         if short:
             for unit in cited_rows:

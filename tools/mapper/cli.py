@@ -242,7 +242,7 @@ def _walks(args):
         units = adapter.units(portion)
         rejected = rejections[source]
         walks.append(Walk(theirs, manifest, source, adapter, portion, units,
-                          inventory_step.take(units, theirs, rejected)))
+                          inventory_step.take(units, theirs, rejected, adapter)))
     if len(walks) > 1:
         listed = {item for item in extent.get("sections") or [] if isinstance(item, str)}
         orphan = sorted(listed - claimed)

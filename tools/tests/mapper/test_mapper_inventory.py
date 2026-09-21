@@ -352,6 +352,72 @@ class TestEveryCommittedMapIsInventoried(unittest.TestCase):
         self.assertEqual(used, set(corpus.ADAPTERS))
 
 
+# A corpus whose page turn falls mid-sentence, the way Project Gutenberg's does. The quote of
+# that sentence carries the marker, because `check-locators.py` searches a corpus with its markers
+# in place and `pages_spanned` exists for exactly this case; the adapter takes markers out of a
+# unit's text, so the search of the units has to take them out of the quote too (#392).
+MARKED_MID_SENTENCE = """{8} A page before the extent, stating nothing this map claims.
+
+{9} The first rule. A player who is on the bar must enter before moving any other man.
+
+The men are arranged at starting as shown in {10} Fig. 1, with two men on the ace point.
+
+A block that begins on the page after the turn.
+
+{11} A page after the extent.
+"""
+
+
+class TestAQuoteKeepsThePageMarkerTheCorpusPrints(unittest.TestCase):
+    """The marker is not a word of the quote, and it is not a reason to report the map unevidenced.
+
+    `check-locators.py` holds every quote to the pinned bytes *including* the `{N}` markers, so a
+    quote that crosses a page turn has to carry one. `PageMarkedText._blocks` removes them from
+    each unit's text. Before #392 that made a marked quote the one string that could not be found
+    in the units it came from, and six of the backgammon map's entries -- the starting
+    arrangement, the pip move, both stake rules and the enumeration of throws that is the only
+    authority in that corpus for a six-faced die -- were reported as quoting nothing.
+    """
+
+    def setUp(self):
+        self.fixture = Fixture(corpus_text=MARKED_MID_SENTENCE,
+                               extent={"unit": "page", "from": 9, "to": 10},
+                               entries=[{"id": "starting-arrangement", "evidence":
+                                         "The men are arranged at starting as shown in {10} "
+                                         "Fig. 1, with two men on the ace point."}])
+        self.addCleanup(self.fixture.remove)
+
+    def test_a_quote_carrying_a_marker_reaches_the_unit_it_came_from(self):
+        code, out = run(["inventory", self.fixture.map_path, "--list"])
+        self.assertEqual(code, NOT_VERIFIED, out)
+        self.assertIn("reached:     1 by the quoted evidence of 1 entry", out)
+        self.assertNotIn("not located inside the extent", out)
+        self.assertNotIn("?  p. 9 block 2", out)
+
+    def test_an_ecfr_quote_is_searched_exactly_as_written(self):
+        """The eCFR adapter prints no markers, so nothing is taken out of its quotes: a map that
+        wrote `{10}` into an eCFR quote quoted something the corpus does not say."""
+        units = [corpus.Unit("\u00a7 1.1 \u00b61", "paragraph",
+                             "The rule as the corpus states it, with no marker in it.")]
+        measured = inventory.take(units, {"entries": [{
+            "id": "invented-marker",
+            "evidence": "The rule as {10} the corpus states it, with no marker in it.",
+        }]}, {})
+        self.assertEqual(measured.reached, {})
+        self.assertEqual(measured.unlocated, ["invented-marker"])
+
+
+class TestTheCommittedBackgammonMapQuotesItsCorpus(unittest.TestCase):
+    def test_every_entry_of_the_backgammon_map_is_located(self):
+        """Measured: six entries were reported unlocated, every one of them for its marker."""
+        path = os.path.join(REPO, "examples", "hoyle-backgammon", "corpus-map.json")
+        code, output = run(["inventory", path, "--list"])
+        self.assertEqual(code, NOT_VERIFIED, output)
+        self.assertNotIn("not located inside the extent", output)
+        self.assertIn("reached:     37 by the quoted evidence of 32 entries", output)
+        self.assertIn("unaccounted: 9", output)
+
+
 class TestShortEvidenceKeepsItsSafetyBoundary(unittest.TestCase):
     def test_a_short_prose_fragment_is_not_enough_to_reach_a_unit(self):
         units = [

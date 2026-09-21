@@ -234,12 +234,18 @@ is decided by reading the corpus, and this tool does not read it. What *is* a fa
 enumeration of no units, or a run in which no entry's quote is found at all — an inventory of
 nothing has nothing unaccounted.
 
-The six committed maps report 540 unaccounted units of 806
+The six committed maps report 517 unaccounted units of 806
 ([#267](https://github.com/brandonifco/rules-factory/issues/267) holds the numbers and what each
 one is on reading it). None of the maps was edited to improve them: a map's bytes cannot change
 without invalidating its review
 ([0017](decisions/0017-a-map-change-carries-a-review-of-its-bytes.md)), and the walks these
-numbers measure happened months ago.
+numbers measure happened months ago. The number was 540 until
+[#392](https://github.com/brandonifco/rules-factory/issues/392): a quote that crosses a page turn
+carries the corpus's own `{N}` marker, because `check-locators.py` searches the pinned bytes with
+the markers in place, and the units it is searched against have them taken out — so six of the
+backgammon map's entries quoted nothing this tool could find, and 23 units that are quoted were
+counted as read by nobody. The adapter now takes the markers out of the quote as well, and no
+committed entry is reported unlocated.
 
 ### `mapping-inventory.json`
 
@@ -554,7 +560,7 @@ none.
   invisible to it, and the spec's declared substitutions are the only thing that covers it. Every
   run says so, and so does every record it writes.
 - **The inventory measures the walk, and nobody has answered it.** Every unit inside every
-  committed map's extent is enumerated and counted, and 540 of 806 are unaccounted
+  committed map's extent is enumerated and counted, and 517 of 806 are unaccounted
   ([#267](https://github.com/brandonifco/rules-factory/issues/267)). No map records a rejection
   yet, so *examined and dismissed* and *never opened* still read the same for those units — what
   changed is that the number is now a fact rather than an impression.

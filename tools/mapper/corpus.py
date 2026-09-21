@@ -116,6 +116,18 @@ class Adapter:
         """
         raise NotImplementedError
 
+    def unmarked(self, text):
+        """A quote with this grammar's page markers taken out of it, for searching the units.
+
+        A quote is of the words, and a page marker is not one of them -- but it is in the bytes,
+        and `check-locators.py` searches those bytes with the markers in place, so a quote that
+        crosses a page turn has to carry one to pass that check (#392). This adapter's units
+        never do. The default is to change nothing: a grammar whose corpus prints no marker must
+        search the quote exactly as the map wrote it, or a marker somebody invented would be
+        quietly forgiven.
+        """
+        return text
+
     def portion_of(self, extent):
         """The part of a shared extent this corpus contains, and the part it does not (0042).
 
@@ -172,6 +184,9 @@ class PageMarkedText(Adapter):
                 break
             page = number
         return page
+
+    def unmarked(self, text):
+        return normalise(self.MARKER.sub(" ", text))
 
     def _blocks(self):
         """(offset, text) for every blank-line-separated block, markers removed from the text."""

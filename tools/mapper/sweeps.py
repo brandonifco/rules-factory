@@ -443,6 +443,6 @@ def total_findings(results):
     return sum(len(result.findings) for result in results)
 
 
-def take(units, document, rejected):
+def take(units, document, rejected, adapter=None):
     """The inventory this run is measured against -- one measurement, shared by every sweep."""
-    return inventory_step.take(units, document, rejected)
+    return inventory_step.take(units, document, rejected, adapter)
