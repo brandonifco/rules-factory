@@ -551,7 +551,10 @@ class TestAVerifiedProduceCommitsTheTreeThatWasTested(VerifyCase):
 
     def test_what_restore_writes_before_the_gate_is_part_of_what_was_tested_and_commits(self):
         """The lock files restore writes, and the record after_restore rewrites, are in the tested tree."""
-        code, output = self.produce_into(self.engine)
+        # self.env, like every other run in this file: without it the restore is a real `dotnet`,
+        # and a machine without the pinned SDK fails the stage instead of exercising the guard.
+        with mock.patch.dict(os.environ, self.env):
+            code, output = self.produce_into(self.engine)
         self.assertEqual(code, 0, output)
         self.assertEqual(output.splitlines()[-1], f"produced {NAME} in {self.engine}, verified")
         self.assertEqual(len(verify_step.lock_files(self.engine)), 2)
