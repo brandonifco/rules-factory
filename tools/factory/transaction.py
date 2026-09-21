@@ -355,6 +355,11 @@ class Stage:
             shutil.rmtree(self.work, ignore_errors=True)
             self.work = None
 
+    def testing(self):
+        """Note the staging copy's inputs as the proof is about to be made over them (#370)."""
+        self.tested = {relative: _signature(path) for relative, path in _files(self.root).items()
+                       if _is_input(relative)}
+
     def plan(self):
         """(added, changed, removed): relative paths, each sorted."""
         after = _files(self.root)

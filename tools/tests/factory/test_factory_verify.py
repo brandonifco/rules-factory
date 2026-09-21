@@ -131,6 +131,20 @@ for step in (["restore", "--locked-mode"], ["build", "-warnaserror"], ["test"]):
     if subprocess.run(["dotnet", *step]).returncode != 0:
         print(f"validate.sh full: FAIL ({step[0]})")
         sys.exit(1)
+# A test step that writes into the engine it is testing (#370): $FAKE_GATE_WRITES is
+# "<relative path>\n<text>", written after the build and the tests have passed, the way a test
+# that writes a baseline file -- or a writer it leaves running -- changes the tree that was tested.
+writes = os.environ.get("FAKE_GATE_WRITES")
+if writes:
+    relative, _, text = writes.partition("\n")
+    target = os.path.join(*relative.split("/"))
+    os.makedirs(os.path.dirname(target) or ".", exist_ok=True)
+    if text:
+        with open(target, "w", encoding="utf-8") as handle:
+            handle.write(text)
+    else:
+        os.remove(target)
+    print(f"validate.sh full: a test wrote {relative}")
 print("validate.sh full: PASS")
 '''
 
@@ -466,6 +480,82 @@ class TestAVerifiedProduceCommitsWhatItVerified(VerifyCase):
         self.assertEqual(code, factory.NOT_VERIFIED, output)
         self.assertNotIn("changed after the engine was verified", output)
         self.assertEqual(self.read(source), mine)
+
+
+class TestAVerifiedProduceCommitsTheTreeThatWasTested(VerifyCase):
+    """#370: the tree produce commits is the tree the gate built and tested, not one a test rewrote.
+
+    #335 bound the other side of the handoff -- that `--out` did not move under the run. Verification
+    happens in the *staging copy*, the gate runs the engine's own test code there, and nothing
+    compared that copy at commit time with the copy the gate had built and tested. So a test that
+    writes to a staged source after the build was committed, and `provenance.json` recorded
+    `"verification": {"verified": true}` (#222) over a tree nothing had compiled.
+
+    The gate here is the fake one, told to write into the engine after its build and test steps
+    pass -- which is exactly what the defect needs and what no real gate should do.
+
+    Each assertion names the refusal's own words and the path it names, not the exit code alone: a
+    verify failure, the #335 drift refusal, a symlink in --out and the mutation-set refusal all end
+    a produce with 1, so `code == 1` would pass on any of them for the wrong reason (#283).
+    """
+
+    def assert_no_staging(self, parent):
+        self.assertEqual([n for n in os.listdir(parent) if ".factory-produce-" in n], [])
+
+    def read(self, relative):
+        with open(os.path.join(self.engine, *relative.split("/")), encoding="utf-8") as handle:
+            return handle.read()
+
+    def produce_with_a_gate_that_writes(self, relative, text, out=None):
+        with mock.patch.dict(os.environ, {**self.env, "FAKE_GATE_WRITES": f"{relative}\n{text}"}):
+            return self.produce_into(out or self.engine)
+
+    def test_a_test_step_that_writes_to_a_staged_source_refuses_the_verified_commit(self):
+        source = f"src/{NAME}/{NAME}.csproj"
+        before = self.read(source)
+        code, output = self.produce_with_a_gate_that_writes(source, "<!-- written by a test -->\n")
+        self.assertEqual(code, 1, output)
+        self.assertIn("the engine changed after it was built and tested", output)
+        self.assertIn(f"{source} (changed)", output)
+        self.assertIn("Nothing was produced.", output)
+        self.assertNotIn(f"produced {NAME} in", output)
+        # --out is byte-identical to how it started: no lock files, no generated update, no record.
+        self.assertEqual(self.read(source), before)
+        self.assertEqual(verify_step.lock_files(self.engine), [])
+        self.assert_no_staging(self.tmp)
+
+    def test_a_test_step_that_writes_a_generated_file_refuses(self):
+        """The files the run itself wrote are inputs of the proof too: the gate compiled them."""
+        generated = f"src/{NAME}/Generated/Registry.g.cs"
+        code, output = self.produce_with_a_gate_that_writes(generated, "// not what the gate compiled\n")
+        self.assertEqual(code, 1, output)
+        self.assertIn("the engine changed after it was built and tested", output)
+        self.assertIn(f"{generated} (changed)", output)
+        self.assert_no_staging(self.tmp)
+
+    def test_a_test_step_that_writes_to_a_staged_source_refuses_a_fresh_out_too(self):
+        """A fresh --out is committed by renaming the whole staging copy, so it carries the change along."""
+        fresh = os.path.join(self.tmp, "fresh")
+        code, output = self.produce_with_a_gate_that_writes(f"src/{NAME}/{NAME}.csproj", "<!-- x -->\n", out=fresh)
+        self.assertEqual(code, 1, output)
+        self.assertIn("the engine changed after it was built and tested", output)
+        self.assertFalse(os.path.exists(fresh), "a refused fresh produce creates no --out")
+        self.assert_no_staging(self.tmp)
+
+    def test_the_build_output_the_gate_leaves_behind_is_not_an_input_and_the_engine_is_committed(self):
+        """No broader than necessary: the fake dotnet writes bin/ and obj/ on every build above."""
+        code, output = self.produce_with_a_gate_that_writes("TestResults/run.trx", "<TestRun />\n")
+        self.assertEqual(code, 0, output)
+        self.assertEqual(output.splitlines()[-1], f"produced {NAME} in {self.engine}, verified")
+        self.assertEqual(len(verify_step.lock_files(self.engine)), 2, "the verified engine was committed")
+
+    def test_what_restore_writes_before_the_gate_is_part_of_what_was_tested_and_commits(self):
+        """The lock files restore writes, and the record after_restore rewrites, are in the tested tree."""
+        code, output = self.produce_into(self.engine)
+        self.assertEqual(code, 0, output)
+        self.assertEqual(output.splitlines()[-1], f"produced {NAME} in {self.engine}, verified")
+        self.assertEqual(len(verify_step.lock_files(self.engine)), 2)
+        self.assertIn("added 2 packages.lock.json file(s) written by restore", output)
 
 
 class TestExitCodes(VerifyCase):
