@@ -41,6 +41,24 @@ file someone edits in `--out` while `produce` runs is not reverted; and before c
 path in the set is checked against `--out` again (a changed or removed file still as it was
 copied, an added one still absent), and the run is refused, with nothing written, if not.
 
+What a verified commit is held to (#335). The mutation set is what the run writes, and for a
+`--no-verify` run it is the whole of what the commit claims: nothing was built, so nothing else
+is asserted, and a file someone edits in `--out` meanwhile is kept and the run goes on. A
+verified run claims more. `verify` (verify.py) builds and tests the staging copy *as a whole*,
+so the proof is over every input of it -- the `.cs` files the gate compiled, the projects and
+props it read, the overlay, the lock files, the scripts it ran -- and every one of those the run
+did not itself write is still the snapshot's bytes. Checking only the mutation set let an engine
+whose source moved in `--out` after the copy be committed over and reported as verified, though
+what was then on disk had never been built anywhere: the generated files from the staged tree,
+beside a source file the gate never saw. So `commit(verified=True)` compares `--out` against the
+snapshot for every input before anything is written (`drift`), and refuses, naming each path and
+whether it was changed, added or removed. Preserving the edit is right and the refusal preserves
+it -- nothing is written, so the engine keeps it -- but the answer is to run `produce` again and
+verify the engine with it, not to call a tree verified that no build ever saw. What is compared
+is every file under `--out` except the directories a build and the gate write rather than read
+(`OUTPUT` -- `artifacts` and `TestResults` -- and `SKIP`, which is not copied at all), so a TRX
+file or an assembly landing in `--out` while the gate runs refuses nothing.
+
 The commit, for a fresh `--out`: its missing parents are created and the staging copy is renamed
 into place, one atomic rename. For an existing `--out`:
 
