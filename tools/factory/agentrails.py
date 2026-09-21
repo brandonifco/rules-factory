@@ -11,6 +11,13 @@ The reading of that file lives here, beside the default, so what the rails deman
 drift from what the factory ships in it. `factory rails --check` (rails.py), `backlog.py`, the
 engine's `scripts/engine-gate.py rails` and `tools/agent-doctor.py` all judge it through this
 module and none of them states the rule itself.
+
+The rails on GitHub are read the same way, and for the same reason (#231). Two tools ask whether
+they are active -- `factory rails --check` from outside the engine and `tools/agent-doctor.py`
+from inside it -- and an engine's own doctor that claimed protection the factory said was missing
+is what a second copy of the rule buys. So which ruleset is the factory's, what a required check
+has to be pinned to, and how a paginated answer from `gh` is put back together are stated here
+once, and rails.py is not vendored while this module is.
 """
 import json
 import os
@@ -164,6 +171,115 @@ def policy_problems(document, where=AGENT_POLICY):
     except PolicyError as error:
         out.append(str(error))
     return out + review_problems(document, where)
+
+
+# --- The rails on GitHub: what both judges of them read, stated once (#231) --------------------
+
+RULESET = "rules-factory-agent-rails"
+# The three checks the ruleset requires. `verdict-requeue` is deliberately not among them (#191):
+# it runs on the `status` event, so its run belongs to the default branch's commit rather than to
+# any pull request.
+REQUIRED_CHECKS = ("validate", "pr-policy", "conformance-gate")
+# The app that posts them -- all three are GitHub Actions workflows the factory emits. Its id is
+# per host (github.com and each Enterprise Server have their own), so the slug is written down and
+# the id is always read from the host.
+CHECKS_APP = "github-actions"
+# The level a ruleset of the repository's own is at, as GitHub names it in `source_type`. Anything
+# else -- an organization, an enterprise -- is a level above it, which `factory rails --apply`
+# cannot write and does not own.
+REPOSITORY_LEVEL = "Repository"
+OK, MISSING, WRONG, NOT_VERIFIED = "OK", "MISSING", "WRONG", "NOT VERIFIED"
+
+
+def ruleset_level(ruleset):
+    """Where a ruleset is set, as GitHub names it. Absent means the repository's own."""
+    return (ruleset or {}).get("source_type") or REPOSITORY_LEVEL
+
+
+def ruleset_origin(ruleset):
+    """A ruleset as a row can name it: `rules-factory-agent-rails (organization acme)`."""
+    return f"{(ruleset or {}).get('name')} ({ruleset_level(ruleset).lower()} {(ruleset or {}).get('source') or '?'})"
+
+
+def factory_ruleset(rulesets):
+    """The factory's own ruleset among every ruleset GitHub lists for the repository, and the ones
+    carrying its name from a level above it: `(ours, shadows)`.
+
+    **The factory's ruleset is the one at the repository's own level (#234).** GitHub's ruleset
+    list includes an organization's, and `includes_parents` defaults to true, so a tool that picks
+    by name alone picks an organization's ruleset without knowing it: `--apply` cannot write that
+    one, the repository still has no rails, and the report says it has. An org ruleset with this
+    name is therefore not a match but a finding.
+    """
+    named = [item for item in rulesets or [] if (item or {}).get("name") == RULESET]
+    ours = next((item for item in named if ruleset_level(item) == REPOSITORY_LEVEL), None)
+    return ours, [item for item in named if ruleset_level(item) != REPOSITORY_LEVEL]
+
+
+def required_check_pins(ruleset):
+    """What the ruleset requires, as `{context: integration_id}`; `{}` when it requires nothing.
+
+    `integration_id` is the half that a report which reduced each check to its name threw away.
+    """
+    for rule in (ruleset or {}).get("rules") or []:
+        if rule.get("type") == "required_status_checks":
+            return {check.get("context"): check.get("integration_id")
+                    for check in (rule.get("parameters") or {}).get("required_status_checks") or []}
+    return {}
+
+
+def required_check_state(pins, context, app):
+    """Whether `context` is required *and* pinned to the app that posts it: `(state, note)`.
+
+    **A name is not a check (#186).** A required status check matches by context name, and anyone
+    with status-write access on the repository can post a commit status under any name, so an
+    unpinned `conformance-gate` is satisfied by a collaborator typing the words. `app` is the id of
+    the GitHub Actions app on the host the repository lives on, read from the host because it
+    differs per host.
+
+    `app` is None when the host would not say which app that is. The check is then neither right
+    nor found wrong: it is pinned to something nobody here can name, so the row says it was not
+    verified rather than claiming either (#211).
+
+    One statement for the two tools that ask (#231). `factory rails --check` read the pin and the
+    engine's own `tools/agent-doctor.py` read only the name, so the doctor reported protection the
+    factory reported missing -- on the same ruleset, at the same moment.
+    """
+    if context not in pins:
+        return MISSING, "the workflow may exist; it is not required"
+    pin = pins[context]
+    if app is None:
+        return NOT_VERIFIED, f"this host would not say which app {CHECKS_APP} is, so the pin could not be judged"
+    if pin != app:
+        return WRONG, (f"not pinned to the {CHECKS_APP} app (integration {pin!r}, not {app!r}): a commit status "
+                       f"under that name satisfies it, whoever posted it")
+    return OK, ""
+
+
+# What a paginated read is asked for with. `gh api --paginate` over an array endpoint walks the
+# pages and prints each as its own JSON array, so two pages are `[...][...]` -- two documents, and
+# `json.loads` stops at the second `[`. `--slurp` prints the pages as one array of arrays instead.
+PAGES = ("--paginate", "--slurp")
+
+
+def flatten_pages(document):
+    """One list from what `--paginate --slurp` returns: `(items, None)` or `(None, why)`.
+
+    **The failure this exists for is a repository that is fine reading as empty (#237).** The
+    labels were read with `--paginate` and parsed as one document; on a repository with more
+    labels than a page holds the parse failed, the failure became "no labels", `--check` reported
+    every required label MISSING and `--apply` tried to create labels that already existed. The
+    same read shape was added for the rulesets and the rules in force on the branch, where a
+    failure reads as MISSING or NOT VERIFIED -- still wrong about a repository that is fine.
+    """
+    if not isinstance(document, list):
+        return None, f"expected pages of results, got {type(document).__name__}"
+    items = []
+    for page in document:
+        if not isinstance(page, list):
+            return None, f"expected each page to be a list of results, got {type(page).__name__}"
+        items.extend(page)
+    return items, None
 
 
 def agent_policy():
