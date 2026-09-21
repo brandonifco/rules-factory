@@ -87,6 +87,12 @@ CHECKER = os.path.join(TOOLS, "check-map.py")
 CHECKER_IN_PACKAGE = "tools/check-map.py"
 VERIFICATION_IN_PACKAGE = "map/verification.json"
 PROJECT_URL = "https://github.com/brandonifco/rules-factory"
+# Importing the factory's intake writes tools/factory/__pycache__, and the next `factory produce`
+# refuses bytecode there -- it is what Python would run, and no commit holds it (#373).
+# scripts/validate.sh exports PYTHONDONTWRITEBYTECODE, but scripts/validate-engine.sh runs this as
+# a child process and an agent's shell exports nothing. The loader reads the flag when the import
+# happens, so it belongs above the path insert.
+sys.dont_write_bytecode = True
 sys.path.insert(0, os.path.join(TOOLS, "factory"))
 import intake  # noqa: E402  (its licence_class, decision 0028; standard library only)
 

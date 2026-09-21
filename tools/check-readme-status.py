@@ -42,6 +42,13 @@ import os
 import re
 import sys
 
+# load_parser() imports the factory's CLI and the modules beside it, and bytecode written into
+# tools/factory/__pycache__ is what the next `factory produce` refuses: no commit holds it, and it
+# is what Python would run (#373). Set here rather than beside the import it disarms, because the
+# loader reads the flag when the import happens -- and here rather than relying on the CLI's own
+# flag, which is set by the very module this loads.
+sys.dont_write_bytecode = True
+
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(HERE)
 BEGIN = "<!-- factory-cli-status:begin -->"

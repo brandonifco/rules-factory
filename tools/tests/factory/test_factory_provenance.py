@@ -13,8 +13,9 @@ corpus copy, a recipe, or the package makes recompute fail naming the field; aft
 a newer map, recompute passes, and a pin hand-edited back to the old version fails it (#66); a dirty factory
 is refused, and `--allow-dirty` records it; a factory outside git is refused; a factory whose
 recipe files are not the bytes of the commit it would name -- a committed file or directory
-symlink under `tools/factory`, a symlinked `tools/check-map.py`, an ignored file under
-`tools/factory` that is not `__pycache__` -- is refused, naming the path (#232).
+symlink under `tools/factory`, a symlinked `tools/check-map.py`, any ignored file under
+`tools/factory`, bytecode there included -- is refused, naming the path (#232, #373), and the
+entry point writes no bytecode of its own, so a second consecutive produce still runs.
 
 Build inputs (#69): `buildInputs` lists the engine-owned build files by rule, never a generated
 or managed file (#72: those are hashed once, in `generated` and `managed`); a fresh run and a
@@ -35,10 +36,12 @@ Run: python3 -m unittest discover -s tools/tests -t tools
 import hashlib
 import importlib.util
 import json
+import marshal
 import os
 import pathlib
 import re
 import shutil
+import struct
 import subprocess
 import sys
 import tempfile
@@ -147,18 +150,18 @@ class ProvenanceCase(unittest.TestCase):
     def own_repo(self):
         return factory_repo(os.path.join(self.tmp, "factory"))
 
-    def factory(self, *args, repo=None):
+    def factory(self, *args, repo=None, env=None):
         done = subprocess.run([sys.executable, os.path.join(repo or self.repo, "tools", "factory"), *args],
                               stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True,
-                              env={**os.environ, **GIT_ENV})
+                              env={**(os.environ if env is None else env), **GIT_ENV})
         return done.returncode, done.stdout
 
-    def produce(self, out=None, repo=None, package=None, corpus=PART107_XML, name=NAME, extra=()):
+    def produce(self, out=None, repo=None, package=None, corpus=PART107_XML, name=NAME, extra=(), env=None):
         out = out or os.path.join(self.tmp, "engine")
         code, output = self.factory("produce", "--package", package or self.part107, "--corpus", corpus,
                                     "--name", name, "--out", out, *extra,
                                     "--no-verify",  # building is TestEmbeddedCopyBuilds's (and verify's) job
-                                    repo=repo)
+                                    repo=repo, env=env)
         return code, output, out
 
     def produced(self, **kwargs):
@@ -706,16 +709,129 @@ class TestRefuses(ProvenanceCase):
         self.assertNotIn("uncommitted changes", output)
         self.assertFalse(os.path.exists(out), "nothing is produced")
 
-    def test_a_pycache_under_the_factory_is_not_refused(self):
-        # The other side of the ignored-file rule: running the factory writes __pycache__ into
-        # its own directory, and recipes() already skips it, so it is not a refusal.
+    # Bytecode under `tools/factory` is an ignored file like any other, and the one the factory
+    # actually executes: a `.pyc` whose header carries the source's mtime and size is loaded in
+    # preference to the `.py` beside it, at import, before `produce()` reaches any check (#373).
+    # It used to be exempt, because a run left its own `__pycache__` behind and the next run would
+    # have refused itself; the entry point now suppresses bytecode instead, so the exemption is
+    # gone rather than widened.
+
+    def plant_bytecode(self, repo, module, forge):
+        """A loadable `.pyc` for `<repo>/tools/factory/<module>.py`, with that source's header.
+
+        `forge` makes the code from the module's own source, so the import succeeds and the run
+        gets as far as the check under test; a stub would fail at some later attribute instead and
+        prove nothing about this rule.
+        """
+        source = pathlib.Path(repo, "tools", "factory", f"{module}.py")
+        stat = source.stat()
+        code = compile(forge(source.read_text(encoding="utf-8")), str(source), "exec")
+        cache = pathlib.Path(importlib.util.cache_from_source(str(source)))
+        cache.parent.mkdir(parents=True, exist_ok=True)
+        with open(cache, "wb") as handle:
+            handle.write(importlib.util.MAGIC_NUMBER)
+            handle.write(struct.pack("<III", 0, int(stat.st_mtime) & 0xFFFFFFFF, stat.st_size & 0xFFFFFFFF))
+            handle.write(marshal.dumps(code))
+        return cache
+
+    def test_planted_bytecode_under_the_factory(self):
         repo = self.own_repo()
-        cache = os.path.join(repo, "tools", "factory", "__pycache__")
-        os.makedirs(cache, exist_ok=True)
-        pathlib.Path(cache, "generate.cpython-00.pyc").write_bytes(b"not bytecode")
-        out = self.produced(repo=repo)
-        self.assertFalse(self.record(out)["factory"]["dirty"])
-        self.assertNotIn("__pycache__", json.dumps(self.record(out)["recipes"]["files"]))
+        cache = self.plant_bytecode(repo, "generate", lambda text: text + "\nFORGED = True\n")
+        # The premise, proved rather than asserted: this .pyc is what an import of the factory's
+        # own directory loads. Without it the test would pass on a file Python ignores.
+        loaded = subprocess.run([sys.executable, "-c", "import generate; print(generate.FORGED)"],
+                                cwd=os.path.join(repo, "tools", "factory"),
+                                stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
+        self.assertEqual(loaded.stdout.strip(), "True", "the planted bytecode is not what Python loads")
+        self.assertEqual(git(repo, "status", "--porcelain"), "", "ignored bytecode leaves the tree clean")
+        code, output, out = self.produce(repo=repo)
+        self.assertEqual(code, 1, output)
+        # The .pyc itself, not the __pycache__/ git collapses it into, and the bytecode wording
+        # rather than the plain ignored-file one: the refusal has to say which file ran (#283).
+        self.assertIn(f"{os.path.relpath(cache, repo)} is bytecode git ignores", output)
+        self.assertNotIn("uncommitted changes", output)
+        self.assertFalse(os.path.exists(out), "nothing is produced")
+
+    def test_planted_bytecode_for_the_entry_point_itself(self):
+        """The `.pyc` the factory cannot prevent, and therefore removes: `python3 tools/factory`
+        runs a directory, so CPython caches `__main__.py` before its first line sets the flag.
+
+        What is removed is only bytecode equal to what the source compiles to now. This one is
+        not, it runs (the marker it prints says so), and it is refused rather than tidied away --
+        a delete here would be the old exemption with an extra step.
+        """
+        repo = self.own_repo()
+        cache = self.plant_bytecode(repo, "__main__", lambda text: 'print("FORGED entry point")\n' + text)
+        code, output, out = self.produce(repo=repo)
+        self.assertIn("FORGED entry point", output, "the planted bytecode is not what Python ran")
+        self.assertEqual(code, 1, output)
+        self.assertIn(f"{os.path.relpath(cache, repo)} is bytecode git ignores", output)
+        self.assertNotIn("uncommitted changes", output)
+        self.assertFalse(os.path.exists(out), "nothing is produced")
+
+    def test_a_stray_pyc_beside_the_factory_modules(self):
+        # The other shape git reports: a `*.pyc` outside any __pycache__ matches the ignore
+        # pattern by itself, and is named by itself.
+        repo = self.own_repo()
+        pathlib.Path(repo, "tools", "factory", "generate.pyc").write_bytes(b"\0")
+        self.assertEqual(git(repo, "status", "--porcelain"), "", "ignored bytecode leaves the tree clean")
+        code, output, _ = self.produce(repo=repo)
+        self.assertEqual(code, 1, output)
+        self.assertIn("tools/factory/generate.pyc is bytecode git ignores", output)
+        self.assertNotIn("uncommitted changes", output)
+
+    def test_a_second_consecutive_produce_in_the_same_checkout(self):
+        """What the exemption existed to prevent: the factory refusing itself after one run.
+
+        The environment is the one an agent has -- PYTHONDONTWRITEBYTECODE unset -- so what is
+        proved is the entry point's own `sys.dont_write_bytecode` and not this test runner's
+        inherited setting.
+        """
+        bare = {key: value for key, value in os.environ.items() if key != "PYTHONDONTWRITEBYTECODE"}
+        repo = self.own_repo()
+        first = self.produced(repo=repo, out=os.path.join(self.tmp, "a"), env=bare)
+        left = [os.path.join(base, name)
+                for base, dirs, names in os.walk(os.path.join(repo, "tools"))
+                for name in list(dirs) + names
+                if name == "__pycache__" or name.endswith(".pyc")]
+        self.assertEqual(left, [], "the factory wrote bytecode into its own checkout")
+        second = self.produced(repo=repo, out=os.path.join(self.tmp, "b"), env=bare)
+        self.assertEqual(pathlib.Path(first, "provenance.json").read_bytes(),
+                         pathlib.Path(second, "provenance.json").read_bytes())
+
+    def test_every_tool_that_puts_the_factory_on_the_path_suppresses_bytecode(self):
+        """The repository's side of the rule test_factory_rails.py holds every emitted script to.
+
+        A tool that imports the factory's modules leaves their bytecode in `tools/factory`, and
+        the next produce refuses it -- rightly, because it is what Python runs and no commit holds
+        it. scripts/validate.sh exports PYTHONDONTWRITEBYTECODE for its children, but
+        scripts/validate-engine.sh does not, and an agent's shell exports nothing, so each tool
+        says it for itself. What is asserted is where the flag sits: the loader reads it when the
+        import happens, so a flag after the path insert prevents exactly nothing.
+        """
+        suppressors = {}
+        for path in sorted(pathlib.Path(TOOLS).glob("*.py")) + [pathlib.Path(FACTORY, "__main__.py")]:
+            lines = path.read_text(encoding="utf-8").splitlines()
+            reaches = next((i for i, line in enumerate(lines)
+                            if "sys.path.insert" in line and not line.lstrip().startswith("#")), None)
+            if reaches is None:
+                continue
+            relative = str(path.relative_to(REPO))
+            suppressors[relative] = reaches
+            # Column 0, so the flag is module level and not nested in some function that may
+            # never run: check-readme-status.py reaches for the factory inside one.
+            flag = next((i for i, line in enumerate(lines)
+                         if line.split("#")[0].rstrip() == "sys.dont_write_bytecode = True"), None)
+            self.assertIsNotNone(flag, f"{relative} puts tools/factory on the path and leaves its bytecode "
+                                       f"there, for the next produce to refuse (#373)")
+            self.assertLess(flag, reaches,
+                            f"{relative} sets dont_write_bytecode at line {flag + 1}, after line "
+                            f"{reaches + 1} reaches for the path; there it prevents nothing")
+        # Named, so a new tool that starts importing the factory fails here rather than being
+        # skipped by a check that examined whatever it happened to find.
+        self.assertEqual(sorted(suppressors),
+                         ["tools/check-readme-status.py", "tools/factory/__main__.py", "tools/pack-map.py",
+                          "tools/validate-engine.py"])
 
     def test_a_factory_outside_git(self):
         loose = os.path.join(self.tmp, "loose")

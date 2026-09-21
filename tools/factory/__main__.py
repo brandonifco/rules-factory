@@ -110,6 +110,14 @@ import re
 import shlex
 import sys
 
+# Importing the modules below writes tools/factory/__pycache__, and bytecode there is what the
+# next run would execute while provenance hashed the sources beside it (#373). Nothing hashes a
+# `.pyc`, and `require_intact` refuses one rather than pretend otherwise, so the factory has to
+# leave none of its own. The loader reads this flag when the import happens, so it belongs above
+# the path insert and not beside the imports it disarms -- the rule every emitted script that
+# imports the vendored factory already follows (#194).
+sys.dont_write_bytecode = True
+
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 import backlog as backlog_step  # noqa: E402
@@ -121,6 +129,11 @@ import provenance  # noqa: E402
 import rails as rails_step  # noqa: E402
 import transaction  # noqa: E402
 import verify as verify_step  # noqa: E402
+
+# The flag above came one file too late for this one: running a directory compiles and caches its
+# `__main__.py` before the first line runs. Only bytecode identical to what this source compiles
+# to is removed; anything else is left for `require_intact` to refuse, by name (#373).
+provenance.discard_entry_point_bytecode(__file__)
 
 PASCAL = re.compile(r"^[A-Z][A-Za-z0-9]*$")
 

@@ -1049,11 +1049,14 @@ def the_rails_run_in_a_produced_engine(r):
     if run_to(r.s("railed-restore.log"), ["dotnet", "restore", f"{NAME}.slnx"], cwd=railed, both=True) != 0:
         tail(r.s("railed-restore.log"), 20)
         fail("the copy of the engine does not restore")
+    github = FakeGitHub(r.s("fake-gh"))
     the_entry_packet_resolves_through_msbuild(r, railed)
     the_doctor_names_the_remote_half_unexamined(r, railed)
     the_entry_packet_leaves_the_checkout_clean(r, railed)
+    # Before the guard check, which turns `railed` itself into a git repository: this one makes its
+    # own committed copy, and a copy of a checkout is a different thing from a copy of a tree.
+    the_sweep_removes_what_merged_work_left_behind(r, railed, github)
     the_guard_refuses_a_primary_checkout_commit(r, railed)
-    github = FakeGitHub(r.s("fake-gh"))
     a_malformed_pull_request_is_refused_by_the_contract(r, railed, github)
     a_verdict_at_one_commit_does_not_pass_another(r, railed, github)
     an_independent_risk_issue_needs_more_than_the_semantic_verdict(r, railed, github)
@@ -1090,11 +1093,15 @@ def the_doctor_names_the_remote_half_unexamined(r, railed):
                              ("^Rail files .* OK", "a produced engine is missing a rail"),
                              ("^Guard wired to the tools .* OK", "the guard is not wired to anything"),
                              ("^Gate checks the rails .* OK", "the gate does not check the rails"),
-                             ("^Review chain .* OK", "no review chain is configured")):
+                             ("^Review chain .* OK", "no review chain is configured"),
+                             # #236: the one question --local cannot answer, answered as NOT
+                             # CHECKED rather than as an OK about a listing nobody read.
+                             ("^Leftovers from merged work .* NOT CHECKED", "the doctor called leftovers from "
+                              "merged work OK, or left the row out, with the merged listing unread")):
         if not grep(log, pattern):
             cat(log)
             fail(message)
-    ok("tools/agent-doctor.py --local: every local rail true, the remote half named unexamined")
+    ok("tools/agent-doctor.py --local: every local rail true, the remote half and the leftovers named unexamined")
 
 
 # The four lines brandonifco/faa-part-107 carries today, and the reason this check is worth
@@ -1167,6 +1174,107 @@ def the_entry_packet_leaves_the_checkout_clean(r, railed):
        ".gitignore does not name __pycache__, where an unsuppressed import does not")
 
 
+def head_of(repo):
+    """`git -C repo rev-parse HEAD`, stripped."""
+    return subprocess.run(["git", "-C", repo, "rev-parse", "HEAD"],
+                          capture_output=True, text=True).stdout.strip()
+
+
+# #236: what merged work left behind is removed before the next dispatch, and what somebody is
+# still working in is not. tools/tests/factory/test_factory_rails.py proves each branch of the rule
+# in depth; what only this can prove is that the file an engine actually receives does it, against
+# a real `git worktree` in a produced engine's own checkout.
+#
+# The order below is the sequence an engine lives through: dispatch, nothing merged yet, work
+# committed, the pull request merged, and the next dispatch finding the leftover in its way. Each
+# assertion names the sentence and not only the exit code (#283) -- a sweep that refused, a sweep
+# that could not reach GitHub and a sweep with nothing to do all leave the same directory behind.
+def the_sweep_removes_what_merged_work_left_behind(r, railed, github):
+    engine = r.s("swept")
+    copy_engine(railed, engine)
+    shutil.rmtree(os.path.join(engine, ".git"), ignore_errors=True)
+    write(os.path.join(engine, ".gitignore"), ENGINE_GITIGNORE)
+    identity = ["-c", "user.email=t@example.invalid", "-c", "user.name=t"]
+    with open(os.devnull, "wb") as null:
+        check(run(["git", "-C", engine, "init", "-q", "-b", "main"]))
+        check(run(["git", "-C", engine, *identity, "add", "-A"], stdout=null))
+        check(run(["git", "-C", engine, *identity, "commit", "-qm", "produced"], stdout=null))
+
+    roots = r.s("sweep-worktrees")
+    env = dict(os.environ, RULES_ENGINE_GH=github.script, VALIDATE_ENGINE_FAKE_GH_STATE=github.state,
+               RULES_ENGINE_WORKTREE_ROOT=roots)
+    log = r.s("sweep.log")
+    branch = f"issue-{ISSUE}-widen-the-altitude-limit"
+    worktree = os.path.join(roots, branch)
+    github.dispatchable(ISSUE, "Widen the altitude limit", ready(railed_policy(railed), "normalRisk"))
+    if run_to(log, ["bash", "tools/dispatch-agent.sh", str(ISSUE)], cwd=engine, env=env, both=True) != 0:
+        cat(log)
+        fail("tools/dispatch-agent.sh could not open a worktree in a produced engine")
+    if not os.path.isdir(worktree):
+        cat(log)
+        fail(f"dispatch reported success and there is no worktree at {worktree}")
+
+    # Nothing has merged, and this worktree's branch tip IS main's tip: the case every weaker rule
+    # than "a pull request merged at exactly this commit" gets wrong, by removing the worktree of
+    # an agent who has not committed yet.
+    if head_of(worktree) != head_of(engine):
+        fail("a fresh worktree is not at main's tip, so the check below proves nothing")
+    if run_to(log, ["bash", "tools/dispatch-agent.sh", "--sweep"], cwd=engine, env=env, both=True) != 0:
+        cat(log)
+        fail("the sweep did not exit 0 on a repository with nothing finished in it")
+    if not grep_fixed(log, "sweep: nothing to remove"):
+        cat(log)
+        fail("the sweep removed nothing and did not say so: 'it refused' and 'it did nothing' must not read alike")
+    if not os.path.isdir(worktree):
+        fail("the sweep removed the worktree of an agent who had committed nothing")
+
+    write(os.path.join(worktree, "note.txt"), "the work of this issue\n")
+    with open(os.devnull, "wb") as null:
+        check(run(["git", "-C", worktree, *identity, "add", "note.txt"], stdout=null))
+        check(run(["git", "-C", worktree, *identity, "commit", "-qm", "the work of this issue"], stdout=null))
+    github.merged([(branch, head_of(worktree))])
+
+    # The doctor names it, and removes nothing: it is the report that makes a leftover visible
+    # before anybody dispatches again. It runs without --local here, so the fake `gh` answers the
+    # merged listing; the rest of the remote half is not this check's subject.
+    doctor = r.s("sweep-doctor.log")
+    github.tool(engine, doctor, "tools/agent-doctor.py")
+    if not grep(doctor, r"^Leftovers from merged work .* 1 left over: .*\(worktree\)"):
+        cat(doctor)
+        fail("tools/agent-doctor.py did not report the worktree of a merged pull request as a leftover")
+    if not os.path.isdir(worktree):
+        fail("tools/agent-doctor.py removed a worktree; it reports and never acts")
+
+    # The acceptance criterion: nobody has to remember. Dispatching #27 again finds its finished
+    # worktree in the way, and would refuse -- except that dispatch sweeps before it creates one.
+    finished = head_of(worktree)
+    if run_to(log, ["bash", "tools/dispatch-agent.sh", str(ISSUE)], cwd=engine, env=env, both=True) != 0:
+        cat(log)
+        fail("dispatch refused because a merged issue's worktree was still in the way; it must sweep first")
+    if not grep_fixed(log, f"swept    {worktree} ({branch}, its pull request merged at this tip)"):
+        cat(log)
+        fail("dispatch opened a worktree without saying it had swept the finished one")
+    if not grep_fixed(log, f"swept    branch {branch} (its pull request merged at this tip)"):
+        cat(log)
+        fail("the sweep took the worktree and left its branch behind")
+    if not os.path.isdir(worktree) or head_of(worktree) == finished:
+        fail("the worktree at that path is the finished one: nothing was swept, or nothing was opened")
+
+    # And a finished worktree with uncommitted work in it is named and left exactly where it is.
+    write(os.path.join(worktree, "half-done.txt"), "not committed\n")
+    github.merged([(branch, head_of(worktree))])
+    if run_to(log, ["bash", "tools/dispatch-agent.sh", "--sweep"], cwd=engine, env=env, both=True) != 1:
+        cat(log)
+        fail("the sweep did not report a finished worktree it had refused to remove")
+    if not grep_fixed(log, "it has uncommitted or untracked files; look at them before removing it"):
+        cat(log)
+        fail("the sweep kept a dirty worktree without saying why, which reads as a sweep that found nothing")
+    if not os.path.isfile(os.path.join(worktree, "half-done.txt")):
+        fail("the sweep removed a worktree with uncommitted work in it")
+    ok("tools/dispatch-agent.sh --sweep removes a merged issue's worktree and branch before the next "
+       "dispatch, keeps a fresh and a dirty one, and the doctor names what it would remove")
+
+
 def guard(railed, **extra):
     """The primary-checkout guard, asked about `git commit` in the railed engine, with `extra` in its environment."""
     env = dict(os.environ, CLAUDE_PROJECT_DIR=railed, **extra)
@@ -1227,7 +1335,19 @@ def answer(record):
     missing = [field for field in wanted if field not in record]
     if missing:
         refuse(f"no {', '.join(missing)} in the state")
-    print(json.dumps({field: record[field] for field in wanted}))
+    document = {field: record[field] for field in wanted}
+    if "--jq" not in argv:
+        print(json.dumps(document))
+        return
+    # Exactly the three expressions tools/dispatch-agent.sh writes, and no evaluator: a rail whose
+    # call changed must fail here rather than be handed something that looks like an answer.
+    expression = argv[argv.index("--jq") + 1]
+    if expression in (".title", ".state"):
+        print(document[expression[1:]])
+    elif expression == '[.labels[].name] | join(",")':
+        print(",".join(label["name"] for label in document["labels"]))
+    else:
+        refuse(f"a --jq expression the rails do not use: {expression}")
 
 
 if argv[:2] in (["pr", "view"], ["issue", "view"]) and len(argv) > 2:
@@ -1271,11 +1391,19 @@ elif argv[:1] == ["api"] and len(argv) > 1:
     else:
         refuse("an api route the rails do not call")
 elif argv[:2] == ["pr", "list"]:
-    if "--state" not in argv or argv[argv.index("--state") + 1] != "open":
-        refuse("a pull request listing that does not ask for the open ones")
+    if "--state" not in argv:
+        refuse("a pull request listing that does not say which state it wants")
     wanted = argv[argv.index("--json") + 1].split(",") if "--json" in argv else refuse("no --json")
-    open_pulls = [pull for pull in state["pulls"].values() if pull.get("state") == "OPEN"]
-    print(json.dumps([{field: pull[field] for field in wanted} for pull in open_pulls]))
+    asked = argv[argv.index("--state") + 1]
+    if asked == "open":
+        listed = [pull for pull in state["pulls"].values() if pull.get("state") == "OPEN"]
+    elif asked == "merged":
+        # tools/dispatch-agent.sh --sweep and tools/agent-doctor.py's leftovers row (#236): what
+        # merged, by head branch and head commit. Empty unless a check below puts something there.
+        listed = state.get("merged") or []
+    else:
+        refuse(f"a pull request listing for state {asked}")
+    print(json.dumps([{field: pull[field] for field in wanted} for pull in listed]))
 else:
     refuse("a command the rails do not call")
 '''
@@ -1322,6 +1450,10 @@ validate.sh full: PASS
 ```
 
 Mutations observed: `PlayerCount_IsTwo` fails with the mutation "answer three" (observed).
+
+## Documentation
+
+None: this engine has no documents of its own, and nothing here changes one.
 
 ## Determinism
 
@@ -1379,6 +1511,29 @@ class FakeGitHub:
             "runs": {head: [{"id": GATE_RUN, "run_number": 1, "status": "completed", "conclusion": "failure"}]},
             "reruns": [],
         }
+        write(self.state, json.dumps(document, indent=2))
+
+    def dispatchable(self, number, title, labels, merged=()):
+        """An issue `tools/dispatch-agent.sh` can open a worktree for, and what has merged (#236).
+
+        A state of its own rather than `serve`'s: dispatch reads an issue's title, which a pull
+        request's fixture has no reason to carry, and the sweep reads a listing `serve` has none of.
+        """
+        document = {
+            "repository": "owner/engine",
+            "pulls": {},
+            "issues": {str(number): {"number": number, "state": "OPEN", "title": title,
+                                     "labels": [{"name": name} for name in labels]}},
+            "statuses": {}, "runs": {}, "reruns": [],
+            "merged": [{"headRefName": branch, "headRefOid": head} for branch, head in merged],
+        }
+        write(self.state, json.dumps(document, indent=2))
+
+    def merged(self, pairs):
+        """The merged pull requests, as (head branch, head commit), leaving the rest of the state."""
+        with open(self.state, encoding="utf-8") as handle:
+            document = json.load(handle)
+        document["merged"] = [{"headRefName": branch, "headRefOid": head} for branch, head in pairs]
         write(self.state, json.dumps(document, indent=2))
 
     def reruns(self):
@@ -1512,11 +1667,34 @@ def a_malformed_pull_request_is_refused_by_the_contract(r, railed, github):
         fail("tools/pr-policy.py did not refuse a pull request body left as the template")
     for text, message in (("does not satisfy the contract", "tools/pr-policy.py exited 1 without refusing the contract"),
                           ("no `Closes #<n>`", "tools/pr-policy.py did not name the missing `Closes #<n>`"),
-                          ("`## Exact behavioural claim` is empty", "tools/pr-policy.py did not name the empty sections")):
+                          ("`## Exact behavioural claim` is empty", "tools/pr-policy.py did not name the empty sections"),
+                          # #236: the section is the engine's own, and an unfilled template leaves
+                          # it as guidance, which is not an answer about any document.
+                          ("`## Documentation` is empty", "tools/pr-policy.py did not name the empty documentation "
+                           "section, so a pull request that accounts for no document passes")):
         if not grep_fixed(log, text):
             cat(log)
             fail(message)
-    ok("tools/pr-policy.py refuses the template left unfilled, naming what is missing, and accepts it filled")
+
+    # And the section is held to the diff, not merely required: a document this engine owns, added
+    # in the branch and left out of the listing, is named. `README.md` is a hand-written file in a
+    # produced engine -- the factory emits none -- so it is exactly the case the living-document
+    # rule is for, and the rails the factory does write are not asked about.
+    write(os.path.join(railed, "README.md"), "# The engine\n")
+    github.serve(railed, COMMIT_A, ready(policy, "normalRisk"))
+    refused = github.tool(railed, log, "tools/pr-policy.py", PR)
+    os.remove(os.path.join(railed, "README.md"))
+    if refused != 1:
+        cat(log)
+        fail("tools/pr-policy.py accepted a pull request that left this engine's own README unaccounted for")
+    if not grep_fixed(log, "`README.md` is a living document of this engine and is not listed"):
+        cat(log)
+        fail("tools/pr-policy.py refused for some other reason than the unlisted document")
+    if grep_fixed(log, "`AGENTS.md` is a living document"):
+        cat(log)
+        fail("tools/pr-policy.py asked this engine to account for a rail the factory writes and it may not edit")
+    ok("tools/pr-policy.py refuses the template left unfilled, naming what is missing, accepts it filled, and "
+       "names this engine's own document left out of `## Documentation`")
 
 
 # A verdict is on the bytes somebody read (#157). Recorded by the engine's record-verdict.py at the
