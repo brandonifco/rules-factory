@@ -3,6 +3,7 @@
 #
 #   tools/re-produce.sh                 re-produce this engine, gate and all
 #   tools/re-produce.sh --dry-run       print the produce it would run, and change nothing
+#   tools/re-produce.sh --resolve-record  take one side of a merge-conflicted provenance.json first
 #   tools/re-produce.sh --no-verify     (and any other argument) passed through to produce
 #
 # Emitted by rules-factory as a managed file (decision 0029).
@@ -24,8 +25,24 @@
 # `factory.commit`, and moving this engine to a newer factory stays a deliberate act with its own
 # issue.
 #
+# **A merge conflict in the record is not a decision to make (#252).** Since the overlay became a
+# directory, `provenance.json` is the one file two entry branches cut from the same commit still
+# conflict in, and a file holding conflict markers is not JSON -- so the one command that recomputes
+# every hash in it could not run until somebody had already resolved it by hand, and nothing said
+# so. There is nothing in the record to resolve: a re-produce overwrites the whole of it, so both
+# sides are discarded whichever is kept, and neither is more right than the other. So this script
+# recognises the conflict and says exactly that, and `--resolve-record` takes a side and re-produces
+# over it, which makes the recovery one command.
+#
+# It is a flag and not the default because taking a side in somebody's merge is an act even when the
+# bytes are about to be overwritten: it is asked for once, here, rather than discovered afterwards.
+# The side taken is `--ours` -- the branch you are on -- for a reason beyond arbitrariness: the check
+# further down compares the working tree's `factory.commit` with the committed record's, and `--ours`
+# is the side that is already `HEAD`'s.
+#
 # **It makes no commit.** `produce` makes none by design, and neither does this. What it changes is
-# yours to read and stage.
+# yours to read and stage. `--resolve-record` is the one exception, and only for the record: git
+# has no way to mark a path resolved without staging it, so that one path is staged and said aloud.
 #
 # Standard library tools only: bash, git and python3.
 set -euo pipefail
@@ -42,6 +59,7 @@ RECORD="provenance.json"
 FACTORY_REPO_DEFAULT="https://github.com/brandonifco/rules-factory.git"
 
 DRY_RUN=0
+RESOLVE_RECORD=0
 EXTRA=()
 
 die() { printf 'error: %s\n' "$1" >&2; exit 1; }
@@ -49,12 +67,70 @@ die() { printf 'error: %s\n' "$1" >&2; exit 1; }
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --dry-run) DRY_RUN=1; shift ;;
-    -h|--help) sed -n '2,7p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'; exit 0 ;;
+    --resolve-record) RESOLVE_RECORD=1; shift ;;
+    -h|--help) sed -n '2,8p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'; exit 0 ;;
     *) EXTRA+=("$1"); shift ;;
   esac
 done
 
 [[ -f "$RECORD" ]] || die "$RECORD is not here; run this from a produced engine"
+
+# The markers a merge leaves in a file it could not merge, at the start of a line. All three are
+# required, so a record that is merely broken keeps its own message and is not called a conflict.
+# (`|||||||` appears as well under merge.conflictStyle=diff3; it is not required here.)
+record_is_conflicted() {
+  grep -q '^<<<<<<<' "$RECORD" && grep -q '^=======' "$RECORD" && grep -q '^>>>>>>>' "$RECORD"
+}
+
+if record_is_conflicted; then
+  # git's index is what decides whether a side can be taken: `--ours` needs the path unmerged
+  # there. A record holding markers with nothing unmerged behind it was staged, or committed, in
+  # that state, and then the committed record is the only side there is.
+  UNMERGED=""
+  if "$GIT" rev-parse --verify -q HEAD >/dev/null 2>&1; then
+    UNMERGED="$("$GIT" ls-files -u -- "$RECORD" 2>/dev/null || true)"
+    if [[ -n "$UNMERGED" ]]; then
+      BY_HAND="git checkout --ours -- $RECORD && git add $RECORD"
+    else
+      BY_HAND="git checkout HEAD -- $RECORD"
+    fi
+  else
+    BY_HAND=""
+  fi
+
+  # `--dry-run` changes nothing, and that includes somebody's index: it reports the conflict and
+  # the command, the same as a run without the flag.
+  if [[ "$RESOLVE_RECORD" -eq 0 || "$DRY_RUN" -eq 1 ]]; then
+    [[ -n "$BY_HAND" ]] || die "$RECORD is in a merge conflict, and this is not a git checkout with a
+       committed $RECORD, so there is no side to take. Every hash in the record is recomputed by a
+       re-produce, so either side is equally good -- put one of them in place and run this again."
+    die "$RECORD is in a merge conflict, so this script cannot read what to re-produce. Neither side
+       of it is the one to keep: every hash in the record is about to be recomputed, so either side
+       is equally good, and that is why this is not yours to decide. One command settles it --
+       \`tools/re-produce.sh --resolve-record\`, which takes one side and re-produces over it. By
+       hand it is \`$BY_HAND\`, then this script again."
+  fi
+
+  [[ -n "$BY_HAND" ]] || die "$RECORD is in a merge conflict and this is not a git checkout with a
+       committed $RECORD, so --resolve-record has no side to take."
+  if [[ -n "$UNMERGED" ]]; then
+    SIDE="ours, the branch you are on"
+  else
+    SIDE="the committed record, which is the only side git still has"
+  fi
+  printf 'note: %s is in a merge conflict. Every hash in it is about to be recomputed, so either\n' "$RECORD" >&2
+  printf '      side is equally good; --resolve-record takes %s\n      and re-produces over it (%s).\n' \
+         "$SIDE" "$BY_HAND" >&2
+  if [[ -n "$UNMERGED" ]]; then
+    "$GIT" checkout --ours -- "$RECORD" || die "could not take our side of $RECORD (\`$BY_HAND\`)"
+    "$GIT" add -- "$RECORD" || die "could not stage $RECORD, so git would still call it unmerged"
+  else
+    "$GIT" checkout HEAD -- "$RECORD" || die "could not restore the committed $RECORD (\`$BY_HAND\`)"
+  fi
+  ! record_is_conflicted || die "$RECORD still holds conflict markers after \`$BY_HAND\`, so the side
+       that was taken is itself a conflicted file. Nothing here can choose for you now: resolve it
+       and run this again."
+fi
 
 # Everything produce needs, read from the record in one pass so a malformed field is named once.
 # The corpus is the one generated file under corpus/ -- the same rule provenance.recompute uses to

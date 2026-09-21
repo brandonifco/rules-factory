@@ -282,6 +282,14 @@ decline that names why and cites where — that is the engine working, not the e
   about itself would hash whatever is on disk, and a gate that re-blesses its own bytes proves
   nothing.
 
+  One file per entry is what keeps two entry branches out of each other's way, and
+  `provenance.json` is the one place they still meet: merging one into the other leaves conflict
+  markers in it, and a file with markers in it is not JSON. **That is not a conflict to resolve by
+  hand.** Every hash in the record is recomputed by the re-produce that follows, so both sides are
+  discarded whichever is kept and neither is more right than the other. `tools/re-produce.sh`
+  recognises it and says so, and `tools/re-produce.sh --resolve-record` takes a side and
+  re-produces over it in one command.
+
 - A check that examines nothing is a failure, never an ok. If a step could not run, say it could
   not run.
 
