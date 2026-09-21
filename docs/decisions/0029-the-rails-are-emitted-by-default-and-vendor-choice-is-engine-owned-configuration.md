@@ -355,7 +355,7 @@ quietly overrule the map makes the map stop being the interface.
 acceptance criteria, the PR body, changed files, a bounded diff, the entry ids and their packet
 digest, the map version and provenance, the overlay before and after, the applicable ADRs, the
 determinism prompt, the expected gates and the risk classification. As amended by
-[0050](0050-a-review-verdict-binds-the-exact-packet-and-reviewed-commit.md), every commit-local
+[0053](0053-a-review-verdict-binds-the-exact-packet-and-reviewed-commit.md), every commit-local
 piece is read from a detached snapshot of the exact reviewed head, and file output includes a
 machine-readable identity that names the head/base commits and hashes the human packet, entry
 packets, policy and provenance context. Packets are written outside the repository and are never
@@ -368,7 +368,7 @@ commit status recorded against the exact reviewed SHA named by the `*.review.jso
 (`tools/record-verdict.py`), and `tools/conformance-gate.py` requires it at the head being merged.
 The recorder verifies the packet bytes and refuses when the pull request's current head differs
 from that reviewed SHA. A further commit therefore invalidates the review that preceded it rather
-than becoming the implicit target of an old verdict (0050).
+than becoming the implicit target of an old verdict (0053).
 
 A change touching `review.semanticPaths` requires `review.semanticContext`. An issue carrying the
 independent risk label additionally requires one of `review.independentFallback`'s contexts. The

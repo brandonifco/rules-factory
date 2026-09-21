@@ -1867,13 +1867,19 @@ if argv_api := [a for a in sys.argv[1:] if a.startswith("repos/")]:
         self.assertEqual(json.load(open(self.statuses, encoding="utf-8")), {})
 
     def test_an_unconfigured_reviewer_is_refused_and_says_what_is_configured(self):
+        # The reviewer set is the reviewed packet's, not the engine's current policy, which is the
+        # whole of #334: a verdict is about the bytes somebody read. So the refusal names the
+        # packet and tells the caller to regenerate and re-review rather than to edit the policy
+        # -- editing it would make an old review answer a question it was never asked. This
+        # asserted the pre-#334 wording, and both halves of that wording are now wrong.
         self.produced()
         self.scenario()
         done = self.record("--pr", "5", "--reviewer", "a-friend", "--verdict", "pass")
         self.assertEqual(done.returncode, 1, done.stdout)
-        self.assertIn("not a reviewer this engine configures", done.stderr)
+        self.assertIn("not a reviewer configured by the reviewed packet", done.stderr)
         self.assertIn("Known: semantic", done.stderr)
-        self.assertIn("edit to .github/agent-policy.json", done.stderr)
+        self.assertIn("regenerate and re-review the packet", done.stderr)
+        self.assertNotIn("edit to .github/agent-policy.json", done.stderr)
 
     def test_the_gate_requires_a_semantic_verdict_for_semantic_work(self):
         self.produced()
