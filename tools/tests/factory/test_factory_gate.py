@@ -857,6 +857,22 @@ class TestTheMatrixHasARowPerTestProject(GateCase):
     def ran(self, engine, results, expected, env=None):
         return self.script(engine, "engine-gate.py", "tests-ran", results, str(expected), env=env)
 
+    def repin_to_the_installed_sdk(self, engine):
+        """Scratch copy only: re-pin global.json to the SDK on this machine.
+
+        A produced engine pins the factory's SDK with `rollForward: disable`, and MSBuild resolves
+        an SDK through global.json before it evaluates anything -- so on a machine with a different
+        10.x installed (this repository's CI runner is one) `dotnet msbuild` refuses, the gate falls
+        back to reading the project file, and the test would be measuring the fallback rather than
+        the evaluation it exists for. `TestValidateShWithDotnet.localize` re-pins for the same
+        reason.
+        """
+        path = os.path.join(engine, "global.json")
+        with open(path, encoding="utf-8") as handle:
+            pin = json.load(handle)
+        pin["sdk"]["version"] = SDK
+        write_json(path, pin)
+
     def without_dotnet(self):
         """A PATH with no `dotnet` on it: this repository's CI, and any checkout without an SDK."""
         empty = os.path.join(self.tmp, "no-tools")
@@ -905,6 +921,7 @@ class TestTheMatrixHasARowPerTestProject(GateCase):
         if not SDK:  # defined below, with the rest of the tests that need a real MSBuild
             self.skipTest("needs a .NET 10 SDK: an imported IsTestProject is only visible to MSBuild")
         engine = self.engine()
+        self.repin_to_the_installed_sdk(engine)
         imported = f"tests/{NAME}.Imported/{NAME}.Imported.csproj"
         add_project(engine, imported, IMPORTS_IS_TEST_PROJECT)
         add_project(engine, f"tests/{NAME}.Imported/is-test-project.props", IS_TEST_PROJECT_PROPS)
