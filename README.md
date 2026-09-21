@@ -250,8 +250,8 @@ Every artifact under `examples/` is named in
 [`tools/evidence-lock.json`](tools/evidence-lock.json) with its SHA-256 and the parts of CI that
 read it, and the gate holds the tree to that list in both directions on every run. The roles are
 measured rather than declared — an audit hook records what each checker opens — and what they
-found is in [docs/evidence-inventory.md](docs/evidence-inventory.md): 12.1 MB read by the checks,
-2.5 MB packed into published packages, and 892 KB read by nothing at all
+found is in [docs/evidence-inventory.md](docs/evidence-inventory.md): 11.9 MB read by the checks,
+2.5 MB packed into published packages, and 918 KB read by nothing at all
 ([0051](docs/decisions/0051-every-evidence-artifact-says-which-check-reads-it.md)).
 
 ### What it does not prove

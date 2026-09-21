@@ -2,7 +2,7 @@
 
 `examples/` is this repository's evidence: four corpora, seven maps, the transcripts of blind
 second mappings, trial reports, independent verdicts, and the results of the injection, collapse
-and validator-attack measurements. 189 tracked files, 15.5 MB, out of 18.7 MB tracked in all.
+and validator-attack measurements. 196 tracked files, 15.2 MB, out of 19.5 MB tracked in all.
 
 Until [#349](https://github.com/brandonifco/rules-factory/issues/349) nothing said which of it any
 check reads. This document and [`tools/evidence-lock.json`](../tools/evidence-lock.json) say so,
@@ -31,20 +31,20 @@ proves about a trial report is that the report's links work. So a read by that s
 
 | `readBy` | what reads it | files | size |
 |---|---|---|---|
-| `checks` | a gate step, for what is in it | 66 | 10.8 MB |
+| `checks` | a gate step, for what is in it | 73 | 10.6 MB |
 | `checks`, `package` | that, and `pack-map.py` | 18 | 2.5 MB |
 | `checks`, `links` | a gate step, and the link check | 17 | 419 KB |
-| `links` | **only** the markdown link check | 44 | 884 KB |
+| `links` | **only** the markdown link check | 44 | 891 KB |
 | `package` | only `pack-map.py` | 2 | 1 KB |
-| *(nothing)* | nothing the measurement could see | **42** | **892 KB** |
+| *(nothing)* | nothing the measurement could see | **42** | **918 KB** |
 
 The role follows from the readers:
 
 | role | files | size | may its bytes live outside the repository? |
 |---|---|---|---|
 | `release` — `pack-map.py` reads it | 20 | 2.5 MB | no: its bytes reach nuget.org |
-| `active` — some other part of the gate reads it | 127 | 12.1 MB | no: a check that fetches its inputs cannot be run offline |
-| `archived` — nothing reads it | 42 | 892 KB | yes |
+| `active` — some other part of the gate reads it | 134 | 11.9 MB | no: a check that fetches its inputs cannot be run offline |
+| `archived` — nothing reads it | 42 | 918 KB | yes |
 
 `check-evidence.py` refuses a lock that gives a non-null `archive` to an `active` or `release`
 artifact, and refuses a role its own `readBy` does not support. That pair of rules is what keeps a
@@ -62,13 +62,13 @@ Measured at `6982d65`:
 | `examples/faa-part-107` | 535 KB | 158 KB | — |
 | `examples/hoyle-blind-rebuild` | 432 KB | — | 61 KB |
 | `examples/blind-mapping-trial` | 105 KB | — | 243 KB |
-| `examples/srd-52-conditions` | 343 KB | — | 1 KB |
+| `examples/srd-52-conditions` | 354 KB | — | 29 KB |
 | `examples/tax-121-principal-residence` | 178 KB | 85 KB | 66 KB |
 | `examples/faa-part-107-temporal` | 137 KB | — | 43 KB |
 | `examples/injection-trial` | 22 KB | — | 100 KB |
 | `examples/validator-attack` | 53 KB | — | — |
 | `examples/tax-121-build` | 31 KB | — | — |
-| `examples/acceptance-4-5` | 28 KB | — | 2 KB |
+| `examples/acceptance-4-5` | 31 KB | — | — |
 | `examples/collapse-trial` | 6 KB | — | 11 KB |
 
 Three things there are worth saying out loud.
