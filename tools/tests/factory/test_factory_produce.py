@@ -754,7 +754,9 @@ class TestTheOverlayIsOneFilePerEntry(ProduceCase):
         for entry_id in ids:
             self.assertEqual(json.loads(self.read(out, f"overlay/{entry_id}.json")), self.BLOCKED)
         record = json.loads(self.read(out, "provenance.json"))
-        self.assertEqual(record["provenanceFormat"], 5)
+        # 6 since #222: the record says whether the produce that wrote it verified the
+        # engine. Pinned as a literal on purpose -- a format bump is a deliberate edit.
+        self.assertEqual(record["provenanceFormat"], 6)
         self.assertEqual({item["path"] for item in record["buildInputs"] if item["path"].startswith("overlay/")},
                          {f"overlay/{entry_id}.json" for entry_id in ids})
         self.assertFalse([item for item in record["buildInputs"] + record["engineOwned"]
