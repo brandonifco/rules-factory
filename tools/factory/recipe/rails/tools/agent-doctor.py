@@ -25,6 +25,11 @@ answer. It changes nothing, ever.
     `--local` skips them, for an offline machine; the output then says the remote half was not
     examined, because a green report that skipped the half that matters is the failure this
     repository has twice found in its own tools.
+  * One row spans both: **what merged work left behind**. `tools/dispatch-agent.sh --cleanup` has
+    always existed and nothing ran it, so a worktree and a branch from a pull request that merged
+    days ago sit there, and the rails look exactly as active as they would if nothing had been
+    left. It reads the local worktrees and branches and asks GitHub which pull requests merged, so
+    with `--local`, or with `gh` refusing, it is NOT CHECKED -- never OK.
 
 The remote half asks the same questions `factory rails --check` asks, from inside the engine and
 without the factory. Where the answers would differ, the factory's is authoritative: it is the
@@ -54,6 +59,15 @@ ROOT = pathlib.Path(__file__).resolve().parents[1]
 POLICY = ".github/agent-policy.json"
 GUARDED_TOOLS = "Bash|Edit|Write|NotebookEdit"
 OK, MISSING, WRONG, UNKNOWN = "OK", "MISSING", "WRONG", "NOT EXAMINED"
+# The leftovers row's own third state. `NOT EXAMINED` is what this report says about a half it
+# chose not to look at; this is a question it asked and could not get an answer to, and the two
+# read differently to somebody deciding whether the report is worth anything.
+NOT_CHECKED = "NOT CHECKED"
+LEFTOVERS = "Leftovers from merged work"
+SWEEP = "tools/dispatch-agent.sh --sweep"
+# The newest this many merged pull requests, the same cap the sweep reads them under: a leftover is
+# recent by definition, and a cap that misses an older one under-reports rather than over-reports.
+MERGED_LIMIT = "500"
 # The ruleset's name and the three checks it requires are the factory's, and are read from the
 # vendored `scripts/factory/` rather than written down again here. `verdict-requeue` is
 # deliberately not among them: it runs on the default branch's commit, where a required check
@@ -77,6 +91,95 @@ def gh(*args):
         return json.loads(done.stdout or "null"), None
     except ValueError as error:
         return None, str(error)
+
+
+def git(*args):
+    """`git` in this checkout, as (stdout, None) or (None, why)."""
+    try:
+        done = subprocess.run(["git", "-C", str(ROOT), *args], stdout=subprocess.PIPE,
+                              stderr=subprocess.PIPE, text=True, timeout=120)
+    except (OSError, subprocess.SubprocessError) as error:
+        return None, str(error)
+    if done.returncode != 0:
+        return None, (done.stderr.strip() or done.stdout.strip() or f"git {args[0]} failed")
+    return done.stdout, None
+
+
+def merged_heads():
+    """{head branch: {head commits}} for this repository's merged pull requests, or (None, why)."""
+    rows, why = gh("pr", "list", "--state", "merged", "--limit", MERGED_LIMIT,
+                   "--json", "headRefName,headRefOid")
+    if why:
+        return None, why
+    heads = {}
+    for item in rows or []:
+        heads.setdefault(item.get("headRefName"), set()).add(item.get("headRefOid"))
+    return heads, None
+
+
+def worktrees(listing):
+    """git's worktree porcelain as dicts, the primary checkout first."""
+    found, current = [], {}
+    for line in (listing or "").splitlines() + [""]:
+        if not line:
+            if current:
+                found.append(current)
+            current = {}
+            continue
+        key, _, value = line.partition(" ")
+        current[key] = value if value else True
+    return found
+
+
+def leftover_rows(local):
+    """What merged work left behind: a worktree or a branch whose pull request merged at EXACTLY
+    its tip, which is what `tools/dispatch-agent.sh --sweep` removes.
+
+    The rule is rules-factory's own `tools/repo-hygiene.py`, restated because an engine does not
+    receive that file. It is deliberately the strict one: a worktree dispatched and not yet
+    committed in sits at `main`'s tip, so "its commits are in main" reports every agent who has
+    not started as finished, and a report that cries wolf is a report nobody reads.
+
+    This reads. It removes nothing, as nothing in this file does -- and it says NOT CHECKED rather
+    than OK wherever it could not ask, because a leftover nobody looked for and a repository with
+    none look identical from here.
+    """
+    if local:
+        return ([row(LEFTOVERS, NOT_CHECKED, "--local: merged pull requests were not read, so a worktree or "
+                                             "branch left behind by merged work is not reported")],
+                [f"what merged work left behind was not examined (--local); `{SWEEP}` is what removes it"])
+    heads, why = merged_heads()
+    if heads is None:
+        return ([row(LEFTOVERS, NOT_CHECKED, f"merged pull requests could not be read ({why})")],
+                [f"what merged work left behind was not examined ({why}); a worktree and a branch from a pull "
+                 f"request that merged days ago look exactly like a clean repository from here"])
+    listing, why = git("worktree", "list", "--porcelain")
+    refs, ref_why = git("for-each-ref", "--format=%(refname:short) %(objectname)", "refs/heads")
+    if listing is None or refs is None:
+        unreadable = why or ref_why
+        return ([row(LEFTOVERS, NOT_CHECKED, f"this checkout could not be read ({unreadable})")],
+                [f"what merged work left behind was not examined ({unreadable})"])
+
+    trees = worktrees(listing)
+    found = []
+    for tree in trees[1:]:
+        branch = (tree.get("branch") or "").removeprefix("refs/heads/")
+        if branch and tree.get("HEAD") in heads.get(branch, set()):
+            found.append(f"{tree['worktree']} (worktree)")
+    # A branch a worktree has checked out goes with that worktree, and the primary checkout's own
+    # branch is in this set too, which is how the default branch is spared without being named.
+    checked_out = {(tree.get("branch") or "").removeprefix("refs/heads/") for tree in trees}
+    for line in refs.splitlines():
+        name, _, sha = line.partition(" ")
+        if name not in checked_out and sha in heads.get(name, set()):
+            found.append(f"{name} (branch)")
+
+    if not found:
+        return [row(LEFTOVERS, OK, "no worktree or branch is left over from merged work")], []
+    shown = ", ".join(found[:3]) + (", ..." if len(found) > 3 else "")
+    return ([row(LEFTOVERS, WRONG, f"{len(found)} left over: {shown}")],
+            [f"{len(found)} worktree(s) or branch(es) are left over from work whose pull request merged; "
+             f"`{SWEEP}` removes exactly those, and every dispatch runs it"])
 
 
 def pages(generate, *args):
@@ -290,6 +393,11 @@ def main(argv=None):
     # rails on GitHub are judged by all come from it.
     generate, unavailable = factory()
     rows, problems = local_rows(generate, unavailable)
+    # Neither half: it reads this checkout and asks GitHub what merged. It is here, between them,
+    # because it needs both, and it needs no vendored factory to answer.
+    leftovers, leftover_problems = leftover_rows(args.local)
+    rows.extend(leftovers)
+    problems.extend(leftover_problems)
     if args.local:
         rows.append(row("GitHub", UNKNOWN, "--local: the labels, the ruleset and the required checks were not read"))
         problems.append("the remote half was not examined (--local), so this says nothing about what GitHub "

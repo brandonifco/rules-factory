@@ -957,16 +957,24 @@ class TestTheDoctorsLeftoversRow(MergedWorkInAnEngine):
         self.assertEqual(len(lines), 1, f"expected one `{self.ROW}` row:\n{output}")
         return lines[0]
 
-    def test_a_worktree_and_a_branch_left_by_merged_work_are_named(self):
+    def test_a_worktree_left_by_merged_work_is_named(self):
         path, head = self.dispatched()
         self.state(merged=((self.BRANCH, head),))
         done = self.doctor()
         line = self.row(done.stdout)
         self.assertIn("WRONG", line)
-        self.assertIn(f"{path} (worktree)", line)
-        self.assertIn(f"{self.BRANCH} (branch)", line)
+        self.assertIn(f"1 left over: {path} (worktree)", line)
+        self.assertNotIn("(branch)", line, "the branch of a leftover worktree is counted twice")
         self.assertIn("tools/dispatch-agent.sh --sweep", done.stdout)
         self.assertTrue(os.path.isdir(path), "the doctor removed something; it reports and never acts")
+
+    def test_a_branch_left_by_merged_work_with_no_worktree_is_named(self):
+        path, head = self.dispatched()
+        self.assertEqual(self.dispatch("--cleanup", "27").returncode, 0)
+        self.state(merged=((self.BRANCH, head),))
+        line = self.row(self.doctor().stdout)
+        self.assertIn("WRONG", line)
+        self.assertIn(f"1 left over: {self.BRANCH} (branch)", line)
 
     def test_a_worktree_still_being_worked_in_is_not_a_leftover(self):
         path, head = self.dispatched()
