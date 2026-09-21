@@ -590,8 +590,9 @@ def tests_ran(args):
 def named_tests(args):
     """rules-factory#2: an `implemented` entry names the tests that prove it. The map cannot show a
     named test exists or ran, so every one must have an executed result (`EXECUTED` above: a
-    failure is the suite's to report, a skip is not a run) in every target framework. Names are `Class.Method`; a short
-    class name that resolves to two classes is refused rather than guessed."""
+    failure is the suite's to report, a skip is not a run) in every target framework. Names are
+    `Class.Method`; a short class name that resolves to two classes is refused rather than
+    guessed."""
     import xml.etree.ElementTree as ET
     frameworks = max(1, len(target_frameworks()))
     ran, classes = {}, {}
