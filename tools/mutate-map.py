@@ -478,84 +478,121 @@ MUTATIONS = [
         "name": "drop-entry",
         "models": "the mapper never reached this rule",
         "wrong": "the corpus states a rule the map now has no entry for",
+        "expect": "coverage",
         "apply": m_drop_entry,
     },
     {
         "name": "drop-enabled-by",
         "models": "a gate recorded with less reach than it has (trial 9: 30 missing edges)",
         "wrong": "the corpus conditions this rule on a rule the map no longer says it depends on",
+        # No rule is written to catch this. `gates` reads the edges the map records; a *removed*
+        # edge is one the map no longer records, and nothing structural can know the corpus
+        # imposed it. The mutation measures that gap, so a refusal here is a neighbour's.
+        "expect": None,
         "apply": m_drop_enabled_by,
     },
     {
         "name": "drop-suspended-by",
         "models": "an exception the mapper saw once and not everywhere it applies",
         "wrong": "the corpus suspends this rule under a condition the map no longer records",
+        # The same gap as drop-enabled-by, one edge kind over: an exception the map no longer
+        # records reads exactly like a rule that never had one.
+        "expect": None,
         "apply": m_drop_suspended_by,
     },
     {
         "name": "clear-to-ambiguous",
         "models": "a mapper who invents doubt the corpus settles",
         "wrong": "the corpus does resolve this question; the map records it as open",
+        "expect": "question-anchor",
         "apply": m_clear_to_ambiguous,
     },
     {
         "name": "ambiguous-to-clear",
         "models": "premature collapse (0033): two readings, one asserted, no doubt recorded",
         "wrong": "the corpus supports two readings and the map now states one as certain",
+        "expect": "superposition",
         "apply": m_ambiguous_to_clear,
     },
     {
         "name": "assertion-to-operation",
         "models": "trial 1's finding, in reverse: a caller's fact re-read as a computation",
         "wrong": "no passage lets the engine compute this; the corpus makes it an input",
+        "expect": "asserted-by",
         "apply": m_assertion_to_operation,
     },
     {
         "name": "invent-depends-on",
         "models": "#13: six wrong `dependsOn` edges in a map written in earnest",
         "wrong": "the corpus imposes no such order between these two rules",
+        # No rule is written to catch this either, and deliberately: the invented edge is chosen
+        # so it makes no cycle, so `no-cycles` is satisfied and the order is as well formed as a
+        # true one. Only the corpus says it is wrong, which is what #13 found six times.
+        "expect": None,
         "apply": m_invent_depends_on,
     },
     {
         "name": "neighbour-evidence",
         "models": "the thirteen wrong citations that survived trial 4's build and review",
         "wrong": "the quote is verbatim of the corpus and is not the passage the entry cites",
+        "expect": "locators",
         "apply": m_neighbour_evidence,
     },
     {
         "name": "same-passage-evidence",
         "models": "the same error inside one cited passage, where locator granularity cannot see it",
         "wrong": "the entry's rule is stated by a different sentence of the passage it cites",
+        # No rule is written to catch this, and it is the sharpest of the four: the quote stays
+        # inside the passage the entry cites, so every locator check is satisfied and nothing
+        # structural can tell which sentence of a cited passage states the rule. That is what
+        # `models` above means by "where locator granularity cannot see it".
+        "expect": None,
         "apply": m_same_passage_evidence,
     },
     {
         "name": "move-locator",
         "models": "a citation off by one unit, the commonest transcription error",
         "wrong": "the evidence is not at the citation the entry now names",
+        "expect": "locators",
         "apply": m_move_locator,
     },
     {
         "name": "omit-definition",
         "models": "a defined term the map uses and never maps",
         "wrong": "the corpus defines a term the map relies on and no entry records the definition",
+        # No rule is written to catch this. `defines` holds the shape and anchoring of a `defines`
+        # declaration that is *present*; a definition the map never records declares nothing for
+        # it to hold. The mutation goes further out of its way than the other four to measure the
+        # gap rather than a neighbour: `apply` removes the inbound edges with the entry, because a
+        # dangling edge would be refused by `references` -- as its own docstring says, "for the
+        # wrong reason".
+        "expect": None,
         "apply": m_omit_definition,
     },
     {
         "name": "remove-applicability",
         "models": "the rule that says when the rest applies, never mapped",
         "wrong": "the corpus conditions the whole slice on a rule the map does not contain",
+        "expect": "applicability-reach",
         "apply": m_remove_applicability,
     },
     {
         "name": "hide-cross-reference",
         "models": "#208: a pointer nobody noticed, measured at 0 of 51 in one corpus",
         "wrong": "the passage points somewhere and the map no longer says where",
+        "expect": "cross-references",
         "apply": m_hide_cross_reference,
     },
     {
         "name": "narrow-extent",
         "models": "a map that claims less than it cites, so coverage becomes easy to satisfy",
         "wrong": "the map read more of the corpus than it now declares, and cites what it disclaims",
+        # A family, not a list of whatever fires: `extent`, `extent-bounds` and `extent-end` are
+        # three faces of one question -- does the declared extent agree with what the map cites
+        # and quotes -- and which face answers depends on the grammar the corpus is read by, not
+        # on whether the intended check works. A page-marked corpus has an end to overrun that a
+        # section-designated one has not. Any of the three is this mutation being caught.
+        "expect": ("extent", "extent-bounds", "extent-end"),
         "apply": m_narrow_extent,
     },
 ]
@@ -731,10 +768,31 @@ def measure(subject, root, only=None):
             for detector in unexplained:
                 problems.append(f"{subject['name']}/{mutation['name']}: {detector} exited "
                                 f"non-zero and no named check turned; the verdict was not read")
+            # Which rule refused, not just which tool. A mutation refused by a rule other than
+            # the one it was written to exercise is a catch of something, and it is not evidence
+            # that the intended rule works -- a rule that never fires on its own would be
+            # invisible in a headline catch rate (#362). `extraction` demonstrably fires two
+            # rules at once on one mutation, so this is not hypothetical.
+            #
+            # The intended rule counts only where its own detector refused: a rule that turned
+            # inside a tool that still exited 0 did not stop the map, which is what `score`
+            # means by detected.
+            # A string, a family of rules that answer one question, or None where no rule is
+            # written to catch the error at all.
+            intended = mutation["expect"]
+            wanted = {intended} if isinstance(intended, str) else set(intended or ())
+            refusing_rules = {t["check"] for t in turned if t["detector"] in refused}
+            by_intended = bool(wanted & refusing_rules)
             runs.append({
                 "mutation": mutation["name"], "applicable": True, "damage": what,
                 "detected": bool(refused), "refusedBy": refused,
                 "signalled": bool(turned) and not refused,
+                "expected": list(wanted) and sorted(wanted) or None,
+                "byIntendedRule": by_intended,
+                # A catch that is nobody's intended catch. For a mutation with no intended rule
+                # -- one that measures a gap the validator has no check for -- every refusal is
+                # one of these, and saying so is the point rather than an embarrassment.
+                "byNeighbourOnly": bool(refused) and not by_intended,
                 "by": turned,
             })
     finally:
@@ -769,7 +827,10 @@ def table(measurement):
             elif not run_of["applicable"]:
                 cells.append("n/a")
             elif run_of["detected"]:
-                cells.append(", ".join(sorted({t["check"] for t in run_of["by"]})))
+                rules = ", ".join(sorted({t["check"] for t in run_of["by"]}))
+                # A distinct outcome, not a catch: the map was stopped, and not by the rule this
+                # mutation is here to measure (#362).
+                cells.append(rules if run_of.get("byIntendedRule") else f"neighbour only: {rules}")
             elif run_of["signalled"]:
                 cells.append("signalled only: "
                              + ", ".join(sorted({t["check"] for t in run_of["by"]})))
@@ -787,6 +848,10 @@ def shape(measurement):
                 "applicable": run_of["applicable"],
                 "detected": run_of.get("detected", False),
                 "signalled": run_of.get("signalled", False),
+                # Held by the gate like the rest: a mutation that stops being caught by the rule
+                # it exercises, and starts being caught only by a neighbour, is a row nobody
+                # chose to move (#362).
+                "byIntendedRule": run_of.get("byIntendedRule", False),
                 "by": sorted({f"{t['detector']}:{t['check']}" for t in run_of.get("by", [])}),
             }
             for run_of in subject["runs"]
@@ -883,10 +948,27 @@ def main(argv=None):
 
     applied = [r for s in measurement["subjects"] for r in s["runs"] if r["applicable"]]
     detected = [r for r in applied if r["detected"]]
+    # The headline number, and then the one it can hide: how many of those catches were made by
+    # the rule the mutation was written to exercise (#362). A catch rate that is right about the
+    # number can be wrong about which rules are load-bearing, and a rule that never catches
+    # anything on its own does not show up in the first figure at all.
+    intended = [r for r in detected if r.get("byIntendedRule")]
+    neighbour = [r for r in detected if not r.get("byIntendedRule")]
     measurement["totals"] = {"applied": len(applied), "detected": len(detected),
-                             "missed": len(applied) - len(detected)}
+                             "missed": len(applied) - len(detected),
+                             "byIntendedRule": len(intended),
+                             "byNeighbourOnly": len(neighbour)}
     print(f"\n{len(detected)} of {len(applied)} mutations detected; "
           f"{len(applied) - len(detected)} missed")
+    print(f"{len(intended)} of those {len(detected)} were refused by the rule the mutation "
+          f"exercises; {len(neighbour)} only by another")
+    for run_of in neighbour:
+        expected = run_of.get("expected")
+        rules = ", ".join(sorted({x["check"] for x in run_of.get("by", [])})) or "nothing named"
+        if isinstance(expected, (list, tuple)):
+            expected = " or ".join(expected)
+        print(f"  neighbour  {run_of['mutation']}: expected {expected or 'no rule -- it measures a gap'}"
+              f", refused by {rules}")
     print(table(measurement))
 
     if args.json:

@@ -8,9 +8,9 @@
 | `assertion-to-operation` | asserted-by | **missed** | n/a | **missed** | n/a |
 | `invent-depends-on` | **missed** | **missed** | **missed** | **missed** | **missed** |
 | `neighbour-evidence` | cross-references, locators | locators | cross-references, locators | **missed** | locators |
-| `same-passage-evidence` | cross-references | **missed** | **missed** | **missed** | **missed** |
+| `same-passage-evidence` | neighbour only: cross-references | **missed** | **missed** | **missed** | **missed** |
 | `move-locator` | locators | locators | locators | locators | locators |
 | `omit-definition` | n/a | **missed** | **missed** | **missed** | **missed** |
-| `remove-applicability` | superposition | gates | applicability-reach | **missed** | n/a |
+| `remove-applicability` | neighbour only: superposition | neighbour only: gates | applicability-reach | **missed** | n/a |
 | `hide-cross-reference` | cross-references | cross-references | cross-references | **missed** | **missed** |
 | `narrow-extent` | extent-bounds | extent | n/a | extent, extent-bounds, extent-end | extent, extent-bounds |

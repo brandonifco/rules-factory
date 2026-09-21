@@ -63,8 +63,15 @@ the bytes depend on the inputs and nothing else, so the publish job can rebuild 
 prove they are the bytes the gate job checked.
 
 What it cannot do: tell whether the version number is the right one. 0015 says what counts
-as a major, minor or patch change; nothing here compares against the previous published
-version. The tag-to-version check only proves the tag and the reviewed file agree.
+as a major, minor or patch change, and nothing here judges which of the three a diff is. The
+tag-to-version check only proves the tag and the reviewed file agree.
+
+What it does now compare against the version being replaced (0062, #378): the map at the
+highest `map/<name>/vX.Y.Z` tag below this version is passed to `check-map.py --previous`, so a
+check that had subject matter in the version being replaced and has none here fails instead of
+reporting NOT VERIFIED and passing (#268). A first publish has no such tag, passes no
+`--previous`, and is not refused for it. Which version was compared -- or that none was -- is
+printed on every run.
 
 Usage: pack-map.py <map-dir> --out DIR [--tag map/<name>/vX.Y.Z] [--commit SHA]
 Exit 0 when the gate passed and the package was written; 1 when the gate refused it;
@@ -136,6 +143,80 @@ def package_id(map_name):
 
 def tag_for(map_name, version):
     return f"map/{map_name}/v{version}"
+
+
+def _version_key(text):
+    """`1.10.0` sorts above `1.9.0`, which a string comparison does not (0015)."""
+    try:
+        return tuple(int(part) for part in text.split("."))
+    except ValueError:
+        return None
+
+
+def previous_published(repo_root, map_dir, map_name, version):
+    """The bytes of the map version this one replaces, written to a file, or None for a first
+    publish.
+
+    **Where the predecessor comes from, and why it is a tag** (0062, #378). `check-map.py
+    --previous PATH` re-runs any check that reports no subject matter against the version being
+    replaced, and fails where that check had subject matter there -- so a corpus that lost its
+    assertions, its gates or its definitions is a change the map's diff states rather than a
+    check that goes quiet (#268). `tools/mutate-map.py` passes it. This gate, the one that
+    actually publishes, did not.
+
+    Three sources were available and two were refused. Fetching the published package from
+    nuget.org is the truest reading of "the version being replaced", and it puts a network read
+    inside a gate: the verdict would then depend on a remote service and could differ between
+    runs, which is the defect #408 found in a measurement that looked reproducible and was not,
+    and 0048 binds a package to artifacts whose bytes *this gate* verified. A path the publisher
+    names proves whatever it was handed. A tag in this repository is offline, reproducible, and
+    bytes a reviewer can read at a name the tag-to-version check already holds to the reviewed
+    file.
+
+    A first publish has no predecessor and is not refused for it: None here, no `--previous`
+    below, and exactly the behaviour #268 describes for a caller who passes nothing.
+    """
+    if map_dir.startswith("../") or os.path.isabs(map_dir):
+        # The map is not in this repository, so no tag here names its predecessor. Packing a map
+        # from outside the tree is what the tests do and what a caller may do deliberately; it is
+        # not an error, and it is not a comparison either.
+        return None, (f"the map directory is outside this repository, so no tag here names the "
+                      f"version it replaces; no previous version was compared")
+    listed = subprocess.run(["git", "-C", repo_root, "tag", "--list", f"map/{map_name}/v*"],
+                            capture_output=True, text=True)
+    if listed.returncode != 0:
+        # Not a refusal: a checkout without tags (a shallow clone, an export) can still pack. It
+        # says so rather than silently packing as though there were no predecessor.
+        return None, f"git could not list tags, so no predecessor was read: {listed.stderr.strip()}"
+    here = _version_key(version)
+    earlier = []
+    for tag in listed.stdout.split():
+        key = _version_key(tag.rsplit("/v", 1)[-1])
+        if key is not None and here is not None and key < here:
+            earlier.append((key, tag))
+    if not earlier:
+        # Two different situations, and calling both "a first publish" would hide the second.
+        # A 1.x with no earlier tag genuinely has no predecessor. A 2.0.0 with none has one
+        # somewhere and this repository cannot reach it -- an untagged release, a tag never
+        # pushed -- and that is the blind spot #268 closed for the harness and #378 for this
+        # gate, so it is named rather than smoothed over.
+        if here and here[0] <= 1:
+            return None, f"no map/{map_name}/v* tag below v{version}; this is a first publish"
+        return None, (f"no map/{map_name}/v* tag below v{version}, so no previous version was "
+                      f"compared -- and v{version} is not a first version, so its predecessor is "
+                      f"either untagged here or was never published. The checks that need the "
+                      f"version being replaced did not run")
+    tag = max(earlier)[1]
+    relative = f"{map_dir}/corpus-map.json"
+    shown = subprocess.run(["git", "-C", repo_root, "show", f"{tag}:{relative}"],
+                           capture_output=True)
+    if shown.returncode != 0:
+        # Loud, because the alternative is the blind spot #268 closed: a predecessor silently not
+        # read is a check silently not run against it.
+        raise Refused(f"{tag} is the version v{version} replaces and does not contain {relative}, "
+                      f"so the checks that need the previous version cannot run against it. Recover "
+                      f"the tag, or say why this map has no readable predecessor")
+    return shown.stdout, f"{tag}"
 
 
 def only_one(directory, prefix):
@@ -348,10 +429,27 @@ def gate(inputs, repo_root):
                 handle.write(item["bytes"])
             staged_corpora[item["sourceId"]] = path
 
-        run_step("check-map.py --phase publish", [
-            sys.executable, stage_checker, stage_map,
-            "--manifest", stage_manifest, "--repo-root", repo_root,
-            "--comparison", inputs["map_path"], "--phase", "publish"])
+        # The version this one replaces (#378, 0062). Staged beside the map for the same reason
+        # the map is: the checks run against bytes this gate read, not against a working tree.
+        previous_raw, where = previous_published(
+            repo_root,
+            os.path.relpath(os.path.dirname(inputs["map_path"]), repo_root).replace(os.sep, "/"),
+            inputs["name"], inputs["version"])
+        publish_argv = [sys.executable, stage_checker, stage_map,
+                        "--manifest", stage_manifest, "--repo-root", repo_root,
+                        "--comparison", inputs["map_path"], "--phase", "publish"]
+        if previous_raw is not None:
+            stage_previous = os.path.join(stage, "previous", "corpus-map.json")
+            os.makedirs(os.path.dirname(stage_previous), exist_ok=True)
+            with open(stage_previous, "wb") as handle:
+                handle.write(previous_raw)
+            publish_argv += ["--previous", stage_previous]
+            print(f"   the version being replaced: {where}")
+        else:
+            # Said out loud on every run. A predecessor not read is a set of checks not run
+            # against one, and "nothing was compared" has to be as visible as a comparison.
+            print(f"   no previous version compared: {where}")
+        run_step("check-map.py --phase publish", publish_argv)
         argv = ([f"{source_id}={staged_corpora[source_id]}" for source_id in cited]
                 if len(cited) > 1 else [staged_corpora[cited[0]]])
         run_step(f"{os.path.relpath(checker, REPO)} ({adapter})",

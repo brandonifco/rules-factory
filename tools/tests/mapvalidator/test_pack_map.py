@@ -465,5 +465,63 @@ class TestPackageId(unittest.TestCase):
         self.assertEqual(pack_map.package_id("faa-part-107"), "RulesFactory.Maps.FaaPart107")
 
 
+class ThePublishGateReadsTheVersionItReplaces(unittest.TestCase):
+    """#378, 0062: the one gate that actually publishes was the only place `--previous` was not
+    used, so every check that reports NOT VERIFIED for want of subject matter passed there even
+    when the subject matter had been there in the version being replaced (#268)."""
+
+    def test_the_predecessor_is_the_highest_tag_below_this_version(self):
+        self.assertEqual((1, 10, 0) > (1, 9, 0), True, "a sanity check on the ordering below")
+        self.assertEqual(pack_map._version_key("1.10.0"), (1, 10, 0))
+        self.assertEqual(pack_map._version_key("2.0.0"), (2, 0, 0))
+        self.assertIsNone(pack_map._version_key("not-a-version"))
+        # String order would put v10 below v9; the real maps have no double digit yet, and the
+        # check is here so the first one does not quietly compare against the wrong version.
+        self.assertGreater(pack_map._version_key("1.10.0"), pack_map._version_key("1.9.0"))
+
+    def test_a_real_map_compares_against_its_predecessor_tag(self):
+        raw, where = pack_map.previous_published(REPO, "examples/hoyle-backgammon",
+                                                 "hoyle-backgammon", "6.0.0")
+        self.assertEqual(where, "map/hoyle-backgammon/v5.0.0")
+        self.assertIsNotNone(raw)
+        document = json.loads(raw.decode("utf-8"))
+        self.assertTrue(document.get("entries"), "the predecessor read back as no map at all")
+
+    def test_a_first_version_has_no_predecessor_and_is_not_refused(self):
+        raw, where = pack_map.previous_published(REPO, "examples/hoyle-backgammon",
+                                                 "hoyle-backgammon", "1.0.0")
+        self.assertIsNone(raw)
+        self.assertIn("first publish", where)
+
+    def test_a_later_version_with_no_earlier_tag_says_so_and_is_not_called_a_first_publish(self):
+        """The two wear the same shape and only one of them is harmless: a predecessor that was
+        untagged or never published is the blind spot #268 closed, reopening quietly."""
+        raw, where = pack_map.previous_published(REPO, "examples/hoyle-backgammon",
+                                                 "no-such-map-name", "2.0.0")
+        self.assertIsNone(raw)
+        self.assertNotIn("first publish", where)
+        self.assertIn("did not run", where)
+
+    def test_a_tag_that_does_not_contain_the_map_is_refused(self):
+        """Loud, because a predecessor not read is a set of checks not run against one."""
+        with self.assertRaises(pack_map.Refused) as refusal:
+            pack_map.previous_published(REPO, "examples/not-a-directory", "hoyle-backgammon", "6.0.0")
+        self.assertIn("map/hoyle-backgammon/v5.0.0", str(refusal.exception))
+        self.assertIn("cannot run against it", str(refusal.exception))
+
+    def test_a_map_outside_this_repository_is_not_a_comparison_and_not_an_error(self):
+        raw, where = pack_map.previous_published(REPO, "../elsewhere/a-map", "hoyle-backgammon", "6.0.0")
+        self.assertIsNone(raw)
+        self.assertIn("outside this repository", where)
+
+    def test_the_gate_passes_previous_where_there_is_one(self):
+        source = open(os.path.join(REPO, "tools", "pack-map.py"), encoding="utf-8").read()
+        body = source.split("def pack(", 1)[-1] if "def pack(" in source else source
+        self.assertIn('publish_argv += ["--previous", stage_previous]', body,
+                      "the publish gate no longer passes the version it replaces (#378)")
+        self.assertIn("no previous version compared", body,
+                      "a run that compared nothing must say so as loudly as one that did")
+
+
 if __name__ == "__main__":
     unittest.main()

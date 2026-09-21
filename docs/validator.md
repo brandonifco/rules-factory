@@ -117,11 +117,19 @@ does it see a check that lost only *half* its subject matter: an assertion remov
 has five leaves `asserted-by` looking at four and saying `ok`.
 
 `tools/mutate-map.py` passes it, because the harness holds both versions and that is what makes
-the two silent skips measurable. [`tools/pack-map.py`](../tools/pack-map.py) does not: the publish
-gate reads the working tree, and the version being replaced is on nuget.org. That is the same
-boundary it already states about version numbers — *nothing here compares against the previous
-published version* — and closing it is
-[#378](https://github.com/brandonifco/rules-factory/issues/378).
+the two silent skips measurable. [`tools/pack-map.py`](../tools/pack-map.py) now passes it too
+([0062](decisions/0062-the-publish-gate-reads-the-version-it-replaces-from-a-tag-in-this-repository.md)),
+and the predecessor's bytes come from the highest `map/<name>/vX.Y.Z` tag below the version being
+packed — not from nuget.org, because a network read would make the gate's verdict depend on a
+remote service, and not from a path the publisher names, because that proves whatever it was
+handed. A first publish passes no `--previous` and is not refused for it; a tag that exists and
+does not contain the map is a refusal rather than a silent skip; and which version was compared,
+or that none was, is printed on every run.
+
+Three of the four packable maps compare against a predecessor today. The fourth,
+`tax-121-principal-residence`, is at v2.0.0 with no v1 tag, so it has no reachable predecessor —
+which the gate reports as that, rather than as a first publish, because the two wear the same
+shape and only one of them is harmless.
 
 A ruling that resolves a question the map never recorded as open is the fourth trace, and it is
 already refused — by `tools/factory/rulings.py` (0027), because a ruling lives in the engine's
