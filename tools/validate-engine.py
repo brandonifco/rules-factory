@@ -1364,6 +1364,9 @@ class FakeGitHub:
         The commit statuses start empty: each check records its own verdicts through record-verdict.py.
         `runs` is the conformance-gate run GitHub holds at that head -- there is one as soon as a
         pull request is opened -- and `reruns` the re-requests the rails make of it, which start none."""
+        # What `record()` names when a verdict is recorded: a reviewer states the commit they read,
+        # and never lets the tool reach for whatever the pull request is at now (#334).
+        self.head = head
         changed = [{"path": f"src/{NAME}/Rules/PlayerCount.cs", "changeType": "MODIFIED"}]
         document = {
             "repository": "owner/engine",
@@ -1406,6 +1409,7 @@ class FakeGitHub:
 
     def move_head(self, head):
         """A further commit pushed to the pull request: the statuses stay on the commits they were recorded at."""
+        self.head = head
         with open(self.state, encoding="utf-8") as handle:
             document = json.load(handle)
         document["pulls"][PR]["headRefOid"] = head
@@ -1416,8 +1420,14 @@ class FakeGitHub:
         env = dict(os.environ, RULES_ENGINE_GH=self.script, VALIDATE_ENGINE_FAKE_GH_STATE=self.state)
         return run_to(log, [PYTHON, *command], cwd=railed, env=env, both=True)
 
-    def record(self, railed, log, reviewer):
-        if self.tool(railed, log, "tools/record-verdict.py", "--pr", PR, "--reviewer", reviewer, "--verdict", "pass") != 0:
+    def record(self, railed, log, reviewer, sha=None):
+        """A verdict, at the commit the reviewer names.
+
+        `--sha` is not optional any more (#334): record-verdict.py used to default to the pull
+        request's live head, so a review of one commit could be recorded as approval of another.
+        """
+        if self.tool(railed, log, "tools/record-verdict.py", "--pr", PR, "--reviewer", reviewer,
+                     "--verdict", "pass", "--sha", sha or self.head) != 0:
             cat(log)
             fail(f"tools/record-verdict.py could not record a pass by {reviewer} in a produced engine")
 
@@ -1467,6 +1477,14 @@ def a_verdict_at_one_commit_does_not_pass_another(r, railed, github):
     policy = railed_policy(railed)
     log = r.s("verdict-at-sha.log")
     github.serve(railed, COMMIT_A, ready(policy, "normalRisk"))
+    # #334: with no --sha and no --packet the tool refuses rather than reaching for the live head.
+    if github.tool(railed, log, "tools/record-verdict.py", "--pr", PR, "--reviewer", "semantic",
+                   "--verdict", "pass") != 1:
+        cat(log)
+        fail("tools/record-verdict.py recorded a verdict naming no commit in a produced engine")
+    if not grep_fixed(log, "nothing names the commit reviewed"):
+        cat(log)
+        fail("record-verdict.py refused a verdict naming no commit for some other reason")
     github.record(railed, log, "semantic")
     if github.gate(railed, log) != 0:
         cat(log)
@@ -1732,7 +1750,8 @@ def swapping_the_provider_chain_is_an_edit_to_the_policy_alone(r, railed, github
 
     log = r.s("provider-swap.log")
     github.serve(railed, COMMIT_A, ready(policy, "independentRisk"))
-    if github.tool(railed, log, "tools/record-verdict.py", "--pr", PR, "--reviewer", old[0]["id"], "--verdict", "pass") != 1:
+    if github.tool(railed, log, "tools/record-verdict.py", "--pr", PR, "--reviewer", old[0]["id"],
+                   "--verdict", "pass", "--sha", COMMIT_A) != 1:
         cat(log)
         fail(f"tools/record-verdict.py still records for {old[0]['id']}, which the swapped policy no longer names")
     github.record(railed, log, "semantic")
