@@ -615,13 +615,22 @@ def comparison_record(directory):
     return home if os.path.isdir(home) else None
 
 
-def detectors(subject, map_path, root):
-    """Every verdict the validator reaches about this map, by detector and by check name."""
+def detectors(subject, map_path, root, previous=None):
+    """Every verdict the validator reaches about this map, by detector and by check name.
+
+    `previous` is the committed map, passed as the version this one replaces (#268). That is
+    what the run models: the committed map is the published version, the mutated map is the one
+    proposed to replace it, and a check that had subject matter there and has none here is a
+    claim that the corpus changed. The control gets it too, pointing at the same bytes, so the
+    control's verdicts are unchanged by it and a detection is the mutation's doing.
+    """
     directory = os.path.join(root, subject["dir"])
     manifest = os.path.join(directory, "corpus-manifest.json")
     results = {}
 
     argv = ["tools/check-map.py", map_path, "--manifest", manifest, "--repo-root", root]
+    if previous:
+        argv += ["--previous", previous]
     # The map is written into a bare temporary directory, so the checks that find a file beside
     # the map find nothing there. `superposition` reads the blind second mapping's adjudication
     # record (0034), and without this it says NOT VERIFIED on the control and on every mutation,
@@ -682,8 +691,12 @@ def measure(subject, root, only=None):
     runs, problems = [], []
     try:
         map_path = os.path.join(workspace, "corpus-map.json")
+        # The published version every run is measured against (#268). Named so that
+        # `find_manifest` and `pack-map.py`'s one-map rule do not see a second map beside it.
+        previous_path = os.path.join(workspace, "published-map.json")
+        write(previous_path, committed)
         write(map_path, committed)
-        control = detectors(subject, map_path, root)
+        control = detectors(subject, map_path, root, previous_path)
         for detector, result in control.items():
             if result["exit"] != 0:
                 problems.append(f"{subject['name']}: {detector} is already red on the committed "
@@ -707,7 +720,7 @@ def measure(subject, root, only=None):
                                 f"nothing, and would be scored as an undetected error")
                 continue
             write(map_path, document)
-            after = detectors(subject, map_path, root)
+            after = detectors(subject, map_path, root, previous_path)
             turned, refused, unexplained = score(control, after)
             for detector in unexplained:
                 problems.append(f"{subject['name']}/{mutation['name']}: {detector} exited "
