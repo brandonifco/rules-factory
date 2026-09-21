@@ -11,7 +11,10 @@ Asserted: two runs give byte-identical provenance, and so does a re-run in place
 say what the inputs are; recompute passes on fresh output; changing a generated file, the
 corpus copy, a recipe, or the package makes recompute fail naming the field; after a re-run with
 a newer map, recompute passes, and a pin hand-edited back to the old version fails it (#66); a dirty factory
-is refused, and `--allow-dirty` records it; a factory outside git is refused.
+is refused, and `--allow-dirty` records it; a factory outside git is refused; a factory whose
+recipe files are not the bytes of the commit it would name -- a committed file or directory
+symlink under `tools/factory`, a symlinked `tools/check-map.py`, an ignored file under
+`tools/factory` that is not `__pycache__` -- is refused, naming the path (#232).
 
 Build inputs (#69): `buildInputs` lists the engine-owned build files by rule, never a generated
 or managed file (#72: those are hashed once, in `generated` and `managed`); a fresh run and a
@@ -567,6 +570,87 @@ class TestRefuses(ProvenanceCase):
         code, output, _ = self.produce(repo=repo)
         self.assertEqual(code, 1, output)
         self.assertIn("uncommitted changes", output)
+
+    # A symlink and an ignored file are the two ways the bytes `recipes()` hashes can fail to be
+    # the bytes of the commit the record names, with `git status` calling the tree clean (#232).
+    # Each test below commits what it makes, or has git ignore it, so the *dirty* rule cannot
+    # fire; each asserts the refusal's own words, because a test that asserted only the verdict
+    # would pass on `--allow-dirty`'s rule firing instead of this one (#283). `assertNotIn` on
+    # "uncommitted changes" says that in the assertion itself.
+
+    def _outside(self, name, text="OUTSIDE = 1\n"):
+        """A file outside the scratch repository, for a symlink under it to point at."""
+        outside = os.path.join(self.tmp, "outside")
+        os.makedirs(outside, exist_ok=True)
+        path = os.path.join(outside, name)
+        pathlib.Path(path).write_text(text, encoding="utf-8")
+        return path
+
+    def test_a_tracked_file_symlink_under_the_factory(self):
+        repo = self.own_repo()
+        link = os.path.join(repo, "tools", "factory", "generate.py")
+        target = self._outside("outside.py", pathlib.Path(link).read_text(encoding="utf-8"))
+        os.remove(link)
+        os.symlink(target, link)
+        git(repo, "add", "-A")
+        git(repo, "commit", "-q", "-m", "generate.py is a symlink")
+        self.assertEqual(git(repo, "status", "--porcelain"), "", "the symlink is committed; git calls the tree clean")
+        code, output, out = self.produce(repo=repo)
+        self.assertEqual(code, 1, output)
+        self.assertIn("tools/factory/generate.py is a symlink", output)
+        self.assertNotIn("uncommitted changes", output)
+        self.assertFalse(os.path.exists(out), "nothing is produced")
+
+    def test_a_tracked_directory_symlink_under_the_factory(self):
+        repo = self.own_repo()
+        self._outside("in_pkg.py")
+        os.symlink(os.path.join(self.tmp, "outside"), os.path.join(repo, "tools", "factory", "pkg"))
+        git(repo, "add", "-A")
+        git(repo, "commit", "-q", "-m", "pkg is a symlink")
+        self.assertEqual(git(repo, "status", "--porcelain"), "", "the symlink is committed; git calls the tree clean")
+        code, output, _ = self.produce(repo=repo)
+        self.assertEqual(code, 1, output)
+        self.assertIn("tools/factory/pkg is a symlink", output)
+        self.assertNotIn("uncommitted changes", output)
+
+    def test_a_symlinked_checker_beside_the_factory(self):
+        repo = self.own_repo()
+        checker = os.path.join(repo, "tools", "check-map.py")
+        target = self._outside("outside-check-map.py", pathlib.Path(checker).read_text(encoding="utf-8"))
+        os.remove(checker)
+        os.symlink(target, checker)
+        git(repo, "add", "-A")
+        git(repo, "commit", "-q", "-m", "check-map.py is a symlink")
+        self.assertEqual(git(repo, "status", "--porcelain"), "", "the symlink is committed; git calls the tree clean")
+        code, output, _ = self.produce(repo=repo)
+        self.assertEqual(code, 1, output)
+        self.assertIn("tools/check-map.py is a symlink", output)
+        self.assertNotIn("uncommitted changes", output)
+
+    def test_an_ignored_file_under_the_factory(self):
+        repo = self.own_repo()
+        with open(os.path.join(repo, ".gitignore"), "a", encoding="utf-8") as handle:
+            handle.write("/tools/factory/local_notes.py\n")
+        git(repo, "add", "-A")
+        git(repo, "commit", "-q", "-m", "ignore local_notes.py")
+        pathlib.Path(repo, "tools", "factory", "local_notes.py").write_text("LOCAL = 1\n", encoding="utf-8")
+        self.assertEqual(git(repo, "status", "--porcelain"), "", "an ignored file leaves the tree clean")
+        code, output, out = self.produce(repo=repo)
+        self.assertEqual(code, 1, output)
+        self.assertIn("tools/factory/local_notes.py is ignored by git", output)
+        self.assertNotIn("uncommitted changes", output)
+        self.assertFalse(os.path.exists(out), "nothing is produced")
+
+    def test_a_pycache_under_the_factory_is_not_refused(self):
+        # The other side of the ignored-file rule: running the factory writes __pycache__ into
+        # its own directory, and recipes() already skips it, so it is not a refusal.
+        repo = self.own_repo()
+        cache = os.path.join(repo, "tools", "factory", "__pycache__")
+        os.makedirs(cache, exist_ok=True)
+        pathlib.Path(cache, "generate.cpython-00.pyc").write_bytes(b"not bytecode")
+        out = self.produced(repo=repo)
+        self.assertFalse(self.record(out)["factory"]["dirty"])
+        self.assertNotIn("__pycache__", json.dumps(self.record(out)["recipes"]["files"]))
 
     def test_a_factory_outside_git(self):
         loose = os.path.join(self.tmp, "loose")

@@ -1196,6 +1196,75 @@ class TestStatus(MapCase):
         # The shape holds wherever the field appears, not only where it is required.
         self.assert_catches("status", lambda d: d["entries"][2].update(tests=[{"test": "WellClearTests.X"}]), message="tests[0] ('WellClearTests.X') records no `mutation`")
 
+    # #240: a placeholder is not a mutation, and the checker a published map package carries
+    # refuses one before any engine merges the map. Every test below names the exact refusal
+    # rather than only the verdict, because `tests_problems` holds four other rules that also
+    # turn `status` red -- no `mutation`, a `tests` item that is not an object, a missing `test`,
+    # a test named twice -- and any of them would satisfy a verdict-only assertion while the
+    # placeholder rule went unexercised (#283). The reason is asserted too, not just the
+    # refusal: "is a placeholder" means normalisation read the word, where "too short" would
+    # mean only the floor caught it.
+    def test_a_placeholder_mutation_fails(self):
+        self.assert_catches("status", lambda d: d["entries"][0]["tests"][0].update(mutation="PENDING"),
+                            message="records 'PENDING', which is a placeholder, not a mutation")
+
+    def test_a_mutation_of_placeholder_words_fails(self):
+        self.assert_catches("status", lambda d: d["entries"][0]["tests"][0].update(mutation="todo -- pending, tbd"),
+                            message="which is a placeholder, not a mutation")
+
+    def test_a_placeholder_spelled_in_unicode_fails(self):
+        # Fullwidth TODO. It is the normalisation that reads this as the word; without NFKD it
+        # is three distinct-looking characters and the placeholder rule never sees a placeholder.
+        self.assert_catches("status", lambda d: d["entries"][0]["tests"][0].update(mutation="ＴＯＤＯ"),
+                            message="which is a placeholder, not a mutation")
+
+    def test_one_word_repeated_fails(self):
+        # A Cyrillic capital O where the Latin O belongs, repeated three times. No confusable
+        # mapping is done, so this is refused for being one word repeated and never read as
+        # `TODO` -- which is the claim the rule makes and the size of claim it keeps.
+        self.assert_catches("status", lambda d: d["entries"][0]["tests"][0].update(mutation="TОDO TОDO TОDO"),
+                            message="which is one word repeated, not a mutation")
+
+    def test_a_mutation_under_the_word_floor_fails(self):
+        self.assert_catches("status", lambda d: d["entries"][0]["tests"][0].update(mutation="comparison inverted"),
+                            message="which is too short to be a mutation: at least 3 words and 12 characters")
+
+    def test_a_mutation_under_the_character_floor_fails(self):
+        self.assert_catches("status", lambda d: d["entries"][0]["tests"][0].update(mutation="abc def gh"),
+                            message="which is too short to be a mutation: at least 3 words and 12 characters")
+
+    def test_the_refusal_says_what_it_cannot_tell(self):
+        # The floor refuses an unfilled placeholder and nothing else. A reader who is told only
+        # "that is not a mutation" will read the passing case as "the test was watched failing",
+        # which this check has never been able to say.
+        self.assert_catches("status", lambda d: d["entries"][0]["tests"][0].update(mutation="TBD"),
+                            message="it cannot tell whether the edit was made or the test went red")
+
+    def test_a_real_mutation_at_the_floor_passes(self):
+        # The floor is set far below any real mutation on purpose: refusing honest work blocks
+        # it and teaches people to pad. Exactly three words and exactly twelve characters pass.
+        document = valid_map()
+        document["entries"][0]["tests"][0]["mutation"] = "abc def ghij"
+        code, output = self.run_tool(document)
+        self.assertEqual(self.status_of(output, "status"), "ok", output)
+        self.assertEqual(code, 0, output)
+
+    def test_a_placeholder_word_inside_a_real_mutation_passes(self):
+        document = valid_map()
+        document["entries"][0]["tests"][0]["mutation"] = (
+            "Handlers.SpeedLimit answered none where the map says pending review is unknown "
+            "to it; this test went red.")
+        code, output = self.run_tool(document)
+        self.assertEqual(self.status_of(output, "status"), "ok", output)
+        self.assertEqual(code, 0, output)
+
+    def test_a_placeholder_on_an_unbuilt_entry_still_fails(self):
+        # The shape of `tests` holds wherever the field appears, not only where it is required,
+        # and so does what a mutation must be.
+        self.assert_catches("status", lambda d: d["entries"][2].update(
+            tests=[{"test": "WellClearTests.X", "mutation": "TODO"}]),
+            message="which is a placeholder, not a mutation")
+
     def test_a_map_with_nothing_built_does_not_report_ok(self):
         # All three example maps are in this state. Reporting `ok` would be a gate
         # trusted for proving something it never looked at.

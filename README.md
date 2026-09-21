@@ -180,9 +180,21 @@ What never happens again is `NOT VERIFIED` on stdout and `0` in `$?`.
   in every target framework, so a skipped suite or a framework that stopped running is a failure
   and not a number ([#337](https://github.com/brandonifco/rules-factory/issues/337)). A refusal or failure at any step
   leaves `--out` as it was.
+- **The tree it is a proof of.** The gate runs on a staging copy of `--out`, so what it proves is
+  that copy — and the engine written out is that copy only while `--out` still holds the source and
+  build inputs it was made from. A verified commit compares them all, not only the paths the run
+  writes, and is refused before anything is written when one has moved, naming each path
+  ([#335](https://github.com/brandonifco/rules-factory/issues/335)). An edit made in `--out` while
+  `produce` ran is kept — nothing is written over it — and `produce` is run again to verify the
+  engine with it. Build output (`bin`, `obj`, `artifacts`, `TestResults`) is not an input and
+  refuses nothing. `--no-verify` builds nothing and claims nothing about a build, so it is held
+  only to the paths it writes.
 - **The record.** `provenance.json` names the factory commit, the package and corpus hashes, the
   kernel version, the hash of every recipe file and generated file, the managed files at their
-  recipe versions, and the bytes of every file the build reads as configuration.
+  recipe versions, and the bytes of every file the build reads as configuration. The recipe
+  hashes are of bytes the named commit holds, or the run is refused: a symlink under
+  `tools/factory`, or a git-ignored file there other than `__pycache__`, would be hashed from a
+  file no commit contains while `git status` — all `dirty` is — called the factory clean.
   `factory provenance` re-produces the engine and names every field that no longer matches.
   The engine's own gate holds a narrower claim without the factory: `scripts/engine-gate.py
   provenance` hashes the recorded generated and managed files and every file of the overlay they
