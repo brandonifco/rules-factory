@@ -676,6 +676,7 @@ class TestSdkOverride(VerifyCase):
 
     def test_the_recorded_copy_is_removed_when_the_gate_passes(self):
         _, _, seen = self.declaration(FACTORY_DOTNET_SDK_OVERRIDE=self.OTHER, CI="")
+        self.assertTrue(seen["declared"], "there is a copy to remove")
         self.assertFalse(os.path.exists(seen["declared"]))
         self.assertFalse(os.path.exists(os.path.dirname(seen["declared"])),
                          "the directory overridden_sdk made for it goes with it")
@@ -686,6 +687,7 @@ class TestSdkOverride(VerifyCase):
                                               FAKE_DOTNET_FAIL="build")
         self.assertEqual(code, 1, output)
         self.assertIn("verify FAILED at stage gate", output)
+        self.assertTrue(seen["declared"], "there is a copy to remove")
         self.assertFalse(os.path.exists(seen["declared"]))
         self.assertFalse(os.path.exists(os.path.dirname(seen["declared"])))
         self.assertEqual(before, self.global_json(), "and global.json is put back, as it is on a pass")
