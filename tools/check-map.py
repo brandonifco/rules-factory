@@ -1822,6 +1822,149 @@ def check_unresolved_reason(ctx):
                    "an open question returns a reason no row gives it")
 
 
+# --- tools/mapvalidator/anchors.py ------------------------------------------------------------
+# An `ambiguity.question` quotes the passage its two readings turn on (#271).
+#
+# Beside `ambiguity.py` rather than inside it: the block's own shape, its conflict groups and its
+# decision records are one module's worth of rules already, and the builder caps a joined module
+# at 300 lines. What lives here is the anchoring, and the reading of the corpus's words that
+# anchoring is defined over.
+
+
+# The run length, and why three. Every one of the 64 ambiguities the committed maps record
+# shares a run of at least three consecutive words with a passage one of those maps quotes; the
+# shortest are "miles per hour", "source of fear" and "about 6 seconds". Four refuses seven of
+# them. The invented block `tools/mutate-map.py --only clear-to-ambiguous` writes shares three
+# words with one map of five -- "between the two", of which the corpus owns not one -- which is
+# why an anchoring run must also carry a word outside the closed classes below.
+ANCHOR_WORDS = 3
+# Words a run can be made of without quoting anybody: articles, pronouns, prepositions,
+# conjunctions, auxiliaries and the bare quantifiers. A digit is not among them -- "about 6
+# seconds" anchors on the number the corpus prints.
+FUNCTION_WORDS = frozenset("""
+a an the this that these those each every any all some no none other another same such
+i me my we us our you your he him his she her it its they them their who whom whose which what
+of in on at to from by for with without within into onto over under above below between among
+across through during before after since until up down out off about against per as than
+and or but nor so yet if then when where while because although though unless whether either
+neither both not only also just more most less least very too here there now
+is are was were be been being am do does did done have has had having
+will would shall should can could may might must
+one two three four five six seven eight nine ten first second third
+""".split())
+NOT_A_WORD = re.compile(r"[^0-9a-z']+")
+# What a quotation of the corpus is read through, so an entry quoting the extraction's curly
+# apostrophe and a question typing a straight one are the same words.
+FOLDED_PAIRS = (("’", "'"), ("‘", "'"), ("“", '"'), ("”", '"'),
+                ("—", " "), ("–", " "), ("‒", " "))
+
+
+def corpus_words(text):
+    """`text` as the words a quotation of it shares with the corpus.
+
+    Case, spacing, punctuation and the dash-and-quote pairs an extraction prints are the
+    typesetter's rather than the corpus's; `crossReferences.cites` is compared after whitespace
+    normalisation for the same reason. Nothing else is done -- no stemming, no synonyms -- so a
+    run that matches is a run the mapper copied.
+    """
+    folded = unicodedata.normalize("NFKC", str(text or "")).lower()
+    for character, plain in FOLDED_PAIRS:
+        folded = folded.replace(character, plain)
+    return [word for word in (w.strip("'") for w in NOT_A_WORD.sub(" ", folded).split()) if word]
+
+
+def runs_of(words, length=ANCHOR_WORDS):
+    """Every run of `length` consecutive words, as space-joined strings."""
+    return {" ".join(words[at:at + length]) for at in range(len(words) - length + 1)}
+
+
+def quoted_runs(document):
+    """Every run the map's quoted evidence contains, one entry's evidence at a time.
+
+    Per entry, never over the concatenation: a run straddling two entries' evidence is a phrase
+    no passage contains, and admitting it would anchor a question to an accident of entry order.
+    """
+    found = set()
+    for entry in entries_of(document):
+        if isinstance(entry, dict):
+            found |= runs_of(corpus_words(entry.get("evidence")))
+    return found
+
+
+def anchor_of(question, available):
+    """The run of the corpus's words this question quotes, or None.
+
+    A run of only function words is not one: that is the question's own grammar meeting the
+    corpus's, and it carries no word anybody had to read the passage to write.
+    """
+    for run in sorted(runs_of(corpus_words(question))):
+        if run in available and any(word not in FUNCTION_WORDS for word in run.split()):
+            return run
+    return None
+
+
+def check_question_anchor(ctx):
+    """An `ambiguity.question` quotes the passage its two readings turn on (#271).
+
+    A `crossReferences` item names a `cites` string that appears verbatim in the entry's own
+    evidence: a reference is anchored to the passage that makes it rather than asserted beside
+    it. An `ambiguity` on the same entry had no such rule. Its `question` was free prose tied to
+    no word of the corpus, so a mapper who invented doubt the corpus settles -- a complete and
+    plausible block, with a `fate` and a valid `unresolvedReason` -- passed on 5 of the 5 maps
+    `tools/mutate-map.py` attacks.
+
+    The rule is on `question` and not on a new field, because a new field can only be carried by
+    a map written after it exists, and the 64 ambiguities this repository has already committed
+    are the evidence it had to hold for. A question quotes the corpus: a run of at least
+    `ANCHOR_WORDS` consecutive words appearing verbatim in quoted `evidence`, carrying at least
+    one word outside `FUNCTION_WORDS`.
+
+    **The anchor is the corpus as this map quotes it, not only this entry's own evidence.** Two
+    readings can turn on a passage another entry holds -- hazmat's IB3 row is ambiguous because
+    of what § 172.102(b)(4) says, and backgammon's `legal-destination` because of a sentence
+    three later -- and five committed ambiguities are exactly that shape. This is the one place
+    the rule is weaker than `cross-references`, and it is weaker on purpose.
+
+    What it cannot do, which is the larger half: it does not catch a mapper who invents doubt
+    about a real sentence. Nothing structural can. It catches the ambiguity that is about
+    nothing in the passage, which is what an invented one usually is, and it makes an invented
+    one have to be invented against words the corpus prints.
+
+    Its asymmetric twin stays out of reach and stays measured: `ambiguous-to-clear`, the
+    premature collapse, leaves no field to check, and `superposition` (0034) reaches only the
+    part of it a second reader recorded.
+
+    A corpus whose `quotation` is `withheld` (0013) quotes nothing for a question to be anchored
+    in. Those ambiguities are counted and named as unanchorable rather than passed quietly.
+    """
+    available, bad, anchored, withheld = quoted_runs(ctx["map"]), [], [], []
+    for position, entry in enumerate(entries_of(ctx["map"])):
+        if not isinstance(entry, dict):
+            continue
+        question = block(entry, "ambiguity").get("question")
+        if not isinstance(question, str) or not question.strip():
+            continue  # `exclusions` owns the missing question
+        name = label(entry, position)
+        if quotes_withheld(ctx.get("manifest"), entry):
+            withheld.append(name)
+            continue
+        if anchor_of(question, available) is None:
+            bad.append(f"  X  {name}: `ambiguity.question` quotes no passage this map quotes; "
+                       f"name the words the two readings turn on, as `crossReferences.cites` "
+                       f"names the words a pointer is made in. A question anchored to nothing is "
+                       f"a doubt nobody can check against the corpus (#271)")
+        else:
+            anchored.append(name)
+    held = (f"; {len(withheld)} of a corpus whose quotation is withheld, which nothing here can "
+            f"anchor" if withheld else "")
+    if not anchored and not bad:
+        return skip("no entry records an `ambiguity.question` this map could anchor" + held,
+                    had_subject=bool(withheld))
+    return verdict(bad, f"{len(anchored)} recorded ambiguit{'y' if len(anchored) == 1 else 'ies'}, "
+                        f"each quoting a run of the corpus's own words this map holds" + held,
+                   "an ambiguity is about no passage this map quotes")
+
+
 # --- tools/mapvalidator/bounds.py -------------------------------------------------------------
 # `ambiguity.bounds`: what an authored example fixes about a term an operative rule leaves
 # open (0031).
@@ -2064,6 +2207,119 @@ def check_bound_term_open(ctx):
                     "vacuous over this map", had_subject=False)
     return verdict(bad, f"{bounded} bounded term(s), each stated as open in the entry's own question",
                    "a bound narrows a term the map never recorded as open")
+
+
+# --- tools/mapvalidator/applicability.py ------------------------------------------------------
+# An applicability rule whose own words gate a whole section, and what the map says it gates
+# (#225).
+
+
+# The units a passage can gate all of. A paragraph is not among them: "this paragraph (e)" is a
+# scope a definition states about itself, and every definition in the tax map would be a gate.
+WHOLE_UNITS = (r"section|part|subpart|chapter|subchapter|title|table|appendix|schedule|glossary"
+               r"|book|rules")
+# The words a corpus gates a whole unit in. A list, exactly as `POINTER_PHRASES` is a list, and
+# with the same limit stated where the claim is: a corpus that says it in other words is unseen.
+# Group 1 is the word before the phrase and group 2 is the unit, both read by `gates_a_whole_unit`.
+WHOLE_UNIT_GATES = (
+    re.compile(r"(\w+\s+)?\bthis\s+(" + WHOLE_UNITS + r")\s+(?:is|are|shall be|will be)\s+"
+               r"(?:applicable|effective|in effect)\b", re.I),
+    re.compile(r"(\w+\s+)?\bthis\s+(" + WHOLE_UNITS + r")\s+"
+               r"(?:applies|apply|shall apply|shall not apply|does not apply|do not apply)\b", re.I),
+    re.compile(r"(\w+\s+)?\b(?:applies|applicable|apply)\s+(?:to|for)\s+"
+               r"(?:all|every|the\s+whole\s+of|the\s+entirety\s+of)\s+(?:this\s+)?(" + WHOLE_UNITS
+               + r")\b", re.I),
+)
+# A unit word behind one of these is the tail of a citation, not the subject of the sentence.
+# § 172.102(c)(7)(ii) says "§ 178.275(g)(3) of this subchapter does not apply", which switches off
+# one cited paragraph; reading it as the subchapter switching itself off flagged a committed map.
+CITATION_TAILS = ("of", "in", "under", "to", "within", "for", "by", "from", "on", "throughout")
+
+
+def gates_a_whole_unit(evidence):
+    """`(the words, the unit)` by which this passage gates a whole unit of the corpus, or None."""
+    text = " ".join(str(evidence or "").split())
+    for pattern in WHOLE_UNIT_GATES:
+        for match in pattern.finditer(text):
+            if (match.group(1) or "").strip().lower() in CITATION_TAILS:
+                continue
+            return match.group(0).strip(), match.group(2).lower()
+    return None
+
+
+def gated_ids(document):
+    """Every id named in `enabledBy` or `suspendedBy` anywhere in the map."""
+    named = set()
+    for entry in entries_of(document):
+        if not isinstance(entry, dict):
+            continue
+        for field in GATE_FIELDS:
+            for target in entry.get(field) or []:
+                if isinstance(target, str):
+                    named.add(target)
+    return named
+
+
+def check_applicability_reach(ctx):
+    """A rule whose own words gate a whole unit is named by the entries it gates (#225).
+
+    § 1.121-1(f) -- *"This section is applicable for sales and exchanges on or after December 24,
+    2002"* -- gates everything § 1.121-1 states. Trial 9's blind first mapping recorded the entry
+    and **no entry pointed at it**, so every rule it gates was recorded as applying
+    unconditionally; the third mapping added 30 `enabledBy` edges to correct it. Every check
+    passed the first map. This is `docs/method.md`'s own `full-table-suspension` warning arriving
+    a third time.
+
+    So: a `scope: in` entry whose `evidence` states an applicability over a whole section, part,
+    table or chapter, and whose id no entry names in `enabledBy` or `suspendedBy`, is refused.
+    `suspendedBy` counts as reach because a rule that switches a section off gates it as surely
+    as one that switches it on.
+
+    Deciding what "gates by its own words" means mechanically is the work, and the answer here is
+    a phrase list with the same standing as `POINTER_PHRASES`: `WHOLE_UNIT_GATES` holds the forms
+    the CFR corpora use, the unit words are `WHOLE_UNITS`, and a corpus that gates itself in other
+    words is not seen. A paragraph is deliberately not a whole unit -- "for purposes of this
+    paragraph (e)" is a definition stating its own scope, and admitting it would make a gate of
+    every definition in the tax map.
+
+    What it cannot do, and each is a place a mapper still has to read:
+
+      * **It cannot tell how far the gate reaches.** One edge satisfies it. The first map had
+        zero and the corrected map thirty; a map with one would pass here, and whether the list
+        is complete is review -- the same limit `gates` states about direction.
+      * **It has no way to record a gate with deliberately no reach.** Such a gate is possible,
+        and the honest answer was not a `note`: the first tax map's `effective-date` already
+        carries a note that names the section, so any rule satisfied by prose about the unit
+        would have been satisfied by the very entry this check exists to flag. The answer is
+        therefore the edge, or `scope: out` where the map does not reach the gate at all, and a
+        corpus that truly holds a reachless gate is a finding to file rather than a flag to
+        suppress.
+      * **It reads the map, never the corpus.** A passage that gates a whole section in words
+        outside the list is invisible here, exactly as a pointer in undeclared words is invisible
+        to `cross-references`.
+    """
+    named, bad, gates = gated_ids(ctx["map"]), [], []
+    for position, entry in enumerate(entries_of(ctx["map"])):
+        if not isinstance(entry, dict) or entry.get("scope") != "in":
+            continue
+        found = gates_a_whole_unit(entry.get("evidence"))
+        if found is None:
+            continue
+        words, unit = found
+        name = label(entry, position)
+        gates.append(name)
+        if entry.get("id") in named:
+            continue
+        bad.append(f"  X  {name}: `evidence` says {words!r}, so its own words gate the whole "
+                   f"{unit}, and no entry names it in `enabledBy` or `suspendedBy`. Every rule "
+                   f"the {unit} states is recorded as applying unconditionally: name this rule "
+                   f"in the gate lists of the entries it reaches, or put it out of scope (#225)")
+    if not gates:
+        return skip("no entry's own words gate a whole section, part or table, so this map "
+                    "records no applicability rule whose reach could be missing", had_subject=False)
+    return verdict(bad, f"{len(gates)} entr{'y gates' if len(gates) == 1 else 'ies gate'} a whole "
+                        f"unit of the corpus, and the map says of each which rules it gates",
+                   "an applicability rule gates a whole unit and no entry says it is gated")
 
 
 # --- tools/mapvalidator/mutation.py -----------------------------------------------------------
@@ -3384,6 +3640,67 @@ def _census(ctx, adjudicated):
             f"read, and {total - corroborated} rest on `ambiguity.question` alone (0034)")
 
 
+# --- tools/mapvalidator/predecessor.py --------------------------------------------------------
+# A check that had subject matter in the version this map replaces, and has none now (#268).
+#
+# Not a check: a rule about every check's verdict, applied by the command line after each one has
+# spoken. It reads the map a published version replaces, which is the one fact a single map cannot
+# supply about itself.
+
+
+def had_no_subject(result):
+    """Whether this verdict is a check declaring it found nothing to look at."""
+    return result.status == "skip" and not result.had_subject
+
+
+def silenced_by_the_change(name, check, result, previous, where):
+    """The verdict a check that lost its subject matter gets, or None to leave it alone.
+
+    `check-map.py` reports NOT VERIFIED for a check with no subject matter and, when the check
+    declares it had none, **exits 0**. That is right for a corpus that genuinely has no gates and
+    no assertions. It is wrong when the subject matter was there a moment ago and the damage is
+    what removed it, and both halves were measured: turning a map's only assertion into an
+    operation silences `asserted-by`, removing the rule every other entry was suspended by
+    silences `gates`, and `tools/mutate-map.py` watched the gate stay green through both.
+
+    The validator cannot know from one map whether a corpus has assertions. It can know that
+    *this* map had them: a published map package is a version, and its predecessor is a fact
+    (0015). A check that had subject matter in the version being replaced and has none now is a
+    claim that the corpus changed, and that claim belongs in the diff a mapper writes rather than
+    in a silent skip. `tools/mapper/`'s re-mapping guidance has had this shape since trial 3 --
+    diff entry content, never the entry list -- and the validator had nothing.
+
+    What it cannot do:
+
+      * **It says nothing without a predecessor.** A first map has none, and a publisher who does
+        not pass `--previous` gets exactly the behaviour #268 describes. The gate that publishes a
+        version is where the predecessor is known, which is where the option is meant to be used.
+      * **It compares verdicts, not corpora.** That a check went quiet is all it reads; whether
+        the corpus really lost its assertions is the mapper's to state, and this refuses the
+        silence rather than judging the answer.
+      * **It cannot see a check that lost half its subject matter.** An assertion removed from a
+        map that has five leaves `asserted-by` looking at four and saying `ok`. Only the last one
+        turns this on, which is the same shape as a map whose extent narrows by one page.
+    """
+    if previous is None or not had_no_subject(result):
+        return None
+    try:
+        before = check(previous)
+    except Exception as error:  # a check that raises on the published version has proved nothing
+        return fail([f"  X  {name}: {result.summary}, and the same check raised "
+                     f"{type(error).__name__} on {where}, so whether this map is the one that "
+                     f"silenced it cannot be read (#268)"],
+                    "this check has no subject matter here and the version it replaces could not "
+                    "be checked")
+    if had_no_subject(before):
+        return None
+    return fail([f"  X  {name}: {result.summary} -- and {where}, the version this map replaces, "
+                 f"had subject matter for it: {before.summary}. A corpus that lost its "
+                 f"assertions, its gates or its definitions between two versions is a change the "
+                 f"map's diff states, not a check that goes quiet (#268)"],
+                "this check had subject matter in the version being replaced and has none here")
+
+
 # --- tools/mapvalidator/phases.py -------------------------------------------------------------
 # The phase registry: every check by name, in the order it runs, and the overlay rule that
 # decides which of them an engine re-runs on its merged map (0015).
@@ -3424,6 +3741,7 @@ CHECKS = [
     ("references", check_references),
     ("no-cycles", check_no_cycles),
     ("gates", check_gates),
+    ("applicability-reach", check_applicability_reach),
     ("derived", check_derived),
     ("manifest", check_manifest),
     ("postures", check_postures),
@@ -3444,6 +3762,10 @@ CHECKS = [
     # none may: an overlay must not be able to turn a verdict about whether the corpus
     # settles a question, because the corpus is the same either way.
     ("unresolved-reason", check_unresolved_reason),
+    # #271: an ambiguity is anchored in the corpus's words, as a cross-reference is. It reads
+    # `evidence` and `ambiguity` and no overlay field, so it belongs here and not in
+    # STATUS_DEPENDENT: whether the corpus settles a question is the same either way.
+    ("question-anchor", check_question_anchor),
     ("bound-term-open", check_bound_term_open),
     ("superposition", check_superposition),
 ]
@@ -3484,6 +3806,9 @@ def main(argv=None):
     parser.add_argument("--comparison", help="the blind second mapping's adjudication record "
                                              "(0014), or the directory holding it; found under "
                                              "blind-mapping/ beside the map by default")
+    parser.add_argument("--previous", help="the published map this one replaces. A check that "
+                                           "had subject matter there and has none here fails, "
+                                           "rather than reporting NOT VERIFIED and passing (#268)")
     parser.add_argument("--only", help="run one check: " + ", ".join(name for name, _ in CHECKS))
     parser.add_argument("--verbose", action="store_true", help="also print the row each entry matches")
     parser.add_argument("--phase", choices=PHASES, default="publish",
@@ -3527,6 +3852,15 @@ def main(argv=None):
             print(f"cannot read adjudication record {comparison_path}: {error}", file=sys.stderr)
             return 2
 
+    previous_document = None
+    if args.previous:
+        try:
+            with open(args.previous, encoding="utf-8") as handle:
+                previous_document = json.load(handle)
+        except (OSError, ValueError) as error:
+            print(f"cannot read previous map {args.previous}: {error}", file=sys.stderr)
+            return 2
+
     ctx = {
         "map": document,
         "manifest": manifest,
@@ -3537,14 +3871,20 @@ def main(argv=None):
         "verbose": args.verbose,
     }
 
+    # The same context over the version this map replaces: the manifest, the repository and the
+    # adjudication record are the run's, and only the map differs (#268).
+    previous_ctx = dict(ctx, map=previous_document) if previous_document is not None else None
+
     print(f"{args.map_path} ({len(entries_of(document))} entries"
-          + (f", manifest {os.path.basename(manifest_path)}" if manifest_path else ", no manifest") + ")")
+          + (f", manifest {os.path.basename(manifest_path)}" if manifest_path else ", no manifest")
+          + (f", replacing {args.previous}" if previous_ctx is not None else "") + ")")
     failed = skipped = passed = fatal = 0
     for name, check in selected:
         try:
             result = check(ctx)
         except Exception as error:  # a check that crashes has proved nothing
             result = skip(f"the check raised {type(error).__name__}: {error}")
+        result = silenced_by_the_change(name, check, result, previous_ctx, args.previous) or result
         print(f"[{result.status}] {name}: {result.summary}")
         for line in result.details:
             print(line)

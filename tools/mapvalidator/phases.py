@@ -8,6 +8,8 @@ from .manifest import check_manifest, check_postures
 from .extraction import check_extraction
 from .ambiguity import (check_conflicts, check_decision_records, check_exclusions,
                         check_unresolved_reason)
+from .anchors import check_question_anchor
+from .applicability import check_applicability_reach
 from .bounds import check_bound_term_open, check_bounds
 from .status import check_absent, check_status
 from .inputs import check_asserted_by, check_draws
@@ -53,6 +55,7 @@ CHECKS = [
     ("references", check_references),
     ("no-cycles", check_no_cycles),
     ("gates", check_gates),
+    ("applicability-reach", check_applicability_reach),
     ("derived", check_derived),
     ("manifest", check_manifest),
     ("postures", check_postures),
@@ -73,6 +76,10 @@ CHECKS = [
     # none may: an overlay must not be able to turn a verdict about whether the corpus
     # settles a question, because the corpus is the same either way.
     ("unresolved-reason", check_unresolved_reason),
+    # #271: an ambiguity is anchored in the corpus's words, as a cross-reference is. It reads
+    # `evidence` and `ambiguity` and no overlay field, so it belongs here and not in
+    # STATUS_DEPENDENT: whether the corpus settles a question is the same either way.
+    ("question-anchor", check_question_anchor),
     ("bound-term-open", check_bound_term_open),
     ("superposition", check_superposition),
 ]

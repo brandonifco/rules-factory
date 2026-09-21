@@ -189,8 +189,11 @@ def derived_entry(entry_id, sources, **overrides):
 def decided_entry():
     """An entry whose ambiguity is settled by a record, for the two checks that need one."""
     return entry("opposed-test-tie", kind="operation", clarity="ambiguous", status="mapped",
+                 evidence="On equal hits the opposed test is decided by the sentence stating "
+                          "opposed-test-tie.",
                  ambiguity={
-                     "question": "The text does not say which side prevails on equal hits.",
+                     # #271: the question quotes the words the two readings turn on.
+                     "question": "On equal hits the text does not say which side prevails.",
                      "fate": "decision",
                      "decision": "docs/decisions/0007-opposed-test-tie-break.md",
                  })
@@ -344,13 +347,16 @@ class TestFixtureIsValid(MapCase):
         code, output = self.run_tool(valid_map())
         self.assertEqual(code, 0, output)
         self.assertNotIn("[fail]", output, output)
-        # `conflicts`, `decision-records`, `definition-continuations` and `superposition`
-        # skip without subject matter -- the fixture records no conflict, no decision, no
-        # continued definition and no blind second mapping beside it. Nothing else may.
+        # `applicability-reach`, `conflicts`, `decision-records`, `definition-continuations`
+        # and `superposition` skip without subject matter -- the fixture records no conflict,
+        # no decision, no continued definition, no blind second mapping beside it, and no rule
+        # whose own words gate a whole section (`applicability_map()` is the fixture for that
+        # shape, because a page-marked rulebook slice does not talk about itself that way).
+        # Nothing else may.
         skipped = re.findall(r"^\[skip\] (\S+):", output, re.M)
         self.assertEqual(sorted(skipped),
-                         ["conflicts", "decision-records", "definition-continuations",
-                          "superposition"], output)
+                         ["applicability-reach", "conflicts", "decision-records",
+                          "definition-continuations", "superposition"], output)
 
 
 class TestSchema(MapCase):
@@ -942,7 +948,7 @@ class TestApplicabilityReach(MapCase):
         # `suspendedBy` is a reach too: a rule that switches a section off gates it.
         document = applicability_map()
         document["entries"][1].pop("enabledBy")
-        document["entries"][1]["suspendedBy"] = ["effective-date"]
+        document["entries"][1]["suspendedBy"] = ["first-day"]
         code, output = self.run_tool(document)
         self.assertEqual(self.status_of(output, "applicability-reach"), "ok", output)
         self.assertEqual(code, 0, output)
@@ -1931,7 +1937,9 @@ def seeded_map():
               evidence="The game begins with each player throwing a single die."),
         entry("group-roll", kind="operation", clarity="ambiguous",
               draws={"dice": "d20", "count": "one per group; how many groups is the question"},
-              ambiguity={"question": "What is a group?", "fate": "unresolved",
+              ambiguity={"question": "What is a group? The GM makes a single roll for one, and "
+                                     "the corpus does not say how many there are.",
+                         "fate": "unresolved",
                          "unresolvedReason": "RequiresInterpretation", "affectsDraws": True},
               evidence="The GM makes a single roll for a group.",
               note="The roll is a test, and “the game uses a d20 roll to determine success”."),
