@@ -374,10 +374,12 @@ def measured_at_problems(root: pathlib.Path, lock: dict) -> list[str]:
 
 def verify(root: pathlib.Path, lock: dict) -> list[str]:
     """Every problem between the lock and the tree. Empty means they agree."""
-    problems = measured_at_problems(root, lock)
     artifacts = lock.get("artifacts") or []
     if not artifacts:
-        return problems + ["the lock names no artifact -- this check proved nothing"]
+        # Sole message, deliberately: a lock that names nothing proved nothing, and what commit
+        # it says it proved nothing at adds no information.
+        return ["the lock names no artifact -- this check proved nothing"]
+    problems = measured_at_problems(root, lock)
 
     locked = {a["path"]: a for a in artifacts}
     if len(locked) != len(artifacts):

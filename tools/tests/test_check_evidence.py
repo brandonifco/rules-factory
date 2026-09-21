@@ -236,7 +236,7 @@ class TestTheMeasurementCanSeeAnything(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             home = pathlib.Path(tmp)
             (home / "sitecustomize.py").write_text(evidence.SITECUSTOMIZE, encoding="utf-8")
-            seen = evidence._trace(
+            seen, _ = evidence._trace(
                 root,
                 [sys.executable, "-c",
                  f"open({target!r}, 'rb').read(1)"],
@@ -265,7 +265,7 @@ class TestTheMeasurementCanSeeAnything(unittest.TestCase):
                 f"ce.digest(pathlib.Path({hashed!r}))\n"
                 f"open({plain!r}, 'rb').read(1)\n"
             )
-            seen = evidence._trace(root, [sys.executable, "-c", probe], home, "self")
+            seen, _ = evidence._trace(root, [sys.executable, "-c", probe], home, "self")
         opened = {path for _, path in seen}
         self.assertIn(plain, opened)
         self.assertNotIn(hashed, opened)
