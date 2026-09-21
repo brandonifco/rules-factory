@@ -1,4 +1,4 @@
-# 0054 — `coverage` reports how much of the declared extent is quoted, and only a floor the map declares can fail it
+# 0055 — `coverage` reports how much of the declared extent is quoted, and only a floor the map declares can fail it
 
 ## Status
 

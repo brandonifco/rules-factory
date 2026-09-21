@@ -151,6 +151,23 @@ class IntakeCase(unittest.TestCase):
             self.assertIn(text, output)
         return output
 
+    def opens_during(self, call):
+        """(the exception, the member names intake actually opened) -- what proves "unread"."""
+        opened = []
+        original = zipfile.ZipFile.open
+
+        def spy(archive, name, *args, **kwargs):
+            opened.append(name if isinstance(name, str) else name.filename)
+            return original(archive, name, *args, **kwargs)
+
+        zipfile.ZipFile.open = spy  # ZipFile.read() goes through open(), so it is caught here too
+        try:
+            with self.assertRaises(intake.Refused) as raised:
+                call()
+        finally:
+            zipfile.ZipFile.open = original
+        return raised.exception, opened
+
 
 class TestAccepts(IntakeCase):
     def test_hoyle_backgammon_2_0_0(self):
@@ -429,23 +446,6 @@ class TestNothingIsReadWithoutALimit(IntakeCase):
                     dst.writestr(info, src.read(info.filename))
         return target
 
-    def opens_during(self, call):
-        """(the exception, the member names intake actually opened) -- what proves "unread"."""
-        opened = []
-        original = zipfile.ZipFile.open
-
-        def spy(archive, name, *args, **kwargs):
-            opened.append(name if isinstance(name, str) else name.filename)
-            return original(archive, name, *args, **kwargs)
-
-        zipfile.ZipFile.open = spy  # ZipFile.read() goes through open(), so it is caught here too
-        try:
-            with self.assertRaises(intake.Refused) as raised:
-                call()
-        finally:
-            zipfile.ZipFile.open = original
-        return raised.exception, opened
-
     def test_a_member_over_the_size_cap_is_refused_without_being_read(self):
         oversized = intake.MAX_MEMBER_BYTES + 1
         package = self.repacked("big-map.nupkg", "map/corpus-map.json", b"x" * oversized)
@@ -487,6 +487,155 @@ class TestNothingIsReadWithoutALimit(IntakeCase):
             for info in archive.infolist():
                 self.assertLess(info.file_size, intake.MAX_MEMBER_BYTES)
         self.assertLess(os.path.getsize(self.hoyle), intake.MAX_PACKAGE_BYTES)
+
+
+class TestEverySourceIsBounded(IntakeCase):
+    """#229: the caps #187 stated are applied to every source, not only to a download.
+
+    Three reads had none. A `.nupkg` named on the command line or found in the NuGet cache was
+    hashed and opened at any size; an archive's entry count was unbounded, so `namelist()` ran
+    before any per-member check; and the corpus was read with one unbounded `handle.read()`.
+
+    This is resource exhaustion from files the operator names, not a trust break: the caps are
+    about not exhausting the operator's machine before intake has verified anything.
+
+    **Every test here asserts the message that names the limit, not merely that it refused
+    (#283).** A 64 MiB file of zeros is also not a zip, and an oversized corpus also fails its
+    declared digest, so a verdict-only assertion would pass on the *old* code while proving
+    nothing about size. Oversized files are made sparse, or the cap is patched below a real
+    file's size, rather than writing 64 MiB to disk: the caps are compared against what
+    `os.stat` reports, which a sparse file reports honestly, and the patched-cap tests refuse a
+    file that passes the whole of intake unpatched, so nothing but its size can be doing the work.
+    """
+
+    def sparse(self, name, size, where=None):
+        """A file of `size` bytes that occupies no disk; removed with the test's temp directory."""
+        path = os.path.join(where or self.tmp, name)
+        with open(path, "wb") as handle:
+            handle.truncate(size)
+        return path
+
+    def hoyle_corpus_declaration(self):
+        """Hoyle's packaged manifest entry: a corpus declaration that passes every check but size."""
+        with zipfile.ZipFile(self.hoyle) as archive:
+            manifest = json.loads(archive.read("map/corpus-manifest.json"))
+        return manifest["corpora"][0]
+
+    def patch_cap(self, name, value):
+        original = getattr(intake, name)
+        setattr(intake, name, value)
+        self.addCleanup(setattr, intake, name, original)
+        return value
+
+    def files_opened_during(self, call):
+        """(the exception, the paths intake passed to `open`) -- what proves "not read".
+
+        A module global shadows the builtin for the whole of intake, so this catches every
+        `open()` in the module without touching any other caller's.
+        """
+        opened = []
+        real = open
+
+        def spy(path, *args, **kwargs):
+            opened.append(str(path))
+            return real(path, *args, **kwargs)
+
+        intake.open = spy
+        try:
+            with self.assertRaises(intake.Refused) as raised:
+                call()
+        finally:
+            del intake.open
+        return raised.exception, opened
+
+    def test_a_local_package_over_the_cap_is_refused_naming_the_limit(self):
+        """The issue's reproduction, at the real cap: refused for its size, not for not being a zip."""
+        size = intake.MAX_PACKAGE_BYTES + 1
+        package = self.sparse("too-big.nupkg", size)
+        error, opened = self.files_opened_during(lambda: intake.resolve_package(package, self.tmp))
+        self.assertIn(f"is {size} bytes, over the {intake.MAX_PACKAGE_BYTES}", str(error))
+        self.assertNotIn("not a readable .nupkg", str(error), "refused for the wrong reason (#283)")
+        self.assertNotIn(package, opened, "the oversized package was read before it was refused")
+
+    def test_a_local_package_that_would_pass_is_refused_for_its_size_alone(self):
+        size = os.path.getsize(self.hoyle)
+        cap = self.patch_cap("MAX_PACKAGE_BYTES", size - 1)
+        with self.assertRaises(intake.Refused) as raised:
+            intake.resolve_package(self.hoyle, self.tmp)
+        self.assertIn(f"is {size} bytes, over the {cap}", str(raised.exception))
+
+    def test_a_cached_package_over_the_cap_is_refused_naming_the_limit(self):
+        """The NuGet cache is a source like any other: nothing verified it either."""
+        cache = os.path.join(self.tmp, "packages")
+        folder = os.path.join(cache, "not.a.real.package", "9.9.9")
+        os.makedirs(folder)
+        size = intake.MAX_PACKAGE_BYTES + 1
+        cached = self.sparse("not.a.real.package.9.9.9.nupkg", size, where=folder)
+        original = intake._global_packages_folder
+        intake._global_packages_folder = lambda: cache
+        self.addCleanup(setattr, intake, "_global_packages_folder", original)
+        error, opened = self.files_opened_during(
+            lambda: intake.resolve_package("Not.A.Real.Package@9.9.9", self.tmp))
+        self.assertIn(f"is {size} bytes, over the {intake.MAX_PACKAGE_BYTES}", str(error))
+        self.assertIn(cached, str(error))
+        self.assertNotIn(cached, opened, "the oversized cached package was read before it was refused")
+
+    def test_an_archive_over_the_entry_cap_is_refused_before_any_member_is_read(self):
+        entries = intake.MAX_ARCHIVE_ENTRIES + 1
+        package = os.path.join(self.tmp, "many-entries.nupkg")
+        with zipfile.ZipFile(package, "w", zipfile.ZIP_STORED) as archive:
+            for n in range(entries):
+                archive.writestr(f"member-{n}.txt", b"")
+        error, opened = self.opens_during(lambda: intake.read_package(package))
+        self.assertIn(f"holds {entries} entries, over the {intake.MAX_ARCHIVE_ENTRIES}", str(error))
+        self.assertEqual(opened, [], "a member was read before the entry count was refused")
+
+    def test_a_corpus_over_its_cap_is_refused_without_being_read(self):
+        """Refused by what `os.stat` says, so the bytes never reach memory.
+
+        #283: an unreadably large corpus would also fail its declared digest -- and did, before
+        this cap -- so the assertion is the message naming MAX_CORPUS_BYTES, not the refusal.
+        """
+        size = intake.MAX_CORPUS_BYTES + 1
+        corpus = self.sparse("too-big-corpus.txt", size)
+        declaration = self.hoyle_corpus_declaration()
+        error, opened = self.files_opened_during(
+            lambda: intake.verify_one(declaration["sourceId"], declaration, corpus))
+        self.assertIn(f"is {size} bytes, over the {intake.MAX_CORPUS_BYTES}", str(error))
+        self.assertNotIn("at its declared baseline", str(error), "refused for the wrong reason (#283)")
+        self.assertNotIn(corpus, opened, "the oversized corpus was opened before it was refused")
+
+    def test_the_corpus_cap_refuses_a_corpus_that_would_otherwise_pass(self):
+        """Through `produce`, so the operator sees the limit named on their terminal."""
+        size = os.path.getsize(HOYLE_TEXT)
+        cap = self.patch_cap("MAX_CORPUS_BYTES", size - 1)
+        self.assert_refused(self.hoyle, HOYLE_TEXT, f"is {size} bytes, over the {cap}")
+
+    def test_the_packages_and_corpora_this_repository_commits_are_under_every_cap(self):
+        """The caps are a boundary the factory's own inputs sit well inside."""
+        for package in (self.hoyle, self.part107):
+            self.assertLess(os.path.getsize(package), intake.MAX_PACKAGE_BYTES)
+            with zipfile.ZipFile(package) as archive:
+                self.assertLessEqual(len(archive.infolist()), intake.MAX_ARCHIVE_ENTRIES)
+        for root, _, files in os.walk(os.path.join(REPO, "examples")):
+            for name in files:
+                if name.endswith((".xml", ".txt")):
+                    path = os.path.join(root, name)
+                    self.assertLess(os.path.getsize(path), intake.MAX_CORPUS_BYTES, path)
+        self.assert_passes(self.hoyle, HOYLE_TEXT)
+
+    def test_the_docstring_names_every_cap_intake_enforces(self):
+        """"Nothing is read without a limit" is a claim about this module, so it is checked.
+
+        A cap added without a word in the docstring, or a docstring naming a cap that is gone,
+        fails here -- which is what "the docstring matches what is enforced" has to mean.
+        """
+        caps = sorted(name for name in vars(intake) if name.startswith("MAX_"))
+        self.assertEqual(caps, ["MAX_ARCHIVE_ENTRIES", "MAX_COMPRESSION_RATIO", "MAX_CORPUS_BYTES",
+                                "MAX_MEMBER_BYTES", "MAX_PACKAGE_BYTES"])
+        for name in caps:
+            self.assertIn(name, intake.__doc__,
+                          f"the module docstring says nothing is read without a limit and never names {name}")
 
 
 class TestADocumentTypeIsRefused(IntakeCase):

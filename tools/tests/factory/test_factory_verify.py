@@ -110,9 +110,23 @@ if command == "build":
             dll.write(b"built")
 '''
 
-# Stands in for scripts/validate.sh full: its dotnet steps, with `dotnet` found on PATH.
+# Stands in for scripts/validate.sh full: its dotnet steps, with `dotnet` found on PATH. With
+# $FAKE_GATE_DECLARATION set it also writes down what the real gate's provenance step reads about a
+# local SDK override (#336): the declaration it was handed, and the tree it was handed it about.
 FAKE_GATE = r'''#!/usr/bin/env python3
-import subprocess, sys
+import json, os, subprocess, sys
+seen = os.environ.get("FAKE_GATE_DECLARATION")
+if seen:
+    recorded = os.environ.get("FACTORY_SDK_OVERRIDE_RECORDED", "")
+    with open("global.json", encoding="utf-8") as handle:
+        on_disk = handle.read()
+    original = None
+    if recorded and os.path.exists(recorded):
+        with open(recorded, encoding="utf-8") as handle:
+            original = handle.read()
+    with open(seen, "w", encoding="utf-8") as handle:
+        json.dump({"declared": recorded, "original": original, "on_disk": on_disk,
+                   "override": os.environ.get("FACTORY_DOTNET_SDK_OVERRIDE", "")}, handle)
 for step in (["restore", "--locked-mode"], ["build", "-warnaserror"], ["test"]):
     if subprocess.run(["dotnet", *step]).returncode != 0:
         print(f"validate.sh full: FAIL ({step[0]})")
@@ -629,6 +643,61 @@ class TestSdkOverride(VerifyCase):
         # after_restore rewrote provenance.json while global.json was the pinned file, so it recomputes.
         code, recomputed = run(["provenance", "--engine", out, "--package", self.nupkg])
         self.assertEqual(code, 0, recomputed)
+
+    def declaration(self, **env):
+        """What the gate was told about global.json, as the gate itself read it (#336)."""
+        seen = os.path.join(self.tmp, "gate-declaration.json")
+        self.env["FAKE_GATE_DECLARATION"] = seen
+        code, output = self.verify(**env)
+        if not os.path.exists(seen):
+            return code, output, None
+        with open(seen, encoding="utf-8") as handle:
+            return code, output, json.load(handle)
+
+    def test_the_gate_is_told_which_recorded_bytes_global_json_was_re_pinned_from(self):
+        """#336: the gate no longer has to choose between the override's tree and the record's.
+
+        Asserted from inside the gate's own process, because that is where the contradiction was:
+        it is handed the recorded bytes, the file on disk is exactly those re-pinned to the
+        override, and the two together are what `scripts/engine-gate.py provenance` proves.
+        """
+        recorded = self.global_json()
+        code, output, seen = self.declaration(FACTORY_DOTNET_SDK_OVERRIDE=self.OTHER, CI="")
+        self.assertEqual(code, 0, output)
+        self.assertEqual(seen["override"], self.OTHER)
+        self.assertEqual(seen["original"], recorded.decode("utf-8"),
+                         "the gate is handed the bytes provenance.json hashes")
+        self.assertEqual(seen["on_disk"], verify_step.repin(seen["original"], self.OTHER),
+                         "and the tree it judges is exactly those bytes re-pinned, which is what it proves")
+        self.assertFalse(os.path.abspath(seen["declared"]).startswith(os.path.abspath(self.engine) + os.sep),
+                         "the copy is outside the engine: a staged verify commits what is inside it")
+        self.assertIn(f"the gate is told to prove the re-pinned one against it "
+                      f"(FACTORY_SDK_OVERRIDE_RECORDED)", output)
+
+    def test_the_recorded_copy_is_removed_when_the_gate_passes(self):
+        _, _, seen = self.declaration(FACTORY_DOTNET_SDK_OVERRIDE=self.OTHER, CI="")
+        self.assertTrue(seen["declared"], "there is a copy to remove")
+        self.assertFalse(os.path.exists(seen["declared"]))
+        self.assertFalse(os.path.exists(os.path.dirname(seen["declared"])),
+                         "the directory overridden_sdk made for it goes with it")
+
+    def test_the_recorded_copy_is_removed_when_the_gate_fails(self):
+        before = self.global_json()
+        code, output, seen = self.declaration(FACTORY_DOTNET_SDK_OVERRIDE=self.OTHER, CI="",
+                                              FAKE_DOTNET_FAIL="build")
+        self.assertEqual(code, 1, output)
+        self.assertIn("verify FAILED at stage gate", output)
+        self.assertTrue(seen["declared"], "there is a copy to remove")
+        self.assertFalse(os.path.exists(seen["declared"]))
+        self.assertFalse(os.path.exists(os.path.dirname(seen["declared"])))
+        self.assertEqual(before, self.global_json(), "and global.json is put back, as it is on a pass")
+
+    def test_without_the_override_the_gate_is_told_nothing_to_prove(self):
+        """An unmoved tree declares nothing: the gate compares global.json byte for byte, as always."""
+        code, output, seen = self.declaration(FACTORY_DOTNET_SDK_OVERRIDE="")
+        self.assertEqual(code, 0, output)
+        self.assertEqual(seen["declared"], "")
+        self.assertEqual(seen["on_disk"].encode("utf-8"), self.global_json())
 
     def test_repin_writes_global_json_as_generate_does(self):
         text = scaffold.managed_files()["global.json"]

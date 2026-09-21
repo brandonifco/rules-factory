@@ -75,6 +75,20 @@ contract = semantics.contract
 policy_problems = agentrails.policy_problems
 review_problems = agentrails.review_problems
 RAILS = agentrails.RAILS
+# What the rails on GitHub are, for `tools/agent-doctor.py`: the ruleset the factory owns and the
+# level it must be at, the checks it requires and the app they have to be pinned to, the words a
+# row says, and how a paginated answer from `gh` is put back together. `factory rails --check`
+# reads the same names from the same module, so the two cannot disagree about one ruleset (#231).
+RULESET = agentrails.RULESET
+REQUIRED_CHECKS = agentrails.REQUIRED_CHECKS
+CHECKS_APP = agentrails.CHECKS_APP
+OK, MISSING, WRONG, NOT_VERIFIED = agentrails.OK, agentrails.MISSING, agentrails.WRONG, agentrails.NOT_VERIFIED
+factory_ruleset = agentrails.factory_ruleset
+ruleset_origin = agentrails.ruleset_origin
+required_check_pins = agentrails.required_check_pins
+required_check_state = agentrails.required_check_state
+PAGES = agentrails.PAGES
+flatten_pages = agentrails.flatten_pages
 # tools/validate-engine.py reads the SDK pin by importing this module, as the engines do.
 SDK_VERSION = pins.SDK_VERSION
 

@@ -180,6 +180,15 @@ What never happens again is `NOT VERIFIED` on stdout and `0` in `$?`.
   in every target framework, so a skipped suite or a framework that stopped running is a failure
   and not a number ([#337](https://github.com/brandonifco/rules-factory/issues/337)). A refusal or failure at any step
   leaves `--out` as it was.
+- **Which SDK it proves.** For local runs only, `FACTORY_DOTNET_SDK_OVERRIDE` runs restore and the
+  gate on another installed SDK, by re-pinning `global.json` for exactly as long as each takes —
+  otherwise a machine without the pinned SDK could run neither. `global.json` is a managed file the
+  gate hashes against the record, so that substitution is *declared* to the gate and proved there:
+  the bytes it was re-pinned from must hash to what `provenance.json` records, and the file on disk
+  must be those bytes with the SDK version replaced and nothing else. The run then says which SDK it
+  actually verified on, in the gate's own steps and in the line that ends it, and never reads as a
+  proof of the pinned toolchain. CI refuses the override, where a green run must mean the pinned SDK
+  ([0054](docs/decisions/0054-a-verification-context-is-declared-and-proved-never-exempted.md)).
 - **The tree it is a proof of.** The gate runs on a staging copy of `--out`, so what it proves is
   that copy — and the engine written out is that copy only while `--out` still holds the source and
   build inputs it was made from. A verified commit compares them all, not only the paths the run

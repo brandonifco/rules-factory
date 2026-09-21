@@ -320,7 +320,7 @@ same — and this section asked for the difference in a **reason string**, which
   in-scope citation or quote may fall outside
   ([#269](https://github.com/brandonifco/rules-factory/issues/269)); how much of that extent the
   located evidence quotes, which a map may declare a floor for and be held to
-  ([0054](decisions/0054-coverage-reports-how-much-of-the-extent-is-quoted-and-a-map-declares-the-floor.md));
+  ([0055](decisions/0055-coverage-reports-how-much-of-the-extent-is-quoted-and-a-map-declares-the-floor.md));
   and `crossReferences`, which turns the corpus's own pointers into obligations.
 
 **`scope` is decided per rule, never per section, and excluding a section requires reading it

@@ -6,7 +6,10 @@
 #
 # Every step either proves something or says it could not:
 #
-#   * the SDK is the one global.json pins, with roll-forward disabled;
+#   * the SDK is the one global.json pins, with roll-forward disabled -- and when a local SDK
+#     override re-pinned global.json around this run (#336), the step says so, and the provenance
+#     step proves the file on disk is the recorded one with its SDK version replaced and nothing
+#     else;
 #   * restore is locked: every project has a packages.lock.json, and restore agrees with it;
 #   * RulesKernel.Randomness is reachable only as the corpus declares (rules-factory decision 0019):
 #     never under `randomness: none`, and under `seeded` pinned only in RulesFactory.Packages.g.props;
@@ -84,6 +87,15 @@ elif [[ "$pinned" != "$actual" ]]; then
   fail "global.json pins $pinned but 'dotnet --version' reports $actual"
 else
   printf '%sok%s   SDK %s (rollForward=%s)\n' "$GREEN" "$OFF" "$actual" "$roll"
+fi
+# A local SDK override (#336) re-pins global.json around this run, so the pin this step just checked
+# is the override's and not the engine's. Say so where the claim is made: the provenance step below
+# is what proves the substitution is the recorded file with its SDK version replaced, and nothing
+# else. `factory verify` sets this variable; nothing in CI does.
+if [[ -n "${FACTORY_SDK_OVERRIDE_RECORDED:-}" ]]; then
+  recorded_pin="$(python3 -c 'import json,os;print(json.load(open(os.environ["FACTORY_SDK_OVERRIDE_RECORDED"]))["sdk"]["version"])' 2>/dev/null || echo '?')"
+  printf '%sNOTE%s global.json is the recorded file re-pinned to %s by FACTORY_DOTNET_SDK_OVERRIDE, so this run does not prove the SDK provenance.json records (%s)\n' \
+    "$YEL" "$OFF" "$pinned" "$recorded_pin"
 fi
 
 # Restore first: the map is a package (0015), so nothing below can be judged before it is

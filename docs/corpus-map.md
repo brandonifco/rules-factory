@@ -61,7 +61,7 @@ reaches and no recorded rejection accounts for
 
 `coverage` also reports **how much of the extent the map can show it quoted** — the union of its
 verified quotes' spans over the extent's own length, printed on every run
-([0054](decisions/0054-coverage-reports-how-much-of-the-extent-is-quoted-and-a-map-declares-the-floor.md),
+([0055](decisions/0055-coverage-reports-how-much-of-the-extent-is-quoted-and-a-map-declares-the-floor.md),
 [#270](https://github.com/brandonifco/rules-factory/issues/270)). Because one quote reaches a
 page, counting units reached could not see an entry deleted from a map whose other entries still
 reach its page; the fraction can. A map may name the floor it claims, `"quoted": 0.8`, and

@@ -197,7 +197,7 @@ the existing vocabulary sufficed.
 locator checkers' `coverage` comes closest and asks a much coarser question: is every *page*, or
 every *section*, of the extent touched by some quote? A map satisfies that by reaching one
 sentence on a page. Since
-[0054](decisions/0054-coverage-reports-how-much-of-the-extent-is-quoted-and-a-map-declares-the-floor.md)
+[0055](decisions/0055-coverage-reports-how-much-of-the-extent-is-quoted-and-a-map-declares-the-floor.md)
 it also reports **how much** of the extent the quotes cover, in characters, which says something
 about the rest of it — but as a fraction of the whole slice, not as a verdict on any unit inside
 it, and that is the difference this section is about.
