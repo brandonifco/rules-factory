@@ -9,6 +9,7 @@ import sys
 from .diagnostics import skip
 from .epistemic import find_comparison
 from mapcontract.entry import entries_of
+from .predecessor import silenced_by_the_change
 from .phases import CHECKS, OVERLAY_FIELDS, PHASES, STATUS_DEPENDENT
 
 
@@ -42,6 +43,9 @@ def main(argv=None):
     parser.add_argument("--comparison", help="the blind second mapping's adjudication record "
                                              "(0014), or the directory holding it; found under "
                                              "blind-mapping/ beside the map by default")
+    parser.add_argument("--previous", help="the published map this one replaces. A check that "
+                                           "had subject matter there and has none here fails, "
+                                           "rather than reporting NOT VERIFIED and passing (#268)")
     parser.add_argument("--only", help="run one check: " + ", ".join(name for name, _ in CHECKS))
     parser.add_argument("--verbose", action="store_true", help="also print the row each entry matches")
     parser.add_argument("--phase", choices=PHASES, default="publish",
@@ -85,6 +89,15 @@ def main(argv=None):
             print(f"cannot read adjudication record {comparison_path}: {error}", file=sys.stderr)
             return 2
 
+    previous_document = None
+    if args.previous:
+        try:
+            with open(args.previous, encoding="utf-8") as handle:
+                previous_document = json.load(handle)
+        except (OSError, ValueError) as error:
+            print(f"cannot read previous map {args.previous}: {error}", file=sys.stderr)
+            return 2
+
     ctx = {
         "map": document,
         "manifest": manifest,
@@ -95,14 +108,20 @@ def main(argv=None):
         "verbose": args.verbose,
     }
 
+    # The same context over the version this map replaces: the manifest, the repository and the
+    # adjudication record are the run's, and only the map differs (#268).
+    previous_ctx = dict(ctx, map=previous_document) if previous_document is not None else None
+
     print(f"{args.map_path} ({len(entries_of(document))} entries"
-          + (f", manifest {os.path.basename(manifest_path)}" if manifest_path else ", no manifest") + ")")
+          + (f", manifest {os.path.basename(manifest_path)}" if manifest_path else ", no manifest")
+          + (f", replacing {args.previous}" if previous_ctx is not None else "") + ")")
     failed = skipped = passed = fatal = 0
     for name, check in selected:
         try:
             result = check(ctx)
         except Exception as error:  # a check that crashes has proved nothing
             result = skip(f"the check raised {type(error).__name__}: {error}")
+        result = silenced_by_the_change(name, check, result, previous_ctx, args.previous) or result
         print(f"[{result.status}] {name}: {result.summary}")
         for line in result.details:
             print(line)

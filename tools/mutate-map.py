@@ -615,13 +615,22 @@ def comparison_record(directory):
     return home if os.path.isdir(home) else None
 
 
-def detectors(subject, map_path, root):
-    """Every verdict the validator reaches about this map, by detector and by check name."""
+def detectors(subject, map_path, root, previous=None):
+    """Every verdict the validator reaches about this map, by detector and by check name.
+
+    `previous` is the committed map, passed as the version this one replaces (#268). That is
+    what the run models: the committed map is the published version, the mutated map is the one
+    proposed to replace it, and a check that had subject matter there and has none here is a
+    claim that the corpus changed. The control gets it too, pointing at the same bytes, so the
+    control's verdicts are unchanged by it and a detection is the mutation's doing.
+    """
     directory = os.path.join(root, subject["dir"])
     manifest = os.path.join(directory, "corpus-manifest.json")
     results = {}
 
     argv = ["tools/check-map.py", map_path, "--manifest", manifest, "--repo-root", root]
+    if previous:
+        argv += ["--previous", previous]
     # The map is written into a bare temporary directory, so the checks that find a file beside
     # the map find nothing there. `superposition` reads the blind second mapping's adjudication
     # record (0034), and without this it says NOT VERIFIED on the control and on every mutation,
@@ -644,13 +653,19 @@ def score(control, mutated):
     """What the validator said, and whether saying it would have stopped the map.
 
     A check that turns is not by itself a detection. `check-map.py` exits 0 on a NOT VERIFIED
-    whose check had no subject matter -- turning an assertion into an operation leaves
-    `asserted-by` with nothing to look at, and it says so and passes the run. A map that
-    passes is a map that ships, so **detected means the run went red**: some detector that
-    exited 0 on the control exits non-zero here. A check that turned without failing the run
-    is recorded as `signalled`, counted as a miss, and reported, because a signal nobody is
-    obliged to act on is the shape of this repository's two checkers that counted work they
-    had not done.
+    whose check had no subject matter, so a mutation that removes what a check looks at used to
+    leave the gate green while the check said the true thing. A map that passes is a map that
+    ships, so **detected means the run went red**: some detector that exited 0 on the control
+    exits non-zero here. A check that turned without failing the run is recorded as `signalled`,
+    counted as a miss, and reported, because a signal nobody is obliged to act on is the shape
+    of this repository's two checkers that counted work they had not done.
+
+    Two mutations landed there -- turning a map's only assertion into an operation silenced
+    `asserted-by`, removing the rule every other entry was suspended by silenced `gates` -- and
+    both are refusals now, because `detectors()` passes the committed map as `--previous` and a
+    check that had subject matter in the version being replaced has to account for losing it
+    (#268). `signalled` stays, and stays counted as a miss: it is the scoring rule, not a
+    description of what today's checks happen to do.
     """
     turned, refused = [], []
     for detector, after in mutated.items():
@@ -682,8 +697,12 @@ def measure(subject, root, only=None):
     runs, problems = [], []
     try:
         map_path = os.path.join(workspace, "corpus-map.json")
+        # The published version every run is measured against (#268). Named so that
+        # `find_manifest` and `pack-map.py`'s one-map rule do not see a second map beside it.
+        previous_path = os.path.join(workspace, "published-map.json")
+        write(previous_path, committed)
         write(map_path, committed)
-        control = detectors(subject, map_path, root)
+        control = detectors(subject, map_path, root, previous_path)
         for detector, result in control.items():
             if result["exit"] != 0:
                 problems.append(f"{subject['name']}: {detector} is already red on the committed "
@@ -707,7 +726,7 @@ def measure(subject, root, only=None):
                                 f"nothing, and would be scored as an undetected error")
                 continue
             write(map_path, document)
-            after = detectors(subject, map_path, root)
+            after = detectors(subject, map_path, root, previous_path)
             turned, refused, unexplained = score(control, after)
             for detector in unexplained:
                 problems.append(f"{subject['name']}/{mutation['name']}: {detector} exited "

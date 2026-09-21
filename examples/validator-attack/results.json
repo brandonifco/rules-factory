@@ -1,5 +1,5 @@
 {
-  "measuredAt": "89e11ba29fe3a6022448edbcc28879fc0500b334",
+  "measuredAt": "fe39a5f4f8c11dd832bb61be55d1ff389240a2d2",
   "subjects": [
     {
       "name": "hoyle-backgammon",
@@ -38,10 +38,19 @@
           "mutation": "clear-to-ambiguous",
           "applicable": true,
           "damage": "player-count: clear -> ambiguous, with a full and false `ambiguity` block",
-          "detected": false,
-          "refusedBy": [],
+          "detected": true,
+          "refusedBy": [
+            "check-map.py"
+          ],
           "signalled": false,
-          "by": []
+          "by": [
+            {
+              "detector": "check-map.py",
+              "check": "question-anchor",
+              "status": "fail",
+              "said": "an ambiguity is about no passage this map quotes"
+            }
+          ]
         },
         {
           "mutation": "ambiguous-to-clear",
@@ -56,15 +65,17 @@
           "mutation": "assertion-to-operation",
           "applicable": true,
           "damage": "agreed-backgammon-multiple: assertion -> operation, and `assertedBy` removed with it",
-          "detected": false,
-          "refusedBy": [],
-          "signalled": true,
+          "detected": true,
+          "refusedBy": [
+            "check-map.py"
+          ],
+          "signalled": false,
           "by": [
             {
               "detector": "check-map.py",
               "check": "asserted-by",
-              "status": "skip",
-              "said": "NOT VERIFIED -- no entry is `kind: assertion`, so nobody was attributed"
+              "status": "fail",
+              "said": "this check had subject matter in the version being replaced and has none here"
             }
           ]
         },
@@ -241,10 +252,19 @@
           "mutation": "clear-to-ambiguous",
           "applicable": true,
           "damage": "altitude-limit: clear -> ambiguous, with a full and false `ambiguity` block",
-          "detected": false,
-          "refusedBy": [],
+          "detected": true,
+          "refusedBy": [
+            "check-map.py"
+          ],
           "signalled": false,
-          "by": []
+          "by": [
+            {
+              "detector": "check-map.py",
+              "check": "question-anchor",
+              "status": "fail",
+              "said": "an ambiguity is about no passage this map quotes"
+            }
+          ]
         },
         {
           "mutation": "ambiguous-to-clear",
@@ -340,15 +360,17 @@
           "mutation": "remove-applicability",
           "applicable": true,
           "damage": "dropped waivable-regulations, which 27 entries named in `suspendedBy`, and every edge that named it",
-          "detected": false,
-          "refusedBy": [],
-          "signalled": true,
+          "detected": true,
+          "refusedBy": [
+            "check-map.py"
+          ],
+          "signalled": false,
           "by": [
             {
               "detector": "check-map.py",
               "check": "gates",
-              "status": "skip",
-              "said": "NOT VERIFIED -- no entry carries `enabledBy` or `suspendedBy`, so no gate's direction was checked -- the right outcome for a stateless corpus"
+              "status": "fail",
+              "said": "this check had subject matter in the version being replaced and has none here"
             }
           ]
         },
@@ -427,10 +449,19 @@
           "mutation": "clear-to-ambiguous",
           "applicable": true,
           "damage": "exclusion-of-gain: clear -> ambiguous, with a full and false `ambiguity` block",
-          "detected": false,
-          "refusedBy": [],
+          "detected": true,
+          "refusedBy": [
+            "check-map.py"
+          ],
           "signalled": false,
-          "by": []
+          "by": [
+            {
+              "detector": "check-map.py",
+              "check": "question-anchor",
+              "status": "fail",
+              "said": "an ambiguity is about no passage this map quotes"
+            }
+          ]
         },
         {
           "mutation": "ambiguous-to-clear",
@@ -520,10 +551,19 @@
           "mutation": "remove-applicability",
           "applicable": true,
           "damage": "dropped effective-date, which 31 entries named in `enabledBy`, and every edge that named it",
-          "detected": false,
-          "refusedBy": [],
+          "detected": true,
+          "refusedBy": [
+            "check-map.py"
+          ],
           "signalled": false,
-          "by": []
+          "by": [
+            {
+              "detector": "check-map.py",
+              "check": "applicability-reach",
+              "status": "fail",
+              "said": "this check had subject matter in the version being replaced and has none here"
+            }
+          ]
         },
         {
           "mutation": "hide-cross-reference",
@@ -587,10 +627,19 @@
           "mutation": "clear-to-ambiguous",
           "applicable": true,
           "damage": "combat-rounds: clear -> ambiguous, with a full and false `ambiguity` block",
-          "detected": false,
-          "refusedBy": [],
+          "detected": true,
+          "refusedBy": [
+            "check-map.py"
+          ],
           "signalled": false,
-          "by": []
+          "by": [
+            {
+              "detector": "check-map.py",
+              "check": "question-anchor",
+              "status": "fail",
+              "said": "an ambiguity is about no passage this map quotes"
+            }
+          ]
         },
         {
           "mutation": "ambiguous-to-clear",
@@ -744,10 +793,19 @@
           "mutation": "clear-to-ambiguous",
           "applicable": true,
           "damage": "condition-list: clear -> ambiguous, with a full and false `ambiguity` block",
-          "detected": false,
-          "refusedBy": [],
+          "detected": true,
+          "refusedBy": [
+            "check-map.py"
+          ],
           "signalled": false,
-          "by": []
+          "by": [
+            {
+              "detector": "check-map.py",
+              "check": "question-anchor",
+              "status": "fail",
+              "said": "an ambiguity is about no passage this map quotes"
+            }
+          ]
         },
         {
           "mutation": "ambiguous-to-clear",
@@ -870,7 +928,7 @@
   ],
   "totals": {
     "applied": 62,
-    "detected": 20,
-    "missed": 42
+    "detected": 28,
+    "missed": 34
   }
 }

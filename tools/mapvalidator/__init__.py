@@ -24,14 +24,12 @@ What it cannot do, stated here rather than in a commit message. Each item says w
 noticing -- or **reasoned**, argued from the code and not yet attacked. `tools/mutate-map.py`
 is what damages them, and `examples/validator-attack/` is the record.
 
-  * **The measured miss rate of everything below is 74%.** Fourteen mutations over five
-    committed maps and three locator grammars: 62 landed, 18 are refused, 44 pass (#259;
-    16 and 46 when first measured at 69167d8, the two rows that moved being the epistemic
-    checks 0034 added). Five of the twenty-five checks this file held when it was
-    measured ever turned; there are twenty-seven now; `definition-continuations` (0046) is the
-    newest and unmeasured. Read
-    the list below as what a reader should expect to get away with, not as a list of
-    theoretical gaps.
+  * **The measured miss rate of everything below is 55%.** Fourteen mutations over five
+    committed maps and three locator grammars: 62 landed, 28 are refused, 34 pass (#259;
+    16 and 46 when first measured at 69167d8). Seven of the twenty-nine checks this file holds
+    ever turned; twenty-two never did. `definition-continuations` (0046) is among those that
+    never have. Read the list below as what a reader should expect to get away with, not as a
+    list of theoretical gaps.
   * **A conflict nobody recorded is invisible.** `ambiguity.conflict` (0007) groups the
     entries that answer one contradicted question, and `conflicts` enforces that a group
     has two or more members, one fate, and one decision record. Nothing detects the
@@ -44,9 +42,12 @@ is what damages them, and `examples/validator-attack/` is the record.
     than the general case and is the one mechanical part of it (0034): where a *blind second
     mapping* read the passage as ambiguous and the adjudication answered "the corpus does not
     settle it", the map must record that doubt somewhere. Where both readers made the same
-    silent choice there is no record, no flag and no trace. Inventing an ambiguity the corpus
-    settles passes on 5 of 5, and is catchable and is #271: `ambiguity.question` is free prose,
-    where `crossReferences.cites` on the same entry must appear verbatim in the evidence.
+    silent choice there is no record, no flag and no trace.
+  * **An ambiguity about a real sentence can still be invented.** `question-anchor` (#271) makes
+    `ambiguity.question` quote the corpus -- three consecutive words of a passage this map
+    quotes, carrying a word outside the function classes -- which refuses a question about
+    nothing in the passage on 5 maps of 5. It does not refuse invented doubt about words the
+    corpus does print, and nothing structural does. *Measured, both ways.*
   * **A gate is not checked against the corpus at all.** A missing `enabledBy` edge, a
     missing `suspendedBy` edge and an invented `dependsOn` edge each leave the map
     internally consistent, and `gates`, `references` and `no-cycles` all pass.
@@ -56,13 +57,20 @@ is what damages them, and `examples/validator-attack/` is the record.
     checkers can say the entry is about a different sentence than the one it cites.
     *Measured: 1 of 5, and that one caught by `cross-references` bookkeeping rather than by
     anything having read the corpus.*
-  * **A rule nobody mapped leaves no trace.** An omitted definition, and an applicability
-    rule removed together with the edges that named it, both pass every check here; the
-    entry that is gone is not owed by anything that remains. *Measured: 0 of 4 and 0 of 4.*
-  * **A check whose subject matter the damage removed says NOT VERIFIED and the run stays
-    green,** because such a check declares it had no subject. Turning a map's only assertion
-    into an operation silences `asserted-by`; removing the rule every other entry was
-    suspended by silences `gates`. *Measured, and filed as #268.*
+  * **A rule nobody mapped leaves no trace.** An omitted definition passes every check here;
+    the entry that is gone is not owed by anything that remains. *Measured: 0 of 4.* An
+    applicability rule removed with the edges that named it is refused on 3 of 4 now --
+    `applicability-reach` (#225) sees the map's last whole-unit gate go, `gates` and
+    `superposition` see the rest -- and missed where the map still has other gates.
+  * **A check that loses only *half* its subject matter still says ok.** `--previous` (#268)
+    refuses a check that had subject matter in the version this map replaces and has none now,
+    which is what turned two silent skips into refusals. It compares verdicts, not corpora: an
+    assertion removed from a map that has five leaves `asserted-by` looking at four, and a map
+    published with no predecessor is judged as it always was. *Measured: 2 of 4.*
+  * **A whole-unit gate is recognised by a phrase list.** `applicability-reach` reads
+    `WHOLE_UNIT_GATES`, written from the CFR corpora; a corpus that gates itself in other words
+    is unseen, exactly as a pointer in undeclared words is unseen by `cross-references`. One
+    edge satisfies it, so a gate recorded with one edge where it has thirty passes. *Reasoned.*
   * **Correspondence row 7** ("two implemented entries with no entry for their
     combination") is a fact about pairs and about interactions the map does not enumerate.
     It is not evaluated. The `correspondence` check therefore proves that every entry is
@@ -98,7 +106,11 @@ Where each check runs is stated in STATUS_DEPENDENT below (0015): every check ru
 map is published; the status-dependent ones run again in the engine, on its merged map.
 
 Usage: check-map.py <corpus-map.json> [--manifest PATH] [--repo-root PATH] [--only CHECK]
-                    [--phase publish|consumer]
+                    [--phase publish|consumer] [--previous PATH] [--comparison PATH]
+`--previous` names the published map this one replaces, where there is one: a check that had
+subject matter there and has none here fails rather than skipping quietly (#268).
+
 Exit 0 only if every check that ran passed and at least one check actually checked
-something; 1 if any check failed or skipped with subject matter; 2 on a usage error.
+something; 1 if any check failed, skipped with subject matter, or lost the subject matter the
+previous version gave it; 2 on a usage error.
 """

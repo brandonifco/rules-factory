@@ -13,13 +13,16 @@ validator.
 
 > **Fourteen named mutations were applied, one at a time, to five committed maps across three
 > locator grammars. Sixty-two of the seventy combinations had somewhere to land. The validator
-> refuses twenty of them and passes forty-two — a miss rate of 68%.**
+> refuses twenty-eight of them and passes thirty-four — a miss rate of 55%.**
 >
-> **First measured at 16 of 62 refused (74% missed), at commit `69167d8`.** Four rows have moved
+> **First measured at 16 of 62 refused (74% missed), at commit `69167d8`.** Twelve rows have moved
 > since: two are the epistemic checks
 > [0034](../../docs/decisions/0034-a-valid-unresolved-state-is-established-not-asserted.md) added,
-> and two are the `narrow-extent` cells
-> [#269](https://github.com/brandonifco/rules-factory/issues/269) closed. *What moved, and why*
+> two are the `narrow-extent` cells
+> [#269](https://github.com/brandonifco/rules-factory/issues/269) closed, and eight are the three
+> checks that closed [#268](https://github.com/brandonifco/rules-factory/issues/268),
+> [#271](https://github.com/brandonifco/rules-factory/issues/271) and
+> [#225](https://github.com/brandonifco/rules-factory/issues/225). *What moved, and why*
 > below says which and why. That the table moves when a check grows is
 > the point of re-measuring it in the gate rather than dating it.
 >
@@ -51,7 +54,12 @@ judgement. No committed map is ever written to; a unit test asserts that against
 
 **Detected means the run went red.** A check that turns without failing the run is recorded as
 `signalled` and counted as a **miss**, because a map that passes is a map that ships. Two
-mutations landed there, and they are [#268](https://github.com/brandonifco/rules-factory/issues/268).
+mutations landed there and were [#268](https://github.com/brandonifco/rules-factory/issues/268);
+**no run signals now**, because a check that had subject matter in the version a map replaces and
+has none here fails. `detectors()` passes the committed map as `--previous`, which is what the
+run models: the committed map is the published version and the mutated map is the one proposed to
+replace it. The control is given the same file, so the control's verdicts are unchanged by it and
+a detection is the mutation's doing.
 
 **`check-map-review.py` is deliberately not a detector.** It holds a map's exact bytes to a review
 of them (0017), so it goes red on *any* edit, including re-serialisation. Counting it would report
@@ -67,11 +75,11 @@ somewhere for all fourteen mutations to land: a regulation's map has `enabledBy`
 
 | map | genre | locator grammar | applied | refused | missed |
 |---|---|---|---:|---:|---:|
-| [`hoyle-backgammon`](../hoyle-backgammon/) | rulebook, 1909 | page markers, Gutenberg text | 13 | 6 | 7 |
-| [`faa-part-107`](../faa-part-107/) | regulation | section designation, eCFR XML | 13 | 6 | 7 |
-| [`tax-121-principal-residence`](../tax-121-principal-residence/) | regulation | section designation, eCFR XML | 12 | 3 | 9 |
-| [`srd-52-combat`](../srd-52-combat/) | rulebook | page markers, PDF-extracted text | 14 | 2 | 12 |
-| [`srd-52-conditions`](../srd-52-conditions/) | rulebook, a glossary | page markers, PDF-extracted text | 10 | 3 | 7 |
+| [`hoyle-backgammon`](../hoyle-backgammon/) | rulebook, 1909 | page markers, Gutenberg text | 13 | 8 | 5 |
+| [`faa-part-107`](../faa-part-107/) | regulation | section designation, eCFR XML | 13 | 8 | 5 |
+| [`tax-121-principal-residence`](../tax-121-principal-residence/) | regulation | section designation, eCFR XML | 12 | 5 | 7 |
+| [`srd-52-combat`](../srd-52-combat/) | rulebook | page markers, PDF-extracted text | 14 | 3 | 11 |
+| [`srd-52-conditions`](../srd-52-conditions/) | rulebook, a glossary | page markers, PDF-extracted text | 10 | 4 | 6 |
 
 ## The table
 
@@ -83,24 +91,25 @@ checks is a refusal, and names the checks that turned.
 | `drop-entry` | **missed** | coverage | **missed** | **missed** | **missed** |
 | `drop-enabled-by` | **missed** | n/a | **missed** | **missed** | n/a |
 | `drop-suspended-by` | **missed** | **missed** | **missed** | **missed** | n/a |
-| `clear-to-ambiguous` | **missed** | **missed** | **missed** | **missed** | **missed** |
+| `clear-to-ambiguous` | question-anchor | question-anchor | question-anchor | question-anchor | question-anchor |
 | `ambiguous-to-clear` | **missed** | superposition | **missed** | **missed** | **missed** |
-| `assertion-to-operation` | signalled only: asserted-by | **missed** | n/a | **missed** | n/a |
+| `assertion-to-operation` | asserted-by | **missed** | n/a | **missed** | n/a |
 | `invent-depends-on` | **missed** | **missed** | **missed** | **missed** | **missed** |
 | `neighbour-evidence` | cross-references, locators | locators | cross-references, locators | **missed** | locators |
 | `same-passage-evidence` | cross-references | **missed** | **missed** | **missed** | **missed** |
 | `move-locator` | locators | locators | locators | locators | locators |
 | `omit-definition` | n/a | **missed** | **missed** | **missed** | **missed** |
-| `remove-applicability` | superposition | signalled only: gates | **missed** | **missed** | n/a |
+| `remove-applicability` | superposition | gates | applicability-reach | **missed** | n/a |
 | `hide-cross-reference` | cross-references | cross-references | cross-references | **missed** | **missed** |
 | `narrow-extent` | extent-bounds | extent | n/a | extent, extent-bounds, extent-end | extent, extent-bounds |
 
-Twenty refusals, made up of twenty-five turned checks, and seven check names account for every
-one: `locators` (9), `cross-references` (6), `extent` (3), `extent-bounds` (3), `superposition`
-(2), and one each from `coverage` and `extent-end`. Counting the two signalled-only turns,
-**five of the twenty-five checks in `check-map.py` ever turned; twenty never did.** They are not
-idle — they hold shapes a hand-written map breaks and a mutation of an already correct map does
-not — but a reader should not take twenty-five checks as twenty-five chances of being caught.
+Twenty-eight refusals, made up of thirty-three turned checks, and eleven check names account for
+every one: `locators` (9), `cross-references` (6), `question-anchor` (5), `extent` (3),
+`extent-bounds` (3), `superposition` (2), and one each from `asserted-by`, `gates`,
+`applicability-reach`, `coverage` and `extent-end`. **Seven of the twenty-nine checks in
+`check-map.py` ever turned; twenty-two never did.** They are not idle — they hold shapes a
+hand-written map breaks and a mutation of an already correct map does not — but a reader should
+not take twenty-nine checks as twenty-nine chances of being caught.
 
 `extent-bounds` is new here, and is a locator checker's rather than `check-map.py`'s: it is the
 half of #269 that placing a citation could not reach, and the paragraph on `narrow-extent` below
@@ -136,13 +145,18 @@ not answer. Either way the catch depends on what the donor sentence happened to 
 already said nothing checks that a gate list is complete; this says the same about an edge that is
 present and wrong.
 
-**The clarity flip is asymmetric, and one direction has moved.** At `69167d8` both directions were
-0 of 10, and the trial's sharpest single finding was that they are not the same kind of miss:
-premature collapse cannot be caught *structurally*, but an invented ambiguity could be, because
-`ambiguity.question` is free prose where `crossReferences.cites` on the same entry must be verbatim
-of the evidence. That second half is still true and still
-[#271](https://github.com/brandonifco/rules-factory/issues/271): `clear-to-ambiguous` remains 0 of
-5.
+**The clarity flip is asymmetric, and both directions have now moved — by different machinery.**
+At `69167d8` both were 0 of 10, and the trial's sharpest single finding was that they are not the
+same kind of miss: premature collapse cannot be caught *structurally*, but an invented ambiguity
+could be, because `ambiguity.question` was free prose where `crossReferences.cites` on the same
+entry must be verbatim of the evidence. That second half is now
+[#271](https://github.com/brandonifco/rules-factory/issues/271)'s `question-anchor`, and
+`clear-to-ambiguous` is **5 of 5**: the invented block the harness writes quotes no run of three
+consecutive words of any passage these maps quote, and the one map where it shares three —
+`hoyle-backgammon`'s "between the two" — shares three words of which the corpus owns none. The
+asymmetry is preserved rather than papered over: what this catches is an ambiguity about nothing
+in the passage. A mapper who invents doubt about a *real* sentence still passes, and nothing
+structural reaches that.
 
 The first half is now **1 of 5**, and the way it is caught is the interesting part — not
 structurally at all. `superposition`
@@ -177,10 +191,16 @@ The two categories are kept apart, because that is the point of the exercise.
 
 | mutation | what is missed | issue |
 |---|---|---|
-| `assertion-to-operation`, `remove-applicability` | a check whose subject matter the damage removed says NOT VERIFIED and the run stays green | [#268](https://github.com/brandonifco/rules-factory/issues/268) |
 | `drop-entry` | `coverage` counts units touched, so deleting a rule is invisible in 4 of 5 maps. `coverage` now reports how much of the extent is quoted ([0055](../../docs/decisions/0055-coverage-reports-how-much-of-the-extent-is-quoted-and-a-map-declares-the-floor.md)) and fails a map that quotes less than the `extent.quoted` floor it declares — **and no committed map declares one**, because adding the field changes the map's bytes and so its review ([0017](../../docs/decisions/0017-a-map-change-carries-a-review-of-its-bytes.md)). Each is its owner's decision, and until one is made these four cells stay missed | [#270](https://github.com/brandonifco/rules-factory/issues/270) |
-| `clear-to-ambiguous` | an ambiguity is anchored to nothing, where a cross-reference must quote the evidence | [#271](https://github.com/brandonifco/rules-factory/issues/271) |
 | `hide-cross-reference`, and the SRD half of `neighbour-evidence` | a pointer made by naming a defined term is not a phrase, and no phrase list will find it | [#208](https://github.com/brandonifco/rules-factory/issues/208), already open |
+
+Three rows left this table. `assertion-to-operation` and `remove-applicability` were #268 — a
+check whose subject matter the damage removed said NOT VERIFIED and the run stayed green — and
+are now refused on the maps where the damage took the *last* of that check's subject matter.
+`clear-to-ambiguous` was #271 and is refused on all five. What remains of those two mutations is
+in the measured-limit table below, because on `faa-part-107` and `srd-52-combat` the map still has
+other assertions and other gates: the check keeps looking, says `ok`, and half a subject removed
+is not a thing a verdict can show.
 
 ### A miss no structural check can reach — a measured limit
 
@@ -195,15 +215,16 @@ from first principles.
 | `ambiguous-to-clear` | premature collapse: one reading asserted, the other deleted. No check *of the map* reaches it; where a second mapper's adjudication says the corpus does not settle it, `superposition` does | 1 of 5, and that one from the adjudication record rather than the map |
 | `same-passage-evidence` | the entry quotes a real sentence of the passage it cites. Only reading the corpus against the entry says it is the wrong sentence | 1 of 5, and that one by bookkeeping |
 | `omit-definition` | a definition nobody mapped leaves no trace in a map that never referred to it | 0 of 4 |
-| `remove-applicability` | so does an applicability rule, once the edges that named it go with it | 1 of 4 refusals, and that one because the deleted entry was where an adjudicated doubt was recorded |
+| `remove-applicability`, `assertion-to-operation` | a check that loses *half* its subject matter keeps looking and says `ok`. Removing one of several assertions, or one of several gates, leaves the rest to be checked, and `--previous` compares verdicts rather than corpora | the two `assertion-to-operation` misses and one of the two `remove-applicability` misses are exactly this shape |
 
 ## What this trial changed
 
 - The validator's miss rate is a number: **74%, 46 of 62**, at `69167d8`, with the table above
-  saying which. It is **68%, 42 of 62** now, and every row that moved moved because a check
+  saying which. It is **55%, 34 of 62** now, and every row that moved moved because a check
   grew — which is the thing this trial was built to be able to say.
 - Four `enforcement` issues, each with the mutation that exposes it and the re-measurement that
-  will close it. One of them, #269, is closed by the two `narrow-extent` cells above.
+  closes it. Three of them — #269, #268 and #271 — are closed by rows above, and #225 (an
+  applicability gate nothing points at) moved a fourth row that no mutation had been written for.
 - Five lines in the validator's statement of its limits are now marked **measured**, with the
   count beside them, and the ones that remain reasoned are visibly reasoned.
 - `scripts/validate.sh` re-runs the whole measurement on every pull request and fails when a row
@@ -232,6 +253,10 @@ workflow of its own.
 | `hoyle-backgammon` / `remove-applicability` | missed | `superposition` | the applicability rule the harness drops is `bearing-off-eligible`, which is where that map records an adjudicated unsettled reading; deleting the entry leaves the doubt with nowhere to land |
 | `hoyle-backgammon` / `narrow-extent` | missed | `extent-bounds` | #269. The map cites pp. 271–278 of a declared 271–280, so narrowing moves no citation; `die-faces`'s quote runs to p. 280 and is now placed inside the range, not only counted |
 | `srd-52-conditions` / `narrow-extent` | missed | `extent`, `extent-bounds` | #269. `extent` places a page citation inside the declared range as it always placed a section designation, and the entries on p. 191 are outside 177–190 |
+| `clear-to-ambiguous`, all five maps | missed | `question-anchor` | #271. An `ambiguity.question` quotes the passage its two readings turn on; the invented block quotes nothing these maps quote |
+| `hoyle-backgammon` / `assertion-to-operation` | signalled only: `asserted-by` | `asserted-by` | #268. The damage took the map's only assertion, and the version it replaces had one |
+| `faa-part-107` / `remove-applicability` | signalled only: `gates` | `gates` | #268. The damage took `waivable-regulations` and all 27 `suspendedBy` edges naming it, which was every gate the map had |
+| `tax-121-principal-residence` / `remove-applicability` | missed | `applicability-reach` | #225. § 1.121-1(f)'s own words gate the whole section; with the entry and its 30 `enabledBy` edges gone, the map's last whole-unit gate goes with it and the check that had a subject in the published version has none |
 
 `srd-52-combat` / `narrow-extent` did not move — it was already refused — but its cell now names
 three checks rather than one. At `69167d8` the narrowing was caught only incidentally, by
