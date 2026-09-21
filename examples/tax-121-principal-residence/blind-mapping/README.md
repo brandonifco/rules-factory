@@ -27,9 +27,16 @@ and nothing outside the extract was consulted for any ruling.
   Entries are aligned **by the text they quote**, not by id: the two mappers chose ids
   independently, so a shared id would be a coincidence rather than a claim. `python3 compare.py`
   rewrites `results.json`; `--table` prints the difference table.
-- [`resolutions.json`](resolutions.json) — **the adjudication record.** Four disagreements about a
-  rule, each with the six fields 0014's review needs, and nine families covering every remaining
-  flag. A disagreement with no row would leave the map unusable.
+- [`resolutions.json`](resolutions.json) — **the adjudication record.** One `adjudications` list:
+  four rows `group: disagreement`, each about a rule and each with the six fields 0014's review
+  needs, and ten rows `group: family` covering every remaining flag. A disagreement with no row
+  would leave the map unusable. Its shape is the one every trial's record has
+  ([0060](../../../docs/decisions/0060-one-adjudication-record-one-shape-and-the-vocabulary-is-declared-in-the-file.md)):
+  the verdict is a `verdict` field rather than the opening clause of the prose, the prose beside
+  it is `reason`, and the `verdicts` legend — which this record always carried — is what says what
+  each term means, with `unsettledVerdict: "open"` naming the one that means the corpus does not
+  settle it. `graph-shape` is the one row answered two ways, which is what the legend's `mixed`
+  says; its reason says which went which way.
 - [`first-map.json`](first-map.json) — Map A as the first mapping left it.
 - [`build-map-c.py`](build-map-c.py) → [`../corpus-map.json`](../corpus-map.json)
   — Map C, built from Map A by applying exactly the changes the record rules, keyed to row ids.
@@ -62,8 +69,8 @@ adjudicated in full.
 ## The four disagreements
 
 Each is recorded in [`resolutions.json`](resolutions.json) with all six fields — what A said
-verbatim, what B said verbatim, the corpus's own words, why they differed, the ruling, and what
-it teaches beyond this entry. Summarised:
+verbatim, what B said verbatim, the corpus's own words, why they differed, the ruling (the
+`verdict` field and the `reason` beside it), and what it teaches beyond this entry. Summarised:
 
 | # | entry | A | B | ruling |
 |---|---|---|---|---|

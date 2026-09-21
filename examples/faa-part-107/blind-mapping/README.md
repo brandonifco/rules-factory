@@ -53,6 +53,11 @@ Verdicts: **R** the reference is right. **B** the blind map is right; the refere
 **U** the corpus does not settle it; an `ambiguity` is added to the reference. **N** not a
 disagreement about the corpus: a split, a merge, a choice of span, or a schema question.
 
+These four terms are the record's own: [`resolutions.json`](resolutions.json) declares them under
+`verdicts`, with `unsettledVerdict: "U"` naming the one that means the corpus does not settle it,
+so a program reads the vocabulary out of the file rather than out of this paragraph
+([0060](../../../docs/decisions/0060-one-adjudication-record-one-shape-and-the-vocabulary-is-declared-in-the-file.md)).
+
 | field | flags | R | B | U | N |
 |---|---:|---:|---:|---:|---:|
 | ambiguity | 8 | 1 | 1 | 3 | 3 |

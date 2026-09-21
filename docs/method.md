@@ -460,17 +460,23 @@ second is right, the corpus does not settle it (the entry is ambiguous and goes 
 it is not a disagreement about the corpus (a split, a merge, a choice of span). The map is
 corrected to the answer.
 
-**Where the record lives.** Beside the map, committed with the corrected map: one row per
-disagreement, with the entry, the field, both values, the verdict and the quote. A disagreement
-with no row is unresolved, and the map is not used. Beside it, the staging record: a review
-recorded as `blind-second-mapping` names one, or says out loud that it has none.
+**Where the record lives.** Beside the map, committed with the corrected map, in one file and one
+shape ([0060](decisions/0060-one-adjudication-record-one-shape-and-the-vocabulary-is-declared-in-the-file.md)):
+`blind-mapping/resolutions.json`, holding a `verdicts` legend, an `unsettledVerdict` naming the
+term that means *the corpus does not settle it*, and one `adjudications` row per disagreement —
+the entry ids, the field, the verdict in a field, and the reason with its quote. The vocabulary
+is whatever that adjudication was written in, and the legend is what says so, because a reader
+that has to consult a README is a reader no program can be. Beside it, `results.json`, the
+comparator's output: the alignment and the flags, and no verdicts. A disagreement with no row is
+unresolved, and the map is not used. Beside both, the staging record: a review recorded as
+`blind-second-mapping` names one, or says out loud that it has none.
 
 **And the validator reads it.** `check-map.py --only superposition` finds the record under
 `blind-mapping/` beside the map and holds two things to it
 ([0034](decisions/0034-a-valid-unresolved-state-is-established-not-asserted.md)): every
-disagreement about `clarity` or the presence of an `ambiguity` block carries a verdict a program
-can read, and every *the corpus does not settle it* is recorded in the map as `clarity:
-ambiguous` — on that entry or on one the resolution names. An adjudicated doubt that reaches no
+disagreement about `clarity` or the presence of an `ambiguity` block carries a verdict the
+record's own legend defines, and every *the corpus does not settle it* is recorded in the map as
+`clarity: ambiguous` — on that entry or on one the resolution names. An adjudicated doubt that reaches no
 entry is a premature collapse with a paper trail, and it is the one form of collapse that is
 mechanical, because the second reading is already in a committed file.
 

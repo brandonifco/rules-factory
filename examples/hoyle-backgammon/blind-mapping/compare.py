@@ -31,9 +31,15 @@ Added for this map's fields:
 It reads the reference from git at REFERENCE_COMMIT, so the flags are the ones raised against the
 map before it was corrected.
 
-Usage: compare.py            writes results.json beside this file and prints a summary
+Every flag must have a row in resolutions.json, the adjudication record, whose shape and whose
+declared verdict vocabulary are 0060's; the script exits 1 otherwise, and 1 again if the record
+does not declare a `verdicts` legend, an `unsettledVerdict` the legend defines, and a verdict the
+legend defines on every row.
+
+Usage: compare.py            writes results.json and resolutions.json's structural
+                            fields beside this file, and prints a summary
        compare.py --table    prints the resolution table as markdown
-       compare.py --dry      prints the summary without writing results.json
+       compare.py --dry      prints the summary and writes neither file
        compare.py --against PATH   compare a working-tree map instead (implies --dry)
 """
 import difflib
@@ -290,16 +296,76 @@ def key(f):
     return f"{f['entry']}|{f['field']}|{f['blind']}|{f['detail']}"
 
 
+# The adjudication record (0060). Every trial's is one shape: `verdicts` is the legend, in the
+# file rather than in a README; `unsettledVerdict` names the one term that means *the corpus does
+# not settle it*, which is the term `check-map.py --only superposition` turns on; and every row
+# carries its verdict in a field. The structural fields -- `id`, `field`, `entries` -- belong to
+# this script, because they are the comparison's; the verdict and the prose belong to the
+# adjudicator and are copied verbatim, in the order that row already had them in.
+ROW_PROSE = ("verdict", "reason", "locator", "quote")
+
+
+def prose_of(row):
+    return {k: row[k] for k in row if k in ROW_PROSE}
+
+
+def read_record():
+    """(the record, {row id: row}, [problem]) from resolutions.json."""
+    record = json.load(open(RES_PATH, encoding="utf-8")) if os.path.exists(RES_PATH) else {}
+    legend, rows, problems = record.get("verdicts"), record.get("adjudications"), []
+    if not isinstance(legend, dict) or not legend:
+        problems.append("resolutions.json declares no `verdicts` legend (0060)")
+        legend = {}
+    if record.get("unsettledVerdict") not in legend:
+        problems.append(f"`unsettledVerdict` is {record.get('unsettledVerdict')!r}, which the "
+                        f"`verdicts` legend does not define (0060)")
+    if not isinstance(rows, list):
+        problems.append("resolutions.json carries no `adjudications` list (0060)")
+        rows = []
+    by_id = {}
+    for row in rows:
+        by_id[row.get("id")] = row
+        if legend and row.get("verdict") not in legend:
+            problems.append(f"row {row.get('id')!r} is answered {row.get('verdict')!r}, which "
+                            f"the `verdicts` legend does not define")
+    return record, by_id, problems
+
+
+def write_record(record, by_id, flags):
+    """resolutions.json, its structural fields rewritten from the flags this run raised."""
+    rows, seen = [], set()
+    for f in flags:
+        seen.add(f["key"])
+        rows.append({"id": f["key"], "field": f["field"],
+                     # The ids this adjudication is about **in the map under review**, which is
+                     # the reference map: the blind map's id is in the row's own `id` and names
+                     # no entry of any map this repository uses. Putting it in `entries` was
+                     # measured to mask a collapse -- `mutate-map.py --only ambiguous-to-clear`
+                     # on faa-part-107 stops being refused, because `superposition` unions the
+                     # ids every row about one named entry reaches (0060).
+                     "entries": [f["entry"]] if f["entry"] else [],
+                     **prose_of(by_id.get(f["key"]) or {})})
+    # A row matching no flag is kept and reported, never dropped: it is somebody's adjudication,
+    # and this script is not the thing that decides it is spent.
+    rows += [by_id[i] for i in sorted(set(by_id) - seen, key=str)]
+    written = dict(record)
+    written["adjudications"] = rows
+    with open(RES_PATH, "w", encoding="utf-8") as h:
+        json.dump(written, h, indent=2, ensure_ascii=False)
+        h.write("\n")
+
+
 def main():
     ref = load_reference()
     blind = json.load(open(BLIND_PATH, encoding="utf-8"))
     al, flags, skipped = compare(ref, blind)
-    res = json.load(open(RES_PATH, encoding="utf-8")) if os.path.exists(RES_PATH) else {}
+    record, by_id, problems = read_record()
     for f in flags:
         f["key"] = key(f)
-        f["resolution"] = res.get(f["key"])
+        row = by_id.get(f["key"])
+        f["resolution"] = prose_of(row) if row else None
     missing = [f["key"] for f in flags if not f["resolution"]]
-    stale = sorted(set(res) - {f["key"] for f in flags})
+    stale = sorted(set(by_id) - {f["key"] for f in flags}, key=str)
 
     if "--table" in sys.argv:
         print("| # | reference entry | blind entry | field | reference | blind | verdict | quote / reason |")
@@ -338,6 +404,7 @@ def main():
         with open(os.path.join(HERE, "results.json"), "w", encoding="utf-8") as h:
             json.dump(result, h, indent=2, ensure_ascii=False)
             h.write("\n")
+        write_record(record, by_id, flags)
     print(f"flags: {len(flags)}  {by_field}")
     print(f"verdicts: {by_verdict}")
     print("unaligned ref:", al["unaligned_ref"])
@@ -345,6 +412,11 @@ def main():
     print("linked, not partner:", al["linked_not_partner"])
     if stale and not dry:
         print("resolution rows matching no flag:", stale)
+    if problems and not dry:
+        print(f"{len(problems)} problem(s) with the adjudication record's shape:")
+        for p in problems:
+            print("  ", p)
+        sys.exit(1)
     if missing and not dry:
         print(f"{len(missing)} flag(s) have no resolution row:")
         for k in missing:

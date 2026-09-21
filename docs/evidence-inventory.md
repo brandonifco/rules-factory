@@ -34,9 +34,9 @@ proves about a trial report is that the report's links work. So a read by that s
 | `checks` | a gate step, for what is in it | 73 | 10.6 MB |
 | `checks`, `package` | that, and `pack-map.py` | 18 | 2.5 MB |
 | `checks`, `links` | a gate step, and the link check | 17 | 419 KB |
-| `links` | **only** the markdown link check | 44 | 891 KB |
+| `links` | **only** the markdown link check | 44 | 892 KB |
 | `package` | only `pack-map.py` | 2 | 1 KB |
-| *(nothing)* | nothing the measurement could see | **43** | **919 KB** |
+| *(nothing)* | nothing the measurement could see | **43** | **1.0 MB** |
 
 The role follows from the readers:
 
@@ -44,7 +44,7 @@ The role follows from the readers:
 |---|---|---|---|
 | `release` — `pack-map.py` reads it | 20 | 2.5 MB | no: its bytes reach nuget.org |
 | `active` — some other part of the gate reads it | 134 | 11.9 MB | no: a check that fetches its inputs cannot be run offline |
-| `archived` — nothing reads it | 43 | 919 KB | yes |
+| `archived` — nothing reads it | 43 | 1.0 MB | yes |
 
 `check-evidence.py` refuses a lock that gives a non-null `archive` to an `active` or `release`
 artifact, and refuses a role its own `readBy` does not support. That pair of rules is what keeps a
@@ -56,7 +56,7 @@ Measured at `63a42c5`:
 
 | directory | active | release | archived |
 |---|---|---|---|
-| `examples/srd-52-combat` | 6.3 MB | 1.5 MB | 359 KB |
+| `examples/srd-52-combat` | 6.2 MB | 1.5 MB | 476 KB |
 | `examples/hazmat-172-table` | 3.2 MB | — | 7 KB |
 | `examples/hoyle-backgammon` | 523 KB | 783 KB | — |
 | `examples/faa-part-107` | 535 KB | 158 KB | — |

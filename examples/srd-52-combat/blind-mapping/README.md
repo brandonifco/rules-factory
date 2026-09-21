@@ -86,6 +86,11 @@ Verdicts: **R** the reference is right. **B** the blind map is right; the refere
 disagreement about the corpus: a split, a merge, a span choice, a different carrier for the same
 out-of-slice rule, or a representation both maps read the same way.
 
+These four terms are the record's own: [`resolutions.json`](resolutions.json) declares them under
+`verdicts`, with `unsettledVerdict: "U"` naming the one that means the corpus does not settle it,
+so a program reads the vocabulary out of the file rather than out of this paragraph
+([0060](../../../docs/decisions/0060-one-adjudication-record-one-shape-and-the-vocabulary-is-declared-in-the-file.md)).
+
 | field | flags | R | B | U | N |
 |---|---:|---:|---:|---:|---:|
 | entry | 40 | 3 | 3 | 1 | 33 |
