@@ -123,15 +123,18 @@ TABLE = (
     Row("tools/conformance-gate.py", MANAGED, 3,
         "whether the verdicts this change needs are recorded at the commit being merged; a truncated "
         "file list is undecidable (0029, #193)"),
-    Row("tools/requeue-gate.py", MANAGED, 1,
-        "asks the gate to report again at the commit a recorded verdict names (#191)"),
+    Row("tools/requeue-gate.py", MANAGED, 2,
+        "asks the gate to report again when something outside the pull request changed what it "
+        "would answer: a verdict recorded at its head (#191), or the risk label on the issue it "
+        "closes (#230)"),
     Row(".github/pull_request_template.md", MANAGED, 3,
         "the pull request shape pr-policy.py checks, documentation section included (0029, #236)"),
     Row(".github/workflows/pr-policy.yml", MANAGED, 1, "the required check that runs pr-policy.py (0029)"),
     Row(".github/workflows/conformance-gate.yml", MANAGED, 2,
         "the required check that runs conformance-gate.py (0029)"),
-    Row(".github/workflows/verdict-requeue.yml", MANAGED, 1,
-        "runs requeue-gate.py on the status event; deliberately not a required check (#191)"),
+    Row(".github/workflows/verdict-requeue.yml", MANAGED, 2,
+        "runs requeue-gate.py on the status and issues events; deliberately not a required check "
+        "(#191, #230)"),
     Row("tools/agent-doctor.py", MANAGED, 5,
         "whether the rails are active or only present, locally and on GitHub, and what merged work "
         "left behind (0029, #236)"),
@@ -341,6 +344,7 @@ RECIPE_SHA256 = {
     },
     "tools/requeue-gate.py": {
         1: "a4315a5fa76a696ee616e5ef190d6bbec0d023c04e22086082d4031c460aec8d",
+        2: "df937ba5ee305f52097406fa556c98ad0a98d4e6f76bb4a554ce0802fae1e952",
     },
     ".github/pull_request_template.md": {
         1: "e2cebc6419d62e2df3b218d76462caf807d6637f2b305ac2aa11153f13304a92",
@@ -356,6 +360,7 @@ RECIPE_SHA256 = {
     },
     ".github/workflows/verdict-requeue.yml": {
         1: "b1a48c75587dcbcf15638f83a703025c08f5449d9e2611550c4f15a448fcb178",
+        2: "8ab0d0de2df9777f3e545fedb66c118816e3c658a0fce87db63261967332780a",
     },
     "tools/agent-doctor.py": {
         1: "1b6fced99797d165ab0216523bddae183d6e7254f41d5d5f51cdb1d1c3b8913d",

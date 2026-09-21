@@ -43,7 +43,8 @@ the start of every session, so a session starts from the steady state or is told
 - Commit as you go. Work that exists only in a working tree is one mistaken delete from gone.
 - The pull request says `Closes #N` for each issue it finishes, and nothing it does not.
 - `./scripts/validate.sh` passes locally before the pull request is opened. CI runs it again, with
-  the engine job, and both are required checks on `main`.
+  the engine job and the `documentation` check of section 3, and all three are required checks on
+  `main`.
 - A test is watched failing. The pull request names the mutation that made each new test fail.
 
 ## 3. Every pull request checks all documentation
@@ -65,7 +66,10 @@ python3 tools/check-pr-docs.py --pr <number>  # what CI will say
 "Checked" means read against the change, and the note says what you looked for. The
 `documentation` check ([`tools/check-pr-docs.py`](tools/check-pr-docs.py), run by
 `.github/workflows/documentation.yml`) fails a pull request that leaves a living document out,
-calls a changed document unchanged, or claims an update the diff does not contain. It cannot tell
+calls a changed document unchanged, or claims an update the diff does not contain. It is a
+required check on `main`, which it was not when this sentence was first written: #365 merged with
+it red, by an ordinary squash merge with no override, because a check nobody is obliged to read
+collects the statement below only from people who were going to write it anyway (#368). It cannot tell
 whether anyone read a file. That part rests on your word, and the note is where you give it.
 
 Living means every tracked `*.md` except numbered decision records and trial evidence under

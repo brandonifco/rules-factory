@@ -20,20 +20,35 @@ name: verdict-requeue
 # required check governs nothing; requiring it would make every verdict's bookkeeping a merge
 # condition for a commit that has already merged.
 
+# Two events, because the gate reads two things that are not the pull request's own commits: the
+# verdicts recorded at its head, and the risk label on the issue it closes. A `status` event is a
+# verdict being recorded (#191); an `issues` event is the risk label changing after the gate has
+# already concluded, which left a green required check that no longer reflected the issue's risk
+# and let a pull request merge without the independent verdict it needed (rules-factory #230).
 on:
   status:
+  issues:
+    types: [labeled, unlabeled]
 
 concurrency:
   # `github.event.sha` -- the commit the verdict names -- and NOT `github.sha`, which on a `status`
   # event is the default branch's head: the same value for every verdict in the repository. With
   # `cancel-in-progress`, that group would have two verdicts recorded a minute apart on unrelated
   # pull requests cancel each other, and an independent-review issue records two verdicts in a row.
-  group: verdict-requeue-${{ github.event.sha }}
+  #
+  # On an `issues` event there is no commit, so the issue number keys the group instead: labelling
+  # and unlabelling the same issue twice in a row should cancel the earlier run, and two different
+  # issues should not cancel each other. The two halves cannot collide -- one is a 40-character
+  # SHA and the other a number -- and the prefix says which is which.
+  group: verdict-requeue-${{ github.event.sha && format('sha-{0}', github.event.sha) || format('issue-{0}', github.event.issue.number) }}
   cancel-in-progress: true
 
 permissions:
   contents: read
   pull-requests: read
+  # The risk label lives on the issue, and `for_issue()` reads the engine's own policy to learn
+  # which label that is before it acts on one.
+  issues: read
   # The one write this makes, and all it is for: re-requesting an existing `conformance-gate` run
   # of the pull request at this commit. It creates no run of its own and changes no code.
   actions: write
@@ -48,7 +63,19 @@ jobs:
         with:
           persist-credentials: false
 
+      - name: Re-run the gate for every open pull request that closes this issue
+        if: github.event_name == 'issues'
+        # Same discipline as below: the payload arrives as text somebody else wrote and is read
+        # from the environment, never interpolated into a shell command.
+        env:
+          GH_TOKEN: ${{ github.token }}
+          ISSUE_NUMBER: ${{ github.event.issue.number }}
+          ISSUE_LABEL: ${{ github.event.label.name }}
+          ISSUE_ACTION: ${{ github.event.action }}
+        run: python3 tools/requeue-gate.py
+
       - name: Re-run the gate at the commit this verdict names
+        if: github.event_name == 'status'
         # The payload is passed as environment variables and never interpolated into the command
         # line. `.github/workflows/pr-policy.yml` states the discipline this follows: a status
         # context and a SHA arrive from GitHub as text somebody else wrote, and a `${{ }}` in a

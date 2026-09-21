@@ -105,20 +105,60 @@ def problems(body, living, changed):
             found.append(f"`{path}` is not ticked")
         if not match["note"]:
             found.append(f"`{path}` has no note after `{match['verdict']}:`")
+    # Abbreviated paths first, and what they resolve to is not reported missing as well: one
+    # clear message beats a clear one under a redundant one.
+    real = set(living) | set(changed)
+    covered = set()
+    for path in list(listed):
+        if not ELLIPSIS.search(path):
+            continue
+        meant = resolves_to(path, real)
+        if len(meant) == 1:
+            found.append(f"`{path}` is abbreviated -- it has an ellipsis in it. Write the path "
+                         f"in full: `{meant[0]}`")
+            covered.add(meant[0])
+        elif meant:
+            found.append(f"`{path}` is abbreviated -- it has an ellipsis in it, and could be any "
+                         f"of: {', '.join(f'`{m}`' for m in meant)}. Write one in full")
+        else:
+            found.append(f"`{path}` is abbreviated -- it has an ellipsis in it, and no document "
+                         f"here matches what is either side of it")
     for path in living:
+        if path in covered:
+            continue
         if path not in listed:
             found.append(f"`{path}` is a living document and is not listed")
     for path in changed:
+        if path in covered:
+            continue
         if path not in listed:
             found.append(f"`{path}` is changed by this pull request and is not listed")
         elif listed[path]["verdict"] != "updated":
             found.append(f"`{path}` is changed by this pull request but listed as checked, no change")
     for path, match in listed.items():
+        if ELLIPSIS.search(path):
+            continue  # already reported above, with what it should have said
         if path not in living and path not in changed:
             found.append(f"`{path}` is neither a living document nor changed here")
         elif match["verdict"] == "updated" and path not in changed:
             found.append(f"`{path}` is listed as updated but this pull request does not change it")
     return found
+
+
+# An abbreviated path, written the way a person abbreviates one when the real name is long: a
+# Unicode ellipsis, or three full stops, standing for the middle of it. No document is named this
+# way, so the path matches nothing -- and before this the check said so twice and unhelpfully, once
+# as "neither a living document nor changed here" for what was written, and once as "is a living
+# document and is not listed" for what was meant. Neither named the ellipsis. That is the failure
+# #365 merged through, and this check is a required one now, so its diagnostics have to say what
+# is actually wrong.
+ELLIPSIS = re.compile(r"\u2026|\.\.\.")
+
+
+def resolves_to(path, candidates):
+    """The real documents an abbreviated `path` could mean: same head and same tail."""
+    head, _, tail = ELLIPSIS.split(path, 1)[0], None, ELLIPSIS.split(path, 1)[-1]
+    return sorted(c for c in candidates if c.startswith(head) and c.endswith(tail))
 
 
 def skeleton(living, changed):

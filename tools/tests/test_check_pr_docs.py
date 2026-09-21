@@ -173,5 +173,56 @@ class AgainstARepository(unittest.TestCase):
         self.assertEqual(code, 2, output)
 
 
+class TestAnAbbreviatedPathSaysSo(unittest.TestCase):
+    """#368: the check becomes a required one, so a failure has to say what is wrong.
+
+    A long document name gets abbreviated with an ellipsis when a person writes the section by
+    hand, and no document is named that way. Before this, the check reported it twice and
+    unhelpfully -- "neither a living document nor changed here" for what was written, and "is a
+    living document and is not listed" for what was meant -- and named the ellipsis in neither.
+    That is a false-positive-shaped failure, and a blocking check cannot have one.
+    """
+
+    LIVING = ["AGENTS.md"]
+    CHANGED = ["docs/decisions/0059-a-missing-definition-dominates-an-open-question.md"]
+
+    def body(self, path):
+        return ("## Documentation\n\n"
+                "- [x] `AGENTS.md` — checked, no change: nothing\n"
+                f"- [x] `{path}` — updated: added\n")
+
+    def problems(self, path):
+        return docs.problems(self.body(path), self.LIVING, self.CHANGED)
+
+    def test_a_unicode_ellipsis_is_named_and_resolved(self):
+        found = self.problems("docs/decisions/0059-a-missing-\u2026-question.md")
+        self.assertEqual(1, len(found), found)
+        self.assertIn("is abbreviated", found[0])
+        self.assertIn(self.CHANGED[0], found[0])
+
+    def test_three_full_stops_are_the_same_mistake(self):
+        found = self.problems("docs/decisions/0059-a-missing-...-question.md")
+        self.assertEqual(1, len(found), found)
+        self.assertIn("is abbreviated", found[0])
+        self.assertIn(self.CHANGED[0], found[0])
+
+    def test_what_it_stands_for_is_not_reported_missing_as_well(self):
+        """One clear message, not a clear one under a redundant one."""
+        found = self.problems("docs/decisions/0059-a-missing-\u2026-question.md")
+        self.assertFalse([f for f in found if "is not listed" in f], found)
+
+    def test_an_ellipsis_matching_nothing_says_that_instead_of_guessing(self):
+        found = self.problems("docs/zzz\u2026qqq.md")
+        self.assertTrue(any("no document here matches" in f for f in found), found)
+
+    def test_an_ambiguous_ellipsis_names_every_candidate(self):
+        found = docs.problems(self.body("docs/decisions/0059-a-\u2026.md"), self.LIVING,
+                              self.CHANGED + ["docs/decisions/0059-a-second-one.md"])
+        self.assertTrue(any("could be any of" in f for f in found), found)
+
+    def test_the_path_written_in_full_is_clean(self):
+        self.assertEqual([], self.problems(self.CHANGED[0]))
+
+
 if __name__ == "__main__":
     unittest.main()
