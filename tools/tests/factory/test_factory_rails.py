@@ -874,10 +874,12 @@ class TestTheReviewPacket(RailsInAGitEngine):
         self.assertEqual(done.returncode, 0, done.stderr)
         written = done.stdout.split()
         self.assertEqual(written[0], os.path.join(out, f"pr-5-{head[:12]}.md"))
-        self.assertEqual(written[1], os.path.join(out, "entry-altitude-limit.md"))
+        # The manifest a verdict is recorded from, named for the same commit (#334).
+        self.assertEqual(written[1], os.path.join(out, f"pr-5-{head[:12]}.review.json"))
+        self.assertEqual(written[2], os.path.join(out, "entry-altitude-limit.md"))
         with open(written[0], encoding="utf-8") as handle:
             body = handle.read()
-        digest = hashlib.sha256(open(written[1], "rb").read()).hexdigest()
+        digest = hashlib.sha256(open(written[2], "rb").read()).hexdigest()
         self.assertIn(digest, body, "the entry packet's digest, so two reviewers can prove they read the same entry")
 
     def test_a_packet_inside_the_repository_is_refused(self):
@@ -887,6 +889,73 @@ class TestTheReviewPacket(RailsInAGitEngine):
         done = self.packet("--out", os.path.join(self.out, "packets"))
         self.assertEqual(done.returncode, 1, done.stdout)
         self.assertIn("never written inside the repository", done.stderr)
+
+    # --- the packet is about one commit, and every byte in it comes from that commit (#334) ----
+
+    def reviewed_commit(self, marker="9.9.9-reviewed"):
+        """A commit whose `provenance.json` says something the checkout's does not.
+
+        The engine was produced from one map; this commit says it was produced from another. That
+        is the fact section 4 reports, so it is the fact that shows which tree the packet read.
+        """
+        record = json.loads(self.read("provenance.json"))
+        record["map"]["version"] = marker
+        with open(os.path.join(self.out, "provenance.json"), "w", encoding="utf-8") as handle:
+            json.dump(record, handle, indent=2)
+        git(self.out, "add", "-A")
+        git(self.out, "commit", "-qm", "the commit under review")
+        return git(self.out, "rev-parse", "HEAD")
+
+    def test_the_packet_reports_the_reviewed_commit_and_not_the_checkout(self):
+        """#334, defect 1: the head SHA came from GitHub and the bytes came from the working tree.
+
+        The packet titles itself with the head it asked GitHub for and then reads `provenance.json`
+        beside itself, so a reviewer whose checkout is anywhere else is handed a packet that names
+        commit B and describes commit A.
+        """
+        self.commit_engine()
+        self.change()
+        head = self.reviewed_commit()
+        git(self.out, "checkout", "-q", "main")     # the reviewer's checkout is elsewhere
+        self.pull_request(head)
+        text = self.rendered()
+        self.assertIn(head, text, "the packet is titled with the commit it was asked for")
+        # Section 4 alone. The marker is also in section 7's diff, because the diff *is* read from
+        # the reviewed commit already -- asserting over the whole packet would pass on that and
+        # prove nothing about the half this is written for (#283).
+        produced_from = text.split("## 4. What this engine was produced from")[1].split("\n## 5.")[0]
+        self.assertIn("9.9.9-reviewed", produced_from,
+                      "section 4 describes the checkout, not the commit the packet names")
+
+    def test_the_packet_refuses_a_commit_it_cannot_read(self):
+        """A reviewed SHA the repository does not have is a packet that cannot be assembled."""
+        self.commit_engine()
+        self.change()
+        self.pull_request("b" * 40)
+        done = self.packet("--stdout")
+        self.assertEqual(done.returncode, 1, done.stdout)
+        self.assertIn("b" * 12, done.stderr)
+        self.assertIn("fetch", done.stderr, "it says how to get the commit")
+
+    def test_the_packet_writes_a_manifest_naming_what_was_reviewed(self):
+        """The verdict is recorded from this, so it is machine-readable and it is hashed."""
+        self.commit_engine()
+        self.change()
+        head = self.reviewed_commit()
+        self.pull_request(head)
+        done = self.packet("--out", os.path.join(self.tmp, "packets"))
+        self.assertEqual(done.returncode, 0, done.stderr)
+        manifest_path = [line for line in done.stdout.split() if line.endswith(".review.json")]
+        self.assertTrue(manifest_path, done.stdout)
+        with open(manifest_path[0], encoding="utf-8") as handle:
+            manifest = json.load(handle)
+        self.assertEqual(manifest["reviewedSha"], head)
+        self.assertEqual(manifest["pullRequest"], 5)
+        self.assertEqual(manifest["map"]["version"], "9.9.9-reviewed")
+        (packet_file,) = [l for l in done.stdout.split() if l.endswith(".md") and "pr-5-" in l]
+        with open(packet_file, "rb") as handle:
+            self.assertEqual(manifest["packetSha256"], hashlib.sha256(handle.read()).hexdigest(),
+                             "the manifest identifies the packet's own bytes")
 
 
 GOOD_PR_BODY = """## Linked issue
@@ -1480,6 +1549,7 @@ if argv_api := [a for a in sys.argv[1:] if a.startswith("repos/")]:
 
     def scenario(self, head="a" * 40, labels=("state:ready", "risk:normal"), files=None, changed_files=None):
         self.gh_with_statuses()
+        self.head = head
         files = files if files is not None else [{"path": f"src/{NAME}/Rules/AltitudeLimit.cs"}]
         self.fixture({
             "pr": {"5": {"number": 5, "headRefOid": head, "state": "OPEN",
@@ -1492,13 +1562,75 @@ if argv_api := [a for a in sys.argv[1:] if a.startswith("repos/")]:
         with open(self.statuses, "w", encoding="utf-8") as handle:
             json.dump({}, handle)
 
-    def test_a_verdict_is_recorded_at_the_head_commit(self):
+    def test_a_verdict_is_recorded_at_the_commit_the_reviewer_names(self):
         self.produced()
         self.scenario()
-        done = self.record("--pr", "5", "--reviewer", "semantic", "--verdict", "pass")
+        done = self.record("--pr", "5", "--reviewer", "semantic", "--verdict", "pass", "--sha", "a" * 40)
         self.assertEqual(done.returncode, 0, done.stderr)
         recorded = json.load(open(self.statuses, encoding="utf-8"))
         self.assertEqual(recorded["a" * 40]["rules-verdict/semantic"], "success")
+
+    # --- the verdict names what was reviewed, and never inherits a commit (#334) ----------------
+
+    def test_a_verdict_with_no_identity_is_refused_and_posts_nothing(self):
+        """#334, defect 2: `--sha` defaulted to the pull request's live head.
+
+        A reviewer who read commit A, and ran the documented command after the branch advanced to
+        B, recorded a success on B. Nothing about that was visible in the result.
+        """
+        self.produced()
+        self.scenario(head="b" * 40)
+        done = self.record("--pr", "5", "--reviewer", "semantic", "--verdict", "pass")
+        self.assertEqual(done.returncode, 1, done.stdout)
+        self.assertIn("--sha", done.stderr)
+        self.assertIn("--packet", done.stderr)
+        self.assertEqual(json.load(open(self.statuses, encoding="utf-8")), {},
+                         "a refusal posts nothing")
+
+    def manifest(self, sha, packet_text="the packet\n", **extra):
+        """A packet manifest as `review-packet.py` writes one."""
+        packet = os.path.join(self.tmp, f"pr-5-{sha[:12]}.md")
+        with open(packet, "w", encoding="utf-8") as handle:
+            handle.write(packet_text)
+        document = {"manifestVersion": 1, "pullRequest": 5, "reviewedSha": sha,
+                    "packetPath": packet,
+                    "packetSha256": hashlib.sha256(packet_text.encode("utf-8")).hexdigest(),
+                    **extra}
+        path = os.path.join(self.tmp, f"pr-5-{sha[:12]}.review.json")
+        with open(path, "w", encoding="utf-8") as handle:
+            json.dump(document, handle)
+        return path
+
+    def test_a_verdict_from_a_packet_records_the_packet_s_commit(self):
+        self.produced()
+        self.scenario(head="a" * 40)
+        done = self.record("--pr", "5", "--reviewer", "semantic", "--verdict", "pass",
+                           "--packet", self.manifest("a" * 40))
+        self.assertEqual(done.returncode, 0, done.stderr)
+        recorded = json.load(open(self.statuses, encoding="utf-8"))
+        self.assertEqual(recorded["a" * 40]["rules-verdict/semantic"], "success")
+
+    def test_a_packet_for_a_commit_the_pull_request_has_left_is_refused(self):
+        """The artifact moved under the review. Failing closed is the whole point of #334."""
+        self.produced()
+        self.scenario(head="b" * 40)
+        done = self.record("--pr", "5", "--reviewer", "semantic", "--verdict", "pass",
+                           "--packet", self.manifest("a" * 40))
+        self.assertEqual(done.returncode, 1, done.stdout)
+        self.assertIn("a" * 12, done.stderr)
+        self.assertIn("b" * 12, done.stderr)
+        self.assertEqual(json.load(open(self.statuses, encoding="utf-8")), {})
+
+    def test_a_packet_whose_bytes_changed_since_it_was_written_is_refused(self):
+        self.produced()
+        self.scenario(head="a" * 40)
+        path = self.manifest("a" * 40)
+        with open(json.load(open(path, encoding="utf-8"))["packetPath"], "w", encoding="utf-8") as handle:
+            handle.write("a different packet\n")
+        done = self.record("--pr", "5", "--reviewer", "semantic", "--verdict", "pass", "--packet", path)
+        self.assertEqual(done.returncode, 1, done.stdout)
+        self.assertIn("sha256", done.stderr)
+        self.assertEqual(json.load(open(self.statuses, encoding="utf-8")), {})
 
     def test_an_unconfigured_reviewer_is_refused_and_says_what_is_configured(self):
         self.produced()
@@ -1515,14 +1647,14 @@ if argv_api := [a for a in sys.argv[1:] if a.startswith("repos/")]:
         done = self.gate()
         self.assertEqual(done.returncode, 1, done.stdout)
         self.assertIn("rules-verdict/semantic is not recorded as a success", done.stdout)
-        self.assertEqual(self.record("--pr", "5", "--reviewer", "semantic", "--verdict", "pass").returncode, 0)
+        self.assertEqual(self.record("--pr", "5", "--reviewer", "semantic", "--verdict", "pass", "--sha", self.head).returncode, 0)
         done = self.gate()
         self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
 
     def test_a_verdict_at_one_commit_does_not_satisfy_the_gate_at_another(self):
         self.produced()
         self.scenario(head="a" * 40)
-        self.assertEqual(self.record("--pr", "5", "--reviewer", "semantic", "--verdict", "pass").returncode, 0)
+        self.assertEqual(self.record("--pr", "5", "--reviewer", "semantic", "--verdict", "pass", "--sha", self.head).returncode, 0)
         self.assertEqual(self.gate().returncode, 0)
         # One more commit on the pull request: the verdict is on the bytes nobody is merging now.
         self.scenario(head="b" * 40)
@@ -1536,11 +1668,11 @@ if argv_api := [a for a in sys.argv[1:] if a.startswith("repos/")]:
     def test_a_recorded_failure_blocks_and_another_context_does_not_clear_it(self):
         self.produced()
         self.scenario(labels=("state:ready", "risk:independent-review"))
-        self.assertEqual(self.record("--pr", "5", "--reviewer", "semantic", "--verdict", "pass").returncode, 0)
-        done = self.record("--pr", "5", "--reviewer", "codex", "--verdict", "fail", "--note", "row 7 is wrong")
+        self.assertEqual(self.record("--pr", "5", "--reviewer", "semantic", "--verdict", "pass", "--sha", self.head).returncode, 0)
+        done = self.record("--pr", "5", "--reviewer", "codex", "--verdict", "fail", "--note", "row 7 is wrong", "--sha", self.head)
         self.assertEqual(done.returncode, 0, done.stderr)
         self.assertIn("blocks the merge outright", done.stdout)
-        self.assertEqual(self.record("--pr", "5", "--reviewer", "gemini", "--verdict", "pass").returncode, 0)
+        self.assertEqual(self.record("--pr", "5", "--reviewer", "gemini", "--verdict", "pass", "--sha", self.head).returncode, 0)
         done = self.gate()
         self.assertEqual(done.returncode, 1, done.stdout)
         self.assertIn("recorded as a failure", done.stdout)
@@ -1549,12 +1681,12 @@ if argv_api := [a for a in sys.argv[1:] if a.startswith("repos/")]:
     def test_an_independent_risk_issue_needs_a_second_verdict(self):
         self.produced()
         self.scenario(labels=("state:ready", "risk:independent-review"))
-        self.assertEqual(self.record("--pr", "5", "--reviewer", "semantic", "--verdict", "pass").returncode, 0)
+        self.assertEqual(self.record("--pr", "5", "--reviewer", "semantic", "--verdict", "pass", "--sha", self.head).returncode, 0)
         done = self.gate()
         self.assertEqual(done.returncode, 1, done.stdout)
         self.assertIn("must also be recorded as a success", done.stdout)
         self.assertIn("rules-verdict/codex or rules-verdict/gemini", done.stdout)
-        self.assertEqual(self.record("--pr", "5", "--reviewer", "codex", "--verdict", "pass").returncode, 0)
+        self.assertEqual(self.record("--pr", "5", "--reviewer", "codex", "--verdict", "pass", "--sha", self.head).returncode, 0)
         self.assertEqual(self.gate().returncode, 0)
 
     def test_a_change_off_the_semantic_surface_needs_no_verdict(self):
@@ -1587,7 +1719,7 @@ if argv_api := [a for a in sys.argv[1:] if a.startswith("repos/")]:
         done = self.gate()
         self.assertEqual(done.returncode, 1, done.stdout)
         self.assertIn("rules-verdict/semantic is not recorded as a success", done.stdout)
-        self.assertEqual(self.record("--pr", "5", "--reviewer", "semantic", "--verdict", "pass").returncode, 0)
+        self.assertEqual(self.record("--pr", "5", "--reviewer", "semantic", "--verdict", "pass", "--sha", self.head).returncode, 0)
         done = self.gate()
         self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
 
@@ -1599,10 +1731,10 @@ if argv_api := [a for a in sys.argv[1:] if a.startswith("repos/")]:
         with open(path, "w", encoding="utf-8") as handle:
             json.dump(settings, handle, indent=2)
         self.scenario(labels=("risk:independent-review",))
-        self.assertEqual(self.record("--pr", "5", "--reviewer", "codex", "--verdict", "pass").returncode, 1,
+        self.assertEqual(self.record("--pr", "5", "--reviewer", "codex", "--verdict", "pass", "--sha", self.head).returncode, 1,
                          "a provider the policy dropped is no longer a reviewer")
-        self.assertEqual(self.record("--pr", "5", "--reviewer", "semantic", "--verdict", "pass").returncode, 0)
-        self.assertEqual(self.record("--pr", "5", "--reviewer", "acme", "--verdict", "pass").returncode, 0)
+        self.assertEqual(self.record("--pr", "5", "--reviewer", "semantic", "--verdict", "pass", "--sha", self.head).returncode, 0)
+        self.assertEqual(self.record("--pr", "5", "--reviewer", "acme", "--verdict", "pass", "--sha", self.head).returncode, 0)
         self.assertEqual(self.gate().returncode, 0)
 
 
@@ -1983,7 +2115,10 @@ COMMAND = re.compile(r"^(?:\./)?(?:tools|scripts)/[A-Za-z0-9_.\-]+\.(?:py|sh)$")
 # grows a new one is a command nobody has run.
 PLACEHOLDERS = {"<n>": "1", "<issue number>": "1", "<entry id>": "speed-limit", "<entry-id>": "speed-limit",
                 "<pr>": "1", "<pr number>": "1", "<id>": "semantic", "{args.pr}": "1",
-                '"..."': "Title", "pass|fail": "pass"}
+                '"..."': "Title", "pass|fail": "pass",
+                # No such file: record-verdict.py then refuses because the manifest cannot be read,
+                # which is a refusal about what it was asked, not about how it was called (#334).
+                "<packet manifest>": "review.json"}
 # `scripts/validate.sh` is the gate itself: running it here would restore, build and test an engine
 # in every target framework from inside a unit test. scripts/validate-engine.sh runs it against a
 # produced engine for real, which is where its runnability is proven.

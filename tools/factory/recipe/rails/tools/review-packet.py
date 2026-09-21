@@ -20,17 +20,31 @@ packet (`tools/entry-packet.py`, section 3 here) and forms its own reading of th
 diff (section 5). Reading the implementation first destroys the review: the code was written to be
 persuasive about its own interpretation. The sections are in the order they are meant to be read.
 
+**One commit, and every byte from it (#334).** The packet used to take the head SHA from GitHub
+and then read `provenance.json` and the entries from whatever the working tree happened to hold,
+so a reviewer whose checkout was elsewhere got a packet that named commit B and described commit
+A. Now the reviewed commit is extracted once, with `git archive`, and every byte the packet
+reports is read from that tree. The working tree is not read at all, and a commit this repository
+does not have is a refusal rather than a packet about something else.
+
+Beside the packet it writes a **manifest** -- `pr-<n>-<sha12>.review.json` -- naming the reviewed
+commit, the packet's own sha256, and the digests of what was reviewed. `tools/record-verdict.py`
+takes the commit to record against from that file, so a verdict cannot drift onto a later head.
+
 **Ephemeral**, for the reason an entry packet is: written outside the repository, never committed.
 
 Standard library only, plus `gh` (or `$RULES_ENGINE_GH`) and `git`.
 """
 import argparse
 import hashlib
+import io
 import json
 import os
 import pathlib
+import shutil
 import subprocess
 import sys
+import tarfile
 import tempfile
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]
@@ -42,6 +56,8 @@ PACKET_ROOT_VARIABLE = "RULES_ENGINE_PACKET_ROOT"
 # The marker `factory backlog --create` puts under an item's title: the one thing about an item the
 # map never changes, and therefore what ties a pull request back to an entry.
 ENTRY_MARKER = "<!-- rules-factory-entry:"
+# The manifest a verdict is recorded from. Bumping this is a change record-verdict.py must know.
+MANIFEST_VERSION = 1
 DIFF_LINE_BUDGET = 2000
 
 
@@ -87,17 +103,50 @@ def entry_ids(*texts):
     return found
 
 
-def entry_packet(entry_id, out_dir, package_map=None):
+def reviewed_tree(sha, into):
+    """The reviewed commit's own bytes, extracted once, with nothing of the working tree in them.
+
+    `git archive` writes the commit's tree and no git metadata, so the result cannot be a branch,
+    cannot be dirty, and cannot move while a reviewer reads it. That is the property #334 is
+    about: a packet describes one immutable tree or it is refused.
+    """
+    try:
+        done = subprocess.run(["git", "archive", "--format=tar", sha], cwd=ROOT,
+                              stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    except (OSError, subprocess.SubprocessError) as error:
+        raise Refused(f"cannot run git to read {sha[:12]} ({error})")
+    if done.returncode != 0:
+        raise Refused(f"{sha[:12]} is not a commit this repository has "
+                      f"({done.stderr.decode('utf-8', 'replace').strip()}). "
+                      f"`git fetch origin` first: a packet is assembled from the reviewed commit's "
+                      f"own bytes, never from the working tree.")
+    with tarfile.open(fileobj=io.BytesIO(done.stdout)) as archive:
+        archive.extractall(into, filter="data")
+    return pathlib.Path(into)
+
+
+def read_at(tree, relative):
+    """One file, from the reviewed tree."""
+    try:
+        return (tree / relative).read_text(encoding="utf-8")
+    except OSError as error:
+        raise Refused(f"{relative} cannot be read from the reviewed commit ({error})")
+
+
+def entry_packet(entry_id, out_dir, tree, package_map=None):
     """The entry packet for `entry_id`, and its digest, or the reason there is none.
 
     The digest is what makes "the reviewer read the same entry the implementer did" checkable: two
     packets of the same entry at the same map version have the same sha256.
     """
     target = out_dir / f"entry-{entry_id}.md"
-    command = [sys.executable, str(ROOT / ENTRY_PACKET), entry_id, "--out", str(out_dir)]
+    # The reviewed commit's own entry-packet.py, over the reviewed commit's own map and overlay.
+    # `entry-packet.py` is a managed file, so the checkout's copy may not be the one this change
+    # was written against either.
+    command = [sys.executable, str(tree / ENTRY_PACKET), entry_id, "--out", str(out_dir)]
     if package_map:
         command += ["--package-map", package_map]
-    done = subprocess.run(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, cwd=ROOT)
+    done = subprocess.run(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, cwd=tree)
     if done.returncode != 0 or not target.is_file():
         return None, None, (done.stderr.strip() or "entry-packet.py produced nothing")
     data = target.read_bytes()
@@ -121,14 +170,18 @@ def bounded_diff(base, head):
             f"The whole diff: `git diff {base}...{head}`.")
 
 
-def build(number, base, out_dir, package_map=None):
+def build(number, base, out_dir, tree_root, sha=None, package_map=None):
     settings = policy()
     labels = settings.get("labels") or {}
     review = settings.get("review") or {}
 
     pull = json.loads(gh("pr", "view", str(number), "--json",
                          "number,title,body,headRefOid,headRefName,baseRefName,files,closingIssuesReferences"))
-    head = pull.get("headRefOid") or ""
+    head = sha or pull.get("headRefOid") or ""
+    if not head:
+        raise Refused(f"PR #{number} has no head commit, and --sha named none")
+    # Everything below reads this tree and nothing reads the checkout (#334).
+    tree = reviewed_tree(head, tree_root)
     issues = pull.get("closingIssuesReferences") or []
     if len(issues) != 1:
         raise Refused(f"PR #{number} closes {len(issues)} issues; the rails allow exactly one "
@@ -144,12 +197,17 @@ def build(number, base, out_dir, package_map=None):
     changed = [f["path"] for f in pull.get("files") or []]
     semantic = [path for path in changed if is_semantic(path, review.get("semanticPaths") or [])]
 
-    record = json.loads((ROOT / PROVENANCE).read_text(encoding="utf-8"))
+    provenance_raw = read_at(tree, PROVENANCE)
+    try:
+        record = json.loads(provenance_raw)
+    except ValueError as error:
+        raise Refused(f"{PROVENANCE} at {head[:12]} is not readable JSON ({error})")
     entries = entry_ids(issue.get("body"), pull.get("body"))
 
     parts = [f"# Review packet: PR #{number} — {pull.get('title', '')}\n",
-             f"Head commit `{head}`. **Every verdict is recorded against this exact commit.** If the pull request "
-             f"gains another commit, this packet and any verdict recorded from it no longer apply to it.\n",
+             f"Reviewed commit `{head}`. **Every byte below is read from this commit** -- not from anyone's "
+             f"working tree -- and every verdict is recorded against it. If the pull request gains another "
+             f"commit, this packet and any verdict recorded from it no longer apply to it.\n",
              section("1. The issue this closes",
                      f"**#{issue_number} — {issue.get('title', '')}** ({issue.get('state', '')})\n\n"
                      f"Labels: {', '.join(issue_labels) or 'none'}\n\n"
@@ -162,14 +220,17 @@ def build(number, base, out_dir, package_map=None):
              ]
 
     packets = []
+    entry_digests = []
     if entries:
         rendered = []
         for entry_id in entries:
-            path, digest, problem = entry_packet(entry_id, out_dir, package_map)
+            path, digest, problem = entry_packet(entry_id, out_dir, tree, package_map)
             if problem:
                 rendered.append(f"- `{entry_id}`: **no packet** — {problem}")
+                entry_digests.append({"entryId": entry_id, "problem": problem})
             else:
                 packets.append(path)
+                entry_digests.append({"entryId": entry_id, "path": str(path), "sha256": digest})
                 rendered.append(f"- `{entry_id}`: `{path}` (sha256 `{digest}`)")
         body = ("Read these **before** the diff. They are the map's own bytes for the entries this change names; "
                 "your reading of the rule is formed from them, not from the implementation.\n\n"
@@ -223,10 +284,24 @@ def build(number, base, out_dir, package_map=None):
         gates.append(f"- one of: {chain} — required, because the issue is {labels.get('independentRisk')}")
     parts.append(section("9. What must be green before this merges",
                          "\n".join(gates) +
-                         "\n\nA verdict is recorded against the head commit above, and a later commit invalidates "
-                         "it. The chain advances only when a provider is unavailable — never because its verdict "
-                         "was unwelcome."))
-    return "\n".join(parts), head, packets
+                         "\n\nA verdict is recorded against the reviewed commit above, and a later commit "
+                         "invalidates it. Record it with `tools/record-verdict.py` and its `--packet` option, "
+                         "naming the `.review.json` written beside this packet: the commit then comes from what "
+                         "you actually read, and never from the pull request's current head. The chain advances "
+                         "only when a provider is unavailable — never because its verdict was unwelcome."))
+    manifest = {
+        "manifestVersion": MANIFEST_VERSION,
+        "pullRequest": number,
+        "reviewedSha": head,
+        "base": base,
+        "provenanceSha256": hashlib.sha256(provenance_raw.encode("utf-8")).hexdigest(),
+        "map": {"packageId": record["map"]["packageId"], "version": record["map"]["version"],
+                "nupkgSha256": record["map"].get("nupkgSha256", "")},
+        "corpora": [{"sourceId": c.get("sourceId"), "contentHash": c.get("contentHash"),
+                     "principal": bool(c.get("principal"))} for c in record.get("corpora") or []],
+        "entryPackets": entry_digests,
+    }
+    return "\n".join(parts), head, packets, manifest
 
 
 def is_semantic(path, patterns):
@@ -262,22 +337,38 @@ def main(argv=None):
     parser.add_argument("--package-map", help="the restored map package's corpus-map.json, passed to "
                                                   "entry-packet.py (default: it asks MSBuild)")
     parser.add_argument("--base", default="origin/main", help="what the change is diffed against (default: origin/main)")
-    parser.add_argument("--stdout", action="store_true", help="write the packet to stdout and no file")
+    parser.add_argument("--sha", help="the commit to assemble the packet from (default: the pull request's head "
+                                      "as GitHub reports it). Every byte of the packet comes from this commit.")
+    parser.add_argument("--stdout", action="store_true", help="write the packet to stdout, and no packet file and "
+                                                              "no manifest -- so no verdict can be recorded from it")
     args = parser.parse_args(argv)
 
+    tree_root = None
     try:
         out_dir = destination(args.out)
         out_dir.mkdir(parents=True, exist_ok=True)
-        text, head, packets = build(args.pr, args.base, out_dir, args.package_map)
+        tree_root = tempfile.mkdtemp(prefix="review-packet-tree-")
+        text, head, packets, manifest = build(args.pr, args.base, out_dir, tree_root, args.sha, args.package_map)
         if args.stdout:
             sys.stdout.write(text)
             return 0
         target = out_dir / f"pr-{args.pr}-{head[:12]}.md"
         target.write_text(text, encoding="utf-8")
+        # The manifest names the packet's own bytes, so it is written after the packet and never
+        # before: a manifest whose digest does not match the file beside it is what
+        # record-verdict.py refuses.
+        manifest["packetPath"] = str(target)
+        manifest["packetSha256"] = hashlib.sha256(target.read_bytes()).hexdigest()
+        record_path = out_dir / f"pr-{args.pr}-{head[:12]}.review.json"
+        record_path.write_text(json.dumps(manifest, indent=2, sort_keys=True) + "\n", encoding="utf-8")
     except Refused as error:
         print(f"review-packet: REFUSED -- {error}", file=sys.stderr)
         return 1
+    finally:
+        if tree_root:
+            shutil.rmtree(tree_root, ignore_errors=True)
     print(target)
+    print(record_path)
     for path in packets:
         print(path)
     return 0

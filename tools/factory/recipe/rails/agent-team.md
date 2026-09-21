@@ -97,9 +97,11 @@ visible by recording the verdict under its own context rather than a generic one
 acceptance criteria. **It does not receive any other reviewer's conclusions** before producing
 its own.
 
-A verdict is recorded with `tools/record-verdict.py --pr <n> --reviewer <id> --verdict pass|fail`,
-under that provider's own context, and `tools/conformance-gate.py` requires it at the commit being
-merged. Recording it is the whole of the step: `.github/workflows/verdict-requeue.yml` asks the
+A verdict is recorded with `tools/record-verdict.py --pr <n> --reviewer <id> --verdict pass|fail
+--packet <packet manifest>`, under that provider's own context, and
+`tools/conformance-gate.py` requires it at the commit being merged. The commit comes from the
+packet that was read, never from the pull request's current head: a review of one commit must not
+become an approval of a later one. Recording it is the whole of the step: `.github/workflows/verdict-requeue.yml` asks the
 gate to report again at that commit, so a gate still red for a moment afterwards is bookkeeping
 catching up, not the verdict failing to register.
 

@@ -228,8 +228,9 @@ decline that names why and cites where — that is the engine working, not the e
   assembles the issue, the claim, the entries as the map has them, the overlay's before and after,
   the bounded diff and what must be green. Its sections are in the order a semantic reviewer reads
   them: the entry before the implementation, always.
-- **A verdict names a commit.** `tools/record-verdict.py --pr <n> --reviewer <id> --verdict
-  pass|fail` records it as a commit status on the pull request's head SHA, and
+- **A verdict names a commit, and never inherits one.** `tools/record-verdict.py --pr <n>
+  --reviewer <id> --verdict pass|fail --packet <packet manifest>`
+  records it as a commit status on the commit that packet was assembled from, and
   `tools/conformance-gate.py` requires it there. A further commit therefore invalidates the review
   that preceded it, automatically, because the status is on the bytes that were actually read. A
   verdict that lives only in a conversation is worth nothing to this repository.

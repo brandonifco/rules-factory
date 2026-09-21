@@ -59,9 +59,10 @@ with the entry id, the locator, what the rule requires, what the code does, and 
 separates them. A pass with unstated reservations is a fail you did not have the nerve to record.
 
 Your verdict is recorded against the exact commit you reviewed
-(`tools/record-verdict.py --pr <n> --reviewer semantic --verdict pass|fail`). If the pull request
-gains another commit, your verdict no longer applies to it, and that is the mechanism working:
-review the new head or say you have not. Recording it is the whole of the step:
+(`tools/record-verdict.py --pr <n> --reviewer semantic --verdict pass|fail --packet <packet manifest>`). The commit comes from that packet, so it is the one you read
+and not whatever the pull request has since become. If the pull request gained another commit
+while you were reading, recording is refused rather than redirected, and that is the mechanism
+working: review the new head or say you have not. Recording it is the whole of the step:
 `.github/workflows/verdict-requeue.yml` asks the gate to report again at that commit, so a gate
 still red for a moment afterwards is bookkeeping catching up, not your verdict failing to register.
 
