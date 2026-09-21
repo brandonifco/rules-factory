@@ -59,12 +59,23 @@ corpus states rules in: it enumerates the units inside the extent and reports th
 reaches and no recorded rejection accounts for
 ([#255](https://github.com/brandonifco/rules-factory/issues/255)).
 
+`coverage` also reports **how much of the extent the map can show it quoted** — the union of its
+verified quotes' spans over the extent's own length, printed on every run
+([0054](decisions/0054-coverage-reports-how-much-of-the-extent-is-quoted-and-a-map-declares-the-floor.md),
+[#270](https://github.com/brandonifco/rules-factory/issues/270)). Because one quote reaches a
+page, counting units reached could not see an entry deleted from a map whose other entries still
+reach its page; the fraction can. A map may name the floor it claims, `"quoted": 0.8`, and
+`coverage` fails a map that quotes less than it declared. A map that declares none is measured,
+printed and not failed: across the committed maps the fraction runs from 19% to 100%, so no
+single threshold could be honest about all of them.
+
 It is a property of the **map**, not of the corpus, and so it does not belong in the manifest.
 `contentHash` and `licence` are true of the text whoever reads it; how far a mapper got is
 true of one mapping.
 
 **What it does not buy.** Nothing sizes it. A map declaring one page of a four-hundred-page
-book covers that page and passes. The field buys that the claim is written down and can be
+book covers that page and passes, and `quoted` above is a floor the map chooses for itself. The
+field buys that the claim is written down and can be
 argued with — and that a map cannot quietly shrink its own extent to match what it happened to
 read, which deriving the extent from the citations would have allowed: the backgammon
 citations run 271–277, and the throw enumeration that #20 is about is on 278–280.
@@ -81,6 +92,11 @@ citations run 271–277, and the throw enumeration that #20 is about is on 278�
 
 - **`page`** — a range of printed pages, `from` ≤ `to`, for a corpus with page markers in its
   text. `check-locators.py`'s `coverage` names every page in it no verified quote reaches.
+  `check-map.py --only extent` refuses **any `scope: in` entry whose locator cites a page
+  outside the range** ([#269](https://github.com/brandonifco/rules-factory/issues/269)), exactly
+  as it does for a section designation below, and `extent-bounds` in both page checkers refuses
+  an in-scope *quote* that lies outside it — a map may cite fewer pages than it declares, and
+  then only the quote notices a narrowing.
   **It may end before a heading on its last page**, `"endsBefore": "Damage and Healing"`
   ([0024](decisions/0024-a-quote-is-of-the-extraction-and-a-page-extent-can-end-at-a-heading.md),
   [#114](https://github.com/brandonifco/rules-factory/issues/114)): the SRD combat chapter ends

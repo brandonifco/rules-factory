@@ -13,12 +13,14 @@ validator.
 
 > **Fourteen named mutations were applied, one at a time, to five committed maps across three
 > locator grammars. Sixty-two of the seventy combinations had somewhere to land. The validator
-> refuses eighteen of them and passes forty-four — a miss rate of 71%.**
+> refuses twenty of them and passes forty-two — a miss rate of 68%.**
 >
-> **First measured at 16 of 62 refused (74% missed), at commit `69167d8`.** The two rows that
-> moved are the epistemic checks
+> **First measured at 16 of 62 refused (74% missed), at commit `69167d8`.** Four rows have moved
+> since: two are the epistemic checks
 > [0034](../../docs/decisions/0034-a-valid-unresolved-state-is-established-not-asserted.md) added,
-> and *What moved, and why* below says which and why. That the table moves when a check grows is
+> and two are the `narrow-extent` cells
+> [#269](https://github.com/brandonifco/rules-factory/issues/269) closed. *What moved, and why*
+> below says which and why. That the table moves when a check grows is
 > the point of re-measuring it in the gate rather than dating it.
 >
 > **That is not a verdict on the validator. It is the denominator it did not have.** Several of
@@ -65,11 +67,11 @@ somewhere for all fourteen mutations to land: a regulation's map has `enabledBy`
 
 | map | genre | locator grammar | applied | refused | missed |
 |---|---|---|---:|---:|---:|
-| [`hoyle-backgammon`](../hoyle-backgammon/) | rulebook, 1909 | page markers, Gutenberg text | 13 | 5 | 8 |
+| [`hoyle-backgammon`](../hoyle-backgammon/) | rulebook, 1909 | page markers, Gutenberg text | 13 | 6 | 7 |
 | [`faa-part-107`](../faa-part-107/) | regulation | section designation, eCFR XML | 13 | 6 | 7 |
 | [`tax-121-principal-residence`](../tax-121-principal-residence/) | regulation | section designation, eCFR XML | 12 | 3 | 9 |
 | [`srd-52-combat`](../srd-52-combat/) | rulebook | page markers, PDF-extracted text | 14 | 2 | 12 |
-| [`srd-52-conditions`](../srd-52-conditions/) | rulebook, a glossary | page markers, PDF-extracted text | 10 | 2 | 8 |
+| [`srd-52-conditions`](../srd-52-conditions/) | rulebook, a glossary | page markers, PDF-extracted text | 10 | 3 | 7 |
 
 ## The table
 
@@ -91,14 +93,18 @@ checks is a refusal, and names the checks that turned.
 | `omit-definition` | n/a | **missed** | **missed** | **missed** | **missed** |
 | `remove-applicability` | superposition | signalled only: gates | **missed** | **missed** | n/a |
 | `hide-cross-reference` | cross-references | cross-references | cross-references | **missed** | **missed** |
-| `narrow-extent` | **missed** | extent | n/a | extent-end | **missed** |
+| `narrow-extent` | extent-bounds | extent | n/a | extent, extent-bounds, extent-end | extent, extent-bounds |
 
-Eighteen refusals, made up of twenty-two turned checks, and six check names account for every one:
-`locators` (9), `cross-references` (6), `superposition` (2), and one each from `coverage`, `extent`
-and `extent-end`. Counting the two signalled-only turns, **five of the twenty-five checks in
-`check-map.py` ever turned; twenty never did.** They are not idle — they hold shapes a hand-written
-map breaks and a mutation of an already correct map does not — but a reader should not take
-twenty-five checks as twenty-five chances of being caught.
+Twenty refusals, made up of twenty-five turned checks, and seven check names account for every
+one: `locators` (9), `cross-references` (6), `extent` (3), `extent-bounds` (3), `superposition`
+(2), and one each from `coverage` and `extent-end`. Counting the two signalled-only turns,
+**five of the twenty-five checks in `check-map.py` ever turned; twenty never did.** They are not
+idle — they hold shapes a hand-written map breaks and a mutation of an already correct map does
+not — but a reader should not take twenty-five checks as twenty-five chances of being caught.
+
+`extent-bounds` is new here, and is a locator checker's rather than `check-map.py`'s: it is the
+half of #269 that placing a citation could not reach, and the paragraph on `narrow-extent` below
+says why.
 
 ## What the table says
 
@@ -147,6 +153,17 @@ does not settle it*. Nothing in the map betrays the collapse; the record of the 
 does. On the other four maps the entry the harness happens to collapse first carries no such
 adjudication — two of those maps were never mapped twice — and it stays missed.
 
+**`narrow-extent` is closed, and needed two checks rather than one.** `extent` now places a page
+citation inside the declared range exactly as it always placed a section designation, which
+refuses the narrowing on both SRD maps. It does **not** refuse it on `hoyle-backgammon`, and the
+reason is worth recording: that map cites pp. 271–278 inside a declared extent of 271–280, so
+narrowing the declaration by a page moves no citation at all. What notices is the *quote* —
+`die-faces`, cited at p. 277, quotes 3,292 characters running to p. 280 — and `extent-bounds`,
+the check that places a quote inside the range, is what that needed. It is
+[0024](../../docs/decisions/0024-a-quote-is-of-the-extraction-and-a-page-extent-can-end-at-a-heading.md)'s
+`extent-end` without a heading: that check already refused an in-scope quote past the boundary on
+the extent's last page, and both ends of a range are the same fact.
+
 **`hide-cross-reference` divides exactly where [#208](https://github.com/brandonifco/rules-factory/issues/208)
 says it should.** Refused on all three corpora whose pointers are phrases; missed on both SRD maps,
 whose corpus points by naming a defined term. #208 measured that at 0 of 51 references by argument
@@ -161,8 +178,7 @@ The two categories are kept apart, because that is the point of the exercise.
 | mutation | what is missed | issue |
 |---|---|---|
 | `assertion-to-operation`, `remove-applicability` | a check whose subject matter the damage removed says NOT VERIFIED and the run stays green | [#268](https://github.com/brandonifco/rules-factory/issues/268) |
-| `narrow-extent` (page extents) | `extent` places a section citation inside the declared extent and a page citation nowhere | [#269](https://github.com/brandonifco/rules-factory/issues/269) |
-| `drop-entry` | `coverage` counts units touched, so deleting a rule is invisible in 4 of 5 maps | [#270](https://github.com/brandonifco/rules-factory/issues/270) |
+| `drop-entry` | `coverage` counts units touched, so deleting a rule is invisible in 4 of 5 maps. `coverage` now reports how much of the extent is quoted ([0054](../../docs/decisions/0054-coverage-reports-how-much-of-the-extent-is-quoted-and-a-map-declares-the-floor.md)) and fails a map that quotes less than the `extent.quoted` floor it declares — **and no committed map declares one**, because adding the field changes the map's bytes and so its review ([0017](../../docs/decisions/0017-a-map-change-carries-a-review-of-its-bytes.md)). Each is its owner's decision, and until one is made these four cells stay missed | [#270](https://github.com/brandonifco/rules-factory/issues/270) |
 | `clear-to-ambiguous` | an ambiguity is anchored to nothing, where a cross-reference must quote the evidence | [#271](https://github.com/brandonifco/rules-factory/issues/271) |
 | `hide-cross-reference`, and the SRD half of `neighbour-evidence` | a pointer made by naming a defined term is not a phrase, and no phrase list will find it | [#208](https://github.com/brandonifco/rules-factory/issues/208), already open |
 
@@ -184,10 +200,10 @@ from first principles.
 ## What this trial changed
 
 - The validator's miss rate is a number: **74%, 46 of 62**, at `69167d8`, with the table above
-  saying which. It is **71%, 44 of 62** now, and the two rows that moved moved because a check
+  saying which. It is **68%, 42 of 62** now, and every row that moved moved because a check
   grew — which is the thing this trial was built to be able to say.
 - Four `enforcement` issues, each with the mutation that exposes it and the re-measurement that
-  will close it.
+  will close it. One of them, #269, is closed by the two `narrow-extent` cells above.
 - Five lines in the validator's statement of its limits are now marked **measured**, with the
   count beside them, and the ones that remain reasoned are visibly reasoned.
 - `scripts/validate.sh` re-runs the whole measurement on every pull request and fails when a row
@@ -214,8 +230,15 @@ workflow of its own.
 |---|---|---|---|
 | `faa-part-107` / `ambiguous-to-clear` | missed | `superposition` | the collapsed entry was adjudicated *the corpus does not settle it* by the blind second mapping, and the collapsed map records one reading |
 | `hoyle-backgammon` / `remove-applicability` | missed | `superposition` | the applicability rule the harness drops is `bearing-off-eligible`, which is where that map records an adjudicated unsettled reading; deleting the entry leaves the doubt with nowhere to land |
+| `hoyle-backgammon` / `narrow-extent` | missed | `extent-bounds` | #269. The map cites pp. 271–278 of a declared 271–280, so narrowing moves no citation; `die-faces`'s quote runs to p. 280 and is now placed inside the range, not only counted |
+| `srd-52-conditions` / `narrow-extent` | missed | `extent`, `extent-bounds` | #269. `extent` places a page citation inside the declared range as it always placed a section designation, and the entries on p. 191 are outside 177–190 |
 
-Both are `superposition` and both are second-order: what is caught is not a property of the
+`srd-52-combat` / `narrow-extent` did not move — it was already refused — but its cell now names
+three checks rather than one. At `69167d8` the narrowing was caught only incidentally, by
+`extent-end`, because the heading the extent ends before was no longer on its last page; the
+narrowing itself was not seen. It is now seen twice, by the citation rule and by the quote rule.
+
+The first two are `superposition` and both are second-order: what is caught is not a property of the
 damaged map but a disagreement between the damaged map and a record made by a second reader. The
 harness was changed in one way to make them visible — `detectors()` now passes `--comparison`, the
 directory holding the adjudication record, because the map under test is written into a temporary

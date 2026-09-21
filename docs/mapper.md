@@ -196,7 +196,11 @@ the existing vocabulary sufficed.
 [#255](https://github.com/brandonifco/rules-factory/issues/255) nothing evidenced the claim. The
 locator checkers' `coverage` comes closest and asks a much coarser question: is every *page*, or
 every *section*, of the extent touched by some quote? A map satisfies that by reaching one
-sentence on a page and says nothing about the rest of it.
+sentence on a page. Since
+[0054](decisions/0054-coverage-reports-how-much-of-the-extent-is-quoted-and-a-map-declares-the-floor.md)
+it also reports **how much** of the extent the quotes cover, in characters, which says something
+about the rest of it — but as a fraction of the whole slice, not as a verdict on any unit inside
+it, and that is the difference this section is about.
 
 `mapper inventory` asks it at the grain the corpus states rules in. It enumerates the units the
 extent selects, through the adapter the corpus manifest names, and gives each one of three
