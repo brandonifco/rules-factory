@@ -5,12 +5,29 @@ name: validate
 # machinery) and ./scripts/validate-engine.sh (an engine the factory produces from scratch
 # restores, builds, passes its tests and recomputes its provenance). Reimplementing either
 # script's steps here would create a second definition that drifts from the first.
+#
+# A pull request asks tools/validate-repo.py what its own diff owes (0049, #347). The rule that
+# decides is in that file, covered by tests, and widens to --full on anything it cannot place --
+# so "force full for core tooling" is not written here as a second rule in YAML that would drift
+# from the first. What is written here is the two cases that are not about a diff at all:
+#
+#   * a push to main runs --full, because main is what a release is cut from and there is no
+#     diff to be narrow about once something has landed;
+#   * a schedule runs --full, so that the checks no diff ever owes -- the README's prose against
+#     the state of the issues it cites, which needs the network and asks about no code -- are
+#     still run against a repository nobody changed that week.
 
 on:
   push:
     branches: [main]
   pull_request:
     branches: [main]
+  # 05:00 UTC on Mondays. Nothing here depends on the hour; it is a weekday morning so that a
+  # failure is seen, and one run a week because what it catches moves at the speed of an issue
+  # being closed.
+  schedule:
+    - cron: '0 5 * * 1'
+  workflow_dispatch: {}
 
 concurrency:
   group: validate-${{ github.event.pull_request.number || github.ref }}
@@ -35,6 +52,11 @@ jobs:
           # needs to write to the remote, so a credential capable of doing so has no reason
           # to sit in .git/config while it runs.
           persist-credentials: false
+          # The scope is read from `git diff <base>...HEAD`, so the base commit has to be in
+          # this checkout. A shallow clone would make that diff unreadable -- which widens to
+          # --full rather than failing, but silently, and a scope nobody can compute is a
+          # feature that quietly does not exist.
+          fetch-depth: 0
 
       - name: Set up Python
         uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
@@ -46,12 +68,21 @@ jobs:
 
       # Checks every map against the schema and for a review of its bytes, every citation
       # against its corpus, the checkers' own tests, every repository link, and the decision
-      # index. No count here: validate.sh prints the counts, and a number in a comment drifts.
+      # index. No count here: the run prints the counts, and a number in a comment drifts.
+      #
+      # Every run prints the scope it chose and why, first thing, so a reader of a green log can
+      # see what was examined rather than assuming.
       - name: Validate
-        run: ./scripts/validate.sh
         env:
           # Read-only: check-status-issues.py reads issue states, and nothing else uses it.
           GH_TOKEN: ${{ github.token }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+        run: |
+          if [[ -n "$BASE_SHA" ]]; then
+            python3 tools/validate-repo.py --changed --base "$BASE_SHA"
+          else
+            ./scripts/validate.sh
+          fi
 
   engine:
     # Separate from `validate` because it needs the .NET SDK and nuget.org, and because a
