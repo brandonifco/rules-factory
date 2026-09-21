@@ -2773,6 +2773,88 @@ class TestTheVerdictReRunsTheGate(TestVerdicts):
     def recorded_reruns(self):
         return json.load(open(self.reruns, encoding="utf-8")) if os.path.exists(self.reruns) else []
 
+    def requeue_issue(self, number="27", label="risk:independent-review", action="labeled"):
+        return subprocess.run([sys.executable, os.path.join(self.out, "tools", "requeue-gate.py")],
+                              cwd=self.out, capture_output=True, text=True,
+                              env={**self.environment(), "GH_STATUSES": self.statuses, "GH_RERUNS": self.reruns,
+                                   "ISSUE_NUMBER": number, "ISSUE_LABEL": label, "ISSUE_ACTION": action})
+
+    def issue_scenario(self, pulls=None, runs=({"id": 991, "run_number": 7, "status": "completed"},)):
+        """Open pull requests, each closing issue 27, and the gate runs GitHub holds at their heads."""
+        pulls = pulls or {"5": {"number": 5, "headRefOid": HEAD, "state": "OPEN",
+                                "closingIssuesReferences": [{"number": 27}]}}
+        self.gh_with_statuses()
+        self.fixture({
+            "pr": pulls,
+            "repo": {"nameWithOwner": "owner/engine"},
+            "runs": {p["headRefOid"]: list(runs) for p in pulls.values()},
+            "rerunFails": False,
+        })
+        with open(self.statuses, "w", encoding="utf-8") as handle:
+            json.dump({}, handle)
+
+    def test_raising_risk_on_the_linked_issue_re_requests_the_gate(self):
+        """#230: the gate reads the *issue's* labels and runs on *pull request* events, so this
+        was a green required check that no longer reflected the issue's risk -- and the pull
+        request could merge without the independent verdict it now needed."""
+        self.produced()
+        self.issue_scenario()
+        done = self.requeue_issue()
+        self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+        self.assertEqual(self.recorded_reruns(), ["991"])
+        self.assertIn("#5", done.stdout)
+
+    def test_lowering_risk_re_requests_it_the_same_way(self):
+        """Unlabelling is the same event and the same consequence: the gate is asked again, and
+        finds the independent verdict no longer required."""
+        self.produced()
+        self.issue_scenario()
+        done = self.requeue_issue(action="unlabeled")
+        self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+        self.assertEqual(self.recorded_reruns(), ["991"])
+
+    def test_a_label_the_gate_does_not_read_re_runs_nothing(self):
+        """The filter is the argument, not a precaution on top of it: only the label the engine's
+        own policy calls independent risk changes what the gate would answer."""
+        self.produced()
+        self.issue_scenario()
+        done = self.requeue_issue(label="documentation")
+        self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+        self.assertEqual([], self.recorded_reruns())
+        self.assertIn("not the risk label", done.stdout)
+
+    def test_an_issue_no_open_pull_request_closes_is_not_a_failure(self):
+        """Risk is set when an issue is triaged, usually before anything is opened against it."""
+        self.produced()
+        self.issue_scenario(pulls={"5": {"number": 5, "headRefOid": HEAD, "state": "OPEN",
+                                         "closingIssuesReferences": [{"number": 99}]}})
+        done = self.requeue_issue()
+        self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+        self.assertEqual([], self.recorded_reruns())
+        self.assertIn("no open pull request closes #27", done.stdout)
+
+    def test_every_open_pull_request_closing_the_issue_is_re_requested(self):
+        """Per pull request, not per commit: two pull requests closing one issue head different
+        commits, and each has its own gate run."""
+        other = "b" * 40
+        self.produced()
+        self.issue_scenario(pulls={
+            "5": {"number": 5, "headRefOid": HEAD, "state": "OPEN",
+                  "closingIssuesReferences": [{"number": 27}]},
+            "6": {"number": 6, "headRefOid": other, "state": "OPEN",
+                  "closingIssuesReferences": [{"number": 27}]},
+        })
+        done = self.requeue_issue()
+        self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+        self.assertEqual(2, len(self.recorded_reruns()), self.recorded_reruns())
+
+    def test_an_issue_number_that_is_not_one_is_refused(self):
+        self.produced()
+        self.issue_scenario()
+        done = self.requeue_issue(number="not-a-number")
+        self.assertEqual(done.returncode, 1, done.stdout)
+        self.assertIn("not an issue number", done.stderr)
+
     def test_a_verdict_re_requests_the_gate_run_at_that_head(self):
         self.produced()
         self.requeue_scenario()
@@ -2870,19 +2952,35 @@ class TestTheVerdictReRunsTheGate(TestVerdicts):
         self.produced()
         text = self.read(".github/workflows/verdict-requeue.yml")
         self.assertIn("\non:\n  status:\n", text)
-        jobs = [line.strip().rstrip(":") for line in text.split("jobs:\n", 1)[1].splitlines()
+        self.assertIn("\n  issues:\n    types: [labeled, unlabeled]\n", text,
+                      "the risk label changes outside the pull request and nothing re-ran the gate (#230)")
+        body = text.split("jobs:\n", 1)[1]
+        jobs = [line.strip().rstrip(":") for line in body.splitlines()
                 if line.startswith("  ") and not line.startswith("   ") and line.strip().endswith(":")]
         self.assertEqual(jobs, ["verdict-requeue"],
                          "two check runs of one name are ambiguous; this one lands on the default branch's head")
-        self.assertNotIn("if:", text.split("jobs:\n", 1)[1],
-                         "a job condition on the only event this workflow has is how #191 skipped every run")
-        self.assertIn("group: verdict-requeue-${{ github.event.sha }}", text)
+        # #191's lesson, kept where it applies. A *job* condition is what skipped every status
+        # run, and the job still has none: it runs on both events, whichever arrives. The two
+        # *steps* are conditional because the workflow now has two events and each step reads a
+        # payload the other event does not carry -- and the conditions are asserted exhaustive
+        # over the triggers, so neither event can arrive and find nothing to do.
+        job = body.split("steps:\n", 1)[0]
+        self.assertNotIn("if:", job,
+                         "a job condition on this workflow is how #191 skipped every run")
+        conditions = re.findall(r"^\s+if: github\.event_name == '(\w+)'$", body, re.M)
+        self.assertEqual(sorted(conditions), ["issues", "status"],
+                         "each trigger needs exactly one step, or an event arrives and does nothing")
+        self.assertIn("format('sha-{0}', github.event.sha)", text)
+        self.assertIn("format('issue-{0}', github.event.issue.number)", text,
+                      "an issues event carries no commit, so the issue number keys the group")
         self.assertNotIn("github.sha }}", text,
                          "github.sha is the same value for every verdict, and cancel-in-progress is on")
         # The payload is text somebody else wrote: it reaches the script as values, never as script.
-        for variable in ("VERDICT_SHA", "VERDICT_CONTEXT", "VERDICT_STATE"):
+        for variable in ("VERDICT_SHA", "VERDICT_CONTEXT", "VERDICT_STATE",
+                         "ISSUE_NUMBER", "ISSUE_LABEL", "ISSUE_ACTION"):
             self.assertIn(f"{variable}: ${{{{ github.event.", text)
-        self.assertIn("run: python3 tools/requeue-gate.py\n", text)
+        self.assertEqual(2, text.count("run: python3 tools/requeue-gate.py\n"),
+                         "one invocation per event")
 
     def test_the_requeue_is_not_a_required_check(self):
         # The ruleset the factory applies, and the doctor's reading of it from inside an engine:

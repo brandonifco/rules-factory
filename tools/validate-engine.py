@@ -1061,6 +1061,7 @@ def the_rails_run_in_a_produced_engine(r):
     a_verdict_at_one_commit_does_not_pass_another(r, railed, github)
     an_independent_risk_issue_needs_more_than_the_semantic_verdict(r, railed, github)
     the_verdict_re_runs_the_gate(r, railed, github)
+    a_late_risk_label_re_runs_the_gate(r, railed, github)
     a_factory_update_is_checked_against_the_tree_that_produced_it(r, railed, github)
     swapping_the_provider_chain_is_an_edit_to_the_policy_alone(r, railed, github)
 
@@ -1759,7 +1760,8 @@ STATUS_PAYLOAD_FIELDS = ("sha", "context", "state")
 
 
 def read_workflow(path):
-    """{"triggers": [...], "jobs": {name: {"if": str|None, "steps": [{"env": {...}, "run": str|None}]}}}."""
+    """{"triggers": [...], "jobs": {name: {"if": str|None,
+                                          "steps": [{"env": {}, "run": str|None, "if": str|None}]}}}."""
     triggers, jobs = [], {}
     section, job, step, env_indent = None, None, None, None
     for line in read_lines(path):
@@ -1777,12 +1779,17 @@ def read_workflow(path):
         elif section == "jobs" and job and indent == 4 and text.startswith("if:"):
             jobs[job]["if"] = text[len("if:"):].strip()
         elif section == "jobs" and job and indent == 6 and text.startswith("- "):
-            step, env_indent = {"env": {}, "run": None}, None
+            step, env_indent = {"env": {}, "run": None, "if": None}, None
             jobs[job]["steps"].append(step)
         elif step is not None and indent == 8:
             env_indent = 10 if text == "env:" else None
             if text.startswith("run:"):
                 step["run"] = text[len("run:"):].strip()
+            # A step's own condition, which a workflow with two triggers needs (#230). Read here
+            # rather than assumed absent: a step condition this parser did not see is a step the
+            # dispatch below would run for the wrong event, with the wrong payload.
+            elif text.startswith("if:"):
+                step["if"] = text[len("if:"):].strip()
         elif step is not None and env_indent is not None and indent == env_indent and ": " in text:
             key, value = text.split(": ", 1)
             step["env"][key] = value
@@ -1806,6 +1813,31 @@ def jobs_selected(workflow, event_name, path):
     return selected
 
 
+def steps_selected(job, event_name, path):
+    """The job's steps that run for `event_name`.
+
+    The job's own `if:` is the one #191 turned on, and jobs_selected above reads it. A *step* may
+    carry one too, and must once a workflow has two triggers: verdict-requeue.yml now answers
+    `status` and `issues`, and each step reads a payload the other event does not carry (#230).
+    A step with no condition runs for both, as the checkout does.
+    """
+    selected = []
+    for step in job["steps"]:
+        condition = step.get("if")
+        if condition is None:
+            selected.append(step)
+            continue
+        found = JOB_IF.fullmatch(condition)
+        if not found:
+            # An undecidable check fails, for the same reason jobs_selected says so.
+            fail(f"{path}: this check understands one form of step `if:`, `github.event_name == '<x>'`; a step "
+                 f"of {job.get('name') or 'this job'} now uses another ({condition!r}), so it cannot tell "
+                 f"whether the step runs")
+        if found.group(1) == event_name:
+            selected.append(step)
+    return selected
+
+
 def step_environment(step, payload, path):
     """The step's `env:` map with each `${{ }}` resolved against the event payload."""
     env = {}
@@ -1819,11 +1851,12 @@ def step_environment(step, payload, path):
         elif expression.startswith("github.event."):
             field = expression[len("github.event."):]
             if field not in payload:
-                fail(f"{path}: {key} reads {expression}, and a status payload carries "
-                     f"{', '.join(STATUS_PAYLOAD_FIELDS)}")
+                fail(f"{path}: {key} reads {expression}, and this payload carries "
+                     f"{', '.join(sorted(payload))}. A step reading another event's fields needs an "
+                     f"`if: github.event_name == '<x>'` saying which event it is for")
             env[key] = payload[field]
         else:
-            fail(f"{path}: {key} reads {expression}, which this check cannot synthesise for a status event")
+            fail(f"{path}: {key} reads {expression}, which this check cannot synthesise for this event")
     return env
 
 
@@ -1840,7 +1873,7 @@ def dispatch_status(railed, github, workflow, payload, log, path):
              f"named conformance-gate here would report the required check onto the default branch's commit")
     code = 0
     for name in selected:
-        for step in workflow["jobs"][name]["steps"]:
+        for step in steps_selected(workflow["jobs"][name], "status", path):
             if not step["run"]:
                 continue
             env = dict(os.environ, RULES_ENGINE_GH=github.script, VALIDATE_ENGINE_FAKE_GH_STATE=github.state,
@@ -1853,6 +1886,115 @@ def dispatch_status(railed, github, workflow, payload, log, path):
 
 def status_payload(sha, context, state):
     return {"sha": sha, "context": context, "state": state}
+
+
+def issues_payload(number, label, action):
+    """What GitHub delivers for `issues: [labeled, unlabeled]`, as the workflow reads it."""
+    return {"issue.number": str(number), "label.name": label, "action": action}
+
+
+def dispatch_issues(railed, github, workflow, payload, log, path):
+    """Deliver an `issues` event to the emitted workflow, the way dispatch_status does a status.
+
+    The same job, selected by its own `if:` (it has none), and the steps that event selects."""
+    if "issues" not in workflow["triggers"]:
+        fail(f"{path} does not trigger on `issues`, so a risk label changed after the gate passed reaches "
+             f"nothing and the required check keeps an answer the issue no longer supports (#230)")
+    selected = jobs_selected(workflow, "issues", path)
+    if selected != ["verdict-requeue"]:
+        fail(f"{path}: an issues event selects {selected or 'no job'}")
+    code = 0
+    for name in selected:
+        steps = steps_selected(workflow["jobs"][name], "issues", path)
+        if not [step for step in steps if step["run"]]:
+            fail(f"{path}: an issues event selects no step that runs anything, so the trigger is decoration")
+        for step in steps:
+            if not step["run"]:
+                continue
+            env = dict(os.environ, RULES_ENGINE_GH=github.script, VALIDATE_ENGINE_FAKE_GH_STATE=github.state,
+                       **step_environment(step, payload, path))
+            code = run_to(log, ["bash", "-c", step["run"]], cwd=railed, env=env, both=True)
+            if code != 0:
+                return code
+    return code
+
+
+# Risk is the orchestrator's call and may be made at any time (0029). The gate reads it from the
+# linked issue and runs on `pull_request` events, so raising it after the gate passed left a green
+# required check that no longer reflected the issue's risk, and the pull request could merge
+# without the independent verdict it now needed (#230). The whole chain, in the produced engine:
+# the gate passes at normal risk, the label is raised, the emitted workflow is dispatched the
+# `issues` event that would cause, its own command re-requests the gate's run, and the gate -- the
+# run that would execute -- then refuses until the independent verdict is recorded.
+#
+# **What this cannot prove**, as for the verdict half: that GitHub delivers the `issues` event at
+# all, and that the re-run's check run supersedes the green one for the ruleset. Both are GitHub's
+# behaviour rather than the engine's.
+def a_late_risk_label_re_runs_the_gate(r, railed, github):
+    workflows = os.path.join(railed, ".github", "workflows")
+    requeue_path = os.path.join(workflows, "verdict-requeue.yml")
+    requeue = read_workflow(requeue_path)
+    policy = railed_policy(railed)
+    # The reviewer the policy configures, by its id, not a literal: "independent" is not a
+    # reviewer, and record-verdict.py rightly refuses one the reviewed packet does not name.
+    chain = policy["review"]["independentFallback"]
+    log = r.s("risk-requeue.log")
+
+    # Normal risk, the semantic verdict recorded: the gate passes, and the pull request may merge.
+    github.serve(railed, COMMIT_A, ready(policy, "normalRisk"))
+    github.record(railed, log, "semantic")
+    if github.gate(railed, log) != 0:
+        cat(log)
+        fail("the gate did not pass at normal risk with the semantic verdict recorded, so nothing below "
+             "would prove that raising risk changed the answer")
+
+    # The orchestrator raises risk on the issue. No commit changed, and no pull_request event.
+    #
+    # `serve` rewrites the whole fixture, statuses included, so the semantic verdict is recorded
+    # again straight after: the label must be the only difference between the state above and the
+    # state below, or what follows would be measuring a lost verdict instead of a raised label.
+    github.serve(railed, COMMIT_A, ready(policy, "independentRisk"))
+    github.record(railed, log, "semantic")
+    if github.gate(railed, log) != 1:
+        cat(log)
+        fail("the gate passed at independent risk on the semantic verdict alone; the label is not the "
+             "only thing that changed, and nothing below would measure the re-request")
+    before = list(github.reruns())
+    if dispatch_issues(railed, github, requeue,
+                       issues_payload(ISSUE, policy["labels"]["independentRisk"], "labeled"),
+                       log, requeue_path) != 0:
+        cat(log)
+        fail("the workflow's own command failed on the issues event raising the risk label causes")
+    if github.reruns() != before + [str(GATE_RUN)]:
+        cat(log)
+        fail(f"raising the risk label re-requested {github.reruns()[len(before):] or 'no run'}, not the gate's "
+             f"run {GATE_RUN} at the head of the pull request that closes the issue; without that the required "
+             f"check keeps its green answer (#230)")
+
+    # And the re-requested run is the point: run again, it still refuses, and the pull request is
+    # blocked until the verdict the raised label calls for is recorded.
+    if github.gate(railed, log) != 1:
+        cat(log)
+        fail("the gate still passes after the issue was labelled independent-review, so the required check "
+             "would stay green and the pull request could merge without the independent verdict")
+    github.record(railed, log, chain[0]["id"])
+    if github.gate(railed, log) != 0:
+        cat(log)
+        fail("the gate does not pass once the independent verdict is recorded, so raising risk blocks a "
+             "pull request nothing can clear")
+
+    # A label the gate does not read re-runs nothing: the filter is the argument, not a precaution
+    # on top of it, exactly as the verdict half's context filter is.
+    before = list(github.reruns())
+    if dispatch_issues(railed, github, requeue, issues_payload(ISSUE, "documentation", "labeled"),
+                       log, requeue_path) != 0:
+        cat(log)
+        fail("a label that is not the risk label failed the requeue instead of being ignored")
+    if github.reruns() != before:
+        fail(f"{len(github.reruns()) - len(before)} run(s) were re-requested by a label the gate does not "
+             f"read; that would re-run the gate on anything that moves")
+    ok("raising the risk label on the linked issue re-runs the gate, which then refuses until the "
+       "independent verdict is recorded, and a label the gate does not read re-runs nothing")
 
 
 # Recording a verdict turns the required check green with no manual step (#191, acceptance

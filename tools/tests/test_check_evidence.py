@@ -236,7 +236,7 @@ class TestTheMeasurementCanSeeAnything(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             home = pathlib.Path(tmp)
             (home / "sitecustomize.py").write_text(evidence.SITECUSTOMIZE, encoding="utf-8")
-            seen = evidence._trace(
+            seen, _ = evidence._trace(
                 root,
                 [sys.executable, "-c",
                  f"open({target!r}, 'rb').read(1)"],
@@ -265,7 +265,7 @@ class TestTheMeasurementCanSeeAnything(unittest.TestCase):
                 f"ce.digest(pathlib.Path({hashed!r}))\n"
                 f"open({plain!r}, 'rb').read(1)\n"
             )
-            seen = evidence._trace(root, [sys.executable, "-c", probe], home, "self")
+            seen, _ = evidence._trace(root, [sys.executable, "-c", probe], home, "self")
         opened = {path for _, path in seen}
         self.assertIn(plain, opened)
         self.assertNotIn(hashed, opened)
@@ -317,3 +317,118 @@ class TestTheGateRunsIt(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class TestTheCommitTheLockNamesIsOneThisRepositoryHas(unittest.TestCase):
+    """#404: two stale commit references got through, and nothing stopped them drifting again.
+
+    `--measure` records `git rev-parse HEAD`, so a branch whose history is rewritten -- amended,
+    rebased, squashed -- leaves the lock naming an orphan. The verifier hashed every artifact the
+    lock named and never asked whether the commit it named still existed. It does now, and the
+    document derived from the lock is held to the same commit: the two were found disagreeing on
+    main the day this was written.
+    """
+
+    def root(self):
+        return pathlib.Path(ROOT)
+
+    def test_the_committed_lock_names_a_commit_this_repository_has(self):
+        self.assertEqual([], evidence.measured_at_problems(self.root(), LOCK))
+
+    def test_a_commit_that_does_not_exist_is_refused(self):
+        lock = copy.deepcopy(LOCK)
+        lock["measuredAt"] = "0" * 40
+        problems = evidence.measured_at_problems(self.root(), lock)
+        self.assertTrue(any("not a commit this repository has" in p for p in problems), problems)
+
+    def test_a_lock_that_says_nothing_about_its_commit_is_refused(self):
+        lock = copy.deepcopy(LOCK)
+        del lock["measuredAt"]
+        self.assertEqual(["the lock does not say which commit it was measured at"],
+                         evidence.measured_at_problems(self.root(), lock))
+
+    def test_a_commit_off_this_history_is_refused(self):
+        """Real, and the case #404 names: a commit that exists as an object but is not on the
+        history this branch has. An empty commit made here and never merged is exactly that."""
+        with tempfile.TemporaryDirectory() as tmp:
+            side = os.path.join(tmp, "side")
+            subprocess.run(["git", "init", "-q", side], check=True, capture_output=True)
+            env = {**os.environ, "GIT_AUTHOR_NAME": "t", "GIT_AUTHOR_EMAIL": "t@example.invalid",
+                   "GIT_COMMITTER_NAME": "t", "GIT_COMMITTER_EMAIL": "t@example.invalid"}
+            subprocess.run(["git", "commit", "-q", "--allow-empty", "-m", "elsewhere"],
+                           cwd=side, check=True, env=env, capture_output=True)
+            other = subprocess.run(["git", "rev-parse", "HEAD"], cwd=side, check=True,
+                                   capture_output=True, text=True).stdout.strip()
+        lock = copy.deepcopy(LOCK)
+        lock["measuredAt"] = other
+        problems = evidence.measured_at_problems(self.root(), lock)
+        # Unknown here, because it was made in a repository this one has never fetched.
+        self.assertTrue(any(other in p for p in problems), problems)
+
+    def test_the_inventory_and_the_lock_must_name_the_same_commit(self):
+        """The drift that was live on main: the document's label and the lock disagreeing, with
+        the tables derived from the lock."""
+        lock = copy.deepcopy(LOCK)
+        head = subprocess.run(["git", "rev-parse", "HEAD"], cwd=ROOT, check=True,
+                              capture_output=True, text=True).stdout.strip()
+        lock["measuredAt"] = head
+        found = evidence.MEASURED_AT_LABEL.search(
+            evidence.INVENTORY.read_text(encoding="utf-8"))
+        self.assertIsNotNone(found, "the inventory no longer carries a label to check")
+        if head.startswith(found.group(1)):
+            self.skipTest("the inventory already names HEAD; the disagreement case is below")
+        problems = evidence.measured_at_problems(self.root(), lock)
+        self.assertTrue(any("one of them is stale" in p for p in problems), problems)
+
+
+class TestAMeasurementSaysWhatItWasTakenOver(unittest.TestCase):
+    """#408: `--measure` gave a different role for the same file on different runs.
+
+    A role is "what the checks read", so a run in which a check did not get as far as reading is
+    a different measurement. `_trace` deliberately accepts a failing gate -- re-measuring happens
+    while the lock is stale by construction -- but it accepted *any* failing gate, so a role
+    could follow an unrelated broken step. The lock now records what the measurement was taken
+    over, and a run with any other failing step is refused unless the caller says otherwise.
+    """
+
+    def test_the_committed_lock_records_what_it_was_measured_over(self):
+        self.assertIn("measuredOver", LOCK, "the lock does not say what run produced it (#408)")
+        self.assertIn("complete", LOCK["measuredOver"])
+        self.assertIn("gateStepsFailed", LOCK["measuredOver"])
+
+    def test_a_clean_run_is_recorded_complete(self):
+        lock = evidence.build(pathlib.Path(ROOT), {p: [] for p in evidence.tracked(pathlib.Path(ROOT))},
+                              None, [])
+        self.assertEqual({"gateStepsFailed": [], "complete": True}, lock["measuredOver"])
+
+    def test_the_evidence_step_alone_does_not_make_a_run_partial(self):
+        """It fails by construction while the lock is being rewritten, so counting it would
+        refuse every measurement there is."""
+        lock = evidence.build(pathlib.Path(ROOT), {p: [] for p in evidence.tracked(pathlib.Path(ROOT))},
+                              None, [evidence.EVIDENCE_STEP])
+        self.assertEqual({"gateStepsFailed": [], "complete": True}, lock["measuredOver"])
+
+    def test_any_other_failing_step_makes_it_partial_and_is_recorded(self):
+        lock = evidence.build(pathlib.Path(ROOT), {p: [] for p in evidence.tracked(pathlib.Path(ROOT))},
+                              None, [evidence.EVIDENCE_STEP, "every citation resolves in its corpus"])
+        self.assertEqual({"gateStepsFailed": ["every citation resolves in its corpus"],
+                          "complete": False}, lock["measuredOver"])
+
+
+class TestWhatIsFailingByConstructionWhileTheLockIsRewritten(unittest.TestCase):
+    """The evidence step fails while the lock is stale, and so do the lock's own tests, which
+    hold the committed lock to the tree. Excusing the second only in the first's company keeps
+    the guard from excusing a real test failure -- which is the step whose absence moves a role,
+    because a file read only by a test is read by nothing when the tests do not run."""
+
+    def test_the_evidence_step_alone_is_excused(self):
+        self.assertEqual([], evidence.partial_steps([evidence.EVIDENCE_STEP]))
+
+    def test_the_tests_step_is_excused_only_beside_it(self):
+        self.assertEqual([], evidence.partial_steps([evidence.EVIDENCE_STEP, evidence.TESTS_STEP]))
+        self.assertEqual([evidence.TESTS_STEP], evidence.partial_steps([evidence.TESTS_STEP]))
+
+    def test_any_other_step_makes_it_partial(self):
+        self.assertEqual(["every citation resolves in its corpus"],
+                         evidence.partial_steps([evidence.EVIDENCE_STEP,
+                                                 "every citation resolves in its corpus"]))

@@ -50,6 +50,11 @@ import sys
 import tempfile
 import urllib.request
 
+# Imports another of this repository's files by path, and the loader writes that file's
+# bytecode beside it. No caller's environment is relied on to stop it (#384): module level
+# and above the import, because the loader reads the flag when the import happens.
+sys.dont_write_bytecode = True
+
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 
 _spec = importlib.util.spec_from_file_location("check_evidence", ROOT / "tools" / "check-evidence.py")

@@ -51,12 +51,17 @@ import hashlib
 import json
 import os
 import pathlib
+import re
 import subprocess
 import sys
 import tempfile
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 LOCK = ROOT / "tools" / "evidence-lock.json"
+# The document whose per-trial byte tables are derived from the lock, and which restates the
+# commit they were measured at in prose. Two places holding one fact drift (#403, #404).
+INVENTORY = ROOT / "docs" / "evidence-inventory.md"
+MEASURED_AT_LABEL = re.compile(r"^Measured at `([0-9a-f]{7,40})`", re.M)
 EVIDENCE = "examples"
 ROLES = ("active", "release", "archived")
 READERS = ("checks", "links", "package")
@@ -130,8 +135,15 @@ if _out and _root:
 '''
 
 
-def _trace(root: pathlib.Path, argv: list[str], home: pathlib.Path, name: str) -> set[str]:
-    """Run `argv` with the audit hook installed, and return the evidence paths it opened."""
+def _trace(root: pathlib.Path, argv: list[str], home: pathlib.Path,
+           name: str) -> tuple[set[str], list[str]]:
+    """Run `argv` with the audit hook installed.
+
+    Returns the evidence paths it opened, and the gate steps that failed during it. The second
+    is not decoration: a role is "what the checks read", so a run in which a check did not get
+    as far as reading is a different measurement, and #408 saw roles move between runs with
+    nothing between them touching the files.
+    """
     out = home / f"{name}.txt"
     env = dict(os.environ)
     existing = env.get("PYTHONPATH")
@@ -159,6 +171,8 @@ def _trace(root: pathlib.Path, argv: list[str], home: pathlib.Path, name: str) -
               f"the roles below are measured over that run", file=sys.stderr)
         for line in failed:
             print(f"        FAIL {line}", file=sys.stderr)
+    else:
+        failed = []
     if not out.exists():
         raise SystemExit(f"check-evidence.py: {name} opened nothing -- the audit hook did not run")
     seen = set()
@@ -167,7 +181,7 @@ def _trace(root: pathlib.Path, argv: list[str], home: pathlib.Path, name: str) -
             reader, _, path = line.rstrip("\n").partition("\t")
             if path.startswith(EVIDENCE + "/"):
                 seen.add((reader, path))
-    return seen
+    return seen, failed
 
 
 # Which part of CI a read belongs to, decided by the tool that made it.
@@ -200,7 +214,28 @@ def _reader_class(reader: str) -> str | None:
     return "checks"
 
 
-def measure(root: pathlib.Path = ROOT) -> dict[str, list[str]]:
+# The evidence step is the one failure a measurement cannot avoid: re-measuring necessarily
+# happens while the lock is stale, so that step is failing by construction. Any *other* failing
+# step means a check did not get as far as reading, and "what the checks read" is then measured
+# over a gate that did not finish its work -- which is how a role can move with nothing about
+# the file having changed (#408).
+EVIDENCE_STEP = "every evidence artifact is the bytes the lock names"
+# The lock's own tests hold the committed lock to the tree, so while the lock is stale they fail
+# for the same reason the evidence step does. Excused only in that company: a failing test step
+# with the evidence step green is a real one, and it is the step whose absence moved a role.
+TESTS_STEP = "the checkers' own tests"
+
+
+def partial_steps(failed: list[str]) -> list[str]:
+    """The failing steps that make a measurement partial -- those failing by construction while
+    the lock is being rewritten removed."""
+    excusable = {EVIDENCE_STEP}
+    if EVIDENCE_STEP in failed:
+        excusable.add(TESTS_STEP)
+    return sorted(step for step in failed if step not in excusable)
+
+
+def measure(root: pathlib.Path = ROOT) -> tuple[dict[str, list[str]], list[str]]:
     """What reads each tracked artifact, attributed to the tool that opened it.
 
     The role follows: an artifact the packer reads is `release`, because its bytes reach
@@ -213,22 +248,23 @@ def measure(root: pathlib.Path = ROOT) -> dict[str, list[str]]:
         home = pathlib.Path(tmp)
         (home / "sitecustomize.py").write_text(SITECUSTOMIZE, encoding="utf-8")
         print("measuring: the gate ...", flush=True)
-        seen = _trace(root, ["./scripts/validate.sh"], home, "gate")
+        seen, failed = _trace(root, ["./scripts/validate.sh"], home, "gate")
         print(f"  {len({p for _, p in seen})} artifact(s) opened by "
               f"{len({r for r, _ in seen})} reader(s)", flush=True)
         print("measuring: every map package ...", flush=True)
         out = home / "packages"
         for settings in sorted((root / EVIDENCE).glob("*/map-package.json")):
             directory = str(settings.parent.relative_to(root))
-            seen |= _trace(root, [sys.executable, "tools/pack-map.py", directory,
-                                  "--out", str(out)], home, "pack")
+            packed, _ = _trace(root, [sys.executable, "tools/pack-map.py", directory,
+                                      "--out", str(out)], home, "pack")
+            seen |= packed
         print(f"  {len({p for _, p in seen})} artifact(s) opened in all", flush=True)
     readers: dict[str, list[str]] = {path: [] for path in files}
     for reader, path in seen:
         kind = _reader_class(reader)
         if kind and path in readers and kind not in readers[path]:
             readers[path].append(kind)
-    return {path: [r for r in READERS if r in who] for path, who in readers.items()}
+    return ({path: [r for r in READERS if r in who] for path, who in readers.items()}, failed)
 
 
 def role_of(readers: list[str]) -> str:
@@ -251,7 +287,8 @@ def role_of(readers: list[str]) -> str:
 MOVABLE = ("archived",)
 
 
-def build(root: pathlib.Path, readers: dict[str, list[str]], previous: dict | None) -> dict:
+def build(root: pathlib.Path, readers: dict[str, list[str]], previous: dict | None,
+          failed: list[str] | None = None) -> dict:
     was = {a["path"]: a for a in (previous or {}).get("artifacts", [])}
     artifacts = []
     for path in tracked(root):
@@ -270,10 +307,20 @@ def build(root: pathlib.Path, readers: dict[str, list[str]], previous: dict | No
         })
     commit = subprocess.run(["git", "rev-parse", "HEAD"], cwd=root,
                             capture_output=True, text=True, check=True).stdout.strip()
+    other = partial_steps(failed or [])
     return {
         "version": 1,
         "measuredAt": commit,
         "measuredBy": "tools/check-evidence.py --measure",
+        # What the measurement was taken over, so that a figure derived from it can be read
+        # against the run that produced it rather than assumed (#408). The evidence step is
+        # failing by construction during a re-measure, so it is not counted here; any other
+        # failing step means a check stopped before it read, and the roles below are what that
+        # run happened to reach.
+        "measuredOver": {
+            "gateStepsFailed": sorted(other),
+            "complete": not other,
+        },
         "roles": {
             "active": "read by an ordinary gate run",
             "release": "read by tools/pack-map.py -- packed into, or gating, a published package",
@@ -288,12 +335,51 @@ def build(root: pathlib.Path, readers: dict[str, list[str]], previous: dict | No
     }
 
 
+def measured_at_problems(root: pathlib.Path, lock: dict) -> list[str]:
+    """Whether the commit the lock names is one this repository has, and whether the document
+    derived from the lock agrees about it (#404).
+
+    A measurement names `git rev-parse HEAD`, so any branch whose history is rewritten --
+    amended, rebased, squashed -- leaves the lock pointing at a commit that no longer exists.
+    Nothing noticed, and the failure is invisible until someone tries to reproduce the run.
+    `docs/evidence-inventory.md` restates the same commit in prose, so the two can disagree
+    silently; they were found disagreeing on main the day this check was written.
+    """
+    problems = []
+    commit = lock.get("measuredAt")
+    if not commit:
+        return ["the lock does not say which commit it was measured at"]
+
+    known = subprocess.run(["git", "cat-file", "-e", f"{commit}^{{commit}}"], cwd=root,
+                           capture_output=True, text=True).returncode == 0
+    if not known:
+        problems.append(f"measuredAt {commit} is not a commit this repository has, so the "
+                        f"measurement cannot be reproduced; re-measure, or recover the commit")
+    elif subprocess.run(["git", "merge-base", "--is-ancestor", commit, "HEAD"], cwd=root,
+                        capture_output=True, text=True).returncode != 0:
+        problems.append(f"measuredAt {commit} is not reachable from HEAD -- it is on a history "
+                        f"this branch does not contain, so the lock describes another tree")
+
+    if INVENTORY.exists():
+        found = MEASURED_AT_LABEL.search(INVENTORY.read_text(encoding="utf-8"))
+        if not found:
+            problems.append(f"{INVENTORY.relative_to(root)} no longer says which commit its "
+                            f"figures were measured at")
+        elif not commit.startswith(found.group(1)):
+            problems.append(f"{INVENTORY.relative_to(root)} says its figures were measured at "
+                            f"{found.group(1)} and the lock was measured at {commit[:7]}; the "
+                            f"tables are derived from the lock, so one of them is stale")
+    return problems
+
+
 def verify(root: pathlib.Path, lock: dict) -> list[str]:
     """Every problem between the lock and the tree. Empty means they agree."""
-    problems = []
     artifacts = lock.get("artifacts") or []
     if not artifacts:
+        # Sole message, deliberately: a lock that names nothing proved nothing, and what commit
+        # it says it proved nothing at adds no information.
         return ["the lock names no artifact -- this check proved nothing"]
+    problems = measured_at_problems(root, lock)
 
     locked = {a["path"]: a for a in artifacts}
     if len(locked) != len(artifacts):
@@ -349,14 +435,28 @@ def main(argv=None) -> int:
     parser.add_argument("--roles", action="store_true",
                         help="print the classification and its totals, and check nothing")
     parser.add_argument("--lock", default=str(LOCK))
+    parser.add_argument("--allow-partial", action="store_true",
+                        help="write the lock from a run in which a step other than the evidence "
+                             "step failed, and record in it that the measurement was partial")
     args = parser.parse_args(argv)
 
     lock_path = pathlib.Path(args.lock)
 
     if args.measure:
         previous = load(lock_path) if lock_path.exists() else None
-        readers = measure(ROOT)
-        lock = build(ROOT, readers, previous)
+        readers, failed = measure(ROOT)
+        other = partial_steps(failed)
+        if other and not args.allow_partial:
+            print("check-evidence.py: the gate failed a step other than the evidence step, so a "
+                  "check did not get as far as reading and the roles below are what this run "
+                  "happened to reach:", file=sys.stderr)
+            for step in other:
+                print(f"    FAIL {step}", file=sys.stderr)
+            print("  a role measured over such a run is not reproducible (#408). Fix the step, "
+                  "or pass --allow-partial to write the lock anyway and record that it was "
+                  "measured over a partial run.", file=sys.stderr)
+            return 1
+        lock = build(ROOT, readers, previous, failed)
         lock_path.write_text(json.dumps(lock, indent=2, sort_keys=False) + "\n", encoding="utf-8")
         print(f"\nwrote {lock_path.relative_to(ROOT)}")
         for role, count, size in totals(lock):

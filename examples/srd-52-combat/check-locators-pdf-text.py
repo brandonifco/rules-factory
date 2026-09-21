@@ -94,6 +94,13 @@ import os
 import re
 import sys
 
+# load_page_checker() imports tools/check-locators.py by path, and the loader writes its bytecode
+# into tools/__pycache__ -- a checkout this file does not own. scripts/validate.sh no longer
+# exports PYTHONDONTWRITEBYTECODE for its children (#384), scripts/validate-engine.sh never did,
+# and a reader following this file's own usage line exports nothing, so it is said here. Module
+# level and above the import, because the loader reads the flag when the import happens.
+sys.dont_write_bytecode = True
+
 HERE = os.path.dirname(os.path.abspath(__file__))
 PAGE_CHECKER = os.path.join(os.path.dirname(os.path.dirname(HERE)), "tools", "check-locators.py")
 MARKER = re.compile(r"^\{(\d+)\}$", re.M)

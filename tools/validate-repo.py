@@ -87,6 +87,20 @@ class Fixture:
 
 ECFR = "examples/faa-part-107/check-locators-section.py"
 PDF_TEXT = "examples/srd-52-combat/check-locators-pdf-text.py"
+# The mapper's entry point, as a script rather than as the directory `tools/mapper`.
+#
+# Both run the same file. The difference is bytecode: executing a directory makes Python *import*
+# `__main__`, which caches tools/mapper/__pycache__/__main__.cpython-312.pyc before the first line
+# of it runs -- so the `sys.dont_write_bytecode` inside cannot prevent its own caching, and the
+# gate's last step rightly failed on it the first time it could see (#384). A file path is run as
+# `__main__` from disk and cached nowhere. sys.path[0] is tools/mapper either way, and the entry
+# point computes the path it inserts from `__file__`, so nothing else changes.
+#
+# `python3 tools/mapper <command>` stays the documented form -- docs/mapper.md and several
+# committed evidence artifacts name it -- and it still writes that one ignored file, which no code
+# in the file can stop. What is fixed here is the gate, which is what promises to leave the
+# checkout as it found it.
+MAPPER = "tools/mapper/__main__.py"
 
 # Every map this repository holds, with the corpus directories it reads and the citation grammar
 # that checks it. `check_fixtures_cover_every_map` holds this table to the globs above: a map
@@ -497,7 +511,7 @@ def step_protocols(run: Run) -> bool:
     interrogation mechanism for a corpus that points by naming its terms (#208)."""
     return _over_maps(
         run, "protocol(s) checked",
-        lambda m: run.python("tools/mapper", "protocol", m),
+        lambda m: run.python(MAPPER, "protocol", m),
         "any map's protocol",
     )
 
@@ -515,7 +529,7 @@ def step_pointers(run: Run) -> bool:
     leaves undeclared is now a defect the gate names."""
     return _over_maps(
         run, "map(s) interrogated",
-        lambda m: run.python("tools/mapper", "pointers", m),
+        lambda m: run.python(MAPPER, "pointers", m),
         "any map's pointer interrogation",
     )
 
@@ -531,7 +545,7 @@ def step_inventory(run: Run) -> bool:
     entry's quote is found in, exits 1 here -- an inventory of nothing has nothing unaccounted."""
     return _over_maps(
         run, "map(s) inventoried",
-        lambda m: run.python("tools/mapper", "inventory", m, accept=(0, 3)),
+        lambda m: run.python(MAPPER, "inventory", m, accept=(0, 3)),
         "any map's inventory",
     )
 
@@ -547,7 +561,7 @@ def step_sweeps(run: Run) -> bool:
     and exits 3; it is never skipped."""
     return _over_maps(
         run, "map(s) swept",
-        lambda m: run.python("tools/mapper", "sweeps", m, accept=(0, 3)),
+        lambda m: run.python(MAPPER, "sweeps", m, accept=(0, 3)),
         "any map's required sweeps",
     )
 
@@ -573,7 +587,7 @@ def step_blind_staging(run: Run) -> bool:
     checked = 0
     for record in records:
         print(f"--- {record}")
-        if not run.python("tools/mapper", "stage", "--verify", record):
+        if not run.python(MAPPER, "stage", "--verify", record):
             return False
         checked += 1
     if checked == 0:
@@ -743,10 +757,15 @@ def step_tool_tests(run: Run) -> bool:
     suite is collected first and the run is held to the count: a run that passed fewer tests than
     were collected fails, whatever pytest's own exit code said.
     """
+    # `-p no:cacheprovider` keeps .pytest_cache out; the env keeps __pycache__ out of every test
+    # module pytest imports. It is set here and not for the whole gate (#384) so that a *checker*
+    # which writes bytecode is caught by the last step rather than hidden by the run's
+    # environment. xdist's workers are child processes, so they inherit it.
+    bare = {**os.environ, "PYTHONDONTWRITEBYTECODE": "1"}
     collected = subprocess.run(
         [sys.executable, "-m", "pytest", "-p", "no:cacheprovider", "tools/tests", "-q",
          "--collect-only"],
-        cwd=run.root, capture_output=True, text=True,
+        cwd=run.root, capture_output=True, text=True, env=bare,
     )
     if collected.returncode != 0:
         sys.stdout.write(collected.stdout)
@@ -758,10 +777,16 @@ def step_tool_tests(run: Run) -> bool:
         print("collection reported no tests -- nothing was proven", file=sys.stderr)
         return False
 
+    # `-rs` prints the reason for every skip. A skip accounts for a test, so the count below
+    # accepts it -- and a count accepted on trust is how this comment came to explain the number
+    # wrongly (#389). It said "this job has no .NET SDK, so the tests that need one skip here":
+    # ubuntu-24.04 ships a 10.x SDK, the runner has had one for some time, and those tests have
+    # been running in this job rather than skipping. The number was right and the reason was not.
+    # So the run prints what actually skipped and why, and no comment has to be believed.
     proc = subprocess.run(
         [sys.executable, "-m", "pytest", "-p", "no:cacheprovider", "tools/tests", "-q",
-         "-n", "auto"],
-        cwd=run.root, capture_output=True, text=True,
+         "-n", "auto", "-rs"],
+        cwd=run.root, capture_output=True, text=True, env=bare,
     )
     if proc.returncode != 0:
         sys.stdout.write(proc.stdout)
@@ -774,10 +799,10 @@ def step_tool_tests(run: Run) -> bool:
     # distributed run that lost a worker is the same lie with a plausible number on it. So every
     # collected test must be accounted for by one of pytest's own outcome counters.
     #
-    # A skip is an outcome, so it accounts for a test -- and it is never absorbed silently. This
-    # job has no .NET SDK, so the tests that need one skip here and the `engine` job runs them
-    # for real; that is a deliberate two, and a third would be a test nobody is running. The
-    # count is printed on every run for the same reason the map counts are.
+    # A skip is an outcome, so it accounts for a test -- and it is never absorbed silently. Every
+    # skip's reason is printed above by `-rs`, and the count is printed below for the same reason
+    # the map counts are: a reader of a green log can see which tests did not run and why, rather
+    # than take a comment's word for it.
     outcomes = {name: _count(proc.stdout, rf"(\d+) {name}")
                 for name in ("passed", "skipped", "xfailed", "xpassed", "deselected")}
     accounted = sum(outcomes.values())
@@ -992,9 +1017,21 @@ def main(argv=None) -> int:
             print(f"  package {settings}")
         return 0
 
-    # The gate leaves the checkout as it found it (AGENTS.md section 4). No bytecode and no pytest
-    # cache are written, and the last step compares what git does not track before and after.
-    os.environ["PYTHONDONTWRITEBYTECODE"] = "1"
+    # The gate leaves the checkout as it found it (AGENTS.md section 4), and the last step
+    # compares what git does not track before and after.
+    #
+    # That step used to be unable to see the thing it was written to catch. This exported
+    # PYTHONDONTWRITEBYTECODE for every child, so a checker that writes bytecode wrote none *here*
+    # and left it in any other caller's checkout -- which is exactly what #384 found: the SRD
+    # locator checker imports tools/check-locators.py by path, and only the gate's own environment
+    # kept tools/__pycache__ out of the tree. A step held to a promise by its caller's environment
+    # is holding to it by accident.
+    #
+    # So the flag is set where it is a property of the tool rather than of the run: each tool that
+    # imports another says `sys.dont_write_bytecode = True` for itself, two tests enumerate which
+    # tools those are, and the only step that still needs the environment is pytest -- whose xdist
+    # workers are separate processes that inherit env and nothing else. Bytecode from anything
+    # else now reaches the checkout, where the last step fails on it.
     before = leftovers(ROOT)
 
     run = Run(ROOT, scope, with_evidence=args.with_evidence)

@@ -13,8 +13,9 @@ Two layers:
     which leaves provenance.json hashing bytes that are gone and hashing the overlay as it was
     before the edit (#192) -- the one comparison that carries that case now that the backlog has
     left the engine (#243), and one that is refused when it had nothing to compare.
-  * **With a .NET SDK** (skipped cleanly when `dotnet` is absent, as in this repository's CI, or
-    when RULES_FACTORY_SKIP_DOTNET is set): the emitted `scripts/validate.sh` itself passes on
+  * **With a .NET SDK** (skipped cleanly when `dotnet` is absent or older than 10, or when
+    RULES_FACTORY_SKIP_DOTNET is set -- *not* in this repository's CI, whose ubuntu-24.04 runner
+    ships a 10.x SDK, so these run in the `validate` job rather than skipping there; #389): the emitted `scripts/validate.sh` itself passes on
     fresh output and fails on each of those mutations. The engine is a scratch copy: its
     global.json is re-pinned to the SDK installed here, and its NuGet.config gains a local folder
     feed holding the map package packed by tools/pack-map.py (Part 107 4.0.0 is not on
@@ -1262,6 +1263,17 @@ class TestCorpusPosture(GateCase):
 
 
 def _sdk():
+    """Any 10.x SDK on PATH, which is all this class needs: it re-pins each localised engine's
+    global.json to the SDK installed here, so the version does not have to be the pinned one.
+
+    That is the distinction #389 asked for, and it is not cosmetic. An engine's own global.json
+    pins one SDK with `rollForward: disable`, so a *non*-re-pinned build against any other 10.x
+    exits 155 -- a test that believed it was skipping would measure a fallback path and report it
+    as the real one. Here the re-pin makes any 10.x honest. Where an unmodified build is what is
+    under test, the question is the other one and is asked separately:
+    test_factory_provenance.py's `test_dotnet_test` reads `dotnet --list-sdks` and skips unless
+    the exact pinned version is installed. Two guards, because they have two consequences.
+    """
     if os.environ.get("RULES_FACTORY_SKIP_DOTNET") or not shutil.which("dotnet"):
         return None
     try:
@@ -1275,7 +1287,12 @@ def _sdk():
 SDK = _sdk()
 
 
-@unittest.skipUnless(SDK, "needs a .NET 10 SDK (dotnet on PATH); this repository's CI has none")
+# What is true, rather than what was true once. ubuntu-24.04 ships a 10.x SDK, so the `validate`
+# job has one and this class runs there; it skips on a machine with no dotnet, with one older than
+# 10, or with RULES_FACTORY_SKIP_DOTNET set. The claim it used to make -- "this repository's CI
+# has none" -- told a reader the opposite of what happens (#389).
+@unittest.skipUnless(SDK, "needs a .NET 10 SDK (dotnet on PATH), or RULES_FACTORY_SKIP_DOTNET is "
+                          "set; the `validate` runner has one, so these do not skip there")
 class TestValidateShWithDotnet(GateCase):
     """scripts/validate.sh, run for real. One fresh engine is locked once, then copied per mutation."""
 

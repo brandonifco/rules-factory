@@ -43,33 +43,49 @@ The role follows from the readers:
 | role | files | size | may its bytes live outside the repository? |
 |---|---|---|---|
 | `release` — `pack-map.py` reads it | 20 | 2.5 MB | no: its bytes reach nuget.org |
-| `active` — some other part of the gate reads it | 134 | 11.9 MB | no: a check that fetches its inputs cannot be run offline |
-| `archived` — nothing reads it | 43 | 1.0 MB | yes |
+| `active` — some other part of the gate reads it | 141 | 11.9 MB | no: a check that fetches its inputs cannot be run offline |
+| `archived` — nothing reads it | 36 | 967 KB | yes |
 
 `check-evidence.py` refuses a lock that gives a non-null `archive` to an `active` or `release`
 artifact, and refuses a role its own `readBy` does not support. That pair of rules is what keeps a
 clean checkout sufficient for normal development.
 
+**`archived` fell from 43 to 36 at this measurement, and not because anything was retired.**
+[#384](https://github.com/brandonifco/rules-factory/issues/384) added a test that enumerates every
+script under `tools/` and `examples/` importing another of this repository's files by path, and
+holds each to declaring `sys.dont_write_bytecode`. It reads their source to do it, so seven trial
+scripts whose bytes nothing had opened — `blind-mapping-trial/build.py` and `compare.py`,
+`collapse-trial/collapse.py`, `faa-part-107-temporal/diff-maps.py`, and `injection-trial`'s
+`injections.py`, `run-trial.py` and `score.py` — are now read by a check. `active` is the right
+answer: moving their bytes out of the repository would break that test, which is what the role
+decides. But what the check proves about them is narrow — that one line is in the right place —
+and that is closer to what `links` says about a document than to what `checks` usually means.
+A reader deciding what could be retired should know which of the two they are looking at.
+
 ## By trial
 
-Measured at `63a42c5`:
+Measured at `53559ee`, over a gate run that failed no step but the evidence step and the
+lock's own tests, which fail by construction while the lock is being rewritten
+(`measuredOver` in the lock says so, and `--measure` refuses a run with any other failing
+step; [#408](https://github.com/brandonifco/rules-factory/issues/408)):
 
 | directory | active | release | archived |
 |---|---|---|---|
 | `examples/srd-52-combat` | 6.2 MB | 1.5 MB | 476 KB |
 | `examples/hazmat-172-table` | 3.2 MB | — | 7 KB |
-| `examples/hoyle-backgammon` | 523 KB | 783 KB | — |
-| `examples/faa-part-107` | 535 KB | 158 KB | — |
+| `examples/hoyle-backgammon` | 544 KB | 783 KB | — |
+| `examples/faa-part-107` | 564 KB | 158 KB | — |
 | `examples/hoyle-blind-rebuild` | 432 KB | — | 61 KB |
-| `examples/blind-mapping-trial` | 141 KB | — | 207 KB |
-| `examples/srd-52-conditions` | 354 KB | — | 29 KB |
-| `examples/tax-121-principal-residence` | 189 KB | 87 KB | 101 KB |
-| `examples/faa-part-107-temporal` | 137 KB | — | 43 KB |
-| `examples/injection-trial` | 22 KB | — | 100 KB |
+| `examples/srd-52-conditions` | 353 KB | — | 29 KB |
+| `examples/tax-121-principal-residence` | 191 KB | 86 KB | 101 KB |
+| `examples/blind-mapping-trial` | 146 KB | — | 201 KB |
+| `examples/faa-part-107-temporal` | 146 KB | — | 37 KB |
+| `examples/injection-trial` | 72 KB | — | 51 KB |
 | `examples/validator-attack` | 53 KB | — | — |
 | `examples/tax-121-build` | 31 KB | — | — |
-| `examples/acceptance-4-5` | 28 KB | — | 2 KB |
-| `examples/collapse-trial` | 6 KB | — | 11 KB |
+| `examples/acceptance-4-5` | 31 KB | — | — |
+| `examples` | 27 KB | — | — |
+| `examples/collapse-trial` | 13 KB | — | 3 KB |
 
 Three things there are worth saying out loud.
 

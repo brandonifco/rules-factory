@@ -308,12 +308,12 @@ row. The classification:
 | `tools/dispatch-agent.sh`, `tools/new-issue.sh` | managed | the worktree and issue discipline |
 | `tools/entry-packet.py`, `tools/review-packet.py` | managed | bounded context, read from the merged map |
 | `tools/pr-policy.py`, `tools/record-verdict.py`, `tools/conformance-gate.py` | managed | enforcement |
-| `tools/requeue-gate.py` | managed | a recorded verdict asks the gate to report again (#191) |
+| `tools/requeue-gate.py` | managed | a recorded verdict, or a changed risk label, asks the gate to report again (#191, #230) |
 | `tools/re-produce.sh` | managed | an overlay edit is finished by a re-produce, from the factory commit the record names (#192) |
 | `tools/agent-doctor.py` | managed | the audit of all of it |
 | `.github/pull_request_template.md` | managed | the PR shape |
 | `.github/workflows/pr-policy.yml`, `.github/workflows/conformance-gate.yml` | managed | the two new required checks |
-| `.github/workflows/verdict-requeue.yml` | managed | the `status` event's side of that, and deliberately not required |
+| `.github/workflows/verdict-requeue.yml` | managed | the `status` and `issues` events' side of that, and deliberately not required |
 | `.editorconfig` | managed | analyzer severities (§12) |
 | `.github/agent-policy.json` | engine-owned | §4 |
 | `docs/decisions/**` | engine-owned | the engine's own rulings |
@@ -373,6 +373,24 @@ than becoming the implicit target of an old verdict (0053).
 A change touching `review.semanticPaths` requires `review.semanticContext`. An issue carrying the
 independent risk label additionally requires one of `review.independentFallback`'s contexts. The
 independent reviewer receives the same entry packet and **not** the first reviewer's conclusions.
+
+**Risk is the orchestrator's call, it may be made at any time, and the gate follows it whenever it
+is made.** The label is on the issue, not on the pull request, and anyone who can write labels may
+set it -- §11 already says the factory never lowers risk and has no basis to revise a human
+judgement. What §11 did not say is what happens when the judgement is made *late*. The gate reads
+the linked issue's labels, but its workflow runs on `pull_request` events, so labelling the issue
+after the gate had passed left a green required check that no longer reflected the issue's risk,
+and the pull request could merge without the independent verdict it now needed (#230). So raising
+risk on an issue re-requests the conformance gate of every open pull request that closes it, by
+the same route a recorded verdict does: `.github/workflows/verdict-requeue.yml` on the `issues`
+event, through `tools/requeue-gate.py`, which writes no status and no check run of its own. The
+link it follows is `closingIssuesReferences` -- the same link `conformance-gate.py` reads to find
+the issue -- so the two agree about which pull request an issue governs by construction.
+
+The consequence is the one the label is for: **the required check goes red again by itself**, and
+stays red until a verdict at one of the configured contexts is recorded at the head being merged.
+Lowering risk re-requests it the same way, and the gate then finds the independent verdict no
+longer required. Neither direction is a decision the factory makes; both are it keeping up.
 
 **The chain advances because a link is unavailable, never because its verdict was unwelcome.** A
 recorded failure at any configured context blocks the gate outright, and a later pass at a

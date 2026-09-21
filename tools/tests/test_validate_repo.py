@@ -592,3 +592,206 @@ class TestAnUndeclaredPointerIsNotNotVerified(unittest.TestCase):
             proc = run.quiet("tools/mapper", "pointers", map_path)
             self.assertEqual(proc.returncode, 0,
                              f"{map_path} exits {proc.returncode}:\n{proc.stdout}{proc.stderr}")
+
+
+class TestNoBytecodeReachesTheCheckout(unittest.TestCase):
+    """#384: the step that catches what a run left behind could not see bytecode.
+
+    `main()` used to export PYTHONDONTWRITEBYTECODE for every child before the first step, so a
+    checker that writes bytecode wrote none under the gate and wrote it in every other caller's
+    checkout. AGENTS.md section 4's promise -- "nothing is left in the checkout" -- was being kept
+    by the caller's environment rather than by the tools, which is keeping it by accident.
+
+    So the flag is a property of each tool that imports another of this repository's files by
+    path, and the gate sets it only for pytest, whose xdist workers are child processes that
+    inherit the environment and nothing else. Both halves are asserted here: the tools say it,
+    and the gate does not say it for them.
+    """
+
+    IMPORT = ("sys.path.insert", "spec_from_file_location")
+    SUPPRESSION = "sys.dont_write_bytecode = True"
+
+    # The imported side. A module with no `__main__` guard is never the process that starts, so
+    # its own bytecode is written by whoever imported it and a flag here would be read one file
+    # too late -- the carve-out test_factory_rails.py already makes for the vendored modules.
+    # Named rather than inferred, so a module that grows an entry point is not quietly exempt.
+    IMPORTED_SIDE = ("tools/factory/intake.py",)
+
+    def path_importers(self):
+        """Every script run as a command, under tools/ or examples/, that loads another
+        repository file by path.
+
+        Both mechanisms, because they have the same consequence and only one of them was
+        enumerated before: `tools/factory`'s importers were held to this rule by
+        test_factory_provenance.py through `sys.path`, and the SRD locator checker -- which
+        reaches for tools/check-locators.py through importlib, from examples/ -- was in neither
+        list. tools/mapper/__main__.py was in neither either, and the gate caught it the first
+        time the last step could see bytecode.
+
+        tools/tests/ is left out because pytest imports those modules and the gate sets
+        PYTHONDONTWRITEBYTECODE for pytest alone: there the environment is the tool's own, not a
+        caller's.
+        """
+        import glob
+        found = {}
+        for pattern in ("tools/*.py", "tools/*/*.py", "tools/*/*/*.py", "examples/*/*.py"):
+            for path in sorted(glob.glob(os.path.join(ROOT, pattern))):
+                relative = os.path.relpath(path, ROOT).replace(os.sep, "/")
+                if relative.startswith("tools/tests/") or relative in self.IMPORTED_SIDE:
+                    continue
+                lines = open(path, encoding="utf-8").read().splitlines()
+                reaches = next((i for i, line in enumerate(lines)
+                                if any(m in line for m in self.IMPORT)
+                                and not line.lstrip().startswith("#")), None)
+                if reaches is not None:
+                    found[relative] = (lines, reaches)
+        return found
+
+    def test_the_imported_side_is_still_the_imported_side(self):
+        """The exemption is a fact about the file, not a way past the rule: a module that gains
+        an entry point starts writing its own bytecode and owes the flag."""
+        for relative in self.IMPORTED_SIDE:
+            with self.subTest(module=relative):
+                text = open(os.path.join(ROOT, relative), encoding="utf-8").read()
+                self.assertNotIn('if __name__ == "__main__"', text,
+                                 f"{relative} is exempt as the imported side and now runs as a "
+                                 f"command (#384)")
+
+    def test_every_script_that_imports_by_path_suppresses_its_bytecode(self):
+        for relative, (lines, reaches) in sorted(self.path_importers().items()):
+            with self.subTest(script=relative):
+                # Column 0, so the flag is module level rather than nested in some function that
+                # may never run, and before the import, because the loader reads it then.
+                flag = next((i for i, line in enumerate(lines)
+                             if line.split("#")[0].rstrip() == self.SUPPRESSION), None)
+                self.assertIsNotNone(
+                    flag, f"{relative} imports another repository file by path and leaves its "
+                          f"bytecode in the checkout (#384)")
+                self.assertLess(
+                    flag, reaches,
+                    f"{relative} sets dont_write_bytecode at line {flag + 1}, after line "
+                    f"{reaches + 1} reaches for the import; there it prevents nothing")
+
+    def test_the_importers_are_named(self):
+        """Named, so a new script that starts importing by path fails here rather than being
+        waved through by a check that examined whatever it happened to find."""
+        self.assertEqual(sorted(self.path_importers()), [
+            "examples/blind-mapping-trial/compare.py",
+            "examples/collapse-trial/collapse.py",
+            "examples/hoyle-blind-rebuild/build-brief.py",
+            "examples/hoyle-blind-rebuild/check-rebuild.py",
+            "examples/injection-trial/run-trial.py",
+            "examples/injection-trial/score.py",
+            "examples/srd-52-combat/check-locators-pdf-text.py",
+            "tools/check-readme-status.py",
+            "tools/factory/__main__.py",
+            "tools/factory/recipe/engine-gate.py",
+            "tools/factory/recipe/map-overlay.py",
+            "tools/fetch-evidence.py",
+            "tools/mapper/__main__.py",
+            "tools/pack-map.py",
+            "tools/validate-engine.py",
+        ])
+
+    def test_the_gate_does_not_suppress_bytecode_for_every_step(self):
+        """The structural half. A gate that exports the flag for all its children cannot fail on
+        bytecode, so the last step reports ok over a tree the same run would have dirtied in any
+        other environment."""
+        source = open(TOOL, encoding="utf-8").read()
+        body = source.split("def main(")[1]
+        self.assertNotIn('os.environ["PYTHONDONTWRITEBYTECODE"]', body,
+                         "main() exports the flag for every child again, and the last step is "
+                         "blind to bytecode once more (#384)")
+
+    def test_the_pytest_step_still_suppresses_its_own(self):
+        """The one step that needs the environment: pytest imports every test module, and xdist's
+        workers are separate processes that inherit env and no interpreter flag."""
+        step = open(TOOL, encoding="utf-8").read().split("def step_tool_tests(")[1].split("\ndef ")[0]
+        self.assertIn('"PYTHONDONTWRITEBYTECODE": "1"', step)
+        self.assertEqual(2, step.count("env=bare"), "both the collection and the run")
+
+    def test_a_path_importer_run_bare_leaves_nothing(self):
+        """The acceptance criterion itself, on the cheapest importer: run it the way its own
+        usage line describes, with nothing exported, and the checkout is as it was."""
+        env = {k: v for k, v in os.environ.items() if k != "PYTHONDONTWRITEBYTECODE"}
+        before = set(vr.leftovers(__import__("pathlib").Path(ROOT)))
+        proc = subprocess.run([sys.executable, os.path.join(ROOT, "tools", "fetch-evidence.py"),
+                               "--help"], cwd=ROOT, env=env, capture_output=True, text=True)
+        self.assertEqual(0, proc.returncode, proc.stderr)
+        added = set(vr.leftovers(__import__("pathlib").Path(ROOT))) - before
+        self.assertEqual(set(), added, "running a path importer bare left files in the checkout")
+
+    def test_the_gate_runs_the_mapper_as_a_file_and_not_as_a_directory(self):
+        """Executing a directory imports `__main__` and caches it before the file's own
+        `sys.dont_write_bytecode` can run, so the one entry point that cannot protect itself is
+        invoked the one way that needs no protection (#384)."""
+        self.assertEqual("tools/mapper/__main__.py", vr.MAPPER)
+        source = open(TOOL, encoding="utf-8").read()
+        self.assertNotIn('run.python("tools/mapper"', source,
+                         "the gate executes the mapper as a directory again, which caches "
+                         "tools/mapper/__pycache__/__main__.cpython-*.pyc whatever the file says")
+
+    def test_the_mapper_run_as_a_file_leaves_nothing(self):
+        """The behavioural half, with nothing exported: the form the gate uses is clean."""
+        import pathlib as _pathlib
+        env = {k: v for k, v in os.environ.items() if k != "PYTHONDONTWRITEBYTECODE"}
+        before = set(vr.leftovers(_pathlib.Path(ROOT)))
+        proc = subprocess.run([sys.executable, os.path.join(ROOT, vr.MAPPER), "protocol",
+                               os.path.join(ROOT, "examples", "faa-part-107", "corpus-map.json")],
+                              cwd=ROOT, env=env, capture_output=True, text=True)
+        self.assertEqual(0, proc.returncode, proc.stderr[-2000:])
+        self.assertEqual(set(), set(vr.leftovers(_pathlib.Path(ROOT))) - before,
+                         "the mapper run as a file left bytecode in the checkout")
+
+
+class TestTheSkipsAreNotExplainedByAStaleComment(unittest.TestCase):
+    """#389: the gate's accounting was right about the number and wrong about the cause.
+
+    `validate-repo.py` held the suite to its collected count and explained the two skips with
+    "this job has no .NET SDK, so the tests that need one skip here". ubuntu-24.04 ships a 10.x
+    SDK, so the `validate` runner has one and those ten tests have been *running* there. A count
+    accepted on the strength of a comment is a count nobody is checking, which is the shape of
+    defect this repository keeps finding in its own tools.
+
+    The fix is not a better comment. It is that every skip prints its own reason, so a green log
+    says which tests did not run and why.
+    """
+
+    FALSE_CLAIM = ("this repository's CI has none", "as in this repository's CI")
+
+    def test_the_run_prints_every_skip_reason(self):
+        step = open(TOOL, encoding="utf-8").read().split("def step_tool_tests(")[1].split("\ndef ")[0]
+        self.assertIn('"-rs"', step,
+                      "without -rs a skip is a number with no reason attached, and the reason "
+                      "goes back into a comment that can drift (#389)")
+
+    def test_no_test_claims_this_repository_has_no_sdk(self):
+        """The claim is false wherever it appears: as a skip reason a reader sees in a log, or as
+        a docstring a reader believes instead of reading the runner."""
+        import glob
+        for path in sorted(glob.glob(os.path.join(ROOT, "tools", "tests", "factory", "*.py"))):
+            text = open(path, encoding="utf-8").read()
+            for claim in self.FALSE_CLAIM:
+                with self.subTest(file=os.path.basename(path), claim=claim):
+                    # The corrected docstring names the claim to say it is false, so what is
+                    # refused is the assertion, not the words.
+                    offending = [line.strip() for line in text.splitlines()
+                                 if claim in line and "*not*" not in line]
+                    self.assertEqual([], offending,
+                                     f"{os.path.basename(path)} says the validate runner has no "
+                                     f".NET SDK; it has a 10.x one and these tests run there (#389)")
+
+    def test_the_two_questions_about_an_sdk_are_asked_separately(self):
+        """An SDK is present, and the SDK this engine pins is present, have different
+        consequences: a build against a non-pinned 10.x with `rollForward: disable` exits 155.
+        A guard that conflates them measures a fallback path and reports it as the real one."""
+        factory = os.path.join(ROOT, "tools", "tests", "factory")
+        gate = open(os.path.join(factory, "test_factory_gate.py"), encoding="utf-8").read()
+        provenance = open(os.path.join(factory, "test_factory_provenance.py"), encoding="utf-8").read()
+        # Any 10.x, because the class re-pins each localised engine's global.json to it.
+        self.assertIn("def _sdk()", gate)
+        self.assertIn('re.match(r"^10\\.", version)', gate)
+        # The other question, where no re-pin happens: the exact pinned version or nothing.
+        self.assertIn("--list-sdks", provenance,
+                      "nothing asks whether the SDK the kernel pins is the one installed (#389)")
+        self.assertIn("pins.SDK_VERSION", provenance)
