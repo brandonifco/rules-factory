@@ -109,6 +109,40 @@ def entry_ids(*texts):
     return found
 
 
+def map_read_from(package_map, record, head):
+    """The digest of the map bytes the entry packets will be built from, held to what the reviewed
+    commit declares (#356).
+
+    The overlay comes from the reviewed tree. The map does not: `--package-map` is a host path, and
+    without this the packet's section 3 would say "the reviewed commit's own map/overlay bytes"
+    while the map was whatever the caller pointed at. `provenance.json` records the sha256 of the
+    exact `corpus-map.json` the engine was produced from, under `map.files[role="map"]`, so there
+    is something precise to be held to rather than a version label.
+
+    Returns the digest of the bytes that were read, for the manifest to record beside the declared
+    one: a reader of the record should never have to assume the two were the same thing.
+    """
+    declared = [part.get("sha256") for part in (record.get("map") or {}).get("files") or []
+                if part.get("role") == "map"]
+    if len(declared) != 1 or not declared[0]:
+        raise Refused(f"{PROVENANCE} at {head[:12]} does not record the digest of the map it was "
+                      f"produced from (`map.files[role=\"map\"]`), so the bytes an entry packet is "
+                      f"built from cannot be checked against it")
+    try:
+        with open(package_map, "rb") as handle:
+            read = hashlib.sha256(handle.read()).hexdigest()
+    except OSError as error:
+        raise Refused(f"--package-map {package_map} cannot be read ({error})")
+    if read != declared[0]:
+        raise Refused(f"--package-map {package_map} is not the map commit {head[:12]} was produced "
+                      f"from: it hashes to {read[:12]} and {PROVENANCE} declares {declared[0][:12]}. "
+                      f"An entry packet built from it would be evidence the reviewed commit never "
+                      f"carried, and section 3 tells the reviewer it is the commit's own bytes. "
+                      f"Restore the package the engine declares, or review the commit that declares "
+                      f"this map.")
+    return read
+
+
 def entry_packet(entry_id, out_dir, source_root, package_map=None):
     """The entry packet for `entry_id`, generated from the exact reviewed tree.
 
@@ -181,6 +215,10 @@ def build(number, base, out_dir, package_map=None):
         except (OSError, UnicodeDecodeError, ValueError) as error:
             raise Refused(f"reviewed commit {head[:12]} does not carry readable review context ({error})")
 
+        # Before any entry packet is built, and before anything is written: an entry packet made
+        # from the wrong map is the one artifact a semantic reviewer is told to read first.
+        map_read = map_read_from(package_map, record, head) if package_map else None
+
         entries = entry_ids(issue.get("body"), pull.get("body"))
 
         parts = [f"# Review packet: PR #{number} — {pull.get('title', '')}\n",
@@ -208,9 +246,15 @@ def build(number, base, out_dir, package_map=None):
                 else:
                     packets.append({"entryId": entry_id, "path": path, "sha256": digest})
                     rendered.append(f"- `{entry_id}`: `{path.name}` (sha256 `{digest}`)")
-            body = ("Read these **before** the diff. They are the reviewed commit's own map/overlay bytes for the "
-                    "entries this change names; your reading of the rule is formed from them, not from the "
-                    "implementation.\n\n" + "\n".join(rendered))
+            provenance_of_map = (
+                "They are the reviewed commit's own map and overlay bytes: the overlay came out of the commit, "
+                "and the map was checked against the digest the commit's `provenance.json` declares."
+                if package_map else
+                "The overlay came out of the reviewed commit. **The map did not: it was resolved by MSBuild "
+                "inside the reviewed tree and its identity was NOT VERIFIED against the digest the commit's "
+                "`provenance.json` declares** (#356). Pass `--package-map` to have it checked.")
+            body = ("Read these **before** the diff. " + provenance_of_map + " Your reading of the rule is formed "
+                    "from them, not from the implementation.\n\n" + "\n".join(rendered))
         else:
             body = ("The issue and the pull request name no entry (no `rules-factory-entry` marker). For a change to "
                     "the rules surface that is a finding: the reviewer cannot check an implementation against a rule "
@@ -296,6 +340,15 @@ def build(number, base, out_dir, package_map=None):
                 "packageId": record["map"].get("packageId"),
                 "version": record["map"].get("version"),
                 "nupkgSha256": record["map"].get("nupkgSha256", ""),
+                # What the commit declares, and what was actually read. Recording only the first
+                # is what let two packets with different entry evidence carry one identity (#356).
+                "declaredSha256": next((part.get("sha256") for part in record["map"].get("files") or []
+                                        if part.get("role") == "map"), ""),
+                # Null, never the declared digest, when nothing was checked: writing the declared
+                # value here would be the very substitution of a claim for a fact this closes.
+                "readSha256": map_read,
+                "readFrom": ("--package-map, checked against the reviewed commit" if package_map
+                             else "MSBuild inside the reviewed tree -- NOT VERIFIED"),
             },
         }
         return "\n".join(parts), head, base_sha, packets, context

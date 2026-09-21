@@ -113,7 +113,23 @@ class LocatorCase(unittest.TestCase):
         self.assertIsNotNone(found, f"check {check!r} did not report at all:\n{output}")
         return found.group(1)
 
-    def assert_catches(self, check, mutate, expect="fail"):
+    def assert_catches(self, check, mutate, expect="fail", *, message=None):
+        """The valid map passes this check; the mutation makes this check say `message`.
+
+        `message` is **required** and is a fragment of the refusal the mutation must produce
+        ([#283](https://github.com/brandonifco/rules-factory/issues/283)). Asserting only the
+        check's verdict was not enough: a check has several rules, and a mutation caught by a
+        neighbouring one still shows red, so the test passes while the rule it was written for
+        goes unexercised. `extraction`'s "a defect this checker has no test for" mutation does
+        exactly that here -- it trips the folio rule as well -- and nothing said so.
+
+        It is keyword-only with no usable default, so the next test cannot be written without one.
+        """
+        if not message:
+            raise AssertionError(
+                f"assert_catches({check!r}, ...) names no expected refusal. Assert the message, "
+                f"not only the verdict: a neighbouring rule of the same check can satisfy the "
+                f"verdict while the rule this test is about goes unexercised (#283)")
         code, output = self.run_tool(valid_map())
         self.assertEqual(self.status_of(output, check), "ok", output)
         self.assertEqual(code, 0, output)
@@ -122,6 +138,30 @@ class LocatorCase(unittest.TestCase):
         code, output = self.run_tool(document)
         self.assertEqual(self.status_of(output, check), expect, output)
         self.assertEqual(code, 1, output)
+        self.assertIn(message, output,
+                      f"the {check!r} check refused the map, but not with the refusal this test "
+                      f"names -- another rule of the same check may be doing the work:\n{output}")
+
+
+class TestTheHelperNamesTheRefusal(LocatorCase):
+    """The guard itself, so #283 cannot be undone by writing the next test the old way.
+
+    Mutation: give `message` a default of `""`, or drop the guard. This goes green while a test
+    that asserts nothing about the refusal becomes writable again.
+    """
+
+    def test_assert_catches_refuses_a_call_that_names_no_refusal(self):
+        with self.assertRaises(AssertionError) as caught:
+            self.assert_catches("locators", lambda d: d["entries"][2]["locator"].update(
+                citation="Part One / p. 2"))
+        self.assertIn("names no expected refusal", str(caught.exception))
+
+    def test_a_refusal_from_a_neighbouring_rule_does_not_satisfy_the_test(self):
+        """The whole point: the verdict is red, and it is red for the wrong reason."""
+        with self.assertRaises(AssertionError) as caught:
+            self.assert_catches("locators", lambda d: d["entries"][2]["locator"].update(
+                citation="Part One / p. 2"), message="a refusal this mutation does not produce")
+        self.assertIn("another rule of the same check may be doing the work", str(caught.exception))
 
 
 class TestFixtureIsValid(LocatorCase):
@@ -135,17 +175,20 @@ class TestFixtureIsValid(LocatorCase):
 class TestLocators(LocatorCase):
     def test_a_citation_naming_the_wrong_page_fails(self):
         self.assert_catches(
-            "locators", lambda d: d["entries"][2]["locator"].update(citation="Part One / p. 2"))
+            "locators", lambda d: d["entries"][2]["locator"].update(citation="Part One / p. 2"),
+            message="cited p. 2, evidence is on p. 3")
 
     def test_evidence_that_is_a_summary_rather_than_a_quote_fails(self):
         # The defect that let thirteen wrong citations survive a build (#18).
         self.assert_catches(
-            "locators", lambda d: d["entries"][1].update(evidence="Both elections."))
+            "locators", lambda d: d["entries"][1].update(evidence="Both elections."),
+            message="evidence not found verbatim; cannot check")
 
     def test_a_citation_naming_no_page_fails(self):
         # What `(absent)` was, before 0009 gave an absence a locator that cites a passage.
         self.assert_catches(
-            "locators", lambda d: d["entries"][4]["locator"].update(citation="(absent)"))
+            "locators", lambda d: d["entries"][4]["locator"].update(citation="(absent)"),
+            message="names no page, so nothing can be compared")
 
     def test_a_map_whose_evidence_is_nowhere_in_the_corpus_does_not_report_ok(self):
         document = valid_map()
@@ -190,7 +233,7 @@ class TestAbsence(LocatorCase):
         self.assert_catches(
             "absence",
             lambda d: d["entries"][4]["absentFrom"]["searched"].append("pair of tokens"),
-        )
+            message="and the extent contains it")
 
     def test_the_search_is_bounded_by_the_declared_extent(self):
         # "doubling" is absent from pages 1-4 and present on page 5, which is outside the
@@ -234,7 +277,8 @@ class TestCoverage(LocatorCase):
         # one a mapper had read and found nothing in.
         def mutate(document):
             document["entries"].pop(2)
-        self.assert_catches("coverage", mutate)
+        self.assert_catches("coverage", mutate,
+            message="p. 3: inside the declared extent and reached by no entry's verified evidence")
 
     def test_the_uncovered_page_is_named(self):
         document = valid_map()
@@ -275,7 +319,8 @@ class TestCoverage(LocatorCase):
         # credit it -- otherwise a summary would cover the corpus.
         def mutate(document):
             document["entries"][2]["evidence"] = "The rule about succession."
-        self.assert_catches("coverage", mutate)
+        self.assert_catches("coverage", mutate,
+            message="p. 3: inside the declared extent and reached by no entry's verified evidence")
 
 
 # --- examples/faa-part-107/check-locators-section.py: the section-designation grammar -------
@@ -839,7 +884,23 @@ class TestPdfTextLocators(unittest.TestCase):
         self.assertIsNotNone(found, f"check {check!r} did not report at all:\n{output}")
         return found.group(1)
 
-    def assert_catches(self, check, mutate, base=pdf_text_map):
+    def assert_catches(self, check, mutate, base=pdf_text_map, *, message=None):
+        """The valid map passes this check; the mutation makes this check say `message`.
+
+        `message` is **required** and is a fragment of the refusal the mutation must produce
+        ([#283](https://github.com/brandonifco/rules-factory/issues/283)). Asserting only the
+        check's verdict was not enough: a check has several rules, and a mutation caught by a
+        neighbouring one still shows red, so the test passes while the rule it was written for
+        goes unexercised. `extraction`'s "a defect this checker has no test for" mutation does
+        exactly that here -- it trips the folio rule as well -- and nothing said so.
+
+        It is keyword-only with no usable default, so the next test cannot be written without one.
+        """
+        if not message:
+            raise AssertionError(
+                f"assert_catches({check!r}, ...) names no expected refusal. Assert the message, "
+                f"not only the verdict: a neighbouring rule of the same check can satisfy the "
+                f"verdict while the rule this test is about goes unexercised (#283)")
         code, output = self.run_tool(base())
         self.assertEqual(self.status_of(output, check), "ok", output)
         self.assertEqual(code, 0, output)
@@ -848,6 +909,9 @@ class TestPdfTextLocators(unittest.TestCase):
         code, output = self.run_tool(document)
         self.assertEqual(self.status_of(output, check), "fail", output)
         self.assertEqual(code, 1, output)
+        self.assertIn(message, output,
+                      f"the {check!r} check refused the map, but not with the refusal this test "
+                      f"names -- another rule of the same check may be doing the work:\n{output}")
         return output
 
 
@@ -877,14 +941,16 @@ class TestPdfTextExtentEnd(TestPdfTextLocators):
 
     def test_an_in_scope_quote_after_the_heading_fails(self):
         output = self.assert_catches("extent-end", lambda d: d["entries"].append(scoring()),
-                                     base=ending_map)
+                                     base=ending_map,
+            message="its quote lies after the heading")
         self.assertIn("scoring: is scope: in, and its quote lies after the heading 'Scoring'", output)
 
     def test_an_in_scope_quote_running_across_the_heading_fails(self):
         output = self.assert_catches("extent-end", lambda d: d["entries"].append(entry(
             "rounds-and-scoring", "Widgets / Rounds / p. 2",
             "The winner of a round moves first. Scoring A game is scored when it ends.")),
-            base=ending_map)
+            base=ending_map,
+            message="its quote runs across the heading")
         self.assertIn("its quote runs across the heading", output)
 
     def test_an_out_of_scope_quote_after_the_heading_is_named_and_passes(self):
@@ -897,12 +963,14 @@ class TestPdfTextExtentEnd(TestPdfTextLocators):
 
     def test_a_heading_not_on_the_last_page_fails(self):
         output = self.assert_catches("extent-end", lambda d: d["extent"].update(endsBefore="Glossary"),
-                                     base=ending_map)
+                                     base=ending_map,
+            message="does not occur as a line of its own")
         self.assertIn("does not occur as a line of its own on p. 2", output)
 
     def test_a_heading_only_inside_a_sentence_fails(self):
         self.assert_catches("extent-end", lambda d: d["extent"].update(endsBefore="a round"),
-                            base=ending_map)
+                            base=ending_map,
+            message="does not occur as a line of its own")
 
     def test_a_heading_twice_on_the_last_page_fails(self):
         code, output = self.run_tool(ending_map())
@@ -1089,27 +1157,32 @@ class TestPdfTextExtraction(TestPdfTextLocators):
         self.assertEqual(code, 0, output)
 
     def test_a_folio_inside_an_undeclared_quote_fails(self):
-        output = self.assert_catches("extraction", lambda d: d["entries"][1].pop("extraction"))
+        output = self.assert_catches("extraction", lambda d: d["entries"][1].pop("extraction"),
+            message="runs across the folio line")
         self.assertIn("token-moves: its quote runs across the folio line '1'", output)
 
     def test_a_folio_inside_a_quote_declaring_another_defect_fails(self):
         output = self.assert_catches("extraction", lambda d: d["entries"][1]["extraction"]
-                                     .update(defect="interleaved-table"))
+                                     .update(defect="interleaved-table"),
+            message="runs across the folio line")
         self.assertIn("does not declare extraction.defect interrupted-by-page-furniture", output)
 
     def test_page_furniture_declared_where_there_is_none_fails(self):
         output = self.assert_catches("extraction", lambda d: d["entries"][0].update(extraction={
-            "defect": "interrupted-by-page-furniture", "renderedReading": "A widget is played by two."}))
+            "defect": "interrupted-by-page-furniture", "renderedReading": "A widget is played by two."}),
+            message="so no page furniture interrupts it")
         self.assertIn("runs across no folio line", output)
 
     def test_an_interleaved_table_declared_on_one_block_fails(self):
         output = self.assert_catches("extraction", lambda d: d["entries"][2].update(extraction={
-            "defect": "interleaved-table", "renderedReading": "The winner moves first."}))
+            "defect": "interleaved-table", "renderedReading": "The winner moves first."}),
+            message="blank-line-separated block")
         self.assertIn("fewer than the 3 a table's cells give", output)
 
     def test_a_split_sentence_declared_on_a_whole_sentence_fails(self):
         output = self.assert_catches("extraction", lambda d: d["entries"][2].update(extraction={
-            "defect": "split-by-sidebar", "renderedReading": "The winner of each round moves first."}))
+            "defect": "split-by-sidebar", "renderedReading": "The winner of each round moves first."}),
+            message="so no sentence in it is split")
         self.assertIn("begins and ends on a sentence boundary", output)
 
     def test_a_split_sentence_declared_on_a_fragment_passes(self):
@@ -1124,7 +1197,8 @@ class TestPdfTextExtraction(TestPdfTextLocators):
 
     def test_a_defect_this_checker_has_no_test_for_fails(self):
         output = self.assert_catches("extraction", lambda d: d["entries"][1]["extraction"]
-                                     .update(defect="joined-hyphenation"))
+                                     .update(defect="joined-hyphenation"),
+            message="is not a defect this checker has a test for")
         self.assertIn("is not a defect this checker has a test for", output)
 
 
