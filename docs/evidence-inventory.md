@@ -52,7 +52,7 @@ clean checkout sufficient for normal development.
 
 ## By trial
 
-Measured at `6982d65`:
+Measured at `63a42c5`:
 
 | directory | active | release | archived |
 |---|---|---|---|
