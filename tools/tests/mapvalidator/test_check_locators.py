@@ -323,6 +323,44 @@ class TestCoverage(LocatorCase):
             message="p. 3: inside the declared extent and reached by no entry's verified evidence")
 
 
+class TestExtentBounds(LocatorCase):
+    """#269: no `scope: in` quote lies outside the declared page range.
+
+    `extent` (check-map.py) places the *citation*; this places the *quote*, which is the other
+    thing a page extent bounds and the half a citation cannot carry. 0024 already made exactly
+    this statement about the one end a heading can stop: an in-scope quote at or after
+    `endsBefore` does not belong to the slice. Both ends of the range are the same fact.
+
+    It is what the harness's `narrow-extent` needs on `hoyle-backgammon`, whose citations run
+    271-278 inside a declared 271-280: narrowing the extent by a page moves no citation, and the
+    one quote that reaches p. 280 is the only thing that notices.
+    """
+
+    def test_an_in_scope_quote_outside_the_declared_range_fails(self):
+        # The harness's `narrow-extent`, on this fixture: the map keeps every entry and claims
+        # to have read two pages fewer than it quotes.
+        self.assert_catches("extent-bounds", lambda d: d["extent"].update(to=2),
+            message="next-round-opening: evidence lies on p. 3, outside the declared extent "
+                    "(pages 1-2)")
+
+    def test_an_out_of_scope_quote_beyond_the_range_is_named_and_neither_passes_nor_fails(self):
+        # 0020's exemption, in the unit a quote is measured in: `strategy-advice` is the
+        # fixture's `scope: out` entry and sits on p. 4.
+        document = valid_map()
+        document["extent"]["to"] = 3
+        code, output = self.run_tool(document)
+        self.assertEqual(self.status_of(output, "extent-bounds"), "ok", output)
+        self.assertIn("1 out-of-scope quote beyond the extent, neither passed nor failed: "
+                      "strategy-advice (p. 4)", output)
+        self.assertEqual(code, 0, output)
+
+    def test_a_map_declaring_no_page_range_reports_not_verified_and_had_no_subject(self):
+        document = valid_map()
+        document.pop("extent")
+        code, output = self.run_tool(document)
+        self.assertEqual(self.status_of(output, "extent-bounds"), "skip", output)
+
+
 # --- examples/faa-part-107/check-locators-section.py: the section-designation grammar -------
 
 SECTION_TOOL = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(HERE))),
@@ -872,6 +910,24 @@ class TestPdfTextLocators(unittest.TestCase):
         code, output = self.run_tool(document)
         self.assertEqual(code, 1, output)
         self.assertIn("p. 2: inside the declared extent", output)
+
+    def test_an_in_scope_quote_outside_the_declared_range_fails(self):
+        # #269, in the second page grammar: the same `narrow-extent` damage, and `coverage` goes
+        # green on the narrower range rather than red.
+        output = self.assert_catches("extent-bounds", lambda d: d["extent"].update(to=1),
+            message="winner-first: evidence lies on p. 2, outside the declared extent (pages 1-1)")
+        self.assertEqual(self.status_of(output, "coverage"), "ok", output)
+
+    def test_a_quote_past_the_ends_before_heading_is_extent_ends_alone(self):
+        # #283: `extent-end` (0024) already refuses a quote past the heading, and the pages
+        # `extent-bounds` is given are the pages `coverage` was given, so it does not refuse the
+        # same quote a second time under a second name.
+        document = ending_map()
+        document["entries"].append(scoring())
+        code, output = self.run_tool(document)
+        self.assertEqual(code, 1, output)
+        self.assertEqual(self.status_of(output, "extent-end"), "fail", output)
+        self.assertEqual(self.status_of(output, "extent-bounds"), "ok", output)
 
     def test_markers_out_of_sequence_are_a_usage_error(self):
         self.write_corpus(PDF_TEXT_CORPUS.replace("{2}", "{4}"))

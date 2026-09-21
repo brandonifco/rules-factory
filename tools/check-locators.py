@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """Check a map against the corpus it claims to describe: citations, absences, and reach.
 
-A corpus with page markers in the text makes three different claims mechanically testable,
-and this tool runs them as three named checks rather than one verdict, because they fail
+A corpus with page markers in the text makes four different claims mechanically testable,
+and this tool runs them as four named checks rather than one verdict, because they fail
 for different reasons and a single number hid that:
 
   `locators`  Every entry's evidence is found in the corpus, walked back to the nearest
@@ -19,6 +19,13 @@ for different reasons and a single number hid that:
               verified evidence. A page inside the extent that no entry's quote touches is
               a page nobody demonstrably read, which is the state -- "nobody looked" -- that
               a map exists to distinguish from a recorded verdict.
+
+  `extent-bounds`
+              The other direction, and the one `coverage` is structurally blind to (#269):
+              no `scope: in` entry's verified quote lies outside the declared range. Narrowing
+              an extent makes `coverage` *easier* to satisfy -- fewer pages to reach -- so a
+              map that claims to have read less than it quotes passes every check that counts
+              units reached. A `scope: out` entry may quote beyond the extent and is named.
 
 `locators` can only run where `evidence` holds a **quoted span** of the corpus. Where it
 held a summary ("Both figures.", "Both elections."), nothing was locatable and nothing was
@@ -143,7 +150,59 @@ def bounds_of(entry):
     return [e for e in listed if isinstance(e, dict)] if isinstance(listed, list) else []
 
 
-def check_locators(entries, corpus, index, page_re, reached):
+def check_extent_bounds(document, located):
+    """No `scope: in` entry's verified quote lies outside the declared page range (#269).
+
+    `extent` in check-map.py places an entry's **citation** inside the range; this places its
+    **quote**, which is the other thing a page extent bounds and the half no citation carries. A
+    map can cite fewer pages than it declares -- `hoyle-backgammon` cites 271-278 inside a
+    declared 271-280 -- and then narrowing the declaration moves no citation at all, while the
+    text the map quotes still runs past the new end.
+
+    0024 already made exactly this statement about the one end a heading can stop: an in-scope
+    quote at or after `endsBefore` is not inside the slice, and `check-locators-pdf-text.py`'s
+    `extent-end` refuses it. Both ends of a range are the same fact, and this is it without a
+    heading.
+
+    A `scope: out` entry may quote beyond the extent, for 0020's reason and in the summary's
+    words: recording what lies beyond the slice is what an out-of-scope entry is for. A quote
+    that *runs across* the end is outside it, as it is for `extent-end`: the pages the quote
+    touches are the pages it is read on.
+
+    `located` is {id: (entry, pages touched)} for every entry whose evidence was found, filled
+    by `check_locators` above, so a quote counts here exactly where it counted for `coverage`.
+    """
+    extent = document.get("extent")
+    if not isinstance(extent, dict) or extent.get("unit") != "page":
+        return skip("the map declares no page extent, so there is no range for a quote to lie "
+                    "outside; `coverage` is where an undeclared extent fails", had_subject=False)
+    first, last = extent.get("from"), extent.get("to")
+    if not isinstance(first, int) or not isinstance(last, int) or last < first:
+        return skip(f"extent names the range {first!r}..{last!r}, which is not a page range")
+    if not located:
+        return skip("no entry's evidence was located, so no quote was placed inside the range")
+    bad, beyond, inside = [], [], 0
+    for name, (entry, pages) in located.items():
+        outside = sorted(p for p in pages if not first <= p <= last)
+        if not outside:
+            inside += 1
+            continue
+        where = " or ".join(f"p. {p}" for p in outside)
+        if entry.get("scope") == "out":
+            beyond.append(f"{name} ({where})")
+        else:
+            bad.append(f"  X  {name}: evidence lies on {where}, outside the declared extent "
+                       f"(pages {first}-{last}); an in-scope rule is quoted inside what the map "
+                       f"claims to have read")
+    aside = (f"; {len(beyond)} out-of-scope quote{'' if len(beyond) == 1 else 's'} beyond the "
+             f"extent, neither passed nor failed: {', '.join(beyond)}") if beyond else ""
+    if bad:
+        return fail(bad, f"a quote lies outside the declared extent (pages {first}-{last})")
+    return ok(f"all {inside} located in-scope quotes lie inside the declared extent "
+              f"(pages {first}-{last}){aside}")
+
+
+def check_locators(entries, corpus, index, page_re, reached, located=None):
     """Each entry's cited page against the page its evidence sits on.
 
     A derived entry (0012) is not located: no sentence states its fact, so it carries no
@@ -176,6 +235,8 @@ def check_locators(entries, corpus, index, page_re, reached):
         checked += 1
         actual = pages_spanned(span, index)
         reached.update(actual)
+        if located is not None:
+            located[name] = (entry, actual)
         if int(claimed.group(1)) not in actual:
             partial = "" if coverage > 0.95 else f" (matched {coverage:.0%} of the evidence)"
             found = " or ".join(f"p. {p}" for p in sorted(actual))
@@ -294,12 +355,13 @@ def main(argv=None):
             and isinstance(declared.get("to"), int):
         extent = extent_text(corpus, index, declared["from"], declared["to"])
 
-    reached = set()
+    reached, located = set(), {}
     print(f"{args.map_path} ({len(entries)} entries) against {args.corpus_path}")
     results = [
-        ("locators", check_locators(entries, corpus, index, args.page_re, reached)),
+        ("locators", check_locators(entries, corpus, index, args.page_re, reached, located)),
         ("absence", check_absence(entries, extent)),
         ("coverage", check_coverage(document, reached)),
+        ("extent-bounds", check_extent_bounds(document, located)),
     ]
     if isinstance(declared, dict) and "endsBefore" in declared:
         # 0024: this checker collapses the corpus's lines, so it cannot find a heading line, and
