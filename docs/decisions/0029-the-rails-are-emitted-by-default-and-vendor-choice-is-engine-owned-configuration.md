@@ -436,6 +436,23 @@ VERIFIED and `--check` fails rather than reporting nothing there. And the `Verdi
 examines nothing, said OK beside a note saying the gate is unpinnable; its state is now NOT
 AUTHENTICATED, and, since no `--apply` can change it, it does not fail the check.
 
+**The engine's own doctor reads the rails on GitHub through the same functions (#231).** It asked
+the same questions from inside the engine and answered two of them differently: it reduced each
+required check to its context name, so an unpinned check — one a commit status from anyone with
+write access satisfies — was OK there while `--check` called it WRONG; and it found the ruleset by
+name in a list that includes an organization's, so an org ruleset carrying the factory's name
+counted as the factory's, which `--apply` cannot write. Which ruleset is the factory's and what a
+required check has to be pinned to are now stated once, in the module `produce` vendors, and both
+tools import them; where neither can name the GitHub Actions app on the host, both say NOT
+VERIFIED rather than either OK or WRONG.
+
+**A paginated answer is pages, not a document (#237).** `gh api --paginate` prints each page of an
+array endpoint as its own JSON array, and the labels, the rulesets and the rules in force were
+parsed as one. On a repository with more labels than a page holds the parse failed and the failure
+read as "no labels": `--check` reported every required label MISSING, and `--apply` created labels
+that already existed. Every paginated read now asks for `--slurp` and is flattened by one
+function, in both tools.
+
 **The factory owns one ruleset and never edits another.** A ruleset update replaces its whole
 rules array, so writing into an existing ruleset would silently drop rules the factory did not
 author. GitHub evaluates rulesets together, so a separate one composes with whatever else the
