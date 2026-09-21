@@ -720,3 +720,25 @@ class TestNoBytecodeReachesTheCheckout(unittest.TestCase):
         self.assertEqual(0, proc.returncode, proc.stderr)
         added = set(vr.leftovers(__import__("pathlib").Path(ROOT))) - before
         self.assertEqual(set(), added, "running a path importer bare left files in the checkout")
+
+    def test_the_gate_runs_the_mapper_as_a_file_and_not_as_a_directory(self):
+        """Executing a directory imports `__main__` and caches it before the file's own
+        `sys.dont_write_bytecode` can run, so the one entry point that cannot protect itself is
+        invoked the one way that needs no protection (#384)."""
+        self.assertEqual("tools/mapper/__main__.py", vr.MAPPER)
+        source = open(TOOL, encoding="utf-8").read()
+        self.assertNotIn('run.python("tools/mapper"', source,
+                         "the gate executes the mapper as a directory again, which caches "
+                         "tools/mapper/__pycache__/__main__.cpython-*.pyc whatever the file says")
+
+    def test_the_mapper_run_as_a_file_leaves_nothing(self):
+        """The behavioural half, with nothing exported: the form the gate uses is clean."""
+        import pathlib as _pathlib
+        env = {k: v for k, v in os.environ.items() if k != "PYTHONDONTWRITEBYTECODE"}
+        before = set(vr.leftovers(_pathlib.Path(ROOT)))
+        proc = subprocess.run([sys.executable, os.path.join(ROOT, vr.MAPPER), "protocol",
+                               os.path.join(ROOT, "examples", "faa-part-107", "corpus-map.json")],
+                              cwd=ROOT, env=env, capture_output=True, text=True)
+        self.assertEqual(0, proc.returncode, proc.stderr[-2000:])
+        self.assertEqual(set(), set(vr.leftovers(_pathlib.Path(ROOT))) - before,
+                         "the mapper run as a file left bytecode in the checkout")
