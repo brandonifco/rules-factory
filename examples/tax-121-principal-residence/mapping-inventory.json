@@ -1,0 +1,89 @@
+{
+  "inventoryVersion": 2,
+  "rejected": [
+    {
+      "sourceId": "cfr-26-1.121-1",
+      "unit": "§ 1.121-1 heading",
+      "ground": "heading",
+      "note": "The section's title, 'Exclusion of gain from sale or exchange of a principal residence.' It names the subject; the exclusion itself is stated in (a) and quoted by exclusion-of-gain and ownership-and-use-test."
+    },
+    {
+      "sourceId": "cfr-26-1.121-1",
+      "unit": "§ 1.121-1 ¶19 example",
+      "ground": "restatement",
+      "note": "(b)(4) Example 1: A lives in New York seven months a year and Florida five. It applies the majority-of-time default that principal-residence-majority-of-time states and the facts-and-circumstances test in principal-residence-facts-and-circumstances, and adds no rule: every figure in it is an output of those two entries."
+    },
+    {
+      "sourceId": "cfr-26-1.121-1",
+      "unit": "§ 1.121-1 ¶20 example",
+      "ground": "restatement",
+      "note": "(b)(4) Example 2: B alternates between Virginia and Maine over five years. It applies the same two entries across several years and states the consequence the section already states -- that only one residence can be the principal one at a time."
+    },
+    {
+      "sourceId": "cfr-26-1.121-1",
+      "unit": "§ 1.121-1 ¶21 example",
+      "ground": "restatement",
+      "note": "(b)(4) Example 3: C sells eight acres in 2005 and the house in 2007. It applies vacant-land-not-principal-residence, vacant-land-single-sale and vacant-land-two-year-rule-disregard to dates, and the $110,000 and $180,000 follow from them. Example 4 of the same paragraph is not declined and is mapped as combined-sale-nets-dwelling-loss, because it nets a loss against a gain and no operative sentence says a loss does that."
+    },
+    {
+      "sourceId": "cfr-26-1.121-1",
+      "unit": "§ 1.121-1 ¶29 example",
+      "ground": "restatement",
+      "note": "(c)(4) Example 1: A rents his house out for two years and sells within the five. It applies ownership-and-use-test and ownership-and-use-aggregation to dates and states no rule of its own."
+    },
+    {
+      "sourceId": "cfr-26-1.121-1",
+      "unit": "§ 1.121-1 ¶30 example",
+      "ground": "restatement",
+      "note": "(c)(4) Example 2: B stops using the house and her son lives in it. It applies use-requires-occupancy -- use is the taxpayer's own occupancy -- to facts, and the answer follows from that entry."
+    },
+    {
+      "sourceId": "cfr-26-1.121-1",
+      "unit": "§ 1.121-1 ¶31 example",
+      "ground": "restatement",
+      "note": "(c)(4) Example 3: C rents, then buys, then moves out, then sells. It applies ownership-and-use-nonconcurrent, which is the rule that the two years of ownership and the two years of use need not be the same two years."
+    },
+    {
+      "sourceId": "cfr-26-1.121-1",
+      "unit": "§ 1.121-1 ¶36 example",
+      "ground": "restatement",
+      "note": "(d)(2)'s single example: $40,000 of gain less $14,000 of depreciation leaves $26,000 excludable. It is depreciation-not-excludable applied to one set of figures, as that entry's own note records."
+    },
+    {
+      "sourceId": "cfr-26-1.121-1",
+      "unit": "§ 1.121-1 ¶41 example",
+      "ground": "restatement",
+      "note": "(e)(4) Example 1: the stable and 28 acres. It applies allocation-required (the portion separate from the dwelling unit), method-of-allocation and depreciation-not-excludable; the $14,000 and $10,000 are outputs of those entries and the example states no test the paragraph does not."
+    },
+    {
+      "sourceId": "cfr-26-1.121-1",
+      "unit": "§ 1.121-1 ¶42 example",
+      "ground": "restatement",
+      "note": "(e)(4) Example 2: the barn, plus rental of the house itself. Allocation under allocation-required, then the residential portion reduced by its own depreciation under allocation-subject-to-depreciation. Two mapped rules applied in sequence."
+    },
+    {
+      "sourceId": "cfr-26-1.121-1",
+      "unit": "§ 1.121-1 ¶43 example",
+      "ground": "restatement",
+      "note": "(e)(4) Example 3: a basement converted into a separate apartment, which the example says makes two dwelling units 'within the meaning of paragraph (e)(2)'. It applies dwelling-unit-definition rather than supplying its content -- that content is section 280A(f)(1)'s, in a corpus this map does not admit, which is why that entry declines with MissingRulesData. Declining this example is the verdict that costs the most on this map, and the map's own examples-e entry says so."
+    },
+    {
+      "sourceId": "cfr-26-1.121-1",
+      "unit": "§ 1.121-1 ¶44 example",
+      "ground": "restatement",
+      "note": "(e)(4) Example 4: the same basement converted back, so the property is one dwelling unit again and no allocation is required. It applies no-allocation-within-dwelling-unit and depreciation-not-excludable to Example 3's facts."
+    },
+    {
+      "sourceId": "cfr-26-1.121-1",
+      "unit": "§ 1.121-1 ¶45 example",
+      "ground": "restatement",
+      "note": "(e)(4) Example 5: the attorney's law office inside the house. It applies no-allocation-within-dwelling-unit -- business use inside one dwelling unit is not allocated -- with the depreciation floor of depreciation-not-excludable still taking $2,000."
+    },
+    {
+      "sourceId": "cfr-26-1.121-1",
+      "unit": "§ 1.121-1 ¶46 example",
+      "ground": "restatement",
+      "note": "(e)(4) Example 6: the same office with no depreciation taken, so the whole $13,000 is excluded. method-of-allocation's recorded ambiguity names this example as the case it turns on -- where nothing was depreciated there is no method to follow -- and that ambiguity is recorded on the entry; the example itself states no method and so produced none."
+    }
+  ]
+}

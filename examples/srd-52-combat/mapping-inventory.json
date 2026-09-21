@@ -1,0 +1,197 @@
+{
+  "inventoryVersion": 2,
+  "rejected": [
+    {
+      "sourceId": "srd-5.2.1",
+      "unit": "p. 13 block 2",
+      "ground": "heading",
+      "note": "The heading line 'The Order of Combat'. pdftotext gives a heading as a block of its own, so it is a unit here; it states no rule, and the rules of the section it opens are quoted by combat-rounds, next-round and round-duration."
+    },
+    {
+      "sourceId": "srd-5.2.1",
+      "unit": "p. 13 block 4",
+      "ground": "heading",
+      "note": "The heading line 'Combat Step by Step'. pdftotext gives a heading as a block of its own, so it is a unit here; it states no rule, and the rules of the section it opens are quoted by combat-steps."
+    },
+    {
+      "sourceId": "srd-5.2.1",
+      "unit": "p. 13 block 7",
+      "ground": "heading",
+      "note": "The heading line 'Initiative'. pdftotext gives a heading as a block of its own, so it is a unit here; it states no rule, and the rules of the section it opens are quoted by initiative-roll, initiative-order, initiative-ties, group-initiative, surprise-round, surprised and surprise-disadvantage."
+    },
+    {
+      "sourceId": "srd-5.2.1",
+      "unit": "p. 13 block 12",
+      "ground": "heading",
+      "note": "The heading line 'Your Turn'. pdftotext gives a heading as a block of its own, so it is a unit here; it states no rule, and the rules of the section it opens are quoted by turn-move-and-action, action-options, free-object-interaction and the communication rules."
+    },
+    {
+      "sourceId": "srd-5.2.1",
+      "unit": "p. 13 block 14",
+      "ground": "heading",
+      "note": "The heading line 'Playing on a Grid'. pdftotext gives a heading as a block of its own, so it is a unit here; it states no rule, and the rules of the section it opens are quoted by grid-play, grid-square-size, grid-speed-in-squares, grid-entering-square, grid-corners and grid-range."
+    },
+    {
+      "sourceId": "srd-5.2.1",
+      "unit": "p. 14 block 2",
+      "ground": "heading",
+      "note": "The heading line 'Ending Combat'. pdftotext gives a heading as a block of its own, so it is a unit here; it states no rule, and the rules of the section it opens are quoted by combat-end, side-defeated and sides-agree-to-end."
+    },
+    {
+      "sourceId": "srd-5.2.1",
+      "unit": "p. 14 block 4",
+      "ground": "heading",
+      "note": "The heading line 'Movement and Position'. pdftotext gives a heading as a block of its own, so it is a unit here; it states no rule, and the rules of the section it opens are quoted by move-up-to-speed, movement-deduction, movement-modes and speed-and-size-sources."
+    },
+    {
+      "sourceId": "srd-5.2.1",
+      "unit": "p. 14 block 6",
+      "ground": "heading",
+      "note": "The heading line 'Difficult Terrain'. pdftotext gives a heading as a block of its own, so it is a unit here; it states no rule, and the rules of the section it opens are quoted by difficult-terrain and difficult-terrain-cost."
+    },
+    {
+      "sourceId": "srd-5.2.1",
+      "unit": "p. 14 block 8",
+      "ground": "heading",
+      "note": "The heading line 'Breaking Up Your Move'. pdftotext gives a heading as a block of its own, so it is a unit here; it states no rule, and the rules of the section it opens are quoted by break-up-move."
+    },
+    {
+      "sourceId": "srd-5.2.1",
+      "unit": "p. 14 block 10",
+      "ground": "heading",
+      "note": "The heading line 'Dropping Prone'. pdftotext gives a heading as a block of its own, so it is a unit here; it states no rule, and the rules of the section it opens are quoted by dropping-prone."
+    },
+    {
+      "sourceId": "srd-5.2.1",
+      "unit": "p. 14 block 37",
+      "ground": "heading",
+      "note": "The heading line 'Making an Attack'. pdftotext gives a heading as a block of its own, so it is a unit here; it states no rule, and the rules of the section it opens are quoted by attack-sources."
+    },
+    {
+      "sourceId": "srd-5.2.1",
+      "unit": "p. 14 block 39",
+      "ground": "heading",
+      "note": "The heading line 'Unseen Attackers and Targets'. pdftotext gives a heading as a block of its own, so it is a unit here; it states no rule, and the rules of the section it opens are quoted by unseen-attacker-advantage, unseen-target-disadvantage, hidden-attacker-revealed and wrong-location-misses."
+    },
+    {
+      "sourceId": "srd-5.2.1",
+      "unit": "p. 15 block 3",
+      "ground": "heading",
+      "note": "The heading line 'Cover'. pdftotext gives a heading as a block of its own, so it is a unit here; it states no rule, and the rules of the section it opens are quoted by cover-origin and cover-no-stacking."
+    },
+    {
+      "sourceId": "srd-5.2.1",
+      "unit": "p. 15 block 17",
+      "ground": "heading",
+      "note": "The heading line 'Range'. pdftotext gives a heading as a block of its own, so it is a unit here; it states no rule, and the rules of the section it opens are quoted by single-range."
+    },
+    {
+      "sourceId": "srd-5.2.1",
+      "unit": "p. 15 block 22",
+      "ground": "heading",
+      "note": "The heading line 'Ranged Attacks in Close Combat'. pdftotext gives a heading as a block of its own, so it is a unit here; it states no rule, and the rules of the section it opens are quoted by ranged-in-close-combat."
+    },
+    {
+      "sourceId": "srd-5.2.1",
+      "unit": "p. 15 block 24",
+      "ground": "heading",
+      "note": "The heading line 'Melee Attacks'. pdftotext gives a heading as a block of its own, so it is a unit here; it states no rule, and the rules of the section it opens are quoted by melee-within-reach."
+    },
+    {
+      "sourceId": "srd-5.2.1",
+      "unit": "p. 15 block 26",
+      "ground": "heading",
+      "note": "The heading line 'Reach'. pdftotext gives a heading as a block of its own, so it is a unit here; it states no rule, and the rules of the section it opens are quoted by reach."
+    },
+    {
+      "sourceId": "srd-5.2.1",
+      "unit": "p. 15 block 28",
+      "ground": "heading",
+      "note": "The heading line 'Opportunity Attacks'. pdftotext gives a heading as a block of its own, so it is a unit here; it states no rule, and the rules of the section it opens are quoted by opportunity-attack and opportunity-attack-avoidance."
+    },
+    {
+      "sourceId": "srd-5.2.1",
+      "unit": "p. 15 block 30",
+      "ground": "heading",
+      "note": "The heading line 'Mounted Combat'. pdftotext gives a heading as a block of its own, so it is a unit here; it states no rule, and the rules of the section it opens are quoted by mount-eligibility and appropriate-anatomy."
+    },
+    {
+      "sourceId": "srd-5.2.1",
+      "unit": "p. 15 block 32",
+      "ground": "heading",
+      "note": "The heading line 'Mounting and Dismounting'. pdftotext gives a heading as a block of its own, so it is a unit here; it states no rule, and the rules of the section it opens are quoted by mounting-cost."
+    },
+    {
+      "sourceId": "srd-5.2.1",
+      "unit": "p. 16 block 2",
+      "ground": "heading",
+      "note": "The heading line 'Falling Off'. pdftotext gives a heading as a block of its own, so it is a unit here; it states no rule, and the rules of the section it opens are quoted by falling-off."
+    },
+    {
+      "sourceId": "srd-5.2.1",
+      "unit": "p. 16 block 4",
+      "ground": "heading",
+      "note": "The heading line 'Underwater Combat'. pdftotext gives a heading as a block of its own, so it is a unit here; it states no rule, and the rules of the section it opens are quoted by underwater-melee, underwater-ranged and underwater-fire-resistance."
+    },
+    {
+      "sourceId": "srd-5.2.1",
+      "unit": "p. 16 block 6",
+      "ground": "heading",
+      "note": "The heading line 'Impeded Weapons'. pdftotext gives a heading as a block of its own, so it is a unit here; it states no rule, and the rules of the section it opens are quoted by underwater-melee and underwater-ranged."
+    },
+    {
+      "sourceId": "srd-5.2.1",
+      "unit": "p. 16 block 8",
+      "ground": "heading",
+      "note": "The heading line 'Fire Resistance'. pdftotext gives a heading as a block of its own, so it is a unit here; it states no rule, and the rules of the section it opens are quoted by underwater-fire-resistance."
+    },
+    {
+      "sourceId": "srd-5.2.1",
+      "unit": "p. 15 block 5",
+      "ground": "heading",
+      "note": "The caption of the Cover table, which repeats the section heading above it. The table's own rows are units of their own and are reached: cover-degree, cover-bonuses and total-cover quote the three degrees and what each gives."
+    },
+    {
+      "sourceId": "srd-5.2.1",
+      "unit": "p. 13 block 1",
+      "ground": "preamble",
+      "note": "The chapter opener: the word 'Combat' run together by the extraction with the sentence that follows it. 'Adventurers encounter many dangerous monsters and nefarious villains. In those moments, combat often breaks out.' says when the chapter is about to apply and imposes nothing on anybody."
+    },
+    {
+      "sourceId": "srd-5.2.1",
+      "unit": "p. 14 block 12",
+      "ground": "page-furniture",
+      "note": "The folio '14': the page number, which the extraction leaves in the reading order as a block."
+    },
+    {
+      "sourceId": "srd-5.2.1",
+      "unit": "p. 14 block 13",
+      "ground": "page-furniture",
+      "note": "The running head 'System Reference Document 5.2.1', printed at the foot of every page and left in the reading order by the extraction."
+    },
+    {
+      "sourceId": "srd-5.2.1",
+      "unit": "p. 15 block 19",
+      "ground": "page-furniture",
+      "note": "The folio '15', as on p. 14."
+    },
+    {
+      "sourceId": "srd-5.2.1",
+      "unit": "p. 15 block 20",
+      "ground": "page-furniture",
+      "note": "The running head, as on p. 14."
+    },
+    {
+      "sourceId": "srd-5.2.1",
+      "unit": "p. 15 block 16",
+      "ground": "restatement",
+      "note": "The heading 'Ranged Attacks' run together with its lead-in: that a ranged attack is firing a bow, hurling an axe or sending a projectile at a distant foe, and that many spells also involve one. The first half is description, and the second states no rule the section does not state in its own operative sentences -- single-range quotes 'such as one made with a spell' and ranged-in-close-combat quotes 'with a weapon, a spell, or some other means', so a spell attack is already inside both rules. Read against the melee side, where melee-within-reach maps the equivalent lead-in, the asymmetry is real and it is in the corpus: the melee lead-in states a rule ('allows you to attack a target within your reach') and this one does not."
+    },
+    {
+      "sourceId": "srd-5.2.1",
+      "unit": "p. 16 block 5",
+      "ground": "preamble",
+      "note": "'A fight underwater follows these rules.' -- the lead-in that introduces Impeded Weapons and Fire Resistance beneath it. It announces the two rules and states neither; both are quoted, by underwater-melee, underwater-ranged and underwater-fire-resistance. This is the one unit the sweeps reported as looking like an applicability clause on this map (#277)."
+    }
+  ]
+}

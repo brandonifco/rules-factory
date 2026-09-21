@@ -1,0 +1,77 @@
+{
+  "inventoryVersion": 2,
+  "rejected": [
+    {
+      "sourceId": "cfr-14-107",
+      "unit": "§ 107.25 heading",
+      "ground": "heading",
+      "note": "The section's title. What it names -- operation from a moving vehicle or aircraft -- is prohibited by ¶1 and its two subparagraphs, which moving-vehicle-operation and moving-aircraft-operation quote. The title carries neither the prohibition nor the exception for a sparsely populated area."
+    },
+    {
+      "sourceId": "cfr-14-107",
+      "unit": "§ 107.29 heading",
+      "ground": "heading",
+      "note": "The section's title, and in the 2026 text it reads 'Operation at night'. It states no permission and no condition: the anti-collision-lighting requirement and the exception in (d) are in the paragraphs beneath it, which night-operation quotes."
+    },
+    {
+      "sourceId": "cfr-14-107",
+      "unit": "§ 107.31 heading",
+      "ground": "heading",
+      "note": "The section's title. The rule it names -- that the remote pilot in command, the visual observer and the person manipulating the controls must be able to see the aircraft with unaided vision -- is stated in (a) and (b), which visual-line-of-sight and unaided-visual-contact quote."
+    },
+    {
+      "sourceId": "cfr-14-107",
+      "unit": "§ 107.33 heading",
+      "ground": "heading",
+      "note": "The section's title, naming the role. Every requirement that follows from using a visual observer is in ¶1's list, which visual-observer-conditions quotes; the title does not say whether one is required, and neither does the section."
+    },
+    {
+      "sourceId": "cfr-14-107",
+      "unit": "§ 107.35 heading",
+      "ground": "heading",
+      "note": "The section's title. The single-aircraft rule it names is stated in ¶1, which single-aircraft quotes. The title says 'multiple' where the rule prohibits more than one, which is the corpus describing the subject rather than stating the limit."
+    },
+    {
+      "sourceId": "cfr-14-107",
+      "unit": "§ 107.36 heading",
+      "ground": "heading",
+      "note": "The section's title. Both halves of this one-paragraph section -- the prohibition and the definition of hazardous material it makes for its own purposes -- are in ¶1, which hazardous-material quotes."
+    },
+    {
+      "sourceId": "cfr-14-107",
+      "unit": "§ 107.37 heading",
+      "ground": "heading",
+      "note": "The section's title, and it names two things the section does state: the yielding rule in (a) and the well-clear rule in (b), quoted by right-of-way and well-clear. The semicolon in the title joins the two subjects and obliges nothing."
+    },
+    {
+      "sourceId": "cfr-14-107",
+      "unit": "§ 107.39 heading",
+      "ground": "heading",
+      "note": "The section's title. The prohibition and the three ways out of it are in ¶1 and the subparagraphs beneath it, which over-human-beings quotes."
+    },
+    {
+      "sourceId": "cfr-14-107",
+      "unit": "§ 107.41 heading",
+      "ground": "heading",
+      "note": "The section's title. Which airspace, and the ATC authorisation that makes operation in it lawful, are in ¶1, which airspace-authorized quotes. 'Certain airspace' names no class."
+    },
+    {
+      "sourceId": "cfr-14-107",
+      "unit": "§ 107.45 heading",
+      "ground": "heading",
+      "note": "The section's title. The prohibition and the permission that lifts it are in ¶1, which restricted-area-permitted quotes."
+    },
+    {
+      "sourceId": "cfr-14-107",
+      "unit": "§ 107.49 heading",
+      "ground": "heading",
+      "note": "The section's title, naming three things the section requires before flight. The list itself is in ¶1 and its subparagraphs, which preflight-actions quotes."
+    },
+    {
+      "sourceId": "cfr-14-107",
+      "unit": "§ 107.51 heading",
+      "ground": "heading",
+      "note": "The section's title. Who the limitations bind is in the introductory text, which operating-limitations quotes, and the four limits are in (a) to (d), quoted by speed-limit, altitude-limit, visibility-minimum and cloud-clearance."
+    }
+  ]
+}

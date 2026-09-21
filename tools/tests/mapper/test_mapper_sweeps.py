@@ -29,6 +29,7 @@ import glob
 import io
 import json
 import os
+import re
 import shutil
 import sys
 import tempfile
@@ -313,6 +314,14 @@ class TestEveryCommittedMapIsSwept(unittest.TestCase):
     that has only ever seen this file's fixture."""
 
     def test_every_map_runs_every_sweep_it_requires(self):
+        """A sweep with no candidates proves nothing -- unless the walk left no pile to sort.
+
+        `0 candidate unit(s)` used to be enough to fail this test on its own, because no
+        committed map accounted for every unit. Four of them now do (#267), and a sweep over a
+        map with nothing unaccounted has nothing to examine by construction. So the guard is
+        held to the maps that still have a pile: there, a sweep reporting no candidates is a
+        sweep that stopped looking at the units it exists for.
+        """
         paths = maps()
         self.assertTrue(paths, "no example maps -- this test proved nothing")
         for path in paths:
@@ -320,7 +329,10 @@ class TestEveryCommittedMapIsSwept(unittest.TestCase):
                 code, out = run(["sweeps", path])
                 self.assertIn(code, (0, NOT_VERIFIED), out)
                 self.assertNotIn("NOT IMPLEMENTED", out)
-                self.assertNotIn("in 0 candidate unit(s)", out)
+                accounted = re.search(r"(\d+) of (\d+) unit\(s\) unaccounted", out)
+                self.assertIsNotNone(accounted, out)
+                if int(accounted.group(1)):
+                    self.assertNotIn("in 0 candidate unit(s)", out)
 
     def test_every_sweep_in_the_closed_set_is_exercised_by_some_committed_map(self):
         """A sweep no map requires has only ever run on a fixture, and the closed set would be

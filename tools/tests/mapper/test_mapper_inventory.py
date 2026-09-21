@@ -409,13 +409,18 @@ class TestAQuoteKeepsThePageMarkerTheCorpusPrints(unittest.TestCase):
 
 class TestTheCommittedBackgammonMapQuotesItsCorpus(unittest.TestCase):
     def test_every_entry_of_the_backgammon_map_is_located(self):
-        """Measured: six entries were reported unlocated, every one of them for its marker."""
+        """Measured: six entries were reported unlocated, every one of them for its marker.
+
+        The nine units those quotes did not reach are now recorded as examined and rejected in
+        that map's `mapping-inventory.json` (#267), so the run is VERIFIED; what this test
+        watches is the reach, which is what #392 changed.
+        """
         path = os.path.join(REPO, "examples", "hoyle-backgammon", "corpus-map.json")
         code, output = run(["inventory", path, "--list"])
-        self.assertEqual(code, NOT_VERIFIED, output)
+        self.assertEqual(code, 0, output)
         self.assertNotIn("not located inside the extent", output)
         self.assertIn("reached:     37 by the quoted evidence of 32 entries", output)
-        self.assertIn("unaccounted: 9", output)
+        self.assertIn("unaccounted: 0", output)
 
 
 class TestABoundIsAQuoteOfTheUnitItNames(unittest.TestCase):
@@ -490,8 +495,9 @@ class TestTheCommittedTaxMapAccountsForItsBoundedExamples(unittest.TestCase):
         absences`, and the map quotes both in `bounds`."""
         path = os.path.join(REPO, "examples", "tax-121-principal-residence", "corpus-map.json")
         code, output = run(["inventory", path, "--list"])
-        self.assertEqual(code, NOT_VERIFIED, output)
-        self.assertIn("unaccounted: 14", output)
+        self.assertEqual(code, 0, output)
+        self.assertIn("reached:     34", output)
+        self.assertIn("rejected:    14", output)
         self.assertNotIn("?  \u00a7 1.121-1 \u00b632 example", output)
         self.assertNotIn("?  \u00a7 1.121-1 \u00b633 example", output)
 

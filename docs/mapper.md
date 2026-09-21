@@ -234,7 +234,7 @@ is decided by reading the corpus, and this tool does not read it. What *is* a fa
 enumeration of no units, or a run in which no entry's quote is found at all — an inventory of
 nothing has nothing unaccounted.
 
-The six committed maps report 515 unaccounted units of 806
+The six committed maps report 408 unaccounted units of 806, against 107 recorded rejections
 ([#267](https://github.com/brandonifco/rules-factory/issues/267) holds the numbers and what each
 one is on reading it). None of the maps was edited to improve them: a map's bytes cannot change
 without invalidating its review
@@ -285,6 +285,26 @@ reinterpretation, for a single-corpus map. A map citing several corpora is refus
 is migrated to version 2 by moving that `corpus` value onto every rejection as `sourceId`; no
 version 1 inventory can truthfully account for a multi-corpus walk. No committed inventory file
 uses version 1.
+
+Six maps carry one, written by re-reading each unaccounted unit against the map that left it
+([#267](https://github.com/brandonifco/rules-factory/issues/267)):
+
+| map | rejections | still unaccounted | what the rejections are |
+|---|---:|---:|---|
+| `faa-part-107` | 12 | 0 | the twelve section headings |
+| `faa-part-107-temporal` | 12 | 1 | the twelve section headings; § 107.51's lead-in is a rule the map owes an entry ([#396](https://github.com/brandonifco/rules-factory/issues/396)) |
+| `hoyle-backgammon` | 9 | 0 | four section titles, both `[Illustration]` placeholders the adapter cannot read, the printer's rule, and two paragraphs of counsel on which throw to prefer |
+| `srd-52-combat` | 32 | 0 | 25 heading lines the extraction gives as blocks of their own, four folios and running heads, the chapter opener, the underwater lead-in, and the `Ranged Attacks` lead-in |
+| `srd-52-conditions` | 28 | 407 | the folios and running heads only |
+| `tax-121-principal-residence` | 14 | 0 | the section heading and the thirteen worked examples the map's own `scope: out` entries declined, one per example |
+
+A rejection is a reading and not a tidy-up, which is why two of the piles do not close. The 2020
+part 107 map's one unit states who § 107.51's limitations bind, and the 2026 map maps the same
+sentence; calling it *examined and produced no entry* would be false. And `srd-52-conditions`
+declares an extent of fifteen whole glossary pages in order to map sixteen entries scattered
+through them, so 407 of its units are other terms' rules that this walk never claimed to read.
+No `ground` in the closed set says that, and inventing one would turn a known limit of `extent`
+into a record of work nobody did.
 
 ### The adapter interface
 
@@ -563,11 +583,16 @@ none.
   that paraphrases a rule of that corpus while naming no entry, no id and not the corpus is
   invisible to it, and the spec's declared substitutions are the only thing that covers it. Every
   run says so, and so does every record it writes.
-- **The inventory measures the walk, and nobody has answered it.** Every unit inside every
-  committed map's extent is enumerated and counted, and 515 of 806 are unaccounted
-  ([#267](https://github.com/brandonifco/rules-factory/issues/267)). No map records a rejection
-  yet, so *examined and dismissed* and *never opened* still read the same for those units — what
-  changed is that the number is now a fact rather than an impression.
+- **The inventory measures the walk, and one map's extent still outruns its answer.** Every
+  unit inside every committed map's extent is enumerated and counted, 107 are recorded as
+  examined and rejected, and 408 of 806 are unaccounted
+  ([#267](https://github.com/brandonifco/rules-factory/issues/267)). Four of the six maps now
+  account for every unit; the 2020 part 107 map has one left, which is a rule it owes an entry
+  ([#396](https://github.com/brandonifco/rules-factory/issues/396)) and not something a
+  rejection may absorb. The remaining 407 are all in `srd-52-conditions`, whose `extent` claims
+  fifteen whole glossary pages in order to map sixteen scattered entries: the units are other
+  glossary terms' rules, and no `ground` in the closed set says *inside the extent and outside
+  what this walk was about*. That is a contract question about `extent`, not a missing record.
 - **The detector reads `evidence`,** which is the corpus's words for one rule and not the whole
   passage, so a naming outside every entry's quoted span is invisible to it. And it matches a
   term exactly, so a corpus that inflects its defined terms needs a mechanism this is not.
