@@ -611,25 +611,51 @@ class TestNoBytecodeReachesTheCheckout(unittest.TestCase):
     IMPORT = ("sys.path.insert", "spec_from_file_location")
     SUPPRESSION = "sys.dont_write_bytecode = True"
 
+    # The imported side. A module with no `__main__` guard is never the process that starts, so
+    # its own bytecode is written by whoever imported it and a flag here would be read one file
+    # too late -- the carve-out test_factory_rails.py already makes for the vendored modules.
+    # Named rather than inferred, so a module that grows an entry point is not quietly exempt.
+    IMPORTED_SIDE = ("tools/factory/intake.py",)
+
     def path_importers(self):
-        """Every script under tools/ or examples/ that loads another repository file by path.
+        """Every script run as a command, under tools/ or examples/, that loads another
+        repository file by path.
 
         Both mechanisms, because they have the same consequence and only one of them was
         enumerated before: `tools/factory`'s importers were held to this rule by
-        test_factory_provenance.py, and the SRD locator checker -- which reaches for
-        tools/check-locators.py through importlib, from examples/ -- was in neither list.
+        test_factory_provenance.py through `sys.path`, and the SRD locator checker -- which
+        reaches for tools/check-locators.py through importlib, from examples/ -- was in neither
+        list. tools/mapper/__main__.py was in neither either, and the gate caught it the first
+        time the last step could see bytecode.
+
+        tools/tests/ is left out because pytest imports those modules and the gate sets
+        PYTHONDONTWRITEBYTECODE for pytest alone: there the environment is the tool's own, not a
+        caller's.
         """
         import glob
         found = {}
-        for pattern in ("tools/*.py", "examples/*/*.py"):
+        for pattern in ("tools/*.py", "tools/*/*.py", "tools/*/*/*.py", "examples/*/*.py"):
             for path in sorted(glob.glob(os.path.join(ROOT, pattern))):
+                relative = os.path.relpath(path, ROOT).replace(os.sep, "/")
+                if relative.startswith("tools/tests/") or relative in self.IMPORTED_SIDE:
+                    continue
                 lines = open(path, encoding="utf-8").read().splitlines()
                 reaches = next((i for i, line in enumerate(lines)
                                 if any(m in line for m in self.IMPORT)
                                 and not line.lstrip().startswith("#")), None)
                 if reaches is not None:
-                    found[os.path.relpath(path, ROOT)] = (lines, reaches)
+                    found[relative] = (lines, reaches)
         return found
+
+    def test_the_imported_side_is_still_the_imported_side(self):
+        """The exemption is a fact about the file, not a way past the rule: a module that gains
+        an entry point starts writing its own bytecode and owes the flag."""
+        for relative in self.IMPORTED_SIDE:
+            with self.subTest(module=relative):
+                text = open(os.path.join(ROOT, relative), encoding="utf-8").read()
+                self.assertNotIn('if __name__ == "__main__"', text,
+                                 f"{relative} is exempt as the imported side and now runs as a "
+                                 f"command (#384)")
 
     def test_every_script_that_imports_by_path_suppresses_its_bytecode(self):
         for relative, (lines, reaches) in sorted(self.path_importers().items()):
@@ -658,7 +684,11 @@ class TestNoBytecodeReachesTheCheckout(unittest.TestCase):
             "examples/injection-trial/score.py",
             "examples/srd-52-combat/check-locators-pdf-text.py",
             "tools/check-readme-status.py",
+            "tools/factory/__main__.py",
+            "tools/factory/recipe/engine-gate.py",
+            "tools/factory/recipe/map-overlay.py",
             "tools/fetch-evidence.py",
+            "tools/mapper/__main__.py",
             "tools/pack-map.py",
             "tools/validate-engine.py",
         ])
