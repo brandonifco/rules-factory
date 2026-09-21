@@ -368,14 +368,46 @@ editorial annotation, `HD1` a division title. So the checker **prints the tally 
 run** — `83 top-level element(s) stepped over, by tag: CITA 22, HEAD 61` — because a reading that
 is visible every run is one a corpus can contradict, and a reading buried in a constant is not.
 
-The two walks part company on **one** thing, in a direction that is asserted. The checker builds
-the designator tree and so leaves a wrapper **unplaced** where the markup does not say the wrapper
-is inside the paragraph it follows — an appendix, a wrapper holding a `<P>` that states its own
-designation, a note whose heading names the wrong paragraph. This file builds no tree, because a
-unit key says where a paragraph sits in the section's reading order and asserts no containment, so
-it decides the three of those tests that need no designation and not the fourth. Everything it
-calls unaddressable the checker leaves unplaced; the reverse does not hold, and a test pins the
-containment.
+**A wrapper whose own heading names a division of the corpus continues nothing**
+([#291](https://github.com/brandonifco/rules-factory/issues/291),
+[0056](decisions/0056-a-wrapper-whose-heading-names-a-division-continues-nothing.md)). 0036 asked
+two structural questions — does the wrapper hold an `HD1`, and is it captioned while following
+something that is not a designated paragraph — and one shape defeats both at once: an appendix
+titled `HD2` and printed directly after a designated paragraph. It inherited that paragraph's
+designation, which is the one shape of #290 that handed out a wrong address rather than
+withholding one. Measured against every committed corpus, no further reading of the markup
+separates that shape from § 172.102's six captioned provision runs, which must keep their address;
+the heading's own words do. So `DIVISION_TITLE` refuses a wrapper whose heading opens with one of
+the corpus's names for a division (`Appendix A to § 172.101—…`, `Subpart B—…`) or says which
+division it belongs *to*, under the same `division-wrapper` reason the other two give. It is a
+broad reading on purpose: refusing too widely withholds an address and says so, and inheriting too
+widely hands out a wrong one.
+
+The two walks part company on **one test**, and the bound is asserted rather than described. The
+checker builds the designator tree and so leaves a wrapper **unplaced** where the markup does not
+say the wrapper is inside the paragraph it follows — an appendix, a wrapper holding a `<P>` that
+states its own designation, a note whose heading names the wrong paragraph. This file builds no
+tree, because a unit key says where a paragraph sits in the section's reading order and asserts no
+containment, so it asks **every** placement test that needs no designation and not the one that
+does: `note-heading-elsewhere`, whether the paragraph a note's heading names is one the note is
+printed in. A second gap was measured and closed
+([#292](https://github.com/brandonifco/rules-factory/issues/292)) — reading a worked example's
+head needs no designation either, and an example whose head names no example was counted
+addressable here while the checker left it unplaced. A test now holds the difference, over both
+fixtures and every committed corpus and restricted to what the descent reaches, to
+`note-heading-elsewhere` and nothing else, so a third gap fails and names itself.
+
+**Two grammars read exactly one printed form, and refuse the rest out loud**
+([#293](https://github.com/brandonifco/rules-factory/issues/293)). `NOTE_HEAD` reads
+`Note to paragraph (c)(11):` and `EXAMPLE_HEAD` reads `Example 4.`; neither is widened ahead of a
+corpus that prints another form, under
+[#265](https://github.com/brandonifco/rules-factory/issues/265)'s standard. What each refusal owes
+instead is the words it could not read — `its head does not name an example: 'Ex. 1'` — so a
+corpus numbering its examples differently shows that form on every run rather than reporting a
+generic reason. What a note heading *claims* is read far more widely than what it can be parsed
+as: anything opening `Note to …` states an address, and a note stating one this grammar cannot
+read is unplaced rather than filed under whichever designator happened to be open where it was
+printed.
 
 Such a unit is enumerated and carries its reason (`Unit.unaddressable`). The inventory counts it,
 prints it on a `no address` line, exits NOT VERIFIED while any exist, and **fails** a map whose

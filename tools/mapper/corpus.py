@@ -764,22 +764,66 @@ TOP_LEVEL_PASSED_OVER = ("HEAD",) + TABLE_WRAPPERS + ("CITA", "EDNOTE", "HD1")
 
 HEADING = re.compile(r"^HD\d+$")
 DIVISION_HEADING = "HD1"
+#: A wrapper heading that states an address of its own -- `Appendix A to § 172.101—…`,
+#: `Subpart B—…`. The third thing that says a wrapper opens a division (0056, #291), and the only
+#: one that reads the heading's words: a wrapper titled `HD2`, printed directly after a
+#: designated paragraph, defeats the other two together and is otherwise indistinguishable from
+#: § 172.102's six captioned provision runs. Held equal to the section locator checker's copy by
+#: `test_mapper_nested_paragraphs.py`; the reason for each half is written beside that copy.
+DIVISION_TITLE = re.compile(
+    r"^(?:appendix|appendices|annex|subpart|subchapter)\b"
+    r"|\bto\s+(?:§|part|subpart|chapter|title)\b", re.I)
 STATES_A_DESIGNATION = re.compile(r"^\([A-Za-z0-9]{1,4}\)")
 NOTE_HEAD = re.compile(r"^note\s+to\s+paragraph\s+((?:\([A-Za-z0-9]{1,4}\))+)\s*[:.]?\s*$", re.I)
-NOTE_NAMES_A_PARAGRAPH = re.compile(r"^note\s+to\s+paragraphs?\b", re.I)
+#: A note heading that claims an address. Deliberately far broader than `NOTE_HEAD`, which reads
+#: exactly the one form § 172.101 prints: a heading this cannot parse leaves the note unplaced
+#: rather than inheriting the designation it is printed under (#293, 0056).
+NOTE_CLAIMS_AN_ADDRESS = re.compile(r"^note\s+to\b", re.I)
+#: An `<EXAMPLE>`'s `<HED>`, read for the label a citation names it by. The same expression the
+#: section locator checker reads it with, held equal by `test_mapper_nested_paragraphs.py`: this
+#: is a test the adapter **can** ask -- it needs no designation - so asking it is what shrinks
+#: the disagreement between the two walks to the one test that does (#292).
+EXAMPLE_HEAD = re.compile(r"^Examples?\s*(\d+)?", re.I)
+
+
+def head_of(element):
+    """An element's own `<HED>`, normalised, or `""` where it prints none."""
+    head = element.find("HED")
+    return normalise("".join(head.itertext())) if head is not None else ""
+
+
+def example_label(element):
+    """`Example 4`, or `Example` for an unnumbered one; None where the head is not one."""
+    match = EXAMPLE_HEAD.match(head_of(element))
+    if not match:
+        return None
+    return "Example" + (f" {match.group(1)}" if match.group(1) else "")
+
+
+def example_is_unaddressable(element):
+    """Why a worked example has no address, or None. The head is quoted back (#293)."""
+    if example_label(element) is not None:
+        return None
+    return f"its head does not name an example: {head_of(element)!r}"
 
 
 def wrapper_is_addressable(container, previous):
-    """Whether a citation can resolve into this wrapper at all (0036), and why not.
+    """Whether a citation can resolve into this wrapper at all (0036, 0056), and why not.
 
-    **The three tests here are the ones that need no designation**, which is the whole of what
-    this side can honestly decide: a unit key says where a paragraph sits in the section's
-    reading order and asserts no containment, so this file builds no designator tree and has no
-    path to compare against. The section locator checker asks these same three and one more --
-    whether the paragraph a note's heading names is a paragraph the note is printed in -- so what
-    this calls unaddressable the checker always leaves unplaced, and the reverse does not hold.
-    The direction is asserted in `test_mapper_nested_paragraphs.py`, over the committed corpora
-    and every fixture, so it cannot drift into disagreement unnoticed.
+    **Every test here is one that needs no designation**, which is the whole of what this side
+    can honestly decide: a unit key says where a paragraph sits in the section's reading order
+    and asserts no containment, so this file builds no designator tree and has no path to compare
+    against. The section locator checker asks these and exactly one more -- whether the paragraph
+    a note's heading names is a paragraph the note is printed in (`note-heading-elsewhere`) --
+    so what this calls unaddressable the checker always leaves unplaced, and the reverse holds
+    for everything but that one test.
+
+    That is #292's answer and 0056 records it: the gap is not closed by giving the adapter
+    designations, which 0032's subsystem boundary is part of why it has none, but by asking here
+    **every** test that can be asked without them, and by pinning what is left.
+    `test_mapper_nested_paragraphs.py` asserts, over the committed corpora and every fixture,
+    that the only reason the checker gives inside a wrapper and this walk does not is
+    `note-heading-elsewhere`, so the disagreement cannot widen unnoticed.
     """
     headings = [child for child in container if HEADING.fullmatch(child.tag)]
     if any(child.tag == DIVISION_HEADING for child in headings):
@@ -788,14 +832,18 @@ def wrapper_is_addressable(container, previous):
                   and STATES_A_DESIGNATION.match(normalise("".join(previous.itertext()))))
     if headings and not designated:
         return False, "it is captioned and continues no designated paragraph"
+    named = [title for title in (normalise("".join(head.itertext())) for head in headings)
+             if DIVISION_TITLE.search(title)]
+    if named:
+        return False, (f"its heading names a division of the corpus, {named[0]!r}, so it opens "
+                       f"that division rather than continuing the paragraph before it")
     for child in container:
         if child.tag == "P" and STATES_A_DESIGNATION.match(normalise("".join(child.itertext()))):
             return False, "a paragraph of it states its own designation"
     if container.tag == "NOTE":
-        head = container.find("HED")
-        text = normalise("".join(head.itertext())) if head is not None else ""
-        if NOTE_NAMES_A_PARAGRAPH.match(text) and not NOTE_HEAD.match(text):
-            return False, "its heading names no single paragraph"
+        text = head_of(container)
+        if NOTE_CLAIMS_AN_ADDRESS.match(text) and not NOTE_HEAD.match(text):
+            return False, f"its heading names no single paragraph: {text!r}"
     return True, None
 
 
@@ -1079,6 +1127,12 @@ class EcfrXml(Adapter):
                     position += 1
                     suffix = {"heading": " heading", "worked-example": " example"}.get(
                         kind, label_of(text))
+                    if why is None and kind == "worked-example":
+                        # A test this walk *can* ask: reading an example's head needs no
+                        # designation. Until it did, an example whose head names no example was
+                        # counted addressable here and left unplaced by the checker, which is a
+                        # second gap between the two walks and not the one 0036 recorded (#292).
+                        why = example_is_unaddressable(nested)
                     found.append(Unit(f"§ {number} ¶{position}{suffix}", kind, text, why))
                 previous = child
                 continue
@@ -1090,7 +1144,8 @@ class EcfrXml(Adapter):
                 found.append(Unit(f"§ {number} ¶{position}{label_of(text)}", "paragraph", text))
             elif child.tag == "EXAMPLE":
                 position += 1
-                found.append(Unit(f"§ {number} ¶{position} example", "worked-example", text))
+                found.append(Unit(f"§ {number} ¶{position} example", "worked-example", text,
+                                  example_is_unaddressable(child)))
             elif child.tag not in TOP_LEVEL_PASSED_OVER:
                 # Enumerated, with the reason it has no address. It used to be dropped here, so
                 # the denominator left out every top-level block tag this grammar has no unit for

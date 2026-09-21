@@ -87,7 +87,7 @@ TABLE = (
     Row("scripts/engine-gate.py", GENERATED, None, "the gate recipe: its non-dotnet checks"),
     Row("scripts/factory/*.py", GENERATED, None, "the factory's generator, vendored so the gate can regenerate"),
     Row(".github/workflows/validate.yml", GENERATED, None, "the gate recipe: CI runs validate.sh full"),
-    Row("AGENTS.md", MANAGED, 12,
+    Row("AGENTS.md", MANAGED, 13,
         "the governing contract every agent works this engine under (decision 0029)"),
     Row("CLAUDE.md", MANAGED, 1,
         "a pointer to AGENTS.md and the Claude adapters; it states no rule of its own (0029)"),
@@ -104,8 +104,9 @@ TABLE = (
         "an issue with the shape the rails expect, a factory update's included (0029, #193)"),
     Row("tools/entry-packet.py", MANAGED, 5,
         "the bounded assignment for one entry, assembled from merge(package, overlay) (0029)"),
-    Row("tools/re-produce.sh", MANAGED, 4,
-        "an overlay edit is finished by a re-produce, from the factory commit the record names (#192)"),
+    Row("tools/re-produce.sh", MANAGED, 5,
+        "an overlay edit is finished by a re-produce, from the factory commit the record names (#192); "
+        "a record a merge left conflicted is named as one, and --resolve-record settles it (#252)"),
     Row("tools/review-packet.py", MANAGED, 5,
         "everything a reviewer needs about one pull request, in the order it is read (0029)"),
     Row("tools/pr-policy.py", MANAGED, 5,
@@ -264,6 +265,7 @@ RECIPE_SHA256 = {
         10: "956af7bde2aaa84131f1dc88402d8f16a90715325c01381cafe626c97b187664",
         11: "721a114e68f56017c2c1319c2ea6202cf3af5bdef2eb9351f8fc088e333b6d50",
         12: "7a3bc27f251ff1a274838e5e55cb546392138dd675d668c4d94bf2173d2fb8a5",
+        13: "151fe700348b37cf59f6fb4bbab5ef57dff7e41c0f080c0f78d4fbe4ab2dc011",
     },
     "CLAUDE.md": {
         1: "04c07ad36e742fa60efafeca54d20bd96d16b6e338a44e46fad2b679ab8dfd9f",
@@ -296,6 +298,7 @@ RECIPE_SHA256 = {
         2: "259e860a06e1407b38ff2f302bd657056eb601955e5363b19d30b705f74b7d8e",
         3: "0b0fd08926db78dff21bb8687e3cf57d34ff3a0456ae4cfb9ec1734ea2f8638f",
         4: "465fb02b0fafd06106cfef3f1e8d0858b4cee232f7f57dc8ac628fe6f7513a67",
+        5: "4533319092ce21ccdcaaeade46dd4f10cdfa2209bb6f565efe0e9d163ef0b185",
     },
     "tools/review-packet.py": {
         1: "2e989c02c1827bf6d3da8fce9a35874e25ea4baf14f62eeb64aab78c30b1f392",
