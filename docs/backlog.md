@@ -102,6 +102,34 @@ filed at a different level from the one the reviewer gave, each saying why. How 
 [AGENTS.md](../AGENTS.md) §6. An open `review*-p0` issue blocks `factory/v1.0.0`, and a closed
 `review*-p0` or `review*-p1` makes a release due (AGENTS.md §5).
 
+### `review5-*` — the assurance-identity review
+
+Round five is an independent assurance review of `9c94e0c` (2026-09-20), run under the same
+section of [AGENTS.md](../AGENTS.md) §6 and reproducing each finding against the code before
+filing it. Every implicated file was also compared against `main` at `161368e2` to establish that
+the defect had not already been fixed, which is why each issue names two commits rather than one.
+
+It found no `p0`, so the round uses two levels:
+
+| Label | What belongs in it |
+|---|---|
+| `review5-p1` | The factory cannot prove its product: package certification unbound from the corpus bytes the baseline declares (#333), and review evidence recordable against a commit nobody reviewed (#334). |
+| `review5-p2` | Policy, depth and hardening: a verified produce that can commit source the verification never saw (#335), an SDK override that contradicts managed-file provenance (#336), and a gate that reports discovered tests as executed (#337). |
+
+**The round's ordered list is [#338](https://github.com/brandonifco/rules-factory/issues/338),
+not each issue's first line.** That is the one departure from rounds one to four, and it is
+deliberate: the five findings share a single failure mode, which #338 states —
+
+> Artifact A is reported as verified using evidence produced from state B, but the handoff does
+> not mechanically prove that B is the exact state embodied by A.
+
+— and the order between them is an argument about which identity has to be bound first, rather
+than five independent severities. #338 carries that argument and the remediation order; each
+finding carries its own reproduction.
+
+Read this round beside the release rule above. #333 closed on 2026-09-20, so `repo-hygiene.py`
+reports a release due, and the remaining four are open against a factory the next tag will ship.
+
 ## The hub
 
 [#24](https://github.com/brandonifco/rules-factory/issues/24) is not one issue among the
