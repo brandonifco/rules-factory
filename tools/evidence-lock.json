@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "measuredAt": "53559ee1dab6fca4a473b48b5760fee391bb2f51",
+  "measuredAt": "bc94b5cf0977298ecc744e9d94da08a974a2499c",
   "measuredBy": "tools/check-evidence.py --measure",
   "measuredOver": {
     "gateStepsFailed": [],
@@ -19,8 +19,8 @@
   "artifacts": [
     {
       "path": "examples/README.md",
-      "sha256": "ce959ec991a9305a385bedec43e2247a588896988b8581ecb02362f10ab8e1ec",
-      "bytes": 27159,
+      "sha256": "736dceafa092face2b4420a97d9e349d5103bc5c222fcbbfcb515ccb74b40b87",
+      "bytes": 27428,
       "role": "active",
       "readBy": [
         "links"
@@ -1932,8 +1932,8 @@
     },
     {
       "path": "examples/validator-attack/results.json",
-      "sha256": "7011c892f75c33703aa032c1ae677d10456ac9cc36de62156113b1a5864e90f4",
-      "bytes": 30972,
+      "sha256": "b6d92d2ff97eeb2621bb083cb4979a205a169535add7b96563ace01faf8e4de0",
+      "bytes": 38811,
       "role": "active",
       "readBy": [
         "checks"
@@ -1942,8 +1942,8 @@
     },
     {
       "path": "examples/validator-attack/results.md",
-      "sha256": "ccb96e85f22fbf114440ed7f8c1bc2a6958cf71908136b4de759c98d14e70e51",
-      "bytes": 1436,
+      "sha256": "26bfc31e43dc7ebe414527b9c76589c27c5c040b86add1dce326db3189536611",
+      "bytes": 1484,
       "role": "active",
       "readBy": [
         "links"

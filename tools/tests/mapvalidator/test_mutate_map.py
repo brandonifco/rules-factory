@@ -20,7 +20,10 @@ import importlib.util
 import io
 import json
 import os
+import re
 import shutil
+import subprocess
+import sys
 import tempfile
 import unittest
 from contextlib import redirect_stdout
@@ -267,6 +270,123 @@ class TheCommittedMeasurement(unittest.TestCase):
             self.assertEqual(sorted(r["mutation"] for r in subject["runs"]),
                              sorted(m["name"] for m in mutate_map.MUTATIONS),
                              f"{subject['name']} has a mutation the catalogue does not")
+
+
+class EveryInjectionNamesTheRefusalItExpects(unittest.TestCase):
+    """#362, 0061: an injection declared what it damaged and not which rule should object, so a
+    mutation refused by a different rule counted as caught. A catch rate can be right about the
+    number and wrong about which rules are load-bearing, and a rule that never catches anything
+    on its own is invisible in it."""
+
+    def test_every_mutation_declares_one(self):
+        """`None` is a declaration too -- no rule is written to catch this -- and the difference
+        between declaring it and forgetting the field is the whole of the check."""
+        for mutation in mutate_map.MUTATIONS:
+            with self.subTest(mutation=mutation["name"]):
+                self.assertIn("expect", mutation,
+                              f"{mutation['name']} names no expected refusal (#362)")
+                expect = mutation["expect"]
+                self.assertTrue(expect is None or isinstance(expect, (str, tuple)),
+                                f"{mutation['name']}: expect is {expect!r}")
+                if isinstance(expect, tuple):
+                    self.assertGreater(len(expect), 1, "a family of one is a string")
+
+    def test_the_four_that_measure_a_gap_are_the_four_named(self):
+        """Named, so a mutation that quietly loses its rule fails here rather than being counted
+        as measuring a gap it was never written to measure."""
+        self.assertEqual(sorted(m["name"] for m in mutate_map.MUTATIONS if m["expect"] is None),
+                         ["drop-enabled-by", "drop-suspended-by", "invent-depends-on",
+                          "omit-definition", "same-passage-evidence"])
+
+    def test_the_expected_rule_must_be_one_the_validator_can_report(self):
+        """An `expect` naming a rule nothing emits would never match, so every catch would read
+        as a neighbour's and the measurement would say the opposite of the truth.
+
+        The vocabulary is the validator's own -- every rule check-map.py names on a real map,
+        plus every rule a measured run has seen the locator checkers report -- and not the set
+        that happens to have fired. A rule written to catch an error it has never yet caught is
+        exactly what 0061 wants visible, so requiring `expect` to have fired would demand the
+        opposite of the decision.
+        """
+        emitted = subprocess.run(
+            [sys.executable, os.path.join(ROOT, "tools", "check-map.py"),
+             os.path.join(ROOT, "examples", "hoyle-backgammon", "corpus-map.json"),
+             "--manifest", os.path.join(ROOT, "examples", "hoyle-backgammon", "corpus-manifest.json"),
+             "--repo-root", ROOT],
+            capture_output=True, text=True, cwd=ROOT)
+        known = set(re.findall(r"^\[[a-z-]+\] ([a-z][a-z-]+):", emitted.stdout, re.M))
+        self.assertTrue(known, f"check-map.py named no rule; the vocabulary is unknown\n{emitted.stdout[:500]}")
+        known |= {rule for subject in json.load(
+            open(os.path.join(ROOT, "examples", "validator-attack", "results.json"),
+                 encoding="utf-8"))["subjects"]
+            for run_of in subject["runs"] for rule in
+            {x["check"] for x in (run_of.get("by") or [])}}
+        for mutation in mutate_map.MUTATIONS:
+            expect = mutation["expect"]
+            if expect is None:
+                continue
+            for rule in ((expect,) if isinstance(expect, str) else expect):
+                with self.subTest(mutation=mutation["name"], rule=rule):
+                    self.assertIn(rule, known,
+                                  f"{mutation['name']} expects {rule!r}, which no measured run "
+                                  f"has ever reported; it could never count as an intended catch")
+
+
+class ACatchByAnotherRuleIsADifferentOutcome(unittest.TestCase):
+    """The committed measurement, read for what the headline cannot say."""
+
+    def setUp(self):
+        with open(os.path.join(ROOT, "examples", "validator-attack", "results.json"),
+                  encoding="utf-8") as handle:
+            self.measured = json.load(handle)
+
+    def runs(self):
+        return [r for s in self.measured["subjects"] for r in s["runs"] if r.get("applicable")]
+
+    def test_the_totals_separate_the_two(self):
+        totals = self.measured["totals"]
+        for key in ("byIntendedRule", "byNeighbourOnly"):
+            self.assertIn(key, totals, f"the measurement does not report {key} (#362)")
+        self.assertEqual(totals["detected"], totals["byIntendedRule"] + totals["byNeighbourOnly"],
+                         "every catch is by the intended rule or by another; there is no third")
+
+    def test_a_neighbour_catch_is_recorded_as_one_and_not_as_a_catch_of_its_own(self):
+        neighbours = [r for r in self.runs() if r.get("byNeighbourOnly")]
+        self.assertTrue(neighbours, "no neighbour catch is recorded, so this proves nothing about "
+                                    "a harness that can tell them apart")
+        for run_of in neighbours:
+            with self.subTest(mutation=run_of["mutation"]):
+                self.assertTrue(run_of["detected"], "a neighbour catch is still a catch of something")
+                self.assertFalse(run_of["byIntendedRule"])
+
+    def test_a_mutation_with_no_rule_can_only_ever_be_caught_by_a_neighbour(self):
+        """0061's sharpest case: `same-passage-evidence` leaves the quote inside the passage the
+        entry cites, so nothing structural can see it. Its one refusal is another rule's."""
+        without = {m["name"] for m in mutate_map.MUTATIONS if m["expect"] is None}
+        for run_of in self.runs():
+            if run_of["mutation"] in without and run_of["detected"]:
+                with self.subTest(mutation=run_of["mutation"]):
+                    self.assertFalse(run_of["byIntendedRule"],
+                                     f"{run_of['mutation']} has no intended rule and is recorded "
+                                     f"as caught by one")
+                    self.assertTrue(run_of["byNeighbourOnly"])
+
+    def test_the_gate_holds_the_committed_record_to_it(self):
+        """A mutation that stops being caught by its own rule, and starts being caught only by a
+        neighbour, is a row nobody chose to move."""
+        committed = {"subjects": [{"name": "m", "runs": [
+            {"mutation": "remove-applicability", "applicable": True, "detected": True,
+             "signalled": False, "byIntendedRule": True, "by": []}]}]}
+        fresh = copy.deepcopy(committed)
+        fresh["subjects"][0]["runs"][0]["byIntendedRule"] = False
+        differences = mutate_map.compare(committed, fresh)
+        self.assertEqual(len(differences), 1, differences)
+        self.assertIn("remove-applicability", differences[0])
+
+    def test_the_table_says_neighbour_only(self):
+        rendered = mutate_map.table(self.measured)
+        self.assertIn("neighbour only:", rendered,
+                      "the table reports a neighbour catch as though the intended rule fired")
 
 
 if __name__ == "__main__":

@@ -1,5 +1,5 @@
 {
-  "measuredAt": "fe39a5f4f8c11dd832bb61be55d1ff389240a2d2",
+  "measuredAt": "51ad10b6924e6f1db2cd472c9a8ed9cfebdb9d7e",
   "subjects": [
     {
       "name": "hoyle-backgammon",
@@ -14,6 +14,11 @@
           "detected": false,
           "refusedBy": [],
           "signalled": false,
+          "expected": [
+            "coverage"
+          ],
+          "byIntendedRule": false,
+          "byNeighbourOnly": false,
           "by": []
         },
         {
@@ -23,6 +28,9 @@
           "detected": false,
           "refusedBy": [],
           "signalled": false,
+          "expected": null,
+          "byIntendedRule": false,
+          "byNeighbourOnly": false,
           "by": []
         },
         {
@@ -32,6 +40,9 @@
           "detected": false,
           "refusedBy": [],
           "signalled": false,
+          "expected": null,
+          "byIntendedRule": false,
+          "byNeighbourOnly": false,
           "by": []
         },
         {
@@ -43,6 +54,11 @@
             "check-map.py"
           ],
           "signalled": false,
+          "expected": [
+            "question-anchor"
+          ],
+          "byIntendedRule": true,
+          "byNeighbourOnly": false,
           "by": [
             {
               "detector": "check-map.py",
@@ -59,6 +75,11 @@
           "detected": false,
           "refusedBy": [],
           "signalled": false,
+          "expected": [
+            "superposition"
+          ],
+          "byIntendedRule": false,
+          "byNeighbourOnly": false,
           "by": []
         },
         {
@@ -70,6 +91,11 @@
             "check-map.py"
           ],
           "signalled": false,
+          "expected": [
+            "asserted-by"
+          ],
+          "byIntendedRule": true,
+          "byNeighbourOnly": false,
           "by": [
             {
               "detector": "check-map.py",
@@ -86,6 +112,9 @@
           "detected": false,
           "refusedBy": [],
           "signalled": false,
+          "expected": null,
+          "byIntendedRule": false,
+          "byNeighbourOnly": false,
           "by": []
         },
         {
@@ -98,6 +127,11 @@
             "check-locators.py"
           ],
           "signalled": false,
+          "expected": [
+            "locators"
+          ],
+          "byIntendedRule": true,
+          "byNeighbourOnly": false,
           "by": [
             {
               "detector": "check-map.py",
@@ -122,6 +156,9 @@
             "check-map.py"
           ],
           "signalled": false,
+          "expected": null,
+          "byIntendedRule": false,
+          "byNeighbourOnly": true,
           "by": [
             {
               "detector": "check-map.py",
@@ -140,6 +177,11 @@
             "check-locators.py"
           ],
           "signalled": false,
+          "expected": [
+            "locators"
+          ],
+          "byIntendedRule": true,
+          "byNeighbourOnly": false,
           "by": [
             {
               "detector": "check-locators.py",
@@ -163,6 +205,11 @@
             "check-map.py"
           ],
           "signalled": false,
+          "expected": [
+            "applicability-reach"
+          ],
+          "byIntendedRule": false,
+          "byNeighbourOnly": true,
           "by": [
             {
               "detector": "check-map.py",
@@ -181,6 +228,11 @@
             "check-map.py"
           ],
           "signalled": false,
+          "expected": [
+            "cross-references"
+          ],
+          "byIntendedRule": true,
+          "byNeighbourOnly": false,
           "by": [
             {
               "detector": "check-map.py",
@@ -199,6 +251,13 @@
             "check-locators.py"
           ],
           "signalled": false,
+          "expected": [
+            "extent",
+            "extent-bounds",
+            "extent-end"
+          ],
+          "byIntendedRule": true,
+          "byNeighbourOnly": false,
           "by": [
             {
               "detector": "check-locators.py",
@@ -225,6 +284,11 @@
             "check-locators-section.py"
           ],
           "signalled": false,
+          "expected": [
+            "coverage"
+          ],
+          "byIntendedRule": true,
+          "byNeighbourOnly": false,
           "by": [
             {
               "detector": "check-locators-section.py",
@@ -246,6 +310,9 @@
           "detected": false,
           "refusedBy": [],
           "signalled": false,
+          "expected": null,
+          "byIntendedRule": false,
+          "byNeighbourOnly": false,
           "by": []
         },
         {
@@ -257,6 +324,11 @@
             "check-map.py"
           ],
           "signalled": false,
+          "expected": [
+            "question-anchor"
+          ],
+          "byIntendedRule": true,
+          "byNeighbourOnly": false,
           "by": [
             {
               "detector": "check-map.py",
@@ -275,6 +347,11 @@
             "check-map.py"
           ],
           "signalled": false,
+          "expected": [
+            "superposition"
+          ],
+          "byIntendedRule": true,
+          "byNeighbourOnly": false,
           "by": [
             {
               "detector": "check-map.py",
@@ -291,6 +368,11 @@
           "detected": false,
           "refusedBy": [],
           "signalled": false,
+          "expected": [
+            "asserted-by"
+          ],
+          "byIntendedRule": false,
+          "byNeighbourOnly": false,
           "by": []
         },
         {
@@ -300,6 +382,9 @@
           "detected": false,
           "refusedBy": [],
           "signalled": false,
+          "expected": null,
+          "byIntendedRule": false,
+          "byNeighbourOnly": false,
           "by": []
         },
         {
@@ -311,6 +396,11 @@
             "check-locators-section.py"
           ],
           "signalled": false,
+          "expected": [
+            "locators"
+          ],
+          "byIntendedRule": true,
+          "byNeighbourOnly": false,
           "by": [
             {
               "detector": "check-locators-section.py",
@@ -327,6 +417,9 @@
           "detected": false,
           "refusedBy": [],
           "signalled": false,
+          "expected": null,
+          "byIntendedRule": false,
+          "byNeighbourOnly": false,
           "by": []
         },
         {
@@ -338,6 +431,11 @@
             "check-locators-section.py"
           ],
           "signalled": false,
+          "expected": [
+            "locators"
+          ],
+          "byIntendedRule": true,
+          "byNeighbourOnly": false,
           "by": [
             {
               "detector": "check-locators-section.py",
@@ -354,6 +452,9 @@
           "detected": false,
           "refusedBy": [],
           "signalled": false,
+          "expected": null,
+          "byIntendedRule": false,
+          "byNeighbourOnly": false,
           "by": []
         },
         {
@@ -365,6 +466,11 @@
             "check-map.py"
           ],
           "signalled": false,
+          "expected": [
+            "applicability-reach"
+          ],
+          "byIntendedRule": false,
+          "byNeighbourOnly": true,
           "by": [
             {
               "detector": "check-map.py",
@@ -383,6 +489,11 @@
             "check-map.py"
           ],
           "signalled": false,
+          "expected": [
+            "cross-references"
+          ],
+          "byIntendedRule": true,
+          "byNeighbourOnly": false,
           "by": [
             {
               "detector": "check-map.py",
@@ -401,6 +512,13 @@
             "check-map.py"
           ],
           "signalled": false,
+          "expected": [
+            "extent",
+            "extent-bounds",
+            "extent-end"
+          ],
+          "byIntendedRule": true,
+          "byNeighbourOnly": false,
           "by": [
             {
               "detector": "check-map.py",
@@ -425,6 +543,11 @@
           "detected": false,
           "refusedBy": [],
           "signalled": false,
+          "expected": [
+            "coverage"
+          ],
+          "byIntendedRule": false,
+          "byNeighbourOnly": false,
           "by": []
         },
         {
@@ -434,6 +557,9 @@
           "detected": false,
           "refusedBy": [],
           "signalled": false,
+          "expected": null,
+          "byIntendedRule": false,
+          "byNeighbourOnly": false,
           "by": []
         },
         {
@@ -443,6 +569,9 @@
           "detected": false,
           "refusedBy": [],
           "signalled": false,
+          "expected": null,
+          "byIntendedRule": false,
+          "byNeighbourOnly": false,
           "by": []
         },
         {
@@ -454,6 +583,11 @@
             "check-map.py"
           ],
           "signalled": false,
+          "expected": [
+            "question-anchor"
+          ],
+          "byIntendedRule": true,
+          "byNeighbourOnly": false,
           "by": [
             {
               "detector": "check-map.py",
@@ -470,6 +604,11 @@
           "detected": false,
           "refusedBy": [],
           "signalled": false,
+          "expected": [
+            "superposition"
+          ],
+          "byIntendedRule": false,
+          "byNeighbourOnly": false,
           "by": []
         },
         {
@@ -484,6 +623,9 @@
           "detected": false,
           "refusedBy": [],
           "signalled": false,
+          "expected": null,
+          "byIntendedRule": false,
+          "byNeighbourOnly": false,
           "by": []
         },
         {
@@ -496,6 +638,11 @@
             "check-locators-section.py"
           ],
           "signalled": false,
+          "expected": [
+            "locators"
+          ],
+          "byIntendedRule": true,
+          "byNeighbourOnly": false,
           "by": [
             {
               "detector": "check-map.py",
@@ -518,6 +665,9 @@
           "detected": false,
           "refusedBy": [],
           "signalled": false,
+          "expected": null,
+          "byIntendedRule": false,
+          "byNeighbourOnly": false,
           "by": []
         },
         {
@@ -529,6 +679,11 @@
             "check-locators-section.py"
           ],
           "signalled": false,
+          "expected": [
+            "locators"
+          ],
+          "byIntendedRule": true,
+          "byNeighbourOnly": false,
           "by": [
             {
               "detector": "check-locators-section.py",
@@ -545,6 +700,9 @@
           "detected": false,
           "refusedBy": [],
           "signalled": false,
+          "expected": null,
+          "byIntendedRule": false,
+          "byNeighbourOnly": false,
           "by": []
         },
         {
@@ -556,6 +714,11 @@
             "check-map.py"
           ],
           "signalled": false,
+          "expected": [
+            "applicability-reach"
+          ],
+          "byIntendedRule": true,
+          "byNeighbourOnly": false,
           "by": [
             {
               "detector": "check-map.py",
@@ -574,6 +737,11 @@
             "check-map.py"
           ],
           "signalled": false,
+          "expected": [
+            "cross-references"
+          ],
+          "byIntendedRule": true,
+          "byNeighbourOnly": false,
           "by": [
             {
               "detector": "check-map.py",
@@ -603,6 +771,11 @@
           "detected": false,
           "refusedBy": [],
           "signalled": false,
+          "expected": [
+            "coverage"
+          ],
+          "byIntendedRule": false,
+          "byNeighbourOnly": false,
           "by": []
         },
         {
@@ -612,6 +785,9 @@
           "detected": false,
           "refusedBy": [],
           "signalled": false,
+          "expected": null,
+          "byIntendedRule": false,
+          "byNeighbourOnly": false,
           "by": []
         },
         {
@@ -621,6 +797,9 @@
           "detected": false,
           "refusedBy": [],
           "signalled": false,
+          "expected": null,
+          "byIntendedRule": false,
+          "byNeighbourOnly": false,
           "by": []
         },
         {
@@ -632,6 +811,11 @@
             "check-map.py"
           ],
           "signalled": false,
+          "expected": [
+            "question-anchor"
+          ],
+          "byIntendedRule": true,
+          "byNeighbourOnly": false,
           "by": [
             {
               "detector": "check-map.py",
@@ -648,6 +832,11 @@
           "detected": false,
           "refusedBy": [],
           "signalled": false,
+          "expected": [
+            "superposition"
+          ],
+          "byIntendedRule": false,
+          "byNeighbourOnly": false,
           "by": []
         },
         {
@@ -657,6 +846,11 @@
           "detected": false,
           "refusedBy": [],
           "signalled": false,
+          "expected": [
+            "asserted-by"
+          ],
+          "byIntendedRule": false,
+          "byNeighbourOnly": false,
           "by": []
         },
         {
@@ -666,6 +860,9 @@
           "detected": false,
           "refusedBy": [],
           "signalled": false,
+          "expected": null,
+          "byIntendedRule": false,
+          "byNeighbourOnly": false,
           "by": []
         },
         {
@@ -675,6 +872,11 @@
           "detected": false,
           "refusedBy": [],
           "signalled": false,
+          "expected": [
+            "locators"
+          ],
+          "byIntendedRule": false,
+          "byNeighbourOnly": false,
           "by": []
         },
         {
@@ -684,6 +886,9 @@
           "detected": false,
           "refusedBy": [],
           "signalled": false,
+          "expected": null,
+          "byIntendedRule": false,
+          "byNeighbourOnly": false,
           "by": []
         },
         {
@@ -695,6 +900,11 @@
             "check-locators-pdf-text.py"
           ],
           "signalled": false,
+          "expected": [
+            "locators"
+          ],
+          "byIntendedRule": true,
+          "byNeighbourOnly": false,
           "by": [
             {
               "detector": "check-locators-pdf-text.py",
@@ -711,6 +921,9 @@
           "detected": false,
           "refusedBy": [],
           "signalled": false,
+          "expected": null,
+          "byIntendedRule": false,
+          "byNeighbourOnly": false,
           "by": []
         },
         {
@@ -720,6 +933,11 @@
           "detected": false,
           "refusedBy": [],
           "signalled": false,
+          "expected": [
+            "applicability-reach"
+          ],
+          "byIntendedRule": false,
+          "byNeighbourOnly": false,
           "by": []
         },
         {
@@ -729,6 +947,11 @@
           "detected": false,
           "refusedBy": [],
           "signalled": false,
+          "expected": [
+            "cross-references"
+          ],
+          "byIntendedRule": false,
+          "byNeighbourOnly": false,
           "by": []
         },
         {
@@ -741,6 +964,13 @@
             "check-locators-pdf-text.py"
           ],
           "signalled": false,
+          "expected": [
+            "extent",
+            "extent-bounds",
+            "extent-end"
+          ],
+          "byIntendedRule": true,
+          "byNeighbourOnly": false,
           "by": [
             {
               "detector": "check-map.py",
@@ -777,6 +1007,11 @@
           "detected": false,
           "refusedBy": [],
           "signalled": false,
+          "expected": [
+            "coverage"
+          ],
+          "byIntendedRule": false,
+          "byNeighbourOnly": false,
           "by": []
         },
         {
@@ -798,6 +1033,11 @@
             "check-map.py"
           ],
           "signalled": false,
+          "expected": [
+            "question-anchor"
+          ],
+          "byIntendedRule": true,
+          "byNeighbourOnly": false,
           "by": [
             {
               "detector": "check-map.py",
@@ -814,6 +1054,11 @@
           "detected": false,
           "refusedBy": [],
           "signalled": false,
+          "expected": [
+            "superposition"
+          ],
+          "byIntendedRule": false,
+          "byNeighbourOnly": false,
           "by": []
         },
         {
@@ -828,6 +1073,9 @@
           "detected": false,
           "refusedBy": [],
           "signalled": false,
+          "expected": null,
+          "byIntendedRule": false,
+          "byNeighbourOnly": false,
           "by": []
         },
         {
@@ -839,6 +1087,11 @@
             "check-locators-pdf-text.py"
           ],
           "signalled": false,
+          "expected": [
+            "locators"
+          ],
+          "byIntendedRule": true,
+          "byNeighbourOnly": false,
           "by": [
             {
               "detector": "check-locators-pdf-text.py",
@@ -855,6 +1108,9 @@
           "detected": false,
           "refusedBy": [],
           "signalled": false,
+          "expected": null,
+          "byIntendedRule": false,
+          "byNeighbourOnly": false,
           "by": []
         },
         {
@@ -866,6 +1122,11 @@
             "check-locators-pdf-text.py"
           ],
           "signalled": false,
+          "expected": [
+            "locators"
+          ],
+          "byIntendedRule": true,
+          "byNeighbourOnly": false,
           "by": [
             {
               "detector": "check-locators-pdf-text.py",
@@ -882,6 +1143,9 @@
           "detected": false,
           "refusedBy": [],
           "signalled": false,
+          "expected": null,
+          "byIntendedRule": false,
+          "byNeighbourOnly": false,
           "by": []
         },
         {
@@ -896,6 +1160,11 @@
           "detected": false,
           "refusedBy": [],
           "signalled": false,
+          "expected": [
+            "cross-references"
+          ],
+          "byIntendedRule": false,
+          "byNeighbourOnly": false,
           "by": []
         },
         {
@@ -908,6 +1177,13 @@
             "check-locators-pdf-text.py"
           ],
           "signalled": false,
+          "expected": [
+            "extent",
+            "extent-bounds",
+            "extent-end"
+          ],
+          "byIntendedRule": true,
+          "byNeighbourOnly": false,
           "by": [
             {
               "detector": "check-map.py",
@@ -929,6 +1205,8 @@
   "totals": {
     "applied": 62,
     "detected": 28,
-    "missed": 34
+    "missed": 34,
+    "byIntendedRule": 25,
+    "byNeighbourOnly": 3
   }
 }
