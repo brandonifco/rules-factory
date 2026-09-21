@@ -1343,15 +1343,19 @@ mutation — five tests that could not fail, a checker counting an entry it had 
 none by reading. This makes that practice the schema. The same answer as rail E below and as a
 derived consequence (#16): **the artifact is the test.**
 
-**A placeholder is not a mutation.** An engine's gate (`scripts/map-overlay.py`, the recipe at
-`tools/factory/recipe/map-overlay.py`) refuses an `implemented` entry whose test records
+**A placeholder is not a mutation.** Two checkers refuse an `implemented` entry whose test records
+one: an engine's gate (`scripts/map-overlay.py`, the recipe at
+`tools/factory/recipe/map-overlay.py`), on the map the engine merges; and the checker a published
+map package carries (`tools/mapvalidator/mutation.py`, and the `check-map.py` built from it),
+before any engine merges the map at all. They refuse a test that records
 `PENDING`, `TBD`, `TODO`, `none`, `n/a`, `scratch`, `placeholder`, `xxx`, `unknown`, `later`,
 `fixme`, `wip`, `?` or `-` — or **one word repeated** — or anything shorter than **three words and
 twelve characters**. All three are applied to the mutation after it is normalised: NFKD, combining
 marks and format characters removed, whitespace collapsed, punctuation and symbols stripped from
 both ends by Unicode category, and casefolded. So `Pending.`, `--`, `""`, `“TODO”`, `ＴＯＤＯ`, `TÓDO`
-and a `TODO` with a zero-width space inside it are all the same word. The refusal names the entry,
-the test, the string, where the record lives and `tools/re-produce.sh`.
+and a `TODO` with a zero-width space inside it are all the same word. The gate's refusal names the
+entry, the test, the string, where the record lives and `tools/re-produce.sh`; the published map's
+names the entry, the position in `tests`, the test and the string.
 
 Words are counted **with repeats**, because a word may legitimately appear twice: ``Increment
 `increment`; fails.`` is honest evidence about a variable named `increment`. Distinctness is only
@@ -1362,7 +1366,20 @@ copies are spelled in a script the set does not contain, such as with a Cyrillic
 one spelling is refused whatever script the spelling is in, and mixing spellings to evade
 (`TODO TОDO TODО`, three different ones) is not something this floor stops.
 
-**It reads the merge, not the overlay.** `tests` is a field of the merged entry, and a package map
+**The rule is written twice, on purpose, and held to itself by a test.** The recipe is vendored
+into a produced engine, where it is a standard-library script with none of this repository on the
+path, so it may import nothing of the factory's; and [0032](decisions/0032-mapping-validation-and-generation-are-three-subsystems-over-one-contract.md)
+forbids the reverse — the map's verifier does not import the factory's consumer code. Moving the
+rule into `tools/mapcontract/` would not help either: the contract states what a field means and
+judges nothing, and this judges. So there are two copies, and
+`tools/tests/test_placeholder_mutation_is_one_rule.py` loads both and asserts that every constant
+is equal, that the five functions are the same code (compared as syntax trees with docstrings
+removed, so the prose may differ and the behaviour may not), and that both return the same verdict
+over one table of strings. Changing either copy alone turns that test red and names the constant,
+the function or the string that diverged. Filed as
+[#240](https://github.com/brandonifco/rules-factory/issues/240).
+
+**The gate reads the merge, not the overlay.** `tests` is a field of the merged entry, and a package map
 may carry one, so checking only the overlay would leave an implemented entry whose evidence came
 from upstream unexamined — the same shape of hole. Filed as
 [#239](https://github.com/brandonifco/rules-factory/issues/239): the first implementer of
@@ -1382,15 +1399,13 @@ that could not be read yet. Fix what is named and run it again.
 was made, whether the test went red, whether the mutation was a good one, or whether the sentence
 was copied from another entry; `not yet recorded` passes it, and so does a real mutation typed by
 someone who ran nothing. That part rests on the implementer's word, as it did before — see
-immediately below. `tools/mapvalidator/status.py`, and the `check-map.py` built from it, is the
-checker a **published map** carries and the one this repository runs over its own maps; it does
-not yet carry the rule ([#240](https://github.com/brandonifco/rules-factory/issues/240)), which is
-now about a map before any engine merges it rather than a second line under the engine's gate.
+immediately below. Both refusals say so in as many words: *it cannot tell whether the edit was
+made or the test went red.*
 
 `check-map.py --only status` enforces what a map alone can show: `tests` is present and
 non-empty on every `implemented` entry, and wherever it appears each item has a non-blank `test`,
-a non-blank `mutation`, and no test is named twice. **What it cannot show:** that a named test
-exists or ran. That is the engine gate's check, against the engine's own suite. And a recorded
+a `mutation` that is not an unfilled placeholder, and no test is named twice. **What it cannot
+show:** that a named test exists or ran. That is the engine gate's check, against the engine's own suite. And a recorded
 mutation proves *one* way of breaking the rule is caught — an entry can name one weak test with
 one easy mutation and pass. What is removed is the state of claiming conformance with nothing
 behind it. The mutation is recorded, not re-run; whether a gate ever re-runs them is a separate

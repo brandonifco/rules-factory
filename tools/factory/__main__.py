@@ -60,7 +60,11 @@ changes are uncommitted, for whoever ran it to review and commit:
     are read off the run rather than remembered (#193, decision 0029's amendment);
   * writing out (transaction.py) -- the files the steps added, changed or removed are put in place
     in `--out`, journaled and rolled back on failure (a fresh `--out` is one rename). No git commit
-    is made, here or anywhere else in produce.
+    is made, here or anywhere else in produce. A verified run is held to every source and build
+    input verify built and tested it from, not only to the paths it writes: if one of them moved in
+    `--out` while produce ran, the run is refused before anything is written, naming each path,
+    because the tree that would be on disk is not the one that was built (#335). The edit is kept --
+    nothing is written over it -- and produce is run again to verify the engine with it.
 
 `backlog --create` renders the backlog from the map package provenance.json records (`--package`,
 or Id@Version from the NuGet global packages folder) merged with the engine's `overlay/`, and
@@ -193,7 +197,11 @@ def produce(args):
             relock = verify_step.pins_changed(pins_before, verify_step.read_pins(out))
             overridden = verify_step.verify_staged(out, recompute_provenance, args.package, log=sys.stdout,
                                                    after_restore=record_lock_files, relock=relock)
-        added, changed, removed = stage.commit()
+        # The same expression decides the guard and the word on the last line, so the two can never
+        # drift apart: a run that will say "verified" is held to every input verify built and tested
+        # (transaction.Stage.drift, #335), and a --no-verify run, which claims nothing about a build,
+        # is held only to the paths it writes, as before.
+        added, changed, removed = stage.commit(verified=not args.no_verify)
 
     if getattr(args, "produce_report", None):
         write_produce_report(args.produce_report, before, document, added, changed, removed)
