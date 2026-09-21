@@ -355,6 +355,7 @@ def in_merge_conflict(raw):
     lines = raw.decode("utf-8", "replace").splitlines()
     return all(any(line.startswith(marker) for line in lines) for marker in CONFLICT_MARKERS)
 
+
 #: The local SDK override (#336). `factory verify` runs restore and the gate on another SDK by
 #: re-pinning global.json for the length of each -- and global.json is a managed file whose SHA-256
 #: this step checks, so those deliberate bytes used to fail here. The override is **declared**, not
