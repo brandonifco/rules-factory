@@ -1335,7 +1335,19 @@ def answer(record):
     missing = [field for field in wanted if field not in record]
     if missing:
         refuse(f"no {', '.join(missing)} in the state")
-    print(json.dumps({field: record[field] for field in wanted}))
+    document = {field: record[field] for field in wanted}
+    if "--jq" not in argv:
+        print(json.dumps(document))
+        return
+    # Exactly the three expressions tools/dispatch-agent.sh writes, and no evaluator: a rail whose
+    # call changed must fail here rather than be handed something that looks like an answer.
+    expression = argv[argv.index("--jq") + 1]
+    if expression in (".title", ".state"):
+        print(document[expression[1:]])
+    elif expression == '[.labels[].name] | join(",")':
+        print(",".join(label["name"] for label in document["labels"]))
+    else:
+        refuse(f"a --jq expression the rails do not use: {expression}")
 
 
 if argv[:2] in (["pr", "view"], ["issue", "view"]) and len(argv) > 2:
