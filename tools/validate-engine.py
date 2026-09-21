@@ -1949,7 +1949,16 @@ def a_late_risk_label_re_runs_the_gate(r, railed, github):
              "would prove that raising risk changed the answer")
 
     # The orchestrator raises risk on the issue. No commit changed, and no pull_request event.
+    #
+    # `serve` rewrites the whole fixture, statuses included, so the semantic verdict is recorded
+    # again straight after: the label must be the only difference between the state above and the
+    # state below, or what follows would be measuring a lost verdict instead of a raised label.
     github.serve(railed, COMMIT_A, ready(policy, "independentRisk"))
+    github.record(railed, log, "semantic")
+    if github.gate(railed, log) != 1:
+        cat(log)
+        fail("the gate passed at independent risk on the semantic verdict alone; the label is not the "
+             "only thing that changed, and nothing below would measure the re-request")
     before = list(github.reruns())
     if dispatch_issues(railed, github, requeue,
                        issues_payload(ISSUE, policy["labels"]["independentRisk"], "labeled"),
@@ -1962,7 +1971,8 @@ def a_late_risk_label_re_runs_the_gate(r, railed, github):
              f"run {GATE_RUN} at the head of the pull request that closes the issue; without that the required "
              f"check keeps its green answer (#230)")
 
-    # And the re-requested run is the point: it now refuses.
+    # And the re-requested run is the point: run again, it still refuses, and the pull request is
+    # blocked until the verdict the raised label calls for is recorded.
     if github.gate(railed, log) != 1:
         cat(log)
         fail("the gate still passes after the issue was labelled independent-review, so the required check "
