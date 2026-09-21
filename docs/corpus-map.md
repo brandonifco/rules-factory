@@ -1201,6 +1201,20 @@ chapter uses a word the corpus defines outside the slice and no words point at t
 that quotes the definition: `{ "cites": "surprised", "resolvedBy": "surprise-glossary" }`. See
 `definedElsewhere` above for when `dependsOn` names it too.
 
+**The declaration is owed by the passage that points, whatever the engine does with the rule.**
+`scope` and `status` do not bear on it. An entry that is `scope: out` and `status: declined`
+declares the pointers its evidence makes exactly as an in-scope entry does, because this field
+records what the *corpus* does and those two record what the *engine* does
+([0058](decisions/0058-a-pointer-is-declared-by-the-passage-that-makes-it-whatever-the-engine-does-with-the-rule.md)).
+An out-of-scope entry's evidence is quoted so a reader can see what was declined, and a reader who
+cannot see where that passage points is reading less than the map knows. Neither check condition
+mentions either axis: the item is anchored verbatim in the entry's own evidence, and resolves to
+exactly one of `resolvedBy` or `unmapped`.
+
+**One item discharges a term.** A declaration counts for a term when one item's `cites` contains
+it, so a passage naming the same term several times is satisfied once. Whether each naming should
+be anchored separately is [#399](https://github.com/brandonifco/rules-factory/issues/399).
+
 What an *"except as provided in"* clause obliges a mapper to do is therefore: **follow it, and
 produce either an entry or a sentence saying why there is none.** Not a judgement about whether
 the target matters.
