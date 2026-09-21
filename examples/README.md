@@ -154,7 +154,10 @@ queue, and this project archived its predecessor partly for having one.
   caught downstream. Every finding so far surfaced during mapping, which is the cheap place,
   and that is encouraging rather than evidence. [The validator attack](validator-attack/) supplies the
   validator's half of the answer, and more than half of the damage still gets through: fourteen
-  kinds of deliberate damage over five committed maps, **28 of 62 refused and 34 passed** (16 and
+  kinds of deliberate damage over five committed maps, **28 of 62 refused and 34 passed** — and of
+  those 28, **25 were refused by the rule the damage exercises and 3 only by another**, which
+  [0061](../docs/decisions/0061-an-injection-names-the-refusal-it-expects-and-a-catch-by-another-rule-is-a-different-outcome.md)
+  made the measurement able to say (16 and
   46 when first measured; of the twelve rows that have moved, two are 0034's epistemic checks, two
   are the `narrow-extent` cells [#269](https://github.com/brandonifco/rules-factory/issues/269)
   closed, and eight are the checks
