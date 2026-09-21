@@ -148,8 +148,9 @@ import pins
 import semantics
 
 FILE_NAME = "provenance.json"
-FORMAT = 5  # 2: buildInputs (#69); 3: managed and engineOwned (#72); 4: the overlay is a directory (#247);
-#            5: `corpora`, every corpus the map cites, replaces the single `corpus` (#300, 0039)
+FORMAT = 6  # 2: buildInputs (#69); 3: managed and engineOwned (#72); 4: the overlay is a directory (#247);
+#            5: `corpora`, every corpus the map cites, replaces the single `corpus` (#300, 0039);
+#            6: `verification`, whether the produce that wrote this built and tested the engine (#222)
 FACTORY_DIR = os.path.dirname(os.path.abspath(__file__))
 TAG = re.compile(r"^factory/v(\d+)\.(\d+)\.(\d+)$")
 SHORT_SHA = 12
@@ -479,7 +480,36 @@ def emit(model, out):
 # --- the record ------------------------------------------------------------------------------
 
 
-def build(state, result, model, recorder, factory_dir=FACTORY_DIR):
+#: What `verify` runs, in order, when produce is not given --no-verify (verify.py). Recorded rather
+#: than a bare boolean because a future partial mode would have to say which of these it did, and a
+#: reader of `"verified": true` should not have to guess what was proven (#222).
+VERIFICATION_STEPS = ("restore", "provenance", "build", "test", "gate")
+NOT_VERIFIED_WHY = ("produce ran with --no-verify: the engine was written but never built or "
+                    "tested, and the run ended NOT VERIFIED")
+
+
+def verification(verified):
+    """Whether the produce writing this record built and tested the engine, and what it ran (#222).
+
+    `produce --no-verify` says so loudly on stdout and exits 3, and the record said nothing at all:
+    a reader of a committed engine six months later could not tell a verified produce from an
+    unverified one, and the indirect signal -- lock files in `buildInputs` -- breaks the moment
+    anyone runs `dotnet restore` by hand. `provenance.json` is embedded in the assembly, so it
+    reaches readers who have no console output and no repository.
+
+    **Why `true` here is not a claim made before the fact.** The record is written before verify
+    runs and rewritten after restore, so at the moment these bytes are composed the gate has not
+    passed yet. What makes the field true is the transaction, not this function: verify raises at
+    the first failing stage, produce never reaches `commit`, and the staged engine is discarded. A
+    record saying `verified: true` is therefore only ever *committed* by a run that completed every
+    step below -- the same reasoning that lets the last line print "verified" beside exit 0.
+    """
+    if verified:
+        return {"verified": True, "ran": list(VERIFICATION_STEPS)}
+    return {"verified": False, "ran": [], "why": NOT_VERIFIED_WHY}
+
+
+def build(state, result, model, recorder, factory_dir=FACTORY_DIR, verified=False):
     root = recorder.root
     generated_files = []
     for relative in sorted(recorder.paths, key=lambda p: p.encode("utf-8")):
@@ -509,6 +539,7 @@ def build(state, result, model, recorder, factory_dir=FACTORY_DIR):
     owned = sorted(owned, key=lambda p: p.encode("utf-8"))
     return {
         "provenanceFormat": FORMAT,
+        "verification": verification(verified),
         "engine": {"name": model.name},
         "factory": {"version": state["version"], "commit": state["commit"], "dirty": state["dirty"]},
         "map": {
@@ -697,7 +728,20 @@ def recompute(engine_dir, produce_into, package=None):
         # engineOwned names the lock files too; the same no-claim rule applies to it (#72).
         if isinstance(actual.get("engineOwned"), list):
             actual["engineOwned"] = claimed(recorded_inputs, actual["engineOwned"])
-    for line in diff(recorded, actual):
+    # `verification` is a fact about the run that produced the engine, not a function of its
+    # inputs, so it is held to its own rule and kept out of the recomputation diff (#222). The
+    # re-produce above runs unverified -- it re-derives bytes, it does not rebuild and retest the
+    # engine -- so comparing the two would report every verified engine as a mismatch, and the
+    # obvious "fix" for that noise is to let the recomputed value win, which is exactly the silent
+    # rewrite to `true` this must never do. `factory provenance` reports; it writes nothing.
+    recorded_verification = recorded.get("verification")
+    if not isinstance(recorded_verification, dict) or \
+            not isinstance(recorded_verification.get("verified"), bool):
+        mismatches.append("verification: the record does not say whether the produce that wrote it "
+                          "built and tested the engine; provenance written before provenanceFormat "
+                          f"{FORMAT} says nothing about it")
+    for line in diff({k: v for k, v in recorded.items() if k != "verification"},
+                     {k: v for k, v in actual.items() if k != "verification"}):
         if line not in mismatches:
             mismatches.append(line)
     return mismatches
