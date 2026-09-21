@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "measuredAt": "53559ee1dab6fca4a473b48b5760fee391bb2f51",
+  "measuredAt": "1c8fc7deba42d904cb4a0e4faf1e42656a8d6095",
   "measuredBy": "tools/check-evidence.py --measure",
   "measuredOver": {
     "gateStepsFailed": [],
@@ -41,10 +41,8 @@
       "path": "examples/acceptance-4-5/check-provenance.sh",
       "sha256": "976e1bfd5a7759c3e0f4f449b1e1f53750b7a6e27a9b37767864f88bca60400e",
       "bytes": 2248,
-      "role": "active",
-      "readBy": [
-        "checks"
-      ],
+      "role": "archived",
+      "readBy": [],
       "archive": null
     },
     {
@@ -61,8 +59,10 @@
       "path": "examples/blind-mapping-trial/blind-map.json",
       "sha256": "04930e7e62054a17cd54faab0410efec8ec87aaac56f8bf2ff5597caa8a743c1",
       "bytes": 37125,
-      "role": "archived",
-      "readBy": [],
+      "role": "active",
+      "readBy": [
+        "checks"
+      ],
       "archive": null
     },
     {
@@ -1932,8 +1932,8 @@
     },
     {
       "path": "examples/validator-attack/results.json",
-      "sha256": "7011c892f75c33703aa032c1ae677d10456ac9cc36de62156113b1a5864e90f4",
-      "bytes": 30972,
+      "sha256": "b6d92d2ff97eeb2621bb083cb4979a205a169535add7b96563ace01faf8e4de0",
+      "bytes": 38811,
       "role": "active",
       "readBy": [
         "checks"
@@ -1942,8 +1942,8 @@
     },
     {
       "path": "examples/validator-attack/results.md",
-      "sha256": "ccb96e85f22fbf114440ed7f8c1bc2a6958cf71908136b4de759c98d14e70e51",
-      "bytes": 1436,
+      "sha256": "26bfc31e43dc7ebe414527b9c76589c27c5c040b86add1dce326db3189536611",
+      "bytes": 1484,
       "role": "active",
       "readBy": [
         "links"
