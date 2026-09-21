@@ -211,8 +211,12 @@ def produce(args):
             # #94: a run that moved the generated pins re-locks (verify.py). The lock files are
             # engine-owned, and this is the one case produce rewrites them (ownership.py, 0018).
             relock = verify_step.pins_changed(pins_before, verify_step.read_pins(out))
+            # `before_gate` notes the staging copy as the gate is about to build and test it, so the
+            # commit below can show that the tree it writes is that tree and not one a test step
+            # rewrote afterwards (transaction.Stage.testing, #370).
             overridden = verify_step.verify_staged(out, recompute_provenance, args.package, log=sys.stdout,
-                                                   after_restore=record_lock_files, relock=relock)
+                                                   after_restore=record_lock_files, relock=relock,
+                                                   before_gate=stage.testing)
         # The same expression decides the guard and the word on the last line, so the two can never
         # drift apart: a run that will say "verified" is held to every input verify built and tested
         # (transaction.Stage.drift, #335), and a --no-verify run, which claims nothing about a build,
