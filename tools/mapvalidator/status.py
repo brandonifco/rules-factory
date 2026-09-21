@@ -2,6 +2,7 @@
 an absent rule (0009) is `declined`, and nothing orders or gates on it.
 """
 from .diagnostics import skip, verdict
+from .mutation import placeholder_problem
 from mapcontract.vocabulary import ID_LIST_FIELDS
 from mapcontract.entry import entries_of, label
 
@@ -22,9 +23,23 @@ def tests_problems(name, tests):
             bad.append(f"  X  {name}: names test {test!r} twice")
         else:
             seen.add(test)
-        if not isinstance(mutation, str) or not mutation.strip():
+        if not isinstance(mutation, str):
             bad.append(f"  X  {name}: tests[{position}] ({test!r}) records no `mutation`; a test "
                        f"nobody has seen go red is not evidence")
+            continue
+        # #240: and a placeholder is not a mutation either. A non-empty string was the whole rule
+        # here until now, so `"mutation": "PENDING"` was evidence -- the same hole #239 closed in
+        # the gate recipe, in the checker a published map package carries and the one this
+        # repository runs over its own maps. `mutation.py` states the rule and why there are two
+        # copies of it. The blank-mutation case now arrives here rather than above: `"  "`
+        # normalises to the empty string, which is in the placeholder set.
+        why = placeholder_problem(mutation)
+        if why is not None:
+            bad.append(f"  X  {name}: tests[{position}] ({test!r}) records {why}. A mutation is "
+                       f"the edit that was made to the engine to turn that test red, written "
+                       f"down: what was changed, where, and what the test then did. This refuses "
+                       f"an unfilled placeholder; it cannot tell whether the edit was made or "
+                       f"the test went red.")
     return bad
 
 
@@ -35,13 +50,15 @@ def check_status(ctx):
 
       * `implementedIn` is set when status becomes `implemented`, and only then;
       * an `implemented` entry names the tests that prove it in `tests`, non-empty, and every
-        test carries the `mutation` that was recorded turning it red. Without them the entry is
-        `mapped`, whatever the repository contains. Wherever `tests` appears, its shape is held
-        to the same rule.
+        test carries the `mutation` that was recorded turning it red, which is not an unfilled
+        placeholder (`mutation.py`, #240). Without them the entry is `mapped`, whatever the
+        repository contains. Wherever `tests` appears, its shape is held to the same rule.
 
     What it cannot do: this file never sees an engine, so a named test that does not exist, or
     exists and never ran, passes here. That is the engine gate's check. And a recorded mutation
-    proves one way of breaking the rule is caught, not that the test is good.
+    proves one way of breaking the rule is caught, not that the test is good. The placeholder
+    rule narrows what a string may be; it still cannot tell whether the edit was made or the
+    test went red, and every refusal it writes says so.
     """
     bad, implemented = [], 0
     for position, entry in enumerate(entries_of(ctx["map"])):
