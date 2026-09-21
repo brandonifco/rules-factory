@@ -475,6 +475,27 @@ class TestTheSdkOverrideDeclaresTheTreeTheGateVerifies(GateCase):
         self.assertIn(f"{self.OVERRIDE} is an override of the SDK the engine pins, for local runs only, and is "
                       f"refused when CI=true", output)
 
+    def test_the_gate_re_pins_exactly_as_the_factory_does(self):
+        """The gate recomputes the substitution, so its spelling of a re-pin may never drift from
+        `verify.repin`'s -- which is what wrote the file it is comparing against."""
+        spec = importlib.util.spec_from_file_location("engine_gate_recipe",
+                                                      os.path.join(FACTORY, "recipe", "engine-gate.py"))
+        recipe = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(recipe)
+        with open(os.path.join(self.engine(), "global.json"), encoding="utf-8") as handle:
+            text = handle.read()
+        self.assertEqual(recipe.repinned(text, self.OTHER), factory.verify_step.repin(text, self.OTHER))
+
+    def test_the_sdk_pin_step_says_when_the_pin_it_checked_is_the_override_s(self):
+        """`ok SDK 10.0.1` read alone claims the engine ran on the SDK it pins, which under a
+        declaration it did not. What that step prints under a real SDK is the engine job's to run
+        (scripts/validate-engine.sh); what is asserted here is that the emitted gate says it at all.
+        """
+        with open(os.path.join(self.engine(), "scripts", "validate.sh"), encoding="utf-8") as handle:
+            sdk_step = handle.read().split("step \"Restore (locked)\"")[0]
+        self.assertIn(f'if [[ -n "${{{self.RECORDED}:-}}" ]]; then', sdk_step)
+        self.assertIn("does not prove the SDK provenance.json records", sdk_step)
+
     def test_an_unchanged_engine_under_a_declaration_is_verified_as_it_stands(self):
         """`verify` declares nothing when global.json already pins the override, and neither does this."""
         engine, _, _ = self.repinned(copy_first=False)

@@ -13,7 +13,8 @@ finds nothing to examine fails: a check with no inputs has proven nothing.
   regenerate --package-map P --package-manifest M --package-id ID --package-version V --name N [--write]
                                      every *.g.cs is exactly what the factory generates
   provenance                         provenance.json still hashes the files on disk, the overlay set
-                                     included (re-produce after an overlay edit)
+                                     included (re-produce after an overlay edit); a local SDK
+                                     override declares its re-pinned global.json here (#336)
   expected-results                   test projects on disk x target frameworks
   tests-ran DIR EXPECTED             the TRX files show that many result files, and a test
                                      executed for every test project x target framework
@@ -332,6 +333,84 @@ RE_PRODUCE = "tools/re-produce.sh"
 #: The first provenance format whose `buildInputs` describe the overlay directory (#247).
 OVERLAY_FORMAT = 4
 
+#: The local SDK override (#336). `factory verify` runs restore and the gate on another SDK by
+#: re-pinning global.json for the length of each -- and global.json is a managed file whose SHA-256
+#: this step checks, so those deliberate bytes used to fail here. The override is **declared**, not
+#: exempted: `$FACTORY_SDK_OVERRIDE_RECORDED` is a path to the bytes the record hashes, and this step
+#: then proves two things instead of one (`repin_problems`).
+SDK_OVERRIDE = "FACTORY_DOTNET_SDK_OVERRIDE"
+SDK_OVERRIDE_RECORDED = "FACTORY_SDK_OVERRIDE_RECORDED"
+GLOBAL_JSON = "global.json"
+
+
+def repinned(text, version):
+    """global.json text with its SDK version set to `version`, laid out as the factory writes it.
+
+    The same three lines as `repin` in the factory's tools/factory/verify.py, which is what writes
+    the file compared against here; test_factory_verify.py holds the two to the same bytes, so a
+    change to one that the other did not make fails there rather than here.
+    """
+    document = json.loads(text)
+    document["sdk"]["version"] = version
+    return json.dumps(document, indent=2) + "\n"
+
+
+def sdk_override_declaration(environ=None):
+    """What this run declares about global.json: (declaration or None, problems).
+
+    A declaration is `{version, pinned, original}`: the SDK `$FACTORY_DOTNET_SDK_OVERRIDE` names,
+    the SDK the recorded file pins, and the recorded bytes themselves, read from the path
+    `$FACTORY_SDK_OVERRIDE_RECORDED` gives. Both variables together are the declaration, and
+    `factory verify` sets them together or not at all; `$FACTORY_DOTNET_SDK_OVERRIDE` on its own --
+    a shell that exports it, or a `scripts/validate-engine.sh` run whose engine already *pins* the
+    override and adopted it into its record -- declares nothing, and global.json is then compared
+    byte for byte like every other managed file.
+
+    A declaration is refused under CI=true, where a green run must mean the SDK the record pins.
+    An incomplete or unreadable one is refused too, and refusing it leaves the exact comparison in
+    force, so a re-pin nobody could vouch for still fails.
+    """
+    environ = os.environ if environ is None else environ
+    version = (environ.get(SDK_OVERRIDE) or "").strip()
+    recorded = (environ.get(SDK_OVERRIDE_RECORDED) or "").strip()
+    if not recorded:
+        return None, []
+    if environ.get("CI") == "true":
+        return None, [f"{SDK_OVERRIDE} is an override of the SDK the engine pins, for local runs only, and is "
+                      f"refused when CI=true: a green CI run must mean the SDK {RECORD} records"]
+    if not version:
+        return None, [f"{SDK_OVERRIDE_RECORDED} is set and {SDK_OVERRIDE} names no SDK, so nothing says which SDK "
+                      f"{GLOBAL_JSON} was re-pinned to; `factory verify` sets the two together or neither"]
+    try:
+        original = pathlib.Path(recorded).read_bytes()
+        pinned = str(json.loads(original.decode("utf-8"))["sdk"]["version"])
+    except (OSError, UnicodeDecodeError, ValueError, KeyError, TypeError) as error:
+        return None, [f"{SDK_OVERRIDE_RECORDED}={recorded} is not a {GLOBAL_JSON} this can read ({error}), so "
+                      f"nothing shows which bytes {GLOBAL_JSON} was re-pinned from"]
+    return {"version": version, "pinned": pinned, "original": original}, []
+
+
+def repin_problems(on_disk, item, declared):
+    """Whether global.json on disk is the recorded file re-pinned to the declared SDK, and nothing else.
+
+    Two proofs, and the declaration buys exactly one byte of freedom between them: the declared
+    original must hash to what the record hashes, and what is on disk must be that original with its
+    SDK version replaced. So a declaration can neither hand the gate a global.json the record never
+    saw, nor cover an edit to anything else in the file -- `rollForward: disable` above all, which is
+    the other half of the pin.
+    """
+    original = hashlib.sha256(declared["original"]).hexdigest()
+    if original != item.get("sha256"):
+        return [f"managed[{GLOBAL_JSON}]: {SDK_OVERRIDE_RECORDED} hands the gate bytes {RECORD} does not record "
+                f"(recorded {item.get('sha256')}, declared {original}), so nothing says what was re-pinned"]
+    expected = repinned(declared["original"].decode("utf-8"), declared["version"]).encode("utf-8")
+    if on_disk != expected:
+        return [f"managed[{GLOBAL_JSON}]: {SDK_OVERRIDE} declares SDK {declared['version']}, and {GLOBAL_JSON} on "
+                f"disk is not the recorded file re-pinned to it (on disk {hashlib.sha256(on_disk).hexdigest()}, "
+                f"the declared re-pin {hashlib.sha256(expected).hexdigest()}); an override moves the SDK version "
+                f"and nothing else"]
+    return []
+
 
 def record_matches(_args):
     """provenance.json still hashes the bytes on disk: the derived files are not older than the
@@ -375,6 +454,24 @@ def record_matches(_args):
     tells the two apart is `provenanceFormat`. A record written before #247 has format 3 or less and
     describes a layout this engine does not have, so it is refused here and named as what it is: a
     record that predates the split.
+
+    **The one file a run may declare, and what it must prove to (#336).** `factory verify` can run
+    restore and the gate on another locally installed SDK, because a machine without the pinned one
+    could otherwise run neither. The only way to select it is global.json, which is a managed file
+    this step hashes -- so the two mechanisms used to disagree about which tree was under
+    verification: the override deliberately wrote bytes this step then called a violation, and the
+    run that "passed" had been told its own global.json was forged. Neither claim was wrong; the
+    handoff between them said nothing.
+
+    The answer is a declaration, not an exemption. `$FACTORY_SDK_OVERRIDE_RECORDED` names a file
+    holding the bytes the record hashes, `$FACTORY_DOTNET_SDK_OVERRIDE` names the SDK they were
+    re-pinned to, and this step proves **two** things where it otherwise proves one: the declared
+    original is the file the record hashes, and what is on disk is exactly that original with its
+    SDK version replaced. The tree under verification is therefore known, exactly, and it is not the
+    recorded tree -- so this step says so, in the note above the comparison and in the ok line
+    itself, and `verify` says it again at the end of the run. A declaration is refused under CI=true,
+    and an incomplete, unreadable or unbacked one is refused too; refusing it leaves the exact
+    comparison in force, so an undeclared re-pin fails exactly as it did before any of this existed.
     """
     sys.path.insert(0, str(ROOT / "scripts" / "factory"))
     try:
@@ -400,20 +497,36 @@ def record_matches(_args):
         problems.append(f"{RECORD} is not in the factory's canonical form; only `factory produce` writes it, "
                         f"and this file has been through another hand")
 
+    declared, refusals = sdk_override_declaration()
+    problems += refusals
+    declaration_used = False
+    if declared is not None:
+        print(f"     {GLOBAL_JSON} is {RECORD}'s own file re-pinned from {declared['pinned']} to "
+              f"{declared['version']} by {SDK_OVERRIDE}: that is the tree this run verifies, and it does not "
+              f"prove the pinned SDK {declared['pinned']}")
+
     for section in ("generated", "managed"):
         for item in recorded.get(section) or []:
             if not (isinstance(item, dict) and isinstance(item.get("path"), str)):
                 problems.append(f"{section}: {item!r} is not a recorded path and hash")
                 continue
             examined += 1
+            re_pinned = declared is not None and section == "managed" and item["path"] == GLOBAL_JSON
+            declaration_used = declaration_used or re_pinned
             where = ROOT / pathlib.Path(*item["path"].split("/"))
             if not where.is_file():
                 problems.append(f"{section}[{item['path']}]: recorded, missing on disk")
+            elif re_pinned:
+                problems += repin_problems(where.read_bytes(), item, declared)
             else:
                 actual = hashlib.sha256(where.read_bytes()).hexdigest()
                 if actual != item.get("sha256"):
                     problems.append(f"{section}[{item['path']}].sha256: recorded {item.get('sha256')}, "
                                     f"on disk {actual}")
+
+    if declared is not None and not declaration_used:
+        problems.append(f"{SDK_OVERRIDE_RECORDED} declares a re-pinned {GLOBAL_JSON}, and {RECORD} records no "
+                        f"managed {GLOBAL_JSON} it could have been re-pinned from")
 
     import overlay as overlay_step  # noqa: E402  (the layout: which paths are the overlay's, #247)
 
@@ -457,7 +570,11 @@ def record_matches(_args):
               f"writes {RECORD}. Editing it by hand is the defect this step exists to catch.",
               file=sys.stderr)
         return 1
-    return report([], f"{examined} recorded file(s) hash as {RECORD} records, every {OVERLAY}/ file among them")
+    success = f"{examined} recorded file(s) hash as {RECORD} records, every {OVERLAY}/ file among them"
+    if declared is not None:
+        success += (f" -- {GLOBAL_JSON} as re-pinned to {declared['version']} by {SDK_OVERRIDE}, so this run did "
+                    f"not verify the engine on the SDK {RECORD} pins ({declared['pinned']})")
+    return report([], success)
 
 
 # --- tests ------------------------------------------------------------------------------
