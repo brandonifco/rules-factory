@@ -94,6 +94,14 @@ import intake as intake_step
 JOURNAL = ".factory-produce-journal.json"
 JOURNAL_FORMAT = 1
 SKIP = frozenset({"bin", "obj", ".git", ".vs"})
+#: Directories a verified commit does not hold `--out` to (#335), on top of SKIP, which is not
+#: copied at all. The build and the gate write these and no build reads one, so their bytes are
+#: not an input to what verify proved: `artifacts` is the SDK's output path and `TestResults` the
+#: TRX files `dotnet test` writes -- the same two names verify.py already prunes as not-inputs.
+#: Everything else under `--out` is an input: a `.cs` the gate compiles, a project or props it
+#: reads, the overlay, a lock file, a script the gate runs. Named by what they are rather than
+#: listed by what a build reads, so a file an engine adds is covered without anyone remembering it.
+OUTPUT = frozenset({"artifacts", "TestResults"})
 
 
 class CommitError(Exception):
@@ -123,6 +131,11 @@ def _signature(path):
         for block in iter(lambda: handle.read(1 << 20), b""):
             digest.update(block)
     return info.st_size, bool(info.st_mode & stat.S_IXUSR), digest.hexdigest()
+
+
+def _is_input(relative):
+    """Whether `relative` is a source or build input of what verify proved, rather than output (#335)."""
+    return not any(part in OUTPUT for part in relative.split("/")[:-1])
 
 
 def _native(root, relative):
@@ -332,13 +345,39 @@ class Stage:
         removed = sorted(p for p in self.snapshot if p not in after)
         return added, changed, removed
 
+    def drift(self):
+        """Every source or build input where `out` no longer holds the bytes the staging copy was made from.
+
+        `(path, reason)` pairs, sorted by path: what the engine was verified from is the staging
+        copy, and every input of it that this run did not write is the snapshot's bytes -- so
+        `out` still holding the snapshot, input for input, is what makes the committed tree the
+        verified one (#335). Build output is not compared (`OUTPUT`), and neither is anything
+        under SKIP, which was never copied.
+        """
+        expected = {p: signature for p, signature in self.snapshot.items() if _is_input(p)}
+        present = {p: path for p, path in _files(self.out).items() if _is_input(p)}
+        moved = []
+        for relative in sorted(set(expected) | set(present)):
+            if relative not in present:
+                moved.append((relative, "removed"))
+            elif relative not in expected:
+                moved.append((relative, "added"))
+            elif _signature(present[relative]) != expected[relative]:
+                moved.append((relative, "changed"))
+        return moved
+
     def commit(self, verified=False):
-        """Put the staged engine in place of `out`; returns (added, changed, removed)."""
+        """Put the staged engine in place of `out`; returns (added, changed, removed).
+
+        `verified` says this run proved the staged engine by building and testing it (verify.py).
+        A verified commit is held to every input of that proof, not only to the paths it writes:
+        see `drift` and `_commit_existing` (#335).
+        """
         added, changed, removed = self.plan()
         if self.fresh:
             self._commit_fresh()
         else:
-            self._commit_existing(added, changed, removed)
+            self._commit_existing(added, changed, removed, verified)
         self.committed = True
         if self.log is not None:
             # "wrote", not "committed": this puts files in place in --out and makes no git commit
@@ -369,7 +408,7 @@ class Stage:
                                   f"directories made for it failed too ({second})", rolled_back=False)
             raise CommitError(f"moving the staged engine to {self.out} failed ({error})", rolled_back=True)
 
-    def _commit_existing(self, added, changed, removed):
+    def _commit_existing(self, added, changed, removed, verified=False):
         linked = sorted({f"{p} (through {link})" for p in added + changed + removed
                          for link in [_symlink_on(self.out, p)] if link is not None})
         if linked:
@@ -377,6 +416,20 @@ class Stage:
                                       f"writing through it would change files outside --out, so nothing was "
                                       f"written. Replace the link with a real file or directory and run produce "
                                       f"again")
+        if verified:
+            # #335. The staged engine was built and tested as a whole, so the proof is over every
+            # input of it, not over the paths this run happens to write. Committing the writes over
+            # an --out whose other inputs have moved would leave a tree nothing ever built, reported
+            # as verified. Refused before a byte is written, so the concurrent edit stands: it is
+            # the engine's, and the answer is to build and test the engine with it, not to lose it.
+            drifted = self.drift()
+            if drifted:
+                raise intake_step.Refused(
+                    f"--out changed after the engine was verified "
+                    f"({', '.join(f'{path} ({reason})' for path, reason in drifted)}); the engine that was "
+                    f"built and tested was made from --out as it stood when produce started, so committing "
+                    f"over it would report an engine as verified that was never built. Nothing was written "
+                    f"and the change in --out is untouched; run produce again to verify the engine with it")
         moved = [p for p in added if os.path.lexists(_native(self.out, p))]
         moved += [p for p in changed + removed
                   if not os.path.isfile(_native(self.out, p)) or _signature(_native(self.out, p)) != self.snapshot[p]]

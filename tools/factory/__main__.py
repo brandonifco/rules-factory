@@ -189,7 +189,11 @@ def produce(args):
             relock = verify_step.pins_changed(pins_before, verify_step.read_pins(out))
             overridden = verify_step.verify_staged(out, recompute_provenance, args.package, log=sys.stdout,
                                                    after_restore=record_lock_files, relock=relock)
-        added, changed, removed = stage.commit()
+        # The same expression decides the guard and the word on the last line, so the two can never
+        # drift apart: a run that will say "verified" is held to every input verify built and tested
+        # (transaction.Stage.drift, #335), and a --no-verify run, which claims nothing about a build,
+        # is held only to the paths it writes, as before.
+        added, changed, removed = stage.commit(verified=not args.no_verify)
 
     if getattr(args, "produce_report", None):
         write_produce_report(args.produce_report, before, document, added, changed, removed)

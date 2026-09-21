@@ -359,6 +359,101 @@ class TestProduce(VerifyCase):
                          f"produced {NAME} in {out}, NOT VERIFIED" + NOT_VERIFIED_TAIL)
 
 
+class TestAVerifiedProduceCommitsWhatItVerified(VerifyCase):
+    """#335: produce refuses to call a tree verified when --out moved after the gate ran on it.
+
+    Independent review reproduced this: an engine-owned source file edited in --out while produce
+    ran was kept -- which is right -- and the run committed its generated files over it and printed
+    `verified`, though the engine the gate built and tested had the old source in it and the
+    engine now on disk had never been built at all.
+
+    Each assertion names the refusal's own words and the path it names, not the exit code alone:
+    a verify failure, a symlink in --out and the older mutation-set refusal all end a produce the
+    same way, so `code == 1` would pass on any of them for the wrong reason (#283).
+    """
+
+    def assert_no_staging(self, parent):
+        self.assertEqual([n for n in os.listdir(parent) if ".factory-produce-" in n], [])
+
+    def read(self, relative):
+        with open(os.path.join(self.engine, *relative.split("/")), encoding="utf-8") as handle:
+            return handle.read()
+
+    def edit_out_during_verify(self, edit):
+        """Run `edit(--out)` while verify is building and testing the staging copy."""
+        real = verify_step.verify_staged
+
+        def edit_then_verify(root, *args, **kwargs):
+            edit(self.engine)
+            return real(root, *args, **kwargs)
+        return mock.patch.object(verify_step, "verify_staged", edit_then_verify)
+
+    def produce_with(self, edit):
+        with mock.patch.dict(os.environ, self.env), self.edit_out_during_verify(edit):
+            return self.produce_into(self.engine)
+
+    def test_an_engine_owned_source_edited_during_verify_refuses_and_keeps_the_edit(self):
+        source = f"src/{NAME}/{NAME}.csproj"
+        mine = self.read(source) + "<!-- my own ItemGroup -->\n"
+
+        def edit(out):
+            with open(os.path.join(out, *source.split("/")), "w", encoding="utf-8") as handle:
+                handle.write(mine)
+        code, output = self.produce_with(edit)
+        self.assertEqual(code, 1, output)
+        self.assertIn("--out changed after the engine was verified", output)
+        self.assertIn(f"{source} (changed)", output)
+        self.assertIn("run produce again to verify the engine with it", output)
+        self.assertIn("Nothing was produced.", output)
+        self.assertNotIn(f"produced {NAME} in", output)
+        # The edit stands, and nothing the run staged -- the lock files restore wrote above all --
+        # was written over it.
+        self.assertEqual(self.read(source), mine)
+        self.assertEqual(verify_step.lock_files(self.engine), [])
+        self.assert_no_staging(self.tmp)
+
+    def test_a_source_file_added_to_out_during_verify_refuses(self):
+        added = f"src/{NAME}/MyRule.cs"
+
+        def edit(out):
+            with open(os.path.join(out, *added.split("/")), "w", encoding="utf-8") as handle:
+                handle.write("// a rule of my own\n")
+        code, output = self.produce_with(edit)
+        self.assertEqual(code, 1, output)
+        self.assertIn("--out changed after the engine was verified", output)
+        self.assertIn(f"{added} (added)", output)
+        self.assertTrue(os.path.isfile(os.path.join(self.engine, *added.split("/"))))
+        self.assert_no_staging(self.tmp)
+
+    def test_test_output_written_during_verify_is_not_an_input_and_the_engine_is_committed(self):
+        """The guard is no broader than necessary: TRX files are the gate's output, not its input."""
+        def edit(out):
+            os.makedirs(os.path.join(out, "TestResults"), exist_ok=True)
+            with open(os.path.join(out, "TestResults", "run.trx"), "w", encoding="utf-8") as handle:
+                handle.write("<TestRun />\n")
+        code, output = self.produce_with(edit)
+        self.assertEqual(code, 0, output)
+        self.assertEqual(output.splitlines()[-1], f"produced {NAME} in {self.engine}, verified")
+        self.assertEqual(self.read("TestResults/run.trx"), "<TestRun />\n")
+        self.assertEqual(len(verify_step.lock_files(self.engine)), 2, "the verified engine was committed")
+
+    def test_a_no_verify_produce_is_not_held_to_a_build_it_never_made(self):
+        """--no-verify claims nothing about a build, so a concurrent edit is kept and the run goes on."""
+        source = f"src/{NAME}/{NAME}.csproj"
+        mine = self.read(source) + "<!-- my own ItemGroup -->\n"
+        real = factory.transaction.Stage.commit
+
+        def edit_then_commit(stage, *args, **kwargs):
+            with open(os.path.join(self.engine, *source.split("/")), "w", encoding="utf-8") as handle:
+                handle.write(mine)
+            return real(stage, *args, **kwargs)
+        with mock.patch.object(factory.transaction.Stage, "commit", edit_then_commit):
+            code, output = self.produce_into(self.engine, "--no-verify")
+        self.assertEqual(code, factory.NOT_VERIFIED, output)
+        self.assertNotIn("changed after the engine was verified", output)
+        self.assertEqual(self.read(source), mine)
+
+
 class TestExitCodes(VerifyCase):
     """What a caller reading only the exit code learns.
 
