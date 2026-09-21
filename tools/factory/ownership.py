@@ -87,8 +87,9 @@ TABLE = (
     Row("scripts/engine-gate.py", GENERATED, None, "the gate recipe: its non-dotnet checks"),
     Row("scripts/factory/*.py", GENERATED, None, "the factory's generator, vendored so the gate can regenerate"),
     Row(".github/workflows/validate.yml", GENERATED, None, "the gate recipe: CI runs validate.sh full"),
-    Row("AGENTS.md", MANAGED, 13,
-        "the governing contract every agent works this engine under (decision 0029)"),
+    Row("AGENTS.md", MANAGED, 14,
+        "the governing contract every agent works this engine under (decision 0029); section 4 carries "
+        "the sweep, the documentation section, and delete-only-what-you-created (#236)"),
     Row("CLAUDE.md", MANAGED, 1,
         "a pointer to AGENTS.md and the Claude adapters; it states no rule of its own (0029)"),
     Row("docs/agent-team.md", MANAGED, 5, "the four roles, and what each may not do (0029)"),
@@ -110,8 +111,9 @@ TABLE = (
         "a record a merge left conflicted is named as one, and --resolve-record settles it (#252)"),
     Row("tools/review-packet.py", MANAGED, 5,
         "everything a reviewer needs about one pull request, in the order it is read (0029)"),
-    Row("tools/pr-policy.py", MANAGED, 5,
-        "the pull request contract, checked mechanically; a produce update's claim is checked, not taken (#193)"),
+    Row("tools/pr-policy.py", MANAGED, 6,
+        "the pull request contract, checked mechanically; a produce update's claim is checked, not taken "
+        "(#193); every document the engine owns is accounted for (#236)"),
     Row("tools/record-verdict.py", MANAGED, 2,
         "a review verdict as a commit status on the exact commit reviewed (0029)"),
     Row("tools/conformance-gate.py", MANAGED, 2,
@@ -119,7 +121,8 @@ TABLE = (
         "file list is undecidable (0029, #193)"),
     Row("tools/requeue-gate.py", MANAGED, 1,
         "asks the gate to report again at the commit a recorded verdict names (#191)"),
-    Row(".github/pull_request_template.md", MANAGED, 2, "the pull request shape pr-policy.py checks (0029)"),
+    Row(".github/pull_request_template.md", MANAGED, 3,
+        "the pull request shape pr-policy.py checks, documentation section included (0029, #236)"),
     Row(".github/workflows/pr-policy.yml", MANAGED, 1, "the required check that runs pr-policy.py (0029)"),
     Row(".github/workflows/conformance-gate.yml", MANAGED, 2,
         "the required check that runs conformance-gate.py (0029)"),
@@ -268,6 +271,7 @@ RECIPE_SHA256 = {
         11: "721a114e68f56017c2c1319c2ea6202cf3af5bdef2eb9351f8fc088e333b6d50",
         12: "7a3bc27f251ff1a274838e5e55cb546392138dd675d668c4d94bf2173d2fb8a5",
         13: "151fe700348b37cf59f6fb4bbab5ef57dff7e41c0f080c0f78d4fbe4ab2dc011",
+        14: "1e3f3666d4812f88e9cd24347c96794c7d7115bfbd2af78c8bceb30bfbb8fb8d",
     },
     "CLAUDE.md": {
         1: "04c07ad36e742fa60efafeca54d20bd96d16b6e338a44e46fad2b679ab8dfd9f",
@@ -316,6 +320,7 @@ RECIPE_SHA256 = {
         3: "fc3ca4f9571e3276b7208a5927cdcef01da852ae97972a5c47663fe7391703eb",
         4: "1100f4005be978240ddd1f4ddb5001fefae8a89dff85818784dfe2e54ff61f8f",
         5: "c17dbf45d593454342680dc2b8333c88028ce9ec23367bdc668e8204202d4dc1",
+        6: "308cbb15d1d908bc8db2c326633bd3ff7da97cc9447c057ba63fd81cc3574db5",
     },
     "tools/record-verdict.py": {
         1: "48f7b11f7fc829cdaebd776a3eb5db04e27cade97c427c6806b72f58805d83db",
@@ -331,6 +336,7 @@ RECIPE_SHA256 = {
     ".github/pull_request_template.md": {
         1: "e2cebc6419d62e2df3b218d76462caf807d6637f2b305ac2aa11153f13304a92",
         2: "8b679be11d7a53d3df4ee29fa687bff03042da01efa46a639da1d70e5dfe4234",
+        3: "89a364ba817959aa0c3842b1fa3a9138df39d2dccd9f59f04ba33ce90d064f71",
     },
     ".github/workflows/pr-policy.yml": {
         1: "caa3394a473d5fdd45b274176d8e28c48d9f5425176318194ba68fbea8453fa2",
@@ -347,7 +353,7 @@ RECIPE_SHA256 = {
         2: "340004575c29918f4dcbdacc7c1aef7f970e60bb270832901ae501bcb61b0b30",
         3: "1ae43e922fbbe2cdcd4e1ed2708ac7377d644d7cdfac63a95cda2d37d7ef276b",
         4: "4af176ea1850a69a148973f301a12ef6dafbd125ecc3d3bd4afff5c8581709f6",
-        5: "15f6fb968659a710181f0874c7068a20e80dd977f3a64a457c51168ac8c65c65",
+        5: "52b5f1dd0a9e253502cbefb03bc1583abe2f4c4e3931512d012bc5c221dbe627",
     },
     ".editorconfig": {
         1: "4109d1ef55053ef656e536d7818934deb73016fbe950f153bae6b2a163591cb2",

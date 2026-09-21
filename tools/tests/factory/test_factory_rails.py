@@ -184,6 +184,11 @@ class TestTheEmittedRails(unittest.TestCase):
             for forbidden in (NAME, "FaaPart107", "HoyleBackgammon", "RulesFactory.Maps"):
                 self.assertNotIn(forbidden, text, f"{relative} names an engine or a map")
 
+    def section_four(self):
+        """AGENTS.md section 4, as one line: what it says, not how it happens to be wrapped."""
+        section = self.emitted["AGENTS.md"].split("## 4. ")[1].split("\n## ")[0]
+        return " ".join(section.split())
+
     def test_the_contract_says_to_delete_only_what_was_created_and_by_exact_path(self):
         """The engine's AGENTS.md §4 carries the rule and the incident that bought it (#236).
 
@@ -193,16 +198,17 @@ class TestTheEmittedRails(unittest.TestCase):
         dispatches concurrent agents the same way and had no such sentence. The date is asserted
         because a rule with its reason removed is a rule the next agent argues with.
         """
-        section = self.emitted["AGENTS.md"].split("## 4. ")[1].split("\n## ")[0]
-        for needed in ("only what it created", "by its exact path", "never by wildcard",
+        section = self.section_four()
+        for needed in ("Delete only what you created", "by its exact path", "never by wildcard",
                        "2026-09-17", "tools/dispatch-agent.sh --sweep"):
             self.assertIn(needed, section, f"AGENTS.md section 4 does not say {needed!r}")
 
     def test_the_contract_names_the_documentation_the_pull_request_must_account_for(self):
         # The contract and tools/pr-policy.py are emitted together; a section the checker requires
         # and the contract does not mention is a rule an agent meets by accident (#236).
-        section = self.emitted["AGENTS.md"].split("## 4. ")[1].split("\n## ")[0]
-        self.assertIn("a line for every living document", section)
+        section = self.section_four()
+        self.assertIn("a line for every living document this engine owns", section)
+        self.assertIn("`## Documentation` line per document", section)
         self.assertIn("tools/pr-policy.py --docs-skeleton", section)
 
     def test_the_settings_run_the_guard_without_an_executable_bit(self):
@@ -1521,9 +1527,13 @@ ceiling instead of declining" (observed).""", "Tests pass.")
 
     def test_a_change_off_the_semantic_surface_need_not_name_an_entry(self):
         self.produced()
+        self.document("README.md")
         conformance = GOOD_PR_BODY.split("## Map and rules conformance")[1].split("## Tests")[0]
-        self.pull_request(body=GOOD_PR_BODY.replace(conformance, "\n\nN/A\n\n"),
-                          files=[{"path": "README.md"}])
+        # The README is off the semantic surface and is a document, so it is accounted for under
+        # `## Documentation` and names no entry (#236).
+        body = self.listing("- [x] `README.md` — updated: the engine's own overview").replace(
+            conformance, "\n\nN/A\n\n")
+        self.pull_request(body=body, files=[{"path": "README.md"}])
         done = self.policy_check()
         self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
 
@@ -1749,7 +1759,7 @@ class TestAProduceUpdateIsAPullRequestLikeAnyOther(TestPrPolicy):
                 + [item if isinstance(item, dict) else {"path": item, "changeType": "MODIFIED"}
                    for item in extra])
 
-    def produce_body(self, section=None, evidence=PRODUCE_EVIDENCE, conformance=None):
+    def produce_body(self, section=None, evidence=PRODUCE_EVIDENCE, conformance=None, files=()):
         """GOOD_PR_BODY turned into the factory update it would be: the produce section added, the
         entry and locator dropped, and the produce evidence in place of the mutation."""
         record = self.record()
@@ -1765,13 +1775,25 @@ class TestAProduceUpdateIsAPullRequestLikeAnyOther(TestPrPolicy):
 - owner's rulings used, if any: none""",
                             conformance if conformance is not None else
                             f"- map package and version: {record['map']['packageId']} {record['map']['version']}")
-        old_evidence = GOOD_PR_BODY.split("## Tests and evidence")[1].split("## Determinism")[0]
-        return body.replace(old_evidence, f"\n\n{evidence}\n") if evidence is not None else body
+        # Split at `## Documentation`, which now sits between the evidence and the determinism:
+        # replacing as far as `## Determinism` would delete a required section from this fixture.
+        old_evidence = GOOD_PR_BODY.split("## Tests and evidence")[1].split("## Documentation")[0]
+        if evidence is not None:
+            body = body.replace(old_evidence, f"\n\n{evidence}\n")
+        # Every `*.md` a produce moves is listed as `updated`. This is the case #236 keeps rather
+        # than waives: the rails are documents, and a produce is the one thing that changes them.
+        moved = sorted(item["path"] for item in files if item["path"].endswith(".md"))
+        if moved:
+            body = body.replace(
+                "None: this engine has no documents of its own, and nothing here changes one.",
+                "\n".join(f"- [x] `{path}` — updated: the recipe this produce brought" for path in moved))
+        return body
 
     def produce_request(self, body=None, **extra):
         self.commit_engine()
-        self.pull_request(body=self.produce_body() if body is None else body,
-                          files=extra.pop("files", None) or self.produced_files(), **extra)
+        files = extra.pop("files", None) or self.produced_files()
+        self.pull_request(body=self.produce_body(files=files) if body is None else body,
+                          files=files, **extra)
 
     def test_a_produce_update_passes(self):
         self.produce_request()
@@ -1840,7 +1862,8 @@ class TestAProduceUpdateIsAPullRequestLikeAnyOther(TestPrPolicy):
         tests below are the same diff with each of those two facts taken away.
         """
         self.commit_engine()
-        self.pull_request(body=self.produce_body(), files=self.retired_files(), base_record=self.retired_base())
+        files = self.retired_files()
+        self.pull_request(body=self.produce_body(files=files), files=files, base_record=self.retired_base())
         done = self.policy_check()
         self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
         self.assertIn("claim was admitted", done.stdout)
@@ -3177,6 +3200,13 @@ def array(items):
 
 if argv[0] == "repo" and argv[1] == "view":
     print(json.dumps({"nameWithOwner": state["repo"]}))
+    raise SystemExit(0)
+
+if argv[0] == "pr" and argv[1] == "list":
+    # The doctor's leftovers row (#236). This fixture is about what GitHub enforces, not about
+    # what has merged, so the answer is "nothing has" -- which is an answer, and keeps the row
+    # OK rather than NOT CHECKED for every ruleset test below.
+    print(json.dumps(state.get("mergedPulls") or []))
     raise SystemExit(0)
 
 assert argv[0] == "api", argv

@@ -148,6 +148,15 @@ def leftover_rows(local):
         return ([row(LEFTOVERS, NOT_CHECKED, "--local: merged pull requests were not read, so a worktree or "
                                              "branch left behind by merged work is not reported")],
                 [f"what merged work left behind was not examined (--local); `{SWEEP}` is what removes it"])
+    # A tree that is not its own repository has no worktree and no branch to have left anything
+    # behind, and that is an answer rather than a gap. It is asked first, and by comparing the top
+    # level with this tree rather than by asking whether git works at all: an engine produced into
+    # a directory *inside* another repository answers every git question below with that
+    # repository's worktrees and branches, which is a report about somebody else.
+    top, _ = git("rev-parse", "--show-toplevel")
+    if top is None or os.path.realpath(top.strip()) != os.path.realpath(str(ROOT)):
+        return [row(LEFTOVERS, OK, "this tree is not a git repository of its own, so it holds no "
+                                   "worktree and no branch that merged work could have left behind")], []
     heads, why = merged_heads()
     if heads is None:
         return ([row(LEFTOVERS, NOT_CHECKED, f"merged pull requests could not be read ({why})")],
