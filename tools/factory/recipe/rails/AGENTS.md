@@ -225,14 +225,19 @@ decline that names why and cites where — that is the engine working, not the e
 - **Report what happened, not what should have happened.** Paste the command and its actual
   output. "Tests pass" is not evidence; a run is.
 - **A reviewer is given the context, not asked to find it.** `tools/review-packet.py <pr number>`
-  assembles the issue, the claim, the entries as the map has them, the overlay's before and after,
-  the bounded diff and what must be green. Its sections are in the order a semantic reviewer reads
-  them: the entry before the implementation, always.
-- **A verdict names a commit.** `tools/record-verdict.py --pr <n> --reviewer <id> --verdict
-  pass|fail` records it as a commit status on the pull request's head SHA, and
-  `tools/conformance-gate.py` requires it there. A further commit therefore invalidates the review
-  that preceded it, automatically, because the status is on the bytes that were actually read. A
-  verdict that lives only in a conversation is worth nothing to this repository.
+  snapshots the pull request's exact head commit, then assembles the issue, the claim, the entries
+  as that commit has them, the overlay's before and after, the bounded base-to-head diff and what
+  must be green. Its sections are in the order a semantic reviewer reads them: the entry before the
+  implementation, always. File output includes the human packet, its entry packets and a
+  `*.review.json` identity that names the exact head/base commits and hashes the packet bytes,
+  reviewed policy and provenance context. The caller's checkout is not review evidence.
+- **A verdict consumes the packet identity.** `tools/record-verdict.py --pr <n> --packet
+  <packet.review.json> --reviewer <id> --verdict pass|fail` verifies those packet bytes and
+  records the status only when the pull request still has the exact reviewed head. It takes the
+  review context from that packet, not from the caller's checkout. A later commit is therefore
+  refused rather than inheriting an earlier review; regenerate the packet and review the new
+  bytes. Legacy commit statuses remain readable, but a new verdict is never inferred from the
+  current head. A verdict that lives only in a conversation is worth nothing to this repository.
 
   **What the verdict gate proves, and what it does not.** A verdict is a commit status, and
   **anyone who can write a commit status on this repository can post one**: any collaborator with

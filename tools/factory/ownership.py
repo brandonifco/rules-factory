@@ -87,11 +87,11 @@ TABLE = (
     Row("scripts/engine-gate.py", GENERATED, None, "the gate recipe: its non-dotnet checks"),
     Row("scripts/factory/*.py", GENERATED, None, "the factory's generator, vendored so the gate can regenerate"),
     Row(".github/workflows/validate.yml", GENERATED, None, "the gate recipe: CI runs validate.sh full"),
-    Row("AGENTS.md", MANAGED, 10,
+    Row("AGENTS.md", MANAGED, 11,
         "the governing contract every agent works this engine under (decision 0029)"),
     Row("CLAUDE.md", MANAGED, 1,
         "a pointer to AGENTS.md and the Claude adapters; it states no rule of its own (0029)"),
-    Row("docs/agent-team.md", MANAGED, 4, "the four roles, and what each may not do (0029)"),
+    Row("docs/agent-team.md", MANAGED, 5, "the four roles, and what each may not do (0029)"),
     Row(".claude/agents/engine-dev.md", MANAGED, 8, "the implementer's charter (0029)"),
     Row(".claude/agents/repo-steward.md", MANAGED, 1, "the structural reviewer's charter, read-only (0029)"),
     Row(".claude/agents/rules-conformance.md", MANAGED, 3, "the semantic reviewer's charter, read-only (0029)"),
@@ -106,11 +106,11 @@ TABLE = (
         "the bounded assignment for one entry, assembled from merge(package, overlay) (0029)"),
     Row("tools/re-produce.sh", MANAGED, 4,
         "an overlay edit is finished by a re-produce, from the factory commit the record names (#192)"),
-    Row("tools/review-packet.py", MANAGED, 3,
+    Row("tools/review-packet.py", MANAGED, 4,
         "everything a reviewer needs about one pull request, in the order it is read (0029)"),
     Row("tools/pr-policy.py", MANAGED, 5,
         "the pull request contract, checked mechanically; a produce update's claim is checked, not taken (#193)"),
-    Row("tools/record-verdict.py", MANAGED, 1,
+    Row("tools/record-verdict.py", MANAGED, 2,
         "a review verdict as a commit status on the exact commit reviewed (0029)"),
     Row("tools/conformance-gate.py", MANAGED, 2,
         "whether the verdicts this change needs are recorded at the commit being merged; a truncated "
@@ -262,6 +262,7 @@ RECIPE_SHA256 = {
         8: "0dca04ff9fd39143f1d241c4f02d14dd54576524c9596e76539a5572a552be14",
         9: "64a111b943a7eb632f9d0bbd9ec065e4ddb6e7df625944b923c100da6871251f",
         10: "956af7bde2aaa84131f1dc88402d8f16a90715325c01381cafe626c97b187664",
+        11: "721a114e68f56017c2c1319c2ea6202cf3af5bdef2eb9351f8fc088e333b6d50",
     },
     "CLAUDE.md": {
         1: "04c07ad36e742fa60efafeca54d20bd96d16b6e338a44e46fad2b679ab8dfd9f",
@@ -271,6 +272,7 @@ RECIPE_SHA256 = {
         2: "2972f4cdb30b4549639dc34de2fd47b8b06e0c680ef41e88de701ccfa66abb4d",
         3: "ae9c54d7236adca8507e673d77b51e6431a48f4a3c29af40d7420ea2810e8521",
         4: "1806e2679578deb3f6b59c920e1c209fb5c5606f36a07d1b8b9a942994103379",
+        5: "f7f114fc7b8a74239a2f5fba97aadf69d5252e7683aa6061a5f9052c7b981689",
     },
     "tools/dispatch-agent.sh": {
         1: "868ce983b51d784a83a6a0fcac7456608b31f0af025c75ac5eeac64a373dca2b",
@@ -298,6 +300,7 @@ RECIPE_SHA256 = {
         1: "2e989c02c1827bf6d3da8fce9a35874e25ea4baf14f62eeb64aab78c30b1f392",
         2: "7dc52854df87a7837deb0cb7373258e4f7516ad23a9984b7ee20813eefbc5d50",
         3: "5aa2d79176eea614b082653946c8ad48783dc2e8dc3966ae5b5894e83246f59e",
+        4: "bc80949e2aa1a788ed72f9574ebe85846646200fb574a5cafa451f67bc08b2a9",
     },
     "tools/pr-policy.py": {
         1: "79a33c7fe1ea8d888e4d6912a43ac60afe285c7a8bf43fbe9f7be87d6947b76e",
@@ -308,6 +311,7 @@ RECIPE_SHA256 = {
     },
     "tools/record-verdict.py": {
         1: "48f7b11f7fc829cdaebd776a3eb5db04e27cade97c427c6806b72f58805d83db",
+        2: "befcec43518715bf0604f182b2edea5dea340f4979adfd6d49072a3b50184f84",
     },
     "tools/conformance-gate.py": {
         1: "567972b60f16d1f86c661e97efa56fa2878c9a5aa92fb820c4aea07a402cbd24",

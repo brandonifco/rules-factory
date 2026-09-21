@@ -899,6 +899,109 @@ class TestTheReviewPacket(RailsInAGitEngine):
         self.assertIn("rules-verdict/acme", text)
         self.assertNotIn("codex", text, "no script names a provider; the policy does")
 
+    def test_packet_context_comes_from_the_pr_head_not_the_caller_checkout(self):
+        # #334: the old packet put head B in its heading while reading policy, provenance and
+        # entry context from checkout A. The review then named bytes it had not actually shown.
+        self.commit_engine()
+        head = self.change()
+        policy_path = os.path.join(self.out, ".github", "agent-policy.json")
+        policy = json.load(open(policy_path, encoding="utf-8"))
+        policy["review"]["semanticContext"] = "rules-verdict/head-b"
+        with open(policy_path, "w", encoding="utf-8") as handle:
+            json.dump(policy, handle, indent=2)
+            handle.write("\n")
+        git(self.out, "add", ".github/agent-policy.json")
+        git(self.out, "commit", "-qm", "change the review context on the pull request")
+        head = git(self.out, "rev-parse", "HEAD")
+        self.pull_request(head)
+
+        # The object for B exists, but the process is deliberately launched from A.
+        git(self.out, "checkout", "-q", "main")
+        out = os.path.join(self.tmp, "head-bound-packet")
+        done = self.packet("--out", out)
+        self.assertEqual(done.returncode, 0, done.stderr)
+
+        review_path = os.path.join(out, f"pr-5-{head[:12]}.md")
+        entry_path = os.path.join(out, "entry-altitude-limit.md")
+        manifest_path = os.path.join(out, f"pr-5-{head[:12]}.review.json")
+        self.assertTrue(os.path.isfile(manifest_path), "the human packet has no machine-readable identity")
+        review = open(review_path, encoding="utf-8").read()
+        entry = open(entry_path, encoding="utf-8").read()
+        self.assertIn("rules-verdict/head-b", review,
+                      "the packet named B but read review policy from checkout A")
+        self.assertIn('"status": "implemented"', entry,
+                      "the entry packet named B but was generated from checkout A's overlay")
+
+        manifest = json.load(open(manifest_path, encoding="utf-8"))
+        self.assertEqual(manifest["reviewedCommit"], head)
+        self.assertEqual(manifest["reviewPacket"]["sha256"],
+                         hashlib.sha256(open(review_path, "rb").read()).hexdigest())
+        self.assertEqual(manifest["entryPackets"][0]["sha256"],
+                         hashlib.sha256(open(entry_path, "rb").read()).hexdigest())
+
+    def test_the_reviewed_snapshot_is_removed_on_success_and_refusal(self):
+        self.commit_engine()
+        head = self.change()
+        self.pull_request(head)
+        before = git(self.out, "worktree", "list", "--porcelain")
+        done = self.packet("--stdout")
+        self.assertEqual(done.returncode, 0, done.stderr)
+        self.assertEqual(git(self.out, "worktree", "list", "--porcelain"), before,
+                         "successful packet assembly left its reviewed snapshot attached")
+
+        policy_path = os.path.join(self.out, ".github", "agent-policy.json")
+        with open(policy_path, "w", encoding="utf-8") as handle:
+            handle.write("{ not valid json\n")
+        git(self.out, "add", ".github/agent-policy.json")
+        git(self.out, "commit", "-qm", "break the policy at the reviewed head")
+        broken = git(self.out, "rev-parse", "HEAD")
+        self.pull_request(broken)
+        before = git(self.out, "worktree", "list", "--porcelain")
+        done = self.packet("--stdout")
+        self.assertEqual(done.returncode, 1, done.stdout + done.stderr)
+        self.assertIn("cannot be read at reviewed commit", done.stderr)
+        self.assertEqual(git(self.out, "worktree", "list", "--porcelain"), before,
+                         "refused packet assembly left its reviewed snapshot attached")
+
+    def test_a_real_packet_for_a_cannot_record_pass_after_the_pr_moves_to_b(self):
+        # #334 end to end: the actual packet producer binds A; after the PR moves, the actual
+        # recorder consumes that identity and refuses rather than posting a success to B.
+        self.commit_engine()
+        reviewed = self.change()
+        self.pull_request(reviewed)
+        out = os.path.join(self.tmp, "review-then-move")
+        done = self.packet("--out", out)
+        self.assertEqual(done.returncode, 0, done.stderr)
+        identity = os.path.join(out, f"pr-5-{reviewed[:12]}.review.json")
+        self.assertTrue(os.path.isfile(identity))
+
+        with open(os.path.join(self.out, "README.md"), "a", encoding="utf-8") as handle:
+            handle.write("\nadvance after review\n")
+        git(self.out, "add", "README.md")
+        git(self.out, "commit", "-qm", "advance after review")
+        advanced = git(self.out, "rev-parse", "HEAD")
+
+        with open(self.gh, "w", encoding="utf-8") as handle:
+            handle.write(GH_STATUS_STUB)
+        os.chmod(self.gh, 0o755)
+        statuses = os.path.join(self.tmp, "review-then-move-statuses.json")
+        with open(statuses, "w", encoding="utf-8") as handle:
+            json.dump({}, handle)
+        self.fixture({
+            "pr": {"5": {"number": 5, "headRefOid": advanced, "state": "OPEN"}},
+            "repo": {"nameWithOwner": "owner/engine"},
+        })
+        recorded = subprocess.run(
+            [sys.executable, os.path.join(self.out, "tools", "record-verdict.py"),
+             "--pr", "5", "--packet", identity, "--reviewer", "semantic", "--verdict", "pass"],
+            cwd=self.out, capture_output=True, text=True,
+            env={**self.environment(), "GH_STATUSES": statuses})
+        self.assertEqual(recorded.returncode, 1, recorded.stdout + recorded.stderr)
+        self.assertIn(reviewed[:12], recorded.stderr)
+        self.assertIn(advanced[:12], recorded.stderr)
+        self.assertEqual(json.load(open(statuses, encoding="utf-8")), {},
+                         "the real stale packet posted a status after the PR moved")
+
     def test_a_pull_request_closing_no_single_issue_is_refused(self):
         self.commit_engine()
         head = self.change()
@@ -917,10 +1020,19 @@ class TestTheReviewPacket(RailsInAGitEngine):
         written = done.stdout.split()
         self.assertEqual(written[0], os.path.join(out, f"pr-5-{head[:12]}.md"))
         self.assertEqual(written[1], os.path.join(out, "entry-altitude-limit.md"))
+        self.assertEqual(written[2], os.path.join(out, f"pr-5-{head[:12]}.review.json"))
         with open(written[0], encoding="utf-8") as handle:
             body = handle.read()
         digest = hashlib.sha256(open(written[1], "rb").read()).hexdigest()
         self.assertIn(digest, body, "the entry packet's digest, so two reviewers can prove they read the same entry")
+        identity = json.load(open(written[2], encoding="utf-8"))
+        self.assertEqual(identity["reviewedCommit"], head)
+        self.assertEqual(identity["baseCommit"], git(self.out, "rev-parse", "main"))
+        self.assertEqual(identity["reviewPacket"]["sha256"],
+                         hashlib.sha256(open(written[0], "rb").read()).hexdigest())
+        self.assertEqual(identity["reviewContext"]["policy"]["path"], ".github/agent-policy.json")
+        self.assertEqual(identity["reviewContext"]["provenance"]["path"], "provenance.json")
+        self.assertEqual(identity["reviewContext"]["map"]["packageId"], "RulesFactory.Maps.FaaPart107")
 
     def test_a_packet_inside_the_repository_is_refused(self):
         self.commit_engine()
@@ -1510,7 +1622,67 @@ if argv_api := [a for a in sys.argv[1:] if a.startswith("repos/")]:
             handle.write(GH_STATUS_STUB)
         os.chmod(self.gh, 0o755)
 
+    def review_identity(self, pr="5"):
+        """A format-1 review identity for the fixture's current PR head.
+
+        Most verdict tests are about status/gate semantics rather than packet assembly, so they use
+        this tiny mechanically self-consistent packet. TestTheReviewPacket proves the real producer.
+        """
+        fixture = json.load(open(self.fixture_path, encoding="utf-8"))
+        head = fixture["pr"][str(pr)]["headRefOid"]
+        directory = os.path.join(self.tmp, "record-packets")
+        os.makedirs(directory, exist_ok=True)
+
+        human = os.path.join(directory, f"pr-{pr}-{head[:12]}.md")
+        with open(human, "w", encoding="utf-8") as handle:
+            handle.write(f"# Review packet\n\nHead commit `{head}`.\n")
+
+        policy_path = os.path.join(self.out, ".github", "agent-policy.json")
+        provenance_path = os.path.join(self.out, "provenance.json")
+        policy_bytes = open(policy_path, "rb").read()
+        provenance_bytes = open(provenance_path, "rb").read()
+        policy = json.loads(policy_bytes)
+        provenance = json.loads(provenance_bytes)
+
+        identity = {
+            "reviewPacketFormat": 1,
+            "pullRequest": int(pr),
+            "reviewedCommit": head,
+            "baseCommit": "0" * 40,
+            "reviewPacket": {
+                "path": os.path.basename(human),
+                "sha256": hashlib.sha256(open(human, "rb").read()).hexdigest(),
+            },
+            "reviewContext": {
+                "policy": {
+                    "path": ".github/agent-policy.json",
+                    "sha256": hashlib.sha256(policy_bytes).hexdigest(),
+                    "semanticContext": policy["review"]["semanticContext"],
+                    "independentFallback": policy["review"]["independentFallback"],
+                },
+                "provenance": {
+                    "path": "provenance.json",
+                    "sha256": hashlib.sha256(provenance_bytes).hexdigest(),
+                },
+                "map": {
+                    "packageId": provenance["map"]["packageId"],
+                    "version": provenance["map"]["version"],
+                    "nupkgSha256": provenance["map"].get("nupkgSha256", ""),
+                },
+            },
+            "entryPackets": [],
+        }
+        path = os.path.join(directory, f"pr-{pr}-{head[:12]}.review.json")
+        with open(path, "w", encoding="utf-8") as handle:
+            json.dump(identity, handle, indent=2)
+            handle.write("\n")
+        return path
+
     def record(self, *args):
+        args = list(args)
+        if "--packet" not in args:
+            pr = args[args.index("--pr") + 1]
+            args += ["--packet", self.review_identity(pr)]
         return subprocess.run([sys.executable, os.path.join(self.out, "tools", "record-verdict.py"), *args],
                               cwd=self.out, capture_output=True, text=True,
                               env={**self.environment(), "GH_STATUSES": self.statuses})
@@ -1542,14 +1714,172 @@ if argv_api := [a for a in sys.argv[1:] if a.startswith("repos/")]:
         recorded = json.load(open(self.statuses, encoding="utf-8"))
         self.assertEqual(recorded["a" * 40]["rules-verdict/semantic"], "success")
 
+    def test_a_packet_for_an_earlier_head_cannot_pass_a_newer_head(self):
+        # #334: a reviewer forms a verdict on A, the pull request advances to B, and the recorder
+        # must consume A's packet identity rather than silently selecting B because it is current.
+        self.commit_engine()
+        git(self.out, "checkout", "-qb", "issue-27")
+        with open(os.path.join(self.out, "README.md"), "a", encoding="utf-8") as handle:
+            handle.write("\nreviewed A\n")
+        git(self.out, "add", "README.md")
+        git(self.out, "commit", "-qm", "reviewed state A")
+        reviewed = git(self.out, "rev-parse", "HEAD")
+
+        self.scenario(head=reviewed, files=[{"path": "README.md"}])
+        packet_dir = os.path.join(self.tmp, "verdict-packet")
+        os.makedirs(packet_dir)
+        packet_path = os.path.join(packet_dir, f"pr-5-{reviewed[:12]}.md")
+        with open(packet_path, "w", encoding="utf-8") as handle:
+            handle.write(f"# Review packet\n\nHead commit `{reviewed}`.\n")
+        policy_path = os.path.join(self.out, ".github", "agent-policy.json")
+        provenance_path = os.path.join(self.out, "provenance.json")
+        manifest_path = os.path.join(packet_dir, f"pr-5-{reviewed[:12]}.review.json")
+        policy_bytes = open(policy_path, "rb").read()
+        provenance_bytes = open(provenance_path, "rb").read()
+        policy = json.loads(policy_bytes)
+        provenance = json.loads(provenance_bytes)
+        manifest = {
+            "reviewPacketFormat": 1,
+            "pullRequest": 5,
+            "reviewedCommit": reviewed,
+            "baseCommit": git(self.out, "rev-parse", "main"),
+            "reviewPacket": {"path": os.path.basename(packet_path),
+                             "sha256": hashlib.sha256(open(packet_path, "rb").read()).hexdigest()},
+            "reviewContext": {
+                "policy": {
+                    "path": ".github/agent-policy.json",
+                    "sha256": hashlib.sha256(policy_bytes).hexdigest(),
+                    "semanticContext": policy["review"]["semanticContext"],
+                    "independentFallback": policy["review"]["independentFallback"],
+                },
+                "provenance": {
+                    "path": "provenance.json",
+                    "sha256": hashlib.sha256(provenance_bytes).hexdigest(),
+                },
+                "map": {
+                    "packageId": provenance["map"]["packageId"],
+                    "version": provenance["map"]["version"],
+                    "nupkgSha256": provenance["map"].get("nupkgSha256", ""),
+                },
+            },
+            "entryPackets": [],
+        }
+        with open(manifest_path, "w", encoding="utf-8") as handle:
+            json.dump(manifest, handle, indent=2)
+            handle.write("\n")
+
+        with open(os.path.join(self.out, "README.md"), "a", encoding="utf-8") as handle:
+            handle.write("advanced B\n")
+        git(self.out, "add", "README.md")
+        git(self.out, "commit", "-qm", "advance to state B")
+        advanced = git(self.out, "rev-parse", "HEAD")
+        self.scenario(head=advanced, files=[{"path": "README.md"}])
+
+        done = self.record("--pr", "5", "--reviewer", "semantic", "--verdict", "pass",
+                           "--packet", manifest_path)
+        self.assertEqual(done.returncode, 1, done.stdout + done.stderr)
+        self.assertIn(reviewed[:12], done.stderr)
+        self.assertIn(advanced[:12], done.stderr)
+        self.assertEqual(json.load(open(self.statuses, encoding="utf-8")), {},
+                         "a stale review posted a status to the newer head")
+
+    def test_sha_is_only_an_assertion_and_cannot_select_another_commit(self):
+        self.produced()
+        self.scenario(head="a" * 40)
+        identity = self.review_identity()
+        done = self.record("--pr", "5", "--reviewer", "semantic", "--verdict", "pass",
+                           "--packet", identity, "--sha", "b" * 40)
+        self.assertEqual(done.returncode, 1, done.stdout + done.stderr)
+        self.assertIn("--sha says", done.stderr)
+        self.assertIn("reviewed packet says", done.stderr)
+        self.assertEqual(json.load(open(self.statuses, encoding="utf-8")), {})
+
+    def test_a_tampered_human_packet_cannot_record_a_verdict(self):
+        self.produced()
+        self.scenario()
+        identity = self.review_identity()
+        document = json.load(open(identity, encoding="utf-8"))
+        human = os.path.join(os.path.dirname(identity), document["reviewPacket"]["path"])
+        with open(human, "a", encoding="utf-8") as handle:
+            handle.write("changed after review\n")
+        done = self.record("--pr", "5", "--reviewer", "semantic", "--verdict", "pass",
+                           "--packet", identity)
+        self.assertEqual(done.returncode, 1, done.stdout + done.stderr)
+        self.assertIn("review packet digest does not match", done.stderr)
+        self.assertEqual(json.load(open(self.statuses, encoding="utf-8")), {})
+
+    def test_a_tampered_entry_packet_cannot_record_a_verdict(self):
+        self.produced()
+        self.scenario()
+        identity = self.review_identity()
+        directory = os.path.dirname(identity)
+        entry_path = os.path.join(directory, "entry-altitude-limit.md")
+        with open(entry_path, "w", encoding="utf-8") as handle:
+            handle.write("# Entry packet: altitude-limit\n")
+        document = json.load(open(identity, encoding="utf-8"))
+        document["entryPackets"] = [{
+            "entryId": "altitude-limit",
+            "path": os.path.basename(entry_path),
+            "sha256": hashlib.sha256(open(entry_path, "rb").read()).hexdigest(),
+        }]
+        with open(identity, "w", encoding="utf-8") as handle:
+            json.dump(document, handle, indent=2)
+            handle.write("\n")
+        with open(entry_path, "a", encoding="utf-8") as handle:
+            handle.write("changed after review\n")
+
+        done = self.record("--pr", "5", "--reviewer", "semantic", "--verdict", "pass",
+                           "--packet", identity)
+        self.assertEqual(done.returncode, 1, done.stdout + done.stderr)
+        self.assertIn("entry packet 'altitude-limit' digest does not match", done.stderr)
+        self.assertEqual(json.load(open(self.statuses, encoding="utf-8")), {})
+
+    def test_the_verdict_context_is_the_reviewed_packet_s_not_the_caller_checkout_s(self):
+        self.produced()
+        self.scenario()
+        identity = self.review_identity()
+
+        path = os.path.join(self.out, ".github", "agent-policy.json")
+        policy = json.load(open(path, encoding="utf-8"))
+        policy["review"]["semanticContext"] = "rules-verdict/later-policy"
+        with open(path, "w", encoding="utf-8") as handle:
+            json.dump(policy, handle, indent=2)
+            handle.write("\n")
+
+        done = self.record("--pr", "5", "--reviewer", "semantic", "--verdict", "pass",
+                           "--packet", identity)
+        self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+        recorded = json.load(open(self.statuses, encoding="utf-8"))
+        self.assertIn("rules-verdict/semantic", recorded["a" * 40])
+        self.assertNotIn("rules-verdict/later-policy", recorded["a" * 40])
+
+    def test_recording_without_a_packet_identity_is_explicitly_refused(self):
+        self.produced()
+        self.scenario()
+        done = subprocess.run(
+            [sys.executable, os.path.join(self.out, "tools", "record-verdict.py"),
+             "--pr", "5", "--reviewer", "semantic", "--verdict", "pass"],
+            cwd=self.out, capture_output=True, text=True,
+            env={**self.environment(), "GH_STATUSES": self.statuses})
+        self.assertEqual(done.returncode, 1, done.stdout + done.stderr)
+        self.assertIn("review packet identity is required", done.stderr)
+        self.assertIn("Legacy verdict statuses remain readable", done.stderr)
+        self.assertEqual(json.load(open(self.statuses, encoding="utf-8")), {})
+
     def test_an_unconfigured_reviewer_is_refused_and_says_what_is_configured(self):
+        # The reviewer set is the reviewed packet's, not the engine's current policy, which is the
+        # whole of #334: a verdict is about the bytes somebody read. So the refusal names the
+        # packet and tells the caller to regenerate and re-review rather than to edit the policy
+        # -- editing it would make an old review answer a question it was never asked. This
+        # asserted the pre-#334 wording, and both halves of that wording are now wrong.
         self.produced()
         self.scenario()
         done = self.record("--pr", "5", "--reviewer", "a-friend", "--verdict", "pass")
         self.assertEqual(done.returncode, 1, done.stdout)
-        self.assertIn("not a reviewer this engine configures", done.stderr)
+        self.assertIn("not a reviewer configured by the reviewed packet", done.stderr)
         self.assertIn("Known: semantic", done.stderr)
-        self.assertIn("edit to .github/agent-policy.json", done.stderr)
+        self.assertIn("regenerate and re-review the packet", done.stderr)
+        self.assertNotIn("edit to .github/agent-policy.json", done.stderr)
 
     def test_the_gate_requires_a_semantic_verdict_for_semantic_work(self):
         self.produced()

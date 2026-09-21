@@ -49,8 +49,9 @@ Cheap, **read-only**, structural review on every pull request. It runs **first**
 review, so that a scope or evidence defect is found before expensive reasoning is spent on a
 change that is going back anyway.
 
-**Reads:** `tools/review-packet.py <pr number>`, which is the whole context — nothing here needs
-rediscovering from the diff.
+**Reads:** the human packet emitted by `tools/review-packet.py <pr number>`, which is the whole
+context — nothing here needs rediscovering from the diff. Keep its adjacent `*.review.json`
+identity: that is what binds the eventual verdict to these exact reviewed bytes.
 
 **Checks:** the change is within the issue's scope and contains nothing unrelated; generated
 files were not hand-edited and the ownership classes are respected; the determinism rules hold;
@@ -97,11 +98,13 @@ visible by recording the verdict under its own context rather than a generic one
 acceptance criteria. **It does not receive any other reviewer's conclusions** before producing
 its own.
 
-A verdict is recorded with `tools/record-verdict.py --pr <n> --reviewer <id> --verdict pass|fail`,
-under that provider's own context, and `tools/conformance-gate.py` requires it at the commit being
-merged. Recording it is the whole of the step: `.github/workflows/verdict-requeue.yml` asks the
-gate to report again at that commit, so a gate still red for a moment afterwards is bookkeeping
-catching up, not the verdict failing to register.
+A verdict is recorded with `tools/record-verdict.py --pr <n> --packet <packet.review.json>
+--reviewer <id> --verdict pass|fail`. The recorder verifies the human/entry packet digests, uses
+the review context captured from that reviewed commit, and refuses if the pull request has moved.
+`tools/conformance-gate.py` requires the resulting status at the commit being merged. Recording
+it is the whole of the step: `.github/workflows/verdict-requeue.yml` asks the gate to report again
+at that commit, so a gate still red for a moment afterwards is bookkeeping catching up, not the
+verdict failing to register.
 
 **The chain advances because a provider was unavailable, never because its verdict was
 unwelcome.** Unavailable means it could not be reached or returned no verdict at all. A provider
