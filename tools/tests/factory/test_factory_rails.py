@@ -2657,6 +2657,26 @@ def fields():
     return out
 
 
+def array(items):
+    """An array endpoint, printed the way `gh api` prints one (#237).
+
+    `--paginate` walks the pages and prints each as its own JSON array, so two pages leave
+    `[...][...]` on stdout -- two documents, which `json.loads` will not read. `--slurp` prints
+    the pages as one array of arrays instead. Without `--paginate` only the first page comes back,
+    as GitHub answers. `state["perPage"]` is the page size, so a fixture can hold a second page
+    without thirty labels in it.
+    """
+    size = int(state.get("perPage", 30))
+    pages = [items[at:at + size] for at in range(0, len(items), size)] or [[]]
+    if "--paginate" not in argv:
+        print(json.dumps(pages[0]))
+    elif "--slurp" in argv:
+        print(json.dumps(pages))
+    else:
+        for page in pages:
+            print(json.dumps(page))
+
+
 if argv[0] == "repo" and argv[1] == "view":
     print(json.dumps({"nameWithOwner": state["repo"]}))
     raise SystemExit(0)
@@ -2686,7 +2706,7 @@ elif endpoint.startswith(f"repos/{state['repo']}/labels"):
         save()
         print("{}")
     else:
-        print(json.dumps([{"name": n} for n in state["labels"]]))
+        array([{"name": n} for n in state["labels"]])
 elif endpoint == f"repos/{state['repo']}/rules/branches/{state['branch']}":
     # The rules GitHub enforces on the default branch, from every active ruleset at every level
     # whose conditions reach it. `state["inForce"]` set to an error is a token that may not read them.
@@ -2707,7 +2727,7 @@ elif endpoint == f"repos/{state['repo']}/rules/branches/{state['branch']}":
         for rule in ruleset.get("rules") or []:
             rules.append({**rule, "ruleset_source_type": level, "ruleset_id": ruleset["id"],
                           "ruleset_source": ruleset.get("source", state["repo"])})
-    print(json.dumps(rules))
+    array(rules)
 elif endpoint.startswith(f"repos/{state['repo']}/rulesets"):
     rest = endpoint.split("/rulesets")[1].strip("/")
     if method == "POST":
@@ -2728,10 +2748,12 @@ elif endpoint.startswith(f"repos/{state['repo']}/rulesets"):
         (found,) = [r for r in state["rulesets"] + state.get("orgRulesets", []) if r["id"] == int(rest)]
         print(json.dumps(found))
     else:
-        # An organization's rulesets come back beside the repository's own only when asked for.
-        parents = state.get("orgRulesets", []) if "includes_parents=true" in query else []
-        print(json.dumps([{"id": r["id"], "name": r["name"], "source_type": r.get("source_type", "Repository"),
-                           "source": r.get("source", state["repo"])} for r in state["rulesets"] + parents]))
+        # An organization's rulesets come back beside the repository's own unless the caller says
+        # otherwise: `includes_parents` defaults to true on GitHub, so a caller that picks a
+        # ruleset by name alone picks an organization's without knowing it (#231, #234).
+        parents = [] if "includes_parents=false" in query else state.get("orgRulesets", [])
+        array([{"id": r["id"], "name": r["name"], "source_type": r.get("source_type", "Repository"),
+                "source": r.get("source", state["repo"])} for r in state["rulesets"] + parents])
 else:
     sys.exit(f"unexpected gh api call: {endpoint}")
 '''
@@ -3024,6 +3046,18 @@ class TestFactoryRails(TestAProducedEngine):
         (line,) = [line for line in output.splitlines() if line.startswith(name + " ")]
         return line
 
+    def verdict(self, output, name):
+        """The state word of one row, whichever of the two tools printed it: each pads its own
+        rows to its own width, and what has to agree is the word, not the layout."""
+        return self.row(output, name)[len(name):].strip(" .").split("  -- ")[0].strip()
+
+    def doctor(self, *args):
+        """The engine's own `tools/agent-doctor.py`, reading the same fake repository."""
+        done = subprocess.run([sys.executable, os.path.join(self.out, "tools", "agent-doctor.py"), *args],
+                              cwd=self.out, capture_output=True, text=True,
+                              env={**os.environ, "RULES_ENGINE_GH": self.gh, "GH_REPO_STATE": self.state_path})
+        return done.returncode, done.stdout + done.stderr
+
     def test_a_chain_link_with_no_context_is_not_ok_and_every_judge_of_the_policy_agrees(self):
         # `tools/record-verdict.py` records under the link's context, so this reviewer can record
         # nothing; the engine gate said so and `--check` called the same file OK.
@@ -3170,6 +3204,160 @@ class TestFactoryRails(TestAProducedEngine):
         self.assertIn("OK", self.row(output, "Ruleset on main"))
         self.assertIn("WRONG", self.row(output, "Rules in force on main"))
         self.assertIn("GitHub does not enforce rules-factory-agent-rails's deletion", output)
+
+    # --- #237: a paginated read is pages, not one document ------------------------------------
+
+    FILLERS = ["bug", "chore", "documentation", "duplicate"]
+
+    def test_labels_on_a_later_page_are_not_missing(self):
+        # `gh api --paginate` prints each page as its own array, so `[...][...]` reached
+        # `json.loads`, failed, and `default=[]` turned the failure into "the repository has no
+        # labels": every required label was reported MISSING on a repository that had them all.
+        # The row and the reason are asserted, not the exit code alone (#283) -- the exit code was
+        # already right, for the wrong reason.
+        self.produced()
+        self.assertEqual(self.rails("--apply")[0], 0)
+        self.with_state(perPage=4, labels=self.FILLERS + self.read_state()["labels"])
+        code, output = self.rails("--check")
+        self.assertEqual(code, 0, output)
+        self.assertIn("OK", self.row(output, "Required labels"))
+        self.assertNotIn("the repository has no", output)
+
+    def test_apply_does_not_re_create_a_label_on_a_later_page(self):
+        # The other half of the same defect: `--apply` read "no labels" and posted the five it
+        # would have created, over labels that were already there.
+        self.produced()
+        self.assertEqual(self.rails("--apply")[0], 0)
+        self.with_state(perPage=4, labels=self.FILLERS + self.read_state()["labels"])
+        before = self.read_state()["labels"]
+        code, output = self.rails("--apply")
+        self.assertEqual(code, 0, output)
+        self.assertNotIn("created label", output)
+        self.assertEqual(self.read_state()["labels"], before, "--apply created a label that existed")
+
+    def test_a_ruleset_on_a_later_page_is_found(self):
+        # The same read shape, added for the rulesets in #234: there a parse failure reported
+        # MISSING rather than OK, and was still wrong about a repository whose rails are in place.
+        self.produced()
+        self.assertEqual(self.rails("--apply")[0], 0)
+        self.with_state(perPage=1, orgRulesets=[self.ORG_SIGNING])
+        code, output = self.rails("--check")
+        self.assertEqual(code, 0, output)
+        self.assertIn("OK", self.row(output, "Ruleset on main"))
+        self.assertNotIn("no ruleset named rules-factory-agent-rails", output)
+
+    def test_the_rules_in_force_on_a_later_page_are_verified(self):
+        # And the third: the rules GitHub enforces on the branch are an array endpoint too, and
+        # the factory's ruleset alone puts four rules in it. NOT VERIFIED is the honest word for a
+        # read that failed -- this one did not fail.
+        self.produced()
+        self.assertEqual(self.rails("--apply")[0], 0)
+        self.with_state(perPage=1, orgRulesets=[self.ORG_SIGNING])
+        code, output = self.rails("--check")
+        self.assertEqual(code, 0, output)
+        line = self.row(output, "Rules in force on main")
+        self.assertIn("OK", line)
+        self.assertNotIn("NOT VERIFIED", line)
+        self.assertIn("org-signed-commits (organization owner): required_signatures", line)
+
+    def test_the_doctor_reads_every_page_of_the_labels_too(self):
+        self.produced()
+        self.assertEqual(self.rails("--apply")[0], 0)
+        self.with_state(perPage=4, labels=self.FILLERS + self.read_state()["labels"])
+        code, output = self.doctor()
+        self.assertEqual(code, 0, output)
+        self.assertIn("OK", self.row(output, "Labels"))
+        self.assertNotIn("the repository has no", output)
+
+    # --- #231: the doctor judges a check by its pin, and the ruleset by its level --------------
+
+    def unpin(self, ruleset):
+        for rule in ruleset["rules"]:
+            if rule["type"] == "required_status_checks":
+                rule["parameters"]["required_status_checks"] = [
+                    {"context": context} for context in factory.rails_step.REQUIRED_CHECKS]
+
+    def another_app(self, ruleset):
+        for rule in ruleset["rules"]:
+            if rule["type"] == "required_status_checks":
+                for check in rule["parameters"]["required_status_checks"]:
+                    check["integration_id"] = self.APP + 1
+
+    def test_the_doctor_says_an_unpinned_required_check_is_not_in_place(self):
+        # The doctor reduced each required check to its context name, so a check anyone with
+        # status-write access could satisfy read OK in the engine's own report while
+        # `factory rails --check` called it WRONG (#231, #186). The row and the problem line are
+        # asserted, not the exit code: the doctor exits 1 for any problem at all, and did so here
+        # while saying this check was fine.
+        self.produced()
+        self.assertEqual(self.rails("--apply")[0], 0)
+        self.edit_ruleset(self.unpin)
+        code, output = self.doctor()
+        self.assertEqual(code, 1, output)
+        self.assertIn("WRONG", self.row(output, "Required check: conformance-gate"))
+        self.assertIn("conformance-gate is required but not pinned to the github-actions app", output)
+
+    def test_the_doctor_says_a_check_pinned_to_another_app_is_not_in_place(self):
+        self.produced()
+        self.assertEqual(self.rails("--apply")[0], 0)
+        self.edit_ruleset(self.another_app)
+        code, output = self.doctor()
+        self.assertEqual(code, 1, output)
+        self.assertIn("WRONG", self.row(output, "Required check: validate"))
+        self.assertIn(f"integration {self.APP + 1!r}, not {self.APP!r}", output)
+
+    def test_a_pin_neither_tool_can_judge_is_not_ok_in_either(self):
+        # Without the app's id the pin cannot be judged, and a row that could not judge it may not
+        # say OK (#211). It is not WRONG either: nothing was found wrong, nothing was verified.
+        self.produced()
+        self.assertEqual(self.rails("--apply")[0], 0)
+        state = self.read_state()
+        del state["app"]
+        with open(self.state_path, "w", encoding="utf-8") as handle:
+            json.dump(state, handle)
+        code, output = self.doctor()
+        self.assertEqual(code, 1, output)
+        self.assertIn("NOT VERIFIED", self.row(output, "Required check: validate"))
+        self.assertIn("would not say which app github-actions is", output)
+        self.assertIn("NOT VERIFIED", self.row(self.rails("--check")[1], "Required check: validate"))
+
+    def test_an_organization_ruleset_with_the_factory_s_name_is_not_the_factory_s_to_the_doctor(self):
+        # GitHub's ruleset list includes an organization's, so a doctor that found the factory's
+        # by name alone reported rails the repository does not have and `--apply` cannot write
+        # (#234 fixed the same defect in `factory rails --check`).
+        self.produced()
+        payload = factory.rails_step.ruleset_payload("main", self.APP)
+        self.with_state(rulesets=[], orgRulesets=[{**payload, "id": 902, "source_type": "Organization",
+                                                   "source": "owner"}])
+        code, output = self.doctor()
+        self.assertEqual(code, 1, output)
+        self.assertIn("MISSING", self.row(output, "Ruleset on main"))
+        self.assertIn("rules-factory-agent-rails (organization owner)", output)
+
+    def test_the_doctor_and_the_factory_agree_about_every_required_check(self):
+        # The acceptance of #231: one rule, imported by both, rather than a copy in each. Every
+        # fixture is a ruleset an admin can leave behind with the UI.
+        fixtures = {
+            "as the factory applies it": lambda ruleset: None,
+            "an unpinned check": self.unpin,
+            "a check pinned to another app": self.another_app,
+            "a dropped check": lambda ruleset: ruleset["rules"].__setitem__(
+                slice(None), [rule for rule in ruleset["rules"] if rule["type"] != "required_status_checks"]),
+        }
+        self.produced()
+        self.assertEqual(self.rails("--apply")[0], 0)
+        applied = json.dumps(self.read_state()["rulesets"])
+        for name, change in fixtures.items():
+            with self.subTest(name):
+                self.with_state(rulesets=json.loads(applied))
+                self.edit_ruleset(change)
+                doctor = self.doctor()[1]
+                checked = self.rails("--check")[1]
+                for context in factory.rails_step.REQUIRED_CHECKS:
+                    row = f"Required check: {context}"
+                    self.assertEqual(self.verdict(doctor, row), self.verdict(checked, row),
+                                     f"{row}: the doctor says {self.verdict(doctor, row)!r} and the factory "
+                                     f"{self.verdict(checked, row)!r}")
 
     def test_an_engine_with_no_policy_is_refused(self):
         self.produced()
