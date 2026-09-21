@@ -178,7 +178,11 @@ What never happens again is `NOT VERIFIED` on stdout and `0` in `$?`.
   tests in Debug and Release, with evidence that the tests ran: the result files are counted by
   *executed* outcomes, never by tests discovered, and every test project must have executed a test
   in every target framework, so a skipped suite or a framework that stopped running is a failure
-  and not a number ([#337](https://github.com/brandonifco/rules-factory/issues/337)). A refusal or failure at any step
+  and not a number ([#337](https://github.com/brandonifco/rules-factory/issues/337)). That expectation has one row per
+  test *project*, and which projects those are is asked of MSBuild rather than read out of the
+  project files, so a project that takes `IsTestProject` from an import is in it and two projects
+  behind one assembly name — which no result file could tell apart — are refused rather than
+  counted once ([#374](https://github.com/brandonifco/rules-factory/issues/374)). A refusal or failure at any step
   leaves `--out` as it was.
 - **Which SDK it proves.** For local runs only, `FACTORY_DOTNET_SDK_OVERRIDE` runs restore and the
   gate on another installed SDK, by re-pinning `global.json` for exactly as long as each takes —
