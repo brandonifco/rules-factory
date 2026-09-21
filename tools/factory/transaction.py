@@ -332,7 +332,7 @@ class Stage:
         removed = sorted(p for p in self.snapshot if p not in after)
         return added, changed, removed
 
-    def commit(self):
+    def commit(self, verified=False):
         """Put the staged engine in place of `out`; returns (added, changed, removed)."""
         added, changed, removed = self.plan()
         if self.fresh:
