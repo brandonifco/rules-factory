@@ -2,13 +2,13 @@
   "artifacts": [
     {
       "archive": null,
-      "bytes": 26528,
+      "bytes": 27159,
       "path": "examples/README.md",
       "readBy": [
         "links"
       ],
       "role": "active",
-      "sha256": "6a4712d853016dc0206231dc242ebcfccef5a632f938e1b7aab357bcc38ed0eb"
+      "sha256": "ce959ec991a9305a385bedec43e2247a588896988b8581ecb02362f10ab8e1ec"
     },
     {
       "archive": null,
@@ -24,8 +24,10 @@
       "archive": null,
       "bytes": 2248,
       "path": "examples/acceptance-4-5/check-provenance.sh",
-      "readBy": [],
-      "role": "archived",
+      "readBy": [
+        "checks"
+      ],
+      "role": "active",
       "sha256": "976e1bfd5a7759c3e0f4f449b1e1f53750b7a6e27a9b37767864f88bca60400e"
     },
     {
@@ -1636,13 +1638,21 @@
     },
     {
       "archive": null,
-      "bytes": 98898,
+      "bytes": 99237,
       "path": "examples/srd-52-conditions/corpus-map.json",
       "readBy": [
         "checks"
       ],
       "role": "active",
-      "sha256": "ecdccc64840ab7fe867171a0d579c371e998915ceea283a43946f4efdec2a571"
+      "sha256": "e7d71997c53a398066f3b609c25c28d616cfc84f89a2d27af85bb455ad42cb35"
+    },
+    {
+      "archive": null,
+      "bytes": 28377,
+      "path": "examples/srd-52-conditions/independent-verdict-254.json",
+      "readBy": [],
+      "role": "archived",
+      "sha256": "e85251baf9c445c68d3a5aba54d746bda7e91f772831a6d014023265ea573745"
     },
     {
       "archive": null,
@@ -1666,13 +1676,13 @@
     },
     {
       "archive": null,
-      "bytes": 2136,
+      "bytes": 4325,
       "path": "examples/srd-52-conditions/review.json",
       "readBy": [
         "checks"
       ],
       "role": "active",
-      "sha256": "cde75b838cad20080242789602a7652fb4bfb79486b0d32a3431e22d6047ffad"
+      "sha256": "1bbbc85b0c141bbc235d86ec9d64c01c36ddd741eab9b904fd532be9b3b13876"
     },
     {
       "archive": null,
@@ -1902,7 +1912,7 @@
       "sha256": "ccb96e85f22fbf114440ed7f8c1bc2a6958cf71908136b4de759c98d14e70e51"
     }
   ],
-  "measuredAt": "6982d658740b67146373bb9dcf9afe0505d35657",
+  "measuredAt": "68f63573c2520a606e65525d08421573fd24b53e",
   "measuredBy": "tools/check-evidence.py --measure",
   "readers": {
     "checks": "a gate step that reads this artifact for what is in it",

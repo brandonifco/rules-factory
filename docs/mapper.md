@@ -98,6 +98,14 @@ it is the definition; a naming of it anywhere else is a pointer. The passage is 
 citation names ([0030](decisions/0030-a-repeated-passage-is-identified-by-the-container-its-citation-names.md)),
 so two entries citing the same container are inside the same definition.
 
+What separates them is **not** the entry's `scope` or `status`. A `scope: out`, `status: declined`
+entry declares the pointers its evidence makes like any other, so this mechanism carries no scope
+filter and a naming it finds in one is a defect rather than a false positive
+([0058](decisions/0058-a-pointer-is-declared-by-the-passage-that-makes-it-whatever-the-engine-does-with-the-rule.md),
+which settled [#254](https://github.com/brandonifco/rules-factory/issues/254) and closed #208).
+Satisfaction is per term: one item whose `cites` contains the term discharges it, however many
+times the passage names it ([#399](https://github.com/brandonifco/rules-factory/issues/399)).
+
 The vocabulary is read **out of the map**, never out of the protocol: the corpus already states
 its defined terms somewhere, that statement is an entry, and its term-anchored `crossReferences`
 are already term → defining entries. A second copy in the protocol would be a second definition to
@@ -522,7 +530,7 @@ Four exit codes, the factory's four:
 | `0` | every declaration held, and something was actually examined |
 | `1` | a declaration is wrong, or an interrogation that was declared detected nothing at all |
 | `2` | a usage error |
-| `3` | **NOT VERIFIED**: the run found what it cannot judge — a pointer the map does not declare, a unit inside the extent that no quote reaches and no rejection accounts for, a sweep finding, a required sweep the registry does not implement, or a staged document naming a word that is both an entry of this corpus and ordinary English. Whether each is owed, or is a leak, is decided by reading (0026), not here |
+| `3` | **NOT VERIFIED**: the run found what it cannot judge — a pointer the map does not declare, a unit inside the extent that no quote reaches and no rejection accounts for, a sweep finding, a required sweep the registry does not implement, or a staged document naming a word that is both an entry of this corpus and ordinary English. Whether each is owed, or is a leak, is decided by reading (0026), not here. For an undeclared naming, 0058 settles the one question that was open about *who* owes it — the passage that points, whatever its scope and status — so `validate.sh` accepts only 0 on that step, and a 3 there is now a map to correct rather than a question to answer |
 
 A silent zero is a failure, not a pass: a corpus that declares a mechanism and on which nothing
 fires has either the wrong mechanism declared or a map whose evidence spans do not reach its

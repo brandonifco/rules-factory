@@ -2057,6 +2057,12 @@
       "scope": "out",
       "clarity": "clear",
       "dependsOn": [],
+      "crossReferences": [
+        {
+          "cites": "Exhaustion",
+          "resolvedBy": "exhaustion"
+        }
+      ],
       "evidence": "When a creature runs out of breath or is choking, it gains 1 Exhaustion level at the end of each of its turns. When a creature can breathe again, it removes all levels of Exhaustion it gained from suffocating.",
       "status": "declined",
       "note": "Outside the slice: a third route into and out of Exhaustion. It does not conflict with exhaustion-removing, which never says a Long Rest is the only way out; it does require the engine to know which levels came from suffocating, and no rule says a level records its cause."
@@ -2072,6 +2078,12 @@
       "scope": "out",
       "clarity": "clear",
       "dependsOn": [],
+      "crossReferences": [
+        {
+          "cites": "Exhaustion",
+          "resolvedBy": "exhaustion"
+        }
+      ],
       "evidence": "Unless otherwise stated, the creature returns to life with any conditions, magical contagions, or curses that were affecting it at death if the durations of those effects are still ongoing. If the creature died with any Exhaustion levels, it returns with 1 fewer level.",
       "status": "declined",
       "note": "Outside the slice: the only rule in the corpus that says what happens to a creature's conditions across death, and a fourth route out of an Exhaustion level. It is also the only passage that treats “the durations of those effects” as a thing conditions have, which condition-definition says the corpus never fixes."
@@ -2184,6 +2196,10 @@
       "clarity": "clear",
       "dependsOn": [],
       "crossReferences": [
+        {
+          "cites": "Grappled",
+          "resolvedBy": "grappled"
+        },
         {
           "cites": "the Incapacitated condition",
           "resolvedBy": "incapacitated"

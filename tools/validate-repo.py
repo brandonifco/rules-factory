@@ -508,12 +508,14 @@ def step_pointers(run: Run) -> bool:
     shape 0026 already refuses for phrases, and it is exactly what #208 measured for this corpus
     under the phrase list -- 0 detected in passages holding 51 references.
 
-    3 is the intended outcome on a map that names a defined term without declaring a pointer to
-    it. Whether each naming is owed is decided by reading the corpus (0026), not by this tool, so
-    it reports NOT VERIFIED rather than passing or failing."""
+    A naming with no declaration is a failure, not a NOT VERIFIED. This step accepted 3 while
+    #254 was open, because whether a `scope: out`, `status: declined` entry owed the declaration
+    was a question about the corpus that the tool was right not to answer. 0058 answers it -- the
+    passage that points declares it, whatever the engine does with the rule -- so a naming the map
+    leaves undeclared is now a defect the gate names."""
     return _over_maps(
         run, "map(s) interrogated",
-        lambda m: run.python("tools/mapper", "pointers", m, accept=(0, 3)),
+        lambda m: run.python("tools/mapper", "pointers", m),
         "any map's pointer interrogation",
     )
 
