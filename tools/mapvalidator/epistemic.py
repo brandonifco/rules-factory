@@ -25,18 +25,12 @@ from mapcontract.entry import block, entries_of
 # `dependsOn` is about structure; a disagreement about `clarity` is about certainty.
 CLARITY_FIELDS = ("clarity", "ambiguity")
 
-# The adjudication record has two committed shapes and two verdict vocabularies, which is a
-# finding rather than a design: `compare.py` writes per-flag resolutions carrying a one-letter
-# verdict, and trial 9's record is hand-written with the verdict as the leading clause of a
-# prose `ruling` and its own legend under `verdicts`. Both are read; neither is guessed at.
-# In each, one verdict means *the corpus does not settle it*, and that is the one this file
-# turns on.
-FLAG_VERDICTS = {"R": "the reference is right",
-                 "B": "the blind map is right",
-                 "U": "the corpus does not settle it",
-                 "N": "not a disagreement about the corpus"}
-FLAG_UNSETTLED = "U"
-RULING_UNSETTLED = "open"
+# The adjudication record has one shape and declares its own vocabulary (0059). `verdicts` is the
+# legend -- the terms and what each meant to the people who used them -- and `unsettledVerdict`
+# names the one term that means *the corpus does not settle it*, which is the term this file
+# turns on. The terms themselves differ between records, because they are what each adjudication
+# was written in; nothing here knows any of them, and nothing here guesses.
+RECORD_FILE = "resolutions.json"
 
 # An entry id is a slug, so it is found in prose by its own characters and nothing adjacent.
 ID_EDGE = r"[A-Za-z0-9_-]"
@@ -46,88 +40,52 @@ ID_EDGE = r"[A-Za-z0-9_-]"
 def find_comparison(map_path):
     """The blind second mapping's adjudication record beside the map, when there is one.
 
-    `blind-mapping/` beside the map is where every committed one sits. A map package does not
-    ship it -- the package's bytes are what passed (0015) -- so a consumer finds nothing here
-    and the check says so rather than passing.
+    `blind-mapping/resolutions.json` beside the map is where every committed one sits, and it is
+    one file because the record is one shape (0059). Beside it, `results.json` is the
+    comparator's output -- the alignment and the flags -- which is not the adjudication and is
+    not read here. A map package ships neither: the package's bytes are what passed (0015), so a
+    consumer finds nothing here and the check says so rather than passing.
 
     Given a directory rather than a map, that directory is searched instead -- which is what
     `--comparison` accepts, so a caller holding the map somewhere else (the mutation laboratory
-    writes it into a temporary directory) names the record's home and does not have to know which
-    of the two files below is the readable one.
-
-    Two file names, because the record has two committed shapes and they are not in the same
-    file: `compare.py` writes its flags and their resolutions into `results.json`, and trial 9's
-    hand-written adjudication is `resolutions.json` beside a `results.json` that carries the
-    comparison and no verdicts. So the first candidate whose contents this file can actually read
-    is the record; where neither can be read, the first that exists is returned, and the check
-    reports that it could not read it rather than reporting nothing was there.
+    writes it into a temporary directory) names the record's home.
     """
     directory = os.path.abspath(map_path)
     directory = directory if os.path.isdir(directory) else os.path.join(
         os.path.dirname(directory) or ".", "blind-mapping")
-    present = [os.path.join(directory, name) for name in ("results.json", "resolutions.json")]
-    present = [path for path in present if os.path.isfile(path)]
-    for path in present:
-        try:
-            with open(path, encoding="utf-8") as handle:
-                if _adjudications(json.load(handle)) is not None:
-                    return path
-        except (OSError, ValueError):
-            continue
-    return present[0] if present else None
-
-
-def _verdict_of_ruling(ruling, legend):
-    """The verdict a hand-written `ruling` opens with, or None.
-
-    The record declares its own vocabulary under `verdicts`, and a ruling states its verdict as
-    its leading clause -- "A.", "B, and it is a coverage miss ...", "Neither, on the reasoning;
-    ...". Longest first, so "not-a-corpus-disagreement" is not read as something shorter. A
-    verdict that appears anywhere later in the prose is not read, and that is the limit.
-    """
-    if not isinstance(ruling, str):
-        return None
-    head = ruling.strip()
-    for value in sorted(legend, key=len, reverse=True):
-        if head.lower().startswith(value.lower()):
-            return value
-    return None
+    path = os.path.join(directory, RECORD_FILE)
+    return path if os.path.isfile(path) else None
 
 
 def _adjudications(record):
-    """Every adjudicated disagreement about certainty, as (where, verdict, ids, prose).
+    """Every adjudicated disagreement about certainty, as (where, verdict, ids, prose, unsettled).
 
-    `verdict` is None where the record states one this cannot read -- that is a failure, not a
-    thing to skip past. Returns None where the record is of no shape this knows.
+    One parser, because there is one shape (0059). The record declares a `verdicts` legend, an
+    `unsettledVerdict` the legend defines, and an `adjudications` list whose rows each carry the
+    verdict in a field. `verdict` is None where a row states one the legend does not define --
+    that is a failure, not a thing to skip past. Returns None where the record is of no shape
+    this knows, which includes a legend with no `unsettledVerdict`: a record that does not say
+    which of its terms means *the corpus does not settle it* is one this check would pass in
+    silence, and silence is what it exists to refuse.
     """
     if not isinstance(record, dict):
         return None
+    legend, rows = record.get("verdicts"), record.get("adjudications")
+    unsettled = record.get("unsettledVerdict")
+    if not isinstance(legend, dict) or not legend or not isinstance(rows, list) \
+            or unsettled not in legend:
+        return None
     found = []
-    flags = record.get("flags")
-    if isinstance(flags, list) and any(isinstance(f, dict) and "resolution" in f for f in flags):
-        for position, flag in enumerate(flags):
-            if not isinstance(flag, dict) or flag.get("field") not in CLARITY_FIELDS:
-                continue
-            resolution = flag.get("resolution") if isinstance(flag.get("resolution"), dict) else {}
-            got = resolution.get("verdict")
-            found.append((flag.get("key") or f"flags[{position}]",
-                          got if got in FLAG_VERDICTS else None,
-                          {flag.get("entry")}, resolution.get("reason") or "",
-                          FLAG_UNSETTLED))
-        return found
-    legend = record.get("verdicts")
-    if isinstance(legend, dict) and legend:
-        for group in ("disagreements", "families"):
-            for position, row in enumerate(record.get(group) or []):
-                if not isinstance(row, dict) or row.get("field") not in CLARITY_FIELDS:
-                    continue
-                named = row.get("entry") if isinstance(row.get("entry"), dict) else {}
-                found.append((f"{group}[{position}] {row.get('id')!r}",
-                              _verdict_of_ruling(row.get("ruling"), legend),
-                              set(named.values()), row.get("ruling") or "",
-                              RULING_UNSETTLED if RULING_UNSETTLED in legend else None))
-        return found
-    return None
+    for position, row in enumerate(rows):
+        if not isinstance(row, dict) or row.get("field") not in CLARITY_FIELDS:
+            continue
+        got = row.get("verdict")
+        named = row.get("entries")
+        found.append((row.get("id") or f"adjudications[{position}]",
+                      got if got in legend else None,
+                      set(named) if isinstance(named, list) else set(),
+                      row.get("reason") or "", unsettled))
+    return found
 
 
 def check_superposition(ctx):
@@ -163,15 +121,16 @@ def check_superposition(ctx):
     record, where = ctx.get("comparison"), ctx.get("comparison_path")
     if record is None:
         return skip("no blind second mapping's adjudication record sits beside this map "
-                    "(blind-mapping/results.json or blind-mapping/resolutions.json), so no "
-                    "second reading of this corpus exists for a collapse to be measured against "
-                    "(0014, 0034)", had_subject=False)
+                    "(blind-mapping/resolutions.json), so no second reading of this corpus "
+                    "exists for a collapse to be measured against (0014, 0034)",
+                    had_subject=False)
     adjudicated = _adjudications(record)
     if adjudicated is None:
         return skip(f"the adjudication record {os.path.basename(where)} is of no shape this "
-                    f"knows: it carries neither per-flag `resolution.verdict`s nor a `verdicts` "
-                    f"legend over `disagreements`, so nothing here can say how a disagreement "
-                    f"about certainty was answered")
+                    f"knows: the one shape is a `verdicts` legend, an `unsettledVerdict` the "
+                    f"legend defines, and an `adjudications` list whose rows carry a `verdict`, "
+                    f"a `field` and the ids they are about (0059). Without all four, nothing "
+                    f"here can say how a disagreement about certainty was answered")
 
     ambiguous = {e.get("id") for e in entries_of(ctx["map"])
                  if isinstance(e, dict) and e.get("clarity") == "ambiguous"}

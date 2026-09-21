@@ -2778,35 +2778,48 @@ class TestQuestionAnchor(MapCase):
 
 class TestSuperposition(MapCase):
     """0034: a disagreement about certainty that the corpus did not settle is recorded in the
-    map as unresolved, or it is a premature collapse with a paper trail."""
+    map as unresolved, or it is a premature collapse with a paper trail.
+
+    0059: the record is one shape, `blind-mapping/resolutions.json`, and it declares the
+    vocabulary its verdicts are written in.
+    """
 
     OPEN = 7  # must-play-whole-throw, the fixture's one ambiguous entry
 
-    def write_record(self, document, name="results.json"):
+    LEGEND = {"R": "the reference is right", "B": "the blind map is right",
+              "U": "the corpus does not settle it",
+              "N": "not a disagreement about the corpus"}
+
+    def write_record(self, document, name="resolutions.json"):
         directory = os.path.join(self.example, "blind-mapping")
         os.makedirs(directory, exist_ok=True)
         with open(os.path.join(directory, name), "w") as handle:
             json.dump(document, handle)
 
-    def flag_record(self, **resolution):
-        """`compare.py`'s shape: one flag per field, each carrying its adjudication."""
-        base = {"verdict": "U", "reason": "The corpus states the pause twice and differently."}
-        base.update(resolution)
-        return {"flags": [{"entry": "must-play-whole-throw", "field": "clarity",
-                           "detail": "differs", "blind": "whole-throw",
-                           "key": "must-play-whole-throw|clarity|whole-throw|differs",
-                           "resolution": base}]}
+    def record(self, legend=None, unsettled="U", **row):
+        """The one shape: a declared legend, the term that means unsettled, and rows."""
+        base = {"id": "must-play-whole-throw|clarity|whole-throw|differs", "field": "clarity",
+                "entries": ["must-play-whole-throw", "whole-throw"], "verdict": "U",
+                "reason": "The corpus states the pause twice and differently."}
+        base.update(row)
+        return {"verdicts": self.LEGEND if legend is None else legend,
+                "unsettledVerdict": unsettled, "adjudications": [base]}
 
-    def ruling_record(self, ruling):
-        """Trial 9's shape: a hand-written adjudication with its own verdict legend."""
-        return {"verdicts": {"A": "the first map is right", "B": "the blind map is right",
-                             "open": "the corpus does not settle it"},
-                "disagreements": [{"id": "the-short-interruption", "field": "clarity",
-                                   "entry": {"a": "must-play-whole-throw", "b": "whole-throw"},
-                                   "ruling": ruling}]}
+    def other_words(self, unsettled="open", **row):
+        """A record whose vocabulary is another one entirely -- trial 9's, as it happens.
+
+        Nothing in the checker knows these terms; it reads them out of the file.
+        """
+        legend = {"A": "the first map is right", "B": "the blind map is right",
+                  "open": "the corpus does not settle it"}
+        base = {"id": "the-short-interruption", "field": "clarity",
+                "entries": ["must-play-whole-throw", "whole-throw"], "verdict": "open",
+                "reason": "Neither reading is eliminated by the text."}
+        base.update(row)
+        return {"verdicts": legend, "unsettledVerdict": unsettled, "adjudications": [base]}
 
     def test_an_unsettled_verdict_carried_into_the_map_passes(self):
-        self.write_record(self.flag_record())
+        self.write_record(self.record())
         code, output = self.run_tool(valid_map())
         self.assertEqual(self.status_of(output, "superposition"), "ok", output)
         self.assertEqual(code, 0, output)
@@ -2814,7 +2827,7 @@ class TestSuperposition(MapCase):
     def test_an_unsettled_verdict_the_map_records_as_clear_fails(self):
         # The premature collapse itself: two mappers read the passage differently, the corpus
         # was asked and did not answer, and the map states one reading.
-        self.write_record(self.flag_record())
+        self.write_record(self.record())
         document = valid_map()
         document["entries"][self.OPEN]["clarity"] = "clear"
         document["entries"][self.OPEN].pop("ambiguity")
@@ -2827,7 +2840,7 @@ class TestSuperposition(MapCase):
         # `die-faces` was adjudicated unsettled and the question went to a new `rubber-scoring`
         # entry, because the doubt was about a sentence inside its span. The rule is that the
         # doubt is somewhere, not that it is here.
-        self.write_record(self.flag_record(
+        self.write_record(self.record(
             reason="Fixed: the question is recorded on opposed-test-tie, not here."))
         document = valid_map()
         document["entries"][self.OPEN]["clarity"] = "clear"
@@ -2841,11 +2854,11 @@ class TestSuperposition(MapCase):
         # `compare.py` emits a `clarity` row and an `ambiguity` row from one reading, and the
         # committed records write the second as "Same as the clarity row." Read apart, the
         # terser row is a doubt that landed nowhere.
-        record = self.flag_record(reason="Fixed: recorded on opposed-test-tie.")
-        record["flags"].append({"entry": "must-play-whole-throw", "field": "ambiguity",
-                                "detail": "present in one map only", "blind": "whole-throw",
-                                "key": "must-play-whole-throw|ambiguity|whole-throw|present",
-                                "resolution": {"verdict": "U", "reason": "Same as the clarity row."}})
+        record = self.record(reason="Fixed: recorded on opposed-test-tie.")
+        record["adjudications"].append(
+            {"id": "must-play-whole-throw|ambiguity|whole-throw|present", "field": "ambiguity",
+             "entries": ["must-play-whole-throw", "whole-throw"], "verdict": "U",
+             "reason": "Same as the clarity row."})
         self.write_record(record)
         document = valid_map()
         document["entries"][self.OPEN]["clarity"] = "clear"
@@ -2856,9 +2869,19 @@ class TestSuperposition(MapCase):
 
     def test_a_disagreement_about_certainty_with_no_verdict_fails(self):
         # 0014: every disagreement is dispositioned before the map is used.
-        record = self.flag_record()
-        record["flags"][0]["resolution"] = {"reason": "Looked at it."}
+        record = self.record()
+        record["adjudications"][0].pop("verdict")
         self.write_record(record)
+        code, output = self.run_tool(valid_map())
+        self.assertEqual(self.status_of(output, "superposition"), "fail", output)
+        self.assertIn("no verdict", output)
+        self.assertEqual(code, 1, output)
+
+    def test_a_verdict_the_records_own_legend_does_not_define_fails(self):
+        # #273: the verdict is a term of the vocabulary the file declares, and nothing else.
+        # A row answered in some other word is a disposition nobody can be shown to have made,
+        # exactly as a missing one is.
+        self.write_record(self.record(verdict="probably"))
         code, output = self.run_tool(valid_map())
         self.assertEqual(self.status_of(output, "superposition"), "fail", output)
         self.assertIn("no verdict", output)
@@ -2866,17 +2889,15 @@ class TestSuperposition(MapCase):
 
     def test_a_settled_verdict_does_not_demand_an_ambiguity(self):
         # R: the reference is right, so there is nothing to carry.
-        self.write_record(self.flag_record(verdict="R", reason="The reference is right."))
+        self.write_record(self.record(verdict="R", reason="The reference is right."))
         document = valid_map()
         document["entries"][self.OPEN]["clarity"] = "clear"
         document["entries"][self.OPEN].pop("ambiguity")
         code, output = self.run_tool(document)
         self.assertEqual(self.status_of(output, "superposition"), "ok", output)
 
-    def test_the_hand_written_shape_is_read_by_its_own_legend(self):
-        self.write_record({"flags": []}, name="results.json")
-        self.write_record(self.ruling_record("open. Neither reading is eliminated by the text."),
-                          name="resolutions.json")
+    def test_a_record_in_another_vocabulary_is_read_by_its_own_legend(self):
+        self.write_record(self.other_words())
         document = valid_map()
         document["entries"][self.OPEN]["clarity"] = "clear"
         document["entries"][self.OPEN].pop("ambiguity")
@@ -2884,15 +2905,54 @@ class TestSuperposition(MapCase):
         self.assertEqual(self.status_of(output, "superposition"), "fail", output)
         self.assertIn("premature collapse", output)
 
-    def test_a_hand_written_verdict_for_the_first_map_carries_nothing(self):
-        self.write_record({"flags": []}, name="results.json")
-        self.write_record(self.ruling_record("A. The contrast inside the constituent decides it."),
-                          name="resolutions.json")
+    def test_a_settled_verdict_in_another_vocabulary_carries_nothing(self):
+        self.write_record(self.other_words(verdict="A"))
         document = valid_map()
         document["entries"][self.OPEN]["clarity"] = "clear"
         document["entries"][self.OPEN].pop("ambiguity")
         code, output = self.run_tool(document)
         self.assertEqual(self.status_of(output, "superposition"), "ok", output)
+
+    def test_a_legend_that_names_no_unsettled_term_is_not_verified(self):
+        # #273: a record that declares a vocabulary and does not say which of its terms means
+        # *the corpus does not settle it* is one this check would pass in silence -- every row
+        # readable, nothing compared -- and silence is what it exists to refuse.
+        record = self.record()
+        record.pop("unsettledVerdict")
+        self.write_record(record)
+        document = valid_map()
+        document["entries"][self.OPEN]["clarity"] = "clear"
+        document["entries"][self.OPEN].pop("ambiguity")
+        code, output = self.run_tool(document)
+        self.assertEqual(self.status_of(output, "superposition"), "skip", output)
+        self.assertIn("no shape this knows", output)
+        self.assertEqual(code, 1, output)  # it had subject matter and could not look
+
+    def test_the_comparators_own_output_is_not_read_as_the_record(self):
+        # #273: `results.json` is the comparison -- the alignment and the flags -- and it sits
+        # beside the record in three of the four trials. It carried the verdicts too, which is
+        # how one artefact came to have two shapes. One file is read now, and it is the one
+        # `review.json` names as `resolutions`.
+        self.write_record({"flags": [{"entry": "must-play-whole-throw", "field": "clarity",
+                                      "resolution": {"verdict": "U", "reason": "Unsettled."}}]},
+                          name="results.json")
+        document = valid_map()
+        document["entries"][self.OPEN]["clarity"] = "clear"
+        document["entries"][self.OPEN].pop("ambiguity")
+        code, output = self.run_tool(document)
+        self.assertEqual(self.status_of(output, "superposition"), "skip", output)
+        self.assertIn("no blind second mapping's adjudication record", output)
+        self.assertEqual(code, 0, output)
+
+    def test_the_legacy_per_flag_shape_is_no_longer_a_shape_this_knows(self):
+        # #273: the flat per-flag record migrated, so the second parser went. A record still
+        # written that way is NOT VERIFIED, which is what any other unknown shape gets.
+        self.write_record({"flags": [{"entry": "must-play-whole-throw", "field": "clarity",
+                                      "resolution": {"verdict": "U", "reason": "Unsettled."}}]})
+        code, output = self.run_tool(valid_map())
+        self.assertEqual(self.status_of(output, "superposition"), "skip", output)
+        self.assertIn("no shape this knows", output)
+        self.assertEqual(code, 1, output)
 
     def test_a_record_of_no_known_shape_is_not_verified(self):
         self.write_record({"about": "a comparison written some other way"})
@@ -2903,16 +2963,13 @@ class TestSuperposition(MapCase):
 
     def test_comparison_takes_the_directory_the_record_lives_in(self):
         # The mutation laboratory writes the map under test into a temporary directory, where
-        # nothing sits beside it, and names the record's home instead. Which file in it is the
-        # readable one is the validator's to decide, not the caller's.
+        # nothing sits beside it, and names the record's home instead.
         # The record's home is named on the command line, so it need not be called
         # `blind-mapping` and need not be beside anything.
         home = os.path.join(self.root, "adjudication")
         os.makedirs(home, exist_ok=True)
-        with open(os.path.join(home, "results.json"), "w") as handle:
-            json.dump({"flags": []}, handle)
         with open(os.path.join(home, "resolutions.json"), "w") as handle:
-            json.dump(self.ruling_record("open. Neither reading is eliminated by the text."), handle)
+            json.dump(self.other_words(), handle)
         elsewhere = os.path.join(self.root, "moved")
         os.makedirs(elsewhere, exist_ok=True)
         document = valid_map()
@@ -2936,10 +2993,27 @@ class TestSuperposition(MapCase):
         self.assertIn("NOT VERIFIED", output)
         self.assertEqual(code, 0, output)
 
+    def test_every_committed_adjudication_record_is_of_the_one_shape(self):
+        # #273's acceptance: four committed records, one shape, and each declares the
+        # vocabulary its own verdicts are written in.
+        repo = os.path.dirname(os.path.dirname(os.path.dirname(HERE)))
+        records = sorted(glob.glob(os.path.join(repo, "examples", "*", "blind-mapping",
+                                                "resolutions.json")))
+        self.assertEqual(len(records), 4, records)
+        for path in records:
+            with self.subTest(record=os.path.relpath(path, repo)):
+                with open(path, encoding="utf-8") as handle:
+                    record = json.load(handle)
+                self.assertIsNotNone(check_map._adjudications(record), "not the one shape")
+                legend = record["verdicts"]
+                self.assertIn(record["unsettledVerdict"], legend)
+                for row in record["adjudications"]:
+                    self.assertIn(row.get("verdict"), legend, row.get("id"))
+
     def test_the_census_counts_ambiguities_nothing_corroborates(self):
         # 0034 adds no field for competing readings, so the number of ambiguities resting on
         # `ambiguity.question` alone is printed rather than argued about.
-        self.write_record(self.flag_record())
+        self.write_record(self.record())
         document = valid_map()
         document["entries"].append(decided_entry())
         # A third ambiguity with no conflict, no bound, no decision record and no adjudication:
