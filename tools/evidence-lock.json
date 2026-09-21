@@ -291,14 +291,14 @@
     },
     {
       "archive": null,
-      "bytes": 37719,
+      "bytes": 38120,
       "path": "examples/faa-part-107/blind-mapping/README.md",
       "readBy": [
         "checks",
         "links"
       ],
       "role": "active",
-      "sha256": "19281cf03aa76b4d1da59a2a57c8a6ef645be68711593d548f45b64b9516c08c"
+      "sha256": "9e13ad2f1600527da96ae69396a9cb47e1c22af11a319379a9fb261567d90444"
     },
     {
       "archive": null,
@@ -344,13 +344,13 @@
     },
     {
       "archive": null,
-      "bytes": 15385,
+      "bytes": 19091,
       "path": "examples/faa-part-107/blind-mapping/compare.py",
       "readBy": [
         "checks"
       ],
       "role": "active",
-      "sha256": "4fd1449c38c1a5d22fe406a58e86e21350477860c66edbe3b656680605f72e42"
+      "sha256": "dec5007d8638a943da144808e08f7ca0377cc5ea6f47b30e1696ad57fb452b7f"
     },
     {
       "archive": null,
@@ -364,13 +364,13 @@
     },
     {
       "archive": null,
-      "bytes": 34742,
+      "bytes": 44924,
       "path": "examples/faa-part-107/blind-mapping/resolutions.json",
       "readBy": [
         "checks"
       ],
       "role": "active",
-      "sha256": "72478c67b2164043db0bfc837603c771ccfdf9766dab1e57b2a13c1f852ee83f"
+      "sha256": "e9809da3e8cff222059cdafa018cf849b99e699fcfbd9a0df96651ef9342c92d"
     },
     {
       "archive": null,
@@ -656,14 +656,14 @@
     },
     {
       "archive": null,
-      "bytes": 67145,
+      "bytes": 67546,
       "path": "examples/hoyle-backgammon/blind-mapping/README.md",
       "readBy": [
         "checks",
         "links"
       ],
       "role": "active",
-      "sha256": "a77645b0630639b0463cc38b700b89275b3549c136445d695ac11cc9d6a088fd"
+      "sha256": "e31dccebcd85f00d515de9f7945acbd2e58db639e75d5387b4a08c5f0cf3045c"
     },
     {
       "archive": null,
@@ -709,13 +709,13 @@
     },
     {
       "archive": null,
-      "bytes": 16087,
+      "bytes": 19879,
       "path": "examples/hoyle-backgammon/blind-mapping/compare.py",
       "readBy": [
         "checks"
       ],
       "role": "active",
-      "sha256": "66aa6f91f68e6a3e21b90b144abd48385f9f451414e9e96f48ed0787596a395a"
+      "sha256": "542a46cf6c6fb7feb844319130a7beb47e5f9e4e89604590fa8dd5f9ba325e6e"
     },
     {
       "archive": null,
@@ -729,13 +729,13 @@
     },
     {
       "archive": null,
-      "bytes": 64390,
+      "bytes": 77706,
       "path": "examples/hoyle-backgammon/blind-mapping/resolutions.json",
       "readBy": [
         "checks"
       ],
       "role": "active",
-      "sha256": "ff23405672e7fc5e8fb7598c586d8698857f9bb22cc25c5046759b448e147a36"
+      "sha256": "5aabaa0d45da6be8199f9f88764c2c257e5a51ec1f194cb84a89f102e3c072c1"
     },
     {
       "archive": null,
@@ -1347,13 +1347,13 @@
     },
     {
       "archive": null,
-      "bytes": 156946,
+      "bytes": 157347,
       "path": "examples/srd-52-combat/blind-mapping/README.md",
       "readBy": [
         "links"
       ],
       "role": "active",
-      "sha256": "331efda07a508750cbe48d9d3dd46317ab188092e0db26e923d22be218e79d16"
+      "sha256": "055e376fa855a85287bc496c2ddc4759b2465c4feadd5ac55efcd5e7ea47c7c1"
     },
     {
       "archive": null,
@@ -1401,28 +1401,28 @@
     },
     {
       "archive": null,
-      "bytes": 16403,
+      "bytes": 20195,
       "path": "examples/srd-52-combat/blind-mapping/compare.py",
       "readBy": [],
       "role": "archived",
-      "sha256": "0418a8a845579a4c58152ccbab86a66f79bcc05674ff8f23d74eedf741e14cda"
+      "sha256": "ab58af11139cab43c535764ec4c3b43adefb1578cc24d47d47ad8c0f729036a9"
     },
     {
       "archive": null,
-      "bytes": 156292,
+      "bytes": 183355,
       "path": "examples/srd-52-combat/blind-mapping/resolutions.json",
-      "readBy": [],
-      "role": "archived",
-      "sha256": "9d651adf81d7447f5d1a8c2cd27979c52dae800f7f511e3d01ace1dd9a98a598"
+      "readBy": [
+        "checks"
+      ],
+      "role": "active",
+      "sha256": "413e06bd4279c79c5f5e889dc0ebbd924bfe68946791b76e2ddabe02a06e0ed8"
     },
     {
       "archive": null,
       "bytes": 272673,
       "path": "examples/srd-52-combat/blind-mapping/results.json",
-      "readBy": [
-        "checks"
-      ],
-      "role": "active",
+      "readBy": [],
+      "role": "archived",
       "sha256": "4fa9c24ec9d72eaebefcbba3ea8dd22430ee1b6eb535e00fc6780b5d207bb32d"
     },
     {
@@ -1736,13 +1736,13 @@
     },
     {
       "archive": null,
-      "bytes": 20220,
+      "bytes": 20937,
       "path": "examples/tax-121-principal-residence/blind-mapping/README.md",
       "readBy": [
         "links"
       ],
       "role": "active",
-      "sha256": "83dac16c0e3b89bb01385772b4c4a3feac4ea27599102e0a2a3f4298bc59dffb"
+      "sha256": "eac39c1f79f601c70e9f37004726cec48aba173d8253c0e6f640349ee5b9bcf4"
     },
     {
       "archive": null,
@@ -1790,13 +1790,13 @@
     },
     {
       "archive": null,
-      "bytes": 35967,
+      "bytes": 37360,
       "path": "examples/tax-121-principal-residence/blind-mapping/resolutions.json",
       "readBy": [
         "checks"
       ],
       "role": "active",
-      "sha256": "2b9f6bff30a9e82466d50a502e3e4c96dcf887cf0df33cc46b33ba22d4da420a"
+      "sha256": "b37b6d1ac08bc00e32d6f9c8942c8e2be449c7c7489db64f393721397ef91ef4"
     },
     {
       "archive": null,
@@ -1920,7 +1920,7 @@
       "sha256": "ccb96e85f22fbf114440ed7f8c1bc2a6958cf71908136b4de759c98d14e70e51"
     }
   ],
-  "measuredAt": "c705b7803a0f540cf8bb99ae807ad28cb5c6e060",
+  "measuredAt": "21681fa5c8505f70e330b63d27a86d28ccd45616",
   "measuredBy": "tools/check-evidence.py --measure",
   "readers": {
     "checks": "a gate step that reads this artifact for what is in it",
