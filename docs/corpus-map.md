@@ -181,8 +181,11 @@ an empty list says nothing a missing field does not.
   `captioned-after-undesignated`, `division-wrapper`, `example-head-unreadable`,
   `no-unit-for-element`, `note-heading-elsewhere`, `note-heading-unreadable`,
   `states-own-designation`. The authority is `check-locators-section.py`'s `UNREACHABLE_REASONS`,
-  which produces each at exactly one place in its walk; `test_unreachable_declaration.py` holds
-  `check-map.py`'s copy equal to it, so a map cannot declare a reason no run can give.
+  and the vocabulary is of **reasons, not of tests**: `division-wrapper` is given by each of the
+  three things that say a wrapper opens a division (0036, 0056), because what a map declares is
+  that no citation reaches the passage and what reaching it would take, and those are the same
+  whichever signal saw it. `test_unreachable_declaration.py` holds `check-map.py`'s copy equal to
+  it, so a map cannot declare a reason no run can give.
 - **`requires`** is a sentence saying what reaching the passage would take, and may not be empty.
 
 `check-map.py --only extent` checks the shape. **That the declaration is true of the corpus is the
@@ -329,15 +332,25 @@ with every other provision of their run.
   things say it is not, asked of **every** wrapper at every depth, and each leaves that wrapper
   **unplaced** — in no index, named by no citation, and reported by the run with its reason:
   it **opens a division of the section** (it holds a heading at the level directly below the
-  section, or it is captioned and follows no designated paragraph — § 172.101's two appendices
-  answer both); an ordinary `<P>` inside it **states its own designation**, which the designation
-  it is printed under is not; or it is a note whose heading does not name one paragraph it sits
-  in. An address that is confidently wrong is worse than none — 0035's posture towards an
-  unreadable table, applied to a designation.
+  section, it is captioned and follows no designated paragraph, or **its heading names a division
+  of the corpus** — § 172.101's two appendices answer all three); an ordinary `<P>` inside it
+  **states its own designation**, which the designation it is printed under is not; or it is a
+  note whose heading does not name one paragraph it sits in. An address that is confidently wrong
+  is worse than none — 0035's posture towards an unreadable table, applied to a designation.
+- The third division signal reads the heading's **words**, which the other two deliberately do
+  not, and [0056](decisions/0056-a-wrapper-whose-heading-names-a-division-continues-nothing.md)
+  records why: an appendix titled `HD2` and printed directly after a designated paragraph defeats
+  both structural tests at once and is otherwise indistinguishable from the captioned provision
+  runs the rule exists to reach ([#291](https://github.com/brandonifco/rules-factory/issues/291)).
+  What is read is an address the corpus states about itself — `Appendix A to § 172.101—…`,
+  `Subpart B—…` — which is the reading a note's heading already gets, and not a reading of prose.
 - A **note takes the one paragraph it names in its own heading**: § 172.101 prints
   `Note to paragraph (c)(11):` after `(c)(11)(iii)(C)`, and `§ 172.101(c)(11)` is where it is
   cited from. A heading naming several paragraphs, none, or one the note is not printed in is
-  refused, exactly as a row key naming two rows is.
+  refused, exactly as a row key naming two rows is — and so is any heading opening `Note to …`
+  that this grammar cannot parse whole, because a note that states an address and is filed where
+  it happens to be printed is the reading this rule exists to refuse
+  ([#293](https://github.com/brandonifco/rules-factory/issues/293), 0056).
 - **A passage with no address is never coverage of itself.** `mapper inventory` counts such a
   unit, reports it on a `no address` line, and fails a map whose entry quotes one: the locator
   run would report that entry unchecked, and the two tools may not disagree about one passage.
