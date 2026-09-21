@@ -96,7 +96,7 @@ TABLE = (
     Row("docs/agent-team.md", MANAGED, 5, "the four roles, and what each may not do (0029)"),
     Row(".claude/agents/engine-dev.md", MANAGED, 8, "the implementer's charter (0029)"),
     Row(".claude/agents/repo-steward.md", MANAGED, 1, "the structural reviewer's charter, read-only (0029)"),
-    Row(".claude/agents/rules-conformance.md", MANAGED, 3, "the semantic reviewer's charter, read-only (0029)"),
+    Row(".claude/agents/rules-conformance.md", MANAGED, 4, "the semantic reviewer's charter, read-only (0029)"),
     Row(".claude/hooks/primary-checkout-guard.py", MANAGED, 1,
         "the PreToolUse guard that keeps implementation work out of the primary checkout (0029)"),
     Row(".claude/settings.json", MANAGED, 1, "which tools the guard runs before (0029)"),
@@ -120,7 +120,7 @@ TABLE = (
     Row("tools/record-verdict.py", MANAGED, 3,
         "a review verdict as a commit status on the exact commit reviewed, from entry evidence bound to "
         "that commit (0029, #372)"),
-    Row("tools/conformance-gate.py", MANAGED, 2,
+    Row("tools/conformance-gate.py", MANAGED, 3,
         "whether the verdicts this change needs are recorded at the commit being merged; a truncated "
         "file list is undecidable (0029, #193)"),
     Row("tools/requeue-gate.py", MANAGED, 1,
@@ -254,6 +254,7 @@ RECIPE_SHA256 = {
         1: "95eac2e802b474bdefad5a6053528dceda7465bbacfc946a0dd3c52a09705e78",
         2: "034cc0af3ecb98e9af60a65931102c69546f22ddadfea9c82961bb71fbbf96c2",
         3: "7f91ed4187d6d87621873266741f972a5b9bc8a27e16a248e78eb4de69789a64",
+        4: "4f63b9d3336f708c76fbe1cc9ab1b73a62ffd4c382419a4f979ca0329ffd4c8d",
     },
     ".claude/hooks/primary-checkout-guard.py": {
         1: "a263531db502dfad98b38bf1dd90df7b1bec5f22133db016b6f30dc38509d16d",
@@ -336,6 +337,7 @@ RECIPE_SHA256 = {
     "tools/conformance-gate.py": {
         1: "567972b60f16d1f86c661e97efa56fa2878c9a5aa92fb820c4aea07a402cbd24",
         2: "6e4a57468144caf4eaf74dce4d178a582322235ba37eb04d92bd72ddb929e58a",
+        3: "ed0db727f1ac5500be0496bc42351d19faa353f3fc578b6d195e0b41cc23c634",
     },
     "tools/requeue-gate.py": {
         1: "a4315a5fa76a696ee616e5ef190d6bbec0d023c04e22086082d4031c460aec8d",

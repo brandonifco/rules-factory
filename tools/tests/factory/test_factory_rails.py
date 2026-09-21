@@ -3168,7 +3168,10 @@ PLACEHOLDERS = {"<n>": "1", "<issue number>": "1", "<entry id>": "speed-limit", 
                 '"..."': "Title", "pass|fail": "pass",
                 # `--package-map <path>`: the map this engine was produced from, which is what an
                 # engine's own restore would put there.
-                "<path>": os.path.join(PART107, "corpus-map.json")}
+                "<path>": os.path.join(PART107, "corpus-map.json"),
+                # No such file: record-verdict.py then refuses because the manifest cannot be
+                # read -- a refusal about what it was asked, not how it was called (#386).
+                "<packet.review.json>": "pr-1-abcdef123456.review.json"}
 # `scripts/validate.sh` is the gate itself: running it here would restore, build and test an engine
 # in every target framework from inside a unit test. scripts/validate-engine.sh runs it against a
 # produced engine for real, which is where its runnability is proven.
@@ -3272,6 +3275,33 @@ class TestEveryCommandARailNamesRunsAsWritten(AFactoryToReProduceFrom, RailsInAG
                           f"command nobody can run as written is the defect this test exists for.")
             return PLACEHOLDERS[token]
         return re.sub(r"<[^>]*>|\{[^}]*\}|\"\.\.\.\"|\b\w+\|\w+\b", value, span).split()
+
+    def test_no_rail_names_a_record_verdict_call_the_recorder_refuses(self):
+        """#386: a rail told an agent to run a command refused since #334.
+
+        The test above asks whether a command is refused **for how it was spelled** -- argparse's
+        own vocabulary -- and this one is not: `record-verdict.py` parses it happily and then
+        refuses because no `--packet` names what was reviewed (0053 section 3). So that test
+        cannot see this, correctly, and this is the narrow rule instead: a rail that spells out a
+        `record-verdict.py` invocation spells out one that works.
+
+        Mutation: drop `--packet` from either the reviewer's charter or the sentence
+        `conformance-gate.py` prints when a semantic verdict is missing. Both went red.
+        """
+        offenders = []
+        for relative, text in sorted(agentrails.rails_files().items()):
+            # Over the whole file, not line by line: an invocation is a logical unit and a rail
+            # may wrap one across source lines -- `conformance-gate.py` builds its sentence from
+            # two adjacent f-string literals, and a per-line scan reads the half without --packet.
+            flat = " ".join(text.split())
+            for part in flat.split("record-verdict.py")[1:]:
+                # An invocation, not a mention: the tool named with arguments after it.
+                call = part.split("`")[0]
+                if "--" in call and "--packet" not in call:
+                    offenders.append(f"{relative}: record-verdict.py{call.strip()[:100]}")
+        self.assertEqual(offenders, [],
+                         "a rail spells out a record-verdict.py call with no --packet, which the "
+                         "recorder refuses before it does anything (#386):\n" + "\n".join(offenders))
 
     def test_no_rail_names_a_command_that_is_refused_for_how_it_was_spelled(self):
         commands = rail_commands(agentrails.rails_files())

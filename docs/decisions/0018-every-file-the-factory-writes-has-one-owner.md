@@ -355,7 +355,7 @@ written path the table does not classify.
 | `docs/agent-team.md` | managed | 5 | The four roles and what each may not do (0029). |
 | `.claude/agents/engine-dev.md` | managed | 8 | The implementer's charter. |
 | `.claude/agents/repo-steward.md` | managed | 1 | The structural reviewer's charter, read-only. |
-| `.claude/agents/rules-conformance.md` | managed | 3 | The semantic reviewer's charter, read-only. |
+| `.claude/agents/rules-conformance.md` | managed | 4 | The semantic reviewer's charter, read-only. |
 | `.claude/hooks/primary-checkout-guard.py` | managed | 1 | The `PreToolUse` guard keeping implementation work out of the primary checkout. Policy, and the engine that must change it adopts it. |
 | `.claude/settings.json` | managed | 1 | Which tools the guard runs before. |
 | `tools/dispatch-agent.sh` | managed | 4 | One issue, one worktree, one branch; it refuses what is not ready to work (0029). `--sweep` removes every worktree and branch whose pull request merged at exactly its tip, never a fresh or dirty one, and every dispatch runs it first, so cleaning up is nobody's to remember (#236). |
@@ -365,7 +365,7 @@ written path the table does not classify.
 | `tools/review-packet.py` | managed | 6 | Everything a reviewer needs about one pull request, in the order it is meant to be read. |
 | `tools/pr-policy.py` | managed | 6 | The pull request contract, checked mechanically: one linked issue, every section filled, output rather than a claim. A `factory produce` update's claim is checked against `provenance.json` and this table, never taken (#193). A retired path counts only as a deletion the base commit's record attributes to the factory (#243). Every document the engine owns is accounted for, and every `*.md` the diff touches is listed as updated (#236). |
 | `tools/record-verdict.py` | managed | 3 | A review verdict as a commit status on the exact commit reviewed, so a later commit invalidates it by itself. |
-| `tools/conformance-gate.py` | managed | 2 | Whether the verdicts this change needs are recorded at the commit being merged. A truncated file list is undecidable rather than a small change (#193). |
+| `tools/conformance-gate.py` | managed | 3 | Whether the verdicts this change needs are recorded at the commit being merged. A truncated file list is undecidable rather than a small change (#193). |
 | `tools/requeue-gate.py` | managed | 1 | Asks the gate to report again at the commit a recorded verdict names, so recording the verdict is the whole of the step (#191). It writes no status and no check run of its own. |
 | `.github/pull_request_template.md` | managed | 3 | The pull request shape `pr-policy.py` checks, its `## Documentation` section included (#236). Template and checker are emitted together, so neither can drift from the other. |
 | `.github/workflows/pr-policy.yml` | managed | 1 | The required check that runs `pr-policy.py`. |
