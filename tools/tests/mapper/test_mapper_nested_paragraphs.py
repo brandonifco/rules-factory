@@ -19,6 +19,12 @@ a table, and a map could hold the column 7 pointer and not its target
     attributed ([0036](../../../docs/decisions/0036-a-paragraph-inside-a-wrapper-takes-the-designation-the-wrapper-continues.md)):
     one that opens a division of the section, and one whose ordinary paragraph states its own
     designation. Nothing in it is indexed, so no citation resolves into it;
+  * a wrapper whose **own heading names a division of the corpus** is unplaced whatever it is
+    printed after ([0056](../../../docs/decisions/0056-a-wrapper-whose-heading-names-a-division-continues-nothing.md)).
+    The two structural tests above are defeated *together* by an appendix titled `HD2` and
+    printed directly under a designated paragraph, and that was the one shape of
+    [#290](https://github.com/brandonifco/rules-factory/issues/290) that handed out a wrong
+    address rather than withholding one ([#291](https://github.com/brandonifco/rules-factory/issues/291));
   * a `NOTE` takes the paragraph **it names in its own heading**, where that is where the corpus
     prints it, and is unplaced where the two disagree;
   * the descent is to **any depth**, because one level was silently not enough: a second copy of
@@ -32,7 +38,13 @@ a table, and a map could hold the column 7 pointer and not its target
   * the **adapter walks the same wrappers with the same table of tags**, and parts company on
     exactly one thing: a unit key asserts no containment, so the adapter enumerates what the
     checker leaves unplaced and reports it unaccounted rather than dropping it from the
-    denominator.
+    denominator. The one *test* it cannot ask is `note-heading-elsewhere`, which needs a
+    designator path, and that bound is asserted rather than described
+    ([#292](https://github.com/brandonifco/rules-factory/issues/292));
+  * each grammar that reads **one printed form** refuses every other, and says which words it
+    could not read. Neither is widened in advance
+    ([#293](https://github.com/brandonifco/rules-factory/issues/293),
+    [#265](https://github.com/brandonifco/rules-factory/issues/265)).
 
 The corpus is a synthetic eCFR-shaped fixture written here, in the shapes § 172.101 and § 172.102
 print. No real corpus is admitted by this test: that is trial 10's work (#262), not this one's.
@@ -152,6 +164,16 @@ ODDITIES = """<ROOT>
 <TBODY><TR><TD>X1</TD><TD>5 L</TD></TR></TBODY></TABLE></DIV>
 <EXTRACT><HD2>Appendix C to § 1.21—Odd widgets</HD2>
 <P>1. An appendix titled at level two rather than level one.</P></EXTRACT>
+<P>(h) An eighth:</P>
+<EXTRACT><HD2>Appendix D to § 1.21—Odder widgets</HD2>
+<P>1. An appendix titled at level two and printed after a designated paragraph.</P></EXTRACT>
+<P>(j) A ninth:</P>
+<NOTE><HED>Note to (a):</HED>
+<P>A note whose heading names a paragraph in a form this grammar does not read.</P></NOTE>
+<P>(k) A tenth:</P>
+<EXTRACT><FP-1>Epsilon rule.</FP-1>
+<EXAMPLE><HED>Ex. 1</HED><P>An example numbered in a form this grammar does not read.</P></EXAMPLE>
+</EXTRACT>
 </DIV8></ROOT>"""
 
 #: The committed corpora, for the invariant below: a rule measured only on a fixture is a rule
@@ -561,6 +583,18 @@ class TestTheTwoWalksAreOneWalk(unittest.TestCase):
     def test_the_tables_of_tags_are_the_same(self):
         self.assertEqual(checker.NESTED_UNITS, corpus.NESTED_KINDS)
 
+    def test_the_grammars_the_refusals_read_are_the_same(self):
+        # Every expression a refusal rests on, held in one place. `DIVISION_TITLE` reads the
+        # heading's words (0056) and `NOTE_CLAIMS_AN_ADDRESS` decides what claims an address at
+        # all: an expression one walk widened and the other did not is a passage one half
+        # refuses and the other files under a designation that is not its own.
+        for name in ("DIVISION_TITLE", "NOTE_CLAIMS_AN_ADDRESS", "NOTE_HEAD",
+                     "STATES_A_DESIGNATION", "EXAMPLE_HEAD"):
+            here, there = getattr(checker, name), getattr(corpus, name)
+            self.assertEqual(here.pattern, there.pattern, name)
+            self.assertEqual(here.flags, there.flags, name)
+        self.assertEqual(checker.DIVISION_HEADING, corpus.DIVISION_HEADING)
+
     def test_every_kind_the_table_names_is_one_an_enumeration_may_produce(self):
         for kind in set(corpus.NESTED_KINDS.values()):
             self.assertIn(kind, corpus.KINDS)
@@ -855,6 +889,184 @@ class TestAQuoteInANestedParagraphReachesIt(unittest.TestCase):
                                       "cargo tank.")
         self.assertEqual(code, NOT_VERIFIED, output)
         self.assertIn("148 A widget bearing this code", output)
+
+
+class TestAWrapperThatNamesADivisionContinuesNothing(unittest.TestCase):
+    """A wrapper whose own heading states an address is unplaced, whatever it is printed after.
+
+    [#291](https://github.com/brandonifco/rules-factory/issues/291). The two structural tests
+    above are defeated together by one shape: a wrapper that opens a division, carries an `HD2`
+    rather than an `HD1`, and is printed **directly after a designated paragraph**. It holds no
+    `HD1`, so the first test passes it; it follows a designated paragraph, so the second does
+    too; and no ordinary `<P>` of it prints a designator, so the third does. It then inherits
+    that paragraph's designation. Alone among the shapes this file watches, that hands out an
+    address that is wrong rather than withholding one.
+
+    Mutation: drop the `DIVISION_TITLE` branch from `wrapper_reach` and from
+    `wrapper_is_addressable`. Every test here fails, and the last one by returning `ok`.
+    """
+
+    def setUp(self):
+        directory = tempfile.mkdtemp(prefix="nested-paragraphs-division-title-")
+        self.addCleanup(shutil.rmtree, directory)
+        self.path = written(directory, ODDITIES)
+        self.corpus, self.spans, _, _ = checker.corpus_index(self.path)
+
+    def reason_for(self, opening):
+        found = [why for text, _, why in unplaced(ODDITIES) if text.startswith(opening)]
+        self.assertTrue(found, f"{opening!r} was placed, or is not in the corpus at all")
+        return found[0]
+
+    def code_for(self, opening):
+        found = [code for text, code, _ in unplaced(ODDITIES) if text.startswith(opening)]
+        self.assertTrue(found, f"{opening!r} was placed, or is not in the corpus at all")
+        return found[0]
+
+    def test_a_heading_that_states_an_address_is_not_a_caption(self):
+        # #283: the message, not only the verdict. It quotes the heading it read, because a
+        # corpus whose captions this refuses must show which words did it.
+        self.assertIn("its heading names a division of the corpus, "
+                      "'Appendix D to § 1.21—Odder widgets'",
+                      self.reason_for("Appendix D to § 1.21"))
+
+    def test_the_paragraphs_under_it_are_unplaced_too(self):
+        self.assertIn("its heading names a division of the corpus",
+                      self.reason_for("1. An appendix titled at level two and printed"))
+
+    def test_it_is_reported_under_the_code_the_other_two_division_tests_give(self):
+        # The same refusal under a third signal, not a new kind of refusal: a map that declares
+        # `division-wrapper` for one of § 172.101's appendices declares the same thing here
+        # (0038), and the closed vocabulary `tools/check-map.py` holds is unchanged.
+        self.assertEqual(self.code_for("Appendix D to § 1.21"), "division-wrapper")
+        self.assertIn("division-wrapper", checker.UNREACHABLE_REASONS)
+
+    def test_and_a_captioned_run_after_its_own_paragraph_is_still_placed(self):
+        # The refusal must not reach § 172.102's six captioned provision runs, which are this
+        # same shape apart from what the caption says.
+        self.assertEqual(path_of("A1 "), ("B", "1.20", "c", "2"))
+        self.assertEqual([t for t, _, _ in unplaced() if t == "Code/Special Provisions"], [])
+
+    def test_no_citation_resolves_into_it(self):
+        # What the defect was: `§ 1.21(h)` accepted a quote of an appendix printed after it.
+        self.assertNotIn("An appendix titled at level two and printed", self.corpus)
+        for citation in ("§ 1.21", "§ 1.21(h)"):
+            verdict, message = checker.check(
+                {"locator": {"citation": citation},
+                 "evidence": "1. An appendix titled at level two and printed after a "
+                             "designated paragraph."},
+                self.corpus, self.spans)
+            self.assertEqual(verdict, "unchecked", f"{citation}: {message}")
+
+    def test_the_adapter_refuses_it_too(self):
+        adapter = corpus.EcfrXml(self.path)
+        refused = {unit.text: unit.unaddressable
+                   for number, section in adapter._sections().items()
+                   for unit in adapter._section_units(number, section) if unit.unaddressable}
+        self.assertIn("Appendix D to § 1.21—Odder widgets", refused)
+        self.assertIn("its heading names a division of the corpus",
+                      refused["Appendix D to § 1.21—Odder widgets"])
+
+
+class TestTheTwoWalksPartCompanyOnOneTestOnly(unittest.TestCase):
+    """What the checker leaves unplaced inside a wrapper and the adapter still counts addressable.
+
+    [#292](https://github.com/brandonifco/rules-factory/issues/292). The adapter builds no
+    designator tree, by design, so it cannot ask whether the paragraph a note's heading names is
+    a paragraph the note is printed in -- `note-heading-elsewhere`, the one test that needs a
+    path. It *can* ask every other one, and an example whose head names no example was the
+    second gap until it did: that test needs no designation at all.
+
+    Mutation: drop the `example_label` branch from `_section_units`/`wrapped_elements`. The gap
+    then holds `example-head-unreadable` as well and this fails, naming it.
+    """
+
+    def gap(self, fixture_text, where):
+        """The reason codes the checker gives, inside a wrapper, that the adapter does not give.
+
+        Restricted to what the **descent into a wrapper** reaches, because that is the only
+        region the two walks decide the same question in: at the top level the checker has a
+        designator tree and the adapter has reading order, which is #290's scope and not this.
+        """
+        directory = tempfile.mkdtemp(prefix="nested-paragraphs-gap-")
+        self.addCleanup(shutil.rmtree, directory)
+        path = os.path.join(directory, "corpus.xml")
+        with open(path, "w", encoding="utf-8") as handle:
+            handle.write(fixture_text)
+        adapter = corpus.EcfrXml(path)
+        refused = {unit.text for number, section in adapter._sections().items()
+                   for unit in adapter._section_units(number, section) if unit.unaddressable}
+        inside = set(reached_by_the_descent(ET.fromstring(fixture_text)))
+        return {code for text, code, _ in unplaced(fixture_text)
+                if text in inside and text not in refused}
+
+    def test_the_gap_on_the_fixtures_is_the_note_test_and_nothing_else(self):
+        for name, fixture in (("FIXTURE", FIXTURE), ("ODDITIES", ODDITIES)):
+            self.assertEqual(self.gap(fixture, name), {"note-heading-elsewhere"}, name)
+
+    def test_and_no_committed_corpus_widens_it(self):
+        for path in COMMITTED:
+            with open(path, encoding="utf-8") as handle:
+                text = handle.read()
+            self.assertTrue(self.gap(text, path) <= {"note-heading-elsewhere"},
+                            os.path.basename(path))
+
+    def test_an_example_whose_head_names_no_example_is_unaddressable_to_the_adapter(self):
+        directory = tempfile.mkdtemp(prefix="nested-paragraphs-example-")
+        self.addCleanup(shutil.rmtree, directory)
+        adapter = corpus.EcfrXml(written(directory, ODDITIES))
+        refused = {unit.text: unit.unaddressable
+                   for number, section in adapter._sections().items()
+                   for unit in adapter._section_units(number, section) if unit.unaddressable}
+        self.assertIn("Ex. 1An example numbered in a form this grammar does not read.", refused)
+        self.assertIn("its head does not name an example",
+                      refused["Ex. 1An example numbered in a form this grammar does not read."])
+
+    def test_the_two_read_an_example_head_with_the_same_expression(self):
+        # The same reason `NESTED_UNITS` and `NESTED_KINDS` are held equal: the two files cannot
+        # import one another (0032), and a head one reads and the other does not is an example
+        # one half can cite and the other counts as addressed.
+        self.assertEqual(checker.EXAMPLE_HEAD.pattern, corpus.EXAMPLE_HEAD.pattern)
+        self.assertEqual(checker.EXAMPLE_HEAD.flags, corpus.EXAMPLE_HEAD.flags)
+
+
+class TestAGrammarThatReadsOneFormRefusesTheRest(unittest.TestCase):
+    """The two one-form grammars, pinned as refusals rather than widened.
+
+    [#293](https://github.com/brandonifco/rules-factory/issues/293). `NOTE_HEAD` reads
+    `Note to paragraph (c)(11):` and `EXAMPLE_HEAD` reads `Example 4.`; neither is widened here,
+    because [#265](https://github.com/brandonifco/rules-factory/issues/265)'s standard is that a
+    corpus forces a concept before it is added and no admitted corpus prints another form. What
+    *is* changed is that each refusal now **names the words it could not read**, so a corpus
+    numbering its examples `Ex. 1` shows that form on every run instead of a generic reason.
+
+    Mutation for the first: leave `NOTE_CLAIMS_AN_ADDRESS` as `^note\\s+to\\s+paragraphs?\\b`.
+    `Note to (a):` then claims nothing this grammar notices, the note inherits the designation it
+    is printed under, and the first two tests fail -- the second by handing out an address.
+    Mutation for the last two: drop the head text from the message.
+    """
+
+    def reason_for(self, opening):
+        found = [why for text, _, why in unplaced(ODDITIES) if text.startswith(opening)]
+        self.assertTrue(found, f"{opening!r} was placed, or is not in the corpus at all")
+        return found[0]
+
+    def test_a_note_heading_that_names_a_paragraph_in_another_form_is_refused(self):
+        self.assertIn("its heading names no single paragraph this grammar can read: "
+                      "'Note to (a):'",
+                      self.reason_for("A note whose heading names a paragraph in a form"))
+
+    def test_it_does_not_inherit_the_designation_it_is_printed_under(self):
+        self.assertEqual([p for p, t in indexed(ODDITIES)
+                          if t.startswith("A note whose heading names a paragraph in a form")],
+                         [])
+
+    def test_the_form_it_could_not_read_is_in_the_message(self):
+        self.assertIn("its head does not name an example: 'Ex. 1'",
+                      self.reason_for("Ex. 1An example numbered"))
+
+    def test_and_the_one_form_each_does_read_still_reads(self):
+        self.assertEqual(path_of("For samples of a widget"), ("B", "1.20", "c"))
+        self.assertEqual(path_of("Example 1."), ("B", "1.20", "c", "2", "Example 1"))
 
 
 if __name__ == "__main__":
