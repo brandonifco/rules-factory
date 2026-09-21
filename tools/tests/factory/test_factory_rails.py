@@ -184,6 +184,27 @@ class TestTheEmittedRails(unittest.TestCase):
             for forbidden in (NAME, "FaaPart107", "HoyleBackgammon", "RulesFactory.Maps"):
                 self.assertNotIn(forbidden, text, f"{relative} names an engine or a map")
 
+    def test_the_contract_says_to_delete_only_what_was_created_and_by_exact_path(self):
+        """The engine's AGENTS.md §4 carries the rule and the incident that bought it (#236).
+
+        rules-factory's own §4 has said this since #235: on 2026-09-17 an agent tidying up ran
+        `rm -rf <scratchpad>/*` in a directory shared by every agent of that session, took two
+        worktrees and uncommitted work that were not its own, and the work was rebuilt. An engine
+        dispatches concurrent agents the same way and had no such sentence. The date is asserted
+        because a rule with its reason removed is a rule the next agent argues with.
+        """
+        section = self.emitted["AGENTS.md"].split("## 4. ")[1].split("\n## ")[0]
+        for needed in ("only what it created", "by its exact path", "never by wildcard",
+                       "2026-09-17", "tools/dispatch-agent.sh --sweep"):
+            self.assertIn(needed, section, f"AGENTS.md section 4 does not say {needed!r}")
+
+    def test_the_contract_names_the_documentation_the_pull_request_must_account_for(self):
+        # The contract and tools/pr-policy.py are emitted together; a section the checker requires
+        # and the contract does not mention is a rule an agent meets by accident (#236).
+        section = self.emitted["AGENTS.md"].split("## 4. ")[1].split("\n## ")[0]
+        self.assertIn("a line for every living document", section)
+        self.assertIn("tools/pr-policy.py --docs-skeleton", section)
+
     def test_the_settings_run_the_guard_without_an_executable_bit(self):
         # `produce` writes with the default mode, so a hook invoked by path alone would not run.
         settings = json.loads(self.emitted[".claude/settings.json"])
@@ -578,6 +599,18 @@ if kind == "api":
         sys.exit(1)
     print(base64.b64encode(body.encode("utf-8")).decode("ascii"))
     sys.exit(0)
+if kind == "pr" and len(argv) > 1 and argv[1] == "list":
+    # `gh pr list --state merged --limit N --json headRefName,headRefOid`: the merged pull
+    # requests tools/dispatch-agent.sh --sweep judges worktrees and branches by (#236). An
+    # absent key answers "none have merged", which is an answer and not an absence: every
+    # fixture that says nothing about pull requests is a repository where none has merged.
+    # GH_PR_LIST_FAILS is the other case: `gh` is there and the answer is not, which a caller
+    # must not read as "none have merged".
+    if os.environ.get("GH_PR_LIST_FAILS"):
+        sys.stderr.write("could not read pull requests: HTTP 403\\n")
+        sys.exit(1)
+    print(json.dumps(fixture.get("merged") or []))
+    sys.exit(0)
 number = argv[2] if len(argv) > 2 else ""
 record = (fixture.get(kind) or {}).get(number)
 if record is None:
@@ -744,6 +777,218 @@ class TestTheDispatcher(RailsInAGitEngine):
         done = self.dispatch("--cleanup", "27")
         self.assertEqual(done.returncode, 0, done.stderr)
         self.assertFalse(os.path.isdir(os.path.join(self.worktrees, "issue-27-widen-the-altitude-limit")))
+
+
+class MergedWorkInAnEngine(RailsInAGitEngine):
+    """A produced engine with one issue worktree, and a `gh` that can be told what has merged.
+
+    Shared by the two rails that read that state: the sweep, which removes what merged work left
+    behind, and the doctor, which reports it (#236).
+    """
+
+    TITLE = "Widen the altitude limit"
+    BRANCH = "issue-27-widen-the-altitude-limit"
+
+    def state(self, merged=(), issues=((27, TITLE),)):
+        self.fixture({
+            "issue": {str(number): {"title": title, "state": "OPEN",
+                                    "labels": [{"name": "state:ready"}, {"name": "risk:normal"}]}
+                      for number, title in issues},
+            "merged": [{"headRefName": branch, "headRefOid": head} for branch, head in merged],
+        })
+
+    def worktree(self, branch=BRANCH):
+        return os.path.join(self.worktrees, branch)
+
+    def commit_in(self, path):
+        with open(os.path.join(path, "note.txt"), "w", encoding="utf-8") as handle:
+            handle.write("the work of this issue\n")
+        git(path, "add", "note.txt")
+        git(path, "commit", "-qm", "the work of this issue")
+        return git(path, "rev-parse", "HEAD")
+
+    def dispatched(self, number=27):
+        """A worktree for `number`, as an agent would have it: dispatched, and committed in."""
+        self.commit_engine()
+        self.state()
+        self.assertEqual(self.dispatch(str(number)).returncode, 0)
+        return self.worktree(), self.commit_in(self.worktree())
+
+    def branches(self):
+        return git(self.out, "for-each-ref", "--format=%(refname:short)", "refs/heads").split()
+
+
+class TestTheSweep(MergedWorkInAnEngine):
+    """`tools/dispatch-agent.sh --sweep`: what merged work left behind, removed at exactly its tip
+    and never otherwise (#236).
+
+    The rule is rules-factory's own `tools/repo-hygiene.py`, which is not vendored into an engine:
+    a worktree or a branch is finished when a pull request merged at **exactly** its tip, and
+    nothing weaker counts. A fresh worktree sits on a branch whose tip is `main`'s, so "its commits
+    are in main" would sweep an agent that has not committed yet; a worktree that has committed
+    since its pull request merged is somebody working in it now.
+
+    Every assertion here names the message and not only the exit code (#283). A sweep that could
+    not read GitHub, a sweep that found nothing, and a sweep that found something and refused to
+    touch it all remove nothing, and a report that cannot tell them apart is the failure this
+    exists for.
+    """
+
+    def sweep(self, **extra):
+        return self.dispatch("--sweep", **extra)
+
+    def test_a_worktree_whose_pull_request_merged_at_its_tip_is_swept_with_its_branch(self):
+        path, head = self.dispatched()
+        self.state(merged=((self.BRANCH, head),))
+        done = self.sweep()
+        self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+        self.assertIn(f"swept    {path} ({self.BRANCH}, its pull request merged at this tip)", done.stdout)
+        self.assertIn(f"swept    branch {self.BRANCH} (its pull request merged at this tip)", done.stdout)
+        self.assertIn("sweep: removed 1 worktree(s) and 1 branch(es)", done.stdout)
+        self.assertFalse(os.path.isdir(path), done.stdout)
+        self.assertEqual(self.branches(), ["main"], done.stdout)
+
+    def test_a_worktree_committed_to_since_its_pull_request_merged_is_not_swept(self):
+        # The merged pull request is at the commit before the one in the worktree now: somebody is
+        # working in it. "Its commits are in main" is true of that branch and is not the rule.
+        path, head = self.dispatched()
+        merged_at = git(path, "rev-parse", "HEAD~1")
+        self.state(merged=((self.BRANCH, merged_at),))
+        done = self.sweep()
+        self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+        self.assertIn("sweep: nothing to remove", done.stdout)
+        self.assertIn("1 worktree(s) and 1 branch(es) examined", done.stdout)
+        self.assertNotIn("swept", done.stdout)
+        self.assertTrue(os.path.isdir(path), done.stdout)
+        self.assertIn(self.BRANCH, self.branches())
+
+    def test_a_fresh_worktree_with_no_merged_pull_request_is_not_swept(self):
+        # Its tip is main's tip, so every weaker rule -- "in main", "merged into main" -- removes
+        # the worktree of an agent that has not committed yet.
+        self.commit_engine()
+        self.state()
+        self.assertEqual(self.dispatch("27").returncode, 0)
+        path = self.worktree()
+        self.assertEqual(git(path, "rev-parse", "HEAD"), git(self.out, "rev-parse", "main"))
+        done = self.sweep()
+        self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+        self.assertIn("sweep: nothing to remove", done.stdout)
+        self.assertTrue(os.path.isdir(path), done.stdout)
+
+    def test_a_finished_worktree_with_uncommitted_work_is_kept_and_named(self):
+        path, head = self.dispatched()
+        self.state(merged=((self.BRANCH, head),))
+        with open(os.path.join(path, "half-done.txt"), "w", encoding="utf-8") as handle:
+            handle.write("not committed\n")
+        done = self.sweep()
+        self.assertEqual(done.returncode, 1, done.stdout + done.stderr)
+        self.assertIn(f"kept     {path} ({self.BRANCH}): it has uncommitted or untracked files; "
+                      f"look at them before removing it", done.stdout)
+        self.assertNotIn("swept", done.stdout)
+        self.assertTrue(os.path.isdir(path), done.stdout)
+        self.assertIn(self.BRANCH, self.branches(), "the branch of a kept worktree was deleted under it")
+
+    def test_a_branch_with_no_worktree_whose_pull_request_merged_at_its_tip_is_swept(self):
+        path, head = self.dispatched()
+        self.assertEqual(self.dispatch("--cleanup", "27").returncode, 0)
+        git(self.out, "branch", self.BRANCH, head)  # --cleanup took the worktree; the branch stayed
+        self.state(merged=((self.BRANCH, head),))
+        done = self.sweep()
+        self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+        self.assertIn(f"swept    branch {self.BRANCH} (its pull request merged at this tip)", done.stdout)
+        self.assertEqual(self.branches(), ["main"], done.stdout)
+
+    def test_the_sweep_says_not_checked_when_github_cannot_be_read_and_removes_nothing(self):
+        # The failure this separates from the others: "nothing merged" and "I could not ask" both
+        # end with an empty worktree root untouched, and only one of them is a clean repository.
+        path, head = self.dispatched()
+        self.state(merged=((self.BRANCH, head),))
+        done = self.sweep(RULES_ENGINE_GH=os.path.join(self.tmp, "no-such-gh"))
+        self.assertEqual(done.returncode, 3, done.stdout + done.stderr)
+        self.assertIn("NOT CHECKED  merged pull requests could not be read", done.stdout)
+        self.assertIn("nothing was swept, and a worktree or branch left behind by merged work is "
+                      "not reported by this run", done.stdout)
+        self.assertNotIn("sweep: nothing to remove", done.stdout)
+        self.assertTrue(os.path.isdir(path), done.stdout)
+
+    def test_a_dispatch_sweeps_before_it_creates_the_next_worktree(self):
+        # The acceptance criterion: nobody has to remember. #27's worktree and branch are gone
+        # because #31 was dispatched, and #31's worktree is there.
+        path, head = self.dispatched()
+        self.state(merged=((self.BRANCH, head),),
+                   issues=((27, self.TITLE), (31, "Correct the weight table")))
+        done = self.dispatch("31")
+        self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+        self.assertIn(f"swept    {path} ({self.BRANCH}, its pull request merged at this tip)", done.stdout)
+        self.assertFalse(os.path.isdir(path), done.stdout)
+        self.assertTrue(os.path.isdir(self.worktree("issue-31-correct-the-weight-table")), done.stdout)
+        self.assertEqual(sorted(self.branches()), ["issue-31-correct-the-weight-table", "main"], done.stdout)
+
+    def test_a_dispatch_whose_sweep_cannot_read_github_still_opens_the_worktree(self):
+        # An offline agent gets a worktree, told what was not checked. The sweep is hygiene, and
+        # hygiene that blocks the work would be turned off.
+        self.commit_engine()
+        self.state()
+        done = self.dispatch("27", RULES_ENGINE_GH=self.gh, GH_PR_LIST_FAILS="1")
+        self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+        self.assertIn("NOT CHECKED  merged pull requests could not be read", done.stdout)
+        self.assertTrue(os.path.isdir(self.worktree()), done.stdout)
+
+
+class TestTheDoctorsLeftoversRow(MergedWorkInAnEngine):
+    """`tools/agent-doctor.py` reports what merged work left behind, and never calls it OK when it
+    could not ask (#236).
+
+    The doctor's failure is "I thought the rails were active", and a leftover worktree is the rail
+    that stopped: `--cleanup` exists and nothing runs it. The row changes nothing -- the doctor
+    never does -- and names the command that would.
+    """
+
+    ROW = "Leftovers from merged work"
+
+    def doctor(self, *args, **extra):
+        return subprocess.run([sys.executable, os.path.join(self.out, "tools", "agent-doctor.py"), *args],
+                              cwd=self.out, capture_output=True, text=True, env=self.environment(**extra))
+
+    def row(self, output):
+        lines = [line for line in output.splitlines() if line.startswith(self.ROW + " ")]
+        self.assertEqual(len(lines), 1, f"expected one `{self.ROW}` row:\n{output}")
+        return lines[0]
+
+    def test_a_worktree_and_a_branch_left_by_merged_work_are_named(self):
+        path, head = self.dispatched()
+        self.state(merged=((self.BRANCH, head),))
+        done = self.doctor()
+        line = self.row(done.stdout)
+        self.assertIn("WRONG", line)
+        self.assertIn(f"{path} (worktree)", line)
+        self.assertIn(f"{self.BRANCH} (branch)", line)
+        self.assertIn("tools/dispatch-agent.sh --sweep", done.stdout)
+        self.assertTrue(os.path.isdir(path), "the doctor removed something; it reports and never acts")
+
+    def test_a_worktree_still_being_worked_in_is_not_a_leftover(self):
+        path, head = self.dispatched()
+        self.state()
+        line = self.row(self.doctor().stdout)
+        self.assertIn("OK", line)
+        self.assertIn("no worktree or branch is left over from merged work", line)
+
+    def test_the_row_says_not_checked_when_github_cannot_be_read(self):
+        path, head = self.dispatched()
+        self.state(merged=((self.BRANCH, head),))
+        line = self.row(self.doctor(GH_PR_LIST_FAILS="1").stdout)
+        self.assertIn("NOT CHECKED", line)
+        self.assertNotIn(" OK ", line)
+        self.assertIn("HTTP 403", line)
+
+    def test_local_says_not_checked_rather_than_ok(self):
+        path, head = self.dispatched()
+        self.state(merged=((self.BRANCH, head),))
+        done = self.doctor("--local")
+        line = self.row(done.stdout)
+        self.assertIn("NOT CHECKED", line)
+        self.assertNotIn(" OK ", line)
+        self.assertIn("--local", line)
 
 
 class TestNewIssue(RailsInAGitEngine):
@@ -1140,6 +1385,10 @@ validate.sh full: PASS
 Mutations observed: `AltitudeLimit_DeclinesAboveTheCeiling` fails with the mutation "return the
 ceiling instead of declining" (observed).
 
+## Documentation
+
+None: this engine has no documents of its own, and nothing here changes one.
+
 ## Determinism
 
 Nothing here reads the machine: no time, no locale, no ordering.
@@ -1289,6 +1538,123 @@ ceiling instead of declining" (observed).""", "Tests pass.")
         done = self.policy_check()
         self.assertEqual(done.returncode, 1, done.stdout)
         self.assertIn("cannot answer it for itself", done.stdout)
+
+    # --- #236: every pull request accounts for this engine's own documents ---------------------
+    #
+    # The living-document set is the engine's, not rules-factory's: a document is living when the
+    # engine owns it. Everything the factory writes -- AGENTS.md, CLAUDE.md, docs/agent-team.md,
+    # the charters, this very template -- is refused a hand edit by `produce`, so asking an engine's
+    # pull request to account for one would be asking it to account for a file it may not touch.
+    # An **adopted** rail is the engine's from then on, and is living; a numbered decision record is
+    # frozen, as in rules-factory. A document the diff changes is listed as `updated` whoever owns
+    # it, so a `factory produce` update still says what it did to AGENTS.md.
+
+    def document(self, relative, text="# a document of this engine's own\n"):
+        path = os.path.join(self.out, *relative.split("/"))
+        os.makedirs(os.path.dirname(path), exist_ok=True)
+        with open(path, "w", encoding="utf-8") as handle:
+            handle.write(text)
+        return path
+
+    def listing(self, *lines):
+        """GOOD_PR_BODY with its `## Documentation` answer replaced by `lines`."""
+        return GOOD_PR_BODY.replace(
+            "None: this engine has no documents of its own, and nothing here changes one.",
+            "\n".join(lines))
+
+    def test_a_living_document_of_the_engine_left_out_is_a_finding(self):
+        self.produced()
+        self.document("README.md")
+        self.pull_request()
+        done = self.policy_check()
+        self.assertEqual(done.returncode, 1, done.stdout)
+        self.assertIn("`README.md` is a living document of this engine and is not listed", done.stdout)
+
+    def test_a_rail_the_factory_writes_is_not_a_living_document_of_the_engine(self):
+        # AGENTS.md, CLAUDE.md and the charters are in every produced engine and in no diff here.
+        self.produced()
+        self.pull_request()
+        done = self.policy_check()
+        self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+        self.assertNotIn("AGENTS.md", done.stdout)
+        self.assertIn("0 living document(s)", done.stdout)
+
+    def test_a_document_the_diff_changes_must_be_listed_as_updated(self):
+        self.produced()
+        self.document("README.md")
+        self.pull_request(body=self.listing("- [x] `README.md` — checked, no change: the status table"),
+                          files=[{"path": "README.md"}])
+        done = self.policy_check()
+        self.assertEqual(done.returncode, 1, done.stdout)
+        self.assertIn("`README.md` is changed by this pull request but listed as checked, no change",
+                      done.stdout)
+
+    def test_a_rail_the_diff_changes_must_be_listed_though_it_is_not_living(self):
+        # A `factory produce` update moves AGENTS.md. It is not the engine's document and it is in
+        # the diff, so it is accounted for as `updated` like any other changed file.
+        self.produced()
+        self.pull_request(files=[{"path": "AGENTS.md"}])
+        done = self.policy_check()
+        self.assertEqual(done.returncode, 1, done.stdout)
+        self.assertIn("`AGENTS.md` is changed by this pull request and is not listed", done.stdout)
+
+    def test_an_adopted_rail_is_a_living_document_of_the_engine(self):
+        # `--adopt` makes a managed file the engine's own from then on (0018), and a document the
+        # engine owns is one an engine change can make untrue.
+        self.produced()
+        with open(os.path.join(self.out, "AGENTS.md"), "a", encoding="utf-8") as handle:
+            handle.write("\n## Our own section\n")
+        self.produced("--adopt", "AGENTS.md")
+        self.pull_request()
+        done = self.policy_check()
+        self.assertEqual(done.returncode, 1, done.stdout)
+        self.assertIn("`AGENTS.md` is a living document of this engine and is not listed", done.stdout)
+
+    def test_a_decision_record_is_frozen_and_the_rest_of_docs_is_not(self):
+        self.produced()
+        self.document("docs/decisions/0001-we-decline-rather-than-guess.md")
+        self.document("docs/how-we-read-the-corpus.md")
+        self.pull_request()
+        done = self.policy_check()
+        self.assertEqual(done.returncode, 1, done.stdout)
+        self.assertIn("`docs/how-we-read-the-corpus.md` is a living document", done.stdout)
+        self.assertNotIn("0001-we-decline-rather-than-guess", done.stdout)
+
+    def test_a_line_that_is_not_ticked_or_carries_no_note_is_a_finding(self):
+        self.produced()
+        self.document("README.md")
+        self.document("docs/how-we-read-the-corpus.md")
+        self.pull_request(body=self.listing(
+            "- [ ] `README.md` — checked, no change: the status table",
+            "- [x] `docs/how-we-read-the-corpus.md` — checked, no change:"))
+        done = self.policy_check()
+        self.assertEqual(done.returncode, 1, done.stdout)
+        self.assertIn("`README.md` is not ticked", done.stdout)
+        self.assertIn("`docs/how-we-read-the-corpus.md` has no note after `checked, no change:`",
+                      done.stdout)
+
+    def test_a_listed_path_that_is_neither_living_nor_changed_is_a_typo(self):
+        self.produced()
+        self.pull_request(body=self.listing("- [x] `READNE.md` — checked, no change: the status table"))
+        done = self.policy_check()
+        self.assertEqual(done.returncode, 1, done.stdout)
+        self.assertIn("`READNE.md` is neither a living document of this engine nor changed here",
+                      done.stdout)
+
+    def test_the_skeleton_lists_the_engines_own_documents_and_no_rail(self):
+        self.produced()
+        self.document("README.md")
+        self.document("docs/how-we-read-the-corpus.md")
+        self.document("docs/decisions/0001-we-decline-rather-than-guess.md")
+        done = subprocess.run([sys.executable, os.path.join(self.out, "tools", "pr-policy.py"),
+                               "--docs-skeleton"], cwd=self.out, capture_output=True, text=True,
+                              env=self.environment())
+        self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+        self.assertIn("## Documentation", done.stdout)
+        self.assertIn("- [ ] `README.md` — checked, no change:", done.stdout)
+        self.assertIn("- [ ] `docs/how-we-read-the-corpus.md` — checked, no change:", done.stdout)
+        self.assertNotIn("AGENTS.md", done.stdout)
+        self.assertNotIn("0001-we-decline-rather-than-guess", done.stdout)
 
     def test_a_truncated_file_list_is_refused_rather_than_judged(self):
         # `gh pr view --json files` caps at 100 with no error (#193). Everything pr-policy.py
