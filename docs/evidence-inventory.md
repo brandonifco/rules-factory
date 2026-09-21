@@ -43,8 +43,8 @@ The role follows from the readers:
 | role | files | size | may its bytes live outside the repository? |
 |---|---|---|---|
 | `release` — `pack-map.py` reads it | 20 | 2.5 MB | no: its bytes reach nuget.org |
-| `active` — some other part of the gate reads it | 141 | 12.0 MB | no: a check that fetches its inputs cannot be run offline |
-| `archived` — nothing reads it | 36 | 933 KB | yes |
+| `active` — some other part of the gate reads it | 141 | 11.9 MB | no: a check that fetches its inputs cannot be run offline |
+| `archived` — nothing reads it | 36 | 967 KB | yes |
 
 `check-evidence.py` refuses a lock that gives a non-null `archive` to an `active` or `release`
 artifact, and refuses a role its own `readBy` does not support. That pair of rules is what keeps a
@@ -64,7 +64,7 @@ A reader deciding what could be retired should know which of the two they are lo
 
 ## By trial
 
-Measured at `1c8fc7d`, over a gate run that failed no step but the evidence step and the
+Measured at `bc94b5c`, over a gate run that failed no step but the evidence step and the
 lock's own tests, which fail by construction while the lock is being rewritten
 (`measuredOver` in the lock says so, and `--measure` refuses a run with any other failing
 step; [#408](https://github.com/brandonifco/rules-factory/issues/408)):
@@ -78,12 +78,12 @@ step; [#408](https://github.com/brandonifco/rules-factory/issues/408)):
 | `examples/hoyle-blind-rebuild` | 432 KB | — | 61 KB |
 | `examples/srd-52-conditions` | 353 KB | — | 29 KB |
 | `examples/tax-121-principal-residence` | 191 KB | 86 KB | 101 KB |
-| `examples/blind-mapping-trial` | 183 KB | — | 165 KB |
+| `examples/blind-mapping-trial` | 146 KB | — | 201 KB |
 | `examples/faa-part-107-temporal` | 146 KB | — | 37 KB |
 | `examples/injection-trial` | 72 KB | — | 51 KB |
 | `examples/validator-attack` | 61 KB | — | — |
 | `examples/tax-121-build` | 31 KB | — | — |
-| `examples/acceptance-4-5` | 28 KB | — | 2 KB |
+| `examples/acceptance-4-5` | 31 KB | — | — |
 | `examples` | 27 KB | — | — |
 | `examples/collapse-trial` | 13 KB | — | 3 KB |
 
