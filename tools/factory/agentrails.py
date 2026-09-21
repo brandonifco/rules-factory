@@ -259,6 +259,8 @@ def required_check_state(pins, context, app):
 # What a paginated read is asked for with. `gh api --paginate` over an array endpoint walks the
 # pages and prints each as its own JSON array, so two pages are `[...][...]` -- two documents, and
 # `json.loads` stops at the second `[`. `--slurp` prints the pages as one array of arrays instead.
+# It is `gh` 2.42 and newer; an older one refuses the flag, and every caller here is given the
+# refusal as a read it could not make rather than as an answer.
 PAGES = ("--paginate", "--slurp")
 
 
