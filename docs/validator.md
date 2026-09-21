@@ -22,7 +22,7 @@ is not its own only test oracle.
 | [`tools/check-locators.py`](../tools/check-locators.py) and the two per-grammar checkers under `examples/` | the evidentiary half: does the cited text exist where the map says, does no in-scope quote lie outside the declared extent (`extent-bounds`, [#269](https://github.com/brandonifco/rules-factory/issues/269)), and how much of that extent can the map show it quoted ([0055](decisions/0055-coverage-reports-how-much-of-the-extent-is-quoted-and-a-map-declares-the-floor.md)) |
 | [`tools/check-map-review.py`](../tools/check-map-review.py) | every map carries a review of its exact bytes ([0017](decisions/0017-a-map-change-carries-a-review-of-its-bytes.md)), and a `blind-second-mapping` review names the staging record of what its mapper was given, or says out loud that it has none ([#223](https://github.com/brandonifco/rules-factory/issues/223)) |
 | [`tools/pack-map.py`](../tools/pack-map.py) | a map that passed becomes a version; [0048](decisions/0048-a-verified-map-package-binds-the-exact-artifacts-its-publish-gate-read.md) makes it hash every cited corpus, run the structural and locator checks on immutable snapshots of those exact bytes, and bind the resulting corpus identities to the packaged map, manifest and checker |
-| [`tools/mutate-map.py`](../tools/mutate-map.py) | the adversary turned on itself: it damages a committed map one named way at a time and measures what is refused ([trial 10](../examples/validator-attack/README.md)). Outside the package on purpose, because `build-check-map.py` would ship it inside every map |
+| [`tools/mutate-map.py`](../tools/mutate-map.py) | the adversary turned on itself: it damages a committed map one named way at a time and measures what is refused ([the validator attack](../examples/validator-attack/README.md)). Outside the package on purpose, because `build-check-map.py` would ship it inside every map |
 | `tools/tests/mapvalidator/` | its tests |
 
 `check-map.py` keeps its name because a map package's checker is a published artefact. Renaming
@@ -162,7 +162,7 @@ Stated here and in the checker's own docstring, which is the longer version and 
 of the code meets.
 
 Each line says whether it is **measured** — a committed map was damaged that exact way and the
-validator was watched not noticing ([trial 10](../examples/validator-attack/README.md)) — or
+validator was watched not noticing ([the validator attack](../examples/validator-attack/README.md)) — or
 **reasoned**, argued from the code and not yet attacked. The distinction used to be invisible from
 reading them.
 
@@ -222,7 +222,7 @@ reading them.
   `absentFrom` is checked for shape, and falsified by the locator checkers. *Reasoned.*
 - **A cross-reference nobody noticed is invisible** to the phrase list — measured at 0 detected in
   passages holding 51 references ([#208](https://github.com/brandonifco/rules-factory/issues/208)),
-  and measured again from the other end in trial 10, where hiding a recorded cross-reference is
+  and measured again from the other end by the validator attack, where hiding a recorded cross-reference is
   refused on all three phrase-pointing corpora and missed on both SRD maps. The mapper's
   `defined-term-use` detector answers that corpus; a corpus that points in a third way is still
   unseen.
