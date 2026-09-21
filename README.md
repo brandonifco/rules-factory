@@ -208,6 +208,14 @@ is a row in a path table a test covers, and anything the table cannot place wide
 job runs [`scripts/validate-engine.sh`](scripts/validate-engine.sh), which produces an engine
 from the `hoyle-backgammon` package on the pinned SDK and verifies it.
 
+Every artifact under `examples/` is named in
+[`tools/evidence-lock.json`](tools/evidence-lock.json) with its SHA-256 and the parts of CI that
+read it, and the gate holds the tree to that list in both directions on every run. The roles are
+measured rather than declared — an audit hook records what each checker opens — and what they
+found is in [docs/evidence-inventory.md](docs/evidence-inventory.md): 12.1 MB read by the checks,
+2.5 MB packed into published packages, and 892 KB read by nothing at all
+([0051](docs/decisions/0051-every-evidence-artifact-says-which-check-reads-it.md)).
+
 ### What it does not prove
 
 - **That the map is right.** The checks a map passes read its shape and where its citations

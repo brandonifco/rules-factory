@@ -1,0 +1,1858 @@
+{
+  "version": 1,
+  "measuredAt": "6982d658740b67146373bb9dcf9afe0505d35657",
+  "measuredBy": "tools/check-evidence.py --measure",
+  "roles": {
+    "active": "read by an ordinary gate run",
+    "release": "read by tools/pack-map.py -- packed into, or gating, a published package",
+    "archived": "read by nothing the measurement could see"
+  },
+  "readers": {
+    "checks": "a gate step that reads this artifact for what is in it",
+    "links": "the repository-wide markdown link check, which opens every tracked *.md",
+    "package": "tools/pack-map.py"
+  },
+  "artifacts": [
+    {
+      "path": "examples/README.md",
+      "sha256": "a8a6ff344831f229303da45e41e8674176097f98febc710163fbbb5ffcc520e0",
+      "bytes": 25319,
+      "role": "active",
+      "readBy": [
+        "links"
+      ],
+      "archive": null
+    },
+    {
+      "path": "examples/acceptance-4-5/EVIDENCE.md",
+      "sha256": "1d7c79139a5dd1d519d73f1ef8b27fb5c58bba594cec21f352fb2401bb43c649",
+      "bytes": 29039,
+      "role": "active",
+      "readBy": [
+        "links"
+      ],
+      "archive": null
+    },
+    {
+      "path": "examples/acceptance-4-5/check-provenance.sh",
+      "sha256": "976e1bfd5a7759c3e0f4f449b1e1f53750b7a6e27a9b37767864f88bca60400e",
+      "bytes": 2248,
+      "role": "archived",
+      "readBy": [],
+      "archive": null
+    },
+    {
+      "path": "examples/blind-mapping-trial/README.md",
+      "sha256": "14b8897c23b1de2da7b5ef2e53af27db0876c38b040dc91932b818aa23fc4264",
+      "bytes": 28090,
+      "role": "active",
+      "readBy": [
+        "links"
+      ],
+      "archive": null
+    },
+    {
+      "path": "examples/blind-mapping-trial/blind-map.json",
+      "sha256": "04930e7e62054a17cd54faab0410efec8ec87aaac56f8bf2ff5597caa8a743c1",
+      "bytes": 37125,
+      "role": "archived",
+      "readBy": [],
+      "archive": null
+    },
+    {
+      "path": "examples/blind-mapping-trial/build.py",
+      "sha256": "5023482ad17f9be4826f95520bde4076de0ed20feb32047fd4b217b18ef6c48b",
+      "bytes": 25780,
+      "role": "archived",
+      "readBy": [],
+      "archive": null
+    },
+    {
+      "path": "examples/blind-mapping-trial/compare.py",
+      "sha256": "4dffe04971325fe0ba087c8667d25fd05c2d69fc9fcba9931a51d3d0c5b32d49",
+      "bytes": 16809,
+      "role": "archived",
+      "readBy": [],
+      "archive": null
+    },
+    {
+      "path": "examples/blind-mapping-trial/results.json",
+      "sha256": "301dd28302530f034c4b45a39ae0ba00cb27b5f881845d198218a88b4e67b636",
+      "bytes": 56694,
+      "role": "archived",
+      "readBy": [],
+      "archive": null
+    },
+    {
+      "path": "examples/blind-mapping-trial/run2/README.md",
+      "sha256": "5e360a51a30dff57cb603f80956a19f887ec89701199c9b2f89560774c9f366c",
+      "bytes": 2486,
+      "role": "active",
+      "readBy": [
+        "links"
+      ],
+      "archive": null
+    },
+    {
+      "path": "examples/blind-mapping-trial/run2/REDACTIONS.md",
+      "sha256": "bab6a84ac4693eb5d302ce02b25d1e9a039ead88d319a61bd330ada397006e2e",
+      "bytes": 4816,
+      "role": "active",
+      "readBy": [
+        "links"
+      ],
+      "archive": null
+    },
+    {
+      "path": "examples/blind-mapping-trial/run2/blind-map.json",
+      "sha256": "74250b7319d9ec71d1cc8c432076415043583fb6466254065a9cb6208d6be051",
+      "bytes": 33262,
+      "role": "archived",
+      "readBy": [],
+      "archive": null
+    },
+    {
+      "path": "examples/blind-mapping-trial/run2/build.py",
+      "sha256": "0340753f8d8a6c2f5780ff2d414a5fc1529fd9c7d852267d469a91b220368e8e",
+      "bytes": 22873,
+      "role": "archived",
+      "readBy": [],
+      "archive": null
+    },
+    {
+      "path": "examples/blind-mapping-trial/run2/inputs/corpus-map.md",
+      "sha256": "f70c754eeaf0ea3c51d9b342e45a027629b076ac1907710d7b421fcbce6d9871",
+      "bytes": 42412,
+      "role": "active",
+      "readBy": [
+        "links"
+      ],
+      "archive": null
+    },
+    {
+      "path": "examples/blind-mapping-trial/run2/inputs/method.md",
+      "sha256": "39a45e0e97468fa546f73ef290dd122d9c1e890ff7b9c1367226651d8292ae7a",
+      "bytes": 29276,
+      "role": "active",
+      "readBy": [
+        "links"
+      ],
+      "archive": null
+    },
+    {
+      "path": "examples/blind-mapping-trial/run2/results.json",
+      "sha256": "8d6be5b8565b9e674ce100c819e83a823de33ca312e510c9fd39aa6dff308ce2",
+      "bytes": 56012,
+      "role": "archived",
+      "readBy": [],
+      "archive": null
+    },
+    {
+      "path": "examples/collapse-trial/README.md",
+      "sha256": "4b390080ac222c716207446cdbe0e0da3815302a683f183c82355a61854dad85",
+      "bytes": 5794,
+      "role": "active",
+      "readBy": [
+        "links"
+      ],
+      "archive": null
+    },
+    {
+      "path": "examples/collapse-trial/collapse.py",
+      "sha256": "482594e0d8507d61eeac8dabe733ecd19a671d88c77354c3ca68646042ed7593",
+      "bytes": 7521,
+      "role": "archived",
+      "readBy": [],
+      "archive": null
+    },
+    {
+      "path": "examples/collapse-trial/results.json",
+      "sha256": "b8182e87c08e54a06fff473648a5ae7a89853f7b81ad7e3985ea6fbc7457380d",
+      "bytes": 3514,
+      "role": "archived",
+      "readBy": [],
+      "archive": null
+    },
+    {
+      "path": "examples/faa-part-107-temporal/README.md",
+      "sha256": "c57c2075a6ca38d85522adcad01b236ed508150f3ebfe6a8ed247dc7694a3685",
+      "bytes": 24804,
+      "role": "active",
+      "readBy": [
+        "links"
+      ],
+      "archive": null
+    },
+    {
+      "path": "examples/faa-part-107-temporal/corpus-manifest-2020-01-01.json",
+      "sha256": "e735209ece3f315f4bfbe136de4873c2e9400e29c091514145d26a030c515ffb",
+      "bytes": 1667,
+      "role": "active",
+      "readBy": [
+        "checks"
+      ],
+      "archive": null
+    },
+    {
+      "path": "examples/faa-part-107-temporal/corpus-map-2020-01-01.json",
+      "sha256": "5380e939b26b61851015c10715c9810fcd95e30902cf258c92138673aa027cc0",
+      "bytes": 62851,
+      "role": "active",
+      "readBy": [
+        "checks"
+      ],
+      "archive": null
+    },
+    {
+      "path": "examples/faa-part-107-temporal/diff-maps.py",
+      "sha256": "377e0d6af6c6de9029c81dd0f12bbadc47b6145f1f749069d893ec55cfae3f58",
+      "bytes": 5439,
+      "role": "archived",
+      "readBy": [],
+      "archive": null
+    },
+    {
+      "path": "examples/faa-part-107-temporal/independent-verdict-130.json",
+      "sha256": "9f9b742e97c7fc636e85bb6f04750c09a218d4379c43f93d082c37502bb4a4a0",
+      "bytes": 15891,
+      "role": "archived",
+      "readBy": [],
+      "archive": null
+    },
+    {
+      "path": "examples/faa-part-107-temporal/independent-verdict-2020-waivers.json",
+      "sha256": "7270e9df8a674b6257260884cfe75657f1bd56666b44464ca7176a209a86cd85",
+      "bytes": 22439,
+      "role": "archived",
+      "readBy": [],
+      "archive": null
+    },
+    {
+      "path": "examples/faa-part-107-temporal/mapping-protocol.json",
+      "sha256": "d98e069f0f4000e95827016c7c29b0f653d0f300fd0d093d98770ffe38a32a12",
+      "bytes": 617,
+      "role": "active",
+      "readBy": [
+        "checks"
+      ],
+      "archive": null
+    },
+    {
+      "path": "examples/faa-part-107-temporal/part107-2020-01-01.xml",
+      "sha256": "8ed5ad4b7d898c28c657a46a110afbc99c006daa7a9808bf4b6caecb0569d66a",
+      "bytes": 44804,
+      "role": "active",
+      "readBy": [
+        "checks"
+      ],
+      "archive": null
+    },
+    {
+      "path": "examples/faa-part-107-temporal/review.json",
+      "sha256": "97652673ae91bf4ba848fb1063ddbc544f9ae07f352b1b590e22329ac117610e",
+      "bytes": 5292,
+      "role": "active",
+      "readBy": [
+        "checks"
+      ],
+      "archive": null
+    },
+    {
+      "path": "examples/faa-part-107/ASSERTION-TEST.md",
+      "sha256": "220692b055acff338bfdd786fa382107912d96cb2f6dcdd7b5c361011dab8759",
+      "bytes": 42521,
+      "role": "active",
+      "readBy": [
+        "checks",
+        "links"
+      ],
+      "archive": null
+    },
+    {
+      "path": "examples/faa-part-107/CORPUS-LICENCE.txt",
+      "sha256": "8c2b32269b6d332aebee3042ade2970ef4b45b33cce9e77698c5f6fbad19d974",
+      "bytes": 909,
+      "role": "release",
+      "readBy": [
+        "checks",
+        "package"
+      ],
+      "archive": null
+    },
+    {
+      "path": "examples/faa-part-107/README.md",
+      "sha256": "6c540a477a00205fe2d57034b34c3f9efe2b6c17e35ac6f69b21915f042ebda0",
+      "bytes": 32209,
+      "role": "active",
+      "readBy": [
+        "checks",
+        "links"
+      ],
+      "archive": null
+    },
+    {
+      "path": "examples/faa-part-107/blind-mapping/README.md",
+      "sha256": "19281cf03aa76b4d1da59a2a57c8a6ef645be68711593d548f45b64b9516c08c",
+      "bytes": 37719,
+      "role": "active",
+      "readBy": [
+        "checks",
+        "links"
+      ],
+      "archive": null
+    },
+    {
+      "path": "examples/faa-part-107/blind-mapping/REDACTIONS.md",
+      "sha256": "25c23950e3ca2c983f4f7d8ab7be98a2ba24f7dd6b38e7be831cd5f62f8b13f0",
+      "bytes": 12612,
+      "role": "active",
+      "readBy": [
+        "checks",
+        "links"
+      ],
+      "archive": null
+    },
+    {
+      "path": "examples/faa-part-107/blind-mapping/SLICE.md",
+      "sha256": "b7871e7c443671e1acda0d5e95b0a3416a5e8187c2b3171d5737c946d8f023bf",
+      "bytes": 487,
+      "role": "active",
+      "readBy": [
+        "checks",
+        "links"
+      ],
+      "archive": null
+    },
+    {
+      "path": "examples/faa-part-107/blind-mapping/blind-map.json",
+      "sha256": "32717b12cd6fe51e1b7e12db420182e33dd2f3b78e2b584e5940f4f5dfb9f65e",
+      "bytes": 44167,
+      "role": "active",
+      "readBy": [
+        "checks"
+      ],
+      "archive": null
+    },
+    {
+      "path": "examples/faa-part-107/blind-mapping/build.py",
+      "sha256": "d77884c4ff7876ea1fd30d432ea7ac2bf9c89b57d6b7878da40f3531bb8fd5f0",
+      "bytes": 32534,
+      "role": "active",
+      "readBy": [
+        "checks"
+      ],
+      "archive": null
+    },
+    {
+      "path": "examples/faa-part-107/blind-mapping/compare.py",
+      "sha256": "4fd1449c38c1a5d22fe406a58e86e21350477860c66edbe3b656680605f72e42",
+      "bytes": 15385,
+      "role": "active",
+      "readBy": [
+        "checks"
+      ],
+      "archive": null
+    },
+    {
+      "path": "examples/faa-part-107/blind-mapping/part107-slice.xml",
+      "sha256": "1283e7c786287d89b955a6928f2ab7a44a9944b0dd6644671049ee3e4c48b88a",
+      "bytes": 13574,
+      "role": "active",
+      "readBy": [
+        "checks"
+      ],
+      "archive": null
+    },
+    {
+      "path": "examples/faa-part-107/blind-mapping/resolutions.json",
+      "sha256": "72478c67b2164043db0bfc837603c771ccfdf9766dab1e57b2a13c1f852ee83f",
+      "bytes": 34742,
+      "role": "active",
+      "readBy": [
+        "checks"
+      ],
+      "archive": null
+    },
+    {
+      "path": "examples/faa-part-107/blind-mapping/results.json",
+      "sha256": "7da0ee72a71dfb34ab17765e73be2ad36991306dcc8b249ed4f78ee3e842563d",
+      "bytes": 83433,
+      "role": "active",
+      "readBy": [
+        "checks"
+      ],
+      "archive": null
+    },
+    {
+      "path": "examples/faa-part-107/check-locators-section.py",
+      "sha256": "b3948aa23e78fb2db816621414f84b5bae0adce3a22169a38c8f6b3e666b276d",
+      "bytes": 92795,
+      "role": "active",
+      "readBy": [
+        "checks"
+      ],
+      "archive": null
+    },
+    {
+      "path": "examples/faa-part-107/corpus-manifest.json",
+      "sha256": "c0af49240a869610354f2088a3a0688303458e9387e3630475b10134c0282729",
+      "bytes": 1656,
+      "role": "release",
+      "readBy": [
+        "checks",
+        "package"
+      ],
+      "archive": null
+    },
+    {
+      "path": "examples/faa-part-107/corpus-map.json",
+      "sha256": "6772bccb6e26db4bd3873385ad316328b2661aec5ef8ab8bb6126f1013a35e61",
+      "bytes": 79641,
+      "role": "release",
+      "readBy": [
+        "checks",
+        "package"
+      ],
+      "archive": null
+    },
+    {
+      "path": "examples/faa-part-107/independent-verdict-115-116.json",
+      "sha256": "8dd6bd42febc92a57958912391f96b681e74b4ed561880bd8d89acd702da2034",
+      "bytes": 17405,
+      "role": "active",
+      "readBy": [
+        "checks"
+      ],
+      "archive": null
+    },
+    {
+      "path": "examples/faa-part-107/independent-verdict-117.json",
+      "sha256": "3545b594c6daf67122ff574cfc50c1de882773301e4e70289d31b20e50b58a8e",
+      "bytes": 37544,
+      "role": "active",
+      "readBy": [
+        "checks"
+      ],
+      "archive": null
+    },
+    {
+      "path": "examples/faa-part-107/independent-verdict-126.json",
+      "sha256": "a674ac568727d3d74bae71e9e54d05209751fd8fe6d2bd72163013359a507c18",
+      "bytes": 19678,
+      "role": "active",
+      "readBy": [
+        "checks"
+      ],
+      "archive": null
+    },
+    {
+      "path": "examples/faa-part-107/independent-verdict-61.json",
+      "sha256": "7e2ef3a27922e1c3b5b05d6b90ca92c8795a5ebc2a51d7fa6e68c92a00f1ade9",
+      "bytes": 22895,
+      "role": "active",
+      "readBy": [
+        "checks"
+      ],
+      "archive": null
+    },
+    {
+      "path": "examples/faa-part-107/map-package.json",
+      "sha256": "c0f14e02264ff701265de9cdc02f360c020046b699bd9d28ec9abc929bafb771",
+      "bytes": 85,
+      "role": "release",
+      "readBy": [
+        "checks",
+        "package"
+      ],
+      "archive": null
+    },
+    {
+      "path": "examples/faa-part-107/mapping-protocol.json",
+      "sha256": "d98e069f0f4000e95827016c7c29b0f653d0f300fd0d093d98770ffe38a32a12",
+      "bytes": 617,
+      "role": "active",
+      "readBy": [
+        "checks"
+      ],
+      "archive": null
+    },
+    {
+      "path": "examples/faa-part-107/part107.xml",
+      "sha256": "80f6bc4b002df9dcc60a651fec30a2dc3590081cc3e5fd431d9885c69b7ce35e",
+      "bytes": 79880,
+      "role": "release",
+      "readBy": [
+        "checks",
+        "package"
+      ],
+      "archive": null
+    },
+    {
+      "path": "examples/faa-part-107/review.json",
+      "sha256": "6f0af695901b1f7f742ca86e7c723037322d9391ad0eb350f154dd0de7ab8806",
+      "bytes": 7531,
+      "role": "active",
+      "readBy": [
+        "checks"
+      ],
+      "archive": null
+    },
+    {
+      "path": "examples/hazmat-172-table/CORPUS-LICENCE.txt",
+      "sha256": "61a3cd74eaeb39795189b345b8c4fa55448e2489fa7bbae132b244bc04031ba7",
+      "bytes": 1447,
+      "role": "archived",
+      "readBy": [],
+      "archive": null
+    },
+    {
+      "path": "examples/hazmat-172-table/README.md",
+      "sha256": "41dbe54575edb0e322ffb41e6ef1e1960a22ea691b3824ca2a83bdedcc4a42ec",
+      "bytes": 44815,
+      "role": "active",
+      "readBy": [
+        "links"
+      ],
+      "archive": null
+    },
+    {
+      "path": "examples/hazmat-172-table/corpus-manifest.json",
+      "sha256": "6e83b3ff3da521d8415a18d4ced026d77573a241cbc99fd036d1ab2f4a8f0fdc",
+      "bytes": 7927,
+      "role": "active",
+      "readBy": [
+        "checks"
+      ],
+      "archive": null
+    },
+    {
+      "path": "examples/hazmat-172-table/corpus-map.json",
+      "sha256": "fb5e476a64d807d114ebb237db8be35de320593afa7d9808fd825634a5135c08",
+      "bytes": 194519,
+      "role": "active",
+      "readBy": [
+        "checks"
+      ],
+      "archive": null
+    },
+    {
+      "path": "examples/hazmat-172-table/independent-verdict-329-round1.json",
+      "sha256": "374f426da5f13725405f686c362fd4aa9cdf8ff9d99a035468e81e8cd8f1446f",
+      "bytes": 3336,
+      "role": "archived",
+      "readBy": [],
+      "archive": null
+    },
+    {
+      "path": "examples/hazmat-172-table/independent-verdict-329.json",
+      "sha256": "1231c106a266448022edbc5801b0059813dc040cbc5fc1615827b7d57d2ef9f3",
+      "bytes": 1913,
+      "role": "archived",
+      "readBy": [],
+      "archive": null
+    },
+    {
+      "path": "examples/hazmat-172-table/mapping-protocol-cfr-49-172.101.json",
+      "sha256": "c631e4da53ef430f22a2584f91e73b61048688c131707071365c4478bc224fd8",
+      "bytes": 816,
+      "role": "active",
+      "readBy": [
+        "checks"
+      ],
+      "archive": null
+    },
+    {
+      "path": "examples/hazmat-172-table/mapping-protocol-cfr-49-172.102.json",
+      "sha256": "2b63ebc83486607cb3b0eea754b7885e471f03aebb46b86b8a2ca1a6956ecac6",
+      "bytes": 637,
+      "role": "active",
+      "readBy": [
+        "checks"
+      ],
+      "archive": null
+    },
+    {
+      "path": "examples/hazmat-172-table/review.json",
+      "sha256": "ca036cb6ec1d10b81b16584d4b03574105a5045133aa94bfdc205f38c4db14a2",
+      "bytes": 2906,
+      "role": "active",
+      "readBy": [
+        "checks"
+      ],
+      "archive": null
+    },
+    {
+      "path": "examples/hazmat-172-table/section-172.101.xml",
+      "sha256": "979bfc51b90b56ce337662ff6cb39d159c460e79a61f9b716a97be3cd0ee8227",
+      "bytes": 2919857,
+      "role": "active",
+      "readBy": [
+        "checks"
+      ],
+      "archive": null
+    },
+    {
+      "path": "examples/hazmat-172-table/section-172.102.xml",
+      "sha256": "09f66e5b3716c520d881cf5e6e42fc050616b8ebbabcf64f7df8e587f9f4d42e",
+      "bytes": 183762,
+      "role": "active",
+      "readBy": [
+        "checks"
+      ],
+      "archive": null
+    },
+    {
+      "path": "examples/hoyle-backgammon/ASSERTION-TEST.md",
+      "sha256": "d640f7b815be31bbcaae2170f5cab771dfa611f3811fdc71f0c054cf365d2129",
+      "bytes": 26833,
+      "role": "active",
+      "readBy": [
+        "checks",
+        "links"
+      ],
+      "archive": null
+    },
+    {
+      "path": "examples/hoyle-backgammon/CORPUS-LICENCE.txt",
+      "sha256": "5367c00541b227a17bfbec03ae5f0839bf717362e3ac7b816f6eb7f9e65a5118",
+      "bytes": 1321,
+      "role": "release",
+      "readBy": [
+        "checks",
+        "package"
+      ],
+      "archive": null
+    },
+    {
+      "path": "examples/hoyle-backgammon/README.md",
+      "sha256": "8982736c1a4e717e5e5aa99d0c0d07828bc0b58297ac243b0abfaaeeda3087f6",
+      "bytes": 12719,
+      "role": "active",
+      "readBy": [
+        "checks",
+        "links"
+      ],
+      "archive": null
+    },
+    {
+      "path": "examples/hoyle-backgammon/blind-mapping/MAPPER-NOTES.md",
+      "sha256": "f3792f2a589b24893e9e5a6dda3ecbdf35bdd5814eb0aa897e51fcb44ee3f95f",
+      "bytes": 4365,
+      "role": "active",
+      "readBy": [
+        "checks",
+        "links"
+      ],
+      "archive": null
+    },
+    {
+      "path": "examples/hoyle-backgammon/blind-mapping/README.md",
+      "sha256": "a77645b0630639b0463cc38b700b89275b3549c136445d695ac11cc9d6a088fd",
+      "bytes": 67145,
+      "role": "active",
+      "readBy": [
+        "checks",
+        "links"
+      ],
+      "archive": null
+    },
+    {
+      "path": "examples/hoyle-backgammon/blind-mapping/REDACTIONS.md",
+      "sha256": "e747d793d8732f5f7545f61d8c19ffb254178045f9084731aa37d89768da8fe1",
+      "bytes": 7069,
+      "role": "active",
+      "readBy": [
+        "checks",
+        "links"
+      ],
+      "archive": null
+    },
+    {
+      "path": "examples/hoyle-backgammon/blind-mapping/SLICE.md",
+      "sha256": "de5f08136b5d0708f514874144fbb2c570d3d7401ddbe8f41c2c63176d006647",
+      "bytes": 1287,
+      "role": "active",
+      "readBy": [
+        "checks",
+        "links"
+      ],
+      "archive": null
+    },
+    {
+      "path": "examples/hoyle-backgammon/blind-mapping/blind-map.json",
+      "sha256": "f8011bd0a8bb5108687450b054721f04b88ea9ed6e172cb4f4e365c37be77762",
+      "bytes": 66587,
+      "role": "active",
+      "readBy": [
+        "checks"
+      ],
+      "archive": null
+    },
+    {
+      "path": "examples/hoyle-backgammon/blind-mapping/build.py",
+      "sha256": "1494e6011ff99d8b8583c68486ecdd3ae36c8c7973bb436cbeb1efcda29ed408",
+      "bytes": 51075,
+      "role": "active",
+      "readBy": [
+        "checks"
+      ],
+      "archive": null
+    },
+    {
+      "path": "examples/hoyle-backgammon/blind-mapping/compare.py",
+      "sha256": "66aa6f91f68e6a3e21b90b144abd48385f9f451414e9e96f48ed0787596a395a",
+      "bytes": 16087,
+      "role": "active",
+      "readBy": [
+        "checks"
+      ],
+      "archive": null
+    },
+    {
+      "path": "examples/hoyle-backgammon/blind-mapping/redact.py",
+      "sha256": "1b72ae6fc3030f6ab7c5a935038797b0241299b71ea0d05b187b01f01346c115",
+      "bytes": 24943,
+      "role": "active",
+      "readBy": [
+        "checks"
+      ],
+      "archive": null
+    },
+    {
+      "path": "examples/hoyle-backgammon/blind-mapping/resolutions.json",
+      "sha256": "ff23405672e7fc5e8fb7598c586d8698857f9bb22cc25c5046759b448e147a36",
+      "bytes": 64390,
+      "role": "active",
+      "readBy": [
+        "checks"
+      ],
+      "archive": null
+    },
+    {
+      "path": "examples/hoyle-backgammon/blind-mapping/results.json",
+      "sha256": "3d48338052f4c297edbcccc4f58fa80a1d926a99c89a26aa6fcf31022e9b1b0a",
+      "bytes": 117442,
+      "role": "active",
+      "readBy": [
+        "checks"
+      ],
+      "archive": null
+    },
+    {
+      "path": "examples/hoyle-backgammon/corpus-manifest.json",
+      "sha256": "8f36445244a9c4c0fc3ea10a2249f008f63797102e1ca457633070f57141e7ad",
+      "bytes": 936,
+      "role": "release",
+      "readBy": [
+        "checks",
+        "package"
+      ],
+      "archive": null
+    },
+    {
+      "path": "examples/hoyle-backgammon/corpus-map.json",
+      "sha256": "384814cfc06a4b293ede04d11c70ceb046b82370d1487b66080a5f01c08ecc67",
+      "bytes": 59503,
+      "role": "release",
+      "readBy": [
+        "checks",
+        "package"
+      ],
+      "archive": null
+    },
+    {
+      "path": "examples/hoyle-backgammon/hoyle.txt",
+      "sha256": "5d505fa9f6202340eb55313b8ef607b816087a860d3d51b1bf92b5f65240645e",
+      "bytes": 740122,
+      "role": "release",
+      "readBy": [
+        "checks",
+        "package"
+      ],
+      "archive": null
+    },
+    {
+      "path": "examples/hoyle-backgammon/independent-verdict-102.json",
+      "sha256": "3685cf92f41eb19368c264f068da20bd02bf9fdd1ed64a0ec40f421563f77f0b",
+      "bytes": 11474,
+      "role": "active",
+      "readBy": [
+        "checks"
+      ],
+      "archive": null
+    },
+    {
+      "path": "examples/hoyle-backgammon/independent-verdict-117-118.json",
+      "sha256": "fb2a7b6c8d49211f9a82950f1e45fda836b848c961b1e66c2252fb693e252f82",
+      "bytes": 11132,
+      "role": "active",
+      "readBy": [
+        "checks"
+      ],
+      "archive": null
+    },
+    {
+      "path": "examples/hoyle-backgammon/independent-verdict-125.json",
+      "sha256": "df78a49b975bf16537413bceaa2cc6ec51b3b41e6f10840232641d1c39a71091",
+      "bytes": 16236,
+      "role": "active",
+      "readBy": [
+        "checks"
+      ],
+      "archive": null
+    },
+    {
+      "path": "examples/hoyle-backgammon/map-package.json",
+      "sha256": "aa24c96269da0f3b600d3bd97ce1e7d190d3095d133feceacc531401c8184afd",
+      "bytes": 85,
+      "role": "release",
+      "readBy": [
+        "checks",
+        "package"
+      ],
+      "archive": null
+    },
+    {
+      "path": "examples/hoyle-backgammon/mapping-protocol.json",
+      "sha256": "ef527fe89fb5bafdbf67c4acdc3ced332b75f6a0fad86f136cc996d950230ed7",
+      "bytes": 1488,
+      "role": "active",
+      "readBy": [
+        "checks"
+      ],
+      "archive": null
+    },
+    {
+      "path": "examples/hoyle-backgammon/produced-engine/EVIDENCE.md",
+      "sha256": "f6abed7900e26a0493731b9347262691ab086b4034d733a30a2918f1402e2a40",
+      "bytes": 6524,
+      "role": "active",
+      "readBy": [
+        "checks",
+        "links"
+      ],
+      "archive": null
+    },
+    {
+      "path": "examples/hoyle-backgammon/produced-engine/classify.py",
+      "sha256": "8807c73318605a68be719cddbe24e9e0ab962220676bc78997117042a5dbbb88",
+      "bytes": 9971,
+      "role": "active",
+      "readBy": [
+        "checks"
+      ],
+      "archive": null
+    },
+    {
+      "path": "examples/hoyle-backgammon/produced-engine/equivalence.out",
+      "sha256": "d5ebc41c0ccd1d92638cef88c59bb5f0addfd0077a2ce36dfc3e05a639d10909",
+      "bytes": 7842,
+      "role": "active",
+      "readBy": [
+        "checks"
+      ],
+      "archive": null
+    },
+    {
+      "path": "examples/hoyle-backgammon/produced-engine/equivalence.sh",
+      "sha256": "26f1e7284ee4a084d81d7256ea4c9377decfdf268a5ac1812ea34a2fbb240e4c",
+      "bytes": 6556,
+      "role": "active",
+      "readBy": [
+        "checks"
+      ],
+      "archive": null
+    },
+    {
+      "path": "examples/hoyle-backgammon/review.json",
+      "sha256": "91f3e0ceda66840a98012a2495198dda84de239ac92fa2b2196675f62f83bb39",
+      "bytes": 4214,
+      "role": "active",
+      "readBy": [
+        "checks"
+      ],
+      "archive": null
+    },
+    {
+      "path": "examples/hoyle-blind-rebuild/.gitignore",
+      "sha256": "d4ae741323b2f5c54b21bd3f1a4be88b8f40be3f00e1219ef8dd50f6346033a9",
+      "bytes": 136,
+      "role": "archived",
+      "readBy": [],
+      "archive": null
+    },
+    {
+      "path": "examples/hoyle-blind-rebuild/EQUIVALENCE.md",
+      "sha256": "94f43855bd4e2f019f7125ca65bbdc935b898ba6d1750dfc425c74423043c25b",
+      "bytes": 8069,
+      "role": "active",
+      "readBy": [
+        "links"
+      ],
+      "archive": null
+    },
+    {
+      "path": "examples/hoyle-blind-rebuild/EVIDENCE.md",
+      "sha256": "336f0556b022014ec8fc670e45ba35487be602a3873f71b489cc00eb3e435651",
+      "bytes": 17591,
+      "role": "active",
+      "readBy": [
+        "links"
+      ],
+      "archive": null
+    },
+    {
+      "path": "examples/hoyle-blind-rebuild/README.md",
+      "sha256": "09c83aeba907c3e00a7028cb68c670b673fd8302b67bc0af0b13259db6153d05",
+      "bytes": 11520,
+      "role": "active",
+      "readBy": [
+        "links"
+      ],
+      "archive": null
+    },
+    {
+      "path": "examples/hoyle-blind-rebuild/REDACTIONS.md",
+      "sha256": "dcb04ec4c509a25551e5f0fa553d49a39cb51f7c4d6baea833f2d2719edd016a",
+      "bytes": 23135,
+      "role": "active",
+      "readBy": [
+        "links"
+      ],
+      "archive": null
+    },
+    {
+      "path": "examples/hoyle-blind-rebuild/RUNBOOK.md",
+      "sha256": "4eb544c311b78430ddd7b34c007fd14e2c100adb5fa718da668f3863a0e701fe",
+      "bytes": 12610,
+      "role": "active",
+      "readBy": [
+        "links"
+      ],
+      "archive": null
+    },
+    {
+      "path": "examples/hoyle-blind-rebuild/TARGET.json",
+      "sha256": "6fdaee38b8cca6e29df32fd6eac043421e3f517bfbaf7e882ecada0391a3b333",
+      "bytes": 43057,
+      "role": "active",
+      "readBy": [
+        "checks"
+      ],
+      "archive": null
+    },
+    {
+      "path": "examples/hoyle-blind-rebuild/api-surface/ApiSurface.csproj",
+      "sha256": "19b0ddf3dccbd0d590874a0d1406457c676d3acccd9ee073ac5f2e46aaddce04",
+      "bytes": 719,
+      "role": "archived",
+      "readBy": [],
+      "archive": null
+    },
+    {
+      "path": "examples/hoyle-blind-rebuild/api-surface/Program.cs",
+      "sha256": "167ce7006c078a0caf2ffa9ae751b9c875502ae8aef8431a0d9e7d1b8c53271e",
+      "bytes": 21835,
+      "role": "archived",
+      "readBy": [],
+      "archive": null
+    },
+    {
+      "path": "examples/hoyle-blind-rebuild/brief-source/README.md",
+      "sha256": "252f9e7df104b08479138060e272d371561b4ec070151ea3f7c260a6cb8a0e01",
+      "bytes": 6172,
+      "role": "active",
+      "readBy": [
+        "checks",
+        "links"
+      ],
+      "archive": null
+    },
+    {
+      "path": "examples/hoyle-blind-rebuild/brief-source/conventions.md",
+      "sha256": "ab614be85a5168438d41bd629b5074fffc78ea2c3d42dab5521c42edd80d4f9f",
+      "bytes": 10233,
+      "role": "active",
+      "readBy": [
+        "checks",
+        "links"
+      ],
+      "archive": null
+    },
+    {
+      "path": "examples/hoyle-blind-rebuild/brief/MANIFEST.json",
+      "sha256": "da6726e61c3cbb3d8c179eccde0930c61aca082d5ac6a4388789a3dc19de8dcc",
+      "bytes": 22451,
+      "role": "archived",
+      "readBy": [],
+      "archive": null
+    },
+    {
+      "path": "examples/hoyle-blind-rebuild/brief/README.md",
+      "sha256": "252f9e7df104b08479138060e272d371561b4ec070151ea3f7c260a6cb8a0e01",
+      "bytes": 6172,
+      "role": "active",
+      "readBy": [
+        "links"
+      ],
+      "archive": null
+    },
+    {
+      "path": "examples/hoyle-blind-rebuild/brief/engine/api-contract.md",
+      "sha256": "5ac207e0eb04600b0ae5c4bc617efeac69ac05337ccbe1a3ce3aa86d06f96326",
+      "bytes": 151440,
+      "role": "active",
+      "readBy": [
+        "links"
+      ],
+      "archive": null
+    },
+    {
+      "path": "examples/hoyle-blind-rebuild/brief/engine/build-files/Directory.Packages.props",
+      "sha256": "b2cc3b4934d1bc9843a91f2e25e31f76d4e9f04d3b675b0ec73ba4d3eba386c5",
+      "bytes": 990,
+      "role": "archived",
+      "readBy": [],
+      "archive": null
+    },
+    {
+      "path": "examples/hoyle-blind-rebuild/brief/engine/build-files/HoyleBackgammon.slnx",
+      "sha256": "225327ace7d30798173f78662594a0fb1c3a85e88fa48863a89a846445a4abcd",
+      "bytes": 299,
+      "role": "archived",
+      "readBy": [],
+      "archive": null
+    },
+    {
+      "path": "examples/hoyle-blind-rebuild/brief/engine/build-files/src/HoyleBackgammon/HoyleBackgammon.csproj",
+      "sha256": "b2d7e7db89db6ee9682db2efe870890c571989941715e7deffc0596bd18bc967",
+      "bytes": 929,
+      "role": "archived",
+      "readBy": [],
+      "archive": null
+    },
+    {
+      "path": "examples/hoyle-blind-rebuild/brief/engine/build-files/src/Tabletop.Dice/Tabletop.Dice.csproj",
+      "sha256": "34ac7deb88fd184a1583a2da1b850f3685d8dd9ef08915dbf48c9253790b1947",
+      "bytes": 588,
+      "role": "archived",
+      "readBy": [],
+      "archive": null
+    },
+    {
+      "path": "examples/hoyle-blind-rebuild/brief/engine/conventions.md",
+      "sha256": "ab614be85a5168438d41bd629b5074fffc78ea2c3d42dab5521c42edd80d4f9f",
+      "bytes": 10233,
+      "role": "active",
+      "readBy": [
+        "links"
+      ],
+      "archive": null
+    },
+    {
+      "path": "examples/hoyle-blind-rebuild/brief/engine/decisions/0001-the-dice-pack-is-its-own-project.md",
+      "sha256": "342ca1d8c40d342d6d4e77edb6cccec4fc78b87ef4ee3a7d9685fe372d2e2663",
+      "bytes": 2676,
+      "role": "active",
+      "readBy": [
+        "links"
+      ],
+      "archive": null
+    },
+    {
+      "path": "examples/hoyle-blind-rebuild/brief/engine/decisions/0002-a-game-begins-from-an-asserted-position.md",
+      "sha256": "13b426354f06ca0a8b964158667b50fc28eb1903391814102e42efb9eea8a84a",
+      "bytes": 5071,
+      "role": "active",
+      "readBy": [
+        "links"
+      ],
+      "archive": null
+    },
+    {
+      "path": "examples/hoyle-blind-rebuild/brief/engine/decisions/0003-the-engine-derives-the-starting-position.md",
+      "sha256": "cefadc4bdde160e6cde6e8cb30cb3431f73c3cb6c4b2f1f5e7c37cac118db2b1",
+      "bytes": 5934,
+      "role": "active",
+      "readBy": [
+        "links"
+      ],
+      "archive": null
+    },
+    {
+      "path": "examples/hoyle-blind-rebuild/brief/engine/decisions/0004-map-3-0-0-is-ruleset-version-two.md",
+      "sha256": "d78518844144ee65be45ff79f6b192754668c4ecf619eb9891193747dcc05e2b",
+      "bytes": 2775,
+      "role": "active",
+      "readBy": [
+        "links"
+      ],
+      "archive": null
+    },
+    {
+      "path": "examples/hoyle-blind-rebuild/brief/engine/decisions/0005-map-4-0-0-is-ruleset-version-three.md",
+      "sha256": "d84b289fdf7f39c5c91b82e368030235dcfada3aab28159669f3ca577a2a5eb5",
+      "bytes": 2041,
+      "role": "active",
+      "readBy": [
+        "links"
+      ],
+      "archive": null
+    },
+    {
+      "path": "examples/hoyle-blind-rebuild/brief/engine/decisions/0006-a-game-record-carries-its-identity-and-serialises-itself.md",
+      "sha256": "a9df3ae41e73e90485614643fbd5ff4dac3cba3bfd3e8ad5806a5352e95f107e",
+      "bytes": 4167,
+      "role": "active",
+      "readBy": [
+        "links"
+      ],
+      "archive": null
+    },
+    {
+      "path": "examples/hoyle-blind-rebuild/brief/engine/decisions/0007-an-equivalent-order-is-offered-once-until-the-map-says-otherwise.md",
+      "sha256": "70bf8054d373766faf193aea56eca4cf6bc6aa9ce73c0ec7e49a746487bb04f7",
+      "bytes": 5042,
+      "role": "active",
+      "readBy": [
+        "links"
+      ],
+      "archive": null
+    },
+    {
+      "path": "examples/hoyle-blind-rebuild/brief/engine/decisions/0008-map-6-0-0-is-ruleset-version-four.md",
+      "sha256": "b6d04a1969cb3f39bc0fb598ea0b9d05a7d26a64c2f70760445a8b76bfd9c6f6",
+      "bytes": 5456,
+      "role": "active",
+      "readBy": [
+        "links"
+      ],
+      "archive": null
+    },
+    {
+      "path": "examples/hoyle-blind-rebuild/brief/engine/decisions/0009-owner-rulings-are-ruleset-version-five.md",
+      "sha256": "eb73ce04779d5495f5f2e8feb24468520981fe73e5117cde5f1098a73438424f",
+      "bytes": 9692,
+      "role": "active",
+      "readBy": [
+        "links"
+      ],
+      "archive": null
+    },
+    {
+      "path": "examples/hoyle-blind-rebuild/brief/engine/decisions/0010-owner-rulings-are-ruleset-version-six.md",
+      "sha256": "3b45fcc3d276fdaa61dd94fe407c2dc46abd6c62fb3fa2dfbfa655d1fbbbfdc1",
+      "bytes": 11091,
+      "role": "active",
+      "readBy": [
+        "links"
+      ],
+      "archive": null
+    },
+    {
+      "path": "examples/hoyle-blind-rebuild/brief/engine/overlay-skeleton.json",
+      "sha256": "73a8b8383557606f30402d6572b60806abd247c01c89b75596a594a01d75971a",
+      "bytes": 9237,
+      "role": "archived",
+      "readBy": [],
+      "archive": null
+    },
+    {
+      "path": "examples/hoyle-blind-rebuild/build-brief.py",
+      "sha256": "aee4e4efac3f3a75e4c1ab91762a2fede8a7add96085a7b8ae6bbb0469533f75",
+      "bytes": 35070,
+      "role": "active",
+      "readBy": [
+        "checks"
+      ],
+      "archive": null
+    },
+    {
+      "path": "examples/hoyle-blind-rebuild/check-rebuild.py",
+      "sha256": "fde94932d2b41773b924bb1c14b66bc4ca1c91def08512a180756b59aae6e13c",
+      "bytes": 12988,
+      "role": "active",
+      "readBy": [
+        "checks"
+      ],
+      "archive": null
+    },
+    {
+      "path": "examples/hoyle-blind-rebuild/check-target.py",
+      "sha256": "9bcb276311c2a030d37383da1577a4c8108eba9dbd206f3a3f04b85cdfa47d58",
+      "bytes": 26700,
+      "role": "active",
+      "readBy": [
+        "checks"
+      ],
+      "archive": null
+    },
+    {
+      "path": "examples/hoyle-blind-rebuild/sandbox/allowlist-proxy.py",
+      "sha256": "72469095d1f16ca0ced01b25c778832906add95ab5d6cb57b9723796a2f57197",
+      "bytes": 5677,
+      "role": "active",
+      "readBy": [
+        "checks"
+      ],
+      "archive": null
+    },
+    {
+      "path": "examples/hoyle-blind-rebuild/sandbox/allowlist.txt",
+      "sha256": "658044476792c3e5bb725794202085aa9e4b1a600b0455608524ad8a82bfc22a",
+      "bytes": 818,
+      "role": "active",
+      "readBy": [
+        "checks"
+      ],
+      "archive": null
+    },
+    {
+      "path": "examples/hoyle-blind-rebuild/sandbox/probe.sh",
+      "sha256": "89d8779261bb5ed8a6a970a46adaf3b0c21cc3949173ae28883d64cf1b00d48d",
+      "bytes": 1432,
+      "role": "archived",
+      "readBy": [],
+      "archive": null
+    },
+    {
+      "path": "examples/hoyle-blind-rebuild/sandbox/run-isolated.sh",
+      "sha256": "73cce108c55940a59609f2ef607008404669c0578ae548a5115fbeedbc2e0918",
+      "bytes": 3964,
+      "role": "archived",
+      "readBy": [],
+      "archive": null
+    },
+    {
+      "path": "examples/hoyle-blind-rebuild/search-transcript.py",
+      "sha256": "9edb8b7d10c0342860d97ca90b8b7c3a9400c813fbe9f2f72a6b8d7ac77d571b",
+      "bytes": 6708,
+      "role": "active",
+      "readBy": [
+        "checks"
+      ],
+      "archive": null
+    },
+    {
+      "path": "examples/injection-trial/README.md",
+      "sha256": "ca987e700fc5702fb4abcc8d54fb31ece4c41b3d5175108230b26bdccf25ac1d",
+      "bytes": 17292,
+      "role": "active",
+      "readBy": [
+        "links"
+      ],
+      "archive": null
+    },
+    {
+      "path": "examples/injection-trial/injections.py",
+      "sha256": "1c386f5a1369036d320f09ba9a1ddaded490701646ddb73b558fc8f72323350e",
+      "bytes": 27156,
+      "role": "archived",
+      "readBy": [],
+      "archive": null
+    },
+    {
+      "path": "examples/injection-trial/results.json",
+      "sha256": "0400f0b10ed2a9438be3ed2fa6f991505c6955a4bc1115954faabad098a3193f",
+      "bytes": 52315,
+      "role": "archived",
+      "readBy": [],
+      "archive": null
+    },
+    {
+      "path": "examples/injection-trial/results.md",
+      "sha256": "d09134b4b034c81f94c61203e6856d48e17e545fbb04d267b4f6df83c219fd26",
+      "bytes": 5647,
+      "role": "active",
+      "readBy": [
+        "links"
+      ],
+      "archive": null
+    },
+    {
+      "path": "examples/injection-trial/run-trial.py",
+      "sha256": "e4b13954e1fcb17bcf43c41b57156e318ad06b62896a1cd0418a428930aa0b58",
+      "bytes": 13230,
+      "role": "archived",
+      "readBy": [],
+      "archive": null
+    },
+    {
+      "path": "examples/injection-trial/score.py",
+      "sha256": "1539ea9e86422915e745caecb21a8559415022196528a738c662d6386b46afaf",
+      "bytes": 9356,
+      "role": "archived",
+      "readBy": [],
+      "archive": null
+    },
+    {
+      "path": "examples/srd-52-combat/CORPUS-LICENCE.txt",
+      "sha256": "52cca02b334793a11e122e1855ff4992341bbae16978865feae6b1a5100f2cb0",
+      "bytes": 1339,
+      "role": "release",
+      "readBy": [
+        "checks",
+        "package"
+      ],
+      "archive": null
+    },
+    {
+      "path": "examples/srd-52-combat/README.md",
+      "sha256": "27381b1fe6be4114bbf43cca5951f31db05aaa692f2548c5ecb013fe80fe34c8",
+      "bytes": 24855,
+      "role": "active",
+      "readBy": [
+        "links"
+      ],
+      "archive": null
+    },
+    {
+      "path": "examples/srd-52-combat/SRD_CC_v5.2.1.pdf",
+      "sha256": "8974902d109d6e63672d7c490bde9ccf052410503d9cfa768237154fbc5e3d87",
+      "bytes": 6031375,
+      "role": "active",
+      "readBy": [
+        "checks"
+      ],
+      "archive": null
+    },
+    {
+      "path": "examples/srd-52-combat/blind-mapping/MAPPER-NOTES.md",
+      "sha256": "8abae33835ee34c0fe87859c5b40e2488ad5e0d82cd07c7174888c63f462b40f",
+      "bytes": 13402,
+      "role": "active",
+      "readBy": [
+        "links"
+      ],
+      "archive": null
+    },
+    {
+      "path": "examples/srd-52-combat/blind-mapping/README.md",
+      "sha256": "331efda07a508750cbe48d9d3dd46317ab188092e0db26e923d22be218e79d16",
+      "bytes": 156946,
+      "role": "active",
+      "readBy": [
+        "links"
+      ],
+      "archive": null
+    },
+    {
+      "path": "examples/srd-52-combat/blind-mapping/REDACTIONS.md",
+      "sha256": "ce5aa2268a991ff25787e994c03828c984adbd068e0614c77977e881344ebc2c",
+      "bytes": 8571,
+      "role": "active",
+      "readBy": [
+        "links"
+      ],
+      "archive": null
+    },
+    {
+      "path": "examples/srd-52-combat/blind-mapping/SLICE.md",
+      "sha256": "f8c32810b2acbed81421751aff79e3bd60ab32efef67c616b3353e705dae72a4",
+      "bytes": 2184,
+      "role": "active",
+      "readBy": [
+        "links"
+      ],
+      "archive": null
+    },
+    {
+      "path": "examples/srd-52-combat/blind-mapping/blind-map.json",
+      "sha256": "1b56289be23c03a25fcaa1ade25afd471cae63d24199353d1287e7c66b4a1925",
+      "bytes": 103134,
+      "role": "archived",
+      "readBy": [],
+      "archive": null
+    },
+    {
+      "path": "examples/srd-52-combat/blind-mapping/build.py",
+      "sha256": "715c432682d99719db932238cd4743e8c80e13126ca08ea7c7b4ca53496aac7f",
+      "bytes": 53932,
+      "role": "archived",
+      "readBy": [],
+      "archive": null
+    },
+    {
+      "path": "examples/srd-52-combat/blind-mapping/check.py",
+      "sha256": "a547f304819d9dccb3a1e182b4662299bf47319d1f85408e04957fb093b2d4ef",
+      "bytes": 8434,
+      "role": "archived",
+      "readBy": [],
+      "archive": null
+    },
+    {
+      "path": "examples/srd-52-combat/blind-mapping/compare.py",
+      "sha256": "0418a8a845579a4c58152ccbab86a66f79bcc05674ff8f23d74eedf741e14cda",
+      "bytes": 16403,
+      "role": "archived",
+      "readBy": [],
+      "archive": null
+    },
+    {
+      "path": "examples/srd-52-combat/blind-mapping/resolutions.json",
+      "sha256": "9d651adf81d7447f5d1a8c2cd27979c52dae800f7f511e3d01ace1dd9a98a598",
+      "bytes": 156292,
+      "role": "archived",
+      "readBy": [],
+      "archive": null
+    },
+    {
+      "path": "examples/srd-52-combat/blind-mapping/results.json",
+      "sha256": "4fa9c24ec9d72eaebefcbba3ea8dd22430ee1b6eb535e00fc6780b5d207bb32d",
+      "bytes": 272673,
+      "role": "active",
+      "readBy": [
+        "checks"
+      ],
+      "archive": null
+    },
+    {
+      "path": "examples/srd-52-combat/check-locators-pdf-text.py",
+      "sha256": "dd3244be7a15e7ebba2f9fbc608562cf23416fb5d4de36368f7f0dc0ff108e16",
+      "bytes": 27991,
+      "role": "active",
+      "readBy": [
+        "checks"
+      ],
+      "archive": null
+    },
+    {
+      "path": "examples/srd-52-combat/corpus-manifest.json",
+      "sha256": "aedebbb6a68f84213013706d63be470ce49bbd0396405959a8b53d30418a612d",
+      "bytes": 2205,
+      "role": "release",
+      "readBy": [
+        "checks",
+        "package"
+      ],
+      "archive": null
+    },
+    {
+      "path": "examples/srd-52-combat/corpus-map.json",
+      "sha256": "228de0dbdfb0900a098ae611a2c72c1142254980ce3c57d66474bc3b4f834ec1",
+      "bytes": 107949,
+      "role": "release",
+      "readBy": [
+        "checks",
+        "package"
+      ],
+      "archive": null
+    },
+    {
+      "path": "examples/srd-52-combat/extract.py",
+      "sha256": "710b33f39acbc2305f2bbdd9200c6e38cb6c200fcf34932f4a8174d2301d7b8f",
+      "bytes": 6914,
+      "role": "active",
+      "readBy": [
+        "checks"
+      ],
+      "archive": null
+    },
+    {
+      "path": "examples/srd-52-combat/independent-verdict-113-114.json",
+      "sha256": "01d42b4e3e7e19aa659a8b7dda6b296de44effdae2750744bc59221f0987950c",
+      "bytes": 3677,
+      "role": "archived",
+      "readBy": [],
+      "archive": null
+    },
+    {
+      "path": "examples/srd-52-combat/independent-verdict-115-116.json",
+      "sha256": "3d6a25e6536b2ce97921e614bf173e775f1bfd7851c91b538c66197e4e689401",
+      "bytes": 19003,
+      "role": "active",
+      "readBy": [
+        "checks"
+      ],
+      "archive": null
+    },
+    {
+      "path": "examples/srd-52-combat/independent-verdict-117-118.json",
+      "sha256": "065a4d9bbd71069cb38a8ed0501a3618ab2c7a64703b3dd2b34edfbb68f7fe30",
+      "bytes": 25622,
+      "role": "archived",
+      "readBy": [],
+      "archive": null
+    },
+    {
+      "path": "examples/srd-52-combat/map-package.json",
+      "sha256": "6ad022451683e45131d70937ba6adc50fb997e64e0988e52e740f707c83fdb72",
+      "bytes": 85,
+      "role": "release",
+      "readBy": [
+        "checks",
+        "package"
+      ],
+      "archive": null
+    },
+    {
+      "path": "examples/srd-52-combat/mapping-protocol.json",
+      "sha256": "92a542f7bdf00750665fae8c646fe7c74208d80cda2f033ca39758ace0891e65",
+      "bytes": 705,
+      "role": "active",
+      "readBy": [
+        "checks"
+      ],
+      "archive": null
+    },
+    {
+      "path": "examples/srd-52-combat/review.json",
+      "sha256": "0faf78a7ce4d8523a16b76743e16e13555850dcfe108518e4a9ad8d9e84d2f7b",
+      "bytes": 4774,
+      "role": "active",
+      "readBy": [
+        "checks"
+      ],
+      "archive": null
+    },
+    {
+      "path": "examples/srd-52-combat/srd-5.2.1.txt",
+      "sha256": "c55926cb77bc7ea09096fc652db1411d763eae89d430c52221ed8709a075b100",
+      "bytes": 1413945,
+      "role": "release",
+      "readBy": [
+        "checks",
+        "package"
+      ],
+      "archive": null
+    },
+    {
+      "path": "examples/srd-52-conditions/CORPUS-LICENCE.txt",
+      "sha256": "0b5bd883d3234fbdb92c77ae699546e2178084887e81c87498d9f37d1b6fe24a",
+      "bytes": 1461,
+      "role": "archived",
+      "readBy": [],
+      "archive": null
+    },
+    {
+      "path": "examples/srd-52-conditions/README.md",
+      "sha256": "0c0ee84cd9f8fe7d5cfa4f1c9d66734a65bc0393c4ba31f43f1c17407e888eed",
+      "bytes": 31569,
+      "role": "active",
+      "readBy": [
+        "links"
+      ],
+      "archive": null
+    },
+    {
+      "path": "examples/srd-52-conditions/blind-mapping/README.md",
+      "sha256": "32c810c24e4575fc4d7ca1e307cddbcad29df8ad389a7b38fa6c09c39aa4b117",
+      "bytes": 3598,
+      "role": "active",
+      "readBy": [
+        "links"
+      ],
+      "archive": null
+    },
+    {
+      "path": "examples/srd-52-conditions/blind-mapping/REDACTIONS.md",
+      "sha256": "da6111c737ba9c57f0bf6092dce05193b3a731dc9e03996653ac953ac51e0499",
+      "bytes": 12085,
+      "role": "active",
+      "readBy": [
+        "checks",
+        "links"
+      ],
+      "archive": null
+    },
+    {
+      "path": "examples/srd-52-conditions/blind-mapping/corpus-map.md",
+      "sha256": "8b3ae2f7c8d2a3bfd2391a231a04cd0a37d3034bcb0796bc6caa34cce453fb2b",
+      "bytes": 86274,
+      "role": "active",
+      "readBy": [
+        "checks",
+        "links"
+      ],
+      "archive": null
+    },
+    {
+      "path": "examples/srd-52-conditions/blind-mapping/method.md",
+      "sha256": "e9c99c02ffe02975343cd73f38e922600407aeec8ed5b0579fc6419dd10bda38",
+      "bytes": 62840,
+      "role": "active",
+      "readBy": [
+        "checks",
+        "links"
+      ],
+      "archive": null
+    },
+    {
+      "path": "examples/srd-52-conditions/blind-mapping/staged-inputs.json",
+      "sha256": "9aa7d3298a92cfc0431af4bf18185eb8154d4bcfc8242e4020705c9bb03d0906",
+      "bytes": 20205,
+      "role": "active",
+      "readBy": [
+        "checks"
+      ],
+      "archive": null
+    },
+    {
+      "path": "examples/srd-52-conditions/blind-mapping/staging.json",
+      "sha256": "7f87b5942f46e3ee71470c21edf59a8e9778cc67e086f36b6474f2a4d335b8cb",
+      "bytes": 30252,
+      "role": "active",
+      "readBy": [
+        "checks"
+      ],
+      "archive": null
+    },
+    {
+      "path": "examples/srd-52-conditions/corpus-manifest.json",
+      "sha256": "2e005e96c60df9cbf9091b4f0e45d1af44f2f9a0a4de446bb41f9437cf669346",
+      "bytes": 2239,
+      "role": "active",
+      "readBy": [
+        "checks"
+      ],
+      "archive": null
+    },
+    {
+      "path": "examples/srd-52-conditions/corpus-map.json",
+      "sha256": "ecdccc64840ab7fe867171a0d579c371e998915ceea283a43946f4efdec2a571",
+      "bytes": 98898,
+      "role": "active",
+      "readBy": [
+        "checks"
+      ],
+      "archive": null
+    },
+    {
+      "path": "examples/srd-52-conditions/mapping-protocol.json",
+      "sha256": "e44daae606d90200100a02028f3f5d660684d40a5ed2786c6727b444e011b655",
+      "bytes": 645,
+      "role": "active",
+      "readBy": [
+        "checks"
+      ],
+      "archive": null
+    },
+    {
+      "path": "examples/srd-52-conditions/review.json",
+      "sha256": "cde75b838cad20080242789602a7652fb4bfb79486b0d32a3431e22d6047ffad",
+      "bytes": 2136,
+      "role": "active",
+      "readBy": [
+        "checks"
+      ],
+      "archive": null
+    },
+    {
+      "path": "examples/tax-121-build/EVIDENCE.md",
+      "sha256": "5802fdfb183e6ad178605dc8a3327e4a107b17e6964feea5ebf74dfd0d2e3405",
+      "bytes": 8942,
+      "role": "active",
+      "readBy": [
+        "links"
+      ],
+      "archive": null
+    },
+    {
+      "path": "examples/tax-121-build/HANDOFF.md",
+      "sha256": "9f183d65d16b7250c205bd7ae4eed0bb41022c4c03bca5ec503db5d88d396b00",
+      "bytes": 4446,
+      "role": "active",
+      "readBy": [
+        "links"
+      ],
+      "archive": null
+    },
+    {
+      "path": "examples/tax-121-build/learning-log.md",
+      "sha256": "692f43fc0e6850a52e38c4a0608d207cd052decad35ff79ae3dddc12d7627736",
+      "bytes": 18150,
+      "role": "active",
+      "readBy": [
+        "links"
+      ],
+      "archive": null
+    },
+    {
+      "path": "examples/tax-121-principal-residence/CORPUS-LICENCE.txt",
+      "sha256": "e6117cf3269f0f621e4a7c0feb9a4a6219fa9e6265794fa59f137e7b9dc8252f",
+      "bytes": 962,
+      "role": "release",
+      "readBy": [
+        "package"
+      ],
+      "archive": null
+    },
+    {
+      "path": "examples/tax-121-principal-residence/README.md",
+      "sha256": "367baf7ec7de2a09911612ee0a4366cdcd8c2062d53917241fcb1c652cba78ef",
+      "bytes": 40290,
+      "role": "active",
+      "readBy": [
+        "links"
+      ],
+      "archive": null
+    },
+    {
+      "path": "examples/tax-121-principal-residence/blind-mapping/README.md",
+      "sha256": "83dac16c0e3b89bb01385772b4c4a3feac4ea27599102e0a2a3f4298bc59dffb",
+      "bytes": 20220,
+      "role": "active",
+      "readBy": [
+        "links"
+      ],
+      "archive": null
+    },
+    {
+      "path": "examples/tax-121-principal-residence/blind-mapping/blind-map-manifest.json",
+      "sha256": "49c1379bc06892cfb5d475f27c88ac7173f4ae4dd0e5e5b7070a83b66148ccab",
+      "bytes": 3202,
+      "role": "archived",
+      "readBy": [],
+      "archive": null
+    },
+    {
+      "path": "examples/tax-121-principal-residence/blind-mapping/blind-map.json",
+      "sha256": "1d4ed894a6517f1596a1a151ead420c74eddc3d316ee80700086e8b4b651dbe9",
+      "bytes": 54898,
+      "role": "archived",
+      "readBy": [],
+      "archive": null
+    },
+    {
+      "path": "examples/tax-121-principal-residence/blind-mapping/build-map-c.py",
+      "sha256": "e29acc5607478cf680acdd1962926e4b1d6bf971e134c2fdb888b8e129e9b396",
+      "bytes": 16323,
+      "role": "active",
+      "readBy": [
+        "checks"
+      ],
+      "archive": null
+    },
+    {
+      "path": "examples/tax-121-principal-residence/blind-mapping/compare.py",
+      "sha256": "566f369e9c6bf97d0d47c07401be240427164ca1db6d9a12d9cfce552bff26f9",
+      "bytes": 9420,
+      "role": "archived",
+      "readBy": [],
+      "archive": null
+    },
+    {
+      "path": "examples/tax-121-principal-residence/blind-mapping/first-map.json",
+      "sha256": "d5b4f0979d902c7099da85aa59e64444fea9ecd5e39059f37b1f0d597b0262ba",
+      "bytes": 51173,
+      "role": "active",
+      "readBy": [
+        "checks"
+      ],
+      "archive": null
+    },
+    {
+      "path": "examples/tax-121-principal-residence/blind-mapping/resolutions.json",
+      "sha256": "2b9f6bff30a9e82466d50a502e3e4c96dcf887cf0df33cc46b33ba22d4da420a",
+      "bytes": 35967,
+      "role": "active",
+      "readBy": [
+        "checks"
+      ],
+      "archive": null
+    },
+    {
+      "path": "examples/tax-121-principal-residence/blind-mapping/results.json",
+      "sha256": "9488c947b667f204e07d75431eaa6e272fd7008e45a2e7daa81d98e15617685c",
+      "bytes": 13831,
+      "role": "active",
+      "readBy": [
+        "checks"
+      ],
+      "archive": null
+    },
+    {
+      "path": "examples/tax-121-principal-residence/corpus-manifest.json",
+      "sha256": "2223992ac4e8726d9c80e0756ce91abaa27ad3c76a2b461534d4f9f9dcb7536c",
+      "bytes": 2180,
+      "role": "release",
+      "readBy": [
+        "checks",
+        "package"
+      ],
+      "archive": null
+    },
+    {
+      "path": "examples/tax-121-principal-residence/corpus-map.json",
+      "sha256": "5106bb4879b7c1af5fc0ddb1699800e91cd9fb97bada74f483c9ae4dbed83879",
+      "bytes": 58665,
+      "role": "release",
+      "readBy": [
+        "checks",
+        "package"
+      ],
+      "archive": null
+    },
+    {
+      "path": "examples/tax-121-principal-residence/map-package.json",
+      "sha256": "6ad022451683e45131d70937ba6adc50fb997e64e0988e52e740f707c83fdb72",
+      "bytes": 85,
+      "role": "release",
+      "readBy": [
+        "package"
+      ],
+      "archive": null
+    },
+    {
+      "path": "examples/tax-121-principal-residence/mapping-protocol.json",
+      "sha256": "3e31914108a2f6497952dc265a7d6b0f94467c0d3013f2482213b73921fd1f70",
+      "bytes": 568,
+      "role": "active",
+      "readBy": [
+        "checks"
+      ],
+      "archive": null
+    },
+    {
+      "path": "examples/tax-121-principal-residence/review.json",
+      "sha256": "5d7e854f414f4c16c836071624f28fcb46dd9d9afa1fece8163036074adf384b",
+      "bytes": 3393,
+      "role": "active",
+      "readBy": [
+        "checks"
+      ],
+      "archive": null
+    },
+    {
+      "path": "examples/tax-121-principal-residence/section-1.121-1.xml",
+      "sha256": "faf3e310a81b1d00729fd69fb422342bcff8049a98a0ae80955be3287e30bab2",
+      "bytes": 24694,
+      "role": "release",
+      "readBy": [
+        "checks",
+        "package"
+      ],
+      "archive": null
+    },
+    {
+      "path": "examples/validator-attack/README.md",
+      "sha256": "5b3dd5b193d168f0734bae9e0794e2630d0254ca980e7b257266e1a0c160c0cd",
+      "bytes": 16502,
+      "role": "active",
+      "readBy": [
+        "links"
+      ],
+      "archive": null
+    },
+    {
+      "path": "examples/validator-attack/results.json",
+      "sha256": "52773297af7d595395736436525871a88a599538b02b2c1d8246d4e8f5b47a6d",
+      "bytes": 28037,
+      "role": "active",
+      "readBy": [
+        "checks"
+      ],
+      "archive": null
+    },
+    {
+      "path": "examples/validator-attack/results.md",
+      "sha256": "2b071e2c0bc6a4ef6bdfbcc3cb857e2709cba121f75700a3fb4a10551c0eda48",
+      "bytes": 1397,
+      "role": "active",
+      "readBy": [
+        "links"
+      ],
+      "archive": null
+    }
+  ]
+}

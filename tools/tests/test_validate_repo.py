@@ -273,7 +273,10 @@ class TestTheStepsAreTheStepsThatRanBefore(unittest.TestCase):
         "the README's status table matches the factory CLI",
         "the README cites no closed issue as not yet done",
     )
-    ADDED = ("every map has a row that names its corpora and its grammar",)
+    ADDED = (
+        "every map has a row that names its corpora and its grammar",
+        "every evidence artifact is the bytes the lock names",
+    )
 
     def test_every_step_the_old_script_ran_still_runs_in_its_order(self):
         names = [name for name, _ in vr.STEPS]
@@ -465,6 +468,37 @@ class TestTheEngineJobIsOwedByWhatProducesAnEngine(unittest.TestCase):
     def test_full_and_release_always_owe_an_engine(self):
         self.assertTrue(vr.full_scope().engine)
         self.assertTrue(vr.release_scope("hoyle-backgammon").engine)
+
+
+class TestTheEvidenceStepAsksTheRightVerifier(unittest.TestCase):
+    """--with-evidence verifies the artifacts wherever the lock says they live (#349)."""
+
+    def _argv(self, with_evidence):
+        run = vr.Run(vr.ROOT, vr.full_scope(), with_evidence=with_evidence)
+        seen = []
+        run.python = lambda *argv, **kw: seen.append(argv) or True
+        self.assertTrue(vr.step_evidence(run))
+        return seen[0]
+
+    def test_without_it_the_checkout_is_verified_in_place(self):
+        self.assertEqual(("tools/check-evidence.py",), self._argv(False))
+
+    def test_with_it_the_fetching_verifier_runs_instead(self):
+        self.assertEqual(("tools/fetch-evidence.py", "--verify"), self._argv(True))
+
+    def test_it_is_off_unless_asked_for(self):
+        self.assertFalse(vr.Run(vr.ROOT, vr.full_scope()).with_evidence)
+
+    def test_the_evidence_step_runs_at_every_scope(self):
+        # It holds a fact about the tree, not about the change, and takes 40ms over 15.5 MB.
+        for scope in (vr.full_scope(), vr.classify(["tools/factory/generate.py"]),
+                      vr.release_scope("hoyle-backgammon")):
+            with self.subTest(scope=scope.name):
+                run = vr.Run(vr.ROOT, scope)
+                seen = []
+                run.python = lambda *argv, **kw: seen.append(argv) or True
+                self.assertTrue(vr.step_evidence(run))
+                self.assertEqual([("tools/check-evidence.py",)], seen)
 
 
 class TestTheNetworkStepRunsWhereItsSubjectChanges(unittest.TestCase):
