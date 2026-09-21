@@ -71,6 +71,14 @@ is what damages them, and `examples/validator-attack/` is the record.
     because the engine simply answers. Unmatched entries are reported; an unmatched entry
     is a **failure** only when `status: declined`, which asserts no implemented path at all
     and therefore owes a runtime reason.
+  * **A recorded `mutation` is still only a string.** `status` refuses an unfilled placeholder
+    (#240, the rule in `mutation.py`: the set, one word repeated, or under three words and twelve
+    characters, all read after Unicode normalisation), which is what the engine's gate already
+    applied to the merge it builds. That is where it stops. Nothing here runs a test or sees an
+    engine, so whether the edit was made, whether the test went red, and whether the sentence was
+    copied from the entry above are all outside it; `not yet recorded` passes. Every refusal says
+    so, because a reader told only "that is not a mutation" reads the passing case as proof.
+    *Reasoned.*
   * **An absence is claimed here and proved elsewhere.** `absentFrom` (0009) asserts the
     corpus does not contain the rule. Nothing in this file reads a corpus, so the `absent`
     check enforces only the shape of the claim -- that it is non-empty, that it excludes

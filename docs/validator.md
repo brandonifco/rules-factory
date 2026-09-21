@@ -150,6 +150,15 @@ reading them.
   section citation names a paragraph and refuses it; a page citation names a page and does not.
 - **A rule nobody mapped leaves no trace.** An omitted definition, and an applicability rule
   removed with the edges that named it, both pass. *Measured: 0 of 4 and 0 of 4.*
+- **A recorded `mutation` is still only a string.** Since
+  [#240](https://github.com/brandonifco/rules-factory/issues/240) `status` refuses an unfilled
+  placeholder — the set, one word repeated, or anything under three words and twelve characters,
+  all read after Unicode normalisation
+  ([`tools/mapvalidator/mutation.py`](../tools/mapvalidator/mutation.py), the rule the engine gate
+  already applied to the merge it builds). That is where it stops: nothing here runs a test or
+  sees an engine, so it cannot tell whether the edit was made, whether the test went red, or
+  whether the sentence was copied from the entry above. `not yet recorded` passes, and every
+  refusal says as much rather than letting the passing case read as proof. *Reasoned.*
 - **An absence is claimed here and proved elsewhere.** Nothing in `check-map.py` reads a corpus;
   `absentFrom` is checked for shape, and falsified by the locator checkers. *Reasoned.*
 - **A cross-reference nobody noticed is invisible** to the phrase list — measured at 0 detected in
