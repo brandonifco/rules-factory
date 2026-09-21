@@ -563,11 +563,23 @@ class TestTestsRanCountsTestsThatRan(GateCase):
         engine = self.engine()
         results = self.results("contradictory")
         for framework in ("net8.0", "net10.0"):
-            write_trx(os.path.join(results, f"{framework}.trx"), [("skipped", "NotExecuted")],
-                      framework=framework, counters={"executed": 12, "passed": 12})
+            write_trx(os.path.join(results, f"{framework}.trx"),
+                      [(f"t{i}", "NotExecuted") for i in range(12)], framework=framework,
+                      counters={"executed": 12, "passed": 12, "notExecuted": 0})
         code, output = self.ran(engine, results)
         self.assertEqual(code, 1, output)
-        self.assertIn('Counters says executed="12", and the file\'s own results show 1 executed', output)
+        self.assertIn('Counters says executed="12", and the file\'s own results show 0 executed '
+                      "(NotExecuted=12)", output)
+
+    def test_fails_when_the_summary_claims_more_ran_than_were_found(self):
+        engine = self.engine()
+        results = self.results("impossible")
+        for framework in ("net8.0", "net10.0"):
+            write_trx(os.path.join(results, f"{framework}.trx"), [("passes", "Passed")],
+                      framework=framework, counters={"executed": 12})
+        code, output = self.ran(engine, results)
+        self.assertEqual(code, 1, output)
+        self.assertIn('Counters says executed="12" of total="1" -- more tests ran than were discovered', output)
 
     def test_fails_on_counters_that_are_not_numbers(self):
         engine = self.engine()

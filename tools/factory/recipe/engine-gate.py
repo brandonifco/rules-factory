@@ -15,7 +15,8 @@ finds nothing to examine fails: a check with no inputs has proven nothing.
   provenance                         provenance.json still hashes the files on disk, the overlay set
                                      included (re-produce after an overlay edit)
   expected-results                   test projects on disk x target frameworks
-  tests-ran DIR EXPECTED             the TRX files show that many result files and >0 tests
+  tests-ran DIR EXPECTED             the TRX files show that many result files, and a test
+                                     executed for every test project x target framework
   named-tests DIR --map MAP          every test an implemented entry names exists and ran
   rails                              the agent rails hold: read-only reviewers, no dangling
                                      citation, a policy the rails can read
@@ -23,6 +24,7 @@ finds nothing to examine fails: a check with no inputs has proven nothing.
 Run from the engine root. Standard library only.
 """
 import argparse
+import collections
 import difflib
 import glob
 import hashlib
@@ -461,12 +463,38 @@ def record_matches(_args):
 # --- tests ------------------------------------------------------------------------------
 
 
+# The skipped/not-executed policy (#337). A TRX result carries an `outcome`, and exactly these two
+# mean the test was started and reached a verdict of its own: everything else -- `NotExecuted`,
+# which is what a `[Fact(Skip = "...")]` becomes, and `Inconclusive`, `NotRunnable`, `Pending`,
+# `InProgress`, `Disconnected`, `Warning`, `Aborted`, `Error`, `Timeout` -- is a test that did not
+# run, and a test that did not run proves nothing. They are also exactly the two the TRX writer
+# counts in `Counters.executed` (executed = passed + failed), which is what lets the summary and
+# the results below be cross-checked against each other. A failure is the suite's to report: this
+# check counts execution, not success, so `Failed` is a test that ran.
+EXECUTED = ("Passed", "Failed")
+
+
+def test_projects():
+    """{lower-cased assembly name: the project that builds it} for every test project on disk.
+
+    `dotnet test` exits 0 when it finds nothing, so the expectation comes from the projects on
+    disk, not the solution: a project dropped from the solution would drop out of both counts.
+    Lower-cased because the TRX writer lower-cases the `storage` path it records each test
+    against, which is the only place a result file says which assembly ran.
+    """
+    found = {}
+    for project in on_disk("*.csproj"):
+        text = project.read_text(encoding="utf-8")
+        if not re.search(r"<IsTestProject>\s*true\s*</IsTestProject>", text, re.I):
+            continue
+        named = re.search(r"<AssemblyName>\s*([^<]+?)\s*</AssemblyName>", text)
+        found[(named.group(1) if named else project.stem).lower()] = str(project.relative_to(ROOT))
+    return found
+
+
 def expected_results(_args):
-    """`dotnet test` exits 0 when it finds nothing, so the expectation comes from the projects on
-    disk, not the solution: a project dropped from the solution would drop out of both counts."""
-    count = sum(1 for p in on_disk("*.csproj")
-                if re.search(r"<IsTestProject>\s*true\s*</IsTestProject>", p.read_text(encoding="utf-8"), re.I))
-    print(count * max(1, len(target_frameworks())))
+    """One result file per test project per target framework: what `tests-ran` is handed."""
+    print(len(test_projects()) * max(1, len(target_frameworks())))
     return 0
 
 
@@ -474,26 +502,95 @@ def _trx(results_dir):
     return sorted(glob.glob(os.path.join(results_dir, "**", "*.trx"), recursive=True))
 
 
-def tests_ran(args):
+def _counted(path, frameworks):
+    """One TRX read: (executed, not executed, {(assembly, framework) that executed a test}, problems).
+
+    Read from the results themselves -- one entry per test the run reached -- and never from
+    `Counters.total`, which counts tests *discovered*. The summary is used only to contradict
+    them: a file whose `Counters.executed` is not the number of executed results it carries is
+    not evidence of anything, and fails closed rather than being averaged in.
+    """
     import xml.etree.ElementTree as ET
-    files, total = _trx(args.results_dir), 0
-    for f in files:
-        counters = ET.parse(f).getroot().find(".//t:ResultSummary/t:Counters", TRX_NS)
-        if counters is not None:
-            total += int(counters.get("total", "0"))
-    problems = []
+    name = os.path.basename(path)
+    try:
+        root = ET.parse(path).getroot()
+    except ET.ParseError as error:
+        return 0, 0, set(), [f"{name}: is not parseable as XML ({error}), so it shows no test running"]
+    storage = {unit.get("id"): (unit.get("storage") or "") for unit in root.iterfind(".//t:UnitTest", TRX_NS)}
+    # A result with `InnerResults` is a parent the writer synthesised over the rows beneath it;
+    # counting the leaves counts each row once, and is every result for the xunit the factory pins.
+    leaves = [r for r in root.iterfind(".//t:UnitTestResult", TRX_NS) if r.find("t:InnerResults", TRX_NS) is None]
+    executed = [r for r in leaves if r.get("outcome") in EXECUTED]
+    problems, pairs = [], set()
+    counters = root.find(".//t:ResultSummary/t:Counters", TRX_NS)
+    if counters is None:
+        problems.append(f"{name}: has no ResultSummary/Counters, so it says nothing about how many tests ran")
+    else:
+        total, claimed = counters.get("total"), counters.get("executed")
+        if not (isinstance(total, str) and total.isdigit() and isinstance(claimed, str) and claimed.isdigit()):
+            problems.append(f"{name}: Counters total={total!r} executed={claimed!r} is not a pair of "
+                            f"non-negative integers, so the file's own summary cannot be read")
+        elif int(claimed) > int(total):
+            problems.append(f"{name}: Counters says executed=\"{claimed}\" of total=\"{total}\" -- more tests ran "
+                            f"than were discovered, which cannot have happened")
+        elif int(claimed) != len(executed):
+            seen = ", ".join(f"{outcome}={count}" for outcome, count in sorted(
+                collections.Counter(r.get("outcome") for r in leaves).items())) or "no result at all"
+            problems.append(f"{name}: Counters says executed=\"{claimed}\", and the file's own results show "
+                            f"{len(executed)} executed ({seen}). A summary that contradicts its results is not "
+                            f"evidence that anything ran")
+    for result in executed:
+        parts = [part.lower() for part in re.split(r"[\\/]", storage.get(result.get("testId"), "")) if part]
+        assembly = re.sub(r"\.dll$", "", parts[-1]) if parts else ""
+        under = [part for part in parts[:-1] if part in frameworks]
+        if not assembly or not under:
+            problems.append(f"{name}: {result.get('testName')!r} ran, and the file does not say which test "
+                            f"assembly or target framework it ran under (storage "
+                            f"{storage.get(result.get('testId'), '')!r}), so it cannot count towards the matrix")
+        else:
+            pairs.add((assembly, under[-1]))
+    return len(executed), len(leaves) - len(executed), pairs, problems
+
+
+def tests_ran(args):
+    """The tests the run actually executed, per test project and target framework (#337).
+
+    Three claims, and the message states only what was measured. Every test project on disk wrote
+    a result file for every target framework; every one of those pairs executed at least one test,
+    so a framework or a project that silently stopped running is not covered by another one that
+    ran twice; and the number reported as having run is the number of executed results, under the
+    `EXECUTED` policy above. Summing `Counters.total` counted tests that were only discovered, and
+    two files declaring `total=12 executed=0 notExecuted=12` were reported as 24 tests that ran.
+    """
+    projects, frameworks = test_projects(), {f.lower() for f in target_frameworks()}
+    files, executed, skipped, pairs, problems = _trx(args.results_dir), 0, 0, set(), []
+    for path in files:
+        ran, not_run, covered, found = _counted(path, frameworks)
+        executed, skipped, pairs = executed + ran, skipped + not_run, pairs | covered
+        problems += found
     if len(files) != args.expected:
         problems.append(f"expected {args.expected} result file(s) (test projects on disk x target frameworks), "
                         f"found {len(files)}. A test project silently stopped running.")
-    if total == 0:
-        problems.append("zero tests were discovered or executed across all test projects")
-    return report(problems, f"{total} test(s) across {len(files)} result file(s) actually ran")
+    if executed == 0:
+        problems.append(f"0 of {executed + skipped} discovered test(s) were executed across all test projects. "
+                        f"A discovered test is not a test that ran")
+    expected_pairs = {(assembly, framework) for assembly in projects for framework in (frameworks or {""})}
+    for assembly, framework in sorted(expected_pairs - pairs):
+        problems.append(f"no test executed for {projects[assembly]} under {framework}: the result files show "
+                        f"{sorted(f'{a} ({f})' for a, f in pairs)}, and a result file for one framework does not "
+                        f"stand in for another")
+    for assembly, framework in sorted(pairs - expected_pairs):
+        problems.append(f"{assembly} ({framework}) executed tests, and no test project on disk builds that "
+                        f"assembly for that target framework -- the results are not this engine's matrix")
+    return report(problems, f"{executed} test(s) actually ran ({skipped} skipped or not executed) across "
+                            f"{len(files)} result file(s), covering every one of the {len(expected_pairs)} "
+                            f"expected test project x target framework pair(s)")
 
 
 def named_tests(args):
     """rules-factory#2: an `implemented` entry names the tests that prove it. The map cannot show a
-    named test exists or ran, so every one must have an executed result (Passed or Failed; a
-    failure is the suite's to report) in every target framework. Names are `Class.Method`; a short
+    named test exists or ran, so every one must have an executed result (`EXECUTED` above: a
+    failure is the suite's to report, a skip is not a run) in every target framework. Names are `Class.Method`; a short
     class name that resolves to two classes is refused rather than guessed."""
     import xml.etree.ElementTree as ET
     frameworks = max(1, len(target_frameworks()))
@@ -508,7 +605,7 @@ def named_tests(args):
             classes.setdefault(short, set()).add(full)
             names[unit.get("id")] = f"{short}.{method.get('name')}"
         for name in {names[r.get("testId")] for r in root.iterfind(".//t:UnitTestResult", TRX_NS)
-                     if r.get("outcome") in ("Passed", "Failed") and r.get("testId") in names}:
+                     if r.get("outcome") in EXECUTED and r.get("testId") in names}:
             ran[name] = ran.get(name, 0) + 1
 
     mapped = json.loads(pathlib.Path(args.map).read_text(encoding="utf-8"))
