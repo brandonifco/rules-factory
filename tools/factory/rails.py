@@ -62,15 +62,20 @@ import subprocess
 import agentrails
 import ownership as ownership_step
 
-RULESET = "rules-factory-agent-rails"
+# What the rails on GitHub are, and how they are judged, is stated in agentrails.py and read from
+# there by this command and by the engine's own `tools/agent-doctor.py` (#231): rails.py is
+# factory internals and is not vendored into an engine, so a rule that lived here alone would be
+# copied there -- and the copy is how the doctor came to report protection this command reported
+# missing. The names are bound here so this file reads as itself.
+RULESET = agentrails.RULESET
 # `verdict-requeue` is deliberately not among them (#191). It runs on the `status` event, so its
 # run belongs to the default branch's commit rather than to any pull request, and a required check
 # on that commit is a condition on something that has already merged.
-REQUIRED_CHECKS = ("validate", "pr-policy", "conformance-gate")
+REQUIRED_CHECKS = agentrails.REQUIRED_CHECKS
 # The app that posts them. All three are workflows in the engine, so the app is GitHub Actions --
 # but its id is per host (github.com and each Enterprise Server have their own), so it is looked
-# up through the same `gh` and never written down here.
-CHECKS_APP = "github-actions"
+# up through the same `gh` and never written down.
+CHECKS_APP = agentrails.CHECKS_APP
 POLICY = ".github/agent-policy.json"
 LABEL_COLOURS = {
     # Colour is the one thing here with no consequence, so it is picked once and never argued
@@ -81,14 +86,14 @@ LABEL_COLOURS = {
     "normalRisk": ("fbca04", "Ordinary risk: the semantic verdict is enough"),
     "independentRisk": ("d93f0b", "Needs a second, independent verdict before it can merge"),
 }
-OK, MISSING, WRONG, NOT_VERIFIED = "OK", "MISSING", "WRONG", "NOT VERIFIED"
+OK, MISSING, WRONG, NOT_VERIFIED = agentrails.OK, agentrails.MISSING, agentrails.WRONG, agentrails.NOT_VERIFIED
 # A standing fact rather than a finding: the row examines nothing and neither passes nor fails, so
 # it does not say OK and does not change the exit code.
 NOT_AUTHENTICATED = "NOT AUTHENTICATED"
 # The level a ruleset of the repository's own is at, as GitHub names it in `source_type` and
 # `ruleset_source_type`. Anything else -- an organization, an enterprise -- is a level above it,
 # which `--apply` cannot write and does not own.
-REPOSITORY_LEVEL = "Repository"
+REPOSITORY_LEVEL = agentrails.REPOSITORY_LEVEL
 
 
 class RailsError(Exception):
@@ -118,6 +123,20 @@ def _read(args, gh):
         return json.loads(done.stdout or "null"), None
     except ValueError as error:
         return None, f"not JSON ({error})"
+
+
+def _pages(args, gh):
+    """Every item of a paginated array endpoint: `(items, None)`, or `(None, why)`.
+
+    The read is asked for with `--paginate --slurp` and put back together by
+    `agentrails.flatten_pages`, because `--paginate` alone prints one JSON array per page and two
+    pages are not one document (#237). The engine's own `tools/agent-doctor.py` reads the same
+    endpoints the same way, through the same function.
+    """
+    document, why = _read([*args, *agentrails.PAGES], gh)
+    if why:
+        return None, why
+    return agentrails.flatten_pages(document if document is not None else [])
 
 
 def _json(args, gh, default=None):
@@ -225,25 +244,23 @@ def survey(repo, engine_dir, gh):
     document, labels = labels_of(engine_dir)
     repository = _json(["api", f"repos/{repo}"], gh)
     branch = repository.get("default_branch") or "main"
-    existing_labels = {item["name"] for item in _json(["api", f"repos/{repo}/labels", "--paginate"], gh, default=[])}
+    read_labels, _ = _pages(["api", f"repos/{repo}/labels"], gh)
+    existing_labels = {item["name"] for item in read_labels or []}
     # Every level, asked for explicitly. The factory's ruleset is the one at the repository's own
     # level: an organization ruleset carrying the factory's name is not the factory's -- `--apply`
     # cannot write it -- and taking it for the factory's is how a rail that is not there reads as
-    # one that is.
-    rulesets = _json(["api", f"repos/{repo}/rulesets?includes_parents=true", "--paginate"], gh, default=[]) or []
-    ours = next((item for item in rulesets if item.get("name") == RULESET
-                 and (item.get("source_type") or REPOSITORY_LEVEL) == REPOSITORY_LEVEL), None)
+    # one that is. `agentrails.factory_ruleset` is that choice, made once for this command and for
+    # the engine's own doctor (#231).
+    rulesets, _ = _pages(["api", f"repos/{repo}/rulesets?includes_parents=true"], gh)
+    rulesets = rulesets or []
+    ours, shadow_rulesets = agentrails.factory_ruleset(rulesets)
     detail = _json(["api", f"repos/{repo}/rulesets/{ours['id']}"], gh) if ours else None
     by_id = {item.get("id"): item for item in rulesets}
-    shadows = [item for item in rulesets if item.get("name") == RULESET
-               and (item.get("source_type") or REPOSITORY_LEVEL) != REPOSITORY_LEVEL]
 
     # The rules GitHub enforces on the branch, from every active ruleset at every level, each naming
     # the ruleset it comes from. A ruleset above the repository is otherwise invisible here, and
     # where this cannot be read the row says it did not look rather than that nothing is there.
-    in_force, in_force_error = _read(["api", f"repos/{repo}/rules/branches/{branch}", "--paginate"], gh)
-    if in_force is not None and not isinstance(in_force, list):
-        in_force, in_force_error = None, f"expected a list of rules, got {type(in_force).__name__}"
+    in_force, in_force_error = _pages(["api", f"repos/{repo}/rules/branches/{branch}"], gh)
     parents = {}
     ours_in_force = set()
     for rule in in_force or []:
@@ -257,15 +274,11 @@ def survey(repo, engine_dir, gh):
             ours_in_force.add(rule.get("type"))
 
     app = checks_app(gh)
-    required = {}
+    required = agentrails.required_check_pins(detail)
     pull_request = None
-    if detail:
-        for rule in detail.get("rules") or []:
-            if rule.get("type") == "required_status_checks":
-                required = {check.get("context"): check.get("integration_id")
-                            for check in (rule.get("parameters") or {}).get("required_status_checks") or []}
-            if rule.get("type") == "pull_request":
-                pull_request = rule.get("parameters") or {}
+    for rule in (detail or {}).get("rules") or []:
+        if rule.get("type") == "pull_request":
+            pull_request = rule.get("parameters") or {}
 
     return {
         "branch": branch,
@@ -289,8 +302,7 @@ def survey(repo, engine_dir, gh):
         "inForce": None if in_force is None else sorted(ours_in_force),
         "inForceError": in_force_error,
         "parentRulesets": {label: sorted(kinds) for label, kinds in sorted(parents.items())},
-        "shadows": [f"{item.get('name')} ({(item.get('source_type') or '?').lower()} {item.get('source') or '?'})"
-                    for item in shadows],
+        "shadows": [agentrails.ruleset_origin(item) for item in shadow_rulesets],
         "requiredChecks": required,
         "pullRequest": pull_request,
         "mergeOnly": (repository.get("allow_merge_commit") is True
@@ -336,16 +348,11 @@ def report(state):
                       (f"{RULESET} exists but {differs[0] if differs else 'is not active'}" if state["ruleset"] else
                        f"no ruleset named {RULESET}")))
     lines.append(_in_force_row(state))
-    app = state["checksApp"]
+    # Required and pinned to the app that posts it, judged by the rule the engine's own
+    # `tools/agent-doctor.py` judges the same ruleset by (#231, #186).
     for context in REQUIRED_CHECKS:
-        pin = state["requiredChecks"].get(context)
-        lines.append(_row(f"Required check: {context}",
-                          OK if pin is not None and pin == app else
-                          (WRONG if context in state["requiredChecks"] else MISSING),
-                          "" if pin is not None and pin == app else
-                          ("the workflow may exist; it is not required" if context not in state["requiredChecks"]
-                           else f"required, but not pinned to the {CHECKS_APP} app: a commit status under that "
-                                f"name satisfies it, whoever posted it")))
+        verdict, note = agentrails.required_check_state(state["requiredChecks"], context, state["checksApp"])
+        lines.append(_row(f"Required check: {context}", verdict, note))
     # Not a pass or a fail but a standing fact, reported where the rails are read: a verdict is a
     # commit status posted by a person's token, and `integration_id` pins an app, not a person, so
     # the verdict contexts cannot be pinned at all while they stay commit statuses (0029 §7, #186).
