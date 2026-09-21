@@ -233,6 +233,22 @@ def _occurrences(fragment, corpus):
     return found
 
 
+def _bound_quotes(entry):
+    """Every passage this entry quotes in `ambiguity.bounds` (0031).
+
+    A bound is the second of the three fates 0031 gives a worked example -- an entry, a bound on
+    an entry's ambiguity, or declined with the reading recorded -- and it carries the example's
+    text verbatim, which `check-locators.py` already holds to the corpus exactly as it holds
+    `evidence`.
+    """
+    bounds = block(entry, "ambiguity").get("bounds")
+    listed = bounds.get("examples") if isinstance(bounds, dict) else None
+    if not isinstance(listed, list):
+        return []
+    return [example["text"] for example in listed
+            if isinstance(example, dict) and isinstance(example.get("text"), str)]
+
+
 def take(units, document, rejected, adapter=None):
     """Measure the walk: which units its quotes reach, and which its rejections account for."""
     corpus, spans = _joined(units)
@@ -267,6 +283,16 @@ def take(units, document, rejected, adapter=None):
                     if lo < end and start < hi:
                         reached.setdefault(unit.key, set()).add(name)
                         hit = True
+
+        # A bound quotes the corpus too, and the unit it quotes has been read (#393). It does
+        # not make the *entry* located: `evidence` is what an entry claims to quote, and a bound
+        # standing in for a missing quote would hide the defect the unlocated line reports.
+        for quote in _bound_quotes(entry):
+            for fragment in _fragments(quote, adapter=adapter):
+                for start, end in _occurrences(fragment, corpus):
+                    for lo, hi, unit in spans:
+                        if lo < end and start < hi:
+                            reached.setdefault(unit.key, set()).add(name)
 
         # A short prose fragment still proves nothing: the four-word floor above is unchanged.
         # #320 established the narrower table-row path for one-, two- and three-word evidence.

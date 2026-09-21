@@ -225,7 +225,7 @@ it.
 
 | Verdict | What it means |
 |---|---|
-| **reached** | some entry's quoted `evidence` sits in the unit — a quote found in the unit's own text, not a citation naming it |
+| **reached** | a quote the map makes of the corpus sits in the unit — an entry's `evidence`, or an example quoted in an entry's `ambiguity.bounds`, which is 0031's second fate for a worked example and which `check-locators.py` holds to the corpus the same way ([#393](https://github.com/brandonifco/rules-factory/issues/393)). Found in the unit's own text, never a citation naming it, and a bound never stands in for an entry's own missing quote |
 | **rejected** | the mapper examined it, it produced no entry, and the reason is recorded. Its identity is (`sourceId`, `unit`), because a unit key has meaning inside the corpus whose adapter enumerated it. [method.md](method.md) says to drop advice and *note in the entry that you dropped it*; a passage that produced no entry at all has no entry to note it in, and that note lives in `mapping-inventory.json` |
 | **unaccounted** | neither. Nobody can tell from the map whether it was read and dismissed or never opened, which is the state a map exists to distinguish from a recorded verdict |
 
@@ -234,7 +234,7 @@ is decided by reading the corpus, and this tool does not read it. What *is* a fa
 enumeration of no units, or a run in which no entry's quote is found at all — an inventory of
 nothing has nothing unaccounted.
 
-The six committed maps report 517 unaccounted units of 806
+The six committed maps report 515 unaccounted units of 806
 ([#267](https://github.com/brandonifco/rules-factory/issues/267) holds the numbers and what each
 one is on reading it). None of the maps was edited to improve them: a map's bytes cannot change
 without invalidating its review
@@ -245,7 +245,11 @@ carries the corpus's own `{N}` marker, because `check-locators.py` searches the 
 the markers in place, and the units it is searched against have them taken out — so six of the
 backgammon map's entries quoted nothing this tool could find, and 23 units that are quoted were
 counted as read by nobody. The adapter now takes the markers out of the quote as well, and no
-committed entry is reported unlocated.
+committed entry is reported unlocated. Two more units moved with
+[#393](https://github.com/brandonifco/rules-factory/issues/393): § 1.121-1(c)(4) Examples 4 and 5
+are the corpus's only authority on *short temporary absences*, the tax map quotes both in
+`ambiguity.bounds`, and a measurement that read only `evidence` counted the strongest quote the
+map makes as having read nothing.
 
 ### `mapping-inventory.json`
 
@@ -560,7 +564,7 @@ none.
   invisible to it, and the spec's declared substitutions are the only thing that covers it. Every
   run says so, and so does every record it writes.
 - **The inventory measures the walk, and nobody has answered it.** Every unit inside every
-  committed map's extent is enumerated and counted, and 517 of 806 are unaccounted
+  committed map's extent is enumerated and counted, and 515 of 806 are unaccounted
   ([#267](https://github.com/brandonifco/rules-factory/issues/267)). No map records a rejection
   yet, so *examined and dismissed* and *never opened* still read the same for those units — what
   changed is that the number is now a fact rather than an impression.
