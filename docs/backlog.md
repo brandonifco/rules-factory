@@ -127,8 +127,10 @@ deliberate: the five findings share a single failure mode, which #338 states —
 than five independent severities. #338 carries that argument and the remediation order; each
 finding carries its own reproduction.
 
-Read this round beside the release rule above. #333 closed on 2026-09-20, so `repo-hygiene.py`
-reports a release due, and the remaining four are open against a factory the next tag will ship.
+Read this round beside the release rule above. The round's findings began closing on 2026-09-20,
+so `repo-hygiene.py` reports a release due; which of them are still open is what the `review5-*`
+labels say, against a factory the next tag will ship. Stated that way on purpose: a count written
+here is wrong the next time one of them closes, and this one already was.
 
 ## The hub
 

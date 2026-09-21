@@ -197,6 +197,130 @@ class TestHostileJournal(Scratch):
         self.assertEqual(os.stat(destination).st_mode & 0o777, 0o755)
 
 
+class TestVerifiedCommitHoldsOutToWhatWasVerified(Scratch):
+    """#335: a verified commit is refused when --out no longer holds the inputs that were verified.
+
+    The mutation-set check that was already here (`--out changed while produce ran`) looks only at
+    the paths the run writes or removes, so an engine-owned source file edited in --out while
+    produce ran was preserved -- correctly -- and the run still called the result verified, though
+    the gate had built and tested a tree that no longer existed anywhere.
+
+    Every assertion below names the verified-commit refusal *and* the exact path and reason, never
+    `Refused` alone: the older mutation-set refusal, the symlink refusal and a `CommitError` are
+    all refusals of this same call, so a verdict-only assertion would pass on a different rule
+    firing for a different reason (#283).
+    """
+
+    def setUp(self):
+        super().setUp()
+        # An engine's own source and build input: neither is in any mutation set below.
+        write(os.path.join(self.out, "src", "Engine", "Rule.cs"), "class Rule { }")
+        write(os.path.join(self.out, "src", "Engine", "Engine.csproj"), "<Project />")
+        # Test output the gate writes and no build reads: not an input, so not guarded.
+        write(os.path.join(self.out, "TestResults", "engine.trx"), "<TestRun />")
+
+    def read(self, relative):
+        with open(os.path.join(self.out, *relative.split("/")), encoding="utf-8") as handle:
+            return handle.read()
+
+    def stage_generated_file(self, stage):
+        """What the run itself produced: one added generated file, the whole of its mutation set."""
+        write(os.path.join(stage.root, "src", "Engine", "Generated", "Entries.g.cs"), "// generated")
+
+    def assertRefusedVerified(self, concurrent, *expected):
+        """Run a verified commit with `concurrent(--out)` happening after the copy; assert the refusal."""
+        with transaction.Stage(self.out) as stage:
+            self.stage_generated_file(stage)
+            concurrent(self.out)
+            after_the_edit = listing(self.out)
+            with self.assertRaises(intake.Refused) as caught:
+                stage.commit(verified=True)
+        message = str(caught.exception)
+        self.assertIn("--out changed after the engine was verified", message)
+        for fragment in expected:
+            self.assertIn(fragment, message)
+        self.assertIn("run produce again", message)
+        # The user's concurrent edit stands, and nothing this run staged was written over it.
+        self.assertEqual(after_the_edit, listing(self.out))
+        self.assertFalse(os.path.lexists(os.path.join(self.out, transaction.JOURNAL)))
+        self.assertEqual([n for n in os.listdir(self.tmp) if ".factory-produce-" in n], [])
+        return message
+
+    def test_a_source_file_edited_after_verification_refuses_and_keeps_the_edit(self):
+        self.assertRefusedVerified(lambda out: write(os.path.join(out, "src", "Engine", "Rule.cs"),
+                                                     "class Rule { int mine; }"),
+                                   "src/Engine/Rule.cs (changed)")
+        self.assertEqual(self.read("src/Engine/Rule.cs"), "class Rule { int mine; }")
+
+    def test_a_build_input_edited_after_verification_refuses(self):
+        self.assertRefusedVerified(lambda out: write(os.path.join(out, "src", "Engine", "Engine.csproj"),
+                                                     "<Project><ItemGroup /></Project>"),
+                                   "src/Engine/Engine.csproj (changed)")
+
+    def test_a_source_file_added_after_verification_refuses(self):
+        # An added file is an input too: the gate compiled a tree without it.
+        self.assertRefusedVerified(lambda out: write(os.path.join(out, "src", "Engine", "Extra.cs"), "class Extra { }"),
+                                   "src/Engine/Extra.cs (added)")
+        self.assertEqual(self.read("src/Engine/Extra.cs"), "class Extra { }")
+
+    def test_a_source_file_removed_after_verification_refuses(self):
+        self.assertRefusedVerified(lambda out: os.remove(os.path.join(out, "src", "Engine", "Rule.cs")),
+                                   "src/Engine/Rule.cs (removed)")
+
+    def test_a_rename_after_verification_names_both_halves(self):
+        def rename(out):
+            os.rename(os.path.join(out, "src", "Engine", "Rule.cs"), os.path.join(out, "src", "Engine", "Moved.cs"))
+        self.assertRefusedVerified(rename, "src/Engine/Moved.cs (added)", "src/Engine/Rule.cs (removed)")
+
+    def test_an_executable_bit_changed_after_verification_refuses(self):
+        # The one mode bit git tracks, and the one the mutation set compares.
+        def flip(out):
+            os.chmod(os.path.join(out, "src", "Engine", "Rule.cs"), 0o755)
+        self.assertRefusedVerified(flip, "src/Engine/Rule.cs (changed)")
+
+    def test_build_output_changed_after_verification_is_not_an_input_and_commits(self):
+        """The guard is no broader than necessary: TestResults/ and bin/ are written, never read."""
+        with transaction.Stage(self.out) as stage:
+            self.stage_generated_file(stage)
+            write(os.path.join(self.out, "TestResults", "engine.trx"), "<TestRun result='later' />")
+            write(os.path.join(self.out, "bin", "Engine.dll"), "built after the copy")
+            added, changed, removed = stage.commit(verified=True)
+        self.assertEqual((added, changed, removed), (["src/Engine/Generated/Entries.g.cs"], [], []))
+        self.assertEqual(self.read("TestResults/engine.trx"), "<TestRun result='later' />")
+        self.assertEqual(self.read("bin/Engine.dll"), "built after the copy")
+
+    def test_an_unverified_commit_still_keeps_a_concurrent_edit_and_commits(self):
+        """--no-verify claims nothing about a build, so it is not held to one (the old behaviour)."""
+        with transaction.Stage(self.out) as stage:
+            self.stage_generated_file(stage)
+            write(os.path.join(self.out, "src", "Engine", "Rule.cs"), "class Rule { int mine; }")
+            added, changed, removed = stage.commit(verified=False)
+        self.assertEqual((added, changed, removed), (["src/Engine/Generated/Entries.g.cs"], [], []))
+        self.assertEqual(self.read("src/Engine/Rule.cs"), "class Rule { int mine; }")
+
+    def test_a_verified_commit_with_no_concurrent_change_still_commits_everything(self):
+        with transaction.Stage(self.out) as stage:
+            self.stage_generated_file(stage)
+            write(os.path.join(stage.root, "src", "Engine", "Rule.cs"), "class Rule { int factory; }")
+            os.remove(os.path.join(stage.root, "backlog", "001.md"))
+            added, changed, removed = stage.commit(verified=True)
+        self.assertEqual((added, changed, removed),
+                         (["src/Engine/Generated/Entries.g.cs"], ["src/Engine/Rule.cs"], ["backlog/001.md"]))
+        self.assertEqual(self.read("src/Engine/Rule.cs"), "class Rule { int factory; }")
+        self.assertFalse(os.path.exists(os.path.join(self.out, "backlog")))
+
+    def test_a_path_this_run_writes_that_moved_in_out_is_refused_as_verified_too(self):
+        """A concurrent edit to a path the run also writes: refused, and the verified refusal is the one raised."""
+        with transaction.Stage(self.out) as stage:
+            write(os.path.join(stage.root, "src", "Engine", "Rule.cs"), "class Rule { int factory; }")
+            write(os.path.join(self.out, "src", "Engine", "Rule.cs"), "class Rule { int mine; }")
+            with self.assertRaises(intake.Refused) as caught:
+                stage.commit(verified=True)
+        self.assertIn("--out changed after the engine was verified", str(caught.exception))
+        self.assertIn("src/Engine/Rule.cs (changed)", str(caught.exception))
+        self.assertEqual(self.read("src/Engine/Rule.cs"), "class Rule { int mine; }")
+
+
 class TestSymlinkInOut(Scratch):
     """#184: a commit never writes or removes through a symlink in --out."""
 
