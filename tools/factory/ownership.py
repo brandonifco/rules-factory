@@ -87,10 +87,11 @@ TABLE = (
     Row("scripts/engine-gate.py", GENERATED, None, "the gate recipe: its non-dotnet checks"),
     Row("scripts/factory/*.py", GENERATED, None, "the factory's generator, vendored so the gate can regenerate"),
     Row(".github/workflows/validate.yml", GENERATED, None, "the gate recipe: CI runs validate.sh full"),
-    Row("AGENTS.md", MANAGED, 16,
+    Row("AGENTS.md", MANAGED, 17,
         "the governing contract every agent works this engine under (decision 0029); section 4 carries "
         "the sweep, the documentation section, and delete-only-what-you-created (#236); a packet that "
-        "names an entry is made with the map the reviewed commit declares (#372)"),
+        "names an entry is made with the map the reviewed commit declares (#372); section 11 is what the "
+        "machine owes the work -- the pinned SDK, a restore, a `gh` the packets can read (#195)"),
     Row("CLAUDE.md", MANAGED, 1,
         "a pointer to AGENTS.md and the Claude adapters; it states no rule of its own (0029)"),
     Row("docs/agent-team.md", MANAGED, 5, "the four roles, and what each may not do (0029)"),
@@ -127,17 +128,19 @@ TABLE = (
         "asks the gate to report again when something outside the pull request changed what it "
         "would answer: a verdict recorded at its head (#191), or the risk label on the issue it "
         "closes (#230)"),
-    Row(".github/pull_request_template.md", MANAGED, 3,
-        "the pull request shape pr-policy.py checks, documentation section included (0029, #236)"),
+    Row(".github/pull_request_template.md", MANAGED, 4,
+        "the pull request shape pr-policy.py checks, documentation section included (0029, #236); "
+        "\"Unrelated changes\" says what belongs in it and what is part of the change (#196)"),
     Row(".github/workflows/pr-policy.yml", MANAGED, 1, "the required check that runs pr-policy.py (0029)"),
     Row(".github/workflows/conformance-gate.yml", MANAGED, 2,
         "the required check that runs conformance-gate.py (0029)"),
     Row(".github/workflows/verdict-requeue.yml", MANAGED, 2,
         "runs requeue-gate.py on the status and issues events; deliberately not a required check "
         "(#191, #230)"),
-    Row("tools/agent-doctor.py", MANAGED, 5,
+    Row("tools/agent-doctor.py", MANAGED, 6,
         "whether the rails are active or only present, locally and on GitHub, and what merged work "
-        "left behind (0029, #236)"),
+        "left behind (0029, #236); the machine's own prerequisites first, because a rail in place on a "
+        "machine that cannot run the gate stops nothing (#195)"),
     Row(".editorconfig", MANAGED, 1,
         "the kernel determinism analyzers' severities: a build error in src, off in tests (0029)"),
     Row("global.json", MANAGED, 1,
@@ -282,6 +285,7 @@ RECIPE_SHA256 = {
         14: "1e3f3666d4812f88e9cd24347c96794c7d7115bfbd2af78c8bceb30bfbb8fb8d",
         15: "5727dbd594baaace84cd5fa650eb9ec0e7d1779b4fd4bb262f74f3ccf56fb67b",
         16: "07c9b6a26199f3bf9b06db4ab308fbc4747dfe71b3e2ab17a4f637be67fe14f6",
+        17: "f0148606dbd2a1e4f0614480ab74e7fa361876b9b65407019075f7a15dc24702",
     },
     "CLAUDE.md": {
         1: "04c07ad36e742fa60efafeca54d20bd96d16b6e338a44e46fad2b679ab8dfd9f",
@@ -351,6 +355,7 @@ RECIPE_SHA256 = {
         1: "e2cebc6419d62e2df3b218d76462caf807d6637f2b305ac2aa11153f13304a92",
         2: "8b679be11d7a53d3df4ee29fa687bff03042da01efa46a639da1d70e5dfe4234",
         3: "89a364ba817959aa0c3842b1fa3a9138df39d2dccd9f59f04ba33ce90d064f71",
+        4: "3c21dc914830df9656fb49ec5cd56cbb56542f8121a219395cfc7d13f08aab74",
     },
     ".github/workflows/pr-policy.yml": {
         1: "caa3394a473d5fdd45b274176d8e28c48d9f5425176318194ba68fbea8453fa2",
@@ -369,6 +374,7 @@ RECIPE_SHA256 = {
         3: "1ae43e922fbbe2cdcd4e1ed2708ac7377d644d7cdfac63a95cda2d37d7ef276b",
         4: "4af176ea1850a69a148973f301a12ef6dafbd125ecc3d3bd4afff5c8581709f6",
         5: "48192fc3bfea14393824f39b049c73606631f07db8caecdf8107f2500bd18af6",
+        6: "29a12d22a4befe577fcf67ab1ae868f0c1db3bc41d4d32babd812dd547324ab0",
     },
     ".editorconfig": {
         1: "4109d1ef55053ef656e536d7818934deb73016fbe950f153bae6b2a163591cb2",

@@ -132,4 +132,9 @@ Mutations observed:
 
 ## Unrelated changes
 
+<!-- Changes in this pull request that the issue did not ask for, and why each could not be its
+     own issue (AGENTS.md §4). A document this change makes untrue is **not** unrelated: updating
+     it is part of the change, and belongs in the sections above. If this list is not "None", a
+     reviewer is entitled to ask for the change to be split. -->
+
 None
