@@ -226,6 +226,21 @@ def table_map():
     return document
 
 
+def applicability_map():
+    """valid_map, plus a rule whose own words gate the whole unit and one entry it gates (#225).
+
+    § 1.121-1(f) is the committed shape -- *"This section is applicable for sales and exchanges
+    on or after December 24, 2002"* -- and `speed-within-limit` stands for the thirty entries
+    Map C had to name it on.
+    """
+    document = valid_map()
+    document["entries"].append(entry(
+        "first-day", kind="operation",
+        evidence="This section is applicable to throws made on or after the first day."))
+    document["entries"][1]["enabledBy"] = ["first-day"]
+    return document
+
+
 # --- harness ---------------------------------------------------------------------------
 
 
@@ -888,6 +903,107 @@ class TestGates(MapCase):
         self.assertEqual(self.status_of(output, "gates"), "skip", output)
         self.assertIn("NOT VERIFIED", output)
         self.assertEqual(code, 0, output)
+
+
+class TestApplicabilityReach(MapCase):
+    """#225: a rule whose own words gate a whole section, and no entry says it is gated.
+
+    § 1.121-1(f) -- *"This section is applicable for sales and exchanges on or after December 24,
+    2002"* -- gates everything § 1.121-1 states. Map A recorded the entry and no entry pointed at
+    it, so every rule it gates was recorded as applying unconditionally; Map C added 30
+    `enabledBy` edges. Every check passed Map A.
+    """
+
+    GATE = -1  # effective-date, appended by applicability_map()
+
+    def assert_reach(self, document, expect, message=None):
+        """`applicability-reach` reaches `expect` on this map, saying `message` when it refuses.
+
+        The standing helper cannot be used: it starts from `valid_map()`, whose words gate no
+        whole unit, so this check reports NOT VERIFIED there rather than `ok`. The obligation
+        #283 puts on it is kept by hand -- a refusal is asserted by its words, never only by
+        its verdict.
+        """
+        code, output = self.run_tool(document)
+        self.assertEqual(self.status_of(output, "applicability-reach"), expect, output)
+        self.assertEqual(code, 1 if expect == "fail" else 0, output)
+        if message:
+            self.assertIn(message, output)
+        return output
+
+    def test_the_gated_map_passes_and_the_same_map_without_the_edge_fails(self):
+        self.assert_reach(applicability_map(), "ok")
+        document = applicability_map()
+        document["entries"][1].pop("enabledBy")
+        self.assert_reach(document, "fail",
+                          "gate the whole section, and no entry names it in `enabledBy`")
+
+    def test_a_gate_the_map_reaches_by_suspension_passes(self):
+        # `suspendedBy` is a reach too: a rule that switches a section off gates it.
+        document = applicability_map()
+        document["entries"][1].pop("enabledBy")
+        document["entries"][1]["suspendedBy"] = ["effective-date"]
+        code, output = self.run_tool(document)
+        self.assertEqual(self.status_of(output, "applicability-reach"), "ok", output)
+        self.assertEqual(code, 0, output)
+
+    def test_a_citation_that_merely_mentions_the_unit_is_not_a_gate(self):
+        # § 172.102(c)(7)(ii): "§ 178.275(g)(3) of this subchapter does not apply" gates one
+        # cited paragraph, not the subchapter, and the committed hazmat map carries it.
+        document = valid_map()
+        document["entries"][0]["evidence"] = (
+            "Column 4 specifies the applicability of the pressure rule. When the word "
+            "\"Normal\" is indicated, that rule of this subchapter does not apply.")
+        code, output = self.run_tool(document)
+        self.assertEqual(self.status_of(output, "applicability-reach"), "skip", output)
+        self.assertEqual(code, 0, output)
+
+    def test_an_out_of_scope_gate_is_not_flagged(self):
+        document = applicability_map()
+        document["entries"][1].pop("enabledBy")
+        document["entries"][self.GATE]["scope"] = "out"
+        document["entries"][self.GATE]["status"] = "declined"
+        code, output = self.run_tool(document)
+        self.assertEqual(self.status_of(output, "applicability-reach"), "skip", output)
+        self.assertEqual(code, 0, output)
+
+    def test_a_map_whose_words_gate_nothing_does_not_report_ok(self):
+        code, output = self.run_tool(valid_map())
+        self.assertEqual(self.status_of(output, "applicability-reach"), "skip", output)
+        self.assertIn("NOT VERIFIED", output)
+        self.assertEqual(code, 0, output)
+
+    def test_the_first_tax_map_is_flagged_and_the_committed_map_is_not(self):
+        # #225's own acceptance, run against the two maps it names. Map A is trial 9's blind
+        # first mapping and is committed evidence; nothing else in this repository checks it.
+        repo = os.path.dirname(os.path.dirname(os.path.dirname(HERE)))
+        first = os.path.join(repo, "examples", "tax-121-principal-residence",
+                             "blind-mapping", "first-map.json")
+        committed = os.path.join(repo, "examples", "tax-121-principal-residence",
+                                 "corpus-map.json")
+        out, err = io.StringIO(), io.StringIO()
+        with redirect_stdout(out), redirect_stderr(err):
+            code = check_map.main([first, "--only", "applicability-reach"])
+        output = out.getvalue() + err.getvalue()
+        self.assertEqual(code, 1, output)
+        self.assertIn("effective-date", output)
+        self.assertIn("gate the whole section", output)
+        out, err = io.StringIO(), io.StringIO()
+        with redirect_stdout(out), redirect_stderr(err):
+            code = check_map.main([committed, "--only", "applicability-reach"])
+        output = out.getvalue() + err.getvalue()
+        self.assertEqual(code, 0, output)
+        self.assertEqual(self.status_of(output, "applicability-reach"), "ok", output)
+
+    def test_every_committed_map_states_the_reach_of_the_gates_it_records(self):
+        repo = os.path.dirname(os.path.dirname(os.path.dirname(HERE)))
+        for path in sorted(glob.glob(os.path.join(repo, "examples", "*", "corpus-map*.json"))):
+            with self.subTest(map=os.path.relpath(path, repo)):
+                out, err = io.StringIO(), io.StringIO()
+                with redirect_stdout(out), redirect_stderr(err):
+                    code = check_map.main([path, "--only", "applicability-reach"])
+                output = out.getvalue() + err.getvalue()
+                self.assertNotEqual(self.status_of(output, "applicability-reach"), "fail", output)
 
 
 class TestNoCycles(MapCase):
@@ -2434,6 +2550,81 @@ class TestBoundTermOpen(MapCase):
         self.assertIn("NOT VERIFIED", output)
 
 
+class TestQuestionAnchor(MapCase):
+    """#271: an `ambiguity.question` quotes the passage its two readings turn on.
+
+    `crossReferences.cites` must appear verbatim in the entry's own evidence -- a reference is
+    anchored to the passage that makes it. An `ambiguity` had no such rule, so a mapper who
+    invented doubt the corpus settles passed on 5 committed maps of 5.
+    """
+
+    OPEN = 7  # must-play-whole-throw, in valid_map()'s order
+
+    INVENTED = ("The passage can be read as stating a requirement and as stating a permission, "
+                "and nothing in the corpus resolves between the two.")
+
+    def test_a_question_that_quotes_no_passage_the_map_quotes_fails(self):
+        # Verbatim the block `tools/mutate-map.py --only clear-to-ambiguous` writes: a complete,
+        # plausible ambiguity about no sentence of the corpus.
+        def mutate(document):
+            document["entries"][self.OPEN]["ambiguity"]["question"] = self.INVENTED
+        self.assert_catches("question-anchor", mutate,
+                            message="quotes no passage this map quotes")
+
+    def test_a_run_of_words_the_corpus_does_not_own_does_not_anchor(self):
+        # hoyle-backgammon is the reason the run has to carry a word of the corpus: the invented
+        # question and that map's evidence share "between the two", and not one of those three
+        # words is the corpus's.
+        def mutate(document):
+            document["entries"].append(entry(
+                "stake-division",
+                evidence="The stake is divided between the two players."))
+            document["entries"][self.OPEN]["ambiguity"]["question"] = self.INVENTED
+        self.assert_catches("question-anchor", mutate,
+                            message="quotes no passage this map quotes")
+
+    def test_the_anchor_may_be_in_the_evidence_of_another_entry(self):
+        # § 172.102(c)(7): the hazmat map's IB3 row is ambiguous because of what (b)(4) says,
+        # which is a different entry's evidence. The anchor is the corpus as this map quotes it.
+        document = valid_map()
+        ambiguity = document["entries"][self.OPEN]["ambiguity"]
+        ambiguity.pop("bounds")
+        ambiguity["question"] = ("The sentence stating speed-within-limit could govern this "
+                                 "throw as well, and the corpus chooses neither reading.")
+        code, output = self.run_tool(document)
+        self.assertEqual(self.status_of(output, "question-anchor"), "ok", output)
+        self.assertEqual(code, 0, output)
+
+    def test_the_anchor_is_read_through_case_and_spacing(self):
+        document = valid_map()
+        document["entries"][self.OPEN]["ambiguity"]["question"] = (
+            "A  SHORT\nINTERRUPTION is fixed at no length by this text, and a short "
+            "interruption of a year may be one.")
+        code, output = self.run_tool(document)
+        self.assertEqual(self.status_of(output, "question-anchor"), "ok", output)
+        self.assertEqual(code, 0, output)
+
+    def test_a_map_recording_no_ambiguity_does_not_report_ok(self):
+        document = valid_map()
+        document["entries"].pop(self.OPEN)
+        code, output = self.run_tool(document)
+        self.assertEqual(self.status_of(output, "question-anchor"), "skip", output)
+        self.assertIn("NOT VERIFIED", output)
+        self.assertEqual(code, 0, output)
+
+    def test_every_recorded_ambiguity_in_every_committed_map_is_anchored(self):
+        # #271's acceptance: the rule holds for every committed map, or the maps are corrected
+        # and the correction is the finding. 64 recorded ambiguities across the committed maps.
+        repo = os.path.dirname(os.path.dirname(os.path.dirname(HERE)))
+        for path in sorted(glob.glob(os.path.join(repo, "examples", "*", "corpus-map*.json"))):
+            with self.subTest(map=os.path.relpath(path, repo)):
+                out, err = io.StringIO(), io.StringIO()
+                with redirect_stdout(out), redirect_stderr(err):
+                    code = check_map.main([path, "--only", "question-anchor"])
+                output = out.getvalue() + err.getvalue()
+                self.assertEqual(code, 0, output)
+
+
 class TestSuperposition(MapCase):
     """0034: a disagreement about certainty that the corpus did not settle is recorded in the
     map as unresolved, or it is a premature collapse with a paper trail."""
@@ -2631,6 +2822,68 @@ class TestDriver(MapCase):
         with redirect_stdout(out), redirect_stderr(out):
             code = check_map.main([os.path.join(self.example, "absent.json")])
         self.assertEqual(code, 2, out.getvalue())
+
+
+class TestPreviousVersion(MapCase):
+    """#268: a check whose subject matter the damage removed said NOT VERIFIED and passed the run.
+
+    That is the right outcome for a corpus that genuinely has no assertions and no gates. It is
+    the wrong one when the damage is what removed them, and the map a published version replaces
+    is where the validator can tell the two apart.
+    """
+
+    ASSERTION = 2  # well-clear, the fixture's only `kind: assertion`
+
+    def previous(self, document):
+        """`--previous PATH` for a map written outside the directory the checks read."""
+        path = os.path.join(self.root, "previous-corpus-map.json")
+        with open(path, "w", encoding="utf-8") as handle:
+            json.dump(document, handle)
+        return ["--previous", path]
+
+    def silenced(self):
+        """valid_map with its only assertion re-recorded as something the engine computes.
+
+        `tools/mutate-map.py --only assertion-to-operation`, exactly: `asserted-by` is left with
+        nothing to look at, says so, and declares it had no subject.
+        """
+        document = valid_map()
+        document["entries"][self.ASSERTION]["kind"] = "operation"
+        document["entries"][self.ASSERTION].pop("assertedBy")
+        return document
+
+    def test_without_a_predecessor_the_silenced_check_still_passes_the_run(self):
+        # The measured defect, written down so the fix is visible as a change of verdict.
+        code, output = self.run_tool(self.silenced())
+        self.assertEqual(self.status_of(output, "asserted-by"), "skip", output)
+        self.assertEqual(code, 0, output)
+
+    def test_a_check_that_had_subject_matter_in_the_version_it_replaces_fails(self):
+        code, output = self.run_tool(self.silenced(), argv=self.previous(valid_map()))
+        self.assertEqual(self.status_of(output, "asserted-by"), "fail", output)
+        self.assertIn("had subject matter for it", output)
+        self.assertEqual(code, 1, output)
+
+    def test_a_check_with_no_subject_matter_in_either_version_still_only_skips(self):
+        # `conflicts` has nothing to look at in valid_map and nothing here: no claim is made
+        # about the corpus by a rule that was vacuous before and is vacuous now.
+        code, output = self.run_tool(valid_map(), argv=self.previous(valid_map()))
+        self.assertEqual(self.status_of(output, "conflicts"), "skip", output)
+        self.assertEqual(code, 0, output)
+
+    def test_the_map_replacing_itself_changes_no_verdict(self):
+        document = valid_map()
+        code, output = self.run_tool(document, argv=self.previous(document))
+        self.assertEqual(code, 0, output)
+
+    def test_an_unreadable_previous_map_is_a_usage_error(self):
+        code, output = self.run_tool(
+            valid_map(), argv=["--previous", os.path.join(self.root, "absent.json")])
+        self.assertEqual(code, 2, output)
+
+    def test_the_run_says_which_version_it_read(self):
+        code, output = self.run_tool(valid_map(), argv=self.previous(valid_map()))
+        self.assertIn("previous-corpus-map.json", output)
 
 
 class TestPhaseSplit(MapCase):
