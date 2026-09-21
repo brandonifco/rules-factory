@@ -18,7 +18,11 @@ for different reasons and a single number hid that:
   `coverage`  Every page of the extent the map declares it read is reached by some entry's
               verified evidence. A page inside the extent that no entry's quote touches is
               a page nobody demonstrably read, which is the state -- "nobody looked" -- that
-              a map exists to distinguish from a recorded verdict.
+              a map exists to distinguish from a recorded verdict. It also reports **how much
+              of the extent those quotes cover** (0054, #270), because one sentence reaches a
+              page and counting pages could not see an entry deleted from a map whose other
+              entries still reach its page. The fraction fails a map only against the floor
+              the map declares in `extent.quoted`.
 
   `extent-bounds`
               The other direction, and the one `coverage` is structurally blind to (#269):
@@ -32,18 +36,24 @@ held a summary ("Both figures.", "Both elections."), nothing was locatable and n
 checkable, which is why thirteen wrong citations survived a build. An unlocatable entry is
 reported and fails the run; it is never reported as ok.
 
-What none of the three buys, stated here rather than in a commit message:
+What none of the four buys, stated here rather than in a commit message:
 
   * A term absent from the extent is not a rule absent from the extent. The corpus could
     state the rule in words the mapper did not think to search for, and `absence` would pass.
     What it does catch is the mapper who declared an absence without looking -- and that is
     the failure both #20 and #29 are instances of.
   * A page reached by one quote is not a page read. `coverage` catches a mapper who stopped,
-    not one who skimmed.
+    not one who skimmed -- and its quoted fraction narrows that without closing it: a map can
+    quote a page whole and misread every sentence on it, which is what the blind second
+    mapping (0014) is for. The fraction says how much of what the map claims to have read it
+    can show it read, and nothing about whether it read it correctly.
+  * No threshold is imposed on that fraction. A map that declares no `extent.quoted` is
+    measured, printed and passed: across the committed maps the fraction runs from 19% to
+    100%, and 0054 records why a single floor could not be honest about all of them.
   * `extent` is the map's own claim about how much of the corpus it read. Nothing verifies
     that the claim is ambitious enough; a map declaring one page of a four-hundred-page book
-    covers it trivially. What the field buys is that the claim is *written down* and can be
-    argued with.
+    covers it trivially, and `extent.quoted` is a floor the map chooses for itself. What the
+    field buys is that the claim is *written down* and can be argued with.
 
 Usage: check-locators.py <corpus-map.json> <corpus.txt> [--marker-re RE] [--page-re RE]
 Exit 0 only if every check that ran passed and at least one proved something; 1 if any
