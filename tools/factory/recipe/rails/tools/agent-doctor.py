@@ -21,13 +21,18 @@ answer. It changes nothing, ever.
     factory's own rules, from the copy `produce` vendored under `scripts/factory/`, so this and
     `factory rails --check` cannot disagree about the same file.
   * **Remote** rows come from GitHub: the labels, the ruleset, and whether the three checks are
-    required rather than merely present. `--local` skips them, for an offline machine; the output
-    then says the remote half was not examined, because a green report that skipped the half that
-    matters is the failure this repository has twice found in its own tools.
+    required, pinned to the app that posts them, and set on this repository rather than above it.
+    `--local` skips them, for an offline machine; the output then says the remote half was not
+    examined, because a green report that skipped the half that matters is the failure this
+    repository has twice found in its own tools.
 
 The remote half asks the same questions `factory rails --check` asks, from inside the engine and
 without the factory. Where the answers would differ, the factory's is authoritative: it is the
-thing that writes them.
+thing that writes them -- so the questions are not asked twice in two places. Which ruleset is the
+factory's, and what a required check has to be pinned to, are read from the same vendored
+`scripts/factory/` the rail bytes and the policy are judged by. Before that they were restated
+here, and this report said a check was OK while `factory rails --check` said WRONG about the same
+ruleset at the same moment (#231).
 
 Standard library only, plus `gh` (or `$RULES_ENGINE_GH`) for the remote rows.
 """
@@ -47,12 +52,12 @@ sys.dont_write_bytecode = True
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 POLICY = ".github/agent-policy.json"
-RULESET = "rules-factory-agent-rails"
-# `verdict-requeue` is deliberately absent: it runs on the default branch's commit, where a
-# required check governs nothing.
-REQUIRED_CHECKS = ("validate", "pr-policy", "conformance-gate")
 GUARDED_TOOLS = "Bash|Edit|Write|NotebookEdit"
 OK, MISSING, WRONG, UNKNOWN = "OK", "MISSING", "WRONG", "NOT EXAMINED"
+# The ruleset's name and the three checks it requires are the factory's, and are read from the
+# vendored `scripts/factory/` rather than written down again here. `verdict-requeue` is
+# deliberately not among them: it runs on the default branch's commit, where a required check
+# governs nothing.
 
 
 def row(name, state, note=""):
@@ -74,6 +79,21 @@ def gh(*args):
         return None, str(error)
 
 
+def pages(generate, *args):
+    """An array endpoint of GitHub's, read as the pages it actually comes in: (items, None), or
+    (None, why).
+
+    `gh api --paginate` prints each page as its own JSON array, so two pages are `[...][...]` --
+    not one document. Read as one, a repository with more labels than a page holds reported none
+    of them (#237). `--slurp` prints the pages as one array of arrays, and the factory's own
+    `flatten_pages` puts them back together for this and for `factory rails --check` alike.
+    """
+    document, why = gh(*args, *generate.PAGES)
+    if why:
+        return None, why
+    return generate.flatten_pages(document if document is not None else [])
+
+
 def factory():
     """The factory's generator as `produce` vendored it into this engine, or (None, why)."""
     sys.path.insert(0, str(ROOT / "scripts" / "factory"))
@@ -84,9 +104,8 @@ def factory():
     return generate, None
 
 
-def local_rows():
+def local_rows(generate, error):
     rows, problems = [], []
-    generate, error = factory()
 
     # A file of the right name is not the rail the factory wrote: a truncated gate reads exactly
     # like a working one in a listing. So the bytes are compared with every version of the recipe,
@@ -176,8 +195,18 @@ def local_rows():
     return rows, problems
 
 
-def remote_rows(repo):
+def remote_rows(repo, generate, unavailable):
     rows, problems = [], []
+    if generate is None:
+        # What GitHub enforces is judged by the factory's rules, from the copy `produce` vendored
+        # here, so that this and `factory rails --check` cannot disagree about the same ruleset.
+        # Without them there is no second reading to fall back on: there is the reading that is
+        # already in this repository twice, and saying so.
+        rows.append(row("GitHub", UNKNOWN, unavailable))
+        problems.append(f"the remote half was not examined: {unavailable}. The ruleset and the pins are judged by "
+                        f"the factory's own rules, and they could not be read")
+        return rows, problems
+
     repository, error = gh("api", f"repos/{repo}")
     if repository is None:
         rows.append(row("GitHub", UNKNOWN, f"cannot read {repo}: {error}"))
@@ -185,7 +214,7 @@ def remote_rows(repo):
                         f"about what GitHub enforces")
         return rows, problems
 
-    labels_document, _ = gh("api", f"repos/{repo}/labels", "--paginate")
+    labels_document, _ = pages(generate, "api", f"repos/{repo}/labels")
     have = {item["name"] for item in labels_document or []}
     policy_path = ROOT / POLICY
     wanted = []
@@ -201,28 +230,43 @@ def remote_rows(repo):
         problems.append(f"the repository has no {', '.join(absent)} label, so an issue that needs one cannot be "
                         f"labelled or dispatched")
 
-    rulesets, _ = gh("api", f"repos/{repo}/rulesets")
-    ours = next((item for item in rulesets or [] if item.get("name") == RULESET), None)
+    # Every ruleset that can govern the branch, an organization's included -- `includes_parents`
+    # is GitHub's default and is asked for here so the intent is on the page rather than in the
+    # API's defaults. The factory's ruleset is the one at this repository's own level: an
+    # organization ruleset carrying its name is not the factory's, `factory rails --apply` cannot
+    # write it, and reading it as the factory's reports rails this repository does not have.
+    ruleset = generate.RULESET
+    rulesets, _ = pages(generate, "api", f"repos/{repo}/rulesets?includes_parents=true")
+    ours, shadows = generate.factory_ruleset(rulesets or [])
     detail, _ = gh("api", f"repos/{repo}/rulesets/{ours['id']}") if ours else (None, None)
     active = bool(detail and detail.get("enforcement") == "active")
     rows.append(row(f"Ruleset on {repository.get('default_branch')}", OK if active else
                     (WRONG if detail else MISSING),
-                    RULESET if active else (f"{RULESET} is {detail.get('enforcement')}" if detail else
-                                            f"no ruleset named {RULESET}")))
+                    ruleset if active else (f"{ruleset} is {detail.get('enforcement')}" if detail else
+                                            f"no ruleset named {ruleset} at this repository's own level")))
     if not active:
-        problems.append(f"no active {RULESET}: the default branch has no rails, whatever files this engine holds")
+        problems.append(f"no active {ruleset} of this repository's own: the default branch has no rails, whatever "
+                        f"files this engine holds")
+    for shadow in shadows:
+        problems.append(f"{generate.ruleset_origin(shadow)} carries the factory's ruleset name above this "
+                        f"repository; it is not the factory's, `factory rails --apply` cannot write it, and the "
+                        f"factory's own must be at the repository's level")
 
-    required = set()
-    for rule in (detail or {}).get("rules") or []:
-        if rule.get("type") == "required_status_checks":
-            required = {check.get("context")
-                        for check in (rule.get("parameters") or {}).get("required_status_checks") or []}
-    for context in REQUIRED_CHECKS:
-        present = context in required
-        rows.append(row(f"Required check: {context}", OK if present else MISSING,
-                        "" if present else "the workflow may run; it is not required"))
-        if not present:
+    # A required check is a context name plus the app that may post it. A name on its own is
+    # satisfied by a commit status anyone with write access can post, so the id of the app the
+    # three workflows run as is read from the host and each pin is compared with it (#186, #231).
+    app_document, app_error = gh("api", f"apps/{generate.CHECKS_APP}")
+    app = (app_document or {}).get("id")
+    pins = generate.required_check_pins(detail)
+    for context in generate.REQUIRED_CHECKS:
+        state, note = generate.required_check_state(pins, context, app if isinstance(app, int) else None)
+        rows.append(row(f"Required check: {context}", state, note))
+        if state == generate.MISSING:
             problems.append(f"{context} is not a required check: a workflow that exists is not one that is required")
+        elif state == generate.WRONG:
+            problems.append(f"{context} is required but {note}")
+        elif state == generate.NOT_VERIFIED:
+            problems.append(f"{context} is required, but {note} (`gh api apps/{generate.CHECKS_APP}`: {app_error})")
 
     merge_only = (repository.get("allow_merge_commit") is True
                   and repository.get("allow_squash_merge") is False
@@ -242,7 +286,10 @@ def main(argv=None):
     parser.add_argument("--repo", help="owner/name (default: whatever `gh` says this checkout's remote is)")
     args = parser.parse_args(argv)
 
-    rows, problems = local_rows()
+    # One import of the vendored factory for both halves: the rail bytes, the policy, and what the
+    # rails on GitHub are judged by all come from it.
+    generate, unavailable = factory()
+    rows, problems = local_rows(generate, unavailable)
     if args.local:
         rows.append(row("GitHub", UNKNOWN, "--local: the labels, the ruleset and the required checks were not read"))
         problems.append("the remote half was not examined (--local), so this says nothing about what GitHub "
@@ -256,7 +303,7 @@ def main(argv=None):
                 rows.append(row("GitHub", UNKNOWN, f"cannot tell which repository this is: {error}"))
                 problems.append("the remote half was not examined; pass --repo owner/name")
         if repo:
-            remote, remote_problems = remote_rows(repo)
+            remote, remote_problems = remote_rows(repo, generate, unavailable)
             rows.extend(remote)
             problems.extend(remote_problems)
 

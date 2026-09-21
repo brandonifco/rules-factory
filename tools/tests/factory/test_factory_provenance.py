@@ -326,6 +326,71 @@ class TestRecord(ProvenanceCase):
         self.assertNotIn("after.txt", recorder.paths)
 
 
+class TestVerificationIsRecorded(ProvenanceCase):
+    """#222: the record says whether the produce that wrote it built and tested the engine.
+
+    `produce --no-verify` printed it and exited 3, and `provenance.json` said nothing -- so a
+    reader of a committed engine, or of the copy embedded in the assembly, could not tell a
+    verified produce from an unverified one. The indirect signal (lock files in `buildInputs`)
+    is inference, and it breaks the moment anyone runs `dotnet restore` by hand.
+    """
+
+    def test_an_unverified_produce_says_so_and_says_why(self):
+        record = self.record(self.produced())
+        self.assertEqual(record["verification"]["verified"], False)
+        self.assertEqual(record["verification"]["ran"], [])
+        # The message, not only the boolean: a reader with no console output needs the reason
+        # (#283 -- another field being false would satisfy a verdict-only assertion).
+        self.assertIn("--no-verify", record["verification"]["why"])
+        self.assertIn("never built or tested", record["verification"]["why"])
+
+    def test_a_verified_produce_names_every_step_it_ran(self):
+        """No SDK is needed to assert the shape the verified path writes."""
+        self.assertEqual(provenance.verification(True),
+                         {"verified": True, "ran": list(provenance.VERIFICATION_STEPS)})
+        self.assertIn("gate", provenance.VERIFICATION_STEPS,
+                      "a reader of `verified: true` is owed what was proven, not a bare boolean")
+
+    def test_the_two_differ_in_that_field(self):
+        self.assertNotEqual(provenance.verification(True), provenance.verification(False))
+        self.assertIs(provenance.verification(False)["verified"], False)
+
+    def test_the_format_number_moved_with_the_member(self):
+        self.assertGreaterEqual(provenance.FORMAT, 6,
+                                "a record gained a member, so a reader can tell which records have it")
+        self.assertEqual(self.record(self.produced())["provenanceFormat"], provenance.FORMAT)
+
+
+class TestRecomputeDoesNotRewriteVerification(ProvenanceCase):
+    """`factory provenance` reports; it must never upgrade an unverified record to a verified one."""
+
+    def test_a_record_that_says_nothing_about_verification_is_named(self):
+        out = self.produced()
+        path = os.path.join(out, "provenance.json")
+        record = self.record(out)
+        del record["verification"]
+        with open(path, "w", encoding="utf-8") as handle:
+            handle.write(json.dumps(record, indent=2, sort_keys=True) + "\n")
+        code, output = self.recompute(out)
+        self.assertEqual(code, 1, output)
+        self.assertIn("does not say whether the produce that wrote it", output)
+
+    def test_a_verified_claim_is_not_silently_replaced_by_the_re_produce(self):
+        """The re-produce runs unverified. If `verification` were in the diff, either every
+        verified engine would look like a mismatch, or -- the tempting fix -- the recomputed
+        value would win and quietly rewrite `true` to `false` and back. Neither happens."""
+        out = self.produced()
+        path = os.path.join(out, "provenance.json")
+        record = self.record(out)
+        record["verification"] = {"verified": True, "ran": list(provenance.VERIFICATION_STEPS)}
+        with open(path, "w", encoding="utf-8") as handle:
+            handle.write(json.dumps(record, indent=2, sort_keys=True) + "\n")
+        code, output = self.recompute(out)
+        self.assertNotIn("MISMATCH verification", output)
+        # And the file on disk still says what it said: recompute writes nothing.
+        self.assertEqual(self.record(out)["verification"]["verified"], True)
+
+
 class TestRecompute(ProvenanceCase):
     def test_passes_on_fresh_output(self):
         out = self.produced()

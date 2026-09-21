@@ -123,7 +123,7 @@ TABLE = (
         "the required check that runs conformance-gate.py (0029)"),
     Row(".github/workflows/verdict-requeue.yml", MANAGED, 1,
         "runs requeue-gate.py on the status event; deliberately not a required check (#191)"),
-    Row("tools/agent-doctor.py", MANAGED, 3,
+    Row("tools/agent-doctor.py", MANAGED, 4,
         "whether the rails are active or only present, locally and on GitHub (0029)"),
     Row(".editorconfig", MANAGED, 1,
         "the kernel determinism analyzers' severities: a build error in src, off in tests (0029)"),
@@ -340,6 +340,7 @@ RECIPE_SHA256 = {
         1: "1b6fced99797d165ab0216523bddae183d6e7254f41d5d5f51cdb1d1c3b8913d",
         2: "340004575c29918f4dcbdacc7c1aef7f970e60bb270832901ae501bcb61b0b30",
         3: "1ae43e922fbbe2cdcd4e1ed2708ac7377d644d7cdfac63a95cda2d37d7ef276b",
+        4: "4af176ea1850a69a148973f301a12ef6dafbd125ecc3d3bd4afff5c8581709f6",
     },
     ".editorconfig": {
         1: "4109d1ef55053ef656e536d7818934deb73016fbe950f153bae6b2a163591cb2",
