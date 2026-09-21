@@ -799,17 +799,39 @@ class TestRefuses(ProvenanceCase):
         self.assertEqual(pathlib.Path(first, "provenance.json").read_bytes(),
                          pathlib.Path(second, "provenance.json").read_bytes())
 
-    def test_the_entry_point_suppresses_bytecode_before_it_reaches_the_factory(self):
-        # As test_factory_rails.py holds every emitted script that imports the vendored factory:
-        # the loader reads the flag when the import happens, so a flag set after the path insert
-        # prevents exactly nothing.
-        lines = pathlib.Path(FACTORY, "__main__.py").read_text(encoding="utf-8").splitlines()
-        flag = next((i for i, line in enumerate(lines) if line == "sys.dont_write_bytecode = True"), None)
-        reaches = next(i for i, line in enumerate(lines) if "sys.path.insert" in line)
-        self.assertIsNotNone(flag, "tools/factory/__main__.py leaves bytecode the record cannot hash (#373)")
-        self.assertLess(flag, reaches,
-                        f"__main__.py sets dont_write_bytecode at line {flag + 1}, after line "
-                        f"{reaches + 1} puts tools/factory on the path; there it prevents nothing")
+    def test_every_tool_that_puts_the_factory_on_the_path_suppresses_bytecode(self):
+        """The repository's side of the rule test_factory_rails.py holds every emitted script to.
+
+        A tool that imports the factory's modules leaves their bytecode in `tools/factory`, and
+        the next produce refuses it -- rightly, because it is what Python runs and no commit holds
+        it. scripts/validate.sh exports PYTHONDONTWRITEBYTECODE for its children, but
+        scripts/validate-engine.sh does not, and an agent's shell exports nothing, so each tool
+        says it for itself. What is asserted is where the flag sits: the loader reads it when the
+        import happens, so a flag after the path insert prevents exactly nothing.
+        """
+        suppressors = {}
+        for path in sorted(pathlib.Path(TOOLS).glob("*.py")) + [pathlib.Path(FACTORY, "__main__.py")]:
+            lines = path.read_text(encoding="utf-8").splitlines()
+            reaches = next((i for i, line in enumerate(lines)
+                            if "sys.path.insert" in line and not line.lstrip().startswith("#")), None)
+            if reaches is None:
+                continue
+            relative = str(path.relative_to(REPO))
+            suppressors[relative] = reaches
+            # Column 0, so the flag is module level and not nested in some function that may
+            # never run: check-readme-status.py reaches for the factory inside one.
+            flag = next((i for i, line in enumerate(lines)
+                         if line.split("#")[0].rstrip() == "sys.dont_write_bytecode = True"), None)
+            self.assertIsNotNone(flag, f"{relative} puts tools/factory on the path and leaves its bytecode "
+                                       f"there, for the next produce to refuse (#373)")
+            self.assertLess(flag, reaches,
+                            f"{relative} sets dont_write_bytecode at line {flag + 1}, after line "
+                            f"{reaches + 1} reaches for the path; there it prevents nothing")
+        # Named, so a new tool that starts importing the factory fails here rather than being
+        # skipped by a check that examined whatever it happened to find.
+        self.assertEqual(sorted(suppressors),
+                         ["tools/check-readme-status.py", "tools/factory/__main__.py", "tools/pack-map.py",
+                          "tools/validate-engine.py"])
 
     def test_a_factory_outside_git(self):
         loose = os.path.join(self.tmp, "loose")
