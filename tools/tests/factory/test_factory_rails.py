@@ -4148,9 +4148,13 @@ class TestFactoryRails(TestAProducedEngine):
         self.assertEqual(self.rails("--apply")[0], 0)
         self.with_state(perPage=4, labels=self.FILLERS + self.read_state()["labels"])
         code, output = self.doctor()
-        self.assertEqual(code, 0, output)
+        # The row and the problem list, not the exit code: since #195 the doctor also reports the
+        # machine -- the pinned SDK, a restore, `gh` -- and a machine without the pinned SDK is a
+        # problem like any other, so the exit code here would be a fact about the runner rather
+        # than about the labels page this test is for.
         self.assertIn("OK", self.row(output, "Labels"))
         self.assertNotIn("the repository has no", output)
+        self.assertNotIn("labels", "\n".join(line for line in output.splitlines() if line.startswith("  X  ")))
 
     # --- #231: the doctor judges a check by its pin, and the ruleset by its level --------------
 
@@ -4288,3 +4292,33 @@ class TestTheDoctor(TestAProducedEngine):
         os.remove(os.path.join(self.out, "tools", "record-verdict.py"))
         done = self.doctor("--local")
         self.assertIn("tools/record-verdict.py (absent)", done.stdout)
+
+    def test_the_machine_is_reported_before_the_rails(self):
+        """#195: every rail can be in place on a machine that cannot run the gate.
+
+        What each row *says* depends on the machine, and is not what this asserts. What it asserts
+        is that all three are asked, and asked before the rails: a report that every rail is in
+        place, made on a machine that cannot run the gate, is the failure #195 is about.
+        """
+        self.produced()
+        done = self.doctor("--local")
+        printed = done.stdout.splitlines()
+        self.assertTrue(printed[0].startswith("SDK pinned by global.json"), done.stdout)
+        self.assertIn("Restore ", done.stdout)
+        self.assertIn("gh reads the packet's fields", done.stdout)
+        self.assertLess(printed.index(next(line for line in printed if line.startswith("Restore "))),
+                        printed.index(next(line for line in printed if line.startswith("Rail files "))),
+                        done.stdout)
+
+    def test_a_gh_without_the_packets_field_is_reported(self):
+        """#195: the review packet and the conformance gate ask `gh` for a field an older `gh`
+        refuses, and the failure surfaced as an unreadable error in the middle of a review."""
+        self.produced()
+        old = os.path.join(self.out, "old-gh.sh")
+        with open(old, "w", encoding="utf-8") as handle:
+            handle.write('#!/bin/sh\necho \'Unknown JSON field: "closingIssuesReferences"\' >&2\nexit 1\n')
+        os.chmod(old, 0o755)
+        done = self.doctor("--local", RULES_ENGINE_GH=old)
+        self.assertIn("gh reads the packet's fields", done.stdout)
+        self.assertIn("has no --json closingIssuesReferences", done.stdout)
+        self.assertIn("$RULES_ENGINE_GH", done.stdout)
