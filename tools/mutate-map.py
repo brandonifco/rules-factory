@@ -653,13 +653,19 @@ def score(control, mutated):
     """What the validator said, and whether saying it would have stopped the map.
 
     A check that turns is not by itself a detection. `check-map.py` exits 0 on a NOT VERIFIED
-    whose check had no subject matter -- turning an assertion into an operation leaves
-    `asserted-by` with nothing to look at, and it says so and passes the run. A map that
-    passes is a map that ships, so **detected means the run went red**: some detector that
-    exited 0 on the control exits non-zero here. A check that turned without failing the run
-    is recorded as `signalled`, counted as a miss, and reported, because a signal nobody is
-    obliged to act on is the shape of this repository's two checkers that counted work they
-    had not done.
+    whose check had no subject matter, so a mutation that removes what a check looks at used to
+    leave the gate green while the check said the true thing. A map that passes is a map that
+    ships, so **detected means the run went red**: some detector that exited 0 on the control
+    exits non-zero here. A check that turned without failing the run is recorded as `signalled`,
+    counted as a miss, and reported, because a signal nobody is obliged to act on is the shape
+    of this repository's two checkers that counted work they had not done.
+
+    Two mutations landed there -- turning a map's only assertion into an operation silenced
+    `asserted-by`, removing the rule every other entry was suspended by silenced `gates` -- and
+    both are refusals now, because `detectors()` passes the committed map as `--previous` and a
+    check that had subject matter in the version being replaced has to account for losing it
+    (#268). `signalled` stays, and stays counted as a miss: it is the scoring rule, not a
+    description of what today's checks happen to do.
     """
     turned, refused = [], []
     for detector, after in mutated.items():
