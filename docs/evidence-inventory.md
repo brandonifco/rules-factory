@@ -31,12 +31,12 @@ proves about a trial report is that the report's links work. So a read by that s
 
 | `readBy` | what reads it | files | size |
 |---|---|---|---|
-| `checks` | a gate step, for what is in it | 73 | 10.6 MB |
+| `checks` | a gate step, for what is in it | 80 | 10.7 MB |
 | `checks`, `package` | that, and `pack-map.py` | 18 | 2.5 MB |
-| `checks`, `links` | a gate step, and the link check | 17 | 419 KB |
-| `links` | **only** the markdown link check | 44 | 892 KB |
+| `checks`, `links` | a gate step, and the link check | 17 | 420 KB |
+| `links` | **only** the markdown link check | 44 | 899 KB |
 | `package` | only `pack-map.py` | 2 | 1 KB |
-| *(nothing)* | nothing the measurement could see | **43** | **1.0 MB** |
+| *(nothing)* | nothing the measurement could see | **36** | **933 KB** |
 
 The role follows from the readers:
 
@@ -64,7 +64,7 @@ A reader deciding what could be retired should know which of the two they are lo
 
 ## By trial
 
-Measured at `46023be`, over a gate run that failed no step but the evidence step and the
+Measured at `bb90fba`, over a gate run that failed no step but the evidence step and the
 lock's own tests, which fail by construction while the lock is being rewritten
 (`measuredOver` in the lock says so, and `--measure` refuses a run with any other failing
 step; [#408](https://github.com/brandonifco/rules-factory/issues/408)):
@@ -78,12 +78,12 @@ step; [#408](https://github.com/brandonifco/rules-factory/issues/408)):
 | `examples/hoyle-blind-rebuild` | 432 KB | — | 61 KB |
 | `examples/srd-52-conditions` | 353 KB | — | 29 KB |
 | `examples/tax-121-principal-residence` | 191 KB | 86 KB | 101 KB |
-| `examples/blind-mapping-trial` | 146 KB | — | 201 KB |
+| `examples/blind-mapping-trial` | 183 KB | — | 165 KB |
 | `examples/faa-part-107-temporal` | 146 KB | — | 37 KB |
 | `examples/injection-trial` | 72 KB | — | 51 KB |
 | `examples/validator-attack` | 61 KB | — | — |
 | `examples/tax-121-build` | 31 KB | — | — |
-| `examples/acceptance-4-5` | 31 KB | — | — |
+| `examples/acceptance-4-5` | 28 KB | — | 2 KB |
 | `examples` | 27 KB | — | — |
 | `examples/collapse-trial` | 13 KB | — | 3 KB |
 
@@ -99,28 +99,32 @@ blind-mapping directories are read; `srd-52-combat`'s and `tax-121-principal-res
 only in part. Trial 9's `first-map.json` is held by `build-map-c.py --check`, trial 12's
 `staged-inputs.json` is re-hashed by `mapper stage --verify`, and four trials' `results.json` are
 read by `check-map-review.py`. The second mapper's own `blind-map.json`, the `build.py` that
-produced it and the `compare.py` that compared the two are, for two of the four trials, read by
-nothing.
+produced it and the `compare.py` that compared the two are read by nothing for `srd-52-combat`,
+`tax-121-principal-residence` and `blind-mapping-trial`'s second run. **Two artifacts alternate
+between measurements** — `blind-mapping-trial/blind-map.json` and
+`acceptance-4-5/check-provenance.sh` — which
+[#408](https://github.com/brandonifco/rules-factory/issues/408) measured and closed; a role that
+flips is a fact about the reader that opened it, not about the bytes, and the figures below are
+one measurement rather than a constant.
 
 **`archived` does not mean disposable.** It means nothing reads the bytes. Whether that is because
 an artifact is spare or because a check is missing is a question for a person. Eight of the
-fourteen `independent-verdict-*.json` records are read by `check-map-review.py` and six are not —
+sixteen `independent-verdict-*.json` records are read by `check-map-review.py` and eight are not —
 the difference is which map's review record cites them, not which review mattered.
 
 ## The artifacts nothing reads
 
-892 KB across 42 files, listed by `check-evidence.py --roles`. By kind:
+933 KB across 36 files, listed by `check-evidence.py --roles`. By kind:
 
 - **blind-mapping working files** — the second mapper's `blind-map.json`, the `build.py` that made
-  it and the `compare.py` that compared it, for `blind-mapping-trial` (both runs), `srd-52-combat`
-  and `tax-121-principal-residence`. The *result* of each comparison is read; these are what it
+  it and the `compare.py` that compared it, for `srd-52-combat`, `tax-121-principal-residence` and
+  `blind-mapping-trial`'s second run. The *result* of each comparison is read; these are what it
   was derived from.
-- **trial results** — `examples/injection-trial/` (100 KB: `results.json`, `injections.py`,
-  `run-trial.py`, `score.py`), `examples/collapse-trial/` (11 KB), and `blind-mapping-trial`'s two
-  runs (243 KB).
-- **independent verdicts** — six JSON records of a reviewer's findings, cited in the exemption
+- **trial results** — `examples/injection-trial/results.json` (51 KB),
+  `examples/collapse-trial/results.json` (3 KB), and `blind-mapping-trial`'s two runs (165 KB).
+- **independent verdicts** — eight JSON records of a reviewer's findings, cited in the exemption
   notes of the maps they cover but read by no checker.
-- **an engine brief** — `examples/hoyle-blind-rebuild/brief/` (61 KB), the documents a blind
+- **an engine brief** — `examples/hoyle-blind-rebuild/brief/` (34 KB), the documents a blind
   rebuild was given.
 
 Their bytes are now pinned by the lock. Before it, nothing hashed them: a corpus is pinned by its
