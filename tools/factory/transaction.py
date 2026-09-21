@@ -56,8 +56,36 @@ whether it was changed, added or removed. Preserving the edit is right and the r
 it -- nothing is written, so the engine keeps it -- but the answer is to run `produce` again and
 verify the engine with it, not to call a tree verified that no build ever saw. What is compared
 is every file under `--out` except the directories a build and the gate write rather than read
-(`OUTPUT` -- `artifacts` and `TestResults` -- and `SKIP`, which is not copied at all), so a TRX
-file or an assembly landing in `--out` while the gate runs refuses nothing.
+(`OUTPUT` -- `artifacts` and `TestResults` **at the root of the engine**, where the SDK writes
+them -- and `SKIP`, which is not copied at all), so a TRX file or an assembly landing in `--out`
+while the gate runs refuses nothing, while a source under a directory that merely shares one of
+those names -- `src/Engine/TestResults/override.targets`, which MSBuild imports -- is an input
+like any other (#370).
+
+That the tree committed is the tree tested (#370). #335 bound one side of the handoff: `--out`
+did not move under the run. The other side was unbound. Verification happens in the *staging
+copy*, the gate executes the engine's own test code there, and nothing compared the staging copy
+at commit time with the staging copy the gate had built and tested -- so a test that wrote to a
+staged source after the build, or left a writer running, changed the bytes that were committed,
+and `provenance.json` recorded `"verification": {"verified": true}` (#222) over a tree nothing
+had compiled. So `verify` calls `Stage.testing()` immediately before the gate runs, which notes
+every input of the staging copy as the gate is about to build and test it, and
+`commit(verified=True)` refuses when the staging copy no longer holds them (`staged_drift`). The
+line between the two: everything `verify` writes before the gate is *part of what was tested* --
+the lock files a first restore writes, the record `after_restore` rewrites, the re-locked files
+of a pin bump -- because the gate then builds and tests exactly that; everything written after it
+is the gate's own build output, which `OUTPUT` and `SKIP` already exclude. A verified commit with
+nothing noted is refused rather than trusted, so the claim cannot be made by a path that forgot
+to record what it proved.
+
+A symlink is not an input either (#370). `drift` compares bytes, and `os.stat` and `open` both
+follow a link: a source in `--out` replaced by a link to identical bytes compared equal, and what
+the commit then left in place was whatever the link resolved to when someone next read it --
+changeable after the check, and not necessarily inside `--out`. Check and use are not the same
+instant, and no comparison of a link's bytes at one instant can support the claim a verified
+commit makes. So a verified commit refuses when any input path in `--out` is, or lies under, a
+symlink, before the byte comparison is reached. A `--no-verify` commit is unaffected: it claims
+nothing about a build, and a link it does not write through is still left alone (#184).
 
 The commit, for a fresh `--out`: its missing parents are created and the staging copy is renamed
 into place, one atomic rename. For an existing `--out`:
@@ -112,13 +140,23 @@ import intake as intake_step
 JOURNAL = ".factory-produce-journal.json"
 JOURNAL_FORMAT = 1
 SKIP = frozenset({"bin", "obj", ".git", ".vs"})
-#: Directories a verified commit does not hold `--out` to (#335), on top of SKIP, which is not
+#: Directories a verified commit does not hold an engine to (#335), on top of SKIP, which is not
 #: copied at all. The build and the gate write these and no build reads one, so their bytes are
 #: not an input to what verify proved: `artifacts` is the SDK's output path and `TestResults` the
 #: TRX files `dotnet test` writes -- the same two names verify.py already prunes as not-inputs.
-#: Everything else under `--out` is an input: a `.cs` the gate compiles, a project or props it
+#: Everything else under an engine is an input: a `.cs` the gate compiles, a project or props it
 #: reads, the overlay, a lock file, a script the gate runs. Named by what they are rather than
 #: listed by what a build reads, so a file an engine adds is covered without anyone remembering it.
+#:
+#: **At the root of the engine, and nowhere else** (#370). These are where the SDK writes: the
+#: artifacts output path is the directory beside the solution, and `TestResults` is what a
+#: `dotnet test` run from the root leaves behind (the generated gate passes `--results-directory`
+#: into a scratch directory of its own, so it writes neither). Matching the name at any depth --
+#: which is what this did -- made `src/Engine/TestResults/override.targets` and
+#: `src/Engine/artifacts/Injected.cs` build output, though MSBuild imports the first and compiles
+#: the second: a source could be hidden under either name and edited after the tree was tested,
+#: and the guard would say nothing. bin/ and obj/ are the output that does appear at any depth,
+#: and SKIP keeps those out of the copy and out of every comparison already.
 OUTPUT = frozenset({"artifacts", "TestResults"})
 
 
@@ -152,8 +190,57 @@ def _signature(path):
 
 
 def _is_input(relative):
-    """Whether `relative` is a source or build input of what verify proved, rather than output (#335)."""
-    return not any(part in OUTPUT for part in relative.split("/")[:-1])
+    """Whether the file `relative` is a source or build input of what verify proved (#335, #370).
+
+    Output is what the build writes at the root of the engine (`OUTPUT`), so only the first path
+    component decides, and only when there is a directory component at all: a *file* called
+    `artifacts` at the root is a file like any other.
+    """
+    parts = relative.split("/")
+    return len(parts) < 2 or parts[0] not in OUTPUT
+
+
+def _moved(expected, present):
+    """`(path, reason)` pairs, sorted by path, where `present` is not `expected`.
+
+    `expected` is {relative: `_signature`}; `present` is {relative: absolute path}.
+    """
+    moved = []
+    for relative in sorted(set(expected) | set(present)):
+        if relative not in present:
+            moved.append((relative, "removed"))
+        elif relative not in expected:
+            moved.append((relative, "added"))
+        elif _signature(present[relative]) != expected[relative]:
+            moved.append((relative, "changed"))
+    return moved
+
+
+def _symlinks(root):
+    """Relative POSIX path of every symlink under `root`, SKIP pruned; nothing is followed.
+
+    A link to a directory is reported and not descended into: the link itself is what is refused,
+    and what lies beyond it is outside the tree as far as this is concerned.
+    """
+    found = []
+    for directory, dirs, names in os.walk(root):
+        dirs[:] = [d for d in dirs if d not in SKIP]
+        for name in list(dirs) + names:
+            path = os.path.join(directory, name)
+            if os.path.islink(path):
+                found.append(os.path.relpath(path, root).replace(os.sep, "/"))
+    return sorted(found)
+
+
+def _symlinked_inputs(root):
+    """Every symlink under `root` that a source or build input is, or lies under (#370).
+
+    A link that resolves to a directory stands for everything below it, so it is classified as a
+    path inside it (`<link>/`); a link to a file is classified as that file. So a linked
+    `TestResults` at the root is build output and passes, and a linked `src/Engine` does not.
+    """
+    return [relative for relative in _symlinks(root)
+            if _is_input(relative + "/x" if os.path.isdir(_native(root, relative)) else relative)]
 
 
 def _native(root, relative):
@@ -321,6 +408,9 @@ class Stage:
         self.log = log
         self.work = None
         self.committed = False
+        #: What the staging copy held when the gate was about to build and test it (`testing`,
+        #: #370). None until something says so, and a verified commit refuses while it is None.
+        self.tested = None
 
     def __enter__(self):
         if os.path.lexists(self.out) and not os.path.isdir(self.out):
@@ -356,7 +446,16 @@ class Stage:
             self.work = None
 
     def testing(self):
-        """Note the staging copy's inputs as the proof is about to be made over them (#370)."""
+        """Note the staging copy's inputs as the proof is about to be made over them (#370).
+
+        `verify` calls this immediately before the gate builds and tests the staging copy
+        (verify.verify, `before_gate`), so the tree the proof is over has an identity of its own:
+        everything verify itself writes -- the lock files a first restore leaves, the record
+        `after_restore` rewrites -- is already in place, and everything after it is the gate's own
+        build output. `commit(verified=True)` compares the staging copy against this, so a test
+        that writes into the engine it is testing refuses the commit instead of being committed as
+        verified.
+        """
         self.tested = {relative: _signature(path) for relative, path in _files(self.root).items()
                        if _is_input(relative)}
 
@@ -377,26 +476,52 @@ class Stage:
         verified one (#335). Build output is not compared (`OUTPUT`), and neither is anything
         under SKIP, which was never copied.
         """
-        expected = {p: signature for p, signature in self.snapshot.items() if _is_input(p)}
-        present = {p: path for p, path in _files(self.out).items() if _is_input(p)}
-        moved = []
-        for relative in sorted(set(expected) | set(present)):
-            if relative not in present:
-                moved.append((relative, "removed"))
-            elif relative not in expected:
-                moved.append((relative, "added"))
-            elif _signature(present[relative]) != expected[relative]:
-                moved.append((relative, "changed"))
-        return moved
+        return _moved({p: signature for p, signature in self.snapshot.items() if _is_input(p)},
+                      {p: path for p, path in _files(self.out).items() if _is_input(p)})
+
+    def staged_drift(self):
+        """Every input of the staging copy that is not what `testing()` noted (#370).
+
+        `(path, reason)` pairs, sorted by path. `drift` proves `--out` did not move; this proves
+        the tree being committed is the tree the gate built and tested, which is the other half of
+        the same handoff and the half nothing checked. Build output is not compared (`OUTPUT`, and
+        SKIP, which was never copied): the proof produced it, so it cannot be an input of it.
+        """
+        return _moved(self.tested, {p: path for p, path in _files(self.root).items() if _is_input(p)})
+
+    def linked_inputs(self):
+        """Every input path in `out` that is, or lies under, a symlink (#370)."""
+        return _symlinked_inputs(self.out)
 
     def commit(self, verified=False):
         """Put the staged engine in place of `out`; returns (added, changed, removed).
 
         `verified` says this run proved the staged engine by building and testing it (verify.py).
         A verified commit is held to every input of that proof, not only to the paths it writes:
-        see `drift` and `_commit_existing` (#335).
+        the staging copy must still be the tree the gate tested (`staged_drift`, #370), and `out`
+        must still hold the inputs the copy was made from, through no symlink (`drift` and
+        `linked_inputs`, #335 and #370; see `_commit_existing`).
         """
         added, changed, removed = self.plan()
+        if verified:
+            # #370. Held before the fresh/existing branch because both commit the staging copy: an
+            # existing --out by writing the mutation set into it, a fresh one by renaming the whole
+            # copy into place, which carries a change along just as surely.
+            if self.tested is None:
+                raise intake_step.Refused(
+                    f"this run did not record the engine the gate built and tested, so a verified commit to "
+                    f"{self.out} cannot show that the tree it would write is the tree that was verified; "
+                    f"nothing was written. This is a defect in produce, not in the engine: verify notes the "
+                    f"staging copy before the gate runs (transaction.Stage.testing)")
+            tampered = self.staged_drift()
+            if tampered:
+                raise intake_step.Refused(
+                    f"the engine changed after it was built and tested "
+                    f"({', '.join(f'{path} ({reason})' for path, reason in tampered)}); the gate built and "
+                    f"tested the engine as it stood when it ran, so committing it now would report a tree as "
+                    f"verified that nothing built or tested -- a test or a build step that writes into the "
+                    f"engine it is testing is the usual cause. Nothing was written to {self.out}; stop the "
+                    f"step that writes and run produce again")
         if self.fresh:
             self._commit_fresh()
         else:
@@ -440,6 +565,21 @@ class Stage:
                                       f"written. Replace the link with a real file or directory and run produce "
                                       f"again")
         if verified:
+            # #370, before the comparison below rather than after it, because the comparison cannot
+            # answer for a link: `os.stat` and `open` both follow one, so a source replaced by a link
+            # to identical bytes compares equal, and the bytes it resolves to can change between this
+            # check and the commit -- or be outside --out altogether. What a verified commit claims is
+            # that the tree left behind is the tree that was built and tested, and no check of a
+            # link's bytes at one instant can claim that. #232's guard covers tools/factory and #184's
+            # covers the paths this commit writes; an engine's own sources in --out had neither.
+            linked_inputs = self.linked_inputs()
+            if linked_inputs:
+                raise intake_step.Refused(
+                    f"--out has a symlink where the verified engine has a source or build input "
+                    f"({', '.join(linked_inputs)}); what a link points at can change between this check and "
+                    f"the commit, and can be outside --out altogether, so the committed tree would not be "
+                    f"provably the one that was built and tested. Nothing was written; replace the link with "
+                    f"a real file or directory and run produce again")
             # #335. The staged engine was built and tested as a whole, so the proof is over every
             # input of it, not over the paths this run happens to write. Committing the writes over
             # an --out whose other inputs have moved would leave a tree nothing ever built, reported

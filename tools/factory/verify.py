@@ -469,13 +469,13 @@ def solution(engine_dir):
     return os.path.basename(found[0])
 
 
-def verify_staged(root, recompute, package=None, log=None, after_restore=None, relock=False):
+def verify_staged(root, recompute, package=None, log=None, after_restore=None, relock=False, before_gate=None):
     """`verify` on produce's staging copy, then delete the build output it left there.
 
     The staging copy never holds bin/ or obj/ before this (transaction.py does not copy them), so
     every one found afterwards is verify's own and nothing of the engine's is deleted.
     """
-    overridden = verify(root, recompute, package, log, after_restore, relock)
+    overridden = verify(root, recompute, package, log, after_restore, relock, before_gate)
     for directory, dirs, _ in os.walk(root):
         for name in [d for d in dirs if d in BUILD_OUTPUT]:
             shutil.rmtree(os.path.join(directory, name))
@@ -483,7 +483,7 @@ def verify_staged(root, recompute, package=None, log=None, after_restore=None, r
     return overridden
 
 
-def verify(engine_dir, recompute, package=None, log=None, after_restore=None, relock=False):
+def verify(engine_dir, recompute, package=None, log=None, after_restore=None, relock=False, before_gate=None):
     """Run every stage on `engine_dir`, raising Failed at the first that fails.
 
     `recompute(engine_dir, package)` returns provenance mismatches (__main__.recompute_provenance);
@@ -491,6 +491,12 @@ def verify(engine_dir, recompute, package=None, log=None, after_restore=None, re
     `after_restore()`, when given, runs after a restore that wrote the lock files and before the
     gate (produce uses it to record them in provenance.json, above). `relock` is produce's alone,
     passed when the generated pins changed: existing lock files are then re-locked, not skipped.
+
+    `before_gate()`, when given, runs immediately before the gate builds and tests the tree and
+    after everything verify itself writes into it, so a caller can note what the proof is about to
+    be made over: the gate is where the proof happens, and produce holds the tree it commits to
+    exactly this one (transaction.Stage.testing, #370). It runs outside `overridden_sdk`, so
+    global.json is the engine's own file and not the re-pinned copy.
 
     Returns the SDK version `$FACTORY_DOTNET_SDK_OVERRIDE` put in place of global.json's pin for
     restore and the gate, or None when they ran on the pinned SDK (module docstring).
@@ -559,6 +565,10 @@ def verify(engine_dir, recompute, package=None, log=None, after_restore=None, re
     env = {**os.environ, "PYTHONDONTWRITEBYTECODE": "1"}
     if os.sep in dotnet:
         env["PATH"] = os.path.dirname(os.path.abspath(dotnet)) + os.pathsep + env.get("PATH", "")
+    if before_gate is not None:
+        # The last instant at which the tree is the one the proof will be over: everything verify
+        # writes is in place, and everything after this is the gate's own output (#370).
+        before_gate()
     with overridden_sdk(engine_dir, "gate") as declared:
         # `declared` is empty unless global.json was re-pinned; when it was, it is what tells the
         # gate's provenance step which tree it is verifying and what to prove it against (#336).

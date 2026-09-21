@@ -234,6 +234,7 @@ class TestVerifiedCommitHoldsOutToWhatWasVerified(Scratch):
         """Run a verified commit with `concurrent(--out)` happening after the copy; assert the refusal."""
         with transaction.Stage(self.out) as stage:
             self.stage_generated_file(stage)
+            stage.testing()  # what the gate built and tested: the staging copy, as it is here (#370)
             concurrent(self.out)
             after_the_edit = listing(self.out)
             with self.assertRaises(intake.Refused) as caught:
@@ -285,6 +286,7 @@ class TestVerifiedCommitHoldsOutToWhatWasVerified(Scratch):
         """The guard is no broader than necessary: TestResults/ and bin/ are written, never read."""
         with transaction.Stage(self.out) as stage:
             self.stage_generated_file(stage)
+            stage.testing()
             write(os.path.join(self.out, "TestResults", "engine.trx"), "<TestRun result='later' />")
             write(os.path.join(self.out, "bin", "Engine.dll"), "built after the copy")
             added, changed, removed = stage.commit(verified=True)
@@ -306,6 +308,7 @@ class TestVerifiedCommitHoldsOutToWhatWasVerified(Scratch):
             self.stage_generated_file(stage)
             write(os.path.join(stage.root, "src", "Engine", "Rule.cs"), "class Rule { int factory; }")
             os.remove(os.path.join(stage.root, "backlog", "001.md"))
+            stage.testing()
             added, changed, removed = stage.commit(verified=True)
         self.assertEqual((added, changed, removed),
                          (["src/Engine/Generated/Entries.g.cs"], ["src/Engine/Rule.cs"], ["backlog/001.md"]))
@@ -316,6 +319,7 @@ class TestVerifiedCommitHoldsOutToWhatWasVerified(Scratch):
         """A concurrent edit to a path the run also writes: refused, and the verified refusal is the one raised."""
         with transaction.Stage(self.out) as stage:
             write(os.path.join(stage.root, "src", "Engine", "Rule.cs"), "class Rule { int factory; }")
+            stage.testing()
             write(os.path.join(self.out, "src", "Engine", "Rule.cs"), "class Rule { int mine; }")
             with self.assertRaises(intake.Refused) as caught:
                 stage.commit(verified=True)
