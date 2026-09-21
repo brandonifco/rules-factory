@@ -4,7 +4,7 @@ corpus map has: printed pages, and CFR-style section designations (0020).
 import re
 
 from .diagnostics import fail, skip, verdict
-from .locators import EXTENT_SECTION, cited_row, cited_section, _row_key
+from .locators import EXTENT_SECTION, cited_page, cited_row, cited_section, _row_key
 from mapcontract.entry import block, entries_of, label
 
 
@@ -25,6 +25,52 @@ def _page_extent(extent, bad):
                 or heading != heading.strip():
             bad.append(f"  X  extent: endsBefore is {heading!r}; it names one heading on page `to`, "
                        f"as a single line of text with no surrounding whitespace (0024)")
+
+
+def _placed_entries(doc):
+    """(name, citation, entry) for every entry a declared extent has to place.
+
+    A derived entry cites nothing and is not placed (0012); an entry with no locator has no
+    citation to read. Both exemptions are the section branch's, taken here so that the two units
+    exempt the same entries.
+    """
+    for position, entry in enumerate(entries_of(doc)):
+        if not isinstance(entry, dict) or "derivedFrom" in entry or "locator" not in entry:
+            continue
+        yield label(entry, position), block(entry, "locator").get("citation"), entry
+
+
+def _place_pages(doc, first, last, bad):
+    """Every `scope: in` citation names a page inside `first`..`last` (#269).
+
+    The page unit's half of what this check has always done for section designations. A page
+    citation carries an integer page number the locator grammar already reads, so a map that
+    narrows its declared extent below what it cites is as visible here as a map that drops a
+    section it cites -- and `coverage` cannot see it either way round, because narrowing the
+    extent makes coverage *easier* to satisfy: there are fewer units to reach.
+
+    The three exemptions are the section branch's, for the same three reasons: a `scope: out`
+    entry may cite beyond the extent, because recording what lies beyond the slice is what it is
+    for (the SRD combat map cites the Rules Glossary at pp. 178-189 from an extent of 13-16), and
+    is named in the summary rather than passed or failed; a derived entry cites nothing; and an
+    entry with no locator has no citation to place.
+    """
+    placed, beyond = 0, []
+    for name, citation, entry in _placed_entries(doc):
+        page = cited_page(citation)
+        if page is None:
+            bad.append(f"  X  {name}: citation {citation!r} names no page, so it cannot be "
+                       f"placed inside the extent")
+            continue
+        if first <= page <= last:
+            placed += 1
+        elif entry.get("scope") == "out":
+            beyond.append(f"{name} ({citation})")
+        else:
+            bad.append(f"  X  {name}: cites p. {page}, outside the declared extent "
+                       f"(pages {first}-{last}), and is not `scope: out`; an in-scope rule is "
+                       f"cited inside what the map claims to have read")
+    return placed, beyond
 
 
 def _tables_extent(extent, numbers, bad):
@@ -188,13 +234,15 @@ def _section_extent(extent, bad):
 
 
 def check_extent(ctx):
-    """The declared extent has the shape of its unit, and every section cited lies inside it.
+    """The declared extent has the shape of its unit, and every citation lies inside it.
 
     A `page` extent is a range, `{unit, from, to}`. Whether every page of it is reached is
-    `check-locators.py`'s `coverage`, which reads the corpus. It may also name `endsBefore`, a
-    heading on page `to` at which the slice stops (0024). Only its shape is checked here. That
-    the heading is a line on that page, and that no in-scope quote lies at or after it, need the
-    corpus's lines, and the page-marked PDF text checker is what reads them.
+    `check-locators.py`'s `coverage`, which reads the corpus; **that every `scope: in` citation
+    names a page inside it** is checked here, in the same three exemptions and for the same
+    reason as the section unit below (#269). It may also name `endsBefore`, a heading on page
+    `to` at which the slice stops (0024), whose shape alone is checked here: that the heading is
+    a line on that page, and that no in-scope quote lies at or after it, need the corpus's lines,
+    and the page-marked PDF text checker is what reads them.
 
     A `section-designation` extent is a list, `{unit, sections: ["§ 107.25", ...]}` (0020):
     CFR sections are not contiguous in what a mapper reads, so a range would claim the sections
@@ -206,7 +254,8 @@ def check_extent(ctx):
     **every** table printed inside a cited section appears in the list needs the corpus, and the
     `ecfr-xml` adapter refuses one the extent passes over in silence (`mapper inventory`).
 
-    Every `scope: in` entry's locator names a section in that list, parsed by the locator
+    Every `scope: in` entry's locator names a section in that list -- or, in a page extent, a
+    page in the range -- parsed by the locator
     grammar; a section outside it, or a whole subpart, fails. A `scope: out` entry may cite
     beyond the extent, because recording what lies beyond the slice is what an out-of-scope entry
     is for (Part 107's `subpart-d-categories`). Such an entry is named in the summary as an
@@ -230,20 +279,22 @@ def check_extent(ctx):
         _page_extent(extent, bad)
         end = (f", ending before the heading {extent['endsBefore']!r} on p. {extent.get('to')}"
                if isinstance(extent.get("endsBefore"), str) else "")
+        if bad:
+            return fail(bad, "the declared extent is malformed")
+        placed, beyond = _place_pages(doc, extent["from"], extent["to"], bad)
+        aside = (f"; {len(beyond)} out-of-scope citation{'' if len(beyond) == 1 else 's'} beyond "
+                 f"the extent, neither passed nor failed: {', '.join(beyond)}") if beyond else ""
         return verdict(bad, f"page extent {extent.get('from')}-{extent.get('to')}{end} is well formed; "
-                            f"whether each page is reached is check-locators' `coverage`",
-                       "the declared extent is malformed")
+                            f"{placed} locators each name a page inside it{aside}; whether each "
+                            f"page is reached is check-locators' `coverage`",
+                       "a locator cites a page outside the declared extent")
 
     numbers = _section_extent(extent, bad)
     taken = _tables_extent(extent, numbers or [], bad)
     if numbers is None or bad:
         return fail(bad, "the declared extent is malformed")
     placed, beyond, rows = 0, [], 0
-    for position, entry in enumerate(entries_of(doc)):
-        if not isinstance(entry, dict) or "derivedFrom" in entry or "locator" not in entry:
-            continue
-        name = label(entry, position)
-        citation = block(entry, "locator").get("citation")
+    for name, citation, entry in _placed_entries(doc):
         row = cited_row(citation)
         if row is not None and entry.get("scope") != "out":
             rows += 1

@@ -426,6 +426,48 @@ class TestExtent(MapCase):
     def test_a_page_extent_with_a_non_integer_bound_fails(self):
         self.assert_catches("extent", lambda d: d["extent"].update({"to": "280"}), message='a page extent names integer `from` and `to`')
 
+    def test_an_in_scope_entry_citing_a_page_outside_the_extent_fails(self):
+        # #269: the page unit's half of what this check already did for sections. Narrowing
+        # `hoyle-backgammon`'s extent from 271-280 to 271-279 left every citation in place and
+        # was missed by every check the validator has; `coverage` cannot see it, because
+        # narrowing makes coverage easier to satisfy.
+        self.assert_catches("extent", lambda d: d["entries"][0]["locator"].update(
+            citation="Part One / p. 2"),
+            message='cites p. 2, outside the declared extent (pages 1-1), and is not `scope: out`')
+
+    def test_an_out_of_scope_entry_may_cite_a_page_beyond_the_extent_and_is_reported(self):
+        # The same exemption 0020 gives a section citation: recording what lies beyond the slice
+        # is what an out-of-scope entry is for. The SRD combat map cites p. 5 through p. 10 and
+        # the Rules Glossary at pp. 178-189 that way, all outside its 13-16.
+        document = valid_map()
+        document["entries"][6]["locator"]["citation"] = "Part Two / p. 9"   # subpart-d-categories
+        document["entries"][8]["locator"]["citation"] = "Part Two / p. 17"  # doubling-cube
+        code, output = self.run_tool(document)
+        self.assertEqual(self.status_of(output, "extent"), "ok", output)
+        self.assertIn("2 out-of-scope citations beyond the extent, neither passed nor failed: "
+                      "subpart-d-categories (Part Two / p. 9), doubling-cube (Part Two / p. 17)",
+                      output)
+        self.assertEqual(code, 0, output)
+
+    def test_an_in_scope_citation_naming_no_page_fails(self):
+        # The page counterpart of "names no section or subpart": a citation with no page cannot
+        # be placed, and the placement is the whole of what this rule buys.
+        self.assert_catches("extent", lambda d: d["entries"][0]["locator"].update(
+            citation="Part One"),
+            message="citation 'Part One' names no page, so it cannot be placed inside the extent")
+
+    def test_a_derived_entry_is_not_placed_in_a_page_extent(self):
+        # 0012: a derived entry cites nothing, so there is nothing to place. It is exempt in the
+        # page unit exactly as it is in the section unit.
+        document = valid_map()
+        document["extent"].update({"from": 271, "to": 280})
+        for item in document["entries"]:
+            if "locator" in item:
+                item["locator"]["citation"] = "Part One / p. 271"
+        code, output = self.run_tool(document)
+        self.assertEqual(self.status_of(output, "extent"), "ok", output)
+        self.assertEqual(code, 0, output)
+
     def test_an_extent_in_an_unknown_unit_fails(self):
         self.assert_catches("extent", lambda d: d["extent"].update({"unit": "paragraph"}), message="unit is 'paragraph', outside {page, section-designation}")
 
@@ -513,6 +555,40 @@ class TestExtent(MapCase):
                 else:
                     expected = ("subpart", prefixes[0][0])
                 self.assertEqual(check_map.cited_section(citation), expected)
+
+    def test_the_page_is_read_as_the_two_page_locator_checkers_read_it(self):
+        # #269, the page counterpart of the test above. `check-locators.py`'s `--page-re` default
+        # and the PDF-text checker's `PAGE` are one grammar in three files now, so they are held
+        # to each other over every citation the three committed page maps make.
+        #
+        # Mutation: give `CITE_PAGE` the anchored form the PDF-text checker uses, `\s*$` after
+        # it. Both equalities go red, which is the drift this test exists to stop -- and the
+        # reason `extent` reads the looser of the two is that placing a citation is a weaker
+        # question than resolving it, so the strictness belongs to the grammar's own checker.
+        repo = os.path.dirname(os.path.dirname(os.path.dirname(HERE)))
+        page_tool = _load(repo, "tools", "check-locators.py")
+        pdf_tool = _load(repo, "examples", "srd-52-combat", "check-locators-pdf-text.py")
+        self.assertEqual(page_tool.DEFAULT_PAGE, check_map.CITE_PAGE.pattern)
+        self.assertEqual(pdf_tool.PAGE.pattern, check_map.CITE_PAGE.pattern + r"\s*$")
+        citations = []
+        for name in ("hoyle-backgammon/corpus-map.json", "srd-52-combat/corpus-map.json",
+                     "srd-52-conditions/corpus-map.json"):
+            with open(os.path.join(repo, "examples", name), encoding="utf-8") as handle:
+                citations += [e["locator"]["citation"] for e in json.load(handle)["entries"]
+                              if "locator" in e]
+        self.assertTrue(citations)
+        for citation in citations:
+            with self.subTest(citation=citation):
+                read = re.search(page_tool.DEFAULT_PAGE, citation)
+                self.assertIsNotNone(read, "the page checker reads a page out of every citation")
+                self.assertEqual(check_map.cited_page(citation), int(read.group(1)))
+
+
+def _load(repo, *parts):
+    spec = importlib.util.spec_from_file_location("_" + parts[-1], os.path.join(repo, *parts))
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
 
 
 class TestTableSlice(MapCase):
@@ -1109,9 +1185,15 @@ class TestPostures(MapCase):
 
 
 def _without_evidence_on_last(document):
-    """Append an entry citing the withheld corpus, carrying no span -- as 0013 requires."""
+    """Append an entry citing the withheld corpus, carrying no span -- as 0013 requires.
+
+    The page it cites is inside the map's declared extent, because #269 places a page citation
+    the way this check has always placed a section one and the extent is one range for the whole
+    map (0042). What this helper is about is an entry with no `evidence`, not an entry outside
+    the slice, and p. 36 would now be both.
+    """
     document["entries"].append(entry("opposed-test-tie", locator={
-        "sourceId": "core-rules", "citation": "Game Concepts / p. 36"}))
+        "sourceId": "core-rules", "citation": "Game Concepts / p. 1"}))
     document["entries"][-1].pop("evidence")
     return document
 
