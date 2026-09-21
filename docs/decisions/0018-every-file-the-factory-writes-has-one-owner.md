@@ -362,7 +362,7 @@ written path the table does not classify.
 | `tools/new-issue.sh` | managed | 2 | An issue with the shape the rails expect, at the ready state and normal risk. `--produce` swaps in the body for a `factory produce` update, and promotes nothing (#193). |
 | `tools/entry-packet.py` | managed | 5 | The bounded assignment for one entry, assembled from merge(package, overlay) so it cannot carry a reading of its own. |
 | `tools/re-produce.sh` | managed | 4 | Re-runs `factory produce` on the engine from the factory commit `provenance.json` names. The record is generated, so an overlay edit is only finished by a produce, and prose describing that clone is a procedure an operator can get wrong (#192). |
-| `tools/review-packet.py` | managed | 4 | Everything a reviewer needs about one pull request, in the order it is meant to be read. |
+| `tools/review-packet.py` | managed | 5 | Everything a reviewer needs about one pull request, in the order it is meant to be read. |
 | `tools/pr-policy.py` | managed | 5 | The pull request contract, checked mechanically: one linked issue, every section filled, output rather than a claim. A `factory produce` update's claim is checked against `provenance.json` and this table, never taken (#193). A retired path counts only as a deletion the base commit's record attributes to the factory (#243). |
 | `tools/record-verdict.py` | managed | 2 | A review verdict as a commit status on the exact commit reviewed, so a later commit invalidates it by itself. |
 | `tools/conformance-gate.py` | managed | 2 | Whether the verdicts this change needs are recorded at the commit being merged. A truncated file list is undecidable rather than a small change (#193). |
