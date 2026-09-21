@@ -461,7 +461,7 @@ it is not a disagreement about the corpus (a split, a merge, a choice of span). 
 corrected to the answer.
 
 **Where the record lives.** Beside the map, committed with the corrected map, in one file and one
-shape ([0059](decisions/0059-one-adjudication-record-one-shape-and-the-vocabulary-is-declared-in-the-file.md)):
+shape ([0060](decisions/0060-one-adjudication-record-one-shape-and-the-vocabulary-is-declared-in-the-file.md)):
 `blind-mapping/resolutions.json`, holding a `verdicts` legend, an `unsettledVerdict` naming the
 term that means *the corpus does not settle it*, and one `adjudications` row per disagreement —
 the entry ids, the field, the verdict in a field, and the reason with its quote. The vocabulary

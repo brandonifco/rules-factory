@@ -25,7 +25,7 @@ from mapcontract.entry import block, entries_of
 # `dependsOn` is about structure; a disagreement about `clarity` is about certainty.
 CLARITY_FIELDS = ("clarity", "ambiguity")
 
-# The adjudication record has one shape and declares its own vocabulary (0059). `verdicts` is the
+# The adjudication record has one shape and declares its own vocabulary (0060). `verdicts` is the
 # legend -- the terms and what each meant to the people who used them -- and `unsettledVerdict`
 # names the one term that means *the corpus does not settle it*, which is the term this file
 # turns on. The terms themselves differ between records, because they are what each adjudication
@@ -41,7 +41,7 @@ def find_comparison(map_path):
     """The blind second mapping's adjudication record beside the map, when there is one.
 
     `blind-mapping/resolutions.json` beside the map is where every committed one sits, and it is
-    one file because the record is one shape (0059). Beside it, `results.json` is the
+    one file because the record is one shape (0060). Beside it, `results.json` is the
     comparator's output -- the alignment and the flags -- which is not the adjudication and is
     not read here. A map package ships neither: the package's bytes are what passed (0015), so a
     consumer finds nothing here and the check says so rather than passing.
@@ -60,7 +60,7 @@ def find_comparison(map_path):
 def _adjudications(record):
     """Every adjudicated disagreement about certainty, as (where, verdict, ids, prose, unsettled).
 
-    One parser, because there is one shape (0059). The record declares a `verdicts` legend, an
+    One parser, because there is one shape (0060). The record declares a `verdicts` legend, an
     `unsettledVerdict` the legend defines, and an `adjudications` list whose rows each carry the
     verdict in a field. `verdict` is None where a row states one the legend does not define --
     that is a failure, not a thing to skip past. Returns None where the record is of no shape
@@ -129,7 +129,7 @@ def check_superposition(ctx):
         return skip(f"the adjudication record {os.path.basename(where)} is of no shape this "
                     f"knows: the one shape is a `verdicts` legend, an `unsettledVerdict` the "
                     f"legend defines, and an `adjudications` list whose rows carry a `verdict`, "
-                    f"a `field` and the ids they are about (0059). Without all four, nothing "
+                    f"a `field` and the ids they are about (0060). Without all four, nothing "
                     f"here can say how a disagreement about certainty was answered")
 
     ambiguous = {e.get("id") for e in entries_of(ctx["map"])

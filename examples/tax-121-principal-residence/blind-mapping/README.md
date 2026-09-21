@@ -31,7 +31,7 @@ and nothing outside the extract was consulted for any ruling.
   four rows `group: disagreement`, each about a rule and each with the six fields 0014's review
   needs, and ten rows `group: family` covering every remaining flag. A disagreement with no row
   would leave the map unusable. Its shape is the one every trial's record has
-  ([0059](../../../docs/decisions/0059-one-adjudication-record-one-shape-and-the-vocabulary-is-declared-in-the-file.md)):
+  ([0060](../../../docs/decisions/0060-one-adjudication-record-one-shape-and-the-vocabulary-is-declared-in-the-file.md)):
   the verdict is a `verdict` field rather than the opening clause of the prose, the prose beside
   it is `reason`, and the `verdicts` legend — which this record always carried — is what says what
   each term means, with `unsettledVerdict: "open"` naming the one that means the corpus does not

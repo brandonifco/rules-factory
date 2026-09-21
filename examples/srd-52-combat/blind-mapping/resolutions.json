@@ -1,5 +1,5 @@
 {
-  "about": "The adjudication record for 0014's blind second mapping of SRD 5.2.1, Combat. One row per flag results.json raised, each answered from the corpus (README.md, Resolution table). The shape is 0059's: the verdict is a field and the vocabulary below is declared here rather than in prose.",
+  "about": "The adjudication record for 0014's blind second mapping of SRD 5.2.1, Combat. One row per flag results.json raised, each answered from the corpus (README.md, Resolution table). The shape is 0060's: the verdict is a field and the vocabulary below is declared here rather than in prose.",
   "verdicts": {
     "R": "the reference is right",
     "B": "the blind map is right; the reference is fixed",

@@ -29,7 +29,7 @@ matched when some blind edge target links to the edge's target. A blind edge who
 to no reference entry cannot be compared and is skipped (listed in results.json).
 
 Every flag must have a row in resolutions.json, the adjudication record, whose shape and whose
-declared verdict vocabulary are 0059's; the script exits 1 otherwise, and 1 again if the record
+declared verdict vocabulary are 0060's; the script exits 1 otherwise, and 1 again if the record
 does not declare a `verdicts` legend, an `unsettledVerdict` the legend defines, and a verdict the
 legend defines on every row.
 
@@ -272,7 +272,7 @@ def key(f):
     return f"{f['entry']}|{f['field']}|{f['blind']}|{f['detail']}"
 
 
-# The adjudication record (0059). Every trial's is one shape: `verdicts` is the legend, in the
+# The adjudication record (0060). Every trial's is one shape: `verdicts` is the legend, in the
 # file rather than in a README; `unsettledVerdict` names the one term that means *the corpus does
 # not settle it*, which is the term `check-map.py --only superposition` turns on; and every row
 # carries its verdict in a field. The structural fields -- `id`, `field`, `entries` -- belong to
@@ -290,13 +290,13 @@ def read_record():
     record = json.load(open(RES_PATH, encoding="utf-8")) if os.path.exists(RES_PATH) else {}
     legend, rows, problems = record.get("verdicts"), record.get("adjudications"), []
     if not isinstance(legend, dict) or not legend:
-        problems.append("resolutions.json declares no `verdicts` legend (0059)")
+        problems.append("resolutions.json declares no `verdicts` legend (0060)")
         legend = {}
     if record.get("unsettledVerdict") not in legend:
         problems.append(f"`unsettledVerdict` is {record.get('unsettledVerdict')!r}, which the "
-                        f"`verdicts` legend does not define (0059)")
+                        f"`verdicts` legend does not define (0060)")
     if not isinstance(rows, list):
-        problems.append("resolutions.json carries no `adjudications` list (0059)")
+        problems.append("resolutions.json carries no `adjudications` list (0060)")
         rows = []
     by_id = {}
     for row in rows:

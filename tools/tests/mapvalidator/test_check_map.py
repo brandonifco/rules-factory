@@ -2780,7 +2780,7 @@ class TestSuperposition(MapCase):
     """0034: a disagreement about certainty that the corpus did not settle is recorded in the
     map as unresolved, or it is a premature collapse with a paper trail.
 
-    0059: the record is one shape, `blind-mapping/resolutions.json`, and it declares the
+    0060: the record is one shape, `blind-mapping/resolutions.json`, and it declares the
     vocabulary its verdicts are written in.
     """
 

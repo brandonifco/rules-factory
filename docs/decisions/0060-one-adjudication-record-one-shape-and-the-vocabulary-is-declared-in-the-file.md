@@ -1,4 +1,4 @@
-# 0059 — The blind second mapping's adjudication record is one shape, and each record declares the vocabulary its verdicts are written in
+# 0060 — The blind second mapping's adjudication record is one shape, and each record declares the vocabulary its verdicts are written in
 
 ## Status
 
