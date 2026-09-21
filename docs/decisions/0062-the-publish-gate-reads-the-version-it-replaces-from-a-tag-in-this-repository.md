@@ -60,6 +60,20 @@ checks not run against one.
 compared" has to be as visible as a comparison, for the same reason a check with no subject
 matter says so rather than passing quietly.
 
+**And the publish workflow checks out the whole history, so the tags are there.** Both jobs of
+`.github/workflows/publish-map.yml` were shallow, and a shallow checkout has no tags — so without
+this the comparison would silently not happen in the one job that actually publishes, and #378
+would be closed by relocating its defect rather than by fixing it. `tools/pack-map.py` does not
+refuse a checkout without tags, because packing a map from outside this repository is legitimate
+and reports itself as no comparison; that is precisely why the workflow has to ask. A test holds
+every checkout in that workflow to it, read from the uncommented text so the comment explaining
+the line cannot be what satisfies the test that the line is there.
+
+The `engine` job of `validate.yml` stays shallow and is not an exception to this. It packs a map
+as a step in producing an engine, not to publish one, and it now says on each run that it
+compared no previous version — which is true, and is the report the decision asks for rather
+than a gap it hides.
+
 ## Consequences
 
 Three of the four packable maps now compare against a predecessor, and the fourth says why it

@@ -120,5 +120,34 @@ class TestThePublishGateIsNarrowedInExactlyOnePlace(unittest.TestCase):
         self.assertEqual(2, len(re.findall(r"set -o pipefail", self.text)))
 
 
+class ThePublishJobsCanReadTheVersionTheyReplace(unittest.TestCase):
+    """0062, #378: `pack-map.py` reads the predecessor out of a `map/<name>/vX.Y.Z` tag, and a
+    shallow checkout has no tags.
+
+    The tool does not refuse a checkout without them -- packing a map from outside this
+    repository is legitimate and says so -- which is exactly why the workflow has to ask. Without
+    this, the comparison would silently not happen in the one job that actually publishes, and
+    #378 would be closed by relocating its defect rather than by fixing it.
+
+    Read from the uncommented text, like everything else here: the comment beside `fetch-depth`
+    explaining why it is there must not be what satisfies the test that it is there.
+    """
+
+    def test_every_checkout_that_packs_takes_the_whole_history(self):
+        body = _uncommented(read("publish-map.yml"))
+        checkouts = body.count("actions/checkout@")
+        self.assertGreater(checkouts, 0, "publish-map.yml checks nothing out")
+        self.assertEqual(checkouts, body.count("fetch-depth: 0"),
+                         f"publish-map.yml has {checkouts} checkout(s) and "
+                         f"{body.count('fetch-depth: 0')} asking for the whole history; a shallow "
+                         f"one has no map tags, so pack-map.py would compare against nothing (0062)")
+
+    def test_the_validate_workflow_still_takes_it_too(self):
+        """The engine job packs a map as part of producing an engine rather than to publish one,
+        and says on every run which version it compared against or that it compared none. What
+        must not regress is `validate`, whose scope is read from a diff against a base commit."""
+        self.assertIn("fetch-depth: 0", _uncommented(read("validate.yml")))
+
+
 if __name__ == "__main__":
     unittest.main()

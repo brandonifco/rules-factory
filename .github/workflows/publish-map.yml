@@ -56,6 +56,13 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
+          # The whole history, for the tags. tools/pack-map.py reads the map this version
+          # replaces out of the highest `map/<name>/vX.Y.Z` tag below it (0062), and a shallow
+          # checkout has no tags -- so the comparison would silently not happen in the one job
+          # that actually publishes, which is the defect #378 exists to close rather than to
+          # relocate. The tool does not refuse a checkout without tags, because packing outside
+          # this repository is legitimate; that is exactly why the workflow has to ask for them.
+          fetch-depth: 0
 
       - name: Set up Python
         uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
@@ -132,6 +139,13 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
+          # The whole history, for the tags. tools/pack-map.py reads the map this version
+          # replaces out of the highest `map/<name>/vX.Y.Z` tag below it (0062), and a shallow
+          # checkout has no tags -- so the comparison would silently not happen in the one job
+          # that actually publishes, which is the defect #378 exists to close rather than to
+          # relocate. The tool does not refuse a checkout without tags, because packing outside
+          # this repository is legitimate; that is exactly why the workflow has to ask for them.
+          fetch-depth: 0
 
       - name: Set up Python
         uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
