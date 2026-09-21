@@ -114,6 +114,23 @@ and so does the line that ends it. An engine whose global.json already pins the 
 (scripts/validate-engine.sh adopts such a copy) is left alone. The override is refused when CI=true,
 where a green run must mean the pinned SDK.
 
+What the gate is told about it (#336). Stage 3 is the engine's own gate, and that gate checks the
+managed files against provenance.json -- global.json among them. So for the length of stage 3 the
+override was writing a file that the very check running inside it called forged: the one run said
+both "this engine's bytes are the factory's" and "this engine's global.json is not what the record
+hashes", and nothing reconciled them. A verification whose evidence comes from a tree it will not
+name is #338's failure mode, so the substitution is **declared** rather than hidden.
+`overridden_sdk` keeps the recorded bytes in a directory of its own outside the engine (nothing may
+appear in an engine without an owner, 0018) and hands the gate `FACTORY_SDK_OVERRIDE_RECORDED`
+pointing at them. The gate then proves two things where it proved one: that the declared original is
+the file provenance.json hashes, and that global.json on disk is exactly that original re-pinned to
+`FACTORY_DOTNET_SDK_OVERRIDE`. The declaration therefore moves one field of one file and cannot
+cover anything else -- not another global.json, not `rollForward`, not any other managed file -- and
+both the gate's provenance step and its ok line name the SDK the run actually verified on. Without
+the declaration (a shell that merely exports the variable, or an engine that has adopted the
+override into its own record) the gate compares global.json byte for byte, as it always did. The
+recorded copy is removed as the stage ends, pass or fail, with global.json put back.
+
 `dotnet` is `$FACTORY_DOTNET` when set, else `dotnet` on PATH; a test substitutes a fake the way
 `$FACTORY_GH` substitutes `gh` for `backlog --create`. The gate is a shell script that runs
 `dotnet` from PATH, so when `$FACTORY_DOTNET` names a path its directory is put first on the
@@ -133,6 +150,7 @@ import re
 import shutil
 import subprocess
 import sys
+import tempfile
 import threading
 
 import intake as intake_step
@@ -278,6 +296,9 @@ def stale_locks(engine_dir, pinned):
 
 
 SDK_OVERRIDE = "FACTORY_DOTNET_SDK_OVERRIDE"
+#: What `overridden_sdk` tells the gate: the path to the bytes global.json was re-pinned from, so the
+#: gate can prove the substitution instead of refusing it (#336; recipe/engine-gate.py reads it).
+SDK_OVERRIDE_RECORDED = "FACTORY_SDK_OVERRIDE_RECORDED"
 GLOBAL_JSON = "global.json"
 
 
@@ -320,12 +341,20 @@ def pinned_sdk(engine_dir):
 def overridden_sdk(engine_dir, stage):
     """Within the block, the engine's global.json pins `sdk_override()`; its bytes are put back after.
 
+    Yields the environment a child process must be given to be told what was done (#336): `{}` when
+    nothing was re-pinned, and `{FACTORY_SDK_OVERRIDE_RECORDED: <path>}` when something was, where
+    the path holds the recorded bytes global.json was re-pinned *from*. The gate proves the
+    substitution against them; a child that ignores the variable -- `dotnet` -- is unaffected. The
+    copy lives in a directory of this function's own, outside the engine, because a staged verify
+    commits the engine as it stands and every file in one has an owner (decision 0018); it is
+    removed as the block ends, pass or fail, together with putting global.json back.
+
     Nothing happens without an override, or when global.json already pins it. A global.json that
     cannot be read or rewritten fails `stage`."""
     version = sdk_override()
     pinned = pinned_sdk(engine_dir)
     if version is None or pinned == version:
-        yield
+        yield {}
         return
     path = os.path.join(engine_dir, GLOBAL_JSON)
     try:
@@ -334,13 +363,21 @@ def overridden_sdk(engine_dir, stage):
         replaced = repin(original.decode("utf-8"), version)
     except (OSError, UnicodeDecodeError, ValueError, KeyError, TypeError) as error:
         raise Failed(stage, f"{SDK_OVERRIDE} is set, and {path} cannot be read as a global.json to re-pin: {error}")
-    with open(path, "w", encoding="utf-8") as handle:
-        handle.write(replaced)
+    kept = tempfile.mkdtemp(prefix="factory-sdk-override-")
+    recorded = os.path.join(kept, GLOBAL_JSON)
     try:
-        yield
-    finally:
-        with open(path, "wb") as handle:
+        with open(recorded, "wb") as handle:
             handle.write(original)
+        # The restore is inside this try, so a write that fails part way through is put back too.
+        try:
+            with open(path, "w", encoding="utf-8") as handle:
+                handle.write(replaced)
+            yield {SDK_OVERRIDE_RECORDED: recorded}
+        finally:
+            with open(path, "wb") as handle:
+                handle.write(original)
+    finally:
+        shutil.rmtree(kept, ignore_errors=True)
 
 
 def installed_sdks():
@@ -483,7 +520,8 @@ def verify(engine_dir, recompute, package=None, log=None, after_restore=None, re
     if overridden:
         print(f"{override_warning(overridden, pinned)}. global.json is re-pinned to {overridden} only while "
               f"dotnet restore and the gate run, and put back byte for byte after each; provenance was checked "
-              f"on the pinned file", file=log)
+              f"on the pinned file, and the gate is told to prove the re-pinned one against it "
+              f"({SDK_OVERRIDE_RECORDED})", file=log)
 
     dotnet = dotnet_command()
     locks = lock_files(engine_dir)
@@ -521,8 +559,10 @@ def verify(engine_dir, recompute, package=None, log=None, after_restore=None, re
     env = {**os.environ, "PYTHONDONTWRITEBYTECODE": "1"}
     if os.sep in dotnet:
         env["PATH"] = os.path.dirname(os.path.abspath(dotnet)) + os.pathsep + env.get("PATH", "")
-    with overridden_sdk(engine_dir, "gate"):
-        code = _run("gate", ["bash", gate, "full"], engine_dir, log, env)
+    with overridden_sdk(engine_dir, "gate") as declared:
+        # `declared` is empty unless global.json was re-pinned; when it was, it is what tells the
+        # gate's provenance step which tree it is verifying and what to prove it against (#336).
+        code = _run("gate", ["bash", gate, "full"], engine_dir, log, {**env, **declared})
     if code != 0:
         raise Failed("gate", f"{GATE} full failed; its output above names the step")
     ok("gate", f"{GATE} full passed" + (f" on SDK {overridden} ({SDK_OVERRIDE}), not the pinned {pinned}"

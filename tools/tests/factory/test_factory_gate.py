@@ -380,6 +380,130 @@ class TestTheRecordHashesWhatIsOnDisk(GateCase):
         self.assertIn("not in the factory's canonical form", output)
 
 
+class TestTheSdkOverrideDeclaresTheTreeTheGateVerifies(GateCase):
+    """#336: the local SDK override re-pins global.json around the gate, and the record still decides.
+
+    `factory verify` runs restore and the gate on another SDK by re-pinning global.json for the
+    length of each (verify.overridden_sdk) -- and global.json is a managed file whose SHA-256
+    provenance.json records, so the gate's own provenance step called those deliberate bytes a
+    violation. Neither mechanism was wrong about its own claim; they disagreed about *which tree*
+    was under verification, which is exactly the shape of #338.
+
+    The semantics chosen: the substitution is **declared** to the gate, never exempted from it.
+    `$FACTORY_SDK_OVERRIDE_RECORDED` points at the bytes provenance.json records, and for
+    global.json the gate proves two things instead of one -- that the declared file *is* the
+    recorded file, and that what is on disk is exactly that file re-pinned to
+    `$FACTORY_DOTNET_SDK_OVERRIDE`. The only byte a declaration can move is the SDK version, and the
+    step says which SDK the run therefore verified. Every other edit, and an undeclared re-pin, is
+    the refusal it always was.
+
+    Each case below asserts the sentence the gate prints, not merely its exit code: a provenance
+    run has many ways to fail, and a test that reads only the verdict is satisfied by the wrong
+    rule firing (#283).
+    """
+
+    OTHER = "10.0.1"
+    RECORDED = "FACTORY_SDK_OVERRIDE_RECORDED"
+    OVERRIDE = "FACTORY_DOTNET_SDK_OVERRIDE"
+
+    def repinned(self, version=None, copy_first=True):
+        """An engine as `verify` hands one to the gate: global.json re-pinned, the recorded bytes kept.
+
+        Returns (engine, path to the recorded global.json, the version it pinned).
+        """
+        engine = self.engine()
+        recorded = os.path.join(self.tmp, "recorded-global.json")
+        shutil.copyfile(os.path.join(engine, "global.json"), recorded)
+        with open(recorded, encoding="utf-8") as handle:
+            pinned = json.load(handle)["sdk"]["version"]
+        self.assertNotEqual(pinned, self.OTHER)
+        if copy_first:
+            edit(os.path.join(engine, "global.json"),
+                 lambda text: factory.verify_step.repin(text, version or self.OTHER))
+        return engine, recorded, pinned
+
+    def provenance(self, engine, **env):
+        return self.script(engine, "engine-gate.py", "provenance",
+                           env={"CI": "", self.OVERRIDE: "", self.RECORDED: "", **env})
+
+    def test_the_declared_re_pin_verifies_and_the_step_says_which_sdk_ran(self):
+        engine, recorded, pinned = self.repinned()
+        code, output = self.provenance(engine, **{self.OVERRIDE: self.OTHER, self.RECORDED: recorded})
+        self.assertEqual(code, 0, output)
+        self.assertIn(f"global.json is provenance.json's own file re-pinned from {pinned} to {self.OTHER} "
+                      f"by {self.OVERRIDE}", output)
+        self.assertIn(f"does not prove the pinned SDK {pinned}", output)
+        self.assertIn(f"global.json as re-pinned to {self.OTHER}", output,
+                      "the ok line itself says the tree it verified was not the recorded one")
+
+    def test_a_re_pin_nobody_declared_is_the_refusal_it_always_was(self):
+        """The normal path is untouched: without the declaration the recorded hash is exact."""
+        engine, _, _ = self.repinned()
+        code, output = self.provenance(engine)
+        self.assertEqual(code, 1, output)
+        self.assertIn("managed[global.json].sha256: recorded", output)
+
+    def test_the_declaration_admits_the_sdk_version_and_nothing_else(self):
+        """Roll-forward disabled is the other half of the pin, and the override may not move it."""
+        engine, recorded, _ = self.repinned()
+        edit(os.path.join(engine, "global.json"), lambda text: text.replace('"disable"', '"latestMajor"', 1))
+        code, output = self.provenance(engine, **{self.OVERRIDE: self.OTHER, self.RECORDED: recorded})
+        self.assertEqual(code, 1, output)
+        self.assertIn(f"managed[global.json]: {self.OVERRIDE} declares SDK {self.OTHER}, and global.json on disk "
+                      f"is not the recorded file re-pinned to it", output)
+
+    def test_the_declared_original_must_be_the_file_the_record_hashes(self):
+        """The declaration cannot smuggle in a global.json the record never saw."""
+        engine, recorded, _ = self.repinned()
+        edit(recorded, lambda text: text.replace('"disable"', '"latestMajor"', 1))
+        code, output = self.provenance(engine, **{self.OVERRIDE: self.OTHER, self.RECORDED: recorded})
+        self.assertEqual(code, 1, output)
+        self.assertIn(f"managed[global.json]: {self.RECORDED} hands the gate bytes provenance.json does not "
+                      f"record", output)
+
+    def test_a_declaration_that_names_no_sdk_proves_nothing(self):
+        engine, recorded, _ = self.repinned()
+        code, output = self.provenance(engine, **{self.RECORDED: recorded})
+        self.assertEqual(code, 1, output)
+        self.assertIn(f"{self.RECORDED} is set and {self.OVERRIDE} names no SDK", output)
+
+    def test_the_declaration_is_refused_when_ci_is_true(self):
+        """CI proves the pinned toolchain or fails; verify refuses the override there, and so does the gate."""
+        engine, recorded, _ = self.repinned()
+        code, output = self.provenance(engine, CI="true", **{self.OVERRIDE: self.OTHER, self.RECORDED: recorded})
+        self.assertEqual(code, 1, output)
+        self.assertIn(f"{self.OVERRIDE} is an override of the SDK the engine pins, for local runs only, and is "
+                      f"refused when CI=true", output)
+
+    def test_the_gate_re_pins_exactly_as_the_factory_does(self):
+        """The gate recomputes the substitution, so its spelling of a re-pin may never drift from
+        `verify.repin`'s -- which is what wrote the file it is comparing against."""
+        spec = importlib.util.spec_from_file_location("engine_gate_recipe",
+                                                      os.path.join(FACTORY, "recipe", "engine-gate.py"))
+        recipe = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(recipe)
+        with open(os.path.join(self.engine(), "global.json"), encoding="utf-8") as handle:
+            text = handle.read()
+        self.assertEqual(recipe.repinned(text, self.OTHER), factory.verify_step.repin(text, self.OTHER))
+
+    def test_the_sdk_pin_step_says_when_the_pin_it_checked_is_the_override_s(self):
+        """`ok SDK 10.0.1` read alone claims the engine ran on the SDK it pins, which under a
+        declaration it did not. What that step prints under a real SDK is the engine job's to run
+        (scripts/validate-engine.sh); what is asserted here is that the emitted gate says it at all.
+        """
+        with open(os.path.join(self.engine(), "scripts", "validate.sh"), encoding="utf-8") as handle:
+            sdk_step = handle.read().split("step \"Restore (locked)\"")[0]
+        self.assertIn(f'if [[ -n "${{{self.RECORDED}:-}}" ]]; then', sdk_step)
+        self.assertIn("does not prove the SDK provenance.json records", sdk_step)
+
+    def test_an_unchanged_engine_under_a_declaration_is_verified_as_it_stands(self):
+        """`verify` declares nothing when global.json already pins the override, and neither does this."""
+        engine, _, _ = self.repinned(copy_first=False)
+        code, output = self.provenance(engine, **{self.OVERRIDE: self.OTHER})
+        self.assertEqual(code, 0, output)
+        self.assertNotIn("re-pinned", output)
+
+
 class TestOverlayMerge(GateCase):
     def test_passes_on_fresh_output(self):
         code, output, merged = self.merge(self.engine())
