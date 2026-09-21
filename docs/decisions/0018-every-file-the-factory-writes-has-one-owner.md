@@ -358,7 +358,7 @@ written path the table does not classify.
 | `.claude/agents/rules-conformance.md` | managed | 3 | The semantic reviewer's charter, read-only. |
 | `.claude/hooks/primary-checkout-guard.py` | managed | 1 | The `PreToolUse` guard keeping implementation work out of the primary checkout. Policy, and the engine that must change it adopts it. |
 | `.claude/settings.json` | managed | 1 | Which tools the guard runs before. |
-| `tools/dispatch-agent.sh` | managed | 3 | One issue, one worktree, one branch; it refuses what is not ready to work (0029). |
+| `tools/dispatch-agent.sh` | managed | 4 | One issue, one worktree, one branch; it refuses what is not ready to work (0029). `--sweep` removes every worktree and branch whose pull request merged at exactly its tip, never a fresh or dirty one, and every dispatch runs it first, so cleaning up is nobody's to remember (#236). |
 | `tools/new-issue.sh` | managed | 2 | An issue with the shape the rails expect, at the ready state and normal risk. `--produce` swaps in the body for a `factory produce` update, and promotes nothing (#193). |
 | `tools/entry-packet.py` | managed | 5 | The bounded assignment for one entry, assembled from merge(package, overlay) so it cannot carry a reading of its own. |
 | `tools/re-produce.sh` | managed | 5 | Re-runs `factory produce` on the engine from the factory commit `provenance.json` names. The record is generated, so an overlay edit is only finished by a produce, and prose describing that clone is a procedure an operator can get wrong (#192). It also recognises a record a merge left conflicted, where no side is the right one because every hash in it is about to be recomputed, and `--resolve-record` takes a side and re-produces over it (#252). |

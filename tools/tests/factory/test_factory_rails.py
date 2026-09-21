@@ -857,7 +857,7 @@ class TestTheSweep(MergedWorkInAnEngine):
         done = self.sweep()
         self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
         self.assertIn("sweep: nothing to remove", done.stdout)
-        self.assertIn("1 worktree(s) and 1 branch(es) examined", done.stdout)
+        self.assertIn("1 worktree(s) and 2 branch(es) examined", done.stdout)  # main, and the issue's
         self.assertNotIn("swept", done.stdout)
         self.assertTrue(os.path.isdir(path), done.stdout)
         self.assertIn(self.BRANCH, self.branches())
@@ -890,8 +890,10 @@ class TestTheSweep(MergedWorkInAnEngine):
 
     def test_a_branch_with_no_worktree_whose_pull_request_merged_at_its_tip_is_swept(self):
         path, head = self.dispatched()
+        # --cleanup takes the worktree and leaves the branch: `git branch -d` judges it unmerged
+        # against the local main, which the merged pull request has not moved.
         self.assertEqual(self.dispatch("--cleanup", "27").returncode, 0)
-        git(self.out, "branch", self.BRANCH, head)  # --cleanup took the worktree; the branch stayed
+        self.assertIn(self.BRANCH, self.branches())
         self.state(merged=((self.BRANCH, head),))
         done = self.sweep()
         self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
@@ -906,7 +908,7 @@ class TestTheSweep(MergedWorkInAnEngine):
         done = self.sweep(RULES_ENGINE_GH=os.path.join(self.tmp, "no-such-gh"))
         self.assertEqual(done.returncode, 3, done.stdout + done.stderr)
         self.assertIn("NOT CHECKED  merged pull requests could not be read", done.stdout)
-        self.assertIn("nothing was swept, and a worktree or branch left behind by merged work is "
+        self.assertIn("Nothing was swept, and a worktree or branch left behind by merged work is "
                       "not reported by this run", done.stdout)
         self.assertNotIn("sweep: nothing to remove", done.stdout)
         self.assertTrue(os.path.isdir(path), done.stdout)

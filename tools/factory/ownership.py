@@ -98,8 +98,9 @@ TABLE = (
     Row(".claude/hooks/primary-checkout-guard.py", MANAGED, 1,
         "the PreToolUse guard that keeps implementation work out of the primary checkout (0029)"),
     Row(".claude/settings.json", MANAGED, 1, "which tools the guard runs before (0029)"),
-    Row("tools/dispatch-agent.sh", MANAGED, 3,
-        "one issue, one worktree, one branch; it refuses what is not ready to work (0029)"),
+    Row("tools/dispatch-agent.sh", MANAGED, 4,
+        "one issue, one worktree, one branch; it refuses what is not ready to work, and --sweep "
+        "removes what merged work left behind, before every dispatch (0029, #236)"),
     Row("tools/new-issue.sh", MANAGED, 2,
         "an issue with the shape the rails expect, a factory update's included (0029, #193)"),
     Row("tools/entry-packet.py", MANAGED, 5,
@@ -281,6 +282,7 @@ RECIPE_SHA256 = {
         1: "868ce983b51d784a83a6a0fcac7456608b31f0af025c75ac5eeac64a373dca2b",
         2: "5e66ff9229bf31ed43d4a70c957e774696462dba3ff4e7f75b566132a6858cb5",
         3: "0f62f797181512f7e7e2b5b2314faaf50566866509f882927879e9361a7b6bfc",
+        4: "a9f9d81b4fb2386acaa07f905f81f0848e02b6a93351aedc1f5a978f9225ca70",
     },
     "tools/new-issue.sh": {
         1: "382a2f516f81f593e74ed9e57262080c25edbac1a16d542ffb235eb772b10e88",
