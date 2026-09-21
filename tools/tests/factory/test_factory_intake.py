@@ -515,6 +515,12 @@ class TestEverySourceIsBounded(IntakeCase):
             handle.truncate(size)
         return path
 
+    def hoyle_corpus_declaration(self):
+        """Hoyle's packaged manifest entry: a corpus declaration that passes every check but size."""
+        with zipfile.ZipFile(self.hoyle) as archive:
+            manifest = json.loads(archive.read("map/corpus-manifest.json"))
+        return manifest["corpora"][0]
+
     def patch_cap(self, name, value):
         original = getattr(intake, name)
         setattr(intake, name, value)
@@ -604,11 +610,6 @@ class TestEverySourceIsBounded(IntakeCase):
         size = os.path.getsize(HOYLE_TEXT)
         cap = self.patch_cap("MAX_CORPUS_BYTES", size - 1)
         self.assert_refused(self.hoyle, HOYLE_TEXT, f"is {size} bytes, over the {cap}")
-
-    def hoyle_corpus_declaration(self):
-        with zipfile.ZipFile(self.hoyle) as archive:
-            manifest = json.loads(archive.read("map/corpus-manifest.json"))
-        return manifest["corpora"][0]
 
     def test_the_packages_and_corpora_this_repository_commits_are_under_every_cap(self):
         """The caps are a boundary the factory's own inputs sit well inside."""
