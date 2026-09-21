@@ -557,7 +557,8 @@ class Brief(Repos):
                                            capture_output=True).returncode, 0, "a blob outside the sparse paths is present")
         manifest = json.loads((out / "MANIFEST.json").read_text())
         self.assertFalse([f for f in manifest["files"] if "/.git/" in f["path"]])
-        # Running the factory writes __pycache__, which neither dirties the stage nor fails the scan.
+        # A __pycache__ in the stage neither dirties it nor fails the scan. The factory writes none
+        # of its own (#373), and this check is about the stage's files, not about what ran.
         (stage / "tools/factory/__pycache__").mkdir()
         (stage / "tools/factory/__pycache__/generate.cpython-312.pyc").write_bytes(b"\0")
         self.assertEqual(build_brief.check_stage(out, self.target, self.factory), [])
