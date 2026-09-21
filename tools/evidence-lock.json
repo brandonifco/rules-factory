@@ -216,6 +216,16 @@
     },
     {
       "archive": null,
+      "bytes": 4173,
+      "path": "examples/faa-part-107-temporal/mapping-inventory.json",
+      "readBy": [
+        "checks"
+      ],
+      "role": "active",
+      "sha256": "df73b610457cf85090607dc66157804007a21b5010d74ce28ba538d9cd889d49"
+    },
+    {
+      "archive": null,
       "bytes": 617,
       "path": "examples/faa-part-107-temporal/mapping-protocol.json",
       "readBy": [
@@ -452,6 +462,16 @@
       ],
       "role": "release",
       "sha256": "c0f14e02264ff701265de9cdc02f360c020046b699bd9d28ec9abc929bafb771"
+    },
+    {
+      "archive": null,
+      "bytes": 4086,
+      "path": "examples/faa-part-107/mapping-inventory.json",
+      "readBy": [
+        "checks"
+      ],
+      "role": "active",
+      "sha256": "a33f853e900ba6fa6c4613d9853dfc0372ae2731cb0dcb286ef3e80d4a3268b0"
     },
     {
       "archive": null,
@@ -798,6 +818,16 @@
       ],
       "role": "release",
       "sha256": "aa24c96269da0f3b600d3bd97ce1e7d190d3095d133feceacc531401c8184afd"
+    },
+    {
+      "archive": null,
+      "bytes": 3724,
+      "path": "examples/hoyle-backgammon/mapping-inventory.json",
+      "readBy": [
+        "checks"
+      ],
+      "role": "active",
+      "sha256": "56abdef254094b2291dd3dad4a884dd020300815276baf6663ad2d7a49e0a102"
     },
     {
       "archive": null,
@@ -1474,6 +1504,16 @@
     },
     {
       "archive": null,
+      "bytes": 11130,
+      "path": "examples/srd-52-combat/mapping-inventory.json",
+      "readBy": [
+        "checks"
+      ],
+      "role": "active",
+      "sha256": "9188f8a880c0cc8cf763bc49a4c53cfb84b5761751cf6129e50350829246a53b"
+    },
+    {
+      "archive": null,
       "bytes": 705,
       "path": "examples/srd-52-combat/mapping-protocol.json",
       "readBy": [
@@ -1603,6 +1643,16 @@
       ],
       "role": "active",
       "sha256": "ecdccc64840ab7fe867171a0d579c371e998915ceea283a43946f4efdec2a571"
+    },
+    {
+      "archive": null,
+      "bytes": 8666,
+      "path": "examples/srd-52-conditions/mapping-inventory.json",
+      "readBy": [
+        "checks"
+      ],
+      "role": "active",
+      "sha256": "f1fbdfdda3c4d84f2b8d018d27fe4f12c8601a5e5645b1c73d5a65f733ea48a0"
     },
     {
       "archive": null,
@@ -1779,6 +1829,16 @@
       ],
       "role": "release",
       "sha256": "6ad022451683e45131d70937ba6adc50fb997e64e0988e52e740f707c83fdb72"
+    },
+    {
+      "archive": null,
+      "bytes": 5775,
+      "path": "examples/tax-121-principal-residence/mapping-inventory.json",
+      "readBy": [
+        "checks"
+      ],
+      "role": "active",
+      "sha256": "e712b2745f055f1686307c415912bd903f50d4c575eb13bde81700436335844f"
     },
     {
       "archive": null,

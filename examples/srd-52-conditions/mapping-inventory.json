@@ -1,0 +1,173 @@
+{
+  "inventoryVersion": 2,
+  "rejected": [
+    {
+      "sourceId": "srd-5.2.1",
+      "unit": "p. 177 block 15",
+      "ground": "page-furniture",
+      "note": "The folio '177', the printed page number, which pdftotext leaves in the reading order as a block of its own. It belongs to no glossary entry and states nothing."
+    },
+    {
+      "sourceId": "srd-5.2.1",
+      "unit": "p. 177 block 16",
+      "ground": "page-furniture",
+      "note": "The running head 'System Reference Document 5.2.1', printed at the foot of every page of the SRD and left in the reading order by the extraction. It belongs to no glossary entry and states nothing."
+    },
+    {
+      "sourceId": "srd-5.2.1",
+      "unit": "p. 178 block 43",
+      "ground": "page-furniture",
+      "note": "The folio '178', the printed page number, which pdftotext leaves in the reading order as a block of its own. It belongs to no glossary entry and states nothing."
+    },
+    {
+      "sourceId": "srd-5.2.1",
+      "unit": "p. 178 block 44",
+      "ground": "page-furniture",
+      "note": "The running head 'System Reference Document 5.2.1', printed at the foot of every page of the SRD and left in the reading order by the extraction. It belongs to no glossary entry and states nothing."
+    },
+    {
+      "sourceId": "srd-5.2.1",
+      "unit": "p. 179 block 12",
+      "ground": "page-furniture",
+      "note": "The folio '179', the printed page number, which pdftotext leaves in the reading order as a block of its own. It belongs to no glossary entry and states nothing."
+    },
+    {
+      "sourceId": "srd-5.2.1",
+      "unit": "p. 179 block 14",
+      "ground": "page-furniture",
+      "note": "The running head 'System Reference Document 5.2.1', printed at the foot of every page of the SRD and left in the reading order by the extraction. It belongs to no glossary entry and states nothing."
+    },
+    {
+      "sourceId": "srd-5.2.1",
+      "unit": "p. 180 block 13",
+      "ground": "page-furniture",
+      "note": "The folio '180', the printed page number, which pdftotext leaves in the reading order as a block of its own. It belongs to no glossary entry and states nothing."
+    },
+    {
+      "sourceId": "srd-5.2.1",
+      "unit": "p. 180 block 28",
+      "ground": "page-furniture",
+      "note": "The running head 'System Reference Document 5.2.1', printed at the foot of every page of the SRD and left in the reading order by the extraction. It belongs to no glossary entry and states nothing."
+    },
+    {
+      "sourceId": "srd-5.2.1",
+      "unit": "p. 181 block 28",
+      "ground": "page-furniture",
+      "note": "The folio '181', the printed page number, which pdftotext leaves in the reading order as a block of its own. It belongs to no glossary entry and states nothing."
+    },
+    {
+      "sourceId": "srd-5.2.1",
+      "unit": "p. 181 block 29",
+      "ground": "page-furniture",
+      "note": "The running head 'System Reference Document 5.2.1', printed at the foot of every page of the SRD and left in the reading order by the extraction. It belongs to no glossary entry and states nothing."
+    },
+    {
+      "sourceId": "srd-5.2.1",
+      "unit": "p. 182 block 17",
+      "ground": "page-furniture",
+      "note": "The folio '182', the printed page number, which pdftotext leaves in the reading order as a block of its own. It belongs to no glossary entry and states nothing."
+    },
+    {
+      "sourceId": "srd-5.2.1",
+      "unit": "p. 182 block 18",
+      "ground": "page-furniture",
+      "note": "The running head 'System Reference Document 5.2.1', printed at the foot of every page of the SRD and left in the reading order by the extraction. It belongs to no glossary entry and states nothing."
+    },
+    {
+      "sourceId": "srd-5.2.1",
+      "unit": "p. 183 block 10",
+      "ground": "page-furniture",
+      "note": "The folio '183', the printed page number, which pdftotext leaves in the reading order as a block of its own. It belongs to no glossary entry and states nothing."
+    },
+    {
+      "sourceId": "srd-5.2.1",
+      "unit": "p. 183 block 11",
+      "ground": "page-furniture",
+      "note": "The running head 'System Reference Document 5.2.1', printed at the foot of every page of the SRD and left in the reading order by the extraction. It belongs to no glossary entry and states nothing."
+    },
+    {
+      "sourceId": "srd-5.2.1",
+      "unit": "p. 184 block 10",
+      "ground": "page-furniture",
+      "note": "The folio '184', the printed page number, which pdftotext leaves in the reading order as a block of its own. It belongs to no glossary entry and states nothing."
+    },
+    {
+      "sourceId": "srd-5.2.1",
+      "unit": "p. 184 block 23",
+      "ground": "page-furniture",
+      "note": "The running head 'System Reference Document 5.2.1', printed at the foot of every page of the SRD and left in the reading order by the extraction. It belongs to no glossary entry and states nothing."
+    },
+    {
+      "sourceId": "srd-5.2.1",
+      "unit": "p. 185 block 9",
+      "ground": "page-furniture",
+      "note": "The folio '185', the printed page number, which pdftotext leaves in the reading order as a block of its own. It belongs to no glossary entry and states nothing."
+    },
+    {
+      "sourceId": "srd-5.2.1",
+      "unit": "p. 185 block 10",
+      "ground": "page-furniture",
+      "note": "The running head 'System Reference Document 5.2.1', printed at the foot of every page of the SRD and left in the reading order by the extraction. It belongs to no glossary entry and states nothing."
+    },
+    {
+      "sourceId": "srd-5.2.1",
+      "unit": "p. 186 block 13",
+      "ground": "page-furniture",
+      "note": "The folio '186', the printed page number, which pdftotext leaves in the reading order as a block of its own. It belongs to no glossary entry and states nothing."
+    },
+    {
+      "sourceId": "srd-5.2.1",
+      "unit": "p. 186 block 14",
+      "ground": "page-furniture",
+      "note": "The running head 'System Reference Document 5.2.1', printed at the foot of every page of the SRD and left in the reading order by the extraction. It belongs to no glossary entry and states nothing."
+    },
+    {
+      "sourceId": "srd-5.2.1",
+      "unit": "p. 187 block 13",
+      "ground": "page-furniture",
+      "note": "The folio '187', the printed page number, which pdftotext leaves in the reading order as a block of its own. It belongs to no glossary entry and states nothing."
+    },
+    {
+      "sourceId": "srd-5.2.1",
+      "unit": "p. 187 block 15",
+      "ground": "page-furniture",
+      "note": "The running head 'System Reference Document 5.2.1', printed at the foot of every page of the SRD and left in the reading order by the extraction. It belongs to no glossary entry and states nothing."
+    },
+    {
+      "sourceId": "srd-5.2.1",
+      "unit": "p. 188 block 15",
+      "ground": "page-furniture",
+      "note": "The folio '188', the printed page number, which pdftotext leaves in the reading order as a block of its own. It belongs to no glossary entry and states nothing."
+    },
+    {
+      "sourceId": "srd-5.2.1",
+      "unit": "p. 188 block 16",
+      "ground": "page-furniture",
+      "note": "The running head 'System Reference Document 5.2.1', printed at the foot of every page of the SRD and left in the reading order by the extraction. It belongs to no glossary entry and states nothing."
+    },
+    {
+      "sourceId": "srd-5.2.1",
+      "unit": "p. 189 block 24",
+      "ground": "page-furniture",
+      "note": "The folio '189', the printed page number, which pdftotext leaves in the reading order as a block of its own. It belongs to no glossary entry and states nothing."
+    },
+    {
+      "sourceId": "srd-5.2.1",
+      "unit": "p. 189 block 25",
+      "ground": "page-furniture",
+      "note": "The running head 'System Reference Document 5.2.1', printed at the foot of every page of the SRD and left in the reading order by the extraction. It belongs to no glossary entry and states nothing."
+    },
+    {
+      "sourceId": "srd-5.2.1",
+      "unit": "p. 190 block 12",
+      "ground": "page-furniture",
+      "note": "The running head 'System Reference Document 5.2.1', printed at the foot of every page of the SRD and left in the reading order by the extraction. It belongs to no glossary entry and states nothing."
+    },
+    {
+      "sourceId": "srd-5.2.1",
+      "unit": "p. 191 block 13",
+      "ground": "page-furniture",
+      "note": "The running head 'System Reference Document 5.2.1', printed at the foot of every page of the SRD and left in the reading order by the extraction. It belongs to no glossary entry and states nothing."
+    }
+  ]
+}

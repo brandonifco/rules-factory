@@ -1,0 +1,59 @@
+{
+  "inventoryVersion": 2,
+  "rejected": [
+    {
+      "sourceId": "hoyle-1909",
+      "unit": "p. 271 block 1",
+      "ground": "heading",
+      "note": "The article's own title, 'BACKGAMMON.', printed alone on the line. It names the game and states nothing about it; the first rule of the article is the board and the men on p. 271-272, which board-tables, point-designations and starting-position quote."
+    },
+    {
+      "sourceId": "hoyle-1909",
+      "unit": "p. 271 block 2",
+      "ground": "beyond-adapter",
+      "note": "The Gutenberg edition's placeholder for Fig. 1, '[Illustration: FIG. 1.]'. The figure itself is an image this corpus's text does not contain, which is what the manifest's adapterReach records as illustrations: unsupported. The arrangement it shows is also stated in prose at p. 272 block 4, and that sentence is what starting-position quotes, so nothing rests on the picture alone."
+    },
+    {
+      "sourceId": "hoyle-1909",
+      "unit": "p. 273 block 1",
+      "ground": "heading",
+      "note": "The section title 'PLAYING.', alone on its line. The rules of play it heads -- the throw, the move by pips, doublets, hitting and entering -- are quoted by move-by-pip, doublets, must-play-whole-throw, blot-hit and enter-from-bar."
+    },
+    {
+      "sourceId": "hoyle-1909",
+      "unit": "p. 275 block 2",
+      "ground": "heading",
+      "note": "The section title 'BEARING OFF THE MEN.', alone on its line. Every rule of bearing off is in the paragraphs beneath it, which bearing-off-eligible, bearing-off-move-or-remove, bearing-off-highest, bearing-off-doublets and the stake rules quote."
+    },
+    {
+      "sourceId": "hoyle-1909",
+      "unit": "p. 275 block 3",
+      "ground": "beyond-adapter",
+      "note": "The edition's placeholder for Fig. 2, '[Illustration: FIG. 2.]', the bearing-off diagram. As with Fig. 1 the image is not in the text this corpus pins, and the bearing-off rules it illustrates are stated in the prose around it."
+    },
+    {
+      "sourceId": "hoyle-1909",
+      "unit": "p. 277 block 2",
+      "ground": "heading",
+      "note": "The section title 'HINTS FOR PLAY.', alone on its line. Excluding this section wholesale as advice is what lost the only authority in this corpus for a die having six faces (#20), so the section is not rejected here -- die-faces quotes its lead-in and the twenty-one throws it enumerates are reached. What is rejected is this line, which is a title."
+    },
+    {
+      "sourceId": "hoyle-1909",
+      "unit": "p. 280 block 6",
+      "ground": "advice",
+      "note": "A ranking of the opening throws: double aces best, then double sixes, then double trois, trois ace and six ace. It obliges nothing and forbids nothing -- 'are reckoned the best' is a judgement about play. Every throw it names is one the enumeration die-faces quotes already prints (ACES, SIXES, DOUBLE TROIS, TROIS ACE, SIX ACE), so no fact about the die rests on this paragraph alone."
+    },
+    {
+      "sourceId": "hoyle-1909",
+      "unit": "p. 280 block 7",
+      "ground": "advice",
+      "note": "Counsel that a throw whose higher number is two in advance of the other is good, because it lets you make a point. The point-making rule itself is stated in the rules of play and quoted there; this says which throws a player should prefer, which is advice under method.md's reading of scope, and cinque trois and trois ace are both in the enumeration die-faces reaches."
+    },
+    {
+      "sourceId": "hoyle-1909",
+      "unit": "p. 280 block 8",
+      "ground": "page-furniture",
+      "note": "The printer's rule '* * * * *' that ends the article. It is a typographic separator of the 1909 edition and carries no words at all."
+    }
+  ]
+}
