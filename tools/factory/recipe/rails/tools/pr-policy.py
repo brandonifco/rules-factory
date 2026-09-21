@@ -2,6 +2,7 @@
 """The pull request contract, checked mechanically.
 
     tools/pr-policy.py <pr-number>
+    tools/pr-policy.py --docs-skeleton      the `## Documentation` section for this tree, to fill in
 
 Emitted by rules-factory as a managed file (decision 0029), and run by
 `.github/workflows/pr-policy.yml` on every open, edit, push and reopen.
@@ -19,7 +20,35 @@ So this checks what can be checked mechanically, and nothing it cannot:
   3. the evidence section shows a command and its output, not a claim that it passed;
   4. a change touching the semantic surface names an entry and a locator;
   5. agent provenance says who implemented and who reviewed;
-  6. the linked issue carries exactly one risk label and exactly one state label.
+  6. the linked issue carries exactly one risk label and exactly one state label;
+  7. every document this engine owns is accounted for, and what is said matches the diff.
+
+**The documentation section (#236).** A change that makes a document untrue is not finished, and
+almost none of what makes one untrue is something a parser can see. So the body carries a line per
+document, each ticked with a note:
+
+    - [x] `README.md` — updated: the entry table names the altitude limit
+    - [x] `docs/how-we-read-the-corpus.md` — checked, no change: it describes the map, not handlers
+
+**Which documents those are is decided from an engine's layout, and is not rules-factory's list.**
+Almost every `*.md` a produced engine holds is the factory's -- `AGENTS.md`, `CLAUDE.md`,
+`docs/agent-team.md`, the reviewer charters, this pull request's own template -- and `produce`
+refuses a hand edit to each, so asking an engine's pull request to account for one would be asking
+for a tick nobody here can act on. What is living is what the engine owns: its `README.md`, its own
+`docs/`, and any rail it has **adopted** (`factory produce --adopt <path>`), which is engine-owned
+from that moment. A numbered decision record under `docs/decisions/` is frozen, for the reason
+rules-factory freezes its own: it records what was decided and is superseded, never rewritten. A
+fresh engine owns no documents at all, and then this section says so in a sentence -- which is a
+true answer, and stops being one the day somebody writes a README.
+
+Whoever owns it, **a document the diff touches is listed as `updated`** -- which catches a README
+added in a branch and never mentioned again. An admitted produce claim is the single exception, and
+only to that one rule: the claim was granted by showing every changed path is one the factory
+writes, which says more than a tick beside twenty rails whose honest note is all the same sentence.
+The engine's own documents are listed in a produce update like any other.
+
+This cannot tell whether anyone read a file. That part rests on the author's word, and the note is
+where they give it.
 
 **Produce mode (#193).** A `factory produce` update to this engine -- a new map version, a new
 kernel pin, a new factory recipe -- is a pull request under these rails like any other, and two of
@@ -91,6 +120,7 @@ SECTIONS = (
     ("Scope, and what this deliberately does not do", "what makes the diff reviewable"),
     ("Map and rules conformance", "the entry, the map version and the locator"),
     ("Tests and evidence", "the commands, and what they printed"),
+    ("Documentation", "a line for every document this engine owns, and for every one the diff changes"),
     ("Determinism", "what this change does about anything that reads the machine"),
     ("Decisions and trade-offs", "what you chose and what you rejected"),
     ("Known limitations and unresolved behaviour", "what this does not answer"),
@@ -117,6 +147,17 @@ PRODUCE_FACTS = (
 # Prose, compared against nothing: which of the three moved, and what a reader should expect to see
 # in the diff because of it. A produce report (`factory produce --produce-report`) writes all four.
 PRODUCE_PROSE = "what moved"
+DOCUMENTATION = "Documentation"
+# One document's line. The same grammar rules-factory's own tools/check-pr-docs.py reads, so an
+# agent that has worked in both writes the same thing in both.
+DOCUMENT_LINE = re.compile(
+    r"^[-*]\s*\[(?P<tick>[ xX])\]\s*`?(?P<path>[^`\s]+\.md)`?\s*[—–-]+\s*"
+    r"(?P<verdict>updated|checked, no change)\s*:\s*(?P<note>.*?)\s*$")
+# Frozen by design: a numbered decision record is superseded by a new record, never rewritten.
+FROZEN_DOCUMENT = re.compile(r"^docs/decisions/\d{4}-[^/]+\.md$")
+# Not the engine's writing and not in its history: what restore, build and test left behind. A
+# package's own README unpacked under obj/ is not a document this repository owes anybody a note on.
+NOT_A_DOCUMENT_DIRECTORY = frozenset({".git", "bin", "obj", "artifacts", "TestResults", "node_modules"})
 CLOSES = re.compile(r"\b(?:close[sd]?|fix(?:e[sd])?|resolve[sd]?)\s+#(\d+)\b", re.I)
 FENCE = re.compile(r"```.*?```", re.S)
 # "tests pass", "all green", "CI is happy": a claim in the place the template asks for output.
@@ -437,6 +478,163 @@ def check_evidence(filled, findings, produce=False):
                         "fail, and you must have watched it fail -- a test nobody has watched fail is not yet a test.")
 
 
+def documents(root):
+    """Every `*.md` in the tree, as repository-relative paths."""
+    found = []
+    for directory, subdirs, files in os.walk(root):
+        subdirs[:] = sorted(name for name in subdirs if name not in NOT_A_DOCUMENT_DIRECTORY)
+        for name in sorted(files):
+            if name.endswith(".md"):
+                found.append(os.path.relpath(os.path.join(directory, name), root).replace(os.sep, "/"))
+    return sorted(found)
+
+
+def living_documents(ownership, name, adopted):
+    """The documents this engine owns: the ones a change made here can make untrue.
+
+    Everything the factory writes is excluded, because `produce` refuses a hand edit to it: a tick
+    beside a file nobody in this repository may change is a tick nobody can act on. An **adopted**
+    rail is excluded from that exclusion -- adoption is the engine taking the file as its own
+    (decision 0018), and an engine that has adopted `AGENTS.md` owns `AGENTS.md`. A numbered
+    decision record is frozen.
+
+    A file whose ownership cannot be decided is treated as the engine's. The direction matters:
+    the cost of a wrong answer here is one extra line in a pull request, and the cost the other way
+    is a document nobody was asked about.
+    """
+    living = []
+    for path in documents(str(ROOT)):
+        if FROZEN_DOCUMENT.match(path):
+            continue
+        try:
+            row = ownership.classify(path, name)
+        except ownership.OwnershipError:
+            row = None
+        if row is not None and row.cls in (ownership.GENERATED, ownership.MANAGED) and path not in adopted:
+            continue
+        living.append(path)
+    return living
+
+
+def check_documentation(filled, changed, findings, truncated=False, produce=False):
+    """Every document this engine owns is listed, and what is said about each matches the diff.
+
+    Returns how many living documents there are, for the summary; None when the section is absent
+    (check_sections has already said so) or when ownership could not be read.
+
+    A truncated file list decides nothing about the diff, so the changed-file rules are skipped
+    there and the living-document rules -- which read the tree, not the list -- still hold.
+
+    **An admitted produce claim relaxes one rule and no other:** that every changed `*.md` be
+    listed. It can, because the claim was only admitted after every changed path was shown to be
+    one the factory writes -- which says more about `AGENTS.md` and a retired `backlog/*.md` than a
+    tick beside them would, and the tick's honest note is "the recipe this produce brought", twenty
+    times over. What is not relaxed is the engine's own documents: an adopted rail is living and is
+    still listed, and a produce cannot smuggle a README past this, because a README in the diff
+    voids the claim before this check runs.
+    """
+    section = filled.get(DOCUMENTATION)
+    if section is None:
+        return None
+    try:
+        ownership, name, _ = engine_ownership()
+    except (Failed, OSError, ValueError) as error:
+        findings.append(f"`## {DOCUMENTATION}` cannot be judged here: {error}. Which documents this engine owns "
+                        f"is read from its own vendored ownership table and provenance.json, and a section this "
+                        f"check cannot examine is not admitted.")
+        return None
+    living = living_documents(ownership, name, ownership.adopted(str(ROOT)))
+    changed_documents = sorted(path for path in changed if path.endswith(".md"))
+
+    listed = {}
+    for line in section.splitlines():
+        line = line.strip()
+        if not line:
+            continue
+        match = DOCUMENT_LINE.match(line)
+        if not match:
+            if line.startswith(("-", "*")):
+                findings.append(f"`## {DOCUMENTATION}` cannot read {line!r}. One line per document: "
+                                f"- [x] `path.md` — updated: what you changed, or "
+                                f"- [x] `path.md` — checked, no change: what you looked for.")
+            continue
+        path = match["path"]
+        if path in listed:
+            findings.append(f"`{path}` is listed twice in `## {DOCUMENTATION}`.")
+        listed[path] = match
+        if match["tick"] == " ":
+            findings.append(f"`{path}` is not ticked in `## {DOCUMENTATION}`: an unticked line is a document "
+                            f"nobody has read against this change.")
+        if not match["note"]:
+            findings.append(f"`{path}` has no note after `{match['verdict']}:`. Nothing can tell whether you "
+                            f"read a file; the note is where you say what you looked for.")
+
+    for path in living:
+        if path not in listed:
+            findings.append(f"`{path}` is a living document of this engine and is not listed in "
+                            f"`## {DOCUMENTATION}`. `tools/pr-policy.py --docs-skeleton` prints the section.")
+    if not truncated:
+        for path in changed_documents:
+            if path not in listed:
+                if produce:
+                    continue
+                findings.append(f"`{path}` is changed by this pull request and is not listed in "
+                                f"`## {DOCUMENTATION}`. A document the diff touches is accounted for whoever "
+                                f"owns it: the one exception is an admitted factory update, which has already "
+                                f"shown every changed path is one the factory writes.")
+            elif listed[path]["verdict"] != "updated":
+                findings.append(f"`{path}` is changed by this pull request but listed as checked, no change.")
+    for path, match in listed.items():
+        if truncated:
+            break
+        if path not in living and path not in changed_documents:
+            findings.append(f"`{path}` is neither a living document of this engine nor changed here. "
+                            f"A path that is neither is a typo, and a typo ticks nothing.")
+        elif match["verdict"] == "updated" and path not in changed_documents:
+            findings.append(f"`{path}` is listed as updated but this pull request does not change it.")
+    return len(living)
+
+
+def changed_documents_here():
+    """The `*.md` this branch changes against its base, when git can say, and none when it cannot.
+
+    Only `--docs-skeleton` uses this: the skeleton is written before the pull request exists, so
+    there is no file list to read. A tree git cannot answer about still gets its living documents
+    listed, with the missing half named on stderr rather than passed off as "nothing changed".
+    """
+    for base in ("origin/main", "main"):
+        found = subprocess.run(["git", "-C", str(ROOT), "rev-parse", "--verify", "--quiet", base],
+                               stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+        if found.returncode != 0:
+            continue
+        diff = subprocess.run(["git", "-C", str(ROOT), "diff", "--name-only", "--no-renames", f"{base}...HEAD"],
+                              stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+        if diff.returncode == 0:
+            return sorted(path for path in diff.stdout.splitlines() if path.endswith(".md"))
+    print("pr-policy: git could not say what this branch changes, so every line below reads `checked, no "
+          "change`; mark as `updated` each document this pull request edits.", file=sys.stderr)
+    return []
+
+
+def print_documentation_skeleton():
+    """The `## Documentation` section for this tree, unticked, for the author to complete."""
+    try:
+        ownership, name, _ = engine_ownership()
+    except (Failed, OSError, ValueError) as error:
+        print(f"pr-policy: cannot list this engine's documents -- {error}", file=sys.stderr)
+        return 2
+    living = living_documents(ownership, name, ownership.adopted(str(ROOT)))
+    changed = changed_documents_here()
+    print(f"## {DOCUMENTATION}")
+    print()
+    if not living and not changed:
+        print("None: this engine has no documents of its own, and nothing here changes one.")
+        return 0
+    for path in sorted(set(living) | set(changed)):
+        print(f"- [ ] `{path}` — {'updated' if path in changed else 'checked, no change'}: ")
+    return 0
+
+
 def check_conformance(filled, semantic_files, findings, produce=False):
     conformance = filled.get("Map and rules conformance")
     if conformance is None or not semantic_files:
@@ -514,10 +712,17 @@ def truncation(pull, changed, findings):
 
 def main(argv=None):
     parser = argparse.ArgumentParser(prog="pr-policy.py", description=__doc__.split("\n")[0])
-    parser.add_argument("pr", type=int, help="the pull request number")
+    parser.add_argument("pr", type=int, nargs="?", help="the pull request number")
+    parser.add_argument("--docs-skeleton", action="store_true",
+                        help="print the `## Documentation` section for this tree, unticked, and exit")
     args = parser.parse_args(argv)
 
-    findings = []
+    if args.docs_skeleton:
+        return print_documentation_skeleton()
+    if args.pr is None:
+        parser.error("a pull request number is required (or --docs-skeleton)")
+
+    findings, living = [], None
     try:
         settings = policy()
         pull = json.loads(gh("pr", "view", str(args.pr), "--json",
@@ -539,6 +744,7 @@ def main(argv=None):
                                                         pull.get("baseRefOid"))
         check_evidence(filled, findings, produce=produce)
         check_conformance(filled, semantic_files, findings, produce=produce)
+        living = check_documentation(filled, changed, findings, truncated=truncated, produce=produce)
         check_provenance(filled, findings)
         if linked is not None:
             check_issue_labels(linked, settings, findings)
@@ -557,7 +763,8 @@ def main(argv=None):
               "line above is something a reviewer would otherwise have to take on trust.")
         return 1
     print(f"pr-policy: PR #{args.pr} satisfies the contract "
-          f"({len(SECTIONS) - len(OPTIONAL)} required sections, one linked issue, evidence and provenance present).")
+          f"({len(SECTIONS) - len(OPTIONAL)} required sections, one linked issue, evidence and provenance present, "
+          f"{living if living is not None else 0} living document(s) accounted for).")
     if produce:
         print(f"The `## {PRODUCE_SECTION}` claim was admitted: the declared factory, map and kernel are "
               f"{PROVENANCE}'s, that record is not dirty, and every changed file is one a produce writes. "

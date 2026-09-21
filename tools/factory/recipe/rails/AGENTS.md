@@ -61,13 +61,31 @@ contaminate another and a half-finished change cannot reach `main`:
 
 ```bash
 tools/dispatch-agent.sh <issue number>      # creates the worktree and the branch, and prints the path
-tools/dispatch-agent.sh --cleanup <n>       # after the pull request merged
+tools/dispatch-agent.sh --sweep             # removes what merged work left behind; every dispatch runs it
+tools/dispatch-agent.sh --cleanup <n>       # this one issue, after its pull request merged
 ```
 
 Dispatch refuses rather than leaving readiness to your judgement: an issue that is closed, blocked
 or awaiting a decision, one that already has a worktree, and a primary checkout with uncommitted
 changes. A worktree is never created inside the repository: one that lives there is eventually
 committed, scanned by a tool that did not expect it, or deleted by a clean step.
+
+**Finishing is part of the work, and it is not left to anybody's memory.** `tools/dispatch-agent.sh
+--sweep` removes every worktree and branch whose pull request merged at **exactly** its tip, and
+every dispatch runs it before it opens the next worktree. Exactly that tip, and nothing weaker: a
+worktree dispatched and not yet committed in sits at `main`'s tip, so "its commits are in `main`"
+would take the work of an agent who has not started. A worktree with uncommitted or untracked files
+is named and left alone, and a sweep that cannot reach GitHub says `NOT CHECKED` rather than
+reporting a clean repository it never looked at. `tools/agent-doctor.py` reports the same
+leftovers, and removes nothing.
+
+**Delete only what you created, and by its exact path — never by wildcard in a directory you
+share.** On 2026-09-17 an agent tidying up in the repository that builds this engine ran `rm -rf
+<shared scratchpad>/*`, took two other agents' worktrees and their uncommitted work, and that work
+had to be rebuilt from nothing. Every agent of one session shares that directory. Before any `rm`
+outside your own worktree, list what it would remove and name each path: `git worktree remove
+<path>`, `rm -r <the one directory you made>`. This rule has no check. It rests on your word, and
+the reason is written here so that it is not one.
 
 `tools/new-issue.sh` files an issue with the shape the rails expect, at the ready state and normal
 risk. Most issues are not filed by hand: `factory backlog --create` writes one per map entry still
@@ -81,9 +99,26 @@ task's edits reach a commit that claims to close one issue.
 
 The pull request is filled in from `.github/pull_request_template.md`, and `tools/pr-policy.py`
 checks it mechanically as a required check: one linked issue, every section filled, a command and
-its output rather than a claim, an entry and a locator for semantic work, who reviewed, and
-exactly one state and one risk label on the issue. None of that is about form. Each line of it is
-something a reviewer would otherwise have to take on trust.
+its output rather than a claim, an entry and a locator for semantic work, a line for every living
+document this engine owns, who reviewed, and exactly one state and one risk label on the issue.
+None of that is about form. Each line of it is something a reviewer would otherwise have to take
+on trust.
+
+A change that makes a document untrue is not finished, and almost nothing that makes one untrue is
+visible to a parser. So the body carries a `## Documentation` line per document, each ticked with a
+note saying what you looked for:
+
+```bash
+tools/pr-policy.py --docs-skeleton          # the section for this tree, unticked, to complete
+```
+
+**The documents that section is about are this engine's own** — its `README.md`, its own `docs/`,
+and any rail it has adopted. The rails the factory writes are not listed: `produce` refuses a hand
+edit to each, so a tick beside one is a tick nobody here can act on. A numbered decision record
+under `docs/decisions/` is frozen — superseded by a new record, never rewritten — and is listed
+only when this change edits it. Every other `*.md` the diff touches is listed as `updated`,
+whoever owns it. An engine that owns no documents yet says so in a sentence, and that answer stops
+being true the day somebody writes a README.
 
 ### A factory update is work under these rails too
 
