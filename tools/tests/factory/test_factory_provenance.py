@@ -739,7 +739,12 @@ class TestRefuses(ProvenanceCase):
         cache = self.plant_bytecode(repo, "generate", lambda text: text + "\nFORGED = True\n")
         # The premise, proved rather than asserted: this .pyc is what an import of the factory's
         # own directory loads. Without it the test would pass on a file Python ignores.
-        loaded = subprocess.run([sys.executable, "-c", "import generate; print(generate.FORGED)"],
+        # `-B`, so this probe writes no bytecode of its own. `generate` imports its siblings, and
+        # their .pyc files would then sit beside the planted one -- the refusal names whichever it
+        # reaches first, and the assertion below would be about a file this test did not plant.
+        # It passed only because the gate's pytest exports PYTHONDONTWRITEBYTECODE, which is a
+        # test held to its assertion by its caller's environment (#384, and the same shape).
+        loaded = subprocess.run([sys.executable, "-B", "-c", "import generate; print(generate.FORGED)"],
                                 cwd=os.path.join(repo, "tools", "factory"),
                                 stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
         self.assertEqual(loaded.stdout.strip(), "True", "the planted bytecode is not what Python loads")

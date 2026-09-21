@@ -671,6 +671,25 @@ def step_evidence(run: Run) -> bool:
     With --with-evidence the same artifacts are verified through tools/fetch-evidence.py, which
     reads each one wherever the lock says it lives -- this repository today, a content-addressed
     archive if one is ever named."""
+    # The one run this step does not make, and why it is not a step reporting ok over nothing.
+    #
+    # `check-evidence.py --measure` learns each artifact's role by running this gate under an
+    # audit hook and recording what opened what. While it does so the lock is stale by
+    # construction -- it is the thing being rewritten -- so this step would fail, and #408
+    # measured what that costs: a failing gate opens a different set of files from a green one,
+    # so the role recorded is never the role an ordinary run produces. `check-provenance.sh` is
+    # read by a `python3 -c` process on a failing run and by nothing on a green one, and the lock
+    # has been alternating between `active` and `archived` accordingly.
+    #
+    # So during a measurement this step does not run, and says so. It is not a pass: nothing is
+    # examined and nothing is claimed. The measurement is what is being taken, and it is taken
+    # over a gate that is otherwise green -- which is what lets check-evidence.py refuse a
+    # measurement with any failing step at all, rather than excusing two and being perturbed by
+    # them. Every other invocation of the gate runs it, CI included: nothing sets this.
+    if os.environ.get("EVIDENCE_MEASURING"):
+        print("not run: tools/check-evidence.py --measure is rewriting the lock this step reads, "
+              "and a failing step changes what the run opens (#408)")
+        return True
     if run.with_evidence:
         return run.python("tools/fetch-evidence.py", "--verify")
     return run.python("tools/check-evidence.py")

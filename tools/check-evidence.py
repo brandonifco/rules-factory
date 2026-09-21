@@ -150,6 +150,12 @@ def _trace(root: pathlib.Path, argv: list[str], home: pathlib.Path,
     env["PYTHONPATH"] = f"{home}:{existing}" if existing else str(home)
     env["EVIDENCE_TRACE"] = str(out)
     env["EVIDENCE_ROOT"] = str(root)
+    # Read by the gate's evidence step and by the lock's own tests, which compare the committed
+    # lock with the tree and so are comparing a map with ground being redrawn (#408). They stand
+    # down for the duration, and the measurement is taken over a gate that is otherwise green --
+    # because a failing gate opens a different set of files from a passing one, and the role that
+    # followed was never the one an ordinary run produces.
+    env["EVIDENCE_MEASURING"] = "1"
     env["PYTHONDONTWRITEBYTECODE"] = "1"
     proc = subprocess.run(argv, cwd=root, env=env, capture_output=True, text=True)
     if proc.returncode != 0:
@@ -220,19 +226,24 @@ def _reader_class(reader: str) -> str | None:
 # over a gate that did not finish its work -- which is how a role can move with nothing about
 # the file having changed (#408).
 EVIDENCE_STEP = "every evidence artifact is the bytes the lock names"
-# The lock's own tests hold the committed lock to the tree, so while the lock is stale they fail
-# for the same reason the evidence step does. Excused only in that company: a failing test step
-# with the evidence step green is a real one, and it is the step whose absence moved a role.
 TESTS_STEP = "the checkers' own tests"
 
 
 def partial_steps(failed: list[str]) -> list[str]:
-    """The failing steps that make a measurement partial -- those failing by construction while
-    the lock is being rewritten removed."""
-    excusable = {EVIDENCE_STEP}
-    if EVIDENCE_STEP in failed:
-        excusable.add(TESTS_STEP)
-    return sorted(step for step in failed if step not in excusable)
+    """The failing steps that make a measurement partial, which is now every one of them.
+
+    This used to excuse two -- the evidence step, and the lock's own tests in its company --
+    because both fail by construction while the lock is being rewritten. That was the wrong
+    remedy for the right observation. Those two failures are not a nuisance to be excused: they
+    are the perturbation. #408 measured it, on one tree: `check-provenance.sh` is opened by a
+    `python3 -c` process when the gate is red and by nothing at all when it is green, so the role
+    that follows alternates with the state of the lock being replaced.
+
+    So `--measure` now stands both of them down for the duration (EVIDENCE_MEASURING), the gate
+    it measures is green, and any failing step at all is a real one -- which is what the guard
+    was reaching for when it had to excuse its way past two.
+    """
+    return sorted(failed)
 
 
 def measure(root: pathlib.Path = ROOT) -> tuple[dict[str, list[str]], list[str]]:
