@@ -34,7 +34,7 @@ proves about a trial report is that the report's links work. So a read by that s
 | `checks` | a gate step, for what is in it | 66 | 10.8 MB |
 | `checks`, `package` | that, and `pack-map.py` | 18 | 2.5 MB |
 | `checks`, `links` | a gate step, and the link check | 17 | 419 KB |
-| `links` | **only** the markdown link check | 44 | 884 KB |
+| `links` | **only** the markdown link check | 44 | 890.7 KB |
 | `package` | only `pack-map.py` | 2 | 1 KB |
 | *(nothing)* | nothing the measurement could see | **42** | **892 KB** |
 
