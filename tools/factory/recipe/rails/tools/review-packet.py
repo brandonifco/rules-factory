@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Everything a reviewer needs about one pull request, assembled once.
 
-    tools/review-packet.py <pr-number> [--out DIR] [--stdout] [--base main]
+    tools/review-packet.py <pr-number> [--package-map PATH] [--out DIR] [--stdout] [--base main]
 
 Emitted by rules-factory as a managed file (decision 0029). `AGENTS.md` is the contract, and
 `docs/agent-team.md` says which reviewer reads what.
@@ -19,6 +19,15 @@ map. What a reviewer then adds is judgement, which is the part that cannot be as
 packet (`tools/entry-packet.py`, section 3 here) and forms its own reading of the rule BEFORE the
 diff (section 5). Reading the implementation first destroys the review: the code was written to be
 persuasive about its own interpretation. The sections are in the order they are meant to be read.
+
+**What a written packet is worth.** File output is what a verdict is recorded from, so a packet
+that names an entry is written only when its entry packets exist and were built from map bytes
+checked against the digest the reviewed commit declares -- which is what `--package-map` supplies.
+Otherwise it is refused, and `--stdout` remains for reading a packet whose evidence is unbound: it
+writes nothing, so nothing can be recorded from it (#372).
+
+**A refusal leaves nothing.** Every file, the output directory included, is written after the last
+thing that can refuse; until then the packet is assembled in this run's own private directory.
 
 **Ephemeral**, for the reason an entry packet is: written outside the repository, never committed.
 
@@ -78,7 +87,13 @@ def policy(root):
 
 
 def reviewed_snapshot(head):
-    """A detached worktree containing exactly `head`, plus the directory that owns it."""
+    """A detached worktree containing exactly `head`, plus the private directory that owns it.
+
+    The parent is this run's own scratch space, and everything the assembly produces is built
+    there first: the map copy the entry packets are read from, and the entry packets themselves.
+    Nothing reaches the caller's `--out` until every refusal has passed, so a refused packet
+    leaves nothing behind (#371).
+    """
     parent = pathlib.Path(tempfile.mkdtemp(prefix="rules-engine-review-"))
     snapshot = parent / "reviewed"
     try:
@@ -109,9 +124,8 @@ def entry_ids(*texts):
     return found
 
 
-def map_read_from(package_map, record, head):
-    """The digest of the map bytes the entry packets will be built from, held to what the reviewed
-    commit declares (#356).
+def map_read_once(package_map, record, head, work_dir):
+    """The map bytes the entry packets will be built from: read once, checked, and kept (#356, #371).
 
     The overlay comes from the reviewed tree. The map does not: `--package-map` is a host path, and
     without this the packet's section 3 would say "the reviewed commit's own map/overlay bytes"
@@ -119,8 +133,17 @@ def map_read_from(package_map, record, head):
     exact `corpus-map.json` the engine was produced from, under `map.files[role="map"]`, so there
     is something precise to be held to rather than a version label.
 
-    Returns the digest of the bytes that were read, for the manifest to record beside the declared
-    one: a reader of the record should never have to assume the two were the same thing.
+    **One read, not two opens of a path.** The digest check and the `entry-packet.py` subprocess
+    used to open `--package-map` separately, so a file replaced between them gave entry packets
+    built from map B under the checked digest of map A -- the substitution #356 exists to stop,
+    moved from "never checked" to "checked, then not used" (#371). The bytes that were hashed are
+    therefore written into this run's own private directory and the subprocess is handed that copy.
+    The copy is not put under the packet's `--out`: that is a shared, predictable location
+    (`$RULES_ENGINE_PACKET_ROOT`, or a directory beside the system temporary one), and a copy there
+    would be open to the same substitution. `mkdtemp`'s directory is private to this process, and
+    the same `finally` that removes the reviewed snapshot removes it.
+
+    Returns the digest of the bytes that were read and the path of the copy holding exactly them.
     """
     declared = [part.get("sha256") for part in (record.get("map") or {}).get("files") or []
                 if part.get("role") == "map"]
@@ -130,9 +153,10 @@ def map_read_from(package_map, record, head):
                       f"built from cannot be checked against it")
     try:
         with open(package_map, "rb") as handle:
-            read = hashlib.sha256(handle.read()).hexdigest()
+            data = handle.read()
     except OSError as error:
         raise Refused(f"--package-map {package_map} cannot be read ({error})")
+    read = hashlib.sha256(data).hexdigest()
     if read != declared[0]:
         raise Refused(f"--package-map {package_map} is not the map commit {head[:12]} was produced "
                       f"from: it hashes to {read[:12]} and {PROVENANCE} declares {declared[0][:12]}. "
@@ -140,24 +164,30 @@ def map_read_from(package_map, record, head):
                       f"carried, and section 3 tells the reviewer it is the commit's own bytes. "
                       f"Restore the package the engine declares, or review the commit that declares "
                       f"this map.")
-    return read
+    copy = work_dir / "checked-corpus-map.json"
+    copy.write_bytes(data)
+    return read, copy
 
 
-def entry_packet(entry_id, out_dir, source_root, package_map=None):
+def entry_packet(entry_id, work_dir, source_root, package_map=None):
     """The entry packet for `entry_id`, generated from the exact reviewed tree.
+
+    Built into this run's private directory and returned as bytes; `main()` writes it out only
+    once the packet as a whole is assembled, so a later refusal leaves no half a packet behind.
 
     The digest is what makes "the reviewer read the same entry the implementer did" checkable: two
     packets of the same entry at the same reviewed commit have the same sha256.
     """
-    target = out_dir / f"entry-{entry_id}.md"
-    command = [sys.executable, str(source_root / ENTRY_PACKET), entry_id, "--out", str(out_dir)]
+    target = work_dir / f"entry-{entry_id}.md"
+    command = [sys.executable, str(source_root / ENTRY_PACKET), entry_id, "--out", str(work_dir)]
     if package_map:
-        command += ["--package-map", package_map]
+        command += ["--package-map", str(package_map)]
     done = subprocess.run(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, cwd=source_root)
     if done.returncode != 0 or not target.is_file():
-        return None, None, (done.stderr.strip() or "entry-packet.py produced nothing")
+        return None, (done.stderr.strip() or "entry-packet.py produced nothing")
     data = target.read_bytes()
-    return target, hashlib.sha256(data).hexdigest(), None
+    return {"entryId": entry_id, "name": target.name, "sha256": hashlib.sha256(data).hexdigest(),
+            "bytes": data}, None
 
 
 def section(title, body):
@@ -177,7 +207,7 @@ def bounded_diff(base, head):
             f"The whole diff: `git diff {base}...{head}`.")
 
 
-def build(number, base, out_dir, package_map=None):
+def build(number, base, package_map=None, recordable=True):
     pull = json.loads(gh("pr", "view", str(number), "--json",
                          "number,title,body,headRefOid,headRefName,baseRefName,baseRefOid,files,closingIssuesReferences"))
     head = pull.get("headRefOid") or ""
@@ -215,11 +245,19 @@ def build(number, base, out_dir, package_map=None):
         except (OSError, UnicodeDecodeError, ValueError) as error:
             raise Refused(f"reviewed commit {head[:12]} does not carry readable review context ({error})")
 
+        entries = entry_ids(issue.get("body"), pull.get("body"))
+
         # Before any entry packet is built, and before anything is written: an entry packet made
         # from the wrong map is the one artifact a semantic reviewer is told to read first.
-        map_read = map_read_from(package_map, record, head) if package_map else None
-
-        entries = entry_ids(issue.get("body"), pull.get("body"))
+        map_read, checked_map = (map_read_once(package_map, record, head, parent) if package_map
+                                 else (None, None))
+        if recordable and entries and not map_read:
+            raise Refused(f"this packet names {len(entries)} entr" + ("y" if len(entries) == 1 else "ies")
+                          + f" ({', '.join(entries)}) and no --package-map was given, so the map its entry "
+                          f"packets would be built from cannot be held to the digest commit {head[:12]} "
+                          f"declares. Entry evidence the reviewed commit is not bound to cannot carry a "
+                          f"verdict (#372): supply --package-map with the restored package's "
+                          f"corpus-map.json, or read this packet with --stdout, which writes no identity.")
 
         parts = [f"# Review packet: PR #{number} — {pull.get('title', '')}\n",
                  f"Head commit `{head}`. Base commit `{base_sha}`. **Every verdict is recorded against this "
@@ -240,19 +278,27 @@ def build(number, base, out_dir, package_map=None):
         if entries:
             rendered = []
             for entry_id in entries:
-                path, digest, problem = entry_packet(entry_id, out_dir, snapshot, package_map)
+                packet, problem = entry_packet(entry_id, parent, snapshot, checked_map)
                 if problem:
+                    if recordable:
+                        raise Refused(f"no entry packet for `{entry_id}`: {problem}. A semantic reviewer is "
+                                      f"told to read the entry packets before the diff, so a packet missing "
+                                      f"one cannot carry a verdict (#372). Fix what the message names, or "
+                                      f"read this packet with --stdout, which writes no identity.")
                     rendered.append(f"- `{entry_id}`: **no packet** — {problem}")
                 else:
-                    packets.append({"entryId": entry_id, "path": path, "sha256": digest})
-                    rendered.append(f"- `{entry_id}`: `{path.name}` (sha256 `{digest}`)")
+                    packets.append(packet)
+                    rendered.append(f"- `{entry_id}`: `{packet['name']}` (sha256 `{packet['sha256']}`)")
             provenance_of_map = (
                 "They are the reviewed commit's own map and overlay bytes: the overlay came out of the commit, "
-                "and the map was checked against the digest the commit's `provenance.json` declares."
-                if package_map else
+                "and the map was checked against the digest the commit's `provenance.json` declares, once, and "
+                "the entry packets were built from those exact bytes."
+                if map_read else
                 "The overlay came out of the reviewed commit. **The map did not: it was resolved by MSBuild "
                 "inside the reviewed tree and its identity was NOT VERIFIED against the digest the commit's "
-                "`provenance.json` declares** (#356). Pass `--package-map` to have it checked.")
+                "`provenance.json` declares** (#356). This packet is therefore for reading only: no identity "
+                "was written for it and no verdict can be recorded from it (#372). Supply `--package-map` "
+                "with the restored package's `corpus-map.json` to have the map checked.")
             body = ("Read these **before** the diff. " + provenance_of_map + " Your reading of the rule is formed "
                     "from them, not from the implementation.\n\n" + "\n".join(rendered))
         else:
@@ -346,9 +392,13 @@ def build(number, base, out_dir, package_map=None):
                                         if part.get("role") == "map"), ""),
                 # Null, never the declared digest, when nothing was checked: writing the declared
                 # value here would be the very substitution of a claim for a fact this closes.
+                # A written identity carries a digest here whenever it names an entry packet, and
+                # `record-verdict.py` refuses one that does not (#372).
                 "readSha256": map_read,
-                "readFrom": ("--package-map, checked against the reviewed commit" if package_map
-                             else "MSBuild inside the reviewed tree -- NOT VERIFIED"),
+                "readFrom": ("--package-map, checked against the reviewed commit, and the entry packets "
+                             "built from those exact bytes" if map_read
+                             else "MSBuild inside the reviewed tree -- NOT VERIFIED" if entries
+                             else "not read: this packet names no entry, so no entry packet was built"),
             },
         }
         return "\n".join(parts), head, base_sha, packets, context
@@ -395,14 +445,20 @@ def main(argv=None):
     args = parser.parse_args(argv)
 
     try:
+        # Resolved and judged, but not created: a packet that is refused writes nothing, and a
+        # directory is a write (#371). Everything below is built in the run's own private
+        # directory first and lands here only once there is nothing left to refuse.
         out_dir = destination(args.out)
-        out_dir.mkdir(parents=True, exist_ok=True)
-        packet_text, head, base_sha, packets, context = build(args.pr, args.base, out_dir, args.package_map)
+        packet_text, head, base_sha, packets, context = build(args.pr, args.base, args.package_map,
+                                                              recordable=not args.stdout)
         if args.stdout:
             sys.stdout.write(packet_text)
             return 0
+        out_dir.mkdir(parents=True, exist_ok=True)
         target = out_dir / f"pr-{args.pr}-{head[:12]}.md"
         target.write_text(packet_text, encoding="utf-8")
+        for packet in packets:
+            (out_dir / packet["name"]).write_bytes(packet["bytes"])
         manifest = {
             "reviewPacketFormat": 1,
             "pullRequest": args.pr,
@@ -414,7 +470,7 @@ def main(argv=None):
             },
             "reviewContext": context,
             "entryPackets": [
-                {"entryId": packet["entryId"], "path": packet["path"].name, "sha256": packet["sha256"]}
+                {"entryId": packet["entryId"], "path": packet["name"], "sha256": packet["sha256"]}
                 for packet in packets
             ],
         }
@@ -425,7 +481,7 @@ def main(argv=None):
         return 1
     print(target)
     for packet in packets:
-        print(packet["path"])
+        print(out_dir / packet["name"])
     print(manifest_target)
     return 0
 

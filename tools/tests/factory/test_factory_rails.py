@@ -1368,6 +1368,230 @@ class TestTheReviewPacket(RailsInAGitEngine):
         self.assertEqual(manifest["reviewContext"]["map"]["readSha256"], supplied,
                          "the manifest records the map bytes the entry packets were built from")
 
+    # --- the bytes hashed are the bytes read, and a refusal writes nothing (#371) --------------
+
+    def substituted_when_the_subprocess_starts(self, path, payload):
+        """Rewrite `path` with `payload`'s bytes exactly when `entry-packet.py` starts.
+
+        #371's defect is two opens of one pathname: `map_read_from` hashes the file, and the
+        `entry-packet.py` subprocess opens the same name again. Rewriting a regular file from
+        another thread between the two is a race a test cannot win reliably, so the substitution
+        is put where it can only land between them -- `sitecustomize`, which the subprocess's own
+        interpreter imports at startup, after the hash and before the map is read. The guard on
+        `argv[0]` keeps it off `review-packet.py` itself, which runs with the same PYTHONPATH.
+
+        Returns the environment addition that arms it.
+        """
+        directory = os.path.join(self.tmp, "substitute")
+        os.makedirs(directory, exist_ok=True)
+        with open(os.path.join(directory, "sitecustomize.py"), "w", encoding="utf-8") as handle:
+            handle.write("import sys\n"
+                         "if sys.argv and sys.argv[0].endswith('entry-packet.py'):\n"
+                         f"    with open({payload!r}, 'rb') as source, open({path!r}, 'wb') as target:\n"
+                         "        target.write(source.read())\n")
+        return {"PYTHONPATH": directory}
+
+    def test_the_entry_packet_is_built_from_the_bytes_that_were_hashed(self):
+        """#371: it hashed one map and opened another.
+
+        The first open is the digest check and sees the map the reviewed commit declares, so the
+        check passes; the second open, by the subprocess, sees an altered map. That is #356's
+        substitution moved from "never checked" to "checked, then not used".
+        """
+        self.commit_engine()
+        head = self.change()
+        self.pull_request(head)
+        altered, marker = self.altered_map()
+        supplied = os.path.join(self.tmp, "supplied-corpus-map.json")
+        shutil.copyfile(os.path.join(PART107, "corpus-map.json"), supplied)
+        with open(supplied, "rb") as handle:
+            declared = handle.read()
+        armed = self.substituted_when_the_subprocess_starts(supplied, altered)
+
+        out = os.path.join(self.tmp, "substituted-packets")
+        done = subprocess.run([sys.executable, os.path.join(self.out, "tools", "review-packet.py"), "5",
+                               "--base", "main", "--package-map", supplied, "--out", out],
+                              cwd=self.out, capture_output=True, text=True, env=self.environment(**armed))
+        self.assertEqual(done.returncode, 0, done.stderr)
+        with open(supplied, "rb") as handle:
+            self.assertNotEqual(handle.read(), declared,
+                                "the substitution never happened, so this test proves nothing")
+        with open(os.path.join(out, "entry-altitude-limit.md"), encoding="utf-8") as handle:
+            entry = handle.read()
+        self.assertNotIn(marker, entry,
+                         "the digest was checked on one read of --package-map and the entry packet "
+                         "was built from another")
+        with open(os.path.join(out, f"pr-5-{head[:12]}.review.json"), encoding="utf-8") as handle:
+            manifest = json.load(handle)
+        self.assertEqual(manifest["reviewContext"]["map"]["readSha256"],
+                         hashlib.sha256(declared).hexdigest(),
+                         "the manifest records a digest of bytes the entry packet was not built from")
+
+    def test_a_refused_packet_writes_nothing_and_creates_no_directory(self):
+        """#371: `main()` made the output directory before `build()` could refuse."""
+        self.commit_engine()
+        head = self.change()
+        self.pull_request(head)
+        altered, _ = self.altered_map()
+        out = os.path.join(self.tmp, "never-written")
+        done = self.packet("--out", out, "--package-map", altered)
+        self.assertEqual(done.returncode, 1, done.stdout)
+        # The message, not merely the code: this tool refuses in many ways and a test that asserts
+        # only exit 1 is satisfied by the wrong refusal (#283).
+        self.assertIn("is not the map", done.stderr)
+        self.assertFalse(os.path.exists(out), "a refusal left an empty packet directory behind")
+
+    def test_a_refusal_under_stdout_creates_no_directory_either(self):
+        """A `--stdout` run writes no packet at all, so a refused one has even less to leave."""
+        self.commit_engine()
+        head = self.change()
+        self.pull_request(head)
+        altered, _ = self.altered_map()
+        out = os.path.join(self.tmp, "never-written-stdout")
+        done = self.packet("--stdout", "--out", out, "--package-map", altered)
+        self.assertEqual(done.returncode, 1, done.stdout)
+        self.assertIn("is not the map", done.stderr)
+        self.assertFalse(os.path.exists(out), "a refused --stdout run created a packet directory")
+
+    # --- a verdict rests on entry evidence that was produced and bound (#372) ------------------
+
+    def unbound(self, *extra):
+        """`review-packet.py` with no `--package-map`: the map is whatever MSBuild resolves."""
+        return subprocess.run([sys.executable, os.path.join(self.out, "tools", "review-packet.py"), "5",
+                               "--base", "main", *extra],
+                              cwd=self.out, capture_output=True, text=True, env=self.environment())
+
+    def test_an_unbound_packet_that_names_an_entry_is_refused_rather_than_written(self):
+        """#372: nothing acted on `readSha256: null`, so a pass could stand for unbound evidence.
+
+        The reviewed snapshot is a freshly created detached worktree with no restore, so the
+        MSBuild question cannot be answered in it and the entry packet is not built either. The
+        packet is refused rather than written as an identity a verdict can be recorded from.
+        """
+        self.commit_engine()
+        head = self.change()
+        self.pull_request(head)
+        out = os.path.join(self.tmp, "unbound-packets")
+        done = self.unbound("--out", out)
+        self.assertEqual(done.returncode, 1, done.stdout)
+        # The specific refusal, not exit 1 (#283).
+        self.assertIn("--package-map", done.stderr)
+        self.assertIn("cannot carry a verdict", done.stderr)
+        self.assertFalse(os.path.exists(out), "a refused packet left a directory behind")
+
+    def test_an_unbound_packet_can_still_be_read_on_stdout(self):
+        """Inspection is not recording: `--stdout` writes no identity, so it stays available."""
+        self.commit_engine()
+        head = self.change()
+        self.pull_request(head)
+        done = self.unbound("--stdout")
+        self.assertEqual(done.returncode, 0, done.stderr)
+        self.assertIn("NOT VERIFIED", done.stdout, "the packet still says the map was not bound")
+
+    def test_a_named_entry_with_no_packet_is_refused_rather_than_written(self):
+        """The other way entry evidence goes missing: the packet could not be built at all.
+
+        An identity written anyway names a verdict formed without the one artifact the semantic
+        reviewer is told to read first, and nothing in the record says so.
+        """
+        self.commit_engine()
+        head = self.change()
+        self.pull_request(head, body="## Linked Issue\nCloses #27\n<!-- rules-factory-entry: no-such-entry -->")
+        out = os.path.join(self.tmp, "missing-entry-packets")
+        done = self.packet("--out", out)
+        self.assertEqual(done.returncode, 1, done.stdout)
+        self.assertIn("no-such-entry", done.stderr)
+        self.assertIn("cannot carry a verdict", done.stderr)
+        self.assertFalse(os.path.exists(out), "a refused packet left a directory behind")
+
+    def recorder(self, identity, statuses):
+        """The real recorder, against the status-keeping stand-in."""
+        with open(self.gh, "w", encoding="utf-8") as handle:
+            handle.write(GH_STATUS_STUB)
+        os.chmod(self.gh, 0o755)
+        return subprocess.run(
+            [sys.executable, os.path.join(self.out, "tools", "record-verdict.py"),
+             "--pr", "5", "--packet", identity, "--reviewer", "semantic", "--verdict", "pass"],
+            cwd=self.out, capture_output=True, text=True,
+            env={**self.environment(), "GH_STATUSES": statuses})
+
+    def real_identity(self, head, name):
+        """A real packet from the real producer, and the path of its identity file."""
+        out = os.path.join(self.tmp, name)
+        done = self.packet("--out", out)
+        self.assertEqual(done.returncode, 0, done.stderr)
+        return os.path.join(out, f"pr-5-{head[:12]}.review.json")
+
+    def test_a_verdict_is_refused_when_the_entry_evidence_was_never_bound(self):
+        """#372 end to end: the identity #357 wrote for the unbound path, given to the recorder.
+
+        `readSha256: null` beside entry packets is exactly what `review-packet.py` wrote before
+        this change, and the recorder accepted it and posted a passing status.
+        """
+        self.commit_engine()
+        head = self.change()
+        self.pull_request(head)
+        identity = self.real_identity(head, "unbound-identity")
+        with open(identity, encoding="utf-8") as handle:
+            document = json.load(handle)
+        self.assertTrue(document["entryPackets"], "this test needs a packet that names entry evidence")
+        document["reviewContext"]["map"]["readSha256"] = None
+        document["reviewContext"]["map"]["readFrom"] = "MSBuild inside the reviewed tree -- NOT VERIFIED"
+        with open(identity, "w", encoding="utf-8") as handle:
+            json.dump(document, handle, indent=2)
+
+        self.fixture({"pr": {"5": {"number": 5, "headRefOid": head, "state": "OPEN"}},
+                      "repo": {"nameWithOwner": "owner/engine"}})
+        statuses = os.path.join(self.tmp, "unbound-statuses.json")
+        with open(statuses, "w", encoding="utf-8") as handle:
+            json.dump({}, handle)
+        done = self.recorder(identity, statuses)
+        self.assertEqual(done.returncode, 1, done.stdout + done.stderr)
+        # The specific refusal (#283): the recorder refuses for a dozen other reasons too.
+        self.assertIn("entry evidence", done.stderr)
+        self.assertIn("readSha256", done.stderr)
+        with open(statuses, encoding="utf-8") as handle:
+            self.assertEqual(json.load(handle), {}, "a verdict was posted on unbound entry evidence")
+
+    def test_a_verdict_is_refused_when_the_map_read_is_not_the_map_declared(self):
+        """The recorder checks the relationship itself rather than trusting the producer's word."""
+        self.commit_engine()
+        head = self.change()
+        self.pull_request(head)
+        identity = self.real_identity(head, "mismatched-identity")
+        with open(identity, encoding="utf-8") as handle:
+            document = json.load(handle)
+        document["reviewContext"]["map"]["readSha256"] = "0" * 64
+        with open(identity, "w", encoding="utf-8") as handle:
+            json.dump(document, handle, indent=2)
+
+        self.fixture({"pr": {"5": {"number": 5, "headRefOid": head, "state": "OPEN"}},
+                      "repo": {"nameWithOwner": "owner/engine"}})
+        statuses = os.path.join(self.tmp, "mismatched-statuses.json")
+        with open(statuses, "w", encoding="utf-8") as handle:
+            json.dump({}, handle)
+        done = self.recorder(identity, statuses)
+        self.assertEqual(done.returncode, 1, done.stdout + done.stderr)
+        self.assertIn("is not the map the reviewed commit declares", done.stderr)
+        with open(statuses, encoding="utf-8") as handle:
+            self.assertEqual(json.load(handle), {}, "a verdict was posted on a map that was never declared")
+
+    def test_a_bound_packet_still_records_a_verdict(self):
+        """The honest path end to end: the real producer's identity records a pass."""
+        self.commit_engine()
+        head = self.change()
+        self.pull_request(head)
+        identity = self.real_identity(head, "bound-identity")
+        self.fixture({"pr": {"5": {"number": 5, "headRefOid": head, "state": "OPEN"}},
+                      "repo": {"nameWithOwner": "owner/engine"}})
+        statuses = os.path.join(self.tmp, "bound-statuses.json")
+        with open(statuses, "w", encoding="utf-8") as handle:
+            json.dump({}, handle)
+        done = self.recorder(identity, statuses)
+        self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+        with open(statuses, encoding="utf-8") as handle:
+            self.assertEqual(json.load(handle)[head]["rules-verdict/semantic"], "success")
+
 
 GOOD_PR_BODY = """## Linked issue
 
