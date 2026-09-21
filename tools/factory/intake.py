@@ -387,9 +387,9 @@ def read_package(nupkg):
         # empty entries: each is a ZipInfo held in memory, and each name below is matched against
         # every one of them. `infolist()` is the central directory zipfile has already parsed, so
         # counting it reads nothing further, and the refusal happens before `_read_member` opens
-        # anything. The cap is on the count the archive declares; a package that understates its
-        # count cannot thereby hand intake more entries, because the ones it hid are the ones
-        # zipfile will not find.
+        # anything. The count is of the records zipfile actually parsed, not of the number the
+        # end-of-directory record declares, so it is a measurement rather than a claim the
+        # package makes about itself.
         entries = archive.infolist()
         if len(entries) > MAX_ARCHIVE_ENTRIES:
             raise Refused(f"{nupkg} holds {len(entries)} entries, over the {MAX_ARCHIVE_ENTRIES} a map "
