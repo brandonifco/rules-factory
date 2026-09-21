@@ -205,7 +205,15 @@ else
   skipped "dotnet format --verify-no-changes"
 fi
 
-EXPECTED_RESULT_FILES="$("${GATE[@]}" expected-results)"
+# One number, consumed by the test step below, so it is not run through `run`. It can refuse:
+# two test projects that build one assembly name are a matrix no result file could report on
+# (#374). That is a failure of this gate, not a reason for `set -e` to abort the run before the
+# steps below it and the summary.
+EXPECTED_RESULT_FILES=0
+if ! EXPECTED_RESULT_FILES="$("${GATE[@]}" expected-results)"; then
+  fail "the expected test project x target framework matrix"
+  EXPECTED_RESULT_FILES=0
+fi
 
 build_and_test() {
   local config="$1"; shift

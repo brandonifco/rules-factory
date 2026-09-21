@@ -806,6 +806,129 @@ class TestTestsRanCountsTestsThatRan(GateCase):
                       "covering every one of the 2 expected test project x target framework pair(s)", output)
 
 
+def add_project(engine, relative, body):
+    """A second project in the engine's tree, written where `on_disk("*.csproj")` will find it."""
+    path = os.path.join(engine, *relative.split("/"))
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    with open(path, "w", encoding="utf-8") as handle:
+        handle.write(body)
+    return path
+
+
+SAME_ASSEMBLY_NAME = (
+    '<Project Sdk="Microsoft.NET.Sdk">\n'
+    "  <PropertyGroup>\n"
+    "    <IsTestProject>true</IsTestProject>\n"
+    f"    <AssemblyName>{NAME}.Tests</AssemblyName>\n"
+    "  </PropertyGroup>\n"
+    "</Project>\n")
+
+IMPORTS_IS_TEST_PROJECT = (
+    '<Project Sdk="Microsoft.NET.Sdk">\n'
+    '  <Import Project="is-test-project.props" />\n'
+    "</Project>\n")
+
+IS_TEST_PROJECT_PROPS = (
+    "<Project>\n"
+    "  <PropertyGroup>\n"
+    "    <IsTestProject>true</IsTestProject>\n"
+    "  </PropertyGroup>\n"
+    "</Project>\n")
+
+
+class TestTheMatrixHasARowPerTestProject(GateCase):
+    """#374: the expectation `tests-ran` checks is one row per test **project**.
+
+    Keyed by lower-cased assembly name -- the only thing a TRX says about which assembly ran --
+    two test projects building the same `AssemblyName` collapsed into one row: the second
+    overwrote the first, `expected-results` returned one pair where there were two, and a single
+    result file for either of them satisfied the matrix while the other never ran. And
+    `IsTestProject` was matched by regex against the project's raw text, so a project that takes
+    the property from an import or a condition was not in the expectation at all.
+
+    Neither bypassed the per-entry named-test check #337 left in force; what was wrong was the
+    aggregate matrix claim, which is the class of defect #337 itself fixed one level up.
+
+    Every assertion below names the sentence it is about, never only the exit code: the gate
+    refuses in many ways, and a verdict-only assertion is satisfied by a different rule firing
+    for a different reason (#283).
+    """
+
+    def ran(self, engine, results, expected, env=None):
+        return self.script(engine, "engine-gate.py", "tests-ran", results, str(expected), env=env)
+
+    def without_dotnet(self):
+        """A PATH with no `dotnet` on it: this repository's CI, and any checkout without an SDK."""
+        empty = os.path.join(self.tmp, "no-tools")
+        os.makedirs(empty, exist_ok=True)
+        return {"PATH": empty}
+
+    def full_matrix(self, name, assembly=f"{NAME}.Tests"):
+        results = os.path.join(self.tmp, name)
+        for framework in ("net8.0", "net10.0"):
+            write_trx(os.path.join(results, f"{framework}.trx"), [("passes", "Passed")],
+                      assembly=assembly, framework=framework)
+        return results
+
+    COLLIDED = (f"2 test projects build the assembly 'faapart107.tests': "
+                f"tests/{NAME}.MoreTests/{NAME}.MoreTests.csproj, tests/{NAME}.Tests/{NAME}.Tests.csproj")
+
+    def test_expected_results_refuses_two_test_projects_that_build_one_assembly(self):
+        """The count itself would be a lie, so it is not printed. Watched failing: before #374 this
+        printed "2" and exited 0 -- one pair for two projects."""
+        engine = self.engine()
+        add_project(engine, f"tests/{NAME}.MoreTests/{NAME}.MoreTests.csproj", SAME_ASSEMBLY_NAME)
+        code, output = self.script(engine, "engine-gate.py", "expected-results")
+        self.assertEqual(code, 1, output)
+        self.assertIn(self.COLLIDED, output)
+        self.assertIn("give each test project its own <AssemblyName>", output)
+        self.assertNotIn("\n2\n", f"\n{output}\n")  # not the collapsed count, which is what it used to print
+
+    def test_tests_ran_refuses_two_test_projects_that_build_one_assembly(self):
+        """A result file for the shared name cannot say which project produced it, so the whole
+        matrix sentence is withheld rather than qualified."""
+        engine = self.engine()
+        add_project(engine, f"tests/{NAME}.MoreTests/{NAME}.MoreTests.csproj", SAME_ASSEMBLY_NAME)
+        code, output = self.ran(engine, self.full_matrix("collided"), 2)
+        self.assertEqual(code, 1, output)
+        self.assertIn(self.COLLIDED, output)
+        self.assertIn("one of them running would stand for all of them", output)
+        self.assertNotIn("covering every one of", output)  # the exact claim the finding is about
+
+    def test_a_test_project_that_imports_is_test_project_is_in_the_matrix(self):
+        """`IsTestProject` is an evaluated MSBuild property, and the gate now asks MSBuild for it.
+
+        Watched failing: before #374 the regex over the project's text saw no `<IsTestProject>`
+        here, the project was not in the expectation, and `tests-ran` passed with "covering every
+        one of the 2 expected test project x target framework pair(s)" while it had never run.
+        """
+        if not SDK:  # defined below, with the rest of the tests that need a real MSBuild
+            self.skipTest("needs a .NET 10 SDK: an imported IsTestProject is only visible to MSBuild")
+        engine = self.engine()
+        imported = f"tests/{NAME}.Imported/{NAME}.Imported.csproj"
+        add_project(engine, imported, IMPORTS_IS_TEST_PROJECT)
+        add_project(engine, f"tests/{NAME}.Imported/is-test-project.props", IS_TEST_PROJECT_PROPS)
+        code, output = self.script(engine, "engine-gate.py", "expected-results")
+        self.assertEqual(code, 0, output)
+        self.assertEqual(output.strip(), "4", "two test projects x net8.0;net10.0")
+        code, output = self.ran(engine, self.full_matrix("imported"), 4)
+        self.assertEqual(code, 1, output)
+        for framework in ("net8.0", "net10.0"):
+            self.assertIn(f"no test executed for {imported} under {framework}", output)
+        self.assertNotIn("NOT VERIFIED", output)  # MSBuild answered, so nothing here was guessed
+
+    def test_a_matrix_msbuild_could_not_evaluate_says_so_and_names_the_project(self):
+        """Falling back to the regex is allowed; falling back silently is not. `dotnet` off PATH is
+        the case CI runs in, and the sentence has to be different from the one MSBuild earns."""
+        engine = self.engine()
+        code, output = self.ran(engine, self.full_matrix("no-dotnet"), 2, env=self.without_dotnet())
+        self.assertEqual(code, 0, output)
+        self.assertIn("covering every one of the 2 expected test project x target framework pair(s)", output)
+        self.assertIn(f"NOT VERIFIED for src/{NAME}/{NAME}.csproj (`dotnet` is not on PATH), "
+                      f"tests/{NAME}.Tests/{NAME}.Tests.csproj (`dotnet` is not on PATH): IsTestProject was "
+                      f"read from the project file instead of evaluated", output)
+
+
 class TestImplementedNamesItsTests(GateCase):
     def named(self, engine, merged, results=None):
         results = results or os.path.join(self.tmp, "no-results")
