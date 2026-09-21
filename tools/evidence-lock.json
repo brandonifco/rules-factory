@@ -372,13 +372,13 @@
     },
     {
       "archive": null,
-      "bytes": 98247,
+      "bytes": 103743,
       "path": "examples/faa-part-107/check-locators-section.py",
       "readBy": [
         "checks"
       ],
       "role": "active",
-      "sha256": "bee8388d153883b9eb86dcc72a3ccbfb75c6329a26cab4b7aca83547dc5aba44"
+      "sha256": "12dd5142fd63552300276550246f6ee6621e8d3e322829b5218f07b7fd76d3a1"
     },
     {
       "archive": null,

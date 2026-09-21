@@ -264,6 +264,34 @@ HEADING = re.compile(r"^HD\d+$")
 #: division with an `HD2` would be misread by this alone, which is what `wrapper_reach`'s second
 #: test is for.
 DIVISION_HEADING = "HD1"
+#: A wrapper heading that **states an address of its own**: `Appendix A to § 172.101—List of
+#: Hazardous Substances and Reportable Quantities`, `Subpart B—Operating Rules`. A wrapper headed
+#: this way opens that division and continues nothing, **whatever it is printed after**.
+#:
+#: This is the third signal [#291](https://github.com/brandonifco/rules-factory/issues/291)
+#: needed, and 0052 records why it must read words where the two tests above deliberately do not.
+#: The two are defeated together by one shape -- a wrapper that opens a division, is titled `HD2`
+#: rather than `HD1`, and is printed directly after a designated paragraph -- and that shape is
+#: structurally identical to § 172.102's six captioned provision runs, which must keep their
+#: address. Nothing in the markup separates them; the heading's own words do.
+#:
+#: It is the narrowest reading that closes the hole, and it is the reading 0036 part 4 already
+#: makes of a note's heading: **the corpus's own word about where a passage belongs beats the
+#: position it is printed at.** Two forms, each a statement of address and not of meaning:
+#:
+#:   * the heading opens with one of the corpus's own names for a division -- § 172.101 prints
+#:     `Appendix A to § 172.101—…`, and `subpart` and `subchapter` are the CFR's own words for
+#:     the divisions above a section;
+#:   * or it says which division it belongs *to*, by a citation -- `… to § 172.101`, `… to part
+#:     107`. A heading that addresses itself somewhere is not a caption on the paragraph above.
+#:
+#: Both take the **broad** reading, because 0036 already settled which way this asymmetry falls:
+#: refusing too widely only withholds an address, and inheriting too widely hands out a wrong
+#: one. A corpus whose captions this refuses loses coverage and says so on every run; a corpus
+#: whose appendix it misses is cited at a paragraph that does not contain it.
+DIVISION_TITLE = re.compile(
+    r"^(?:appendix|appendices|annex|subpart|subchapter)\b"
+    r"|\bto\s+(?:§|part|subpart|chapter|title)\b", re.I)
 #: A `<P>` inside a wrapper that **states its own designation**. This was deliberately broader
 #: than `DESIGNATOR` while that expression required whitespace after the token, so that a
 #: paragraph stating `(b)(1)` or `(b)Text` could not slip past the refusal test and inherit an
@@ -277,9 +305,30 @@ STATES_A_DESIGNATION = re.compile(r"^\([A-Za-z0-9]{1,4}\)")
 #: a group this grammar cannot read, and concatenating what `findall` happened to catch would
 #: invent `(a)(1)` out of the one and `(a)` out of the other.
 NOTE_HEAD = re.compile(r"^note\s+to\s+paragraph\s+((?:\([A-Za-z0-9]{1,4}\))+)\s*[:.]?\s*$", re.I)
-#: A heading that says it names a paragraph. One that says so and does not match `NOTE_HEAD` is
-#: refused rather than read loosely.
-NOTE_NAMES_A_PARAGRAPH = re.compile(r"^note\s+to\s+paragraphs?\b", re.I)
+#: A note heading that **claims an address**. One that claims one and does not match `NOTE_HEAD`
+#: is refused rather than read loosely -- and refused rather than left to inherit the designation
+#: it happens to be printed under, which is what a heading this did not notice used to do.
+#:
+#: Deliberately far broader than `NOTE_HEAD` ([#293](https://github.com/brandonifco/rules-factory/issues/293)).
+#: `NOTE_HEAD` reads exactly `Note to paragraph (c)(11):`, the one form § 172.101 prints, and it
+#: is **not** widened here: #265's standard is that a corpus forces a form before the grammar
+#: reads it. What a narrow reader owes is a wide *refusal*. `Note to (c)(11):` and
+#: `Note to § 172.102(c)(2):` each state an address this grammar cannot read, and inheriting the
+#: enclosing designation for either would file the note at a paragraph the corpus did not name --
+#: the very reading 0036 part 4 refused when it preferred the heading's word over the note's
+#: position. So anything opening `Note to …` must parse whole or be unplaced.
+NOTE_CLAIMS_AN_ADDRESS = re.compile(r"^note\s+to\b", re.I)
+
+
+def head_of(element):
+    """An element's own `<HED>`, normalised, or `""` where it prints none.
+
+    One reader for the three heads this walk reads: a note's, a worked example's, and whatever a
+    refusal quotes back. A refusal that does not say **which words it could not read** is a
+    refusal nobody can act on, and both grammars below read exactly one printed form (#293).
+    """
+    head = element.find("HED")
+    return normalise("".join(head.itertext())) if head is not None else ""
 
 
 def designates(element):
@@ -299,14 +348,22 @@ def wrapper_reach(container, enclosing, previous):
     **every** wrapper the descent reaches, at every depth -- a wrapper inside a wrapper is judged
     on its own children, and one inside a wrapper that is already unplaced stays unplaced.
 
-      * **It opens a division of the section**, and two things say so. It holds a heading at the
-        level directly below the section (`DIVISION_HEADING`), which is a sibling of the
+      * **It opens a division of the section**, and three things say so. It holds a heading at
+        the level directly below the section (`DIVISION_HEADING`), which is a sibling of the
         section's paragraphs rather than something inside one. Or it holds a heading of **any**
         level and the element printed before it is not a designated paragraph -- a captioned
-        block continuing nothing. § 172.101's two appendices answer both: each is headed and each
-        follows a table. All six of § 172.102's captioned provision runs follow the designated
-        paragraph that introduces them, and its seventh wrapper, the continuation of the
-        portable-tank run, carries no caption at all.
+        block continuing nothing. Or its heading **names a division of the corpus**
+        (`DIVISION_TITLE`), whatever it is printed after. § 172.101's two appendices answer all
+        three: each is titled `Appendix A to § 172.101—…` and each follows a table. All six of
+        § 172.102's captioned provision runs follow the designated paragraph that introduces
+        them and are captioned `Code/Special Provisions`, and its seventh wrapper, the
+        continuation of the portable-tank run, carries no caption at all.
+
+        The third was added by 0052 for #291: the first two are defeated **together** by a
+        wrapper that opens a division, is titled `HD2` rather than `HD1`, and is printed
+        directly after a designated paragraph. That shape is structurally identical to
+        § 172.102's runs, so no further reading of the markup could separate them, and it was
+        the one shape of #290 that handed out a wrong address instead of withholding one.
       * **A paragraph of it states its own designation.** An ordinary `<P>` opening `(b)` after
         an enclosing `(a)` is a *sibling* of the enclosing paragraph, not something under it;
         inheriting would file it beneath its own predecessor and throw its designator away. The
@@ -325,6 +382,16 @@ def wrapper_reach(container, enclosing, previous):
     if headings and not designates(previous):
         return None, ("captioned-after-undesignated", f"it is captioned and what is printed before it is not a designated "
                       f"paragraph, so there is no run for it to continue")
+    titles = [normalise("".join(head.itertext())) for head in headings]
+    named = [title for title in titles if DIVISION_TITLE.search(title)]
+    if named:
+        # The third signal, and the only one of the three that reads the heading's words (0052).
+        # Without it a wrapper that opens a division, is titled `HD2` rather than `HD1`, and is
+        # printed directly after a designated paragraph defeats both tests above and inherits
+        # that paragraph's designation -- the one shape of #290 that handed out a wrong address
+        # instead of withholding one (#291).
+        return None, ("division-wrapper", f"its heading names a division of the corpus, {named[0]!r}, so it opens "
+                      f"that division rather than continuing the paragraph it is printed after")
     for child in container:
         if child.tag != "P":
             continue
@@ -345,12 +412,17 @@ def note_reach(note, enclosing):
     that happens to be open when the note is reached. A heading that says it names a paragraph
     and names several, none, or one the note is not inside is **refused**: that is the rule a row
     key already gets (0035), where a key matching two rows is never resolved to the first.
+
+    What counts as *saying* it names a paragraph is `NOTE_CLAIMS_AN_ADDRESS`, and it is far
+    broader than what `NOTE_HEAD` can read (#293, 0052). Anything opening `Note to …` states an
+    address; a note stating one this grammar cannot parse is unplaced, not left to inherit the
+    designation it is printed under, because that would prefer position over the corpus's own
+    word -- which is the reading this function exists to refuse.
     """
-    head = note.find("HED")
-    text = normalise("".join(head.itertext())) if head is not None else ""
+    text = head_of(note)
     match = NOTE_HEAD.match(text)
     if not match:
-        if NOTE_NAMES_A_PARAGRAPH.match(text):
+        if NOTE_CLAIMS_AN_ADDRESS.match(text):
             return None, ("note-heading-unreadable", f"its heading names no single paragraph this grammar can read: "
                           f"{text[:60]!r}")
         return enclosing, None
@@ -394,8 +466,9 @@ def wrapped(container, enclosing, previous, inherited=None):
                 label = example_label(child)
                 if label is None:
                     out.append((None, text, ("example-head-unreadable",
-                                            "its head does not name an example, so there is no "
-                                            "label to cite it by")))
+                                            f"its head does not name an example: "
+                                            f"{head_of(child)!r}, so there is no label to cite "
+                                            f"it by")))
                 else:
                     out.append((path + (label,), text, None))
             else:
@@ -450,8 +523,9 @@ def paragraphs(root, passed_over=None):
                 label = example_label(p)
                 if label is None:
                     out.append((None, text, ("example-head-unreadable",
-                                            "its head does not name an example, so there is no "
-                                            "label to cite it by")))
+                                            f"its head does not name an example: "
+                                            f"{head_of(p)!r}, so there is no label to cite "
+                                            f"it by")))
                     continue
                 path = (subpart, section.get("N")) + tuple(
                     stack[k] for k in sorted(stack)
@@ -521,10 +595,7 @@ def example_label(element):
     (§ 1.121-1(b)(4) Example 4 is), so they are indexed under the paragraph that introduces
     them, one level deeper: ("1.121-1", "b", "4", "Example 4").
     """
-    head = element.find("HED")
-    if head is None:
-        return None
-    match = EXAMPLE_HEAD.match(normalise("".join(head.itertext())))
+    match = EXAMPLE_HEAD.match(head_of(element))
     if not match:
         return None
     return "Example" + (f" {match.group(1)}" if match.group(1) else "")
@@ -1564,8 +1635,10 @@ def coverage(document, reached, measured=None):
 #: the declaration and the refusal have a single source of truth rather than a prose string
 #: compared against a prose string.
 UNREACHABLE_REASONS = {
-    "division-wrapper": "a wrapper holding a heading directly below the section, so it opens a "
-                        "division of the section (0036)",
+    "division-wrapper": "a wrapper that opens a division of the section rather than continuing "
+                        "the paragraph it is printed after: it holds a heading directly below "
+                        "the section, or its heading names a division of the corpus (0036, "
+                        "0052)",
     "captioned-after-undesignated": "a captioned wrapper printed after something that is not a "
                                     "designated paragraph, so there is no run for it to continue",
     "states-own-designation": "a wrapper one of whose ordinary paragraphs prints its own "
