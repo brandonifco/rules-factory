@@ -874,7 +874,7 @@ class TestTheMatrixHasARowPerTestProject(GateCase):
         write_json(path, pin)
 
     def without_dotnet(self):
-        """A PATH with no `dotnet` on it: this repository's CI, and any checkout without an SDK."""
+        """A PATH with no `dotnet` on it: any checkout or runner without an SDK."""
         empty = os.path.join(self.tmp, "no-tools")
         os.makedirs(empty, exist_ok=True)
         return {"PATH": empty}
@@ -935,8 +935,8 @@ class TestTheMatrixHasARowPerTestProject(GateCase):
         self.assertNotIn("NOT VERIFIED", output)  # MSBuild answered, so nothing here was guessed
 
     def test_a_matrix_msbuild_could_not_evaluate_says_so_and_names_the_project(self):
-        """Falling back to the regex is allowed; falling back silently is not. `dotnet` off PATH is
-        the case CI runs in, and the sentence has to be different from the one MSBuild earns."""
+        """Falling back to the regex is allowed; falling back silently is not. A machine with no
+        SDK is the case, and the sentence has to be different from the one MSBuild earns."""
         engine = self.engine()
         code, output = self.ran(engine, self.full_matrix("no-dotnet"), 2, env=self.without_dotnet())
         self.assertEqual(code, 0, output)
