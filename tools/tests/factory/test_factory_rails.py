@@ -1042,6 +1042,71 @@ class TestTheReviewPacket(RailsInAGitEngine):
         self.assertEqual(done.returncode, 1, done.stdout)
         self.assertIn("never written inside the repository", done.stderr)
 
+    # --- the entry evidence is the map the reviewed commit declares (#356) ---------------------
+
+    def altered_map(self, marker="THE REVIEWER IS READING BYTES NOBODY COMMITTED"):
+        """A corpus-map.json the reviewed commit never declared: one entry's evidence rewritten."""
+        directory = os.path.join(self.tmp, "altered")
+        os.makedirs(directory, exist_ok=True)
+        with open(os.path.join(PART107, "corpus-map.json"), encoding="utf-8") as handle:
+            document = json.load(handle)
+        for entry in document["entries"]:
+            if entry.get("id") == "altitude-limit":
+                entry["evidence"] = marker
+        target = os.path.join(directory, "corpus-map.json")
+        with open(target, "w", encoding="utf-8") as handle:
+            json.dump(document, handle)
+        return target, marker
+
+    def test_a_package_map_the_reviewed_commit_did_not_declare_is_refused(self):
+        """#356: the entry packets are the one input a semantic reviewer reads before the diff.
+
+        `--package-map` is a caller-supplied host path handed straight to the reviewed tree's
+        entry-packet.py, so the *overlay* came from the reviewed commit and the *map* came from
+        wherever the caller pointed -- while section 3 says both are "the reviewed commit's own
+        map/overlay bytes".
+        """
+        self.commit_engine()
+        head = self.change()
+        self.pull_request(head)
+        altered, marker = self.altered_map()
+        done = self.packet("--stdout", "--package-map", altered)
+        self.assertEqual(done.returncode, 1, done.stdout)
+        # The message, not merely the verdict: several rules of this tool refuse with exit 1, and a
+        # test that asserts only the code is satisfied by the wrong one firing (#283).
+        self.assertIn("is not the map", done.stderr)
+        self.assertNotIn(marker, done.stdout, "a refused packet still handed over the altered evidence")
+
+    def test_the_refusal_names_both_digests(self):
+        """A refusal that does not say which two things disagree cannot be acted on."""
+        self.commit_engine()
+        head = self.change()
+        self.pull_request(head)
+        altered, _ = self.altered_map()
+        with open(altered, "rb") as handle:
+            supplied = hashlib.sha256(handle.read()).hexdigest()
+        declared = json.loads(self.read("provenance.json"))["map"]
+        (expected,) = [f["sha256"] for f in declared["files"] if f["role"] == "map"]
+        done = self.packet("--stdout", "--package-map", altered)
+        self.assertEqual(done.returncode, 1, done.stdout)
+        self.assertIn(supplied[:12], done.stderr)
+        self.assertIn(expected[:12], done.stderr)
+
+    def test_the_declared_map_is_accepted_and_its_digest_recorded(self):
+        """The honest path still works, and the manifest says which bytes it was built from."""
+        self.commit_engine()
+        head = self.change()
+        self.pull_request(head)
+        done = self.packet("--out", os.path.join(self.tmp, "packets"))
+        self.assertEqual(done.returncode, 0, done.stderr)
+        (manifest_path,) = [l for l in done.stdout.split() if l.endswith(".review.json")]
+        with open(manifest_path, encoding="utf-8") as handle:
+            manifest = json.load(handle)
+        with open(os.path.join(PART107, "corpus-map.json"), "rb") as handle:
+            supplied = hashlib.sha256(handle.read()).hexdigest()
+        self.assertEqual(manifest["reviewContext"]["map"]["readSha256"], supplied,
+                         "the manifest records the map bytes the entry packets were built from")
+
 
 GOOD_PR_BODY = """## Linked issue
 
