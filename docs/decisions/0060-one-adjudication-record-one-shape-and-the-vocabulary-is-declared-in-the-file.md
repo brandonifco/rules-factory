@@ -189,12 +189,19 @@ cannot hold to anything.
   still sees `clarity` and `ambiguity` disagreements only; and it is still worth nothing on a map
   nobody mapped twice. Three of the seven committed maps have no adjudication record, and this
   record changes none of that.
-- **`entries` is the ids in either map.** For the three migrated records it is the reference
-  entry and the blind entry the flag paired; for trial 9 it is Map A's id and Map B's. A blind
-  map's id is a different map's namespace, and a doubt is counted as landing when such an id
-  matches an ambiguous entry in this map — which happens when the map adopted that blind entry,
-  as `rubber-scoring` was, and would also happen on a coincidence of naming. No committed map's
-  verdict depends on it: every `superposition` line is unchanged.
+- **`entries` is not populated the same way in both families, and that is measured rather than
+  tidy.** For the three migrated records it is the **reference** entry alone: the flag's blind
+  entry is in the row's own `id` and names no entry of any map this repository uses. Putting it
+  in `entries` as well was tried, passed every check on every committed map, and **stopped a
+  collapse being refused**: `tools/mutate-map.py --only ambiguous-to-clear --subject
+  faa-part-107` turns `speed-limit` clear, and `superposition` — which unions the ids every row
+  about one named entry reaches, so that a terse "Same as the clarity row" is read with the row
+  it cites — followed the blind id `groundspeed-limit` out to another row's prose and counted
+  the doubt as landed. The gate caught it (`validate.sh` step 13, against the committed
+  measurement), which is what that step is for. Trial 9's rows keep both ids, because its record
+  named them together in one `entry` object and Map C carries entries from both mappings. A
+  record that names an id the reviewed map does not have widens what a doubt can reach, and
+  nothing refuses that.
 - **Nothing holds a record to the shape except the code that reads it.** `compare.py` refuses a
   malformed envelope for the three trials that have one; trial 9's record is hand-written and has
   no comparator, so for it the shape rests on `epistemic.py` reporting NOT VERIFIED and on the

@@ -67,36 +67,28 @@
     {
       "id": "None|entry|attack-action|no reference entry quotes this text",
       "field": "entry",
-      "entries": [
-        "attack-action"
-      ],
+      "entries": [],
       "verdict": "N",
       "reason": "Not a disagreement about the corpus: a rule outside the extent that both maps treat as out of scope, declined by a different quote or not given an entry of its own. No in-scope reading depends on the choice. The reference declines the actions as one actions-table entry (p. 9); the blind map declines each action it uses from the Rules Glossary."
     },
     {
       "id": "None|entry|bonus-action-rule|no reference entry quotes this text",
       "field": "entry",
-      "entries": [
-        "bonus-action-rule"
-      ],
+      "entries": [],
       "verdict": "N",
       "reason": "Not a disagreement about the corpus: a rule outside the extent that both maps treat as out of scope, declined by a different quote or not given an entry of its own. No in-scope reading depends on the choice. Both decline Bonus Actions (p. 10), quoting different sentences of the same section."
     },
     {
       "id": "None|entry|combat-intro|no reference entry quotes this text",
       "field": "entry",
-      "entries": [
-        "combat-intro"
-      ],
+      "entries": [],
       "verdict": "N",
       "reason": "Introductory prose, declined by the blind map and given no entry by the reference. It states no rule; p. 13 is reached by many entries in both maps."
     },
     {
       "id": "None|entry|cover-definition|no reference entry quotes this text",
       "field": "entry",
-      "entries": [
-        "cover-definition"
-      ],
+      "entries": [],
       "verdict": "N",
       "locator": "Combat / Cover / p. 15",
       "quote": "As detailed in the Cover table, there are three degrees of cover, each of which gives a different benefit to a target.",
@@ -105,18 +97,14 @@
     {
       "id": "None|entry|creature-space-definition|no reference entry quotes this text",
       "field": "entry",
-      "entries": [
-        "creature-space-definition"
-      ],
+      "entries": [],
       "verdict": "N",
       "reason": "A description with no consequence of its own (“the area that it effectively controls in combat”); the operative space is the Creature Size and Space table, which both maps carry."
     },
     {
       "id": "None|entry|damage-rolls|no reference entry quotes this text",
       "field": "entry",
-      "entries": [
-        "damage-rolls"
-      ],
+      "entries": [],
       "verdict": "B",
       "locator": "Damage and Healing / Damage Rolls / p. 16",
       "quote": "You roll the damage dice, add any modifiers, and deal the damage to your target.",
@@ -125,18 +113,14 @@
     {
       "id": "None|entry|dash-action|no reference entry quotes this text",
       "field": "entry",
-      "entries": [
-        "dash-action"
-      ],
+      "entries": [],
       "verdict": "N",
       "reason": "Not a disagreement about the corpus: a rule outside the extent that both maps treat as out of scope, declined by a different quote or not given an entry of its own. No in-scope reading depends on the choice. The reference declines the actions as one actions-table entry (p. 9); the blind map declines each action it uses from the Rules Glossary."
     },
     {
       "id": "None|entry|difficult-terrain-definition|no reference entry quotes this text",
       "field": "entry",
-      "entries": [
-        "difficult-terrain-definition"
-      ],
+      "entries": [],
       "verdict": "U",
       "locator": "Combat / Difficult Terrain / p. 14",
       "quote": "Low furniture, rubble, undergrowth, steep stairs, snow, and shallow bogs are examples of Difficult Terrain.",
@@ -145,99 +129,77 @@
     {
       "id": "None|entry|disengage-action|no reference entry quotes this text",
       "field": "entry",
-      "entries": [
-        "disengage-action"
-      ],
+      "entries": [],
       "verdict": "N",
       "reason": "Not a disagreement about the corpus: a rule outside the extent that both maps treat as out of scope, declined by a different quote or not given an entry of its own. No in-scope reading depends on the choice. The reference declines the actions as one actions-table entry (p. 9); the blind map declines each action it uses from the Rules Glossary."
     },
     {
       "id": "None|entry|dodge-action|no reference entry quotes this text",
       "field": "entry",
-      "entries": [
-        "dodge-action"
-      ],
+      "entries": [],
       "verdict": "N",
       "reason": "Not a disagreement about the corpus: a rule outside the extent that both maps treat as out of scope, declined by a different quote or not given an entry of its own. No in-scope reading depends on the choice. The reference declines the actions as one actions-table entry (p. 9); the blind map declines each action it uses from the Rules Glossary."
     },
     {
       "id": "None|entry|exceptions-supersede|no reference entry quotes this text",
       "field": "entry",
-      "entries": [
-        "exceptions-supersede"
-      ],
+      "entries": [],
       "verdict": "N",
       "reason": "Declined in the blind map as a general principle bearing on the specific rules. The reference names the same reading in next-round's note (“the specific rule, governs”) as a Phase 4 decision. No in-scope reading differs."
     },
     {
       "id": "None|entry|glossary-advantage|no reference entry quotes this text",
       "field": "entry",
-      "entries": [
-        "glossary-advantage"
-      ],
+      "entries": [],
       "verdict": "N",
       "reason": "Not a disagreement about the corpus: a rule outside the extent that both maps treat as out of scope, declined by a different quote or not given an entry of its own. No in-scope reading depends on the choice. The blind map declines each Rules Glossary term an in-scope entry uses (Ally, Enemy, Speed, Occupied Space and the rest); the reference treats the facts those terms describe as parameters or reaches the rules through its own out entries."
     },
     {
       "id": "None|entry|glossary-ally|no reference entry quotes this text",
       "field": "entry",
-      "entries": [
-        "glossary-ally"
-      ],
+      "entries": [],
       "verdict": "N",
       "reason": "Not a disagreement about the corpus: a rule outside the extent that both maps treat as out of scope, declined by a different quote or not given an entry of its own. No in-scope reading depends on the choice. The blind map declines each Rules Glossary term an in-scope entry uses (Ally, Enemy, Speed, Occupied Space and the rest); the reference treats the facts those terms describe as parameters or reaches the rules through its own out entries."
     },
     {
       "id": "None|entry|glossary-disadvantage|no reference entry quotes this text",
       "field": "entry",
-      "entries": [
-        "glossary-disadvantage"
-      ],
+      "entries": [],
       "verdict": "N",
       "reason": "Not a disagreement about the corpus: a rule outside the extent that both maps treat as out of scope, declined by a different quote or not given an entry of its own. No in-scope reading depends on the choice. The blind map declines each Rules Glossary term an in-scope entry uses (Ally, Enemy, Speed, Occupied Space and the rest); the reference treats the facts those terms describe as parameters or reaches the rules through its own out entries."
     },
     {
       "id": "None|entry|glossary-enemy|no reference entry quotes this text",
       "field": "entry",
-      "entries": [
-        "glossary-enemy"
-      ],
+      "entries": [],
       "verdict": "N",
       "reason": "Not a disagreement about the corpus: a rule outside the extent that both maps treat as out of scope, declined by a different quote or not given an entry of its own. No in-scope reading depends on the choice. The blind map declines each Rules Glossary term an in-scope entry uses (Ally, Enemy, Speed, Occupied Space and the rest); the reference treats the facts those terms describe as parameters or reaches the rules through its own out entries."
     },
     {
       "id": "None|entry|glossary-jumping|no reference entry quotes this text",
       "field": "entry",
-      "entries": [
-        "glossary-jumping"
-      ],
+      "entries": [],
       "verdict": "N",
       "reason": "Not a disagreement about the corpus: a rule outside the extent that both maps treat as out of scope, declined by a different quote or not given an entry of its own. No in-scope reading depends on the choice. The blind map declines each Rules Glossary term an in-scope entry uses (Ally, Enemy, Speed, Occupied Space and the rest); the reference treats the facts those terms describe as parameters or reaches the rules through its own out entries."
     },
     {
       "id": "None|entry|glossary-speed|no reference entry quotes this text",
       "field": "entry",
-      "entries": [
-        "glossary-speed"
-      ],
+      "entries": [],
       "verdict": "N",
       "reason": "Not a disagreement about the corpus: a rule outside the extent that both maps treat as out of scope, declined by a different quote or not given an entry of its own. No in-scope reading depends on the choice. The blind map declines each Rules Glossary term an in-scope entry uses (Ally, Enemy, Speed, Occupied Space and the rest); the reference treats the facts those terms describe as parameters or reaches the rules through its own out entries."
     },
     {
       "id": "None|entry|glossary-swimming|no reference entry quotes this text",
       "field": "entry",
-      "entries": [
-        "glossary-swimming"
-      ],
+      "entries": [],
       "verdict": "N",
       "reason": "Not a disagreement about the corpus: a rule outside the extent that both maps treat as out of scope, declined by a different quote or not given an entry of its own. No in-scope reading depends on the choice. The blind map declines each Rules Glossary term an in-scope entry uses (Ally, Enemy, Speed, Occupied Space and the rest); the reference treats the facts those terms describe as parameters or reaches the rules through its own out entries."
     },
     {
       "id": "None|entry|grid-diagonal-step-cost|no reference entry quotes this text",
       "field": "entry",
-      "entries": [
-        "grid-diagonal-step-cost"
-      ],
+      "entries": [],
       "verdict": "N",
       "locator": "Combat / Playing on a Grid / p. 13",
       "quote": "It costs 1 square of movement to enter an unoccupied square that’s adjacent to your space (orthogonally or diagonally adjacent).",
@@ -246,27 +208,21 @@
     {
       "id": "None|entry|grid-speed-advice|no reference entry quotes this text",
       "field": "entry",
-      "entries": [
-        "grid-speed-advice"
-      ],
+      "entries": [],
       "verdict": "N",
       "reason": "Advice, dropped by both maps: declined as its own entry in the blind map and named as advice in grid-speed-in-squares' note in the reference."
     },
     {
       "id": "None|entry|hide-action|no reference entry quotes this text",
       "field": "entry",
-      "entries": [
-        "hide-action"
-      ],
+      "entries": [],
       "verdict": "N",
       "reason": "Not a disagreement about the corpus: a rule outside the extent that both maps treat as out of scope, declined by a different quote or not given an entry of its own. No in-scope reading depends on the choice. The reference declines the actions as one actions-table entry (p. 9); the blind map declines each action it uses from the Rules Glossary."
     },
     {
       "id": "None|entry|oa-provoke|no reference entry quotes this text",
       "field": "entry",
-      "entries": [
-        "oa-provoke"
-      ],
+      "entries": [],
       "verdict": "R",
       "locator": "Combat / Opportunity Attacks / p. 15",
       "quote": "You can make an Opportunity Attack when a creature that you can see leaves your reach.",
@@ -275,18 +231,14 @@
     {
       "id": "None|entry|occupied-space|no reference entry quotes this text",
       "field": "entry",
-      "entries": [
-        "occupied-space"
-      ],
+      "entries": [],
       "verdict": "N",
       "reason": "Not a disagreement about the corpus: a rule outside the extent that both maps treat as out of scope, declined by a different quote or not given an entry of its own. No in-scope reading depends on the choice. The blind map declines each Rules Glossary term an in-scope entry uses (Ally, Enemy, Speed, Occupied Space and the rest); the reference treats the facts those terms describe as parameters or reaches the rules through its own out entries."
     },
     {
       "id": "None|entry|pass-through-costs-extra|no reference entry quotes this text",
       "field": "entry",
-      "entries": [
-        "pass-through-costs-extra"
-      ],
+      "entries": [],
       "verdict": "N",
       "locator": "Combat / Moving around Other Creatures / p. 14",
       "quote": "Another creature’s space is Difficult Terrain for you unless that creature is Tiny or your ally.",
@@ -295,9 +247,7 @@
     {
       "id": "None|entry|ranged-attack-definition|no reference entry quotes this text",
       "field": "entry",
-      "entries": [
-        "ranged-attack-definition"
-      ],
+      "entries": [],
       "verdict": "R",
       "locator": "Combat / Ranged Attacks / p. 15",
       "quote": "When you make a ranged attack, you fire a bow, hurl an axe, or otherwise send projectiles to strike a foe at a distance.",
@@ -306,9 +256,7 @@
     {
       "id": "None|entry|resistance-rule|no reference entry quotes this text",
       "field": "entry",
-      "entries": [
-        "resistance-rule"
-      ],
+      "entries": [],
       "verdict": "B",
       "locator": "Damage and Healing / Resistance and Vulnerability / p. 17",
       "quote": "Some creatures and objects have Resistance or Vulnerability to certain damage types. If you have Resistance to a damage type, damage of that type is halved against you (round down).",
@@ -317,9 +265,7 @@
     {
       "id": "None|entry|round-down|no reference entry quotes this text",
       "field": "entry",
-      "entries": [
-        "round-down"
-      ],
+      "entries": [],
       "verdict": "B",
       "locator": "Playing the Game / Round Down / p. 5",
       "quote": "Whenever you divide or multiply a number in the game, round down if you end up with a fraction, even if the fraction is one-half or greater. Some rules make an exception and tell you to round up. {6}",
@@ -328,45 +274,35 @@
     {
       "id": "None|entry|size-source|no reference entry quotes this text",
       "field": "entry",
-      "entries": [
-        "size-source"
-      ],
+      "entries": [],
       "verdict": "N",
       "reason": "Size is a caller-supplied parameter in both maps. The reference names this sentence in speed-and-size-sources' note; the blind map gives it an entry."
     },
     {
       "id": "None|entry|swim-speed|no reference entry quotes this text",
       "field": "entry",
-      "entries": [
-        "swim-speed"
-      ],
+      "entries": [],
       "verdict": "N",
       "reason": "Not a disagreement about the corpus: a rule outside the extent that both maps treat as out of scope, declined by a different quote or not given an entry of its own. No in-scope reading depends on the choice. The blind map declines each Rules Glossary term an in-scope entry uses (Ally, Enemy, Speed, Occupied Space and the rest); the reference treats the facts those terms describe as parameters or reaches the rules through its own out entries."
     },
     {
       "id": "None|entry|teleportation|no reference entry quotes this text",
       "field": "entry",
-      "entries": [
-        "teleportation"
-      ],
+      "entries": [],
       "verdict": "N",
       "reason": "Not a disagreement about the corpus: a rule outside the extent that both maps treat as out of scope, declined by a different quote or not given an entry of its own. No in-scope reading depends on the choice. The blind map declines each Rules Glossary term an in-scope entry uses (Ally, Enemy, Speed, Occupied Space and the rest); the reference treats the facts those terms describe as parameters or reaches the rules through its own out entries."
     },
     {
       "id": "None|entry|unarmed-strike|no reference entry quotes this text",
       "field": "entry",
-      "entries": [
-        "unarmed-strike"
-      ],
+      "entries": [],
       "verdict": "N",
       "reason": "Not a disagreement about the corpus: a rule outside the extent that both maps treat as out of scope, declined by a different quote or not given an entry of its own. No in-scope reading depends on the choice. The blind map declines each Rules Glossary term an in-scope entry uses (Ally, Enemy, Speed, Occupied Space and the rest); the reference treats the facts those terms describe as parameters or reaches the rules through its own out entries."
     },
     {
       "id": "None|entry|underwater-combat|no reference entry quotes this text",
       "field": "entry",
-      "entries": [
-        "underwater-combat"
-      ],
+      "entries": [],
       "verdict": "N",
       "locator": "Combat / Underwater Combat / p. 16",
       "quote": "A fight underwater follows these rules.",
@@ -375,18 +311,14 @@
     {
       "id": "None|entry|unoccupied-space|no reference entry quotes this text",
       "field": "entry",
-      "entries": [
-        "unoccupied-space"
-      ],
+      "entries": [],
       "verdict": "N",
       "reason": "Not a disagreement about the corpus: a rule outside the extent that both maps treat as out of scope, declined by a different quote or not given an entry of its own. No in-scope reading depends on the choice. The blind map declines each Rules Glossary term an in-scope entry uses (Ally, Enemy, Speed, Occupied Space and the rest); the reference treats the facts those terms describe as parameters or reaches the rules through its own out entries."
     },
     {
       "id": "None|entry|utilize-action|no reference entry quotes this text",
       "field": "entry",
-      "entries": [
-        "utilize-action"
-      ],
+      "entries": [],
       "verdict": "N",
       "reason": "Not a disagreement about the corpus: a rule outside the extent that both maps treat as out of scope, declined by a different quote or not given an entry of its own. No in-scope reading depends on the choice. The reference declines the actions as one actions-table entry (p. 9); the blind map declines each action it uses from the Rules Glossary."
     },
@@ -394,7 +326,6 @@
       "id": "action-options|kind|action-options|differs",
       "field": "kind",
       "entries": [
-        "action-options",
         "action-options"
       ],
       "verdict": "N",
@@ -404,7 +335,6 @@
       "id": "action-options|scope|action-options|differs",
       "field": "scope",
       "entries": [
-        "action-options",
         "action-options"
       ],
       "verdict": "R",
@@ -416,7 +346,6 @@
       "id": "action-options|dependsOn|action-options|blind has edge to actions-list; reference has no edge to what it links to",
       "field": "dependsOn",
       "entries": [
-        "action-options",
         "action-options"
       ],
       "verdict": "N",
@@ -426,7 +355,6 @@
       "id": "action-options|enabledBy|action-options|blind has edge to combat-rounds-and-turns; reference has no edge to what it links to",
       "field": "enabledBy",
       "entries": [
-        "action-options",
         "action-options"
       ],
       "verdict": "R",
@@ -438,7 +366,6 @@
       "id": "action-options|suspendedBy|action-options|blind has edge to combat-end-defeat; reference has no edge to what it links to",
       "field": "suspendedBy",
       "entries": [
-        "action-options",
         "action-options"
       ],
       "verdict": "R",
@@ -450,7 +377,6 @@
       "id": "action-options|suspendedBy|action-options|blind has edge to combat-end-agreement; reference has no edge to what it links to",
       "field": "suspendedBy",
       "entries": [
-        "action-options",
         "action-options"
       ],
       "verdict": "R",
@@ -462,8 +388,7 @@
       "id": "actions-table|kind|actions-list|differs",
       "field": "kind",
       "entries": [
-        "actions-table",
-        "actions-list"
+        "actions-table"
       ],
       "verdict": "N",
       "reason": "Kind of a declined entry outside the extent (a table of actions): a layer choice with no in-scope consequence."
@@ -472,8 +397,7 @@
       "id": "appropriate-anatomy|dependsOn|mount-eligibility|blind has edge to size-categories; reference has no edge to what it links to",
       "field": "dependsOn",
       "entries": [
-        "appropriate-anatomy",
-        "mount-eligibility"
+        "appropriate-anatomy"
       ],
       "verdict": "N",
       "reason": "Split/merge artefact: the two maps divide this text into different entries and the comparator paired fragments. The reference splits the anatomy gap into appropriate-anatomy; both maps' eligibility entries depend on size-categories."
@@ -482,8 +406,7 @@
       "id": "attack-modifiers|dependsOn|attack-determine-modifiers|reference has edge to advantage-disadvantage; no blind edge reaches it",
       "field": "dependsOn",
       "entries": [
-        "attack-modifiers",
-        "attack-determine-modifiers"
+        "attack-modifiers"
       ],
       "verdict": "N",
       "reason": "Equivalent edge to a different carrier of the same out-of-slice rule: the reference declines Advantage and Disadvantage as advantage-disadvantage (p. 7), the blind map as the Rules Glossary's Advantage and Disadvantage entries, which the comparator cannot link to it."
@@ -492,8 +415,7 @@
       "id": "attack-resolution|dependsOn|attack-resolve|reference has edge to damage-and-healing; no blind edge reaches it",
       "field": "dependsOn",
       "entries": [
-        "attack-resolution",
-        "attack-resolve"
+        "attack-resolution"
       ],
       "verdict": "B",
       "locator": "Combat / Making an Attack / p. 15",
@@ -504,7 +426,6 @@
       "id": "attack-sources|dependsOn|attack-sources|reference has edge to actions-table; no blind edge reaches it",
       "field": "dependsOn",
       "entries": [
-        "attack-sources",
         "attack-sources"
       ],
       "verdict": "N",
@@ -514,7 +435,6 @@
       "id": "attack-sources|dependsOn|attack-sources|reference has edge to bonus-actions; no blind edge reaches it",
       "field": "dependsOn",
       "entries": [
-        "attack-sources",
         "attack-sources"
       ],
       "verdict": "R",
@@ -526,7 +446,6 @@
       "id": "attack-sources|dependsOn|attack-sources|reference has edge to reactions; no blind edge reaches it",
       "field": "dependsOn",
       "entries": [
-        "attack-sources",
         "attack-sources"
       ],
       "verdict": "R",
@@ -538,7 +457,6 @@
       "id": "attack-sources|suspendedBy|attack-sources|blind has edge to incapacitated-condition; reference has no edge to what it links to",
       "field": "suspendedBy",
       "entries": [
-        "attack-sources",
         "attack-sources"
       ],
       "verdict": "B",
@@ -550,8 +468,7 @@
       "id": "attack-structure|dependsOn|attack-determine-modifiers|reference has edge to attack-modifiers; no blind edge reaches it",
       "field": "dependsOn",
       "entries": [
-        "attack-structure",
-        "attack-determine-modifiers"
+        "attack-structure"
       ],
       "verdict": "N",
       "locator": "Combat / Making an Attack / p. 15",
@@ -562,8 +479,7 @@
       "id": "attack-structure|dependsOn|attack-determine-modifiers|reference has edge to attack-resolution; no blind edge reaches it",
       "field": "dependsOn",
       "entries": [
-        "attack-structure",
-        "attack-determine-modifiers"
+        "attack-structure"
       ],
       "verdict": "N",
       "locator": "Combat / Making an Attack / p. 15",
@@ -574,8 +490,7 @@
       "id": "attack-structure|dependsOn|attack-determine-modifiers|reference has edge to attack-target; no blind edge reaches it",
       "field": "dependsOn",
       "entries": [
-        "attack-structure",
-        "attack-determine-modifiers"
+        "attack-structure"
       ],
       "verdict": "N",
       "locator": "Combat / Making an Attack / p. 15",
@@ -586,8 +501,7 @@
       "id": "attack-structure|dependsOn|attack-determine-modifiers|blind has edge to cover-degree-determination; reference has no edge to what it links to",
       "field": "dependsOn",
       "entries": [
-        "attack-structure",
-        "attack-determine-modifiers"
+        "attack-structure"
       ],
       "verdict": "N",
       "locator": "Combat / Making an Attack / p. 15",
@@ -598,8 +512,7 @@
       "id": "attack-structure|dependsOn|attack-determine-modifiers|blind has edge to cover-degree-benefits; reference has no edge to what it links to",
       "field": "dependsOn",
       "entries": [
-        "attack-structure",
-        "attack-determine-modifiers"
+        "attack-structure"
       ],
       "verdict": "N",
       "locator": "Combat / Making an Attack / p. 15",
@@ -610,8 +523,7 @@
       "id": "attack-structure|evidence|attack-determine-modifiers|reference span quotes text the blind span omits",
       "field": "evidence",
       "entries": [
-        "attack-structure",
-        "attack-determine-modifiers"
+        "attack-structure"
       ],
       "verdict": "N",
       "locator": "Combat / Making an Attack / p. 15",
@@ -622,8 +534,7 @@
       "id": "attack-target|dependsOn|attack-choose-target|reference has edge to melee-within-reach; no blind edge reaches it",
       "field": "dependsOn",
       "entries": [
-        "attack-target",
-        "attack-choose-target"
+        "attack-target"
       ],
       "verdict": "N",
       "reason": "Equivalent edge: the blind map reaches reach through reach-default, the reference through melee-within-reach, which depends on reach."
@@ -632,8 +543,7 @@
       "id": "attack-target|dependsOn|attack-choose-target|reference has edge to normal-and-long-range; no blind edge reaches it",
       "field": "dependsOn",
       "entries": [
-        "attack-target",
-        "attack-choose-target"
+        "attack-target"
       ],
       "verdict": "R",
       "locator": "Combat / Range / p. 15",
@@ -644,8 +554,7 @@
       "id": "attack-target|dependsOn|attack-choose-target|blind has edge to reach-default; reference has no edge to what it links to",
       "field": "dependsOn",
       "entries": [
-        "attack-target",
-        "attack-choose-target"
+        "attack-target"
       ],
       "verdict": "N",
       "reason": "Equivalent edge: the blind map reaches reach through reach-default, the reference through melee-within-reach, which depends on reach."
@@ -654,7 +563,6 @@
       "id": "break-up-move|dependsOn|break-up-move|reference has edge to bonus-actions; no blind edge reaches it",
       "field": "dependsOn",
       "entries": [
-        "break-up-move",
         "break-up-move"
       ],
       "verdict": "N",
@@ -664,7 +572,6 @@
       "id": "break-up-move|enabledBy|break-up-move|blind has edge to combat-rounds-and-turns; reference has no edge to what it links to",
       "field": "enabledBy",
       "entries": [
-        "break-up-move",
         "break-up-move"
       ],
       "verdict": "R",
@@ -676,7 +583,6 @@
       "id": "break-up-move|suspendedBy|break-up-move|blind has edge to combat-end-defeat; reference has no edge to what it links to",
       "field": "suspendedBy",
       "entries": [
-        "break-up-move",
         "break-up-move"
       ],
       "verdict": "R",
@@ -688,7 +594,6 @@
       "id": "break-up-move|suspendedBy|break-up-move|blind has edge to combat-end-agreement; reference has no edge to what it links to",
       "field": "suspendedBy",
       "entries": [
-        "break-up-move",
         "break-up-move"
       ],
       "verdict": "R",
@@ -700,7 +605,6 @@
       "id": "break-up-move|evidence|break-up-move|blind span quotes text the reference span omits",
       "field": "evidence",
       "entries": [
-        "break-up-move",
         "break-up-move"
       ],
       "verdict": "N",
@@ -710,8 +614,7 @@
       "id": "brief-or-extended-communication|enabledBy|communicate-brief|blind has edge to combat-rounds-and-turns; reference has no edge to what it links to",
       "field": "enabledBy",
       "entries": [
-        "brief-or-extended-communication",
-        "communicate-brief"
+        "brief-or-extended-communication"
       ],
       "verdict": "R",
       "locator": "Playing the Game / Rhythm of Play / p. 5",
@@ -722,8 +625,7 @@
       "id": "brief-or-extended-communication|suspendedBy|communicate-brief|blind has edge to combat-end-defeat; reference has no edge to what it links to",
       "field": "suspendedBy",
       "entries": [
-        "brief-or-extended-communication",
-        "communicate-brief"
+        "brief-or-extended-communication"
       ],
       "verdict": "R",
       "locator": "Playing the Game / Rhythm of Play / p. 5",
@@ -734,8 +636,7 @@
       "id": "brief-or-extended-communication|suspendedBy|communicate-brief|blind has edge to combat-end-agreement; reference has no edge to what it links to",
       "field": "suspendedBy",
       "entries": [
-        "brief-or-extended-communication",
-        "communicate-brief"
+        "brief-or-extended-communication"
       ],
       "verdict": "R",
       "locator": "Playing the Game / Rhythm of Play / p. 5",
@@ -746,8 +647,7 @@
       "id": "brief-or-extended-communication|evidence|communicate-brief|reference span quotes text the blind span omits",
       "field": "evidence",
       "entries": [
-        "brief-or-extended-communication",
-        "communicate-brief"
+        "brief-or-extended-communication"
       ],
       "verdict": "N",
       "reason": "Span choice: one span carries a sentence the other entry does not need; both support the same rule."
@@ -756,8 +656,7 @@
       "id": "combat-end|ambiguity.conflict|combat-end-defeat|present in one map only",
       "field": "ambiguity.conflict",
       "entries": [
-        "combat-end",
-        "combat-end-defeat"
+        "combat-end"
       ],
       "verdict": "N",
       "locator": "Combat / Ending Combat / p. 14",
@@ -768,8 +667,7 @@
       "id": "combat-end|dependsOn|combat-end-defeat|reference has edge to side-defeated; no blind edge reaches it",
       "field": "dependsOn",
       "entries": [
-        "combat-end",
-        "combat-end-defeat"
+        "combat-end"
       ],
       "verdict": "N",
       "locator": "Combat / Ending Combat / p. 14",
@@ -780,8 +678,7 @@
       "id": "combat-end|dependsOn|combat-end-defeat|reference has edge to sides-agree-to-end; no blind edge reaches it",
       "field": "dependsOn",
       "entries": [
-        "combat-end",
-        "combat-end-defeat"
+        "combat-end"
       ],
       "verdict": "N",
       "locator": "Combat / Ending Combat / p. 14",
@@ -792,8 +689,7 @@
       "id": "combat-end|enabledBy|combat-end-defeat|blind has edge to combat-rounds-and-turns; reference has no edge to what it links to",
       "field": "enabledBy",
       "entries": [
-        "combat-end",
-        "combat-end-defeat"
+        "combat-end"
       ],
       "verdict": "R",
       "locator": "Combat / Ending Combat / p. 14",
@@ -804,8 +700,7 @@
       "id": "combat-end|evidence|combat-end-defeat|reference span quotes text the blind span omits",
       "field": "evidence",
       "entries": [
-        "combat-end",
-        "combat-end-defeat"
+        "combat-end"
       ],
       "verdict": "N",
       "reason": "Span choice: one span carries a sentence the other entry does not need; both support the same rule."
@@ -814,8 +709,7 @@
       "id": "combat-rounds|clarity|combat-rounds-and-turns|differs",
       "field": "clarity",
       "entries": [
-        "combat-rounds",
-        "combat-rounds-and-turns"
+        "combat-rounds"
       ],
       "verdict": "N",
       "locator": "Combat / The Order of Combat / p. 13",
@@ -826,8 +720,7 @@
       "id": "combat-rounds|ambiguity|combat-rounds-and-turns|present in one map only",
       "field": "ambiguity",
       "entries": [
-        "combat-rounds",
-        "combat-rounds-and-turns"
+        "combat-rounds"
       ],
       "verdict": "N",
       "locator": "Combat / The Order of Combat / p. 13",
@@ -838,8 +731,7 @@
       "id": "combat-rounds|dependsOn|combat-rounds-and-turns|blind has edge to initiative-roll; reference has no edge to what it links to",
       "field": "dependsOn",
       "entries": [
-        "combat-rounds",
-        "combat-rounds-and-turns"
+        "combat-rounds"
       ],
       "verdict": "N",
       "locator": "Combat / The Order of Combat / p. 13",
@@ -850,8 +742,7 @@
       "id": "combat-rounds|dependsOn|combat-rounds-and-turns|blind has edge to initiative-order; reference has no edge to what it links to",
       "field": "dependsOn",
       "entries": [
-        "combat-rounds",
-        "combat-rounds-and-turns"
+        "combat-rounds"
       ],
       "verdict": "N",
       "locator": "Combat / The Order of Combat / p. 13",
@@ -862,8 +753,7 @@
       "id": "combat-rounds|suspendedBy|combat-rounds-and-turns|blind has edge to combat-end-defeat; reference has no edge to what it links to",
       "field": "suspendedBy",
       "entries": [
-        "combat-rounds",
-        "combat-rounds-and-turns"
+        "combat-rounds"
       ],
       "verdict": "N",
       "locator": "Combat / The Order of Combat / p. 13",
@@ -874,8 +764,7 @@
       "id": "combat-rounds|suspendedBy|combat-rounds-and-turns|blind has edge to combat-end-agreement; reference has no edge to what it links to",
       "field": "suspendedBy",
       "entries": [
-        "combat-rounds",
-        "combat-rounds-and-turns"
+        "combat-rounds"
       ],
       "verdict": "N",
       "locator": "Combat / The Order of Combat / p. 13",
@@ -886,8 +775,7 @@
       "id": "combat-rounds|evidence|combat-rounds-and-turns|blind span quotes text the reference span omits",
       "field": "evidence",
       "entries": [
-        "combat-rounds",
-        "combat-rounds-and-turns"
+        "combat-rounds"
       ],
       "verdict": "N",
       "reason": "Span choice: one span carries a sentence the other entry does not need; both support the same rule."
@@ -896,8 +784,7 @@
       "id": "combat-steps|enabledBy|combat-step-by-step|blind has edge to combat-rounds-and-turns; reference has no edge to what it links to",
       "field": "enabledBy",
       "entries": [
-        "combat-steps",
-        "combat-step-by-step"
+        "combat-steps"
       ],
       "verdict": "R",
       "locator": "Combat / The Order of Combat / p. 13",
@@ -908,8 +795,7 @@
       "id": "combat-steps|suspendedBy|combat-step-by-step|blind has edge to combat-end-defeat; reference has no edge to what it links to",
       "field": "suspendedBy",
       "entries": [
-        "combat-steps",
-        "combat-step-by-step"
+        "combat-steps"
       ],
       "verdict": "N",
       "locator": "Combat / Combat Step by Step / p. 13",
@@ -920,8 +806,7 @@
       "id": "combat-steps|suspendedBy|combat-step-by-step|blind has edge to combat-end-agreement; reference has no edge to what it links to",
       "field": "suspendedBy",
       "entries": [
-        "combat-steps",
-        "combat-step-by-step"
+        "combat-steps"
       ],
       "verdict": "N",
       "locator": "Combat / Combat Step by Step / p. 13",
@@ -932,8 +817,7 @@
       "id": "combat-steps|evidence|combat-step-by-step|reference span quotes text the blind span omits",
       "field": "evidence",
       "entries": [
-        "combat-steps",
-        "combat-step-by-step"
+        "combat-steps"
       ],
       "verdict": "N",
       "reason": "Span choice: one span carries a sentence the other entry does not need; both support the same rule."
@@ -942,8 +826,7 @@
       "id": "communication-cost|clarity|communicate-brief|differs",
       "field": "clarity",
       "entries": [
-        "communication-cost",
-        "communicate-brief"
+        "communication-cost"
       ],
       "verdict": "N",
       "reason": "Split/merge artefact: the two maps divide this text into different entries and the comparator paired fragments. The brief/extended gap is on brief-or-extended-communication in the reference and on both halves in the blind map. (communication-cost is now ambiguous for a different question, row 94.)"
@@ -952,8 +835,7 @@
       "id": "communication-cost|ambiguity|communicate-brief|present in one map only",
       "field": "ambiguity",
       "entries": [
-        "communication-cost",
-        "communicate-brief"
+        "communication-cost"
       ],
       "verdict": "N",
       "reason": "Split/merge artefact: the two maps divide this text into different entries and the comparator paired fragments. The brief/extended gap is on brief-or-extended-communication in the reference and on both halves in the blind map. (communication-cost is now ambiguous for a different question, row 94.)"
@@ -962,8 +844,7 @@
       "id": "communication-cost|dependsOn|communicate-brief|reference has edge to actions-table; no blind edge reaches it",
       "field": "dependsOn",
       "entries": [
-        "communication-cost",
-        "communicate-brief"
+        "communication-cost"
       ],
       "verdict": "N",
       "reason": "Split/merge artefact: the two maps divide this text into different entries and the comparator paired fragments. The reference's communication-cost holds both the free and the action cases; the blind communicate-brief is the free case only."
@@ -972,8 +853,7 @@
       "id": "communication-cost|dependsOn|communicate-brief|reference has edge to brief-or-extended-communication; no blind edge reaches it",
       "field": "dependsOn",
       "entries": [
-        "communication-cost",
-        "communicate-brief"
+        "communication-cost"
       ],
       "verdict": "N",
       "reason": "Split/merge artefact: the two maps divide this text into different entries and the comparator paired fragments. The reference's communication-cost holds both the free and the action cases; the blind communicate-brief is the free case only."
@@ -982,8 +862,7 @@
       "id": "communication-cost|enabledBy|communicate-brief|blind has edge to combat-rounds-and-turns; reference has no edge to what it links to",
       "field": "enabledBy",
       "entries": [
-        "communication-cost",
-        "communicate-brief"
+        "communication-cost"
       ],
       "verdict": "R",
       "locator": "Playing the Game / Rhythm of Play / p. 5",
@@ -994,8 +873,7 @@
       "id": "communication-cost|suspendedBy|communicate-brief|reference has edge to gm-requires-action; no blind edge reaches it",
       "field": "suspendedBy",
       "entries": [
-        "communication-cost",
-        "communicate-brief"
+        "communication-cost"
       ],
       "verdict": "U",
       "locator": "Combat / Your Turn / p. 14",
@@ -1006,8 +884,7 @@
       "id": "communication-cost|suspendedBy|communicate-brief|blind has edge to combat-end-defeat; reference has no edge to what it links to",
       "field": "suspendedBy",
       "entries": [
-        "communication-cost",
-        "communicate-brief"
+        "communication-cost"
       ],
       "verdict": "R",
       "locator": "Playing the Game / Rhythm of Play / p. 5",
@@ -1018,8 +895,7 @@
       "id": "communication-cost|suspendedBy|communicate-brief|blind has edge to combat-end-agreement; reference has no edge to what it links to",
       "field": "suspendedBy",
       "entries": [
-        "communication-cost",
-        "communicate-brief"
+        "communication-cost"
       ],
       "verdict": "R",
       "locator": "Playing the Game / Rhythm of Play / p. 5",
@@ -1030,8 +906,7 @@
       "id": "communication-cost|evidence|communicate-brief|reference span quotes text the blind span omits",
       "field": "evidence",
       "entries": [
-        "communication-cost",
-        "communicate-brief"
+        "communication-cost"
       ],
       "verdict": "N",
       "reason": "Span choice: one span carries a sentence the other entry does not need; both support the same rule."
@@ -1040,8 +915,7 @@
       "id": "controlled-mount-turn|scope|mount-target-choice|differs",
       "field": "scope",
       "entries": [
-        "controlled-mount-turn",
-        "mount-target-choice"
+        "controlled-mount-turn"
       ],
       "verdict": "N",
       "reason": "An absence neither map disputes: the corpus states no rule about redirecting attacks between rider and mount, and the reference did not list it. Which absent rules a map lists is prompted by prior knowledge (the blind note says so) and is not a reading of the corpus."
@@ -1050,8 +924,7 @@
       "id": "controlled-mount-turn|absentFrom|mount-target-choice|present in one map only",
       "field": "absentFrom",
       "entries": [
-        "controlled-mount-turn",
-        "mount-target-choice"
+        "controlled-mount-turn"
       ],
       "verdict": "N",
       "reason": "An absence neither map disputes: the corpus states no rule about redirecting attacks between rider and mount, and the reference did not list it. Which absent rules a map lists is prompted by prior knowledge (the blind note says so) and is not a reading of the corpus."
@@ -1060,8 +933,7 @@
       "id": "controlled-mount-turn|dependsOn|mount-target-choice|reference has edge to actions-table; no blind edge reaches it",
       "field": "dependsOn",
       "entries": [
-        "controlled-mount-turn",
-        "mount-target-choice"
+        "controlled-mount-turn"
       ],
       "verdict": "N",
       "reason": "The comparator paired the blind absence mount-target-choice with controlled-mount-turn because the absence quotes the Controlling a Mount paragraphs. An absence has no edges. The blind map's controlled-mount entries are linked to controlled-mount-turn without being its partner."
@@ -1070,8 +942,7 @@
       "id": "controlled-mount-turn|dependsOn|mount-target-choice|reference has edge to initiative-order; no blind edge reaches it",
       "field": "dependsOn",
       "entries": [
-        "controlled-mount-turn",
-        "mount-target-choice"
+        "controlled-mount-turn"
       ],
       "verdict": "N",
       "reason": "The comparator paired the blind absence mount-target-choice with controlled-mount-turn because the absence quotes the Controlling a Mount paragraphs. An absence has no edges. The blind map's controlled-mount entries are linked to controlled-mount-turn without being its partner."
@@ -1080,8 +951,7 @@
       "id": "controlled-mount-turn|enabledBy|mount-target-choice|reference has edge to mount-control-requires-training; no blind edge reaches it",
       "field": "enabledBy",
       "entries": [
-        "controlled-mount-turn",
-        "mount-target-choice"
+        "controlled-mount-turn"
       ],
       "verdict": "N",
       "reason": "The comparator paired the blind absence mount-target-choice with controlled-mount-turn because the absence quotes the Controlling a Mount paragraphs. An absence has no edges. The blind map's controlled-mount entries are linked to controlled-mount-turn without being its partner."
@@ -1090,8 +960,7 @@
       "id": "controlled-mount-turn|evidence|mount-target-choice|blind span quotes text the reference span omits",
       "field": "evidence",
       "entries": [
-        "controlled-mount-turn",
-        "mount-target-choice"
+        "controlled-mount-turn"
       ],
       "verdict": "N",
       "reason": "The comparator paired the blind absence mount-target-choice with controlled-mount-turn because the absence quotes the Controlling a Mount paragraphs. An absence has no edges. The blind map's controlled-mount entries are linked to controlled-mount-turn without being its partner."
@@ -1100,8 +969,7 @@
       "id": "cover-bonuses|clarity|cover-degree-benefits|differs",
       "field": "clarity",
       "entries": [
-        "cover-bonuses",
-        "cover-degree-benefits"
+        "cover-bonuses"
       ],
       "verdict": "N",
       "reason": "Split/merge artefact: the two maps divide this text into different entries and the comparator paired fragments. The “directly” question is on total-cover in the reference and on the whole-table entry in the blind map; both record it."
@@ -1110,8 +978,7 @@
       "id": "cover-bonuses|ambiguity|cover-degree-benefits|present in one map only",
       "field": "ambiguity",
       "entries": [
-        "cover-bonuses",
-        "cover-degree-benefits"
+        "cover-bonuses"
       ],
       "verdict": "N",
       "reason": "Split/merge artefact: the two maps divide this text into different entries and the comparator paired fragments. The “directly” question is on total-cover in the reference and on the whole-table entry in the blind map; both record it."
@@ -1120,8 +987,7 @@
       "id": "cover-degree|kind|cover-degree-benefits|differs",
       "field": "kind",
       "entries": [
-        "cover-degree",
-        "cover-degree-benefits"
+        "cover-degree"
       ],
       "verdict": "N",
       "locator": "Rules Glossary / Cover / p. 179",
@@ -1132,8 +998,7 @@
       "id": "creature-size-space|dependsOn|size-space-table|blind has edge to grid-square-size; reference has no edge to what it links to",
       "field": "dependsOn",
       "entries": [
-        "creature-size-space",
-        "size-space-table"
+        "creature-size-space"
       ],
       "verdict": "B",
       "locator": "Combat / Creature Size / p. 14",
@@ -1144,8 +1009,7 @@
       "id": "creature-space-difficult-terrain|dependsOn|other-creature-space-difficult|reference has edge to moving-through-creatures; no blind edge reaches it",
       "field": "dependsOn",
       "entries": [
-        "creature-space-difficult-terrain",
-        "other-creature-space-difficult"
+        "creature-space-difficult-terrain"
       ],
       "verdict": "R",
       "locator": "Combat / Moving around Other Creatures / p. 14",
@@ -1156,7 +1020,6 @@
       "id": "doing-nothing|dependsOn|doing-nothing|reference has edge to turn-move-and-action; no blind edge reaches it",
       "field": "dependsOn",
       "entries": [
-        "doing-nothing",
         "doing-nothing"
       ],
       "verdict": "R",
@@ -1168,7 +1031,6 @@
       "id": "doing-nothing|enabledBy|doing-nothing|blind has edge to combat-rounds-and-turns; reference has no edge to what it links to",
       "field": "enabledBy",
       "entries": [
-        "doing-nothing",
         "doing-nothing"
       ],
       "verdict": "R",
@@ -1180,7 +1042,6 @@
       "id": "doing-nothing|suspendedBy|doing-nothing|blind has edge to combat-end-defeat; reference has no edge to what it links to",
       "field": "suspendedBy",
       "entries": [
-        "doing-nothing",
         "doing-nothing"
       ],
       "verdict": "R",
@@ -1192,7 +1053,6 @@
       "id": "doing-nothing|suspendedBy|doing-nothing|blind has edge to combat-end-agreement; reference has no edge to what it links to",
       "field": "suspendedBy",
       "entries": [
-        "doing-nothing",
         "doing-nothing"
       ],
       "verdict": "R",
@@ -1204,7 +1064,6 @@
       "id": "doing-nothing|evidence|doing-nothing|reference span quotes text the blind span omits",
       "field": "evidence",
       "entries": [
-        "doing-nothing",
         "doing-nothing"
       ],
       "verdict": "N",
@@ -1214,8 +1073,7 @@
       "id": "dropping-prone|enabledBy|drop-prone|blind has edge to combat-rounds-and-turns; reference has no edge to what it links to",
       "field": "enabledBy",
       "entries": [
-        "dropping-prone",
-        "drop-prone"
+        "dropping-prone"
       ],
       "verdict": "R",
       "locator": "Playing the Game / Rhythm of Play / p. 5",
@@ -1226,8 +1084,7 @@
       "id": "dropping-prone|suspendedBy|drop-prone|blind has edge to combat-end-defeat; reference has no edge to what it links to",
       "field": "suspendedBy",
       "entries": [
-        "dropping-prone",
-        "drop-prone"
+        "dropping-prone"
       ],
       "verdict": "R",
       "locator": "Playing the Game / Rhythm of Play / p. 5",
@@ -1238,8 +1095,7 @@
       "id": "dropping-prone|suspendedBy|drop-prone|blind has edge to combat-end-agreement; reference has no edge to what it links to",
       "field": "suspendedBy",
       "entries": [
-        "dropping-prone",
-        "drop-prone"
+        "dropping-prone"
       ],
       "verdict": "R",
       "locator": "Playing the Game / Rhythm of Play / p. 5",
@@ -1250,8 +1106,7 @@
       "id": "ending-turn-in-occupied-space|enabledBy|end-turn-in-occupied-prone|blind has edge to combat-rounds-and-turns; reference has no edge to what it links to",
       "field": "enabledBy",
       "entries": [
-        "ending-turn-in-occupied-space",
-        "end-turn-in-occupied-prone"
+        "ending-turn-in-occupied-space"
       ],
       "verdict": "R",
       "locator": "Playing the Game / Rhythm of Play / p. 5",
@@ -1262,8 +1117,7 @@
       "id": "ending-turn-in-occupied-space|suspendedBy|end-turn-in-occupied-prone|blind has edge to combat-end-defeat; reference has no edge to what it links to",
       "field": "suspendedBy",
       "entries": [
-        "ending-turn-in-occupied-space",
-        "end-turn-in-occupied-prone"
+        "ending-turn-in-occupied-space"
       ],
       "verdict": "R",
       "locator": "Playing the Game / Rhythm of Play / p. 5",
@@ -1274,8 +1128,7 @@
       "id": "ending-turn-in-occupied-space|suspendedBy|end-turn-in-occupied-prone|blind has edge to combat-end-agreement; reference has no edge to what it links to",
       "field": "suspendedBy",
       "entries": [
-        "ending-turn-in-occupied-space",
-        "end-turn-in-occupied-prone"
+        "ending-turn-in-occupied-space"
       ],
       "verdict": "R",
       "locator": "Playing the Game / Rhythm of Play / p. 5",
@@ -1286,8 +1139,7 @@
       "id": "falling-off|enabledBy|falling-off-forced-move|reference has edge to mount-eligibility; no blind edge reaches it",
       "field": "enabledBy",
       "entries": [
-        "falling-off",
-        "falling-off-forced-move"
+        "falling-off"
       ],
       "verdict": "R",
       "locator": "Combat / Mounted Combat / p. 15",
@@ -1298,8 +1150,7 @@
       "id": "falling-off|enabledBy|falling-off-forced-move|blind has edge to mount-dismount-cost; reference has no edge to what it links to",
       "field": "enabledBy",
       "entries": [
-        "falling-off",
-        "falling-off-forced-move"
+        "falling-off"
       ],
       "verdict": "B",
       "locator": "Combat / Mounting and Dismounting / p. 15",
@@ -1310,8 +1161,7 @@
       "id": "falling-off|evidence|falling-off-forced-move|reference span quotes text the blind span omits",
       "field": "evidence",
       "entries": [
-        "falling-off",
-        "falling-off-forced-move"
+        "falling-off"
       ],
       "verdict": "N",
       "reason": "Span choice: one span carries a sentence the other entry does not need; both support the same rule."
@@ -1320,8 +1170,7 @@
       "id": "free-object-interaction|dependsOn|object-interaction-free|reference has edge to actions-table; no blind edge reaches it",
       "field": "dependsOn",
       "entries": [
-        "free-object-interaction",
-        "object-interaction-free"
+        "free-object-interaction"
       ],
       "verdict": "N",
       "reason": "Split/merge artefact: the two maps divide this text into different entries and the comparator paired fragments. The reference's free-object-interaction includes the second interaction, which needs the Utilize action; the blind entry is the free interaction only."
@@ -1330,8 +1179,7 @@
       "id": "free-object-interaction|enabledBy|object-interaction-free|blind has edge to combat-rounds-and-turns; reference has no edge to what it links to",
       "field": "enabledBy",
       "entries": [
-        "free-object-interaction",
-        "object-interaction-free"
+        "free-object-interaction"
       ],
       "verdict": "R",
       "locator": "Playing the Game / Time-Limited Object Interactions / p. 12",
@@ -1342,8 +1190,7 @@
       "id": "free-object-interaction|suspendedBy|object-interaction-free|blind has edge to combat-end-defeat; reference has no edge to what it links to",
       "field": "suspendedBy",
       "entries": [
-        "free-object-interaction",
-        "object-interaction-free"
+        "free-object-interaction"
       ],
       "verdict": "R",
       "locator": "Playing the Game / Time-Limited Object Interactions / p. 12",
@@ -1354,8 +1201,7 @@
       "id": "free-object-interaction|suspendedBy|object-interaction-free|blind has edge to combat-end-agreement; reference has no edge to what it links to",
       "field": "suspendedBy",
       "entries": [
-        "free-object-interaction",
-        "object-interaction-free"
+        "free-object-interaction"
       ],
       "verdict": "R",
       "locator": "Playing the Game / Time-Limited Object Interactions / p. 12",
@@ -1366,8 +1212,7 @@
       "id": "free-object-interaction|evidence|object-interaction-free|reference span quotes text the blind span omits",
       "field": "evidence",
       "entries": [
-        "free-object-interaction",
-        "object-interaction-free"
+        "free-object-interaction"
       ],
       "verdict": "N",
       "reason": "Span choice: one span carries a sentence the other entry does not need; both support the same rule."
@@ -1376,8 +1221,7 @@
       "id": "gm-requires-action|clarity|gm-may-require-action|differs",
       "field": "clarity",
       "entries": [
-        "gm-requires-action",
-        "gm-may-require-action"
+        "gm-requires-action"
       ],
       "verdict": "U",
       "locator": "Combat / Your Turn / p. 14",
@@ -1388,8 +1232,7 @@
       "id": "gm-requires-action|ambiguity|gm-may-require-action|present in one map only",
       "field": "ambiguity",
       "entries": [
-        "gm-requires-action",
-        "gm-may-require-action"
+        "gm-requires-action"
       ],
       "verdict": "U",
       "locator": "Combat / Your Turn / p. 14",
@@ -1400,8 +1243,7 @@
       "id": "gm-requires-action|enabledBy|gm-may-require-action|blind has edge to combat-rounds-and-turns; reference has no edge to what it links to",
       "field": "enabledBy",
       "entries": [
-        "gm-requires-action",
-        "gm-may-require-action"
+        "gm-requires-action"
       ],
       "verdict": "R",
       "locator": "Playing the Game / Rhythm of Play / p. 5",
@@ -1412,8 +1254,7 @@
       "id": "gm-requires-action|suspendedBy|gm-may-require-action|blind has edge to combat-end-defeat; reference has no edge to what it links to",
       "field": "suspendedBy",
       "entries": [
-        "gm-requires-action",
-        "gm-may-require-action"
+        "gm-requires-action"
       ],
       "verdict": "R",
       "locator": "Playing the Game / Rhythm of Play / p. 5",
@@ -1424,8 +1265,7 @@
       "id": "gm-requires-action|suspendedBy|gm-may-require-action|blind has edge to combat-end-agreement; reference has no edge to what it links to",
       "field": "suspendedBy",
       "entries": [
-        "gm-requires-action",
-        "gm-may-require-action"
+        "gm-requires-action"
       ],
       "verdict": "R",
       "locator": "Playing the Game / Rhythm of Play / p. 5",
@@ -1436,8 +1276,7 @@
       "id": "gm-requires-action|suspendedBy|gm-may-require-action|blind has edge to incapacitated-condition; reference has no edge to what it links to",
       "field": "suspendedBy",
       "entries": [
-        "gm-requires-action",
-        "gm-may-require-action"
+        "gm-requires-action"
       ],
       "verdict": "R",
       "locator": "Combat / Your Turn / p. 14",
@@ -1448,7 +1287,6 @@
       "id": "grid-entering-square|clarity|grid-entering-square|differs",
       "field": "clarity",
       "entries": [
-        "grid-entering-square",
         "grid-entering-square"
       ],
       "verdict": "U",
@@ -1460,7 +1298,6 @@
       "id": "grid-entering-square|ambiguity|grid-entering-square|present in one map only",
       "field": "ambiguity",
       "entries": [
-        "grid-entering-square",
         "grid-entering-square"
       ],
       "verdict": "U",
@@ -1472,7 +1309,6 @@
       "id": "grid-entering-square|dependsOn|grid-entering-square|reference has edge to difficult-terrain-cost; no blind edge reaches it",
       "field": "dependsOn",
       "entries": [
-        "grid-entering-square",
         "grid-entering-square"
       ],
       "verdict": "N",
@@ -1484,7 +1320,6 @@
       "id": "grid-entering-square|dependsOn|grid-entering-square|reference has edge to grid-speed-in-squares; no blind edge reaches it",
       "field": "dependsOn",
       "entries": [
-        "grid-entering-square",
         "grid-entering-square"
       ],
       "verdict": "R",
@@ -1496,7 +1331,6 @@
       "id": "grid-entering-square|dependsOn|grid-entering-square|blind has edge to grid-square-size; reference has no edge to what it links to",
       "field": "dependsOn",
       "entries": [
-        "grid-entering-square",
         "grid-entering-square"
       ],
       "verdict": "B",
@@ -1508,8 +1342,7 @@
       "id": "group-initiative|enabledBy|initiative-group-roll|blind has edge to combat-rounds-and-turns; reference has no edge to what it links to",
       "field": "enabledBy",
       "entries": [
-        "group-initiative",
-        "initiative-group-roll"
+        "group-initiative"
       ],
       "verdict": "R",
       "locator": "Combat / Initiative / p. 13",
@@ -1520,8 +1353,7 @@
       "id": "group-initiative|suspendedBy|initiative-group-roll|blind has edge to combat-end-defeat; reference has no edge to what it links to",
       "field": "suspendedBy",
       "entries": [
-        "group-initiative",
-        "initiative-group-roll"
+        "group-initiative"
       ],
       "verdict": "R",
       "locator": "Combat / Initiative / p. 13",
@@ -1532,8 +1364,7 @@
       "id": "group-initiative|suspendedBy|initiative-group-roll|blind has edge to combat-end-agreement; reference has no edge to what it links to",
       "field": "suspendedBy",
       "entries": [
-        "group-initiative",
-        "initiative-group-roll"
+        "group-initiative"
       ],
       "verdict": "R",
       "locator": "Combat / Initiative / p. 13",
@@ -1544,8 +1375,7 @@
       "id": "group-initiative|evidence|initiative-group-roll|reference span quotes text the blind span omits",
       "field": "evidence",
       "entries": [
-        "group-initiative",
-        "initiative-group-roll"
+        "group-initiative"
       ],
       "verdict": "N",
       "reason": "Span choice: one span carries a sentence the other entry does not need; both support the same rule."
@@ -1554,8 +1384,7 @@
       "id": "hidden-attacker-revealed|dependsOn|hidden-attack-reveals|reference has edge to actions-table; no blind edge reaches it",
       "field": "dependsOn",
       "entries": [
-        "hidden-attacker-revealed",
-        "hidden-attack-reveals"
+        "hidden-attacker-revealed"
       ],
       "verdict": "N",
       "reason": "Equivalent edge: the Hide action is in actions-table (reference) and declined as hide-action (blind). The blind map also gates on it; being hidden is the caller's fact and can come from other rules than the Hide action, and the reference records neither gate."
@@ -1564,7 +1393,6 @@
       "id": "incapacitated-condition|evidence|incapacitated-condition|blind span quotes text the reference span omits",
       "field": "evidence",
       "entries": [
-        "incapacitated-condition",
         "incapacitated-condition"
       ],
       "verdict": "N",
@@ -1574,8 +1402,7 @@
       "id": "independent-mount|dependsOn|mount-independent|reference has edge to initiative-order; no blind edge reaches it",
       "field": "dependsOn",
       "entries": [
-        "independent-mount",
-        "mount-independent"
+        "independent-mount"
       ],
       "verdict": "R",
       "locator": "Combat / Controlling a Mount / p. 16",
@@ -1586,8 +1413,7 @@
       "id": "independent-mount|enabledBy|mount-independent|reference has edge to mount-eligibility; no blind edge reaches it",
       "field": "enabledBy",
       "entries": [
-        "independent-mount",
-        "mount-independent"
+        "independent-mount"
       ],
       "verdict": "R",
       "locator": "Combat / Mounted Combat / p. 15",
@@ -1598,8 +1424,7 @@
       "id": "independent-mount|enabledBy|mount-independent|blind has edge to mount-dismount-cost; reference has no edge to what it links to",
       "field": "enabledBy",
       "entries": [
-        "independent-mount",
-        "mount-independent"
+        "independent-mount"
       ],
       "verdict": "B",
       "locator": "Combat / Mounting and Dismounting / p. 15",
@@ -1610,7 +1435,6 @@
       "id": "initiative-order|dependsOn|initiative-order|reference has edge to initiative-roll; no blind edge reaches it",
       "field": "dependsOn",
       "entries": [
-        "initiative-order",
         "initiative-order"
       ],
       "verdict": "N",
@@ -1620,7 +1444,6 @@
       "id": "initiative-order|enabledBy|initiative-order|blind has edge to combat-rounds-and-turns; reference has no edge to what it links to",
       "field": "enabledBy",
       "entries": [
-        "initiative-order",
         "initiative-order"
       ],
       "verdict": "R",
@@ -1632,7 +1455,6 @@
       "id": "initiative-order|suspendedBy|initiative-order|blind has edge to combat-end-defeat; reference has no edge to what it links to",
       "field": "suspendedBy",
       "entries": [
-        "initiative-order",
         "initiative-order"
       ],
       "verdict": "R",
@@ -1644,7 +1466,6 @@
       "id": "initiative-order|suspendedBy|initiative-order|blind has edge to combat-end-agreement; reference has no edge to what it links to",
       "field": "suspendedBy",
       "entries": [
-        "initiative-order",
         "initiative-order"
       ],
       "verdict": "R",
@@ -1656,7 +1477,6 @@
       "id": "initiative-order|suspendedBy|initiative-order|blind has edge to mount-controlled-initiative; reference has no edge to what it links to",
       "field": "suspendedBy",
       "entries": [
-        "initiative-order",
         "initiative-order"
       ],
       "verdict": "R",
@@ -1668,7 +1488,6 @@
       "id": "initiative-order|evidence|initiative-order|reference span quotes text the blind span omits",
       "field": "evidence",
       "entries": [
-        "initiative-order",
         "initiative-order"
       ],
       "verdict": "N",
@@ -1678,7 +1497,6 @@
       "id": "initiative-roll|enabledBy|initiative-roll|blind has edge to combat-rounds-and-turns; reference has no edge to what it links to",
       "field": "enabledBy",
       "entries": [
-        "initiative-roll",
         "initiative-roll"
       ],
       "verdict": "R",
@@ -1690,7 +1508,6 @@
       "id": "initiative-roll|suspendedBy|initiative-roll|reference has edge to initiative-score-option; no blind edge reaches it",
       "field": "suspendedBy",
       "entries": [
-        "initiative-roll",
         "initiative-roll"
       ],
       "verdict": "R",
@@ -1702,7 +1519,6 @@
       "id": "initiative-roll|suspendedBy|initiative-roll|blind has edge to combat-end-defeat; reference has no edge to what it links to",
       "field": "suspendedBy",
       "entries": [
-        "initiative-roll",
         "initiative-roll"
       ],
       "verdict": "R",
@@ -1714,7 +1530,6 @@
       "id": "initiative-roll|suspendedBy|initiative-roll|blind has edge to combat-end-agreement; reference has no edge to what it links to",
       "field": "suspendedBy",
       "entries": [
-        "initiative-roll",
         "initiative-roll"
       ],
       "verdict": "R",
@@ -1726,7 +1541,6 @@
       "id": "initiative-roll|evidence|initiative-roll|blind span quotes text the reference span omits",
       "field": "evidence",
       "entries": [
-        "initiative-roll",
         "initiative-roll"
       ],
       "verdict": "N",
@@ -1736,7 +1550,6 @@
       "id": "initiative-ties|clarity|initiative-ties|differs",
       "field": "clarity",
       "entries": [
-        "initiative-ties",
         "initiative-ties"
       ],
       "verdict": "U",
@@ -1748,7 +1561,6 @@
       "id": "initiative-ties|ambiguity|initiative-ties|present in one map only",
       "field": "ambiguity",
       "entries": [
-        "initiative-ties",
         "initiative-ties"
       ],
       "verdict": "U",
@@ -1760,7 +1572,6 @@
       "id": "initiative-ties|enabledBy|initiative-ties|blind has edge to combat-rounds-and-turns; reference has no edge to what it links to",
       "field": "enabledBy",
       "entries": [
-        "initiative-ties",
         "initiative-ties"
       ],
       "verdict": "R",
@@ -1772,7 +1583,6 @@
       "id": "initiative-ties|suspendedBy|initiative-ties|blind has edge to combat-end-defeat; reference has no edge to what it links to",
       "field": "suspendedBy",
       "entries": [
-        "initiative-ties",
         "initiative-ties"
       ],
       "verdict": "R",
@@ -1784,7 +1594,6 @@
       "id": "initiative-ties|suspendedBy|initiative-ties|blind has edge to combat-end-agreement; reference has no edge to what it links to",
       "field": "suspendedBy",
       "entries": [
-        "initiative-ties",
         "initiative-ties"
       ],
       "verdict": "R",
@@ -1796,8 +1605,7 @@
       "id": "melee-within-reach|evidence|melee-attack-definition|blind span quotes text the reference span omits",
       "field": "evidence",
       "entries": [
-        "melee-within-reach",
-        "melee-attack-definition"
+        "melee-within-reach"
       ],
       "verdict": "N",
       "reason": "Span choice: one span carries a sentence the other entry does not need; both support the same rule."
@@ -1806,8 +1614,7 @@
       "id": "mount-control-requires-training|clarity|mount-control-training|differs",
       "field": "clarity",
       "entries": [
-        "mount-control-requires-training",
-        "mount-control-training"
+        "mount-control-requires-training"
       ],
       "verdict": "U",
       "locator": "Combat / Controlling a Mount / p. 16",
@@ -1818,8 +1625,7 @@
       "id": "mount-control-requires-training|ambiguity|mount-control-training|present in one map only",
       "field": "ambiguity",
       "entries": [
-        "mount-control-requires-training",
-        "mount-control-training"
+        "mount-control-requires-training"
       ],
       "verdict": "U",
       "locator": "Combat / Controlling a Mount / p. 16",
@@ -1830,8 +1636,7 @@
       "id": "mount-control-requires-training|enabledBy|mount-control-training|reference has edge to mount-eligibility; no blind edge reaches it",
       "field": "enabledBy",
       "entries": [
-        "mount-control-requires-training",
-        "mount-control-training"
+        "mount-control-requires-training"
       ],
       "verdict": "R",
       "locator": "Combat / Mounted Combat / p. 15",
@@ -1842,8 +1647,7 @@
       "id": "mount-control-requires-training|enabledBy|mount-control-training|blind has edge to mount-dismount-cost; reference has no edge to what it links to",
       "field": "enabledBy",
       "entries": [
-        "mount-control-requires-training",
-        "mount-control-training"
+        "mount-control-requires-training"
       ],
       "verdict": "B",
       "locator": "Combat / Mounting and Dismounting / p. 15",
@@ -1854,7 +1658,6 @@
       "id": "mount-eligibility|clarity|mount-eligibility|differs",
       "field": "clarity",
       "entries": [
-        "mount-eligibility",
         "mount-eligibility"
       ],
       "verdict": "N",
@@ -1866,7 +1669,6 @@
       "id": "mount-eligibility|ambiguity|mount-eligibility|present in one map only",
       "field": "ambiguity",
       "entries": [
-        "mount-eligibility",
         "mount-eligibility"
       ],
       "verdict": "N",
@@ -1878,7 +1680,6 @@
       "id": "mount-eligibility|dependsOn|mount-eligibility|reference has edge to appropriate-anatomy; no blind edge reaches it",
       "field": "dependsOn",
       "entries": [
-        "mount-eligibility",
         "mount-eligibility"
       ],
       "verdict": "N",
@@ -1890,8 +1691,7 @@
       "id": "mounting-cost|clarity|mount-dismount-cost|differs",
       "field": "clarity",
       "entries": [
-        "mounting-cost",
-        "mount-dismount-cost"
+        "mounting-cost"
       ],
       "verdict": "B",
       "locator": "Combat / Movement and Position / p. 14",
@@ -1902,8 +1702,7 @@
       "id": "mounting-cost|ambiguity|mount-dismount-cost|present in one map only",
       "field": "ambiguity",
       "entries": [
-        "mounting-cost",
-        "mount-dismount-cost"
+        "mounting-cost"
       ],
       "verdict": "B",
       "locator": "Combat / Movement and Position / p. 14",
@@ -1914,8 +1713,7 @@
       "id": "move-up-to-speed|dependsOn|movement-up-to-speed|reference has edge to speed-and-size-sources; no blind edge reaches it",
       "field": "dependsOn",
       "entries": [
-        "move-up-to-speed",
-        "movement-up-to-speed"
+        "move-up-to-speed"
       ],
       "verdict": "N",
       "reason": "Equivalent edge: Speed as a parameter, reached through speed-and-size-sources (reference) or the glossary's Speed (blind)."
@@ -1924,8 +1722,7 @@
       "id": "move-up-to-speed|enabledBy|movement-up-to-speed|blind has edge to combat-rounds-and-turns; reference has no edge to what it links to",
       "field": "enabledBy",
       "entries": [
-        "move-up-to-speed",
-        "movement-up-to-speed"
+        "move-up-to-speed"
       ],
       "verdict": "R",
       "locator": "Playing the Game / Rhythm of Play / p. 5",
@@ -1936,8 +1733,7 @@
       "id": "move-up-to-speed|suspendedBy|movement-up-to-speed|blind has edge to combat-end-defeat; reference has no edge to what it links to",
       "field": "suspendedBy",
       "entries": [
-        "move-up-to-speed",
-        "movement-up-to-speed"
+        "move-up-to-speed"
       ],
       "verdict": "R",
       "locator": "Playing the Game / Rhythm of Play / p. 5",
@@ -1948,8 +1744,7 @@
       "id": "move-up-to-speed|suspendedBy|movement-up-to-speed|blind has edge to combat-end-agreement; reference has no edge to what it links to",
       "field": "suspendedBy",
       "entries": [
-        "move-up-to-speed",
-        "movement-up-to-speed"
+        "move-up-to-speed"
       ],
       "verdict": "R",
       "locator": "Playing the Game / Rhythm of Play / p. 5",
@@ -1960,8 +1755,7 @@
       "id": "movement-modes-glossary|evidence|glossary-crawling|spans overlap but neither contains the other",
       "field": "evidence",
       "entries": [
-        "movement-modes-glossary",
-        "glossary-crawling"
+        "movement-modes-glossary"
       ],
       "verdict": "N",
       "reason": "Span choice: one span carries a sentence the other entry does not need; both support the same rule."
@@ -1970,8 +1764,7 @@
       "id": "next-round|dependsOn|combat-rounds-and-turns|reference has edge to combat-rounds; no blind edge reaches it",
       "field": "dependsOn",
       "entries": [
-        "next-round",
-        "combat-rounds-and-turns"
+        "next-round"
       ],
       "verdict": "N",
       "locator": "Combat / The Order of Combat / p. 13",
@@ -1982,8 +1775,7 @@
       "id": "next-round|dependsOn|combat-rounds-and-turns|reference has edge to side-defeated; no blind edge reaches it",
       "field": "dependsOn",
       "entries": [
-        "next-round",
-        "combat-rounds-and-turns"
+        "next-round"
       ],
       "verdict": "N",
       "locator": "Combat / The Order of Combat / p. 13",
@@ -1994,8 +1786,7 @@
       "id": "next-round|dependsOn|combat-rounds-and-turns|blind has edge to initiative-order; reference has no edge to what it links to",
       "field": "dependsOn",
       "entries": [
-        "next-round",
-        "combat-rounds-and-turns"
+        "next-round"
       ],
       "verdict": "B",
       "locator": "Combat / The Order of Combat / p. 13",
@@ -2006,8 +1797,7 @@
       "id": "next-round|suspendedBy|combat-rounds-and-turns|blind has edge to combat-end-defeat; reference has no edge to what it links to",
       "field": "suspendedBy",
       "entries": [
-        "next-round",
-        "combat-rounds-and-turns"
+        "next-round"
       ],
       "verdict": "N",
       "locator": "Combat / The Order of Combat / p. 13",
@@ -2018,8 +1808,7 @@
       "id": "next-round|suspendedBy|combat-rounds-and-turns|blind has edge to combat-end-agreement; reference has no edge to what it links to",
       "field": "suspendedBy",
       "entries": [
-        "next-round",
-        "combat-rounds-and-turns"
+        "next-round"
       ],
       "verdict": "N",
       "locator": "Combat / The Order of Combat / p. 13",
@@ -2030,8 +1819,7 @@
       "id": "next-round|evidence|combat-rounds-and-turns|blind span quotes text the reference span omits",
       "field": "evidence",
       "entries": [
-        "next-round",
-        "combat-rounds-and-turns"
+        "next-round"
       ],
       "verdict": "N",
       "reason": "Span choice: one span carries a sentence the other entry does not need; both support the same rule."
@@ -2040,8 +1828,7 @@
       "id": "no-willing-end-in-occupied-space|dependsOn|no-ending-move-in-occupied|reference has edge to moving-through-creatures; no blind edge reaches it",
       "field": "dependsOn",
       "entries": [
-        "no-willing-end-in-occupied-space",
-        "no-ending-move-in-occupied"
+        "no-willing-end-in-occupied-space"
       ],
       "verdict": "R",
       "locator": "Combat / Moving around Other Creatures / p. 14",
@@ -2052,8 +1839,7 @@
       "id": "normal-and-long-range|dependsOn|range-normal-long|reference has edge to advantage-disadvantage; no blind edge reaches it",
       "field": "dependsOn",
       "entries": [
-        "normal-and-long-range",
-        "range-normal-long"
+        "normal-and-long-range"
       ],
       "verdict": "N",
       "reason": "Equivalent edge to a different carrier of the same out-of-slice rule: the reference declines Advantage and Disadvantage as advantage-disadvantage (p. 7), the blind map as the Rules Glossary's Advantage and Disadvantage entries, which the comparator cannot link to it."
@@ -2062,8 +1848,7 @@
       "id": "normal-and-long-range|dependsOn|range-normal-long|blind has edge to range-single; reference has no edge to what it links to",
       "field": "dependsOn",
       "entries": [
-        "normal-and-long-range",
-        "range-normal-long"
+        "normal-and-long-range"
       ],
       "verdict": "N",
       "locator": "Combat / Range / p. 15",
@@ -2074,8 +1859,7 @@
       "id": "normal-and-long-range|suspendedBy|range-normal-long|blind has edge to underwater-ranged; reference has no edge to what it links to",
       "field": "suspendedBy",
       "entries": [
-        "normal-and-long-range",
-        "range-normal-long"
+        "normal-and-long-range"
       ],
       "verdict": "R",
       "locator": "Combat / Impeded Weapons / p. 16",
@@ -2086,8 +1870,7 @@
       "id": "opportunity-attack|dependsOn|oa-make|reference has edge to attack-structure; no blind edge reaches it",
       "field": "dependsOn",
       "entries": [
-        "opportunity-attack",
-        "oa-make"
+        "opportunity-attack"
       ],
       "verdict": "R",
       "locator": "Combat / Opportunity Attacks / p. 15",
@@ -2098,8 +1881,7 @@
       "id": "opportunity-attack|dependsOn|oa-make|blind has edge to reach-default; reference has no edge to what it links to",
       "field": "dependsOn",
       "entries": [
-        "opportunity-attack",
-        "oa-make"
+        "opportunity-attack"
       ],
       "verdict": "N",
       "reason": "Equivalent edge: the blind map reaches reach through reach-default, the reference through melee-within-reach, which depends on reach."
@@ -2108,8 +1890,7 @@
       "id": "opportunity-attack|suspendedBy|oa-make|blind has edge to incapacitated-condition; reference has no edge to what it links to",
       "field": "suspendedBy",
       "entries": [
-        "opportunity-attack",
-        "oa-make"
+        "opportunity-attack"
       ],
       "verdict": "B",
       "locator": "Rules Glossary / Incapacitated [Condition] / p. 184",
@@ -2120,8 +1901,7 @@
       "id": "opportunity-attack-avoidance|dependsOn|oa-no-provoke-teleport-forced|reference has edge to actions-table; no blind edge reaches it",
       "field": "dependsOn",
       "entries": [
-        "opportunity-attack-avoidance",
-        "oa-no-provoke-teleport-forced"
+        "opportunity-attack-avoidance"
       ],
       "verdict": "N",
       "reason": "Split/merge artefact: the two maps divide this text into different entries and the comparator paired fragments. The reference's opportunity-attack-avoidance holds the Disengage sentence (actions-table); the blind map splits it into oa-avoid-disengage."
@@ -2130,8 +1910,7 @@
       "id": "opportunity-attack-avoidance|evidence|oa-no-provoke-teleport-forced|reference span quotes text the blind span omits",
       "field": "evidence",
       "entries": [
-        "opportunity-attack-avoidance",
-        "oa-no-provoke-teleport-forced"
+        "opportunity-attack-avoidance"
       ],
       "verdict": "N",
       "reason": "Span choice: one span carries a sentence the other entry does not need; both support the same rule."
@@ -2140,7 +1919,6 @@
       "id": "prone-condition|evidence|prone-condition|blind span quotes text the reference span omits",
       "field": "evidence",
       "entries": [
-        "prone-condition",
         "prone-condition"
       ],
       "verdict": "N",
@@ -2150,8 +1928,7 @@
       "id": "ranged-in-close-combat|dependsOn|ranged-close-combat|reference has edge to advantage-disadvantage; no blind edge reaches it",
       "field": "dependsOn",
       "entries": [
-        "ranged-in-close-combat",
-        "ranged-close-combat"
+        "ranged-in-close-combat"
       ],
       "verdict": "N",
       "reason": "Equivalent edge to a different carrier of the same out-of-slice rule: the reference declines Advantage and Disadvantage as advantage-disadvantage (p. 7), the blind map as the Rules Glossary's Advantage and Disadvantage entries, which the comparator cannot link to it."
@@ -2160,8 +1937,7 @@
       "id": "ranged-in-close-combat|evidence|ranged-close-combat|blind span quotes text the reference span omits",
       "field": "evidence",
       "entries": [
-        "ranged-in-close-combat",
-        "ranged-close-combat"
+        "ranged-in-close-combat"
       ],
       "verdict": "N",
       "reason": "Span choice: one span carries a sentence the other entry does not need; both support the same rule."
@@ -2170,8 +1946,7 @@
       "id": "reactions|evidence|reaction-once|reference span quotes text the blind span omits",
       "field": "evidence",
       "entries": [
-        "reactions",
-        "reaction-once"
+        "reactions"
       ],
       "verdict": "N",
       "reason": "Span choice: one span carries a sentence the other entry does not need; both support the same rule."
@@ -2180,8 +1955,7 @@
       "id": "round-duration|kind|combat-rounds-and-turns|differs",
       "field": "kind",
       "entries": [
-        "round-duration",
-        "combat-rounds-and-turns"
+        "round-duration"
       ],
       "verdict": "N",
       "reason": "Split/merge artefact: the two maps divide this text into different entries and the comparator paired fragments. The comparator paired the reference's round-duration with the blind merged rounds entry, whose span contains it; the blind map's own duration entry is combat-round-duration, a value, ambiguous, as the reference's is."
@@ -2190,8 +1964,7 @@
       "id": "round-duration|ambiguity.conflict|combat-rounds-and-turns|present in one map only",
       "field": "ambiguity.conflict",
       "entries": [
-        "round-duration",
-        "combat-rounds-and-turns"
+        "round-duration"
       ],
       "verdict": "N",
       "reason": "Split/merge artefact: the two maps divide this text into different entries and the comparator paired fragments. The comparator paired the reference's round-duration with the blind merged rounds entry, whose span contains it; the blind map's own duration entry is combat-round-duration, a value, ambiguous, as the reference's is."
@@ -2200,8 +1973,7 @@
       "id": "round-duration|dependsOn|combat-rounds-and-turns|blind has edge to initiative-roll; reference has no edge to what it links to",
       "field": "dependsOn",
       "entries": [
-        "round-duration",
-        "combat-rounds-and-turns"
+        "round-duration"
       ],
       "verdict": "N",
       "reason": "Split/merge artefact: the two maps divide this text into different entries and the comparator paired fragments. The comparator paired the reference's round-duration with the blind merged rounds entry, whose span contains it; the blind map's own duration entry is combat-round-duration, a value, ambiguous, as the reference's is."
@@ -2210,8 +1982,7 @@
       "id": "round-duration|dependsOn|combat-rounds-and-turns|blind has edge to initiative-order; reference has no edge to what it links to",
       "field": "dependsOn",
       "entries": [
-        "round-duration",
-        "combat-rounds-and-turns"
+        "round-duration"
       ],
       "verdict": "N",
       "reason": "Split/merge artefact: the two maps divide this text into different entries and the comparator paired fragments. The comparator paired the reference's round-duration with the blind merged rounds entry, whose span contains it; the blind map's own duration entry is combat-round-duration, a value, ambiguous, as the reference's is."
@@ -2220,8 +1991,7 @@
       "id": "round-duration|suspendedBy|combat-rounds-and-turns|blind has edge to combat-end-defeat; reference has no edge to what it links to",
       "field": "suspendedBy",
       "entries": [
-        "round-duration",
-        "combat-rounds-and-turns"
+        "round-duration"
       ],
       "verdict": "N",
       "locator": "Combat / The Order of Combat / p. 13",
@@ -2232,8 +2002,7 @@
       "id": "round-duration|suspendedBy|combat-rounds-and-turns|blind has edge to combat-end-agreement; reference has no edge to what it links to",
       "field": "suspendedBy",
       "entries": [
-        "round-duration",
-        "combat-rounds-and-turns"
+        "round-duration"
       ],
       "verdict": "N",
       "locator": "Combat / The Order of Combat / p. 13",
@@ -2244,8 +2013,7 @@
       "id": "round-duration|evidence|combat-rounds-and-turns|blind span quotes text the reference span omits",
       "field": "evidence",
       "entries": [
-        "round-duration",
-        "combat-rounds-and-turns"
+        "round-duration"
       ],
       "verdict": "N",
       "reason": "Span choice: one span carries a sentence the other entry does not need; both support the same rule."
@@ -2254,7 +2022,6 @@
       "id": "saving-throws|evidence|saving-throws|blind span quotes text the reference span omits",
       "field": "evidence",
       "entries": [
-        "saving-throws",
         "saving-throws"
       ],
       "verdict": "N",
@@ -2264,8 +2031,7 @@
       "id": "side-defeated|enabledBy|combat-end-defeat|blind has edge to combat-rounds-and-turns; reference has no edge to what it links to",
       "field": "enabledBy",
       "entries": [
-        "side-defeated",
-        "combat-end-defeat"
+        "side-defeated"
       ],
       "verdict": "R",
       "locator": "Combat / Ending Combat / p. 14",
@@ -2276,8 +2042,7 @@
       "id": "side-defeated|evidence|combat-end-defeat|reference span quotes text the blind span omits",
       "field": "evidence",
       "entries": [
-        "side-defeated",
-        "combat-end-defeat"
+        "side-defeated"
       ],
       "verdict": "N",
       "reason": "Span choice: one span carries a sentence the other entry does not need; both support the same rule."
@@ -2286,8 +2051,7 @@
       "id": "sides-agree-to-end|kind|combat-end-defeat|differs",
       "field": "kind",
       "entries": [
-        "sides-agree-to-end",
-        "combat-end-defeat"
+        "sides-agree-to-end"
       ],
       "verdict": "N",
       "locator": "Combat / Ending Combat / p. 14",
@@ -2298,8 +2062,7 @@
       "id": "sides-agree-to-end|clarity|combat-end-defeat|differs",
       "field": "clarity",
       "entries": [
-        "sides-agree-to-end",
-        "combat-end-defeat"
+        "sides-agree-to-end"
       ],
       "verdict": "N",
       "reason": "Split/merge artefact: the two maps divide this text into different entries and the comparator paired fragments. The defeat gap is on side-defeated in the reference and on combat-end-defeat in the blind map; the comparator paired the blind defeat entry with the agreement assertion."
@@ -2308,8 +2071,7 @@
       "id": "sides-agree-to-end|ambiguity|combat-end-defeat|present in one map only",
       "field": "ambiguity",
       "entries": [
-        "sides-agree-to-end",
-        "combat-end-defeat"
+        "sides-agree-to-end"
       ],
       "verdict": "N",
       "reason": "Split/merge artefact: the two maps divide this text into different entries and the comparator paired fragments. The defeat gap is on side-defeated in the reference and on combat-end-defeat in the blind map; the comparator paired the blind defeat entry with the agreement assertion."
@@ -2318,8 +2080,7 @@
       "id": "sides-agree-to-end|enabledBy|combat-end-defeat|blind has edge to combat-rounds-and-turns; reference has no edge to what it links to",
       "field": "enabledBy",
       "entries": [
-        "sides-agree-to-end",
-        "combat-end-defeat"
+        "sides-agree-to-end"
       ],
       "verdict": "R",
       "locator": "Combat / Ending Combat / p. 14",
@@ -2330,8 +2091,7 @@
       "id": "sides-agree-to-end|evidence|combat-end-defeat|reference span quotes text the blind span omits",
       "field": "evidence",
       "entries": [
-        "sides-agree-to-end",
-        "combat-end-defeat"
+        "sides-agree-to-end"
       ],
       "verdict": "N",
       "reason": "Span choice: one span carries a sentence the other entry does not need; both support the same rule."
@@ -2340,8 +2100,7 @@
       "id": "speed-and-size-sources|scope|speed-source|differs",
       "field": "scope",
       "entries": [
-        "speed-and-size-sources",
-        "speed-source"
+        "speed-and-size-sources"
       ],
       "verdict": "R",
       "locator": "Combat / Movement and Position / p. 14",
@@ -2352,8 +2111,7 @@
       "id": "surprise-disadvantage|clarity|initiative-surprise|differs",
       "field": "clarity",
       "entries": [
-        "surprise-disadvantage",
-        "initiative-surprise"
+        "surprise-disadvantage"
       ],
       "verdict": "N",
       "locator": "Combat / Initiative / p. 13",
@@ -2364,8 +2122,7 @@
       "id": "surprise-disadvantage|ambiguity|initiative-surprise|present in one map only",
       "field": "ambiguity",
       "entries": [
-        "surprise-disadvantage",
-        "initiative-surprise"
+        "surprise-disadvantage"
       ],
       "verdict": "N",
       "locator": "Combat / Initiative / p. 13",
@@ -2376,8 +2133,7 @@
       "id": "surprise-disadvantage|dependsOn|initiative-surprise|reference has edge to advantage-disadvantage; no blind edge reaches it",
       "field": "dependsOn",
       "entries": [
-        "surprise-disadvantage",
-        "initiative-surprise"
+        "surprise-disadvantage"
       ],
       "verdict": "N",
       "reason": "Equivalent edge to a different carrier of the same out-of-slice rule: the reference declines Advantage and Disadvantage as advantage-disadvantage (p. 7), the blind map as the Rules Glossary's Advantage and Disadvantage entries, which the comparator cannot link to it."
@@ -2386,8 +2142,7 @@
       "id": "surprise-disadvantage|dependsOn|initiative-surprise|reference has edge to surprised; no blind edge reaches it",
       "field": "dependsOn",
       "entries": [
-        "surprise-disadvantage",
-        "initiative-surprise"
+        "surprise-disadvantage"
       ],
       "verdict": "N",
       "locator": "Combat / Initiative / p. 13",
@@ -2398,8 +2153,7 @@
       "id": "surprise-disadvantage|enabledBy|initiative-surprise|blind has edge to combat-rounds-and-turns; reference has no edge to what it links to",
       "field": "enabledBy",
       "entries": [
-        "surprise-disadvantage",
-        "initiative-surprise"
+        "surprise-disadvantage"
       ],
       "verdict": "R",
       "locator": "Combat / Initiative / p. 13",
@@ -2410,8 +2164,7 @@
       "id": "surprise-disadvantage|suspendedBy|initiative-surprise|blind has edge to combat-end-defeat; reference has no edge to what it links to",
       "field": "suspendedBy",
       "entries": [
-        "surprise-disadvantage",
-        "initiative-surprise"
+        "surprise-disadvantage"
       ],
       "verdict": "R",
       "locator": "Combat / Initiative / p. 13",
@@ -2422,8 +2175,7 @@
       "id": "surprise-disadvantage|suspendedBy|initiative-surprise|blind has edge to combat-end-agreement; reference has no edge to what it links to",
       "field": "suspendedBy",
       "entries": [
-        "surprise-disadvantage",
-        "initiative-surprise"
+        "surprise-disadvantage"
       ],
       "verdict": "R",
       "locator": "Combat / Initiative / p. 13",
@@ -2434,8 +2186,7 @@
       "id": "surprise-round|evidence|surprise-lose-turn|reference span quotes text the blind span omits",
       "field": "evidence",
       "entries": [
-        "surprise-round",
-        "surprise-lose-turn"
+        "surprise-round"
       ],
       "verdict": "N",
       "reason": "Span choice: one span carries a sentence the other entry does not need; both support the same rule."
@@ -2444,8 +2195,7 @@
       "id": "surprised|dependsOn|initiative-surprise|blind has edge to initiative-roll; reference has no edge to what it links to",
       "field": "dependsOn",
       "entries": [
-        "surprised",
-        "initiative-surprise"
+        "surprised"
       ],
       "verdict": "N",
       "reason": "Split/merge artefact: the two maps divide this text into different entries and the comparator paired fragments. The reference's surprise-disadvantage, not its surprised, depends on initiative-roll."
@@ -2454,8 +2204,7 @@
       "id": "surprised|enabledBy|initiative-surprise|blind has edge to combat-rounds-and-turns; reference has no edge to what it links to",
       "field": "enabledBy",
       "entries": [
-        "surprised",
-        "initiative-surprise"
+        "surprised"
       ],
       "verdict": "R",
       "locator": "Combat / Initiative / p. 13",
@@ -2466,8 +2215,7 @@
       "id": "surprised|suspendedBy|initiative-surprise|blind has edge to combat-end-defeat; reference has no edge to what it links to",
       "field": "suspendedBy",
       "entries": [
-        "surprised",
-        "initiative-surprise"
+        "surprised"
       ],
       "verdict": "R",
       "locator": "Combat / Initiative / p. 13",
@@ -2478,8 +2226,7 @@
       "id": "surprised|suspendedBy|initiative-surprise|blind has edge to combat-end-agreement; reference has no edge to what it links to",
       "field": "suspendedBy",
       "entries": [
-        "surprised",
-        "initiative-surprise"
+        "surprised"
       ],
       "verdict": "R",
       "locator": "Combat / Initiative / p. 13",
@@ -2490,8 +2237,7 @@
       "id": "total-cover|kind|cover-degree-benefits|differs",
       "field": "kind",
       "entries": [
-        "total-cover",
-        "cover-degree-benefits"
+        "total-cover"
       ],
       "verdict": "N",
       "reason": "Split/merge artefact: the two maps divide this text into different entries and the comparator paired fragments. The reference's total-cover is the Total row as an operation depending on cover-degree; the blind partner is the whole benefits table, a value."
@@ -2500,8 +2246,7 @@
       "id": "total-cover|dependsOn|cover-degree-benefits|reference has edge to cover-degree; no blind edge reaches it",
       "field": "dependsOn",
       "entries": [
-        "total-cover",
-        "cover-degree-benefits"
+        "total-cover"
       ],
       "verdict": "N",
       "reason": "Split/merge artefact: the two maps divide this text into different entries and the comparator paired fragments. The reference's total-cover is the Total row as an operation depending on cover-degree; the blind partner is the whole benefits table, a value."
@@ -2510,7 +2255,6 @@
       "id": "turn-move-and-action|dependsOn|turn-move-and-action|reference has edge to move-up-to-speed; no blind edge reaches it",
       "field": "dependsOn",
       "entries": [
-        "turn-move-and-action",
         "turn-move-and-action"
       ],
       "verdict": "R",
@@ -2522,7 +2266,6 @@
       "id": "turn-move-and-action|enabledBy|turn-move-and-action|blind has edge to combat-rounds-and-turns; reference has no edge to what it links to",
       "field": "enabledBy",
       "entries": [
-        "turn-move-and-action",
         "turn-move-and-action"
       ],
       "verdict": "R",
@@ -2534,7 +2277,6 @@
       "id": "turn-move-and-action|suspendedBy|turn-move-and-action|blind has edge to combat-end-defeat; reference has no edge to what it links to",
       "field": "suspendedBy",
       "entries": [
-        "turn-move-and-action",
         "turn-move-and-action"
       ],
       "verdict": "R",
@@ -2546,7 +2288,6 @@
       "id": "turn-move-and-action|suspendedBy|turn-move-and-action|blind has edge to combat-end-agreement; reference has no edge to what it links to",
       "field": "suspendedBy",
       "entries": [
-        "turn-move-and-action",
         "turn-move-and-action"
       ],
       "verdict": "R",
@@ -2558,7 +2299,6 @@
       "id": "underwater-fire-resistance|dependsOn|underwater-fire-resistance|reference has edge to damage-and-healing; no blind edge reaches it",
       "field": "dependsOn",
       "entries": [
-        "underwater-fire-resistance",
         "underwater-fire-resistance"
       ],
       "verdict": "B",
@@ -2570,7 +2310,6 @@
       "id": "underwater-melee|dependsOn|underwater-melee|reference has edge to advantage-disadvantage; no blind edge reaches it",
       "field": "dependsOn",
       "entries": [
-        "underwater-melee",
         "underwater-melee"
       ],
       "verdict": "N",
@@ -2580,7 +2319,6 @@
       "id": "underwater-ranged|dependsOn|underwater-ranged|reference has edge to advantage-disadvantage; no blind edge reaches it",
       "field": "dependsOn",
       "entries": [
-        "underwater-ranged",
         "underwater-ranged"
       ],
       "verdict": "N",
@@ -2590,7 +2328,6 @@
       "id": "unseen-attacker-advantage|dependsOn|unseen-attacker-advantage|reference has edge to advantage-disadvantage; no blind edge reaches it",
       "field": "dependsOn",
       "entries": [
-        "unseen-attacker-advantage",
         "unseen-attacker-advantage"
       ],
       "verdict": "N",
@@ -2600,7 +2337,6 @@
       "id": "unseen-target-disadvantage|dependsOn|unseen-target-disadvantage|reference has edge to advantage-disadvantage; no blind edge reaches it",
       "field": "dependsOn",
       "entries": [
-        "unseen-target-disadvantage",
         "unseen-target-disadvantage"
       ],
       "verdict": "N",
@@ -2610,8 +2346,7 @@
       "id": "wrong-location-misses|clarity|unseen-target-wrong-location|differs",
       "field": "clarity",
       "entries": [
-        "wrong-location-misses",
-        "unseen-target-wrong-location"
+        "wrong-location-misses"
       ],
       "verdict": "B",
       "locator": "Combat / Unseen Attackers and Targets / p. 14",
@@ -2622,8 +2357,7 @@
       "id": "wrong-location-misses|ambiguity|unseen-target-wrong-location|present in one map only",
       "field": "ambiguity",
       "entries": [
-        "wrong-location-misses",
-        "unseen-target-wrong-location"
+        "wrong-location-misses"
       ],
       "verdict": "B",
       "locator": "Combat / Unseen Attackers and Targets / p. 14",
@@ -2634,8 +2368,7 @@
       "id": "communication-cost|clarity|communicate-extended|differs (blind entry links here but is not its partner)",
       "field": "clarity",
       "entries": [
-        "communication-cost",
-        "communicate-extended"
+        "communication-cost"
       ],
       "verdict": "N",
       "reason": "Split/merge artefact: the two maps divide this text into different entries and the comparator paired fragments. The brief/extended gap sits on brief-or-extended-communication in the reference and on both blind halves."
@@ -2644,8 +2377,7 @@
       "id": "communication-cost|ambiguity|communicate-extended|present in one map only (blind entry links here but is not its partner)",
       "field": "ambiguity",
       "entries": [
-        "communication-cost",
-        "communicate-extended"
+        "communication-cost"
       ],
       "verdict": "N",
       "reason": "Split/merge artefact: the two maps divide this text into different entries and the comparator paired fragments. The brief/extended gap sits on brief-or-extended-communication in the reference and on both blind halves."
@@ -2654,8 +2386,7 @@
       "id": "doing-nothing|scope|doing-nothing-advice|differs (blind entry links here but is not its partner)",
       "field": "scope",
       "entries": [
-        "doing-nothing",
-        "doing-nothing-advice"
+        "doing-nothing"
       ],
       "verdict": "N",
       "locator": "Combat / Your Turn / p. 14",
@@ -2666,8 +2397,7 @@
       "id": "falling-off|clarity|falling-off-prone|differs (blind entry links here but is not its partner)",
       "field": "clarity",
       "entries": [
-        "falling-off",
-        "falling-off-prone"
+        "falling-off"
       ],
       "verdict": "N",
       "locator": "Combat / Falling Off / p. 16",
@@ -2678,8 +2408,7 @@
       "id": "falling-off|ambiguity|falling-off-prone|present in one map only (blind entry links here but is not its partner)",
       "field": "ambiguity",
       "entries": [
-        "falling-off",
-        "falling-off-prone"
+        "falling-off"
       ],
       "verdict": "N",
       "locator": "Combat / Falling Off / p. 16",
@@ -2690,8 +2419,7 @@
       "id": "gm-requires-action|crossReferences|gm-may-require-action|'any of these activities': declared only in the reference map",
       "field": "crossReferences",
       "entries": [
-        "gm-requires-action",
-        "gm-may-require-action"
+        "gm-requires-action"
       ],
       "verdict": "U",
       "locator": "Combat / Your Turn / p. 14",
@@ -2701,9 +2429,7 @@
     {
       "id": "None|crossReferences|cover-definition|'as detailed in the cover table': declared only in the blind map",
       "field": "crossReferences",
-      "entries": [
-        "cover-definition"
-      ],
+      "entries": [],
       "verdict": "N",
       "locator": "Combat / Cover / p. 15",
       "quote": "As detailed in the Cover table, there are three degrees of cover, each of which gives a different benefit to a target.",
@@ -2713,8 +2439,7 @@
       "id": "movement-modes,movement-modes-glossary|crossReferences|movement-modes|'climbing': declared only in the blind map",
       "field": "crossReferences",
       "entries": [
-        "movement-modes,movement-modes-glossary",
-        "movement-modes"
+        "movement-modes,movement-modes-glossary"
       ],
       "verdict": "N",
       "locator": "Combat / Movement and Position / p. 14",
@@ -2725,7 +2450,6 @@
       "id": "movement-modes|crossReferences|movement-modes|'crawling': declared only in the blind map",
       "field": "crossReferences",
       "entries": [
-        "movement-modes",
         "movement-modes"
       ],
       "verdict": "N",
@@ -2737,8 +2461,7 @@
       "id": "actions-table|crossReferences|actions-list|'defined in more detail in rules glossary': declared only in the reference map",
       "field": "crossReferences",
       "entries": [
-        "actions-table",
-        "actions-list"
+        "actions-table"
       ],
       "verdict": "N",
       "reason": "A pointer on an entry declined in one map and mapped or declared differently in the other; no in-scope reading depends on it."
@@ -2747,8 +2470,7 @@
       "id": "speed-and-size-sources|crossReferences|speed-source|'determined during character creation': declared only in the blind map",
       "field": "crossReferences",
       "entries": [
-        "speed-and-size-sources",
-        "speed-source"
+        "speed-and-size-sources"
       ],
       "verdict": "N",
       "reason": "A pointer on an entry declined in one map and mapped or declared differently in the other; no in-scope reading depends on it."
@@ -2757,7 +2479,6 @@
       "id": "movement-modes|crossReferences|movement-modes|'each explained in rules glossary': declared only in the reference map",
       "field": "crossReferences",
       "entries": [
-        "movement-modes",
         "movement-modes"
       ],
       "verdict": "N",
@@ -2769,7 +2490,6 @@
       "id": "underwater-fire-resistance|crossReferences|underwater-fire-resistance|'explained in damage and healing': resolved to entries that do not link",
       "field": "crossReferences",
       "entries": [
-        "underwater-fire-resistance",
         "underwater-fire-resistance"
       ],
       "verdict": "B",
@@ -2781,8 +2501,7 @@
       "id": "combat-steps|crossReferences|combat-step-establish-positions|'given the adventurers marching order': declared only in the reference map",
       "field": "crossReferences",
       "entries": [
-        "combat-steps",
-        "combat-step-establish-positions"
+        "combat-steps"
       ],
       "verdict": "B",
       "locator": "Combat / Combat Step by Step / p. 13",
@@ -2793,8 +2512,7 @@
       "id": "surprised|crossReferences|initiative-surprise,surprise-lose-turn|'if a combatant is surprised': declared only in the reference map",
       "field": "crossReferences",
       "entries": [
-        "surprised",
-        "initiative-surprise,surprise-lose-turn"
+        "surprised"
       ],
       "verdict": "B",
       "locator": "Combat / Initiative / p. 13",
@@ -2805,7 +2523,6 @@
       "id": "movement-modes|crossReferences|movement-modes|'jumping': declared only in the blind map",
       "field": "crossReferences",
       "entries": [
-        "movement-modes",
         "movement-modes"
       ],
       "verdict": "N",
@@ -2817,7 +2534,6 @@
       "id": "grid-entering-square|crossReferences|grid-entering-square|'other effects might make a square cost even more': declared only in the reference map",
       "field": "crossReferences",
       "entries": [
-        "grid-entering-square",
         "grid-entering-square"
       ],
       "verdict": "R",
@@ -2829,8 +2545,7 @@
       "id": "speed-and-size-sources|crossReferences|speed-source|'see rules glossary for more about speed': resolvedBy in one map, unmapped in the other",
       "field": "crossReferences",
       "entries": [
-        "speed-and-size-sources",
-        "speed-source"
+        "speed-and-size-sources"
       ],
       "verdict": "N",
       "reason": "On a pointer passage the reference declines: resolved to the glossary's Speed in the blind map, and unmapped with a reason in the reference. Speed is a parameter in both."
@@ -2839,8 +2554,7 @@
       "id": "attack-modifiers|crossReferences|attack-determine-modifiers,flanking|'spells special abilities and other effects can apply penalties or bonuses': declared only in the reference map",
       "field": "crossReferences",
       "entries": [
-        "attack-modifiers",
-        "attack-determine-modifiers,flanking"
+        "attack-modifiers"
       ],
       "verdict": "R",
       "locator": "Combat / Making an Attack / p. 15",
@@ -2851,7 +2565,6 @@
       "id": "movement-modes|crossReferences|movement-modes|'swimming each explained in rules glossary': declared only in the blind map",
       "field": "crossReferences",
       "entries": [
-        "movement-modes",
         "movement-modes"
       ],
       "verdict": "N",
@@ -2863,7 +2576,6 @@
       "id": "initiative-roll|crossReferences|initiative-roll|'they make a dexterity check': declared only in the reference map",
       "field": "crossReferences",
       "entries": [
-        "initiative-roll",
         "initiative-roll"
       ],
       "verdict": "B",

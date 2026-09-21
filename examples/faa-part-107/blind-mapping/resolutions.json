@@ -20,9 +20,7 @@
     {
       "id": "None|entry|operating-limitations-compliance|no reference entry quotes this text at this designation",
       "field": "entry",
-      "entries": [
-        "operating-limitations-compliance"
-      ],
+      "entries": [],
       "verdict": "B",
       "reason": "No reference entry quotes § 107.51's lead-in, which names who is bound (both the remote pilot in command and the person manipulating the flight controls) and makes the four limitations one obligation. Fixed: new entry operating-limitations, depending on speed-within-limit, altitude-within-limit and weather-minimums-met.",
       "locator": "§ 107.51",
@@ -32,8 +30,7 @@
       "id": "altitude-limit|evidence|max-altitude-agl|reference span quotes text the blind span omits",
       "field": "evidence",
       "entries": [
-        "altitude-limit",
-        "max-altitude-agl"
+        "altitude-limit"
       ],
       "verdict": "N",
       "reason": "Split/merge artefact: the two maps divide this text into different entries and the comparator paired fragments. The blind map states 400 ft AGL, the 400-foot radius and the 400-foot allowance as three value entries; the reference states them in one."
@@ -42,8 +39,7 @@
       "id": "anti-collision-lighting|dependsOn|night-lighting-intensity-reduction|reference has edge to flash-rate-sufficient; no blind edge reaches it",
       "field": "dependsOn",
       "entries": [
-        "anti-collision-lighting",
-        "night-lighting-intensity-reduction"
+        "anti-collision-lighting"
       ],
       "verdict": "N",
       "reason": "Split/merge artefact: the two maps divide this text into different entries and the comparator paired fragments. The partner is the reduction sentence; the blind lighting entry night-anti-collision-lighting has the same edge to its flash-rate assertion."
@@ -52,8 +48,7 @@
       "id": "anti-collision-lighting|enabledBy|night-lighting-intensity-reduction|blind has edge to night-anti-collision-lighting; reference has no edge to what it links to",
       "field": "enabledBy",
       "entries": [
-        "anti-collision-lighting",
-        "night-lighting-intensity-reduction"
+        "anti-collision-lighting"
       ],
       "verdict": "N",
       "reason": "Split/merge artefact: the two maps divide this text into different entries and the comparator paired fragments. The blind map gives the reduce-but-not-extinguish bound its own entry and gates it on the lighting rule; the reference keeps that bound inside anti-collision-lighting, so there is no second entry to gate."
@@ -62,8 +57,7 @@
       "id": "anti-collision-lighting|evidence|night-lighting-intensity-reduction|reference span quotes text the blind span omits",
       "field": "evidence",
       "entries": [
-        "anti-collision-lighting",
-        "night-lighting-intensity-reduction"
+        "anti-collision-lighting"
       ],
       "verdict": "N",
       "reason": "Split/merge artefact: the two maps divide this text into different entries and the comparator paired fragments. Night and twilight copies of the sentence are separate blind entries; both spans support their entries."
@@ -72,8 +66,7 @@
       "id": "civil-twilight-operation|dependsOn|twilight-operation-lighting|reference has edge to civil-twilight-window; no blind edge reaches it",
       "field": "dependsOn",
       "entries": [
-        "civil-twilight-operation",
-        "twilight-operation-lighting"
+        "civil-twilight-operation"
       ],
       "verdict": "R",
       "reason": "(c) defines a term (b) uses. The rule cannot be implemented without the definition, which is dependsOn; a gate names a rule that opens or closes reachability, and a definition is not one. The blind map filed the same relation under enabledBy.",
@@ -84,8 +77,7 @@
       "id": "civil-twilight-operation|enabledBy|twilight-operation-lighting|blind has edge to civil-twilight-morning; reference has no edge to what it links to",
       "field": "enabledBy",
       "entries": [
-        "civil-twilight-operation",
-        "twilight-operation-lighting"
+        "civil-twilight-operation"
       ],
       "verdict": "R",
       "reason": "Same as the civil-twilight-window row: a definition consumed by (b) is a dependsOn edge, which the reference has.",
@@ -96,8 +88,7 @@
       "id": "civil-twilight-operation|enabledBy|twilight-operation-lighting|blind has edge to civil-twilight-evening; reference has no edge to what it links to",
       "field": "enabledBy",
       "entries": [
-        "civil-twilight-operation",
-        "twilight-operation-lighting"
+        "civil-twilight-operation"
       ],
       "verdict": "R",
       "reason": "Same as the civil-twilight-window row.",
@@ -108,8 +99,7 @@
       "id": "civil-twilight-operation|enabledBy|twilight-operation-lighting|blind has edge to civil-twilight-alaska; reference has no edge to what it links to",
       "field": "enabledBy",
       "entries": [
-        "civil-twilight-operation",
-        "twilight-operation-lighting"
+        "civil-twilight-operation"
       ],
       "verdict": "B",
       "reason": "Direction: dependsOn, as above. But the edge itself is missing from the reference: civil-twilight-operation quotes (c)(3) and cannot say whether an Alaskan operation is in civil twilight without civil-twilight-alaska. Fixed: dependsOn civil-twilight-alaska added.",
@@ -120,8 +110,7 @@
       "id": "civil-twilight-operation|evidence|twilight-operation-lighting|reference span quotes text the blind span omits",
       "field": "evidence",
       "entries": [
-        "civil-twilight-operation",
-        "twilight-operation-lighting"
+        "civil-twilight-operation"
       ],
       "verdict": "N",
       "reason": "Split/merge artefact: the two maps divide this text into different entries and the comparator paired fragments. The reference quotes (b) and all of (c) in one entry."
@@ -130,8 +119,7 @@
       "id": "civil-twilight-window|evidence|civil-twilight-evening|reference span quotes text the blind span omits",
       "field": "evidence",
       "entries": [
-        "civil-twilight-window",
-        "civil-twilight-evening"
+        "civil-twilight-window"
       ],
       "verdict": "N",
       "reason": "Split/merge artefact: the two maps divide this text into different entries and the comparator paired fragments. The blind map has one entry each for (c)(1) and (c)(2)."
@@ -140,7 +128,6 @@
       "id": "cloud-clearance|kind|cloud-clearance|differs",
       "field": "kind",
       "entries": [
-        "cloud-clearance",
         "cloud-clearance"
       ],
       "verdict": "N",
@@ -150,7 +137,6 @@
       "id": "cloud-clearance|clarity|cloud-clearance|differs",
       "field": "clarity",
       "entries": [
-        "cloud-clearance",
         "cloud-clearance"
       ],
       "verdict": "U",
@@ -162,7 +148,6 @@
       "id": "cloud-clearance|ambiguity|cloud-clearance|present in one map only",
       "field": "ambiguity",
       "entries": [
-        "cloud-clearance",
         "cloud-clearance"
       ],
       "verdict": "U",
@@ -174,7 +159,6 @@
       "id": "cloud-clearance|dependsOn|cloud-clearance|blind has edge to cloud-clearance-below; reference has no edge to what it links to",
       "field": "dependsOn",
       "entries": [
-        "cloud-clearance",
         "cloud-clearance"
       ],
       "verdict": "N",
@@ -184,7 +168,6 @@
       "id": "cloud-clearance|dependsOn|cloud-clearance|blind has edge to cloud-clearance-horizontal; reference has no edge to what it links to",
       "field": "dependsOn",
       "entries": [
-        "cloud-clearance",
         "cloud-clearance"
       ],
       "verdict": "N",
@@ -194,8 +177,7 @@
       "id": "effective-communication|evidence|vo-effective-communication|blind span quotes text the reference span omits",
       "field": "evidence",
       "entries": [
-        "effective-communication",
-        "vo-effective-communication"
+        "effective-communication"
       ],
       "verdict": "N",
       "reason": "Span choice: the blind span adds § 107.33's lead-in (\"If a visual observer is used\"); in the reference the lead-in is carried by visual-observer-conditions, which depends on effective-communication. Both spans support their entries."
@@ -204,8 +186,7 @@
       "id": "flash-rate-sufficient|evidence|anti-collision-flash-rate-night|reference span quotes text the blind span omits",
       "field": "evidence",
       "entries": [
-        "flash-rate-sufficient",
-        "anti-collision-flash-rate-night"
+        "flash-rate-sufficient"
       ],
       "verdict": "N",
       "reason": "Span choice: the reference quotes both full sentences, the blind map the clause, once per paragraph. Both support."
@@ -214,8 +195,7 @@
       "id": "intensity-reduction-in-interest-of-safety|kind|night-lighting-intensity-reduction|differs",
       "field": "kind",
       "entries": [
-        "intensity-reduction-in-interest-of-safety",
-        "night-lighting-intensity-reduction"
+        "intensity-reduction-in-interest-of-safety"
       ],
       "verdict": "N",
       "reason": "Split/merge artefact: the two maps divide this text into different entries and the comparator paired fragments. The blind map's assertion is night-lighting-safety-determination (the \"if he or she determines\" clause); its operation is the bound, which the reference keeps in anti-collision-lighting."
@@ -224,8 +204,7 @@
       "id": "intensity-reduction-in-interest-of-safety|dependsOn|night-lighting-intensity-reduction|blind has edge to night-lighting-safety-determination; reference has no edge to what it links to",
       "field": "dependsOn",
       "entries": [
-        "intensity-reduction-in-interest-of-safety",
-        "night-lighting-intensity-reduction"
+        "intensity-reduction-in-interest-of-safety"
       ],
       "verdict": "N",
       "reason": "Split/merge artefact: the two maps divide this text into different entries and the comparator paired fragments. "
@@ -234,8 +213,7 @@
       "id": "intensity-reduction-in-interest-of-safety|enabledBy|night-lighting-intensity-reduction|blind has edge to night-anti-collision-lighting; reference has no edge to what it links to",
       "field": "enabledBy",
       "entries": [
-        "intensity-reduction-in-interest-of-safety",
-        "night-lighting-intensity-reduction"
+        "intensity-reduction-in-interest-of-safety"
       ],
       "verdict": "N",
       "reason": "Split/merge artefact: the two maps divide this text into different entries and the comparator paired fragments. See the anti-collision-lighting enabledBy row."
@@ -244,8 +222,7 @@
       "id": "moving-vehicle-operation|evidence|no-operation-from-moving-vehicle|reference span quotes text the blind span omits",
       "field": "evidence",
       "entries": [
-        "moving-vehicle-operation",
-        "no-operation-from-moving-vehicle"
+        "moving-vehicle-operation"
       ],
       "verdict": "N",
       "reason": "Split/merge artefact: the two maps divide this text into different entries and the comparator paired fragments. The finding behind this split is the clarity row on no-operation-from-moving-aircraft."
@@ -254,8 +231,7 @@
       "id": "night-operation|dependsOn|night-operation-conditions|reference has edge to night-waiver-termination; no blind edge reaches it",
       "field": "dependsOn",
       "entries": [
-        "night-operation",
-        "night-operation-conditions"
+        "night-operation"
       ],
       "verdict": "R",
       "reason": "(a) applies only outside what (d) provides, so (a) cannot be implemented without (d). The blind map records the pointer but not the edge. After the (d) split below, the edge and the crossReference point at night-waiver-bar, the sentence about operating at night.",
@@ -266,8 +242,7 @@
       "id": "night-operation|evidence|night-operation-conditions|reference span quotes text the blind span omits",
       "field": "evidence",
       "entries": [
-        "night-operation",
-        "night-operation-conditions"
+        "night-operation"
       ],
       "verdict": "N",
       "reason": "Split/merge artefact: the two maps divide this text into different entries and the comparator paired fragments. The blind map quotes (a)'s lead-in and gives (1) and (2) entries of their own."
@@ -276,8 +251,7 @@
       "id": "night-waiver-termination|definedElsewhere|night-waiver-operation-bar|present in one map only",
       "field": "definedElsewhere",
       "entries": [
-        "night-waiver-termination",
-        "night-waiver-operation-bar"
+        "night-waiver-termination"
       ],
       "verdict": "B",
       "reason": "The first sentence of (d) turns on \"at night\" exactly as (a) does, and night-operation routes that term to cfr-14-1; the reference entry for (d) did not. Fixed: (d) split as the blind map split it — night-waiver-bar (first sentence, definedElsewhere cfr-14-1) and night-waiver-termination (second sentence, which does not use the term).",
@@ -288,8 +262,7 @@
       "id": "night-waiver-termination|evidence|night-waiver-operation-bar|reference span quotes text the blind span omits",
       "field": "evidence",
       "entries": [
-        "night-waiver-termination",
-        "night-waiver-operation-bar"
+        "night-waiver-termination"
       ],
       "verdict": "N",
       "reason": "Split/merge artefact: the two maps divide this text into different entries and the comparator paired fragments. Adopted as part of the definedElsewhere fix."
@@ -298,8 +271,7 @@
       "id": "over-human-beings|dependsOn|no-operation-over-human-beings|reference has edge to subpart-d-categories; no blind edge reaches it",
       "field": "dependsOn",
       "entries": [
-        "over-human-beings",
-        "no-operation-over-human-beings"
+        "over-human-beings"
       ],
       "verdict": "N",
       "reason": "Representation: the blind map has no subpart D entry (see the subpart-d-categories entry row); its § 107.39(c) entry records the deferral as unmapped."
@@ -308,8 +280,7 @@
       "id": "over-human-beings|evidence|no-operation-over-human-beings|reference span quotes text the blind span omits",
       "field": "evidence",
       "entries": [
-        "over-human-beings",
-        "no-operation-over-human-beings"
+        "over-human-beings"
       ],
       "verdict": "N",
       "reason": "Split/merge artefact: the two maps divide this text into different entries and the comparator paired fragments. "
@@ -318,8 +289,7 @@
       "id": "participant-briefing|dependsOn|preflight-brief-participants|reference has edge to direct-participation; no blind edge reaches it",
       "field": "dependsOn",
       "entries": [
-        "participant-briefing",
-        "preflight-brief-participants"
+        "participant-briefing"
       ],
       "verdict": "R",
       "reason": "The audience of the briefing is \"all persons directly participating\", the undefined term direct-participation carries. The entry cannot be implemented without it. The blind map has no edge.",
@@ -330,8 +300,7 @@
       "id": "preflight-actions|kind|preflight-assess-environment|differs",
       "field": "kind",
       "entries": [
-        "preflight-actions",
-        "preflight-assess-environment"
+        "preflight-actions"
       ],
       "verdict": "N",
       "reason": "Merge artefact: the blind map has no entry for § 107.49 as a whole; the partner is its (a) entry."
@@ -340,8 +309,7 @@
       "id": "preflight-actions|dependsOn|preflight-assess-environment|reference has edge to attached-object-no-adverse-effect; no blind edge reaches it",
       "field": "dependsOn",
       "entries": [
-        "preflight-actions",
-        "preflight-assess-environment"
+        "preflight-actions"
       ],
       "verdict": "N",
       "reason": "Merge artefact: the blind map has no conjunction entry for § 107.49, so no blind edge can reach the paragraph entries."
@@ -350,8 +318,7 @@
       "id": "preflight-actions|dependsOn|preflight-assess-environment|reference has edge to attached-object-secure; no blind edge reaches it",
       "field": "dependsOn",
       "entries": [
-        "preflight-actions",
-        "preflight-assess-environment"
+        "preflight-actions"
       ],
       "verdict": "N",
       "reason": "Merge artefact: the blind map has no conjunction entry for § 107.49, so no blind edge can reach the paragraph entries."
@@ -360,8 +327,7 @@
       "id": "preflight-actions|dependsOn|preflight-assess-environment|reference has edge to control-links-working; no blind edge reaches it",
       "field": "dependsOn",
       "entries": [
-        "preflight-actions",
-        "preflight-assess-environment"
+        "preflight-actions"
       ],
       "verdict": "N",
       "reason": "Merge artefact: the blind map has no conjunction entry for § 107.49, so no blind edge can reach the paragraph entries."
@@ -370,8 +336,7 @@
       "id": "preflight-actions|dependsOn|preflight-assess-environment|reference has edge to participant-briefing; no blind edge reaches it",
       "field": "dependsOn",
       "entries": [
-        "preflight-actions",
-        "preflight-assess-environment"
+        "preflight-actions"
       ],
       "verdict": "N",
       "reason": "Merge artefact: the blind map has no conjunction entry for § 107.49, so no blind edge can reach the paragraph entries."
@@ -380,8 +345,7 @@
       "id": "preflight-actions|dependsOn|preflight-assess-environment|reference has edge to preflight-risk-assessment; no blind edge reaches it",
       "field": "dependsOn",
       "entries": [
-        "preflight-actions",
-        "preflight-assess-environment"
+        "preflight-actions"
       ],
       "verdict": "N",
       "reason": "Merge artefact: the blind map has no conjunction entry for § 107.49, so no blind edge can reach the paragraph entries."
@@ -390,8 +354,7 @@
       "id": "preflight-actions|dependsOn|preflight-assess-environment|reference has edge to subpart-d-categories; no blind edge reaches it",
       "field": "dependsOn",
       "entries": [
-        "preflight-actions",
-        "preflight-assess-environment"
+        "preflight-actions"
       ],
       "verdict": "N",
       "reason": "Merge artefact: the blind map has no conjunction entry for § 107.49, so no blind edge can reach the paragraph entries."
@@ -400,8 +363,7 @@
       "id": "preflight-actions|dependsOn|preflight-assess-environment|reference has edge to sufficient-available-power; no blind edge reaches it",
       "field": "dependsOn",
       "entries": [
-        "preflight-actions",
-        "preflight-assess-environment"
+        "preflight-actions"
       ],
       "verdict": "N",
       "reason": "Merge artefact: the blind map has no conjunction entry for § 107.49, so no blind edge can reach the paragraph entries."
@@ -410,8 +372,7 @@
       "id": "preflight-actions|evidence|preflight-assess-environment|reference span quotes text the blind span omits",
       "field": "evidence",
       "entries": [
-        "preflight-actions",
-        "preflight-assess-environment"
+        "preflight-actions"
       ],
       "verdict": "N",
       "reason": "Merge artefact, as above."
@@ -420,8 +381,7 @@
       "id": "preflight-risk-assessment|evidence|preflight-assess-environment|blind span quotes text the reference span omits",
       "field": "evidence",
       "entries": [
-        "preflight-risk-assessment",
-        "preflight-assess-environment"
+        "preflight-risk-assessment"
       ],
       "verdict": "N",
       "reason": "Span choice: the blind span adds § 107.49's lead-in; in the reference the lead-in is carried by preflight-actions."
@@ -430,8 +390,7 @@
       "id": "prominent-objects|kind|flight-visibility-definition|differs",
       "field": "kind",
       "entries": [
-        "prominent-objects",
-        "flight-visibility-definition"
+        "prominent-objects"
       ],
       "verdict": "R",
       "reason": "The sentence is a definition and states no figure, so it is not a value. What an engine does with it is compare a reported distance, measured as the definition says, against 3 statute miles: an operation.",
@@ -442,8 +401,7 @@
       "id": "prominent-objects|clarity|flight-visibility-definition|differs",
       "field": "clarity",
       "entries": [
-        "prominent-objects",
-        "flight-visibility-definition"
+        "prominent-objects"
       ],
       "verdict": "R",
       "reason": "\"Prominent\" is not defined in § 107.3 or elsewhere in part 107, and the degree of prominence fixes the distance that is compared against the minimum. The blind map treats the measured distance as a parameter and does not ask what it measures.",
@@ -454,8 +412,7 @@
       "id": "prominent-objects|ambiguity|flight-visibility-definition|present in one map only",
       "field": "ambiguity",
       "entries": [
-        "prominent-objects",
-        "flight-visibility-definition"
+        "prominent-objects"
       ],
       "verdict": "R",
       "reason": "Same as the clarity row.",
@@ -466,8 +423,7 @@
       "id": "reasonable-protection|kind|over-human-sheltered|differs",
       "field": "kind",
       "entries": [
-        "reasonable-protection",
-        "over-human-sheltered"
+        "reasonable-protection"
       ],
       "verdict": "N",
       "reason": "Split/merge artefact: the two maps divide this text into different entries and the comparator paired fragments. The blind assertion shelter-reasonable-protection matches reasonable-protection's kind."
@@ -476,8 +432,7 @@
       "id": "reasonable-protection|dependsOn|over-human-sheltered|blind has edge to shelter-reasonable-protection; reference has no edge to what it links to",
       "field": "dependsOn",
       "entries": [
-        "reasonable-protection",
-        "over-human-sheltered"
+        "reasonable-protection"
       ],
       "verdict": "N",
       "reason": "Split/merge artefact: the two maps divide this text into different entries and the comparator paired fragments. "
@@ -486,8 +441,7 @@
       "id": "right-of-way|clarity|yield-meaning|differs",
       "field": "clarity",
       "entries": [
-        "right-of-way",
-        "yield-meaning"
+        "right-of-way"
       ],
       "verdict": "N",
       "reason": "Split/merge artefact: the two maps divide this text into different entries and the comparator paired fragments. The partner quotes the \"well clear\" sentence, which the reference also carries as the ambiguous entry well-clear."
@@ -496,8 +450,7 @@
       "id": "right-of-way|ambiguity|yield-meaning|present in one map only",
       "field": "ambiguity",
       "entries": [
-        "right-of-way",
-        "yield-meaning"
+        "right-of-way"
       ],
       "verdict": "N",
       "reason": "Split/merge artefact: the two maps divide this text into different entries and the comparator paired fragments. "
@@ -506,8 +459,7 @@
       "id": "right-of-way|dependsOn|yield-meaning|reference has edge to well-clear; no blind edge reaches it",
       "field": "dependsOn",
       "entries": [
-        "right-of-way",
-        "yield-meaning"
+        "right-of-way"
       ],
       "verdict": "N",
       "reason": "Split/merge artefact: the two maps divide this text into different entries and the comparator paired fragments. The blind yield-right-of-way depends on yield-meaning, the counterpart of well-clear."
@@ -516,8 +468,7 @@
       "id": "right-of-way|evidence|yield-meaning|reference span quotes text the blind span omits",
       "field": "evidence",
       "entries": [
-        "right-of-way",
-        "yield-meaning"
+        "right-of-way"
       ],
       "verdict": "N",
       "reason": "Split/merge artefact: the two maps divide this text into different entries and the comparator paired fragments. "
@@ -526,8 +477,7 @@
       "id": "speed-limit|clarity|groundspeed-limit|differs",
       "field": "clarity",
       "entries": [
-        "speed-limit",
-        "groundspeed-limit"
+        "speed-limit"
       ],
       "verdict": "U",
       "reason": "87 knots is 100.12 miles per hour, so the two printed figures are not equal, and the corpus does not say which governs. The reference note on speed-within-limit already said to \"test which one governs\" without recording a question. Fixed: ambiguity (unresolved, RequiresInterpretation) on speed-limit; speed-within-limit keeps its dependsOn on it.",
@@ -538,8 +488,7 @@
       "id": "speed-limit|ambiguity|groundspeed-limit|present in one map only",
       "field": "ambiguity",
       "entries": [
-        "speed-limit",
-        "groundspeed-limit"
+        "speed-limit"
       ],
       "verdict": "U",
       "reason": "Same as the clarity row.",
@@ -550,8 +499,7 @@
       "id": "speed-within-limit|kind|groundspeed-limit|differs",
       "field": "kind",
       "entries": [
-        "speed-within-limit",
-        "groundspeed-limit"
+        "speed-within-limit"
       ],
       "verdict": "N",
       "reason": "Merge artefact: the blind map has one entry for the figure and its application."
@@ -560,8 +508,7 @@
       "id": "speed-within-limit|clarity|groundspeed-limit|differs",
       "field": "clarity",
       "entries": [
-        "speed-within-limit",
-        "groundspeed-limit"
+        "speed-within-limit"
       ],
       "verdict": "N",
       "reason": "Merge artefact: the question is recorded on speed-limit (row above), which speed-within-limit depends on — the shape weather-minimums-met and prominent-objects already have."
@@ -570,8 +517,7 @@
       "id": "speed-within-limit|ambiguity|groundspeed-limit|present in one map only",
       "field": "ambiguity",
       "entries": [
-        "speed-within-limit",
-        "groundspeed-limit"
+        "speed-within-limit"
       ],
       "verdict": "N",
       "reason": "Merge artefact, as the clarity row."
@@ -580,8 +526,7 @@
       "id": "speed-within-limit|dependsOn|groundspeed-limit|reference has edge to speed-limit; no blind edge reaches it",
       "field": "dependsOn",
       "entries": [
-        "speed-within-limit",
-        "groundspeed-limit"
+        "speed-within-limit"
       ],
       "verdict": "N",
       "reason": "Merge artefact."
@@ -590,8 +535,7 @@
       "id": "visibility-minimum|dependsOn|min-flight-visibility|blind has edge to flight-visibility-definition; reference has no edge to what it links to",
       "field": "dependsOn",
       "entries": [
-        "visibility-minimum",
-        "min-flight-visibility"
+        "visibility-minimum"
       ],
       "verdict": "N",
       "reason": "Split/merge artefact: the two maps divide this text into different entries and the comparator paired fragments. The reference places the definition's edge on weather-minimums-met → prominent-objects; the figure itself is stated without it."
@@ -600,8 +544,7 @@
       "id": "visibility-minimum|evidence|min-flight-visibility|reference span quotes text the blind span omits",
       "field": "evidence",
       "entries": [
-        "visibility-minimum",
-        "min-flight-visibility"
+        "visibility-minimum"
       ],
       "verdict": "N",
       "reason": "Split/merge artefact: the two maps divide this text into different entries and the comparator paired fragments. "
@@ -610,8 +553,7 @@
       "id": "visual-line-of-sight|kind|vlos-ability|differs",
       "field": "kind",
       "entries": [
-        "visual-line-of-sight",
-        "vlos-ability"
+        "visual-line-of-sight"
       ],
       "verdict": "N",
       "reason": "Split/merge artefact: the two maps divide this text into different entries and the comparator paired fragments. vlos-ability is unaided-visual-contact's counterpart; vlos-exercised-by is this entry's."
@@ -620,8 +562,7 @@
       "id": "visual-line-of-sight|dependsOn|vlos-ability|reference has edge to unaided-visual-contact; no blind edge reaches it",
       "field": "dependsOn",
       "entries": [
-        "visual-line-of-sight",
-        "vlos-ability"
+        "visual-line-of-sight"
       ],
       "verdict": "N",
       "reason": "Split/merge artefact: the two maps divide this text into different entries and the comparator paired fragments. "
@@ -630,8 +571,7 @@
       "id": "visual-line-of-sight|evidence|vlos-ability|reference span quotes text the blind span omits",
       "field": "evidence",
       "entries": [
-        "visual-line-of-sight",
-        "vlos-ability"
+        "visual-line-of-sight"
       ],
       "verdict": "N",
       "reason": "Split/merge artefact: the two maps divide this text into different entries and the comparator paired fragments. "
@@ -640,8 +580,7 @@
       "id": "visual-observer-conditions|clarity|vo-effective-communication|differs",
       "field": "clarity",
       "entries": [
-        "visual-observer-conditions",
-        "vo-effective-communication"
+        "visual-observer-conditions"
       ],
       "verdict": "N",
       "reason": "Merge artefact: the partner is the (a) entry, whose counterpart is effective-communication, which the reference also marks ambiguous."
@@ -650,8 +589,7 @@
       "id": "visual-observer-conditions|ambiguity|vo-effective-communication|present in one map only",
       "field": "ambiguity",
       "entries": [
-        "visual-observer-conditions",
-        "vo-effective-communication"
+        "visual-observer-conditions"
       ],
       "verdict": "N",
       "reason": "Merge artefact, as the clarity row."
@@ -660,8 +598,7 @@
       "id": "visual-observer-conditions|dependsOn|vo-effective-communication|reference has edge to effective-communication; no blind edge reaches it",
       "field": "dependsOn",
       "entries": [
-        "visual-observer-conditions",
-        "vo-effective-communication"
+        "visual-observer-conditions"
       ],
       "verdict": "N",
       "reason": "Merge artefact: the blind map has no entry for § 107.33 as a whole."
@@ -670,8 +607,7 @@
       "id": "visual-observer-conditions|dependsOn|vo-effective-communication|reference has edge to observer-coordination; no blind edge reaches it",
       "field": "dependsOn",
       "entries": [
-        "visual-observer-conditions",
-        "vo-effective-communication"
+        "visual-observer-conditions"
       ],
       "verdict": "N",
       "reason": "Merge artefact: the blind map has no entry for § 107.33 as a whole."
@@ -680,8 +616,7 @@
       "id": "visual-observer-conditions|dependsOn|vo-effective-communication|reference has edge to visual-line-of-sight; no blind edge reaches it",
       "field": "dependsOn",
       "entries": [
-        "visual-observer-conditions",
-        "vo-effective-communication"
+        "visual-observer-conditions"
       ],
       "verdict": "N",
       "reason": "Merge artefact: the blind map has no entry for § 107.33 as a whole."
@@ -690,8 +625,7 @@
       "id": "visual-observer-conditions|evidence|vo-effective-communication|reference span quotes text the blind span omits",
       "field": "evidence",
       "entries": [
-        "visual-observer-conditions",
-        "vo-effective-communication"
+        "visual-observer-conditions"
       ],
       "verdict": "N",
       "reason": "Merge artefact."
@@ -700,8 +634,7 @@
       "id": "weather-minimums-met|kind|flight-visibility-definition|differs",
       "field": "kind",
       "entries": [
-        "weather-minimums-met",
-        "flight-visibility-definition"
+        "weather-minimums-met"
       ],
       "verdict": "N",
       "reason": "Merge artefact: the blind map's counterpart for § 107.51 as a whole is operating-limitations-compliance, which quotes only the lead-in and so does not link here; the partner is a fragment."
@@ -710,8 +643,7 @@
       "id": "weather-minimums-met|dependsOn|flight-visibility-definition|reference has edge to cloud-clearance; no blind edge reaches it",
       "field": "dependsOn",
       "entries": [
-        "weather-minimums-met",
-        "flight-visibility-definition"
+        "weather-minimums-met"
       ],
       "verdict": "N",
       "reason": "Merge artefact: the blind map's counterpart for § 107.51 as a whole is operating-limitations-compliance, which quotes only the lead-in and so does not link here; the partner is a fragment."
@@ -720,8 +652,7 @@
       "id": "weather-minimums-met|dependsOn|flight-visibility-definition|reference has edge to prominent-objects; no blind edge reaches it",
       "field": "dependsOn",
       "entries": [
-        "weather-minimums-met",
-        "flight-visibility-definition"
+        "weather-minimums-met"
       ],
       "verdict": "N",
       "reason": "Merge artefact: the blind map's counterpart for § 107.51 as a whole is operating-limitations-compliance, which quotes only the lead-in and so does not link here; the partner is a fragment."
@@ -730,8 +661,7 @@
       "id": "weather-minimums-met|dependsOn|flight-visibility-definition|reference has edge to visibility-minimum; no blind edge reaches it",
       "field": "dependsOn",
       "entries": [
-        "weather-minimums-met",
-        "flight-visibility-definition"
+        "weather-minimums-met"
       ],
       "verdict": "N",
       "reason": "Merge artefact: the blind map's counterpart for § 107.51 as a whole is operating-limitations-compliance, which quotes only the lead-in and so does not link here; the partner is a fragment."
@@ -740,8 +670,7 @@
       "id": "weather-minimums-met|evidence|flight-visibility-definition|reference span quotes text the blind span omits",
       "field": "evidence",
       "entries": [
-        "weather-minimums-met",
-        "flight-visibility-definition"
+        "weather-minimums-met"
       ],
       "verdict": "N",
       "reason": "Merge artefact: the blind map's counterpart for § 107.51 as a whole is operating-limitations-compliance, which quotes only the lead-in and so does not link here; the partner is a fragment."
@@ -750,8 +679,7 @@
       "id": "night-operation|clarity|night-rpic-knowledge-currency|differs (blind entry links here but is not its partner)",
       "field": "clarity",
       "entries": [
-        "night-operation",
-        "night-rpic-knowledge-currency"
+        "night-operation"
       ],
       "verdict": "U",
       "reason": "Whether \"initial\" qualifies \"training\" as well as \"knowledge test\" is not settled, and § 107.65 names recurrent training (b) and part 61 training (c) without saying which satisfies § 107.29(a)(1); § 107.65(d) also treats some pre-April 6, 2021 completions as compliant. The reference called the training condition computable. Fixed: new entry night-training-completed, § 107.29(a)(1), ambiguous, unresolved; night-operation depends on it.",
@@ -762,8 +690,7 @@
       "id": "night-operation|ambiguity|night-rpic-knowledge-currency|present in one map only (blind entry links here but is not its partner)",
       "field": "ambiguity",
       "entries": [
-        "night-operation",
-        "night-rpic-knowledge-currency"
+        "night-operation"
       ],
       "verdict": "U",
       "reason": "Same as the clarity row.",
@@ -774,8 +701,7 @@
       "id": "moving-vehicle-operation|clarity|no-operation-from-moving-aircraft|differs (blind entry links here but is not its partner)",
       "field": "clarity",
       "entries": [
-        "moving-vehicle-operation",
-        "no-operation-from-moving-aircraft"
+        "moving-vehicle-operation"
       ],
       "verdict": "B",
       "reason": "\"Sparsely populated area\" qualifies only (b). (a) is a prohibition without exception and is clear, but the reference's one entry for the section made it ambiguous with (b). Fixed: new entry moving-aircraft-operation for (a), clear; moving-vehicle-operation narrowed to the lead-in and (b).",
@@ -786,8 +712,7 @@
       "id": "moving-vehicle-operation|ambiguity|no-operation-from-moving-aircraft|present in one map only (blind entry links here but is not its partner)",
       "field": "ambiguity",
       "entries": [
-        "moving-vehicle-operation",
-        "no-operation-from-moving-aircraft"
+        "moving-vehicle-operation"
       ],
       "verdict": "B",
       "reason": "Same as the clarity row.",
@@ -798,8 +723,7 @@
       "id": "civil-twilight-operation,civil-twilight-alaska|crossReferences|civil-twilight-alaska|Air Almanac cited from § 107.29: declared only in the blind map",
       "field": "crossReferences",
       "entries": [
-        "civil-twilight-operation,civil-twilight-alaska",
-        "civil-twilight-alaska"
+        "civil-twilight-operation,civil-twilight-alaska"
       ],
       "verdict": "N",
       "reason": "Schema, not corpus: the reference records the deferral to the Air Almanac in definedElsewhere; the blind map records it there and again as an unmapped crossReference. Whether both are required is #62."
@@ -808,7 +732,6 @@
       "id": "night-waiver-termination|crossReferences|night-waiver-termination|§ 107.29 cited from § 107.29: declared only in the blind map",
       "field": "crossReferences",
       "entries": [
-        "night-waiver-termination",
         "night-waiver-termination"
       ],
       "verdict": "B",
@@ -820,8 +743,7 @@
       "id": "civil-twilight-operation|crossReferences|civil-twilight-morning|§ 107.29(b) cited from § 107.29: declared only in the blind map",
       "field": "crossReferences",
       "entries": [
-        "civil-twilight-operation",
-        "civil-twilight-morning"
+        "civil-twilight-operation"
       ],
       "verdict": "N",
       "reason": "Pointer and target are in one reference entry: civil-twilight-operation quotes both (b) and (c), and a declaration would resolve to itself, which check-map.py refuses."
@@ -830,8 +752,7 @@
       "id": "night-operation|crossReferences|night-rpic-knowledge-currency|§ 107.65 cited from § 107.29: declared only in the blind map",
       "field": "crossReferences",
       "entries": [
-        "night-operation",
-        "night-rpic-knowledge-currency"
+        "night-operation"
       ],
       "verdict": "B",
       "reason": "The reference quotes \"under § 107.65\" and declares nothing. Fixed: unmapped declaration on the new night-training-completed entry (§ 107.65 is in part 107 but outside this map's slice).",
@@ -842,8 +763,7 @@
       "id": "visual-line-of-sight|crossReferences|vlos-exercised-by|§ 107.31(a) cited from § 107.31: declared only in the blind map",
       "field": "crossReferences",
       "entries": [
-        "visual-line-of-sight",
-        "vlos-exercised-by"
+        "visual-line-of-sight"
       ],
       "verdict": "B",
       "reason": "The reference quotes the pointer and declares nothing. Fixed: resolvedBy unaided-visual-contact on visual-line-of-sight.",
@@ -854,8 +774,7 @@
       "id": "visual-observer-conditions|crossReferences|vo-able-to-see|§ 107.31 cited from § 107.33: declared only in the blind map",
       "field": "crossReferences",
       "entries": [
-        "visual-observer-conditions",
-        "vo-able-to-see"
+        "visual-observer-conditions"
       ],
       "verdict": "B",
       "reason": "The reference's note names this pointer and says only the dependsOn edge answers it. Fixed: resolvedBy visual-line-of-sight on visual-observer-conditions, the entry the edge already names.",
@@ -866,8 +785,7 @@
       "id": "hazardous-material|crossReferences|no-hazardous-material|49 CFR 171.8 cited from § 107.36: declared only in the blind map",
       "field": "crossReferences",
       "entries": [
-        "hazardous-material",
-        "no-hazardous-material"
+        "hazardous-material"
       ],
       "verdict": "N",
       "reason": "Schema, not corpus: as the Air Almanac row — definedElsewhere already names cfr-49-171 (#62)."
@@ -876,8 +794,7 @@
       "id": "over-human-beings|crossReferences|over-human-subpart-d|subpart D cited from § 107.39: declared only in the blind map",
       "field": "crossReferences",
       "entries": [
-        "over-human-beings",
-        "over-human-subpart-d"
+        "over-human-beings"
       ],
       "verdict": "B",
       "reason": "The reference answers the pointer with a dependsOn edge and no declaration. Fixed: resolvedBy subpart-d-categories on over-human-beings.",
@@ -888,8 +805,7 @@
       "id": "preflight-actions|crossReferences|preflight-subpart-d-aircraft|subpart D cited from § 107.49: declared only in the blind map",
       "field": "crossReferences",
       "entries": [
-        "preflight-actions",
-        "preflight-subpart-d-aircraft"
+        "preflight-actions"
       ],
       "verdict": "B",
       "reason": "As the § 107.39 row. Fixed: resolvedBy subpart-d-categories on preflight-actions.",
@@ -900,8 +816,7 @@
       "id": "preflight-actions|crossReferences|preflight-subpart-d-aircraft|§ 107.110 cited from § 107.49: declared only in the blind map",
       "field": "crossReferences",
       "entries": [
-        "preflight-actions",
-        "preflight-subpart-d-aircraft"
+        "preflight-actions"
       ],
       "verdict": "B",
       "reason": "The reference quotes § 107.110 and declares nothing. Fixed: resolvedBy subpart-d-categories on preflight-actions (§ 107.110 is in subpart D, which that entry declines as scope: out).",
@@ -912,8 +827,7 @@
       "id": "preflight-actions|crossReferences|preflight-subpart-d-aircraft|§ 107.120(a) cited from § 107.49: declared only in the blind map",
       "field": "crossReferences",
       "entries": [
-        "preflight-actions",
-        "preflight-subpart-d-aircraft"
+        "preflight-actions"
       ],
       "verdict": "B",
       "reason": "The reference quotes § 107.120(a) and declares nothing. Fixed: resolvedBy subpart-d-categories on preflight-actions (§ 107.120(a) is in subpart D, which that entry declines as scope: out).",
@@ -924,8 +838,7 @@
       "id": "preflight-actions|crossReferences|preflight-subpart-d-aircraft|§ 107.130(a) cited from § 107.49: declared only in the blind map",
       "field": "crossReferences",
       "entries": [
-        "preflight-actions",
-        "preflight-subpart-d-aircraft"
+        "preflight-actions"
       ],
       "verdict": "B",
       "reason": "The reference quotes § 107.130(a) and declares nothing. Fixed: resolvedBy subpart-d-categories on preflight-actions (§ 107.130(a) is in subpart D, which that entry declines as scope: out).",
@@ -936,8 +849,7 @@
       "id": "preflight-actions|crossReferences|preflight-subpart-d-aircraft|§ 107.140 cited from § 107.49: declared only in the blind map",
       "field": "crossReferences",
       "entries": [
-        "preflight-actions",
-        "preflight-subpart-d-aircraft"
+        "preflight-actions"
       ],
       "verdict": "B",
       "reason": "The reference quotes § 107.140 and declares nothing. Fixed: resolvedBy subpart-d-categories on preflight-actions (§ 107.140 is in subpart D, which that entry declines as scope: out).",

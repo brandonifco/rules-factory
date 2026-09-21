@@ -337,7 +337,13 @@ def write_record(record, by_id, flags):
     for f in flags:
         seen.add(f["key"])
         rows.append({"id": f["key"], "field": f["field"],
-                     "entries": [i for i in (f["entry"], f["blind"]) if i],
+                     # The ids this adjudication is about **in the map under review**, which is
+                     # the reference map: the blind map's id is in the row's own `id` and names
+                     # no entry of any map this repository uses. Putting it in `entries` was
+                     # measured to mask a collapse -- `mutate-map.py --only ambiguous-to-clear`
+                     # on faa-part-107 stops being refused, because `superposition` unions the
+                     # ids every row about one named entry reaches (0060).
+                     "entries": [f["entry"]] if f["entry"] else [],
                      **prose_of(by_id.get(f["key"]) or {})})
     # A row matching no flag is kept and reported, never dropped: it is somebody's adjudication,
     # and this script is not the thing that decides it is spent.
