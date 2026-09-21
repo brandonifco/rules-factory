@@ -202,8 +202,11 @@ What never happens again is `NOT VERIFIED` on stdout and `0` in `$?`.
   kernel version, the hash of every recipe file and generated file, the managed files at their
   recipe versions, and the bytes of every file the build reads as configuration. The recipe
   hashes are of bytes the named commit holds, or the run is refused: a symlink under
-  `tools/factory`, or a git-ignored file there other than `__pycache__`, would be hashed from a
+  `tools/factory`, or a git-ignored file there, would be hashed from a
   file no commit contains while `git status` — all `dirty` is — called the factory clean.
+  Ignored bytecode is refused with the rest, because a `.pyc` whose header matches its source is
+  what Python runs; the factory writes none of its own, so a second run in the same checkout is
+  not refused for the first one's leavings.
   `factory provenance` re-produces the engine and names every field that no longer matches.
   The engine's own gate holds a narrower claim without the factory: `scripts/engine-gate.py
   provenance` hashes the recorded generated and managed files and every file of the overlay they
