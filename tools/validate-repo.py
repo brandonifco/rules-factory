@@ -395,9 +395,12 @@ def release_scope(name: str, root: pathlib.Path = ROOT) -> Scope:
 class Run:
     """One invocation of the gate: where it runs, what it has printed, and what it found."""
 
-    def __init__(self, root: pathlib.Path, scope: Scope):
+    def __init__(self, root: pathlib.Path, scope: Scope, with_evidence: bool = False):
         self.root = root
         self.scope = scope
+        # Verify the evidence wherever it lives, fetching what is not in this checkout, rather
+        # than reading it from beside the checkers (#349).
+        self.with_evidence = with_evidence
         self.failed = False
         self.step = 0
 
@@ -635,6 +638,26 @@ def step_fixture_table(run: Run) -> bool:
         return False
     print(f"{len(on_disk)} map(s), each with a row that names its corpora and its grammar")
     return True
+
+
+def step_evidence(run: Run) -> bool:
+    """Every artifact under examples/ is in the lock, and its bytes are what the lock says (#349).
+
+    A corpus is pinned by its manifest's `contentHash`, a staged blind input by its record's
+    digests, trial 9's first mapping by `build-map-c.py --check`. The evidence no check reads was
+    pinned by nothing at all -- 42 files and 892 KB whose bytes could change with no run noticing.
+    The lock covers all 189, in both directions, so evidence added beside it is a failure rather
+    than a file the lock happens not to mention.
+
+    It runs at every scope. What it holds is a fact about the tree, not about the change, and it
+    takes 40 milliseconds over 15.5 MB.
+
+    With --with-evidence the same artifacts are verified through tools/fetch-evidence.py, which
+    reads each one wherever the lock says it lives -- this repository today, a content-addressed
+    archive if one is ever named."""
+    if run.with_evidence:
+        return run.python("tools/fetch-evidence.py", "--verify")
+    return run.python("tools/check-evidence.py")
 
 
 def step_validator_attack(run: Run) -> bool:
@@ -889,6 +912,7 @@ STEPS = (
     ("each subsystem imports only the map contract", step_boundaries),
     ("check-map.py is what the two packages build", step_built_checker),
     ("every map has a row that names its corpora and its grammar", step_fixture_table),
+    ("every evidence artifact is the bytes the lock names", step_evidence),
     ("every corpus map satisfies the schema", step_schema),
     ("every map says how its corpus is read", step_protocols),
     ("every protocol's own detectors find its pointers", step_pointers),
@@ -934,6 +958,9 @@ def main(argv=None) -> int:
     parser.add_argument("--base", metavar="SHA", help="the commit --changed is measured against")
     parser.add_argument("--explain", action="store_true",
                         help="print the scope and the reason for it, and run nothing")
+    parser.add_argument("--with-evidence", action="store_true",
+                        help="verify every evidence artifact wherever it lives, fetching what "
+                             "this checkout does not hold")
     args = parser.parse_args(argv)
 
     if sum(bool(x) for x in (args.full, args.changed, args.release)) > 1:
@@ -968,7 +995,7 @@ def main(argv=None) -> int:
     os.environ["PYTHONDONTWRITEBYTECODE"] = "1"
     before = leftovers(ROOT)
 
-    run = Run(ROOT, scope)
+    run = Run(ROOT, scope, with_evidence=args.with_evidence)
     for what, fn in STEPS:
         run.run(what, lambda fn=fn: fn(run))
 
