@@ -2,13 +2,13 @@
   "artifacts": [
     {
       "archive": null,
-      "bytes": 25727,
+      "bytes": 26528,
       "path": "examples/README.md",
       "readBy": [
         "links"
       ],
       "role": "active",
-      "sha256": "4253488f66d31690d3b43d8cc2889659e3556f1fe96a933e78e59608ffa88a69"
+      "sha256": "6a4712d853016dc0206231dc242ebcfccef5a632f938e1b7aab357bcc38ed0eb"
     },
     {
       "archive": null,
