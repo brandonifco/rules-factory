@@ -15,8 +15,8 @@
   "artifacts": [
     {
       "path": "examples/README.md",
-      "sha256": "a8a6ff344831f229303da45e41e8674176097f98febc710163fbbb5ffcc520e0",
-      "bytes": 25319,
+      "sha256": "63a75f5b5b9c8d193d66f81a021271a72a59f6384ae6572bae33cb10d6fb4dd4",
+      "bytes": 25446,
       "role": "active",
       "readBy": [
         "links"
@@ -385,8 +385,8 @@
     },
     {
       "path": "examples/faa-part-107/check-locators-section.py",
-      "sha256": "b3948aa23e78fb2db816621414f84b5bae0adce3a22169a38c8f6b3e666b276d",
-      "bytes": 92795,
+      "sha256": "bee8388d153883b9eb86dcc72a3ccbfb75c6329a26cab4b7aca83547dc5aba44",
+      "bytes": 98247,
       "role": "active",
       "readBy": [
         "checks"
@@ -1408,8 +1408,8 @@
     },
     {
       "path": "examples/srd-52-combat/check-locators-pdf-text.py",
-      "sha256": "dd3244be7a15e7ebba2f9fbc608562cf23416fb5d4de36368f7f0dc0ff108e16",
-      "bytes": 27991,
+      "sha256": "e4a2fc041becb380e0c4ea9ef1cc1e16c6810fb40483f488462d8f2f45acc2b6",
+      "bytes": 29470,
       "role": "active",
       "readBy": [
         "checks"
@@ -1826,8 +1826,8 @@
     },
     {
       "path": "examples/validator-attack/README.md",
-      "sha256": "5b3dd5b193d168f0734bae9e0794e2630d0254ca980e7b257266e1a0c160c0cd",
-      "bytes": 16502,
+      "sha256": "581d445ca93b0f3d446af76fba0700e5d086d8ce37ba1763ad13c2be3523ee16",
+      "bytes": 19082,
       "role": "active",
       "readBy": [
         "links"
@@ -1836,8 +1836,8 @@
     },
     {
       "path": "examples/validator-attack/results.json",
-      "sha256": "52773297af7d595395736436525871a88a599538b02b2c1d8246d4e8f5b47a6d",
-      "bytes": 28037,
+      "sha256": "ce0058c84a08f100e2fd8d4fcc775e475b8c4497e1c9c305a97589797cae24a7",
+      "bytes": 29331,
       "role": "active",
       "readBy": [
         "checks"
@@ -1846,8 +1846,8 @@
     },
     {
       "path": "examples/validator-attack/results.md",
-      "sha256": "2b071e2c0bc6a4ef6bdfbcc3cb857e2709cba121f75700a3fb4a10551c0eda48",
-      "bytes": 1397,
+      "sha256": "b999c9b0540b94451825319283e56beb31e87d7ff25946e7dd2bc285cc57d1a0",
+      "bytes": 1434,
       "role": "active",
       "readBy": [
         "links"
