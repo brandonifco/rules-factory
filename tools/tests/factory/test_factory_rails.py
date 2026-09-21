@@ -3165,7 +3165,10 @@ COMMAND = re.compile(r"^(?:\./)?(?:tools|scripts)/[A-Za-z0-9_.\-]+\.(?:py|sh)$")
 # grows a new one is a command nobody has run.
 PLACEHOLDERS = {"<n>": "1", "<issue number>": "1", "<entry id>": "speed-limit", "<entry-id>": "speed-limit",
                 "<pr>": "1", "<pr number>": "1", "<id>": "semantic", "{args.pr}": "1",
-                '"..."': "Title", "pass|fail": "pass"}
+                '"..."': "Title", "pass|fail": "pass",
+                # `--package-map <path>`: the map this engine was produced from, which is what an
+                # engine's own restore would put there.
+                "<path>": os.path.join(PART107, "corpus-map.json")}
 # `scripts/validate.sh` is the gate itself: running it here would restore, build and test an engine
 # in every target framework from inside a unit test. scripts/validate-engine.sh runs it against a
 # produced engine for real, which is where its runnability is proven.

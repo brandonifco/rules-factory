@@ -274,6 +274,14 @@ decline that names why and cites where — that is the engine working, not the e
   implementation, always. File output includes the human packet, its entry packets and a
   `*.review.json` identity that names the exact head/base commits and hashes the packet bytes,
   reviewed policy and provenance context. The caller's checkout is not review evidence.
+
+  **A packet that names an entry needs the map that commit declares.** The entry packets are built
+  from a map, and it is held to the digest the reviewed commit's `provenance.json` records, read
+  once, so the bytes checked are the bytes read. Give the restored package's `corpus-map.json`:
+  `tools/review-packet.py <pr number> --package-map <path>`. Without it the map's identity is
+  whatever MSBuild resolves inside the snapshot, which is unproven, so file output is refused and
+  `--stdout` remains for reading such a packet — it writes nothing, and nothing can be recorded
+  from it. A refused packet leaves no file and no directory behind.
 - **A verdict consumes the packet identity.** `tools/record-verdict.py --pr <n> --packet
   <packet.review.json> --reviewer <id> --verdict pass|fail` verifies those packet bytes and
   records the status only when the pull request still has the exact reviewed head. It takes the

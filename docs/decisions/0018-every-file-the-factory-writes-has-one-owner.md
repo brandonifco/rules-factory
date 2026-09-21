@@ -350,7 +350,7 @@ written path the table does not classify.
 | `scripts/engine-gate.py` | generated |  | Gate recipe: the non-dotnet checks. |
 | `scripts/factory/*.py` | generated |  | The factory's generator, vendored so the gate can regenerate without the factory. |
 | `.github/workflows/validate.yml` | generated |  | Gate recipe: CI runs `validate.sh full`. |
-| `AGENTS.md` | managed | 14 | The governing contract every agent works the engine under (0029). Managed, not generated: a team may amend its own contract, and the factory must then either carry the amendment or refuse and say so, never silently overwrite it. Section 4 carries the leftover sweep, the `## Documentation` section every pull request answers, and the rule to delete only what you created, by its exact path (#236). |
+| `AGENTS.md` | managed | 15 | The governing contract every agent works the engine under (0029). Managed, not generated: a team may amend its own contract, and the factory must then either carry the amendment or refuse and say so, never silently overwrite it. Section 4 carries the leftover sweep, the `## Documentation` section every pull request answers, and the rule to delete only what you created, by its exact path (#236). |
 | `CLAUDE.md` | managed | 1 | A pointer to `AGENTS.md` and an index of the Claude adapters. It states no rule of its own, so it cannot drift from the contract. |
 | `docs/agent-team.md` | managed | 5 | The four roles and what each may not do (0029). |
 | `.claude/agents/engine-dev.md` | managed | 8 | The implementer's charter. |
