@@ -16,9 +16,13 @@ finds nothing to examine fails: a check with no inputs has proven nothing.
                                      included (re-produce after an overlay edit); a local SDK
                                      override declares its re-pinned global.json here (#336), and a
                                      record a merge left conflicted is named as one (#252)
-  expected-results                   test projects on disk x target frameworks
+  expected-results                   test projects on disk x target frameworks; one number on
+                                     stdout, and a refusal when two of them build one assembly
   tests-ran DIR EXPECTED             the TRX files show that many result files, and a test
-                                     executed for every test project x target framework
+                                     executed for every test project x target framework -- the
+                                     projects asked of MSBuild, so an IsTestProject that comes
+                                     from an import counts, and NOT VERIFIED where it could not
+                                     answer and the project file was read instead (#374)
   named-tests DIR --map MAP          every test an implemented entry names exists and ran
   rails                              the agent rails hold: read-only reviewers, no dangling
                                      citation, a policy the rails can read
@@ -34,6 +38,8 @@ import json
 import os
 import pathlib
 import re
+import shutil
+import subprocess
 import sys
 import types
 
@@ -620,27 +626,121 @@ def record_matches(_args):
 EXECUTED = ("Passed", "Failed")
 
 
+TEST_PROJECT_PROPERTIES = ("IsTestProject", "AssemblyName")
+
+# What test_projects() found: `by_path` is {project path: lower-cased assembly name} in path
+# order, `problems` is what makes the expectation unusable (two projects, one assembly name), and
+# `read_instead` names each project MSBuild could not evaluate, with why, so the caller can say
+# which rows of the matrix rest on a regex rather than on an evaluated property (#374).
+TestProjects = collections.namedtuple("TestProjects", "by_path problems read_instead")
+
+
+def evaluate(project):
+    """MSBuild's evaluated TEST_PROJECT_PROPERTIES for one project: ({name: value}, None) or
+    (None, why it could not answer).
+
+    `IsTestProject` is an evaluated MSBuild property, not a line of XML. A project that takes it
+    from a Directory.Build.props, an `<Import>` or a condition has it just as truly as one that
+    writes it out, and reading the project's text sees only the last of those (#374). This asks
+    the same way tools/entry-packet.py asks MSBuild where the map package is: one `dotnet
+    msbuild -getProperty:` per project, evaluation only -- no build, no restore, no network --
+    which measured 0.22s per project on the machine this was written on.
+
+    The outer evaluation is the one asked for. A property conditioned on `$(TargetFramework)`
+    is only settled in an inner build, and this question is whether the project is a test
+    project at all; `dotnet test` decides each framework for itself, and the matrix below still
+    requires an executed test in every one of them.
+    """
+    command = ["dotnet", "msbuild", str(project)] + [f"-getProperty:{p}" for p in TEST_PROJECT_PROPERTIES]
+    try:
+        done = subprocess.run(command, cwd=str(ROOT), stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                              text=True, timeout=300)
+    except (OSError, subprocess.SubprocessError) as error:
+        return None, f"`dotnet msbuild` could not be run ({error})"
+    if done.returncode != 0:
+        said = (done.stderr.strip() or done.stdout.strip() or "and said nothing").splitlines()[0]
+        return None, f"`dotnet msbuild` exited {done.returncode}: {said}"
+    try:
+        properties = json.loads(done.stdout)["Properties"]
+        answered = {name: properties[name] for name in TEST_PROJECT_PROPERTIES}
+    except (ValueError, KeyError, TypeError):
+        answered = None
+    # Every value is a string when MSBuild answers (an unset property is ""). Anything else is
+    # not an answer, and is reported as one rather than raised out of the check as a traceback.
+    if answered is None or not all(isinstance(value, str) for value in answered.values()):
+        return None, f"`dotnet msbuild` answered with no {' and no '.join(TEST_PROJECT_PROPERTIES)}"
+    return answered, None
+
+
 def test_projects():
-    """{lower-cased assembly name: the project that builds it} for every test project on disk.
+    """The test projects on disk, keyed by project path, with the assembly each builds (#374).
 
     `dotnet test` exits 0 when it finds nothing, so the expectation comes from the projects on
     disk, not the solution: a project dropped from the solution would drop out of both counts.
-    Lower-cased because the TRX writer lower-cases the `storage` path it records each test
-    against, which is the only place a result file says which assembly ran.
+
+    Keyed by **path**, and carrying the assembly name as an attribute, because the project is
+    what runs and the assembly name is only how a result file refers to it. Keyed by assembly
+    name -- which is what this did until #374 -- two test projects that build the same
+    `AssemblyName` collapsed into one entry: the second overwrote the first, the matrix was one
+    pair short, and a single TRX for either project satisfied it while the other never ran. That
+    collision is refused rather than resolved, because a TRX records only the assembly a test ran
+    under (lower-cased, in `storage`), so nothing in the results could ever tell the two apart.
+
+    Assembly names are lower-cased to match what the TRX writer records.
     """
-    found = {}
+    by_path, read_instead = {}, []
+    ask_msbuild = bool(shutil.which("dotnet"))
     for project in on_disk("*.csproj"):
-        text = project.read_text(encoding="utf-8")
-        if not re.search(r"<IsTestProject>\s*true\s*</IsTestProject>", text, re.I):
+        relative = str(project.relative_to(ROOT))
+        properties, why = evaluate(project) if ask_msbuild else (None, "`dotnet` is not on PATH")
+        if properties is None:
+            read_instead.append((relative, why))
+            text = project.read_text(encoding="utf-8")
+            if not re.search(r"<IsTestProject>\s*true\s*</IsTestProject>", text, re.I):
+                continue
+            named = re.search(r"<AssemblyName>\s*([^<]+?)\s*</AssemblyName>", text)
+            by_path[relative] = (named.group(1) if named else project.stem).lower()
             continue
-        named = re.search(r"<AssemblyName>\s*([^<]+?)\s*</AssemblyName>", text)
-        found[(named.group(1) if named else project.stem).lower()] = str(project.relative_to(ROOT))
-    return found
+        if properties["IsTestProject"].strip().lower() != "true":
+            continue
+        by_path[relative] = (properties["AssemblyName"].strip() or project.stem).lower()
+    shared = collections.defaultdict(list)
+    for relative, assembly in by_path.items():
+        shared[assembly].append(relative)
+    problems = [f"{len(paths)} test projects build the assembly {assembly!r}: {', '.join(paths)}. A result "
+                f"file records only the assembly a test ran under, so one of them running would stand for "
+                f"all of them; give each test project its own <AssemblyName>"
+                for assembly, paths in sorted(shared.items()) if len(paths) > 1]
+    return TestProjects(by_path, problems, read_instead)
+
+
+def unevaluated(read_instead):
+    """The sentence that says which rows of the matrix were read rather than evaluated (#374).
+
+    Not a failure and not silence: MSBuild is asked, and when it cannot answer the check falls
+    back to the regex it used before -- which is blind to an `IsTestProject` that comes from a
+    Directory.Build.props, an import or a condition -- and says so, naming every project and why.
+    """
+    if not read_instead:
+        return ""
+    return (" -- NOT VERIFIED for " + ", ".join(f"{path} ({why})" for path, why in read_instead)
+            + ": IsTestProject was read from the project file instead of evaluated, so a test project that "
+              "takes it from an import or a condition is not in this matrix")
 
 
 def expected_results(_args):
-    """One result file per test project per target framework: what `tests-ran` is handed."""
-    print(len(test_projects()) * max(1, len(target_frameworks())))
+    """One result file per test project per target framework: what `tests-ran` is handed.
+
+    Prints one number on stdout and nothing else -- validate.sh consumes it -- so the NOT
+    VERIFIED sentence belongs to `tests-ran`, where the claim about the matrix is actually made.
+    An assembly name two test projects share is refused here too: the number would be a lie.
+    """
+    matrix = test_projects()
+    if matrix.problems:
+        for problem in matrix.problems:
+            print(f"error: {problem}", file=sys.stderr)
+        return 1
+    print(len(matrix.by_path) * max(1, len(target_frameworks())))
     return 0
 
 
@@ -707,9 +807,14 @@ def tests_ran(args):
     ran twice; and the number reported as having run is the number of executed results, under the
     `EXECUTED` policy above. Summing `Counters.total` counted tests that were only discovered, and
     two files declaring `total=12 executed=0 notExecuted=12` were reported as 24 tests that ran.
+
+    The expectation has one row per test **project** (#374). Two projects building one assembly
+    name are refused here rather than folded into one row, and nothing about the matrix is
+    claimed until that is settled: with two projects behind one name, no result file could say
+    which of them ran, so every sentence about coverage below would be unfounded.
     """
-    projects, frameworks = test_projects(), {f.lower() for f in target_frameworks()}
-    files, executed, skipped, pairs, problems = _trx(args.results_dir), 0, 0, set(), []
+    matrix, frameworks = test_projects(), {f.lower() for f in target_frameworks()}
+    files, executed, skipped, pairs, problems = _trx(args.results_dir), 0, 0, set(), list(matrix.problems)
     for path in files:
         ran, not_run, covered, found = _counted(path, frameworks)
         executed, skipped, pairs = executed + ran, skipped + not_run, pairs | covered
@@ -720,6 +825,9 @@ def tests_ran(args):
     if executed == 0:
         problems.append(f"0 of {executed + skipped} discovered test(s) were executed across all test projects. "
                         f"A discovered test is not a test that ran")
+    if matrix.problems:
+        return report(problems, "")
+    projects = {assembly: path for path, assembly in matrix.by_path.items()}
     expected_pairs = {(assembly, framework) for assembly in projects for framework in (frameworks or {""})}
     for assembly, framework in sorted(expected_pairs - pairs):
         problems.append(f"no test executed for {projects[assembly]} under {framework}: the result files show "
@@ -730,7 +838,8 @@ def tests_ran(args):
                         f"assembly for that target framework -- the results are not this engine's matrix")
     return report(problems, f"{executed} test(s) actually ran ({skipped} skipped or not executed) across "
                             f"{len(files)} result file(s), covering every one of the {len(expected_pairs)} "
-                            f"expected test project x target framework pair(s)")
+                            f"expected test project x target framework pair(s)"
+                            + unevaluated(matrix.read_instead))
 
 
 def named_tests(args):
