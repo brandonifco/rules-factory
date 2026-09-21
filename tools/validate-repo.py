@@ -743,10 +743,15 @@ def step_tool_tests(run: Run) -> bool:
     suite is collected first and the run is held to the count: a run that passed fewer tests than
     were collected fails, whatever pytest's own exit code said.
     """
+    # `-p no:cacheprovider` keeps .pytest_cache out; the env keeps __pycache__ out of every test
+    # module pytest imports. It is set here and not for the whole gate (#384) so that a *checker*
+    # which writes bytecode is caught by the last step rather than hidden by the run's
+    # environment. xdist's workers are child processes, so they inherit it.
+    bare = {**os.environ, "PYTHONDONTWRITEBYTECODE": "1"}
     collected = subprocess.run(
         [sys.executable, "-m", "pytest", "-p", "no:cacheprovider", "tools/tests", "-q",
          "--collect-only"],
-        cwd=run.root, capture_output=True, text=True,
+        cwd=run.root, capture_output=True, text=True, env=bare,
     )
     if collected.returncode != 0:
         sys.stdout.write(collected.stdout)
@@ -761,7 +766,7 @@ def step_tool_tests(run: Run) -> bool:
     proc = subprocess.run(
         [sys.executable, "-m", "pytest", "-p", "no:cacheprovider", "tools/tests", "-q",
          "-n", "auto"],
-        cwd=run.root, capture_output=True, text=True,
+        cwd=run.root, capture_output=True, text=True, env=bare,
     )
     if proc.returncode != 0:
         sys.stdout.write(proc.stdout)
@@ -992,9 +997,21 @@ def main(argv=None) -> int:
             print(f"  package {settings}")
         return 0
 
-    # The gate leaves the checkout as it found it (AGENTS.md section 4). No bytecode and no pytest
-    # cache are written, and the last step compares what git does not track before and after.
-    os.environ["PYTHONDONTWRITEBYTECODE"] = "1"
+    # The gate leaves the checkout as it found it (AGENTS.md section 4), and the last step
+    # compares what git does not track before and after.
+    #
+    # That step used to be unable to see the thing it was written to catch. This exported
+    # PYTHONDONTWRITEBYTECODE for every child, so a checker that writes bytecode wrote none *here*
+    # and left it in any other caller's checkout -- which is exactly what #384 found: the SRD
+    # locator checker imports tools/check-locators.py by path, and only the gate's own environment
+    # kept tools/__pycache__ out of the tree. A step held to a promise by its caller's environment
+    # is holding to it by accident.
+    #
+    # So the flag is set where it is a property of the tool rather than of the run: each tool that
+    # imports another says `sys.dont_write_bytecode = True` for itself, two tests enumerate which
+    # tools those are, and the only step that still needs the environment is pytest -- whose xdist
+    # workers are separate processes that inherit env and nothing else. Bytecode from anything
+    # else now reaches the checkout, where the last step fails on it.
     before = leftovers(ROOT)
 
     run = Run(ROOT, scope, with_evidence=args.with_evidence)

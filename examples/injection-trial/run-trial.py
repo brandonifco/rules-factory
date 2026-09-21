@@ -36,6 +36,11 @@ import subprocess
 import sys
 import time
 
+# Imports another of this repository's files by path, and the loader writes that file's
+# bytecode beside it. No caller's environment is relied on to stop it (#384): module level
+# and above the import, because the loader reads the flag when the import happens.
+sys.dont_write_bytecode = True
+
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from injections import INJECTIONS, FACTORY, ENGINE  # noqa: E402
 

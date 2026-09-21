@@ -592,3 +592,101 @@ class TestAnUndeclaredPointerIsNotNotVerified(unittest.TestCase):
             proc = run.quiet("tools/mapper", "pointers", map_path)
             self.assertEqual(proc.returncode, 0,
                              f"{map_path} exits {proc.returncode}:\n{proc.stdout}{proc.stderr}")
+
+
+class TestNoBytecodeReachesTheCheckout(unittest.TestCase):
+    """#384: the step that catches what a run left behind could not see bytecode.
+
+    `main()` used to export PYTHONDONTWRITEBYTECODE for every child before the first step, so a
+    checker that writes bytecode wrote none under the gate and wrote it in every other caller's
+    checkout. AGENTS.md section 4's promise -- "nothing is left in the checkout" -- was being kept
+    by the caller's environment rather than by the tools, which is keeping it by accident.
+
+    So the flag is a property of each tool that imports another of this repository's files by
+    path, and the gate sets it only for pytest, whose xdist workers are child processes that
+    inherit the environment and nothing else. Both halves are asserted here: the tools say it,
+    and the gate does not say it for them.
+    """
+
+    IMPORT = ("sys.path.insert", "spec_from_file_location")
+    SUPPRESSION = "sys.dont_write_bytecode = True"
+
+    def path_importers(self):
+        """Every script under tools/ or examples/ that loads another repository file by path.
+
+        Both mechanisms, because they have the same consequence and only one of them was
+        enumerated before: `tools/factory`'s importers were held to this rule by
+        test_factory_provenance.py, and the SRD locator checker -- which reaches for
+        tools/check-locators.py through importlib, from examples/ -- was in neither list.
+        """
+        import glob
+        found = {}
+        for pattern in ("tools/*.py", "examples/*/*.py"):
+            for path in sorted(glob.glob(os.path.join(ROOT, pattern))):
+                lines = open(path, encoding="utf-8").read().splitlines()
+                reaches = next((i for i, line in enumerate(lines)
+                                if any(m in line for m in self.IMPORT)
+                                and not line.lstrip().startswith("#")), None)
+                if reaches is not None:
+                    found[os.path.relpath(path, ROOT)] = (lines, reaches)
+        return found
+
+    def test_every_script_that_imports_by_path_suppresses_its_bytecode(self):
+        for relative, (lines, reaches) in sorted(self.path_importers().items()):
+            with self.subTest(script=relative):
+                # Column 0, so the flag is module level rather than nested in some function that
+                # may never run, and before the import, because the loader reads it then.
+                flag = next((i for i, line in enumerate(lines)
+                             if line.split("#")[0].rstrip() == self.SUPPRESSION), None)
+                self.assertIsNotNone(
+                    flag, f"{relative} imports another repository file by path and leaves its "
+                          f"bytecode in the checkout (#384)")
+                self.assertLess(
+                    flag, reaches,
+                    f"{relative} sets dont_write_bytecode at line {flag + 1}, after line "
+                    f"{reaches + 1} reaches for the import; there it prevents nothing")
+
+    def test_the_importers_are_named(self):
+        """Named, so a new script that starts importing by path fails here rather than being
+        waved through by a check that examined whatever it happened to find."""
+        self.assertEqual(sorted(self.path_importers()), [
+            "examples/blind-mapping-trial/compare.py",
+            "examples/collapse-trial/collapse.py",
+            "examples/hoyle-blind-rebuild/build-brief.py",
+            "examples/hoyle-blind-rebuild/check-rebuild.py",
+            "examples/injection-trial/run-trial.py",
+            "examples/injection-trial/score.py",
+            "examples/srd-52-combat/check-locators-pdf-text.py",
+            "tools/check-readme-status.py",
+            "tools/fetch-evidence.py",
+            "tools/pack-map.py",
+            "tools/validate-engine.py",
+        ])
+
+    def test_the_gate_does_not_suppress_bytecode_for_every_step(self):
+        """The structural half. A gate that exports the flag for all its children cannot fail on
+        bytecode, so the last step reports ok over a tree the same run would have dirtied in any
+        other environment."""
+        source = open(TOOL, encoding="utf-8").read()
+        body = source.split("def main(")[1]
+        self.assertNotIn('os.environ["PYTHONDONTWRITEBYTECODE"]', body,
+                         "main() exports the flag for every child again, and the last step is "
+                         "blind to bytecode once more (#384)")
+
+    def test_the_pytest_step_still_suppresses_its_own(self):
+        """The one step that needs the environment: pytest imports every test module, and xdist's
+        workers are separate processes that inherit env and no interpreter flag."""
+        step = open(TOOL, encoding="utf-8").read().split("def step_tool_tests(")[1].split("\ndef ")[0]
+        self.assertIn('"PYTHONDONTWRITEBYTECODE": "1"', step)
+        self.assertEqual(2, step.count("env=bare"), "both the collection and the run")
+
+    def test_a_path_importer_run_bare_leaves_nothing(self):
+        """The acceptance criterion itself, on the cheapest importer: run it the way its own
+        usage line describes, with nothing exported, and the checkout is as it was."""
+        env = {k: v for k, v in os.environ.items() if k != "PYTHONDONTWRITEBYTECODE"}
+        before = set(vr.leftovers(__import__("pathlib").Path(ROOT)))
+        proc = subprocess.run([sys.executable, os.path.join(ROOT, "tools", "fetch-evidence.py"),
+                               "--help"], cwd=ROOT, env=env, capture_output=True, text=True)
+        self.assertEqual(0, proc.returncode, proc.stderr)
+        added = set(vr.leftovers(__import__("pathlib").Path(ROOT))) - before
+        self.assertEqual(set(), added, "running a path importer bare left files in the checkout")
