@@ -42,12 +42,21 @@ which chose that package by exact version and lock-file hash. The factory has ch
 yet when it opens a package, so running what the package names would hand the package the
 privileges of whoever runs the factory before a single claim in it had been checked.
 
-**Nothing is read without a limit (#187).** All seven checks above run on bytes intake already
-holds, so the size of what it takes in is the one thing it must decide before it has verified
-anything. A download is streamed to disk under `MAX_PACKAGE_BYTES` and hashed as it streams; a
-member is refused unread when it declares more than `MAX_MEMBER_BYTES` or a compression ratio
-over `MAX_COMPRESSION_RATIO`. The package the operator names is theirs, so this is about not
-exhausting their machine, not about trust.
+**Nothing is read without a limit (#187, #229).** All seven checks above run on bytes intake
+already holds, so the size of what it takes in is the one thing it must decide before it has
+verified anything. Every read is bounded before it starts, and by a cap named here:
+
+  * a package is refused over `MAX_PACKAGE_BYTES`, whatever its source -- a download is stopped
+    and deleted at that many bytes as it streams, and a `.nupkg` named on the command line or
+    found in the NuGet global packages folder is measured before it is hashed or opened;
+  * an archive is refused over `MAX_ARCHIVE_ENTRIES` entries, before any member is read;
+  * a member is refused unread over `MAX_MEMBER_BYTES` uncompressed, or over a compression ratio
+    of `MAX_COMPRESSION_RATIO`;
+  * a corpus is refused over `MAX_CORPUS_BYTES`, measured before it is opened and counted again
+    as it is read in chunks.
+
+The package and the corpus the operator names are theirs, so this is about not exhausting their
+machine, not about trust.
 
 **A nuspec or props that declares a DTD is refused before it is parsed (#210).** The size caps
 bound the bytes intake reads, not what an XML parser makes of them: `xml.etree` expands internal
@@ -153,10 +162,27 @@ THIS_DIR = "$(MSBuildThisFileDirectory)"
 # They are constants, not options. This is a refusal boundary, and a limit an operator can raise
 # is one an attacker's README can tell them to raise ("if intake refuses, set the cap higher").
 # A real map that outgrows these wants a considered change here, not a flag at the call site.
+#
+# MAX_ARCHIVE_ENTRIES and MAX_CORPUS_BYTES are #229's: the first two caps bounded the bytes of a
+# package and of one member, and left the *number* of members and the corpus unbounded.
+#
+#   * entries -- every package pack-map.py builds holds exactly ten members, and that number is
+#     the package layout's, not the map's: it does not grow with the map, its entries, or the
+#     number of corpora it cites. 1024 is a hundredfold of a count that does not vary, and it is
+#     what bounds the central directory MAX_PACKAGE_BYTES alone would let hold over a million
+#     entries -- each of which is a ZipInfo in memory before any member has been looked at.
+#   * corpus -- the largest corpus committed here is examples/hazmat-172-table/section-172.101.xml
+#     at 2.8 MiB (srd-5.2.1.txt is 1.3 MiB, hoyle.txt 723 KiB). 64 MiB is ~23x that, and is
+#     deliberately the same number as MAX_PACKAGE_BYTES: both bound a whole file the operator
+#     names, read into memory before anything about it has been verified. A corpus is text a
+#     person reads and a map cites by locator, so a corpus that outgrows this wants the same
+#     considered change the other caps do.
 MAX_PACKAGE_BYTES = 64 * 1024 * 1024      # ~280x the largest package this factory builds
+MAX_ARCHIVE_ENTRIES = 1024                # ~100x the ten members every package here holds
 MAX_MEMBER_BYTES = 8 * 1024 * 1024        # ~75x the largest member; a map is JSON, not media
 MAX_COMPRESSION_RATIO = 100               # real members reach 5.1x; a zip bomb reaches 1000x
-DOWNLOAD_CHUNK = 1024 * 1024
+MAX_CORPUS_BYTES = 64 * 1024 * 1024       # ~23x the largest corpus committed here
+DOWNLOAD_CHUNK = 1024 * 1024              # also the chunk a .nupkg is hashed and a corpus read in
 
 
 class Refused(Exception):
@@ -223,11 +249,33 @@ def _download(url, target):
     return digest.hexdigest()
 
 
+def _package_in_hand(path):
+    """(path, its SHA-256) for a `.nupkg` already on this machine, refused over the cap (#229).
+
+    A download is bounded as it streams; a package named on the command line or found in the
+    NuGet global packages folder arrives past that point, and was bounded by nothing at all. It
+    is no more verified for having a path: nothing has read a byte of it yet, and the very next
+    things intake does are hash it whole and hand it to `zipfile`, which reads its central
+    directory. So it is measured first, by `os.stat`, and refused before it is opened.
+
+    Measuring rather than reading is the point: the refusal costs one stat, and the file the cap
+    turns away is never read at all.
+    """
+    try:
+        size = os.path.getsize(path)
+    except OSError as error:
+        raise Usage(f"cannot read package {path}: {error}")
+    if size > MAX_PACKAGE_BYTES:
+        raise Refused(f"{path} is {size} bytes, over the {MAX_PACKAGE_BYTES} a package intake reads "
+                      f"may be; nothing in a package is verified until it is here, so it is refused "
+                      f"unread")
+    return path, sha256_of_file(path)
+
+
 def resolve_package(spec, download_dir, log=None):
     """(`.nupkg` path, its SHA-256) for `spec`: a file path, or `Id@Version` from the cache or nuget.org."""
     if os.path.isfile(spec):
-        path = os.path.abspath(spec)
-        return path, sha256_of_file(path)
+        return _package_in_hand(os.path.abspath(spec))
     match = PACKAGE_REF.match(spec)
     if not match:
         raise Usage(f"--package {spec!r} is neither a .nupkg file nor Id@Version")
@@ -236,7 +284,7 @@ def resolve_package(spec, download_dir, log=None):
     cached = os.path.join(_global_packages_folder(), lower_id, version, name)
     if os.path.isfile(cached):
         _note(log, f"package {spec} from the NuGet global packages folder: {cached}")
-        return cached, sha256_of_file(cached)
+        return _package_in_hand(cached)
     url = f"{FLAT_CONTAINER}/{lower_id}/{version}/{name}"
     target = os.path.join(download_dir, name)
     _note(log, f"package {spec} from {url}")
@@ -334,7 +382,20 @@ def read_package(nupkg):
     except (OSError, zipfile.BadZipFile) as error:
         raise Usage(f"{nupkg} is not a readable .nupkg: {error}")
     with archive:
-        names = set(archive.namelist())
+        # #229: the entry count, before any member is read. MAX_PACKAGE_BYTES bounds the archive's
+        # bytes and MAX_MEMBER_BYTES one member's, and between them sits an archive of a million
+        # empty entries: each is a ZipInfo held in memory, and each name below is matched against
+        # every one of them. `infolist()` is the central directory zipfile has already parsed, so
+        # counting it reads nothing further, and the refusal happens before `_read_member` opens
+        # anything. The count is of the records zipfile actually parsed, not of the number the
+        # end-of-directory record declares, so it is a measurement rather than a claim the
+        # package makes about itself.
+        entries = archive.infolist()
+        if len(entries) > MAX_ARCHIVE_ENTRIES:
+            raise Refused(f"{nupkg} holds {len(entries)} entries, over the {MAX_ARCHIVE_ENTRIES} a map "
+                          f"package may hold; every package this factory builds holds ten, so it is "
+                          f"refused before any member is read")
+        names = {info.filename for info in entries}
         nuspecs = [n for n in names if "/" not in n and n.endswith(".nuspec")]
         if len(nuspecs) != 1:
             raise Refused(f"{nupkg}: expected one root .nuspec, found {sorted(nuspecs) or 'none'}")
@@ -485,6 +546,43 @@ def verify_declared_corpus_digest(source_id, corpus, corpus_bytes, where):
     return actual
 
 
+def read_corpus(corpus_path):
+    """The corpus's bytes, under MAX_CORPUS_BYTES, measured before the file is opened (#229).
+
+    The corpus is held whole because every derivation in HASH_DERIVATIONS is over the whole file
+    and the map's entries are located in it afterwards; the question is only how much of it intake
+    will hold. `os.stat` answers that without opening anything, so a corpus over the cap is refused
+    without a byte of it being read -- which is the difference between a refusal and the
+    exhaustion the refusal exists to prevent.
+
+    The read is then chunked and counted against the cap a second time. The stat is a measurement
+    of the file a moment ago, and a file can grow between the stat and the read (an operator's own
+    pipeline still writing it, a FIFO, a file another process appends to); the counter makes the
+    bound hold on the bytes actually taken in rather than on the bytes that were there when they
+    were counted.
+    """
+    try:
+        size = os.path.getsize(corpus_path)
+    except OSError as error:
+        raise Usage(f"cannot read corpus {corpus_path}: {error}")
+    if size > MAX_CORPUS_BYTES:
+        raise Refused(f"{corpus_path} is {size} bytes, over the {MAX_CORPUS_BYTES} a corpus intake "
+                      f"reads may be; it is refused unread")
+    chunks, total = [], 0
+    try:
+        with open(corpus_path, "rb") as handle:
+            for chunk in iter(lambda: handle.read(DOWNLOAD_CHUNK), b""):
+                total += len(chunk)
+                if total > MAX_CORPUS_BYTES:
+                    raise Refused(f"{corpus_path} is over the {MAX_CORPUS_BYTES} bytes a corpus intake "
+                                  f"reads may be; it grew past the {size} bytes it measured, and the "
+                                  f"read is stopped where the cap is")
+                chunks.append(chunk)
+    except OSError as error:
+        raise Usage(f"cannot read corpus {corpus_path}: {error}")
+    return b"".join(chunks)
+
+
 def verify_one(source_id, corpus, corpus_path):
     """(corpus, bytes) once this corpus is proved admissible (0028) and to be its own baseline."""
     refuse_unadmitted_licence(corpus)
@@ -499,11 +597,7 @@ def verify_one(source_id, corpus, corpus_path):
         raise Refused(f"{source_id} declares randomness {randomness!r}; a corpus declares none or seeded "
                       f"(0019), and a manifest without the field is refused, not read as none")
 
-    try:
-        with open(corpus_path, "rb") as handle:
-            corpus_bytes = handle.read()
-    except OSError as error:
-        raise Usage(f"cannot read corpus {corpus_path}: {error}")
+    corpus_bytes = read_corpus(corpus_path)
     verify_declared_corpus_digest(source_id, corpus, corpus_bytes, corpus_path)
     return corpus, corpus_bytes
 

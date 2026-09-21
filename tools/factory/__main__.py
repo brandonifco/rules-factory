@@ -174,14 +174,17 @@ def produce(args):
                 print(line)
             provenance.emit(model, out)
         # Provenance is written last, outside the recorder: every step above is in `generated`.
-        document = provenance.build(state, result, model, recorder)
+        # The same expression that decides the guard, the word on the last line and the exit code
+        # decides what the record says, so the four cannot disagree (#222, #335).
+        verified = not args.no_verify
+        document = provenance.build(state, result, model, recorder, verified=verified)
         provenance.write(out, document)
         print(f"wrote {provenance.FILE_NAME}: factory {state['version']}{' (dirty)' if state['dirty'] else ''}, "
               f"{len(document['generated'])} generated files")
         overridden = None
 
         def record_lock_files():
-            provenance.write(out, provenance.build(state, result, model, recorder))
+            provenance.write(out, provenance.build(state, result, model, recorder, verified=verified))
             print(f"rewrote {provenance.FILE_NAME}: the lock files restore wrote are build inputs")
         if args.no_verify:
             # Nothing is built or tested, but lock files that resolve other versions than the pins just
@@ -201,7 +204,7 @@ def produce(args):
         # drift apart: a run that will say "verified" is held to every input verify built and tested
         # (transaction.Stage.drift, #335), and a --no-verify run, which claims nothing about a build,
         # is held only to the paths it writes, as before.
-        added, changed, removed = stage.commit(verified=not args.no_verify)
+        added, changed, removed = stage.commit(verified=verified)
 
     if getattr(args, "produce_report", None):
         write_produce_report(args.produce_report, before, document, added, changed, removed)
