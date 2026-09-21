@@ -15,8 +15,14 @@ is the stronger reading of the same check -- a correction nobody ruled on cannot
 packed map without failing it -- and it is why Map A is a file and not only a git object: this
 script has to read it.
 
-Every change is keyed to a row id in resolutions.json. There are no others: a diff of Map C
-against Map A that shows anything not listed here is a defect in this script.
+Every change is keyed to a row id in resolutions.json, **or to a decision record that migrates
+the schema**. There are no others: a diff of Map C against Map A that shows anything not listed
+here is a defect in this script.
+
+The second kind arrived with 0059 and is kept separate from the first on purpose. A resolution
+row says what two readings of the corpus settled; a migration says the map format changed under
+a map nobody re-read. Map A is frozen trial evidence and is not edited to follow the schema, so
+the migration lives here, named by its record, and `landed` counts it apart from the rulings.
 
   separate-from-the-dwelling-unit   allocation-required becomes clear, loses its ambiguity
                                     block, gains suspendedBy
@@ -27,6 +33,12 @@ against Map A that shows anything not listed here is a defect in this script.
   effective-date-gate               enabledBy: [effective-date] on every scope: in entry
   kind-two-year-equivalents         ownership-and-use-aggregation becomes a value
   kind-residence-exclusion          residence-excludes-personal-property becomes a value
+
+Schema migrations, by decision record:
+
+  0059                              method-of-allocation declares definedElsewhere beside its
+                                    ambiguity block, drops the cross-reference that stood in for
+                                    it, and returns MissingRulesData
 
 Usage: python3 build-map-c.py [--check]
 `--check` writes nothing and exits 1 if the committed map is not what this script builds.
@@ -48,7 +60,7 @@ def by_id(document):
 def build():
     document = json.loads(MAP_A.read_text(encoding="utf-8"))
     entries = by_id(document)
-    landed = []
+    landed, migrated = [], []
 
     # --- separate-from-the-dwelling-unit -----------------------------------------------
     allocation = entries["allocation-required"]
@@ -237,10 +249,53 @@ def build():
     )
     landed.append("effective-date-gate")
 
+    # --- 0059: a schema migration, not a ruling ----------------------------------------
+    # Until 0059 no entry could carry `definedElsewhere` beside an `ambiguity` block, so this one
+    # wrote its deferral to section 1250(b)(3) as a cross-reference and said in the reason why.
+    # The exclusion is gone and the two facts are both recordable, so the stand-in comes out and
+    # the real field goes in. Nothing about the reading changes: the same statute, for the same
+    # term, that `depreciation-not-excludable` has always declared this way.
+    method = entries["method-of-allocation"]
+    assert "definedElsewhere" not in method, "0059 has already been applied to Map A"
+    stand_in = [reference for reference in method.get("crossReferences") or []
+                if reference.get("cites") == "section 1250(b)(3)"]
+    assert len(stand_in) == 1, "the cross-reference 0059 replaces is not in Map A"
+    method["crossReferences"] = [reference for reference in method["crossReferences"]
+                                 if reference is not stand_in[0]]
+    if not method["crossReferences"]:
+        del method["crossReferences"]
+    method["definedElsewhere"] = {"reference": "usc-26-1250"}
+    method["ambiguity"]["unresolvedReason"] = "MissingRulesData"
+    method["note"] = (
+        method["note"] + " Both facts are recorded since 0059: the term is fixed in an unadmitted "
+        "statute, and where the \"if applicable\" condition fails -- a portion separate from the "
+        "dwelling unit on which no depreciation was taken -- the corpus states no method and names "
+        "nobody to choose one. The question above names (e)(4) Example 6 as that case and is wrong "
+        "about it: Example 6 is use within the dwelling unit, where (e)(1) requires no allocation "
+        "and (e)(3) never fires. That is rules-factory #407 and is not corrected here; the gap is "
+        "real on the face of (e)(3) and does not depend on the example. The deleted "
+        "crossReferences item said the schema excluded an ambiguity block beside definedElsewhere, "
+        "and it was true when written: 0059 dropped that exclusion, which is why the pointer is "
+        "now answered by the field instead of by prose. That item carried the only reference to "
+        "finding 4 of the trial report, recorded here so it is not lost. The runtime reason is the "
+        "first wall, MissingRulesData -- a caller without section 1250(b)(3) cannot even determine "
+        "whether \"if applicable\" applies, and cannot establish which branch they are in -- and "
+        "the gap stays in the question, where a ruling under 0027 can reach it. The sentence above "
+        "about answering wherever depreciation was taken is about what the rule permits once the "
+        "term is supplied, not about what this entry returns: the entry declines in both branches, "
+        "because `definedElsewhere` is what answers first, and an engine answers either only on an "
+        "owner's ruling. If section 1250(b)(3) is ever admitted, that field stops answering and "
+        "the ambiguity does -- returning RequiresInterpretation for the depreciation-taken branch "
+        "too, which would be wrong -- so admitting it obliges splitting this entry in two. "
+        "depreciation-not-excludable quotes the same statute for the same term and has always "
+        "declared it this way."
+    )
+    migrated.append("0059")
+
     # No `about` field: the map envelope is closed (schemaVersion, corpus, baseline, extent,
     # entries) and check-map.py refuses an unknown one. What this map is, and which single
     # disagreement it does not carry, is README.md's job.
-    return document, landed, gated
+    return document, landed, migrated, gated
 
 
 def main():
@@ -249,7 +304,7 @@ def main():
                         help="write nothing; fail if the committed map differs")
     arguments = parser.parse_args()
 
-    document, landed, gated = build()
+    document, landed, migrated, gated = build()
     text = json.dumps(document, indent=2, ensure_ascii=False) + "\n"
     if arguments.check:
         if not MAP_C.is_file():
@@ -260,11 +315,13 @@ def main():
                   file=sys.stderr)
             return 1
         print(f"corpus-map.json is what build-map-c.py builds from first-map.json "
-              f"({len(document['entries'])} entries)")
+              f"({len(document['entries'])} entries, {len(landed)} resolution(s), "
+              f"{len(migrated)} schema migration(s))")
         return 0
     MAP_C.write_text(text, encoding="utf-8")
     print(f"wrote {MAP_C}: {len(document['entries'])} entries, "
-          f"{len(landed)} resolution(s) applied, {gated} entries gated on effective-date")
+          f"{len(landed)} resolution(s) applied, {len(migrated)} schema migration(s) "
+          f"({', '.join(migrated)}), {gated} entries gated on effective-date")
     return 0
 
 

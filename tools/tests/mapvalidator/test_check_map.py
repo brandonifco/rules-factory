@@ -347,16 +347,18 @@ class TestFixtureIsValid(MapCase):
         code, output = self.run_tool(valid_map())
         self.assertEqual(code, 0, output)
         self.assertNotIn("[fail]", output, output)
-        # `applicability-reach`, `conflicts`, `decision-records`, `definition-continuations`
-        # and `superposition` skip without subject matter -- the fixture records no conflict,
-        # no decision, no continued definition, no blind second mapping beside it, and no rule
-        # whose own words gate a whole section (`applicability_map()` is the fixture for that
-        # shape, because a page-marked rulebook slice does not talk about itself that way).
-        # Nothing else may.
+        # `applicability-reach`, `conflicts`, `decision-records`, `definition-continuations`,
+        # `inherited-reason` and `superposition` skip without subject matter -- the fixture
+        # records no conflict, no decision, no continued definition, no blind second mapping
+        # beside it, no rule whose own words gate a whole section (`applicability_map()` is the
+        # fixture for that shape, because a page-marked rulebook slice does not talk about itself
+        # that way), and no open question depending on an entry that defers to an unadmitted
+        # corpus -- that last one is `TestTheReasonIsInheritedAcrossAnEdge`'s subject, built there
+        # by pointing the fixture's one open question at `hazardous-material`. Nothing else may.
         skipped = re.findall(r"^\[skip\] (\S+):", output, re.M)
         self.assertEqual(sorted(skipped),
                          ["applicability-reach", "conflicts", "decision-records",
-                          "definition-continuations", "superposition"], output)
+                          "definition-continuations", "inherited-reason", "superposition"], output)
 
 
 class TestSchema(MapCase):
@@ -1354,27 +1356,168 @@ def _without_evidence_on_last(document):
     return document
 
 
+class TestAnEntryMayBeDefinedElsewhereAndAmbiguousHere(MapCase):
+    """0059 dropped the exclusion, and these are the two halves of what replaced it.
+
+    Until 0059 `exclusions` refused `definedElsewhere` or `beyondAdapter` beside an `ambiguity`
+    block, "to keep two rows of the correspondence table from firing with different answers".
+    The table gained an order after that was written, so the pair has one answer -- row 3 or 4,
+    `MissingRulesData` -- and the exclusion was costing a true fact: `method-of-allocation`
+    defers a term to an unadmitted statute *and* leaves a gap of its own.
+    """
+
+    def _both(self, document, index):
+        """Give entry `index` an ambiguity block anchored in its own evidence (#271)."""
+        entry_id = document["entries"][index]["id"]
+        document["entries"][index]["clarity"] = "ambiguous"
+        document["entries"][index]["ambiguity"] = {
+            "question": (f"\"The sentence stating {entry_id}.\" states the rule and the term it "
+                         f"turns on is fixed in a corpus that was not admitted, and where that "
+                         f"corpus does not reach the sentence settles nothing."),
+            "fate": "unresolved",
+            "unresolvedReason": "MissingRulesData",
+        }
+
+    def test_defined_elsewhere_beside_an_ambiguity_block_is_accepted(self):
+        """Watched failing with the `definedElsewhere` arm of `check_exclusions` restored."""
+        document = valid_map()
+        self._both(document, 4)
+        code, output = self.run_tool(document)
+        self.assertEqual(self.status_of(output, "exclusions"), "ok", output)
+        self.assertEqual(self.status_of(output, "unresolved-reason"), "ok", output)
+        self.assertEqual(code, 0, output)
+
+    def test_beyond_adapter_beside_an_ambiguity_block_is_accepted(self):
+        """Watched failing with the `beyondAdapter` arm of `check_exclusions` restored."""
+        document = valid_map()
+        self._both(document, 5)
+        code, output = self.run_tool(document)
+        self.assertEqual(self.status_of(output, "exclusions"), "ok", output)
+        self.assertEqual(code, 0, output)
+
+    def test_such_an_entry_may_not_claim_an_interpretation_is_what_is_missing(self):
+        """Row 3 wins, so `RequiresInterpretation` is a reason no row gives this entry.
+
+        Watched failing by restoring `allowed = {OPEN_QUESTION_REASON}` unconditionally in
+        `check_unresolved_reason`.
+        """
+        def mutate(document):
+            self._both(document, 4)
+            document["entries"][4]["ambiguity"]["unresolvedReason"] = "RequiresInterpretation"
+        self.assert_catches("unresolved-reason", mutate,
+                            message="sent to interpret what a definition they can go and get would settle")
+
+    def test_an_entry_with_no_such_field_still_may_not_claim_missing_data(self):
+        """The other direction, unchanged by 0059: row 6 is what an ordinary open question gets."""
+        def mutate(document):
+            document["entries"][7]["ambiguity"]["unresolvedReason"] = "MissingRulesData"
+        self.assert_catches("unresolved-reason", mutate,
+                            message="what is missing is an interpretation nobody has made")
+
+
+class TestTheReasonIsInheritedAcrossAnEdge(MapCase):
+    """#226: a missing definition dominates an open question one `dependsOn` edge away.
+
+    Trial 9's two mappers got this wrong from opposite sides, and the adjudication stated the
+    rule: `definedElsewhere` relocates the reason an entry declines, and never converts a decline
+    into an answer. An entry that cannot be resolved without a corpus nobody admitted returns
+    `MissingRulesData`, whatever its own question says.
+    """
+
+    def _run(self, depends_on, reason=None):
+        """The fixture's one open question, pointed at `depends_on`.
+
+        Not `assert_catches`: this check reports NOT VERIFIED on a map with no open question
+        depending on a deferring entry, which the valid fixture is, and that helper asserts `ok`
+        on the valid map first. A check that skips where it has no subject is the repository's
+        own rule, so the helper is the wrong shape here rather than the check.
+        """
+        document = valid_map()
+        document["entries"][7]["dependsOn"] = list(depends_on)
+        if reason is not None:
+            document["entries"][7]["ambiguity"]["unresolvedReason"] = reason
+        return self.run_tool(document)
+
+    def test_the_valid_fixture_has_no_subject_and_says_so(self):
+        code, output = self.run_tool(valid_map())
+        self.assertEqual(self.status_of(output, "inherited-reason"), "skip", output)
+        self.assertEqual(code, 0, output)
+
+    def test_an_open_question_depending_on_a_deferring_entry_fails(self):
+        """Watched failing by pointing `dependsOn` at `subpart-d-categories`, which defers to
+        nothing: the check goes back to NOT VERIFIED and this assertion fails."""
+        code, output = self._run(["hazardous-material"])
+        self.assertEqual(self.status_of(output, "inherited-reason"), "fail", output)
+        self.assertEqual(code, 1, output)
+        self.assertIn("The reason is inherited", output)
+        self.assertIn("hazardous-material", output)
+
+    def test_the_same_edge_to_an_entry_that_defers_to_nothing_is_fine(self):
+        code, output = self._run(["subpart-d-categories"])
+        self.assertNotEqual(self.status_of(output, "inherited-reason"), "fail", output)
+        self.assertEqual(code, 0, output)
+
+    def test_an_edge_to_a_beyond_adapter_entry_is_the_same_rule(self):
+        """Row 4 inherits exactly as row 3 does. Watched failing by dropping `beyondAdapter`
+        from the fields `deferring` is built from."""
+        code, output = self._run(["inner-table-handedness"])
+        self.assertEqual(self.status_of(output, "inherited-reason"), "fail", output)
+        self.assertIn("which defer(s) to a corpus that was not admitted", output)
+
+    def test_an_inheriting_entry_that_names_the_inherited_reason_is_accepted(self):
+        """The fix the refusal asks for, proved accepted rather than merely described."""
+        code, output = self._run(["hazardous-material"], reason="MissingRulesData")
+        self.assertNotEqual(self.status_of(output, "inherited-reason"), "fail", output)
+        self.assertEqual(code, 0, output)
+
+
+class TestAReferenceMayNameAClass(MapCase):
+    """0059: a class of corpora says so, because an absent `citation` cannot say it.
+
+    Two manifests declare `air-almanac` with no citation and the Air Almanac is one publication,
+    cited by name. So the marker is explicit and the absence means nothing.
+    """
+
+    def _manifest_with(self, reference):
+        import copy
+        manifest = copy.deepcopy(MANIFEST)
+        manifest["corpora"][0].setdefault("references", []).append(reference)
+        return manifest
+
+    def test_a_class_with_a_citation_fails(self):
+        """Watched failing by dropping the `citation is not None` arm."""
+        self.write_manifest(self._manifest_with(
+            {"sourceId": "local-law", "admitted": False, "class": True,
+             "citation": "§ 1", "note": "The property law of the jurisdiction."}))
+        code, output = self.run_tool(valid_map())
+        self.assertEqual(self.status_of(output, "manifest"), "fail", output)
+        self.assertIn("a class of corpora has no one publication to cite", output)
+
+    def test_a_class_with_no_note_fails(self):
+        """Watched failing by dropping the `note` arm."""
+        self.write_manifest(self._manifest_with(
+            {"sourceId": "local-law", "admitted": False, "class": True}))
+        code, output = self.run_tool(valid_map())
+        self.assertEqual(self.status_of(output, "manifest"), "fail", output)
+        self.assertIn("says in no `note` what the class is", output)
+
+    def test_a_well_formed_class_is_accepted(self):
+        self.write_manifest(self._manifest_with(
+            {"sourceId": "local-law", "admitted": False, "class": True,
+             "note": "The property law of whichever jurisdiction the residence sits in."}))
+        code, output = self.run_tool(valid_map())
+        self.assertEqual(self.status_of(output, "manifest"), "ok", output)
+        self.assertEqual(code, 0, output)
+
+    def test_a_reference_cited_by_name_needs_no_marker(self):
+        """The Air Almanac's shape: no citation, no class, and nothing owed."""
+        self.write_manifest(self._manifest_with({"sourceId": "air-almanac", "admitted": False}))
+        code, output = self.run_tool(valid_map())
+        self.assertEqual(self.status_of(output, "manifest"), "ok", output)
+        self.assertEqual(code, 0, output)
+
+
 class TestExclusions(MapCase):
-    def test_an_ambiguity_block_beside_defined_elsewhere_fails(self):
-        def mutate(document):
-            document["entries"][4]["ambiguity"] = {
-                "question": "Defined by reference to a corpus not admitted.",
-                "fate": "unresolved",
-                "unresolvedReason": "MissingRulesData",
-            }
-            document["entries"][4]["clarity"] = "ambiguous"
-        self.assert_catches("exclusions", mutate, message='carries `definedElsewhere` and an `ambiguity` block')
-
-    def test_an_ambiguity_block_beside_beyond_adapter_fails(self):
-        def mutate(document):
-            document["entries"][5]["clarity"] = "ambiguous"
-            document["entries"][5]["ambiguity"] = {
-                "question": "The rule is in a figure.",
-                "fate": "unresolved",
-                "unresolvedReason": "MissingRulesData",
-            }
-        self.assert_catches("exclusions", mutate, message='carries `beyondAdapter` and an `ambiguity` block')
-
     def test_an_ambiguity_block_on_a_clear_entry_fails(self):
         def mutate(document):
             document["entries"][7]["clarity"] = "clear"

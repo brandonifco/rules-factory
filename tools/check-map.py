@@ -1319,6 +1319,16 @@ def check_manifest(ctx):
     manifest declares, or to a reference marked `admitted: true`, is refused (0026, #115): the
     SRD's Rules Glossary is the same corpus as its combat chapter, and a term defined there is a
     `scope: out` entry the in-scope entry names, not a reference.
+
+    A reference that names a **class** of corpora rather than a publication says so, with
+    `class: true` and a `note` saying what the class is, and carries no `citation` (0059).
+    § 1.121-1(b)(2) defers to *local law*, which is not a corpus: it is a category of them,
+    different in each jurisdiction and not knowable at map time.
+
+    The marker is explicit because the absence of a `citation` cannot carry it. Two manifests
+    declare `air-almanac` with no `citation` either, and the Air Almanac is a single publication
+    -- one cited by name rather than by section. So a missing `citation` means "cited by name",
+    and a class is a different claim that has to be made.
     """
     manifest = ctx["manifest"]
     if manifest is None:
@@ -1331,6 +1341,28 @@ def check_manifest(ctx):
         return skip("the manifest declares no corpora, so nothing could be resolved against it")
 
     doc, bad, checked = ctx["map"], [], 0
+
+    # 0059: a reference that names a class of corpora says so and says which. Checked over every
+    # declared reference rather than only the ones an entry names, because a class nobody cites
+    # yet is still a claim the manifest makes.
+    for source_id, corpus in corpora.items():
+        for at, reference in enumerate(references_of(corpus), start=1):
+            if not isinstance(reference, dict):
+                continue
+            checked += 1
+            named = reference.get("sourceId") or f"references[{at}]"
+            if reference.get("class") is not True:
+                continue
+            if reference.get("citation") is not None:
+                bad.append(
+                    f"  X  manifest {source_id}: reference {named!r} is `class: true` and carries a "
+                    f"`citation`; a class of corpora has no one publication to cite (0059)"
+                )
+            if not str(reference.get("note") or "").strip():
+                bad.append(
+                    f"  X  manifest {source_id}: reference {named!r} is `class: true` and says in no "
+                    f"`note` what the class is; a reader cannot tell which corpora it means (0059)"
+                )
 
     # 0047: the Phase-1 `references` list is historical evidence. Mapping-time discoveries are
     # additive only, live in `referenceAmendments`, and may not admit a corpus or mutate any
@@ -1661,15 +1693,27 @@ def check_extraction(ctx):
 # tomorrow, and the check would then read an overlay field and belong in STATUS_DEPENDENT.
 OPEN_QUESTION_REASON = "RequiresInterpretation"
 OUT_OF_SCOPE_REASON = "OutsideCurrentScope"
+#: Rows 3 and 4. What an entry returns when a corpus it defers to was not admitted, or an adapter
+#: cannot read the passage -- and, since 0059, what such an entry returns even where it also
+#: leaves a question open.
+MISSING_DATA_REASON = "MissingRulesData"
 
 
 def check_exclusions(ctx):
-    """The `ambiguity` block is not a general decline carrier (0005 D).
+    """The `ambiguity` block carries its own contents and nothing else's (0005 D).
 
-    Three rules: no entry carries `definedElsewhere` or `beyondAdapter` alongside an
-    `ambiguity` block; `ambiguity` is present exactly when `clarity: ambiguous`; and the
-    block's own contents -- `question`, `fate`, `decision` when the fate is `decision`,
-    `unresolvedReason` when it is `unresolved`.
+    Two rules: `ambiguity` is present exactly when `clarity: ambiguous`; and the block's own
+    contents -- `question`, `fate`, `decision` when the fate is `decision`, `unresolvedReason`
+    when it is `unresolved`.
+
+    A third rule was here until 0059: no entry carried `definedElsewhere` or `beyondAdapter`
+    beside an `ambiguity` block, "to keep two rows of the correspondence table from firing with
+    different answers on the same entry". The table gained an order after that was written --
+    rows are checked in order and the first match wins -- so two rows matching is one answer and
+    a recorded second fact, and the exclusion was costing a true one: `method-of-allocation`
+    defers a term to an unadmitted statute *and* has a gap of its own, and had to write the
+    deferral as a cross-reference to stay representable. `check_unresolved_reason` is where the
+    pair is now held to an answer.
     """
     bad = []
     for position, entry in enumerate(entries_of(ctx["map"])):
@@ -1677,9 +1721,6 @@ def check_exclusions(ctx):
             continue
         name = label(entry, position)
         has_ambiguity = "ambiguity" in entry
-        for field in ("definedElsewhere", "beyondAdapter"):
-            if field in entry and has_ambiguity:
-                bad.append(f"  X  {name}: carries `{field}` and an `ambiguity` block; two correspondence rows would fire")
         if entry.get("clarity") == "clear" and has_ambiguity:
             bad.append(f"  X  {name}: clarity is `clear` but an `ambiguity` block is present")
         if entry.get("clarity") == "ambiguous" and not has_ambiguity:
@@ -1701,6 +1742,52 @@ def check_exclusions(ctx):
                 bad.append(f"  X  {name}: fate is `decision`, so there is no runtime unresolved reason to name")
     return verdict(bad, "ambiguity blocks are present exactly where clarity says, and carry nothing else's job",
                    "an ambiguity block is misused")
+
+
+def check_inherited_reason(ctx):
+    """The same rule one edge away: a missing definition dominates an open question (#226).
+
+    Trial 9's adjudication stated it after both mappers got it wrong from opposite sides:
+
+        `definedElsewhere` relocates the reason an entry declines; it never converts a decline
+        into an answer.
+
+    An entry whose `dependsOn` reaches an entry carrying `definedElsewhere` or `beyondAdapter`
+    cannot be resolved without a corpus nobody admitted, so what it returns is `MissingRulesData`,
+    inherited across the edge. An open question recorded on such an entry sends the only party who
+    could act on it to interpret something no reading settles -- map A's failure mode, filed under
+    `RequiresInterpretation` -- when what is missing is a definition they can go and get.
+
+    0059 made this checkable by dropping the exclusion that hid it: the entry itself may now carry
+    both fields, so the rule for one entry and the rule across an edge are one rule, and this is
+    the half `check_unresolved_reason` cannot see.
+
+    What it does not do: reach further than one edge, or read `status`. A chain of three is not
+    walked, because a `dependsOn` edge to an implemented entry is not a decline and the map cannot
+    tell which without reading an overlay -- and no epistemic check may (0034).
+    """
+    doc = ctx["map"]
+    deferring = _deferring_ids(doc)
+    bad, checked = [], 0
+    for position, entry in enumerate(entries_of(doc)):
+        if not isinstance(entry, dict) or fate_of(entry) != "unresolved":
+            continue
+        if block(entry, "ambiguity").get("unresolvedReason") != OPEN_QUESTION_REASON:
+            continue
+        reached = _inherits_from(entry, deferring)
+        if not reached:
+            continue
+        checked += 1
+        name = label(entry, position)
+        bad.append(f"  X  {name}: fate is `unresolved` with {OPEN_QUESTION_REASON!r}, and "
+                   f"`dependsOn` reaches {', '.join(reached)}, which defer(s) to a corpus that "
+                   f"was not admitted. The reason is inherited: a caller cannot resolve this "
+                   f"without that corpus, so it is {MISSING_DATA_REASON!r} (0059)")
+    if not bad and not checked:
+        return skip("no open question depends on an entry that defers to an unadmitted corpus, "
+                    "so no reason is inherited across an edge", had_subject=False)
+    return verdict(bad, "no open question hides a missing definition one edge away",
+                   "an open question wears a reason its dependency overrides")
 
 
 def check_decision_records(ctx):
@@ -1789,6 +1876,22 @@ def check_conflicts(ctx):
                    "a conflict is not well-formed")
 
 
+def _defers(entry):
+    """Whether this entry's own fields put it on row 3 or row 4."""
+    return any(field in entry for field in ("definedElsewhere", "beyondAdapter"))
+
+
+def _deferring_ids(doc):
+    """Every entry id whose own fields defer to a corpus that was not admitted."""
+    return {e.get("id") for e in entries_of(doc)
+            if isinstance(e, dict) and _defers(e)}
+
+
+def _inherits_from(entry, deferring):
+    """The deferring entries this one's `dependsOn` reaches, sorted."""
+    return sorted(set(entry.get("dependsOn") or []) & deferring)
+
+
 def check_unresolved_reason(ctx):
     """An open question returns the reason a caller can act on.
 
@@ -1803,29 +1906,54 @@ def check_unresolved_reason(ctx):
 
     So the reason must be one the entry's own rows can produce: `RequiresInterpretation` (row 6),
     or `OutsideCurrentScope` where the entry is `scope: out` and row 1 wins first. Rows 3 and 4
-    cannot arise -- `exclusions` already refuses `definedElsewhere` or `beyondAdapter` beside an
-    `ambiguity` block -- and rows 2 and 5 are read by no check here on purpose: an overlay turns
+    can arise since 0059 dropped the exclusion that kept `definedElsewhere` and `beyondAdapter`
+    off an ambiguous entry, and where one of those fields is present it wins: a missing definition
+    dominates an open question, which is what trial 9's adjudication established one edge away --
+    `definedElsewhere` relocates the reason an entry declines and never converts a decline into an
+    answer. Such an entry names `MissingRulesData` and nothing else, because that is the reason its
+    first matching row gives. Rows 2 and 5 are read by no check here on purpose: an overlay turns
     both, so a reason they justified would stop being justified in a consuming engine.
+
+    The same rule one edge away is `check_inherited_reason` below (#226).
 
     What it cannot do: say whether the question is one a caller could act on. That the words of
     `ambiguity.question` name a point somebody could rule on is what 0027's `span` machinery
     tests in the factory, on the overlay, and no check of the map alone reaches it.
     """
     bad, open_questions = [], 0
+    deferring = _deferring_ids(ctx["map"])
     for position, entry in enumerate(entries_of(ctx["map"])):
         if not isinstance(entry, dict) or fate_of(entry) != "unresolved":
             continue
         open_questions += 1
         name = label(entry, position)
         reason = block(entry, "ambiguity").get("unresolvedReason")
-        allowed = {OPEN_QUESTION_REASON}
+        # Row order, in the one place a map can reach it. Rows 3 and 4 precede row 6, so an entry
+        # carrying either field answers with theirs and row 6 never fires for it (0059) -- and
+        # the same holds one edge away, or this check and `check_inherited_reason` would demand
+        # different reasons of one entry and no map could satisfy both.
+        if _defers(entry) or _inherits_from(entry, deferring):
+            allowed = {MISSING_DATA_REASON}
+        else:
+            allowed = {OPEN_QUESTION_REASON}
         if entry.get("scope") == "out":
             allowed.add(OUT_OF_SCOPE_REASON)
         if reason is not None and reason not in allowed:
+            # The second sentence says what the wrong reason costs, which differs by direction:
+            # an open question dressed as missing data sends a caller after data that does not
+            # exist, and a missing definition dressed as an open question sends them to interpret
+            # something no reading settles (#226, the failure trial 9's map A made).
+            if allowed == {MISSING_DATA_REASON}:
+                where = ("this entry defers" if _defers(entry)
+                         else f"{', '.join(_inherits_from(entry, deferring))} defers")
+                why = (f"{where} to a corpus that was not admitted, so a caller told {reason!r} "
+                       f"is sent to interpret what a definition they can go and get would settle")
+            else:
+                why = (f"a caller told {reason!r} is sent after data or an implementation, and "
+                       f"what is missing is an interpretation nobody has made")
             bad.append(f"  X  {name}: fate is `unresolved` and unresolvedReason is {reason!r}. The "
-                       f"correspondence table gives this entry {' or '.join(sorted(allowed))}; a "
-                       f"caller told {reason!r} is sent after data or an implementation, and what "
-                       f"is missing is an interpretation nobody has made")
+                       f"correspondence table gives this entry {' or '.join(sorted(allowed))}; "
+                       f"{why}")
     if not open_questions:
         return skip("no entry carries `ambiguity.fate: unresolved`, so this map leaves no question "
                     "open and there is no runtime reason to hold to the table", had_subject=False)
@@ -3777,6 +3905,8 @@ CHECKS = [
     # none may: an overlay must not be able to turn a verdict about whether the corpus
     # settles a question, because the corpus is the same either way.
     ("unresolved-reason", check_unresolved_reason),
+    # #226: the same rule across a `dependsOn` edge. Reads no overlay field, so it belongs here.
+    ("inherited-reason", check_inherited_reason),
     # #271: an ambiguity is anchored in the corpus's words, as a cross-reference is. It reads
     # `evidence` and `ambiguity` and no overlay field, so it belongs here and not in
     # STATUS_DEPENDENT: whether the corpus settles a question is the same either way.

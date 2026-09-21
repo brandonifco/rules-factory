@@ -251,7 +251,7 @@ Every artifact under `examples/` is named in
 read it, and the gate holds the tree to that list in both directions on every run. The roles are
 measured rather than declared — an audit hook records what each checker opens — and what they
 found is in [docs/evidence-inventory.md](docs/evidence-inventory.md): 11.9 MB read by the checks,
-2.5 MB packed into published packages, and 918 KB read by nothing at all
+2.5 MB packed into published packages, and 919 KB read by nothing at all
 ([0051](docs/decisions/0051-every-evidence-artifact-says-which-check-reads-it.md)).
 
 ### What it does not prove

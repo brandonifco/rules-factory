@@ -933,23 +933,20 @@
       "ambiguity": {
         "question": "The corpus fixes one method and only conditionally: the taxpayer must use the same method used to determine depreciation adjustments, \"if applicable\". Where no depreciation was ever taken -- (e)(4) Example 6 is exactly that case -- there is no such method, and the corpus states no other and names nobody to choose one, while still requiring the basis and the amount realized to be allocated.",
         "fate": "unresolved",
-        "unresolvedReason": "RequiresInterpretation"
+        "unresolvedReason": "MissingRulesData"
       },
       "dependsOn": [
         "allocation-required"
       ],
-      "crossReferences": [
-        {
-          "cites": "section 1250(b)(3)",
-          "unmapped": "The definition of depreciation adjustments, in the statute, which is not admitted. It is answered here rather than by `definedElsewhere` because this entry already carries an `ambiguity` block and the schema excludes the two on one entry; the report records that as finding 4."
-        }
-      ],
       "evidence": "(3) Method of allocation. For purposes of determining the amount of gain allocable to the residential and non-residential portions of the property, the taxpayer must allocate the basis and the amount realized between the residential and the non-residential portions of the property using the same method of allocation that the taxpayer used to determine depreciation adjustments (as defined in section 1250(b)(3)), if applicable.",
       "status": "mapped",
-      "note": "The rule is a constraint on the method rather than a method, and the constraint is empty in the case the corpus does not exclude. An engine can answer wherever depreciation was taken and must decline where none was, which is a narrower decline than it looks: it is the case Example 6 turns on.",
+      "note": "The rule is a constraint on the method rather than a method, and the constraint is empty in the case the corpus does not exclude. An engine can answer wherever depreciation was taken and must decline where none was, which is a narrower decline than it looks: it is the case Example 6 turns on. Both facts are recorded since 0059: the term is fixed in an unadmitted statute, and where the \"if applicable\" condition fails -- a portion separate from the dwelling unit on which no depreciation was taken -- the corpus states no method and names nobody to choose one. The question above names (e)(4) Example 6 as that case and is wrong about it: Example 6 is use within the dwelling unit, where (e)(1) requires no allocation and (e)(3) never fires. That is rules-factory #407 and is not corrected here; the gap is real on the face of (e)(3) and does not depend on the example. The deleted crossReferences item said the schema excluded an ambiguity block beside definedElsewhere, and it was true when written: 0059 dropped that exclusion, which is why the pointer is now answered by the field instead of by prose. That item carried the only reference to finding 4 of the trial report, recorded here so it is not lost. The runtime reason is the first wall, MissingRulesData -- a caller without section 1250(b)(3) cannot even determine whether \"if applicable\" applies, and cannot establish which branch they are in -- and the gap stays in the question, where a ruling under 0027 can reach it. The sentence above about answering wherever depreciation was taken is about what the rule permits once the term is supplied, not about what this entry returns: the entry declines in both branches, because `definedElsewhere` is what answers first, and an engine answers either only on an owner's ruling. If section 1250(b)(3) is ever admitted, that field stops answering and the ambiguity does -- returning RequiresInterpretation for the depreciation-taken branch too, which would be wrong -- so admitting it obliges splitting this entry in two. depreciation-not-excludable quotes the same statute for the same term and has always declared it this way.",
       "enabledBy": [
         "effective-date"
-      ]
+      ],
+      "definedElsewhere": {
+        "reference": "usc-26-1250"
+      }
     },
     {
       "id": "examples-e",

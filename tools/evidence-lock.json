@@ -24,10 +24,8 @@
       "archive": null,
       "bytes": 2248,
       "path": "examples/acceptance-4-5/check-provenance.sh",
-      "readBy": [
-        "checks"
-      ],
-      "role": "active",
+      "readBy": [],
+      "role": "archived",
       "sha256": "976e1bfd5a7759c3e0f4f449b1e1f53750b7a6e27a9b37767864f88bca60400e"
     },
     {
@@ -44,8 +42,10 @@
       "archive": null,
       "bytes": 37125,
       "path": "examples/blind-mapping-trial/blind-map.json",
-      "readBy": [],
-      "role": "archived",
+      "readBy": [
+        "checks"
+      ],
+      "role": "active",
       "sha256": "04930e7e62054a17cd54faab0410efec8ec87aaac56f8bf2ff5597caa8a743c1"
     },
     {
@@ -1762,13 +1762,13 @@
     },
     {
       "archive": null,
-      "bytes": 16323,
+      "bytes": 20686,
       "path": "examples/tax-121-principal-residence/blind-mapping/build-map-c.py",
       "readBy": [
         "checks"
       ],
       "role": "active",
-      "sha256": "e29acc5607478cf680acdd1962926e4b1d6bf971e134c2fdb888b8e129e9b396"
+      "sha256": "0aace771663be16a2f82daf2d123f7da62144565ad97f39aab521c002d8d5e22"
     },
     {
       "archive": null,
@@ -1810,25 +1810,33 @@
     },
     {
       "archive": null,
-      "bytes": 2180,
+      "bytes": 2644,
       "path": "examples/tax-121-principal-residence/corpus-manifest.json",
       "readBy": [
         "checks",
         "package"
       ],
       "role": "release",
-      "sha256": "2223992ac4e8726d9c80e0756ce91abaa27ad3c76a2b461534d4f9f9dcb7536c"
+      "sha256": "f6ea550986b3dd4c966c9f871ded52945c5993d594e8760f3a5e63d52771951e"
     },
     {
       "archive": null,
-      "bytes": 58665,
+      "bytes": 60180,
       "path": "examples/tax-121-principal-residence/corpus-map.json",
       "readBy": [
         "checks",
         "package"
       ],
       "role": "release",
-      "sha256": "5106bb4879b7c1af5fc0ddb1699800e91cd9fb97bada74f483c9ae4dbed83879"
+      "sha256": "e11a2a2990e0436cdfcaf3540eb625b2513406e68538f5e87a78be82d5295d0f"
+    },
+    {
+      "archive": null,
+      "bytes": 36182,
+      "path": "examples/tax-121-principal-residence/independent-verdict-218-226.json",
+      "readBy": [],
+      "role": "archived",
+      "sha256": "97d4f3a06fd4d2622cdda8bd3009c737e3082d4b542c07fff00cbeae998e65c3"
     },
     {
       "archive": null,
@@ -1862,13 +1870,13 @@
     },
     {
       "archive": null,
-      "bytes": 3393,
+      "bytes": 5301,
       "path": "examples/tax-121-principal-residence/review.json",
       "readBy": [
         "checks"
       ],
       "role": "active",
-      "sha256": "5d7e854f414f4c16c836071624f28fcb46dd9d9afa1fece8163036074adf384b"
+      "sha256": "3552918cd0f4eeac12564fb08f5e552fa38f6480f0ec68ef956559e34a2b69f9"
     },
     {
       "archive": null,
@@ -1912,7 +1920,7 @@
       "sha256": "ccb96e85f22fbf114440ed7f8c1bc2a6958cf71908136b4de759c98d14e70e51"
     }
   ],
-  "measuredAt": "63a42c58eab7bea9e5b9e354bd6563a86fd26de6",
+  "measuredAt": "c705b7803a0f540cf8bb99ae807ad28cb5c6e060",
   "measuredBy": "tools/check-evidence.py --measure",
   "readers": {
     "checks": "a gate step that reads this artifact for what is in it",

@@ -746,17 +746,23 @@ and `status` below.
 `ambiguity.unresolvedReason` names the `UnresolvedReason` the engine will return, and is
 present when the fate is `unresolved`. It is the field that ties an entry to the
 correspondence table below — and it must be a reason that table actually produces for this
-entry: `RequiresInterpretation` (row 6), or `OutsideCurrentScope` where the entry is
-`scope: out` and row 1 wins first. `check-map.py --only unresolved-reason` refuses the rest
+entry: `RequiresInterpretation` (row 6), `OutsideCurrentScope` where the entry is
+`scope: out` and row 1 wins first, or `MissingRulesData` where the entry carries
+`definedElsewhere` or `beyondAdapter` and row 3 or 4 wins first (0059) — **or where its
+`dependsOn` reaches an entry that does**, because a rule nobody can resolve without an
+unadmitted corpus does not become interpretable by being depended on. `check-map.py --only unresolved-reason` refuses the rest
 ([0034](decisions/0034-a-valid-unresolved-state-is-established-not-asserted.md)). Being in the
 kernel's vocabulary is not enough: a caller told `MissingRulesData` is sent after data that does
 not exist, when what is missing is an interpretation nobody has made.
 
 **The block is never a general decline carrier.** A rule defined in an unadmitted corpus
-takes `definedElsewhere`; a rule the adapter cannot read takes `beyondAdapter`. No entry
-carries either of those *and* an `ambiguity` block — that is a checkable exclusion, and it is
-what keeps two rows of the correspondence table from firing with different answers on the
-same entry.
+takes `definedElsewhere`; a rule the adapter cannot read takes `beyondAdapter`. An entry may
+carry one of those *and* an `ambiguity` block, where both are true of it — the exclusion that
+forbade it is dropped by
+[0059](decisions/0059-a-missing-definition-dominates-an-open-question-and-a-reference-may-name-a-class.md),
+because the correspondence table's row order decides what such an entry returns and the
+exclusion was costing a true fact. What the block still may not do is carry the *reason*: an
+entry that defers takes `MissingRulesData`, from row 3 or row 4, whatever its own question says.
 
 **A corpus that contradicts itself is ambiguous.** `clear` asserts the corpus determines
 exactly one answer, and a corpus stating a rule twice in incompatible terms does not.
@@ -1042,6 +1048,28 @@ It shares a runtime reason with `beyondAdapter` and shares nothing else, which i
 are two fields rather than one with a discriminator: each has required contents that resolve
 against a different part of the manifest, and a merged field would be half-empty in every
 instance and checkable only after reading its own discriminator.
+
+**Which field an unadmitted passage takes, in three lines** (0059). The question is what the
+passage is *to this rule*, and it has one answer:
+
+| what the unadmitted passage is to this rule | the field |
+|---|---|
+| it fixes the **meaning of a term this rule uses** | `definedElsewhere` |
+| it is a **different rule** the passage points at — an election, an example, another section | `crossReferences[].unmapped` |
+| it is a **fact the caller reports** — an airspace class, the method a taxpayer used | neither: no entry, a `note` |
+
+Trial 9's two mappers split nine times on the first two, and the adjudication could not settle it
+from the corpus because the corpus says nothing about which. It was one question with two answers
+because an ambiguous entry could not take `definedElsewhere` at all; with that exclusion gone the
+two collapse to one rule.
+
+**A reference may name a class of corpora rather than a publication.** § 1.121-1(b)(2) defers to
+*local law*, which is not a corpus: it is a category of them, different in each jurisdiction and
+not knowable at map time. Such a reference declares `class: true`, carries no `citation`, and says
+in a `note` what the class is. The marker is explicit because an absent `citation` cannot carry
+it — two manifests declare `air-almanac` with none, and the Air Almanac is one publication, cited
+by name rather than by section. An entry naming a class declines with `MissingRulesData` like any
+other unadmitted reference; the class says only that the caller has more than one place to look.
 
 **It answers the pointer, once.** *"The term hazardous material is defined in 49 CFR 171.8"* is
 a reference the corpus makes, and `definedElsewhere` is its answer: it names the manifest
@@ -1500,6 +1528,14 @@ and the invariant is unwritable in either direction.
 | 6 | `ambiguity.fate: unresolved` | `RequiresInterpretation` |
 | 7 | two implemented entries with no entry for their combination | `UnsupportedInteraction` |
 | 8 | `kind: assertion` | **nothing — the engine demands the value and proceeds** |
+
+**Row order is what lets one entry be two things.** An entry carrying `definedElsewhere` *and*
+`ambiguity.fate: unresolved` matches rows 3 and 6, and row 3 wins: a missing definition dominates
+an open question, so the engine answers `MissingRulesData` and the question stays in the map for a
+person or an overlay ruling (0027) to reach. The same holds one `dependsOn` edge away — trial 9's
+adjudication put it as *"`definedElsewhere` relocates the reason an entry declines; it never
+converts a decline into an answer"* — and `check-map.py --only inherited-reason` holds a map to it
+([0059](decisions/0059-a-missing-definition-dominates-an-open-question-and-a-reference-may-name-a-class.md)).
 
 `absentFrom` adds no row. An engine asked about a rule the corpus does not state answers
 `OutsideCurrentScope`, the same as one it read and declined — which is why 0009 records the
