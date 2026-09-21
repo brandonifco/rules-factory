@@ -307,6 +307,13 @@ decline that names why and cites where — that is the engine working, not the e
   status and asks the gate to report again at that commit; there is no re-run to remember. If the
   check is still red a minute later, the thing to read is that workflow's run, not the verdict.
 
+  **Changing the risk label is the whole of that step too, whenever it is changed.** The gate
+  reads the risk label from the linked issue, and an issue can be relabelled long after the gate
+  has passed. The same workflow sees that event and asks the gate to report again for every open
+  pull request closing the issue, so raising risk turns the required check red again by itself and
+  it stays red until an independent verdict is recorded at the head being merged. Lowering risk
+  takes the same route, and the gate then finds the independent verdict no longer required.
+
   A change touching the semantic surface needs the semantic verdict; an issue classified as
   needing independent review needs one of the configured independent contexts as well. **A
   recorded failure at any configured context blocks outright**, and a pass recorded elsewhere does
