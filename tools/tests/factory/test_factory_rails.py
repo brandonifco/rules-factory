@@ -2414,6 +2414,128 @@ class TestReProduce(AFactoryToReProduceFrom, RailsInAGitEngine):
         self.assertEqual(self.re_produce(repo=repo).returncode, 0)
 
 
+class TestAConflictedRecordNamesItsOneCommand(AFactoryToReProduceFrom, RailsInAGitEngine):
+    """#252: two entry branches merge, `provenance.json` conflicts, and the refusal says what to do.
+
+    Since the overlay became a directory (#247) an entry's evidence is its own file, so two entry
+    branches cut from the same produced commit write no common overlay path. `provenance.json` is
+    what is left: it hashes everything, so both branches rewrite the same lines of it and a merge
+    leaves markers there and nowhere else. `merged()` asserts exactly that, because it is the
+    premise the rest of this rests on -- and because two entries close together in the map also
+    conflict in the generated C#, which is a different merge about a different thing.
+
+    A file holding conflict markers is not JSON, and both the gate and `tools/re-produce.sh` read
+    the record as JSON, so the one command that recomputes every hash in it could not run until
+    somebody had already picked a side -- and neither message named that step. There is nothing
+    there to pick: a re-produce overwrites the whole record, so both sides are discarded whichever
+    is kept. An operator who has not seen it before opens the file, finds three conflicting
+    SHA-256 hunks and has no way to tell which is right, which is the state #242's criterion
+    exists to prevent.
+
+    **#283, and why the exit codes here are not the assertion.** Both tools refused a conflicted
+    record before this change as well, with the wrong message: `assertEqual(returncode, 1)` passes
+    before and after and proves nothing at all. What is asserted is the sentence -- that the
+    refusal calls it a merge conflict, says either side is equally good, and names
+    `tools/re-produce.sh --resolve-record` -- that the old parse error is gone, that the refusal
+    resolved nothing by itself, and that the command it names does the job when it is run.
+    """
+
+    #: Two entries from opposite ends of the map, so the record is the only file that conflicts.
+    ENTRIES = ("speed-limit", "waivable-regulations")
+    IMPLEMENTED = {"status": "implemented", "implementedIn": "Rules/Entry.cs",
+                   "tests": [{"name": "Entry_Declines",
+                              "mutation": "return the limit instead of declining"}]}
+
+    def setUp(self):
+        super().setUp()
+        self.produced()
+        self.factory, commits = self.factory_repo()
+        self.recorded = commits["recorded"]
+        self.record_commit(self.recorded)
+        self.commit_engine_as_is()
+
+    def entry_branch(self, entry_id):
+        """One entry branch cut from the produced commit: its evidence, and a real re-produce."""
+        git(self.out, "checkout", "-q", "main")
+        git(self.out, "checkout", "-q", "-b", entry_id)
+        write_overlay(self.out, {entry_id: self.IMPLEMENTED})
+        self.produced()
+        # Back to the stand-in factory, so --resolve-record's re-produce below needs no network.
+        self.record_commit(self.recorded)
+        git(self.out, "add", "-A")
+        git(self.out, "commit", "-qm", f"implement {entry_id}")
+
+    def merged(self, first, second):
+        """`second` merged into `first`, both cut from the same produced commit."""
+        for entry_id in self.ENTRIES:
+            self.entry_branch(entry_id)
+        git(self.out, "checkout", "-q", first)
+        done = subprocess.run(["git", "merge", "--no-edit", second], cwd=self.out,
+                              capture_output=True, text=True)
+        self.assertEqual(done.returncode, 1, f"the merge did not conflict:\n{done.stdout}{done.stderr}")
+        unmerged = sorted({line.split("\t", 1)[1] for line in git(self.out, "ls-files", "-u").splitlines()})
+        self.assertEqual(unmerged, ["provenance.json"],
+                         "#252's premise: the record is the one file two entry branches conflict in")
+
+    def gate(self, *args):
+        return subprocess.run([sys.executable, os.path.join(self.out, "scripts", "engine-gate.py"), *args],
+                              cwd=self.out, capture_output=True, text=True)
+
+    def refusals(self):
+        """What each tool says about the conflicted record, and what the record looked like after."""
+        gate = self.gate("provenance")
+        reproduce = self.re_produce("--dry-run", repo=self.factory)
+        for done in (gate, reproduce):
+            # Collapsed, because one of these two is a shell script wrapping its own refusal.
+            said = " ".join((done.stdout + done.stderr).split())
+            # 1 before this change too, on the parse error: the sentence is the assertion (#283).
+            self.assertEqual(done.returncode, 1, said)
+            self.assertIn("provenance.json is in a merge conflict", said)
+            self.assertIn("either side is equally good", said)
+            self.assertIn("tools/re-produce.sh --resolve-record", said)
+            self.assertNotIn("is not readable JSON", said,
+                             "the old refusal answered with a column number in a file nobody should read")
+            self.assertNotIn("cannot be read (", said)
+        # Neither of them resolved anybody's merge on the way past.
+        self.assertIn("UU provenance.json", git(self.out, "status", "--porcelain"))
+        return gate, reproduce
+
+    def test_the_refusal_names_the_one_command_and_that_command_finishes_it(self):
+        self.merged(*self.ENTRIES)
+        self.refusals()
+
+        done = self.re_produce("--resolve-record", repo=self.factory)
+        self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+        self.assertIn("is in a merge conflict", done.stderr)
+        self.assertIn("ours, the branch you are on", done.stderr,
+                      "it does not say which side it took")
+        with open(os.path.join(self.out, "provenance.json"), encoding="utf-8") as handle:
+            json.load(handle)  # readable again, which is the whole of the recovery
+        self.assertEqual(git(self.out, "ls-files", "-u"), "", "the record is still unmerged in the index")
+        with open(os.path.join(self.out, "re-produced-by.json"), encoding="utf-8") as handle:
+            self.assertEqual(json.load(handle)["version"], "recorded", "the re-produce did not run")
+
+    def test_the_other_merge_order_is_told_the_same_thing(self):
+        """Either side is equally good, so which branch was merged into which cannot matter."""
+        self.merged(*reversed(self.ENTRIES))
+        self.refusals()
+
+    def test_a_record_that_is_broken_rather_than_conflicted_keeps_its_own_message(self):
+        """The discriminator: a conflict is somebody's merge, broken JSON is somebody's edit.
+
+        Calling every unreadable record a merge conflict would name `--resolve-record` at an
+        operator who has no sides to choose between, so all three markers are required.
+        """
+        with open(os.path.join(self.out, "provenance.json"), "w", encoding="utf-8") as handle:
+            handle.write('{"provenanceFormat": 4,\n')
+        said = "".join(part for done in (self.gate("provenance"), self.re_produce("--dry-run", repo=self.factory))
+                       for part in (done.stdout, done.stderr))
+        self.assertIn("provenance.json is not readable JSON", said)
+        self.assertIn("provenance.json cannot be read (", said)
+        self.assertNotIn("merge conflict", said)
+        self.assertNotIn("--resolve-record", said)
+
+
 COMMAND = re.compile(r"^(?:\./)?(?:tools|scripts)/[A-Za-z0-9_.\-]+\.(?:py|sh)$")
 # What a rail's placeholder stands for here, so the command that runs is the one the rail spells.
 # An unknown placeholder fails the test rather than skipping the command it is in: a rail that
