@@ -35,6 +35,12 @@ The fields, and where each comes from:
     factory without it is refused), each with its SHA-256, sorted by
     repository-relative POSIX path in ascending byte order; and `digest`, the SHA-256 of the
     UTF-8 text made of one line `<sha256>  <path>\\n` per file in that order (`sha256sum` format).
+    Every one of those files is in the commit `factory.commit` names, or the run is refused
+    (`require_intact`, #232): a symlink under `tools/factory` would be hashed through to bytes
+    git does not hold (and a symlinked directory's contents not hashed at all, because `os.walk`
+    will not follow it), and a git-ignored file would be hashed while `git status` -- which is
+    all `dirty` is -- called the tree clean. `__pycache__` and `*.pyc`, which nothing hashes,
+    are the only ignored paths allowed.
   * `generated` -- `[{path, sha256}]`, sorted by path, for every file `produce` wrote on this
     run under the engine directory whose ownership class (ownership.py, decision 0018) is
     generated, except `provenance.json` itself. Managed and engine-owned files are not listed
@@ -207,7 +213,70 @@ def require_clean(state, allow_dirty):
 RECIPES_BESIDE = ("check-map.py",)
 
 
+def _skipped(relative):
+    """The recipe paths nothing hashes: `__pycache__`, its contents, and any other `*.pyc`.
+
+    Takes a POSIX relative path, so it holds for a `git status` line (which may name the
+    directory, `__pycache__/`) as well as for a walked file.
+    """
+    return "__pycache__" in relative.split("/") or relative.endswith(".pyc")
+
+
+def require_intact(factory_dir, top):
+    """Refuse a factory whose recipe bytes are not the bytes of the commit it would name (#232).
+
+    `recipes()` hashes what it can read, and two things it can read are in no commit:
+
+      * a symlink. Git records the link text; `open()` returns the target's bytes. So the
+        digest would be of bytes outside the checkout while `dirty` said the tree was clean,
+        and `os.walk` does not descend a symlinked directory, so code the factory imports
+        would not be hashed at all.
+      * a git-ignored file. `git status --porcelain` never lists one, so it can never make
+        the tree dirty, and `recipes()` hashes it like any other module.
+
+    Both are refused rather than recorded, as `require_clean` refuses uncommitted changes:
+    there is no honest entry for a file that no commit holds. `--allow-dirty` does not lift
+    this -- it records `dirty: true`, which says the recorded commit is not the whole story,
+    and neither of these leaves any mark in `git status` for that flag to be about.
+    """
+    def named(path):
+        return os.path.relpath(os.path.abspath(path), top).replace(os.sep, "/")
+
+    def require_in_the_commit(path):
+        if os.path.islink(path):
+            raise intake_step.Refused(
+                f"{named(path)} is a symlink, so provenance would hash bytes the recorded commit does "
+                f"not hold (git records the link, not what it points at); put the file or directory "
+                f"itself in the checkout")
+        real = os.path.realpath(path)
+        if real != top and os.path.commonpath([real, top]) != top:
+            raise intake_step.Refused(
+                f"{named(path)} resolves to {real}, outside the factory checkout {top}, so provenance "
+                f"would hash bytes the recorded commit does not hold")
+
+    for name in RECIPES_BESIDE:
+        require_in_the_commit(os.path.join(os.path.dirname(os.path.abspath(factory_dir)), name))
+    require_in_the_commit(factory_dir)
+    for directory, dirs, names in os.walk(factory_dir):
+        dirs[:] = [d for d in dirs if d != "__pycache__"]
+        # Directories too: a symlinked one is what `os.walk` refuses to follow and `recipes()`
+        # therefore never hashes, so checking only files would miss exactly the worse case.
+        for name in sorted(dirs) + sorted(names):
+            path = os.path.join(directory, name)
+            if not _skipped(named(path)):
+                require_in_the_commit(path)
+    # `-z` so a path with a space or a quote in it arrives whole; `--ignored=matching` lists the
+    # ignored paths themselves, and `-- .` asks only about the factory directory, because the
+    # rest of the checkout is not hashed here and its ignored files are nobody's business.
+    for entry in _git(factory_dir, "status", "--porcelain", "-z", "--ignored=matching", "--", ".").split("\0"):
+        if entry.startswith("!! ") and not _skipped(entry[3:]):
+            raise intake_step.Refused(
+                f"{entry[3:].rstrip('/')} is ignored by git, so provenance would hash bytes no commit holds "
+                f"while `git status` called the factory clean; remove it, or commit it")
+
+
 def recipes(factory_dir, top):
+    require_intact(factory_dir, top)
     files = []
     for name in RECIPES_BESIDE:
         path = os.path.join(os.path.dirname(os.path.abspath(factory_dir)), name)

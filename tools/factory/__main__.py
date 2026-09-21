@@ -142,6 +142,10 @@ def produce(args):
             raise intake_step.Usage(f"--produce-report {args.produce_report}: {directory} is not a directory")
     state = provenance.factory_state()
     provenance.require_clean(state, args.allow_dirty)
+    # Here as well as inside `recipes()`, which is the one definition of it: the record is written
+    # last, and a factory whose recipe bytes are in no commit (#232) should be refused before an
+    # engine is generated from it, as a dirty one is.
+    provenance.require_intact(provenance.FACTORY_DIR, state["_top"])
     # The record this engine had before the run, for --produce-report. Read here because the
     # staging copy is about to be overwritten with the new one, and an absent file is the first
     # produce of this engine, which the report says rather than guesses at.
