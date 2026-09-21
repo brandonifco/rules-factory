@@ -67,7 +67,9 @@ anyone to find. It is worse than a wrong answer, because a wrong answer can be d
 a field inside the `ambiguity` block can only be carried by an entry that already admits its
 doubt, and is absent exactly where a collapse happens. What it reads instead is the record a
 second reader left — an `ambiguity.conflict` (0007), an `ambiguity.bounds` example (0031), or the
-adjudication of a blind second mapping (0014):
+adjudication of a blind second mapping (0014), which is one file and one shape,
+`blind-mapping/resolutions.json`, declaring the vocabulary its verdicts are written in
+([0059](decisions/0059-one-adjudication-record-one-shape-and-the-vocabulary-is-declared-in-the-file.md)):
 
 | check | the trace it reads |
 |---|---|
