@@ -777,9 +777,15 @@ def step_tool_tests(run: Run) -> bool:
         print("collection reported no tests -- nothing was proven", file=sys.stderr)
         return False
 
+    # `-rs` prints the reason for every skip. A skip accounts for a test, so the count below
+    # accepts it -- and a count accepted on trust is how this comment came to explain the number
+    # wrongly (#389). It said "this job has no .NET SDK, so the tests that need one skip here":
+    # ubuntu-24.04 ships a 10.x SDK, the runner has had one for some time, and those tests have
+    # been running in this job rather than skipping. The number was right and the reason was not.
+    # So the run prints what actually skipped and why, and no comment has to be believed.
     proc = subprocess.run(
         [sys.executable, "-m", "pytest", "-p", "no:cacheprovider", "tools/tests", "-q",
-         "-n", "auto"],
+         "-n", "auto", "-rs"],
         cwd=run.root, capture_output=True, text=True, env=bare,
     )
     if proc.returncode != 0:
@@ -793,10 +799,10 @@ def step_tool_tests(run: Run) -> bool:
     # distributed run that lost a worker is the same lie with a plausible number on it. So every
     # collected test must be accounted for by one of pytest's own outcome counters.
     #
-    # A skip is an outcome, so it accounts for a test -- and it is never absorbed silently. This
-    # job has no .NET SDK, so the tests that need one skip here and the `engine` job runs them
-    # for real; that is a deliberate two, and a third would be a test nobody is running. The
-    # count is printed on every run for the same reason the map counts are.
+    # A skip is an outcome, so it accounts for a test -- and it is never absorbed silently. Every
+    # skip's reason is printed above by `-rs`, and the count is printed below for the same reason
+    # the map counts are: a reader of a green log can see which tests did not run and why, rather
+    # than take a comment's word for it.
     outcomes = {name: _count(proc.stdout, rf"(\d+) {name}")
                 for name in ("passed", "skipped", "xfailed", "xpassed", "deselected")}
     accounted = sum(outcomes.values())

@@ -742,3 +742,56 @@ class TestNoBytecodeReachesTheCheckout(unittest.TestCase):
         self.assertEqual(0, proc.returncode, proc.stderr[-2000:])
         self.assertEqual(set(), set(vr.leftovers(_pathlib.Path(ROOT))) - before,
                          "the mapper run as a file left bytecode in the checkout")
+
+
+class TestTheSkipsAreNotExplainedByAStaleComment(unittest.TestCase):
+    """#389: the gate's accounting was right about the number and wrong about the cause.
+
+    `validate-repo.py` held the suite to its collected count and explained the two skips with
+    "this job has no .NET SDK, so the tests that need one skip here". ubuntu-24.04 ships a 10.x
+    SDK, so the `validate` runner has one and those ten tests have been *running* there. A count
+    accepted on the strength of a comment is a count nobody is checking, which is the shape of
+    defect this repository keeps finding in its own tools.
+
+    The fix is not a better comment. It is that every skip prints its own reason, so a green log
+    says which tests did not run and why.
+    """
+
+    FALSE_CLAIM = ("this repository's CI has none", "as in this repository's CI")
+
+    def test_the_run_prints_every_skip_reason(self):
+        step = open(TOOL, encoding="utf-8").read().split("def step_tool_tests(")[1].split("\ndef ")[0]
+        self.assertIn('"-rs"', step,
+                      "without -rs a skip is a number with no reason attached, and the reason "
+                      "goes back into a comment that can drift (#389)")
+
+    def test_no_test_claims_this_repository_has_no_sdk(self):
+        """The claim is false wherever it appears: as a skip reason a reader sees in a log, or as
+        a docstring a reader believes instead of reading the runner."""
+        import glob
+        for path in sorted(glob.glob(os.path.join(ROOT, "tools", "tests", "factory", "*.py"))):
+            text = open(path, encoding="utf-8").read()
+            for claim in self.FALSE_CLAIM:
+                with self.subTest(file=os.path.basename(path), claim=claim):
+                    # The corrected docstring names the claim to say it is false, so what is
+                    # refused is the assertion, not the words.
+                    offending = [line.strip() for line in text.splitlines()
+                                 if claim in line and "*not*" not in line]
+                    self.assertEqual([], offending,
+                                     f"{os.path.basename(path)} says the validate runner has no "
+                                     f".NET SDK; it has a 10.x one and these tests run there (#389)")
+
+    def test_the_two_questions_about_an_sdk_are_asked_separately(self):
+        """An SDK is present, and the SDK this engine pins is present, have different
+        consequences: a build against a non-pinned 10.x with `rollForward: disable` exits 155.
+        A guard that conflates them measures a fallback path and reports it as the real one."""
+        factory = os.path.join(ROOT, "tools", "tests", "factory")
+        gate = open(os.path.join(factory, "test_factory_gate.py"), encoding="utf-8").read()
+        provenance = open(os.path.join(factory, "test_factory_provenance.py"), encoding="utf-8").read()
+        # Any 10.x, because the class re-pins each localised engine's global.json to it.
+        self.assertIn("def _sdk()", gate)
+        self.assertIn('re.match(r"^10\\.", version)', gate)
+        # The other question, where no re-pin happens: the exact pinned version or nothing.
+        self.assertIn("--list-sdks", provenance,
+                      "nothing asks whether the SDK the kernel pins is the one installed (#389)")
+        self.assertIn("pins.SDK_VERSION", provenance)
