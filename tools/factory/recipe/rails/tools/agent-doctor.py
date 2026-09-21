@@ -144,6 +144,10 @@ def leftover_rows(local):
     than OK wherever it could not ask, because a leftover nobody looked for and a repository with
     none look identical from here.
     """
+    # Asked before anything else, including whether this tree is a repository at all: `--local` is
+    # a declaration that GitHub was not read, and this question cannot be answered without it. A
+    # row that found a way to say OK under `--local` would be the green report that skipped the
+    # half that mattered, which is the failure this whole file exists for.
     if local:
         return ([row(LEFTOVERS, NOT_CHECKED, "--local: merged pull requests were not read, so a worktree or "
                                              "branch left behind by merged work is not reported")],
