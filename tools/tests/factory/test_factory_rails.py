@@ -280,6 +280,48 @@ class TestAProducedEngine(unittest.TestCase):
         with open(os.path.join(self.out, *relative.split("/")), encoding="utf-8") as handle:
             return handle.read()
 
+    def test_the_rails_are_a_minority_of_the_engine_they_govern(self):
+        """The measurement 0052 rests on, held to the threshold 0052 says would reopen it.
+
+        0052 decided the rails stay copied into every engine rather than being externalised,
+        and the reason was their size: 204 KB of a 1378 KB engine when it was written. It names
+        the trade as different if the rails ever pass half an engine's bytes. That is a number
+        that drifts silently, so it is asserted here rather than left in a document.
+        """
+        self.produced()
+        managed = 0
+        for relative in ownership.RECIPE_SHA256:
+            path = os.path.join(self.out, *relative.split("/"))
+            if os.path.isfile(path):
+                managed += os.path.getsize(path)
+        engine = 0
+        for directory, subdirs, files in os.walk(self.out):
+            subdirs[:] = [d for d in subdirs if d != ".git"]
+            engine += sum(os.path.getsize(os.path.join(directory, name)) for name in files)
+        self.assertGreater(managed, 0, "no managed file was found in the produced engine")
+        share = managed / engine
+        self.assertLess(share, 0.5,
+                        f"the rails are {share:.0%} of this engine ({managed} of {engine} bytes); "
+                        f"0052 says that reopens whether they should be externalised")
+
+    def test_every_rail_a_produced_engine_carries_is_hashed_in_its_provenance(self):
+        """0052's first property: an engine can prove its rails are the recipe's bytes offline.
+
+        provenance.json's `managed` section is what makes that possible, and it is the section a
+        rails distribution would have replaced with one package digest.
+        """
+        self.produced()
+        record = json.loads(self.read("provenance.json"))
+        hashed = {entry["path"] for entry in record["managed"]}
+        for relative in agentrails.rails_files():
+            with self.subTest(rail=relative):
+                self.assertIn(relative, hashed)
+                entry = next(e for e in record["managed"] if e["path"] == relative)
+                digest = hashlib.sha256(
+                    open(os.path.join(self.out, *relative.split("/")), "rb").read()).hexdigest()
+                self.assertEqual(digest, entry["sha256"])
+                self.assertIn(entry["recipeVersion"], ownership.RECIPE_SHA256[relative])
+
     def test_a_produced_engine_holds_every_rail(self):
         self.produced()
         for relative in list(agentrails.rails_files()) + [".github/agent-policy.json"]:
