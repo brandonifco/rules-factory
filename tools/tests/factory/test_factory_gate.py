@@ -467,6 +467,154 @@ class TestTheOverlaySetIsCompared(GateCase):
         self.assertIn("tools/re-produce.sh", output)
 
 
+def write_trx(path, tests, assembly=f"{NAME}.Tests", framework="net8.0", counters=None,
+              class_name="CorrespondenceTests"):
+    """A TRX shaped exactly like the one `dotnet test --logger trx` writes (xunit 2.9.2 through
+    VSTest 17.11.1, the versions tools/factory/pins.py pins): `storage` is the built assembly's
+    path, lower-cased by the logger; a skipped `[Fact(Skip = ...)]` is a `NotExecuted` result; and
+    `Counters` reports `executed` as passed + failed. `tests` is a list of (name, outcome).
+
+    `counters` overrides the summary, which is how a file whose summary contradicts its own
+    results -- or the pair of files #337 was reproduced with, each `total=12 executed=0
+    notExecuted=12` -- is written.
+    """
+    storage = f"/engine/tests/{assembly}/bin/debug/{framework}/{assembly}.dll".lower()
+    passed = sum(1 for _, outcome in tests if outcome == "Passed")
+    failed = sum(1 for _, outcome in tests if outcome == "Failed")
+    summary = {"total": len(tests), "executed": passed + failed, "passed": passed, "failed": failed,
+               "notExecuted": sum(1 for _, outcome in tests if outcome == "NotExecuted")}
+    summary.update(counters or {})
+    results, definitions = [], []
+    for index, (name, outcome) in enumerate(tests):
+        test_id, execution_id = f"{index:08d}-0000-0000-0000-000000000001", f"{index:08d}-0000-0000-0000-000000000002"
+        results.append(f'    <UnitTestResult executionId="{execution_id}" testId="{test_id}" '
+                       f'testName="{class_name}.{name}" computerName="engine" duration="00:00:00.0010000" '
+                       f'testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="{outcome}" />')
+        definitions.append(f'    <UnitTest name="{class_name}.{name}" storage="{storage}" id="{test_id}">\n'
+                           f'      <Execution id="{execution_id}" />\n'
+                           f'      <TestMethod codeBase="{storage}" adapterTypeName="executor://xunit/VsTestRunner2/netcoreapp" '
+                           f'className="{class_name}" name="{name}" />\n'
+                           f"    </UnitTest>")
+    counted = " ".join(f'{key}="{value}"' for key, value in summary.items())
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    with open(path, "w", encoding="utf-8") as handle:
+        handle.write('<?xml version="1.0" encoding="utf-8"?>\n'
+                     '<TestRun id="49d8f11a-7470-480f-92c8-7301e905fc36" name="engine 2026-09-20 22:34:18" '
+                     'xmlns="http://microsoft.com/schemas/VisualStudio/TeamTest/2010">\n'
+                     "  <Results>\n" + "\n".join(results) + "\n  </Results>\n"
+                     "  <TestDefinitions>\n" + "\n".join(definitions) + "\n  </TestDefinitions>\n"
+                     '  <ResultSummary outcome="Completed">\n'
+                     f"    <Counters {counted} />\n"
+                     "  </ResultSummary>\n</TestRun>\n")
+
+
+class TestTestsRanCountsTestsThatRan(GateCase):
+    """#337: `tests-ran` summed `Counters.total`, which counts tests *discovered*. Two result
+    files declaring `total=12 executed=0 notExecuted=12` passed the check, which printed "24
+    test(s) across 2 result file(s) actually ran" -- a false sentence about work nobody did.
+
+    Every assertion below names the sentence or the count it is about, never only the exit code:
+    a verdict-only assertion is satisfied by a different rule firing for a different reason, which
+    is the trap #283 records.
+    """
+
+    def ran(self, engine, results, expected=2):
+        return self.script(engine, "engine-gate.py", "tests-ran", results, str(expected))
+
+    def results(self, name):
+        return os.path.join(self.tmp, name)
+
+    def test_fails_when_every_test_was_discovered_and_none_executed(self):
+        engine = self.engine()
+        results = self.results("discovered-only")
+        for framework in ("net8.0", "net10.0"):
+            write_trx(os.path.join(results, f"{framework}.trx"),
+                      [(f"t{i}", "NotExecuted") for i in range(12)], framework=framework,
+                      counters={"executed": 0, "passed": 0, "failed": 0, "notExecuted": 12})
+        code, output = self.ran(engine, results)
+        self.assertEqual(code, 1, output)
+        self.assertIn("0 of 24 discovered test(s) were executed", output)
+        self.assertNotIn("actually ran", output)  # the exact sentence the finding quoted
+
+    def test_mixed_executed_and_skipped_reports_only_what_ran(self):
+        engine = self.engine()
+        results = self.results("mixed")
+        for framework in ("net8.0", "net10.0"):
+            write_trx(os.path.join(results, f"{framework}.trx"),
+                      [("passes", "Passed"), ("fails_elsewhere", "Passed"), ("skipped", "NotExecuted")],
+                      framework=framework)
+        code, output = self.ran(engine, results)
+        self.assertEqual(code, 0, output)
+        self.assertIn("4 test(s) actually ran (2 skipped or not executed)", output)
+
+    def test_fails_when_a_target_framework_ran_nothing(self):
+        """The expected matrix is test projects on disk x target frameworks, not a file count:
+        two result files for one framework are two files and half a matrix."""
+        engine = self.engine()
+        results = self.results("one-framework-twice")
+        for index in (1, 2):
+            write_trx(os.path.join(results, f"run{index}.trx"), [("passes", "Passed")], framework="net8.0")
+        code, output = self.ran(engine, results)
+        self.assertEqual(code, 1, output)
+        self.assertIn("no test executed for tests/FaaPart107.Tests/FaaPart107.Tests.csproj under net10.0", output)
+
+    def test_fails_when_the_summary_contradicts_the_results(self):
+        """A hand-edited summary is the other way to claim execution: fail closed, naming both."""
+        engine = self.engine()
+        results = self.results("contradictory")
+        for framework in ("net8.0", "net10.0"):
+            write_trx(os.path.join(results, f"{framework}.trx"),
+                      [(f"t{i}", "NotExecuted") for i in range(12)], framework=framework,
+                      counters={"executed": 12, "passed": 12, "notExecuted": 0})
+        code, output = self.ran(engine, results)
+        self.assertEqual(code, 1, output)
+        self.assertIn('Counters says executed="12", and the file\'s own results show 0 executed '
+                      "(NotExecuted=12)", output)
+
+    def test_fails_when_the_summary_claims_more_ran_than_were_found(self):
+        engine = self.engine()
+        results = self.results("impossible")
+        for framework in ("net8.0", "net10.0"):
+            write_trx(os.path.join(results, f"{framework}.trx"), [("passes", "Passed")],
+                      framework=framework, counters={"executed": 12})
+        code, output = self.ran(engine, results)
+        self.assertEqual(code, 1, output)
+        self.assertIn('Counters says executed="12" of total="1" -- more tests ran than were discovered', output)
+
+    def test_fails_on_counters_that_are_not_numbers(self):
+        engine = self.engine()
+        results = self.results("malformed")
+        for framework in ("net8.0", "net10.0"):
+            write_trx(os.path.join(results, f"{framework}.trx"), [("passes", "Passed")],
+                      framework=framework, counters={"total": "lots", "executed": "some"})
+        code, output = self.ran(engine, results)
+        self.assertEqual(code, 1, output)
+        self.assertIn("Counters total='lots' executed='some' is not a pair of non-negative integers", output)
+
+    def test_fails_when_a_result_file_has_no_summary_at_all(self):
+        engine = self.engine()
+        results = self.results("no-summary")
+        os.makedirs(results)
+        for framework in ("net8.0", "net10.0"):
+            with open(os.path.join(results, f"{framework}.trx"), "w", encoding="utf-8") as handle:
+                handle.write('<?xml version="1.0" encoding="utf-8"?>\n<TestRun '
+                             'xmlns="http://microsoft.com/schemas/VisualStudio/TeamTest/2010" />\n')
+        code, output = self.ran(engine, results)
+        self.assertEqual(code, 1, output)
+        self.assertIn("has no ResultSummary/Counters, so it says nothing about how many tests ran", output)
+
+    def test_passes_on_a_full_matrix(self):
+        engine = self.engine()
+        results = self.results("full")
+        for framework in ("net8.0", "net10.0"):
+            write_trx(os.path.join(results, f"{framework}.trx"),
+                      [("passes", "Passed"), ("reds_on_the_mutation", "Passed")], framework=framework)
+        code, output = self.ran(engine, results)
+        self.assertEqual(code, 0, output)
+        self.assertIn("4 test(s) actually ran (0 skipped or not executed) across 2 result file(s), "
+                      "covering every one of the 2 expected test project x target framework pair(s)", output)
+
+
 class TestImplementedNamesItsTests(GateCase):
     def named(self, engine, merged, results=None):
         results = results or os.path.join(self.tmp, "no-results")

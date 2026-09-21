@@ -175,7 +175,10 @@ What never happens again is `NOT VERIFIED` on stdout and `0` in `$?`.
   does), then runs the engine's own gate, `scripts/validate.sh full`: the SDK pin, a locked
   restore, the overlay merge and the packaged consumer checker, the corpus hash under its
   posture, every `*.g.cs` equal to a fresh regeneration, format, and a `-warnaserror` build and
-  tests in Debug and Release, with evidence that the tests ran. A refusal or failure at any step
+  tests in Debug and Release, with evidence that the tests ran: the result files are counted by
+  *executed* outcomes, never by tests discovered, and every test project must have executed a test
+  in every target framework, so a skipped suite or a framework that stopped running is a failure
+  and not a number ([#337](https://github.com/brandonifco/rules-factory/issues/337)). A refusal or failure at any step
   leaves `--out` as it was.
 - **The tree it is a proof of.** The gate runs on a staging copy of `--out`, so what it proves is
   that copy — and the engine written out is that copy only while `--out` still holds the source and
