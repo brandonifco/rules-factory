@@ -39,8 +39,8 @@ of the territory, not the territory.
 | **evidentiary** | does the cited text exist where the map says it does? | the three locator checkers and `test_map_anchors.py` — outside the package, and belonging inside it; the section checker also proves 0046 structural continuation anchors |
 | **completeness** | did the mapper skip definitions, gates, pointers, tables, examples, applicability clauses, or part of the declared extent? | the producer's half runs — [`mapper sweeps`](mapper.md#the-sweeps) asks each declared sweep of the units the walk left unaccounted ([#250](https://github.com/brandonifco/rules-factory/issues/250)) — and the adversarial half has its first measure. `extent` claims coverage and [`mapper inventory`](mapper.md#the-inventory) measures it — 540 of 806 units across the six maps are reached by no quote ([#255](https://github.com/brandonifco/rules-factory/issues/255), [#267](https://github.com/brandonifco/rules-factory/issues/267)) — but it is the producer measuring its own walk. What the adversary now reads is `coverage`'s **quoted fraction**: the union of the verified quotes' spans over the extent's own length, reported on every run and 19%–100% across the committed maps ([0055](decisions/0055-coverage-reports-how-much-of-the-extent-is-quoted-and-a-map-declares-the-floor.md), [#270](https://github.com/brandonifco/rules-factory/issues/270)). It fails a map only against the floor the map declares in `extent.quoted`, and no committed map declares one yet |
 | **interpretive** | does the evidence actually support the classification? | nothing mechanical, by nature. It is what the blind second mapping exists for ([0014](decisions/0014-a-map-is-checked-by-a-blind-second-mapping.md)), which caught 14 of 15 injected comprehension errors the mechanical checks missed |
-| **relational** | does this gate govern everything the map says it governs — and more than the map noticed? | shape only. `full-table-suspension` reached the throw and everything a throw leads to, recorded none of it, and survived a trial, a build and a review |
-| **epistemic** | was ambiguity preserved where the corpus supports two readings, or collapsed into one? | `superposition`, `unresolved-reason` and `bound-term-open` ([0034](decisions/0034-a-valid-unresolved-state-is-established-not-asserted.md)), each reading a record made outside the entry. Measured: 12 of 64 collapses caught, against 4 before ([`examples/collapse-trial/`](../examples/collapse-trial/README.md)) |
+| **relational** | does this gate govern everything the map says it governs — and more than the map noticed? | shape, plus one reach. `full-table-suspension` reached the throw and everything a throw leads to, recorded none of it, and survived a trial, a build and a review. `applicability-reach` ([#225](https://github.com/brandonifco/rules-factory/issues/225)) refuses a `scope: in` entry whose own words gate a whole section, part or table and whose id no entry names in `enabledBy` or `suspendedBy` — § 1.121-1(f), which trial 9's first mapping recorded with no reach at all. It cannot tell whether the reach recorded is *complete*: one edge satisfies it where thirty were owed |
+| **epistemic** | was ambiguity preserved where the corpus supports two readings, or collapsed into one? | `superposition`, `unresolved-reason`, `bound-term-open` ([0034](decisions/0034-a-valid-unresolved-state-is-established-not-asserted.md)), each reading a record made outside the entry, and `question-anchor` ([#271](https://github.com/brandonifco/rules-factory/issues/271)), which reads the corpus the map quotes. Measured: 12 of 64 collapses caught, against 4 before ([`examples/collapse-trial/`](../examples/collapse-trial/README.md)); invented doubt 5 of 5 |
 
 ## Validating the uncertainty
 
@@ -74,6 +74,52 @@ adjudication of a blind second mapping (0014):
 | `superposition` | a disagreement about certainty adjudicated *the corpus does not settle it*, and no entry the adjudication names is `clarity: ambiguous` |
 | `unresolved-reason` | an open question returning a reason no correspondence row gives that entry |
 | `bound-term-open` | a `bounds` whose `term` the entry's own `ambiguity.question` never states |
+| `question-anchor` | an `ambiguity.question` quoting no passage this map quotes |
+
+`question-anchor` is the one of the four that reads the corpus rather than a record made beside
+it, and it is the answer to the other direction of the same flip.
+[0033](decisions/0033-the-validator-is-the-adversary-and-validates-the-uncertainty-too.md) named
+them asymmetric and this keeps them so. A false *certainty* — premature collapse — leaves no field
+to check. A false *ambiguity* has a `question`, and a question is prose the mapper wrote about a
+passage; the words of that passage are in the map. So the question must quote them: a run of at
+least three consecutive words appearing verbatim in quoted `evidence` and carrying at least one
+word outside the closed function classes, which the invented block `tools/mutate-map.py` writes
+does on none of the five committed maps. The anchor is the corpus as the map quotes it, not the
+entry's own evidence alone, because two readings can turn on a passage another entry holds.
+
+What it does not reach, and this is the larger half: a mapper who invents doubt about a **real**
+sentence. Nothing structural does. It catches the ambiguity that is about nothing in the passage,
+and it makes an invented one have to be invented against words the corpus prints.
+
+## The version a map replaces
+
+A check with no subject matter reports NOT VERIFIED and **passes the run**, because such a check
+declares it had nothing to look at. That is right for a corpus that genuinely has no gates and no
+assertions. It is wrong when the subject matter was there a moment ago and the damage is what
+removed it, and both halves of that were measured: turning a map's only assertion into an
+operation silenced `asserted-by`, removing the rule every other entry was suspended by silenced
+`gates`, and the gate stayed green through both
+([#268](https://github.com/brandonifco/rules-factory/issues/268)).
+
+The validator cannot know from one map whether a corpus has assertions. It can know that *this*
+map had them: a published map package is a version, and its predecessor is a fact
+([0015](decisions/0015-a-map-is-published-as-a-versioned-package.md)). `check-map.py --previous
+PATH` takes the map this one replaces, re-runs any check that reports no subject matter against
+it, and fails where that check had subject matter there. A corpus that lost its assertions, its
+gates or its definitions between two versions is a change the map's diff states, not a check that
+goes quiet.
+
+It compares verdicts, not corpora, and says nothing at all without a predecessor — a first map has
+none, and a caller who does not pass `--previous` gets exactly the behaviour #268 describes. Nor
+does it see a check that lost only *half* its subject matter: an assertion removed from a map that
+has five leaves `asserted-by` looking at four and saying `ok`.
+
+`tools/mutate-map.py` passes it, because the harness holds both versions and that is what makes
+the two silent skips measurable. [`tools/pack-map.py`](../tools/pack-map.py) does not: the publish
+gate reads the working tree, and the version being replaced is on nuget.org. That is the same
+boundary it already states about version numbers — *nothing here compares against the previous
+published version* — and closing it is
+[#378](https://github.com/brandonifco/rules-factory/issues/378).
 
 A ruling that resolves a question the map never recorded as open is the fourth trace, and it is
 already refused — by `tools/factory/rulings.py` (0027), because a ruling lives in the engine's
@@ -120,18 +166,17 @@ validator was watched not noticing ([trial 10](../examples/validator-attack/READ
 **reasoned**, argued from the code and not yet attacked. The distinction used to be invisible from
 reading them.
 
-- **Its own miss rate is 68%.** Fourteen mutations over five committed maps and three locator
-  grammars: 62 landed, 20 are refused, 42 pass
+- **Its own miss rate is 55%.** Fourteen mutations over five committed maps and three locator
+  grammars: 62 landed, 28 are refused, 34 pass
   ([#259](https://github.com/brandonifco/rules-factory/issues/259); 16 and 46 when first measured
-  at `69167d8`. Two of the four rows that have moved are the epistemic checks 0034 added, and two
-  are `narrow-extent` on `hoyle-backgammon` and `srd-52-conditions`, which #269 closed). Five of the
-  twenty-five checks `check-map.py` held when it was measured ever turned; there are twenty-seven
-  now. `definition-continuations` ([0046](decisions/0046-an-additional-rule-can-continue-a-definition.md))
-  is the newest and unmeasured; `defines` ([0045](decisions/0045-a-vocabulary-is-distributed-over-the-entries-that-define-its-terms.md))
-  remains unchanged by 0046. Every miss is dispositioned, below or as an
-  issue: [#268](https://github.com/brandonifco/rules-factory/issues/268),
+  at `69167d8`). Twelve rows have moved: two are the epistemic checks 0034 added, two are
+  `narrow-extent` on `hoyle-backgammon` and `srd-52-conditions`, which #269 closed, and eight are
+  `question-anchor` (#271, five), `--previous` (#268, two) and `applicability-reach` (#225, one).
+  Seven of the twenty-nine checks `check-map.py` now holds ever turned; twenty-two never did, and
+  `definition-continuations` ([0046](decisions/0046-an-additional-rule-can-continue-a-definition.md))
+  is among them. Every remaining miss is dispositioned, below or as an issue:
   [#270](https://github.com/brandonifco/rules-factory/issues/270),
-  [#271](https://github.com/brandonifco/rules-factory/issues/271).
+  [#208](https://github.com/brandonifco/rules-factory/issues/208).
 - **A conflict nobody recorded is invisible.** Two `clarity: clear` entries stating incompatible
   rules pass. *Reasoned.* Its neighbour is measured, and the measurement moved: deleting a
   recorded ambiguity and asserting one reading — premature collapse — passed on 5 maps of 5
@@ -148,8 +193,22 @@ reading them.
   wrong sentence. *Measured: 1 of 5, and that one by bookkeeping rather than by reading.* Where the
   swap crosses into a neighbouring passage, whether it is caught is a property of the grammar — a
   section citation names a paragraph and refuses it; a page citation names a page and does not.
-- **A rule nobody mapped leaves no trace.** An omitted definition, and an applicability rule
-  removed with the edges that named it, both pass. *Measured: 0 of 4 and 0 of 4.*
+- **A rule nobody mapped leaves no trace.** An omitted definition passes. *Measured: 0 of 4.* An
+  applicability rule removed with the edges that named it is refused on 3 of 4 now — by
+  `applicability-reach` where it was the map's last whole-unit gate, by `gates` where it was the
+  map's last gate at all, and by `superposition` where the deleted entry was where an adjudicated
+  doubt was recorded. Where the map still has other gates it is missed, and that is the next item.
+- **A check that loses only *half* its subject matter still says `ok`.** `--previous` compares
+  verdicts, not corpora: an assertion removed from a map with five leaves `asserted-by` looking at
+  four. *Measured: 2 of 4 for `assertion-to-operation`.*
+- **A whole-unit gate is recognised by a phrase list,** `WHOLE_UNIT_GATES`, written from the CFR
+  corpora, with the same limit `POINTER_PHRASES` has: a corpus that gates itself in other words is
+  unseen. And one edge satisfies the reach, so a gate recorded with one edge where thirty are owed
+  passes. *Reasoned.*
+- **A false ambiguity about a real sentence passes.** `question-anchor` refuses a question about
+  nothing in the passage. A question invented about words the corpus does print is prose about a
+  real sentence, and no structural check separates it from a question somebody meant.
+  *Measured from the other side: 5 of 5 for the invented block.*
 - **A recorded `mutation` is still only a string.** Since
   [#240](https://github.com/brandonifco/rules-factory/issues/240) `status` refuses an unfilled
   placeholder — the set, one word repeated, or anything under three words and twelve characters,

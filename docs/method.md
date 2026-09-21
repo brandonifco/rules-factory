@@ -203,6 +203,17 @@ a player's whole turn reaches the throw and everything a throw leads to; the bac
 recorded none of that for `full-table-suspension` through a trial, a build and a review, and
 the omission changed every later throw of a seeded game while passing every legality test.
 
+**A rule whose own words gate a whole section reaches every rule that section states.** § 1.121-1(f)
+— *"This section is applicable for sales and exchanges on or after December 24, 2002"* — was
+recorded by trial 9's first mapping with no entry pointing at it, so every rule it gates was
+recorded as applying unconditionally; the third mapping added 30 `enabledBy` edges. The validator
+now refuses a `scope: in` entry whose evidence states an applicability over a whole section, part
+or table and whose id no entry names in `enabledBy` or `suspendedBy`
+([`applicability-reach`](validator.md), [#225](https://github.com/brandonifco/rules-factory/issues/225)).
+It cannot tell how far the gate reaches — one edge satisfies it, and the first map had zero where
+thirty were owed — so asking the question is still yours. What it refuses is answering it with
+nothing.
+
 A stateless corpus has no phases, but it can still have gates. A rule it lets a third party
 set aside is one: a Part 107 waiver suspends every regulation § 107.205 lists while it is held.
 Where that rule is outside your slice, name it with a `scope: out` entry. Whether it holds is a

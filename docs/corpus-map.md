@@ -751,6 +751,18 @@ exactly one answer, and a corpus stating a rule twice in incompatible terms does
 earlier, names three. The `question` states both readings; `fate` records which governs, or
 declines.
 
+**The `question` quotes the corpus.** A `crossReferences` item's `cites` must appear verbatim in
+the entry's own evidence, because a reference is anchored to the passage that makes it; an
+`ambiguity` on the same entry owes the same anchoring. So the question names the words the two
+readings turn on: a run of at least three consecutive words appearing verbatim in `evidence`,
+carrying at least one word the corpus owns rather than only articles, prepositions and
+auxiliaries. The run may be in another entry's evidence — `enter-from-bar`'s doubt is about a
+sentence `legal-destination` quotes, and the hazmat IB3 row's is about what § 172.102(b)(4) says
+— so the anchor is the corpus as *this map* quotes it, not the entry alone. Held by
+`question-anchor` ([#271](https://github.com/brandonifco/rules-factory/issues/271)). It does not
+prove the doubt is real: a question invented about words the corpus does print passes, and
+nothing structural reaches that.
+
 ### `ambiguity.conflict`
 
 A slug naming the question the corpus answers twice. Entries carrying the same slug are the

@@ -31,9 +31,12 @@ def silenced_by_the_change(name, check, result, previous, where):
 
     What it cannot do:
 
-      * **It says nothing without a predecessor.** A first map has none, and a publisher who does
-        not pass `--previous` gets exactly the behaviour #268 describes. The gate that publishes a
-        version is where the predecessor is known, which is where the option is meant to be used.
+      * **It says nothing without a predecessor.** A first map has none, and a caller who does not
+        pass `--previous` gets exactly the behaviour #268 describes. `tools/mutate-map.py` passes
+        it, because the harness holds both versions; `tools/pack-map.py` does not, because the
+        publish gate reads the working tree and the previous version is on nuget.org, which is the
+        same reason it already states that nothing there compares a version number against the one
+        it replaces.
       * **It compares verdicts, not corpora.** That a check went quiet is all it reads; whether
         the corpus really lost its assertions is the mapper's to state, and this refuses the
         silence rather than judging the answer.

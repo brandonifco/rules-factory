@@ -1813,33 +1813,33 @@
     },
     {
       "archive": null,
-      "bytes": 19082,
+      "bytes": 21712,
       "path": "examples/validator-attack/README.md",
       "readBy": [
         "links"
       ],
       "role": "active",
-      "sha256": "ce997bc7fc323b63e5be1fb61dd2bdfde58f15aed9d58c24a11052ca27c75901"
+      "sha256": "0e298b3698c602985ca5bb0877642d883e0eae85e86a75e870fed7b9257ea93c"
     },
     {
       "archive": null,
-      "bytes": 29331,
+      "bytes": 30972,
       "path": "examples/validator-attack/results.json",
       "readBy": [
         "checks"
       ],
       "role": "active",
-      "sha256": "ce0058c84a08f100e2fd8d4fcc775e475b8c4497e1c9c305a97589797cae24a7"
+      "sha256": "7011c892f75c33703aa032c1ae677d10456ac9cc36de62156113b1a5864e90f4"
     },
     {
       "archive": null,
-      "bytes": 1434,
+      "bytes": 1436,
       "path": "examples/validator-attack/results.md",
       "readBy": [
         "links"
       ],
       "role": "active",
-      "sha256": "b999c9b0540b94451825319283e56beb31e87d7ff25946e7dd2bc285cc57d1a0"
+      "sha256": "ccb96e85f22fbf114440ed7f8c1bc2a6958cf71908136b4de759c98d14e70e51"
     }
   ],
   "measuredAt": "6982d658740b67146373bb9dcf9afe0505d35657",
