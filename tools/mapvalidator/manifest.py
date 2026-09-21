@@ -20,6 +20,16 @@ def check_manifest(ctx):
     manifest declares, or to a reference marked `admitted: true`, is refused (0026, #115): the
     SRD's Rules Glossary is the same corpus as its combat chapter, and a term defined there is a
     `scope: out` entry the in-scope entry names, not a reference.
+
+    A reference that names a **class** of corpora rather than a publication says so, with
+    `class: true` and a `note` saying what the class is, and carries no `citation` (0059).
+    § 1.121-1(b)(2) defers to *local law*, which is not a corpus: it is a category of them,
+    different in each jurisdiction and not knowable at map time.
+
+    The marker is explicit because the absence of a `citation` cannot carry it. Two manifests
+    declare `air-almanac` with no `citation` either, and the Air Almanac is a single publication
+    -- one cited by name rather than by section. So a missing `citation` means "cited by name",
+    and a class is a different claim that has to be made.
     """
     manifest = ctx["manifest"]
     if manifest is None:
@@ -32,6 +42,28 @@ def check_manifest(ctx):
         return skip("the manifest declares no corpora, so nothing could be resolved against it")
 
     doc, bad, checked = ctx["map"], [], 0
+
+    # 0059: a reference that names a class of corpora says so and says which. Checked over every
+    # declared reference rather than only the ones an entry names, because a class nobody cites
+    # yet is still a claim the manifest makes.
+    for source_id, corpus in corpora.items():
+        for at, reference in enumerate(references_of(corpus), start=1):
+            if not isinstance(reference, dict):
+                continue
+            checked += 1
+            named = reference.get("sourceId") or f"references[{at}]"
+            if reference.get("class") is not True:
+                continue
+            if reference.get("citation") is not None:
+                bad.append(
+                    f"  X  manifest {source_id}: reference {named!r} is `class: true` and carries a "
+                    f"`citation`; a class of corpora has no one publication to cite (0059)"
+                )
+            if not str(reference.get("note") or "").strip():
+                bad.append(
+                    f"  X  manifest {source_id}: reference {named!r} is `class: true` and says in no "
+                    f"`note` what the class is; a reader cannot tell which corpora it means (0059)"
+                )
 
     # 0047: the Phase-1 `references` list is historical evidence. Mapping-time discoveries are
     # additive only, live in `referenceAmendments`, and may not admit a corpus or mutate any

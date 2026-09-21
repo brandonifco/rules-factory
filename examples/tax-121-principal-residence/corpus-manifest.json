@@ -33,7 +33,8 @@
         { "sourceId": "cfr-26-1.121-3", "citation": "§ 1.121-3", "admitted": false },
         { "sourceId": "cfr-26-1.121-4", "citation": "§ 1.121-4", "admitted": false },
         { "sourceId": "cfr-26-301.7701-3", "citation": "§ 301.7701-3", "admitted": false },
-        { "sourceId": "local-law", "admitted": false }
+        { "sourceId": "local-law", "admitted": false, "class": true,
+          "note": "Not a corpus but a category of them: the property law of whichever jurisdiction the residence sits in, different in each and not knowable at map time. \u00a7 1.121-1(b)(2) defers to it for whether an item is a fixture, and no one publication can be cited for that. An entry naming it declines with MissingRulesData like any other unadmitted reference; the class says only that the caller has more than one place to look (0059)." }
       ]
     }
   ]
