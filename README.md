@@ -190,14 +190,21 @@ What never happens again is `NOT VERIFIED` on stdout and `0` in `$?`.
   proof of the pinned toolchain. CI refuses the override, where a green run must mean the pinned SDK
   ([0054](docs/decisions/0054-a-verification-context-is-declared-and-proved-never-exempted.md)).
 - **The tree it is a proof of.** The gate runs on a staging copy of `--out`, so what it proves is
-  that copy — and the engine written out is that copy only while `--out` still holds the source and
-  build inputs it was made from. A verified commit compares them all, not only the paths the run
-  writes, and is refused before anything is written when one has moved, naming each path
-  ([#335](https://github.com/brandonifco/rules-factory/issues/335)). An edit made in `--out` while
-  `produce` ran is kept — nothing is written over it — and `produce` is run again to verify the
-  engine with it. Build output (`bin`, `obj`, `artifacts`, `TestResults`) is not an input and
-  refuses nothing. `--no-verify` builds nothing and claims nothing about a build, so it is held
-  only to the paths it writes.
+  that copy, and a verified commit is held to both halves of that handoff. The copy must still be
+  the tree the gate built and tested: `verify` notes every input of it immediately before the gate
+  runs, and a commit whose copy no longer holds them is refused — so a test that writes into the
+  engine it is testing, or leaves a writer running, refuses the run instead of being committed as
+  verified ([#370](https://github.com/brandonifco/rules-factory/issues/370)). And `--out` must
+  still hold the source and build inputs the copy was made from: a verified commit compares them
+  all, not only the paths the run writes, and is refused before anything is written when one has
+  moved, naming each path ([#335](https://github.com/brandonifco/rules-factory/issues/335)). An
+  edit made in `--out` while `produce` ran is kept — nothing is written over it — and `produce` is
+  run again to verify the engine with it. A source in `--out` that is, or lies under, a symlink is
+  refused as well: a link's bytes can change between the check and the commit, and can be outside
+  `--out` altogether, so no comparison of them supports the claim. Build output is not an input and
+  refuses nothing — `bin` and `obj` at any depth, and `artifacts` and `TestResults` at the root of
+  the engine, where the SDK writes them rather than wherever the name appears. `--no-verify` builds
+  nothing and claims nothing about a build, so it is held only to the paths it writes.
 - **The record.** `provenance.json` names the factory commit, the package and corpus hashes, the
   kernel version, the hash of every recipe file and generated file, the managed files at their
   recipe versions, and the bytes of every file the build reads as configuration. The recipe
