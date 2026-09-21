@@ -315,9 +315,13 @@ same — and this section asked for the difference in a **reason string**, which
   declared extent for those terms and fails the entry if one turns up. Writing this entry is
   more work than declining a rule, deliberately: every instance of this failure so far has been
   a mapper who stopped reading.
-- **Nobody looked** — no entry, and two things narrow it. The map's `extent`, every page or section of
-  which must be reached by some entry's located evidence; and `crossReferences`, which turns
-  the corpus's own pointers into obligations.
+- **Nobody looked** — no entry, and three things narrow it. The map's `extent`, every page or
+  section of which must be reached by some entry's located evidence, and none of which an
+  in-scope citation or quote may fall outside
+  ([#269](https://github.com/brandonifco/rules-factory/issues/269)); how much of that extent the
+  located evidence quotes, which a map may declare a floor for and be held to
+  ([0055](decisions/0055-coverage-reports-how-much-of-the-extent-is-quoted-and-a-map-declares-the-floor.md));
+  and `crossReferences`, which turns the corpus's own pointers into obligations.
 
 **`scope` is decided per rule, never per section, and excluding a section requires reading it
 first.** A section is a unit of the corpus's layout; `scope` is a judgement about a rule. The

@@ -19,7 +19,7 @@ is not its own only test oracle.
 |---|---|
 | [`tools/mapvalidator/`](../tools/mapvalidator/__init__.py) | the checks, as modules |
 | [`tools/check-map.py`](../tools/check-map.py) | what `tools/build-check-map.py` joins them into: one standard-library file, because a map package ships it ([0015](decisions/0015-a-map-is-published-as-a-versioned-package.md)) and the factory imports it ([0016](decisions/0016-a-map-package-is-data-not-code.md)) |
-| [`tools/check-locators.py`](../tools/check-locators.py) and the two per-grammar checkers under `examples/` | the evidentiary half: does the cited text exist where the map says |
+| [`tools/check-locators.py`](../tools/check-locators.py) and the two per-grammar checkers under `examples/` | the evidentiary half: does the cited text exist where the map says, does no in-scope quote lie outside the declared extent (`extent-bounds`, [#269](https://github.com/brandonifco/rules-factory/issues/269)), and how much of that extent can the map show it quoted ([0055](decisions/0055-coverage-reports-how-much-of-the-extent-is-quoted-and-a-map-declares-the-floor.md)) |
 | [`tools/check-map-review.py`](../tools/check-map-review.py) | every map carries a review of its exact bytes ([0017](decisions/0017-a-map-change-carries-a-review-of-its-bytes.md)), and a `blind-second-mapping` review names the staging record of what its mapper was given, or says out loud that it has none ([#223](https://github.com/brandonifco/rules-factory/issues/223)) |
 | [`tools/pack-map.py`](../tools/pack-map.py) | a map that passed becomes a version; [0048](decisions/0048-a-verified-map-package-binds-the-exact-artifacts-its-publish-gate-read.md) makes it hash every cited corpus, run the structural and locator checks on immutable snapshots of those exact bytes, and bind the resulting corpus identities to the packaged map, manifest and checker |
 | [`tools/mutate-map.py`](../tools/mutate-map.py) | the adversary turned on itself: it damages a committed map one named way at a time and measures what is refused ([trial 10](../examples/validator-attack/README.md)). Outside the package on purpose, because `build-check-map.py` would ship it inside every map |
@@ -37,7 +37,7 @@ of the territory, not the territory.
 |---|---|---|
 | **structural** | does the object obey the map contract? | most of what exists: `schema`, `vocabulary`, `required-fields`, `unique-ids`, `gates`, `references`, `derived`, `exclusions`, `conflicts`, `defines`, `definition-continuations` |
 | **evidentiary** | does the cited text exist where the map says it does? | the three locator checkers and `test_map_anchors.py` — outside the package, and belonging inside it; the section checker also proves 0046 structural continuation anchors |
-| **completeness** | did the mapper skip definitions, gates, pointers, tables, examples, applicability clauses, or part of the declared extent? | the producer's half now runs — [`mapper sweeps`](mapper.md#the-sweeps) asks each declared sweep of the units the walk left unaccounted ([#250](https://github.com/brandonifco/rules-factory/issues/250)) — and the adversarial half is owed. `extent` claims coverage and [`mapper inventory`](mapper.md#the-inventory) now measures it — 540 of 806 units across the six maps are reached by no quote ([#255](https://github.com/brandonifco/rules-factory/issues/255), [#267](https://github.com/brandonifco/rules-factory/issues/267)) — but it is the producer measuring its own walk, and nothing adversarial reads that count |
+| **completeness** | did the mapper skip definitions, gates, pointers, tables, examples, applicability clauses, or part of the declared extent? | the producer's half runs — [`mapper sweeps`](mapper.md#the-sweeps) asks each declared sweep of the units the walk left unaccounted ([#250](https://github.com/brandonifco/rules-factory/issues/250)) — and the adversarial half has its first measure. `extent` claims coverage and [`mapper inventory`](mapper.md#the-inventory) measures it — 540 of 806 units across the six maps are reached by no quote ([#255](https://github.com/brandonifco/rules-factory/issues/255), [#267](https://github.com/brandonifco/rules-factory/issues/267)) — but it is the producer measuring its own walk. What the adversary now reads is `coverage`'s **quoted fraction**: the union of the verified quotes' spans over the extent's own length, reported on every run and 19%–100% across the committed maps ([0055](decisions/0055-coverage-reports-how-much-of-the-extent-is-quoted-and-a-map-declares-the-floor.md), [#270](https://github.com/brandonifco/rules-factory/issues/270)). It fails a map only against the floor the map declares in `extent.quoted`, and no committed map declares one yet |
 | **interpretive** | does the evidence actually support the classification? | nothing mechanical, by nature. It is what the blind second mapping exists for ([0014](decisions/0014-a-map-is-checked-by-a-blind-second-mapping.md)), which caught 14 of 15 injected comprehension errors the mechanical checks missed |
 | **relational** | does this gate govern everything the map says it governs — and more than the map noticed? | shape only. `full-table-suspension` reached the throw and everything a throw leads to, recorded none of it, and survived a trial, a build and a review |
 | **epistemic** | was ambiguity preserved where the corpus supports two readings, or collapsed into one? | `superposition`, `unresolved-reason` and `bound-term-open` ([0034](decisions/0034-a-valid-unresolved-state-is-established-not-asserted.md)), each reading a record made outside the entry. Measured: 12 of 64 collapses caught, against 4 before ([`examples/collapse-trial/`](../examples/collapse-trial/README.md)) |
@@ -120,16 +120,16 @@ validator was watched not noticing ([trial 10](../examples/validator-attack/READ
 **reasoned**, argued from the code and not yet attacked. The distinction used to be invisible from
 reading them.
 
-- **Its own miss rate is 71%.** Fourteen mutations over five committed maps and three locator
-  grammars: 62 landed, 18 are refused, 44 pass
+- **Its own miss rate is 68%.** Fourteen mutations over five committed maps and three locator
+  grammars: 62 landed, 20 are refused, 42 pass
   ([#259](https://github.com/brandonifco/rules-factory/issues/259); 16 and 46 when first measured
-  at `69167d8`, and the two rows that moved are the epistemic checks 0034 added). Five of the
+  at `69167d8`. Two of the four rows that have moved are the epistemic checks 0034 added, and two
+  are `narrow-extent` on `hoyle-backgammon` and `srd-52-conditions`, which #269 closed). Five of the
   twenty-five checks `check-map.py` held when it was measured ever turned; there are twenty-seven
   now. `definition-continuations` ([0046](decisions/0046-an-additional-rule-can-continue-a-definition.md))
   is the newest and unmeasured; `defines` ([0045](decisions/0045-a-vocabulary-is-distributed-over-the-entries-that-define-its-terms.md))
   remains unchanged by 0046. Every miss is dispositioned, below or as an
   issue: [#268](https://github.com/brandonifco/rules-factory/issues/268),
-  [#269](https://github.com/brandonifco/rules-factory/issues/269),
   [#270](https://github.com/brandonifco/rules-factory/issues/270),
   [#271](https://github.com/brandonifco/rules-factory/issues/271).
 - **A conflict nobody recorded is invisible.** Two `clarity: clear` entries stating incompatible

@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """Check a map against the corpus it claims to describe: citations, absences, and reach.
 
-A corpus with page markers in the text makes three different claims mechanically testable,
-and this tool runs them as three named checks rather than one verdict, because they fail
+A corpus with page markers in the text makes four different claims mechanically testable,
+and this tool runs them as four named checks rather than one verdict, because they fail
 for different reasons and a single number hid that:
 
   `locators`  Every entry's evidence is found in the corpus, walked back to the nearest
@@ -18,25 +18,42 @@ for different reasons and a single number hid that:
   `coverage`  Every page of the extent the map declares it read is reached by some entry's
               verified evidence. A page inside the extent that no entry's quote touches is
               a page nobody demonstrably read, which is the state -- "nobody looked" -- that
-              a map exists to distinguish from a recorded verdict.
+              a map exists to distinguish from a recorded verdict. It also reports **how much
+              of the extent those quotes cover** (0054, #270), because one sentence reaches a
+              page and counting pages could not see an entry deleted from a map whose other
+              entries still reach its page. The fraction fails a map only against the floor
+              the map declares in `extent.quoted`.
+
+  `extent-bounds`
+              The other direction, and the one `coverage` is structurally blind to (#269):
+              no `scope: in` entry's verified quote lies outside the declared range. Narrowing
+              an extent makes `coverage` *easier* to satisfy -- fewer pages to reach -- so a
+              map that claims to have read less than it quotes passes every check that counts
+              units reached. A `scope: out` entry may quote beyond the extent and is named.
 
 `locators` can only run where `evidence` holds a **quoted span** of the corpus. Where it
 held a summary ("Both figures.", "Both elections."), nothing was locatable and nothing was
 checkable, which is why thirteen wrong citations survived a build. An unlocatable entry is
 reported and fails the run; it is never reported as ok.
 
-What none of the three buys, stated here rather than in a commit message:
+What none of the four buys, stated here rather than in a commit message:
 
   * A term absent from the extent is not a rule absent from the extent. The corpus could
     state the rule in words the mapper did not think to search for, and `absence` would pass.
     What it does catch is the mapper who declared an absence without looking -- and that is
     the failure both #20 and #29 are instances of.
   * A page reached by one quote is not a page read. `coverage` catches a mapper who stopped,
-    not one who skimmed.
+    not one who skimmed -- and its quoted fraction narrows that without closing it: a map can
+    quote a page whole and misread every sentence on it, which is what the blind second
+    mapping (0014) is for. The fraction says how much of what the map claims to have read it
+    can show it read, and nothing about whether it read it correctly.
+  * No threshold is imposed on that fraction. A map that declares no `extent.quoted` is
+    measured, printed and passed: across the committed maps the fraction runs from 19% to
+    100%, and 0054 records why a single floor could not be honest about all of them.
   * `extent` is the map's own claim about how much of the corpus it read. Nothing verifies
     that the claim is ambitious enough; a map declaring one page of a four-hundred-page book
-    covers it trivially. What the field buys is that the claim is *written down* and can be
-    argued with.
+    covers it trivially, and `extent.quoted` is a floor the map chooses for itself. What the
+    field buys is that the claim is *written down* and can be argued with.
 
 Usage: check-locators.py <corpus-map.json> <corpus.txt> [--marker-re RE] [--page-re RE]
 Exit 0 only if every check that ran passed and at least one proved something; 1 if any
@@ -94,6 +111,15 @@ def pages_spanned(span, index):
     return {p for p in pages if p is not None}
 
 
+def extent_span(corpus, index, first, last):
+    """(start, end) of the slice between the marker for `first` and the one after `last`."""
+    start = next((offset for offset, number in index if number == first), None)
+    if start is None:
+        return None
+    end = next((offset for offset, number in index if offset > start and number > last), len(corpus))
+    return (start, end)
+
+
 def extent_text(corpus, index, first, last):
     """The slice of the corpus between the marker for `first` and the one after `last`.
 
@@ -102,11 +128,53 @@ def extent_text(corpus, index, first, last):
     chapter and does occur elsewhere in the same book, so a whole-volume search would
     refuse a true absence and a mapper would learn to write vaguer terms.
     """
-    start = next((offset for offset, number in index if number == first), None)
-    if start is None:
-        return None
-    end = next((offset for offset, number in index if offset > start and number > last), len(corpus))
-    return corpus[start:end]
+    span = extent_span(corpus, index, first, last)
+    return None if span is None else corpus[span[0]:span[1]]
+
+
+def merged(spans):
+    """The union of `spans` as disjoint (start, end) pairs in order.
+
+    Two entries quoting overlapping text quote one stretch of the corpus between them, not two:
+    what the fraction below measures is how much of the extent the map can show it read, and a
+    character read twice was read once.
+    """
+    union = []
+    for start, end in sorted(spans):
+        if end <= start:
+            continue
+        if union and start <= union[-1][1]:
+            union[-1][1] = max(union[-1][1], end)
+        else:
+            union.append([start, end])
+    return [(start, end) for start, end in union]
+
+
+def quoted_of(region, spans):
+    """(quoted characters, characters in `region`) for the union of `spans` inside it (#270).
+
+    `region` is the extent, as disjoint spans of the same string `spans` are offsets into: one
+    span for a page range, one per paragraph for a list of sections. The fraction of the extent
+    a map's verified evidence quotes is the measure `coverage` did not have -- `coverage` asks
+    whether every *unit* was touched, and one sentence touches a page, so deleting a rule from a
+    ten-page map carrying 33 entries is invisible to it.
+    """
+    size = sum(end - start for start, end in region)
+    inside = merged([(max(start, low), min(end, high))
+                     for low, high in region for start, end in spans])
+    return sum(end - start for start, end in inside), size
+
+
+def declared_floor(extent):
+    """`extent.quoted`, the fraction a map claims its verified evidence quotes, or None.
+
+    Optional, and a map that declares none is reported and not failed (0054). Only its shape is
+    checked in `check-map.py --only extent`; whether the map meets it needs the corpus, which is
+    this file.
+    """
+    floor = extent.get("quoted") if isinstance(extent, dict) else None
+    ok_type = isinstance(floor, (int, float)) and not isinstance(floor, bool)
+    return floor if ok_type and 0 < floor <= 1 else None
 
 
 class Result:
@@ -143,7 +211,59 @@ def bounds_of(entry):
     return [e for e in listed if isinstance(e, dict)] if isinstance(listed, list) else []
 
 
-def check_locators(entries, corpus, index, page_re, reached):
+def check_extent_bounds(document, located):
+    """No `scope: in` entry's verified quote lies outside the declared page range (#269).
+
+    `extent` in check-map.py places an entry's **citation** inside the range; this places its
+    **quote**, which is the other thing a page extent bounds and the half no citation carries. A
+    map can cite fewer pages than it declares -- `hoyle-backgammon` cites 271-278 inside a
+    declared 271-280 -- and then narrowing the declaration moves no citation at all, while the
+    text the map quotes still runs past the new end.
+
+    0024 already made exactly this statement about the one end a heading can stop: an in-scope
+    quote at or after `endsBefore` is not inside the slice, and `check-locators-pdf-text.py`'s
+    `extent-end` refuses it. Both ends of a range are the same fact, and this is it without a
+    heading.
+
+    A `scope: out` entry may quote beyond the extent, for 0020's reason and in the summary's
+    words: recording what lies beyond the slice is what an out-of-scope entry is for. A quote
+    that *runs across* the end is outside it, as it is for `extent-end`: the pages the quote
+    touches are the pages it is read on.
+
+    `located` is {id: (entry, pages touched)} for every entry whose evidence was found, filled
+    by `check_locators` above, so a quote counts here exactly where it counted for `coverage`.
+    """
+    extent = document.get("extent")
+    if not isinstance(extent, dict) or extent.get("unit") != "page":
+        return skip("the map declares no page extent, so there is no range for a quote to lie "
+                    "outside; `coverage` is where an undeclared extent fails", had_subject=False)
+    first, last = extent.get("from"), extent.get("to")
+    if not isinstance(first, int) or not isinstance(last, int) or last < first:
+        return skip(f"extent names the range {first!r}..{last!r}, which is not a page range")
+    if not located:
+        return skip("no entry's evidence was located, so no quote was placed inside the range")
+    bad, beyond, inside = [], [], 0
+    for name, (entry, pages) in located.items():
+        outside = sorted(p for p in pages if not first <= p <= last)
+        if not outside:
+            inside += 1
+            continue
+        where = " or ".join(f"p. {p}" for p in outside)
+        if entry.get("scope") == "out":
+            beyond.append(f"{name} ({where})")
+        else:
+            bad.append(f"  X  {name}: evidence lies on {where}, outside the declared extent "
+                       f"(pages {first}-{last}); an in-scope rule is quoted inside what the map "
+                       f"claims to have read")
+    aside = (f"; {len(beyond)} out-of-scope quote{'' if len(beyond) == 1 else 's'} beyond the "
+             f"extent, neither passed nor failed: {', '.join(beyond)}") if beyond else ""
+    if bad:
+        return fail(bad, f"a quote lies outside the declared extent (pages {first}-{last})")
+    return ok(f"all {inside} located in-scope quotes lie inside the declared extent "
+              f"(pages {first}-{last}){aside}")
+
+
+def check_locators(entries, corpus, index, page_re, reached, located=None, spans=None):
     """Each entry's cited page against the page its evidence sits on.
 
     A derived entry (0012) is not located: no sentence states its fact, so it carries no
@@ -176,6 +296,10 @@ def check_locators(entries, corpus, index, page_re, reached):
         checked += 1
         actual = pages_spanned(span, index)
         reached.update(actual)
+        if located is not None:
+            located[name] = (entry, actual)
+        if spans is not None:
+            spans.append(span)
         if int(claimed.group(1)) not in actual:
             partial = "" if coverage > 0.95 else f" (matched {coverage:.0%} of the evidence)"
             found = " or ".join(f"p. {p}" for p in sorted(actual))
@@ -242,8 +366,42 @@ def check_absence(entries, extent):
         f"entr{'y' if len(carriers) == 1 else 'ies'} occur nowhere in the declared extent")
 
 
-def check_coverage(document, reached):
-    """Every page of the declared extent is reached by some entry's verified evidence."""
+def quoted_summary(extent, region, spans):
+    """(problems, phrase) for the quoted fraction of a declared extent (#270, 0054).
+
+    The number is reported on every run. It **fails** a map only against `extent.quoted`, the
+    floor the map itself declares, for the reason 0054 records: measured across the five
+    committed maps the fraction runs from 20% to 99.9%, so no single threshold could be right
+    for all of them, and a threshold nobody argued for would be worse than the number alone.
+    What the field buys is 0009's own bargain, one level down -- the claim is written down and
+    can be argued with.
+    """
+    if region is None or spans is None:
+        return [], ""
+    quoted, size = quoted_of(region, spans)
+    if not size:
+        return [], ""
+    fraction = quoted / size
+    floor = declared_floor(extent)
+    if floor is None:
+        return [], (f"; verified evidence quotes {fraction:.0%} of it; the map declares no floor "
+                    f"(`extent.quoted`) to be held to")
+    if fraction < floor:
+        return ([f"  X  extent.quoted: the map declares its verified evidence quotes at least "
+                 f"{floor:.0%} of the declared extent, and it quotes {fraction:.0%} "
+                 f"({quoted} of {size} characters). A map shows the reading it claims, or "
+                 f"lowers the claim"], "")
+    return [], f"; verified evidence quotes {fraction:.0%} of it, above the {floor:.0%} the map declares"
+
+
+def check_coverage(document, reached, region=None, spans=None):
+    """Every page of the declared extent is reached by some entry's verified evidence, and how
+    much of it that evidence quotes (#270).
+
+    `region` is the extent as spans of the corpus and `spans` are the verified quotes' spans in
+    it; given both, the summary carries the quoted fraction and a declared `extent.quoted` floor
+    is enforced. Given neither, the check is what it always was.
+    """
     extent = document.get("extent")
     if not isinstance(extent, dict):
         return skip("the map declares no `extent`, so what it claims to have read is unstated "
@@ -262,8 +420,12 @@ def check_coverage(document, reached):
              f"evidence" for page in missing],
             f"{len(missing)} of {last - first + 1} pages in the extent are reached by no entry",
         )
+    short, phrase = quoted_summary(extent, region, spans)
+    if short:
+        return fail(short, f"the map quotes less of the declared extent ({first}-{last}) than it "
+                           f"declares it can show")
     return ok(f"all {last - first + 1} pages of the declared extent ({first}-{last}) are reached "
-              f"by some entry's verified evidence")
+              f"by some entry's verified evidence{phrase}")
 
 
 def main(argv=None):
@@ -288,18 +450,21 @@ def main(argv=None):
         print("no page markers found; nothing to check", file=sys.stderr)
         return 2
 
-    extent = None
+    extent, region = None, None
     declared = document.get("extent")
     if isinstance(declared, dict) and isinstance(declared.get("from"), int) \
             and isinstance(declared.get("to"), int):
         extent = extent_text(corpus, index, declared["from"], declared["to"])
+        span = extent_span(corpus, index, declared["from"], declared["to"])
+        region = None if span is None else [span]
 
-    reached = set()
+    reached, located, spans = set(), {}, []
     print(f"{args.map_path} ({len(entries)} entries) against {args.corpus_path}")
     results = [
-        ("locators", check_locators(entries, corpus, index, args.page_re, reached)),
+        ("locators", check_locators(entries, corpus, index, args.page_re, reached, located, spans)),
         ("absence", check_absence(entries, extent)),
-        ("coverage", check_coverage(document, reached)),
+        ("coverage", check_coverage(document, reached, region, spans)),
+        ("extent-bounds", check_extent_bounds(document, located)),
     ]
     if isinstance(declared, dict) and "endsBefore" in declared:
         # 0024: this checker collapses the corpus's lines, so it cannot find a heading line, and

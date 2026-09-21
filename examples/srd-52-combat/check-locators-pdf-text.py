@@ -50,10 +50,12 @@ resolves, because no `Rules Glossary` line precedes p. 5's `Round Down`, and `Pl
 Round Down / p. 5` does not, because `Playing the Game` precedes both. And an entry citing a
 heading its quote does not follow fails rather than reaching for a distant occurrence.
 
-`absence` and `coverage` are `tools/check-locators.py`'s checks, loaded from that file and run
-unchanged, because a page extent means the same thing in both corpora. Two things differ in
-what they are given, both from `extent.endsBefore` (0024): `absence` searches the extent only up
-to that heading, and a quote at or after it does not reach page `to` for `coverage`.
+`absence`, `coverage` and `extent-bounds` are `tools/check-locators.py`'s checks, loaded from
+that file and run unchanged, because a page extent means the same thing in both corpora. Two
+things differ in what they are given, both from `extent.endsBefore` (0024): `absence` searches
+the extent only up to that heading, and a quote at or after it does not reach page `to` for
+`coverage` -- nor for `extent-bounds`, so that a quote past the heading is `extent-end`'s to
+refuse below and is not refused twice.
 
 Two checks are this checker's own (0024):
 
@@ -253,11 +255,21 @@ def extent_end(extent, corpus, starts):
     return lines[0], None
 
 
-def check_locators(page_checker, entries, corpus, starts, reached, end=None):
+def check_locators(page_checker, entries, corpus, starts, reached, end=None, placed=None,
+                   quoted=None):
     """Every occurrence of every quote, on its cited page, under a heading near it.
 
     `end` is (page, offset) when the extent stops at a heading on its last page: a quote starting
     at or after that offset does not reach that page for `coverage`.
+
+    `placed` is {id: (entry, pages touched)} for `extent-bounds` (#269), filled with exactly the
+    pages `reached` was given -- so a quote past `endsBefore` is `extent-end`'s to refuse and is
+    not refused twice.
+
+    `quoted` collects every verified occurrence's span for `coverage`'s quoted fraction (#270).
+    Every occurrence, because every one of them is a place the map showed it read the corpus,
+    and the fraction is over the union: a passage the SRD prints twice inside the extent is two
+    stretches of text quoted, not one counted twice.
     """
     derived = [e.get("id", "?") for e in entries if "derivedFrom" in e]
     located = [e for e in entries if "derivedFrom" not in e]
@@ -299,10 +311,12 @@ def check_locators(page_checker, entries, corpus, starts, reached, end=None):
             spans = picked
         for span in spans:
             touched = pages_touched(span, starts)
-            if end is not None and span[0] >= end[1]:
-                reached.update(touched - {end[0]})
-            else:
-                reached.update(touched)
+            inside = touched - {end[0]} if end is not None and span[0] >= end[1] else touched
+            reached.update(inside)
+            if placed is not None:
+                placed.setdefault(name, (entry, set()))[1].update(inside)
+            if quoted is not None:
+                quoted.append(span)
             if cited not in touched:
                 found = " or ".join(f"p. {p}" for p in sorted(touched))
                 where = f" (occurrence {spans.index(span) + 1} of {len(spans)})" if len(spans) > 1 else ""
@@ -473,26 +487,33 @@ def main(argv=None):
     entries = [e for e in document.get("entries") or [] if isinstance(e, dict)]
     declared = page_extent(document)
     boundary, problem = extent_end(declared, corpus, starts)
-    extent = None
+    extent, region = None, None
     if declared is not None:
         begin = page_bounds(declared["from"], corpus, starts)[0]
         stop = boundary if boundary is not None else page_bounds(declared["to"], corpus, starts)[1]
         if begin is not None and stop is not None:
             extent = page_checker.normalise(corpus[begin:stop])
+            # #270's denominator, in this checker's own (un-normalised) offsets: the extent runs
+            # from the first page's marker to the last page's end, or to `endsBefore` where the
+            # extent stops at a heading -- the same slice `absence` searches, for the same
+            # reason. The quotes measured against it are offsets into the same string.
+            region = [(begin, stop)]
 
-    reached = set()
+    reached, placed, quoted = set(), {}, []
     end = (declared["to"], boundary) if boundary is not None else None
     print(f"{map_path} ({len(entries)} entries) against {corpus_path}")
     bounds = bound_examples(entries)
     results = [
-        ("locators", check_locators(page_checker, entries, corpus, starts, reached, end)),
+        ("locators", check_locators(page_checker, entries, corpus, starts, reached, end, placed,
+                                    quoted)),
         ("bounds", check_locators(page_checker, bounds, corpus, starts, set())
          if bounds else page_checker.skip("no entry carries `ambiguity.bounds`, so no authored "
                                           "example bounds a term in this map", had_subject=False)),
         ("extent-end", check_extent_end(page_checker, entries, corpus, starts, declared, boundary, problem)),
         ("extraction", check_extraction(page_checker, entries, corpus, starts)),
         ("absence", page_checker.check_absence(entries, extent)),
-        ("coverage", page_checker.check_coverage(document, reached)),
+        ("coverage", page_checker.check_coverage(document, reached, region, quoted)),
+        ("extent-bounds", page_checker.check_extent_bounds(document, placed)),
     ]
     passed = failed = skipped = fatal = 0
     for name, result in results:

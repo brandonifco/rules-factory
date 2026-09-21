@@ -1,4 +1,4 @@
-"""The section-designation locator grammar, as a validator reads it.
+"""The locator grammars, as a validator reads them without a corpus.
 
 `examples/faa-part-107/check-locators-section.py` resolves a citation against the corpus; this
 reads the same citations without one, to place each entry inside the extent its map declares.
@@ -6,14 +6,16 @@ The expressions are that checker's, and `test_check_map.py` runs both over every
 committed maps make and over the forms each decision adds, so the two cannot drift apart
 silently.
 
-Two things are named here: a **section** or a subpart
+Three things are named here: a **section** or a subpart
 ([0020](../../docs/decisions/0020-a-section-citation-names-its-lead-in-and-a-section-map-lists-its-extent.md)),
 and a **row of a table**
 ([0035](../../docs/decisions/0035-a-rule-stated-in-a-table-row-is-cited-by-its-row.md)), which is
 the address a table cell did not have. A row is named by a cell that identifies it, in the
 corpus's own column numbering, and never by where it sits: the corpus that forced this amends
 constantly, and an ordinal that silently re-points at a different material is worse than a key
-that stops resolving.
+that stops resolving. And a **printed page**, which the page grammars address a passage by, read
+here for the same reason the section is: so that `extent` can place a page citation inside the
+range a map declares it read ([#269](https://github.com/brandonifco/rules-factory/issues/269)).
 """
 import re
 
@@ -70,6 +72,27 @@ CITE_TABLE_ROW_BELOW = re.compile(
     r'blank\s+in\s+column\s+[A-Za-z0-9]{1,4}\s*(?:\[[^\]]*\]\s*)?'
     r'below\s+row\s*\[[^\]]*\](?:\s*,\s*column\s+[A-Za-z0-9]{1,4})?\s*\.?\s*$')
 CITE_ROW_KEY_PAIR = re.compile(r'column\s+([A-Za-z0-9]{1,4})\s*=\s*"([^"]*)"')
+
+
+# The printed page a page-grammar citation names, read the way the two page locator checkers
+# read it. `tools/check-locators.py`'s `--page-re` default is this expression verbatim, and
+# `examples/srd-52-combat/check-locators-pdf-text.py`'s `PAGE` is this expression with `\s*$`
+# after it, because `Combat / Making an Attack / p. 15` puts the page last. Reading the looser of
+# the two here is deliberate: placing a citation inside the extent is a weaker question than
+# resolving it, and a citation whose page is not where its own grammar requires is refused by
+# that grammar's checker rather than twice. `test_check_map.py` runs all three over every
+# citation the committed page maps make, so they cannot drift apart silently.
+CITE_PAGE = re.compile(r"\bp\.\s*(\d+)")
+
+
+def cited_page(citation):
+    """The printed page a citation names, as an int, or None.
+
+    The first page the citation names, which is the only one the grammar reads: a page citation
+    names one page, and a quote that straddles a break cites either of the two it touches.
+    """
+    match = CITE_PAGE.search(str(citation or ""))
+    return int(match.group(1)) if match else None
 
 
 def _normalise(value):

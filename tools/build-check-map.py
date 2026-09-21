@@ -50,7 +50,7 @@ TARGET = os.path.join(TOOLS, "check-map.py")
 # The contract comes first because both packages' checks read it and it reads nothing.
 MODULES = ("mapcontract.vocabulary", "mapcontract.entry",
            "mapvalidator.diagnostics", "mapvalidator.schema", "mapvalidator.locators",
-           "mapvalidator.extent",
+           "mapvalidator.extent_tables", "mapvalidator.extent",
            "mapvalidator.relations", "mapvalidator.manifest", "mapvalidator.extraction",
            "mapvalidator.ambiguity", "mapvalidator.bounds",
            "mapvalidator.mutation", "mapvalidator.status",

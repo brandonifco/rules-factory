@@ -66,7 +66,7 @@ Measured at `6982d65`:
 | `examples/tax-121-principal-residence` | 178 KB | 85 KB | 66 KB |
 | `examples/faa-part-107-temporal` | 137 KB | — | 43 KB |
 | `examples/injection-trial` | 22 KB | — | 100 KB |
-| `examples/validator-attack` | 45 KB | — | — |
+| `examples/validator-attack` | 49 KB | — | — |
 | `examples/tax-121-build` | 31 KB | — | — |
 | `examples/acceptance-4-5` | 28 KB | — | 2 KB |
 | `examples/collapse-trial` | 6 KB | — | 11 KB |

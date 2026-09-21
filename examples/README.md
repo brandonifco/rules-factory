@@ -144,8 +144,10 @@ queue, and this project archived its predecessor partly for having one.
   caught downstream. Every finding so far surfaced during mapping, which is the cheap place,
   and that is encouraging rather than evidence. [Trial 10](validator-attack/) supplies the
   validator's half of the answer and it is not encouraging: fourteen kinds of deliberate damage
-  over five committed maps, **18 of 62 refused and 44 passed** (16 and 46 when first measured;
-  the two rows that moved are 0034's epistemic checks). Four `enforcement` issues came out of it,
+  over five committed maps, **20 of 62 refused and 42 passed** (16 and 46 when first measured;
+  two of the four rows that have moved are 0034's epistemic checks, and two are the
+  `narrow-extent` cells [#269](https://github.com/brandonifco/rules-factory/issues/269) closed).
+  Four `enforcement` issues came out of it,
   and five of the misses are now measured limits rather than argued ones.
 
 ## The collapse trial — what the validator sees when a superposition is collapsed
