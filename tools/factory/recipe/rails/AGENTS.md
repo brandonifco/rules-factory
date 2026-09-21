@@ -222,6 +222,14 @@ decline that names why and cites where — that is the engine working, not the e
     and becomes `..._is_implemented_so_a_hand_written_handler_answers_it` at the flip. So name
     rule-body tests in the overlay when you flip it, and add entry-point tests, with the
     mutations you then observe, in the change that follows.
+- **A skipped test is not a test that ran.** The gate counts a test as having run only when its
+  result says `Passed` or `Failed` — it started and reached a verdict of its own. A
+  `[Fact(Skip = "...")]` is recorded as `NotExecuted` and counts as nothing, as does a test that
+  was only discovered. `scripts/engine-gate.py tests-ran` reports the executed count and the
+  skipped count separately, and requires at least one executed test from **every** test project in
+  **every** target framework, so a framework that silently stopped running is not covered by
+  another that ran twice. Skipping a test to get the gate green removes the evidence the gate was
+  asked for, and it says so.
 - **Report what happened, not what should have happened.** Paste the command and its actual
   output. "Tests pass" is not evidence; a run is.
 - **A reviewer is given the context, not asked to find it.** `tools/review-packet.py <pr number>`
