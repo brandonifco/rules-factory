@@ -132,6 +132,26 @@ so `repo-hygiene.py` reports a release due; which of them are still open is what
 labels say, against a factory the next tag will ship. Stated that way on purpose: a count written
 here is wrong the next time one of them closes, and this one already was.
 
+### `review6-*` — the review of round five's own remediation
+
+Round six is an independent Codex review of `34b6a71`, the commit at which every finding of round
+five was merged. Its subject is not the factory as built but **the fixes themselves**: the round
+closed six findings, and this asked what those six left unbound. It found no `p0`, so it uses two
+levels, and its ordered list is [#375](https://github.com/brandonifco/rules-factory/issues/375).
+
+| Label | What belongs in it |
+|---|---|
+| `review6-p1` | The factory cannot prove its product: a verified commit over a tree nobody tested (#370), and a packet that hashes one map and opens another (#371). |
+| `review6-p2` | Policy, depth and hardening: a verdict on evidence the packet marks NOT VERIFIED (#372), bytecode exempt from the intactness check (#373), a test matrix that collapses two projects (#374). |
+
+Nine findings were reported and five filed. #375 records **why each of the other four was not**,
+which is the part worth keeping: one read a superseded branch, one is a limit `record-verdict.py`
+and 0053 declare out of scope on purpose, one was already fixed on `main`, and one — folding
+homoglyphs into the placeholder rule — is a limit [#240](https://github.com/brandonifco/rules-factory/issues/240)
+asked to have **stated** rather than closed. A review round's value is in what it declines to file
+as much as in what it files, and an unfiled finding with no reason recorded is one somebody will
+rediscover and file again.
+
 ## The hub
 
 [#24](https://github.com/brandonifco/rules-factory/issues/24) is not one issue among the
