@@ -1935,6 +1935,9 @@ def a_late_risk_label_re_runs_the_gate(r, railed, github):
     requeue_path = os.path.join(workflows, "verdict-requeue.yml")
     requeue = read_workflow(requeue_path)
     policy = railed_policy(railed)
+    # The reviewer the policy configures, by its id, not a literal: "independent" is not a
+    # reviewer, and record-verdict.py rightly refuses one the reviewed packet does not name.
+    chain = policy["review"]["independentFallback"]
     log = r.s("risk-requeue.log")
 
     # Normal risk, the semantic verdict recorded: the gate passes, and the pull request may merge.
@@ -1964,7 +1967,7 @@ def a_late_risk_label_re_runs_the_gate(r, railed, github):
         cat(log)
         fail("the gate still passes after the issue was labelled independent-review, so the required check "
              "would stay green and the pull request could merge without the independent verdict")
-    github.record(railed, log, "independent")
+    github.record(railed, log, chain[0]["id"])
     if github.gate(railed, log) != 0:
         cat(log)
         fail("the gate does not pass once the independent verdict is recorded, so raising risk blocks a "
