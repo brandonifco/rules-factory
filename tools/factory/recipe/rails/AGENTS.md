@@ -363,8 +363,18 @@ independent-review chain, and the worktree environment variables. The factory wr
 never touches it again.
 
 **Change the chain, the labels or the roots by editing that file — never by editing a script.**
-No emitted script or document names a vendor. If you find one that does, that is a defect worth
-an issue.
+No emitted **script** names a vendor: a vendor named in code would be one you had to edit code to
+change, and that is a defect worth an issue.
+
+Two emitted things do name vendors, and both are defaults rather than the contract:
+
+- **A bundled Claude adapter.** `CLAUDE.md` and `.claude/` point at this file and state no rule of
+  their own (§2). An engine worked by another agent reads `AGENTS.md`, which is the governing
+  document and names no vendor; the adapter is there because one vendor needed a file of its own,
+  and adding another is configuration, not a change to the contract.
+- **A default review chain.** The `independentReviewChain` this engine's policy shipped with names
+  vendors, in order. It is engine-owned, written once, and never touched again: yours to reorder,
+  cut, or replace with names of your own.
 
 ## 10. For a non-Claude agent
 
