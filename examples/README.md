@@ -143,12 +143,16 @@ queue, and this project archived its predecessor partly for having one.
 - [#9](https://github.com/brandonifco/rules-factory/issues/9) — whether a **wrong** map is
   caught downstream. Every finding so far surfaced during mapping, which is the cheap place,
   and that is encouraging rather than evidence. [Trial 10](validator-attack/) supplies the
-  validator's half of the answer and it is not encouraging: fourteen kinds of deliberate damage
-  over five committed maps, **20 of 62 refused and 42 passed** (16 and 46 when first measured;
-  two of the four rows that have moved are 0034's epistemic checks, and two are the
-  `narrow-extent` cells [#269](https://github.com/brandonifco/rules-factory/issues/269) closed).
-  Four `enforcement` issues came out of it,
-  and five of the misses are now measured limits rather than argued ones.
+  validator's half of the answer, and more than half of the damage still gets through: fourteen
+  kinds of deliberate damage over five committed maps, **28 of 62 refused and 34 passed** (16 and
+  46 when first measured; of the twelve rows that have moved, two are 0034's epistemic checks, two
+  are the `narrow-extent` cells [#269](https://github.com/brandonifco/rules-factory/issues/269)
+  closed, and eight are the checks
+  [#271](https://github.com/brandonifco/rules-factory/issues/271),
+  [#268](https://github.com/brandonifco/rules-factory/issues/268) and
+  [#225](https://github.com/brandonifco/rules-factory/issues/225) added). Four `enforcement` issues
+  came out of it, three are closed, and the misses that remain are measured limits rather than
+  argued ones.
 
 ## The collapse trial — what the validator sees when a superposition is collapsed
 
