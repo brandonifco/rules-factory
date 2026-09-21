@@ -2059,7 +2059,7 @@
       "dependsOn": [],
       "crossReferences": [
         {
-          "cites": "1 Exhaustion level",
+          "cites": "Exhaustion",
           "resolvedBy": "exhaustion"
         }
       ],
@@ -2080,7 +2080,7 @@
       "dependsOn": [],
       "crossReferences": [
         {
-          "cites": "any Exhaustion levels",
+          "cites": "Exhaustion",
           "resolvedBy": "exhaustion"
         }
       ],
@@ -2197,7 +2197,7 @@
       "dependsOn": [],
       "crossReferences": [
         {
-          "cites": "A Grappled creature",
+          "cites": "Grappled",
           "resolvedBy": "grappled"
         },
         {

@@ -213,11 +213,34 @@ class TestTheDetector(unittest.TestCase):
         self.assertIn(("paralyzed-incapacitated", "Incapacitated"), found)
         self.assertIn(("stunned-incapacitated", "Incapacitated"), found)
 
-    def test_it_reports_which_namings_the_map_does_not_declare(self):
+    def test_the_committed_map_leaves_no_naming_undeclared(self):
+        """0058 corrected the three #254 found, and this is what holds the map to it.
+
+        The gate now accepts only 0 on this map, so a naming that lost its declaration is a
+        failure rather than a NOT VERIFIED. Watched failing by removing `suffocation-hazard`'s
+        item: the set comes back as {"suffocation-hazard"}.
+        """
         undeclared = {n.entry_id for n in self.namings() if not n.declared}
-        self.assertEqual(undeclared, {"suffocation-hazard", "dead-revival-conditions",
-                                      "grappling-ends"},
-                         "the three of #254; a change here is a map change or a detector change")
+        self.assertEqual(undeclared, set(),
+                         "a naming lost its declaration; the gate accepts only 0 here (0058)")
+
+    def test_it_still_reports_a_naming_a_map_does_not_declare(self):
+        """The detector's own behaviour, on a map mutated to have the defect.
+
+        Pinned to the committed map's three undeclared namings until 0058 corrected them, which
+        made this test a hostage to a defect: fixing the map broke the test that proved the
+        detector worked. The mutation carries it instead, so the detector is watched reporting
+        with no map obliged to stay wrong.
+        """
+        document = copy.deepcopy(self.document)
+        for entry in document["entries"]:
+            if entry["id"] == "suffocation-hazard":
+                entry.pop("crossReferences", None)
+        undeclared = {n.entry_id for n in self.namings(document) if not n.declared}
+        self.assertEqual(undeclared, {"suffocation-hazard"})
+        missing = [n.missing for n in self.namings(document)
+                   if n.entry_id == "suffocation-hazard" and n.term == "Exhaustion"]
+        self.assertEqual(missing, [["exhaustion"]], "it names the entry the pointer is owed to")
 
     def test_a_term_is_matched_on_word_boundaries(self):
         document = copy.deepcopy(self.document)
@@ -230,7 +253,7 @@ class TestTheDetector(unittest.TestCase):
 
 
 class TestTheCommandsExitCodes(unittest.TestCase):
-    def pointer_case(self, mechanisms, *, coded=True, defined=True):
+    def pointer_case(self, mechanisms, *, coded=True, defined=True, declare_defined_use=True):
         """Run `mapper pointers` on a mechanism-neutral synthetic map.
 
         The two pointer kinds coexist in one map so these tests exercise command dispatch rather
@@ -262,8 +285,9 @@ class TestTheCommandsExitCodes(unittest.TestCase):
                 "id": "defined-use",
                 "locator": {"sourceId": "example", "citation": "section 4"},
                 "evidence": "Blue applies.",
-                "crossReferences": [{"cites": "Blue", "resolvedBy": "blue"}],
             })
+            if declare_defined_use:
+                entries[-1]["crossReferences"] = [{"cites": "Blue", "resolvedBy": "blue"}]
         document = {"schemaVersion": 1, "corpus": "example", "entries": entries}
         declared = {"protocolVersion": 1, "corpus": "example",
                     "units": ["paragraph"], "pointerMechanisms": mechanisms,
@@ -317,9 +341,24 @@ class TestTheCommandsExitCodes(unittest.TestCase):
         self.assertIn("A silent zero is not a pass", err)
 
     def test_a_map_naming_an_undeclared_term_is_not_verified(self):
-        code, out, _ = run(["pointers", CONDITIONS])
+        """Exit 3 on a map with the defect, built for the purpose.
+
+        This ran against `examples/srd-52-conditions/` while that map had three undeclared
+        namings. 0058 corrected them and the map exits 0, so the case moved to a synthetic map:
+        an exit code is the detector's behaviour and must not depend on a committed map keeping
+        a defect. Watched failing by declaring `Blue` on `defined-use`, which returns 0.
+        """
+        mechanism = {"mechanism": "defined-term-use", "vocabularyFrom": "terms"}
+        code, out, _ = self.pointer_case([mechanism], coded=False, declare_defined_use=False)
         self.assertEqual(code, 3, out)
         self.assertIn("NOT VERIFIED", out)
+        self.assertIn("defined-use", out)
+
+    def test_the_committed_map_exits_0(self):
+        """The other half: the corpus #208 measured now has every naming declared (0058)."""
+        code, out, _ = run(["pointers", CONDITIONS])
+        self.assertEqual(code, 0, out)
+        self.assertIn("54 naming(s), every one declared", out)
 
     def test_a_corpus_that_points_no_way_this_detects_says_so(self):
         backgammon = os.path.join(REPO, "examples", "hoyle-backgammon", "corpus-map.json")

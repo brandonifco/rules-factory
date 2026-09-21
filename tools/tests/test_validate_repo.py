@@ -535,3 +535,60 @@ class TestTheNetworkStepRunsWhereItsSubjectChanges(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class TestAnUndeclaredPointerIsNotNotVerified(unittest.TestCase):
+    """The pointers step stopped accepting exit 3 when 0058 answered #254.
+
+    While that question was open -- whether a `scope: out`, `status: declined` entry owed a
+    `crossReferences` declaration -- `mapper pointers` was right to report NOT VERIFIED and the
+    gate was right to accept it. 0058 answers it: the passage that points declares it, whatever
+    the engine does with the rule. So a naming the map leaves undeclared is a defect the gate
+    names, and the accept set is the one line that says so.
+
+    Watched failing with `accept=(0, 3)` restored in `step_pointers`: the exit-3 case passes and
+    this test reports the step accepting NOT VERIFIED.
+    """
+
+    class _Recorded:
+        """A Run that runs nothing and reports one exit code, recording the accept set it got."""
+
+        def __init__(self, root, scope, code):
+            self.root, self.scope, self.code = root, scope, code
+            self.accepted = []
+
+        def python(self, *argv, accept=(0,)):
+            self.accepted.append(tuple(accept))
+            return self.code in accept
+
+    def _step(self, code):
+        scope = vr.full_scope()
+        run = self._Recorded(vr.ROOT, scope, code)
+        with redirect_stdout(io.StringIO()):
+            return vr.step_pointers(run), run
+
+    def test_exit_3_now_fails_the_step(self):
+        passed, run = self._step(3)
+        self.assertFalse(passed, "the gate accepted NOT VERIFIED on an undeclared pointer")
+        self.assertNotIn(3, run.accepted[0], "3 is still in the step's accept set")
+
+    def test_exit_0_still_passes_the_step(self):
+        passed, _ = self._step(0)
+        self.assertTrue(passed)
+
+    def test_exit_1_still_fails_the_step(self):
+        passed, _ = self._step(1)
+        self.assertFalse(passed)
+
+    def test_every_committed_map_exits_0_so_the_tightening_is_not_theoretical(self):
+        """The tightening is only safe because no map on disk needs the 3.
+
+        Seven maps: five declare no mechanism this detects and exit 0 having examined nothing of
+        this kind, `hazmat-172-table` declares `coded-pointer` and has every naming declared, and
+        `srd-52-conditions` is the one 0058 corrected.
+        """
+        run = vr.Run(vr.ROOT, vr.full_scope())
+        for map_path in run.scope.maps:
+            proc = run.quiet("tools/mapper", "pointers", map_path)
+            self.assertEqual(proc.returncode, 0,
+                             f"{map_path} exits {proc.returncode}:\n{proc.stdout}{proc.stderr}")

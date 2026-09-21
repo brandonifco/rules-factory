@@ -67,18 +67,36 @@ The check conditions 0026 already states mention neither axis: an item is anchor
 entry's own evidence, and resolves to exactly one of `resolvedBy` or `unmapped`. Both hold for an
 out-of-scope entry unchanged.
 
+**And the pointer runs the other way.** 0026 § 1 is written in one direction — an in-scope entry
+names a `scope: out` entry that quotes a meaning from outside the slice. All three entries here
+are the reverse: a `scope: out`, `status: declined` entry naming an **in-scope** entry, because
+the passage outside the slice is the one doing the pointing and the condition it names is mapped.
+The independent reviewer raised that as something § 1's text does not state, and it is worth
+stating: the field records a pointer, and a pointer has a direction the corpus chose, not one the
+slice chose. `grappling-ends`' pre-existing item already ran that way.
+
 ### What the three entries become
 
 `cites` quotes the term as the evidence uses it (0026 § 1), not as some house phrasing would:
 
 | entry | `cites` | `resolvedBy` |
 |---|---|---|
-| `suffocation-hazard` | `1 Exhaustion level` | `exhaustion` |
-| `dead-revival-conditions` | `any Exhaustion levels` | `exhaustion` |
-| `grappling-ends` | `A Grappled creature` | `grappled` |
+| `suffocation-hazard` | `Exhaustion` | `exhaustion` |
+| `dead-revival-conditions` | `Exhaustion` | `exhaustion` |
+| `grappling-ends` | `Grappled` | `grappled` |
 
 Each term is defined in exactly one entry here, so 0044's *all of them or none* is satisfied by
 one target each.
+
+**The spans are bare terms because the first drafts were not, and the review caught it.** They
+were written as the surrounding phrase — `1 Exhaustion level`, `any Exhaustion levels`,
+`A Grappled creature` — and the independent verdict disagreed on two of the three: a span carrying
+the numeral and `level` **no longer names the condition**. It names a level count, which this map
+defines in a different entry, `exhaustion-levels`, at the same citation. A level-unit span paired
+with a condition-hub target is a precision defect even though the relation is the right relation,
+and the reviewer found the fix in the corpus's own words — suffocation's second sentence says
+*all levels of **Exhaustion** it gained from suffocating*. All three are now the bare term
+`condition-list` itself declares, which is also what makes them comparable with the other 107.
 
 ### The gate stops accepting NOT VERIFIED on this step
 
@@ -119,3 +137,15 @@ to rule. It is no longer open. The step accepts only 0.
 - **This says nothing about `dependsOn`.** 0026 § 2's test is unchanged: an entry depends on a
   passage when the engine cannot resolve its rule without it. A declined entry states no rule the
   engine resolves, so the question does not arise for these three, and none gains an edge.
+- **The vocabulary is the fifteen condition names, and the corpus defines more terms than that.**
+  `dead-revival-conditions` quotes *"returns to life with any **conditions** … if the durations of
+  those effects are still ongoing"*, and its own note names `condition-definition` in prose while
+  declaring nothing — the shape 0026 § 1 exists to stop, found by the same review and filed as
+  [#400](https://github.com/brandonifco/rules-factory/issues/400) rather than fixed here, because
+  whether a corpus's *general* terms belong in a declared vocabulary is a different question with
+  a cost that should be measured before it is answered.
+- **The review also found a missing entry, not a missing declaration.** Dehydration (p. 181) is
+  `suffocation-hazard`'s structural twin, has no entry at all, and two notes in this map count the
+  routes into and out of Exhaustion without it —
+  [#401](https://github.com/brandonifco/rules-factory/issues/401). A count is a completeness claim,
+  which is why it is filed rather than left in a reviewer's report.
