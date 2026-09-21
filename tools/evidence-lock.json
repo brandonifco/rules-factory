@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "measuredAt": "46023bee3a49e6fe0b36f0a60b92a32a104824af",
+  "measuredAt": "bb90fba84558a7e20596ebd89336aea73d4f7205",
   "measuredBy": "tools/check-evidence.py --measure",
   "measuredOver": {
     "gateStepsFailed": [],
@@ -19,8 +19,8 @@
   "artifacts": [
     {
       "path": "examples/README.md",
-      "sha256": "736dceafa092face2b4420a97d9e349d5103bc5c222fcbbfcb515ccb74b40b87",
-      "bytes": 27428,
+      "sha256": "fcbec276aa41b815eda3964ffa18e6101afc85e81b7b28bcdf176d6853be8517",
+      "bytes": 27918,
       "role": "active",
       "readBy": [
         "links"
@@ -41,10 +41,8 @@
       "path": "examples/acceptance-4-5/check-provenance.sh",
       "sha256": "976e1bfd5a7759c3e0f4f449b1e1f53750b7a6e27a9b37767864f88bca60400e",
       "bytes": 2248,
-      "role": "active",
-      "readBy": [
-        "checks"
-      ],
+      "role": "archived",
+      "readBy": [],
       "archive": null
     },
     {
@@ -61,8 +59,10 @@
       "path": "examples/blind-mapping-trial/blind-map.json",
       "sha256": "04930e7e62054a17cd54faab0410efec8ec87aaac56f8bf2ff5597caa8a743c1",
       "bytes": 37125,
-      "role": "archived",
-      "readBy": [],
+      "role": "active",
+      "readBy": [
+        "checks"
+      ],
       "archive": null
     },
     {
@@ -541,8 +541,8 @@
     },
     {
       "path": "examples/hazmat-172-table/README.md",
-      "sha256": "41dbe54575edb0e322ffb41e6ef1e1960a22ea691b3824ca2a83bdedcc4a42ec",
-      "bytes": 44815,
+      "sha256": "bcf172334d236de388b7286643c701c43316f00537e0370e3ac397c15607e927",
+      "bytes": 51193,
       "role": "active",
       "readBy": [
         "links"

@@ -677,8 +677,100 @@ supports the IB2 and IB3 associations, but correctly rejected the original map's
 `ambiguity.fate: decision`, naming 0046, and no longer reports `RequiresInterpretation` for the
 same relationship it has made operative.
 
-## What happens next
+## Step 4 — every hypothesis, reported
 
-Steps 3 and 4 of #262: blind-map the slice a second time, adjudicate, mutate, and report every
-hypothesis as held or falsified with what it cost to find out. #262 is not closed by this
-directory; the map is the second of its four steps.
+Written 2026-09-21, closing [#262](https://github.com/brandonifco/rules-factory/issues/262).
+**Step 3's blind second mapping was not run**, and that is stated first because it bounds
+everything below: H5 is untested, and every verdict here rests on one mapper's reading plus the
+independent verdict this map's [`review.json`](review.json) carries
+([0017](../../docs/decisions/0017-a-map-change-carries-a-review-of-its-bytes.md)), not on two
+independent decompositions of a table.
+
+| | hypothesis | verdict |
+|---|---|---|
+| H1 | the existing evidence model survives a grid | **held**, with two strains recorded: a contiguous span can cover several cells, which H1 did not predict, and a row stating a code's additional requirement leaves column 1 blank and so states half a rule read alone ([0046](../../docs/decisions/0046-an-additional-rule-can-continue-a-definition.md)). No `evidenceGraph` was needed. |
+| H2 | the protocol expresses a coded pointer, and only its vocabulary grows | **qualified.** The mechanism list's shape held; `coded-pointer` was forced ([0041](../../docs/decisions/0041-a-coded-pointer-is-made-by-the-column-it-sits-in.md)); the single-`vocabularyFrom` assumption was falsified, and a vocabulary is now distributed over the entries that define its terms ([0045](../../docs/decisions/0045-a-vocabulary-is-distributed-over-the-entries-that-define-its-terms.md)). |
+| H3 | the existing relations carry modal applicability | **expressible, and unchecked.** 23 gated entries carry the modal reach in `enabledBy`, so the relations do express it. The mutation run below drops one such edge, and drops the entry seven others name — both missed. Trial 9's failure mode is therefore not repaired by this corpus's shape: the reach can be recorded, and nothing mechanical says when it is not. |
+| H4 | coverage can be evidenced | **held only after a change it forced.** Version 1 of `mapping-inventory.json` named one corpus while a map cites several, so this two-corpus map could record no rejection ([#319](https://github.com/brandonifco/rules-factory/issues/319), [0042](../../docs/decisions/0042-the-mapper-walks-every-corpus-a-map-cites.md)). Version 2 partitions accounting by `sourceId`. |
+| H5 | a blind second mapping converges on table geometry | **not tested.** No second mapper read this slice. |
+| H6 | a removed restriction is detectable | **falsified for this corpus.** `remove-applicability` and `drop-enabled-by` are both missed below, and a removed mode restriction is exactly what they remove. |
+
+### The mutation run
+
+The committed catalogue (`tools/mutate-map.py`), unchanged, run once over this map:
+
+| mutation | outcome |
+|---|---|
+| `drop-entry` | missed |
+| `drop-enabled-by` | missed |
+| `drop-suspended-by` | n/a — no entry carries one |
+| `clear-to-ambiguous` | refused by `question-anchor` |
+| `ambiguous-to-clear` | missed |
+| `assertion-to-operation` | refused by `asserted-by` |
+| `invent-depends-on` | missed |
+| `neighbour-evidence` | refused, by `cross-references` rather than by the locators |
+| `same-passage-evidence` | missed |
+| `move-locator` | missed |
+| `omit-definition` | missed |
+| `remove-applicability` | missed |
+| `hide-cross-reference` | refused by `cross-references` |
+| `narrow-extent` | refused by `extent` |
+
+**5 of 13 applicable mutations detected.** Against the five subjects the gate measures at
+`51ad10b`: `hoyle-backgammon` 8/13, `faa-part-107` 8/13, `tax-121-principal-residence` 5/12,
+`srd-52-combat` 3/14, `srd-52-conditions` 4/10. So a tabular map is **not** measurably less
+checkable than a prose one — which is the question the trial was for — and the misses it has are
+the misses the prose maps have.
+
+This run is **trial evidence, not a gate measurement**: this map is not a subject in
+`tools/mutate-map.py`, and `examples/validator-attack/results.json` does not include it. Making it
+one is [#263](https://github.com/brandonifco/rules-factory/issues/263), which is `post-1.0`. To
+reproduce, add this descriptor to `SUBJECTS` and run
+`python3 tools/mutate-map.py --subject hazmat-172-table`:
+
+```python
+{
+    "name": "hazmat-172-table",
+    "genre": "regulation",
+    "grammar": "section-designation (eCFR XML), two corpora",
+    "dir": "examples/hazmat-172-table",
+    "locators": ["examples/faa-part-107/check-locators-section.py", "{map}",
+                 "examples/hazmat-172-table/section-172.101.xml"],
+    "locator_format": "section",
+}
+```
+
+### What it cost, and the one method finding worth keeping
+
+Every finding this trial filed is closed: [#284](https://github.com/brandonifco/rules-factory/issues/284),
+[#285](https://github.com/brandonifco/rules-factory/issues/285),
+[#298](https://github.com/brandonifco/rules-factory/issues/298),
+[#299](https://github.com/brandonifco/rules-factory/issues/299),
+[#307](https://github.com/brandonifco/rules-factory/issues/307),
+[#311](https://github.com/brandonifco/rules-factory/issues/311),
+[#314](https://github.com/brandonifco/rules-factory/issues/314),
+[#318](https://github.com/brandonifco/rules-factory/issues/318),
+[#319](https://github.com/brandonifco/rules-factory/issues/319),
+[#320](https://github.com/brandonifco/rules-factory/issues/320),
+[#321](https://github.com/brandonifco/rules-factory/issues/321),
+[#322](https://github.com/brandonifco/rules-factory/issues/322),
+[#323](https://github.com/brandonifco/rules-factory/issues/323). Five decision records came out of
+it: 0036, 0041, 0042, 0045 and 0046. One map-data question is open and `post-1.0`:
+[#406](https://github.com/brandonifco/rules-factory/issues/406).
+
+**Probe before mapping.** Both admission blockers — the locator run taking one corpus (#298) and
+§ 172.101's appendices being unplaceable (#299) — were found by writing **two** entries and
+running them through the checkers, in about twenty minutes, rather than by ninety-four entries
+failing after the fact. That is the cheap version of the lesson trial 9 learned expensively, and
+it is the one process finding from the mapping log that belongs in the trial's record.
+
+### What is not done
+
+- **The blind second mapping (step 3).** H5 is unmeasured, and this map's assurance is the
+  independent verdict on its bytes rather than a second decomposition.
+- **H3 and H6 are answered negatively by the existing catalogue**, and no check was added to
+  repair them. A modal `enabledBy` edge that is missing is not detectable mechanically; it is
+  what a second reading is for.
+
+Both are limitations of this trial, recorded rather than closed. The map stands, and it is the
+first tabular corpus the contract has represented.
