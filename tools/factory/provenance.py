@@ -30,7 +30,7 @@ The fields, and where each comes from:
   * `kernel` -- the RulesKernel version the engine references.
   * `packs` -- `[]`: no rule packs exist yet, and the empty list says so rather than omitting it.
   * `recipes` -- every file under `tools/factory/` (the factory's templates are its Python
-    modules), `__pycache__` and `*.pyc` excluded, and `tools/check-map.py` beside it (the
+    modules) and `tools/check-map.py` beside it (the
     checker intake runs decides whether there is any output, so it is factory code too, and a
     factory without it is refused), each with its SHA-256, sorted by
     repository-relative POSIX path in ascending byte order; and `digest`, the SHA-256 of the
@@ -39,8 +39,9 @@ The fields, and where each comes from:
     (`require_intact`, #232): a symlink under `tools/factory` would be hashed through to bytes
     git does not hold (and a symlinked directory's contents not hashed at all, because `os.walk`
     will not follow it), and a git-ignored file would be hashed while `git status` -- which is
-    all `dirty` is -- called the tree clean. `__pycache__` and `*.pyc`, which nothing hashes,
-    are the only ignored paths allowed.
+    all `dirty` is -- called the tree clean. Ignored bytecode is refused with the rest, and is
+    the case that matters most, because a `.pyc` is what Python runs (#373); `__main__.py` sets
+    `sys.dont_write_bytecode` so a run leaves none behind for the next one to trip over.
   * `generated` -- `[{path, sha256}]`, sorted by path, for every file `produce` wrote on this
     run under the engine directory whose ownership class (ownership.py, decision 0018) is
     generated, except `provenance.json` itself. Managed and engine-owned files are not listed
@@ -132,8 +133,10 @@ Standard library only.
 """
 import builtins
 import hashlib
+import importlib.util
 import io
 import json
+import marshal
 import os
 import re
 import shutil
@@ -214,13 +217,47 @@ def require_clean(state, allow_dirty):
 RECIPES_BESIDE = ("check-map.py",)
 
 
-def _skipped(relative):
-    """The recipe paths nothing hashes: `__pycache__`, its contents, and any other `*.pyc`.
+def discard_entry_point_bytecode(main_file):
+    """Remove the one `.pyc` the factory cannot stop itself from writing (#373).
 
-    Takes a POSIX relative path, so it holds for a `git status` line (which may name the
-    directory, `__pycache__/`) as well as for a walked file.
+    `python3 tools/factory` runs a **directory**, and CPython loads its `__main__.py` through the
+    import machinery: the source is compiled and cached before its first line runs, so the
+    `sys.dont_write_bytecode` that first line sets comes one file too late. Every other module the
+    entry point imports is covered by the flag; this one is removed after the fact instead, so a
+    run still leaves nothing for the next run's `require_intact` to refuse.
+
+    Only bytecode this run's own Python would have written is removed -- the cached code object
+    has to equal what compiling the source now produces. Anything else (a stale `.pyc` whose
+    header happens to match, a planted one) is left exactly where it is, for `require_intact` to
+    refuse by name. Tidying it away would be the old exemption again, with a delete on top.
+
+    No check inside `__main__.py` can vouch for `__main__.py`'s own bytecode: bytecode that forged
+    this function's caller would simply not call it. What that costs is bounded -- a forged entry
+    point has to survive in a checkout where `require_clean` sees every source edit, and it is
+    erased the moment the source it caches is touched -- and running the factory as `python3 -B`,
+    or with PYTHONDONTWRITEBYTECODE set as scripts/validate.sh does, closes it outright by never
+    reading bytecode at all.
     """
-    return "__pycache__" in relative.split("/") or relative.endswith(".pyc")
+    source = os.path.abspath(main_file)
+    cache = importlib.util.cache_from_source(source)
+    if not os.path.isfile(cache):
+        return
+    try:
+        with open(cache, "rb") as handle:
+            cached = marshal.loads(handle.read()[16:])  # the 16-byte header, then the code object
+        with open(source, "rb") as handle:
+            # dont_inherit, as the import machinery compiles: a __future__ import in *this* module
+            # must not change what the comparison expects of that one.
+            fresh = compile(handle.read(), source, "exec", dont_inherit=True)
+    except (OSError, ValueError, EOFError, TypeError, SyntaxError):
+        return
+    if cached != fresh:
+        return
+    try:
+        os.remove(cache)
+        os.rmdir(os.path.dirname(cache))  # empty now, and an empty __pycache__ is a leftover too
+    except OSError:
+        pass
 
 
 def require_intact(factory_dir, top):
@@ -239,6 +276,16 @@ def require_intact(factory_dir, top):
     there is no honest entry for a file that no commit holds. `--allow-dirty` does not lift
     this -- it records `dirty: true`, which says the recorded commit is not the whole story,
     and neither of these leaves any mark in `git status` for that flag to be about.
+
+    Ignored **bytecode** was exempt until #373, because a run left `tools/factory/__pycache__`
+    behind and the next one would have refused itself. It was the exemption that mattered most:
+    a `.pyc` whose header carries the source's mtime and size is loaded in preference to the
+    `.py` beside it, during import, before `produce()` reaches any check here -- so the record
+    would name a commit whose `generate.py` is not what ran. `__main__.py` sets
+    `sys.dont_write_bytecode` instead, so the factory produces none of the subject, and bytecode
+    is refused like any other ignored file. Bytecode nothing suppressed (a `python3 -c 'import
+    provenance'` run by hand, a stale `.pyc` left by a branch switch) is exactly what the
+    refusal is for, and the remedy is to delete it.
     """
     def named(path):
         return os.path.relpath(os.path.abspath(path), top).replace(os.sep, "/")
@@ -259,20 +306,27 @@ def require_intact(factory_dir, top):
         require_in_the_commit(os.path.join(os.path.dirname(os.path.abspath(factory_dir)), name))
     require_in_the_commit(factory_dir)
     for directory, dirs, names in os.walk(factory_dir):
-        dirs[:] = [d for d in dirs if d != "__pycache__"]
         # Directories too: a symlinked one is what `os.walk` refuses to follow and `recipes()`
         # therefore never hashes, so checking only files would miss exactly the worse case.
         for name in sorted(dirs) + sorted(names):
-            path = os.path.join(directory, name)
-            if not _skipped(named(path)):
-                require_in_the_commit(path)
-    # `-z` so a path with a space or a quote in it arrives whole; `--ignored=matching` lists the
-    # ignored paths themselves, and `-- .` asks only about the factory directory, because the
-    # rest of the checkout is not hashed here and its ignored files are nobody's business.
-    for entry in _git(factory_dir, "status", "--porcelain", "-z", "--ignored=matching", "--", ".").split("\0"):
-        if entry.startswith("!! ") and not _skipped(entry[3:]):
+            require_in_the_commit(os.path.join(directory, name))
+    # `-z` so a path with a space or a quote in it arrives whole, and `-- .` asks only about the
+    # factory directory, because the rest of the checkout is not hashed here and its ignored files
+    # are nobody's business. `--ignored=traditional --untracked-files=all` rather than
+    # `=matching`, which reports an ignored directory as itself: the refusal has to name the
+    # `.pyc` that would run, not the `__pycache__/` holding it.
+    for entry in _git(factory_dir, "status", "--porcelain", "-z", "--ignored=traditional",
+                      "--untracked-files=all", "--", ".").split("\0"):
+        if entry.startswith("!! "):
+            path = entry[3:].rstrip("/")
+            if path.endswith(".pyc") or "__pycache__" in path.split("/"):
+                raise intake_step.Refused(
+                    f"{path} is bytecode git ignores, and bytecode is what Python runs: a `.pyc` whose "
+                    f"header matches its source is loaded in preference to it, before this check, so "
+                    f"provenance would hash a source the run did not execute (#373); delete it "
+                    f"(the factory writes none of its own)")
             raise intake_step.Refused(
-                f"{entry[3:].rstrip('/')} is ignored by git, so provenance would hash bytes no commit holds "
+                f"{path} is ignored by git, so provenance would hash bytes no commit holds "
                 f"while `git status` called the factory clean; remove it, or commit it")
 
 
@@ -287,10 +341,7 @@ def recipes(factory_dir, top):
         files.append({"path": os.path.relpath(os.path.realpath(path), top).replace(os.sep, "/"),
                       "sha256": sha256_file(path)})
     for directory, dirs, names in os.walk(factory_dir):
-        dirs[:] = [d for d in dirs if d != "__pycache__"]
         for name in names:
-            if name.endswith(".pyc"):
-                continue
             path = os.path.join(directory, name)
             files.append({"path": os.path.relpath(os.path.realpath(path), top).replace(os.sep, "/"),
                           "sha256": sha256_file(path)})
