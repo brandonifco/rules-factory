@@ -223,6 +223,15 @@ already tried.
 `AGENTS.md` is authoritative, that it must be read first, and that Claude-specific role adapters
 live under `.claude/`. It states no rule of its own.
 
+**Accuracy note, 2026-09-21 ([#174](https://github.com/brandonifco/rules-factory/issues/174)):**
+the *contract* is vendor-neutral; the *output* is a vendor-neutral core with a bundled Claude
+adapter and a default provider configuration. `produce` emits `CLAUDE.md` and `.claude/` by
+default, and the `independentReviewChain` in the engine-owned `.github/agent-policy.json` ships
+naming specific vendors. Both are defaults an engine owns and may change without editing a
+script, which is what section 5 below is for — but "the factory emits nothing that names a
+vendor" would be false, and the rails' own `AGENTS.md` §9 used to say it. It now says which two
+name one and why.
+
 `deckard` has this the other way round, because it was built in one vendor and grew the neutral
 file second. The factory produces engines for whoever works them, so the neutral file is the
 contract. Which file governs is settled once here so that no engine has to answer it, and neither

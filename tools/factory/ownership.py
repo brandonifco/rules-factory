@@ -87,11 +87,12 @@ TABLE = (
     Row("scripts/engine-gate.py", GENERATED, None, "the gate recipe: its non-dotnet checks"),
     Row("scripts/factory/*.py", GENERATED, None, "the factory's generator, vendored so the gate can regenerate"),
     Row(".github/workflows/validate.yml", GENERATED, None, "the gate recipe: CI runs validate.sh full"),
-    Row("AGENTS.md", MANAGED, 17,
+    Row("AGENTS.md", MANAGED, 18,
         "the governing contract every agent works this engine under (decision 0029); section 4 carries "
         "the sweep, the documentation section, and delete-only-what-you-created (#236); a packet that "
         "names an entry is made with the map the reviewed commit declares (#372); section 11 is what the "
-        "machine owes the work -- the pinned SDK, a restore, a `gh` the packets can read (#195)"),
+        "machine owes the work -- the pinned SDK, a restore, a `gh` the packets can read (#195); section 9 "
+        "names the two emitted things that do name a vendor, as the defaults they are (#174)"),
     Row("CLAUDE.md", MANAGED, 1,
         "a pointer to AGENTS.md and the Claude adapters; it states no rule of its own (0029)"),
     Row("docs/agent-team.md", MANAGED, 5, "the four roles, and what each may not do (0029)"),
@@ -286,6 +287,7 @@ RECIPE_SHA256 = {
         15: "5727dbd594baaace84cd5fa650eb9ec0e7d1779b4fd4bb262f74f3ccf56fb67b",
         16: "07c9b6a26199f3bf9b06db4ab308fbc4747dfe71b3e2ab17a4f637be67fe14f6",
         17: "f0148606dbd2a1e4f0614480ab74e7fa361876b9b65407019075f7a15dc24702",
+        18: "2b6a2f95c659e0d17b524f2b401f32cfe047ebe0a7249bda05ba0b4e7bab61b5",
     },
     "CLAUDE.md": {
         1: "04c07ad36e742fa60efafeca54d20bd96d16b6e338a44e46fad2b679ab8dfd9f",
