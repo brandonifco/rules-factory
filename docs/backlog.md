@@ -152,6 +152,31 @@ asked to have **stated** rather than closed. A review round's value is in what i
 as much as in what it files, and an unfiled finding with no reason recorded is one somebody will
 rediscover and file again.
 
+### `post-1.0`, `known-limitation` — the ship-first triage, 2026-09-21
+
+An open issue records knowledge. It does not authorise implementation. From 2026-09-21 every open
+issue carries a disposition, and a finding delays a release only when it is demonstrably one of
+these: the factory cannot produce, update, verify or maintain a real engine; it can silently
+generate materially wrong code from a valid supported input; it can overwrite or discard
+engine-owned work; it can report an engine as verified when its build or tests failed or did not
+run; its map, package or provenance inputs can be substituted in a way that defeats the claims
+ordinary use rests on; a real corpus shows the map contract cannot represent a rule category the
+supported product needs; normal installation, operation or upgrading is impractical for the
+intended user; or a concrete security or supply-chain defect is a realistic risk for the
+distribution model as it actually is.
+
+| Label | What belongs in it |
+|---|---|
+| `post-1.0` | A real improvement — hardening, an abstraction, broader checking, better ergonomics — that meets none of those. Filed, kept, not implemented before the release. |
+| `known-limitation` | A boundary of the product rather than work: it is stated where a reader will meet it, and built only when real use forces it. |
+
+The two labels exist because the failure this project was drifting into is not under-checking. It
+is the recursive one: a mechanism, then a checker for the mechanism, then evidence proving the
+checker, then provenance proving the evidence. A check earns its maintenance by protecting a
+product-critical invariant; one that does not is simplified or removed, and a claim that is hard
+to verify is narrowed rather than propped up by another layer. An explicit, truthful limitation is
+a finished outcome, not a deferred defect.
+
 ## The hub
 
 [#24](https://github.com/brandonifco/rules-factory/issues/24) is not one issue among the
