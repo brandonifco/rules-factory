@@ -662,9 +662,14 @@ def evaluate(project):
         return None, f"`dotnet msbuild` exited {done.returncode}: {said}"
     try:
         properties = json.loads(done.stdout)["Properties"]
-        return {name: properties[name] for name in TEST_PROJECT_PROPERTIES}, None
+        answered = {name: properties[name] for name in TEST_PROJECT_PROPERTIES}
     except (ValueError, KeyError, TypeError):
+        answered = None
+    # Every value is a string when MSBuild answers (an unset property is ""). Anything else is
+    # not an answer, and is reported as one rather than raised out of the check as a traceback.
+    if answered is None or not all(isinstance(value, str) for value in answered.values()):
         return None, f"`dotnet msbuild` answered with no {' and no '.join(TEST_PROJECT_PROPERTIES)}"
+    return answered, None
 
 
 def test_projects():
