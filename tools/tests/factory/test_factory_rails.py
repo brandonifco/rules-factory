@@ -4145,6 +4145,13 @@ class TestFactoryRails(TestAProducedEngine):
 
     def test_the_doctor_reads_every_page_of_the_labels_too(self):
         self.produced()
+        # A restore, because the doctor's machine rows are problems like any other and a produced
+        # engine has never been restored (#195). This test is about the labels page, on a machine
+        # that is otherwise able to do the work.
+        assets = os.path.join(self.out, "src", NAME, "obj")
+        os.makedirs(assets, exist_ok=True)
+        with open(os.path.join(assets, "project.assets.json"), "w", encoding="utf-8") as handle:
+            handle.write("{}")
         self.assertEqual(self.rails("--apply")[0], 0)
         self.with_state(perPage=4, labels=self.FILLERS + self.read_state()["labels"])
         code, output = self.doctor()
@@ -4288,3 +4295,33 @@ class TestTheDoctor(TestAProducedEngine):
         os.remove(os.path.join(self.out, "tools", "record-verdict.py"))
         done = self.doctor("--local")
         self.assertIn("tools/record-verdict.py (absent)", done.stdout)
+
+    def test_the_machine_is_reported_before_the_rails(self):
+        """#195: every rail can be in place on a machine that cannot run the gate.
+
+        A freshly produced engine has never been restored, so the restore row is the deterministic
+        one to assert on; the SDK row's state depends on what the machine has installed, and what
+        is asserted about it is that it is asked at all, and asked first.
+        """
+        self.produced()
+        done = self.doctor("--local")
+        printed = done.stdout.splitlines()
+        self.assertTrue(printed[0].startswith("SDK pinned by global.json"), done.stdout)
+        self.assertIn("Restore ", done.stdout)
+        self.assertIn("run `dotnet restore`", done.stdout)
+        self.assertLess(printed.index(next(line for line in printed if line.startswith("Restore "))),
+                        printed.index(next(line for line in printed if line.startswith("Rail files "))),
+                        done.stdout)
+
+    def test_a_gh_without_the_packets_field_is_reported(self):
+        """#195: the review packet and the conformance gate ask `gh` for a field an older `gh`
+        refuses, and the failure surfaced as an unreadable error in the middle of a review."""
+        self.produced()
+        old = os.path.join(self.out, "old-gh.sh")
+        with open(old, "w", encoding="utf-8") as handle:
+            handle.write('#!/bin/sh\necho \'Unknown JSON field: "closingIssuesReferences"\' >&2\nexit 1\n')
+        os.chmod(old, 0o755)
+        done = self.doctor("--local", RULES_ENGINE_GH=old)
+        self.assertIn("gh reads the packet's fields", done.stdout)
+        self.assertIn("has no --json closingIssuesReferences", done.stdout)
+        self.assertIn("$RULES_ENGINE_GH", done.stdout)

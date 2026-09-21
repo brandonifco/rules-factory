@@ -59,6 +59,9 @@ The primary checkout's steady state is `main`, clean, used for orchestration and
 implementation happens in a worktree outside the repository directory**, so that one task cannot
 contaminate another and a half-finished change cannot reach `main`:
 
+Before the first dispatch on a new machine, §11: the SDK, a restore and a `gh` the packets can
+read are the machine's part, and the gate does not run without them.
+
 ```bash
 tools/dispatch-agent.sh <issue number>      # creates the worktree and the branch, and prints the path
 tools/dispatch-agent.sh --sweep             # removes what merged work left behind; every dispatch runs it
@@ -365,6 +368,8 @@ an issue.
 
 ## 10. For a non-Claude agent
 
+- Run `tools/agent-doctor.py --local` first. Its first three rows are the machine's
+  prerequisites (§11), and the gate cannot run until they are true.
 - You are probably in a worktree. Confirm before your first write: `git rev-parse
   --git-common-dir` differing from `git rev-parse --git-dir` means you are.
 - The gate is `./scripts/validate.sh full`. Nothing else is.
@@ -377,3 +382,36 @@ an issue.
 - A pull request that is a `factory produce` update says so in its `## Produced by the factory`
   section, and carries what produce wrote and nothing else (§4). One file that produce did not
   write voids the claim, which is why the files named above are also the only ones it can cover.
+
+## 11. What this checkout needs before you run anything
+
+Three things are true of the **machine**, not of this repository, and none of them is visible in a
+file listing. `tools/agent-doctor.py --local` reports all three before any other row, and it
+changes nothing; run it before your first command rather than discovering them one refusal at a
+time.
+
+- **The SDK `global.json` pins.** It is pinned with `rollForward: disable`, so a machine with a
+  different .NET SDK cannot run the gate at all, and the failure does not name the pin. Install
+  the exact version user-locally if you cannot install it system-wide:
+
+  ```bash
+  curl -sSL https://dot.net/v1/dotnet-install.sh | bash -s -- --version <the pinned version> --install-dir ~/.dotnet
+  export PATH="$HOME/.dotnet:$PATH"
+  ```
+
+  `FACTORY_DOTNET_SDK_OVERRIDE` is for a local run only. A run under it proves that SDK and not
+  the one `provenance.json` records, and says so in its own output; it is never how a verdict is
+  reached.
+
+- **A restore, before the first packet.** `tools/entry-packet.py` asks MSBuild where the restore
+  put the map package, so in a fresh worktree it refuses until `dotnet restore` has run. Run it
+  once per worktree.
+
+- **A `gh` new enough for the fields the packets read.** `tools/review-packet.py` and
+  `tools/conformance-gate.py` ask `gh pr view --json closingIssuesReferences`. An older `gh` — the
+  2.45.0 Ubuntu 24.04 packages, for one — refuses that field, and on such a `gh` some of
+  `gh pr edit` and `gh issue view` fail on these repositories as well. Install a newer `gh` and
+  point `$RULES_ENGINE_GH` at it; every rail that shells out reads that variable.
+
+None of these is a defect in this engine, and none of them is fixed by editing a rail. They are
+what the machine owes the work.

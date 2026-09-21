@@ -15,6 +15,11 @@ anything only when somebody checks.
 So this asks the questions whose answers are not visible in a file listing, and prints one row per
 answer. It changes nothing, ever.
 
+  * **Machine** rows come first, and are about the machine rather than the repository: the SDK
+    `global.json` pins, whether anything has been restored, and whether `gh` has the field the
+    packets ask it for. Every rail can be in place on a machine that cannot run the gate, and a
+    report that says so only after the implementer has spent an afternoon finding out is the same
+    failure one step later (#195).
   * **Local** rows come from this checkout: the rails are byte for byte what the factory's recipe
     wrote, the hook is wired to the tools it guards, the policy is one the rails can record verdicts
     under, and the gate runs the rails check. The rail bytes and the policy are judged by the
@@ -63,6 +68,14 @@ OK, MISSING, WRONG, UNKNOWN = "OK", "MISSING", "WRONG", "NOT EXAMINED"
 # chose not to look at; this is a question it asked and could not get an answer to, and the two
 # read differently to somebody deciding whether the report is worth anything.
 NOT_CHECKED = "NOT CHECKED"
+# What a machine needs before any rail runs, and what to do about each (#195). The install line is
+# Microsoft's own script into the user's home, because the machine the first live run met could not
+# install an SDK system-wide and that is the ordinary case for an agent.
+SDK_INSTALL = ("install it user-locally: curl -sSL https://dot.net/v1/dotnet-install.sh | bash -s -- "
+               "--version {version} --install-dir ~/.dotnet, then PATH=$HOME/.dotnet:$PATH")
+# The field tools/review-packet.py and tools/conformance-gate.py ask `gh` for, and the one an older
+# `gh` does not have. Ubuntu 24.04 packages 2.45.0, which does not.
+PACKET_FIELD = "closingIssuesReferences"
 LEFTOVERS = "Leftovers from merged work"
 SWEEP = "tools/dispatch-agent.sh --sweep"
 # The newest this many merged pull requests, the same cap the sweep reads them under: a leftover is
@@ -218,6 +231,97 @@ def factory():
     except ImportError as error:
         return None, f"scripts/factory/generate.py cannot be imported ({error}); `factory produce` writes it"
     return generate, None
+
+
+def dotnet_sdks():
+    """The SDK versions `dotnet` reports, or (None, why). Standard library, no SDK import."""
+    try:
+        done = subprocess.run(["dotnet", "--list-sdks"], stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                              text=True, timeout=120)
+    except (OSError, subprocess.SubprocessError) as error:
+        return None, str(error)
+    if done.returncode != 0:
+        return None, (done.stderr.strip() or done.stdout.strip() or "dotnet --list-sdks failed")
+    return [line.split(" ", 1)[0] for line in done.stdout.splitlines() if line.strip()], None
+
+
+def prerequisite_rows():
+    """What this machine needs before any of the rails will run at all (#195).
+
+    The first live run of the rails lost time to three things that are true of the machine rather
+    than of the repository, and that a file listing cannot show: the engine pins its SDK with
+    `rollForward: disable`, so a machine without that exact SDK cannot run the gate; the packets
+    ask MSBuild where the restore put the map package, so they refuse in a fresh worktree until
+    `dotnet restore` has run; and `tools/review-packet.py` and `tools/conformance-gate.py` ask
+    `gh` for a field an older `gh` does not have. Each is reported here, with what to do about it.
+
+    These are rows about the machine. The doctor still changes nothing.
+    """
+    rows, problems = [], []
+
+    pinned, roll, why = None, None, None
+    path = ROOT / "global.json"
+    if path.is_file():
+        try:
+            sdk = (json.loads(path.read_text(encoding="utf-8")) or {}).get("sdk") or {}
+            pinned, roll = sdk.get("version"), sdk.get("rollForward")
+        except ValueError as error:
+            why = f"global.json is not JSON: {error}"
+    else:
+        why = "global.json is missing; `factory produce` writes it"
+    installed, unavailable = dotnet_sdks()
+    override = os.environ.get("FACTORY_DOTNET_SDK_OVERRIDE")
+    if why or not pinned:
+        rows.append(row("SDK pinned by global.json", MISSING, why or "global.json pins no sdk.version"))
+        problems.append(why or "global.json pins no sdk.version, and the gate builds on whatever is installed")
+    elif installed is None:
+        rows.append(row("SDK pinned by global.json", MISSING,
+                        f"{pinned} required; `dotnet` did not answer ({unavailable}). {SDK_INSTALL.format(version=pinned)}"))
+        problems.append(f"the pinned SDK {pinned} was not found: {unavailable}")
+    elif pinned in installed:
+        rows.append(row("SDK pinned by global.json", OK, f"{pinned} installed"
+                        + (f"; FACTORY_DOTNET_SDK_OVERRIDE={override} is set, and a run under it proves that SDK "
+                           "and not the one provenance records" if override else "")))
+    elif override and override in installed:
+        rows.append(row("SDK pinned by global.json", WRONG,
+                        f"{pinned} is not installed; FACTORY_DOTNET_SDK_OVERRIDE={override} is, and a local run "
+                        "under it says so and proves that SDK instead"))
+        problems.append(f"the pinned SDK {pinned} is not installed; what runs is the override {override}")
+    else:
+        rows.append(row("SDK pinned by global.json", WRONG,
+                        f"{pinned} is not installed (rollForward: {roll}); {SDK_INSTALL.format(version=pinned)}"))
+        problems.append(f"the pinned SDK {pinned} is not installed, so the gate cannot run on this machine")
+
+    # A restore, asked of the tree rather than of MSBuild: the packets ask MSBuild themselves, and
+    # this is the question they refuse on. One assets file under a project directory is enough --
+    # this says whether a restore has happened, not whether it is current, which the build says.
+    restored = sorted(str(found.relative_to(ROOT)) for found in ROOT.glob("*/*/obj/project.assets.json"))
+    rows.append(row("Restore", OK if restored else MISSING,
+                    f"{len(restored)} project(s) restored" if restored
+                    else "no obj/project.assets.json under any project: run `dotnet restore`, or "
+                         "tools/entry-packet.py refuses, having no map package to read"))
+    if not restored:
+        problems.append("nothing is restored, so the packets and the gate refuse: run `dotnet restore`")
+
+    # Asked of `gh` itself rather than of its version string, because the version that carries the
+    # field is not something this file can be right about forever. `--json` is parsed before any
+    # lookup, so this needs no pull request, no repository and no network: an old `gh` says
+    # "Unknown JSON field" and a new one gets far enough to complain about something else.
+    _, refusal = gh("pr", "view", "--json", PACKET_FIELD)
+    if refusal and "Unknown JSON field" in refusal:
+        rows.append(row("gh reads the packet's fields", WRONG,
+                        f"this `gh` has no --json {PACKET_FIELD}: tools/review-packet.py and "
+                        "tools/conformance-gate.py cannot ask which issues a pull request closes. Install a "
+                        "newer `gh` and point $RULES_ENGINE_GH at it"))
+        problems.append(f"`gh` does not accept --json {PACKET_FIELD}, which the review packet and the "
+                        "conformance gate both ask for")
+    elif refusal and ("No such file" in refusal or "not found" in refusal):
+        rows.append(row("gh reads the packet's fields", MISSING, f"no `gh` on PATH ({refusal})"))
+        problems.append("there is no `gh` on PATH, and the review packet, the conformance gate and the "
+                        "leftovers row all need one")
+    else:
+        rows.append(row("gh reads the packet's fields", OK, f"--json {PACKET_FIELD} is accepted"))
+    return rows, problems
 
 
 def local_rows(generate, error):
@@ -405,7 +509,12 @@ def main(argv=None):
     # One import of the vendored factory for both halves: the rail bytes, the policy, and what the
     # rails on GitHub are judged by all come from it.
     generate, unavailable = factory()
-    rows, problems = local_rows(generate, unavailable)
+    # The machine first: a report that every rail is in place, on a machine that cannot run the
+    # gate, is the same failure as a rail that exists and stops nothing (#195).
+    rows, problems = prerequisite_rows()
+    local, local_problems = local_rows(generate, unavailable)
+    rows.extend(local)
+    problems.extend(local_problems)
     # Neither half: it reads this checkout and asks GitHub what merged. It is here, between them,
     # because it needs both, and it needs no vendored factory to answer.
     leftovers, leftover_problems = leftover_rows(args.local)
