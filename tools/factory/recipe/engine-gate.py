@@ -14,7 +14,8 @@ finds nothing to examine fails: a check with no inputs has proven nothing.
                                      every *.g.cs is exactly what the factory generates
   provenance                         provenance.json still hashes the files on disk, the overlay set
                                      included (re-produce after an overlay edit); a local SDK
-                                     override declares its re-pinned global.json here (#336)
+                                     override declares its re-pinned global.json here (#336), and a
+                                     record a merge left conflicted is named as one (#252)
   expected-results                   test projects on disk x target frameworks
   tests-ran DIR EXPECTED             the TRX files show that many result files, and a test
                                      executed for every test project x target framework
@@ -333,6 +334,28 @@ RE_PRODUCE = "tools/re-produce.sh"
 #: The first provenance format whose `buildInputs` describe the overlay directory (#247).
 OVERLAY_FORMAT = 4
 
+#: git's conflict markers, each at the start of a line. All three are required, so a record that is
+#: merely broken keeps its own parse error and is not miscalled a conflict. (`|||||||` appears as
+#: well under merge.conflictStyle=diff3; it is not required here.)
+CONFLICT_MARKERS = ("<<<<<<<", "=======", ">>>>>>>")
+#: The one command a conflicted record is recovered by (#252).
+RESOLVE_RECORD = f"{RE_PRODUCE} --resolve-record"
+
+
+def in_merge_conflict(raw):
+    """Whether `raw` is a file a merge left conflicted, rather than one somebody broke (#252).
+
+    Since the overlay became a directory (#247), `provenance.json` is the one file two entry
+    branches cut from the same commit still conflict in -- and a file holding conflict markers is
+    not JSON, so this step's answer used to be a column number in a file nobody should be reading.
+    The distinction matters because the two have opposite recoveries: broken JSON is somebody's
+    edit to undo, while a conflict is a choice nobody should have to make, because every hash in
+    the record is about to be recomputed by the same re-produce either way.
+    """
+    lines = raw.decode("utf-8", "replace").splitlines()
+    return all(any(line.startswith(marker) for line in lines) for marker in CONFLICT_MARKERS)
+
+
 #: The local SDK override (#336). `factory verify` runs restore and the gate on another SDK by
 #: re-pinning global.json for the length of each -- and global.json is a managed file whose SHA-256
 #: this step checks, so those deliberate bytes used to fail here. The override is **declared**, not
@@ -487,6 +510,12 @@ def record_matches(_args):
     try:
         recorded = json.loads(raw.decode("utf-8"))
     except (UnicodeDecodeError, ValueError) as error:
+        if in_merge_conflict(raw):
+            return report([f"{RECORD} is in a merge conflict, so nothing can read it. Neither side of it is "
+                           f"the one to keep: every hash in the record is recomputed by a re-produce, so "
+                           f"either side is equally good, and that is why this is not yours to decide. One "
+                           f"command settles it -- `{RESOLVE_RECORD}`, which takes one side and re-produces "
+                           f"over it"], "")
         return report([f"{RECORD} is not readable JSON ({error})"], "")
     if not isinstance(recorded, dict):
         return report([f"{RECORD} is not a JSON object"], "")

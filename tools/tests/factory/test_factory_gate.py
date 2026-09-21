@@ -368,6 +368,73 @@ class TestTheRecordHashesWhatIsOnDisk(GateCase):
         self.assertEqual(code, 1, output)
         self.assertIn("examined nothing", output)
 
+    def conflicted(self, engine):
+        """The record as a merge leaves it: one hash line replaced by both branches' versions.
+
+        A real two-entry-branch merge is what tools/tests/factory/test_factory_rails.py's
+        TestAConflictedRecordNamesItsOneCommand does; these are the same bytes, written here so the
+        gate's own answer can be judged without a git repository around it.
+        """
+        path = os.path.join(engine, "provenance.json")
+        with open(path, encoding="utf-8") as handle:
+            text = handle.read()
+        ours = next(line for line in text.splitlines() if '"sha256"' in line)
+        theirs = re.sub(r"[0-9a-f]{64}", "0" * 64, ours)
+        with open(path, "w", encoding="utf-8") as handle:
+            handle.write(text.replace(ours + "\n", f"<<<<<<< HEAD\n{ours}\n=======\n{theirs}\n"
+                                                   f">>>>>>> implement-waivable-regulations\n", 1))
+        with self.assertRaises(ValueError):  # the premise: a file with markers in it is not JSON
+            with open(path, encoding="utf-8") as handle:
+                json.load(handle)
+        return path
+
+    def test_a_conflicted_record_is_named_as_a_conflict_and_not_as_broken_json(self):
+        """#252: the record two entry branches meet in, and a refusal that says what to do about it.
+
+        #283: the exit code proves nothing here. This step refused a conflicted record before the
+        change too -- on the parse error, with a column number in a file nobody should be opening
+        -- so `assertEqual(code, 1)` passes either way. The assertion is the sentence: that it is
+        named a merge conflict, that either side is equally good (because every hash in the record
+        is about to be recomputed, which is why nobody should have to choose), and the one command.
+
+        The mutation: dropping the `in_merge_conflict(raw)` branch in the recipe's `provenance`
+        step puts "is not readable JSON (Expecting property name enclosed in double quotes: line
+        348 column 1)" back, and every assertion below fails.
+        """
+        engine = self.engine()
+        self.conflicted(engine)
+        code, output = self.provenance(engine)
+        self.assertEqual(code, 1, output)
+        self.assertIn("provenance.json is in a merge conflict", output)
+        self.assertIn("either side is equally good", output)
+        self.assertIn("tools/re-produce.sh --resolve-record", output)
+        self.assertNotIn("is not readable JSON", output)
+
+    def test_a_record_that_is_broken_rather_than_conflicted_keeps_its_parse_error(self):
+        """The discriminator, and the two ways of losing it.
+
+        Broken JSON is somebody's edit to undo; a conflict is a choice nobody should have to make.
+        Naming `--resolve-record` at an operator with no sides to choose between sends them looking
+        for a merge that is not there, so the two answers have to stay apart.
+
+        Two mutations, one per case. `if in_merge_conflict(raw)` made `if True` calls every
+        unreadable record a conflict, and the truncated record below fails. `line.startswith(marker)`
+        made `marker in line` reads a marker quoted inside the record as a marker git wrote, and the
+        second one fails -- which is why the test is a line test and not a substring test.
+        """
+        engine = self.engine()
+        path = os.path.join(engine, "provenance.json")
+        for broken in ('{"provenanceFormat": 4,\n',
+                       '{"engine": {"name": "<<<<<<< HEAD ======= >>>>>>> theirs"},\n'):
+            with self.subTest(record=broken):
+                with open(path, "w", encoding="utf-8") as handle:
+                    handle.write(broken)
+                code, output = self.provenance(engine)
+                self.assertEqual(code, 1, output)
+                self.assertIn("provenance.json is not readable JSON", output)
+                self.assertNotIn("merge conflict", output)
+                self.assertNotIn("--resolve-record", output)
+
     def test_a_hand_edited_record_is_not_in_the_factory_s_canonical_form(self):
         engine = self.engine()
         path = os.path.join(engine, "provenance.json")
