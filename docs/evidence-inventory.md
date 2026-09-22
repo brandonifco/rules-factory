@@ -64,9 +64,12 @@ A reader deciding what could be retired should know which of the two they are lo
 
 ## By trial
 
-Measured at `42e4c13`, over a gate run that failed no step (`measuredOver` in the lock says so,
+Measured at `58e9eb2`, over a gate run that failed no step (`measuredOver` in the lock says so,
 and `--measure` refuses a run with a failing step unless it is told to record that it was
-partial; [#408](https://github.com/brandonifco/rules-factory/issues/408)):
+partial; [#408](https://github.com/brandonifco/rules-factory/issues/408)). It names a commit
+`main` holds rather than the branch commit `--measure` would otherwise have recorded, because a
+squash merge destroys the second and #404's check is then right to refuse the lock
+([#426](https://github.com/brandonifco/rules-factory/issues/426)):
 
 | directory | active | release | archived |
 |---|---|---|---|

@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "measuredAt": "42e4c1388ac4a5992b707e4ed42f20d33782c93c",
+  "measuredAt": "58e9eb2e4b66e8491186886a4f149048c0cb3287",
   "measuredBy": "tools/check-evidence.py --measure",
   "measuredOver": {
     "gateStepsFailed": [],
