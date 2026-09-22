@@ -1,8 +1,8 @@
 # The evidence inventory
 
-`examples/` is this repository's evidence: four corpora, seven maps, the transcripts of blind
+`examples/` is this repository's evidence: five corpora, eight maps, the transcripts of blind
 second mappings, trial reports, independent verdicts, and the results of the injection, collapse
-and validator-attack measurements. 197 tracked files, 15.3 MB, out of 19.5 MB tracked in all.
+and validator-attack measurements. 207 tracked files, 16.3 MB, out of 21.0 MB tracked in all.
 
 Until [#349](https://github.com/brandonifco/rules-factory/issues/349) nothing said which of it any
 check reads. This document and [`tools/evidence-lock.json`](../tools/evidence-lock.json) say so,
@@ -31,20 +31,20 @@ proves about a trial report is that the report's links work. So a read by that s
 
 | `readBy` | what reads it | files | size |
 |---|---|---|---|
-| `checks` | a gate step, for what is in it | 80 | 10.7 MB |
+| `checks` | a gate step, for what is in it | 88 | 10.8 MB |
 | `checks`, `package` | that, and `pack-map.py` | 18 | 2.5 MB |
 | `checks`, `links` | a gate step, and the link check | 17 | 420 KB |
-| `links` | **only** the markdown link check | 44 | 899 KB |
+| `links` | **only** the markdown link check | 45 | 927 KB |
 | `package` | only `pack-map.py` | 2 | 1 KB |
-| *(nothing)* | nothing the measurement could see | **36** | **933 KB** |
+| *(nothing)* | nothing the measurement could see | **37** | **969 KB** |
 
 The role follows from the readers:
 
 | role | files | size | may its bytes live outside the repository? |
 |---|---|---|---|
 | `release` — `pack-map.py` reads it | 20 | 2.5 MB | no: its bytes reach nuget.org |
-| `active` — some other part of the gate reads it | 141 | 11.9 MB | no: a check that fetches its inputs cannot be run offline |
-| `archived` — nothing reads it | 36 | 967 KB | yes |
+| `active` — some other part of the gate reads it | 150 | 12.1 MB | no: a check that fetches its inputs cannot be run offline |
+| `archived` — nothing reads it | 37 | 969 KB | yes |
 
 `check-evidence.py` refuses a lock that gives a non-null `archive` to an `active` or `release`
 artifact, and refuses a role its own `readBy` does not support. That pair of rules is what keeps a
@@ -64,27 +64,27 @@ A reader deciding what could be retired should know which of the two they are lo
 
 ## By trial
 
-Measured at `bb90fba`, over a gate run that failed no step but the evidence step and the
-lock's own tests, which fail by construction while the lock is being rewritten
-(`measuredOver` in the lock says so, and `--measure` refuses a run with any other failing
-step; [#408](https://github.com/brandonifco/rules-factory/issues/408)):
+Measured at `42e4c13`, over a gate run that failed no step (`measuredOver` in the lock says so,
+and `--measure` refuses a run with a failing step unless it is told to record that it was
+partial; [#408](https://github.com/brandonifco/rules-factory/issues/408)):
 
 | directory | active | release | archived |
 |---|---|---|---|
-| `examples/srd-52-combat` | 6.2 MB | 1.5 MB | 476 KB |
-| `examples/hazmat-172-table` | 3.2 MB | — | 7 KB |
-| `examples/hoyle-backgammon` | 544 KB | 783 KB | — |
+| `examples/srd-52-combat` | 6.5 MB | 1.5 MB | 476 KB |
+| `examples/hazmat-172-table` | 3.4 MB | — | 7 KB |
 | `examples/faa-part-107` | 564 KB | 158 KB | — |
+| `examples/hoyle-backgammon` | 544 KB | 783 KB | — |
 | `examples/hoyle-blind-rebuild` | 432 KB | — | 61 KB |
 | `examples/srd-52-conditions` | 353 KB | — | 29 KB |
 | `examples/tax-121-principal-residence` | 191 KB | 86 KB | 101 KB |
-| `examples/blind-mapping-trial` | 183 KB | — | 165 KB |
+| `examples/frcp-6-12-81` | 199 KB | — | 2 KB |
+| `examples/blind-mapping-trial` | 146 KB | — | 201 KB |
 | `examples/faa-part-107-temporal` | 146 KB | — | 37 KB |
 | `examples/injection-trial` | 72 KB | — | 51 KB |
 | `examples/validator-attack` | 61 KB | — | — |
 | `examples/tax-121-build` | 31 KB | — | — |
-| `examples/acceptance-4-5` | 28 KB | — | 2 KB |
-| `examples` | 27 KB | — | — |
+| `examples` | 31 KB | — | — |
+| `examples/acceptance-4-5` | 31 KB | — | — |
 | `examples/collapse-trial` | 13 KB | — | 3 KB |
 
 Three things there are worth saying out loud.

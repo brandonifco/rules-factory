@@ -1,0 +1,13 @@
+{
+  "reviews": {
+    "corpus-map.json": {
+      "sha256": "0ee11186f0f5bd1e62e603184e26e4fa40f01e1c289f8f9e2bb0f5364985b8b8",
+      "method": "exemption",
+      "exemption": {
+        "kind": "legacy",
+        "issue": "#264",
+        "reason": "Not reviewed, and deliberately so: this is the first mapping of trial 11's slice, written as the mapping step of #264, and the independent reading that reviews it is the next step of the same issue. Recording anything else here would claim a review the trial has not run. `legacy` is the wrong word and is used for the reason examples/hazmat-172-table/review.json already records: it is the only exemption kind that names a tracking issue, and `non-semantic` needs a reviewed map to depart from, which a first mapping does not have. The map is trial evidence and is used for nothing downstream -- there is no map-package.json, nothing packs it, and no engine consumes it. A second reading should look hardest at five things this mapping's own report names as unsettled: whether `suspendedBy` is the faithful relation for Rule 12(a)(4), which *alters* six periods rather than switching them off; whether `judgment-on-the-pleadings` and `reasonable-opportunity-to-present-material` are assertions attributed to `caller` or gaps, since neither sentence names a decider; whether `clerks-office-inaccessible` is the only ambiguity in 83 entries, which is a 1% rate against 5% to 27% on the six committed maps; whether the four sentences of Rule 81(c)(3)(A) are four rules or one; and whether Rule 12(b)'s three flush sentences are rightly cited at Rule 12(b) when the USLM markup prints them inside Rule 12(b)(7)."
+      }
+    }
+  }
+}

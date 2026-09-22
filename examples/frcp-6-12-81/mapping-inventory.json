@@ -1,0 +1,95 @@
+{
+  "inventoryVersion": 2,
+  "rejected": [
+    {
+      "sourceId": "frcp-6-12-81",
+      "unit": "Rule 6 heading",
+      "ground": "heading",
+      "note": "The rule's own title, “Computing and Extending Time; Time for Motion Papers”. It names the subjects of the subsections below and states none of them: no period, no condition, no party and no consequence. Every rule it names is quoted by an entry citing the subsection that states it."
+    },
+    {
+      "sourceId": "frcp-6-12-81",
+      "unit": "Rule 6 source credit",
+      "ground": "page-furniture",
+      "note": "The Office of Law Revision Counsel's amendment history -- the dates on which the Supreme Court prescribed each amendment and the dates each took effect. It is printed inside the <courtRule> element and is an editorial note about the rule rather than a passage of it. Which text is in force is the manifest's `asOf` and `contentHash`, which is where this map records it; an entry quoting the credit would be citing the Code's apparatus as though the Court had prescribed it."
+    },
+    {
+      "sourceId": "frcp-6-12-81",
+      "unit": "Rule 12 heading",
+      "ground": "heading",
+      "note": "The rule's own title, “Defenses and Objections: When and How Presented; Motion for Judgment on the Pleadings; Consolidating Motions; Waiving Defenses; Pretrial Hearing”. It names the subjects of the subsections below and states none of them: no period, no condition, no party and no consequence. Every rule it names is quoted by an entry citing the subsection that states it."
+    },
+    {
+      "sourceId": "frcp-6-12-81",
+      "unit": "Rule 12 source credit",
+      "ground": "page-furniture",
+      "note": "The Office of Law Revision Counsel's amendment history -- the dates on which the Supreme Court prescribed each amendment and the dates each took effect. It is printed inside the <courtRule> element and is an editorial note about the rule rather than a passage of it. Which text is in force is the manifest's `asOf` and `contentHash`, which is where this map records it; an entry quoting the credit would be citing the Code's apparatus as though the Court had prescribed it."
+    },
+    {
+      "sourceId": "frcp-6-12-81",
+      "unit": "Rule 81 heading",
+      "ground": "heading",
+      "note": "The rule's own title, “Applicability of the Rules in General; Removed Actions”. It names the subjects of the subsections below and states none of them: no period, no condition, no party and no consequence. Every rule it names is quoted by an entry citing the subsection that states it."
+    },
+    {
+      "sourceId": "frcp-6-12-81",
+      "unit": "Rule 81 source credit",
+      "ground": "page-furniture",
+      "note": "The Office of Law Revision Counsel's amendment history -- the dates on which the Supreme Court prescribed each amendment and the dates each took effect. It is printed inside the <courtRule> element and is an editorial note about the rule rather than a passage of it. Which text is in force is the manifest's `asOf` and `contentHash`, which is where this map records it; an entry quoting the credit would be citing the Code's apparatus as though the Court had prescribed it."
+    },
+    {
+      "sourceId": "frcp-6-12-81",
+      "unit": "Rule 6(b)",
+      "ground": "heading",
+      "note": "A caption and nothing else: the element prints “Extending Time.” and opens paragraphs that carry the whole of what it is about. Unlike Rule 6(a), Rule 12(a) and Rule 12(b), which print a chapeau that states an applicability or an obligation their paragraphs then qualify, this one prints no sentence, so there is no passage here to decline and none to quote."
+    },
+    {
+      "sourceId": "frcp-6-12-81",
+      "unit": "Rule 6(c)",
+      "ground": "heading",
+      "note": "A caption and nothing else: the element prints “Motions, Notices of Hearing, and Affidavits.” and opens paragraphs that carry the whole of what it is about. Unlike Rule 6(a), Rule 12(a) and Rule 12(b), which print a chapeau that states an applicability or an obligation their paragraphs then qualify, this one prints no sentence, so there is no passage here to decline and none to quote."
+    },
+    {
+      "sourceId": "frcp-6-12-81",
+      "unit": "Rule 12(a)(1)",
+      "ground": "heading",
+      "note": "A caption and nothing else: the element prints “In General.” and opens paragraphs that carry the whole of what it is about. Unlike Rule 6(a), Rule 12(a) and Rule 12(b), which print a chapeau that states an applicability or an obligation their paragraphs then qualify, this one prints no sentence, so there is no passage here to decline and none to quote."
+    },
+    {
+      "sourceId": "frcp-6-12-81",
+      "unit": "Rule 12(g)",
+      "ground": "heading",
+      "note": "A caption and nothing else: the element prints “Joining Motions.” and opens paragraphs that carry the whole of what it is about. Unlike Rule 6(a), Rule 12(a) and Rule 12(b), which print a chapeau that states an applicability or an obligation their paragraphs then qualify, this one prints no sentence, so there is no passage here to decline and none to quote."
+    },
+    {
+      "sourceId": "frcp-6-12-81",
+      "unit": "Rule 12(h)",
+      "ground": "heading",
+      "note": "A caption and nothing else: the element prints “Waiving and Preserving Certain Defenses.” and opens paragraphs that carry the whole of what it is about. Unlike Rule 6(a), Rule 12(a) and Rule 12(b), which print a chapeau that states an applicability or an obligation their paragraphs then qualify, this one prints no sentence, so there is no passage here to decline and none to quote."
+    },
+    {
+      "sourceId": "frcp-6-12-81",
+      "unit": "Rule 81(a)",
+      "ground": "heading",
+      "note": "A caption and nothing else: the element prints “Applicability to Particular Proceedings.” and opens paragraphs that carry the whole of what it is about. Unlike Rule 6(a), Rule 12(a) and Rule 12(b), which print a chapeau that states an applicability or an obligation their paragraphs then qualify, this one prints no sentence, so there is no passage here to decline and none to quote."
+    },
+    {
+      "sourceId": "frcp-6-12-81",
+      "unit": "Rule 81(c)",
+      "ground": "heading",
+      "note": "A caption and nothing else: the element prints “Removed Actions.” and opens paragraphs that carry the whole of what it is about. Unlike Rule 6(a), Rule 12(a) and Rule 12(b), which print a chapeau that states an applicability or an obligation their paragraphs then qualify, this one prints no sentence, so there is no passage here to decline and none to quote."
+    },
+    {
+      "sourceId": "frcp-6-12-81",
+      "unit": "Rule 81(c)(3)",
+      "ground": "heading",
+      "note": "A caption and nothing else: the element prints “Demand for a Jury Trial.” and opens paragraphs that carry the whole of what it is about. Unlike Rule 6(a), Rule 12(a) and Rule 12(b), which print a chapeau that states an applicability or an obligation their paragraphs then qualify, this one prints no sentence, so there is no passage here to decline and none to quote."
+    },
+    {
+      "sourceId": "frcp-6-12-81",
+      "unit": "Rule 81(d)",
+      "ground": "heading",
+      "note": "A caption and nothing else: the element prints “Law Applicable.” and opens paragraphs that carry the whole of what it is about. Unlike Rule 6(a), Rule 12(a) and Rule 12(b), which print a chapeau that states an applicability or an obligation their paragraphs then qualify, this one prints no sentence, so there is no passage here to decline and none to quote."
+    }
+  ]
+}

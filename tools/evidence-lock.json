@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "measuredAt": "bb90fba84558a7e20596ebd89336aea73d4f7205",
+  "measuredAt": "42e4c1388ac4a5992b707e4ed42f20d33782c93c",
   "measuredBy": "tools/check-evidence.py --measure",
   "measuredOver": {
     "gateStepsFailed": [],
@@ -19,8 +19,8 @@
   "artifacts": [
     {
       "path": "examples/README.md",
-      "sha256": "fcbec276aa41b815eda3964ffa18e6101afc85e81b7b28bcdf176d6853be8517",
-      "bytes": 27918,
+      "sha256": "975d8f6ec27c0d380035af8c96ea683b5b70ad617e3c6e0a898d67a5de7ac51c",
+      "bytes": 31321,
       "role": "active",
       "readBy": [
         "links"
@@ -41,8 +41,10 @@
       "path": "examples/acceptance-4-5/check-provenance.sh",
       "sha256": "976e1bfd5a7759c3e0f4f449b1e1f53750b7a6e27a9b37767864f88bca60400e",
       "bytes": 2248,
-      "role": "archived",
-      "readBy": [],
+      "role": "active",
+      "readBy": [
+        "checks"
+      ],
       "archive": null
     },
     {
@@ -59,10 +61,8 @@
       "path": "examples/blind-mapping-trial/blind-map.json",
       "sha256": "04930e7e62054a17cd54faab0410efec8ec87aaac56f8bf2ff5597caa8a743c1",
       "bytes": 37125,
-      "role": "active",
-      "readBy": [
-        "checks"
-      ],
+      "role": "archived",
+      "readBy": [],
       "archive": null
     },
     {
@@ -525,6 +525,104 @@
       "path": "examples/faa-part-107/review.json",
       "sha256": "6f0af695901b1f7f742ca86e7c723037322d9391ad0eb350f154dd0de7ab8806",
       "bytes": 7531,
+      "role": "active",
+      "readBy": [
+        "checks"
+      ],
+      "archive": null
+    },
+    {
+      "path": "examples/frcp-6-12-81/CORPUS-LICENCE.txt",
+      "sha256": "abced7614170eb0096d779bef56598f7e170ff0b55edd34aa1f8e00b39a56f13",
+      "bytes": 1952,
+      "role": "archived",
+      "readBy": [],
+      "archive": null
+    },
+    {
+      "path": "examples/frcp-6-12-81/README.md",
+      "sha256": "287c5d5572f79821e1afd38744252121a7c519a2601e8bf6030c8a6684a553dd",
+      "bytes": 24525,
+      "role": "active",
+      "readBy": [
+        "links"
+      ],
+      "archive": null
+    },
+    {
+      "path": "examples/frcp-6-12-81/check-locators-uslm.py",
+      "sha256": "ec1b4d47de90b52ae557e07e72761ce43090c025da691959e3d77a62e35b5fa8",
+      "bytes": 24873,
+      "role": "active",
+      "readBy": [
+        "checks"
+      ],
+      "archive": null
+    },
+    {
+      "path": "examples/frcp-6-12-81/corpus-manifest.json",
+      "sha256": "0ea07e74387f5fb857358362df009d94ba8ec17188ba3c735e7097cea1b202d6",
+      "bytes": 4616,
+      "role": "active",
+      "readBy": [
+        "checks"
+      ],
+      "archive": null
+    },
+    {
+      "path": "examples/frcp-6-12-81/corpus-map.json",
+      "sha256": "0ee11186f0f5bd1e62e603184e26e4fa40f01e1c289f8f9e2bb0f5364985b8b8",
+      "bytes": 92751,
+      "role": "active",
+      "readBy": [
+        "checks"
+      ],
+      "archive": null
+    },
+    {
+      "path": "examples/frcp-6-12-81/derive-corpus.py",
+      "sha256": "08cfb83fbb7cad7a2d552612d361c5b58f3a2ab1fb3f8eb21ae156aef1564b80",
+      "bytes": 5850,
+      "role": "active",
+      "readBy": [
+        "checks"
+      ],
+      "archive": null
+    },
+    {
+      "path": "examples/frcp-6-12-81/frcp-6-12-81.xml",
+      "sha256": "d4e63d1fd0153e412c602960a801195b7798e4d131c54e9cda427e10191af9fb",
+      "bytes": 40723,
+      "role": "active",
+      "readBy": [
+        "checks"
+      ],
+      "archive": null
+    },
+    {
+      "path": "examples/frcp-6-12-81/mapping-inventory.json",
+      "sha256": "470d26caa36a010ac7b69fdb9dadaeff3de6d3664eeff38a66bd8dabcce58e7a",
+      "bytes": 7622,
+      "role": "active",
+      "readBy": [
+        "checks"
+      ],
+      "archive": null
+    },
+    {
+      "path": "examples/frcp-6-12-81/mapping-protocol.json",
+      "sha256": "4ddd1dcab89c895c3ea627f4d7f6476133ea1e1a2498d647d3a694fc4905f382",
+      "bytes": 816,
+      "role": "active",
+      "readBy": [
+        "checks"
+      ],
+      "archive": null
+    },
+    {
+      "path": "examples/frcp-6-12-81/review.json",
+      "sha256": "2142fe23385fd05448d8df3b4ce7dcf8e52dd091ef4b16cdf351fbb510909167",
+      "bytes": 1676,
       "role": "active",
       "readBy": [
         "checks"

@@ -1173,7 +1173,126 @@ class EcfrXml(Adapter):
         return found
 
 
-ADAPTERS = {cls.name: cls for cls in (PageMarkedText, PageMarkedPdfText, EcfrXml)}
+class UslmXml(Adapter):
+    """The Office of Law Revision Counsel's USLM XML: the unit is what one element prints itself.
+
+    The fourth grammar and the second structural one. It is short for the reason
+    `examples/frcp-6-12-81/check-locators-uslm.py` is short: USLM carries the designation path in
+    an attribute --
+
+        <subparagraph identifier="/us/usc/t28a/courtRules/Civil/rule6/a/1/A">
+
+    -- so there is no designator tree to rebuild, no form to disambiguate, no wrapper whose
+    reach has to be decided, and no table. Every unit is addressable, and a unit key is the
+    citation that names it: `Rule 6(a)(1)(A)`.
+
+    **A unit is the text an element prints directly**, not that text plus its children's. A
+    `<subsection>` prints its number, its caption and its chapeau and then opens paragraphs that
+    print their own; counting the parent's text as including the children's would make one quote
+    of one subparagraph reach four units, and the inventory's question -- which units did the
+    walk reach -- would answer itself. The rule element prints twice, its heading before its
+    subsections and its `<sourceCredit>` after them, so it yields two units and they are keyed
+    apart. That is the same shape `EcfrXml` gives a section: a `heading` unit, then paragraphs.
+
+    `tools/tests/mapper/test_mapper_uslm.py` holds this walk to the locator checker's index over
+    the committed corpus: same units, same order, same text. The two files cannot import one
+    another (0032), so nothing else would notice them drifting apart, and a unit the checker can
+    cite and this cannot see is a denominator that shrinks to fit what was read.
+    """
+
+    name = "uslm-xml"
+    extent_units = ("section-designation",)
+    NAMESPACE = "{http://xml.house.gov/schemas/uslm/1.0}"
+    PREFIX = "/us/usc/t28a/courtRules/Civil/rule"
+    RULE = re.compile(r"^Rule\s+(\d+(?:\.\d+)?)$")
+
+    def __init__(self, path):
+        Adapter.__init__(self, path)
+        try:
+            self.root = ET.parse(path).getroot()
+        except ET.ParseError as error:
+            raise Refused(f"cannot parse {os.path.basename(path)} as USLM XML: {error}")
+
+    def _path_of(self, identifier):
+        if not isinstance(identifier, str) or not identifier.startswith(self.PREFIX):
+            return None
+        return tuple(identifier[len(self.PREFIX):].split("/"))
+
+    @staticmethod
+    def _designation(path):
+        return "Rule " + path[0] + "".join(f"({token})" for token in path[1:])
+
+    def _pieces(self):
+        """(designation path, text) for every run of text an identified element prints itself."""
+        found = []
+
+        def walk(element, owner):
+            here = self._path_of(element.get("identifier"))
+            owner = here if here is not None else owner
+            if element.text and element.text.strip():
+                found.append((owner, normalise(element.text)))
+            for child in element:
+                walk(child, owner)
+                if child.tail and child.tail.strip():
+                    found.append((owner, normalise(child.tail)))
+
+        walk(self.root, None)
+        runs = []
+        for owner, text in found:
+            if owner is None:
+                continue
+            if runs and runs[-1][0] == owner:
+                runs[-1][1].append(text)
+            else:
+                runs.append((owner, [text]))
+        return [(owner, " ".join(parts)) for owner, parts in runs]
+
+    def _rules(self):
+        """The rule numbers this corpus holds, in the order it prints them."""
+        seen = []
+        for owner, _ in self._pieces():
+            if owner[0] not in seen:
+                seen.append(owner[0])
+        return seen
+
+    def units(self, extent):
+        if not isinstance(extent, dict) or extent.get("unit") != "section-designation":
+            self._refuse_unit(extent)
+        listed = extent.get("sections")
+        if not isinstance(listed, list) or not listed:
+            raise Refused("extent names no rule, so it selects nothing to enumerate")
+        wanted = []
+        for item in listed:
+            match = self.RULE.match(item.strip()) if isinstance(item, str) else None
+            if not match:
+                raise Refused(f"extent names {item!r}, which is not a rule designation this "
+                              f"adapter can find in the designation tree")
+            wanted.append(match.group(1))
+        here = self._rules()
+        missing = [number for number in wanted if number not in here]
+        if missing:
+            raise Refused(f"the extent names {', '.join('Rule ' + n for n in missing)}, which the "
+                          f"corpus does not contain; an extent over a rule that is not there "
+                          f"claims coverage of nothing")
+        found, seen = [], {}
+        for owner, text in self._pieces():
+            if owner[0] not in wanted:
+                continue
+            designation = self._designation(owner)
+            if len(owner) == 1:
+                # The rule element prints its heading before its subsections and its source
+                # credit after them. Two runs, two units, keyed by which run they are: a key
+                # names one passage or it names none.
+                seen[designation] = seen.get(designation, 0) + 1
+                key = f"{designation} heading" if seen[designation] == 1 \
+                    else f"{designation} source credit"
+                found.append(Unit(key, "heading" if seen[designation] == 1 else "paragraph", text))
+                continue
+            found.append(Unit(designation, "paragraph", text))
+        return found
+
+
+ADAPTERS = {cls.name: cls for cls in (PageMarkedText, PageMarkedPdfText, EcfrXml, UslmXml)}
 
 
 def open_corpus(manifest, source_id, manifest_dir):

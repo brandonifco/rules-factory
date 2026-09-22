@@ -5,7 +5,7 @@ to. What lives here is the table half of an extent: the shape of the declared sl
 placement of a locator that cites a row against the rows the slice took. The section and page
 halves stay in `extent.py`, which imports these two.
 """
-from .locators import EXTENT_SECTION, _row_key
+from .locators import EXTENT_SECTION, _row_key, printed_designation
 
 
 def _tables_extent(extent, numbers, bad):
@@ -33,16 +33,23 @@ def _tables_extent(extent, numbers, bad):
             bad.append(f"  X  {where}: `{field}` is not a field of a table slice "
                        f"(section, table, rows, excluded)")
         section = item.get("section")
+        # The CFR's spelling, and only it. 0035's table machinery -- the row key, the cell
+        # citation, the `ecfr-xml` adapter's table walk -- is the eCFR's, and no other adapter
+        # reads a table at all. A slice declared against a designation no adapter can find a
+        # table in would be accepted here and enumerate nothing, which is the shape 0035 was
+        # careful to avoid: an extent that claims a table nobody read.
         match = EXTENT_SECTION.match(section) if isinstance(section, str) else None
         if not match:
             bad.append(f"  X  {where}: `section` is {section!r}, and a table is named inside one "
-                       f"section designation such as \"§ 172.101\"")
+                       f"section designation such as \"§ 172.101\"; no other citation grammar "
+                       f"has a table reader (0035)")
             continue
-        if match.group(1) not in numbers:
-            bad.append(f"  X  {where}: § {match.group(1)} is not in the declared extent, so a "
-                       f"slice of its table takes nothing the map claims to have read")
+        designation = match.group(1)
+        if designation not in numbers:
+            bad.append(f"  X  {where}: {printed_designation(designation)} is not in the declared "
+                       f"extent, so a slice of its table takes nothing the map claims to have read")
             continue
-        number, table = match.group(1), item.get("table")
+        number, table = designation, item.get("table")
         if not isinstance(table, int) or isinstance(table, bool) or table < 1:
             bad.append(f"  X  {where}: `table` is {table!r}; a table is named by its position in "
                        f"the section, counted from 1")

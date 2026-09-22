@@ -6,6 +6,16 @@ The expressions are that checker's, and `test_check_map.py` runs both over every
 committed maps make and over the forms each decision adds, so the two cannot drift apart
 silently.
 
+**A `section-designation` is a structural address, and two corpora spell one differently.** The
+CFR writes `§ 107.29(a)(2)`; the Federal Rules of Civil Procedure, admitted by trial 11, write
+`Rule 6(a)(1)(A)`. Both are the same thing the unit names -- a top-level designation plus a path
+of parenthesised designators, listed rather than ranged because what a mapper reads of either
+corpus is not contiguous -- and the difference is the token before the parentheses. Until trial
+11 the expressions below spelled the CFR and only it, so a map of a designation-cited corpus that
+is not the CFR could not declare an extent at all. Widening them adds no field, no unit and no
+vocabulary value: `extent.unit` is still `section-designation`, and what changed is a check that
+read one corpus's spelling as though it were the grammar (0063's repair clause).
+
 Three things are named here: a **section** or a subpart
 ([0020](../../docs/decisions/0020-a-section-citation-names-its-lead-in-and-a-section-map-lists-its-extent.md)),
 and a **row of a table**
@@ -28,6 +38,31 @@ CITE_SECTION = re.compile(r"§+\s*(\d+\.\d+(?:[A-Za-z]|-\d+)?)(?![A-Za-z0-9-])")
 CITE_SUBPART = re.compile(r"\bsubpart\s+([A-Z])\b", re.I)
 # One item of `extent.sections`: a section and nothing else -- no paragraph, no range.
 EXTENT_SECTION = re.compile(r"^§\s*(\d+\.\d+(?:[A-Za-z]|-\d+)?)$")
+# The same two questions asked of the court-rule spelling, read the way
+# examples/frcp-6-12-81/check-locators-uslm.py reads them; `test_check_map.py` holds the two
+# copies equal over every citation that map makes, as it already does for `CITE_SECTION`.
+CITE_RULE = re.compile(r"\bRule\s+(\d+(?:\.\d+)?)(?![A-Za-z0-9.])")
+EXTENT_RULE = re.compile(r"^Rule\s+(\d+(?:\.\d+)?)$")
+#: How a designation is printed once it has been read. The CFR's number carries its sign back;
+#: the court rule's already carries its word, so a reader that prefixed one would print
+#: "§ Rule 6". One function, because a designation is printed in three messages.
+def printed_designation(designation):
+    return designation if str(designation).startswith("Rule ") else f"§ {designation}"
+
+
+def extent_designation(item):
+    """The designation one `extent.sections` item names, or None where it names none.
+
+    Both spellings, for the reason at the top of this file: the unit is the structural address
+    and the two corpora that use it write it differently.
+    """
+    if not isinstance(item, str):
+        return None
+    section = EXTENT_SECTION.match(item)
+    if section:
+        return section.group(1)
+    rule = EXTENT_RULE.match(item)
+    return f"Rule {rule.group(1)}" if rule else None
 
 
 def section_pointer_match_is_complete(text, match):
@@ -51,6 +86,9 @@ def cited_section(citation):
     section = CITE_SECTION.search(text)
     if section:
         return ("section", section.group(1))
+    rule = CITE_RULE.search(text)
+    if rule:
+        return ("section", f"Rule {rule.group(1)}")
     subpart = CITE_SUBPART.search(text)
     if subpart:
         return ("subpart", subpart.group(1).upper())

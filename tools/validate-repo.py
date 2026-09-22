@@ -87,6 +87,7 @@ class Fixture:
 
 ECFR = "examples/faa-part-107/check-locators-section.py"
 PDF_TEXT = "examples/srd-52-combat/check-locators-pdf-text.py"
+USLM = "examples/frcp-6-12-81/check-locators-uslm.py"
 # The mapper's entry point, as a script rather than as the directory `tools/mapper`.
 #
 # Both run the same file. The difference is bytecode: executing a directory makes Python *import*
@@ -171,6 +172,20 @@ FIXTURES = (
             "examples/hazmat-172-table/corpus-map.json",
             "cfr-49-172.101=examples/hazmat-172-table/section-172.101.xml",
             "cfr-49-172.102=examples/hazmat-172-table/section-172.102.xml",
+        ),),
+    ),
+    # A fourth grammar, and the second structural one: the Office of Law Revision Counsel's USLM
+    # XML, which carries each element's designation path in an attribute. derive-corpus.py first
+    # re-derives the committed slice from the OLRC release where the release is at hand (it is
+    # not in CI, so that invocation is not in this row); the locator checker then holds each
+    # quote to the designation tree, exactly as the eCFR checker holds one to the section tree.
+    Fixture(
+        map="examples/frcp-6-12-81/corpus-map.json",
+        corpora=("examples/frcp-6-12-81",),
+        locators=((
+            USLM,
+            "examples/frcp-6-12-81/corpus-map.json",
+            "examples/frcp-6-12-81/frcp-6-12-81.xml",
         ),),
     ),
     # A third grammar: page markers over text extracted from a PDF. extract.py first holds the

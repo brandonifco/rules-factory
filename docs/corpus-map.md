@@ -67,7 +67,9 @@ page, counting units reached could not see an entry deleted from a map whose oth
 reach its page; the fraction can. A map may name the floor it claims, `"quoted": 0.8`, and
 `coverage` fails a map that quotes less than it declared. A map that declares none is measured,
 printed and not failed: across the committed maps the fraction runs from 19% to 100%, so no
-single threshold could be honest about all of them.
+single threshold could be honest about all of them. Trial 11's map is the first to declare a
+floor — `"quoted": 0.85`, against the 86% it quotes — which it can afford because its slice is
+three whole rules and its walk left nothing unaccounted.
 
 It is a property of the **map**, not of the corpus, and so it does not belong in the manifest.
 `contentHash` and `licence` are true of the text whoever reads it; how far a mapper got is
@@ -107,14 +109,27 @@ citations run 271–277, and the throw enumeration that #20 is about is on 278�
   does not reach the page for `coverage`. "After" is in the extraction's reading order.
   `check-locators.py` collapses lines, cannot find the heading, and reports such an extent NOT
   VERIFIED. There is no `startsAfter`; no map has needed one.
-- **`section-designation`** — a **list** of sections, each a bare designation (`§ 107.25`, never
-  `§ 107.25(a)`), for a corpus cited by section. A list and not a range, because what a mapper
-  reads of a CFR part is not contiguous: the Part 107 slice is twelve sections of subpart B and
-  skips § 107.27, .43 and .47 between them, and a range would claim them. Not a subpart, for the
-  same reason. `check-map.py --only extent` refuses a malformed list and **any `scope: in`
-  entry whose locator cites outside it**, a section not listed or a whole subpart; the citation
-  is parsed by the locator grammar below. `check-locators-section.py`'s `coverage` names every
-  listed section no verified quote reaches.
+- **`section-designation`** — a **list** of structural designations, each bare (`§ 107.25`, never
+  `§ 107.25(a)`), for a corpus cited by designation rather than by position. A list and not a
+  range, because what a mapper reads of a CFR part is not contiguous: the Part 107 slice is twelve
+  sections of subpart B and skips § 107.27, .43 and .47 between them, and a range would claim
+  them. Not a subpart, for the same reason. `check-map.py --only extent` refuses a malformed list
+  and **any `scope: in` entry whose locator cites outside it**, a designation not listed or a
+  whole subpart; the citation is parsed by the locator grammar below.
+  `check-locators-section.py`'s `coverage` names every listed section no verified quote reaches.
+
+  **Two corpora spell a designation differently, and it is one unit.** The CFR writes
+  `§ 107.29(a)(2)`; the Federal Rules of Civil Procedure write `Rule 6(a)(1)(A)`, and trial 11
+  admitted them. Both are a top-level designation plus a path of parenthesised designators,
+  addressed by containment and listed rather than ranged, which is everything the unit is about;
+  the sign in front is the corpus's house style. Until that trial the two expressions that read
+  this unit — `EXTENT_SECTION` and `CITE_SECTION` in
+  [`tools/mapvalidator/locators.py`](../tools/mapvalidator/locators.py) — spelled the CFR and only
+  it, so a designation-cited corpus that was not the CFR could declare no extent at all. Widening
+  them added no field, no unit and no vocabulary value. `extent_designation` reads an item either
+  way, `cited_section` reads a citation either way, and `test_check_map.py` holds each expression
+  to the corpus checker that resolves it: the eCFR checker for `§`, and
+  `examples/frcp-6-12-81/check-locators-uslm.py` for `Rule`.
 
 **A section-designation extent that reads a table says which rows it took.** Decided in
 [0035](decisions/0035-a-rule-stated-in-a-table-row-is-cited-by-its-row.md)

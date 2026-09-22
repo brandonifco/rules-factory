@@ -588,6 +588,101 @@ class TestExtent(MapCase):
         self.assertEqual(self.status_of(output, "extent"), "skip", output)
         self.assertEqual(code, 0, output)
 
+    def test_the_rule_designation_is_read_as_its_locator_checker_reads_it(self):
+        """The second spelling of `section-designation`, held to its own checker (trial 11).
+
+        `Rule 6(a)(1)(A)` and `§ 107.29(a)(2)` are one unit and two spellings, so this asks of the
+        court-rule grammar exactly what the test below asks of the CFR's: that placing a citation
+        inside an extent and resolving it against a corpus read the same designation out of it.
+
+        Mutation: drop the `(?![A-Za-z0-9.])` from `CITE_RULE` and `Rule 6A(a)(1)` -- a
+        designation no corpus prints, and exactly what a typo produces -- resolves to `Rule 6`
+        instead of being refused. The independent review of this trial found that by mutation
+        when the lookahead read `(?![\\d.])`; `test_a_designation_that_does_not_end_cleanly`
+        below is the test it earned.
+        """
+        repo = os.path.dirname(os.path.dirname(os.path.dirname(HERE)))
+        spec = importlib.util.spec_from_file_location(
+            "check_locators_uslm",
+            os.path.join(repo, "examples", "frcp-6-12-81", "check-locators-uslm.py"))
+        uslm = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(uslm)
+        self.assertEqual(uslm.CITE_RULE.pattern, check_map.CITE_RULE.pattern)
+        self.assertEqual(uslm.EXTENT_RULE.pattern, check_map.EXTENT_RULE.pattern)
+        with open(os.path.join(repo, "examples", "frcp-6-12-81", "corpus-map.json"),
+                  encoding="utf-8") as handle:
+            document = json.load(handle)
+        citations = [e["locator"]["citation"] for e in document["entries"] if "locator" in e]
+        self.assertTrue(citations, "the trial 11 map cites nothing -- this test proved nothing")
+        for citation in citations:
+            with self.subTest(citation=citation):
+                prefixes = uslm.cited_paths(citation)
+                self.assertIsNotNone(prefixes)
+                self.assertEqual(check_map.cited_section(citation),
+                                 ("section", f"Rule {prefixes[0][0]}"))
+        for item in document["extent"]["sections"]:
+            with self.subTest(extent=item):
+                self.assertEqual(check_map.extent_designation(item), item)
+
+    def test_a_designation_that_does_not_end_cleanly_is_refused(self):
+        """`Rule 6A` is not `Rule 6` (trial 11 review, round 1).
+
+        A regex that stops at the first thing it can read renames a citation rather than reading
+        it: with the lookahead spelled `(?![\\d.])`, `Rule 6A(a)(1)(A)` matched `Rule 6` and the
+        quote then verified against Rule 6(a)(1)(A) -- a typo resolving to a real passage, which
+        is the one outcome a citation checker exists to prevent. #323 settled the same question
+        for the section sign.
+        """
+        repo = os.path.dirname(os.path.dirname(os.path.dirname(HERE)))
+        spec = importlib.util.spec_from_file_location(
+            "check_locators_uslm",
+            os.path.join(repo, "examples", "frcp-6-12-81", "check-locators-uslm.py"))
+        uslm = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(uslm)
+        for citation in ("Rule 6A(a)(1)(A)", "Rule 6a", "Rule 12X"):
+            with self.subTest(citation=citation):
+                self.assertIsNone(check_map.cited_section(citation))
+                self.assertIsNone(uslm.cited_paths(citation))
+
+    def test_a_citation_item_this_grammar_cannot_read_whole_is_refused(self):
+        """Every word of an item is read, or the part that was not read is unchecked.
+
+        `Rule 6(a), Rule 12(b)` used to have its second item's rule number discarded by `findall`
+        and resolve under Rule 6, so a quote sitting in Rule 6(b) passed. Found by the
+        independent review of this trial.
+        """
+        repo = os.path.dirname(os.path.dirname(os.path.dirname(HERE)))
+        spec = importlib.util.spec_from_file_location(
+            "check_locators_uslm",
+            os.path.join(repo, "examples", "frcp-6-12-81", "check-locators-uslm.py"))
+        uslm = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(uslm)
+        for citation in ("Rule 6(a), Rule 12(b)", "Rule 6(a) introductory text",
+                         "Rule 6(a) and (b)", "Rule 12(b) table 1"):
+            with self.subTest(citation=citation):
+                self.assertIsNone(uslm.cited_paths(citation), citation)
+        self.assertEqual(uslm.cited_paths("Rule 6(a), (b)"), [("6", "a"), ("6", "b")])
+        self.assertEqual(uslm.cited_paths("Rule 12(b)(1)-(7)"),
+                         [("12", "b", str(n)) for n in range(1, 8)])
+
+    def test_a_table_slice_is_named_inside_a_section_designation_only(self):
+        """0035's table machinery is the eCFR's, and no other adapter reads a table.
+
+        Widening the designation grammar let `{"section": "Rule 6", "table": 999}` through, where
+        it would have declared a slice of a table no walk can find. Found by the independent
+        review of this trial; the refusal is back and this is what holds it.
+        """
+        document = valid_map()
+        document["extent"] = {"unit": "section-designation", "sections": ["Rule 6"],
+                              "tables": [{"section": "Rule 6", "table": 1, "rows": "all"}]}
+        for entry in document["entries"]:
+            if "locator" in entry:
+                entry["locator"]["citation"] = "Rule 6(a)"
+        code, output = self.run_tool(document)
+        self.assertEqual(self.status_of(output, "extent"), "fail", output)
+        self.assertIn("no other citation grammar has a table reader", output)
+        self.assertEqual(code, 1, output)
+
     def test_the_section_is_read_as_the_locator_checker_reads_it(self):
         # The two grammars are one grammar, kept in two files; they agree on every citation
         # the Part 107 maps make, and on the forms 0020 adds.

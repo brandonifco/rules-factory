@@ -183,9 +183,20 @@ without repeating the term, it can join that direct definition only through an e
 those direct and continued definitions add up to: `(vocabulary, term) → one or more entry ids`.
 The continuation copies neither vocabulary nor term, so it cannot become a second registry.
 
-`vocabularyFrom` on a `coded-pointer` is refused, and `vocabulary` on any other mechanism is
-refused — each names a different kind of vocabulary, and a mechanism reading the wrong one would
-report a clean run over nothing. A name no direct definition establishes is refused too. Two
+`vocabularyFrom` on a `coded-pointer` is refused, and `vocabulary` on a mechanism that reads
+neither kind is refused — each names a different kind of vocabulary, and a mechanism reading the
+wrong one would report a clean run over nothing. A name no direct definition establishes is
+refused too.
+
+**`defined-term-use` reads either, and exactly one.** Trial 11's corpus is a second one with a
+distributed vocabulary, and it has nothing to do with tables: the Federal Rules of Civil
+Procedure define *"Last Day"*, *"Next Day"*, *"Legal holiday"* and *"State Law"* in the very
+paragraphs the rules using them sit beside, and print no index for `vocabularyFrom` to name.
+Declaring the mechanism with neither would leave the terms unstated; declaring it with both would
+be two vocabularies for one mechanism, and nothing would say which the detector reads. So the
+protocol names `vocabularyFrom`, the one entry that lists the corpus's terms, **or** `vocabulary`,
+a name the entries that define its terms distribute — and `_check_defined_vocabulary`, the check
+0045 already owns, is what holds the second form to the map. Two
 columns may read two vocabularies, and a token of one does not satisfy the other because the text
 matches: column 6's `3` is a hazard label, and column 7's numeric codes are special provisions.
 
@@ -242,7 +253,7 @@ is decided by reading the corpus, and this tool does not read it. What *is* a fa
 enumeration of no units, or a run in which no entry's quote is found at all — an inventory of
 nothing has nothing unaccounted.
 
-The six committed maps report 408 unaccounted units of 806, against 107 recorded rejections
+The seven committed maps report 408 unaccounted units of 917, against 122 recorded rejections
 ([#267](https://github.com/brandonifco/rules-factory/issues/267) holds the numbers and what each
 one is on reading it). None of the maps was edited to improve them: a map's bytes cannot change
 without invalidating its review
@@ -316,7 +327,7 @@ into a record of work nobody did.
 
 ### The adapter interface
 
-The three corpus grammars already had three locator checkers, and each answers *where is the
+The corpus grammars already had a locator checker each, and each answers *where is the
 passage this citation names*. None could answer *what is in the extent that no citation named*.
 [`tools/mapper/corpus.py`](../tools/mapper/corpus.py) is the other half: an `Adapter` cuts a
 corpus into the units an extent selects, in reading order, each with a stable key and its text.
@@ -326,6 +337,7 @@ corpus into the units an extent selects, in reading order, each with a stable ke
 | `plain-text` | `page` | a blank-line-separated block, keyed `p. 271 block 3` |
 | `pdftotext-page-marked` | `page`, with `endsBefore` (0024) | the same, with the marker on a line of its own |
 | `ecfr-xml` | `section-designation`, with `tables` (0035) | a paragraph, a worked example, a section's heading, or a **row** of a table the extent slices, keyed `§ 107.29 ¶4 (a)` or `§ 172.101 table 3, row [column 2 = "Acetal"]` |
+| `uslm-xml` | `section-designation`, spelled `Rule 6` | the text an identified element prints **itself**, keyed by the citation that names it: `Rule 6(a)(1)(A)`. The rule element prints twice — its heading, then its source credit — so it yields two units, `Rule 6 heading` and `Rule 6 source credit` |
 
 That is the whole interface, and it is small on purpose. Marking a unit *reached* could have been
 done by parsing each entry's citation and comparing it against the unit's designation, which
@@ -453,7 +465,7 @@ entry quotes one: a quote of a passage no citation can name is not coverage of i
 run would report that entry unchecked. Accounting for one means recording a rejection against it,
 the one verdict that needs no address.
 
-A fourth grammar subclasses `Adapter`, implements `units(extent)`, and registers its manifest
+A fifth grammar subclasses `Adapter`, implements `units(extent)`, and registers its manifest
 `adapter` name. A manifest naming an adapter nothing implements is **refused**: a corpus nothing
 can enumerate must not report an inventory of zero unaccounted units.
 
@@ -507,7 +519,7 @@ contradicts fails too. Hoyle declares two: `except`, `unless`, `other than`, `no
 and `provided that` do not occur anywhere on pages 271–280, and neither does any definitional
 verb.
 
-What the sweeps found on the six committed maps, per map and per sweep, is
+What the sweeps found on the seven committed maps, per map and per sweep, is
 [#277](https://github.com/brandonifco/rules-factory/issues/277). No map was edited to improve
 those numbers, for the reason no map was edited to improve the inventory's: a map's bytes cannot
 change without invalidating its review ([0017](decisions/0017-a-map-change-carries-a-review-of-its-bytes.md)).
@@ -592,10 +604,11 @@ none.
   invisible to it, and the spec's declared substitutions are the only thing that covers it. Every
   run says so, and so does every record it writes.
 - **The inventory measures the walk, and one map's extent still outruns its answer.** Every
-  unit inside every committed map's extent is enumerated and counted, 107 are recorded as
-  examined and rejected, and 408 of 806 are unaccounted
-  ([#267](https://github.com/brandonifco/rules-factory/issues/267)). Four of the six maps now
-  account for every unit; the 2020 part 107 map has one left, which is a rule it owes an entry
+  unit inside every committed map's extent is enumerated and counted, 122 are recorded as
+  examined and rejected, and 408 of 917 are unaccounted
+  ([#267](https://github.com/brandonifco/rules-factory/issues/267)). Five of the seven maps now
+  account for every unit, trial 11's from its first mapping; the 2020 part 107 map has one left,
+  which is a rule it owes an entry
   ([#396](https://github.com/brandonifco/rules-factory/issues/396)) and not something a
   rejection may absorb. The remaining 407 are all in `srd-52-conditions`, whose `extent` claims
   fifteen whole glossary pages in order to map sixteen scattered entries: the units are other
