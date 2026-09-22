@@ -218,6 +218,16 @@ FIXTURES = (
             "examples/srd-52-combat/srd-5.2.1.txt",
         ),),
     ),
+    # A third slice of the same corpus, on the same one committed copy, for the same reason.
+    Fixture(
+        map="examples/srd-52-playing-the-game/corpus-map.json",
+        corpora=("examples/srd-52-playing-the-game", "examples/srd-52-combat"),
+        locators=((
+            PDF_TEXT,
+            "examples/srd-52-playing-the-game/corpus-map.json",
+            "examples/srd-52-combat/srd-5.2.1.txt",
+        ),),
+    ),
 )
 
 

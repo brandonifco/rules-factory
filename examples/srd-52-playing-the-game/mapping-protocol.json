@@ -1,0 +1,56 @@
+{
+  "protocolVersion": 1,
+  "corpus": "srd-5.2.1",
+  "units": [
+    "section",
+    "heading",
+    "paragraph",
+    "list-item",
+    "table",
+    "table-row"
+  ],
+  "pointerMechanisms": [
+    {
+      "mechanism": "phrase"
+    },
+    {
+      "mechanism": "defined-term-use",
+      "vocabulary": "playing-the-game-terms"
+    }
+  ],
+  "requiredSweeps": [
+    "definitions",
+    "vocabulary",
+    "applicability",
+    "exceptions",
+    "permissions",
+    "undefined-terms",
+    "tables",
+    "cross-references",
+    "extent-coverage"
+  ],
+  "sweepCues": {
+    "applicability": [
+      "follows these rules",
+      "the following rules apply",
+      "uses these rules"
+    ],
+    "permissions": [
+      "you can",
+      "can choose",
+      "you could",
+      "lets you",
+      "let you",
+      "allow you to",
+      "allows a",
+      "can also",
+      "is allowed"
+    ]
+  },
+  "adapterReach": {
+    "text": "readable",
+    "tables": "rendered-page-required",
+    "columns": "rendered-page-required",
+    "illustrations": "unsupported"
+  }
+}

@@ -253,7 +253,8 @@ is decided by reading the corpus, and this tool does not read it. What *is* a fa
 enumeration of no units, or a run in which no entry's quote is found at all — an inventory of
 nothing has nothing unaccounted.
 
-The seven committed maps report 408 unaccounted units of 917, against 122 recorded rejections
+The eight committed maps whose extent one corpus holds report 436 unaccounted units of 1,291,
+against 200 recorded rejections
 ([#267](https://github.com/brandonifco/rules-factory/issues/267) holds the numbers and what each
 one is on reading it). None of the maps was edited to improve them: a map's bytes cannot change
 without invalidating its review
@@ -519,7 +520,8 @@ contradicts fails too. Hoyle declares two: `except`, `unless`, `other than`, `no
 and `provided that` do not occur anywhere on pages 271–280, and neither does any definitional
 verb.
 
-What the sweeps found on the seven committed maps, per map and per sweep, is
+What the sweeps found on the seven maps committed when it was measured, per map and per
+sweep, is
 [#277](https://github.com/brandonifco/rules-factory/issues/277). No map was edited to improve
 those numbers, for the reason no map was edited to improve the inventory's: a map's bytes cannot
 change without invalidating its review ([0017](decisions/0017-a-map-change-carries-a-review-of-its-bytes.md)).
@@ -604,13 +606,17 @@ none.
   invisible to it, and the spec's declared substitutions are the only thing that covers it. Every
   run says so, and so does every record it writes.
 - **The inventory measures the walk, and one map's extent still outruns its answer.** Every
-  unit inside every committed map's extent is enumerated and counted, 122 are recorded as
-  examined and rejected, and 408 of 917 are unaccounted
-  ([#267](https://github.com/brandonifco/rules-factory/issues/267)). Five of the seven maps now
+  unit inside every committed map's extent is enumerated and counted, 200 are recorded as
+  examined and rejected, and 436 of 1,291 are unaccounted
+  ([#267](https://github.com/brandonifco/rules-factory/issues/267)). Five of the eight maps now
   account for every unit, trial 11's from its first mapping; the 2020 part 107 map has one left,
   which is a rule it owes an entry
   ([#396](https://github.com/brandonifco/rules-factory/issues/396)) and not something a
-  rejection may absorb. The remaining 407 are all in `srd-52-conditions`, whose `extent` claims
+  rejection may absorb. Trial 12's map has 28, and they are not a question about its walk at all:
+  three of its quotes straddle a page turn, `unmarked()` cannot strip a marker from a flattened
+  quote, and the units those three entries reach are reported unaccounted while the locator
+  checker locates all three ([#437](https://github.com/brandonifco/rules-factory/issues/437)).
+  The remaining 407 are all in `srd-52-conditions`, whose `extent` claims
   fifteen whole glossary pages in order to map sixteen scattered entries: the units are other
   glossary terms' rules, and no `ground` in the closed set says *inside the extent and outside
   what this walk was about*. That is a contract question about `extent`, not a missing record.
