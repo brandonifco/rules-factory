@@ -228,6 +228,18 @@ FIXTURES = (
             "examples/srd-52-combat/srd-5.2.1.txt",
         ),),
     ),
+    # The fourth, and the one that completes the chapter: pp. 16-18 begin halfway down p. 16,
+    # where the combat map above ends, and the extent says so with `startsAfter` (0064). It is the
+    # first committed map to declare one, so this row is also where that field meets a corpus.
+    Fixture(
+        map="examples/srd-52-damage-and-healing/corpus-map.json",
+        corpora=("examples/srd-52-damage-and-healing", "examples/srd-52-combat"),
+        locators=((
+            PDF_TEXT,
+            "examples/srd-52-damage-and-healing/corpus-map.json",
+            "examples/srd-52-combat/srd-5.2.1.txt",
+        ),),
+    ),
 )
 
 

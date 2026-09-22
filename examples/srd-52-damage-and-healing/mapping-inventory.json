@@ -1,0 +1,197 @@
+{
+  "inventoryVersion": 2,
+  "rejected": [
+    {
+      "sourceId": "srd-5.2.1",
+      "unit": "p. 16 block 11",
+      "ground": "preamble",
+      "note": "The chapter's lead-in, 'Injury and death are frequent threats, as detailed in the following rules.' It announces the sections below and obliges nothing; every rule it promises is an entry of this map."
+    },
+    {
+      "sourceId": "srd-5.2.1",
+      "unit": "p. 16 block 12",
+      "ground": "heading",
+      "note": "The section heading 'Hit Points', which names the rules below it and states none of its own."
+    },
+    {
+      "sourceId": "srd-5.2.1",
+      "unit": "p. 16 block 14",
+      "ground": "heading",
+      "note": "The section heading 'Resting', which names the rules below it and states none of its own."
+    },
+    {
+      "sourceId": "srd-5.2.1",
+      "unit": "p. 16 block 16",
+      "ground": "page-furniture",
+      "note": "The folio '16', the printed page number, which pdftotext leaves in the reading order as a block of its own. It states nothing."
+    },
+    {
+      "sourceId": "srd-5.2.1",
+      "unit": "p. 16 block 17",
+      "ground": "page-furniture",
+      "note": "The running head 'System Reference Document 5.2.1', printed at the foot of every page of the SRD and left in the reading order by the extraction. It states nothing."
+    },
+    {
+      "sourceId": "srd-5.2.1",
+      "unit": "p. 16 block 19",
+      "ground": "heading",
+      "note": "The section heading 'Damage Rolls', which names the rules below it and states none of its own."
+    },
+    {
+      "sourceId": "srd-5.2.1",
+      "unit": "p. 16 block 21",
+      "ground": "heading",
+      "note": "The section heading 'Critical Hits', which names the rules below it and states none of its own."
+    },
+    {
+      "sourceId": "srd-5.2.1",
+      "unit": "p. 16 block 23",
+      "ground": "heading",
+      "note": "The section heading 'Saving Throws and Damage', which names the rules below it and states none of its own."
+    },
+    {
+      "sourceId": "srd-5.2.1",
+      "unit": "p. 16 block 24",
+      "ground": "preamble",
+      "note": "The Saving Throws and Damage lead-in, 'Damage dealt via saving throws uses these rules.' It says which of the rules below govern saving throw damage and states none of its own; the two it names are `damage-against-multiple-targets` and `half-damage-on-a-successful-save`, and each carries the whole of what it obliges."
+    },
+    {
+      "sourceId": "srd-5.2.1",
+      "unit": "p. 16 block 25",
+      "ground": "heading",
+      "note": "The section heading 'Damage against Multiple Targets', which names the rules below it and states none of its own."
+    },
+    {
+      "sourceId": "srd-5.2.1",
+      "unit": "p. 16 block 27",
+      "ground": "heading",
+      "note": "The section heading 'Half Damage', which names the rules below it and states none of its own."
+    },
+    {
+      "sourceId": "srd-5.2.1",
+      "unit": "p. 16 block 29",
+      "ground": "heading",
+      "note": "The section heading 'Damage Types', which names the rules below it and states none of its own."
+    },
+    {
+      "sourceId": "srd-5.2.1",
+      "unit": "p. 17 block 2",
+      "ground": "heading",
+      "note": "The section heading 'Resistance and Vulnerability', which names the rules below it and states none of its own."
+    },
+    {
+      "sourceId": "srd-5.2.1",
+      "unit": "p. 17 block 4",
+      "ground": "heading",
+      "note": "The section heading 'No Stacking', which names the rules below it and states none of its own."
+    },
+    {
+      "sourceId": "srd-5.2.1",
+      "unit": "p. 17 block 6",
+      "ground": "heading",
+      "note": "The section heading 'Order of Application', which names the rules below it and states none of its own."
+    },
+    {
+      "sourceId": "srd-5.2.1",
+      "unit": "p. 17 block 8",
+      "ground": "heading",
+      "note": "The section heading 'Immunity', which names the rules below it and states none of its own."
+    },
+    {
+      "sourceId": "srd-5.2.1",
+      "unit": "p. 17 block 10",
+      "ground": "heading",
+      "note": "The section heading 'Healing', which names the rules below it and states none of its own."
+    },
+    {
+      "sourceId": "srd-5.2.1",
+      "unit": "p. 17 block 12",
+      "ground": "heading",
+      "note": "The section heading 'Knocking Out a Creature', which names the rules below it and states none of its own."
+    },
+    {
+      "sourceId": "srd-5.2.1",
+      "unit": "p. 17 block 14",
+      "ground": "page-furniture",
+      "note": "The folio '17', the printed page number, which pdftotext leaves in the reading order as a block of its own. It states nothing."
+    },
+    {
+      "sourceId": "srd-5.2.1",
+      "unit": "p. 17 block 15",
+      "ground": "page-furniture",
+      "note": "The running head 'System Reference Document 5.2.1', printed at the foot of every page of the SRD and left in the reading order by the extraction. It states nothing."
+    },
+    {
+      "sourceId": "srd-5.2.1",
+      "unit": "p. 17 block 17",
+      "ground": "heading",
+      "note": "The section heading 'Dropping to 0 Hit Points', which names the rules below it and states none of its own."
+    },
+    {
+      "sourceId": "srd-5.2.1",
+      "unit": "p. 17 block 19",
+      "ground": "heading",
+      "note": "The section heading 'Instant Death', which names the rules below it and states none of its own."
+    },
+    {
+      "sourceId": "srd-5.2.1",
+      "unit": "p. 17 block 21",
+      "ground": "heading",
+      "note": "The section heading 'Character Demise', which names the rules below it and states none of its own."
+    },
+    {
+      "sourceId": "srd-5.2.1",
+      "unit": "p. 17 block 23",
+      "ground": "heading",
+      "note": "The section heading 'Falling Unconscious', which names the rules below it and states none of its own."
+    },
+    {
+      "sourceId": "srd-5.2.1",
+      "unit": "p. 17 block 25",
+      "ground": "heading",
+      "note": "The section heading 'Death Saving Throws', which names the rules below it and states none of its own."
+    },
+    {
+      "sourceId": "srd-5.2.1",
+      "unit": "p. 18 block 2",
+      "ground": "heading",
+      "note": "The section heading 'Stabilizing a Character', which names the rules below it and states none of its own."
+    },
+    {
+      "sourceId": "srd-5.2.1",
+      "unit": "p. 18 block 4",
+      "ground": "heading",
+      "note": "The section heading 'Temporary Hit Points', which names the rules below it and states none of its own."
+    },
+    {
+      "sourceId": "srd-5.2.1",
+      "unit": "p. 18 block 6",
+      "ground": "heading",
+      "note": "The section heading 'Lose Temporary Hit Points First', which names the rules below it and states none of its own."
+    },
+    {
+      "sourceId": "srd-5.2.1",
+      "unit": "p. 18 block 8",
+      "ground": "page-furniture",
+      "note": "The folio '18', the printed page number, which pdftotext leaves in the reading order as a block of its own. It states nothing."
+    },
+    {
+      "sourceId": "srd-5.2.1",
+      "unit": "p. 18 block 9",
+      "ground": "page-furniture",
+      "note": "The running head 'System Reference Document 5.2.1', printed at the foot of every page of the SRD and left in the reading order by the extraction. It states nothing."
+    },
+    {
+      "sourceId": "srd-5.2.1",
+      "unit": "p. 18 block 11",
+      "ground": "heading",
+      "note": "The section heading 'They Don’t Stack', which names the rules below it and states none of its own."
+    },
+    {
+      "sourceId": "srd-5.2.1",
+      "unit": "p. 18 block 13",
+      "ground": "heading",
+      "note": "The section heading 'They’re Not Hit Points or Healing', which names the rules below it and states none of its own."
+    }
+  ]
+}

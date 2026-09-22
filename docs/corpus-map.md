@@ -72,7 +72,10 @@ floor — `"quoted": 0.85`, against the 86% it quotes — which it can afford be
 three whole rules and its walk left nothing unaccounted. Trial 12's is the second, at the
 same floor against the same fraction, and it can afford it for a different reason: its
 slice is eight whole printed pages, so the fraction is measured over everything the
-chapter prints, page furniture and headings included.
+chapter prints, page furniture and headings included. The map of the rest of that chapter,
+pp. 16–18, is the third, and declares a **lower** floor — 72%, against the 73% it quotes —
+because three pages of short named subsections are proportionally more heading and folio than
+eight are. A floor is a claim about one mapping and not a standard the next map has to meet.
 
 It is a property of the **map**, not of the corpus, and so it does not belong in the manifest.
 `contentHash` and `licence` are true of the text whoever reads it; how far a mapper got is

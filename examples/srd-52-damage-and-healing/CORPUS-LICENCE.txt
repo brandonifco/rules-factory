@@ -1,0 +1,19 @@
+Corpus: srd-5.2.1, the System Reference Document 5.2.1, English PDF
+(https://media.dndbeyond.com/compendium-images/srd/5.2/SRD_CC_v5.2.1.pdf), as text extracted from
+it (the manifest's contentHash and hashDerivation say exactly which text). The text itself is
+not duplicated here: this map's manifest points at the one committed copy, in
+examples/srd-52-combat/.
+
+Licence: CC-BY-4.0, the Creative Commons Attribution 4.0 International License,
+https://creativecommons.org/licenses/by/4.0/legalcode.
+
+The attribution statement the SRD's Legal Information page (p. 1) requires, word for word:
+
+This work includes material from the System Reference Document 5.2.1 (“SRD 5.2.1”) by Wizards of the Coast LLC, available at https://www.dndbeyond.com/srd. The SRD 5.2.1 is licensed under the Creative Commons Attribution 4.0 International License, available at https://creativecommons.org/licenses/by/4.0/legalcode.
+
+Changes: the quotations are excerpts of the text pdftotext extracts from the PDF, copied verbatim
+from that text. They are not otherwise modified.
+
+As the manifest's `licence` field records it:
+
+CC-BY-4.0. Attribution required: This work includes material from the System Reference Document 5.2.1 (“SRD 5.2.1”) by Wizards of the Coast LLC, available at https://www.dndbeyond.com/srd. The SRD 5.2.1 is licensed under the Creative Commons Attribution 4.0 International License, available at https://creativecommons.org/licenses/by/4.0/legalcode.
