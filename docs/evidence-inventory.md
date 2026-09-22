@@ -64,7 +64,7 @@ A reader deciding what could be retired should know which of the two they are lo
 
 ## By trial
 
-Measured at `b529d0e`, over a gate run that failed no step (`measuredOver` in the lock says so,
+Measured at `a479d02`, over a gate run that failed no step (`measuredOver` in the lock says so,
 and `--measure` refuses a run with a failing step unless it is told to record that it was
 partial; [#408](https://github.com/brandonifco/rules-factory/issues/408)). It names a commit
 `main` holds rather than the branch commit `--measure` would otherwise have recorded, because a
@@ -80,7 +80,7 @@ squash merge destroys the second and #404's check is then right to refuse the lo
 | `examples/hoyle-blind-rebuild` | 432 KB | — | 61 KB |
 | `examples/srd-52-conditions` | 353 KB | — | 29 KB |
 | `examples/tax-121-principal-residence` | 191 KB | 86 KB | 101 KB |
-| `examples/blind-mapping-trial` | 183 KB | — | 165 KB |
+| `examples/blind-mapping-trial` | 146 KB | — | 201 KB |
 | `examples/frcp-6-12-81` | 199 KB | — | 2 KB |
 | `examples/faa-part-107-temporal` | 146 KB | — | 37 KB |
 | `examples/srd-52-playing-the-game` | 180 KB | — | 1 KB |
@@ -88,7 +88,7 @@ squash merge destroys the second and #404's check is then right to refuse the lo
 | `examples/validator-attack` | 61 KB | — | — |
 | `examples/tax-121-build` | 31 KB | — | — |
 | `examples` | 31 KB | — | — |
-| `examples/acceptance-4-5` | 28 KB | — | 2 KB |
+| `examples/acceptance-4-5` | 31 KB | — | — |
 | `examples/collapse-trial` | 13 KB | — | 3 KB |
 
 Three things there are worth saying out loud.
