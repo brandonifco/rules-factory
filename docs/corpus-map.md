@@ -69,7 +69,10 @@ reach its page; the fraction can. A map may name the floor it claims, `"quoted":
 printed and not failed: across the committed maps the fraction runs from 19% to 100%, so no
 single threshold could be honest about all of them. Trial 11's map is the first to declare a
 floor — `"quoted": 0.85`, against the 86% it quotes — which it can afford because its slice is
-three whole rules and its walk left nothing unaccounted.
+three whole rules and its walk left nothing unaccounted. Trial 12's is the second, at the
+same floor against the same fraction, and it can afford it for a different reason: its
+slice is eight whole printed pages, so the fraction is measured over everything the
+chapter prints, page furniture and headings included.
 
 It is a property of the **map**, not of the corpus, and so it does not belong in the manifest.
 `contentHash` and `licence` are true of the text whoever reads it; how far a mapper got is
