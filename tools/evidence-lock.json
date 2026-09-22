@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "measuredAt": "208e981feec7da966f4650892fb3fce548c0279d",
+  "measuredAt": "eecdd468c5a453a2496991028c2129f1c7d0a70f",
   "measuredBy": "tools/check-evidence.py --measure",
   "measuredOver": {
     "gateStepsFailed": [],
@@ -551,8 +551,8 @@
     },
     {
       "path": "examples/frcp-6-12-81/check-locators-uslm.py",
-      "sha256": "afcd9df7cc51d9627eb4d2dae4fd65c037668dc5d6bcc8de1943b430c1eb7fcf",
-      "bytes": 24256,
+      "sha256": "ec1b4d47de90b52ae557e07e72761ce43090c025da691959e3d77a62e35b5fa8",
+      "bytes": 24873,
       "role": "active",
       "readBy": [
         "checks"
