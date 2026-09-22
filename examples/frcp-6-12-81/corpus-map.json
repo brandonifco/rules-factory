@@ -1,0 +1,1914 @@
+{
+  "schemaVersion": 1,
+  "corpus": "frcp-6-12-81",
+  "baseline": {
+    "contentHash": "d4e63d1fd0153e412c602960a801195b7798e4d131c54e9cda427e10191af9fb",
+    "hashDerivation": "uslm-courtrule-without-usc-notes",
+    "asOf": "2025-12-03"
+  },
+  "extent": {
+    "unit": "section-designation",
+    "sections": [
+      "Rule 6",
+      "Rule 12",
+      "Rule 81"
+    ],
+    "quoted": 0.85
+  },
+  "entries": [
+    {
+      "id": "time-computation-applies",
+      "name": "What Rule 6(a)'s counting rules govern",
+      "locator": {
+        "sourceId": "frcp-6-12-81",
+        "citation": "Rule 6(a)"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "clear",
+      "crossReferences": [
+        {
+          "cites": "these rules",
+          "unmapped": "The Federal Rules of Civil Procedure outside this slice. The manifest lists Rules 4, 5, 7, 15, 19, 38, 50, 52, 56, 59 and 60 as referenced and not admitted; the phrase reaches every rule of the body, not only those."
+        },
+        {
+          "cites": "any local rule or court order",
+          "unmapped": "A district's local rules and a court's orders in the case. Neither is a corpus this map cites, and neither is one corpus: `references` names a document, and this names a class of them."
+        },
+        {
+          "cites": "any statute that does not specify a method of computing time",
+          "unmapped": "Every federal statute setting a period, minus those that state their own method. A class of corpora, not a document."
+        }
+      ],
+      "evidence": "(a) Computing Time. The following rules apply in computing any time period specified in these rules, in any local rule or court order, or in any statute that does not specify a method of computing time.",
+      "status": "mapped",
+      "note": "The applicability of Rule 6(a). It is the rule that says which periods the counting rules below govern, so every one of them is `enabledBy` this entry rather than applying unconditionally -- the correction trial 9 needed thirty times on § 1.121-1(f). A test must show a period specified in these rules counted by Rule 6(a), and a period set by a statute that states its own method left alone. Whether a statute specifies a method is a fact the caller states: the statutes are not admitted and the engine cannot read them."
+    },
+    {
+      "id": "period-stated-in-days",
+      "name": "A period stated in days or a longer unit",
+      "locator": {
+        "sourceId": "frcp-6-12-81",
+        "citation": "Rule 6(a)(1)"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "clear",
+      "enabledBy": [
+        "time-computation-applies"
+      ],
+      "evidence": "(1) Period Stated in Days or a Longer Unit. When the period is stated in days or a longer unit of time:",
+      "status": "mapped",
+      "note": "The condition that selects the three day-counting rules below, and the reason they are `enabledBy` this entry rather than by Rule 6(a) directly: a period stated in hours is counted by Rule 6(a)(2) and by none of (A)-(C). A test must show a period in days taking this branch and a period in hours not taking it."
+    },
+    {
+      "id": "exclude-trigger-day",
+      "name": "Exclude the day of the triggering event",
+      "locator": {
+        "sourceId": "frcp-6-12-81",
+        "citation": "Rule 6(a)(1)(A)"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "clear",
+      "enabledBy": [
+        "period-stated-in-days"
+      ],
+      "evidence": "(A) exclude the day of the event that triggers the period;",
+      "status": "mapped",
+      "note": "Day zero is the day the event happened and is not counted. What the triggering event is comes from whichever rule states the period -- Rule 12(a)(1)(A)(i)'s service of the summons and complaint, Rule 81(c)(2)(C)'s filing of the notice of removal -- and is not a field of this entry: the map declares no types, and the event is in the quote of the rule that sets the period."
+    },
+    {
+      "id": "count-every-day",
+      "name": "Count every intervening day",
+      "locator": {
+        "sourceId": "frcp-6-12-81",
+        "citation": "Rule 6(a)(1)(B)"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "clear",
+      "enabledBy": [
+        "period-stated-in-days"
+      ],
+      "evidence": "(B) count every day, including intermediate Saturdays, Sundays, and legal holidays; and",
+      "status": "mapped",
+      "note": "The 2009 amendment's rule: weekends and holidays in the middle of a period are counted, whatever the period's length. A test must show a 21-day period spanning three weekends ending 21 calendar days after the trigger."
+    },
+    {
+      "id": "include-last-day",
+      "name": "Include the last day, and roll a weekend or holiday forward",
+      "locator": {
+        "sourceId": "frcp-6-12-81",
+        "citation": "Rule 6(a)(1)(C)"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [
+        "legal-holiday-defined",
+        "next-day-defined",
+        "last-day-defined"
+      ],
+      "enabledBy": [
+        "period-stated-in-days"
+      ],
+      "crossReferences": [
+        {
+          "cites": "the last day",
+          "resolvedBy": "last-day-defined"
+        },
+        {
+          "cites": "the next day",
+          "resolvedBy": "next-day-defined"
+        },
+        {
+          "cites": "legal holiday",
+          "resolvedBy": "legal-holiday-defined"
+        }
+      ],
+      "evidence": "(C) include the last day of the period, but if the last day is a Saturday, Sunday, or legal holiday, the period continues to run until the end of the next day that is not a Saturday, Sunday, or legal holiday.",
+      "status": "mapped",
+      "note": "Two rules in one sentence and deliberately one entry: the last day is included, and if it is a Saturday, Sunday or legal holiday the period runs on. Splitting them would produce an entry saying only 'include the last day', which is not a rule anyone can act on without the exception. `dependsOn` names the three entries whose terms this sentence uses -- what a legal holiday is, what the next day is, and when the last day ends."
+    },
+    {
+      "id": "period-stated-in-hours",
+      "name": "A period stated in hours",
+      "locator": {
+        "sourceId": "frcp-6-12-81",
+        "citation": "Rule 6(a)(2)"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "clear",
+      "enabledBy": [
+        "time-computation-applies"
+      ],
+      "evidence": "(2) Period Stated in Hours. When the period is stated in hours:",
+      "status": "mapped",
+      "note": "The hour branch, parallel to Rule 6(a)(1) and mutually exclusive with it. A test must show the two branches never both selected for one period."
+    },
+    {
+      "id": "hours-begin-immediately",
+      "name": "Hours begin on the occurrence of the event",
+      "locator": {
+        "sourceId": "frcp-6-12-81",
+        "citation": "Rule 6(a)(2)(A)"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "clear",
+      "enabledBy": [
+        "period-stated-in-hours"
+      ],
+      "evidence": "(A) begin counting immediately on the occurrence of the event that triggers the period;",
+      "status": "mapped",
+      "note": "The opposite of Rule 6(a)(1)(A): an hour period starts at the event, a day period starts the day after it. A test must show the two rules giving different answers for the same trigger."
+    },
+    {
+      "id": "count-every-hour",
+      "name": "Count every intervening hour",
+      "locator": {
+        "sourceId": "frcp-6-12-81",
+        "citation": "Rule 6(a)(2)(B)"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "clear",
+      "enabledBy": [
+        "period-stated-in-hours"
+      ],
+      "evidence": "(B) count every hour, including hours during intermediate Saturdays, Sundays, and legal holidays; and",
+      "status": "mapped",
+      "note": "Hours during a weekend or a holiday are counted. A test must show a 72-hour period beginning Friday afternoon ending Monday afternoon before this rule's counterpart in (C) is applied."
+    },
+    {
+      "id": "hours-end-next-day-same-time",
+      "name": "An hour period ending on a weekend or holiday runs to the same time on the next day",
+      "locator": {
+        "sourceId": "frcp-6-12-81",
+        "citation": "Rule 6(a)(2)(C)"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [
+        "legal-holiday-defined",
+        "next-day-defined"
+      ],
+      "enabledBy": [
+        "period-stated-in-hours"
+      ],
+      "crossReferences": [
+        {
+          "cites": "the next day",
+          "resolvedBy": "next-day-defined"
+        },
+        {
+          "cites": "legal holiday",
+          "resolvedBy": "legal-holiday-defined"
+        }
+      ],
+      "evidence": "(C) if the period would end on a Saturday, Sunday, or legal holiday, the period continues to run until the same time on the next day that is not a Saturday, Sunday, or legal holiday.",
+      "status": "mapped",
+      "note": "Not to the end of the next day, as Rule 6(a)(1)(C) has it, but to the same clock time. A test must show the two rules landing on different moments of the same day."
+    },
+    {
+      "id": "clerks-office-inaccessible",
+      "name": "Filing when the clerk's office is inaccessible",
+      "locator": {
+        "sourceId": "frcp-6-12-81",
+        "citation": "Rule 6(a)(3)"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "ambiguous",
+      "ambiguity": {
+        "question": "The rule turns on whether the clerk's office is 'inaccessible' and states no measure of inaccessibility -- no closure, no weather, no electronic-filing outage, no duration. § 107.39 is the test the method states: a term delegated with a stated measure is an assertion, and a term with no measure at all is a gap. This has none, so it is recorded as an open question rather than resolved to a definition the corpus does not give.",
+        "fate": "unresolved",
+        "unresolvedReason": "RequiresInterpretation"
+      },
+      "enabledBy": [
+        "time-computation-applies"
+      ],
+      "evidence": "(3) Inaccessibility of the Clerk’s Office. Unless the court orders otherwise, if the clerk’s office is inaccessible:",
+      "status": "mapped",
+      "note": "Two things in one chapeau. 'Unless the court orders otherwise' is an exception this rule states about itself and is inside the quote rather than in a gate field: a gate names another rule the corpus states, and no other passage of this slice states the court's power to displace Rule 6(a)(3). The ambiguity is 'inaccessible', not the court's order. A test must show that an engine asked to compute a deadline with no statement about accessibility answers RequiresInterpretation rather than assuming the office was open."
+    },
+    {
+      "id": "inaccessible-on-last-day",
+      "name": "Inaccessible on the last day of a period in days",
+      "locator": {
+        "sourceId": "frcp-6-12-81",
+        "citation": "Rule 6(a)(3)(A)"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "clear",
+      "enabledBy": [
+        "clerks-office-inaccessible"
+      ],
+      "crossReferences": [
+        {
+          "cites": "Rule 6(a)(1)",
+          "resolvedBy": "period-stated-in-days"
+        },
+        {
+          "cites": "the last day",
+          "resolvedBy": "last-day-defined"
+        },
+        {
+          "cites": "legal holiday",
+          "resolvedBy": "legal-holiday-defined"
+        }
+      ],
+      "evidence": "(A) on the last day for filing under Rule 6(a)(1), then the time for filing is extended to the first accessible day that is not a Saturday, Sunday, or legal holiday; or",
+      "status": "mapped",
+      "note": "The extension runs to the first accessible day that is also not a weekend or a holiday, so two conditions have to fail together before a day qualifies. A test must show an office inaccessible on a Friday deadline giving the following Monday only if the office is accessible then."
+    },
+    {
+      "id": "inaccessible-during-last-hour",
+      "name": "Inaccessible during the last hour of a period in hours",
+      "locator": {
+        "sourceId": "frcp-6-12-81",
+        "citation": "Rule 6(a)(3)(B)"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "clear",
+      "enabledBy": [
+        "clerks-office-inaccessible"
+      ],
+      "crossReferences": [
+        {
+          "cites": "Rule 6(a)(2)",
+          "resolvedBy": "period-stated-in-hours"
+        },
+        {
+          "cites": "legal holiday",
+          "resolvedBy": "legal-holiday-defined"
+        }
+      ],
+      "evidence": "(B) during the last hour for filing under Rule 6(a)(2), then the time for filing is extended to the same time on the first accessible day that is not a Saturday, Sunday, or legal holiday.",
+      "status": "mapped",
+      "note": "The hour counterpart of (A), extending to the same time rather than to the end of the day, exactly as Rule 6(a)(2)(C) does against Rule 6(a)(1)(C)."
+    },
+    {
+      "id": "last-day-defined",
+      "name": "When the last day ends",
+      "locator": {
+        "sourceId": "frcp-6-12-81",
+        "citation": "Rule 6(a)(4)"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "clear",
+      "defines": [
+        {
+          "vocabulary": "frcp-time-terms",
+          "term": "last day"
+        }
+      ],
+      "enabledBy": [
+        "time-computation-applies"
+      ],
+      "crossReferences": [
+        {
+          "cites": "a statute, local rule, or court order",
+          "unmapped": "A class of corpora rather than one: a federal statute, a district's local rules, or an order in the case. The manifest's `references` names documents, and this names whichever of them happens to set a different time."
+        }
+      ],
+      "evidence": "(4) “Last Day” Defined. Unless a different time is set by a statute, local rule, or court order, the last day ends:",
+      "status": "mapped",
+      "note": "The definition head. The term is printed in the caption -- “Last Day” Defined -- and the two moments are in (A) and (B), which are `enabledBy` this entry. The leading exception means an engine that is told a statute, local rule or court order sets a different time must use that time and not these; whether one does is a fact the caller states."
+    },
+    {
+      "id": "last-day-electronic-filing",
+      "name": "The last day for electronic filing ends at midnight",
+      "locator": {
+        "sourceId": "frcp-6-12-81",
+        "citation": "Rule 6(a)(4)(A)"
+      },
+      "kind": "value",
+      "scope": "in",
+      "clarity": "clear",
+      "enabledBy": [
+        "last-day-defined"
+      ],
+      "evidence": "(A) for electronic filing, at midnight in the court’s time zone; and",
+      "status": "mapped",
+      "note": "A value: the moment the day ends, and the time zone it is read in. The court's time zone is a fact about the court the caller supplies; the rule is that it is the court's and not the filer's."
+    },
+    {
+      "id": "last-day-other-means",
+      "name": "The last day for filing by other means ends at the clerk's scheduled closing",
+      "locator": {
+        "sourceId": "frcp-6-12-81",
+        "citation": "Rule 6(a)(4)(B)"
+      },
+      "kind": "value",
+      "scope": "in",
+      "clarity": "clear",
+      "enabledBy": [
+        "last-day-defined"
+      ],
+      "evidence": "(B) for filing by other means, when the clerk’s office is scheduled to close.",
+      "status": "mapped",
+      "note": "The second value of the same two-row definition. 'Scheduled to close' and not 'closed': an office that shuts early does not shorten the day. The schedule itself is a fact the caller supplies."
+    },
+    {
+      "id": "next-day-defined",
+      "name": "Which way the next day lies",
+      "locator": {
+        "sourceId": "frcp-6-12-81",
+        "citation": "Rule 6(a)(5)"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "clear",
+      "defines": [
+        {
+          "vocabulary": "frcp-time-terms",
+          "term": "next day"
+        }
+      ],
+      "enabledBy": [
+        "time-computation-applies"
+      ],
+      "evidence": "(5) “Next Day” Defined. The “next day” is determined by continuing to count forward when the period is measured after an event and backward when measured before an event.",
+      "status": "mapped",
+      "note": "The rule that makes a backward-counted period roll the other way: a deadline measured *before* an event that lands on a Sunday moves to the Friday, not to the Monday. Nothing else in the slice states the direction, and an engine that applied Rule 6(a)(1)(C) without it would move every deadline forward. A test must show a period measured before an event moving backwards."
+    },
+    {
+      "id": "legal-holiday-defined",
+      "name": "What counts as a legal holiday",
+      "locator": {
+        "sourceId": "frcp-6-12-81",
+        "citation": "Rule 6(a)(6)"
+      },
+      "kind": "value",
+      "scope": "in",
+      "clarity": "clear",
+      "defines": [
+        {
+          "vocabulary": "frcp-time-terms",
+          "term": "Legal holiday"
+        }
+      ],
+      "enabledBy": [
+        "time-computation-applies"
+      ],
+      "evidence": "(6) “Legal Holiday” Defined. “Legal holiday” means:",
+      "status": "mapped",
+      "note": "The definition head of a three-part list. Its parts are one value and two assertions, which is why they are separate entries: (A) is a closed list of named days, and (B) and (C) are facts about declarations no engine can enumerate."
+    },
+    {
+      "id": "legal-holiday-statutory-days",
+      "name": "The eleven days set aside by statute",
+      "locator": {
+        "sourceId": "frcp-6-12-81",
+        "citation": "Rule 6(a)(6)(A)"
+      },
+      "kind": "value",
+      "scope": "in",
+      "clarity": "clear",
+      "enabledBy": [
+        "legal-holiday-defined"
+      ],
+      "crossReferences": [
+        {
+          "cites": "the day set aside by statute",
+          "unmapped": "The statute that fixes each holiday's date, 5 U.S.C. 6103, which this rule names by its effect and not by its number. It is not admitted, so the dates themselves are outside the map: the rule states which holidays count and not when they fall."
+        }
+      ],
+      "evidence": "(A) the day set aside by statute for observing New Year’s Day, Martin Luther King Jr.’s Birthday, Washington’s Birthday, Memorial Day, Juneteenth National Independence Day, Independence Day, Labor Day, Columbus Day, Veterans’ Day, Thanksgiving Day, or Christmas Day;",
+      "status": "mapped",
+      "note": "A value, and the whole list is transcribed rather than sampled. The rule names the holidays and defers their dates to a statute it does not cite by number, so an engine built from this map knows that Juneteenth is a legal holiday and must be told which day it falls on."
+    },
+    {
+      "id": "legal-holiday-declared-federally",
+      "name": "A day declared a holiday by the President or Congress",
+      "locator": {
+        "sourceId": "frcp-6-12-81",
+        "citation": "Rule 6(a)(6)(B)"
+      },
+      "kind": "assertion",
+      "scope": "in",
+      "clarity": "clear",
+      "assertedBy": [
+        "the President or Congress"
+      ],
+      "enabledBy": [
+        "legal-holiday-defined"
+      ],
+      "evidence": "(B) any day declared a holiday by the President or Congress; and",
+      "status": "mapped",
+      "note": "An assertion and not a value: the set is open, and the corpus names exactly who may add to it. What an engine owes is to demand a statement that a given day was so declared, attribute it, record it, and never infer it -- a national day of mourning proclaimed for a funeral is a legal holiday under this rule and appears in no list the engine could hold."
+    },
+    {
+      "id": "legal-holiday-declared-by-state",
+      "name": "A day declared a holiday by the state, for a forward-counted period",
+      "locator": {
+        "sourceId": "frcp-6-12-81",
+        "citation": "Rule 6(a)(6)(C)"
+      },
+      "kind": "assertion",
+      "scope": "in",
+      "clarity": "clear",
+      "assertedBy": [
+        "the state where the district court is located"
+      ],
+      "enabledBy": [
+        "legal-holiday-defined"
+      ],
+      "crossReferences": [
+        {
+          "cites": "the state where the district court is located",
+          "resolvedBy": "state-defined"
+        }
+      ],
+      "evidence": "(C) for periods that are measured after an event, any other day declared a holiday by the state where the district court is located.",
+      "status": "mapped",
+      "note": "An assertion with a condition attached: a state holiday counts only for periods measured *after* an event, so the same calendar day is a legal holiday for one deadline and not for another. A test must show a backward-counted period ignoring a state holiday that a forward-counted period honours."
+    },
+    {
+      "id": "court-may-extend-for-good-cause",
+      "name": "A court may extend a specified time for good cause",
+      "locator": {
+        "sourceId": "frcp-6-12-81",
+        "citation": "Rule 6(b)(1)"
+      },
+      "kind": "assertion",
+      "scope": "in",
+      "clarity": "clear",
+      "assertedBy": [
+        "the court"
+      ],
+      "suspendedBy": [
+        "extension-forbidden"
+      ],
+      "evidence": "(1) In General. When an act may or must be done within a specified time, the court may, for good cause, extend the time:",
+      "status": "mapped",
+      "note": "The power this trial was chosen to test. It is an assertion, not an ambiguity: 'good cause' is an open term the corpus deliberately delegated and it says exactly who decides, which is the § 107.31 'if the pilot determines' construction in a different jurisdiction. An engine owes it demand, attribution to the court, a record beside the outcome, and no inference -- an engine that defaulted good cause to true would extend every deadline in the case. `suspendedBy` names Rule 6(b)(2), which makes this power unreachable for the six rules it lists."
+    },
+    {
+      "id": "extension-requested-before-expiry",
+      "name": "Extending before the time expires",
+      "locator": {
+        "sourceId": "frcp-6-12-81",
+        "citation": "Rule 6(b)(1)(A)"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "clear",
+      "enabledBy": [
+        "court-may-extend-for-good-cause"
+      ],
+      "evidence": "(A) with or without motion or notice if the court acts, or if a request is made, before the original time or its extension expires; or",
+      "status": "mapped",
+      "note": "Before expiry the court may act on its own, and a request made before expiry is enough even if the court rules after it. The operative fact is when the request was made, not when the order issued. A test must show a request made on the last day and granted a week later being timely."
+    },
+    {
+      "id": "extension-on-excusable-neglect",
+      "name": "Extending after the time has expired, on excusable neglect",
+      "locator": {
+        "sourceId": "frcp-6-12-81",
+        "citation": "Rule 6(b)(1)(B)"
+      },
+      "kind": "assertion",
+      "scope": "in",
+      "clarity": "clear",
+      "assertedBy": [
+        "the court"
+      ],
+      "enabledBy": [
+        "court-may-extend-for-good-cause"
+      ],
+      "evidence": "(B) on motion made after the time has expired if the party failed to act because of excusable neglect.",
+      "status": "mapped",
+      "note": "'Excusable neglect' is the second delegated standard and the sharper one, because this sentence names no decider. The party who may assert it is named by the chapeau this paragraph hangs from, Rule 6(b)(1): “When an act may or must be done within a specified time, the court may, for good cause, extend the time:”. That is the § 107.49 lead-in route `assertedBy` allows, and it is used here rather than reading 'the party' -- who failed to act -- as the one who decides whether the failure was excusable."
+    },
+    {
+      "id": "extension-forbidden",
+      "name": "Six rules a court must not extend the time to act under",
+      "locator": {
+        "sourceId": "frcp-6-12-81",
+        "citation": "Rule 6(b)(2)"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "clear",
+      "crossReferences": [
+        {
+          "cites": "Rules 50(b) and (d)",
+          "unmapped": "Rule 50, renewed motion for judgment as a matter of law and a conditional ruling on a new trial. Referenced and not admitted."
+        },
+        {
+          "cites": "52(b)",
+          "unmapped": "Rule 52(b), amended or additional findings. Referenced and not admitted."
+        },
+        {
+          "cites": "59(b), (d), and (e)",
+          "unmapped": "Rule 59, the time to move for a new trial, the court's own initiative, and a motion to alter or amend a judgment. Referenced and not admitted."
+        },
+        {
+          "cites": "60(b)",
+          "unmapped": "Rule 60(b), relief from a judgment or order. Referenced and not admitted."
+        }
+      ],
+      "evidence": "(2) Exceptions. A court must not extend the time to act under Rules 50(b) and (d), 52(b), 59(b), (d), and (e), and 60(b).",
+      "status": "mapped",
+      "note": "A prohibition on the court, and the reason Rule 6(b)(1) carries `suspendedBy`. The six periods it protects are all outside this slice, so an engine built from this map can say that the power to extend does not reach them and cannot compute any of them. A test must show a request to extend a Rule 59(e) period refused as a matter of rule rather than answered on good cause."
+    },
+    {
+      "id": "motion-notice-14-days",
+      "name": "A written motion and notice of hearing, served at least 14 days before",
+      "locator": {
+        "sourceId": "frcp-6-12-81",
+        "citation": "Rule 6(c)(1)"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [
+        "next-day-defined"
+      ],
+      "enabledBy": [
+        "time-computation-applies"
+      ],
+      "suspendedBy": [
+        "ex-parte-application-for-a-different-time"
+      ],
+      "crossReferences": [
+        {
+          "cites": "these rules",
+          "unmapped": "The Federal Rules of Civil Procedure outside this slice, wherever one of them sets a different notice period. Referenced and not admitted."
+        }
+      ],
+      "evidence": "(1) In General. A written motion and notice of the hearing must be served at least 14 days before the time specified for the hearing, with the following exceptions: (A) when the motion may be heard ex parte; (B) when these rules set a different time; or (C) when a court order—which a party may, for good cause, apply for ex parte—sets a different time.",
+      "status": "mapped",
+      "note": "One entry over the chapeau and its three exceptions, because the three are conditions of the one requirement and none of (A), (B) or (C) states a rule when it is read on its own: '(A) when the motion may be heard ex parte;' is a clause, not a provision. The one thing inside (C) that *is* a separate rule -- a party's power to apply ex parte for such an order -- is its own entry, and this one is `suspendedBy` it. `dependsOn` names Rule 6(a)(5) because the period is measured backwards from the hearing."
+    },
+    {
+      "id": "ex-parte-application-for-a-different-time",
+      "name": "Applying ex parte, for good cause, for an order setting a different time",
+      "locator": {
+        "sourceId": "frcp-6-12-81",
+        "citation": "Rule 6(c)(1)(C)"
+      },
+      "kind": "assertion",
+      "scope": "in",
+      "clarity": "clear",
+      "assertedBy": [
+        "caller"
+      ],
+      "evidence": "(C) when a court order—which a party may, for good cause, apply for ex parte—sets a different time.",
+      "status": "mapped",
+      "note": "The rule inside the exception: a party may apply, ex parte, for an order that displaces the 14-day period, and the application is granted for good cause. `assertedBy` is `caller` because the sentence names who may apply and not who decides -- 'a party may, for good cause, apply' -- and the method forbids supplying the court because it is the obvious answer. Rule 6(b)(1), which does name the court, is a different power over a different thing."
+    },
+    {
+      "id": "supporting-affidavit-with-motion",
+      "name": "A supporting affidavit is served with the motion",
+      "locator": {
+        "sourceId": "frcp-6-12-81",
+        "citation": "Rule 6(c)(2)"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "clear",
+      "evidence": "(2) Supporting Affidavit. Any affidavit supporting a motion must be served with the motion.",
+      "status": "mapped",
+      "note": "No period to compute: the affidavit's time is the motion's. One of two rules in this paragraph, quoted as its own sentence so that the citation and the quote agree about which rule the entry is."
+    },
+    {
+      "id": "opposing-affidavit-7-days",
+      "name": "An opposing affidavit, served at least 7 days before the hearing",
+      "locator": {
+        "sourceId": "frcp-6-12-81",
+        "citation": "Rule 6(c)(2)"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [
+        "next-day-defined"
+      ],
+      "enabledBy": [
+        "time-computation-applies"
+      ],
+      "crossReferences": [
+        {
+          "cites": "Rule 59(c)",
+          "unmapped": "Rule 59(c), the time for affidavits on a motion for a new trial. Referenced and not admitted, so an engine built from this map cannot tell whether a given motion is one Rule 59(c) governs and must be told."
+        }
+      ],
+      "evidence": "Except as Rule 59(c) provides otherwise, any opposing affidavit must be served at least 7 days before the hearing, unless the court permits service at another time.",
+      "status": "mapped",
+      "note": "The second rule of the paragraph, with two displacements in one sentence: Rule 59(c) for a class of motions, and the court's permission for any of them. Counted backwards from the hearing, so `dependsOn` names Rule 6(a)(5) as the 14-day rule above does."
+    },
+    {
+      "id": "three-days-added-after-service",
+      "name": "Three days added after certain kinds of service",
+      "locator": {
+        "sourceId": "frcp-6-12-81",
+        "citation": "Rule 6(d)"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [
+        "time-computation-applies",
+        "include-last-day"
+      ],
+      "crossReferences": [
+        {
+          "cites": "Rule 5(b)(2)(C) (mail), (D) (leaving with the clerk), or (F) (other means consented to)",
+          "unmapped": "Rule 5(b)(2), the methods of service. Referenced and not admitted: the map records which three methods add three days and cannot tell which method was used."
+        },
+        {
+          "cites": "Rule 6(a)",
+          "resolvedBy": "time-computation-applies"
+        }
+      ],
+      "evidence": "(d) Additional Time After Certain Kinds of Service. When a party may or must act within a specified time after being served and service is made under Rule 5(b)(2)(C) (mail), (D) (leaving with the clerk), or (F) (other means consented to), 3 days are added after the period would otherwise expire under Rule 6(a).",
+      "status": "mapped",
+      "note": "The order of operations is the rule: the period is computed under Rule 6(a) first and the three days are added *after* it would otherwise expire, so the three days are themselves then re-counted under Rule 6(a)(1)(C) if they land on a weekend. An engine that added three days first and rolled once would be wrong by up to two days. A test must show a 21-day period served by mail ending on a Saturday rolling to the Monday after the three days, not before them."
+    },
+    {
+      "id": "responsive-pleading-time",
+      "name": "What sets the time for serving a responsive pleading",
+      "locator": {
+        "sourceId": "frcp-6-12-81",
+        "citation": "Rule 12(a)"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "clear",
+      "crossReferences": [
+        {
+          "cites": "specified by a federal statute",
+          "unmapped": "Whichever federal statute specifies another time for a responsive pleading. A class of corpora and not one document, so `references` cannot name it; whether one applies is a fact the caller states."
+        },
+        {
+          "cites": "specified by a federal statute",
+          "resolvedBy": "federal-statute-defined-dc"
+        }
+      ],
+      "evidence": "(a) Time to Serve a Responsive Pleading. Unless another time is specified by a federal statute, the time for serving a responsive pleading is as follows:",
+      "status": "mapped",
+      "note": "The applicability of Rule 12(a), and the reason every period below is `enabledBy` it. It states one thing an engine must be told rather than compute: whether a federal statute displaces these periods for this action."
+    },
+    {
+      "id": "defendant-answer-21-days",
+      "name": "A defendant answers within 21 days after service",
+      "locator": {
+        "sourceId": "frcp-6-12-81",
+        "citation": "Rule 12(a)(1)(A)"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [
+        "time-computation-applies",
+        "exclude-trigger-day",
+        "include-last-day"
+      ],
+      "enabledBy": [
+        "responsive-pleading-time"
+      ],
+      "suspendedBy": [
+        "motion-alters-periods"
+      ],
+      "evidence": "(A) A defendant must serve an answer: (i) within 21 days after being served with the summons and complaint; or",
+      "status": "mapped",
+      "note": "The obligation and the period in one span, because neither states a rule alone: '(A) A defendant must serve an answer:' sets no time and '(i) within 21 days after being served with the summons and complaint; or' imposes no duty. The sentence is one rule with two branches, and its second branch is the entry below -- whose quote reaches the same chapeau and skips this one, which is what an ellipsis is for. `dependsOn` names Rule 6(a): the trigger day is excluded and the last day rolls."
+    },
+    {
+      "id": "defendant-answer-after-waiving-service",
+      "name": "A defendant who waived service answers within 60 or 90 days",
+      "locator": {
+        "sourceId": "frcp-6-12-81",
+        "citation": "Rule 12(a)(1)(A)"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [
+        "time-computation-applies"
+      ],
+      "enabledBy": [
+        "responsive-pleading-time"
+      ],
+      "suspendedBy": [
+        "motion-alters-periods"
+      ],
+      "crossReferences": [
+        {
+          "cites": "Rule 4(d)",
+          "unmapped": "Rule 4, waiving service of a summons. Referenced and not admitted: whether service was timely waived under it is a fact the caller states."
+        }
+      ],
+      "evidence": "(A) A defendant must serve an answer: ... (ii) if it has timely waived service under Rule 4(d), within 60 days after the request for a waiver was sent, or within 90 days after it was sent to the defendant outside any judicial district of the United States.",
+      "status": "mapped",
+      "note": "The second branch of the same obligation, quoted through an ellipsis that skips the whole of (i) and drops no word inside a unit (0037). Two periods, chosen by where the request was sent, and the trigger is when the request for a waiver was *sent* rather than when it was received or returned -- a date the plaintiff holds and the defendant may not."
+    },
+    {
+      "id": "answer-to-counterclaim-or-crossclaim-21-days",
+      "name": "Answering a counterclaim or crossclaim within 21 days",
+      "locator": {
+        "sourceId": "frcp-6-12-81",
+        "citation": "Rule 12(a)(1)(B)"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [
+        "time-computation-applies"
+      ],
+      "enabledBy": [
+        "responsive-pleading-time"
+      ],
+      "suspendedBy": [
+        "motion-alters-periods"
+      ],
+      "evidence": "(B) A party must serve an answer to a counterclaim or crossclaim within 21 days after being served with the pleading that states the counterclaim or crossclaim.",
+      "status": "mapped",
+      "note": "A different trigger from (A): being served with the pleading that states the claim, not with the summons. A test must show the two periods running from different dates in one action."
+    },
+    {
+      "id": "reply-to-answer-21-days",
+      "name": "Replying to an answer within 21 days of being ordered to",
+      "locator": {
+        "sourceId": "frcp-6-12-81",
+        "citation": "Rule 12(a)(1)(C)"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [
+        "time-computation-applies"
+      ],
+      "enabledBy": [
+        "responsive-pleading-time"
+      ],
+      "suspendedBy": [
+        "motion-alters-periods"
+      ],
+      "evidence": "(C) A party must serve a reply to an answer within 21 days after being served with an order to reply, unless the order specifies a different time.",
+      "status": "mapped",
+      "note": "The only Rule 12(a) period whose trigger is an order rather than a pleading, and the only one the order itself may reset -- 'unless the order specifies a different time' is inside the rule rather than a gate, because no other passage of this slice states that power."
+    },
+    {
+      "id": "united-states-official-capacity-60-days",
+      "name": "The United States and its officers sued officially answer within 60 days",
+      "locator": {
+        "sourceId": "frcp-6-12-81",
+        "citation": "Rule 12(a)(2)"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [
+        "time-computation-applies"
+      ],
+      "enabledBy": [
+        "responsive-pleading-time"
+      ],
+      "suspendedBy": [
+        "motion-alters-periods"
+      ],
+      "evidence": "(2) United States and Its Agencies, Officers, or Employees Sued in an Official Capacity. The United States, a United States agency, or a United States officer or employee sued only in an official capacity must serve an answer to a complaint, counterclaim, or crossclaim within 60 days after service on the United States attorney.",
+      "status": "mapped",
+      "note": "A longer period for a class of party, triggered by service on the United States attorney rather than on the defendant. Whether a defendant is in the class, and when the United States attorney was served, are facts the caller states."
+    },
+    {
+      "id": "united-states-individual-capacity-60-days",
+      "name": "A United States employee sued individually answers within 60 days of the later service",
+      "locator": {
+        "sourceId": "frcp-6-12-81",
+        "citation": "Rule 12(a)(3)"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [
+        "time-computation-applies"
+      ],
+      "enabledBy": [
+        "responsive-pleading-time"
+      ],
+      "suspendedBy": [
+        "motion-alters-periods"
+      ],
+      "evidence": "(3) United States Officers or Employees Sued in an Individual Capacity. A United States officer or employee sued in an individual capacity for an act or omission occurring in connection with duties performed on the United States’ behalf must serve an answer to a complaint, counterclaim, or crossclaim within 60 days after service on the officer or employee or service on the United States attorney, whichever is later.",
+      "status": "mapped",
+      "note": "'whichever is later' makes this an operation over two dates rather than a single period: an engine must be given both service dates and take the maximum before counting. A test must show the answer date moving when only the second service moves."
+    },
+    {
+      "id": "motion-alters-periods",
+      "name": "Serving a Rule 12 motion alters the Rule 12(a) periods",
+      "locator": {
+        "sourceId": "frcp-6-12-81",
+        "citation": "Rule 12(a)(4)"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "clear",
+      "crossReferences": [
+        {
+          "cites": "this rule",
+          "resolvedBy": "defenses-assertable-by-motion"
+        },
+        {
+          "cites": "this rule",
+          "resolvedBy": "judgment-on-the-pleadings"
+        },
+        {
+          "cites": "this rule",
+          "resolvedBy": "more-definite-statement-motion"
+        },
+        {
+          "cites": "this rule",
+          "resolvedBy": "motion-to-strike"
+        }
+      ],
+      "evidence": "(4) Effect of a Motion. Unless the court sets a different time, serving a motion under this rule alters these periods as follows:",
+      "status": "mapped",
+      "note": "The sharpest test of whether the two gate fields carry a court's power over time, because this rule *alters* periods rather than switching a rule on or off. `suspendedBy` is nonetheless the faithful reading and is used on all six Rule 12(a) periods: while a motion under this rule is before the court, none of those periods determines the answer date, and (A) or (B) does instead. The corpus's own word is 'alters', and what it alters them to is stated in (A) and (B) rather than as an adjustment to the original period. 'Unless the court sets a different time' is a third possibility the rule states about itself."
+    },
+    {
+      "id": "responsive-pleading-after-motion-denied",
+      "name": "Fourteen days after notice of a denial or a deferral",
+      "locator": {
+        "sourceId": "frcp-6-12-81",
+        "citation": "Rule 12(a)(4)(A)"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [
+        "time-computation-applies"
+      ],
+      "enabledBy": [
+        "motion-alters-periods"
+      ],
+      "evidence": "(A) if the court denies the motion or postpones its disposition until trial, the responsive pleading must be served within 14 days after notice of the court’s action; or",
+      "status": "mapped",
+      "note": "The trigger is notice of the court's action, not the action itself. A test must show the period running from the date notice was given where the two differ."
+    },
+    {
+      "id": "responsive-pleading-after-more-definite-statement",
+      "name": "Fourteen days after a more definite statement is served",
+      "locator": {
+        "sourceId": "frcp-6-12-81",
+        "citation": "Rule 12(a)(4)(B)"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [
+        "time-computation-applies"
+      ],
+      "enabledBy": [
+        "motion-alters-periods"
+      ],
+      "crossReferences": [
+        {
+          "cites": "a motion for a more definite statement",
+          "resolvedBy": "more-definite-statement-motion"
+        }
+      ],
+      "evidence": "(B) if the court grants a motion for a more definite statement, the responsive pleading must be served within 14 days after the more definite statement is served.",
+      "status": "mapped",
+      "note": "The one branch whose trigger is a party's act rather than the court's, and it runs from service of the statement and not from the order requiring it."
+    },
+    {
+      "id": "defense-asserted-in-responsive-pleading",
+      "name": "Every defense is asserted in the responsive pleading",
+      "locator": {
+        "sourceId": "frcp-6-12-81",
+        "citation": "Rule 12(b)"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "clear",
+      "evidence": "Every defense to a claim for relief in any pleading must be asserted in the responsive pleading if one is required.",
+      "status": "mapped",
+      "note": "The general rule the rest of Rule 12(b) is an exception to. 'if one is required' makes it conditional on whether the pleading calls for a response, which Rule 7(a) settles and this slice does not."
+    },
+    {
+      "id": "defenses-assertable-by-motion",
+      "name": "Seven defenses a party may assert by motion instead",
+      "locator": {
+        "sourceId": "frcp-6-12-81",
+        "citation": "Rule 12(b)"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [
+        "enumerated-defenses"
+      ],
+      "evidence": "But a party may assert the following defenses by motion:",
+      "status": "mapped",
+      "note": "The permission, separated from the list it points at because an entry that is both a procedure and a table is two entries with a dependency between them. The list is `enumerated-defenses`, cited at the seven paragraphs that print it."
+    },
+    {
+      "id": "enumerated-defenses",
+      "name": "The seven defenses listed in Rule 12(b)",
+      "locator": {
+        "sourceId": "frcp-6-12-81",
+        "citation": "Rule 12(b)(1)-(7)"
+      },
+      "kind": "value",
+      "scope": "in",
+      "clarity": "clear",
+      "crossReferences": [
+        {
+          "cites": "Rule 19",
+          "unmapped": "Rule 19, required joinder of parties. Referenced and not admitted, so the map records that the seventh defense exists and not what makes a party required."
+        }
+      ],
+      "evidence": "(1) lack of subject-matter jurisdiction; (2) lack of personal jurisdiction; (3) improper venue; (4) insufficient process; (5) insufficient service of process; (6) failure to state a claim upon which relief can be granted; and (7) failure to join a party under Rule 19.",
+      "status": "mapped",
+      "note": "A value: the closed list, transcribed whole and not sampled, and the list Rule 12(h)(1) and Rule 12(i) both index into by number. The quote stops at the end of the seventh item; the three sentences the corpus prints after it state rules of their own and are three further entries, which is also why this entry cites the seven paragraphs rather than Rule 12(b)."
+    },
+    {
+      "id": "motion-asserting-defense-before-pleading",
+      "name": "A motion asserting one of these defenses comes before pleading",
+      "locator": {
+        "sourceId": "frcp-6-12-81",
+        "citation": "Rule 12(b)"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [
+        "enumerated-defenses"
+      ],
+      "evidence": "A motion asserting any of these defenses must be made before pleading if a responsive pleading is allowed.",
+      "status": "mapped",
+      "note": "Ordering rather than timing: no period, only a position in the sequence. The citation is Rule 12(b) and the quote sits inside the element the markup gives Rule 12(b)(7): the OLRC's USLM prints the three flush sentences that close Rule 12(b) inside the last listed paragraph's <content>, so containment places them there. Rule 12(b) is the true address and is an ancestor of that element, so the citation is both what a lawyer would write and what the checker can verify."
+    },
+    {
+      "id": "defense-at-trial-without-responsive-pleading",
+      "name": "Where no responsive pleading is required, a defense may be asserted at trial",
+      "locator": {
+        "sourceId": "frcp-6-12-81",
+        "citation": "Rule 12(b)"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "clear",
+      "evidence": "If a pleading sets out a claim for relief that does not require a responsive pleading, an opposing party may assert at trial any defense to that claim.",
+      "status": "mapped",
+      "note": "The safety valve under the general rule above: a party with nothing to plead into does not lose the defense. Same markup placement as the sentence before it."
+    },
+    {
+      "id": "joining-defenses-waives-none",
+      "name": "Joining defenses waives none of them",
+      "locator": {
+        "sourceId": "frcp-6-12-81",
+        "citation": "Rule 12(b)"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "clear",
+      "evidence": "No defense or objection is waived by joining it with one or more other defenses or objections in a responsive pleading or in a motion.",
+      "status": "mapped",
+      "note": "The counterweight to Rule 12(g)(2) and Rule 12(h)(1): omitting a defense can waive it, and joining one cannot. A test must show a motion raising four defenses waiving none of them."
+    },
+    {
+      "id": "judgment-on-the-pleadings",
+      "name": "Moving for judgment on the pleadings",
+      "locator": {
+        "sourceId": "frcp-6-12-81",
+        "citation": "Rule 12(c)"
+      },
+      "kind": "assertion",
+      "scope": "in",
+      "clarity": "clear",
+      "assertedBy": [
+        "caller"
+      ],
+      "evidence": "(c) Motion for Judgment on the Pleadings. After the pleadings are closed—but early enough not to delay trial—a party may move for judgment on the pleadings.",
+      "status": "mapped",
+      "note": "Two conditions, and the second is why this is an assertion: the pleadings being closed is a fact about the docket, and 'early enough not to delay trial' is an open term with a stated measure -- delay to the trial -- that no computation settles. `assertedBy` is `caller` because the sentence names nobody who decides it; the court plainly does in practice, and the method forbids supplying a party the text does not name. An engine owes the statement, its attribution and a record of it, and must never default it to true."
+    },
+    {
+      "id": "matters-outside-pleadings",
+      "name": "Matters outside the pleadings turn the motion into one for summary judgment",
+      "locator": {
+        "sourceId": "frcp-6-12-81",
+        "citation": "Rule 12(d)"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "clear",
+      "crossReferences": [
+        {
+          "cites": "Rule 12(b)(6)",
+          "resolvedBy": "enumerated-defenses"
+        },
+        {
+          "cites": "12(c)",
+          "resolvedBy": "judgment-on-the-pleadings"
+        },
+        {
+          "cites": "Rule 56",
+          "unmapped": "Rule 56, summary judgment. Referenced and not admitted: the map records that the motion becomes one under Rule 56 and holds none of what Rule 56 then requires."
+        }
+      ],
+      "evidence": "If, on a motion under Rule 12(b)(6) or 12(c), matters outside the pleadings are presented to and not excluded by the court, the motion must be treated as one for summary judgment under Rule 56.",
+      "status": "mapped",
+      "note": "A conversion rule: the same filing changes which rule governs it, on a fact about what was presented and not excluded. An engine built from this map can say that the motion has left Rule 12 and cannot say what happens next."
+    },
+    {
+      "id": "reasonable-opportunity-to-present-material",
+      "name": "A reasonable opportunity to present pertinent material",
+      "locator": {
+        "sourceId": "frcp-6-12-81",
+        "citation": "Rule 12(d)"
+      },
+      "kind": "assertion",
+      "scope": "in",
+      "clarity": "clear",
+      "assertedBy": [
+        "caller"
+      ],
+      "evidence": "All parties must be given a reasonable opportunity to present all the material that is pertinent to the motion.",
+      "status": "mapped",
+      "note": "'Reasonable' with a stated measure -- an opportunity to present all the material pertinent to the motion -- which is the § 107.39(b) construction and an assertion rather than a gap. The sentence is passive and names no actor, so `assertedBy` is `caller`: 'All parties' names who must be given the opportunity, not who decides it was reasonable, exactly as § 107.37(b)'s 'No person may operate' names only the subject of a prohibition."
+    },
+    {
+      "id": "more-definite-statement-motion",
+      "name": "Moving for a more definite statement",
+      "locator": {
+        "sourceId": "frcp-6-12-81",
+        "citation": "Rule 12(e)"
+      },
+      "kind": "assertion",
+      "scope": "in",
+      "clarity": "clear",
+      "assertedBy": [
+        "the party"
+      ],
+      "evidence": "A party may move for a more definite statement of a pleading to which a responsive pleading is allowed but which is so vague or ambiguous that the party cannot reasonably prepare a response.",
+      "status": "mapped",
+      "note": "'So vague or ambiguous that the party cannot reasonably prepare a response' states its measure -- the party's ability to prepare a response -- and names whose ability it is. That makes it an assertion attributed to the party, and not the gap that 'vague or ambiguous' would be if the sentence stopped there."
+    },
+    {
+      "id": "more-definite-statement-motion-timing",
+      "name": "When a motion for a more definite statement must be made, and what it must say",
+      "locator": {
+        "sourceId": "frcp-6-12-81",
+        "citation": "Rule 12(e)"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "clear",
+      "evidence": "The motion must be made before filing a responsive pleading and must point out the defects complained of and the details desired.",
+      "status": "mapped",
+      "note": "Ordering and content in one sentence: before the responsive pleading, and pointing out the defects and the details desired. No period to count."
+    },
+    {
+      "id": "more-definite-statement-not-obeyed",
+      "name": "Fourteen days to obey an order for a more definite statement",
+      "locator": {
+        "sourceId": "frcp-6-12-81",
+        "citation": "Rule 12(e)"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [
+        "time-computation-applies"
+      ],
+      "evidence": "If the court orders a more definite statement and the order is not obeyed within 14 days after notice of the order or within the time the court sets, the court may strike the pleading or issue any other appropriate order.",
+      "status": "mapped",
+      "note": "A period the court may replace in the same order that starts it -- 'within 14 days after notice of the order or within the time the court sets'. The consequence is discretionary ('may strike ... or issue any other appropriate order'), so an engine can compute whether the time has run and must not say what follows."
+    },
+    {
+      "id": "motion-to-strike",
+      "name": "Striking an insufficient defense or scandalous matter",
+      "locator": {
+        "sourceId": "frcp-6-12-81",
+        "citation": "Rule 12(f)"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "clear",
+      "evidence": "(f) Motion to Strike. The court may strike from a pleading an insufficient defense or any redundant, immaterial, impertinent, or scandalous matter. The court may act:",
+      "status": "mapped",
+      "note": "The power, with the two ways it is exercised in (1) and (2). What may be struck is a closed list of five categories in the corpus's own words; whether a given passage is 'scandalous' is not something this rule measures, and no engine built from this map should decide it."
+    },
+    {
+      "id": "strike-on-courts-own",
+      "name": "Striking on the court's own initiative",
+      "locator": {
+        "sourceId": "frcp-6-12-81",
+        "citation": "Rule 12(f)(1)"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "clear",
+      "enabledBy": [
+        "motion-to-strike"
+      ],
+      "evidence": "(1) on its own; or",
+      "status": "mapped",
+      "note": "No period at all, which is the point of it beside (2): the court's own initiative is not time-barred and a party's motion is."
+    },
+    {
+      "id": "strike-on-motion-21-days",
+      "name": "Striking on a party's motion, within 21 days where no response is allowed",
+      "locator": {
+        "sourceId": "frcp-6-12-81",
+        "citation": "Rule 12(f)(2)"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [
+        "time-computation-applies"
+      ],
+      "enabledBy": [
+        "motion-to-strike"
+      ],
+      "evidence": "(2) on motion made by a party either before responding to the pleading or, if a response is not allowed, within 21 days after being served with the pleading.",
+      "status": "mapped",
+      "note": "A deadline that exists only in one branch: a party who may respond to the pleading must move before responding, and a party who may not has 21 days. An engine must be told which case it is in before it can say whether any period runs."
+    },
+    {
+      "id": "right-to-join-motions",
+      "name": "A Rule 12 motion may be joined with any other Rule 12 motion",
+      "locator": {
+        "sourceId": "frcp-6-12-81",
+        "citation": "Rule 12(g)(1)"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "clear",
+      "crossReferences": [
+        {
+          "cites": "this rule",
+          "resolvedBy": "defenses-assertable-by-motion"
+        },
+        {
+          "cites": "this rule",
+          "resolvedBy": "judgment-on-the-pleadings"
+        },
+        {
+          "cites": "this rule",
+          "resolvedBy": "more-definite-statement-motion"
+        },
+        {
+          "cites": "this rule",
+          "resolvedBy": "motion-to-strike"
+        }
+      ],
+      "evidence": "(1) Right to Join. A motion under this rule may be joined with any other motion allowed by this rule.",
+      "status": "mapped",
+      "note": "The permission the limitation below is the price of. A test must show two Rule 12 motions joined and neither defense lost."
+    },
+    {
+      "id": "limitation-on-further-motions",
+      "name": "No second Rule 12 motion on a defense that was available and omitted",
+      "locator": {
+        "sourceId": "frcp-6-12-81",
+        "citation": "Rule 12(g)(2)"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "clear",
+      "suspendedBy": [
+        "defenses-preserved-until-trial",
+        "subject-matter-jurisdiction-any-time"
+      ],
+      "crossReferences": [
+        {
+          "cites": "Except as provided in Rule 12(h)(2) or (3)",
+          "resolvedBy": "defenses-preserved-until-trial"
+        },
+        {
+          "cites": "Except as provided in Rule 12(h)(2) or (3)",
+          "resolvedBy": "subject-matter-jurisdiction-any-time"
+        },
+        {
+          "cites": "this rule",
+          "resolvedBy": "defenses-assertable-by-motion"
+        },
+        {
+          "cites": "this rule",
+          "resolvedBy": "judgment-on-the-pleadings"
+        },
+        {
+          "cites": "this rule",
+          "resolvedBy": "more-definite-statement-motion"
+        },
+        {
+          "cites": "this rule",
+          "resolvedBy": "motion-to-strike"
+        }
+      ],
+      "evidence": "(2) Limitation on Further Motions. Except as provided in Rule 12(h)(2) or (3), a party that makes a motion under this rule must not make another motion under this rule raising a defense or objection that was available to the party but omitted from its earlier motion.",
+      "status": "mapped",
+      "note": "The consolidation rule, and the clearest case in this corpus of a rule whose condition is what has already happened: what was 'available to the party but omitted from its earlier motion'. That is a fact about the case's history and not a rule, so it is a caller-supplied parameter with no entry of its own, and the rule over it is an ordinary operation. The two exceptions the rule names are recorded as `suspendedBy`, which is what they are: while either applies, this limitation does not reach the defense."
+    },
+    {
+      "id": "waiver-of-certain-defenses",
+      "name": "Waiving lack of personal jurisdiction, venue, process and service",
+      "locator": {
+        "sourceId": "frcp-6-12-81",
+        "citation": "Rule 12(h)(1)"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [
+        "enumerated-defenses"
+      ],
+      "crossReferences": [
+        {
+          "cites": "Rule 12(b)(2)–(5)",
+          "resolvedBy": "enumerated-defenses"
+        }
+      ],
+      "evidence": "(1) When Some Are Waived. A party waives any defense listed in Rule 12(b)(2)–(5) by:",
+      "status": "mapped",
+      "note": "Four of the seven listed defenses are lost by silence and three are not, so the map records which four by pointing at the list rather than restating it. The two ways of losing them are (A) and (B)."
+    },
+    {
+      "id": "waiver-by-omission-from-motion",
+      "name": "Waiver by omitting a defense from an earlier motion",
+      "locator": {
+        "sourceId": "frcp-6-12-81",
+        "citation": "Rule 12(h)(1)(A)"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "clear",
+      "enabledBy": [
+        "waiver-of-certain-defenses"
+      ],
+      "crossReferences": [
+        {
+          "cites": "Rule 12(g)(2)",
+          "resolvedBy": "limitation-on-further-motions"
+        }
+      ],
+      "evidence": "(A) omitting it from a motion in the circumstances described in Rule 12(g)(2); or",
+      "status": "mapped",
+      "note": "The consequence of the limitation above, and the reason the two must be read together: Rule 12(g)(2) says the second motion may not be made, and this says the defense is gone."
+    },
+    {
+      "id": "waiver-by-failing-to-raise",
+      "name": "Waiver by failing to make the defense by motion or in a pleading",
+      "locator": {
+        "sourceId": "frcp-6-12-81",
+        "citation": "Rule 12(h)(1)(B)"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "clear",
+      "enabledBy": [
+        "waiver-of-certain-defenses"
+      ],
+      "crossReferences": [
+        {
+          "cites": "Rule 15(a)(1)",
+          "unmapped": "Rule 15(a)(1), amending a pleading once as a matter of course. Referenced and not admitted: whether an amendment was allowed as of course, and when the window for one closes, is outside this map."
+        },
+        {
+          "cites": "this rule",
+          "resolvedBy": "defenses-assertable-by-motion"
+        },
+        {
+          "cites": "this rule",
+          "resolvedBy": "judgment-on-the-pleadings"
+        },
+        {
+          "cites": "this rule",
+          "resolvedBy": "more-definite-statement-motion"
+        },
+        {
+          "cites": "this rule",
+          "resolvedBy": "motion-to-strike"
+        }
+      ],
+      "evidence": "(B) failing to either: (i) make it by motion under this rule; or (ii) include it in a responsive pleading or in an amendment allowed by Rule 15(a)(1) as a matter of course.",
+      "status": "mapped",
+      "note": "The chapeau and its two clauses as one span, because 'failing to either:' states no rule and '(i) make it by motion under this rule; or' is not one either. The waiver turns on a period this map cannot compute -- the amendment window Rule 15(a)(1) sets -- which an engine built from this map must be told has closed."
+    },
+    {
+      "id": "defenses-preserved-until-trial",
+      "name": "Three defenses that survive until trial",
+      "locator": {
+        "sourceId": "frcp-6-12-81",
+        "citation": "Rule 12(h)(2)"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "clear",
+      "crossReferences": [
+        {
+          "cites": "Rule 19(b)",
+          "unmapped": "Rule 19(b), when joinder is not feasible. Referenced and not admitted."
+        },
+        {
+          "cites": "Rule 7(a)",
+          "unmapped": "Rule 7(a), the pleadings allowed. Referenced and not admitted, so the map cannot enumerate the pleadings this paragraph lets the defense be raised in."
+        },
+        {
+          "cites": "Rule 12(c)",
+          "resolvedBy": "judgment-on-the-pleadings"
+        }
+      ],
+      "evidence": "(2) When to Raise Others. Failure to state a claim upon which relief can be granted, to join a person required by Rule 19(b), or to state a legal defense to a claim may be raised: (A) in any pleading allowed or ordered under Rule 7(a); (B) by a motion under Rule 12(c); or (C) at trial.",
+      "status": "mapped",
+      "note": "The chapeau and its three occasions as one span: '(C) at trial.' states no rule alone. These are three of the seven listed defenses, named here in words rather than by number, which is why this entry points at Rule 19 and Rule 7 and not at `enumerated-defenses`."
+    },
+    {
+      "id": "subject-matter-jurisdiction-any-time",
+      "name": "Dismissal for want of subject-matter jurisdiction, at any time",
+      "locator": {
+        "sourceId": "frcp-6-12-81",
+        "citation": "Rule 12(h)(3)"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "clear",
+      "evidence": "(3) Lack of Subject-Matter Jurisdiction. If the court determines at any time that it lacks subject-matter jurisdiction, the court must dismiss the action.",
+      "status": "mapped",
+      "note": "The one defense no procedural history can lose, and the only rule in this slice that is expressly outside every period in it: 'at any time'. A test must show it surviving a waiver that removes the other six."
+    },
+    {
+      "id": "hearing-before-trial",
+      "name": "Defenses heard and decided before trial",
+      "locator": {
+        "sourceId": "frcp-6-12-81",
+        "citation": "Rule 12(i)"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "clear",
+      "crossReferences": [
+        {
+          "cites": "Rule 12(b)(1)–(7)",
+          "resolvedBy": "enumerated-defenses"
+        },
+        {
+          "cites": "Rule 12(c)",
+          "resolvedBy": "judgment-on-the-pleadings"
+        }
+      ],
+      "evidence": "(i) Hearing Before Trial. If a party so moves, any defense listed in Rule 12(b)(1)–(7)—whether made in a pleading or by motion—and a motion under Rule 12(c) must be heard and decided before trial unless the court orders a deferral until trial.",
+      "status": "mapped",
+      "note": "Ordering with a court's power to displace it -- 'unless the court orders a deferral until trial' -- stated inside the rule rather than in another passage, so it is inside the quote and not a gate. Conditional on a party moving, which is a fact the caller states."
+    },
+    {
+      "id": "prize-proceedings-excluded",
+      "name": "These rules do not apply to prize proceedings",
+      "locator": {
+        "sourceId": "frcp-6-12-81",
+        "citation": "Rule 81(a)(1)"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "clear",
+      "crossReferences": [
+        {
+          "cites": "These rules",
+          "unmapped": "The Federal Rules of Civil Procedure as a body. This map holds three of the eighty-seven rules, so what the pointer switches on or off is overwhelmingly outside it; the manifest lists the rules this slice names individually, and the pointer reaches the rest as well."
+        },
+        {
+          "cites": "10 U.S.C. §§ 7651–7681",
+          "unmapped": "The prize statute. Referenced and not admitted: the map records that a proceeding governed by it is outside these rules and cannot tell whether a given proceeding is one."
+        }
+      ],
+      "evidence": "(1) Prize Proceedings. These rules do not apply to prize proceedings in admiralty governed by 10 U.S.C. §§ 7651–7681.",
+      "status": "mapped",
+      "note": "The only flat exclusion in the rule, and the only applicability entry here that switches the whole body of rules off rather than on. Whether a proceeding is a prize proceeding in admiralty governed by that statute is a fact the caller states."
+    },
+    {
+      "id": "bankruptcy-to-extent-provided",
+      "name": "These rules apply to bankruptcy proceedings to the extent the Bankruptcy Rules provide",
+      "locator": {
+        "sourceId": "frcp-6-12-81",
+        "citation": "Rule 81(a)(2)"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "clear",
+      "crossReferences": [
+        {
+          "cites": "These rules",
+          "unmapped": "The Federal Rules of Civil Procedure as a body. This map holds three of the eighty-seven rules, so what the pointer switches on or off is overwhelmingly outside it; the manifest lists the rules this slice names individually, and the pointer reaches the rest as well."
+        },
+        {
+          "cites": "to the extent provided by the Federal Rules of Bankruptcy Procedure",
+          "unmapped": "A separate rulebook, referenced and not admitted. It decides how far these rules reach into a bankruptcy proceeding, so an engine built from this map cannot answer that question at all and must be told."
+        }
+      ],
+      "evidence": "(2) Bankruptcy. These rules apply to bankruptcy proceedings to the extent provided by the Federal Rules of Bankruptcy Procedure.",
+      "status": "mapped",
+      "note": "Applicability delegated wholesale to another corpus. The map records the delegation and the boundary; it does not record a degree of application it cannot read."
+    },
+    {
+      "id": "citizenship-proceedings",
+      "name": "These rules apply to admission-to-citizenship proceedings on two conditions",
+      "locator": {
+        "sourceId": "frcp-6-12-81",
+        "citation": "Rule 81(a)(3)"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "clear",
+      "crossReferences": [
+        {
+          "cites": "These rules",
+          "unmapped": "The Federal Rules of Civil Procedure as a body. This map holds three of the eighty-seven rules, so what the pointer switches on or off is overwhelmingly outside it; the manifest lists the rules this slice names individually, and the pointer reaches the rest as well."
+        },
+        {
+          "cites": "federal statutes",
+          "unmapped": "Whichever federal statutes specify the practice in naturalisation proceedings. A class of corpora and not one document."
+        }
+      ],
+      "evidence": "These rules apply to proceedings for admission to citizenship to the extent that the practice in those proceedings is not specified in federal statutes and has previously conformed to the practice in civil actions.",
+      "status": "mapped",
+      "note": "Two conditions joined by 'and', one of them historical: the practice must not be specified in federal statutes *and* must previously have conformed to the practice in civil actions. The second is a fact about a past that no engine can establish and a caller must state."
+    },
+    {
+      "id": "citizenship-cancellation-service-and-answer",
+      "name": "Service by publication and answer in a certificate-cancellation proceeding",
+      "locator": {
+        "sourceId": "frcp-6-12-81",
+        "citation": "Rule 81(a)(3)"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "clear",
+      "crossReferences": [
+        {
+          "cites": "8 U.S.C. § 1451",
+          "unmapped": "The statute governing revocation of naturalisation. Referenced and not admitted: its provisions for service by publication and for answer apply instead of these rules', and the map holds none of them."
+        }
+      ],
+      "evidence": "The provisions of 8 U.S.C. § 1451 for service by publication and for answer apply in proceedings to cancel citizenship certificates.",
+      "status": "mapped",
+      "note": "A second rule in the same paragraph, running the other way: here a named statute displaces these rules for two specific things. Quoted as its own sentence so the entry and the quote agree."
+    },
+    {
+      "id": "special-writs",
+      "name": "These rules apply to habeas corpus and quo warranto on two conditions",
+      "locator": {
+        "sourceId": "frcp-6-12-81",
+        "citation": "Rule 81(a)(4)"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "clear",
+      "crossReferences": [
+        {
+          "cites": "These rules",
+          "unmapped": "The Federal Rules of Civil Procedure as a body. This map holds three of the eighty-seven rules, so what the pointer switches on or off is overwhelmingly outside it; the manifest lists the rules this slice names individually, and the pointer reaches the rest as well."
+        },
+        {
+          "cites": "a federal statute",
+          "unmapped": "Whichever federal statute specifies the practice. A class of corpora and not one document."
+        },
+        {
+          "cites": "a federal statute",
+          "resolvedBy": "federal-statute-defined-dc"
+        },
+        {
+          "cites": "the Rules Governing Section 2254 Cases",
+          "unmapped": "A separate rulebook for state prisoners' habeas petitions. Referenced and not admitted."
+        },
+        {
+          "cites": "the Rules Governing Section 2255 Cases",
+          "unmapped": "A separate rulebook for federal prisoners' motions. Referenced and not admitted."
+        }
+      ],
+      "evidence": "(4) Special Writs. These rules apply to proceedings for habeas corpus and for quo warranto to the extent that the practice in those proceedings: (A) is not specified in a federal statute, the Rules Governing Section 2254 Cases, or the Rules Governing Section 2255 Cases; and (B) has previously conformed to the practice in civil actions.",
+      "status": "mapped",
+      "note": "The chapeau and its two conditions as one span: '(B) has previously conformed to the practice in civil actions.' states no rule alone. Three corpora can displace these rules here and none of them is admitted, so this entry's whole operative content for an engine is: ask."
+    },
+    {
+      "id": "subpoena-proceedings",
+      "name": "These rules apply to proceedings to compel testimony under a subpoena",
+      "locator": {
+        "sourceId": "frcp-6-12-81",
+        "citation": "Rule 81(a)(5)"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "clear",
+      "crossReferences": [
+        {
+          "cites": "These rules",
+          "unmapped": "The Federal Rules of Civil Procedure as a body. This map holds three of the eighty-seven rules, so what the pointer switches on or off is overwhelmingly outside it; the manifest lists the rules this slice names individually, and the pointer reaches the rest as well."
+        },
+        {
+          "cites": "a federal statute",
+          "resolvedBy": "federal-statute-defined-dc"
+        },
+        {
+          "cites": "except as otherwise provided by statute, by local rule, or by court order in the proceedings",
+          "unmapped": "Three classes of corpus at once -- a federal statute, a district's local rules, and an order in the proceeding. `references` names documents; none of the three is one."
+        }
+      ],
+      "evidence": "(5) Proceedings Involving a Subpoena. These rules apply to proceedings to compel testimony or the production of documents through a subpoena issued by a United States officer or agency under a federal statute, except as otherwise provided by statute, by local rule, or by court order in the proceedings.",
+      "status": "mapped",
+      "note": "Applicability switched on by the source of the subpoena and off by any of three things the map cannot read. The rule is clear; what an engine can compute from it is whether the proceeding is in the class, and nothing else."
+    },
+    {
+      "id": "other-proceedings",
+      "name": "These rules govern proceedings under seven named laws, to the extent applicable",
+      "locator": {
+        "sourceId": "frcp-6-12-81",
+        "citation": "Rule 81(a)(6)"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [
+        "other-proceedings-laws"
+      ],
+      "crossReferences": [
+        {
+          "cites": "These rules",
+          "unmapped": "The Federal Rules of Civil Procedure as a body. This map holds three of the eighty-seven rules, so what the pointer switches on or off is overwhelmingly outside it; the manifest lists the rules this slice names individually, and the pointer reaches the rest as well."
+        },
+        {
+          "cites": "except as these laws provide other procedures",
+          "unmapped": "Each of the seven statutes listed in (A)-(G), none of them admitted. Whether one provides another procedure for the step in hand is a fact the caller states."
+        }
+      ],
+      "evidence": "(6) Other Proceedings. These rules, to the extent applicable, govern proceedings under the following laws, except as these laws provide other procedures:",
+      "status": "mapped",
+      "note": "'to the extent applicable' is the loosest applicability in the slice, and it is recorded as it stands rather than resolved: the phrase states no measure and names no decider, but it qualifies a rule whose subject -- the seven laws -- is a closed list, so the entry is clear about what it governs and silent about how far. The list is a value of its own, `other-proceedings-laws`."
+    },
+    {
+      "id": "other-proceedings-laws",
+      "name": "The seven laws Rule 81(a)(6) names",
+      "locator": {
+        "sourceId": "frcp-6-12-81",
+        "citation": "Rule 81(a)(6)(A)-(G)"
+      },
+      "kind": "value",
+      "scope": "in",
+      "clarity": "clear",
+      "crossReferences": [
+        {
+          "cites": "7 U.S.C. §§ 292, 499g(c)",
+          "unmapped": "Referenced and not admitted."
+        },
+        {
+          "cites": "9 U.S.C.",
+          "unmapped": "The Federal Arbitration Act, referenced by title and not admitted."
+        },
+        {
+          "cites": "15 U.S.C. § 522",
+          "unmapped": "Referenced and not admitted."
+        },
+        {
+          "cites": "15 U.S.C. § 715d(c)",
+          "unmapped": "Referenced and not admitted."
+        },
+        {
+          "cites": "29 U.S.C. §§ 159, 160",
+          "unmapped": "Referenced and not admitted."
+        },
+        {
+          "cites": "33 U.S.C. §§ 918, 921",
+          "unmapped": "Referenced and not admitted."
+        },
+        {
+          "cites": "45 U.S.C. § 159",
+          "unmapped": "Referenced and not admitted."
+        }
+      ],
+      "evidence": "(A) 7 U.S.C. §§ 292, 499g(c), for reviewing an order of the Secretary of Agriculture; (B) 9 U.S.C., relating to arbitration; (C) 15 U.S.C. § 522, for reviewing an order of the Secretary of the Interior; (D) 15 U.S.C. § 715d(c), for reviewing an order denying a certificate of clearance; (E) 29 U.S.C. §§ 159, 160, for enforcing an order of the National Labor Relations Board; (F) 33 U.S.C. §§ 918, 921, for enforcing or reviewing a compensation order under the Longshore and Harbor Workers’ Compensation Act; and (G) 45 U.S.C. § 159, for reviewing an arbitration award in a railway-labor dispute.",
+      "status": "mapped",
+      "note": "A value: the whole list transcribed, each item a statute and the proceeding it is named for. Seven external corpora, none admitted, which is the largest single boundary this map records."
+    },
+    {
+      "id": "writs-abolished",
+      "name": "Scire facias and mandamus are abolished",
+      "locator": {
+        "sourceId": "frcp-6-12-81",
+        "citation": "Rule 81(b)"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "clear",
+      "evidence": "The writs of scire facias and mandamus are abolished.",
+      "status": "mapped",
+      "note": "A rule with no period, no party and no condition, kept as its own entry because the sentence after it states what replaces them and the two are different rules."
+    },
+    {
+      "id": "relief-by-action-or-motion",
+      "name": "Relief formerly available by those writs is obtained by action or motion",
+      "locator": {
+        "sourceId": "frcp-6-12-81",
+        "citation": "Rule 81(b)"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "clear",
+      "crossReferences": [
+        {
+          "cites": "under these rules",
+          "unmapped": "The Federal Rules of Civil Procedure as a body, which state what an action and a motion are. This map holds three of the eighty-seven rules and neither of those two."
+        }
+      ],
+      "evidence": "Relief previously available through them may be obtained by appropriate action or motion under these rules.",
+      "status": "mapped",
+      "note": "The substitute for the abolished writs. 'Appropriate' is undefined and undecidable here, and the rule is nonetheless clear about the consequence: the relief is still available, by another route."
+    },
+    {
+      "id": "removed-action-applicability",
+      "name": "These rules apply to an action after it is removed",
+      "locator": {
+        "sourceId": "frcp-6-12-81",
+        "citation": "Rule 81(c)(1)"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "clear",
+      "crossReferences": [
+        {
+          "cites": "These rules",
+          "unmapped": "The Federal Rules of Civil Procedure as a body. This map holds three of the eighty-seven rules, so what the pointer switches on or off is overwhelmingly outside it; the manifest lists the rules this slice names individually, and the pointer reaches the rest as well."
+        }
+      ],
+      "evidence": "(1) Applicability. These rules apply to a civil action after it is removed from a state court.",
+      "status": "mapped",
+      "note": "The applicability that makes the rest of Rule 81(c) reachable, and the only one in the rule whose condition is an event in the case rather than a class of proceeding. Every entry below is `enabledBy` it."
+    },
+    {
+      "id": "repleading-unnecessary",
+      "name": "Repleading after removal is unnecessary unless ordered",
+      "locator": {
+        "sourceId": "frcp-6-12-81",
+        "citation": "Rule 81(c)(2)"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "clear",
+      "enabledBy": [
+        "removed-action-applicability"
+      ],
+      "evidence": "After removal, repleading is unnecessary unless the court orders it.",
+      "status": "mapped",
+      "note": "What does *not* have to be done, which is a rule an engine can be asked about and would otherwise answer from silence."
+    },
+    {
+      "id": "removed-defendant-must-answer",
+      "name": "A defendant who did not answer before removal answers within the longest of three periods",
+      "locator": {
+        "sourceId": "frcp-6-12-81",
+        "citation": "Rule 81(c)(2)"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [
+        "time-computation-applies",
+        "exclude-trigger-day",
+        "include-last-day"
+      ],
+      "enabledBy": [
+        "removed-action-applicability"
+      ],
+      "crossReferences": [
+        {
+          "cites": "under these rules",
+          "unmapped": "The Federal Rules of Civil Procedure as a body, which say what defenses and objections may be presented. This map holds three of the eighty-seven rules."
+        }
+      ],
+      "evidence": "A defendant who did not answer before removal must answer or present other defenses or objections under these rules within the longest of these periods: (A) 21 days after receiving—through service or otherwise—a copy of the initial pleading stating the claim for relief; (B) 21 days after being served with the summons for an initial pleading on file at the time of service; or (C) 7 days after the notice of removal is filed.",
+      "status": "mapped",
+      "note": "Three periods from three different triggers and the longest of them governs, which makes this an operation over a set of computed dates rather than one period. Two of the three triggers are the same length from different events, and the third is shorter from a later one, so which governs cannot be decided without computing all three. The quote runs from the second sentence of the chapeau through (C) as one span, because the chapeau's 'within the longest of these periods:' states no period and (A), (B) and (C) state no obligation."
+    },
+    {
+      "id": "jury-demand-made-before-removal",
+      "name": "A jury demand made before removal need not be renewed",
+      "locator": {
+        "sourceId": "frcp-6-12-81",
+        "citation": "Rule 81(c)(3)(A)"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [
+        "state-law-defined"
+      ],
+      "enabledBy": [
+        "removed-action-applicability"
+      ],
+      "crossReferences": [
+        {
+          "cites": "in accordance with state law",
+          "resolvedBy": "state-law-defined"
+        }
+      ],
+      "evidence": "A party who, before removal, expressly demanded a jury trial in accordance with state law need not renew the demand after removal.",
+      "status": "mapped",
+      "note": "The first of four rules in one paragraph. 'In accordance with state law' uses the term Rule 81(d)(1) defines, which is why `dependsOn` names it."
+    },
+    {
+      "id": "jury-demand-not-required-by-state-law",
+      "name": "Where state law required no express demand, none is needed after removal",
+      "locator": {
+        "sourceId": "frcp-6-12-81",
+        "citation": "Rule 81(c)(3)(A)"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [
+        "state-law-defined"
+      ],
+      "enabledBy": [
+        "removed-action-applicability"
+      ],
+      "crossReferences": [
+        {
+          "cites": "the state law",
+          "resolvedBy": "state-law-defined"
+        }
+      ],
+      "evidence": "If the state law did not require an express demand for a jury trial, a party need not make one after removal unless the court orders the parties to do so within a specified time.",
+      "status": "mapped",
+      "note": "Applicability turning on the content of another sovereign's law, which the map cannot read and the caller must state. The court may nonetheless order a demand, with a period the court itself sets -- a deadline whose length is in no rule."
+    },
+    {
+      "id": "court-must-order-jury-demand-on-request",
+      "name": "The court must order a demand at a party's request and may on its own",
+      "locator": {
+        "sourceId": "frcp-6-12-81",
+        "citation": "Rule 81(c)(3)(A)"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "clear",
+      "enabledBy": [
+        "removed-action-applicability"
+      ],
+      "evidence": "The court must so order at a party’s request and may so order on its own.",
+      "status": "mapped",
+      "note": "A duty and a discretion in one sentence, kept as one entry because the sentence is one rule about one order. A test must show the order compelled by a request and permitted without one."
+    },
+    {
+      "id": "jury-waived-by-failing-to-demand",
+      "name": "Failing to demand a jury when ordered waives it",
+      "locator": {
+        "sourceId": "frcp-6-12-81",
+        "citation": "Rule 81(c)(3)(A)"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "clear",
+      "enabledBy": [
+        "removed-action-applicability"
+      ],
+      "evidence": "A party who fails to make a demand when so ordered waives a jury trial.",
+      "status": "mapped",
+      "note": "The consequence of missing a deadline the court set rather than one the rules state, which is the one kind of period in this slice whose length is nowhere in the corpus."
+    },
+    {
+      "id": "jury-demand-under-rule-38",
+      "name": "Fourteen days to demand a jury where the pleadings were served before removal",
+      "locator": {
+        "sourceId": "frcp-6-12-81",
+        "citation": "Rule 81(c)(3)(B)"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [
+        "time-computation-applies"
+      ],
+      "enabledBy": [
+        "removed-action-applicability"
+      ],
+      "crossReferences": [
+        {
+          "cites": "Rule 38",
+          "unmapped": "Rule 38, the right to a jury trial and the demand for one. Referenced and not admitted: whether a party is entitled to a jury trial under it is a fact the caller states."
+        }
+      ],
+      "evidence": "(B) Under Rule 38. If all necessary pleadings have been served at the time of removal, a party entitled to a jury trial under Rule 38 must be given one if the party serves a demand within 14 days after: (i) it files a notice of removal; or (ii) it is served with a notice of removal filed by another party.",
+      "status": "mapped",
+      "note": "The chapeau and its two triggers as one span, since '(i) it files a notice of removal; or' states no rule alone. Which trigger applies depends on whether this party filed the notice of removal or another did, and the two dates can differ."
+    },
+    {
+      "id": "state-law-defined",
+      "name": "What “law” means when these rules refer to state law",
+      "locator": {
+        "sourceId": "frcp-6-12-81",
+        "citation": "Rule 81(d)(1)"
+      },
+      "kind": "value",
+      "scope": "in",
+      "clarity": "clear",
+      "defines": [
+        {
+          "vocabulary": "frcp-applicability-terms",
+          "term": "state law"
+        }
+      ],
+      "crossReferences": [
+        {
+          "cites": "these rules",
+          "unmapped": "The Federal Rules of Civil Procedure as a body. This map holds three of the eighty-seven rules, so what the pointer switches on or off is overwhelmingly outside it; the manifest lists the rules this slice names individually, and the pointer reaches the rest as well."
+        }
+      ],
+      "evidence": "(1) “State Law” Defined. When these rules refer to state law, the term “law” includes the state’s statutes and the state’s judicial decisions.",
+      "status": "mapped",
+      "note": "A definition, and one the slice uses twice in Rule 81(c)(3)(A). It settles that a state's judicial decisions are 'law' for these purposes, so an engine told only about a state's statutes has been told half of it."
+    },
+    {
+      "id": "state-defined",
+      "name": "What “state” includes",
+      "locator": {
+        "sourceId": "frcp-6-12-81",
+        "citation": "Rule 81(d)(2)"
+      },
+      "kind": "value",
+      "scope": "in",
+      "clarity": "clear",
+      "defines": [
+        {
+          "vocabulary": "frcp-terms-with-no-lexical-detector",
+          "term": "state"
+        }
+      ],
+      "evidence": "(2) “State” Defined. The term “state” includes, where appropriate, the District of Columbia and any United States commonwealth or territory.",
+      "status": "mapped",
+      "note": "'where appropriate' is an open term with no measure and no named decider, and it qualifies the extension of the definition rather than its core: the District of Columbia and a territory are states for some purposes and not all. Recorded as it stands. The entry is clear about what the term includes and does not claim to settle when the extension applies. The vocabulary is its own, and `mapping-protocol.json` declares no `defined-term-use` mechanism over it, because the corpus writes this term as an ordinary English verb four times -- *\"failure to state a claim\"*, *\"to state a legal defense\"*, *\"an initial pleading stating the claim\"* -- and no lexical mechanism can tell those from a naming of the defined noun. Declaring the mechanism would oblige this map to resolve *\"failure to state a claim\"* to this entry, which is false about the corpus; leaving the definition undeclared would hide a rule the corpus states. #307 measured the same thing on a coded pointer and had a column to fall back on; prose has none."
+    },
+    {
+      "id": "federal-statute-defined-dc",
+      "name": "What “federal statute” includes in the District of Columbia",
+      "locator": {
+        "sourceId": "frcp-6-12-81",
+        "citation": "Rule 81(d)(3)"
+      },
+      "kind": "value",
+      "scope": "in",
+      "clarity": "clear",
+      "defines": [
+        {
+          "vocabulary": "frcp-applicability-terms",
+          "term": "federal statute"
+        }
+      ],
+      "evidence": "(3) “Federal Statute” Defined in the District of Columbia. In the United States District Court for the District of Columbia, the term “federal statute” includes any Act of Congress that applies locally to the District.",
+      "status": "mapped",
+      "note": "A definition that holds in one court only, which makes every 'federal statute' condition in Rules 12(a) and 81(a) read differently there. An engine must be told which district it is in before it can apply them."
+    }
+  ]
+}

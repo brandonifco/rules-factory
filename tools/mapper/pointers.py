@@ -26,7 +26,8 @@ term exactly, so a corpus that inflects its defined terms needs a mechanism this
 """
 import re
 
-from mapcontract.entry import defined_vocabulary, entries_of, index
+from mapcontract.entry import (canonical_vocabulary, defined_vocabulary, entries_of,
+                               index)
 
 from mapper.protocol import citation_of, mechanisms_of, vocabulary_of
 
@@ -78,9 +79,21 @@ def _names(text, term):
 
 def detect(document, vocabulary_entry):
     """Every naming of a defined term outside the passage that defines it."""
+    return detect_terms(document, vocabulary_of(vocabulary_entry))
+
+
+def detect_terms(document, terms):
+    """The same detection over `{term: [defining entry ids]}`, however that mapping was read.
+
+    A vocabulary reaches this function in one of two shapes and they are the same shape: an index
+    passage's term-anchored `crossReferences` (0026), or the distributed `defines` of the entries
+    that state each term (0045). Trial 11's corpus has no index passage -- the Federal Rules of
+    Civil Procedure define *"Last Day"*, *"Next Day"* and *"Legal holiday"* in the paragraphs that
+    use them -- so the detector reads what the map already declares rather than requiring a
+    passage the corpus does not print.
+    """
     entries = entries_of(document)
     by_id = index(document)
-    terms = vocabulary_of(vocabulary_entry)
     # Where each term is defined, as citations: every entry citing one of them is inside that
     # definition. A term may be defined in more than one passage (0044), and a naming inside any
     # of them is the definition rather than a pointer.
@@ -208,15 +221,23 @@ def report(protocol, document):
                              + (f" ({len(naming.defines)} entries state it)"
                                 if len(naming.defines) > 1 else ""))
     for mechanism in mechanisms_of(protocol, "defined-term-use"):
-        source = mechanism.get("vocabularyFrom")
-        entry = by_id.get(source)
-        if entry is None:
-            lines.append(f"  X  vocabularyFrom {source!r} is not an entry in this map")
-            continue
-        terms = vocabulary_of(entry)
-        namings = detect(document, entry)
+        source, named = mechanism.get("vocabularyFrom"), mechanism.get("vocabulary")
+        if canonical_vocabulary(named):
+            # 0045's distributed form, on the other mechanism: the corpus prints no index, and
+            # the vocabulary is what its entries' `defines` add up to. `mapper protocol` has
+            # already refused a name no entry defines.
+            terms = defined_vocabulary(document, named)
+            source = f"vocabulary {canonical_vocabulary(named)!r}"
+        else:
+            entry = by_id.get(source)
+            if entry is None:
+                lines.append(f"  X  vocabularyFrom {source!r} is not an entry in this map")
+                continue
+            terms = vocabulary_of(entry)
+            source = repr(source)
+        namings = detect_terms(document, terms)
         detected += sum(n.count for n in namings)
-        lines.append(f"  {len(terms)} term(s) declared by {source!r}; "
+        lines.append(f"  {len(terms)} term(s) declared by {source}; "
                      f"{sum(n.count for n in namings)} naming(s) of one outside its own passage, "
                      f"in {len({n.entry_id for n in namings})} entr(ies)")
         for naming in namings:

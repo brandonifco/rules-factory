@@ -1,11 +1,26 @@
 {
   "protocolVersion": 1,
   "corpus": "frcp-6-12-81",
-  "units": ["section", "paragraph", "heading"],
+  "units": [
+    "section",
+    "paragraph",
+    "heading"
+  ],
   "pointerMechanisms": [
-    { "mechanism": "phrase" },
-    { "mechanism": "section-designation" },
-    { "mechanism": "defined-term-use" }
+    {
+      "mechanism": "phrase"
+    },
+    {
+      "mechanism": "section-designation"
+    },
+    {
+      "mechanism": "defined-term-use",
+      "vocabulary": "frcp-time-terms"
+    },
+    {
+      "mechanism": "defined-term-use",
+      "vocabulary": "frcp-applicability-terms"
+    }
   ],
   "requiredSweeps": [
     "definitions",

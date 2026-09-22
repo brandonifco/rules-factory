@@ -128,7 +128,21 @@ def corpus_index(path):
     if not spans:
         raise Refused(f"{path} holds no element identified under {PREFIX}; it is not the "
                       f"court-rule slice this grammar reads")
-    return "".join(corpus), spans
+    # Each piece carries the separating space that keeps two text nodes from running together,
+    # so a span's last character is that space and a quote ending at the unit's last *word* ends
+    # one character short of it. 0037's edge test compares offsets, so the bounds are trimmed to
+    # the text the unit actually prints; the space between two units then belongs to neither,
+    # which is where it belongs.
+    text = "".join(corpus)
+    trimmed = []
+    for start, end, owner in spans:
+        while end > start and text[end - 1].isspace():
+            end -= 1
+        while start < end and text[start].isspace():
+            start += 1
+        if end > start:
+            trimmed.append((start, end, owner))
+    return text, trimmed
 
 
 def cited_paths(citation):

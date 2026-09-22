@@ -146,7 +146,7 @@ class TestTheVocabularyMustExist(ProtocolCase):
 
     def test_defined_term_use_without_a_vocabulary(self):
         self.mechanism(vocabularyFrom=None)
-        self.assert_refused("must say which entry states the terms")
+        self.assert_refused("a mechanism that points by naming a term must say which terms")
 
     def test_a_vocabulary_entry_that_is_not_in_the_map(self):
         self.mechanism(vocabularyFrom="the-fifteen-conditions")
@@ -174,11 +174,30 @@ class TestTheVocabularyMustExist(ProtocolCase):
                                                "vocabularyFrom": "condition-list"}]
         self.assert_refused("coded-pointer's vocabulary is distributed over the entries")
 
-    def test_a_named_vocabulary_on_a_mechanism_that_reads_none(self):
+    def test_defined_term_use_may_not_name_a_vocabulary_two_ways(self):
+        """Trial 11 gave this mechanism 0045's distributed form as well, and one or the other.
+
+        The SRD prints a Rules Glossary, so `vocabularyFrom` names the entry that lists its terms;
+        the Federal Rules of Civil Procedure print no index, so the vocabulary is what the
+        entries defining each term add up to. Naming both is two vocabularies for one mechanism,
+        and nothing says which the detector reads.
+        """
         self.protocol["pointerMechanisms"] = [{"mechanism": "defined-term-use",
                                                "vocabularyFrom": "condition-list",
                                                "vocabulary": "condition-names"}]
-        self.assert_refused("'defined-term-use' reads no such vocabulary")
+        self.assert_refused("names both `vocabularyFrom` and `vocabulary`")
+
+    def test_a_named_vocabulary_on_a_mechanism_that_reads_none(self):
+        self.protocol["pointerMechanisms"] = [{"mechanism": "phrase",
+                                               "vocabulary": "condition-names"}]
+        self.assert_refused("'phrase' reads no such vocabulary")
+
+    def test_defined_term_use_over_a_vocabulary_no_entry_defines(self):
+        """The distributed form is held to 0045's own check, which is the one `coded-pointer`
+        already gets: a name no entry defines is refused rather than read as an empty vocabulary.
+        """
+        self.mechanism(vocabularyFrom=None, vocabulary="nothing-defines-this")
+        self.assert_refused("no entry in this map establishes vocabulary")
 
 
 class TestTheDetector(unittest.TestCase):

@@ -585,7 +585,8 @@ class TheDeclarationIsAnchoredOrItIsRefused(ValidatorCase):
     #: The only committed map that declares `defines`: trial 10's, whose corpus forced 0045.
     #: Every other map predates the field, so its verdict is `NOT VERIFIED -- no entry declares
     #: `defines``, a skip with no subject that fails nothing.
-    DECLARING = {os.path.join("examples", "hazmat-172-table", "corpus-map.json")}
+    DECLARING = {os.path.join("examples", "hazmat-172-table", "corpus-map.json"),
+             os.path.join("examples", "frcp-6-12-81", "corpus-map.json")}
 
     def test_only_the_map_that_forced_the_field_carries_defines(self):
         """A map gaining `defines` is a change to how a vocabulary is read, and it is named here.

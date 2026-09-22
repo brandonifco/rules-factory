@@ -588,6 +588,39 @@ class TestExtent(MapCase):
         self.assertEqual(self.status_of(output, "extent"), "skip", output)
         self.assertEqual(code, 0, output)
 
+    def test_the_rule_designation_is_read_as_its_locator_checker_reads_it(self):
+        """The second spelling of `section-designation`, held to its own checker (trial 11).
+
+        `Rule 6(a)(1)(A)` and `§ 107.29(a)(2)` are one unit and two spellings, so this asks of the
+        court-rule grammar exactly what the test below asks of the CFR's: that placing a citation
+        inside an extent and resolving it against a corpus read the same designation out of it.
+
+        Mutation: drop the `(?![\\d.])` from `CITE_RULE` here and `Rule 12` reads `Rule 1` out of
+        a map that cites `Rule 12(a)`; this equality goes red on every Rule 12 and Rule 81 entry.
+        """
+        repo = os.path.dirname(os.path.dirname(os.path.dirname(HERE)))
+        spec = importlib.util.spec_from_file_location(
+            "check_locators_uslm",
+            os.path.join(repo, "examples", "frcp-6-12-81", "check-locators-uslm.py"))
+        uslm = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(uslm)
+        self.assertEqual(uslm.CITE_RULE.pattern, check_map.CITE_RULE.pattern)
+        self.assertEqual(uslm.EXTENT_RULE.pattern, check_map.EXTENT_RULE.pattern)
+        with open(os.path.join(repo, "examples", "frcp-6-12-81", "corpus-map.json"),
+                  encoding="utf-8") as handle:
+            document = json.load(handle)
+        citations = [e["locator"]["citation"] for e in document["entries"] if "locator" in e]
+        self.assertTrue(citations, "the trial 11 map cites nothing -- this test proved nothing")
+        for citation in citations:
+            with self.subTest(citation=citation):
+                prefixes = uslm.cited_paths(citation)
+                self.assertIsNotNone(prefixes)
+                self.assertEqual(check_map.cited_section(citation),
+                                 ("section", f"Rule {prefixes[0][0]}"))
+        for item in document["extent"]["sections"]:
+            with self.subTest(extent=item):
+                self.assertEqual(check_map.extent_designation(item), item)
+
     def test_the_section_is_read_as_the_locator_checker_reads_it(self):
         # The two grammars are one grammar, kept in two files; they agree on every citation
         # the Part 107 maps make, and on the forms 0020 adds.

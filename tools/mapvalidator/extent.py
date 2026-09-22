@@ -5,7 +5,8 @@ import re
 
 from .diagnostics import fail, skip, verdict
 from .extent_tables import _place_row, _tables_extent
-from .locators import EXTENT_SECTION, cited_page, cited_row, cited_section
+from .locators import (cited_page, cited_row, cited_section, extent_designation,
+                       printed_designation)
 from mapcontract.entry import block, entries_of, label
 
 
@@ -165,15 +166,15 @@ def _section_extent(extent, bad):
         return None
     numbers = []
     for item in sections:
-        match = EXTENT_SECTION.match(item) if isinstance(item, str) else None
-        if not match:
-            bad.append(f"  X  extent: sections holds {item!r}, which is not one section "
-                       f"designation such as \"§ 107.25\"")
+        designation = extent_designation(item)
+        if designation is None:
+            bad.append(f"  X  extent: sections holds {item!r}, which is not one structural "
+                       f"designation such as \"§ 107.25\" or \"Rule 6\"")
             continue
-        if match.group(1) in numbers:
-            bad.append(f"  X  extent: § {match.group(1)} is listed twice")
+        if designation in numbers:
+            bad.append(f"  X  extent: {printed_designation(designation)} is listed twice")
             continue
-        numbers.append(match.group(1))
+        numbers.append(designation)
     return numbers
 
 
@@ -262,7 +263,8 @@ def check_extent(ctx):
         elif entry.get("scope") == "out":
             beyond.append(f"{name} ({citation})")
         else:
-            where = f"§ {cited[1]}" if cited[0] == "section" else f"subpart {cited[1]}"
+            where = (printed_designation(cited[1]) if cited[0] == "section"
+                     else f"subpart {cited[1]}")
             bad.append(f"  X  {name}: cites {where}, outside the declared extent "
                        f"({len(numbers)} sections), and is not `scope: out`; an in-scope rule is "
                        f"cited inside what the map claims to have read")

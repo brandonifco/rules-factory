@@ -319,10 +319,12 @@ def _check_mechanisms(protocol, document):
             if "column" in declared:
                 problems.append(f"{where}: `column` belongs to coded-pointer, whose pointers are "
                                 f"made by the column they sit in; {name!r} reads no column")
-            if "vocabulary" in declared:
+            if "vocabulary" in declared and name != "defined-term-use":
+                # `defined-term-use` reads one too, where the corpus prints no index passage for
+                # `vocabularyFrom` to name; `_check_vocabulary` above has already judged it.
                 problems.append(f"{where}: `vocabulary` names a vocabulary the map's entries "
-                                f"declare with `defines` (0045), which is coded-pointer's; "
-                                f"{name!r} reads no such vocabulary")
+                                f"declare with `defines` (0045), which is coded-pointer's or "
+                                f"defined-term-use's; {name!r} reads no such vocabulary")
     return problems
 
 
@@ -375,11 +377,31 @@ def _check_vocabulary(where, declared, document):
     They are read out of the map, not out of a list in the protocol: the corpus already states
     its vocabulary somewhere, that statement is an entry, and a second copy in the protocol would
     be a second definition to keep in step.
+
+    **Two corpora say where in two ways, and both are already in the contract.** The SRD prints a
+    Rules Glossary, so one entry lists the terms and `vocabularyFrom` names it. The Federal Rules
+    of Civil Procedure, admitted by trial 11, print no index at all: *"Last Day"*, *"Next Day"*,
+    *"Legal holiday"*, *"State Law"* are each defined in the paragraph that the rules using them
+    sit beside. That is the shape 0045 already decided for `coded-pointer` -- a vocabulary is
+    distributed over the entries that define its terms -- so this mechanism reads a `vocabulary`
+    name the same way when the corpus has no passage to name. A protocol declares one or the
+    other: naming neither leaves the terms unstated, and naming both would be two vocabularies for
+    one mechanism.
     """
-    source = declared.get("vocabularyFrom")
-    if not isinstance(source, str) or not source:
-        return [f"{where}: defined-term-use names no `vocabularyFrom`; a mechanism that points by "
-                f"naming a term must say which entry states the terms"]
+    source, name = declared.get("vocabularyFrom"), declared.get("vocabulary")
+    named_from = isinstance(source, str) and source
+    named_vocabulary = bool(canonical_vocabulary(name))
+    if named_from and named_vocabulary:
+        return [f"{where}: defined-term-use names both `vocabularyFrom` and `vocabulary`; the "
+                f"terms are listed by one entry or distributed over the entries that define them "
+                f"(0045), and two answers are two vocabularies for one mechanism"]
+    if named_vocabulary:
+        return _check_defined_vocabulary(where, declared, document)
+    if not named_from:
+        return [f"{where}: defined-term-use names neither `vocabularyFrom`, the one entry that "
+                f"lists this corpus's terms, nor `vocabulary`, a vocabulary the entries that "
+                f"define its terms distribute (0045); a mechanism that points by naming a term "
+                f"must say which terms"]
     entry = index(document).get(source)
     if entry is None:
         return [f"{where}: vocabularyFrom {source!r} is not an entry in this map"]

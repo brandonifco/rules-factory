@@ -1,10 +1,12 @@
 {
   "version": 1,
-  "measuredAt": "bb90fba84558a7e20596ebd89336aea73d4f7205",
+  "measuredAt": "4630c50e21a3ee9667a2e0ed5d58be2f6cee2302",
   "measuredBy": "tools/check-evidence.py --measure",
   "measuredOver": {
-    "gateStepsFailed": [],
-    "complete": true
+    "gateStepsFailed": [
+      "the checkers' own tests"
+    ],
+    "complete": false
   },
   "roles": {
     "active": "read by an ordinary gate run",
@@ -41,8 +43,10 @@
       "path": "examples/acceptance-4-5/check-provenance.sh",
       "sha256": "976e1bfd5a7759c3e0f4f449b1e1f53750b7a6e27a9b37767864f88bca60400e",
       "bytes": 2248,
-      "role": "archived",
-      "readBy": [],
+      "role": "active",
+      "readBy": [
+        "checks"
+      ],
       "archive": null
     },
     {
@@ -59,10 +63,8 @@
       "path": "examples/blind-mapping-trial/blind-map.json",
       "sha256": "04930e7e62054a17cd54faab0410efec8ec87aaac56f8bf2ff5597caa8a743c1",
       "bytes": 37125,
-      "role": "active",
-      "readBy": [
-        "checks"
-      ],
+      "role": "archived",
+      "readBy": [],
       "archive": null
     },
     {
@@ -525,6 +527,74 @@
       "path": "examples/faa-part-107/review.json",
       "sha256": "6f0af695901b1f7f742ca86e7c723037322d9391ad0eb350f154dd0de7ab8806",
       "bytes": 7531,
+      "role": "active",
+      "readBy": [
+        "checks"
+      ],
+      "archive": null
+    },
+    {
+      "path": "examples/frcp-6-12-81/CORPUS-LICENCE.txt",
+      "sha256": "abced7614170eb0096d779bef56598f7e170ff0b55edd34aa1f8e00b39a56f13",
+      "bytes": 1952,
+      "role": "archived",
+      "readBy": [],
+      "archive": null
+    },
+    {
+      "path": "examples/frcp-6-12-81/README.md",
+      "sha256": "03e136b23d0aeb19aa95a3fc61a43c4f6b9e9c276d7ee8d08e8af9f6c56a183f",
+      "bytes": 10646,
+      "role": "active",
+      "readBy": [
+        "links"
+      ],
+      "archive": null
+    },
+    {
+      "path": "examples/frcp-6-12-81/check-locators-uslm.py",
+      "sha256": "afcd9df7cc51d9627eb4d2dae4fd65c037668dc5d6bcc8de1943b430c1eb7fcf",
+      "bytes": 24256,
+      "role": "active",
+      "readBy": [
+        "checks"
+      ],
+      "archive": null
+    },
+    {
+      "path": "examples/frcp-6-12-81/corpus-manifest.json",
+      "sha256": "0ea07e74387f5fb857358362df009d94ba8ec17188ba3c735e7097cea1b202d6",
+      "bytes": 4616,
+      "role": "active",
+      "readBy": [
+        "checks"
+      ],
+      "archive": null
+    },
+    {
+      "path": "examples/frcp-6-12-81/derive-corpus.py",
+      "sha256": "08cfb83fbb7cad7a2d552612d361c5b58f3a2ab1fb3f8eb21ae156aef1564b80",
+      "bytes": 5850,
+      "role": "active",
+      "readBy": [
+        "checks"
+      ],
+      "archive": null
+    },
+    {
+      "path": "examples/frcp-6-12-81/frcp-6-12-81.xml",
+      "sha256": "d4e63d1fd0153e412c602960a801195b7798e4d131c54e9cda427e10191af9fb",
+      "bytes": 40723,
+      "role": "active",
+      "readBy": [
+        "checks"
+      ],
+      "archive": null
+    },
+    {
+      "path": "examples/frcp-6-12-81/mapping-protocol.json",
+      "sha256": "4ddd1dcab89c895c3ea627f4d7f6476133ea1e1a2498d647d3a694fc4905f382",
+      "bytes": 816,
       "role": "active",
       "readBy": [
         "checks"
