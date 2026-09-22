@@ -100,7 +100,7 @@ run. Neither can move without putting a fetch inside the gate.
 
 **`blind-mapping/` is not one thing.** `faa-part-107`'s and `hoyle-backgammon`'s whole
 blind-mapping directories are read; `srd-52-combat`'s and `tax-121-principal-residence`'s are read
-only in part. Trial 9's `first-map.json` is held by `build-map-c.py --check`, trial 12's
+only in part. Trial 9's `first-map.json` is held by `build-map-c.py --check`, trial 8's
 `staged-inputs.json` is re-hashed by `mapper stage --verify`, and four trials' `results.json` are
 read by `check-map-review.py`. The second mapper's own `blind-map.json`, the `build.py` that
 produced it and the `compare.py` that compared the two are read by nothing for `srd-52-combat`,
