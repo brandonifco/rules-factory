@@ -51,13 +51,14 @@ Round Down / p. 5` does not, because `Playing the Game` precedes both. And an en
 heading its quote does not follow fails rather than reaching for a distant occurrence.
 
 `absence`, `coverage` and `extent-bounds` are `tools/check-locators.py`'s checks, loaded from
-that file and run unchanged, because a page extent means the same thing in both corpora. Two
-things differ in what they are given, both from `extent.endsBefore` (0024): `absence` searches
-the extent only up to that heading, and a quote at or after it does not reach page `to` for
-`coverage` -- nor for `extent-bounds`, so that a quote past the heading is `extent-end`'s to
+that file and run unchanged, because a page extent means the same thing in both corpora. What
+differs is what they are given, and it comes from the two headings a page extent may cut itself
+at -- `extent.endsBefore` (0024) and `extent.startsAfter` (0064): `absence` searches the extent
+only between them, and a quote outside a cut does not reach that cut's page for `coverage` --
+nor for `extent-bounds`, so that a quote past a cut is `extent-end`'s or `extent-start`'s to
 refuse below and is not refused twice.
 
-Two checks are this checker's own (0024):
+Three checks are this checker's own (0024, 0064):
 
   * **`extent-end`.** A page extent may end before a heading on its last page,
     `{"unit": "page", "from": 13, "to": 16, "endsBefore": "Damage and Healing"}`. The heading must
@@ -66,6 +67,12 @@ Two checks are this checker's own (0024):
     (0020), and is named in the summary, neither passed nor failed. "After", like everything
     here, is in pdftotext's reading order, which on a two-column page is the extraction's and
     not necessarily the eye's.
+  * **`extent-start`.** The mirror, at the other end:
+    `{"unit": "page", "from": 16, "to": 18, "startsAfter": "Damage and Healing"}`. The heading
+    must occur exactly once as a line of its own on page `from`, and no `scope: in` entry's quote
+    may lie at or before it on that page, or run across it. The slice begins at the **end** of
+    that heading's line, so the heading belongs to neither this map nor the one that ended before
+    it -- which is what lets the same line name the join.
   * **`extraction`.** The quote is verbatim of the extraction, and where the extraction garbles
     the passage the entry declares `extraction: {defect, renderedReading}`. For each declared
     defect, a cheap test that the defect is really there, at every occurrence of the quote:
@@ -262,12 +269,41 @@ def extent_end(extent, corpus, starts):
     return lines[0], None
 
 
+def extent_start(extent, corpus, starts):
+    """(offset, problem): where the `startsAfter` heading's line ends on page `from`.
+
+    The mirror of `extent_end` (0064). (None, None) when the extent names no `startsAfter`. The
+    heading must be a whole line, and exactly one on that page: two would leave where the slice
+    begins undecided. The offset is the **end** of that line, because the extent starts after the
+    heading and the heading itself belongs to neither slice -- which is what makes it the same
+    heading the map before this one ended before.
+    """
+    if extent is None or "startsAfter" not in extent:
+        return None, None
+    heading, page = extent.get("startsAfter"), extent["from"]
+    if not isinstance(heading, str) or not heading.strip():
+        return None, f"startsAfter is {heading!r}, which is not a heading"
+    begin, end = page_bounds(page, corpus, starts)
+    if begin is None:
+        return None, f"the extent starts on p. {page}, and the text has no such page"
+    lines = [(begin + m.start(), begin + m.end()) for m in
+             re.finditer(r"^[ \t]*" + re.escape(heading.strip()) + r"[ \t]*$", corpus[begin:end], re.M)]
+    if not lines:
+        return None, f"startsAfter names {heading!r}, which does not occur as a line of its own on p. {page}"
+    if len(lines) > 1:
+        return None, (f"startsAfter names {heading!r}, which occurs {len(lines)} times as a line on "
+                      f"p. {page}, so where the slice begins is not decided")
+    return lines[0][1], None
+
+
 def check_locators(page_checker, entries, corpus, starts, reached, end=None, placed=None,
-                   quoted=None):
+                   quoted=None, begin=None):
     """Every occurrence of every quote, on its cited page, under a heading near it.
 
     `end` is (page, offset) when the extent stops at a heading on its last page: a quote starting
-    at or after that offset does not reach that page for `coverage`.
+    at or after that offset does not reach that page for `coverage`. `begin` is (page, offset)
+    when it starts after a heading on its first page, and does the same thing at the other end: a
+    quote **ending** at or before that offset does not reach that page (0064).
 
     `placed` is {id: (entry, pages touched)} for `extent-bounds` (#269), filled with exactly the
     pages `reached` was given -- so a quote past `endsBefore` is `extent-end`'s to refuse and is
@@ -318,7 +354,11 @@ def check_locators(page_checker, entries, corpus, starts, reached, end=None, pla
             spans = picked
         for span in spans:
             touched = pages_touched(span, starts)
-            inside = touched - {end[0]} if end is not None and span[0] >= end[1] else touched
+            inside = touched
+            if end is not None and span[0] >= end[1]:
+                inside = inside - {end[0]}
+            if begin is not None and span[1] <= begin[1]:
+                inside = inside - {begin[0]}
             reached.update(inside)
             if placed is not None:
                 placed.setdefault(name, (entry, set()))[1].update(inside)
@@ -368,6 +408,53 @@ def bound_examples(entries):
 
 def located_entries(entries):
     return [e for e in entries if "derivedFrom" not in e]
+
+
+def check_extent_start(page_checker, entries, corpus, starts, extent, boundary, problem, end=None):
+    """No in-scope quote lies at or before the heading the extent starts after (0064).
+
+    `end` is `extent_end`'s offset, and is here for the one case the two cuts can contradict each
+    other: a one-page extent that starts after a heading printed at or after the one it ends
+    before has begun where it has already stopped. Where `from` and `to` are different pages the
+    order is a fact of the page numbers and nothing has to check it.
+    """
+    if extent is None or "startsAfter" not in extent:
+        return page_checker.Result("skip", "NOT VERIFIED -- the extent names no `startsAfter`, so "
+                                           "it begins with its first page and there is no heading "
+                                           "to hold quotes after", had_subject=False)
+    if problem:
+        return page_checker.fail([f"  X  extent: {problem}"],
+                                 "the heading the extent starts after is not on its first page")
+    if end is not None and extent["from"] == extent["to"] and boundary >= end:
+        return page_checker.fail(
+            [f"  X  extent: starts after {extent['startsAfter']!r} and ends before "
+             f"{extent['endsBefore']!r}, and on p. {extent['from']} the second is printed at or "
+             f"before the first"],
+            "the extent ends where it has not begun, so it selects nothing")
+    page = extent["from"]
+    page_begin, page_end = page_bounds(page, corpus, starts)
+    bad, before, held = [], [], 0
+    for entry in located_entries(entries):
+        name = entry.get("id", "?")
+        for span in entry_occurrences(entry, corpus, starts):
+            if span[1] <= page_begin or span[0] >= page_end:
+                continue  # not on the first page
+            if span[0] >= boundary:
+                held += 1
+                continue
+            if entry.get("scope") == "out":
+                before.append(name)
+            else:
+                where = "runs across" if span[1] > boundary else "lies before"
+                bad.append(f"  X  {name}: is scope: in, and its quote {where} the heading "
+                           f"{extent['startsAfter']!r} on p. {page}, where the extent starts")
+    if bad:
+        return page_checker.fail(bad, "an in-scope quote lies before the heading the extent starts after")
+    aside = (f"; {len(before)} out-of-scope quote{'' if len(before) == 1 else 's'} before it, neither "
+             f"passed nor failed: {', '.join(sorted(set(before)))}") if before else ""
+    return page_checker.ok(f"the extent starts after {extent['startsAfter']!r}, a line on p. {page}; "
+                           f"{held} quote occurrence{'' if held == 1 else 's'} on that page lie after it "
+                           f"and no in-scope quote lies at or before it{aside}")
 
 
 def check_extent_end(page_checker, entries, corpus, starts, extent, boundary, problem):
@@ -494,28 +581,33 @@ def main(argv=None):
     entries = [e for e in document.get("entries") or [] if isinstance(e, dict)]
     declared = page_extent(document)
     boundary, problem = extent_end(declared, corpus, starts)
+    opening, opening_problem = extent_start(declared, corpus, starts)
     extent, region = None, None
     if declared is not None:
-        begin = page_bounds(declared["from"], corpus, starts)[0]
+        begin = opening if opening is not None else page_bounds(declared["from"], corpus, starts)[0]
         stop = boundary if boundary is not None else page_bounds(declared["to"], corpus, starts)[1]
-        if begin is not None and stop is not None:
+        if begin is not None and stop is not None and begin <= stop:
             extent = page_checker.normalise(corpus[begin:stop])
             # #270's denominator, in this checker's own (un-normalised) offsets: the extent runs
-            # from the first page's marker to the last page's end, or to `endsBefore` where the
-            # extent stops at a heading -- the same slice `absence` searches, for the same
-            # reason. The quotes measured against it are offsets into the same string.
+            # from the first page's marker -- or from the end of `startsAfter`'s heading line
+            # where the extent begins at one -- to the last page's end, or to `endsBefore` where
+            # it stops at a heading. The same slice `absence` searches, for the same reason. The
+            # quotes measured against it are offsets into the same string.
             region = [(begin, stop)]
 
     reached, placed, quoted = set(), {}, []
     end = (declared["to"], boundary) if boundary is not None else None
+    start = (declared["from"], opening) if opening is not None else None
     print(f"{map_path} ({len(entries)} entries) against {corpus_path}")
     bounds = bound_examples(entries)
     results = [
         ("locators", check_locators(page_checker, entries, corpus, starts, reached, end, placed,
-                                    quoted)),
+                                    quoted, start)),
         ("bounds", check_locators(page_checker, bounds, corpus, starts, set())
          if bounds else page_checker.skip("no entry carries `ambiguity.bounds`, so no authored "
                                           "example bounds a term in this map", had_subject=False)),
+        ("extent-start", check_extent_start(page_checker, entries, corpus, starts, declared,
+                                            opening, opening_problem, boundary)),
         ("extent-end", check_extent_end(page_checker, entries, corpus, starts, declared, boundary, problem)),
         ("extraction", check_extraction(page_checker, entries, corpus, starts)),
         ("absence", page_checker.check_absence(entries, extent)),

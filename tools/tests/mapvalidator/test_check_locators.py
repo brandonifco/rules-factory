@@ -1197,6 +1197,140 @@ class TestPdfTextExtentEnd(TestPdfTextLocators):
         self.assertEqual(code, 1, out.getvalue())
 
 
+def starting_map():
+    """pdf_text_map with an extent that begins after the "Tokens" heading on p. 1 (0064).
+
+    `players` goes with it: its quote is printed above that heading, so a map declaring this
+    extent and keeping that entry is the thing `extent-start` exists to refuse, and a base fixture
+    that already fails the check it is the base for proves nothing.
+    """
+    document = pdf_text_map()
+    document["extent"]["startsAfter"] = "Tokens"
+    document["entries"] = [e for e in document["entries"] if e["id"] != "players"]
+    return document
+
+
+def players(**overrides):
+    return entry("players", "Widgets / p. 1", "A widget is played by two persons.", **overrides)
+
+
+class TestPdfTextExtentStart(TestPdfTextLocators):
+    """0064: a page extent starting after a heading on its first page -- `extent-end` mirrored.
+
+    The mirror is what makes two maps of one page complementary: trial 7's combat map ends before
+    `Damage and Healing` on p. 16, and the map of the rest of the chapter starts after the same
+    line. The heading belongs to neither, which is the one thing about this that is not a mirror
+    and is said out loud in 0064.
+    """
+
+    def test_an_extent_starting_after_a_heading_passes(self):
+        code, output = self.run_tool(starting_map())
+        self.assertEqual(code, 0, output)
+        self.assertIn("[ok] extent-start: the extent starts after 'Tokens', a line on p. 1", output)
+
+    def test_without_starts_after_the_check_has_nothing_to_hold(self):
+        code, output = self.run_tool(pdf_text_map())
+        self.assertEqual(self.status_of(output, "extent-start"), "skip", output)
+        self.assertEqual(code, 0, output)
+
+    def test_an_in_scope_quote_before_the_heading_fails(self):
+        output = self.assert_catches("extent-start", lambda d: d["entries"].append(players()),
+                                     base=starting_map,
+            message="its quote lies before the heading")
+        self.assertIn("players: is scope: in, and its quote lies before the heading 'Tokens'", output)
+
+    def test_an_in_scope_quote_running_across_the_heading_fails(self):
+        output = self.assert_catches("extent-start", lambda d: d["entries"].append(entry(
+            "players-and-tokens", "Widgets / p. 1",
+            "A widget is played by two persons. Tokens Each token moves once per round,")),
+            base=starting_map,
+            message="its quote runs across the heading")
+        self.assertIn("its quote runs across the heading", output)
+
+    def test_an_out_of_scope_quote_before_the_heading_is_named_and_passes(self):
+        document = starting_map()
+        document["entries"].append(players(scope="out", status="declined"))
+        code, output = self.run_tool(document)
+        self.assertEqual(self.status_of(output, "extent-start"), "ok", output)
+        self.assertIn("1 out-of-scope quote before it, neither passed nor failed: players", output)
+        self.assertEqual(code, 0, output)
+
+    def test_a_heading_not_on_the_first_page_fails(self):
+        output = self.assert_catches("extent-start",
+                                     lambda d: d["extent"].update(startsAfter="Scoring"),
+                                     base=starting_map,
+            message="does not occur as a line of its own")
+        self.assertIn("does not occur as a line of its own on p. 1", output)
+
+    def test_a_heading_only_inside_a_sentence_fails(self):
+        self.assert_catches("extent-start",
+                            lambda d: d["extent"].update(startsAfter="two persons"),
+                            base=starting_map,
+            message="does not occur as a line of its own")
+
+    def test_a_heading_twice_on_the_first_page_fails(self):
+        code, output = self.run_tool(starting_map())
+        self.assertEqual(code, 0, output)
+        self.write_corpus(PDF_TEXT_CORPUS.replace("Widgets\n", "Tokens\nWidgets\n", 1))
+        code, output = self.run_tool(starting_map())
+        self.assertEqual(self.status_of(output, "extent-start"), "fail", output)
+        self.assertIn("occurs 2 times as a line on p. 1", output)
+
+    def test_a_quote_before_the_heading_does_not_cover_the_first_page(self):
+        def only_players_on_the_first_page(document):
+            document["entries"] = [e for e in document["entries"] if e["id"] != "token-moves"]
+            document["entries"].append(players(scope="out", status="declined"))
+        document = pdf_text_map()
+        only_players_on_the_first_page(document)
+        code, output = self.run_tool(document)
+        self.assertEqual(self.status_of(output, "coverage"), "ok", output)
+        document = starting_map()
+        only_players_on_the_first_page(document)
+        code, output = self.run_tool(document)
+        self.assertEqual(self.status_of(output, "coverage"), "fail", output)
+        self.assertIn("p. 1: inside the declared extent", output)
+
+    def test_absence_is_searched_only_after_the_heading(self):
+        def absent(document):
+            document["entries"].append(entry("no-persons", "Widgets / Rounds / p. 2",
+                                             "The winner of a round moves first.", scope="out",
+                                             status="declined", absentFrom={"searched": ["persons"]}))
+        document = starting_map()
+        absent(document)
+        code, output = self.run_tool(document)
+        self.assertEqual(self.status_of(output, "absence"), "ok", output)
+        document = pdf_text_map()
+        absent(document)
+        code, output = self.run_tool(document)
+        self.assertEqual(self.status_of(output, "absence"), "fail", output)
+
+    def test_an_extent_that_ends_where_it_has_not_begun_fails(self):
+        """The one case the two cuts can contradict: both on the same page, in the wrong order."""
+        document = starting_map()
+        document["extent"] = {"unit": "page", "from": 1, "to": 1,
+                              "startsAfter": "Tokens", "endsBefore": "Widgets"}
+        document["entries"] = [e for e in document["entries"] if e["id"] == "token-moves"]
+        code, output = self.run_tool(document)
+        self.assertEqual(self.status_of(output, "extent-start"), "fail", output)
+        self.assertIn("the second is printed at or before the first", output)
+
+    def test_the_page_checker_refuses_an_extent_it_cannot_start(self):
+        # tools/check-locators.py collapses lines, so it cannot find the heading; it says so.
+        path = os.path.join(self.root, "hoyle-like.json")
+        document = valid_map()
+        document["extent"]["startsAfter"] = "Tokens"
+        with open(path, "w", encoding="utf-8") as handle:
+            json.dump(document, handle)
+        corpus = os.path.join(self.root, "hoyle-like.txt")
+        with open(corpus, "w", encoding="utf-8") as handle:
+            handle.write(CORPUS)
+        out = io.StringIO()
+        with redirect_stdout(out), redirect_stderr(out):
+            code = check_locators.main([path, corpus])
+        self.assertIn("[skip] extent-start: NOT VERIFIED", out.getvalue())
+        self.assertEqual(code, 1, out.getvalue())
+
+
 # 0030, #207: the two shapes a corpus's own repetition takes, in miniature. One sentence printed
 # under two different headings (the SRD's "Speed 0." under five conditions), and one printed twice
 # under the *same* heading, in two chapters, with a different rule immediately after it (the SRD's

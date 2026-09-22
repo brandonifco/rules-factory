@@ -225,28 +225,46 @@ class PageMarkedText(Adapter):
                 continue
             seen[page] = seen.get(page, 0) + 1
             found.append(Unit(f"p. {page} block {seen[page]}", "paragraph", text))
-        return self._end_before(found, extent, last)
+        return self._between(found, extent, first, last)
 
-    @staticmethod
-    def _end_before(found, extent, last):
-        """A page extent may end before a heading on its last page (0024).
+    @classmethod
+    def _between(cls, found, extent, first, last):
+        """A page extent may start after a heading on its first page and end before one on its
+        last (0024 gave it the second end, 0064 the first).
 
         The heading is a block of its own -- that is what makes it findable in a text with no
-        hierarchy -- and every block from it to the end of the page is outside the extent. A
-        heading this does not find is refused: an extent that ends at a heading nobody can locate
-        would otherwise enumerate the whole of the last page and call the surplus unaccounted.
+        hierarchy -- and every block from the start of the page to it, or from it to the end of
+        the page, is outside the extent. A heading this does not find is refused: an extent cut
+        at a heading nobody can locate would otherwise enumerate the whole page and call the
+        surplus unaccounted.
+
+        Both cuts are taken against the **numbered** list, so a unit's key is its position on its
+        own page and does not move when the other end of the extent does. `p. 16 block 12` is the
+        same block whether the map read the page from its top or from halfway down it, which is
+        what lets two maps of one page record rejections that mean the same thing.
         """
-        heading = extent.get("endsBefore")
-        if heading is None:
-            return found
-        prefix = f"p. {last} block "
+        begin, stop = 0, len(found)
+        if extent.get("startsAfter") is not None:
+            begin = cls._cut(found, extent["startsAfter"], first, "starts after") + 1
+        if extent.get("endsBefore") is not None:
+            stop = cls._cut(found, extent["endsBefore"], last, "ends before")
+        if begin > stop:
+            raise Refused(f"extent starts after {extent.get('startsAfter')!r} and ends before "
+                          f"{extent.get('endsBefore')!r}, and on p. {first} the second is printed "
+                          f"at or before the first; an extent that ends where it has not begun "
+                          f"enumerates nothing and accounts for nothing")
+        return found[begin:stop]
+
+    @staticmethod
+    def _cut(found, heading, page, sense):
+        prefix = f"p. {page} block "
         cut = [position for position, unit in enumerate(found)
                if unit.key.startswith(prefix) and unit.text == normalise(heading)]
         if len(cut) != 1:
-            raise Refused(f"extent ends before {heading!r}, which is {len(cut)} block(s) on "
-                          f"p. {last}; an extent ending at a heading nothing can find would "
+            raise Refused(f"extent {sense} {heading!r}, which is {len(cut)} block(s) on "
+                          f"p. {page}; an extent cut at a heading nothing can find would "
                           f"enumerate the whole page and call the surplus unaccounted")
-        return found[:cut[0]]
+        return cut[0]
 
 
 class PageMarkedPdfText(PageMarkedText):
