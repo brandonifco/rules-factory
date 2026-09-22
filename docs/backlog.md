@@ -152,6 +152,34 @@ asked to have **stated** rather than closed. A review round's value is in what i
 as much as in what it files, and an unfiled finding with no reason recorded is one somebody will
 rediscover and file again.
 
+### `review7-*` — the review of the 1.0 release candidate
+
+Round seven is an independent Codex review of `3d20430`, the commit frozen as the
+`factory/v1.0.0` release candidate. Its subject is the whole product rather than a previous
+round's fixes, and it was given the release directive's eight ship-blocking criteria and asked to
+apply them strictly. It found **no p0** and recommended shipping. Its ordered list is
+[#431](https://github.com/brandonifco/rules-factory/issues/431).
+
+| Label | What belongs in it |
+|---|---|
+| `review7-p1` | The factory cannot yet prove something it claims: a named-test check that counts result files rather than target frameworks (#428), and a gate that consumes a restored package without comparing it with the digests intake recorded (#429). |
+| `review7-p2` | The accuracy of a stated claim: the README saying provenance identifies the engine's source tree when it identifies a narrower subset (#430). |
+
+Three findings were reported and all three filed, each with its reproduction. **#430 is the only
+one fixed in the release candidate**, because the change freeze that governs a release candidate
+allows documentation work exactly when a shipped claim is false, and this one was — verified by
+running `provenance.is_build_input` over four paths. #428 and #429 are `post-1.0`: each is an
+assurance gap rather than a demonstrated failure, and the issues say why neither meets criterion 4
+or criterion 5.
+
+**What the round did not examine is in #431 and is part of its result.** The reviewer's sandbox had
+no writable temporary directory, so the full suite never started and no full-gate or .NET run is
+claimed; the recovery, concurrency and publication paths were reasoned about rather than
+exercised. Those are covered for this release by other evidence — CI ran the full gate and a
+produced engine green on the reviewed commit, and rounds five and six are what read the recovery
+paths — and saying so is the point. A round that reports what it could not reach is what makes the
+rest of its verdict worth something.
+
 ### `post-1.0`, `known-limitation` — the ship-first triage, 2026-09-21
 
 An open issue records knowledge. It does not authorise implementation. From 2026-09-21 every open
