@@ -41,7 +41,7 @@ EXTENT_SECTION = re.compile(r"^§\s*(\d+\.\d+(?:[A-Za-z]|-\d+)?)$")
 # The same two questions asked of the court-rule spelling, read the way
 # examples/frcp-6-12-81/check-locators-uslm.py reads them; `test_check_map.py` holds the two
 # copies equal over every citation that map makes, as it already does for `CITE_SECTION`.
-CITE_RULE = re.compile(r"\bRule\s+(\d+(?:\.\d+)?)(?![\d.])")
+CITE_RULE = re.compile(r"\bRule\s+(\d+(?:\.\d+)?)(?![A-Za-z0-9.])")
 EXTENT_RULE = re.compile(r"^Rule\s+(\d+(?:\.\d+)?)$")
 #: How a designation is printed once it has been read. The CFR's number carries its sign back;
 #: the court rule's already carries its word, so a reader that prefixed one would print

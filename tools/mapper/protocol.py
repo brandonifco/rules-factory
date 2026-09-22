@@ -388,20 +388,30 @@ def _check_vocabulary(where, declared, document):
     other: naming neither leaves the terms unstated, and naming both would be two vocabularies for
     one mechanism.
     """
-    source, name = declared.get("vocabularyFrom"), declared.get("vocabulary")
-    named_from = isinstance(source, str) and source
-    named_vocabulary = bool(canonical_vocabulary(name))
-    if named_from and named_vocabulary:
+    # Which key is **present**, not which key holds something this reader can use. A declaration
+    # carrying both keys is refused even where one of them is empty or malformed: judging by
+    # usable value would let `vocabularyFrom: []` beside a good `vocabulary` pass as a
+    # single-answer declaration, so a malformed key would be silently ignored where the whole
+    # point is that exactly one answer is given.
+    present = [key for key in ("vocabularyFrom", "vocabulary") if key in declared]
+    if len(present) == 2:
         return [f"{where}: defined-term-use names both `vocabularyFrom` and `vocabulary`; the "
                 f"terms are listed by one entry or distributed over the entries that define them "
                 f"(0045), and two answers are two vocabularies for one mechanism"]
-    if named_vocabulary:
-        return _check_defined_vocabulary(where, declared, document)
-    if not named_from:
+    if not present:
         return [f"{where}: defined-term-use names neither `vocabularyFrom`, the one entry that "
                 f"lists this corpus's terms, nor `vocabulary`, a vocabulary the entries that "
                 f"define its terms distribute (0045); a mechanism that points by naming a term "
                 f"must say which terms"]
+    if present == ["vocabulary"]:
+        if not canonical_vocabulary(declared.get("vocabulary")):
+            return [f"{where}: defined-term-use's `vocabulary` is "
+                    f"{declared.get('vocabulary')!r}, which is not a vocabulary name"]
+        return _check_defined_vocabulary(where, declared, document)
+    source = declared.get("vocabularyFrom")
+    if not isinstance(source, str) or not source:
+        return [f"{where}: defined-term-use's `vocabularyFrom` is {source!r}, which is not an "
+                f"entry id; a mechanism that points by naming a term must say which terms"]
     entry = index(document).get(source)
     if entry is None:
         return [f"{where}: vocabularyFrom {source!r} is not an entry in this map"]

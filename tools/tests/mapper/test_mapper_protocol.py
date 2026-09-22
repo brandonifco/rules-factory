@@ -142,7 +142,9 @@ class TestTheVocabularyMustExist(ProtocolCase):
     def mechanism(self, **changes):
         declared = {"mechanism": "defined-term-use", "vocabularyFrom": "condition-list"}
         declared.update(changes)
-        self.protocol["pointerMechanisms"] = [declared]
+        # A key set to None is a key the declaration carries. The rule is one key *present*, so
+        # a test meaning "this key is absent" has to take it out.
+        self.protocol["pointerMechanisms"] = [{k: v for k, v in declared.items() if v is not None}]
 
     def test_defined_term_use_without_a_vocabulary(self):
         self.mechanism(vocabularyFrom=None)
@@ -198,6 +200,34 @@ class TestTheVocabularyMustExist(ProtocolCase):
         """
         self.mechanism(vocabularyFrom=None, vocabulary="nothing-defines-this")
         self.assert_refused("no entry in this map establishes vocabulary")
+
+    def test_one_key_present_is_the_rule_and_not_one_key_usable(self):
+        """An empty second key is still a second answer (trial 11 review, round 1).
+
+        The first cut of this rule asked which key held something the reader could *use*, so
+        `vocabularyFrom: []` beside a good `vocabulary` passed as a single-answer declaration --
+        and a malformed key was silently ignored in the one place whose whole point is that
+        exactly one answer is given. The independent review found it by mutation.
+
+        Mutation: judge by value again (`named_from = isinstance(source, str) and source`) and
+        both subtests below go green, which is the defect.
+        """
+        for junk in ([], "", 0, {}):
+            with self.subTest(vocabularyFrom=junk):
+                self.protocol["pointerMechanisms"] = [
+                    {"mechanism": "defined-term-use", "vocabularyFrom": junk,
+                     "vocabulary": "condition-names"}]
+                self.assert_refused("names both `vocabularyFrom` and `vocabulary`")
+        for junk in ([], "", 0, {}):
+            with self.subTest(vocabulary=junk):
+                self.protocol["pointerMechanisms"] = [
+                    {"mechanism": "defined-term-use", "vocabularyFrom": "condition-list",
+                     "vocabulary": junk}]
+                self.assert_refused("names both `vocabularyFrom` and `vocabulary`")
+
+    def test_a_vocabulary_name_that_is_not_one(self):
+        self.mechanism(vocabularyFrom=None, vocabulary="   ")
+        self.assert_refused("is not a vocabulary name")
 
 
 class TestTheDetector(unittest.TestCase):

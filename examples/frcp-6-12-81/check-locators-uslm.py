@@ -58,8 +58,10 @@ EXTENT_RULE = re.compile(r"^Rule\s+(\d+(?:\.\d+)?)$")
 #: The rule a citation opens with. The first one, which is the only one this grammar reads: a
 #: citation names paragraphs of one rule, and `Rule 12(b)(6) or 12(c)` in a *quotation* is the
 #: corpus pointing, not a locator.
-CITE_RULE = re.compile(r"\bRule\s+(\d+(?:\.\d+)?)(?![\d.])")
+CITE_RULE = re.compile(r"\bRule\s+(\d+(?:\.\d+)?)(?![A-Za-z0-9.])")
 CITE_GROUP = re.compile(r"\(([A-Za-z0-9]{1,4})\)")
+#: What a citation item may hold besides its designators: a range dash and whitespace.
+LEFTOVER = re.compile(r"[\s\u2013-]+")
 
 
 class Refused(Exception):
@@ -173,6 +175,13 @@ def cited_paths(citation):
             return None
         groups = CITE_GROUP.findall(item)
         if not groups:
+            return None
+        # Everything an item says has to be read, or the part that was not read is the part
+        # nothing then checks. `Rule 6(a), Rule 12(b)` would otherwise have its second item's
+        # rule number discarded by `findall` and be resolved under the first rule; a stray word
+        # would be passed over in silence. Only the designators, a range dash and whitespace may
+        # remain.
+        if LEFTOVER.sub("", CITE_GROUP.sub("", item)).strip():
             return None
         if "-" in item or "\u2013" in item:
             head, _, rest = item.partition("-") if "-" in item else item.partition("\u2013")
