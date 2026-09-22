@@ -30,7 +30,7 @@ the map.
 | Pointers | 195 `crossReferences`, 40 of them `unmapped`; 199 namings of a defined term, every one declared |
 | Vocabulary | `playing-the-game-terms`, 55 terms distributed over 18 entries (0045) |
 | Extraction | 12 `interleaved-table`, 3 `split-by-sidebar` |
-| Inventory | 374 units, 268 reached, 78 rejected, 28 unaccounted — and all 28 are [#437](https://github.com/brandonifco/rules-factory/issues/437) |
+| Inventory | 374 units, 300 reached, 74 rejected, 0 unaccounted — measured at 268/78/28 when the trial ran, all of it [#437](https://github.com/brandonifco/rules-factory/issues/437) |
 | Review | none; `exemption`, first mapping, [review.json](review.json) says what a second reading should look at |
 
 ## The hypotheses, before anything was mapped
@@ -155,6 +155,19 @@ not located. Three entries here quote across a page turn, `actions-table`, `role
 whole twelve-row Actions table among them. `check-locators-pdf-text.py` locates all three
 without complaint. **Two readers of the same map disagree about the same bytes**, and
 *unaccounted* is the inventory's word for *nobody looked*.
+
+#437 is fixed and this pile closes: 300 reached, 74 rejected, 0 unaccounted. The map's own bytes
+are untouched — [0017](../../docs/decisions/0017-a-map-change-carries-a-review-of-its-bytes.md)
+would have invalidated its review — and what changed is the tool and four lines of
+[mapping-inventory.json](mapping-inventory.json). Those four rejected the Actions table's column
+headers on both sides of the turn, `Actions Action` / `Summary` on p. 9 and `Action` / `Summary`
+on p. 10, as table headings that state no rule. `actions-table` quotes all four. A reader that
+cannot see the quote cannot see the contradiction, so the walk recorded a verdict about a passage
+its own map had already reached; the rejections are gone rather than reworded, because a passage
+cannot have produced no entry and be the evidence for one.
+
+So H5's answer is narrower than the heading says. The inventory *was* closable from this first
+mapping, and nothing about the walk was in the way. What was in the way was the measurement.
 
 ## What was not predicted at all
 

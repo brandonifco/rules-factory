@@ -253,8 +253,8 @@ is decided by reading the corpus, and this tool does not read it. What *is* a fa
 enumeration of no units, or a run in which no entry's quote is found at all — an inventory of
 nothing has nothing unaccounted.
 
-The eight committed maps whose extent one corpus holds report 436 unaccounted units of 1,291,
-against 200 recorded rejections
+The eight committed maps whose extent one corpus holds report 408 unaccounted units of 1,291,
+against 196 recorded rejections
 ([#267](https://github.com/brandonifco/rules-factory/issues/267) holds the numbers and what each
 one is on reading it). None of the maps was edited to improve them: a map's bytes cannot change
 without invalidating its review
@@ -269,7 +269,16 @@ committed entry is reported unlocated. Two more units moved with
 [#393](https://github.com/brandonifco/rules-factory/issues/393): § 1.121-1(c)(4) Examples 4 and 5
 are the corpus's only authority on *short temporary absences*, the tax map quotes both in
 `ambiguity.bounds`, and a measurement that read only `evidence` counted the strongest quote the
-map makes as having read nothing.
+map makes as having read nothing. Twenty-eight moved with
+[#437](https://github.com/brandonifco/rules-factory/issues/437), which is #392 again in the
+grammar #392 did not reach: the pdftotext adapter marks a page turn with `{N}` on a line of its
+own and anchored its pattern to that line, and a map's `evidence` has its whitespace collapsed,
+so the marker in a quote sat at no line boundary and was never taken out. Trial 12's map has
+three quotes that straddle a turn; the units they reach include the whole twelve-row Actions
+table. Four of that map's rejections named units one of those quotes reaches, which is a
+contradiction a reader who could not see the quote had no way to record, and they are gone from
+its `mapping-inventory.json` — the only edit any of these numbers has had, and it removes a
+claim rather than improving a count.
 
 ### `mapping-inventory.json`
 
@@ -306,8 +315,9 @@ is migrated to version 2 by moving that `corpus` value onto every rejection as `
 version 1 inventory can truthfully account for a multi-corpus walk. No committed inventory file
 uses version 1.
 
-Six maps carry one, written by re-reading each unaccounted unit against the map that left it
-([#267](https://github.com/brandonifco/rules-factory/issues/267)):
+All eight carry one. Six were written by re-reading each unaccounted unit against the map that
+left it ([#267](https://github.com/brandonifco/rules-factory/issues/267)); trials 11 and 12 wrote
+theirs with the walk, which is what it is for:
 
 | map | rejections | still unaccounted | what the rejections are |
 |---|---:|---:|---|
@@ -316,6 +326,8 @@ Six maps carry one, written by re-reading each unaccounted unit against the map 
 | `hoyle-backgammon` | 9 | 0 | four section titles, both `[Illustration]` placeholders the adapter cannot read, the printer's rule, and two paragraphs of counsel on which throw to prefer |
 | `srd-52-combat` | 32 | 0 | 25 heading lines the extraction gives as blocks of their own, four folios and running heads, the chapter opener, the underwater lead-in, and the `Ranged Attacks` lead-in |
 | `srd-52-conditions` | 28 | 407 | the folios and running heads only |
+| `frcp-6-12-81` | 15 | 0 | the three rules' own titles, the nine subdivision captions that open paragraphs carrying the whole of what they name, and three amendment histories |
+| `srd-52-playing-the-game` | 74 | 0 | 54 section headings and table header cells the extraction gives as blocks of their own, 15 folios and running heads, two halves of the Rhythm of Play advice, two lead-ins that point at a table, and the Round Down sidebar the corpus prints twice ([#436](https://github.com/brandonifco/rules-factory/issues/436)) |
 | `tax-121-principal-residence` | 14 | 0 | the section heading and the thirteen worked examples the map's own `scope: out` entries declined, one per example |
 
 A rejection is a reading and not a tidy-up, which is why two of the piles do not close. The 2020
@@ -606,17 +618,13 @@ none.
   invisible to it, and the spec's declared substitutions are the only thing that covers it. Every
   run says so, and so does every record it writes.
 - **The inventory measures the walk, and one map's extent still outruns its answer.** Every
-  unit inside every committed map's extent is enumerated and counted, 200 are recorded as
-  examined and rejected, and 436 of 1,291 are unaccounted
-  ([#267](https://github.com/brandonifco/rules-factory/issues/267)). Five of the eight maps now
-  account for every unit, trial 11's from its first mapping; the 2020 part 107 map has one left,
-  which is a rule it owes an entry
+  unit inside every committed map's extent is enumerated and counted, 196 are recorded as
+  examined and rejected, and 408 of 1,291 are unaccounted
+  ([#267](https://github.com/brandonifco/rules-factory/issues/267)). Six of the eight maps now
+  account for every unit, trials 11's and 12's from their first mapping; the 2020 part 107 map
+  has one left, which is a rule it owes an entry
   ([#396](https://github.com/brandonifco/rules-factory/issues/396)) and not something a
-  rejection may absorb. Trial 12's map has 28, and they are not a question about its walk at all:
-  three of its quotes straddle a page turn, `unmarked()` cannot strip a marker from a flattened
-  quote, and the units those three entries reach are reported unaccounted while the locator
-  checker locates all three ([#437](https://github.com/brandonifco/rules-factory/issues/437)).
-  The remaining 407 are all in `srd-52-conditions`, whose `extent` claims
+  rejection may absorb. The remaining 407 are all in `srd-52-conditions`, whose `extent` claims
   fifteen whole glossary pages in order to map sixteen scattered entries: the units are other
   glossary terms' rules, and no `ground` in the closed set says *inside the extent and outside
   what this walk was about*. That is a contract question about `extent`, not a missing record.

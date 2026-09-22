@@ -291,30 +291,6 @@
     },
     {
       "sourceId": "srd-5.2.1",
-      "unit": "p. 9 block 71",
-      "ground": "heading",
-      "note": "A table's caption or column header, 'Actions Action', which names what the rows below it hold and states no rule. The extraction gives each header cell its own block, so one printed header line arrives as two or three units."
-    },
-    {
-      "sourceId": "srd-5.2.1",
-      "unit": "p. 9 block 72",
-      "ground": "heading",
-      "note": "A table's caption or column header, 'Summary', which names what the rows below it hold and states no rule. The extraction gives each header cell its own block, so one printed header line arrives as two or three units."
-    },
-    {
-      "sourceId": "srd-5.2.1",
-      "unit": "p. 10 block 1",
-      "ground": "heading",
-      "note": "A table's caption or column header, 'Action', which names what the rows below it hold and states no rule. The extraction gives each header cell its own block, so one printed header line arrives as two or three units."
-    },
-    {
-      "sourceId": "srd-5.2.1",
-      "unit": "p. 10 block 2",
-      "ground": "heading",
-      "note": "A table's caption or column header, 'Summary', which names what the rows below it hold and states no rule. The extraction gives each header cell its own block, so one printed header line arrives as two or three units."
-    },
-    {
-      "sourceId": "srd-5.2.1",
       "unit": "p. 10 block 24",
       "ground": "heading",
       "note": "The section heading 'One Thing at a Time', which names the rules below it and states none of its own."

@@ -125,6 +125,10 @@ class Adapter:
         never do. The default is to change nothing: a grammar whose corpus prints no marker must
         search the quote exactly as the map wrote it, or a marker somebody invented would be
         quietly forgiven.
+
+        What arrives here is a map's `evidence`, whose whitespace is already collapsed to single
+        spaces. A pattern written to match the marker where the **corpus** prints it will not
+        always match it here, and an implementation must say which form it reads (#437).
         """
         return text
 
@@ -165,7 +169,16 @@ class PageMarkedText(Adapter):
 
     name = "plain-text"
     extent_units = ("page",)
+    #: the marker as the corpus prints it, matched against the corpus's own bytes
     MARKER = re.compile(r"\{(\d+)\}")
+    #: the marker as it survives in a **quote**, matched against a map's `evidence`. The two are
+    #: the same pattern here and are not in the subclass, which anchors `MARKER` to a line of its
+    #: own: evidence has its whitespace collapsed, so a marker in the middle of one sits at no
+    #: line boundary and a line-anchored pattern could never hold (#437). Flattening loses the
+    #: line, and with it the only thing that tells a page marker from a `{6}` the corpus prints
+    #: as its own text -- so a quote carrying one has it removed either way, which costs a match
+    #: the corpus would have made and never invents one it would not.
+    QUOTE_MARKER = re.compile(r"\{(\d+)\}")
     BLOCK_BREAK = re.compile(r"\n[ \t]*\n")
 
     def __init__(self, path):
@@ -186,7 +199,7 @@ class PageMarkedText(Adapter):
         return page
 
     def unmarked(self, text):
-        return normalise(self.MARKER.sub(" ", text))
+        return normalise(self.QUOTE_MARKER.sub(" ", text))
 
     def _blocks(self):
         """(offset, text) for every blank-line-separated block, markers removed from the text."""
@@ -240,7 +253,8 @@ class PageMarkedPdfText(PageMarkedText):
     """`extract.py`'s output: the same grammar, with the marker on a line of its own.
 
     Written as a subclass rather than a copy because that is the whole of the difference, and a
-    copy would be a second place to fix the block rule.
+    copy would be a second place to fix the block rule. `QUOTE_MARKER` is inherited unanchored
+    on purpose: the line the anchors need is in the corpus and not in a quote of it (#437).
     """
 
     name = "pdftotext-page-marked"
