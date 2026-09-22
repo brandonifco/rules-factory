@@ -280,11 +280,15 @@ found is in [docs/evidence-inventory.md](docs/evidence-inventory.md): 11.9 MB re
   `produce`, the gate and `provenance.json` report which answers are the owner's, and
   `Rulings.g.cs` carries them into the engine. What no check reads is whether the engine actually
   declines or rules as the overlay says. The named tests are held only to having run.
-- **What the machine did.** Provenance says the engine's source tree is the recorded one. It
-  does not record which SDK was installed, what restore fetched beyond the hashes the lock files
-  pin, environment variables, MSBuild or NuGet files outside the engine directory, or that a
-  given assembly was built from the tree. The limits are listed in
-  [`provenance.py`](tools/factory/provenance.py).
+- **What the machine did.** Provenance says the engine's **generated files and build inputs** are
+  the recorded ones — what the factory wrote, the overlay, and named configuration such as
+  `global.json` and every `.csproj`. It says nothing about the engine's own code: a hand-written
+  rule handler or test is not a build input and is hashed by nothing, so recomputation passes
+  after one is added or changed, deliberately
+  ([#430](https://github.com/brandonifco/rules-factory/issues/430)). Nor does it record which SDK
+  was installed, what restore fetched beyond the hashes the lock files pin, environment variables,
+  MSBuild or NuGet files outside the engine directory, or that a given assembly was built from the
+  tree. The limits are listed in [`provenance.py`](tools/factory/provenance.py).
 - **That the inputs were the ones you were meant to build from.** Provenance records what it
   read, not that anyone authorised it. The version label comes from a `factory/vX.Y.Z` tag in the
   local repository, and those tags are unsigned, so a tag made or moved locally is recorded as a
