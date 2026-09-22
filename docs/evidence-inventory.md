@@ -1,8 +1,12 @@
 # The evidence inventory
 
-`examples/` is this repository's evidence: five corpora, eight maps, the transcripts of blind
+`examples/` is this repository's evidence: five corpora, nine maps, the transcripts of blind
 second mappings, trial reports, independent verdicts, and the results of the injection, collapse
-and validator-attack measurements. 207 tracked files, 16.3 MB, out of 21.0 MB tracked in all.
+and validator-attack measurements. 221 tracked files, 15.8 MB, out of 20.3 MB tracked in all.
+Those three numbers are the ones
+[#439](https://github.com/brandonifco/rules-factory/issues/439) is about: they are derived from
+the lock and nothing holds them to it, so they go stale whenever evidence is added, and are
+corrected by hand when somebody notices.
 
 Until [#349](https://github.com/brandonifco/rules-factory/issues/349) nothing said which of it any
 check reads. This document and [`tools/evidence-lock.json`](../tools/evidence-lock.json) say so,
@@ -43,8 +47,8 @@ The role follows from the readers:
 | role | files | size | may its bytes live outside the repository? |
 |---|---|---|---|
 | `release` — `pack-map.py` reads it | 20 | 2.5 MB | no: its bytes reach nuget.org |
-| `active` — some other part of the gate reads it | 156 | 12.4 MB | no: a check that fetches its inputs cannot be run offline |
-| `archived` — nothing reads it | 38 | 937 KB | yes |
+| `active` — some other part of the gate reads it | 162 | 12.4 MB | no: a check that fetches its inputs cannot be run offline |
+| `archived` — nothing reads it | 39 | 938 KB | yes |
 
 `check-evidence.py` refuses a lock that gives a non-null `archive` to an `active` or `release`
 artifact, and refuses a role its own `readBy` does not support. That pair of rules is what keeps a
@@ -64,7 +68,7 @@ A reader deciding what could be retired should know which of the two they are lo
 
 ## By trial
 
-Measured at `0852af2`, over a gate run that failed no step (`measuredOver` in the lock says so,
+Measured at `0ab19fd`, over a gate run that failed no step (`measuredOver` in the lock says so,
 and `--measure` refuses a run with a failing step unless it is told to record that it was
 partial; [#408](https://github.com/brandonifco/rules-factory/issues/408)). It names a commit
 `main` holds rather than the branch commit `--measure` would otherwise have recorded, because a
@@ -84,6 +88,7 @@ squash merge destroys the second and #404's check is then right to refuse the lo
 | `examples/frcp-6-12-81` | 199 KB | — | 2 KB |
 | `examples/faa-part-107-temporal` | 146 KB | — | 37 KB |
 | `examples/srd-52-playing-the-game` | 180 KB | — | 1 KB |
+| `examples/srd-52-damage-and-healing` | 69 KB | — | 1 KB |
 | `examples/injection-trial` | 72 KB | — | 51 KB |
 | `examples/validator-attack` | 61 KB | — | — |
 | `examples` | 34 KB | — | — |
@@ -118,7 +123,7 @@ the difference is which map's review record cites them, not which review mattere
 
 ## The artifacts nothing reads
 
-937 KB across 38 files, listed by `check-evidence.py --roles`. By kind:
+938 KB across 39 files, listed by `check-evidence.py --roles`. By kind:
 
 - **blind-mapping working files** — the second mapper's `blind-map.json`, the `build.py` that made
   it and the `compare.py` that compared it, for `srd-52-combat`, `tax-121-principal-residence` and

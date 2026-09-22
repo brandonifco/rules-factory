@@ -1,0 +1,917 @@
+{
+  "schemaVersion": 1,
+  "corpus": "srd-5.2.1",
+  "baseline": {
+    "contentHash": "c55926cb77bc7ea09096fc652db1411d763eae89d430c52221ed8709a075b100",
+    "hashDerivation": "srd-5.2.1-pdftotext-24.02.0-page-marked"
+  },
+  "extent": {
+    "unit": "page",
+    "from": 16,
+    "to": 18,
+    "startsAfter": "Damage and Healing",
+    "quoted": 0.72
+  },
+  "entries": [
+    {
+      "id": "hit-point-maximum",
+      "name": "A creature's Hit Point maximum",
+      "locator": {
+        "sourceId": "srd-5.2.1",
+        "citation": "Playing the Game / Hit Points / p. 16"
+      },
+      "kind": "value",
+      "scope": "in",
+      "clarity": "clear",
+      "defines": [
+        {
+          "vocabulary": "damage-and-healing-terms",
+          "term": "Hit Point maximum"
+        }
+      ],
+      "extraction": {
+        "defect": "split-by-sidebar",
+        "renderedReading": "Your Hit Point maximum is the number of Hit Points you have when uninjured."
+      },
+      "evidence": "Your Hit Point maximum is the number of",
+      "status": "mapped",
+      "note": "The quote ends mid-word of its own sentence because the extraction's reading order puts the whole Resting section, the p. 16 folio and the running head between the sentence's halves; the rendered reading is the sentence as the page prints it. The rule is the definition every other rule in this slice counts from -- damage subtracts towards 0 from it, healing cannot exceed it, Massive Damage compares against it, and a maximum of 0 kills. What sets the maximum is outside this slice. A test must show the engine holds a maximum per creature and never confuses it with current Hit Points."
+    },
+    {
+      "id": "current-hit-points-range",
+      "name": "Current Hit Points run from the maximum down to 0",
+      "locator": {
+        "sourceId": "srd-5.2.1",
+        "citation": "Playing the Game / Hit Points / p. 16"
+      },
+      "kind": "value",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [
+        "hit-point-maximum"
+      ],
+      "evidence": "Your current Hit Points can be any number from that maximum down to 0, which is the lowest Hit Points can go.",
+      "status": "mapped",
+      "note": "The bound that makes 0 a floor and not a waypoint: an engine that subtracted past 0 would compute a negative reserve the corpus says does not exist, and Massive Damage shows the corpus carries the remainder separately rather than as negative Hit Points. A test must show damage exceeding current Hit Points leaves 0, not a negative number."
+    },
+    {
+      "id": "damage-subtracts-from-hit-points",
+      "name": "Damage is subtracted from Hit Points",
+      "locator": {
+        "sourceId": "srd-5.2.1",
+        "citation": "Playing the Game / Hit Points / p. 16"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [
+        "current-hit-points-range"
+      ],
+      "evidence": "Whenever you take damage, subtract it from your Hit Points.",
+      "status": "mapped",
+      "note": "The single arithmetic step the rest of the chapter modifies: damage rolls produce the number, Resistance and Vulnerability scale it, Temporary Hit Points intercept it, and this is where what survives all of that lands. A test must show the subtraction happens once per instance of damage."
+    },
+    {
+      "id": "hit-point-loss-has-no-effect-until-zero",
+      "name": "Losing Hit Points changes nothing until 0",
+      "locator": {
+        "sourceId": "srd-5.2.1",
+        "citation": "Playing the Game / Hit Points / p. 16"
+      },
+      "kind": "value",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [
+        "damage-subtracts-from-hit-points"
+      ],
+      "evidence": "Hit Point loss has no effect on your capabilities until you reach 0 Hit Points.",
+      "status": "mapped",
+      "note": "A negative rule, and the one an engine is most likely to get wrong by inventing wound penalties the corpus does not have. A test must show a creature at 1 Hit Point rolls and acts exactly as one at full."
+    },
+    {
+      "id": "bloodied",
+      "name": "Bloodied: half Hit Points or fewer",
+      "locator": {
+        "sourceId": "srd-5.2.1",
+        "citation": "Playing the Game / Hit Points / p. 16"
+      },
+      "kind": "value",
+      "scope": "in",
+      "clarity": "ambiguous",
+      "ambiguity": {
+        "question": "The threshold is 'half your Hit Points', and this slice uses 'your Hit Points' for the current total: current-hit-points-range says 'Your current Hit Points can be any number from that maximum down to 0' and damage-subtracts-from-hit-points says 'subtract it from your Hit Points'. Read that way the test is current <= half of current, which is true only at 0. The other reading is half the Hit Point maximum, which the passage does not say and which the immediately preceding sentence of the same paragraph defines. Nothing in the slice chooses.",
+        "fate": "decision",
+        "decision": "docs/decisions/0065-bloodied-is-measured-against-the-hit-point-maximum.md"
+      },
+      "dependsOn": [
+        "hit-point-maximum"
+      ],
+      "defines": [
+        {
+          "vocabulary": "damage-and-healing-terms",
+          "term": "Bloodied"
+        }
+      ],
+      "evidence": "If you have half your Hit Points or fewer, you’re Bloodied, which has no game effect on its own but which might trigger other game effects.",
+      "status": "mapped",
+      "note": "A named state with no effect of its own: the corpus defines it so that rules outside this slice can name it, and an engine owes the predicate and nothing else. The threshold is the map's one open question and 0065 rules on it. A test must show the predicate turns true at exactly half the maximum, that it is false at half plus one, and that nothing else changes when it turns true."
+    },
+    {
+      "id": "rest-availability",
+      "name": "Short Rests in a day, one Long Rest to end it",
+      "locator": {
+        "sourceId": "srd-5.2.1",
+        "citation": "Playing the Game / Resting / p. 16"
+      },
+      "kind": "value",
+      "scope": "in",
+      "clarity": "clear",
+      "evidence": "Any creature can take hour-long Short Rests in the midst of a day and an 8-hour Long Rest to end it. Regaining Hit Points is one of the main benefits of a rest. “Rules Glossary” provides the rules for Short and Long Rests.",
+      "status": "mapped",
+      "note": "What this slice states about resting is its availability and its durations; what a rest does is in the Rules Glossary, outside the extent, so an engine built from this map alone can offer a rest and cannot resolve one.",
+      "crossReferences": [
+        {
+          "cites": "“Rules Glossary” provides the rules for Short and Long Rests",
+          "unmapped": "The Short Rest and Long Rest rules are printed in the Rules Glossary on pp. 178-190, outside this map's extent, and no entry here quotes them."
+        }
+      ]
+    },
+    {
+      "id": "damage-roll",
+      "name": "Rolling and dealing damage",
+      "locator": {
+        "sourceId": "srd-5.2.1",
+        "citation": "Playing the Game / Damage Rolls / p. 16"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "clear",
+      "draws": {
+        "dice": "the damage dice",
+        "count": "whatever dice the weapon, spell or monster ability specifies, once per instance of damage; the corpus names no number here because the source names it, and every source is outside this slice. critical-hit-damage doubles this count and declares that itself"
+      },
+      "evidence": "Each weapon, spell, and damaging monster ability specifies the damage it deals. You roll the damage dice, add any modifiers, and deal the damage to your target.",
+      "status": "mapped",
+      "note": "The procedure, stated without any of its inputs: which dice, and which modifiers, come from the weapon, the spell or the monster, all outside the extent. An engine can hold the shape -- roll, add, deal -- and cannot resolve a single concrete attack from this map alone. A test must show the three steps happen in that order and that the dealt amount is what reaches damage-subtracts-from-hit-points."
+    },
+    {
+      "id": "damage-dice-are-stated-elsewhere",
+      "name": "Where the damage dice are printed",
+      "locator": {
+        "sourceId": "srd-5.2.1",
+        "citation": "Playing the Game / Damage Rolls / p. 16"
+      },
+      "kind": "value",
+      "scope": "out",
+      "clarity": "clear",
+      "evidence": "See “Equipment” for weapons’ damage dice and “Spells” for spells’ damage dice.",
+      "status": "declined",
+      "note": "Declined, not missed. The sentence states no rule of its own; it is the corpus saying where the numbers damage-roll and spell-damage-dice need are printed. It is an entry rather than a rejection because a pointer is owed by the passage that makes it (0058), and no other entry's evidence contains this sentence. OutsideCurrentScope.",
+      "crossReferences": [
+        {
+          "cites": "See “Equipment” for weapons’ damage dice and “Spells” for spells’ damage dice",
+          "unmapped": "Equipment and Spells are separate sections of the SRD, outside this map's extent; no entry here quotes either."
+        }
+      ]
+    },
+    {
+      "id": "damage-floor-zero",
+      "name": "Damage has a floor of 0",
+      "locator": {
+        "sourceId": "srd-5.2.1",
+        "citation": "Playing the Game / Damage Rolls / p. 16"
+      },
+      "kind": "value",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [
+        "damage-roll"
+      ],
+      "evidence": "If there’s a penalty to the damage, it’s possible to deal 0 damage but not negative damage.",
+      "status": "mapped",
+      "note": "The clamp on the roll, and the mirror of current-hit-points-range's clamp on the total: a penalty that would take a damage roll below zero produces zero, never healing. A test must show a penalty larger than the roll deals 0 and does not restore Hit Points."
+    },
+    {
+      "id": "weapon-damage-ability-modifier",
+      "name": "A weapon adds the attack roll's ability modifier",
+      "locator": {
+        "sourceId": "srd-5.2.1",
+        "citation": "Playing the Game / Damage Rolls / p. 16"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [
+        "damage-roll"
+      ],
+      "evidence": "When attacking with a weapon, you add your ability modifier—the same modifier used for the attack roll—to the damage roll.",
+      "status": "mapped",
+      "note": "The one modifier this slice names, and it names it by identity rather than by value: whichever modifier the attack roll used. Which that is depends on the weapon and is decided outside this slice. A test must show the damage modifier and the attack modifier are the same number and cannot diverge."
+    },
+    {
+      "id": "spell-damage-dice",
+      "name": "A spell states its own damage dice and modifiers",
+      "locator": {
+        "sourceId": "srd-5.2.1",
+        "citation": "Playing the Game / Damage Rolls / p. 16"
+      },
+      "kind": "assertion",
+      "scope": "in",
+      "clarity": "clear",
+      "assertedBy": [
+        "A spell"
+      ],
+      "dependsOn": [
+        "damage-roll"
+      ],
+      "evidence": "A spell tells you which dice to roll for damage and whether to add any modifiers.",
+      "status": "mapped",
+      "note": "An assertion and not a value: the corpus says the spell supplies both facts and states neither, and every spell is outside this slice. An engine must take them from its caller and may not default them -- in particular it may not carry the weapon rule across, which is why this is separate from weapon-damage-ability-modifier."
+    },
+    {
+      "id": "no-ability-modifier-on-fixed-damage",
+      "name": "Fixed damage takes no ability modifier",
+      "locator": {
+        "sourceId": "srd-5.2.1",
+        "citation": "Playing the Game / Damage Rolls / p. 16"
+      },
+      "kind": "value",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [
+        "weapon-damage-ability-modifier"
+      ],
+      "evidence": "Unless a rule says otherwise, you don’t add your ability modifier to a fixed damage amount that doesn’t use a roll, such as the damage of a Blowgun.",
+      "status": "mapped",
+      "note": "The exception to the weapon rule, and it is defeasible in the corpus's own words ('Unless a rule says otherwise'), which is exceptions-supersede-general-rules again. A test must show fixed damage carries no modifier, and that an engine can be told a rule says otherwise."
+    },
+    {
+      "id": "critical-hit-damage",
+      "name": "A Critical Hit rolls the damage dice twice",
+      "locator": {
+        "sourceId": "srd-5.2.1",
+        "citation": "Playing the Game / Critical Hits / p. 16"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "clear",
+      "draws": {
+        "dice": "the attack’s damage dice",
+        "count": "twice the attack's own damage dice, in place of damage-roll's single set, and not in addition to it"
+      },
+      "dependsOn": [
+        "damage-roll"
+      ],
+      "evidence": "When you score a Critical Hit, you deal extra damage. Roll the attack’s damage dice twice, add them together, and add any relevant modifiers as normal.",
+      "status": "mapped",
+      "note": "The dice double and the modifiers do not, which is the whole content of the rule and the thing an engine gets wrong by doubling the total. What a Critical Hit is is decided on p. 7, outside this slice. A test must show 2d4+3 and not 2(d4+3), and must watch the modifier stay single."
+    },
+    {
+      "id": "critical-hit-other-damage-dice",
+      "name": "Other damage dice double on a Critical Hit too",
+      "locator": {
+        "sourceId": "srd-5.2.1",
+        "citation": "Playing the Game / Critical Hits / p. 16"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [
+        "critical-hit-damage"
+      ],
+      "evidence": "If the attack involves other damage dice, such as from the Rogue’s Sneak Attack feature, you also roll those dice twice.",
+      "status": "mapped",
+      "note": "The extension the corpus states separately because the attack's own dice are not all the dice: anything a feature adds doubles as well. Every such feature is outside this slice, so an engine owes the rule over dice it is handed rather than over any named source. A test must show a second set of dice added by the caller doubles too."
+    },
+    {
+      "id": "damage-against-multiple-targets",
+      "name": "One damage roll for all targets of one effect",
+      "locator": {
+        "sourceId": "srd-5.2.1",
+        "citation": "Playing the Game / Damage against Multiple Targets / p. 16"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "clear",
+      "draws": {
+        "dice": "the damage",
+        "count": "one, however many targets there are; the draw is damage-roll's and this rule is what stops it being made per target"
+      },
+      "dependsOn": [
+        "damage-roll"
+      ],
+      "evidence": "When you create a damaging effect that forces two or more targets to make saving throws against it at the same time, roll the damage once for all the targets.",
+      "status": "mapped",
+      "note": "A rule about the number of draws, which under a seeded corpus is a rule about every later draw as well: an engine that rolled per target would diverge from a replay at the first Fireball. A test must show one roll shared by every target, and must watch the seed sequence rather than only the totals."
+    },
+    {
+      "id": "half-damage-on-a-successful-save",
+      "name": "Half damage, rounded down, on a successful save",
+      "locator": {
+        "sourceId": "srd-5.2.1",
+        "citation": "Playing the Game / Half Damage / p. 16"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [
+        "damage-against-multiple-targets"
+      ],
+      "evidence": "Many saving throw effects deal half damage (round down) to a target when the target succeeds on the saving throw. The halved damage is equal to half the damage that would be dealt on a failed save.",
+      "status": "mapped",
+      "note": "The second sentence is the one that matters with the first: the half is of the damage the failed save would have taken, so with one roll shared across targets every successful save halves the same number. 'Many' is the corpus hedging about which effects say so, not about the arithmetic. A test must show an odd total halves downward and that two targets, one saving and one not, take n and n//2 of the same roll."
+    },
+    {
+      "id": "damage-types",
+      "name": "Every instance of damage has a type",
+      "locator": {
+        "sourceId": "srd-5.2.1",
+        "citation": "Playing the Game / Damage Types / p. 16"
+      },
+      "kind": "value",
+      "scope": "in",
+      "clarity": "clear",
+      "evidence": "Each instance of damage has a type, like Fire or Slashing. Damage types are listed in “Rules {17} Glossary” and have no rules of their own, but other rules, such as Resistance, rely on damage types.",
+      "status": "mapped",
+      "note": "The quote carries the corpus's own `{17}` page marker because the sentence crosses the page turn and the checkers search the pinned bytes with the markers in place. The rule is a typing obligation with no list: an engine must carry a type on every instance of damage, and cannot enumerate the types from this map. A test must show an untyped instance of damage is refused rather than defaulted.",
+      "crossReferences": [
+        {
+          "cites": "listed in “Rules {17} Glossary”",
+          "unmapped": "The list of damage types is printed in the Rules Glossary, outside this map's extent, and no entry here quotes it."
+        },
+        {
+          "cites": "such as Resistance",
+          "resolvedBy": "resistance-and-vulnerability"
+        }
+      ]
+    },
+    {
+      "id": "resistance-and-vulnerability",
+      "name": "Resistance halves, Vulnerability doubles",
+      "locator": {
+        "sourceId": "srd-5.2.1",
+        "citation": "Playing the Game / Resistance and Vulnerability / p. 17"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [
+        "damage-types"
+      ],
+      "defines": [
+        {
+          "vocabulary": "damage-and-healing-terms",
+          "term": "Resistance"
+        },
+        {
+          "vocabulary": "damage-and-healing-terms",
+          "term": "Vulnerability"
+        }
+      ],
+      "evidence": "Some creatures and objects have Resistance or Vulnerability to certain damage types. If you have Resistance to a damage type, damage of that type is halved against you (round down). If you have Vulnerability to a damage type, damage of that type is doubled against you.",
+      "status": "mapped",
+      "note": "Both operations are keyed to a damage type, which is why this depends on the typing rule rather than on the damage roll: a damage instance with no type cannot be tested against either. A test must show the rounding is downward on an odd number, and that Resistance to one type leaves another untouched."
+    },
+    {
+      "id": "resistance-vulnerability-no-stacking",
+      "name": "Repeated Resistance or Vulnerability counts once",
+      "locator": {
+        "sourceId": "srd-5.2.1",
+        "citation": "Playing the Game / No Stacking / p. 17"
+      },
+      "kind": "value",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [
+        "resistance-and-vulnerability"
+      ],
+      "evidence": "Multiple instances of Resistance or Vulnerability that affect the same damage type count as only one instance.",
+      "status": "mapped",
+      "note": "An engine that models Resistance as a list rather than as a predicate will halve twice, and the corpus's own example -- Resistance to Necrotic plus Resistance to all damage -- is the case it will get wrong. A test must show two sources of Resistance to one type produce one halving.",
+      "crossReferences": [
+        {
+          "cites": "Multiple instances of Resistance or Vulnerability",
+          "resolvedBy": "resistance-and-vulnerability"
+        }
+      ]
+    },
+    {
+      "id": "damage-modifier-order",
+      "name": "Adjustments, then Resistance, then Vulnerability",
+      "locator": {
+        "sourceId": "srd-5.2.1",
+        "citation": "Playing the Game / Order of Application / p. 17"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [
+        "resistance-vulnerability-no-stacking"
+      ],
+      "evidence": "Modifiers to damage are applied in the following order: adjustments such as bonuses, penalties, or multipliers are applied first; Resistance is applied second; and Vulnerability is applied third.",
+      "status": "mapped",
+      "note": "The order is not associative with the rounding, which is what makes it a rule rather than a convention: the corpus's own example lands on 22 by halving 23 to 11 and doubling, and any other order gives a different number. A test must run the three stages against a case where two orders differ, and the printed example is that case.",
+      "crossReferences": [
+        {
+          "cites": "Resistance is applied second; and Vulnerability is applied third",
+          "resolvedBy": "resistance-and-vulnerability"
+        }
+      ]
+    },
+    {
+      "id": "immunity",
+      "name": "Immunity to a damage type or a condition",
+      "locator": {
+        "sourceId": "srd-5.2.1",
+        "citation": "Playing the Game / Immunity / p. 17"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [
+        "damage-types"
+      ],
+      "defines": [
+        {
+          "vocabulary": "damage-and-healing-terms",
+          "term": "Immunity"
+        }
+      ],
+      "evidence": "Some creatures and objects have Immunity to certain damage types and conditions. Immunity to a damage type means you don’t take damage of that type, and Immunity to a condition means you aren’t affected by it.",
+      "status": "mapped",
+      "note": "One word covering two unlike things: damage Immunity is arithmetic and reaches zero, condition Immunity is about whether a condition attaches at all, and the conditions themselves are in the Rules Glossary outside this slice. A test must show damage Immunity beats both Resistance and Vulnerability on the same type, and that an engine holds the two kinds of Immunity separately."
+    },
+    {
+      "id": "healing-sources",
+      "name": "What restores Hit Points",
+      "locator": {
+        "sourceId": "srd-5.2.1",
+        "citation": "Playing the Game / Healing / p. 17"
+      },
+      "kind": "value",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [
+        "hit-point-maximum"
+      ],
+      "evidence": "Hit Points can be restored by magic, such as the Cure Wounds spell or a Potion of Healing, or by a Short or Long Rest (see “Rules Glossary”).",
+      "status": "mapped",
+      "note": "An enumeration of kinds, not of instances: magic and rest. Every named instance -- Cure Wounds, a Potion of Healing, the rests themselves -- is outside this slice, so an engine takes the amount from its caller and owes only where it may come from.",
+      "crossReferences": [
+        {
+          "cites": "(see “Rules Glossary”)",
+          "unmapped": "The Short Rest and Long Rest rules are in the Rules Glossary, outside this map's extent."
+        }
+      ]
+    },
+    {
+      "id": "healing-cannot-exceed-maximum",
+      "name": "Healing above the maximum is lost",
+      "locator": {
+        "sourceId": "srd-5.2.1",
+        "citation": "Playing the Game / Healing / p. 17"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [
+        "healing-sources"
+      ],
+      "evidence": "When you receive healing, add the restored Hit Points to your current Hit Points. Your Hit Points can’t exceed your Hit Point maximum, so any Hit Points regained in excess of the maximum are lost.",
+      "status": "mapped",
+      "note": "The extraction prints this paragraph after the Knocking Out a Creature subsection because the reading order runs down the column; on the page it is the second half of Healing. The rule is the ceiling that current-hit-points-range's floor mirrors: excess is discarded, not banked. A test must show healing 8 onto 14 of a maximum 20 restores 6.",
+      "crossReferences": [
+        {
+          "cites": "your Hit Point maximum",
+          "resolvedBy": "hit-point-maximum"
+        }
+      ]
+    },
+    {
+      "id": "knocking-out-a-creature",
+      "name": "Choosing to knock out instead of killing",
+      "locator": {
+        "sourceId": "srd-5.2.1",
+        "citation": "Playing the Game / Knocking Out a Creature / p. 17"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [
+        "damage-subtracts-from-hit-points"
+      ],
+      "evidence": "When you would reduce a creature to 0 Hit Points with a melee attack, you can instead reduce the creature to 1 Hit Point and give it the Unconscious condition. It then starts a Short Rest, at the end of which that condition ends on it. The condition ends early if the creature regains any Hit Points or if someone takes an action to administer first aid to it, making a successful DC 10 Wisdom (Medicine) check.",
+      "status": "mapped",
+      "note": "A choice offered at the moment of reduction, so an engine must ask before it applies the damage rather than repair the state afterwards. It is the only route in this slice by which a creature reaches 1 Hit Point instead of 0, and so the only one that skips Death Saving Throws entirely. The Unconscious condition and the Short Rest are both in the Rules Glossary, outside this extent."
+    },
+    {
+      "id": "dropping-to-zero-hit-points",
+      "name": "At 0 Hit Points a creature dies or falls unconscious",
+      "locator": {
+        "sourceId": "srd-5.2.1",
+        "citation": "Playing the Game / Dropping to 0 Hit Points / p. 17"
+      },
+      "kind": "value",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [
+        "damage-subtracts-from-hit-points"
+      ],
+      "evidence": "When a creature drops to 0 Hit Points, it either dies outright or falls unconscious, as explained below.",
+      "status": "mapped",
+      "note": "Not a lead-in but an exhaustive disjunction: two outcomes and no third, which is what lets an engine refuse any other state at 0 Hit Points. A test must show every path through the rules below lands on exactly one of the two."
+    },
+    {
+      "id": "monster-death",
+      "name": "A monster dies at 0 Hit Points unless the GM says otherwise",
+      "locator": {
+        "sourceId": "srd-5.2.1",
+        "citation": "Playing the Game / Instant Death / p. 17"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [
+        "dropping-to-zero-hit-points"
+      ],
+      "evidence": "Monster Death. A monster dies the instant it drops to 0 Hit Points, although a Game Master can ignore this rule for an individual monster and treat it like a character.",
+      "status": "mapped",
+      "note": "The rule is computable and its exception is a parameter: an engine must hold a per-creature flag the GM sets, and when it is set the creature takes the character path through falling-unconscious and the Death Saving Throws instead. A test must show both branches over the same monster."
+    },
+    {
+      "id": "hit-point-maximum-of-zero-is-death",
+      "name": "A Hit Point maximum of 0 kills",
+      "locator": {
+        "sourceId": "srd-5.2.1",
+        "citation": "Playing the Game / Instant Death / p. 17"
+      },
+      "kind": "value",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [
+        "hit-point-maximum"
+      ],
+      "evidence": "Hit Point Maximum of 0. A creature dies if its Hit Point maximum reaches 0. Certain effects drain life energy, reducing a creature’s Hit Point maximum.",
+      "status": "mapped",
+      "note": "The one death in this chapter that is not about current Hit Points at all, and an engine that watched only the current total would miss it. What drains a maximum is outside this slice; the rule is the threshold. A test must show a creature at full current Hit Points dies when its maximum is driven to 0.",
+      "crossReferences": [
+        {
+          "cites": "its Hit Point maximum reaches 0",
+          "resolvedBy": "hit-point-maximum"
+        }
+      ]
+    },
+    {
+      "id": "massive-damage",
+      "name": "Remaining damage equal to the maximum kills outright",
+      "locator": {
+        "sourceId": "srd-5.2.1",
+        "citation": "Playing the Game / Instant Death / p. 17"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [
+        "current-hit-points-range",
+        "hit-point-maximum"
+      ],
+      "evidence": "Massive Damage. When damage reduces a character to 0 Hit Points and damage remains, the character dies if the remainder equals or exceeds their Hit Point maximum.",
+      "status": "mapped",
+      "note": "The rule that shows the corpus carries the overflow explicitly rather than as negative Hit Points, which is why current-hit-points-range's floor at 0 costs nothing. The comparison is against the maximum, not the current total, and the boundary is inclusive. A test must run the corpus's own case -- maximum 12, current 6, 18 damage -- and the one below it, where 11 remains and the character lives.",
+      "crossReferences": [
+        {
+          "cites": "their Hit Point maximum",
+          "resolvedBy": "hit-point-maximum"
+        }
+      ]
+    },
+    {
+      "id": "character-demise",
+      "name": "What a player does after a character dies",
+      "locator": {
+        "sourceId": "srd-5.2.1",
+        "citation": "Playing the Game / Character Demise / p. 17"
+      },
+      "kind": "operation",
+      "scope": "out",
+      "clarity": "clear",
+      "evidence": "If your character dies, others might find a magical way to revive your character, such as with the Raise Dead spell. Or talk with the GM about making a new character to join the group. “Rules Glossary” has more information on being dead.",
+      "status": "declined",
+      "note": "Declined, not missed. Both sentences are about what the people at the table do next -- cast a spell from outside this slice, or agree a new character with the GM -- and neither states a computation over a state an engine holds. The engine's part ends at the character being dead, which massive-damage, monster-death and death-saving-throw-three-successes-failures each reach. OutsideCurrentScope.",
+      "crossReferences": [
+        {
+          "cites": "“Rules Glossary” has more information on being dead",
+          "unmapped": "The Dead condition's own rules are in the Rules Glossary, outside this map's extent."
+        }
+      ]
+    },
+    {
+      "id": "falling-unconscious",
+      "name": "Surviving 0 Hit Points means Unconscious and Death Saving Throws",
+      "locator": {
+        "sourceId": "srd-5.2.1",
+        "citation": "Playing the Game / Falling Unconscious / p. 17"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [
+        "dropping-to-zero-hit-points"
+      ],
+      "evidence": "If you reach 0 Hit Points and don’t die instantly, you have the Unconscious condition (see “Rules Glossary”) until you regain any Hit Points, and you now face making Death Saving Throws (see below).",
+      "status": "mapped",
+      "note": "The second branch of the disjunction, and the join between this slice and the conditions: the state it puts a creature in is defined in the Rules Glossary, outside the extent, so an engine built from this map alone knows a creature is Unconscious and not what that costs it. A test must show the condition persists until any Hit Points are regained, not until the creature is Stable.",
+      "crossReferences": [
+        {
+          "cites": "Death Saving Throws (see below)",
+          "resolvedBy": "death-saving-throw"
+        },
+        {
+          "cites": "the Unconscious condition (see “Rules Glossary”)",
+          "unmapped": "The Unconscious condition is defined in the Rules Glossary, outside this map's extent; trial 8's srd-52-conditions map reads that glossary over the same pinned bytes, and `resolvedBy` resolves only inside this map."
+        }
+      ]
+    },
+    {
+      "id": "death-saving-throw",
+      "name": "When a Death Saving Throw is made",
+      "locator": {
+        "sourceId": "srd-5.2.1",
+        "citation": "Playing the Game / Death Saving Throws / p. 17"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [
+        "falling-unconscious"
+      ],
+      "defines": [
+        {
+          "vocabulary": "damage-and-healing-terms",
+          "term": "Death Saving Throw"
+        }
+      ],
+      "evidence": "Whenever you start your turn with 0 Hit Points, you must make a Death Saving Throw to determine whether you creep closer to death or hang on to life.",
+      "status": "mapped",
+      "note": "The trigger, stated separately from the roll, and so carrying no `draws`: the die is named and rolled by death-saving-throw-three-successes-failures, and a draw belongs to the entry whose own resolution makes it (0025). The trigger is the start of a turn, not the moment of dropping. An engine that rolled on reaching 0 would make one draw too many and, under a seeded corpus, change every later draw. A test must show no throw is made on the turn the creature drops."
+    },
+    {
+      "id": "death-saving-throw-not-tied-to-an-ability",
+      "name": "A Death Saving Throw uses no ability score",
+      "locator": {
+        "sourceId": "srd-5.2.1",
+        "citation": "Playing the Game / Death Saving Throws / p. 17"
+      },
+      "kind": "value",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [
+        "death-saving-throw"
+      ],
+      "evidence": "Unlike other saving throws, this one isn’t tied to an ability score.",
+      "status": "mapped",
+      "note": "A negative rule against the general saving throw rule on p. 7, outside this slice: every other saving throw adds an ability modifier and this one adds nothing. A test must show a creature with a large Constitution modifier succeeds no more often."
+    },
+    {
+      "id": "death-saving-throw-three-successes-failures",
+      "name": "Three successes or three failures",
+      "locator": {
+        "sourceId": "srd-5.2.1",
+        "citation": "Playing the Game / Death Saving Throws / p. 17"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "clear",
+      "draws": {
+        "dice": "1d20",
+        "count": "one per turn a creature starts with 0 Hit Points, which is the trigger death-saving-throw states"
+      },
+      "dependsOn": [
+        "death-saving-throw"
+      ],
+      "evidence": "Three Successes/Failures. Roll 1d20. If the roll is 10 or higher, you succeed. Otherwise, you fail. A success or failure has no effect by itself. On your third success, you become Stable (see “Stabilizing a Character” below). On your third failure, you die. The successes and failures don’t need to be consecutive; keep track of both until you collect three of a kind. The number of both is reset to zero when you regain any Hit Points or become Stable.",
+      "status": "mapped",
+      "note": "Two counters, not one, and they are independent until either reaches three -- which is the state an engine most often gets wrong by tracking a net score. The reset is conditional on regaining Hit Points or becoming Stable, so a creature that dies does not reset. A test must show a 1-2-1-2-1 sequence of successes and failures ends in death on the fifth throw and not before.",
+      "crossReferences": [
+        {
+          "cites": "(see “Stabilizing a Character” below)",
+          "resolvedBy": "stabilizing-a-character"
+        },
+        {
+          "cites": "you become Stable",
+          "resolvedBy": "stable-creature"
+        }
+      ]
+    },
+    {
+      "id": "death-saving-throw-rolling-1-or-20",
+      "name": "A 1 costs two failures; a 20 restores a Hit Point",
+      "locator": {
+        "sourceId": "srd-5.2.1",
+        "citation": "Playing the Game / Death Saving Throws / p. 18"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [
+        "death-saving-throw-three-successes-failures"
+      ],
+      "evidence": "Rolling a 1 or 20. When you roll a 1 on the d20 for a Death Saving Throw, you suffer two failures. If you roll a 20 on the d20, you regain 1 Hit Point.",
+      "status": "mapped",
+      "note": "The two extremes are not symmetric: a 1 moves a counter, a 20 leaves the throws behind entirely by restoring a Hit Point, which by the reset rule clears both counters and by falling-unconscious ends the Unconscious condition. A test must show a 20 returns the creature to consciousness at 1 Hit Point, and that a 1 on the second throw is fatal where a 9 would not be.",
+      "crossReferences": [
+        {
+          "cites": "the d20 for a Death Saving Throw",
+          "resolvedBy": "death-saving-throw"
+        }
+      ]
+    },
+    {
+      "id": "damage-at-zero-hit-points",
+      "name": "Damage while at 0 Hit Points",
+      "locator": {
+        "sourceId": "srd-5.2.1",
+        "citation": "Playing the Game / Death Saving Throws / p. 18"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [
+        "death-saving-throw-three-successes-failures",
+        "hit-point-maximum"
+      ],
+      "evidence": "Damage at 0 Hit Points. If you take any damage while you have 0 Hit Points, you suffer a Death Saving Throw failure. If the damage is from a Critical Hit, you suffer two failures instead. If the damage equals or exceeds your Hit Point maximum, you die.",
+      "status": "mapped",
+      "note": "Three rules in one passage, and the third overrides the first two rather than adding to them. The Critical Hit clause is the only place in this slice where what kind of attack dealt the damage changes what the damage does, so an engine must carry that fact through to here. A test must show a Critical Hit for 1 damage at 0 Hit Points costs two failures, and that damage equal to the maximum kills outright whatever the counters say.",
+      "crossReferences": [
+        {
+          "cites": "you suffer a Death Saving Throw failure",
+          "resolvedBy": "death-saving-throw"
+        },
+        {
+          "cites": "exceeds your Hit Point maximum",
+          "resolvedBy": "hit-point-maximum"
+        }
+      ]
+    },
+    {
+      "id": "stabilizing-a-character",
+      "name": "Stabilizing a creature at 0 Hit Points",
+      "locator": {
+        "sourceId": "srd-5.2.1",
+        "citation": "Playing the Game / Stabilizing a Character / p. 18"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [
+        "death-saving-throw"
+      ],
+      "evidence": "You can take the Help action to try to stabilize a creature with 0 Hit Points, which requires a successful DC 10 Wisdom (Medicine) check.",
+      "status": "mapped",
+      "note": "The action and the check are both defined outside this slice -- the Help action on p. 9, the ability check on p. 6 -- so what this map states is the DC and the ability and skill it is rolled against. A test must show the check is against DC 10 and that failure leaves the creature making Death Saving Throws."
+    },
+    {
+      "id": "stable-creature",
+      "name": "What being Stable does",
+      "locator": {
+        "sourceId": "srd-5.2.1",
+        "citation": "Playing the Game / Stabilizing a Character / p. 18"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "clear",
+      "draws": {
+        "dice": "1d4",
+        "count": "one per Stable creature that is not healed, rolled in hours"
+      },
+      "dependsOn": [
+        "stabilizing-a-character"
+      ],
+      "defines": [
+        {
+          "vocabulary": "damage-and-healing-terms",
+          "term": "Stable"
+        }
+      ],
+      "evidence": "A Stable creature doesn’t make Death Saving Throws even though it has 0 Hit Points, but it still has the Unconscious condition. If the creature takes damage, it stops being Stable and starts making Death Saving Throws again. A Stable creature that isn’t healed regains 1 Hit Point after 1d4 hours.",
+      "status": "mapped",
+      "note": "Stable suspends the throws without ending the condition or raising the Hit Points, which is why an engine needs it as a third state at 0 Hit Points rather than as the absence of throws. The 1d4-hour recovery is a draw the corpus makes in time rather than in the resolution, and it still consumes the sequence. A test must show damage to a Stable creature resumes the throws from the counters the reset left at zero."
+    },
+    {
+      "id": "temporary-hit-points",
+      "name": "Temporary Hit Points are a buffer, not Hit Points",
+      "locator": {
+        "sourceId": "srd-5.2.1",
+        "citation": "Playing the Game / Temporary Hit Points / p. 18"
+      },
+      "kind": "value",
+      "scope": "in",
+      "clarity": "clear",
+      "defines": [
+        {
+          "vocabulary": "damage-and-healing-terms",
+          "term": "Temporary Hit Points"
+        }
+      ],
+      "evidence": "Some spells and other effects confer Temporary Hit Points, which are a buffer against losing actual Hit Points, as explained below.",
+      "status": "mapped",
+      "note": "The corpus states what they are before it states what they do, and the four rules below are all consequences of 'not actual Hit Points'. An engine holds them as a separate number on a creature, never as a bonus to the maximum. What confers them is outside this slice."
+    },
+    {
+      "id": "lose-temporary-hit-points-first",
+      "name": "Damage takes Temporary Hit Points first",
+      "locator": {
+        "sourceId": "srd-5.2.1",
+        "citation": "Playing the Game / Lose Temporary Hit Points First / p. 18"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [
+        "temporary-hit-points",
+        "damage-subtracts-from-hit-points"
+      ],
+      "evidence": "If you have Temporary Hit Points and take damage, those points are lost first, and any leftover damage carries over to your Hit Points.",
+      "status": "mapped",
+      "note": "The interception step between the damage arriving and the subtraction from Hit Points, which is why it depends on both. A test must show 7 damage against 5 Temporary Hit Points leaves 0 of them and takes 2 from Hit Points, and that the carry-over is the remainder and not the whole.",
+      "crossReferences": [
+        {
+          "cites": "If you have Temporary Hit Points and take damage",
+          "resolvedBy": "temporary-hit-points"
+        }
+      ]
+    },
+    {
+      "id": "temporary-hit-points-duration",
+      "name": "How long Temporary Hit Points last",
+      "locator": {
+        "sourceId": "srd-5.2.1",
+        "citation": "Playing the Game / Temporary Hit Points / p. 18"
+      },
+      "kind": "value",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [
+        "temporary-hit-points"
+      ],
+      "evidence": "Duration Temporary Hit Points last until they’re depleted or you finish a Long Rest (see “Rules Glossary”).",
+      "status": "mapped",
+      "note": "The corpus prints 'Duration' as a run-in heading and the extraction gives it no line of its own, so the quote begins with the heading's word (#435). Two terminations and no third: an engine must not expire them on a Short Rest or at the end of a turn.",
+      "crossReferences": [
+        {
+          "cites": "(see “Rules Glossary”)",
+          "unmapped": "The Long Rest rules are in the Rules Glossary, outside this map's extent."
+        }
+      ]
+    },
+    {
+      "id": "temporary-hit-points-dont-stack",
+      "name": "Temporary Hit Points do not add together",
+      "locator": {
+        "sourceId": "srd-5.2.1",
+        "citation": "Playing the Game / They Don’t Stack / p. 18"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [
+        "temporary-hit-points"
+      ],
+      "evidence": "Temporary Hit Points can’t be added together. If you have Temporary Hit Points and receive more of them, you decide whether to keep the ones you have or to gain the new ones.",
+      "status": "mapped",
+      "note": "A choice, not a maximum: the corpus lets the recipient keep the smaller set, so an engine that silently took the larger would be right about the usual case and wrong about the rule. A test must show both choices are offered when 12 arrive on top of 10, and that neither produces 22.",
+      "crossReferences": [
+        {
+          "cites": "Temporary Hit Points can’t be added together",
+          "resolvedBy": "temporary-hit-points"
+        }
+      ]
+    },
+    {
+      "id": "temporary-hit-points-are-not-hit-points",
+      "name": "Temporary Hit Points are not healing and not Hit Points",
+      "locator": {
+        "sourceId": "srd-5.2.1",
+        "citation": "Playing the Game / They’re Not Hit Points or Healing / p. 18"
+      },
+      "kind": "value",
+      "scope": "in",
+      "clarity": "clear",
+      "dependsOn": [
+        "temporary-hit-points",
+        "healing-cannot-exceed-maximum",
+        "falling-unconscious"
+      ],
+      "evidence": "Temporary Hit Points can’t be added to your Hit Points, healing can’t restore them, and receiving Temporary Hit Points doesn’t count as healing. Because Temporary Hit Points aren’t Hit Points, a creature can be at full Hit Points and receive Temporary Hit Points. If you have 0 Hit Points, receiving Temporary Hit Points doesn’t restore you to consciousness. Only true healing can save you.",
+      "status": "mapped",
+      "note": "Four consequences of one fact, and the last is the one that joins this section to the Death Saving Throws: Temporary Hit Points at 0 Hit Points do not end the Unconscious condition and do not reset the counters, because neither is triggered by anything but regaining Hit Points. A test must show a creature at 0 Hit Points receiving Temporary Hit Points still makes a Death Saving Throw on its next turn.",
+      "crossReferences": [
+        {
+          "cites": "Temporary Hit Points can’t be added to your Hit Points",
+          "resolvedBy": "temporary-hit-points"
+        }
+      ]
+    }
+  ]
+}

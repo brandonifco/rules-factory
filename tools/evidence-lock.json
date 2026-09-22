@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "measuredAt": "0852af2cd71209b6663652f0184ed763b8d3a3d1",
+  "measuredAt": "0ab19fddfe247de39e77dcad4978c4675d1a8e1b",
   "measuredBy": "tools/check-evidence.py --measure",
   "measuredOver": {
     "gateStepsFailed": [],
@@ -19,8 +19,8 @@
   "artifacts": [
     {
       "path": "examples/README.md",
-      "sha256": "7399fc47ed060161a9b000670d27fb56e4521d85d09ddd9fa68b1b990761191f",
-      "bytes": 35403,
+      "sha256": "0975813b780cdcbdf0b64c5ac498578bbc8376594aa2a980a8192dbcf4474ed9",
+      "bytes": 37680,
       "role": "active",
       "readBy": [
         "links"
@@ -1807,6 +1807,74 @@
       "path": "examples/srd-52-conditions/review.json",
       "sha256": "1bbbc85b0c141bbc235d86ec9d64c01c36ddd741eab9b904fd532be9b3b13876",
       "bytes": 4325,
+      "role": "active",
+      "readBy": [
+        "checks"
+      ],
+      "archive": null
+    },
+    {
+      "path": "examples/srd-52-damage-and-healing/CORPUS-LICENCE.txt",
+      "sha256": "0b5bd883d3234fbdb92c77ae699546e2178084887e81c87498d9f37d1b6fe24a",
+      "bytes": 1461,
+      "role": "archived",
+      "readBy": [],
+      "archive": null
+    },
+    {
+      "path": "examples/srd-52-damage-and-healing/README.md",
+      "sha256": "3d51450045e960412800824867b294245c173651fba070a45121c6d15200405b",
+      "bytes": 9649,
+      "role": "active",
+      "readBy": [
+        "links"
+      ],
+      "archive": null
+    },
+    {
+      "path": "examples/srd-52-damage-and-healing/corpus-manifest.json",
+      "sha256": "763ba8885f635dfc0712e87cf31d781dc56a9b3a8d2d8e060923c4dc9d70b758",
+      "bytes": 2365,
+      "role": "active",
+      "readBy": [
+        "checks"
+      ],
+      "archive": null
+    },
+    {
+      "path": "examples/srd-52-damage-and-healing/corpus-map.json",
+      "sha256": "ee6004ab42e52bb57269f0a66d7f9c4ca5f7acf62f82d5dc03ade394ef1da305",
+      "bytes": 46982,
+      "role": "active",
+      "readBy": [
+        "checks"
+      ],
+      "archive": null
+    },
+    {
+      "path": "examples/srd-52-damage-and-healing/mapping-inventory.json",
+      "sha256": "77cfd6906d1e8561ede769f1b2cc22f9c49bc036a65da4ed76b1505276b16cb3",
+      "bytes": 7714,
+      "role": "active",
+      "readBy": [
+        "checks"
+      ],
+      "archive": null
+    },
+    {
+      "path": "examples/srd-52-damage-and-healing/mapping-protocol.json",
+      "sha256": "824ab87aaed219c0f9b6d87e5d00673d6a18c7b5b9f649da970703383507eea4",
+      "bytes": 977,
+      "role": "active",
+      "readBy": [
+        "checks"
+      ],
+      "archive": null
+    },
+    {
+      "path": "examples/srd-52-damage-and-healing/review.json",
+      "sha256": "b0a9c0994ef15007d256cfb78be5b6444d5a8ce3716a659b951c4debfdc217e0",
+      "bytes": 2855,
       "role": "active",
       "readBy": [
         "checks"
