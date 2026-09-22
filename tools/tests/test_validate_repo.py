@@ -69,12 +69,14 @@ class TestEveryRowOfTheTable(unittest.TestCase):
         self.assertTrue(scope.engine)
 
     def test_a_shared_corpus_narrows_to_every_map_that_reads_it(self):
-        # srd-52-conditions cites the text committed under srd-52-combat. Deriving the affected
-        # map from the changed path alone would check one of the two.
+        # srd-52-conditions and srd-52-playing-the-game both cite the text committed under
+        # srd-52-combat. Deriving the affected map from the changed path alone would check one of
+        # the three.
         scope = vr.classify(["examples/srd-52-combat/srd-5.2.1.txt"])
         self.assertEqual(
             ("examples/srd-52-combat/corpus-map.json",
-             "examples/srd-52-conditions/corpus-map.json"),
+             "examples/srd-52-conditions/corpus-map.json",
+             "examples/srd-52-playing-the-game/corpus-map.json"),
             scope.maps,
         )
 

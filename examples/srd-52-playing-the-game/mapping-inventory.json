@@ -1,0 +1,473 @@
+{
+  "inventoryVersion": 2,
+  "rejected": [
+    {
+      "sourceId": "srd-5.2.1",
+      "unit": "p. 5 block 2",
+      "ground": "advice",
+      "note": "The three numbered steps of the Rhythm of Play pattern -- the GM describes a scene, the players say what their characters do, the GM narrates the results. Declined with the section they belong to: `rhythm-of-play` quotes its lead-in and declines it as what the people at the table do rather than what an engine computes."
+    },
+    {
+      "sourceId": "srd-5.2.1",
+      "unit": "p. 5 block 3",
+      "ground": "heading",
+      "note": "The section heading 'Exceptions Supersede General Rules', which names the rules below it and states none of its own."
+    },
+    {
+      "sourceId": "srd-5.2.1",
+      "unit": "p. 5 block 5",
+      "ground": "page-furniture",
+      "note": "The folio '5', the printed page number, which pdftotext leaves in the reading order as a block of its own. It states nothing."
+    },
+    {
+      "sourceId": "srd-5.2.1",
+      "unit": "p. 5 block 6",
+      "ground": "page-furniture",
+      "note": "The running head 'System Reference Document 5.2.1', printed at the foot of every page of the SRD and left in the reading order by the extraction. It states nothing."
+    },
+    {
+      "sourceId": "srd-5.2.1",
+      "unit": "p. 5 block 7",
+      "ground": "advice",
+      "note": "The second half of the Rhythm of Play section's closing sentence, which the extraction separates from its first half by the Exceptions Supersede General Rules sidebar. Declined with the section, as `rhythm-of-play` declines it."
+    },
+    {
+      "sourceId": "srd-5.2.1",
+      "unit": "p. 5 block 8",
+      "ground": "heading",
+      "note": "The section heading 'The Six Abilities', which names the rules below it and states none of its own."
+    },
+    {
+      "sourceId": "srd-5.2.1",
+      "unit": "p. 5 block 10",
+      "ground": "heading",
+      "note": "A table's caption or column header, 'Ability Descriptions Ability', which names what the rows below it hold and states no rule. The extraction gives each header cell its own block, so one printed header line arrives as two or three units."
+    },
+    {
+      "sourceId": "srd-5.2.1",
+      "unit": "p. 5 block 11",
+      "ground": "heading",
+      "note": "A table's caption or column header, 'Score Measures …', which names what the rows below it hold and states no rule. The extraction gives each header cell its own block, so one printed header line arrives as two or three units."
+    },
+    {
+      "sourceId": "srd-5.2.1",
+      "unit": "p. 5 block 25",
+      "ground": "heading",
+      "note": "A table's caption or column header, 'Ability Scores Score', which names what the rows below it hold and states no rule. The extraction gives each header cell its own block, so one printed header line arrives as two or three units."
+    },
+    {
+      "sourceId": "srd-5.2.1",
+      "unit": "p. 5 block 26",
+      "ground": "heading",
+      "note": "A table's caption or column header, 'Meaning', which names what the rows below it hold and states no rule. The extraction gives each header cell its own block, so one printed header line arrives as two or three units."
+    },
+    {
+      "sourceId": "srd-5.2.1",
+      "unit": "p. 5 block 42",
+      "ground": "restatement",
+      "note": "The Round Down sidebar. The corpus prints this rule twice, word for word, here and in the Rules Glossary on p. 187. **No citation this grammar can write identifies this printing**: 0030 settles a repeated passage by the container its citation names, the container a page grammar has is the heading path, and `Playing the Game` precedes both printings, so the path selects two. The later printing can be named (`Rules Glossary / Round Down / p. 187`) and the earlier one cannot. `restatement` is the closest of the seven grounds and is not the true reason -- the true reason is that the passage is unaddressable, and this vocabulary has no value for that. See #436."
+    },
+    {
+      "sourceId": "srd-5.2.1",
+      "unit": "p. 6 block 1",
+      "ground": "heading",
+      "note": "The section heading 'Ability Checks', which names the rules below it and states none of its own."
+    },
+    {
+      "sourceId": "srd-5.2.1",
+      "unit": "p. 6 block 41",
+      "ground": "page-furniture",
+      "note": "The folio '6', the printed page number, which pdftotext leaves in the reading order as a block of its own. It states nothing."
+    },
+    {
+      "sourceId": "srd-5.2.1",
+      "unit": "p. 6 block 42",
+      "ground": "page-furniture",
+      "note": "The running head 'System Reference Document 5.2.1', printed at the foot of every page of the SRD and left in the reading order by the extraction. It states nothing."
+    },
+    {
+      "sourceId": "srd-5.2.1",
+      "unit": "p. 6 block 44",
+      "ground": "heading",
+      "note": "The section heading 'Ability Modifier', which names the rules below it and states none of its own."
+    },
+    {
+      "sourceId": "srd-5.2.1",
+      "unit": "p. 6 block 61",
+      "ground": "heading",
+      "note": "The section heading 'Difficulty Class', which names the rules below it and states none of its own."
+    },
+    {
+      "sourceId": "srd-5.2.1",
+      "unit": "p. 6 block 63",
+      "ground": "heading",
+      "note": "A table's caption or column header, 'Typical Difficulty Classes Task Difficulty', which names what the rows below it hold and states no rule. The extraction gives each header cell its own block, so one printed header line arrives as two or three units."
+    },
+    {
+      "sourceId": "srd-5.2.1",
+      "unit": "p. 6 block 64",
+      "ground": "heading",
+      "note": "A table's caption or column header, 'DC', which names what the rows below it hold and states no rule. The extraction gives each header cell its own block, so one printed header line arrives as two or three units."
+    },
+    {
+      "sourceId": "srd-5.2.1",
+      "unit": "p. 6 block 65",
+      "ground": "heading",
+      "note": "A table's caption or column header, 'Task Difficulty', which names what the rows below it hold and states no rule. The extraction gives each header cell its own block, so one printed header line arrives as two or three units."
+    },
+    {
+      "sourceId": "srd-5.2.1",
+      "unit": "p. 6 block 66",
+      "ground": "heading",
+      "note": "A table's caption or column header, 'DC', which names what the rows below it hold and states no rule. The extraction gives each header cell its own block, so one printed header line arrives as two or three units."
+    },
+    {
+      "sourceId": "srd-5.2.1",
+      "unit": "p. 7 block 1",
+      "ground": "heading",
+      "note": "The section heading 'Saving Throws', which names the rules below it and states none of its own."
+    },
+    {
+      "sourceId": "srd-5.2.1",
+      "unit": "p. 7 block 2",
+      "ground": "heading",
+      "note": "The section heading 'Attack Roll Abilities', which names the rules below it and states none of its own."
+    },
+    {
+      "sourceId": "srd-5.2.1",
+      "unit": "p. 7 block 12",
+      "ground": "heading",
+      "note": "The section heading 'Ability Modifier', which names the rules below it and states none of its own."
+    },
+    {
+      "sourceId": "srd-5.2.1",
+      "unit": "p. 7 block 29",
+      "ground": "heading",
+      "note": "The section heading 'Difficulty Class', which names the rules below it and states none of its own."
+    },
+    {
+      "sourceId": "srd-5.2.1",
+      "unit": "p. 7 block 31",
+      "ground": "heading",
+      "note": "The section heading 'Attack Rolls', which names the rules below it and states none of its own."
+    },
+    {
+      "sourceId": "srd-5.2.1",
+      "unit": "p. 7 block 33",
+      "ground": "heading",
+      "note": "The section heading 'Ability Modifier', which names the rules below it and states none of its own."
+    },
+    {
+      "sourceId": "srd-5.2.1",
+      "unit": "p. 7 block 34",
+      "ground": "preamble",
+      "note": "'The Attack Roll Abilities table shows which ability modifier to use for different types of attack rolls.' A lead-in that points at the table and states nothing of its own; the rule is `attack-roll-abilities-table`, which quotes the table."
+    },
+    {
+      "sourceId": "srd-5.2.1",
+      "unit": "p. 7 block 35",
+      "ground": "page-furniture",
+      "note": "The folio '7', the printed page number, which pdftotext leaves in the reading order as a block of its own. It states nothing."
+    },
+    {
+      "sourceId": "srd-5.2.1",
+      "unit": "p. 7 block 36",
+      "ground": "page-furniture",
+      "note": "The running head 'System Reference Document 5.2.1', printed at the foot of every page of the SRD and left in the reading order by the extraction. It states nothing."
+    },
+    {
+      "sourceId": "srd-5.2.1",
+      "unit": "p. 7 block 38",
+      "ground": "heading",
+      "note": "The section heading 'Proficiency Bonus', which names the rules below it and states none of its own."
+    },
+    {
+      "sourceId": "srd-5.2.1",
+      "unit": "p. 7 block 40",
+      "ground": "heading",
+      "note": "The section heading 'Armor Class', which names the rules below it and states none of its own."
+    },
+    {
+      "sourceId": "srd-5.2.1",
+      "unit": "p. 7 block 43",
+      "ground": "heading",
+      "note": "The section heading 'Rolling 20 or 1', which names the rules below it and states none of its own."
+    },
+    {
+      "sourceId": "srd-5.2.1",
+      "unit": "p. 7 block 45",
+      "ground": "heading",
+      "note": "The section heading 'Advantage/Disadvantage', which names the rules below it and states none of its own."
+    },
+    {
+      "sourceId": "srd-5.2.1",
+      "unit": "p. 8 block 1",
+      "ground": "heading",
+      "note": "The section heading 'Heroic Inspiration', which names the rules below it and states none of its own."
+    },
+    {
+      "sourceId": "srd-5.2.1",
+      "unit": "p. 8 block 2",
+      "ground": "heading",
+      "note": "The section heading 'Proficiency', which names the rules below it and states none of its own."
+    },
+    {
+      "sourceId": "srd-5.2.1",
+      "unit": "p. 8 block 6",
+      "ground": "heading",
+      "note": "The section heading 'Roll Two D20s', which names the rules below it and states none of its own."
+    },
+    {
+      "sourceId": "srd-5.2.1",
+      "unit": "p. 8 block 8",
+      "ground": "heading",
+      "note": "The section heading 'They Don’t Stack', which names the rules below it and states none of its own."
+    },
+    {
+      "sourceId": "srd-5.2.1",
+      "unit": "p. 8 block 10",
+      "ground": "heading",
+      "note": "The section heading 'Interactions with Rerolls', which names the rules below it and states none of its own."
+    },
+    {
+      "sourceId": "srd-5.2.1",
+      "unit": "p. 8 block 12",
+      "ground": "page-furniture",
+      "note": "The folio '8', the printed page number, which pdftotext leaves in the reading order as a block of its own. It states nothing."
+    },
+    {
+      "sourceId": "srd-5.2.1",
+      "unit": "p. 8 block 13",
+      "ground": "page-furniture",
+      "note": "The running head 'System Reference Document 5.2.1', printed at the foot of every page of the SRD and left in the reading order by the extraction. It states nothing."
+    },
+    {
+      "sourceId": "srd-5.2.1",
+      "unit": "p. 8 block 35",
+      "ground": "heading",
+      "note": "The section heading 'Skill Proficiencies', which names the rules below it and states none of its own."
+    },
+    {
+      "sourceId": "srd-5.2.1",
+      "unit": "p. 9 block 59",
+      "ground": "heading",
+      "note": "The section heading 'Skill List', which names the rules below it and states none of its own."
+    },
+    {
+      "sourceId": "srd-5.2.1",
+      "unit": "p. 9 block 61",
+      "ground": "heading",
+      "note": "The section heading 'Determining Skills', which names the rules below it and states none of its own."
+    },
+    {
+      "sourceId": "srd-5.2.1",
+      "unit": "p. 9 block 63",
+      "ground": "heading",
+      "note": "The section heading 'Saving Throw Proficiencies', which names the rules below it and states none of its own."
+    },
+    {
+      "sourceId": "srd-5.2.1",
+      "unit": "p. 9 block 65",
+      "ground": "page-furniture",
+      "note": "The folio '9', the printed page number, which pdftotext leaves in the reading order as a block of its own. It states nothing."
+    },
+    {
+      "sourceId": "srd-5.2.1",
+      "unit": "p. 9 block 66",
+      "ground": "page-furniture",
+      "note": "The running head 'System Reference Document 5.2.1', printed at the foot of every page of the SRD and left in the reading order by the extraction. It states nothing."
+    },
+    {
+      "sourceId": "srd-5.2.1",
+      "unit": "p. 9 block 67",
+      "ground": "preamble",
+      "note": "'A character gains proficiency with various weapons and tools from their class and background. There are two categories of equipment proficiency:' A lead-in announcing the two categories below it; both are mapped, as `weapon-proficiency` and `tool-proficiency`."
+    },
+    {
+      "sourceId": "srd-5.2.1",
+      "unit": "p. 9 block 69",
+      "ground": "heading",
+      "note": "The section heading 'Actions', which names the rules below it and states none of its own."
+    },
+    {
+      "sourceId": "srd-5.2.1",
+      "unit": "p. 9 block 71",
+      "ground": "heading",
+      "note": "A table's caption or column header, 'Actions Action', which names what the rows below it hold and states no rule. The extraction gives each header cell its own block, so one printed header line arrives as two or three units."
+    },
+    {
+      "sourceId": "srd-5.2.1",
+      "unit": "p. 9 block 72",
+      "ground": "heading",
+      "note": "A table's caption or column header, 'Summary', which names what the rows below it hold and states no rule. The extraction gives each header cell its own block, so one printed header line arrives as two or three units."
+    },
+    {
+      "sourceId": "srd-5.2.1",
+      "unit": "p. 10 block 1",
+      "ground": "heading",
+      "note": "A table's caption or column header, 'Action', which names what the rows below it hold and states no rule. The extraction gives each header cell its own block, so one printed header line arrives as two or three units."
+    },
+    {
+      "sourceId": "srd-5.2.1",
+      "unit": "p. 10 block 2",
+      "ground": "heading",
+      "note": "A table's caption or column header, 'Summary', which names what the rows below it hold and states no rule. The extraction gives each header cell its own block, so one printed header line arrives as two or three units."
+    },
+    {
+      "sourceId": "srd-5.2.1",
+      "unit": "p. 10 block 24",
+      "ground": "heading",
+      "note": "The section heading 'One Thing at a Time', which names the rules below it and states none of its own."
+    },
+    {
+      "sourceId": "srd-5.2.1",
+      "unit": "p. 10 block 26",
+      "ground": "heading",
+      "note": "The section heading 'Bonus Actions', which names the rules below it and states none of its own."
+    },
+    {
+      "sourceId": "srd-5.2.1",
+      "unit": "p. 10 block 27",
+      "ground": "page-furniture",
+      "note": "The folio '10', the printed page number, which pdftotext leaves in the reading order as a block of its own. It states nothing."
+    },
+    {
+      "sourceId": "srd-5.2.1",
+      "unit": "p. 10 block 31",
+      "ground": "heading",
+      "note": "The section heading 'Reactions', which names the rules below it and states none of its own."
+    },
+    {
+      "sourceId": "srd-5.2.1",
+      "unit": "p. 10 block 33",
+      "ground": "heading",
+      "note": "The section heading 'Social Interaction', which names the rules below it and states none of its own."
+    },
+    {
+      "sourceId": "srd-5.2.1",
+      "unit": "p. 10 block 35",
+      "ground": "heading",
+      "note": "The section heading 'Roleplaying', which names the rules below it and states none of its own."
+    },
+    {
+      "sourceId": "srd-5.2.1",
+      "unit": "p. 11 block 2",
+      "ground": "heading",
+      "note": "The section heading 'Ability Checks', which names the rules below it and states none of its own."
+    },
+    {
+      "sourceId": "srd-5.2.1",
+      "unit": "p. 11 block 4",
+      "ground": "heading",
+      "note": "The section heading 'Exploration', which names the rules below it and states none of its own."
+    },
+    {
+      "sourceId": "srd-5.2.1",
+      "unit": "p. 11 block 6",
+      "ground": "heading",
+      "note": "The section heading 'Adventuring Equipment', which names the rules below it and states none of its own."
+    },
+    {
+      "sourceId": "srd-5.2.1",
+      "unit": "p. 11 block 8",
+      "ground": "page-furniture",
+      "note": "The folio '11', the printed page number, which pdftotext leaves in the reading order as a block of its own. It states nothing."
+    },
+    {
+      "sourceId": "srd-5.2.1",
+      "unit": "p. 11 block 9",
+      "ground": "page-furniture",
+      "note": "The running head 'System Reference Document 5.2.1', printed at the foot of every page of the SRD and left in the reading order by the extraction. It states nothing."
+    },
+    {
+      "sourceId": "srd-5.2.1",
+      "unit": "p. 11 block 11",
+      "ground": "heading",
+      "note": "The section heading 'Obscured Areas', which names the rules below it and states none of its own."
+    },
+    {
+      "sourceId": "srd-5.2.1",
+      "unit": "p. 11 block 13",
+      "ground": "heading",
+      "note": "The section heading 'Light', which names the rules below it and states none of its own."
+    },
+    {
+      "sourceId": "srd-5.2.1",
+      "unit": "p. 11 block 15",
+      "ground": "heading",
+      "note": "The section heading 'Special Senses', which names the rules below it and states none of its own."
+    },
+    {
+      "sourceId": "srd-5.2.1",
+      "unit": "p. 11 block 18",
+      "ground": "heading",
+      "note": "The section heading 'Interacting with Objects', which names the rules below it and states none of its own."
+    },
+    {
+      "sourceId": "srd-5.2.1",
+      "unit": "p. 12 block 2",
+      "ground": "heading",
+      "note": "The section heading 'What Is an Object?', which names the rules below it and states none of its own."
+    },
+    {
+      "sourceId": "srd-5.2.1",
+      "unit": "p. 12 block 4",
+      "ground": "heading",
+      "note": "The section heading 'Time-Limited Object Interactions', which names the rules below it and states none of its own."
+    },
+    {
+      "sourceId": "srd-5.2.1",
+      "unit": "p. 12 block 6",
+      "ground": "heading",
+      "note": "The section heading 'Finding Hidden Objects', which names the rules below it and states none of its own."
+    },
+    {
+      "sourceId": "srd-5.2.1",
+      "unit": "p. 12 block 8",
+      "ground": "heading",
+      "note": "The section heading 'Carrying Objects', which names the rules below it and states none of its own."
+    },
+    {
+      "sourceId": "srd-5.2.1",
+      "unit": "p. 12 block 10",
+      "ground": "heading",
+      "note": "The section heading 'Breaking Objects', which names the rules below it and states none of its own."
+    },
+    {
+      "sourceId": "srd-5.2.1",
+      "unit": "p. 12 block 12",
+      "ground": "heading",
+      "note": "The section heading 'Marching Order', which names the rules below it and states none of its own."
+    },
+    {
+      "sourceId": "srd-5.2.1",
+      "unit": "p. 12 block 14",
+      "ground": "page-furniture",
+      "note": "The folio '12', the printed page number, which pdftotext leaves in the reading order as a block of its own. It states nothing."
+    },
+    {
+      "sourceId": "srd-5.2.1",
+      "unit": "p. 12 block 15",
+      "ground": "page-furniture",
+      "note": "The running head 'System Reference Document 5.2.1', printed at the foot of every page of the SRD and left in the reading order by the extraction. It states nothing."
+    },
+    {
+      "sourceId": "srd-5.2.1",
+      "unit": "p. 12 block 20",
+      "ground": "heading",
+      "note": "The section heading 'Travel Pace', which names the rules below it and states none of its own."
+    },
+    {
+      "sourceId": "srd-5.2.1",
+      "unit": "p. 12 block 22",
+      "ground": "heading",
+      "note": "The section heading 'Travel Pace', which names the rules below it and states none of its own."
+    },
+    {
+      "sourceId": "srd-5.2.1",
+      "unit": "p. 12 block 40",
+      "ground": "heading",
+      "note": "The section heading 'Vehicles', which names the rules below it and states none of its own."
+    }
+  ]
+}
