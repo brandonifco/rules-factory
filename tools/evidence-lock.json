@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "measuredAt": "eecdd468c5a453a2496991028c2129f1c7d0a70f",
+  "measuredAt": "42e4c1388ac4a5992b707e4ed42f20d33782c93c",
   "measuredBy": "tools/check-evidence.py --measure",
   "measuredOver": {
     "gateStepsFailed": [],
@@ -19,8 +19,8 @@
   "artifacts": [
     {
       "path": "examples/README.md",
-      "sha256": "fcbec276aa41b815eda3964ffa18e6101afc85e81b7b28bcdf176d6853be8517",
-      "bytes": 27918,
+      "sha256": "975d8f6ec27c0d380035af8c96ea683b5b70ad617e3c6e0a898d67a5de7ac51c",
+      "bytes": 31321,
       "role": "active",
       "readBy": [
         "links"
@@ -541,8 +541,8 @@
     },
     {
       "path": "examples/frcp-6-12-81/README.md",
-      "sha256": "03e136b23d0aeb19aa95a3fc61a43c4f6b9e9c276d7ee8d08e8af9f6c56a183f",
-      "bytes": 10646,
+      "sha256": "287c5d5572f79821e1afd38744252121a7c519a2601e8bf6030c8a6684a553dd",
+      "bytes": 24525,
       "role": "active",
       "readBy": [
         "links"
