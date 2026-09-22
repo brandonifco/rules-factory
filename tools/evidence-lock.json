@@ -1,12 +1,10 @@
 {
   "version": 1,
-  "measuredAt": "4630c50e21a3ee9667a2e0ed5d58be2f6cee2302",
+  "measuredAt": "208e981feec7da966f4650892fb3fce548c0279d",
   "measuredBy": "tools/check-evidence.py --measure",
   "measuredOver": {
-    "gateStepsFailed": [
-      "the checkers' own tests"
-    ],
-    "complete": false
+    "gateStepsFailed": [],
+    "complete": true
   },
   "roles": {
     "active": "read by an ordinary gate run",
@@ -572,6 +570,16 @@
       "archive": null
     },
     {
+      "path": "examples/frcp-6-12-81/corpus-map.json",
+      "sha256": "0ee11186f0f5bd1e62e603184e26e4fa40f01e1c289f8f9e2bb0f5364985b8b8",
+      "bytes": 92751,
+      "role": "active",
+      "readBy": [
+        "checks"
+      ],
+      "archive": null
+    },
+    {
       "path": "examples/frcp-6-12-81/derive-corpus.py",
       "sha256": "08cfb83fbb7cad7a2d552612d361c5b58f3a2ab1fb3f8eb21ae156aef1564b80",
       "bytes": 5850,
@@ -592,9 +600,29 @@
       "archive": null
     },
     {
+      "path": "examples/frcp-6-12-81/mapping-inventory.json",
+      "sha256": "470d26caa36a010ac7b69fdb9dadaeff3de6d3664eeff38a66bd8dabcce58e7a",
+      "bytes": 7622,
+      "role": "active",
+      "readBy": [
+        "checks"
+      ],
+      "archive": null
+    },
+    {
       "path": "examples/frcp-6-12-81/mapping-protocol.json",
       "sha256": "4ddd1dcab89c895c3ea627f4d7f6476133ea1e1a2498d647d3a694fc4905f382",
       "bytes": 816,
+      "role": "active",
+      "readBy": [
+        "checks"
+      ],
+      "archive": null
+    },
+    {
+      "path": "examples/frcp-6-12-81/review.json",
+      "sha256": "2142fe23385fd05448d8df3b4ce7dcf8e52dd091ef4b16cdf351fbb510909167",
+      "bytes": 1676,
       "role": "active",
       "readBy": [
         "checks"
