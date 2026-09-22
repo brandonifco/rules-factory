@@ -1,0 +1,28 @@
+{
+  "protocolVersion": 1,
+  "corpus": "frcp-6-12-81",
+  "units": ["section", "paragraph", "heading"],
+  "pointerMechanisms": [
+    { "mechanism": "phrase" },
+    { "mechanism": "section-designation" },
+    { "mechanism": "defined-term-use" }
+  ],
+  "requiredSweeps": [
+    "definitions",
+    "vocabulary",
+    "applicability",
+    "exceptions",
+    "permissions",
+    "prohibitions",
+    "undefined-terms",
+    "cross-references",
+    "extent-coverage"
+  ],
+  "adapterReach": {
+    "text": "readable",
+    "tables": "unsupported",
+    "columns": "unsupported",
+    "formatting": "readable",
+    "illustrations": "unsupported"
+  }
+}

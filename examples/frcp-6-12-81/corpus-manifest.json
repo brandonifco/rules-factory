@@ -1,0 +1,63 @@
+{
+  "schemaVersion": 1,
+  "corpora": [
+    {
+      "sourceId": "frcp-6-12-81",
+      "title": "Federal Rules of Civil Procedure, Rules 6, 12 and 81",
+      "adapter": "uslm-xml",
+      "locatorGrammar": "section-designation",
+      "contentHash": "d4e63d1fd0153e412c602960a801195b7798e4d131c54e9cda427e10191af9fb",
+      "hashDerivation": "uslm-courtrule-without-usc-notes",
+      "asOf": "2025-12-03",
+      "boundaryPolicy": "pin-in-repo",
+      "licence": "public-domain-us-government",
+      "verification": "committed-copy",
+      "committedPath": "frcp-6-12-81.xml",
+      "quotation": "verbatim",
+      "randomness": "none",
+      "retrievedFrom": "https://uscode.house.gov/download/releasepoints/us/pl/119/110/xml_usc28A@119-110.zip",
+      "pointerPhrases": [
+        { "regex": "\\bRules? \\d+(?:\\.\\d+)?(?:\\([A-Za-z0-9]+\\))*(?:(?:,| and| or)? (?:and |or )?\\((?:[A-Za-z0-9]+)\\)(?:\\([A-Za-z0-9]+\\))*)*(?![A-Za-z0-9.])" },
+        { "regex": "\\bRules Governing Section 22\\d\\d Cases" },
+        { "regex": "\\b\\d+ U\\.S\\.C\\. (?:§+\\s?\\d+[A-Za-z0-9()\\u2013-]*(?:,? (?:and )?\\d+[A-Za-z0-9()]*)*)?" },
+        "these rules",
+        "this rule",
+        "under these rules",
+        "in accordance with",
+        "except as otherwise provided",
+        "as provided in",
+        "to the extent provided by",
+        "to the extent applicable",
+        "unless another time is specified",
+        "specified by a federal statute",
+        "Federal Rules of Bankruptcy Procedure"
+      ],
+      "references": [
+        { "sourceId": "frcp-rule-4", "citation": "Rule 4", "admitted": false },
+        { "sourceId": "frcp-rule-5", "citation": "Rule 5", "admitted": false },
+        { "sourceId": "frcp-rule-7", "citation": "Rule 7", "admitted": false },
+        { "sourceId": "frcp-rule-15", "citation": "Rule 15", "admitted": false },
+        { "sourceId": "frcp-rule-19", "citation": "Rule 19", "admitted": false },
+        { "sourceId": "frcp-rule-38", "citation": "Rule 38", "admitted": false },
+        { "sourceId": "frcp-rule-50", "citation": "Rule 50", "admitted": false },
+        { "sourceId": "frcp-rule-52", "citation": "Rule 52", "admitted": false },
+        { "sourceId": "frcp-rule-56", "citation": "Rule 56", "admitted": false },
+        { "sourceId": "frcp-rule-59", "citation": "Rule 59", "admitted": false },
+        { "sourceId": "frcp-rule-60", "citation": "Rule 60", "admitted": false },
+        { "sourceId": "frbp", "citation": "Federal Rules of Bankruptcy Procedure", "admitted": false },
+        { "sourceId": "rules-governing-section-2254-cases", "citation": "Rules Governing Section 2254 Cases", "admitted": false },
+        { "sourceId": "rules-governing-section-2255-cases", "citation": "Rules Governing Section 2255 Cases", "admitted": false },
+        { "sourceId": "usc-7-292", "citation": "7 U.S.C. § 292", "admitted": false },
+        { "sourceId": "usc-7-499g", "citation": "7 U.S.C. § 499g(c)", "admitted": false },
+        { "sourceId": "usc-8-1451", "citation": "8 U.S.C. § 1451", "admitted": false },
+        { "sourceId": "usc-9", "citation": "9 U.S.C.", "admitted": false },
+        { "sourceId": "usc-10-7651-7681", "citation": "10 U.S.C. §§ 7651-7681", "admitted": false },
+        { "sourceId": "usc-15-522", "citation": "15 U.S.C. § 522", "admitted": false },
+        { "sourceId": "usc-15-715d", "citation": "15 U.S.C. § 715d(c)", "admitted": false },
+        { "sourceId": "usc-29-159-160", "citation": "29 U.S.C. §§ 159, 160", "admitted": false },
+        { "sourceId": "usc-33-918-921", "citation": "33 U.S.C. §§ 918, 921", "admitted": false },
+        { "sourceId": "usc-45-159", "citation": "45 U.S.C. § 159", "admitted": false }
+      ]
+    }
+  ]
+}

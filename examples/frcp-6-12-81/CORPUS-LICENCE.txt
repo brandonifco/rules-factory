@@ -1,0 +1,30 @@
+Corpus: frcp-6-12-81, Rules 6, 12 and 81 of the Federal Rules of Civil Procedure, as the Office
+of Law Revision Counsel publishes them in Title 28 Appendix of the United States Code at release
+point 119-110
+(https://uscode.house.gov/download/releasepoints/us/pl/119/110/xml_usc28A@119-110.zip).
+
+Terms: public domain in the United States. The Federal Rules of Civil Procedure are prescribed
+by the Supreme Court of the United States under 28 U.S.C. 2072 and take effect by Act of
+Congress; the United States Code is prepared by the Office of Law Revision Counsel of the U.S.
+House of Representatives. Both are works of the United States Government, and 17 U.S.C. 105
+provides that copyright protection is not available for any work of the United States
+Government. No licence is needed to copy the text there, and none is granted here: rules-factory
+claims no rights in the quoted text. This statement is about United States law only; the
+quotations are not placed under CC0 or any other licence, and a user outside the United States
+should check the law where they are.
+
+What is committed is a derivation and not the release. The OLRC serves Title 28 Appendix as one
+4.7 MB document holding the Appellate, Civil and Evidence rules together, so a digest over it
+would not say which bytes a quote is held to. examples/frcp-6-12-81/derive-corpus.py takes the
+three `<courtRule>` elements verbatim from that document and drops the `<notes type="uscNote">`
+child of each -- the Notes of the Advisory Committee on Rules and the editorial amendment notes,
+which are transmitted with the rules and are not the rules. The derivation is reproducible from
+the release by that script, and `hashDerivation` names it. README.md records what dropping the
+notes costs.
+
+No SPDX licence identifier states this, which is why the package's licence is this file rather
+than an expression.
+
+As the manifest entry's `licence` field records it:
+
+public-domain-us-government
