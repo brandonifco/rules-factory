@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "measuredAt": "4a69618fffd3b562610141bb8e67b27a9a3b8a40",
+  "measuredAt": "376faf856e254ff32ed8ef68aa590fbd1b58472e",
   "measuredBy": "tools/check-evidence.py --measure",
   "measuredOver": {
     "gateStepsFailed": [],
@@ -19,8 +19,8 @@
   "artifacts": [
     {
       "path": "examples/README.md",
-      "sha256": "61c775f7890b413e47f60e3cabc5a7da121614eab21bab178ec3c034a13488d4",
-      "bytes": 34968,
+      "sha256": "266539b4a450d2dbe5d9c85ac8beefe56dd01986c3777194bfe0a4839c2c2ef1",
+      "bytes": 35176,
       "role": "active",
       "readBy": [
         "links"
@@ -1823,8 +1823,8 @@
     },
     {
       "path": "examples/srd-52-playing-the-game/README.md",
-      "sha256": "21ac8a18e5baae7e18ec961ebc042e5805e053fa1a1a4fdb6bb6df099bbbfa69",
-      "bytes": 14930,
+      "sha256": "1a3a993ce0a65dfd05f2085a64d873cb4352d6b7f4ffd4be4c1882e4f4e9674b",
+      "bytes": 15979,
       "role": "active",
       "readBy": [
         "links"
@@ -1853,8 +1853,8 @@
     },
     {
       "path": "examples/srd-52-playing-the-game/mapping-inventory.json",
-      "sha256": "0c3caf51bfd810a91216932c40a0a46d676a159b9d3d6d6eb33179d5b7190d78",
-      "bytes": 20507,
+      "sha256": "f5fd5a2b7f8aba6664925311372bd4bac0a3a98a4ae16299e2d068dc3b0d8361",
+      "bytes": 19157,
       "role": "active",
       "readBy": [
         "checks"

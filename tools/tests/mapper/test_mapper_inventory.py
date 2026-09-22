@@ -423,6 +423,83 @@ class TestTheCommittedBackgammonMapQuotesItsCorpus(unittest.TestCase):
         self.assertIn("unaccounted: 0", output)
 
 
+# The same page turn as `MARKED_MID_SENTENCE`, marked the way `extract.py` marks one: `{N}` on a
+# line of its own, before the page it opens. Two blocks straddle the turn, so a quote of both
+# carries the marker printed between them.
+MARKED_ON_ITS_OWN_LINE = """{9}
+
+The first rule, whose quotation runs on
+
+{10}
+
+into the block after the page turn.
+
+A block on the page after, printing a {6} that is the corpus's own text and not a page turn.
+"""
+
+
+class TestAQuoteStraddlingATurnReachesBothSidesOfIt(unittest.TestCase):
+    """#437: `unmarked()` reads a **quote**, whose whitespace is already collapsed.
+
+    `PageMarkedPdfText` marks a page turn with `{N}` on a line of its own and anchors `MARKER` to
+    that line, which is right for the corpus and cannot hold against a map's `evidence`: there
+    the marker sits between two spaces, at no line boundary, so the substitution never fired and
+    every quote carrying one was reported as quoting nothing. Trial 12's map has three, and the
+    28 units they reach -- the whole twelve-row Actions table among them -- were reported
+    unaccounted, which is the inventory's word for *nobody looked*, while
+    `check-locators-pdf-text.py` located all three without complaint.
+    """
+
+    def setUp(self):
+        self.fixture = Fixture(corpus_text=MARKED_ON_ITS_OWN_LINE,
+                               adapter="pdftotext-page-marked",
+                               extent={"unit": "page", "from": 9, "to": 10},
+                               entries=[{"id": "runs-across-the-turn", "evidence":
+                                         "The first rule, whose quotation runs on {10} into the "
+                                         "block after the page turn."}])
+        self.addCleanup(self.fixture.remove)
+
+    def test_the_quote_reaches_the_units_on_both_sides_of_the_turn(self):
+        code, out = run(["inventory", self.fixture.map_path, "--list"])
+        self.assertEqual(code, NOT_VERIFIED, out)
+        self.assertIn("reached:     2 by the quoted evidence of 1 entry", out)
+        self.assertNotIn("not located inside the extent", out)
+
+    def test_the_marker_is_taken_out_of_a_flattened_quote(self):
+        adapter = corpus.PageMarkedPdfText(self.fixture.corpus_path)
+        self.assertEqual(adapter.unmarked("runs on {10} into the block"),
+                         "runs on into the block")
+
+    def test_the_corpus_marker_is_still_read_line_anchored(self):
+        """The two patterns are separate, and only the quote-side one lost its anchors.
+
+        Unanchoring `MARKER` as well would have been the shorter fix and is a different claim
+        about the corpus: a `{6}` the corpus prints inside a line is its own text, the units keep
+        it, and the anchors are what say so.
+        """
+        adapter = corpus.PageMarkedPdfText(self.fixture.corpus_path)
+        units = adapter.units({"unit": "page", "from": 10, "to": 10})
+        self.assertEqual([unit.key for unit in units], ["p. 10 block 1", "p. 10 block 2"])
+        self.assertIn("{6}", units[1].text)
+
+
+class TestTheCommittedPlayingTheGameMapAccountsForItsExtent(unittest.TestCase):
+    def test_every_unit_of_trial_12s_extent_is_reached_or_rejected(self):
+        """Measured: three entries were reported unlocated and 28 units unaccounted (#437).
+
+        Four of that map's recorded rejections named units `actions-table` quotes -- the Actions
+        table's column headers on both sides of the turn -- which a reader who could not see the
+        quote had no way to tell. They are gone from `mapping-inventory.json`: a passage cannot
+        have produced no entry and be the evidence for one.
+        """
+        path = os.path.join(REPO, "examples", "srd-52-playing-the-game", "corpus-map.json")
+        code, output = run(["inventory", path, "--list"])
+        self.assertEqual(code, 0, output)
+        self.assertNotIn("not located inside the extent", output)
+        self.assertIn("reached:     300 by the quoted evidence of 91 entries", output)
+        self.assertIn("unaccounted: 0", output)
+
+
 class TestABoundIsAQuoteOfTheUnitItNames(unittest.TestCase):
     """0031 gives a worked example three fates, and a bound is the one the inventory could not see.
 
