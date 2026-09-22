@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "measuredAt": "376faf856e254ff32ed8ef68aa590fbd1b58472e",
+  "measuredAt": "0852af2cd71209b6663652f0184ed763b8d3a3d1",
   "measuredBy": "tools/check-evidence.py --measure",
   "measuredOver": {
     "gateStepsFailed": [],
@@ -19,8 +19,8 @@
   "artifacts": [
     {
       "path": "examples/README.md",
-      "sha256": "266539b4a450d2dbe5d9c85ac8beefe56dd01986c3777194bfe0a4839c2c2ef1",
-      "bytes": 35176,
+      "sha256": "7399fc47ed060161a9b000670d27fb56e4521d85d09ddd9fa68b1b990761191f",
+      "bytes": 35403,
       "role": "active",
       "readBy": [
         "links"
@@ -1556,8 +1556,8 @@
     },
     {
       "path": "examples/srd-52-combat/check-locators-pdf-text.py",
-      "sha256": "2b696acfdd8e676c63be8cb886c578428497baee3c99f6dabf71daae9947d212",
-      "bytes": 29975,
+      "sha256": "b95e2f3fe21b57be47026afbeeacb195ec72c1ccc74648355dc5f61faa66d1bd",
+      "bytes": 35836,
       "role": "active",
       "readBy": [
         "checks"

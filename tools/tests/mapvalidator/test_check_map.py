@@ -439,9 +439,34 @@ class TestExtent(MapCase):
     def test_an_ends_before_that_is_not_text_fails(self):
         self.assert_catches("extent", lambda d: d["extent"].update(endsBefore=16), message='endsBefore is 16; it names one heading on page `to`, as a')
 
-    def test_starts_after_is_not_a_field_of_a_page_extent(self):
-        # No real case needs it (0024), so it is refused like any other unknown field.
-        self.assert_catches("extent", lambda d: d["extent"].update(startsAfter="Combat"), message='`startsAfter` is not a field of a page extent (unit, from')
+    def test_a_page_extent_may_start_after_a_heading(self):
+        # 0064: the SRD's Damage and Healing starts halfway down p. 16, where trial 7's combat
+        # map ends. The mirror of the field above, and the same shape.
+        document = valid_map()
+        document["extent"]["startsAfter"] = "Damage and Healing"
+        code, output = self.run_tool(document)
+        self.assertEqual(self.status_of(output, "extent"), "ok", output)
+        self.assertIn("starting after the heading 'Damage and Healing' on p. 1", output)
+        self.assertEqual(code, 0, output)
+
+    def test_an_empty_starts_after_fails(self):
+        self.assert_catches("extent", lambda d: d["extent"].update(startsAfter=""), message="startsAfter is ''; it names one heading on page `from`, as a")
+
+    def test_a_starts_after_that_is_not_one_line_fails(self):
+        self.assert_catches("extent", lambda d: d["extent"].update(startsAfter="Damage\nand Healing"), message="startsAfter is 'Damage\\nand Healing'")
+
+    def test_a_starts_after_that_is_not_text_fails(self):
+        self.assert_catches("extent", lambda d: d["extent"].update(startsAfter=16), message='startsAfter is 16; it names one heading on page `from`, as a')
+
+    def test_one_heading_cannot_be_both_cuts(self):
+        # Where `from` and `to` are the same page this selects nothing at all, and nothing here
+        # reads the corpus to tell that from two printings of the same line.
+        self.assert_catches("extent", lambda d: d["extent"].update(startsAfter="Scoring",
+                                                                   endsBefore="Scoring"),
+                            message="startsAfter and endsBefore both name 'Scoring'")
+
+    def test_an_unknown_field_of_a_page_extent_is_still_refused(self):
+        self.assert_catches("extent", lambda d: d["extent"].update(beginsAt="Combat"), message='`beginsAt` is not a field of a page extent (unit, from')
 
     def test_a_page_extent_that_is_not_a_range_fails(self):
         self.assert_catches("extent", lambda d: d["extent"].update({"from": 4, "to": 1}), message='`to` 1 is before `from` 4')

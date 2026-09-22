@@ -291,6 +291,61 @@ class TestThePageExtentEndsWhereItSaysItDoes(unittest.TestCase):
             adapter.units({"unit": "page", "from": 9, "to": 9, "endsBefore": "Nowhere On The Page"})
 
 
+class TestThePageExtentStartsWhereItSaysItDoes(unittest.TestCase):
+    """0064: the mirror. A page extent may start after a heading on its first page, and the
+    enumeration must begin there -- enumerating from the top of the page would call the half
+    another map read unaccounted, which is the overclaim #434 refused to write."""
+
+    def setUp(self):
+        self.fixture = Fixture()
+        self.addCleanup(self.fixture.remove)
+
+    def test_the_units_start_after_the_heading(self):
+        adapter = corpus.PageMarkedText(self.fixture.corpus_path)
+        whole = adapter.units({"unit": "page", "from": 9, "to": 9})
+        cut = adapter.units({"unit": "page", "from": 9, "to": 9,
+                             "startsAfter": "A block of advice about how to play well, which "
+                                            "states no rule at all."})
+        self.assertEqual(len(whole), 4)
+        self.assertEqual([unit.key for unit in cut], ["p. 9 block 3", "p. 9 block 4"])
+
+    def test_a_unit_keeps_its_place_on_its_own_page(self):
+        """The key is the block's position on the page, not its position in what was selected.
+
+        Two maps of one page have to be able to record rejections that mean the same thing, and a
+        key that counted from the cut would give the same block two names.
+        """
+        adapter = corpus.PageMarkedText(self.fixture.corpus_path)
+        whole = {unit.key: unit.text for unit in adapter.units({"unit": "page", "from": 9, "to": 9})}
+        cut = adapter.units({"unit": "page", "from": 9, "to": 9,
+                             "startsAfter": "A block of advice about how to play well, which "
+                                            "states no rule at all."})
+        for unit in cut:
+            self.assertEqual(whole[unit.key], unit.text)
+
+    def test_both_cuts_apply_together(self):
+        adapter = corpus.PageMarkedText(self.fixture.corpus_path)
+        cut = adapter.units({"unit": "page", "from": 9, "to": 9,
+                             "startsAfter": "A block of advice about how to play well, which "
+                                            "states no rule at all.",
+                             "endsBefore": "and finishes here, in a block of its own."})
+        self.assertEqual([unit.key for unit in cut], ["p. 9 block 3"])
+
+    def test_a_heading_that_is_not_a_block_of_its_own_is_refused(self):
+        adapter = corpus.PageMarkedText(self.fixture.corpus_path)
+        with self.assertRaises(protocol.Refused):
+            adapter.units({"unit": "page", "from": 9, "to": 9, "startsAfter": "Nowhere On The Page"})
+
+    def test_an_extent_that_ends_where_it_has_not_begun_is_refused(self):
+        adapter = corpus.PageMarkedText(self.fixture.corpus_path)
+        with self.assertRaises(protocol.Refused) as caught:
+            adapter.units({"unit": "page", "from": 9, "to": 9,
+                           "startsAfter": "and finishes here, in a block of its own.",
+                           "endsBefore": "A block of advice about how to play well, which states "
+                                         "no rule at all."})
+        self.assertIn("ends where it has not begun", str(caught.exception))
+
+
 class TestUnitKeysIdentifyOneUnit(unittest.TestCase):
     def test_no_two_units_of_a_committed_map_share_a_key(self):
         """A rejection names a unit by its key, so a key naming two units would reject both."""

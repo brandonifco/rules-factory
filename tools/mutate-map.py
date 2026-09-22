@@ -461,9 +461,9 @@ def m_narrow_extent(document):
             raise NotApplicable("the page extent is one page and cannot be narrowed")
         was = extent["to"]
         extent["to"] = was - 1
-        # `endsBefore` is left exactly as committed. Removing it would be a second mutation,
-        # and the `extent-end` check going quiet would be this tool's doing rather than the
-        # narrowing's.
+        # `endsBefore` and `startsAfter` are left exactly as committed. Removing either would be
+        # a second mutation, and the `extent-end` or `extent-start` check going quiet would be
+        # this tool's doing rather than the narrowing's.
         return f"extent narrowed from {extent['from']}-{was} to {extent['from']}-{was - 1}"
     sections = extent.get("sections")
     if not isinstance(sections, list) or len(sections) < 2:
@@ -592,6 +592,12 @@ MUTATIONS = [
         # and quotes -- and which face answers depends on the grammar the corpus is read by, not
         # on whether the intended check works. A page-marked corpus has an end to overrun that a
         # section-designated one has not. Any of the three is this mutation being caught.
+        #
+        # `extent-start` (0064) is not a fourth face of it, and is left out deliberately: this
+        # mutation moves `to`, and `startsAfter` cuts page `from`, which the narrowing never
+        # touches. An `expect` naming a rule the mutation cannot reach would read every catch as
+        # a neighbour's and say the opposite of the truth (0061). A mutation that damages the
+        # start cut is a different injection, and waits for a map that declares one.
         "expect": ("extent", "extent-bounds", "extent-end"),
         "apply": m_narrow_extent,
     },

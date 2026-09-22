@@ -222,8 +222,8 @@ def check_extent_bounds(document, located):
 
     0024 already made exactly this statement about the one end a heading can stop: an in-scope
     quote at or after `endsBefore` is not inside the slice, and `check-locators-pdf-text.py`'s
-    `extent-end` refuses it. Both ends of a range are the same fact, and this is it without a
-    heading.
+    `extent-end` refuses it; 0064 gave `startsAfter` the same treatment at the other end. Both
+    ends of a range are the same fact, and this is it without a heading.
 
     A `scope: out` entry may quote beyond the extent, for 0020's reason and in the summary's
     words: recording what lies beyond the slice is what an out-of-scope entry is for. A quote
@@ -466,14 +466,18 @@ def main(argv=None):
         ("coverage", check_coverage(document, reached, region, spans)),
         ("extent-bounds", check_extent_bounds(document, located)),
     ]
-    if isinstance(declared, dict) and "endsBefore" in declared:
-        # 0024: this checker collapses the corpus's lines, so it cannot find a heading line, and
-        # its absence and coverage above ran over the whole last page. Refuse rather than pass.
-        results.append(("extent-end", skip(
-            f"the extent ends before the heading {declared.get('endsBefore')!r}, and this checker "
-            f"reads whitespace-collapsed text with no lines to find it in; absence and coverage "
-            f"above ran over the whole of p. {declared.get('to')}. The page-marked PDF text checker "
-            f"reads endsBefore")))
+    # 0024 and 0064: this checker collapses the corpus's lines, so it cannot find a heading line,
+    # and its absence and coverage above ran over the whole of the cut page. Refuse rather than
+    # pass, at either end.
+    for field, name, bound in (("startsAfter", "extent-start", "from"),
+                               ("endsBefore", "extent-end", "to")):
+        if isinstance(declared, dict) and field in declared:
+            sense = "starts after" if field == "startsAfter" else "ends before"
+            results.append((name, skip(
+                f"the extent {sense} the heading {declared.get(field)!r}, and this checker "
+                f"reads whitespace-collapsed text with no lines to find it in; absence and coverage "
+                f"above ran over the whole of p. {declared.get(bound)}. The page-marked PDF text checker "
+                f"reads {field}")))
     passed = failed = skipped = fatal = 0
     for name, result in results:
         print(f"[{result.status}] {name}: {result.summary}")

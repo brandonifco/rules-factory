@@ -92,6 +92,7 @@ citations run 271–277, and the throw enumeration that #20 is about is on 278�
 ```json
 "extent": { "unit": "page", "from": 271, "to": 280 }
 "extent": { "unit": "page", "from": 13, "to": 16, "endsBefore": "Damage and Healing" }
+"extent": { "unit": "page", "from": 16, "to": 18, "startsAfter": "Damage and Healing" }
 "extent": { "unit": "section-designation", "sections": ["§ 107.25", "§ 107.29", "§ 107.31"] }
 ```
 
@@ -111,7 +112,20 @@ citations run 271–277, and the throw enumeration that #20 is about is on 278�
   after it, or running across it. `absence` searches only up to the heading, and a quote after it
   does not reach the page for `coverage`. "After" is in the extraction's reading order.
   `check-locators.py` collapses lines, cannot find the heading, and reports such an extent NOT
-  VERIFIED. There is no `startsAfter`; no map has needed one.
+  VERIFIED.
+  **It may also start after a heading on its first page**, `"startsAfter": "Damage and Healing"`
+  ([0064](decisions/0064-a-page-extent-can-start-after-a-heading-and-the-heading-joins-two-maps.md),
+  [#434](https://github.com/brandonifco/rules-factory/issues/434)): the mirror, in every part —
+  one line of text, occurring exactly once as a line on page `from`; `extent-start` fails any
+  `scope: in` quote on that page at or before it, or running across it; `absence` searches only
+  after it, a quote ending at or before it does not reach the page for `coverage`, and
+  `check-locators.py` reports it NOT VERIFIED too. The rest of *Playing the Game* begins halfway
+  down p. 16, where the combat map ends, and a whole-page `{from: 16, to: 18}` claims a half-page
+  another map read. The slice begins at the **end** of the named line, and trial 7's ends at its
+  start, so **the heading is in neither map's extent** — one line per split, and it is a heading,
+  which every map's inventory already declines. An extent may declare both cuts; where `from` and
+  `to` are the same page they can contradict each other, and `check-map.py` refuses the one case
+  it can see without the corpus — both fields naming the same string.
 - **`section-designation`** — a **list** of structural designations, each bare (`§ 107.25`, never
   `§ 107.25(a)`), for a corpus cited by designation rather than by position. A list and not a
   range, because what a mapper reads of a CFR part is not contiguous: the Part 107 slice is twelve
