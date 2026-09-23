@@ -240,6 +240,24 @@ decline that names why and cites where — that is the engine working, not the e
   the merge is built, so a run that fails on an overlay's structure or on a ruling has not looked
   at them: a refusal naming no mutation is not a clean bill. The rule is stated in full at the top
   of `scripts/map-overlay.py`, which is also where to look before assuming a refusal is wrong.
+- **Run the mutation with `tools/mutate.py`, and keep the spec.** The sentence in the overlay is
+  what a reader understands; the spec is what a reviewer re-runs. One JSON object per mutation —
+  the test it should turn red, and the edits that should do it — and the tool applies them, runs
+  that test alone, and puts the source back in a `finally`, so an interrupted run leaves nothing
+  mutated behind:
+
+  ```bash
+  tools/mutate.py mutations/*.json          # or `-` to read one from stdin
+  ```
+
+  It refuses an `old` string that does not occur exactly as many times as the spec says, before it
+  writes anything: a mutation applied to the wrong site, or to nothing, proves nothing and would
+  still print a colour. It runs each test unmutated first, because a test that was already red
+  proves nothing either. And it names the one failure the prose cannot — **a mutation that leaves
+  its test green**, which is precisely the test nobody has watched fail — by reporting it and
+  exiting non-zero. Paste its output into the pull request as the evidence, and put the specs
+  wherever the change keeps them; they are yours, not the engine's, and nothing requires you to
+  commit them.
 - **Write the handler while the entry is still `mapped`, and re-produce once.** There is no
   placeholder step, and no reason to produce twice. Every entry that is *not* `implemented`
   already has an optional hook,
