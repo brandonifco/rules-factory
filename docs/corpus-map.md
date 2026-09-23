@@ -704,10 +704,16 @@ resolves in five places resolves in none. What settles it is what the citation *
   the **heading path** is the container. Where a quote also occurs off the cited page,
   `check-locators-pdf-text.py` reads the path: each line matching the citation's last heading
   selects the first occurrence after it, counted only where the earlier headings occur as lines
-  before it, and **exactly one occurrence must be selected**. `Rules Glossary / Round Down / p. 187`
-  resolves and `Playing the Game / Round Down / p. 5` does not, because `Playing the Game` precedes
-  both printings; a citation the path does not narrow to one passage **fails**, and the checker
-  never picks a printing for the mapper.
+  before it. **Where the path selects several, the cited page chooses among them**
+  ([0066](decisions/0066-the-cited-page-chooses-among-the-printings-the-heading-path-selects.md),
+  [#436](https://github.com/brandonifco/rules-factory/issues/436)) — and only among them: the page
+  does not rescue a path that selected nothing, and it decides nothing where two of the selected
+  printings are on it. So `Rules Glossary / Round Down / p. 187` resolves on the path alone, and
+  `Playing the Game / Round Down / p. 5` resolves on the page, which the path structurally cannot
+  do: `Playing the Game` precedes both printings and every heading above the earlier one is above
+  the later one too, so **no path can ever name the earlier of two identical printings**. A
+  citation neither half narrows to one passage **fails**, and the checker never picks a printing
+  for the mapper. Every run says how many citations needed the page.
 
 Extending a span until it is unique is what this replaces, and it is not a fallback: it produced a
 `round-down` whose span carried the whole of the next glossary entry and passed every check.

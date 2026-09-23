@@ -1359,6 +1359,23 @@ A save is another name for a saving throw.
 """
 
 
+# 0066: the boundary the cited page cannot cross. One page printing the same rule twice under two
+# lines of the same heading, and a third printing elsewhere, so the path selects three and two of
+# them are on the cited page. The page narrows and does not decide, and the citation is refused.
+TWICE_ON_ONE_PAGE = """{1}
+Playing the Game
+Rounding
+Round down if you end up with a fraction.
+
+Rounding
+Round down if you end up with a fraction.
+{2}
+Glossary
+Rounding
+Round down if you end up with a fraction.
+"""
+
+
 def repeated_map():
     return {
         "schemaVersion": 1,
@@ -1408,23 +1425,44 @@ class TestPdfTextRepeatedPassages(TestPdfTextLocators):
         code, output = self.run_repeated(document)
         self.assertEqual(code, 0, output)
 
-    def test_a_citation_the_heading_path_cannot_narrow_is_refused(self):
-        # "Playing the Game" precedes both printings of "Rounding", so the path selects two
-        # passages. The checker says so and picks neither.
+    def test_the_earlier_of_two_identical_printings_is_named_by_its_page(self):
+        """0066: the case the heading path structurally cannot narrow, resolved by the page.
+
+        "Playing the Game" precedes both printings of "Rounding", and always will: p. 1 comes
+        first, so every heading above the earlier printing is above the later one too. The path
+        selects two, and the citation's own page holds one of them.
+        """
         document = repeated_map()
         document["entries"][3]["locator"]["citation"] = "Playing the Game / Rounding / p. 1"
         code, output = self.run_repeated(document)
-        self.assertEqual(code, 1, output)
-        self.assertIn("the corpus prints this quote 2 times (p. 1, p. 4), and the heading path "
-                      "'Playing the Game / Rounding' selects 2 of them", output)
-        self.assertIn("does not guess", output)
+        # `coverage` then reports p. 4 unreached, which is true and is not what this is about.
+        self.assertEqual(self.status_of(output, "locators"), "ok", output)
+        self.assertIn("1 of those needing the cited page to choose among the printings the path "
+                      "selected", output)
 
-    def test_a_heading_no_printing_follows_selects_none_and_fails(self):
+    def test_the_page_chooses_only_among_what_the_path_selected(self):
+        """A path that selects nothing is still a refusal, page or no page.
+
+        `Glossary / Save` is a heading with no printing of the quote after it. The quote *is* on
+        p. 4, and that is not enough: the page narrows a selection, it does not make one.
+        """
         document = repeated_map()
         document["entries"][3]["locator"]["citation"] = "Glossary / Save / p. 4"
         code, output = self.run_repeated(document)
         self.assertEqual(code, 1, output)
         self.assertIn("heading path 'Glossary / Save' selects none of them", output)
+        self.assertIn("does not guess", output)
+
+    def test_two_of_the_selected_printings_on_the_cited_page_is_still_a_refusal(self):
+        self.write_corpus(TWICE_ON_ONE_PAGE)
+        document = repeated_map()
+        document["extent"] = {"unit": "page", "from": 1, "to": 2}
+        document["entries"] = [entry("rounding", "Playing the Game / Rounding / p. 1",
+                                     "Round down if you end up with a fraction.")]
+        code, output = self.run_tool(document)
+        self.assertEqual(code, 1, output)
+        self.assertIn("selects 3 of them, 2 of those on the cited p. 1", output)
+        self.assertIn("does not guess", output)
 
     def test_a_quote_that_occurs_nowhere_is_still_refused(self):
         document = repeated_map()

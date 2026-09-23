@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "measuredAt": "0ab19fddfe247de39e77dcad4978c4675d1a8e1b",
+  "measuredAt": "48b548f7e3781933d48bf3ff912e4807373e818e",
   "measuredBy": "tools/check-evidence.py --measure",
   "measuredOver": {
     "gateStepsFailed": [],
@@ -19,8 +19,8 @@
   "artifacts": [
     {
       "path": "examples/README.md",
-      "sha256": "0975813b780cdcbdf0b64c5ac498578bbc8376594aa2a980a8192dbcf4474ed9",
-      "bytes": 37680,
+      "sha256": "0516745e128c1ed92d121264e3e3b4e6f86b054c2919538fbaa8fcecc9878b78",
+      "bytes": 37916,
       "role": "active",
       "readBy": [
         "links"
@@ -1556,8 +1556,8 @@
     },
     {
       "path": "examples/srd-52-combat/check-locators-pdf-text.py",
-      "sha256": "b95e2f3fe21b57be47026afbeeacb195ec72c1ccc74648355dc5f61faa66d1bd",
-      "bytes": 35836,
+      "sha256": "fdf4f38a8ecf87fb739037c4f6e4c78c907823a836200f89a977625790aca0cc",
+      "bytes": 37925,
       "role": "active",
       "readBy": [
         "checks"
@@ -1577,8 +1577,8 @@
     },
     {
       "path": "examples/srd-52-combat/corpus-map.json",
-      "sha256": "228de0dbdfb0900a098ae611a2c72c1142254980ce3c57d66474bc3b4f834ec1",
-      "bytes": 107949,
+      "sha256": "09131449f3e18104644581e328579e4c1ea6026644dcd0379e3a612b05c4db62",
+      "bytes": 108137,
       "role": "release",
       "readBy": [
         "checks",
@@ -1608,10 +1608,8 @@
       "path": "examples/srd-52-combat/independent-verdict-115-116.json",
       "sha256": "3d6a25e6536b2ce97921e614bf173e775f1bfd7851c91b538c66197e4e689401",
       "bytes": 19003,
-      "role": "active",
-      "readBy": [
-        "checks"
-      ],
+      "role": "archived",
+      "readBy": [],
       "archive": null
     },
     {
@@ -1655,8 +1653,8 @@
     },
     {
       "path": "examples/srd-52-combat/review.json",
-      "sha256": "0faf78a7ce4d8523a16b76743e16e13555850dcfe108518e4a9ad8d9e84d2f7b",
-      "bytes": 4774,
+      "sha256": "05b1af671235a8c95895337be5e389e2f7db50dcd8ab39588a6e48e0c328480b",
+      "bytes": 5971,
       "role": "active",
       "readBy": [
         "checks"
@@ -1891,8 +1889,8 @@
     },
     {
       "path": "examples/srd-52-playing-the-game/README.md",
-      "sha256": "1a3a993ce0a65dfd05f2085a64d873cb4352d6b7f4ffd4be4c1882e4f4e9674b",
-      "bytes": 15979,
+      "sha256": "2254b7cf9c5d59f4c8df2c1ca8fa038be03ac651e3e4260d8b01d268a2fd25cb",
+      "bytes": 16892,
       "role": "active",
       "readBy": [
         "links"
@@ -1911,8 +1909,8 @@
     },
     {
       "path": "examples/srd-52-playing-the-game/corpus-map.json",
-      "sha256": "4ee41960b475f14d230b40a8e7466a3b07587903172a3f533f00e51599824878",
-      "bytes": 143222,
+      "sha256": "52328b2da3c44409e7640bd34b59041960df193aaf504d8600f70d556b0235d2",
+      "bytes": 144632,
       "role": "active",
       "readBy": [
         "checks"
@@ -1921,8 +1919,8 @@
     },
     {
       "path": "examples/srd-52-playing-the-game/mapping-inventory.json",
-      "sha256": "f5fd5a2b7f8aba6664925311372bd4bac0a3a98a4ae16299e2d068dc3b0d8361",
-      "bytes": 19157,
+      "sha256": "54eb7c86f05bcc74e56ee89e631fe3be0810f9d2382727da6caa433d9d6c0b23",
+      "bytes": 18370,
       "role": "active",
       "readBy": [
         "checks"
@@ -1941,8 +1939,8 @@
     },
     {
       "path": "examples/srd-52-playing-the-game/review.json",
-      "sha256": "281037730738870ed902952b4839ada4303bc26eba798e16c4cd60f142ff1a46",
-      "bytes": 2530,
+      "sha256": "078e7ebf034b79846fe20b87c7e48552ffe2f28ef034594ab42f536ffbf1a0e2",
+      "bytes": 3376,
       "role": "active",
       "readBy": [
         "checks"

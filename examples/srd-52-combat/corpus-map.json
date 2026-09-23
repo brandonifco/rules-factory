@@ -1784,9 +1784,9 @@
       "scope": "out",
       "clarity": "clear",
       "dependsOn": [],
-      "evidence": "Whenever you divide or multiply a number in the game, round down if you end up with a fraction, even if the fraction is one-half or greater. Some rules make an exception and tell you to round up. {6}",
+      "evidence": "Whenever you divide or multiply a number in the game, round down if you end up with a fraction, even if the fraction is one-half or greater. Some rules make an exception and tell you to round up.",
       "status": "declined",
-      "note": "Declined: outside the extent (p. 5). The span carries the following {6} marker because the Rules Glossary repeats the passage word for word (p. 187), and a quote must be found only on its cited page. grid-speed-in-squares depends on it. Added by the blind second mapping (blind-mapping/resolutions.json)."
+      "note": "Declined: outside the extent (p. 5). `grid-speed-in-squares` depends on it. Added by the blind second mapping (blind-mapping/resolutions.json). The span carried a trailing {6} marker until 0066, to make the quote unique to its cited page because the Rules Glossary repeats the passage word for word on p. 187 -- span extension for uniqueness, which 0030 retired and which this entry outlived it by. The cited page now chooses between the two printings, and the quote is the rule and nothing else."
     },
     {
       "id": "prone-condition",

@@ -23,14 +23,14 @@ the map.
 |---|---|
 | Corpus | SRD 5.2.1, CC-BY-4.0, the same pinned `srd-5.2.1.txt` trials 7 and 8 read |
 | Extent | `{"unit": "page", "from": 5, "to": 12, "quoted": 0.85}` |
-| Entries | 91 — 80 in scope, 11 declined |
-| Kinds | 43 `value`, 40 `operation`, 8 `assertion` |
-| Ambiguous | 4 of 80 in scope (5%) |
+| Entries | 92 — 81 in scope, 11 declined — 91/80 when the trial ran, before `round-down` ([#436](https://github.com/brandonifco/rules-factory/issues/436)) |
+| Kinds | 43 `value`, 41 `operation`, 8 `assertion` |
+| Ambiguous | 4 of 81 in scope (5%) |
 | Relations | 92 `dependsOn` edges, no cycle; **no gate** — `enabledBy` and `suspendedBy` are empty |
 | Pointers | 195 `crossReferences`, 40 of them `unmapped`; 199 namings of a defined term, every one declared |
 | Vocabulary | `playing-the-game-terms`, 55 terms distributed over 18 entries (0045) |
 | Extraction | 12 `interleaved-table`, 3 `split-by-sidebar` |
-| Inventory | 374 units, 300 reached, 74 rejected, 0 unaccounted — measured at 268/78/28 when the trial ran, all of it [#437](https://github.com/brandonifco/rules-factory/issues/437) |
+| Inventory | 374 units, 301 reached, 73 rejected, 0 unaccounted — measured at 268/78/28 when the trial ran, all of it [#437](https://github.com/brandonifco/rules-factory/issues/437); one rejection became an entry with [#436](https://github.com/brandonifco/rules-factory/issues/436) |
 | Review | none; `exemption`, first mapping, [review.json](review.json) says what a second reading should look at |
 
 ## The hypotheses, before anything was mapped
@@ -105,6 +105,15 @@ And the combat map's own `round-down` — `scope: out`, same citation — passes
 its `evidence` ends with a `{6}` page marker the rule does not contain, with a note saying the
 marker is there to make the quote unique. That is span-extension for uniqueness, which 0030
 retired and calls "not a fallback". No map of this corpus holds Round Down in scope.
+
+**Both are settled.**
+[0066](../../docs/decisions/0066-the-cited-page-chooses-among-the-printings-the-heading-path-selects.md)
+gives the **cited page** the choice among the printings the heading path selects — and only among
+them, so a path that selects nothing is still refused. `Playing the Game / Round Down / p. 5`
+resolves, this map gains `round-down` in scope, the `restatement` rejection that was never the
+true reason is gone, and the combat map's `{6}` is gone with it. The finding above stands as the
+trial recorded it: what the run showed is still that the path can never name the earlier of two
+identical printings. What changed is that the path was never the whole of the locator.
 
 ### H3 — nothing joins two maps of one corpus. **Held.**
 

@@ -546,12 +546,16 @@ class TestTheCommittedPlayingTheGameMapAccountsForItsExtent(unittest.TestCase):
         table's column headers on both sides of the turn -- which a reader who could not see the
         quote had no way to tell. They are gone from `mapping-inventory.json`: a passage cannot
         have produced no entry and be the evidence for one.
+
+        A fifth left later and the other way about: the Round Down sidebar was rejected because no
+        citation could name the earlier of two identical printings, and 0066 made one, so the
+        passage is an entry (#436).
         """
         path = os.path.join(REPO, "examples", "srd-52-playing-the-game", "corpus-map.json")
         code, output = run(["inventory", path, "--list"])
         self.assertEqual(code, 0, output)
         self.assertNotIn("not located inside the extent", output)
-        self.assertIn("reached:     300 by the quoted evidence of 91 entries", output)
+        self.assertIn("reached:     301 by the quoted evidence of 92 entries", output)
         self.assertIn("unaccounted: 0", output)
 
 

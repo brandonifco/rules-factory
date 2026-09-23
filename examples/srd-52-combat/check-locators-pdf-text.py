@@ -38,16 +38,23 @@ occurs off the cited page, the path is asked which occurrence the citation means
     of the quote after it, and a heading selects nothing when no occurrence follows it;
   * a heading line counts only where the citation's **earlier** headings occur as lines, in order,
     before it;
-  * the citation must select **exactly one** occurrence, and that occurrence must touch the cited
-    page. Selecting none, or more than one, fails: this checker refuses an ambiguous citation
-    rather than picking an occurrence for the mapper.
+  * where the path selects several, **the cited page chooses among them** (0066). A locator here
+    is a heading path *and* a printed page, and giving the path the whole of the identification
+    made the **earlier** of two identical printings uncitable for a structural reason: every
+    heading above it is above the later one too, so no path can ever exclude the later. The page
+    chooses only among what the path already selected -- it does not rescue a path that selected
+    nothing, and it chooses nothing where two of the printings it selected are on the cited page;
+  * the citation must then identify **exactly one** occurrence, and that occurrence must touch the
+    cited page. Selecting none, or more than one, fails: this checker refuses an ambiguous
+    citation rather than picking an occurrence for the mapper.
 
 The rule is the extraction's reading order, which is all a flat text has: pdftotext gives no
 hierarchy, so "under this heading" can only mean "after this heading line, and before the same
 quote appears again". Two consequences, both deliberate. A citation whose last heading is repeated
 is separated only by a heading above it that is not — `Rules Glossary / Round Down / p. 187`
-resolves, because no `Rules Glossary` line precedes p. 5's `Round Down`, and `Playing the Game /
-Round Down / p. 5` does not, because `Playing the Game` precedes both. And an entry citing a
+resolves, because no `Rules Glossary` line precedes p. 5's `Round Down`. `Playing the Game /
+Round Down / p. 5` is the case the path cannot separate, because `Playing the Game` precedes
+both, and it is the cited page that resolves it. And an entry citing a
 heading its quote does not follow fails rather than reaching for a distant occurrence.
 
 `absence`, `coverage` and `extent-bounds` are `tools/check-locators.py`'s checks, loaded from
@@ -316,7 +323,7 @@ def check_locators(page_checker, entries, corpus, starts, reached, end=None, pla
     """
     derived = [e.get("id", "?") for e in entries if "derivedFrom" in e]
     located = [e for e in entries if "derivedFrom" not in e]
-    bad, checked, repeated, identified = [], 0, 0, 0
+    bad, checked, repeated, identified, narrowed = [], 0, 0, 0, 0
     for entry in located:
         name = entry.get("id", "?")
         citation = str(entry.get("locator", {}).get("citation", ""))
@@ -342,13 +349,27 @@ def check_locators(page_checker, entries, corpus, starts, reached, end=None, pla
             where = ", ".join(f"p. {p}" for p in sorted(
                 {p for span in spans for p in pages_touched(span, starts)}))
             path = " / ".join(segments[:-1])
+            # 0066: where the path selects several, the **cited page** chooses among them, and
+            # only among them. A locator in this grammar is a heading path and a printed page;
+            # 0030 gave the path the whole of the identification and left the page asserting
+            # afterwards, which made the earlier of two identical printings uncitable for a
+            # structural reason -- every heading above it is above the later one too. The page
+            # does not rescue a path that selected nothing, and it chooses nothing where two of
+            # the printings it selected are on the cited page. (Where *every* printing is on that
+            # page this block does not run at all, which is 0030's rule and is unchanged: nothing
+            # has to be identified when the citation's page already holds all of them.)
+            on_page = [span for span in picked if cited in pages_touched(span, starts)]
+            if len(picked) > 1 and len(on_page) == 1:
+                picked, narrowed = on_page, narrowed + 1
             if len(picked) != 1:
                 bad.append(f"  X  {name}: the corpus prints this quote {len(spans)} times ({where}), "
                            f"and the heading path {path!r} "
                            + (f"selects none of them" if not picked else
-                              f"selects {len(picked)} of them")
+                              f"selects {len(picked)} of them, "
+                              + (f"none on the cited p. {cited}" if not on_page else
+                                 f"{len(on_page)} of those on the cited p. {cited}"))
                            + f"; the citation does not identify one passage, and this checker does "
-                             f"not guess which was meant (0030)")
+                             f"not guess which was meant (0030, 0066)")
                 continue
             identified += 1
             spans = picked
@@ -377,10 +398,13 @@ def check_locators(page_checker, entries, corpus, starts, reached, end=None, pla
         return page_checker.skip("the map has no entries to locate")
     if bad:
         return page_checker.fail(bad, f"{checked} of {len(located)} entries located exactly{aside}")
+    narrowing = (f", {narrowed} of those needing the cited page to choose among the printings the "
+                 f"path selected") if narrowed else ""
     return page_checker.ok(f"all {checked} citations verified: every occurrence of each quote, exactly, on the "
                            f"cited page, under a heading near it ({repeated} quoted text"
                            f"{'' if repeated == 1 else 's'} occur more than once, {identified} of them "
-                           f"printed off the cited page too and identified by the heading path){aside}")
+                           f"printed off the cited page too and identified by the heading path"
+                           f"{narrowing}){aside}")
 
 
 def bound_examples(entries):
