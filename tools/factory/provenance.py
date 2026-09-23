@@ -151,9 +151,13 @@ import pins
 import semantics
 
 FILE_NAME = "provenance.json"
-FORMAT = 6  # 2: buildInputs (#69); 3: managed and engineOwned (#72); 4: the overlay is a directory (#247);
+FORMAT = 7  # 2: buildInputs (#69); 3: managed and engineOwned (#72); 4: the overlay is a directory (#247);
 #            5: `corpora`, every corpus the map cites, replaces the single `corpus` (#300, 0039);
-#            6: `verification`, whether the produce that wrote this built and tested the engine (#222)
+#            6: `verification`, whether the produce that wrote this built and tested the engine (#222);
+#            7: `maps`, every map package the engine is composed of, replaces the single `map`
+#               (#446, 0067). The same move 5 made for corpora, one level up, and for the same
+#               reason: a record that names one of several says nothing about the rest, and a
+#               reader cannot tell which one it named
 FACTORY_DIR = os.path.dirname(os.path.abspath(__file__))
 TAG = re.compile(r"^factory/v(\d+)\.(\d+)\.(\d+)$")
 SHORT_SHA = 12
@@ -593,15 +597,27 @@ def build(state, result, model, recorder, factory_dir=FACTORY_DIR, verified=Fals
         "verification": verification(verified),
         "engine": {"name": model.name},
         "factory": {"version": state["version"], "commit": state["commit"], "dirty": state["dirty"]},
-        "map": {
-            "packageId": result.package_id,
-            "version": result.version,
-            "nupkgSha256": result.nupkg_sha256,
-            "files": [{"role": role, "path": result.part_paths[role], "sha256": sha256(raw)}
-                      for role, raw in (("map", result.map_raw), ("manifest", result.manifest_raw),
-                                        ("checker", result.checker_raw),
-                                        ("verification", result.verification_raw))],
-        },
+        # Every package this engine is composed of, ordered by package id so the record is a
+        # function of the inputs and not of the order they were given in (0067).
+        "maps": [
+            {
+                "packageId": package.package_id,
+                "version": package.version,
+                "nupkgSha256": package.nupkg_sha256,
+                "files": [{"role": role, "path": package.part_paths[role], "sha256": sha256(raw)}
+                          for role, raw in (("map", package.map_raw),
+                                            ("manifest", package.manifest_raw),
+                                            ("checker", package.checker_raw),
+                                            ("verification", package.verification_raw))],
+            }
+            for package in sorted(result.packages, key=lambda p: p.package_id.encode("utf-8"))
+        ],
+        # What one package's entries supersede in another, derived from the corpus and never
+        # authored (0067). Empty for an engine of one package, and the record says so rather than
+        # omitting the field, so a reader can tell "none" from "written by a factory that could
+        # not compose".
+        "supersedes": [{"entry": declined, "by": by}
+                       for declined, by in sorted(result.superseded.items())],
         "corpora": [
             {
                 "sourceId": verified["sourceId"],
@@ -641,10 +657,18 @@ def write(out, document):
 # --- recompute -------------------------------------------------------------------------------
 
 
+#: What names an item of a list, in the order a key is looked for. `packageId` joins them for
+#: `maps` (0067): an engine composed of several packages compares each against the one it
+#: recorded, so a mismatch reads `maps[RulesFactory.Maps.Srd52Combat].nupkgSha256` rather than
+#: dumping both whole lists and leaving a reader to find the byte that moved.
+KEYS = ("path", "role", "packageId")
+
+
 def _keyed(items):
-    """A list of objects keyed by path (or role) compares by that key, not by position."""
-    if items and all(isinstance(i, dict) and ("path" in i or "role" in i) for i in items):
-        return {str(i.get("path", i.get("role"))): {k: v for k, v in i.items() if k not in ("path",)} for i in items}
+    """A list of objects keyed by path, role or package id compares by that key, not by position."""
+    if items and all(isinstance(i, dict) and any(k in i for k in KEYS) for i in items):
+        return {str(next(i[k] for k in KEYS if k in i)):
+                {k: v for k, v in i.items() if k not in ("path",)} for i in items}
     return None
 
 
@@ -763,9 +787,20 @@ def recompute(engine_dir, produce_into, package=None):
                                   f"{corpus.get('contentHash')}, {relative} gives {actual} under "
                                   f"{corpus.get('hashDerivation')}")
 
-    source = recorded.get("map") or {}
+    recorded_maps = [m for m in recorded.get("maps") or [] if isinstance(m, dict)]
+    if not recorded_maps:
+        return mismatches + ["maps: the record names no map package; provenance written by a "
+                             "factory before provenanceFormat 7 records `map` and is not "
+                             "comparable"]
     name = (recorded.get("engine") or {}).get("name")
-    spec = package or f"{source.get('packageId')}@{source.get('version')}"
+    # `package` overrides what the record names, one spec per recorded package and in the record's
+    # own order: a caller re-producing from local .nupkg files supplies them in that order.
+    given = [package] if isinstance(package, str) else list(package or [])
+    if given and len(given) != len(recorded_maps):
+        return mismatches + [f"maps: the record names {len(recorded_maps)} package(s) and "
+                             f"{len(given)} were supplied; a composition is re-produced from every "
+                             f"package it was composed of, or from none of them"]
+    spec = given or [f"{m.get('packageId')}@{m.get('version')}" for m in recorded_maps]
     with tempfile.TemporaryDirectory(prefix="factory-recompute-") as scratch:
         copy = os.path.join(scratch, "engine")
         shutil.copytree(engine_dir, copy, ignore=COPY_IGNORE)

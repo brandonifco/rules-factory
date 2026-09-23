@@ -75,12 +75,24 @@ def read_json(path, what):
 
 
 def engine():
-    """(name, map id, map version, map nupkg sha256, randomness) from the engine's provenance."""
+    """(name, map id, map version, map nupkg sha256, randomness) from the engine's provenance.
+
+    A packet is built from **the** map the entry came from, and an engine composed of several maps
+    (rules-factory 0067) has more than one. Rather than pick one and be silently wrong about which
+    package an entry belongs to, this refuses and says so: a packet naming the wrong map is a
+    reviewer reading the wrong bytes, which is the failure the packet exists to prevent.
+    """
     record = read_json(ROOT / PROVENANCE, "provenance.json")
+    maps = [m for m in record.get("maps") or [] if isinstance(m, dict)]
+    if len(maps) > 1:
+        raise Refused(f"{PROVENANCE} names {len(maps)} map packages "
+                      f"({', '.join(str(m.get('packageId')) for m in maps)}); an entry packet is "
+                      f"built from the one map its entry came from, and this tool cannot yet say "
+                      f"which of several that is")
     try:
-        return (record["engine"]["name"], record["map"]["packageId"], record["map"]["version"],
-                record["map"].get("nupkgSha256", ""), record.get("randomness"))
-    except (KeyError, TypeError):
+        return (record["engine"]["name"], maps[0]["packageId"], maps[0]["version"],
+                maps[0].get("nupkgSha256", ""), record.get("randomness"))
+    except (KeyError, TypeError, IndexError):
         raise Refused(f"{PROVENANCE} does not name this engine and its map; run `factory produce` again")
 
 

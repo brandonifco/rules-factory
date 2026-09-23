@@ -64,7 +64,8 @@ class TheIdentityIsThePackageAndTheId(unittest.TestCase):
         composed = compose.compose([only])
         self.assertFalse(composed.composed)
         self.assertEqual(["a"], [e["id"] for e in composed.map["entries"]])
-        self.assertIn("one package: entry ids are unqualified", composed.lines()[0])
+        self.assertEqual(["intake passed: RulesFactory.Maps.Demo 1.0.0, 1 entries"],
+                         composed.lines())
 
     def test_several_packages_qualify_every_id(self):
         composed = compose.compose([
@@ -214,6 +215,28 @@ class SupersessionIsTheSpanInTheCorpus(unittest.TestCase):
                       "\n".join(composed.lines()))
 
 
+class TheOrderIsTheInputsAndNotTheArguments(unittest.TestCase):
+    """0067: what the factory generates is a function of its inputs. The engine's own gate reads
+    the restored packages from MSBuild, whose item order is its own business, so a composition
+    ordered by `--package` would regenerate differently there and fail its own `Generated files`
+    step -- which is exactly what happened before this."""
+
+    def packages(self):
+        return [FakeIntake("RulesFactory.Maps.Zulu", [entry("a", "A player rolls a die.")]),
+                FakeIntake("RulesFactory.Maps.Alpha", [entry("b", "A token moves once.")])]
+
+    def test_entries_come_in_package_id_order(self):
+        composed = compose.compose(self.packages())
+        self.assertEqual(["Alpha.b", "Zulu.a"], [e["id"] for e in composed.map["entries"]])
+
+    def test_the_other_argument_order_composes_identically(self):
+        one = compose.compose(self.packages())
+        other = compose.compose(list(reversed(self.packages())))
+        self.assertEqual(one.map, other.map)
+        self.assertEqual([p.package_id for p in one.packages],
+                         [p.package_id for p in other.packages])
+
+
 class TheComposedDocument(unittest.TestCase):
     def test_it_carries_the_shared_corpus_baseline_and_every_entry(self):
         composed = compose.compose([
@@ -240,6 +263,43 @@ class TheComposedDocument(unittest.TestCase):
             FakeIntake("RulesFactory.Maps.Two", [entry("b", "A token moves once.")]),
         ])
         self.assertEqual(["demo"], [v["sourceId"] for v in composed.corpora])
+
+
+class TheRecordOfAComposition(unittest.TestCase):
+    """provenanceFormat 7: `maps` replaces `map`, and `supersedes` says what one package's entries
+    supersede in another. The same move format 5 made for corpora (0039), one level up."""
+
+    def record(self, *intakes):
+        sys.path.insert(0, FACTORY)
+        try:
+            import provenance
+        finally:
+            sys.path.remove(FACTORY)
+        composed = compose.compose(list(intakes), {"demo": CORPUS})
+        return provenance, composed
+
+    def packaged(self, package_id, entries, **rest):
+        made = FakeIntake(package_id, entries, **rest)
+        made.nupkg_sha256 = "f" * 64
+        made.map_raw = b"{}"
+        made.manifest_raw = b"{}"
+        made.checker_raw = b""
+        made.verification_raw = b"{}"
+        made.part_paths = {"map": "map/corpus-map.json", "manifest": "map/corpus-manifest.json",
+                           "checker": "tools/check-map.py", "verification": "map/verification.json"}
+        return made
+
+    def test_the_format_is_seven(self):
+        provenance, _ = self.record(self.packaged("RulesFactory.Maps.One", [entry("a", "x")]))
+        self.assertEqual(7, provenance.FORMAT)
+
+    def test_a_list_keyed_by_package_id_compares_by_that_key(self):
+        """So a mismatch reads `maps[RulesFactory.Maps.One].version`, not two dumped lists."""
+        provenance, _ = self.record(self.packaged("RulesFactory.Maps.One", [entry("a", "x")]))
+        lines = provenance.diff({"maps": [{"packageId": "RulesFactory.Maps.One", "version": "1"}]},
+                                {"maps": [{"packageId": "RulesFactory.Maps.One", "version": "2"}]})
+        self.assertEqual(['maps[RulesFactory.Maps.One].version: recorded "1", recomputed "2"'],
+                         lines)
 
 
 if __name__ == "__main__":

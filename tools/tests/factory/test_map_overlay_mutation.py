@@ -339,7 +339,8 @@ class TestTheCommandLineRefuses(unittest.TestCase):
     """The gate runs the file, not the function: both subcommands, exit 1, message on stderr.
 
     Laid out the way `factory produce` lays an engine out -- scripts/map-overlay.py with
-    scripts/factory/rulings.py beside it -- in a temporary directory that is removed after.
+    scripts/factory/rulings.py, overlay.py and compose.py beside it -- in a temporary directory
+    that is removed after.
     """
 
     def setUp(self):
@@ -351,6 +352,9 @@ class TestTheCommandLineRefuses(unittest.TestCase):
         shutil.copy(RECIPE, self.tool)
         shutil.copy(os.path.join(FACTORY, "rulings.py"), os.path.join(scripts, "factory", "rulings.py"))
         shutil.copy(os.path.join(FACTORY, "overlay.py"), os.path.join(scripts, "factory", "overlay.py"))
+        # Composing the restored packages before the overlay is applied is the recipe's, so the
+        # module is beside it in a produced engine too (rules-factory 0067).
+        shutil.copy(os.path.join(FACTORY, "compose.py"), os.path.join(scripts, "factory", "compose.py"))
         self.package_map = os.path.join(self.tmp, "package-map.json")
         self.overlay = os.path.join(self.tmp, "overlay")
         self.out = os.path.join(self.tmp, "corpus-map.json")

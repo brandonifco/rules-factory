@@ -253,7 +253,7 @@ class TestMapVersionChange(ProduceCase):
         for path in GENERATED[:3]:
             self.assertIn(f"from {MAP_ID} {now}.", self.read(out, path), path)
         record = json.loads(self.read(out, "provenance.json"))
-        self.assertEqual(record["map"]["version"], now)
+        self.assertEqual(record["maps"][0]["version"], now)
         generated = {g["path"]: g["sha256"] for g in record["generated"]}
         self.assertIn(PACKAGES_PROPS, generated, "the pins are recorded")
         with open(os.path.join(out, PACKAGES_PROPS), "rb") as handle:
@@ -283,21 +283,24 @@ class TestMapVersionChange(ProduceCase):
         self.produced(out, package=self.v2, report=report_path)
         with open(report_path, encoding="utf-8") as handle:
             report = json.load(handle)
-        self.assertEqual(report["map"], {"packageId": MAP_ID, "from": "5.0.0", "to": "7.0.0"})
+        self.assertEqual(report["maps"], [{"packageId": MAP_ID, "from": "5.0.0", "to": "7.0.0"}])
         self.assertEqual(report["kernel"]["from"], report["kernel"]["to"], "only the map moved")
-        self.assertEqual(report["moved"], ["the map, 5.0.0 to 7.0.0"])
+        # Named, because a composed engine has several maps and "the map" would say which one
+        # moved only when there is one (0067).
+        self.assertEqual(report["moved"], [f"{MAP_ID}, 5.0.0 to 7.0.0"])
         # The four fields the emitted pull request template asks for, under its own labels, so
         # nothing is retyped from a terminal into a pull request body.
         self.assertEqual(report["declaration"]["map package and version"], f"{MAP_ID} 7.0.0")
-        self.assertEqual(report["declaration"]["what moved"], "the map, 5.0.0 to 7.0.0")
+        self.assertEqual(report["declaration"]["what moved"], f"{MAP_ID}, 5.0.0 to 7.0.0")
         self.assertEqual(report["declaration"]["factory version"], report["factory"]["version"])
         # Every path this run put in place, classified by the table produce wrote them by: a map
         # bump rewrites the pins and the generated code, and nothing engine-owned.
         by_path = {item["path"]: item for item in report["paths"]}
         self.assertEqual(by_path[PACKAGES_PROPS], {"path": PACKAGES_PROPS, "change": "changed", "class": "generated"})
         self.assertEqual({item["class"] for item in report["paths"]}, {"generated"})
-        self.assertTrue(any(line.startswith("map.version:") for line in report["provenanceDiff"]),
-                        report["provenanceDiff"])
+        # Keyed by package id since 0067, so a composed engine's diff says which map moved.
+        self.assertTrue(any(line.startswith(f"maps[{MAP_ID}].version:")
+                            for line in report["provenanceDiff"]), report["provenanceDiff"])
 
     def test_the_report_calls_a_retired_path_retired_only_where_it_deleted_one(self):
         """`retired` is a class of change, not of file (#243).
@@ -754,9 +757,9 @@ class TestTheOverlayIsOneFilePerEntry(ProduceCase):
         for entry_id in ids:
             self.assertEqual(json.loads(self.read(out, f"overlay/{entry_id}.json")), self.BLOCKED)
         record = json.loads(self.read(out, "provenance.json"))
-        # 6 since #222: the record says whether the produce that wrote it verified the
-        # engine. Pinned as a literal on purpose -- a format bump is a deliberate edit.
-        self.assertEqual(record["provenanceFormat"], 6)
+        # 7 since #446: `maps` names every package the engine is composed of, where 6 named one
+        # under `map`. Pinned as a literal on purpose -- a format bump is a deliberate edit.
+        self.assertEqual(record["provenanceFormat"], 7)
         self.assertEqual({item["path"] for item in record["buildInputs"] if item["path"].startswith("overlay/")},
                          {f"overlay/{entry_id}.json" for entry_id in ids})
         self.assertFalse([item for item in record["buildInputs"] + record["engineOwned"]

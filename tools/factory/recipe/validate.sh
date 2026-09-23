@@ -126,22 +126,44 @@ try:
     items = json.loads(sys.argv[1])["Items"]["RulesFactoryMap"]
 except Exception:
     items = []
-if len(items) != 1:
-    print(f"error: expected exactly one RulesFactoryMap item from the restored package, found {len(items)}", file=sys.stderr)
+if not items:
+    print("error: no RulesFactoryMap item from the restored package(s)", file=sys.stderr)
     sys.exit(1)
-i = items[0]
-fields = [i.get("FullPath"), i.get("PackageId"), i.get("PackageVersion"), i.get("Manifest"), i.get("ConsumerChecker")]
-if not all(fields):
-    print("error: the RulesFactoryMap item lacks a map, id, version, manifest or ConsumerChecker (rules-factory#51)", file=sys.stderr)
+# One item per restored map package. An engine composed of several has several, and they are
+# ordered by package id so that what the gate merges does not depend on MSBuild item order
+# (rules-factory 0067).
+items = sorted(items, key=lambda i: str(i.get("PackageId")))
+for i in items:
+    if not all([i.get("FullPath"), i.get("PackageId"), i.get("PackageVersion"), i.get("Manifest"), i.get("ConsumerChecker")]):
+        print("error: a RulesFactoryMap item lacks a map, id, version, manifest or ConsumerChecker (rules-factory#51)", file=sys.stderr)
+        sys.exit(1)
+seen = [i.get("PackageId") for i in items]
+if len(set(seen)) != len(seen):
+    print(f"error: the restore gave two RulesFactoryMap items for one package id ({seen})", file=sys.stderr)
     sys.exit(1)
-print("\n".join(fields))
+# Line 1 is the count; then FullPath, PackageId, PackageVersion per item; then the first item`s
+# manifest and consumer checker, which the composed map is checked with.
+print(len(items))
+for i in items:
+    print("\n".join([i["FullPath"], i["PackageId"], i["PackageVersion"]]))
+print(items[0]["Manifest"])
+print(items[0]["ConsumerChecker"])
 ' "$MAP_ITEM")"; then
     mapfile -t MAP_FIELDS <<<"$MAP_ARGS"
-    PACKAGE_MAP="${MAP_FIELDS[0]}"; PACKAGE_ID="${MAP_FIELDS[1]}"; PACKAGE_VERSION="${MAP_FIELDS[2]}"
-    PACKAGE_MANIFEST="${MAP_FIELDS[3]}"; CONSUMER_CHECKER="${MAP_FIELDS[4]}"
+    MAP_COUNT="${MAP_FIELDS[0]}"
+    MAP_ARGV=(); REGENERATE_ARGV=(); PACKAGE_NAMES=()
+    for ((i = 0; i < MAP_COUNT; i++)); do
+      MAP_ARGV+=(--package-map "${MAP_FIELDS[$((1 + i * 3))]}" --package-id "${MAP_FIELDS[$((2 + i * 3))]}")
+      REGENERATE_ARGV+=(--package-map "${MAP_FIELDS[$((1 + i * 3))]}" --package-id "${MAP_FIELDS[$((2 + i * 3))]}"
+                        --package-version "${MAP_FIELDS[$((3 + i * 3))]}")
+      PACKAGE_NAMES+=("${MAP_FIELDS[$((2 + i * 3))]}@${MAP_FIELDS[$((3 + i * 3))]}")
+    done
+    PACKAGE_MAP="${MAP_FIELDS[1]}"; PACKAGE_ID="${MAP_FIELDS[2]}"; PACKAGE_VERSION="${MAP_FIELDS[3]}"
+    PACKAGE_MANIFEST="${MAP_FIELDS[$((1 + MAP_COUNT * 3))]}"
+    CONSUMER_CHECKER="${MAP_FIELDS[$((2 + MAP_COUNT * 3))]}"
     MERGED="$SCRATCH/corpus-map.json"
-    if run "merge($PACKAGE_ID@$PACKAGE_VERSION, overlay/) obeys 0015" \
-        python3 scripts/map-overlay.py merge --package-map "$PACKAGE_MAP" \
+    if run "merge(${PACKAGE_NAMES[*]}, overlay/) obeys 0015" \
+        python3 scripts/map-overlay.py merge "${MAP_ARGV[@]}" \
           --overlay overlay --out "$MERGED"; then
       MAP_OK=1
       # 0015 rule 6: the checks the overlay can change, from the restored package's own checker.
@@ -186,8 +208,8 @@ fi
 step "Generated files"
 if [[ "$RESTORED" -eq 1 && -n "${PACKAGE_MAP:-}" ]]; then
   run "every *.g.cs matches a fresh regeneration (no hand edits)" \
-      "${GATE[@]}" regenerate --package-map "$PACKAGE_MAP" --package-manifest "$PACKAGE_MANIFEST" --package-id "$PACKAGE_ID" \
-        --package-version "$PACKAGE_VERSION" --name "$NAME" || true
+      "${GATE[@]}" regenerate "${REGENERATE_ARGV[@]}" --package-manifest "$PACKAGE_MANIFEST" \
+        --name "$NAME" || true
 else
   skipped "every *.g.cs matches a fresh regeneration (no hand edits)"
 fi

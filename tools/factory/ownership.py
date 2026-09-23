@@ -107,16 +107,16 @@ TABLE = (
         "removes what merged work left behind, before every dispatch (0029, #236)"),
     Row("tools/new-issue.sh", MANAGED, 2,
         "an issue with the shape the rails expect, a factory update's included (0029, #193)"),
-    Row("tools/entry-packet.py", MANAGED, 5,
+    Row("tools/entry-packet.py", MANAGED, 6,
         "the bounded assignment for one entry, assembled from merge(package, overlay) (0029)"),
-    Row("tools/re-produce.sh", MANAGED, 5,
+    Row("tools/re-produce.sh", MANAGED, 6,
         "an overlay edit is finished by a re-produce, from the factory commit the record names (#192); "
         "a record a merge left conflicted is named as one, and --resolve-record settles it (#252)"),
-    Row("tools/review-packet.py", MANAGED, 6,
+    Row("tools/review-packet.py", MANAGED, 7,
         "everything a reviewer needs about one pull request, in the order it is read (0029); the map is "
         "read once and the entry packets are built from those bytes, and a refused packet writes nothing "
         "(#371, #372)"),
-    Row("tools/pr-policy.py", MANAGED, 6,
+    Row("tools/pr-policy.py", MANAGED, 7,
         "the pull request contract, checked mechanically; a produce update's claim is checked, not taken "
         "(#193); every document the engine owns is accounted for (#236)"),
     Row("tools/record-verdict.py", MANAGED, 3,
@@ -315,6 +315,7 @@ RECIPE_SHA256 = {
         3: "58791e5a923a50c591ef35325a7f45ec8db652f1b09179f5fc28c874b44d230f",
         4: "5ae5e226e92b0f1fe6ce227d58db2987173659d644e4a89667a984c9faee54af",
         5: "3ef75a792934d473e87db94e1c3f08f459bab418a73ef5850dd6063fa4144fad",
+        6: "1125002f832f0876085db34be69de8701a43a5762ae31d49921d530c079ea0b0",
     },
     "tools/re-produce.sh": {
         1: "2a281f94f81ce141733494a94744caa96c88af3cd9fa848cec21c13e73739499",
@@ -322,6 +323,7 @@ RECIPE_SHA256 = {
         3: "0b0fd08926db78dff21bb8687e3cf57d34ff3a0456ae4cfb9ec1734ea2f8638f",
         4: "465fb02b0fafd06106cfef3f1e8d0858b4cee232f7f57dc8ac628fe6f7513a67",
         5: "4533319092ce21ccdcaaeade46dd4f10cdfa2209bb6f565efe0e9d163ef0b185",
+        6: "27f0459e33e943fb7c6cd185b808f52ffa7165a7de44f267adbcd8654ce65262",
     },
     "tools/review-packet.py": {
         1: "2e989c02c1827bf6d3da8fce9a35874e25ea4baf14f62eeb64aab78c30b1f392",
@@ -330,6 +332,7 @@ RECIPE_SHA256 = {
         4: "bc80949e2aa1a788ed72f9574ebe85846646200fb574a5cafa451f67bc08b2a9",
         5: "ccedcf96e26a8005387d2f95d7634b09196d1374db10a30b856a4375eeb49e1b",
         6: "445377e001ec8f17a881f7369e82eacb9ecf9646a87d225ea80022efef98d2d5",
+        7: "7aa09461a5229497fedd360ec47cd05c8279e369be59626ef7a634caeb0d00ee",
     },
     "tools/pr-policy.py": {
         1: "79a33c7fe1ea8d888e4d6912a43ac60afe285c7a8bf43fbe9f7be87d6947b76e",
@@ -338,6 +341,7 @@ RECIPE_SHA256 = {
         4: "1100f4005be978240ddd1f4ddb5001fefae8a89dff85818784dfe2e54ff61f8f",
         5: "c17dbf45d593454342680dc2b8333c88028ce9ec23367bdc668e8204202d4dc1",
         6: "308cbb15d1d908bc8db2c326633bd3ff7da97cc9447c057ba63fd81cc3574db5",
+        7: "0606f6993cb2667b79788f8c4a0356e2d2e86dab12603628759ac906d1ed7941",
     },
     "tools/record-verdict.py": {
         1: "48f7b11f7fc829cdaebd776a3eb5db04e27cade97c427c6806b72f58805d83db",

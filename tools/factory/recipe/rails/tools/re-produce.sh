@@ -146,18 +146,25 @@ factory = record.get("factory") or {}
 commit = factory.get("commit")
 if not (isinstance(commit, str) and len(commit) == 40 and all(c in "0123456789abcdef" for c in commit)):
     sys.exit(f"{sys.argv[1]} names no factory.commit to re-produce from (got {commit!r})")
-source = record.get("map") or {}
+# Every package the engine is composed of, in the record's own order (0067). One is the ordinary
+# case; a composed engine is re-produced from all of them or from none.
+packages = [m for m in record.get("maps") or [] if isinstance(m, dict)]
 name = (record.get("engine") or {}).get("name")
 corpora = [item.get("path") for item in record.get("generated") or []
            if isinstance(item, dict) and str(item.get("path", "")).startswith("corpus/")]
 if len(corpora) != 1:
     sys.exit(f"{sys.argv[1]} names {len(corpora)} corpus/ files; exactly one is the corpus")
-for label, value in (("map.packageId", source.get("packageId")), ("map.version", source.get("version")),
-                     ("engine.name", name)):
-    if not value:
-        sys.exit(f"{sys.argv[1]} names no {label}")
+if not packages:
+    sys.exit(f"{sys.argv[1]} names no map package under `maps`; a record written before "
+             f"provenanceFormat 7 names one under `map` and this script cannot re-produce from it")
+for position, package in enumerate(packages):
+    for label in ("packageId", "version"):
+        if not package.get(label):
+            sys.exit(f"{sys.argv[1]} names no maps[{position}].{label}")
+if not name:
+    sys.exit(f"{sys.argv[1]} names no engine.name")
 print(commit)
-print(f"{source['packageId']}@{source['version']}")
+print(" ".join(f"{m['packageId']}@{m['version']}" for m in packages))
 print(corpora[0])
 print(name)
 print(factory.get("repository") or sys.argv[2])
@@ -166,7 +173,7 @@ PY
 )" || die "the record does not say what to re-produce (above)"
 
 mapfile -t FIELD <<<"$FIELDS"
-COMMIT="${FIELD[0]}"; PACKAGE="${FIELD[1]}"; CORPUS="${FIELD[2]}"; NAME="${FIELD[3]}"
+COMMIT="${FIELD[0]}"; read -r -a PACKAGES <<<"${FIELD[1]}"; CORPUS="${FIELD[2]}"; NAME="${FIELD[3]}"
 FACTORY_REPO="${RULES_ENGINE_FACTORY_REPO:-${FIELD[4]}}"; FACTORY_DIRTY="${FIELD[5]}"
 
 [[ -f "$CORPUS" ]] || die "$RECORD names the corpus $CORPUS, which is not in this engine"
@@ -204,11 +211,13 @@ fi
 
 [[ "$FACTORY_DIRTY" == "clean" ]] || printf 'note: %s records factory.dirty: true, so commit %s is not the whole of the\n      code that produced this engine; this re-produce runs that commit as committed.\n' "$RECORD" "$COMMIT" >&2
 
-PRODUCE=("$PYTHON" "<factory>/tools/factory" produce --package "$PACKAGE" --corpus "$REPO_ROOT/$CORPUS"
+PACKAGE_ARGS=()
+for PACKAGE in "${PACKAGES[@]}"; do PACKAGE_ARGS+=(--package "$PACKAGE"); done
+PRODUCE=("$PYTHON" "<factory>/tools/factory" produce "${PACKAGE_ARGS[@]}" --corpus "$REPO_ROOT/$CORPUS"
          --name "$NAME" --out "$REPO_ROOT" ${EXTRA[@]+"${EXTRA[@]}"})
 
 printf 'factory   %s at %s\n' "$FACTORY_REPO" "$COMMIT"
-printf 'package   %s\n' "$PACKAGE"
+printf 'package   %s\n' "${PACKAGES[*]}"
 printf 'corpus    %s\n' "$CORPUS"
 printf 'engine    %s (%s)\n' "$NAME" "$REPO_ROOT"
 printf 'produce   %s\n' "${PRODUCE[*]}"

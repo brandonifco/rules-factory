@@ -145,6 +145,28 @@ PASCAL = re.compile(r"^[A-Z][A-Za-z0-9]*$")
 NOT_VERIFIED = 3
 
 
+def as_packages(package):
+    """`--package` as a list, whatever one caller or another passed."""
+    return [package] if isinstance(package, str) else list(package or [])
+
+
+def corpora_text(intakes):
+    """Each verified corpus's text, by `sourceId`: what decides a supersession (0067).
+
+    Intake has already bound every supplied file to the corpus it is, and re-hashed it, so these
+    are the bytes the packages were made from. A corpus this cannot read as text supersedes
+    nothing and is left out, which `compose` reports rather than refusing the whole run over.
+    """
+    found = {}
+    for verified in (v for intake in intakes for v in intake.corpora):
+        try:
+            with open(verified["path"], encoding="utf-8") as handle:
+                found[verified["sourceId"]] = handle.read()
+        except (OSError, UnicodeDecodeError, KeyError):
+            continue
+    return found
+
+
 def produce(args):
     if not PASCAL.match(args.name):
         raise intake_step.Usage(f"--name {args.name!r} is not a PascalCase C# identifier")
@@ -172,8 +194,11 @@ def produce(args):
         # The pins the engine had before this run: the staging copy is still --out as it was.
         pins_before = verify_step.read_pins(out)
         with provenance.Recorder(out) as recorder:
-            result = intake_step.intake(args.package, args.corpus, log=sys.stdout)
-            print(f"intake passed: {result.package_id} {result.version}, {len(result.map.get('entries') or [])} entries")
+            intakes = [intake_step.intake(package, args.corpus, log=sys.stdout)
+                       for package in as_packages(args.package)]
+            result = compose_step.compose(intakes, corpora_text(intakes))
+            for line in result.lines():
+                print(line)
             model = generate.produce(result, args.name, out, log=sys.stdout,
                                      adopt=getattr(args, "adopt", None) or (), reset=getattr(args, "reset", None) or ())
             gate.emit(args.name, out, log=sys.stdout)
@@ -274,14 +299,24 @@ def read_record(engine_dir):
 
 
 def moved(before, after):
-    """One line per input that is not what it was: the map version, the kernel, the factory.
+    """One line per input that is not what it was: each map's version, the kernel, the factory.
 
     Only what moved. A run that regenerates an engine from the same inputs (a recipe change, or a
     re-produce after an overlay edit) says so, rather than listing three facts that all stayed
-    still and leaving a reader to compare them.
+    still and leaving a reader to compare them. An engine composed of several maps gets a line per
+    map that moved, named, and none for the maps that did not (0067).
     """
     lines = []
-    for what, path in (("the map", ("map", "version")), ("the kernel", ("kernel", "version")),
+    was_by_id = {m.get("packageId"): m.get("version") for m in before.get("maps") or []
+                 if isinstance(m, dict)}
+    for package in after.get("maps") or []:
+        if not isinstance(package, dict):
+            continue
+        was, now = was_by_id.get(package.get("packageId")), package.get("version")
+        if was != now:
+            lines.append(f"{package.get('packageId')}, "
+                         f"{was if was is not None else 'nothing recorded'} to {now}")
+    for what, path in (("the kernel", ("kernel", "version")),
                        ("the factory", ("factory", "version"))):
         was, now = before, after
         for key in path:
@@ -361,9 +396,14 @@ def write_produce_report(path, before, after, added, changed, removed):
         "reportFormat": REPORT_FORMAT,
         "engine": after.get("engine") or {},
         "factory": after.get("factory") or {},
-        "map": {"packageId": (after.get("map") or {}).get("packageId"),
-                "from": (before.get("map") or {}).get("version"),
-                "to": (after.get("map") or {}).get("version")},
+        # One row per package the engine is composed of, keyed by package id so a composition's
+        # report says which map moved and not merely that one did (0067).
+        "maps": [{"packageId": m.get("packageId"),
+                  "from": next((b.get("version") for b in before.get("maps") or []
+                                if isinstance(b, dict) and b.get("packageId") == m.get("packageId")),
+                               None),
+                  "to": m.get("version")}
+                 for m in after.get("maps") or [] if isinstance(m, dict)],
         "kernel": {"packageId": (after.get("kernel") or {}).get("packageId"),
                    "from": (before.get("kernel") or {}).get("version"),
                    "to": (after.get("kernel") or {}).get("version")},
@@ -373,7 +413,8 @@ def write_produce_report(path, before, after, added, changed, removed):
     }
     report["declaration"] = dict(zip(DECLARATION_FIELDS, (
         report["factory"].get("version"),
-        f"{report['map']['packageId']} {report['map']['to']}",
+        # Every map the engine is composed of, at the version this run produced from (0067).
+        ", ".join(f"{m['packageId']} {m['to']}" for m in report["maps"]),
         report["kernel"].get("to"),
         "; ".join(report["moved"]) or "nothing: this run reproduced the engine from the inputs it already had",
     )))
@@ -443,7 +484,9 @@ def describe_stale(stale):
 def produce_command(args, override):
     """The --no-verify produce command `args` describes, run under `override` when given."""
     corpora = args.corpus if isinstance(args.corpus, (list, tuple)) else [args.corpus]
-    argv = ["python3", "tools/factory", "produce", "--package", args.package]
+    argv = ["python3", "tools/factory", "produce"]
+    for package in as_packages(args.package):
+        argv += ["--package", package]
     for path in corpora:
         argv += ["--corpus", path]
     argv += ["--name", args.name, "--out", args.out]
@@ -476,20 +519,12 @@ def compose_command(args):
     intakes = []
     for package in args.package:
         intakes.append(intake_step.intake(package, args.corpus, log=sys.stdout))
-    corpora_text = {}
-    for verified in (v for i in intakes for v in i.corpora):
-        try:
-            with open(verified["path"], encoding="utf-8") as handle:
-                corpora_text[verified["sourceId"]] = handle.read()
-        except (OSError, UnicodeDecodeError):
-            # A corpus this cannot read as text supersedes nothing and is said so below, rather
-            # than making the whole composition refuse: the identity rule needs the words.
-            continue
-    composition = compose_step.compose(intakes, corpora_text)
+    readable = corpora_text(intakes)
+    composition = compose_step.compose(intakes, readable)
     print()
     for line in composition.lines():
         print(line)
-    unreadable = sorted({v["sourceId"] for i in intakes for v in i.corpora} - set(corpora_text))
+    unreadable = sorted({v["sourceId"] for i in intakes for v in i.corpora} - set(readable))
     if unreadable:
         print(f"  ?  no passage identity for {', '.join(unreadable)}: the corpus is not text this "
               f"reads, so nothing in it can be superseded")
@@ -542,7 +577,9 @@ def build_parser():
     parser = argparse.ArgumentParser(prog="factory", description="Produce a rules engine from a corpus-map package.")
     commands = parser.add_subparsers(dest="command", required=True)
     p = commands.add_parser("produce", help="intake a map package and produce an engine")
-    p.add_argument("--package", required=True, help="a .nupkg path, or Id@Version")
+    p.add_argument("--package", required=True, action="append", metavar="PACKAGE",
+                   help="a .nupkg path, or Id@Version; repeat to compose several maps of one "
+                        "ruleset into one engine (0067)")
     p.add_argument("--corpus", required=True, action="append", metavar="FILE",
                    help="a corpus file the map cites; repeat once per cited corpus (0039)")
     p.add_argument("--name", required=True, help="PascalCase engine name")

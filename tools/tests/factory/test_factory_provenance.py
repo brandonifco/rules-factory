@@ -205,15 +205,15 @@ class TestRecord(ProvenanceCase):
         commit = git(self.repo, "rev-parse", "HEAD")
         self.assertEqual(record["factory"], {"version": f"0.0.0-dev+{commit[:12]}", "commit": commit, "dirty": False})
         self.assertEqual(record["engine"], {"name": NAME})
-        self.assertEqual(record["map"]["packageId"], "RulesFactory.Maps.FaaPart107")
-        self.assertEqual(record["map"]["version"], "4.0.0")
-        self.assertEqual(record["map"]["nupkgSha256"], sha256_file(self.part107))
+        self.assertEqual(record["maps"][0]["packageId"], "RulesFactory.Maps.FaaPart107")
+        self.assertEqual(record["maps"][0]["version"], "4.0.0")
+        self.assertEqual(record["maps"][0]["nupkgSha256"], sha256_file(self.part107))
         with zipfile.ZipFile(self.part107) as archive:
             expected = [{"role": role, "path": path, "sha256": hashlib.sha256(archive.read(path)).hexdigest()}
                         for role, path in (("map", "map/corpus-map.json"), ("manifest", "map/corpus-manifest.json"),
                                            ("checker", "tools/check-map.py"),
                                            ("verification", "map/verification.json"))]
-        self.assertEqual(record["map"]["files"], expected)
+        self.assertEqual(record["maps"][0]["files"], expected)
         # One entry per corpus the map cites, sorted by sourceId, the principal one flagged (0039).
         self.assertEqual(record["corpora"], [{"sourceId": "cfr-14-107",
                                               "contentHash": sha256_file(PART107_XML),
@@ -459,7 +459,8 @@ class TestRecompute(ProvenanceCase):
             for info in src.infolist():
                 dst.writestr(info, src.read(info.filename))
             dst.writestr("extra.txt", "one more byte")
-        self.assert_recompute_names(out, "map.nupkgSha256", package=changed)
+        self.assert_recompute_names(out, "maps[RulesFactory.Maps.FaaPart107].nupkgSha256",
+                                    package=changed)
 
     def test_a_changed_overlay_without_a_rerun(self):
         out = self.produced()
@@ -477,7 +478,7 @@ class TestRecompute(ProvenanceCase):
         v1, v2 = pack_version(PART107, "5.0.0", root), pack_version(PART107, "7.0.0", root)
         out = self.produced(package=v1)
         self.produced(out=out, package=v2)
-        self.assertEqual(self.record(out)["map"]["version"], "7.0.0")
+        self.assertEqual(self.record(out)["maps"][0]["version"], "7.0.0")
         code, output = self.recompute(out, package=v2)
         self.assertEqual(code, 0, output)
 
@@ -584,7 +585,8 @@ class TestRecompute(ProvenanceCase):
         seeded = pack(copy, os.path.join(self.tmp, "seeded", "out"))
         output = self.assert_recompute_names(engine, "randomness: recorded \"none\", recomputed \"seeded\"",
                                              f"generated[{PACKAGES_PROPS}]", package=seeded)
-        self.assertIn("map.files[map/corpus-manifest.json].sha256", output)
+        self.assertIn("maps[RulesFactory.Maps.FaaPart107].files[map/corpus-manifest.json].sha256",
+                      output)
 
     def test_the_gate_s_own_check_and_recompute_agree_in_direction(self):
         """#192: `scripts/engine-gate.py provenance` compares without the factory; this recomputes

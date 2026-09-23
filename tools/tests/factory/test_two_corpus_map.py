@@ -282,9 +282,9 @@ class TwoCorpusMap(unittest.TestCase):
             self.assertTrue(os.path.isfile(os.path.join(out, "corpus", name)), name)
         with open(os.path.join(out, "provenance.json"), encoding="utf-8") as handle:
             record = json.load(handle)
-        # 6 since #222: the record says whether the produce that wrote it verified the
-        # engine. Pinned as a literal on purpose -- a format bump is a deliberate edit.
-        self.assertEqual(record["provenanceFormat"], 6)
+        # 7 since #446: `maps` names every package the engine is composed of, where 6 named one
+        # under `map`. Pinned as a literal on purpose -- a format bump is a deliberate edit.
+        self.assertEqual(record["provenanceFormat"], 7)
         self.assertNotIn("corpus", record)
         self.assertEqual([c["sourceId"] for c in record["corpora"]], ["cfr-9-9.101", "cfr-9-9.102"])
         self.assertEqual([c["principal"] for c in record["corpora"]], [True, False])

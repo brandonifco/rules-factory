@@ -135,9 +135,14 @@ class Model:
         self.name = name
         # The owner's rulings (0027), from the overlay (rulings.collect): never in `merged`, the map.
         self.rulings = list(rulings)
-        self.package_id = intake.package_id
-        self.version = intake.version
-        self.header = csharp.HEADER.format(package=intake.package_id, version=intake.version)
+        # Every package the engine is composed of, ordered by package id so that what the
+        # generator writes is a function of the inputs and not of the order they were given in
+        # (0067). One package is the ordinary case and reads exactly as it did.
+        self.packages = sorted(((p.package_id, p.version) for p in getattr(
+            intake, "packages", [intake])), key=lambda pair: pair[0].encode("utf-8"))
+        self.package_id, self.version = self.packages[0]
+        self.header = csharp.HEADER.format(package=self.named, version="")
+        self.superseded = dict(getattr(intake, "superseded", {}) or {})
         self.source_id = merged["corpus"]
         self.randomness = getattr(intake, "randomness", None)
         self.baseline = merged["baseline"]
@@ -164,6 +169,11 @@ class Model:
             ruling["member"] = member
         for item in self.entries:
             item["locators"] = self._leaf_locators(item, frozenset())
+
+    @property
+    def named(self):
+        """The packages this engine is composed of, as one line for a generated file's header."""
+        return ", ".join(f"{package} {version}" for package, version in self.packages)
 
     def _leaf_locators(self, item, seen):
         """Every located entry whose passage `item` rests on, as the located entries' members.

@@ -289,8 +289,22 @@ def regenerate(args):
     import overlay as overlay_step  # noqa: E402  (where the engine's evidence lives, #247)
     import rulings  # noqa: E402  (the owner's rulings the overlay holds, rules-factory decision 0027)
 
-    package = json.loads(pathlib.Path(args.package_map).read_text(encoding="utf-8"))
-    declared, problem = declared_randomness(args.package_manifest, args.package_map)
+    import compose  # noqa: E402  (several packages as one, rules-factory decision 0067)
+
+    # One --package-map, --package-id and --package-version per restored package, in the same
+    # order. An engine composed of several is regenerated from all of them, composed exactly as
+    # the factory composed them (0067); one is the ordinary case and reads as it did.
+    maps, ids, versions = args.package_map, args.package_id, args.package_version
+    if not (len(maps) == len(ids) == len(versions)):
+        return report([f"{len(maps)} --package-map, {len(ids)} --package-id and {len(versions)} "
+                       f"--package-version; a composed engine names each"], "")
+    try:
+        package = compose.union([(package_id, json.loads(
+            pathlib.Path(path).read_text(encoding="utf-8")))
+            for package_id, path in zip(ids, maps)])
+    except (OSError, ValueError, compose.Refused) as error:
+        return report([f"the restored package maps cannot be composed: {error}"], "")
+    declared, problem = declared_randomness(args.package_manifest, maps[0])
     if problem:
         return report([problem], "")
     try:
@@ -298,8 +312,10 @@ def regenerate(args):
     except overlay_step.OverlayError as error:
         return report([str(error)], "")
     try:
-        model = generate.Model(types.SimpleNamespace(package_id=args.package_id, version=args.package_version,
-                                                     randomness=declared),
+        model = generate.Model(types.SimpleNamespace(
+            packages=[types.SimpleNamespace(package_id=package_id, version=version)
+                      for package_id, version in zip(ids, versions)],
+            package_id=ids[0], version=versions[0], randomness=declared),
                                generate.merge(package, overlay, root=str(ROOT)), args.name, rulings.collect(overlay))
         expected = {**generate.generated(model), **provenance.embedding(model)}
     except generate.GenerationError as error:
@@ -329,8 +345,9 @@ def regenerate(args):
     stray = sorted({str(p.relative_to(ROOT)).replace(os.sep, "/") for p in on_disk("*.g.cs")} - set(expected))
     problems += [f"{s} is a *.g.cs file the factory does not generate; hand-written code goes in any other file"
                  for s in stray]
+    named = ", ".join(f"{package_id}@{version}" for package_id, version in zip(ids, versions))
     return report(problems, f"{len(expected)} generated file(s) match a fresh regeneration from "
-                            f"{args.package_id}@{args.package_version} + {OVERLAY}/ ({len(overlay)} entry file(s))")
+                            f"{named} + {OVERLAY}/ ({len(overlay)} entry file(s))")
 
 
 # --- the record -------------------------------------------------------------------------
@@ -595,12 +612,13 @@ def record_matches(_args):
               f"examined nothing -- and a check that examines nothing is a failure, never an ok", file=sys.stderr)
         return 1
     if problems:
-        source = recorded.get("map") or {}
+        sources = [m for m in recorded.get("maps") or [] if isinstance(m, dict)]
         name = (recorded.get("engine") or {}).get("name")
+        packages = " ".join(f"--package {m.get('packageId')}@{m.get('version')}" for m in sources)
         for problem in problems:
             print(f"error: {problem}", file=sys.stderr)
         print(f"error: one command fixes all of the above: `{RE_PRODUCE}`. It clones rules-factory at the commit "
-              f"{RECORD} names and runs `factory produce --package {source.get('packageId')}@{source.get('version')} "
+              f"{RECORD} names and runs `factory produce {packages} "
               f"--corpus <this engine's corpus> --name {name} --out <this engine>` -- which is the only thing that "
               f"writes {RECORD}. Editing it by hand is the defect this step exists to catch.",
               file=sys.stderr)
@@ -1009,7 +1027,11 @@ def main(argv=None):
     p.add_argument("--name", required=True)
     p.set_defaults(run=posture)
     r = sub.add_parser("regenerate")
-    for flag in ("--package-map", "--package-manifest", "--package-id", "--package-version", "--name"):
+    # Repeated once per restored package, in the same order: an engine composed of several is
+    # regenerated from all of them (rules-factory 0067). The manifest and the name are one.
+    for flag in ("--package-map", "--package-id", "--package-version"):
+        r.add_argument(flag, required=True, action="append")
+    for flag in ("--package-manifest", "--name"):
         r.add_argument(flag, required=True)
     r.add_argument("--write", action="store_true")
     r.set_defaults(run=regenerate)

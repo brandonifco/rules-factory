@@ -663,7 +663,14 @@ def _recorded_package(record, package, why):
     Read from `package` (a .nupkg path or Id@Version) or else Id@Version from provenance.json, taken
     from a file or the NuGet global packages folder and never downloaded, and refused unless its map
     and manifest are the ones provenance hashed."""
-    source = record.get("map") or {}
+    maps = [m for m in record.get("maps") or [] if isinstance(m, dict)]
+    if len(maps) > 1 and not package:
+        raise BacklogError(f"provenance.json names {len(maps)} map packages "
+                           f"({', '.join(str(m.get('packageId')) for m in maps)}); a backlog item "
+                           f"carries the attribution of the corpus licence from the package its "
+                           f"entry came from (0023), and this cannot yet say which of several "
+                           f"that is (rules-factory 0067)")
+    source = maps[0] if maps else {}
     spec = package or f"{source.get('packageId')}@{source.get('version')}"
     if os.path.isfile(spec):
         nupkg = spec
@@ -719,7 +726,6 @@ def engine_backlog(engine_dir, package=None):
     if not isinstance(record, dict):
         raise BacklogError(f"{path} is not a JSON object, so the map package and the corpus's terms are unknown")
     name = ((record.get("engine") or {}).get("name") if isinstance(record.get("engine"), dict) else None)
-    source = record.get("map") or {}
     if not isinstance(name, str) or not name:
         raise BacklogError(f"{path} records no engine.name, so the backlog's items cannot say which engine "
                            f"they are for; run `factory produce` again")
@@ -738,6 +744,7 @@ def engine_backlog(engine_dir, package=None):
     except semantics.GenerationError as error:
         raise BacklogError(f"the map and {overlay_step.DIRECTORY}/ do not merge, so there is no backlog to "
                            f"render: {error}")
+    source = next((m for m in record.get("maps") or [] if isinstance(m, dict)), {})
     context = {"name": name, "package": source.get("packageId"), "version": source.get("version")}
     credit = attribution(corpus)
     if credit:
