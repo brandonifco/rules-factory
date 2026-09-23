@@ -186,8 +186,10 @@ class TestRelease(unittest.TestCase):
                          vr.release_scope("examples/hoyle-backgammon").packages)
 
     def test_a_map_that_declares_no_package_cannot_be_released(self):
+        # Trial 11's map is trial evidence with no `map-package.json`, so there is no version to
+        # release. Three of the four SRD maps gained one with #446's composition work.
         with self.assertRaises(SystemExit):
-            vr.release_scope("srd-52-conditions")
+            vr.release_scope("frcp-6-12-81")
 
 
 class TestTheFixtureTable(unittest.TestCase):
@@ -463,9 +465,9 @@ class TestTheEngineJobIsOwedByWhatProducesAnEngine(unittest.TestCase):
                 self.assertTrue(scope.engine, settings)
 
     def test_a_map_that_is_not_packable_owes_no_engine(self):
-        # srd-52-conditions declares no map-package.json, so no engine is produced from it.
-        scope = vr.classify(["examples/srd-52-conditions/corpus-map.json"])
-        self.assertEqual(("examples/srd-52-conditions/corpus-map.json",), scope.maps)
+        # frcp-6-12-81 declares no map-package.json, so no engine is produced from it.
+        scope = vr.classify(["examples/frcp-6-12-81/corpus-map.json"])
+        self.assertEqual(("examples/frcp-6-12-81/corpus-map.json",), scope.maps)
         self.assertEqual((), scope.packages)
         self.assertFalse(scope.engine)
 

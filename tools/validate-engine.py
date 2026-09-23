@@ -2270,14 +2270,20 @@ class Refused(Exception):
 def describe_example(package, directory):
     """(engine name, corpus path, corpus source id) for an example's package.
 
-    The engine name is the package id's last segment; the corpus is the committed copy the manifest names."""
+    The engine name is the package id's last segment; the corpus is the committed copy the manifest
+    names, resolved **against the map directory** and not assumed to sit in it. Four maps of
+    SRD 5.2.1 read one committed copy of a 6 MB PDF and its extraction, each naming it
+    `../srd-52-combat/srd-5.2.1.txt`, and taking the basename looked for a file that is not there
+    (#446)."""
     with zipfile.ZipFile(package) as archive:
         package_id = re.search(r"<id>([^<]+)</id>", nuspec_text(archive)).group(1)
         cited = json.loads(archive.read("map/corpus-map.json"))["corpus"]
         corpora = [c for c in json.loads(archive.read("map/corpus-manifest.json"))["corpora"] if c.get("sourceId") == cited]
     if len(corpora) != 1 or corpora[0].get("verification") != "committed-copy":
         raise Refused(f"{directory}: {cited} is not one committed-copy corpus, so CI cannot produce its engine")
-    return package_id.rsplit(".", 1)[-1], os.path.join(directory, os.path.basename(corpora[0]["committedPath"])), cited
+    return (package_id.rsplit(".", 1)[-1],
+            os.path.normpath(os.path.join(directory, str(corpora[0]["committedPath"]))),
+            cited)
 
 
 def an_example_engine_passes_its_gate(r, directory):

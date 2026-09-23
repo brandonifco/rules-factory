@@ -309,6 +309,47 @@ def nuspec_and_licence(nupkg, package):
                 archive.read("[Content_Types].xml").decode("utf-8"))
 
 
+class TestACorpusCommittedBesideTheMap(PackCase):
+    """Four maps of SRD 5.2.1 share one committed copy of a 6 MB PDF and its extraction, each
+    naming it `../srd-52-combat/srd-5.2.1.txt`. The gate's private snapshot has to hold the same
+    relative layout, because `check-map.py --only manifest` requires the file to exist beside the
+    manifest -- and the escape guard is against the **snapshot**, which is what it always meant.
+    Before this the packer staged the map at a bare `map/`, and every such map was refused, so
+    only the one map that owned the copy could be published (#446).
+    """
+
+    def setUp(self):
+        """The map one directory deeper than PackCase puts it, so a path can escape and exist."""
+        super().setUp()
+        nested = os.path.join(self.tmp, "examples")
+        os.makedirs(nested)
+        moved = os.path.join(nested, "hoyle-backgammon")
+        shutil.move(self.map_dir, moved)
+        self.map_dir = moved
+
+    def beside(self, at, path):
+        """Move the corpus to `at` under the temporary root, and point the manifest at `path`."""
+        os.makedirs(os.path.dirname(at), exist_ok=True)
+        shutil.move(os.path.join(self.map_dir, "hoyle.txt"), at)
+        self.edit("corpus-manifest.json",
+                  lambda m: m["corpora"][0].__setitem__("committedPath", path))
+
+    def test_a_map_whose_corpus_is_beside_it_packs(self):
+        self.beside(os.path.join(self.tmp, "examples", "shared-corpus", "hoyle.txt"),
+                    "../shared-corpus/hoyle.txt")
+        code, output = self.pack()
+        self.assertEqual(code, 0, output)
+        self.assertEqual(len(self.packages()), 1, output)
+
+    def test_a_committed_path_that_escapes_the_snapshot_is_still_refused(self):
+        """The bytes are there and hash right; where they would be staged is the objection."""
+        self.beside(os.path.join(self.tmp, "elsewhere", "hoyle.txt"),
+                    "../../elsewhere/hoyle.txt")
+        code, output = self.pack()
+        self.assert_refused(code, output)
+        self.assertIn("escapes the snapshot", output)
+
+
 class TestLicence(PackCase):
     """0023: the package's licence follows its corpus, is declared, and travels in the package."""
 

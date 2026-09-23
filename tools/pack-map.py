@@ -406,9 +406,19 @@ def gate(inputs, repo_root):
     # The publish validators must see the exact bytes whose identities the package records. The
     # live files are never passed to either validator: the bytes already read and hash-verified
     # above are written once to a private snapshot and both checks run there (0048).
+    #
+    # The snapshot reproduces the map's own place under `examples/`, not a bare `map/` directory,
+    # because a `committedPath` may legitimately point **beside** the map: four maps of SRD 5.2.1
+    # share one committed copy of a 6 MB PDF and its extraction, and each names it
+    # `../srd-52-combat/srd-5.2.1.txt`. `check-map.py --only manifest` requires that file to exist
+    # beside the manifest, so the snapshot has to hold the same relative layout, and the escape
+    # guard below is against the **snapshot**, which is what it always meant to protect.
     with tempfile.TemporaryDirectory(prefix="rules-factory-pack-") as stage:
-        stage_map = os.path.join(stage, "map", "corpus-map.json")
-        stage_manifest = os.path.join(stage, "map", "corpus-manifest.json")
+        snapshot = os.path.join(stage, "snapshot")
+        stage_map_dir = os.path.join(snapshot, os.path.basename(os.path.dirname(
+            os.path.abspath(inputs["manifest_path"]))) or "map")
+        stage_map = os.path.join(stage_map_dir, "corpus-map.json")
+        stage_manifest = os.path.join(stage_map_dir, "corpus-manifest.json")
         stage_checker = os.path.join(stage, CHECKER_IN_PACKAGE)
         for path, data in ((stage_map, inputs["map_raw"]),
                            (stage_manifest, inputs["packaged_manifest_raw"]),
@@ -418,12 +428,14 @@ def gate(inputs, repo_root):
                 handle.write(data)
 
         staged_corpora = {}
+        base = os.path.abspath(snapshot)
         for item in sorted(verified, key=lambda v: v["sourceId"]):
             committed = str(item["corpus"]["committedPath"])
             path = os.path.abspath(os.path.join(os.path.dirname(stage_manifest), committed))
-            base = os.path.abspath(os.path.dirname(stage_manifest))
             if os.path.commonpath((base, path)) != base:
-                raise Refused(f"{item['sourceId']} committedPath {committed!r} escapes the map directory")
+                raise Refused(f"{item['sourceId']} committedPath {committed!r} escapes the "
+                              f"snapshot this gate reads; a corpus the publish checks cannot be "
+                              f"given the bytes of is one they would read from the working tree")
             os.makedirs(os.path.dirname(path), exist_ok=True)
             with open(path, "wb") as handle:
                 handle.write(item["bytes"])
