@@ -47,8 +47,8 @@ The role follows from the readers:
 | role | files | size | may its bytes live outside the repository? |
 |---|---|---|---|
 | `release` — `pack-map.py` reads it | 20 | 2.5 MB | no: its bytes reach nuget.org |
-| `active` — some other part of the gate reads it | 162 | 12.4 MB | no: a check that fetches its inputs cannot be run offline |
-| `archived` — nothing reads it | 39 | 938 KB | yes |
+| `active` — some other part of the gate reads it | 161 | 12.4 MB | no: a check that fetches its inputs cannot be run offline |
+| `archived` — nothing reads it | 40 | 957 KB | yes |
 
 `check-evidence.py` refuses a lock that gives a non-null `archive` to an `active` or `release`
 artifact, and refuses a role its own `readBy` does not support. That pair of rules is what keeps a
@@ -68,7 +68,7 @@ A reader deciding what could be retired should know which of the two they are lo
 
 ## By trial
 
-Measured at `0ab19fd`, over a gate run that failed no step (`measuredOver` in the lock says so,
+Measured at `48b548f`, over a gate run that failed no step (`measuredOver` in the lock says so,
 and `--measure` refuses a run with a failing step unless it is told to record that it was
 partial; [#408](https://github.com/brandonifco/rules-factory/issues/408)). It names a commit
 `main` holds rather than the branch commit `--measure` would otherwise have recorded, because a
@@ -77,7 +77,7 @@ squash merge destroys the second and #404's check is then right to refuse the lo
 
 | directory | active | release | archived |
 |---|---|---|---|
-| `examples/srd-52-combat` | 6.2 MB | 1.5 MB | 476 KB |
+| `examples/srd-52-combat` | 6.2 MB | 1.5 MB | 495 KB |
 | `examples/hazmat-172-table` | 3.2 MB | — | 7 KB |
 | `examples/hoyle-backgammon` | 544 KB | 783 KB | — |
 | `examples/faa-part-107` | 564 KB | 158 KB | — |
@@ -87,7 +87,7 @@ squash merge destroys the second and #404's check is then right to refuse the lo
 | `examples/blind-mapping-trial` | 183 KB | — | 165 KB |
 | `examples/frcp-6-12-81` | 199 KB | — | 2 KB |
 | `examples/faa-part-107-temporal` | 146 KB | — | 37 KB |
-| `examples/srd-52-playing-the-game` | 180 KB | — | 1 KB |
+| `examples/srd-52-playing-the-game` | 182 KB | — | 1 KB |
 | `examples/srd-52-damage-and-healing` | 69 KB | — | 1 KB |
 | `examples/injection-trial` | 72 KB | — | 51 KB |
 | `examples/validator-attack` | 61 KB | — | — |
@@ -117,13 +117,18 @@ flips is a fact about the reader that opened it, not about the bytes, and the fi
 one measurement rather than a constant.
 
 **`archived` does not mean disposable.** It means nothing reads the bytes. Whether that is because
-an artifact is spare or because a check is missing is a question for a person. Eight of the
-sixteen `independent-verdict-*.json` records are read by `check-map-review.py` and eight are not —
-the difference is which map's review record cites them, not which review mattered.
+an artifact is spare or because a check is missing is a question for a person. Seven of the
+sixteen `independent-verdict-*.json` records are read by `check-map-review.py` and nine are not —
+the difference is which map's review record cites them, not which review mattered. It was eight
+and eight until [0066](decisions/0066-the-cited-page-chooses-among-the-printings-the-heading-path-selects.md):
+`srd-52-combat`'s current review became a `non-semantic` exemption, and the verdict it departs
+from moved into `previousReview`, where the checker does not read it. The verdict still stands
+behind the meaning of those entries, and nothing now opens it. That is the measurement being
+honest about a gap rather than the gap being new.
 
 ## The artifacts nothing reads
 
-938 KB across 39 files, listed by `check-evidence.py --roles`. By kind:
+957 KB across 40 files, listed by `check-evidence.py --roles`. By kind:
 
 - **blind-mapping working files** — the second mapper's `blind-map.json`, the `build.py` that made
   it and the `compare.py` that compared it, for `srd-52-combat`, `tax-121-principal-residence` and

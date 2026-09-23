@@ -269,6 +269,20 @@
       "note": "A finite table, so the whole of it is quoted and never a sample: sixteen bands covering every score from 1 to 30 with no gap and no overlap, and a test must assert the whole mapping and that a score outside 1-30 has no modifier here. Nothing in the corpus states the arithmetic the bands encode; the map records the bands the corpus prints, not the formula a reader infers from them."
     },
     {
+      "id": "round-down",
+      "name": "Round a fraction down when dividing or multiplying",
+      "locator": {
+        "sourceId": "srd-5.2.1",
+        "citation": "Playing the Game / Round Down / p. 5"
+      },
+      "kind": "operation",
+      "scope": "in",
+      "clarity": "clear",
+      "evidence": "Whenever you divide or multiply a number in the game, round down if you end up with a fraction, even if the fraction is one-half or greater. Some rules make an exception and tell you to round up.",
+      "status": "mapped",
+      "note": "The arithmetic convention every division in the corpus is read under, printed on p. 5 as a sidebar and again word for word in the Rules Glossary on p. 187. This mapping left it out and its inventory rejected the sidebar, because until 0066 no citation this grammar can write identified the earlier of two identical printings: the heading path selects both, and every heading above p. 5 is above p. 187 too. The cited page now chooses between them. Nothing in this slice divides, so no entry here depends on it; what rests on it is printed elsewhere -- half damage on a successful save and Resistance, both pp. 16-17, and grid-speed-in-squares in the combat map, which is why that map carries a `scope: out` entry for the same sidebar. A test must show the rounding is toward zero at exactly one-half, which is the case the sentence exists to settle."
+    },
+    {
       "id": "d20-test-kinds",
       "name": "A D20 Test is an ability check, a saving throw or an attack roll",
       "locator": {

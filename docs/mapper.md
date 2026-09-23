@@ -254,7 +254,7 @@ enumeration of no units, or a run in which no entry's quote is found at all — 
 nothing has nothing unaccounted.
 
 The nine committed maps whose extent one corpus holds report 408 unaccounted units of 1,351,
-against 228 recorded rejections
+against 227 recorded rejections
 ([#267](https://github.com/brandonifco/rules-factory/issues/267) holds the numbers and what each
 one is on reading it). None of the maps was edited to improve them: a map's bytes cannot change
 without invalidating its review
@@ -328,7 +328,7 @@ the map of pp. 16-18 wrote theirs with the walk, which is what it is for:
 | `srd-52-conditions` | 28 | 407 | the folios and running heads only |
 | `frcp-6-12-81` | 15 | 0 | the three rules' own titles, the nine subdivision captions that open paragraphs carrying the whole of what they name, and three amendment histories |
 | `srd-52-damage-and-healing` | 32 | 0 | 24 section headings, six folios and running heads, the chapter's lead-in and the Saving Throws and Damage lead-in |
-| `srd-52-playing-the-game` | 74 | 0 | 54 section headings and table header cells the extraction gives as blocks of their own, 15 folios and running heads, two halves of the Rhythm of Play advice, two lead-ins that point at a table, and the Round Down sidebar the corpus prints twice ([#436](https://github.com/brandonifco/rules-factory/issues/436)) |
+| `srd-52-playing-the-game` | 73 | 0 | 54 section headings and table header cells the extraction gives as blocks of their own, 15 folios and running heads, two halves of the Rhythm of Play advice, and two lead-ins that point at a table. A 74th rejected the Round Down sidebar under `restatement`, which its own note said was not the true reason; the true reason was that no citation could name the earlier of two identical printings, and with [0066](decisions/0066-the-cited-page-chooses-among-the-printings-the-heading-path-selects.md) one can, so the passage is an entry |
 | `tax-121-principal-residence` | 14 | 0 | the section heading and the thirteen worked examples the map's own `scope: out` entries declined, one per example |
 
 A rejection is a reading and not a tidy-up, which is why two of the piles do not close. The 2020
@@ -626,7 +626,7 @@ none.
   invisible to it, and the spec's declared substitutions are the only thing that covers it. Every
   run says so, and so does every record it writes.
 - **The inventory measures the walk, and one map's extent still outruns its answer.** Every
-  unit inside every committed map's extent is enumerated and counted, 228 are recorded as
+  unit inside every committed map's extent is enumerated and counted, 227 are recorded as
   examined and rejected, and 408 of 1,351 are unaccounted
   ([#267](https://github.com/brandonifco/rules-factory/issues/267)). Seven of the nine maps now
   account for every unit, trials 11's and 12's and the pp. 16-18 map's from their first mapping;
