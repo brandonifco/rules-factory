@@ -528,8 +528,8 @@ class TestTheEntryPacket(TestAProducedEngine):
         done = subprocess.run([sys.executable, os.path.join(self.out, "scripts", "engine-gate.py"), "regenerate",
                                "--write", "--package-map", self.PACKAGE_MAP,
                                "--package-manifest", os.path.join(PART107, "corpus-manifest.json"),
-                               "--package-id", record["map"]["packageId"],
-                               "--package-version", record["map"]["version"], "--name", NAME],
+                               "--package-id", record["maps"][0]["packageId"],
+                               "--package-version", record["maps"][0]["version"], "--name", NAME],
                               capture_output=True, text=True, cwd=self.out)
         self.assertIn(done.returncode, (0, 1), done.stdout + done.stderr)
         return done
@@ -1346,7 +1346,7 @@ class TestTheReviewPacket(RailsInAGitEngine):
         altered, _ = self.altered_map()
         with open(altered, "rb") as handle:
             supplied = hashlib.sha256(handle.read()).hexdigest()
-        declared = json.loads(self.read("provenance.json"))["map"]
+        declared = json.loads(self.read("provenance.json"))["maps"][0]
         (expected,) = [f["sha256"] for f in declared["files"] if f["role"] == "map"]
         done = self.packet("--stdout", "--package-map", altered)
         self.assertEqual(done.returncode, 1, done.stdout)
@@ -1990,15 +1990,16 @@ class TestAProduceUpdateIsAPullRequestLikeAnyOther(TestPrPolicy):
         body = GOOD_PR_BODY
         if section is None:
             section = PRODUCE_SECTION.format(factory=record["factory"]["version"],
-                                             map=f"{record['map']['packageId']} {record['map']['version']}",
-                                             kernel=record["kernel"]["version"], version=record["map"]["version"])
+                                             map=f"{record['maps'][0]['packageId']} {record['maps'][0]['version']}",
+                                             kernel=record["kernel"]["version"], version=record["maps"][0]["version"])
         body = body.replace("## Exact behavioural claim", f"{section}\n## Exact behavioural claim")
         body = body.replace("""- entry id(s): altitude-limit
 - map package and version: RulesFactory.Maps.FaaPart107 4.0.0
 - source locator(s): § 107.51(b)
 - owner's rulings used, if any: none""",
                             conformance if conformance is not None else
-                            f"- map package and version: {record['map']['packageId']} {record['map']['version']}")
+                            f"- map package and version: {record['maps'][0]['packageId']} "
+                                f"{record['maps'][0]['version']}")
         # Split at `## Documentation`, which now sits between the evidence and the determinism:
         # replacing as far as `## Determinism` would delete a required section from this fixture.
         old_evidence = GOOD_PR_BODY.split("## Tests and evidence")[1].split("## Documentation")[0]
@@ -2213,7 +2214,7 @@ class TestAProduceUpdateIsAPullRequestLikeAnyOther(TestPrPolicy):
         self.commit_engine()
         record = self.record()
         section = PRODUCE_SECTION.format(factory=record["factory"]["version"],
-                                         map=f"{record['map']['packageId']} 99.0.0",
+                                         map=f"{record['maps'][0]['packageId']} 99.0.0",
                                          kernel=record["kernel"]["version"], version="99.0.0")
         self.pull_request(body=self.produce_body(section=section), files=self.produced_files())
         done = self.policy_check()
@@ -2353,9 +2354,9 @@ if argv_api := [a for a in sys.argv[1:] if a.startswith("repos/")]:
                     "sha256": hashlib.sha256(provenance_bytes).hexdigest(),
                 },
                 "map": {
-                    "packageId": provenance["map"]["packageId"],
-                    "version": provenance["map"]["version"],
-                    "nupkgSha256": provenance["map"].get("nupkgSha256", ""),
+                    "packageId": provenance["maps"][0]["packageId"],
+                    "version": provenance["maps"][0]["version"],
+                    "nupkgSha256": provenance["maps"][0].get("nupkgSha256", ""),
                 },
             },
             "entryPackets": [],
@@ -2445,9 +2446,9 @@ if argv_api := [a for a in sys.argv[1:] if a.startswith("repos/")]:
                     "sha256": hashlib.sha256(provenance_bytes).hexdigest(),
                 },
                 "map": {
-                    "packageId": provenance["map"]["packageId"],
-                    "version": provenance["map"]["version"],
-                    "nupkgSha256": provenance["map"].get("nupkgSha256", ""),
+                    "packageId": provenance["maps"][0]["packageId"],
+                    "version": provenance["maps"][0]["version"],
+                    "nupkgSha256": provenance["maps"][0].get("nupkgSha256", ""),
                 },
             },
             "entryPackets": [],

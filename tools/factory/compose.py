@@ -94,6 +94,30 @@ def namespaced(document, package_id):
     return dict(document, entries=entries)
 
 
+def union(documents):
+    """Several (package id, map document) pairs as one document's entries, namespaced.
+
+    The half of a composition that needs no package and no corpus, so the engine's own gate can
+    reproduce exactly the map the factory generated from: `map-overlay.py` composes the restored
+    packages here before it applies the overlay, and the overlay's file names are the composed ids.
+    One document is returned unchanged, ids and all.
+    """
+    documents = list(documents)
+    if len(documents) == 1:
+        return documents[0][1]
+    entries = [e for package_id, document in documents
+               for e in namespaced(document, package_id)["entries"]]
+    seen = [e["id"] for e in entries]
+    clashing = sorted({e for e in seen if seen.count(e) > 1})
+    if clashing:
+        raise Refused(f"the composed document holds {len(clashing)} id(s) twice "
+                      f"({', '.join(clashing[:3])}); two packages whose names differ only outside "
+                      f"their last segment cannot be told apart in an entry id")
+    principal = documents[0][1]
+    return {"schemaVersion": principal["schemaVersion"], "corpus": principal["corpus"],
+            "baseline": principal["baseline"], "entries": entries}
+
+
 def _compatible(intakes):
     """Refuse packages that are not readings of one ruleset over one corpus.
 
@@ -223,14 +247,21 @@ class Composition:
         return len(self.packages) > 1
 
     def lines(self):
-        """What the run says about a composition, in the order a reader needs it."""
-        said = [f"composed {len(self.packages)} package(s) into {len(self.map['entries'])} entries"
-                f"{'' if self.composed else ' (one package: entry ids are unqualified)'}"]
+        """What the run says, in the order a reader needs it.
+
+        One package says exactly what intake always said: a composition is what several packages
+        are, and an engine of one is not one. Several say so, and then say what composing them
+        meant -- which packages, what each entry is now called, and what supersedes what.
+        """
+        if not self.composed:
+            only = self.packages[0]
+            return [f"intake passed: {only.package_id} {only.version}, "
+                    f"{len(self.map.get('entries') or [])} entries"]
+        said = [f"composed {len(self.packages)} package(s) into {len(self.map['entries'])} entries"]
         for intake in self.packages:
             said.append(f"  {intake.package_id} {intake.version}: "
-                        f"{len(intake.map.get('entries') or [])} entries"
-                        + (f", namespaced {slug(intake.package_id)}{SEPARATOR}*"
-                           if self.composed else ""))
+                        f"{len(intake.map.get('entries') or [])} entries, "
+                        f"namespaced {slug(intake.package_id)}{SEPARATOR}*")
         for declined, by in sorted(self.superseded.items()):
             said.append(f"  supersedes {declined} with {by}: one passage, declined in one package "
                         f"and mapped in another")
@@ -238,35 +269,25 @@ class Composition:
             said.append(f"  ?  {entry_id}: the corpus prints this evidence {count} times, so no "
                         f"span identifies its passage and nothing here supersedes or is superseded "
                         f"by it (0030)")
-        if self.composed and not self.superseded:
+        if not self.superseded:
             said.append("  no entry of one package names a passage another holds in scope")
         return said
 
 
 def compose(intakes, corpora_text=None):
     """Several verified packages as one document, or raise `Refused` saying why they are not one."""
-    intakes = list(intakes)
+    # Ordered by package id, not by the order `--package` was given in: what the factory generates
+    # must be a function of its inputs, and the engine's own gate reads the restored packages from
+    # MSBuild, whose item order is its own business (0067).
+    intakes = sorted(intakes, key=lambda i: str(i.package_id).encode("utf-8"))
     if not intakes:
         raise Refused("a composition of no package composes nothing")
     _compatible(intakes)
     if len(intakes) == 1:
         only = intakes[0]
         return Composition([only], only.map, {}, [])
-    entries = [e for intake in intakes
-               for e in namespaced(intake.map, intake.package_id)["entries"]]
-    clashing = sorted({e["id"] for e in entries if
-                       [x["id"] for x in entries].count(e["id"]) > 1})
-    if clashing:
-        raise Refused(f"the composed document holds {len(clashing)} id(s) twice "
-                      f"({', '.join(clashing[:3])}); two packages whose names differ only outside "
-                      f"their last segment cannot be told apart in an entry id")
-    principal = intakes[0].map
-    document = {
-        "schemaVersion": principal["schemaVersion"],
-        "corpus": principal["corpus"],
-        "baseline": principal["baseline"],
-        "entries": entries,
-    }
+    document = union([(intake.package_id, intake.map) for intake in intakes])
+    entries = document["entries"]
     superseded, repeated = supersessions(entries, {k: normalise(v)
                                                    for k, v in (corpora_text or {}).items()})
     return Composition(intakes, document, superseded, repeated)

@@ -967,8 +967,8 @@ def provenance_records_the_bump(engine, bumped):
     """provenance.json names the bumped map and records exactly the lock files on disk; the complaint, or None."""
     engine = pathlib.Path(engine)
     record = json.loads((engine / "provenance.json").read_text(encoding="utf-8"))
-    if record["map"]["version"] != bumped:
-        return f"provenance.json records map {record['map']['version']}, not {bumped}"
+    if record["maps"][0]["version"] != bumped:
+        return f"provenance.json records map {record['maps'][0]['version']}, not {bumped}"
     recorded = {b["path"]: b["sha256"] for b in record["buildInputs"] if b["path"].endswith("packages.lock.json")}
     on_disk = {str(p.relative_to(engine)).replace("\\", "/"): hashlib.sha256(p.read_bytes()).hexdigest()
                for p in engine.rglob("packages.lock.json") if not {"bin", "obj"} & set(p.relative_to(engine).parts)}
@@ -1618,9 +1618,9 @@ class FakeGitHub:
                     "sha256": hashlib.sha256(provenance_bytes).hexdigest(),
                 },
                 "map": {
-                    "packageId": provenance["map"]["packageId"],
-                    "version": provenance["map"]["version"],
-                    "nupkgSha256": provenance["map"].get("nupkgSha256", ""),
+                    "packageId": provenance["maps"][0]["packageId"],
+                    "version": provenance["maps"][0]["version"],
+                    "nupkgSha256": provenance["maps"][0].get("nupkgSha256", ""),
                 },
             },
             "entryPackets": [],
@@ -2171,7 +2171,8 @@ def a_factory_update_is_checked_against_the_tree_that_produced_it(r, railed, git
     if record["factory"]["dirty"] is not False:
         fail("the produced engine's record says the factory was dirty, so no produce claim could be admitted")
     body = PRODUCE_PR_BODY.format(factory=record["factory"]["version"],
-                                  map=f"{record['map']['packageId']} {record['map']['version']}",
+                                  map=", ".join(f"{m['packageId']} {m['version']}"
+                                                for m in record["maps"]),
                                   kernel=record["kernel"]["version"])
     # Drawn from the record rather than listed here: these are the paths this produce wrote.
     written = ["provenance.json"] + [item["path"] for item in record["generated"]]
@@ -2324,6 +2325,71 @@ def an_example_engine_passes_its_gate(r, directory):
     ok(f"{name} ({directory}): verified, its gate recomputed the {source} baseline")
 
 
+#: The three maps of SRD 5.2.1 a composed engine is produced from (#446, rules-factory 0067).
+#: Playing the Game defines the vocabulary Combat uses, the Rules Glossary defines the conditions
+#: both name, and the combat map declines eight passages the other two hold in scope.
+COMPOSED = ("examples/srd-52-playing-the-game", "examples/srd-52-combat", "examples/srd-52-conditions")
+COMPOSED_NAME = "Srd52"
+#: The supersessions the composition must find, which is the whole reason to compose these three:
+#: each is a rule `srd-52-combat` declined because its slice stopped short and another map holds.
+COMPOSED_SUPERSEDES = 8
+
+
+def a_composed_engine_passes_its_gate(r):
+    """Several map packages, one engine, its own gate green (0067).
+
+    The acceptance test #446 asks for, and the one thing no single-package run can show: that the
+    namespaced entry ids reach C# and the overlay, that the engine's own gate composes the
+    restored packages exactly as the factory did -- it regenerates from them, and a different
+    order would differ byte for byte -- and that provenance names every package.
+    """
+    step("several map packages compose into one engine whose gate passes")
+    # One feed, and each map packed into it from its own directory so that what is composed is
+    # exactly the three named above and not whatever else the feed happens to hold.
+    feed = r.s("feeds", "composed")
+    packages = []
+    for directory in COMPOSED:
+        before = set(one_package(os.path.join(glob.escape(feed), "*.nupkg")))
+        check(run_tail_1([PYTHON, "tools/pack-map.py", directory, "--out", feed]))
+        written = sorted(set(one_package(os.path.join(glob.escape(feed), "*.nupkg"))) - before)
+        if len(written) != 1:
+            fail(f"pack-map.py {directory} wrote {len(written)} new .nupkg, not 1")
+        packages += written
+    corpus = os.path.join("examples", "srd-52-combat", "srd-5.2.1.txt")
+    engine = r.s("examples", "composed")
+    log = r.s("example-composed.log")
+    argv = []
+    for package in packages:
+        argv += ["--package", package]
+    argv += ["--corpus", corpus, "--name", COMPOSED_NAME, "--out", engine]
+    if unverified_produce_to(log, argv, both=True) != 0:
+        tail(log, 40)
+        fail(f"composing {', '.join(COMPOSED)} into one engine failed")
+    r.repin_sdk(engine)
+    add_local_feed(os.path.join(engine, "NuGet.config"), feed)
+    if run_to(log, verified_produce_command(argv + r.adopt()), env=verified_produce_env(),
+              both=True) != 0:
+        tail(log, 80)
+        fail(f"the composed {COMPOSED_NAME} engine did not pass verify (its gate's output is above)")
+    if not last_line_verified(log):
+        tail(log, 40)
+        fail(f"composing {COMPOSED_NAME} did not end verified")
+    with open(os.path.join(engine, "provenance.json"), encoding="utf-8") as handle:
+        record = json.load(handle)
+    named = [m["packageId"] for m in record.get("maps") or []]
+    if len(named) != len(COMPOSED):
+        fail(f"provenance.json names {len(named)} map package(s), not {len(COMPOSED)}: {named}")
+    if named != sorted(named):
+        fail(f"provenance.json names the maps in {named}, not package id order; a record of a "
+             f"composition must be a function of its inputs and not of the argument order")
+    if len(record.get("supersedes") or []) != COMPOSED_SUPERSEDES:
+        fail(f"provenance.json records {len(record.get('supersedes') or [])} supersession(s), not "
+             f"{COMPOSED_SUPERSEDES}; the composition either stopped finding them or found more, "
+             f"and either is a change to what composing these three means")
+    ok(f"{COMPOSED_NAME}: {len(named)} packages composed, verified, "
+       f"{len(record['supersedes'])} supersessions recorded")
+
+
 # #106: everything above is one map's engine, and a corpus admitted with something only its own
 # engine exercises (the SRD's hashDerivation, which the gate could not recompute) passed every check
 # here while no SRD engine could pass its gate. So every other example map that declares a package is
@@ -2391,6 +2457,7 @@ def main(argv=None):
             the_rails_run_in_a_produced_engine(r)
             a_determinism_defect_stops_the_build(r)
             every_other_example_passes_its_gate(r)
+            a_composed_engine_passes_its_gate(r)
         finally:
             shutil.rmtree(scratch, ignore_errors=True)
 

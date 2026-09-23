@@ -101,7 +101,7 @@ the diff ([AGENTS.md](AGENTS.md) §3).
 | Command | Argument | Status | Notes |
 |---|---|---|---|
 | `produce` | — | implemented | intake, generation, gate, provenance, verify, write out. It writes no backlog, and removes one an earlier produce committed ([#243](https://github.com/brandonifco/rules-factory/issues/243)) |
-| `produce` | `--package` | implemented | a `.nupkg` path, or `Id@Version` |
+| `produce` | `--package` | implemented | a `.nupkg` path, or `Id@Version`. **Repeatable**: several maps of one ruleset compose into one engine, entry ids qualified by their package and a passage one map declines superseded by another that holds it ([0067](docs/decisions/0067-a-composition-is-a-union-with-a-namespace-and-what-it-merges-it-derives.md), [#446](https://github.com/brandonifco/rules-factory/issues/446)) |
 | `produce` | `--corpus` | implemented | one file per cited corpus: `committed-copy`, public domain or openly licensed ([0028](docs/decisions/0028-the-factory-admits-only-corpora-whose-licence-permits-publishing-them.md)), hashing to its manifest identity and to the same identity bound into the package by [0048](docs/decisions/0048-a-verified-map-package-binds-the-exact-artifacts-its-publish-gate-read.md) |
 | `produce` | `--name` | implemented | the engine's PascalCase name |
 | `produce` | `--out` | implemented | the engine directory: created when absent, updated when it exists |

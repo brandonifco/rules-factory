@@ -140,8 +140,11 @@ PRODUCE_MARKER = "<!-- rules-factory-produce -->"
 # only worth checking because it can be wrong: each of these is in the diff the pull request carries.
 PRODUCE_FACTS = (
     ("factory version", lambda record: (record.get("factory") or {}).get("version")),
+    # Every map the engine is composed of, in the record's order, which is package id order
+    # (rules-factory 0067). One is the ordinary case and reads as it always did.
     ("map package and version",
-     lambda record: f"{(record.get('map') or {}).get('packageId')} {(record.get('map') or {}).get('version')}"),
+     lambda record: ", ".join(f"{m.get('packageId')} {m.get('version')}"
+                              for m in record.get("maps") or [] if isinstance(m, dict))),
     ("kernel version", lambda record: (record.get("kernel") or {}).get("version")),
 )
 # Prose, compared against nothing: which of the three moved, and what a reader should expect to see

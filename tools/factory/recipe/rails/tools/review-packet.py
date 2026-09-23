@@ -59,6 +59,17 @@ class Refused(Exception):
     """Something the packet cannot honestly assemble. Nothing is written."""
 
 
+def one_map(record):
+    """The one map package a record names, or {} when it names none.
+
+    A review packet carries the bytes of the map its entries came from. An engine composed of
+    several (rules-factory 0067) is refused where the packet is assembled, above; this is the
+    reader for the ordinary case and it never guesses which of several.
+    """
+    maps = [m for m in record.get("maps") or [] if isinstance(m, dict)]
+    return maps[0] if len(maps) == 1 else {}
+
+
 def gh(*args):
     command = [os.environ.get("RULES_ENGINE_GH", "gh"), *args]
     try:
@@ -145,7 +156,12 @@ def map_read_once(package_map, record, head, work_dir):
 
     Returns the digest of the bytes that were read and the path of the copy holding exactly them.
     """
-    declared = [part.get("sha256") for part in (record.get("map") or {}).get("files") or []
+    maps = [m for m in record.get("maps") or [] if isinstance(m, dict)]
+    if len(maps) > 1:
+        raise Refused(f"{PROVENANCE} at {head[:12]} names {len(maps)} map packages; a review packet "
+                      f"carries the bytes of the one map its entries came from, and this tool "
+                      f"cannot yet say which of several that is (rules-factory 0067)")
+    declared = [part.get("sha256") for part in (maps[0] if maps else {}).get("files") or []
                 if part.get("role") == "map"]
     if len(declared) != 1 or not declared[0]:
         raise Refused(f"{PROVENANCE} at {head[:12]} does not record the digest of the map it was "
@@ -308,8 +324,10 @@ def build(number, base, package_map=None, recordable=True):
         parts.append(section("3. The entries, as the map has them", body))
 
         parts.append(section("4. What this engine was produced from",
-                             f"- map `{record['map']['packageId']}` {record['map']['version']} "
-                             f"(`sha256:{record['map'].get('nupkgSha256', '')}`)\n"
+                             "".join(
+                                 f"- map `{m.get('packageId')}` {m.get('version')} "
+                                 f"(`sha256:{m.get('nupkgSha256', '')}`)\n"
+                                 for m in record.get("maps") or [])
                              + "".join(
                                  f"- corpus `{corpus.get('sourceId')}`"
                                  + (" (principal)" if corpus.get("principal") else "")
@@ -383,12 +401,12 @@ def build(number, base, package_map=None, recordable=True):
                 "sha256": hashlib.sha256(provenance_bytes).hexdigest(),
             },
             "map": {
-                "packageId": record["map"].get("packageId"),
-                "version": record["map"].get("version"),
-                "nupkgSha256": record["map"].get("nupkgSha256", ""),
+                "packageId": one_map(record).get("packageId"),
+                "version": one_map(record).get("version"),
+                "nupkgSha256": one_map(record).get("nupkgSha256", ""),
                 # What the commit declares, and what was actually read. Recording only the first
                 # is what let two packets with different entry evidence carry one identity (#356).
-                "declaredSha256": next((part.get("sha256") for part in record["map"].get("files") or []
+                "declaredSha256": next((part.get("sha256") for part in one_map(record).get("files") or []
                                         if part.get("role") == "map"), ""),
                 # Null, never the declared digest, when nothing was checked: writing the declared
                 # value here would be the very substitution of a claim for a fact this closes.

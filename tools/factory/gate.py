@@ -44,6 +44,9 @@ FILES = {
     "scripts/map-overlay.py": (os.path.join(RECIPE, "map-overlay.py"), True),
     "scripts/engine-gate.py": (os.path.join(RECIPE, "engine-gate.py"), True),
     "scripts/factory/agentrails.py": (os.path.join(HERE, "agentrails.py"), False),
+    # The engine's own gate reproduces the map the factory merged, and for a composed engine that
+    # means composing the restored packages before the overlay is applied (0067).
+    "scripts/factory/compose.py": (os.path.join(HERE, "compose.py"), False),
     "scripts/factory/contracts.py": (os.path.join(HERE, "contracts.py"), False),
     "scripts/factory/correspondence.py": (os.path.join(HERE, "correspondence.py"), False),
     "scripts/factory/csharp.py": (os.path.join(HERE, "csharp.py"), False),
