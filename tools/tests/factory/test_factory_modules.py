@@ -59,9 +59,13 @@ LAYERS = {
     "generate": {"agentrails", "contracts", "correspondence", "entries", "overlay", "ownership",
                  "pins", "registry", "rulings", "scaffold", "semantics"},
     # The rest of the factory.
-    "__main__": {"backlog", "gate", "generate", "intake", "ownership", "provenance", "rails",
-                 "transaction", "verify"},
+    "__main__": {"backlog", "compose", "gate", "generate", "intake", "ownership", "provenance",
+                 "rails", "transaction", "verify"},
     "backlog": {"agentrails", "intake", "overlay", "semantics"},
+    # Several map packages read as one (0067). It imports nothing of the factory: what it reads of
+    # an `intake.Intake` is five attributes, and holding it to the class would make a composition
+    # untestable without a package.
+    "compose": set(),
     "gate": set(),
     "intake": set(),
     "overlay": set(),

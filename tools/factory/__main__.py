@@ -121,6 +121,7 @@ sys.dont_write_bytecode = True
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 import backlog as backlog_step  # noqa: E402
+import compose as compose_step  # noqa: E402
 import gate  # noqa: E402
 import generate  # noqa: E402
 import ownership  # noqa: E402
@@ -464,6 +465,42 @@ def recompute_provenance(engine_dir, package=None):
     return provenance.recompute(engine_dir, produce_into, package)
 
 
+def compose_command(args):
+    """Read several map packages as one, and say what composing them would mean (0067).
+
+    Nothing is written and no engine is produced. What this answers is the three questions a
+    composition has to settle before anything can consume one -- whether these packages are
+    readings of one ruleset over one corpus, what each entry is called when their ids collide, and
+    which of them name a passage another already holds in scope.
+    """
+    intakes = []
+    for package in args.package:
+        intakes.append(intake_step.intake(package, args.corpus, log=sys.stdout))
+    corpora_text = {}
+    for verified in (v for i in intakes for v in i.corpora):
+        try:
+            with open(verified["path"], encoding="utf-8") as handle:
+                corpora_text[verified["sourceId"]] = handle.read()
+        except (OSError, UnicodeDecodeError):
+            # A corpus this cannot read as text supersedes nothing and is said so below, rather
+            # than making the whole composition refuse: the identity rule needs the words.
+            continue
+    composition = compose_step.compose(intakes, corpora_text)
+    print()
+    for line in composition.lines():
+        print(line)
+    unreadable = sorted({v["sourceId"] for i in intakes for v in i.corpora} - set(corpora_text))
+    if unreadable:
+        print(f"  ?  no passage identity for {', '.join(unreadable)}: the corpus is not text this "
+              f"reads, so nothing in it can be superseded")
+    if args.out:
+        with open(args.out, "w", encoding="utf-8") as handle:
+            json.dump(composition.map, handle, indent=2, ensure_ascii=False)
+            handle.write("\n")
+        print(f"wrote {args.out}: the composed map, {len(composition.map['entries'])} entries")
+    return 0
+
+
 def check_provenance(args):
     mismatches = recompute_provenance(args.engine, args.package)
     for line in mismatches:
@@ -524,6 +561,12 @@ def build_parser():
                    help="write a JSON report of this run: what moved (map, kernel, factory) from what to what, every "
                         "path written with its ownership class, and the provenance diff. A factory update's pull "
                         "request is filled in from it (#193)")
+    c = commands.add_parser("compose", help="read several map packages as one, and say what composing them means")
+    c.add_argument("--package", required=True, action="append", metavar="PACKAGE",
+                   help="a .nupkg path, or Id@Version; repeat once per map (0067)")
+    c.add_argument("--corpus", required=True, action="append", metavar="FILE",
+                   help="a corpus file the maps cite; repeat once per cited corpus (0039)")
+    c.add_argument("--out", help="write the composed map here (default: report only, write nothing)")
     b = commands.add_parser("backlog", help="file an engine's backlog as GitHub issues, or render it")
     action = b.add_mutually_exclusive_group(required=True)
     action.add_argument("--create", action="store_true",
@@ -572,6 +615,8 @@ def main(argv=None):
             backlog_step.create(args.repo, args.dir, log=sys.stdout, gh=os.environ.get("FACTORY_GH", "gh"),
                                 package=args.package)
             return 0
+        if args.command == "compose":
+            return compose_command(args)
         if args.command == "rails":
             return rails_step.run(args.repo, args.dir, os.environ.get("FACTORY_GH", "gh"), sys.stdout, args.apply)
         if args.command == "provenance":
