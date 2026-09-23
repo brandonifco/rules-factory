@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "measuredAt": "48b548f7e3781933d48bf3ff912e4807373e818e",
+  "measuredAt": "26acd4f5ac6001dc7515a7f34edaeef8b23ce186",
   "measuredBy": "tools/check-evidence.py --measure",
   "measuredOver": {
     "gateStepsFailed": [],
@@ -1676,8 +1676,10 @@
       "path": "examples/srd-52-conditions/CORPUS-LICENCE.txt",
       "sha256": "0b5bd883d3234fbdb92c77ae699546e2178084887e81c87498d9f37d1b6fe24a",
       "bytes": 1461,
-      "role": "archived",
-      "readBy": [],
+      "role": "release",
+      "readBy": [
+        "package"
+      ],
       "archive": null
     },
     {
@@ -1757,9 +1759,10 @@
       "path": "examples/srd-52-conditions/corpus-manifest.json",
       "sha256": "2e005e96c60df9cbf9091b4f0e45d1af44f2f9a0a4de446bb41f9437cf669346",
       "bytes": 2239,
-      "role": "active",
+      "role": "release",
       "readBy": [
-        "checks"
+        "checks",
+        "package"
       ],
       "archive": null
     },
@@ -1767,9 +1770,10 @@
       "path": "examples/srd-52-conditions/corpus-map.json",
       "sha256": "e7d71997c53a398066f3b609c25c28d616cfc84f89a2d27af85bb455ad42cb35",
       "bytes": 99237,
-      "role": "active",
+      "role": "release",
       "readBy": [
-        "checks"
+        "checks",
+        "package"
       ],
       "archive": null
     },
@@ -1779,6 +1783,16 @@
       "bytes": 28377,
       "role": "archived",
       "readBy": [],
+      "archive": null
+    },
+    {
+      "path": "examples/srd-52-conditions/map-package.json",
+      "sha256": "5efde0fb404f88ca2651b7315b7310f464ca9258e33ad07e87ff3539d667957c",
+      "bytes": 85,
+      "role": "release",
+      "readBy": [
+        "package"
+      ],
       "archive": null
     },
     {
@@ -1803,8 +1817,8 @@
     },
     {
       "path": "examples/srd-52-conditions/review.json",
-      "sha256": "1bbbc85b0c141bbc235d86ec9d64c01c36ddd741eab9b904fd532be9b3b13876",
-      "bytes": 4325,
+      "sha256": "6dc48284b920e233c74f0ce5707b6d9302cf97851bfaf7c0bb2dbe2b0a16ad13",
+      "bytes": 4427,
       "role": "active",
       "readBy": [
         "checks"
@@ -1815,14 +1829,16 @@
       "path": "examples/srd-52-damage-and-healing/CORPUS-LICENCE.txt",
       "sha256": "0b5bd883d3234fbdb92c77ae699546e2178084887e81c87498d9f37d1b6fe24a",
       "bytes": 1461,
-      "role": "archived",
-      "readBy": [],
+      "role": "release",
+      "readBy": [
+        "package"
+      ],
       "archive": null
     },
     {
       "path": "examples/srd-52-damage-and-healing/README.md",
-      "sha256": "3d51450045e960412800824867b294245c173651fba070a45121c6d15200405b",
-      "bytes": 9649,
+      "sha256": "8a62df1c04829c78767334fc1b9d2a18aaa4d4d0e7beb7cf026eac20a5c42dbe",
+      "bytes": 9999,
       "role": "active",
       "readBy": [
         "links"
@@ -1833,9 +1849,10 @@
       "path": "examples/srd-52-damage-and-healing/corpus-manifest.json",
       "sha256": "763ba8885f635dfc0712e87cf31d781dc56a9b3a8d2d8e060923c4dc9d70b758",
       "bytes": 2365,
-      "role": "active",
+      "role": "release",
       "readBy": [
-        "checks"
+        "checks",
+        "package"
       ],
       "archive": null
     },
@@ -1843,9 +1860,20 @@
       "path": "examples/srd-52-damage-and-healing/corpus-map.json",
       "sha256": "ee6004ab42e52bb57269f0a66d7f9c4ca5f7acf62f82d5dc03ade394ef1da305",
       "bytes": 46982,
-      "role": "active",
+      "role": "release",
       "readBy": [
-        "checks"
+        "checks",
+        "package"
+      ],
+      "archive": null
+    },
+    {
+      "path": "examples/srd-52-damage-and-healing/map-package.json",
+      "sha256": "5efde0fb404f88ca2651b7315b7310f464ca9258e33ad07e87ff3539d667957c",
+      "bytes": 85,
+      "role": "release",
+      "readBy": [
+        "package"
       ],
       "archive": null
     },
@@ -1871,8 +1899,8 @@
     },
     {
       "path": "examples/srd-52-damage-and-healing/review.json",
-      "sha256": "b0a9c0994ef15007d256cfb78be5b6444d5a8ce3716a659b951c4debfdc217e0",
-      "bytes": 2855,
+      "sha256": "bfe3a844cf395bac71737cbf3516c3f1faa350cbcf9a87ef7db0f61629d3a621",
+      "bytes": 2850,
       "role": "active",
       "readBy": [
         "checks"
@@ -1883,8 +1911,10 @@
       "path": "examples/srd-52-playing-the-game/CORPUS-LICENCE.txt",
       "sha256": "0b5bd883d3234fbdb92c77ae699546e2178084887e81c87498d9f37d1b6fe24a",
       "bytes": 1461,
-      "role": "archived",
-      "readBy": [],
+      "role": "release",
+      "readBy": [
+        "package"
+      ],
       "archive": null
     },
     {
@@ -1901,9 +1931,10 @@
       "path": "examples/srd-52-playing-the-game/corpus-manifest.json",
       "sha256": "763ba8885f635dfc0712e87cf31d781dc56a9b3a8d2d8e060923c4dc9d70b758",
       "bytes": 2365,
-      "role": "active",
+      "role": "release",
       "readBy": [
-        "checks"
+        "checks",
+        "package"
       ],
       "archive": null
     },
@@ -1911,9 +1942,20 @@
       "path": "examples/srd-52-playing-the-game/corpus-map.json",
       "sha256": "52328b2da3c44409e7640bd34b59041960df193aaf504d8600f70d556b0235d2",
       "bytes": 144632,
-      "role": "active",
+      "role": "release",
       "readBy": [
-        "checks"
+        "checks",
+        "package"
+      ],
+      "archive": null
+    },
+    {
+      "path": "examples/srd-52-playing-the-game/map-package.json",
+      "sha256": "5efde0fb404f88ca2651b7315b7310f464ca9258e33ad07e87ff3539d667957c",
+      "bytes": 85,
+      "role": "release",
+      "readBy": [
+        "package"
       ],
       "archive": null
     },
@@ -1939,8 +1981,8 @@
     },
     {
       "path": "examples/srd-52-playing-the-game/review.json",
-      "sha256": "078e7ebf034b79846fe20b87c7e48552ffe2f28ef034594ab42f536ffbf1a0e2",
-      "bytes": 3376,
+      "sha256": "1cb4e54ad0096468696fb53049b30b2ae035c6ccc6c4ab92d74ac65217e6b397",
+      "bytes": 3575,
       "role": "active",
       "readBy": [
         "checks"

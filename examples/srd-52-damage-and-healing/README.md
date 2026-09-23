@@ -19,7 +19,7 @@ gave the extent `startsAfter`, and this is the first committed map to declare on
 The *Playing the Game* chapter is now mapped end to end, across three maps and one line that
 belongs to none of them.
 
-Nothing is built from the map.
+Nothing is built from the map yet. It is packable, which is the first thing a composed engine over this corpus needs.
 
 | | |
 |---|---|
@@ -150,3 +150,4 @@ trial 12's H3 met a second time, from the other side.
 | [mapping-inventory.json](mapping-inventory.json) | the 32 units the walk examined and produced no entry for |
 | [review.json](review.json) | no review, and what a second reading should look at |
 | [CORPUS-LICENCE.txt](CORPUS-LICENCE.txt) | CC-BY-4.0 and the attribution it requires |
+| [map-package.json](map-package.json) | the version this map would publish as, so it can be packed for a composed engine ([#446](https://github.com/brandonifco/rules-factory/issues/446)). Declared, not tagged: publishing is a person's decision (AGENTS.md §5) |

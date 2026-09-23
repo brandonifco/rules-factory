@@ -333,5 +333,48 @@ class UnverifiedProduce(unittest.TestCase):
         self.assertEqual(self.status_for(2), (2, b""))
 
 
+class DescribeExample(unittest.TestCase):
+    """The corpus a packed example is produced against is the committed copy its manifest names,
+    resolved against the map directory. Taking the basename assumed every map owns its corpus
+    copy, which stopped being true when four maps of SRD 5.2.1 came to share one (#446)."""
+
+    def package(self, committed_path):
+        path = os.path.join(self.tmp, "x.nupkg")
+        with zipfile.ZipFile(path, "w") as archive:
+            archive.writestr("x.nuspec", "<package><metadata><id>RulesFactory.Maps.Demo</id>"
+                                         "</metadata></package>")
+            archive.writestr("map/corpus-map.json", json.dumps({"corpus": "demo"}))
+            archive.writestr("map/corpus-manifest.json", json.dumps({"corpora": [
+                {"sourceId": "demo", "verification": "committed-copy",
+                 "committedPath": committed_path}]}))
+        return path
+
+    def setUp(self):
+        self.tmp = tempfile.mkdtemp()
+        self.addCleanup(__import__("shutil").rmtree, self.tmp, True)
+
+    def test_a_corpus_in_the_map_directory(self):
+        name, corpus, source = engine.describe_example(
+            self.package("demo.txt"), os.path.join("examples", "demo"))
+        self.assertEqual(("Demo", os.path.join("examples", "demo", "demo.txt"), "demo"),
+                         (name, corpus, source))
+
+    def test_a_corpus_committed_beside_the_map(self):
+        _, corpus, _ = engine.describe_example(
+            self.package("../shared/demo.txt"), os.path.join("examples", "demo"))
+        self.assertEqual(os.path.join("examples", "shared", "demo.txt"), corpus)
+
+    def test_a_corpus_that_is_not_committed_is_refused(self):
+        path = os.path.join(self.tmp, "y.nupkg")
+        with zipfile.ZipFile(path, "w") as archive:
+            archive.writestr("x.nuspec", "<package><metadata><id>RulesFactory.Maps.Demo</id>"
+                                         "</metadata></package>")
+            archive.writestr("map/corpus-map.json", json.dumps({"corpus": "demo"}))
+            archive.writestr("map/corpus-manifest.json", json.dumps({"corpora": [
+                {"sourceId": "demo", "verification": "local-copy"}]}))
+        with self.assertRaises(engine.Refused):
+            engine.describe_example(path, os.path.join("examples", "demo"))
+
+
 if __name__ == "__main__":
     unittest.main()
