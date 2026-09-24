@@ -1617,11 +1617,15 @@ class FakeGitHub:
                     "path": "provenance.json",
                     "sha256": hashlib.sha256(provenance_bytes).hexdigest(),
                 },
-                "map": {
-                    "packageId": provenance["maps"][0]["packageId"],
-                    "version": provenance["maps"][0]["version"],
-                    "nupkgSha256": provenance["maps"][0].get("nupkgSha256", ""),
-                },
+                # Every map the engine was produced from (#460), which for this engine is one.
+                "maps": [
+                    {
+                        "packageId": package["packageId"],
+                        "version": package["version"],
+                        "nupkgSha256": package.get("nupkgSha256", ""),
+                    }
+                    for package in provenance["maps"]
+                ],
             },
             "entryPackets": [],
         }
