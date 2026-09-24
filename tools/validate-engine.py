@@ -2404,6 +2404,14 @@ def a_composed_engine_passes_its_gate(r):
     # each package is assembled here -- through MSBuild, with no `--package-map`, which is the
     # path an implementer actually takes and the one where the restored files arrive in MSBuild's
     # own order and are paired to their packages by digest.
+    # MSBuild can only say where the restored maps are where a restore has happened, and `produce`
+    # commits no obj/ -- the same reason the railed copy above is restored before its packet runs.
+    # This is also the first command an implementer runs in a new worktree, so the restore is part
+    # of the path being accepted rather than a detail of the harness.
+    restore = r.s("composed-restore.log")
+    if run_to(restore, ["dotnet", "restore", f"{COMPOSED_NAME}.slnx"], cwd=engine, both=True) != 0:
+        tail(restore, 20)
+        fail("the composed engine does not restore, so its packets cannot ask MSBuild where its maps are")
     versions = {m["packageId"]: m["version"] for m in record["maps"]}
     for package_id, entry in COMPOSED_PACKET_ENTRIES:
         assembled = subprocess.run([PYTHON, "tools/entry-packet.py", entry, "--stdout"],
