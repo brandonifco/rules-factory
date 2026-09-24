@@ -123,6 +123,39 @@ only when this change edits it. Every other `*.md` the diff touches is listed as
 whoever owns it. An engine that owns no documents yet says so in a sentence, and that answer stops
 being true the day somebody writes a README.
 
+### One agent, one attempt: a review finding starts a fresh one
+
+The four things above do not move when a review sends work back. **The agent does.**
+
+An implementation attempt runs once: implement, `tools/re-produce.sh` if the overlay moved, the
+gate, one pull request, and stop. A blocking finding starts a **new** attempt on the same issue,
+the same branch, the same worktree and the current pull request head — never a resumption of the
+agent that wrote the code, however much it remembers.
+
+It remembers nothing this repository does not. The worktree holds the implementation, the map
+holds the rule, the overlay holds the mutations, the pull request holds the claim, and the commit
+statuses hold the verdicts. What a resumed agent adds is its own transcript, which is not
+evidence and is not free: an agent's cost is its turns multiplied by the size of its context
+(`docs/agent-team.md`), so the eighth round of a resumed conversation pays for the first seven on
+every turn. One live implementer taken through about eight review rounds that way cost roughly
+45M effective tokens, most of it re-reading itself.
+
+```bash
+tools/repair-packet.py <pr number> --finding "..."   # the brief for the next attempt
+```
+
+The brief is assembled, not written: the head, the branch, the worktree that holds it, the
+issue's acceptance criteria, the entries, the verdicts standing at that head, and what must be
+green all come from the repository. **The findings are the one thing the caller supplies**,
+because which findings block is the orchestrator's judgement and nothing here can compute it. What
+it leaves out is deliberate — the previous attempt's transcript, the earlier reviews, the
+orchestration around them — and a repair attempt handed the argument it is repairing is anchored
+by it.
+
+Nothing else changes. The branch still closes exactly one issue with one `Closes #<n>`; the
+repair commit still moves the head and still invalidates every verdict recorded before it (§7);
+the new head is reviewed from a new packet, by a new reviewer.
+
 ### A factory update is work under these rails too
 
 A `factory produce` update to this engine — a new map version, a new kernel pin, a new factory

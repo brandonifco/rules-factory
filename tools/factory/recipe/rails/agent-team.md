@@ -17,8 +17,8 @@ The main session. It holds the project's context across issues, which is exactly
 three deliberately do not.
 
 **Does:** groom the backlog; classify risk; dispatch one ready issue at a time; collect reviews;
-escalate to the owner; merge; clean up worktrees and branches afterwards; keep the primary
-checkout clean on `main`.
+start a fresh attempt when a review sends work back; escalate to the owner; merge; clean up
+worktrees and branches afterwards; keep the primary checkout clean on `main`.
 
 **Does not:** implement ordinary issues in the primary checkout. An orchestrator that starts
 editing is no longer holding the thread it exists to hold, and its edits land where nothing
@@ -31,7 +31,14 @@ the owner's, recorded (`AGENTS.md` §6).
 ## Engine developer
 
 Implements exactly one ready issue, in exactly one worktree, on exactly one branch, opening
-exactly one pull request that closes exactly that issue.
+exactly one pull request that closes exactly that issue — in exactly **one attempt**.
+
+One instance is one attempt: implement, validate, open or update the pull request, stop. A
+blocking review finding starts a *new* instance against the same issue, branch, worktree and the
+current head, briefed by `tools/repair-packet.py <pr number> --finding "..."` (`AGENTS.md` §4).
+This is not a fifth role. It is this one, invoked again, narrowly — which is the opposite of what
+the rule at the top of this file guards against, and is why "repair" gets a packet rather than a
+charter.
 
 **Does:** read the issue and the entry it names; write the smallest implementation that satisfies
 it; write the tests and record each test's mutation in the overlay; regenerate what the factory
@@ -107,7 +114,7 @@ raw tokens — the most expensive agent spent **81%** of its cost on re-reading 
 writing it, and **2.6%** on its own output. Everything it printed all run, every test result and
 every file it read, came to 0.26% of its raw tokens.
 
-Three things follow, in the order they are worth acting on:
+Four things follow, in the order they are worth acting on:
 
 1. **A narrow assignment is cheaper than a wide one by more than its share of the work.** In that
    run a narrowly-scoped follow-up fix did real work at an 84k peak context; the implementer it
@@ -122,6 +129,13 @@ Three things follow, in the order they are worth acting on:
    on the top tier and the "cheap" structural review cost **2% more** than the semantic one —
    together a third of the whole session, for one pull request. The saving is in the first
    review; the second is where the money should go.
+4. **End the agent at the review boundary.** Because context grows monotonically and never
+   shrinks, a conversation that survives review after review is the one shape of agent whose cost
+   compounds. A larger run — 72 agents, 797 turns, 280M effective tokens — put **59%** of itself
+   into implementers, and its worst single implementer spent about 45M effective tokens over
+   roughly eight review rounds it stayed alive through. One instance is one attempt
+   (`AGENTS.md` §4), and the next attempt reads the repository rather than the last one's
+   transcript.
 
 **What none of this justifies.** Skipping the semantic review, sampling instead of checking
 exhaustively, or accepting a thinner verdict because a thorough one is dear. The cost of the
