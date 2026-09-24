@@ -2414,13 +2414,15 @@ def a_composed_engine_passes_its_gate(r):
         fail("the composed engine does not restore, so its packets cannot ask MSBuild where its maps are")
     versions = {m["packageId"]: m["version"] for m in record["maps"]}
     for package_id, entry in COMPOSED_PACKET_ENTRIES:
-        assembled = subprocess.run([PYTHON, "tools/entry-packet.py", entry, "--stdout"],
+        assembled = subprocess.run([PYTHON, "tools/entry-packet.py", entry,
+                                    "--out", r.s("composed-packets")],
                                    cwd=engine, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         if assembled.returncode != 0:
             print(assembled.stderr.decode("utf-8", errors="replace"), file=sys.stderr, flush=True)
             fail(f"tools/entry-packet.py could not assemble {entry} in the composed engine; a "
                  f"composed engine that cannot produce an entry packet cannot be worked on")
-        packet = assembled.stdout.decode("utf-8", errors="replace")
+        # The tool prints where it wrote, as the single-map step above reads it.
+        packet = assembled.stdout.decode("utf-8", errors="replace").rstrip("\n")
         if not grep_fixed(packet, f"# Entry packet: `{entry}`"):
             fail(f"the packet for {entry} is not the entry it was asked for")
         # The packet names *that entry's* package, at that package's own version. Naming another
