@@ -4323,3 +4323,236 @@ class TestTheDoctor(TestAProducedEngine):
         self.assertIn("gh reads the packet's fields", done.stdout)
         self.assertIn("has no --json closingIssuesReferences", done.stdout)
         self.assertIn("$RULES_ENGINE_GH", done.stdout)
+
+
+# Stand-in for `dotnet test`: prints the next scripted result, and records what the source looked
+# like while it ran. That second part is the whole point -- it is how a test can prove the mutation
+# was actually in place for the run, rather than trusting the tool's own account of itself.
+DOTNET_MUTATION_STUB = '''#!/usr/bin/env python3
+import json, os, pathlib, sys
+sys.dont_write_bytecode = True
+
+plan = json.loads(pathlib.Path(os.environ["DOTNET_PLAN"]).read_text())
+state = pathlib.Path(os.environ["DOTNET_CALLS"])
+calls = json.loads(state.read_text()) if state.exists() else []
+step = plan[min(len(calls), len(plan) - 1)]
+watched = pathlib.Path(os.environ["DOTNET_WATCH"])
+calls.append({"argv": sys.argv[1:], "watched": watched.read_text() if watched.exists() else None})
+state.write_text(json.dumps(calls))
+print(step["say"])
+sys.exit(step.get("code", 0))
+'''
+
+PROBE = "probe.txt"
+ORIGINAL = "alpha\nbeta\ngamma\n"
+
+
+class TestTheMutationRunner(RailsInAGitEngine):
+    """`tools/mutate.py`: the recorded mutation, run (#454).
+
+    Every test here asserts on the file on disk afterwards as well as the exit code. A runner that
+    reports the right colour and leaves the tree mutated is worse than no runner, because the next
+    thing anybody does is commit.
+    """
+
+    def setUp(self):
+        super().setUp()
+        self.plan_path = os.path.join(self.tmp, "plan.json")
+        self.calls_path = os.path.join(self.tmp, "calls.json")
+        self.bin = os.path.join(self.tmp, "mutate-bin")
+        os.makedirs(self.bin, exist_ok=True)
+        stub = os.path.join(self.bin, "dotnet")
+        with open(stub, "w", encoding="utf-8") as handle:
+            handle.write(DOTNET_MUTATION_STUB)
+        os.chmod(stub, 0o755)
+
+    def engine_with_a_probe(self, text=ORIGINAL):
+        self.commit_engine()
+        return self.put(text)
+
+    def put(self, text):
+        path = os.path.join(self.out, PROBE)
+        with open(path, "w", encoding="utf-8") as handle:
+            handle.write(text)
+        return path
+
+    def plan(self, *steps):
+        with open(self.plan_path, "w", encoding="utf-8") as handle:
+            json.dump(list(steps) or [{"say": "Passed!  - Failed:     0, Passed:     1"}], handle)
+
+    def calls(self):
+        if not os.path.isfile(self.calls_path):
+            return []
+        with open(self.calls_path, encoding="utf-8") as handle:
+            return json.load(handle)
+
+    def mutate(self, spec, *flags, hatch=True):
+        environment = {**os.environ, "PATH": self.bin + os.pathsep + os.environ["PATH"],
+                       "DOTNET_PLAN": self.plan_path, "DOTNET_CALLS": self.calls_path,
+                       "DOTNET_WATCH": os.path.join(self.out, PROBE)}
+        if hatch:
+            environment["RULES_ENGINE_ALLOW_PRIMARY_MUTATION"] = "1"
+        return subprocess.run([sys.executable, os.path.join(self.out, "tools", "mutate.py"), "-", *flags],
+                              input=json.dumps(spec), cwd=self.out, capture_output=True, text=True,
+                              env=environment)
+
+    @staticmethod
+    def spec(old="beta", new="BETA", count=None, test="ProbeTests.Beta_is_beta", extra_edits=()):
+        edit = {"file": PROBE, "old": old, "new": new}
+        if count is not None:
+            edit["count"] = count
+        return {"test": test, "edits": [edit, *extra_edits]}
+
+    def on_disk(self):
+        with open(os.path.join(self.out, PROBE), encoding="utf-8") as handle:
+            return handle.read()
+
+    # -- the mutation is really applied, and really put back -------------------------------------
+
+    def test_the_source_is_mutated_for_the_run_and_restored_after_it(self):
+        self.engine_with_a_probe()
+        self.plan({"say": "Passed!  - Failed:     0, Passed:     1"},
+                  {"say": "Failed!  - Failed:     1, Passed:     0", "code": 1})
+        done = self.mutate(self.spec())
+        self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+        self.assertIn("RED", done.stdout)
+        calls = self.calls()
+        self.assertEqual(len(calls), 2, "the baseline run and the mutated run")
+        self.assertEqual(calls[0]["watched"], ORIGINAL, "the baseline ran against the unmutated source")
+        self.assertEqual(calls[1]["watched"], "alpha\nBETA\ngamma\n", "the mutation was in place")
+        self.assertEqual(self.on_disk(), ORIGINAL, "the source was restored")
+
+    def test_only_the_named_test_is_run(self):
+        self.engine_with_a_probe()
+        self.plan({"say": "Passed!  - Failed:     0, Passed:     1"},
+                  {"say": "Failed!  - Failed:     1, Passed:     0", "code": 1})
+        self.mutate(self.spec(test="ProbeTests.One"))
+        for call in self.calls():
+            self.assertIn("--filter", call["argv"])
+            self.assertIn("FullyQualifiedName~ProbeTests.One", call["argv"])
+
+    def test_the_source_is_restored_even_when_the_run_blows_up(self):
+        """The `finally`, proved by taking `dotnet` away after the mutation is already written."""
+        probe = self.engine_with_a_probe()
+        environment = {**os.environ, "PATH": self.tmp, "RULES_ENGINE_ALLOW_PRIMARY_MUTATION": "1"}
+        done = subprocess.run([sys.executable, os.path.join(self.out, "tools", "mutate.py"), "-", "--no-baseline"],
+                              input=json.dumps(self.spec()), cwd=self.out, capture_output=True, text=True,
+                              env=environment)
+        self.assertNotEqual(done.returncode, 0)
+        with open(probe, encoding="utf-8") as handle:
+            self.assertEqual(handle.read(), ORIGINAL, "a run that died left the source mutated")
+
+    # -- what it refuses -------------------------------------------------------------------------
+
+    def test_an_ambiguous_old_string_is_refused_and_nothing_is_written(self):
+        self.engine_with_a_probe("beta\nbeta\n")
+        self.plan()
+        done = self.mutate(self.spec())
+        self.assertEqual(done.returncode, 1)
+        self.assertIn("occurs 2 time(s)", done.stdout + done.stderr)
+        self.assertEqual(self.on_disk(), "beta\nbeta\n", "a refused mutation wrote something")
+
+    def test_an_old_string_that_is_not_there_is_refused(self):
+        self.engine_with_a_probe()
+        self.plan()
+        done = self.mutate(self.spec(old="delta"))
+        self.assertEqual(done.returncode, 1)
+        self.assertIn("occurs 0 time(s)", done.stdout + done.stderr)
+
+    def test_a_spec_whose_second_edit_is_ambiguous_applies_neither(self):
+        """Every edit is checked before the first byte is written, so a spec is all or nothing."""
+        self.engine_with_a_probe()
+        self.plan()
+        done = self.mutate(self.spec(extra_edits=({"file": PROBE, "old": "a", "new": "A"},)))
+        self.assertEqual(done.returncode, 1)
+        self.assertEqual(self.on_disk(), ORIGINAL, "the first edit of a refused spec stayed applied")
+
+    def test_an_edit_outside_the_engine_is_refused(self):
+        self.engine_with_a_probe()
+        self.plan()
+        done = self.mutate({"test": "T.X", "edits": [{"file": "../escape.txt", "old": "a", "new": "b"}]})
+        self.assertEqual(done.returncode, 1)
+        self.assertIn("outside this engine", done.stdout + done.stderr)
+
+    def test_a_replacement_that_changes_nothing_is_refused(self):
+        self.engine_with_a_probe()
+        self.plan()
+        done = self.mutate(self.spec(new="beta"))
+        self.assertEqual(done.returncode, 1)
+        self.assertIn("replaces a string with itself", done.stdout + done.stderr)
+
+    def test_the_primary_checkout_is_refused_and_the_hatch_is_the_policy_s(self):
+        self.engine_with_a_probe()
+        self.plan()
+        done = self.mutate(self.spec(), hatch=False)
+        self.assertEqual(done.returncode, 1)
+        self.assertIn("primary checkout", done.stdout + done.stderr)
+        with open(os.path.join(self.out, ".github", "agent-policy.json"), encoding="utf-8") as handle:
+            named = json.load(handle)["worktrees"]["primaryMutationEscapeHatch"]
+        self.assertIn(named, done.stdout + done.stderr,
+                      "the refusal names a variable other than the one the policy configures")
+        self.assertEqual(self.calls(), [], "it reached dotnet from the primary checkout")
+
+    # -- the failure the prose cannot name ---------------------------------------------------------
+
+    def test_a_mutation_that_leaves_its_test_green_is_reported_and_exits_non_zero(self):
+        self.engine_with_a_probe()
+        self.plan({"say": "Passed!  - Failed:     0, Passed:     1"})
+        done = self.mutate(self.spec())
+        self.assertEqual(done.returncode, 1)
+        self.assertIn("GREEN", done.stdout)
+        self.assertIn("test nobody has watched fail", done.stdout)
+        self.assertEqual(self.on_disk(), ORIGINAL)
+
+    def test_a_mutation_that_does_not_compile_is_not_a_red_test(self):
+        self.engine_with_a_probe()
+        self.plan({"say": "Passed!  - Failed:     0, Passed:     1"},
+                  {"say": "Rules.cs(9,5): error CS1002: ; expected", "code": 1})
+        done = self.mutate(self.spec())
+        self.assertEqual(done.returncode, 1)
+        self.assertIn("DID NOT COMPILE", done.stdout)
+
+    def test_a_filter_that_matches_no_test_is_not_a_red_test(self):
+        self.engine_with_a_probe()
+        self.plan({"say": "Passed!  - Failed:     0, Passed:     1"},
+                  {"say": "Passed!  - Failed:     0, Passed:     0"})
+        done = self.mutate(self.spec())
+        self.assertEqual(done.returncode, 1)
+        self.assertIn("NO TEST MATCHED", done.stdout)
+
+    def test_a_test_that_was_already_red_is_not_evidence_and_is_not_mutated(self):
+        """A baseline that is not green means the mutation would prove nothing, so it is not run."""
+        self.engine_with_a_probe()
+        self.plan({"say": "Failed!  - Failed:     1, Passed:     0", "code": 1})
+        done = self.mutate(self.spec())
+        self.assertEqual(done.returncode, 1)
+        self.assertIn("BASELINE RED", done.stdout)
+        self.assertEqual(len(self.calls()), 1, "it mutated a test that was already red")
+        self.assertEqual(self.on_disk(), ORIGINAL)
+
+    def test_no_baseline_skips_the_unmutated_run(self):
+        self.engine_with_a_probe()
+        self.plan({"say": "Failed!  - Failed:     1, Passed:     0", "code": 1})
+        done = self.mutate(self.spec(), "--no-baseline")
+        self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+        self.assertEqual(len(self.calls()), 1, "the baseline ran despite --no-baseline")
+
+    # -- several mutations in one run, which is the point of it ------------------------------------
+
+    def test_several_specs_run_in_one_invocation_and_the_summary_counts_them(self):
+        self.engine_with_a_probe()
+        self.plan({"say": "Passed!  - Failed:     0, Passed:     1"},
+                  {"say": "Failed!  - Failed:     1, Passed:     0", "code": 1},
+                  {"say": "Passed!  - Failed:     0, Passed:     1"})
+        done = self.mutate([self.spec(test="ProbeTests.One"), self.spec(old="gamma", new="GAMMA",
+                                                                       test="ProbeTests.Two")])
+        self.assertIn("2 mutation(s): 1 red, 1 not red", done.stdout)
+        self.assertEqual(done.returncode, 1)
+        self.assertEqual(self.on_disk(), ORIGINAL)
+
+    def test_a_spec_with_no_test_is_refused(self):
+        self.engine_with_a_probe()
+        self.plan()
+        done = self.mutate({"edits": [{"file": PROBE, "old": "beta", "new": "BETA"}]})
+        self.assertEqual(done.returncode, 1)
+        self.assertIn("names no `test`", done.stdout + done.stderr)

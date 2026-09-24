@@ -87,7 +87,7 @@ TABLE = (
     Row("scripts/engine-gate.py", GENERATED, None, "the gate recipe: its non-dotnet checks"),
     Row("scripts/factory/*.py", GENERATED, None, "the factory's generator, vendored so the gate can regenerate"),
     Row(".github/workflows/validate.yml", GENERATED, None, "the gate recipe: CI runs validate.sh full"),
-    Row("AGENTS.md", MANAGED, 18,
+    Row("AGENTS.md", MANAGED, 19,
         "the governing contract every agent works this engine under (decision 0029); section 4 carries "
         "the sweep, the documentation section, and delete-only-what-you-created (#236); a packet that "
         "names an entry is made with the map the reviewed commit declares (#372); section 11 is what the "
@@ -96,7 +96,7 @@ TABLE = (
     Row("CLAUDE.md", MANAGED, 1,
         "a pointer to AGENTS.md and the Claude adapters; it states no rule of its own (0029)"),
     Row("docs/agent-team.md", MANAGED, 5, "the four roles, and what each may not do (0029)"),
-    Row(".claude/agents/engine-dev.md", MANAGED, 8, "the implementer's charter (0029)"),
+    Row(".claude/agents/engine-dev.md", MANAGED, 9, "the implementer's charter (0029)"),
     Row(".claude/agents/repo-steward.md", MANAGED, 1, "the structural reviewer's charter, read-only (0029)"),
     Row(".claude/agents/rules-conformance.md", MANAGED, 4, "the semantic reviewer's charter, read-only (0029)"),
     Row(".claude/hooks/primary-checkout-guard.py", MANAGED, 1,
@@ -109,6 +109,9 @@ TABLE = (
         "an issue with the shape the rails expect, a factory update's included (0029, #193)"),
     Row("tools/entry-packet.py", MANAGED, 6,
         "the bounded assignment for one entry, assembled from merge(package, overlay) (0029)"),
+    Row("tools/mutate.py", MANAGED, 1,
+        "a recorded mutation, run: the edit, the named test, and the source put back, so the evidence "
+        "AGENTS.md asks for is re-runnable by the reviewer rather than a sentence (#454)"),
     Row("tools/re-produce.sh", MANAGED, 6,
         "an overlay edit is finished by a re-produce, from the factory commit the record names (#192); "
         "a record a merge left conflicted is named as one, and --resolve-record settles it (#252)"),
@@ -253,6 +256,7 @@ RECIPE_SHA256 = {
         6: "5e88a1d896a9f9528f038f6daffb990e03bdcfe5f9d39f60c88723c8ee8247ca",
         7: "8f26f1270af1eeaa12f471018cb8bf590265c573d690954b8cb942f64315746b",
         8: "d7838a14be85667f9f97e5a483be681a4a3a2ae969399aa7437762631639cc7c",
+        9: "9bb4c07be9a29dd45b6e6d2e7ea96be95fa7227c9fbb20ea8251b21aaed6b693",
     },
     ".claude/agents/repo-steward.md": {
         1: "6a2662ac958da76bb02263914d4e3b293a8dc15837e8a6ffccb14177b013bde7",
@@ -288,6 +292,7 @@ RECIPE_SHA256 = {
         16: "07c9b6a26199f3bf9b06db4ab308fbc4747dfe71b3e2ab17a4f637be67fe14f6",
         17: "f0148606dbd2a1e4f0614480ab74e7fa361876b9b65407019075f7a15dc24702",
         18: "2b6a2f95c659e0d17b524f2b401f32cfe047ebe0a7249bda05ba0b4e7bab61b5",
+        19: "50c0496e6b4eb008dd649d3ca50af82400c6778b0fc1180cc3ec6d14aa2157c8",
     },
     "CLAUDE.md": {
         1: "04c07ad36e742fa60efafeca54d20bd96d16b6e338a44e46fad2b679ab8dfd9f",
@@ -316,6 +321,9 @@ RECIPE_SHA256 = {
         4: "5ae5e226e92b0f1fe6ce227d58db2987173659d644e4a89667a984c9faee54af",
         5: "3ef75a792934d473e87db94e1c3f08f459bab418a73ef5850dd6063fa4144fad",
         6: "1125002f832f0876085db34be69de8701a43a5762ae31d49921d530c079ea0b0",
+    },
+    "tools/mutate.py": {
+        1: "d33f7ddedc923388af4582ffb6c04a1434c09f695738ca34f191839f21847901",
     },
     "tools/re-produce.sh": {
         1: "2a281f94f81ce141733494a94744caa96c88af3cd9fa848cec21c13e73739499",

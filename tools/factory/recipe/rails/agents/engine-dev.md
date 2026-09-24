@@ -39,6 +39,21 @@ You do not need to read the whole corpus, and you should not try. The packet is 
 - Write tests that prove the mapped rule, not tests that describe the code you wrote. For each,
   **record in the overlay the mutation that makes it fail, and actually observe it fail.** A test
   nobody has watched fail is not yet a test.
+- Observe it with `tools/mutate.py`, and do not build your own loop. Write one JSON spec per
+  mutation — the test it should turn red, and the edits that should do it — and run them together:
+
+  ```bash
+  tools/mutate.py mutations/*.json
+  ```
+
+  It refuses an edit whose `old` string is ambiguous, restores every file in a `finally`, runs
+  each test unmutated first, and exits non-zero when a mutation leaves its test **green**. Two
+  reasons it is the tool and not a convenience. The spec is re-runnable, so your evidence and the
+  reviewer's check are one artefact rather than two readings of a paragraph; and a hand-rolled
+  loop driven one mutation at a time is the single most expensive thing an implementer does, since
+  every cycle is another turn over a context that only grows. Keep the specs with your working
+  notes and paste the output into the pull request. `AGENTS.md` §7 is the rule; this is how you
+  satisfy it.
 - Finish an overlay change properly, in this order. The entry's own file, `overlay/<entry
   id>.json` — yours alone, which is why two entry branches no longer collide — gets `status:
   implemented`, its `implementedIn`, and its `tests`, each with the mutation you actually watched
