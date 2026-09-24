@@ -2333,6 +2333,14 @@ COMPOSED_NAME = "Srd52"
 #: The supersessions the composition must find, which is the whole reason to compose these three:
 #: each is a rule `srd-52-combat` declined because its slice stopped short and another map holds.
 COMPOSED_SUPERSEDES = 8
+#: One in-scope entry per composed package, and the package its id says it came from (#460). The
+#: acceptance is that a packet for each names its own map: a composed engine has three sets of
+#: published bytes an implementer could be working to, and which one is not a detail.
+COMPOSED_PACKET_ENTRIES = (
+    ("RulesFactory.Maps.Srd52PlayingTheGame", "Srd52PlayingTheGame.six-abilities"),
+    ("RulesFactory.Maps.Srd52Combat", "Srd52Combat.combat-rounds"),
+    ("RulesFactory.Maps.Srd52Conditions", "Srd52Conditions.blinded"),
+)
 
 
 def a_composed_engine_passes_its_gate(r):
@@ -2386,8 +2394,34 @@ def a_composed_engine_passes_its_gate(r):
         fail(f"provenance.json records {len(record.get('supersedes') or [])} supersession(s), not "
              f"{COMPOSED_SUPERSEDES}; the composition either stopped finding them or found more, "
              f"and either is a change to what composing these three means")
+    # #460: an engine that passes its gate and then cannot be worked on is not finished. The
+    # packets are how work on an engine is done (`AGENTS.md` sections 5 and 7), and until this
+    # they refused a composed engine by name rather than choose between its maps. So one entry of
+    # each package is assembled here -- through MSBuild, with no `--package-map`, which is the
+    # path an implementer actually takes and the one where the restored files arrive in MSBuild's
+    # own order and are paired to their packages by digest.
+    versions = {m["packageId"]: m["version"] for m in record["maps"]}
+    for package_id, entry in COMPOSED_PACKET_ENTRIES:
+        assembled = subprocess.run([PYTHON, "tools/entry-packet.py", entry, "--stdout"],
+                                   cwd=engine, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        if assembled.returncode != 0:
+            print(assembled.stderr.decode("utf-8", errors="replace"), file=sys.stderr, flush=True)
+            fail(f"tools/entry-packet.py could not assemble {entry} in the composed engine; a "
+                 f"composed engine that cannot produce an entry packet cannot be worked on")
+        packet = assembled.stdout.decode("utf-8", errors="replace")
+        if not grep_fixed(packet, f"# Entry packet: `{entry}`"):
+            fail(f"the packet for {entry} is not the entry it was asked for")
+        # The packet names *that entry's* package, at that package's own version. Naming another
+        # of the three is the failure the refusal stood in for: a reviewer reading other bytes.
+        if not grep_fixed(packet, f"map `{package_id}` {versions[package_id]}"):
+            fail(f"the packet for {entry} does not name {package_id} {versions[package_id]}, the "
+                 f"package its id says it came from")
+        for other in versions:
+            if other != package_id and grep_fixed(packet, f"map `{other}` "):
+                fail(f"the packet for {entry} names {other} as the map it was built from")
     ok(f"{COMPOSED_NAME}: {len(named)} packages composed, verified, "
-       f"{len(record['supersedes'])} supersessions recorded")
+       f"{len(record['supersedes'])} supersessions recorded, and an entry packet of each package "
+       f"names its own map")
 
 
 # #106: everything above is one map's engine, and a corpus admitted with something only its own

@@ -113,24 +113,27 @@ TABLE = (
         "removes what merged work left behind, before every dispatch (0029, #236)"),
     Row("tools/new-issue.sh", MANAGED, 2,
         "an issue with the shape the rails expect, a factory update's included (0029, #193)"),
-    Row("tools/entry-packet.py", MANAGED, 6,
-        "the bounded assignment for one entry, assembled from merge(package, overlay) (0029)"),
+    Row("tools/entry-packet.py", MANAGED, 7,
+        "the bounded assignment for one entry, assembled from merge(package, overlay) (0029); a composed "
+        "engine's packet is built over the whole composition and names the package its entry's id says it "
+        "came from (#460)"),
     Row("tools/mutate.py", MANAGED, 1,
         "a recorded mutation, run: the edit, the named test, and the source put back, so the evidence "
         "AGENTS.md asks for is re-runnable by the reviewer rather than a sentence (#454)"),
     Row("tools/re-produce.sh", MANAGED, 6,
         "an overlay edit is finished by a re-produce, from the factory commit the record names (#192); "
         "a record a merge left conflicted is named as one, and --resolve-record settles it (#252)"),
-    Row("tools/review-packet.py", MANAGED, 7,
-        "everything a reviewer needs about one pull request, in the order it is read (0029); the map is "
+    Row("tools/review-packet.py", MANAGED, 8,
+        "everything a reviewer needs about one pull request, in the order it is read (0029); every map is "
         "read once and the entry packets are built from those bytes, and a refused packet writes nothing "
-        "(#371, #372)"),
+        "(#371, #372); a composed engine's maps are each checked against their own recorded digest and the "
+        "identity names all of them (#460)"),
     Row("tools/pr-policy.py", MANAGED, 7,
         "the pull request contract, checked mechanically; a produce update's claim is checked, not taken "
         "(#193); every document the engine owns is accounted for (#236)"),
-    Row("tools/record-verdict.py", MANAGED, 3,
+    Row("tools/record-verdict.py", MANAGED, 4,
         "a review verdict as a commit status on the exact commit reviewed, from entry evidence bound to "
-        "that commit (0029, #372)"),
+        "that commit (0029, #372) -- every map of a composed engine, not one of them (#460)"),
     Row("tools/conformance-gate.py", MANAGED, 3,
         "whether the verdicts this change needs are recorded at the commit being merged; a truncated "
         "file list is undecidable (0029, #193)"),
@@ -330,6 +333,7 @@ RECIPE_SHA256 = {
         4: "5ae5e226e92b0f1fe6ce227d58db2987173659d644e4a89667a984c9faee54af",
         5: "3ef75a792934d473e87db94e1c3f08f459bab418a73ef5850dd6063fa4144fad",
         6: "1125002f832f0876085db34be69de8701a43a5762ae31d49921d530c079ea0b0",
+        7: "0f37570f3995218e4ca893f254ce3476290e4b96429ee5bd4152cfe223f63cdc",
     },
     "tools/mutate.py": {
         1: "d33f7ddedc923388af4582ffb6c04a1434c09f695738ca34f191839f21847901",
@@ -350,6 +354,7 @@ RECIPE_SHA256 = {
         5: "ccedcf96e26a8005387d2f95d7634b09196d1374db10a30b856a4375eeb49e1b",
         6: "445377e001ec8f17a881f7369e82eacb9ecf9646a87d225ea80022efef98d2d5",
         7: "7aa09461a5229497fedd360ec47cd05c8279e369be59626ef7a634caeb0d00ee",
+        8: "c511f80d77be24490ff8f259ea7fdec386db331ada4fed3812fee2d56fe9d3b1",
     },
     "tools/pr-policy.py": {
         1: "79a33c7fe1ea8d888e4d6912a43ac60afe285c7a8bf43fbe9f7be87d6947b76e",
@@ -364,6 +369,7 @@ RECIPE_SHA256 = {
         1: "48f7b11f7fc829cdaebd776a3eb5db04e27cade97c427c6806b72f58805d83db",
         2: "befcec43518715bf0604f182b2edea5dea340f4979adfd6d49072a3b50184f84",
         3: "678b501239f684946dccbb6186035a39b5916257f0b3dadf13d35e6be97739a5",
+        4: "79ce6388ca3409c99bfdecccf46b3b9e0277756bfd6d0f7588a79fb6181f48cf",
     },
     "tools/conformance-gate.py": {
         1: "567972b60f16d1f86c661e97efa56fa2878c9a5aa92fb820c4aea07a402cbd24",

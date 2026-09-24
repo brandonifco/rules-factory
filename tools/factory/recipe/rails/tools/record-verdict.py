@@ -156,7 +156,7 @@ def packet_identity(path):
         raise Refused("reviewContext is not an object")
     policy = context.get("policy")
     provenance = context.get("provenance")
-    mapped = context.get("map")
+    mapped = context.get("maps")
     if not isinstance(policy, dict) or policy.get("path") != POLICY:
         raise Refused(f"reviewContext.policy must identify {POLICY}")
     sha256(policy.get("sha256"), "reviewContext.policy sha256")
@@ -181,33 +181,45 @@ def packet_identity(path):
     if not isinstance(provenance, dict) or provenance.get("path") != PROVENANCE:
         raise Refused(f"reviewContext.provenance must identify {PROVENANCE}")
     sha256(provenance.get("sha256"), "reviewContext.provenance sha256")
-    if not isinstance(mapped, dict):
-        raise Refused("reviewContext.map is not an object")
-    for field in ("packageId", "version", "nupkgSha256"):
-        if not isinstance(mapped.get(field), str):
-            raise Refused(f"reviewContext.map.{field} is not a string")
+    if not isinstance(mapped, list) or not mapped:
+        raise Refused("reviewContext.maps is not a non-empty list of the map packages this engine "
+                      "was produced from")
+    for index, package in enumerate(mapped):
+        if not isinstance(package, dict):
+            raise Refused(f"reviewContext.maps[{index}] is not an object")
+        for field in ("packageId", "version", "nupkgSha256"):
+            if not isinstance(package.get(field), str):
+                raise Refused(f"reviewContext.maps[{index}].{field} is not a string")
 
     # The entry packets are what a semantic reviewer is told to read before the diff, and they are
     # built from map bytes the packet either did or did not hold to the reviewed commit's declared
     # digest. Recording a verdict from a packet that says it did not is recording a judgement about
     # bytes nobody proved the commit carried, and the record cannot tell it from one that did
     # (#372). So the relationship is checked here too, rather than trusted to the producer.
+    #
+    # An engine composed of several map packages (rules-factory 0067) is checked package by
+    # package. One unbound map among several is the whole failure, not a fraction of it: the
+    # entry packets are built from the composition, so bytes nobody held to the record reach the
+    # reviewer through it exactly as they would through a single map.
     if verified_entries:
-        read = mapped.get("readSha256")
-        declared_map = mapped.get("declaredSha256")
-        if read is None:
-            raise Refused(f"this packet's entry evidence was never bound to the reviewed commit: "
-                          f"reviewContext.map.readSha256 is null, so the map its {len(verified_entries)} "
-                          f"entry packet(s) were built from was never checked against the digest "
-                          f"{reviewed[:12]} declares. Regenerate the packet with --package-map and review "
-                          f"those bytes; a verdict on unbound evidence is indistinguishable in the record "
-                          f"from one on checked evidence, which is why it is refused.")
-        sha256(read, "reviewContext.map.readSha256")
-        sha256(declared_map, "reviewContext.map.declaredSha256")
-        if read != declared_map:
-            raise Refused(f"the map this packet's entry packets were read from ({read[:12]}) is not the map "
-                          f"the reviewed commit declares ({declared_map[:12]}); the entry evidence is not "
-                          f"{reviewed[:12]}'s own. Regenerate the packet from the declared map.")
+        for index, package in enumerate(mapped):
+            where = f"reviewContext.maps[{index}] ({package.get('packageId')})"
+            read = package.get("readSha256")
+            declared_map = package.get("declaredSha256")
+            if read is None:
+                raise Refused(f"this packet's entry evidence was never bound to the reviewed commit: "
+                              f"{where}.readSha256 is null, so the map its {len(verified_entries)} "
+                              f"entry packet(s) were built from was never checked against the digest "
+                              f"{reviewed[:12]} declares. Regenerate the packet with --package-map and review "
+                              f"those bytes; a verdict on unbound evidence is indistinguishable in the record "
+                              f"from one on checked evidence, which is why it is refused.")
+            sha256(read, f"{where}.readSha256")
+            sha256(declared_map, f"{where}.declaredSha256")
+            if read != declared_map:
+                raise Refused(f"the map this packet's entry packets were read from ({read[:12]}) is not the map "
+                              f"the reviewed commit declares ({declared_map[:12]}) for "
+                              f"{package.get('packageId')}; the entry evidence is not "
+                              f"{reviewed[:12]}'s own. Regenerate the packet from the declared map.")
 
     return {
         "path": identity_path,

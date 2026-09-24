@@ -33,10 +33,20 @@ The map itself is a NuGet package this engine references and never copies (decis
 merge needs the restored package. `--package-map` names it; without one, this asks MSBuild where
 the restore put it, exactly as `scripts/validate.sh` does -- which needs the SDK and a restore.
 
+**A composed engine** (rules-factory 0067) is produced from several map packages, and a packet is
+built from the one its entry came from. The entry id says which: identity in a composition is
+`(package, entry id)` -- `Srd52Combat.round-down` -- so the prefix names the package, and the
+header names that package at its own version. The model is built over the whole composition,
+because that is what the engine implements: an entry of another package is read here exactly as
+one of this package's is, and an entry another map supersedes says so instead of being handed out
+as work. `--package-map` is repeated once per package, or MSBuild is asked for all of them; each
+is matched to the package `provenance.json` records **by digest**, never by order or by path.
+
 Standard library only, plus the factory's own generator vendored under `scripts/factory/`, so the
 entry, the handler signature and the packet cannot drift from what the build actually generates.
 """
 import argparse
+import hashlib
 import json
 import os
 import pathlib
@@ -74,33 +84,127 @@ def read_json(path, what):
         raise Refused(f"{what} cannot be read ({path}): {error}")
 
 
-def engine():
-    """(name, map id, map version, map nupkg sha256, randomness) from the engine's provenance.
+def vendored(module):
+    """A module of the factory's own generator, from `scripts/factory/` where produce vendored it.
 
-    A packet is built from **the** map the entry came from, and an engine composed of several maps
-    (rules-factory 0067) has more than one. Rather than pick one and be silently wrong about which
-    package an entry belongs to, this refuses and says so: a packet naming the wrong map is a
-    reviewer reading the wrong bytes, which is the failure the packet exists to prevent.
+    The packet computes with the factory's code rather than a copy of its rules, so that the
+    entry, the handler signature and the composed ids cannot drift from what the build emits.
+    """
+    sys.path.insert(0, str(ROOT / "scripts" / "factory"))
+    try:
+        return __import__(module)
+    except ImportError as error:
+        raise Refused(f"scripts/factory is not importable ({error}); run `factory produce` again")
+
+
+def engine():
+    """(name, the map packages, what each supersedes, randomness) from the engine's provenance.
+
+    Every map the engine was produced from, in the order the record names them -- which is package
+    id order, because a record of a composition is a function of its inputs and not of the order
+    they were given in (rules-factory 0067). One map is the ordinary case and is a list of one.
     """
     record = read_json(ROOT / PROVENANCE, "provenance.json")
     maps = [m for m in record.get("maps") or [] if isinstance(m, dict)]
-    if len(maps) > 1:
-        raise Refused(f"{PROVENANCE} names {len(maps)} map packages "
-                      f"({', '.join(str(m.get('packageId')) for m in maps)}); an entry packet is "
-                      f"built from the one map its entry came from, and this tool cannot yet say "
-                      f"which of several that is")
+    superseded = {str(s.get("entry")): str(s.get("by"))
+                  for s in record.get("supersedes") or [] if isinstance(s, dict)}
     try:
-        return (record["engine"]["name"], maps[0]["packageId"], maps[0]["version"],
-                maps[0].get("nupkgSha256", ""), record.get("randomness"))
-    except (KeyError, TypeError, IndexError):
+        name = record["engine"]["name"]
+        for package in maps:
+            package["packageId"], package["version"]
+    except (KeyError, TypeError):
         raise Refused(f"{PROVENANCE} does not name this engine and its map; run `factory produce` again")
+    if not maps:
+        raise Refused(f"{PROVENANCE} does not name this engine and its map; run `factory produce` again")
+    return name, maps, superseded, record.get("randomness")
 
 
-def package_map_from_msbuild(name):
-    """Where the restore put the map package's map, asked of MSBuild rather than guessed.
+def map_of(entry_id, maps):
+    """The map package `entry_id` came from, and the id it has inside that package.
+
+    This is the question the tool used to refuse, and the entry id answers it. Identity in a
+    composition is `(package, entry id)` -- `Srd52Combat.round-down`, the package id's last
+    segment, the separator, the map's own id (rules-factory 0067) -- so the prefix names the
+    package and nothing has to be guessed, authored or inferred from a file path. `compose` is the
+    factory's own module for it, vendored under `scripts/factory/`, so the separator and the slug
+    rule cannot drift from the ones the engine was produced with.
+
+    **A single-package engine is not namespaced**, so its ids carry no prefix and every entry is
+    that one map's. A prefix naming no package of a composition is refused with the packages
+    listed: that is the one case where choosing would be silently wrong, and it is what the
+    blanket refusal on a composed engine used to stand in for.
+    """
+    if len(maps) == 1:
+        return maps[0], entry_id
+    compose = vendored("compose")
+    by_slug = {compose.slug(package["packageId"]): package for package in maps}
+    prefix, separator, rest = str(entry_id).partition(compose.SEPARATOR)
+    if separator and prefix in by_slug:
+        return by_slug[prefix], rest
+    raise Refused(f"this engine is composed of {len(maps)} map packages, so an entry id names the "
+                  f"package it came from ({compose.SEPARATOR.join((next(iter(by_slug)), 'some-entry'))}), "
+                  f"and {entry_id!r} names none of them: "
+                  f"{', '.join(sorted(by_slug))}")
+
+
+def paired(paths, maps):
+    """[(map package, its restored map's path)], matched by digest and never by order.
+
+    A composed engine restores one map file per package and MSBuild hands them back in its own
+    order, so something has to say which file is which package's. The digest does:
+    `provenance.json` records `files[role="map"].sha256` for every package, and a file that hashes
+    to it *is* that package's map. Pairing by the order MSBuild happened to return, or by picking
+    the package id out of the restore path, would be a guess that reads plausibly when it is wrong
+    -- and the failure it would cause is a packet built from another map's bytes, which is exactly
+    what this tool exists to prevent.
+
+    So the pairing is the check. Every package must be matched, every path must match one, and a
+    path that matches nothing is named rather than dropped.
+    """
+    recorded = {}
+    for package in maps:
+        declared = [part.get("sha256") for part in package.get("files") or []
+                    if isinstance(part, dict) and part.get("role") == "map"]
+        if len(declared) != 1 or not declared[0]:
+            raise Refused(f"{PROVENANCE} does not record the digest of {package['packageId']}'s map "
+                          f"(`maps[].files[role=\"map\"]`), so the bytes a packet is built from "
+                          f"cannot be checked against it")
+        recorded[declared[0]] = package
+    found, unknown = {}, []
+    for path in paths:
+        try:
+            digest = hashlib.sha256(pathlib.Path(path).read_bytes()).hexdigest()
+        except OSError as error:
+            raise Refused(f"--package-map {path} cannot be read ({error})")
+        if digest in recorded:
+            found[digest] = path
+        else:
+            unknown.append(path)
+    missing = [package["packageId"] for digest, package in recorded.items() if digest not in found]
+    if missing:
+        raise Refused(f"no restored map hashes to what {PROVENANCE} records for "
+                      f"{', '.join(missing)}; the engine was produced from "
+                      f"{len(maps)} package(s) and {len(paths)} map file(s) were read"
+                      + (f", of which {len(unknown)} match no package this engine records "
+                         f"({', '.join(unknown[:3])})" if unknown else "")
+                      + ". Restore the packages this engine declares, or pass one --package-map "
+                        "per package.")
+    if unknown:
+        raise Refused(f"{len(unknown)} map file(s) match no package {PROVENANCE} records "
+                      f"({', '.join(unknown[:3])}); a packet is built from the maps the engine "
+                      f"was produced from and nothing else")
+    return [(package, found[digest]) for digest, package in recorded.items()]
+
+
+def package_maps_from_msbuild(name):
+    """Where the restore put each map package's map, asked of MSBuild rather than guessed.
 
     The same question `scripts/validate.sh` asks, and for the same reason: the global packages
     folder is NuGet's business, and an engine that guesses at it is wrong on someone's machine.
+
+    A composed engine references one map package per constituent, so MSBuild answers with several
+    `RulesFactoryMap` items and their order is its own business. `paired` matches each to the
+    package `provenance.json` records by digest, so nothing here depends on that order.
     """
     project = ROOT / "src" / name / f"{name}.csproj"
     if not project.is_file():
@@ -122,30 +226,46 @@ def package_map_from_msbuild(name):
                       f"(`dotnet restore`), or pass --package-map.\n{done.stderr.strip()}")
     try:
         items = json.loads(done.stdout)["Items"]["RulesFactoryMap"]
-        (item,) = items
-        path = item["FullPath"]
+        paths = [item["FullPath"] for item in items]
     except (ValueError, KeyError, TypeError):
-        raise Refused("MSBuild returned no single RulesFactoryMap item; restore first, or pass --package-map")
-    return path
+        raise Refused("MSBuild returned no readable RulesFactoryMap items; restore first, or pass --package-map")
+    if not paths:
+        raise Refused("MSBuild returned no RulesFactoryMap item; restore first, or pass --package-map")
+    return paths
 
 
-def model_for(package_map_path, name, package_id, version, randomness):
-    """The factory's own model of merge(package map, overlay), from the generator this engine vendors."""
-    sys.path.insert(0, str(ROOT / "scripts" / "factory"))
+def model_for(pairs, name, superseded, randomness):
+    """The factory's own model of merge(the composed map, overlay), from the generator this engine vendors.
+
+    `pairs` is every map package and its restored map, so the model is built over the **whole**
+    composition and not over one constituent of it. That is what makes the entry findable at all:
+    a composed engine's overlay files, generated members and registry ids are the namespaced ones
+    (`Srd52Combat.round-down`), and a model built from one package would not hold them.
+
+    The composition is `compose.union`, the same call `engine-gate.py regenerate` makes over the
+    restored packages, in the same package-id order -- so what a packet computes is what the gate
+    regenerates rather than a second, parallel idea of what these packages mean together. One
+    package composes to itself, ids and all.
+    """
+    generate = vendored("generate")          # the factory's generator, vendored by produce
+    overlay_step = vendored("overlay")       # one file per entry under overlay/, #247
+    rulings = vendored("rulings")            # the owner's rulings the overlay holds, decision 0027
+    compose = vendored("compose")            # several packages as one, decision 0067
     try:
-        import generate  # noqa: E402  (the factory's generator, vendored by produce)
-        import overlay as overlay_step  # noqa: E402  (one file per entry under overlay/, #247)
-        import rulings  # noqa: E402  (the owner's rulings the overlay holds, decision 0027)
-    except ImportError as error:
-        raise Refused(f"scripts/factory is not importable ({error}); run `factory produce` again")
-    package = read_json(package_map_path, "the map package's map")
+        package = compose.union([(record["packageId"], read_json(path, "the map package's map"))
+                                 for record, path in pairs])
+    except compose.Refused as error:
+        raise Refused(f"the maps this engine was produced from do not compose: {error}")
     try:
         overlay = overlay_step.load(str(ROOT), package)
     except overlay_step.OverlayError as error:
         raise Refused(str(error))
     try:
         merged = generate.merge(package, overlay, root=str(ROOT))
-        model = generate.Model(types.SimpleNamespace(package_id=package_id, version=version, randomness=randomness),
+        model = generate.Model(types.SimpleNamespace(
+            packages=[types.SimpleNamespace(package_id=record["packageId"], version=record["version"])
+                      for record, _ in pairs],
+            superseded=superseded, randomness=randomness),
                                merged, name, rulings.collect(overlay))
     except generate.GenerationError as error:
         raise Refused(f"the map and this engine's overlay do not merge: {error}")
@@ -231,16 +351,42 @@ def handler(generate, model, item):
 
 
 def packet(generate, model, overlay, item, identity):
-    name, package_id, version, nupkg = identity
+    """The packet for one entry, naming the map **that entry** came from.
+
+    A composed engine holds several maps, and which one an entry is from is not a detail: it is
+    which published bytes the implementer is working to, which version a defect is reported
+    against, and which corpus licence the work carries. The entry id says it (`map_of`), so the
+    header names that package and then says what it is composed with, rather than naming one of
+    several and leaving a reader to find out which.
+    """
+    name, source, local_id, maps, superseded = identity
     entry = item["entry"]
     entry_id = entry["id"]
+    composed = [m for m in maps if m["packageId"] != source["packageId"]]
     lines = [f"# Entry packet: `{entry_id}`\n",
-             f"**{entry.get('name', '(unnamed)')}** — engine `{name}`, map `{package_id}` {version}",
-             f"(`sha256:{nupkg[:16]}…`). Assembled by `tools/entry-packet.py` from the merge of that",
+             f"**{entry.get('name', '(unnamed)')}** — engine `{name}`, map `{source['packageId']}` "
+             f"{source['version']}",
+             f"(`sha256:{source.get('nupkgSha256', '')[:16]}…`). Assembled by `tools/entry-packet.py` from the merge of that",
              "package and this engine's overlay. Every line below is the map's own bytes or a fact computed",
-             "from them: nothing here is a reading of the corpus, and neither is your implementation.\n",
-             "## 1. The entry, as the engine sees it\n",
-             block(entry), ""]
+             "from them: nothing here is a reading of the corpus, and neither is your implementation.\n"]
+    if composed:
+        lines.append(f"This engine is **composed** of {len(maps)} map packages (rules-factory 0067), and this "
+                     f"entry is `{source['packageId']}`'s — its id says so. It is merged here with "
+                     + ", ".join(f"`{m['packageId']}` {m['version']}" for m in composed)
+                     + ", so what an entry of another package says is in section 4 exactly as an entry of this "
+                       "one would be. A defect in **this** entry is reported against "
+                       f"`{source['packageId']}` {source['version']} and no other, where it is "
+                       f"published as `{local_id}` — the composition's prefix is this engine's, not the "
+                       "map's, so an upstream report names the id without it (section 9).\n")
+    if entry_id in superseded:
+        lines.append(f"> **This entry is superseded in this composition**, by "
+                     f"{entry_line(model, superseded[entry_id])}. The map that holds this one declined the "
+                     "passage because its slice stopped short, and another map of this composition holds it in "
+                     "scope; the composition answers the rule there. There is no implementation to write here, "
+                     "and writing one would be a second reading of a passage this engine already answers "
+                     "(rules-factory 0067). If you were assigned this entry, say so on the issue.\n")
+    lines += ["## 1. The entry, as the engine sees it\n",
+              block(entry), ""]
 
     lines.append("## 2. Where it comes from\n")
     cited = locators(generate, model, item)
@@ -337,6 +483,11 @@ def packet(generate, model, overlay, item, identity):
     lines.append("Stop. Report an upstream map defect on the issue — the entry id, the locator, what the map says "
                  "and what the corpus says — and do not implement around it. A map is corrected by a new, checked, "
                  "published map version, and this engine is then re-produced from it (`AGENTS.md`).\n")
+    if composed:
+        lines.append(f"The map to report it against is `{source['packageId']}` {source['version']}, and the entry "
+                     f"is `{local_id}` there. `{entry_id}` is what **this** engine calls it, because an id is "
+                     "qualified by the package that enumerated it once several are composed; a report naming the "
+                     "composed id names an entry that map does not have.\n")
     return "\n".join(lines)
 
 
@@ -357,21 +508,24 @@ def main(argv=None):
     parser.add_argument("entry", help="the map entry id to assemble a packet for")
     parser.add_argument("--out", help=f"directory to write into (default: ${PACKET_ROOT_VARIABLE}, "
                                       f"else a directory beside the system temporary one)")
-    parser.add_argument("--package-map", help="the restored map package's corpus-map.json (default: ask MSBuild)")
+    parser.add_argument("--package-map", action="append", default=[], metavar="PATH",
+                        help="the restored map package's corpus-map.json (default: ask MSBuild); "
+                             "repeat once per package for a composed engine")
     parser.add_argument("--stdout", action="store_true", help="write the packet to stdout and no file")
     args = parser.parse_args(argv)
 
     try:
-        name, package_id, version, nupkg, randomness = engine()
-        package_map = args.package_map or package_map_from_msbuild(name)
-        generate, model, overlay = model_for(package_map, name, package_id, version, randomness)
+        name, maps, superseded, randomness = engine()
+        pairs = paired(args.package_map or package_maps_from_msbuild(name), maps)
+        source, local_id = map_of(args.entry, maps)
+        generate, model, overlay = model_for(pairs, name, superseded, randomness)
         item = model.by_id.get(args.entry)
         if item is None:
             near = [entry_id for entry_id in model.by_id if args.entry.lower() in entry_id.lower()]
             raise Refused(f"the map has no entry {args.entry!r}"
                           + (f". Did you mean: {', '.join(sorted(near)[:5])}?" if near else
                              f" (the map has {len(model.by_id)} entries)"))
-        text = packet(generate, model, overlay, item, (name, package_id, version, nupkg))
+        text = packet(generate, model, overlay, item, (name, source, local_id, maps, superseded))
         if args.stdout:
             sys.stdout.write(text)
             return 0

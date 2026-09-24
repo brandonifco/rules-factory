@@ -61,7 +61,9 @@ LAYERS = {
     # The rest of the factory.
     "__main__": {"backlog", "compose", "gate", "generate", "intake", "ownership", "provenance",
                  "rails", "transaction", "verify"},
-    "backlog": {"agentrails", "intake", "overlay", "semantics"},
+    # `compose`: a backlog is the whole engine's work, so an engine composed of several map
+    # packages is rendered from all of them, composed the way the factory composed them (#460).
+    "backlog": {"agentrails", "compose", "intake", "overlay", "semantics"},
     # Several map packages read as one (0067). It imports nothing of the factory: what it reads of
     # an `intake.Intake` is five attributes, and holding it to the class would make a composition
     # untestable without a package.

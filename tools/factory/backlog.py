@@ -86,6 +86,7 @@ import re
 import subprocess
 
 import agentrails
+import compose
 import semantics
 import intake
 import overlay as overlay_step
@@ -657,20 +658,26 @@ def _issues(repo, gh):
     return issues
 
 
-def _recorded_package(record, package, why):
-    """(package parts, the manifest corpus the map cites) for the map package provenance.json records.
+def _recorded_packages(record, package, why):
+    """[(package id, parts, the manifest corpus its map cites)] for every map provenance.json records.
 
     Read from `package` (a .nupkg path or Id@Version) or else Id@Version from provenance.json, taken
     from a file or the NuGet global packages folder and never downloaded, and refused unless its map
-    and manifest are the ones provenance hashed."""
+    and manifest are the ones provenance hashed.
+
+    **An engine composed of several map packages is read from all of them** (rules-factory 0067).
+    A backlog is the whole engine's work, so rendering it from one constituent would list a third
+    of it and say nothing about the rest. An explicit `--package` still names one, for the caller
+    who has the file and wants it used; it then stands for the package whose recorded digests it
+    matches, and a file matching none is refused by the digest check below as it always was.
+    """
     maps = [m for m in record.get("maps") or [] if isinstance(m, dict)]
-    if len(maps) > 1 and not package:
-        raise BacklogError(f"provenance.json names {len(maps)} map packages "
-                           f"({', '.join(str(m.get('packageId')) for m in maps)}); a backlog item "
-                           f"carries the attribution of the corpus licence from the package its "
-                           f"entry came from (0023), and this cannot yet say which of several "
-                           f"that is (rules-factory 0067)")
-    source = maps[0] if maps else {}
+    if not maps:
+        raise BacklogError(f"provenance.json names no map package, so {why} cannot be read")
+    return [_one_recorded_package(source, package if len(maps) == 1 else None, why) for source in maps]
+
+
+def _one_recorded_package(source, package, why):
     spec = package or f"{source.get('packageId')}@{source.get('version')}"
     if os.path.isfile(spec):
         nupkg = spec
@@ -698,7 +705,7 @@ def _recorded_package(record, package, why):
         (corpus,) = [c for c in manifest.get("corpora") or [] if isinstance(c, dict) and c.get("sourceId") == cited]
     except (ValueError, AttributeError) as error:
         raise BacklogError(f"cannot read which corpus {nupkg}'s map cites from its manifest: {error}")
-    return parts, corpus
+    return str(source.get("packageId")), parts, corpus
 
 
 def engine_backlog(engine_dir, package=None):
@@ -729,12 +736,19 @@ def engine_backlog(engine_dir, package=None):
     if not isinstance(name, str) or not name:
         raise BacklogError(f"{path} records no engine.name, so the backlog's items cannot say which engine "
                            f"they are for; run `factory produce` again")
-    parts, corpus = _recorded_package(record, package,
-                                      "the backlog is rendered from the map package the record names (0023)")
+    read = _recorded_packages(record, package,
+                              "the backlog is rendered from the map packages the record names (0023)")
+    documents = []
+    for package_id, parts, corpus in read:
+        try:
+            documents.append((package_id, json.loads(parts["map"][1].decode("utf-8")), corpus))
+        except (ValueError, AttributeError) as error:
+            raise BacklogError(f"the map inside {package_id} is not readable JSON: {error}")
     try:
-        document_map = json.loads(parts["map"][1].decode("utf-8"))
-    except (ValueError, AttributeError) as error:
-        raise BacklogError(f"the map inside the package is not readable JSON: {error}")
+        document_map = compose.union([(package_id, document) for package_id, document, _ in documents])
+    except compose.Refused as error:
+        raise BacklogError(f"the map packages this engine was produced from do not compose, so there is "
+                           f"no backlog to render: {error}")
     try:
         overlay = overlay_step.load(engine_dir, document_map)
     except overlay_step.OverlayError as error:
@@ -744,9 +758,27 @@ def engine_backlog(engine_dir, package=None):
     except semantics.GenerationError as error:
         raise BacklogError(f"the map and {overlay_step.DIRECTORY}/ do not merge, so there is no backlog to "
                            f"render: {error}")
-    source = next((m for m in record.get("maps") or [] if isinstance(m, dict)), {})
-    context = {"name": name, "package": source.get("packageId"), "version": source.get("version")}
-    credit = attribution(corpus)
+    maps = [m for m in record.get("maps") or [] if isinstance(m, dict)]
+    context = {"name": name, "package": ", ".join(str(m.get("packageId")) for m in maps),
+               "version": ", ".join(str(m.get("version")) for m in maps)}
+    # One statement for the whole rendering, because every item quotes the same corpus: 0067's
+    # compatibility rule refuses a composition whose packages do not read one corpus under one
+    # content hash. What it does not refuse is two manifests describing that corpus's licence
+    # differently, and rendering one of them over every item would put a statement on quotations
+    # the other package's terms govern. So the statements are compared and a difference is
+    # refused rather than resolved here (decision 0023).
+    credits = []
+    for package_id, _, corpus in documents:
+        credit = attribution(corpus)
+        if credit is not None and credit not in credits:
+            credits.append(credit)
+    if len(credits) > 1:
+        raise BacklogError(f"the {len(documents)} map packages this engine is composed of state "
+                           f"{len(credits)} different corpus attributions "
+                           f"({'; '.join(str(c.get('sourceId')) for c in credits)}); every item of one "
+                           f"backlog would carry one of them over quotations the other governs, so the "
+                           f"backlog is refused rather than rendered under either (decision 0023)")
+    credit = credits[0] if credits else None
     if credit:
         context["attribution"] = credit
     return render(merged.get("entries") or [], context), credit
