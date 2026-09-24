@@ -95,10 +95,16 @@ TABLE = (
         "names the two emitted things that do name a vendor, as the defaults they are (#174)"),
     Row("CLAUDE.md", MANAGED, 1,
         "a pointer to AGENTS.md and the Claude adapters; it states no rule of its own (0029)"),
-    Row("docs/agent-team.md", MANAGED, 5, "the four roles, and what each may not do (0029)"),
+    Row("docs/agent-team.md", MANAGED, 6,
+        "the four roles, what each may not do, and what a turn costs: the tiering the two reviews are "
+        "dispatched on, stated without naming any vendor's model (0029 amendment, #455)"),
     Row(".claude/agents/engine-dev.md", MANAGED, 9, "the implementer's charter (0029)"),
-    Row(".claude/agents/repo-steward.md", MANAGED, 1, "the structural reviewer's charter, read-only (0029)"),
-    Row(".claude/agents/rules-conformance.md", MANAGED, 4, "the semantic reviewer's charter, read-only (0029)"),
+    Row(".claude/agents/repo-steward.md", MANAGED, 2,
+        "the structural reviewer's charter, read-only, and on the cheaper tier its description has always "
+        "claimed (0029 amendment, #455)"),
+    Row(".claude/agents/rules-conformance.md", MANAGED, 5,
+        "the semantic reviewer's charter, read-only, on the deepest tier: the role not to economise on "
+        "(0029 amendment, #455)"),
     Row(".claude/hooks/primary-checkout-guard.py", MANAGED, 1,
         "the PreToolUse guard that keeps implementation work out of the primary checkout (0029)"),
     Row(".claude/settings.json", MANAGED, 1, "which tools the guard runs before (0029)"),
@@ -260,12 +266,14 @@ RECIPE_SHA256 = {
     },
     ".claude/agents/repo-steward.md": {
         1: "6a2662ac958da76bb02263914d4e3b293a8dc15837e8a6ffccb14177b013bde7",
+        2: "2a991d61d6827a519878eb2659004c3ff451292a971a34636378a8bd449a2e43",
     },
     ".claude/agents/rules-conformance.md": {
         1: "95eac2e802b474bdefad5a6053528dceda7465bbacfc946a0dd3c52a09705e78",
         2: "034cc0af3ecb98e9af60a65931102c69546f22ddadfea9c82961bb71fbbf96c2",
         3: "7f91ed4187d6d87621873266741f972a5b9bc8a27e16a248e78eb4de69789a64",
         4: "4f63b9d3336f708c76fbe1cc9ab1b73a62ffd4c382419a4f979ca0329ffd4c8d",
+        5: "84289349255eee63078b42e155ebe7174e336c8b5028f35a01c2d38b22e40c05",
     },
     ".claude/hooks/primary-checkout-guard.py": {
         1: "a263531db502dfad98b38bf1dd90df7b1bec5f22133db016b6f30dc38509d16d",
@@ -303,6 +311,7 @@ RECIPE_SHA256 = {
         3: "ae9c54d7236adca8507e673d77b51e6431a48f4a3c29af40d7420ea2810e8521",
         4: "1806e2679578deb3f6b59c920e1c209fb5c5606f36a07d1b8b9a942994103379",
         5: "f7f114fc7b8a74239a2f5fba97aadf69d5252e7683aa6061a5f9052c7b981689",
+        6: "20523f6e370e6fb75c0ef3e645e41676d6252bdae91d8f242a0214114ba68574",
     },
     "tools/dispatch-agent.sh": {
         1: "868ce983b51d784a83a6a0fcac7456608b31f0af025c75ac5eeac64a373dca2b",
