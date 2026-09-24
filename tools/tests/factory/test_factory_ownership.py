@@ -56,7 +56,7 @@ MANAGED = ("Directory.Build.props", "NuGet.config", "global.json",
            ".claude/agents/repo-steward.md", ".claude/agents/rules-conformance.md",
            ".claude/hooks/primary-checkout-guard.py", ".claude/settings.json",
            "tools/dispatch-agent.sh", "tools/new-issue.sh", "tools/entry-packet.py", "tools/mutate.py", "tools/re-produce.sh",
-           "tools/review-packet.py", "tools/pr-policy.py", "tools/record-verdict.py",
+           "tools/review-packet.py", "tools/repair-packet.py", "tools/pr-policy.py", "tools/record-verdict.py",
            "tools/conformance-gate.py", "tools/requeue-gate.py", ".github/pull_request_template.md",
            ".github/workflows/pr-policy.yml", ".github/workflows/conformance-gate.yml",
            ".github/workflows/verdict-requeue.yml", "tools/agent-doctor.py", ".editorconfig")

@@ -364,9 +364,9 @@ backlog       not a file in the engine: GitHub issues, one per entry still to
 provenance    factory commit, map package, corpus, kernel, recipe hashes, and the
               generated, managed, engine-owned and build-input files; "packs": []
 rails         AGENTS.md, the roles, the three charters, the primary-checkout guard,
-              dispatch, the entry and review packets, the pull request template and
-              its policy check, the recorded verdict and its conformance gate, and
-              .github/agent-policy.json, which the engine owns
+              dispatch, the entry, review and repair packets, the pull request
+              template and its policy check, the recorded verdict and its
+              conformance gate, and .github/agent-policy.json, which the engine owns
 
 not implemented: a domain pack as input
 ```

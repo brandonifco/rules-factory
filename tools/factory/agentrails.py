@@ -45,6 +45,7 @@ RAILS = {
     "tools/mutate.py": "tools/mutate.py",
     "tools/re-produce.sh": "tools/re-produce.sh",
     "tools/review-packet.py": "tools/review-packet.py",
+    "tools/repair-packet.py": "tools/repair-packet.py",
     "tools/pr-policy.py": "tools/pr-policy.py",
     "tools/record-verdict.py": "tools/record-verdict.py",
     "tools/conformance-gate.py": "tools/conformance-gate.py",
@@ -66,8 +67,8 @@ RAILS = {
 # it through `python3`, and nobody runs it by hand. The mode is not part of a recipe's bytes, so it
 # plays no part in hand-edit detection.
 EXECUTABLE = frozenset({"tools/dispatch-agent.sh", "tools/new-issue.sh", "tools/entry-packet.py",
-                        "tools/mutate.py", "tools/review-packet.py", "tools/pr-policy.py",
-                        "tools/record-verdict.py", "tools/conformance-gate.py",
+                        "tools/mutate.py", "tools/review-packet.py", "tools/repair-packet.py",
+                        "tools/pr-policy.py", "tools/record-verdict.py", "tools/conformance-gate.py",
                         "tools/agent-doctor.py", "tools/re-produce.sh"})
 
 

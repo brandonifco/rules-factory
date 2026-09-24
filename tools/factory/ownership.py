@@ -87,20 +87,24 @@ TABLE = (
     Row("scripts/engine-gate.py", GENERATED, None, "the gate recipe: its non-dotnet checks"),
     Row("scripts/factory/*.py", GENERATED, None, "the factory's generator, vendored so the gate can regenerate"),
     Row(".github/workflows/validate.yml", GENERATED, None, "the gate recipe: CI runs validate.sh full"),
-    Row("AGENTS.md", MANAGED, 20,
+    Row("AGENTS.md", MANAGED, 21,
         "the governing contract every agent works this engine under (decision 0029); section 4 carries "
         "the sweep, the documentation section, and delete-only-what-you-created (#236); a packet that "
         "names an entry is made with the map the reviewed commit declares, one per package for a "
         "composed engine, and the entry id says which package it came from (#372, #460); section 11 is "
         "what the machine owes the work -- the pinned SDK, a restore, a `gh` the packets can read "
         "(#195); section 9 names the two emitted things that do name a vendor, as the defaults they "
-        "are (#174)"),
+        "are (#174); section 4 ends an implementation attempt at the review boundary, and names the "
+        "brief the next one reads (#465)"),
     Row("CLAUDE.md", MANAGED, 1,
         "a pointer to AGENTS.md and the Claude adapters; it states no rule of its own (0029)"),
-    Row("docs/agent-team.md", MANAGED, 6,
+    Row("docs/agent-team.md", MANAGED, 7,
         "the four roles, what each may not do, and what a turn costs: the tiering the two reviews are "
-        "dispatched on, stated without naming any vendor's model (0029 amendment, #455)"),
-    Row(".claude/agents/engine-dev.md", MANAGED, 9, "the implementer's charter (0029)"),
+        "dispatched on, stated without naming any vendor's model (0029 amendment, #455); one instance of "
+        "the implementer is one attempt, and a fourth consequence of the cost model says why (#465)"),
+    Row(".claude/agents/engine-dev.md", MANAGED, 10,
+        "the implementer's charter (0029); it ends with the attempt, and says what a repair attempt "
+        "reads and what it may not reconstruct (#465)"),
     Row(".claude/agents/repo-steward.md", MANAGED, 2,
         "the structural reviewer's charter, read-only, and on the cheaper tier its description has always "
         "claimed (0029 amendment, #455)"),
@@ -130,6 +134,10 @@ TABLE = (
         "read once and the entry packets are built from those bytes, and a refused packet writes nothing "
         "(#371, #372); a composed engine's maps are each checked against their own recorded digest and the "
         "identity names all of them (#460)"),
+    Row("tools/repair-packet.py", MANAGED, 1,
+        "the bounded brief for one repair attempt: the head, the branch, the worktree, the issue's "
+        "acceptance criteria, the entries and the verdicts standing at that head, all derived -- and the "
+        "blocking findings, which are the caller's judgement and the only thing it is given (#465)"),
     Row("tools/pr-policy.py", MANAGED, 7,
         "the pull request contract, checked mechanically; a produce update's claim is checked, not taken "
         "(#193); every document the engine owns is accounted for (#236)"),
@@ -268,6 +276,7 @@ RECIPE_SHA256 = {
         7: "8f26f1270af1eeaa12f471018cb8bf590265c573d690954b8cb942f64315746b",
         8: "d7838a14be85667f9f97e5a483be681a4a3a2ae969399aa7437762631639cc7c",
         9: "9bb4c07be9a29dd45b6e6d2e7ea96be95fa7227c9fbb20ea8251b21aaed6b693",
+        10: "57f96a153377f78df2a926fc29e0b998c3a547687a82f650881438b7924c2eac",
     },
     ".claude/agents/repo-steward.md": {
         1: "6a2662ac958da76bb02263914d4e3b293a8dc15837e8a6ffccb14177b013bde7",
@@ -307,6 +316,7 @@ RECIPE_SHA256 = {
         18: "2b6a2f95c659e0d17b524f2b401f32cfe047ebe0a7249bda05ba0b4e7bab61b5",
         19: "50c0496e6b4eb008dd649d3ca50af82400c6778b0fc1180cc3ec6d14aa2157c8",
         20: "754e718a55fbb779147ae3089cdb1aeeec614323a5380ebe8aba43e4d949ed01",
+        21: "45a258a0b0ae9fc05390b4d41075d1c1419f8612006340505a7e4bc65ca95abd",
     },
     "CLAUDE.md": {
         1: "04c07ad36e742fa60efafeca54d20bd96d16b6e338a44e46fad2b679ab8dfd9f",
@@ -318,6 +328,7 @@ RECIPE_SHA256 = {
         4: "1806e2679578deb3f6b59c920e1c209fb5c5606f36a07d1b8b9a942994103379",
         5: "f7f114fc7b8a74239a2f5fba97aadf69d5252e7683aa6061a5f9052c7b981689",
         6: "20523f6e370e6fb75c0ef3e645e41676d6252bdae91d8f242a0214114ba68574",
+        7: "f73289cfb230cfd5b32b986afd699ee99e1890810e7c86ed9428a60d84aa4625",
     },
     "tools/dispatch-agent.sh": {
         1: "868ce983b51d784a83a6a0fcac7456608b31f0af025c75ac5eeac64a373dca2b",
@@ -358,6 +369,9 @@ RECIPE_SHA256 = {
         6: "445377e001ec8f17a881f7369e82eacb9ecf9646a87d225ea80022efef98d2d5",
         7: "7aa09461a5229497fedd360ec47cd05c8279e369be59626ef7a634caeb0d00ee",
         8: "c511f80d77be24490ff8f259ea7fdec386db331ada4fed3812fee2d56fe9d3b1",
+    },
+    "tools/repair-packet.py": {
+        1: "826afdea09ade3f5ac07667a57b38827d40e0fadd9e27f2658ab9f67033bd13b",
     },
     "tools/pr-policy.py": {
         1: "79a33c7fe1ea8d888e4d6912a43ac60afe285c7a8bf43fbe9f7be87d6947b76e",

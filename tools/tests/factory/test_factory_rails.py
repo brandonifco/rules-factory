@@ -771,6 +771,16 @@ import base64, json, os, sys
 fixture = json.load(open(os.environ["GH_FIXTURE"], encoding="utf-8"))
 argv = sys.argv[1:]
 kind = argv[0] if argv else ""
+if kind == "api" and "/status" in argv[1]:
+    # `gh api repos/{owner}/{repo}/commits/<sha>/status --jq ...`: the verdicts standing at one
+    # commit, which tools/repair-packet.py reports and must call NOT CHECKED when it cannot read
+    # them. GH_STATUS_FAILS is that other case.
+    if os.environ.get("GH_STATUS_FAILS"):
+        sys.stderr.write("could not read commit statuses: HTTP 403\\n")
+        sys.exit(1)
+    sha = argv[1].split("/commits/", 1)[1].split("/")[0]
+    print(json.dumps((fixture.get("statuses") or {}).get(sha) or []))
+    sys.exit(0)
 if kind == "api":
     # `gh api repos/{owner}/{repo}/contents/<path>?ref=<sha> --jq .content`: a file at the base
     # commit, base64 as GitHub returns it. pr-policy.py reads the record this way and then hashes
@@ -1866,6 +1876,255 @@ The structure-radius case still declines.
 
 None
 """
+
+
+class TestTheRepairPacket(RailsInAGitEngine):
+    """`tools/repair-packet.py`: the brief one repair attempt reads, and nothing else (#465).
+
+    The failure it exists for is an implementation agent that outlives the review that sent its
+    work back, and then the next one, and the next. Its conversation is not where any of the state
+    lives -- the worktree, the map, the overlay, the pull request and the commit statuses are --
+    and it is the one part of the arrangement whose cost compounds, because context grows
+    monotonically and every later turn pays for the whole of it.
+
+    So what is asserted here is mostly what the brief does **not** carry, and that everything it
+    does carry was derived rather than retyped.
+    """
+
+    BRANCH = "issue-27-widen-the-altitude-limit"
+
+    def change(self, branch=BRANCH):
+        """A branch with an implementation on it, as an attempt that has been reviewed would leave."""
+        git(self.out, "checkout", "-qb", branch)
+        write_overlay(self.out, {"altitude-limit": {
+            "status": "implemented", "implementedIn": "Rules/AltitudeLimit.cs",
+            "tests": [{"name": "AltitudeLimit_DeclinesAboveTheCeiling",
+                       "mutation": "return the ceiling instead of declining"}]}})
+        git(self.out, "add", "-A")
+        git(self.out, "commit", "-qm", "implement the altitude limit")
+        head = git(self.out, "rev-parse", "HEAD")
+        git(self.out, "checkout", "-q", "main")
+        return head
+
+    def pull_request(self, head, *, branch=BRANCH, state="OPEN", issues=1,
+                     labels=("state:ready", "risk:normal"), statuses=None,
+                     body="## Linked Issue\nCloses #27"):
+        self.fixture({
+            "pr": {"5": {"number": 5, "title": "Implement the altitude limit", "body": body,
+                         "state": state, "isDraft": False,
+                         "headRefOid": head, "headRefName": branch, "baseRefName": "main",
+                         "closingIssuesReferences": [{"number": 27}][:issues]}},
+            "issue": {"27": {"number": 27, "title": "Widen the altitude limit", "state": "OPEN",
+                             "body": ("<!-- rules-factory-entry: altitude-limit -->\n"
+                                      "## Why it exists\n\nA long argument for the work that the branch "
+                                      "already carries out, which a repair attempt does not need.\n\n"
+                                      "## Acceptance criteria\n\n- [ ] it declines above the ceiling\n\n"
+                                      "## Required evidence\n\nThe mutation, observed.\n"),
+                             "labels": [{"name": name} for name in labels]}},
+            "statuses": statuses or {},
+        })
+
+    def brief(self, *extra, **environment):
+        return subprocess.run([sys.executable, os.path.join(self.out, "tools", "repair-packet.py"), "5", *extra],
+                              cwd=self.out, capture_output=True, text=True,
+                              env=self.environment(**environment))
+
+    def rendered(self, *extra, **environment):
+        done = self.brief("--finding", "Row 7 of the altitude table is transcribed as 400, and the "
+                                       "corpus prints 4,000.", *extra, **environment)
+        self.assertEqual(done.returncode, 0, done.stderr)
+        return done.stdout
+
+    # --- what it derives ------------------------------------------------------------------
+
+    def test_it_derives_the_head_the_branch_the_issue_and_the_entry(self):
+        self.commit_engine()
+        head = self.change()
+        self.pull_request(head)
+        text = self.rendered()
+        self.assertIn(head, text, "the head the repair is against, which the next verdict is bound to")
+        self.assertIn(self.BRANCH, text, "the branch it works on -- the one the PR is already on")
+        self.assertIn("#27", text)
+        self.assertIn("tools/entry-packet.py altitude-limit", text,
+                      "the entry the issue names, as the command that assembles it")
+
+    def test_it_carries_the_findings_verbatim_and_says_they_are_the_whole_of_the_work(self):
+        self.commit_engine()
+        self.pull_request(self.change())
+        text = self.rendered()
+        self.assertIn("the corpus prints 4,000", text)
+        self.assertIn("is a new issue, not a second commit", text)
+
+    def test_several_findings_are_numbered_in_the_order_given(self):
+        self.commit_engine()
+        self.pull_request(self.change())
+        done = self.brief("--finding", "the first thing", "--finding", "the second thing")
+        self.assertEqual(done.returncode, 0, done.stderr)
+        self.assertLess(done.stdout.index("the first thing"), done.stdout.index("the second thing"))
+        self.assertIn("### Finding 1", done.stdout)
+        self.assertIn("### Finding 2", done.stdout)
+
+    def test_findings_can_come_from_a_file_or_from_stdin(self):
+        self.commit_engine()
+        self.pull_request(self.change())
+        path = os.path.join(self.tmp, "findings.md")
+        with open(path, "w", encoding="utf-8") as handle:
+            handle.write("the reviewer's own words, unedited\n")
+        done = self.brief("--findings", path)
+        self.assertEqual(done.returncode, 0, done.stderr)
+        self.assertIn("the reviewer's own words, unedited", done.stdout)
+
+        piped = subprocess.run([sys.executable, os.path.join(self.out, "tools", "repair-packet.py"), "5",
+                                "--findings", "-"], cwd=self.out, capture_output=True, text=True,
+                               input="from standard input\n", env=self.environment())
+        self.assertEqual(piped.returncode, 0, piped.stderr)
+        self.assertIn("from standard input", piped.stdout)
+
+    def test_it_carries_the_issue_s_criteria_and_not_the_case_for_the_work(self):
+        """The acceptance criteria and the required evidence; not the argument.
+
+        A repair attempt does not need persuading that the work is worth doing -- the work is
+        merged into the branch it is about to change. The argument is the largest part of most
+        issue bodies and the part that costs a growing context the most.
+        """
+        self.commit_engine()
+        self.pull_request(self.change())
+        text = self.rendered()
+        self.assertIn("it declines above the ceiling", text, "the acceptance criteria")
+        self.assertIn("The mutation, observed.", text, "the required evidence")
+        self.assertNotIn("A long argument for the work", text,
+                         "the brief carries the issue's case for itself, which a repair attempt is not "
+                         "being asked to judge")
+
+    def test_an_issue_with_neither_section_is_reported_as_a_finding_not_as_a_blank(self):
+        self.commit_engine()
+        head = self.change()
+        self.pull_request(head)
+        document = json.load(open(self.fixture_path, encoding="utf-8"))
+        document["issue"]["27"]["body"] = "<!-- rules-factory-entry: altitude-limit -->\njust prose"
+        self.fixture(document)
+        self.assertIn("states neither acceptance criteria nor required evidence", self.rendered())
+
+    def test_it_reports_the_verdicts_standing_at_this_head_and_that_the_repair_ends_them(self):
+        self.commit_engine()
+        head = self.change()
+        self.pull_request(head, statuses={head: [
+            {"context": "rules-verdict/semantic", "state": "failure", "description": "row 7 is wrong"},
+            {"context": "some-other/check", "state": "success", "description": "not a review context"}]})
+        text = self.rendered()
+        self.assertIn("rules-verdict/semantic", text)
+        self.assertIn("row 7 is wrong", text)
+        self.assertNotIn("some-other/check", text, "only the contexts this engine's policy reviews under")
+        self.assertIn("stops applying", text, "the repair commit invalidates what was recorded")
+
+    def test_an_unreadable_status_is_not_checked_rather_than_no_verdict(self):
+        """"I could not ask" and "nothing was recorded" leave the same repository behind, and the
+        rails say so everywhere else they read GitHub (`--sweep`, the doctor)."""
+        self.commit_engine()
+        self.pull_request(self.change())
+        text = self.rendered(GH_STATUS_FAILS="1")
+        self.assertIn("NOT CHECKED", text)
+        self.assertNotIn("No verdict is recorded", text)
+
+    def test_an_independent_risk_issue_says_the_chain_is_still_owed(self):
+        self.commit_engine()
+        self.pull_request(self.change(), labels=("state:ready", "risk:independent-review"))
+        text = self.rendered()
+        self.assertIn("rules-verdict/codex → rules-verdict/gemini", text, "the chain, read from the policy")
+
+    def test_no_provider_is_named_by_the_script(self):
+        self.commit_engine()
+        path = os.path.join(self.out, ".github", "agent-policy.json")
+        policy = json.load(open(path, encoding="utf-8"))
+        policy["review"]["independentFallback"] = [{"id": "acme", "context": "rules-verdict/acme"}]
+        with open(path, "w", encoding="utf-8") as handle:
+            json.dump(policy, handle, indent=2)
+        git(self.out, "commit", "-qam", "one provider, ours")
+        self.pull_request(self.change(), labels=("risk:independent-review",))
+        text = self.rendered()
+        self.assertIn("rules-verdict/acme", text)
+        self.assertNotIn("codex", text)
+
+    # --- the worktree ---------------------------------------------------------------------
+
+    def test_it_names_the_worktree_that_holds_the_branch(self):
+        self.commit_engine()
+        self.fixture({"issue": {"27": {"title": "Widen the altitude limit", "state": "OPEN",
+                                       "labels": [{"name": "state:ready"}, {"name": "risk:normal"}]}}})
+        self.assertEqual(self.dispatch("27").returncode, 0)
+        worktree = os.path.join(self.worktrees, self.BRANCH)
+        head = git(worktree, "rev-parse", "HEAD")
+        self.pull_request(head)
+        text = self.rendered()
+        self.assertIn(worktree, text, "the repair works where the branch already is")
+        self.assertNotIn("git worktree add", text)
+
+    def test_a_branch_no_worktree_holds_gets_the_command_that_puts_one_back(self):
+        """The same branch, not a new one: one issue, one branch, one worktree, one pull request
+        is what a second attempt keeps, and the only thing it replaces is the agent."""
+        self.commit_engine()
+        self.pull_request(self.change())          # the branch exists; nothing has it checked out
+        text = self.rendered()
+        self.assertIn("No worktree holds", text)
+        self.assertIn(f"git worktree add {os.path.join(self.worktrees, self.BRANCH)} {self.BRANCH}", text)
+
+    def test_a_branch_this_machine_has_never_seen_is_fetched_first(self):
+        self.commit_engine()
+        head = git(self.out, "rev-parse", "HEAD")
+        self.pull_request(head, branch="issue-31-somebody-elses-machine")
+        text = self.rendered()
+        self.assertIn("git fetch origin issue-31-somebody-elses-machine", text)
+
+    # --- what it refuses ------------------------------------------------------------------
+
+    def test_a_brief_with_no_findings_is_refused(self):
+        self.commit_engine()
+        self.pull_request(self.change())
+        done = self.brief()
+        self.assertEqual(done.returncode, 1, done.stdout)
+        self.assertIn("nothing to repair", done.stderr)
+        self.assertEqual(done.stdout, "", "a refused brief prints nothing a caller could act on")
+
+    def test_a_merged_pull_request_is_refused(self):
+        self.commit_engine()
+        self.pull_request(self.change(), state="MERGED")
+        done = self.brief("--finding", "too late")
+        self.assertEqual(done.returncode, 1, done.stdout)
+        self.assertIn("MERGED", done.stderr)
+
+    def test_a_pull_request_closing_no_issue_is_refused(self):
+        self.commit_engine()
+        self.pull_request(self.change(), issues=0)
+        done = self.brief("--finding", "x")
+        self.assertEqual(done.returncode, 1, done.stdout)
+        self.assertIn("closes 0 issues", done.stderr)
+
+    def test_it_writes_nothing_and_leaves_the_checkout_as_it_found_it(self):
+        self.commit_engine()
+        self.pull_request(self.change())
+        before = git(self.out, "status", "--porcelain")
+        self.rendered()
+        self.assertEqual(git(self.out, "status", "--porcelain"), before,
+                         "a brief is read, not kept: there is no packet file and nothing to clean up")
+
+    def test_it_says_it_is_a_fresh_attempt_and_that_the_transcript_is_gone_on_purpose(self):
+        self.commit_engine()
+        self.pull_request(self.change())
+        text = self.rendered()
+        self.assertIn("fresh attempt, not a continuation", text)
+        self.assertIn("You are one attempt", text)
+
+    def test_the_brief_is_small(self):
+        """Not a byte threshold: an order of magnitude, against the thing it replaces.
+
+        The point of the mechanism is that a repair attempt starts from a bounded brief instead of
+        a conversation that has survived every previous round. A brief that grew to the size of a
+        review packet would have given that back without anybody noticing, so the bound is
+        asserted -- loosely, because prose is allowed to change.
+        """
+        self.commit_engine()
+        self.pull_request(self.change())
+        self.assertLess(len(self.rendered()), 8000)
 
 
 class TestPrPolicy(RailsInAGitEngine):
@@ -3484,6 +3743,9 @@ COMMAND = re.compile(r"^(?:\./)?(?:tools|scripts)/[A-Za-z0-9_.\-]+\.(?:py|sh)$")
 # grows a new one is a command nobody has run.
 PLACEHOLDERS = {"<n>": "1", "<issue number>": "1", "<entry id>": "speed-limit", "<entry-id>": "speed-limit",
                 "<pr>": "1", "<pr number>": "1", "<id>": "semantic", "{args.pr}": "1",
+                # tools/repair-packet.py builds its commands with f-strings, as review-packet.py does:
+                # the entry it names, and the pull request the next review packet is made from.
+                "{entry_id}": "speed-limit", "{number}": "1",
                 '"..."': "Title", "pass|fail": "pass",
                 # `--package-map <path>`: the map this engine was produced from, which is what an
                 # engine's own restore would put there.
