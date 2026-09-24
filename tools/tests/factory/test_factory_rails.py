@@ -308,7 +308,8 @@ class TestBytecodeStaysOutOfTheCheckout(unittest.TestCase):
         # being skipped by a check that examined whatever it happened to find.
         self.assertEqual(sorted(importers),
                          ["scripts/engine-gate.py", "scripts/map-overlay.py", "tools/agent-doctor.py",
-                          "tools/entry-packet.py", "tools/pr-policy.py"])
+                          "tools/entry-packet.py", "tools/orchestrator-status.py",
+                          "tools/pr-policy.py"])
 
 
 class TestAProducedEngine(unittest.TestCase):
@@ -771,6 +772,30 @@ import base64, json, os, sys
 fixture = json.load(open(os.environ["GH_FIXTURE"], encoding="utf-8"))
 argv = sys.argv[1:]
 kind = argv[0] if argv else ""
+if kind == "repo" and len(argv) > 1 and argv[1] == "view":
+    # `gh repo view --json nameWithOwner,defaultBranchRef`: which repository this is, which
+    # tools/orchestrator-status.py needs before it can ask for the default branch's head.
+    fields = argv[argv.index("--json") + 1].split(",") if "--json" in argv else []
+    print(json.dumps({f: (fixture.get("repo") or {}).get(f) for f in fields}))
+    sys.exit(0)
+if kind == "api" and "/commits/" in argv[1] and "/status" not in argv[1]:
+    # `gh api repos/{owner}/{repo}/commits/<ref> --jq "{sha: .sha}"`: the default branch's head on
+    # GitHub, read rather than fetched, because a fetch writes refs. The fixture may pin it; with
+    # nothing pinned it is this checkout's own main, which is the ordinary case of being level.
+    import subprocess as sp
+    sha = (fixture.get("repo") or {}).get("defaultHead")
+    if sha is None:
+        sha = sp.run(["git", "rev-parse", "main"], capture_output=True, text=True).stdout.strip()
+    print(json.dumps({"sha": sha}))
+    sys.exit(0)
+if kind in ("pr", "issue") and len(argv) > 1 and argv[1] == "list" and "--state" in argv \
+        and argv[argv.index("--state") + 1] == "open":
+    # `gh pr list --state open --json ...` and the same for issues: what is in flight, and the
+    # backlog. Projected onto the fields asked for, as GitHub does.
+    fields = argv[argv.index("--json") + 1].split(",") if "--json" in argv else []
+    rows = fixture.get(kind + "_list") or []
+    print(json.dumps([{f: row.get(f) for f in fields} for row in rows]))
+    sys.exit(0)
 if kind == "api" and "/status" in argv[1]:
     # `gh api repos/{owner}/{repo}/commits/<sha>/status --jq ...`: the verdicts standing at one
     # commit, which tools/repair-packet.py reports and must call NOT CHECKED when it cannot read
@@ -2125,6 +2150,200 @@ class TestTheRepairPacket(RailsInAGitEngine):
         self.commit_engine()
         self.pull_request(self.change())
         self.assertLess(len(self.rendered()), 8000)
+
+
+class TestOrchestratorStatus(RailsInAGitEngine):
+    """`tools/orchestrator-status.py`: where the work stands, derived and bounded (#466).
+
+    The failure it exists for is an orchestrator whose only way back to the state of the work is
+    its own conversation — which is the one part of the arrangement that a usage limit, a restart
+    or a filled context destroys, and the part that costs the most to carry while it survives. So
+    what is asserted is that every line of the report came from git or GitHub, that a read it
+    could not make is `NOT CHECKED` rather than an answer, and that it stays small.
+    """
+
+    def state(self, *, pulls=(), issues=(), merged=()):
+        self.fixture({
+            "issue": {str(number): {"number": number, "title": title, "state": "OPEN",
+                                    "labels": [{"name": name} for name in labels]}
+                      for number, title, labels in issues},
+            "pr": {str(pull["number"]): pull for pull in pulls},
+            "issue_list": [{"number": number, "title": title,
+                            "labels": [{"name": name} for name in labels]}
+                           for number, title, labels in issues],
+            "pr_list": list(pulls),
+            "repo": {"nameWithOwner": "acme/engine", "defaultBranchRef": {"name": "main"}},
+            "merged": [{"headRefName": branch, "headRefOid": head} for branch, head in merged],
+        })
+
+    def status(self, *args, **environment):
+        return subprocess.run([sys.executable, os.path.join(self.out, "tools", "orchestrator-status.py"), *args],
+                              cwd=self.out, capture_output=True, text=True, env=self.environment(**environment))
+
+    def pull(self, number, *, head, closes=(27,), draft=False, checks=(), title="Implement the altitude limit"):
+        return {"number": number, "title": title, "isDraft": draft, "headRefOid": head,
+                "headRefName": f"issue-{closes[0] if closes else 0}-x",
+                "closingIssuesReferences": [{"number": n} for n in closes],
+                "statusCheckRollup": [dict(item) for item in checks]}
+
+    def test_it_says_where_the_checkout_is_and_whether_it_is_the_steady_state(self):
+        self.commit_engine()
+        self.state()
+        done = self.status()
+        head = git(self.out, "rev-parse", "HEAD")
+        self.assertIn("acme/engine", done.stdout)
+        self.assertIn(head[:12], done.stdout)
+        self.assertIn("clean", done.stdout)
+
+    def test_a_dirty_checkout_is_not_the_steady_state_and_the_exit_code_says_so(self):
+        self.commit_engine()
+        self.state()
+        with open(os.path.join(self.out, "half-finished.md"), "w", encoding="utf-8") as handle:
+            handle.write("something nobody committed\n")
+        done = self.status()
+        self.assertIn("DIRTY", done.stdout)
+        self.assertEqual(done.returncode, 1, done.stdout)
+
+    def test_each_worktree_names_the_issue_its_branch_is_for(self):
+        self.commit_engine()
+        self.fixture({"issue": {"27": {"title": "Widen the altitude limit", "state": "OPEN",
+                                       "labels": [{"name": "state:ready"}, {"name": "risk:normal"}]}}})
+        self.assertEqual(self.dispatch("27").returncode, 0)
+        self.state()
+        done = self.status()
+        self.assertIn("issue-27-widen-the-altitude-limit", done.stdout)
+        self.assertIn("#27", done.stdout)
+        self.assertIn(self.worktrees, done.stdout, "where it is, so the next attempt can be sent there")
+
+    def test_a_pull_request_carries_its_head_its_issue_its_checks_and_its_verdicts(self):
+        self.commit_engine()
+        head = git(self.out, "rev-parse", "HEAD")
+        self.state(pulls=[self.pull(5, head=head, checks=[
+            {"__typename": "CheckRun", "name": "validate", "conclusion": "SUCCESS"},
+            {"__typename": "CheckRun", "name": "conformance-gate", "conclusion": "FAILURE"},
+            {"__typename": "StatusContext", "context": "rules-verdict/semantic", "state": "SUCCESS"}])])
+        done = self.status()
+        self.assertIn("#5", done.stdout)
+        self.assertIn(head[:12], done.stdout)
+        self.assertIn("closes #27", done.stdout)
+        self.assertIn("validate=success", done.stdout)
+        self.assertIn("conformance-gate=failure", done.stdout, "a red required check is the next mechanical action")
+        self.assertIn("rules-verdict/semantic=success", done.stdout, "a verdict is a commit status, not a check run")
+
+    def test_a_required_check_that_has_not_reported_is_named_as_not_reported(self):
+        """Absent and green are different answers, and only one of them lets a merge happen."""
+        self.commit_engine()
+        head = git(self.out, "rev-parse", "HEAD")
+        self.state(pulls=[self.pull(5, head=head, checks=[
+            {"__typename": "CheckRun", "name": "validate", "conclusion": "SUCCESS"}])])
+        self.assertIn("pr-policy=not reported", self.status().stdout)
+
+    def test_a_pull_request_that_closes_no_issue_is_shown_as_one(self):
+        self.commit_engine()
+        head = git(self.out, "rev-parse", "HEAD")
+        self.state(pulls=[self.pull(5, head=head, closes=())])
+        done = self.status()
+        self.assertIn("CLOSES NO ISSUE", done.stdout)
+        self.assertEqual(done.returncode, 1, "the rails allow exactly one, so this wants a person")
+
+    def test_the_issues_are_grouped_by_the_state_label_the_policy_names(self):
+        self.commit_engine()
+        path = os.path.join(self.out, ".github", "agent-policy.json")
+        policy = json.load(open(path, encoding="utf-8"))
+        policy["labels"]["ready"] = "go"
+        with open(path, "w", encoding="utf-8") as handle:
+            json.dump(policy, handle, indent=2)
+        git(self.out, "commit", "-qam", "rename a label")
+        self.state(issues=[(27, "Widen the altitude limit", ["go", "risk:normal"]),
+                           (31, "Something else", ["state:blocked"])])
+        done = self.status()
+        self.assertIn("ready=1", done.stdout)
+        self.assertIn("blocked=1", done.stdout)
+        self.assertIn("#27", done.stdout)
+
+    def test_an_issue_with_no_state_label_is_reported_rather_than_dropped(self):
+        """An issue in no state is dispatchable by nothing, and an orchestrator that never sees it
+        cannot notice that. It is a finding, not an absence."""
+        self.commit_engine()
+        self.state(issues=[(27, "Nobody labelled this", ["risk:normal"])])
+        done = self.status()
+        self.assertIn("unlabelled=1", done.stdout)
+        self.assertEqual(done.returncode, 1)
+
+    def test_it_carries_no_body_no_diff_and_no_log(self):
+        self.commit_engine()
+        head = git(self.out, "rev-parse", "HEAD")
+        self.state(pulls=[self.pull(5, head=head)],
+                   issues=[(27, "Widen the altitude limit", ["state:ready", "risk:normal"])])
+        done = self.status()
+        for field in ("body", "Closes #27", "diff", "+++"):
+            self.assertNotIn(field, done.stdout, f"the report carries {field!r}, which is what it exists not to")
+
+    def test_it_stays_small_enough_to_be_a_restart_context(self):
+        """Loosely bounded, and against many issues rather than a handful: the whole claim is that
+        this can be read in full on every resumption, which stops being true silently."""
+        self.commit_engine()
+        head = git(self.out, "rev-parse", "HEAD")
+        self.state(pulls=[self.pull(number, head=head, closes=(number,)) for number in range(1, 12)],
+                   issues=[(number, f"An issue with a reasonably long title, number {number}",
+                            ["state:ready", "risk:normal"]) for number in range(20, 80)])
+        done = self.status()
+        self.assertLess(len(done.stdout.encode()), 6000, done.stdout)
+        self.assertIn("more", done.stdout, "a list longer than the limit says how many it did not print")
+
+    def test_the_limit_is_the_caller_s(self):
+        self.commit_engine()
+        self.state(issues=[(number, f"issue {number}", ["state:ready", "risk:normal"])
+                           for number in range(20, 40)])
+        self.assertIn("… and 18 more", self.status("--limit", "2").stdout)
+        self.assertEqual(self.status("--limit", "0").returncode, 2)
+
+    def test_two_runs_over_one_repository_print_the_same_bytes(self):
+        self.commit_engine()
+        head = git(self.out, "rev-parse", "HEAD")
+        self.state(pulls=[self.pull(5, head=head), self.pull(4, head=head, closes=(31,))],
+                   issues=[(31, "b", ["state:ready"]), (27, "a", ["state:ready"])])
+        self.assertEqual(self.status().stdout, self.status().stdout)
+        self.assertLess(self.status().stdout.index("#4"), self.status().stdout.index("#5"),
+                        "sorted by number, so a report is a function of the state and not of GitHub's order")
+
+    def test_it_writes_nothing_at_all(self):
+        self.commit_engine()
+        self.state()
+        before = git(self.out, "status", "--porcelain")
+        self.status()
+        self.status("--json")
+        self.assertEqual(git(self.out, "status", "--porcelain"), before,
+                         "a read-only report that dirties the checkout stops the next dispatch (#194)")
+
+    def test_a_github_it_cannot_read_is_not_checked_and_never_a_clean_repository(self):
+        self.commit_engine()
+        self.state()
+        done = self.status(RULES_ENGINE_GH=os.path.join(self.tmp, "no-such-gh"))
+        self.assertIn("NOT CHECKED", done.stdout)
+        self.assertNotIn("0 open", done.stdout, "an unread list that prints as empty is the substitution "
+                                                "every other rail refuses")
+        self.assertEqual(done.returncode, 3, "a partial report exits differently from a clean one")
+
+    def test_local_says_the_remote_half_was_not_read(self):
+        self.commit_engine()
+        self.state()
+        done = self.status("--local")
+        self.assertIn("--local", done.stdout)
+        self.assertIn("NOT CHECKED", done.stdout)
+        self.assertEqual(done.returncode, 3)
+
+    def test_the_json_form_carries_the_same_state(self):
+        self.commit_engine()
+        head = git(self.out, "rev-parse", "HEAD")
+        self.state(pulls=[self.pull(5, head=head)],
+                   issues=[(27, "Widen the altitude limit", ["state:ready", "risk:normal"])])
+        done = self.status("--json")
+        document = json.loads(done.stdout)
+        self.assertEqual(document["pullRequests"][0]["number"], 5)
+        self.assertEqual(document["pullRequests"][0]["head"], head)
+        self.assertEqual([item["number"] for item in document["issues"]["ready"]], [27])
+        self.assertEqual(document["notChecked"], [])
 
 
 class TestPrPolicy(RailsInAGitEngine):

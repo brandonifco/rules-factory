@@ -28,6 +28,12 @@ isolates them.
 whether a review finding is blocking. It does not own the answer to a rules question — that is
 the owner's, recorded (`AGENTS.md` §6).
 
+**What it does not hold is the project's state.** It holds the *current scheduling decision*, and
+reads the rest with `tools/orchestrator-status.py` (`AGENTS.md` §3). That is the whole of how a
+fresh orchestrator resumes, and resuming is ordinary: in the measured session, 51.1M effective
+tokens went on carrying and re-reading orchestration history, against 4.3M for every scheduling
+decision it wrote.
+
 ## Engine developer
 
 Implements exactly one ready issue, in exactly one worktree, on exactly one branch, opening

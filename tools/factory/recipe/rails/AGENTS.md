@@ -50,6 +50,24 @@ one. Two rules from it are absolute:
   mutation-capable tool.
 - **An implementer does not resolve a genuine ambiguity.** It escalates (§6).
 
+And one thing the orchestrator is not: the place the project's state lives. The issues are the
+backlog, the branches and worktrees are the work in flight, the pull requests carry their own
+heads, the commit statuses carry the verdicts, and the checks say what is green. All of that is
+durable. A conversation is the one part of the arrangement that is not, and it is lost on a usage
+limit, a process restart, a new session, a context that filled, or a deliberate rotation — none of
+which is exceptional.
+
+```bash
+tools/orchestrator-status.py     # where the work stands, read from the repository
+```
+
+So the recovery path is: **read this file, run that, continue.** Not: re-read a day of
+conversation to find out what is open. In the measured session of 2026-09-23/24, carrying and
+re-reading orchestration history cost 51.1M effective tokens — over 18% of the whole session —
+against 4.3M for every scheduling decision the orchestrator actually wrote. The command stores
+nothing and writes nothing, so it adds no second backlog to keep in step; it reads git and GitHub,
+which remain the only record, and says `NOT CHECKED` for whatever it could not reach.
+
 ## 4. One issue, one worktree, one branch, one pull request
 
 Work is dispatched from GitHub issues and nowhere else. An instruction in a chat window that has
