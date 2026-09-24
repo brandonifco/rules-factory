@@ -74,6 +74,17 @@ VENDORS = ("codex", "gemini", "openai", "deckard", "shadowrun")
 MUTATING_TOOLS = {"bash", "edit", "write", "notebookedit", "multiedit", "task", "webfetch"}
 
 
+def one_map(document):
+    """The single map of a review identity's `reviewContext.maps`.
+
+    The identity names every map the engine was produced from (#460), and every engine in these
+    tests is produced from one; a test that reached for `maps[0]` would keep passing if the list
+    ever held two, which is the state the list exists to make visible.
+    """
+    (only,) = document["reviewContext"]["maps"]
+    return only
+
+
 def write_overlay(engine, items):
     """Replace the engine's overlay/ with one file per entry of `items` (#247)."""
     directory = os.path.join(engine, "overlay")
@@ -522,6 +533,142 @@ class TestTheGuard(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class TestTheEntryPacketOfAComposedEngine(unittest.TestCase):
+    """`tools/entry-packet.py` against an engine produced from several map packages (#460, 0067).
+
+    The composition is `srd-52-combat` + `srd-52-conditions`: two maps of one corpus, where combat
+    declines `prone-condition` because its slice stopped short and the conditions glossary holds
+    that passage in scope. So one fixture exercises all three things a composed packet has to get
+    right -- an entry of either package, the package an id names, and a supersession -- and it
+    exercises them on published maps rather than on a fixture invented to make them true.
+
+    `--no-verify`, so no SDK and no build: everything asserted here is computed from the map
+    packages and the overlay, which is the whole of what a packet is.
+    """
+
+    COMPOSED = ("srd-52-combat", "srd-52-conditions")
+    ENGINE = "Srd52"
+
+    @classmethod
+    def setUpClass(cls):
+        cls.shared = tempfile.mkdtemp()
+        out = os.path.join(cls.shared, "packages")
+        cls.packages, cls.package_maps = [], []
+        for slug in cls.COMPOSED:
+            directory = os.path.join(REPO, "examples", slug)
+            subprocess.run([sys.executable, PACK, directory, "--out", out], check=True,
+                           stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            cls.package_maps.append(os.path.join(directory, "corpus-map.json"))
+        cls.packages = sorted(os.path.join(out, n) for n in os.listdir(out) if n.endswith(".nupkg"))
+        cls.corpus = os.path.join(REPO, "examples", "srd-52-combat", "srd-5.2.1.txt")
+
+    @classmethod
+    def tearDownClass(cls):
+        shutil.rmtree(cls.shared, True)
+
+    def setUp(self):
+        self.tmp = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, self.tmp, True)
+        self.out = os.path.join(self.tmp, "engine")
+        argv = []
+        for package in self.packages:
+            argv += ["--package", package]
+        buffer = io.StringIO()
+        with redirect_stdout(buffer), redirect_stderr(buffer):
+            code = factory.main(["produce", *argv, "--corpus", self.corpus, "--name", self.ENGINE,
+                                 "--out", self.out, "--allow-dirty", "--no-verify"])
+        self.assertEqual(code, factory.NOT_VERIFIED, buffer.getvalue())
+        with open(os.path.join(self.out, "provenance.json"), encoding="utf-8") as handle:
+            self.record = json.load(handle)
+
+    def packet(self, entry, *extra, maps=None):
+        argv = [sys.executable, os.path.join(self.out, "tools", "entry-packet.py"), entry]
+        for package_map in (self.package_maps if maps is None else maps):
+            argv += ["--package-map", package_map]
+        return subprocess.run(argv + list(extra), capture_output=True, text=True, cwd=self.out)
+
+    def rendered(self, entry, **kwargs):
+        done = self.packet(entry, "--stdout", **kwargs)
+        self.assertEqual(done.returncode, 0, done.stderr)
+        return done.stdout
+
+    def test_the_record_names_both_packages_and_the_supersession_they_make(self):
+        """The fixture's own claim, asserted rather than assumed: everything below rests on this
+        engine being composed of two packages with one supersession between them."""
+        self.assertEqual([m["packageId"] for m in self.record["maps"]],
+                         ["RulesFactory.Maps.Srd52Combat", "RulesFactory.Maps.Srd52Conditions"])
+        self.assertEqual(self.record["supersedes"],
+                         [{"entry": "Srd52Combat.prone-condition", "by": "Srd52Conditions.prone"}])
+
+    def test_a_packet_names_the_package_its_own_entry_came_from(self):
+        """Which map an entry is from is not a detail: it is the bytes the implementer works to and
+        the version a defect is reported against. Each of these entries is a different package's,
+        and each packet says its own -- not the first, and not all of them."""
+        combat = self.rendered("Srd52Combat.opportunity-attack")
+        self.assertIn("map `RulesFactory.Maps.Srd52Combat` 2.0.0", combat)
+        self.assertNotIn("map `RulesFactory.Maps.Srd52Conditions`", combat)
+        conditions = self.rendered("Srd52Conditions.blinded")
+        self.assertIn("map `RulesFactory.Maps.Srd52Conditions` 1.0.0", conditions)
+        self.assertNotIn("map `RulesFactory.Maps.Srd52Combat`", conditions)
+
+    def test_a_packet_names_the_id_the_published_map_has_for_the_entry(self):
+        """The prefix is this engine's, not the map's. An upstream defect reported as
+        `Srd52Conditions.blinded` names an entry that map does not have, so the packet says both
+        ids and which is which."""
+        text = self.rendered("Srd52Conditions.blinded")
+        self.assertIn("published as `blinded`", text)
+        self.assertIn("the entry is `blinded` there", text)
+
+    def test_an_entry_of_the_other_package_reads_exactly_as_one_of_this_package_s(self):
+        """The model is the whole composition, not the entry's own package. So an entry another
+        map holds is named with what it is, not reported as absent -- which is what a model built
+        from one constituent would do, and it would do it silently."""
+        text = self.rendered("Srd52Combat.prone-condition")
+        self.assertIn("Srd52Conditions.prone", text)
+        self.assertNotIn("not an entry of this map", text)
+
+    def test_a_superseded_entry_says_so_rather_than_being_handed_out_as_work(self):
+        """The one thing a composition changes about an entry's assignment. `prone-condition` is
+        combat's declined stub for a passage the glossary holds in scope; the composition answers
+        the rule there, so there is nothing to implement here and the packet says so instead of
+        rendering a handler to write."""
+        text = self.rendered("Srd52Combat.prone-condition")
+        self.assertIn("superseded in this composition", text)
+        self.assertIn("Srd52Conditions.prone", text)
+        self.assertNotIn("superseded in this composition", self.rendered("Srd52Conditions.blinded"))
+
+    def test_an_id_whose_prefix_names_no_package_is_refused_and_the_packages_are_listed(self):
+        """The one case where choosing would be silently wrong, and the case the blanket refusal
+        on a composed engine used to stand in for. An unqualified id is this case too: in a
+        composition it names no entry, and the packages are what a caller needs to see."""
+        for entry in ("Srd52Fictional.prone", "prone"):
+            done = self.packet(entry)
+            self.assertEqual(done.returncode, 1, done.stdout)
+            self.assertIn("Srd52Combat", done.stderr)
+            self.assertIn("Srd52Conditions", done.stderr)
+
+    def test_a_restored_map_is_matched_to_its_package_by_digest_not_by_the_order_given(self):
+        """MSBuild returns the restored maps in its own order, so a pairing by position would be
+        right on the machine it was written on and wrong on the next one. The digest is what says
+        which file is which package's, so the same packet comes out of either order."""
+        forward = self.rendered("Srd52Conditions.blinded")
+        reversed_order = self.rendered("Srd52Conditions.blinded", maps=list(reversed(self.package_maps)))
+        self.assertEqual(forward, reversed_order)
+
+    def test_a_map_this_engine_was_not_produced_from_is_refused_and_named(self):
+        """A composed engine must not be the way an unchecked map reaches a packet. A file that
+        hashes to nothing the record holds is refused, and so is a composition missing one of its
+        packages -- half a composition is a different map, not a smaller one."""
+        stranger = os.path.join(self.tmp, "stranger.json")
+        shutil.copyfile(os.path.join(PART107, "corpus-map.json"), stranger)
+        done = self.packet("Srd52Conditions.blinded", maps=[self.package_maps[0], stranger])
+        self.assertEqual(done.returncode, 1, done.stdout)
+        self.assertIn("Srd52Conditions", done.stderr)
+        short = self.packet("Srd52Conditions.blinded", maps=[self.package_maps[0]])
+        self.assertEqual(short.returncode, 1, short.stdout)
+        self.assertIn("Srd52Conditions", short.stderr)
 
 
 class TestTheEntryPacket(TestAProducedEngine):
@@ -1325,7 +1472,8 @@ class TestTheReviewPacket(RailsInAGitEngine):
                          hashlib.sha256(open(written[0], "rb").read()).hexdigest())
         self.assertEqual(identity["reviewContext"]["policy"]["path"], ".github/agent-policy.json")
         self.assertEqual(identity["reviewContext"]["provenance"]["path"], "provenance.json")
-        self.assertEqual(identity["reviewContext"]["map"]["packageId"], "RulesFactory.Maps.FaaPart107")
+        self.assertEqual([m["packageId"] for m in identity["reviewContext"]["maps"]],
+                         ["RulesFactory.Maps.FaaPart107"])
 
     def test_a_packet_inside_the_repository_is_refused(self):
         self.commit_engine()
@@ -1397,7 +1545,7 @@ class TestTheReviewPacket(RailsInAGitEngine):
             manifest = json.load(handle)
         with open(os.path.join(PART107, "corpus-map.json"), "rb") as handle:
             supplied = hashlib.sha256(handle.read()).hexdigest()
-        self.assertEqual(manifest["reviewContext"]["map"]["readSha256"], supplied,
+        self.assertEqual(one_map(manifest)["readSha256"], supplied,
                          "the manifest records the map bytes the entry packets were built from")
 
     # --- the bytes hashed are the bytes read, and a refusal writes nothing (#371) --------------
@@ -1455,7 +1603,7 @@ class TestTheReviewPacket(RailsInAGitEngine):
                          "was built from another")
         with open(os.path.join(out, f"pr-5-{head[:12]}.review.json"), encoding="utf-8") as handle:
             manifest = json.load(handle)
-        self.assertEqual(manifest["reviewContext"]["map"]["readSha256"],
+        self.assertEqual(one_map(manifest)["readSha256"],
                          hashlib.sha256(declared).hexdigest(),
                          "the manifest records a digest of bytes the entry packet was not built from")
 
@@ -1567,8 +1715,8 @@ class TestTheReviewPacket(RailsInAGitEngine):
         with open(identity, encoding="utf-8") as handle:
             document = json.load(handle)
         self.assertTrue(document["entryPackets"], "this test needs a packet that names entry evidence")
-        document["reviewContext"]["map"]["readSha256"] = None
-        document["reviewContext"]["map"]["readFrom"] = "MSBuild inside the reviewed tree -- NOT VERIFIED"
+        one_map(document)["readSha256"] = None
+        document["reviewContext"]["mapsReadFrom"] = "MSBuild inside the reviewed tree -- NOT VERIFIED"
         with open(identity, "w", encoding="utf-8") as handle:
             json.dump(document, handle, indent=2)
 
@@ -1585,6 +1733,40 @@ class TestTheReviewPacket(RailsInAGitEngine):
         with open(statuses, encoding="utf-8") as handle:
             self.assertEqual(json.load(handle), {}, "a verdict was posted on unbound entry evidence")
 
+    def test_one_unbound_map_among_several_refuses_the_whole_verdict(self):
+        """A composed engine is several maps and the entry packets are built from the composition
+        (#460, 0067), so bytes nobody held to the record reach the reviewer through one of them
+        exactly as they would through a single map. The check is therefore per package, and this
+        is the shape a loop that stopped at the first map -- or checked only the first -- would
+        pass: the first is bound, the second is not.
+        """
+        self.commit_engine()
+        head = self.change()
+        self.pull_request(head)
+        identity = self.real_identity(head, "one-unbound-identity")
+        with open(identity, encoding="utf-8") as handle:
+            document = json.load(handle)
+        self.assertTrue(document["entryPackets"], "this test needs a packet that names entry evidence")
+        bound = one_map(document)
+        document["reviewContext"]["maps"] = [
+            bound,
+            {**bound, "packageId": "RulesFactory.Maps.Second", "readSha256": None},
+        ]
+        with open(identity, "w", encoding="utf-8") as handle:
+            json.dump(document, handle, indent=2)
+
+        self.fixture({"pr": {"5": {"number": 5, "headRefOid": head, "state": "OPEN"}},
+                      "repo": {"nameWithOwner": "owner/engine"}})
+        statuses = os.path.join(self.tmp, "one-unbound-statuses.json")
+        with open(statuses, "w", encoding="utf-8") as handle:
+            json.dump({}, handle)
+        done = self.recorder(identity, statuses)
+        self.assertEqual(done.returncode, 1, done.stdout + done.stderr)
+        self.assertIn("RulesFactory.Maps.Second", done.stderr)
+        self.assertIn("readSha256", done.stderr)
+        with open(statuses, encoding="utf-8") as handle:
+            self.assertEqual(json.load(handle), {}, "a verdict was posted with one map unbound")
+
     def test_a_verdict_is_refused_when_the_map_read_is_not_the_map_declared(self):
         """The recorder checks the relationship itself rather than trusting the producer's word."""
         self.commit_engine()
@@ -1593,7 +1775,7 @@ class TestTheReviewPacket(RailsInAGitEngine):
         identity = self.real_identity(head, "mismatched-identity")
         with open(identity, encoding="utf-8") as handle:
             document = json.load(handle)
-        document["reviewContext"]["map"]["readSha256"] = "0" * 64
+        one_map(document)["readSha256"] = "0" * 64
         with open(identity, "w", encoding="utf-8") as handle:
             json.dump(document, handle, indent=2)
 
@@ -2385,11 +2567,14 @@ if argv_api := [a for a in sys.argv[1:] if a.startswith("repos/")]:
                     "path": "provenance.json",
                     "sha256": hashlib.sha256(provenance_bytes).hexdigest(),
                 },
-                "map": {
-                    "packageId": provenance["maps"][0]["packageId"],
-                    "version": provenance["maps"][0]["version"],
-                    "nupkgSha256": provenance["maps"][0].get("nupkgSha256", ""),
-                },
+                "maps": [
+                    {
+                        "packageId": package["packageId"],
+                        "version": package["version"],
+                        "nupkgSha256": package.get("nupkgSha256", ""),
+                    }
+                    for package in provenance["maps"]
+                ],
             },
             "entryPackets": [],
         }
@@ -2477,11 +2662,14 @@ if argv_api := [a for a in sys.argv[1:] if a.startswith("repos/")]:
                     "path": "provenance.json",
                     "sha256": hashlib.sha256(provenance_bytes).hexdigest(),
                 },
-                "map": {
-                    "packageId": provenance["maps"][0]["packageId"],
-                    "version": provenance["maps"][0]["version"],
-                    "nupkgSha256": provenance["maps"][0].get("nupkgSha256", ""),
-                },
+                "maps": [
+                    {
+                        "packageId": package["packageId"],
+                        "version": package["version"],
+                        "nupkgSha256": package.get("nupkgSha256", ""),
+                    }
+                    for package in provenance["maps"]
+                ],
             },
             "entryPackets": [],
         }

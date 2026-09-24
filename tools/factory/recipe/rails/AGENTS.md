@@ -303,6 +303,13 @@ decline that names why and cites where — that is the engine working, not the e
   whatever MSBuild resolves inside the snapshot, which is unproven, so file output is refused and
   `--stdout` remains for reading such a packet — it writes nothing, and nothing can be recorded
   from it. A refused packet leaves no file and no directory behind.
+
+  **An engine composed of several map packages needs one `--package-map` each**, and each is held
+  to its own recorded digest. Which package an entry came from is the entry id's to say: in a
+  composition an id is qualified by the package that enumerated it (`Srd52Combat.round-down`), so
+  a packet names that package at its own version, and an upstream defect is reported against it
+  under the id the published map has — the id without the prefix. An entry another package of the
+  composition supersedes is not work: the packet says so, and there is nothing to implement.
 - **A verdict consumes the packet identity.** `tools/record-verdict.py --pr <n> --packet
   <packet.review.json> --reviewer <id> --verdict pass|fail` verifies those packet bytes and
   records the status only when the pull request still has the exact reviewed head. It takes the
