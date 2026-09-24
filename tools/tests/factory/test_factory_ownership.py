@@ -59,7 +59,8 @@ MANAGED = ("Directory.Build.props", "NuGet.config", "global.json",
            "tools/review-packet.py", "tools/repair-packet.py", "tools/pr-policy.py", "tools/record-verdict.py",
            "tools/conformance-gate.py", "tools/requeue-gate.py", ".github/pull_request_template.md",
            ".github/workflows/pr-policy.yml", ".github/workflows/conformance-gate.yml",
-           ".github/workflows/verdict-requeue.yml", "tools/agent-doctor.py", ".editorconfig")
+           ".github/workflows/verdict-requeue.yml", "tools/agent-doctor.py",
+           "tools/orchestrator-status.py", ".editorconfig")
 ENGINE_OWNED = ("Directory.Packages.props", f"{NAME}.slnx", f"src/{NAME}/{NAME}.csproj",
                 f"tests/{NAME}.Tests/{NAME}.Tests.csproj", ".github/agent-policy.json")
 #: The engine's own evidence, one file per implemented entry (#247). Engine-owned, and scaffolded by

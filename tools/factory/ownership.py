@@ -87,7 +87,7 @@ TABLE = (
     Row("scripts/engine-gate.py", GENERATED, None, "the gate recipe: its non-dotnet checks"),
     Row("scripts/factory/*.py", GENERATED, None, "the factory's generator, vendored so the gate can regenerate"),
     Row(".github/workflows/validate.yml", GENERATED, None, "the gate recipe: CI runs validate.sh full"),
-    Row("AGENTS.md", MANAGED, 21,
+    Row("AGENTS.md", MANAGED, 22,
         "the governing contract every agent works this engine under (decision 0029); section 4 carries "
         "the sweep, the documentation section, and delete-only-what-you-created (#236); a packet that "
         "names an entry is made with the map the reviewed commit declares, one per package for a "
@@ -95,13 +95,13 @@ TABLE = (
         "what the machine owes the work -- the pinned SDK, a restore, a `gh` the packets can read "
         "(#195); section 9 names the two emitted things that do name a vendor, as the defaults they "
         "are (#174); section 4 ends an implementation attempt at the review boundary, and names the "
-        "brief the next one reads (#465)"),
+        "brief the next one reads (#465); section 3 says the orchestrator holds the scheduling decision and the repository holds the state, and names the command that reads it (#466)"),
     Row("CLAUDE.md", MANAGED, 1,
         "a pointer to AGENTS.md and the Claude adapters; it states no rule of its own (0029)"),
-    Row("docs/agent-team.md", MANAGED, 7,
+    Row("docs/agent-team.md", MANAGED, 8,
         "the four roles, what each may not do, and what a turn costs: the tiering the two reviews are "
         "dispatched on, stated without naming any vendor's model (0029 amendment, #455); one instance of "
-        "the implementer is one attempt, and a fourth consequence of the cost model says why (#465)"),
+        "the implementer is one attempt, and a fourth consequence of the cost model says why (#465); the orchestrator holds the scheduling decision and reads the rest (#466)"),
     Row(".claude/agents/engine-dev.md", MANAGED, 10,
         "the implementer's charter (0029); it ends with the attempt, and says what a repair attempt "
         "reads and what it may not reconstruct (#465)"),
@@ -164,6 +164,10 @@ TABLE = (
         "whether the rails are active or only present, locally and on GitHub, and what merged work "
         "left behind (0029, #236); the machine's own prerequisites first, because a rail in place on a "
         "machine that cannot run the gate stops nothing (#195)"),
+    Row("tools/orchestrator-status.py", MANAGED, 1,
+        "where the work stands, read from the repository and bounded: the checkout, the worktrees and "
+        "their issues, the open pull requests with their heads, checks and recorded verdicts, and the "
+        "issues by state. Read-only, derived, and small enough to restart an orchestrator from (#466)"),
     Row(".editorconfig", MANAGED, 1,
         "the kernel determinism analyzers' severities: a build error in src, off in tests (0029)"),
     Row("global.json", MANAGED, 1,
@@ -317,6 +321,7 @@ RECIPE_SHA256 = {
         19: "50c0496e6b4eb008dd649d3ca50af82400c6778b0fc1180cc3ec6d14aa2157c8",
         20: "754e718a55fbb779147ae3089cdb1aeeec614323a5380ebe8aba43e4d949ed01",
         21: "45a258a0b0ae9fc05390b4d41075d1c1419f8612006340505a7e4bc65ca95abd",
+        22: "4a146a7566423fd5e2e57c6cf24426534878f70c02a852a539035b5d3aa4ee9e",
     },
     "CLAUDE.md": {
         1: "04c07ad36e742fa60efafeca54d20bd96d16b6e338a44e46fad2b679ab8dfd9f",
@@ -329,6 +334,7 @@ RECIPE_SHA256 = {
         5: "f7f114fc7b8a74239a2f5fba97aadf69d5252e7683aa6061a5f9052c7b981689",
         6: "20523f6e370e6fb75c0ef3e645e41676d6252bdae91d8f242a0214114ba68574",
         7: "f73289cfb230cfd5b32b986afd699ee99e1890810e7c86ed9428a60d84aa4625",
+        8: "3b11dcacc164b799313061341f8c65bf1c1765fd3754a92647d72268804dc97d",
     },
     "tools/dispatch-agent.sh": {
         1: "868ce983b51d784a83a6a0fcac7456608b31f0af025c75ac5eeac64a373dca2b",
@@ -413,6 +419,9 @@ RECIPE_SHA256 = {
     ".github/workflows/verdict-requeue.yml": {
         1: "b1a48c75587dcbcf15638f83a703025c08f5449d9e2611550c4f15a448fcb178",
         2: "8ab0d0de2df9777f3e545fedb66c118816e3c658a0fce87db63261967332780a",
+    },
+    "tools/orchestrator-status.py": {
+        1: "10f98864459a80a3fa87aeeda5d4c55583cb5c873887d5121373c3cc45b5ad69",
     },
     "tools/agent-doctor.py": {
         1: "1b6fced99797d165ab0216523bddae183d6e7254f41d5d5f51cdb1d1c3b8913d",

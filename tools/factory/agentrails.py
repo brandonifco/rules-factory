@@ -55,6 +55,7 @@ RAILS = {
     ".github/workflows/conformance-gate.yml": "workflows/conformance-gate.yml",
     ".github/workflows/verdict-requeue.yml": "workflows/verdict-requeue.yml",
     "tools/agent-doctor.py": "tools/agent-doctor.py",
+    "tools/orchestrator-status.py": "tools/orchestrator-status.py",
     # Named `editorconfig` in the recipe: a dotfile there would be invisible in a listing of the
     # rails, and the published path is what matters.
     ".editorconfig": "editorconfig",
@@ -69,7 +70,8 @@ RAILS = {
 EXECUTABLE = frozenset({"tools/dispatch-agent.sh", "tools/new-issue.sh", "tools/entry-packet.py",
                         "tools/mutate.py", "tools/review-packet.py", "tools/repair-packet.py",
                         "tools/pr-policy.py", "tools/record-verdict.py", "tools/conformance-gate.py",
-                        "tools/agent-doctor.py", "tools/re-produce.sh"})
+                        "tools/agent-doctor.py", "tools/orchestrator-status.py",
+                        "tools/re-produce.sh"})
 
 
 RAILS_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "recipe", "rails")
