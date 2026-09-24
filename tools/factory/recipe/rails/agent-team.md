@@ -49,6 +49,11 @@ Cheap, **read-only**, structural review on every pull request. It runs **first**
 review, so that a scope or evidence defect is found before expensive reasoning is spent on a
 change that is going back anyway.
 
+**Runs on the cheaper tier**, and "cheap" here is a dispatch instruction rather than a
+description. What this role checks has a right answer that does not need the model that catches a
+fluent implementation of the wrong rule; running it on the same tier as the next role costs the
+same as the review it exists to run before, and buys nothing. See *What a turn costs*, below.
+
 **Reads:** the human packet emitted by `tools/review-packet.py <pr number>`, which is the whole
 context — nothing here needs rediscovering from the diff. Keep its adjacent `*.review.json`
 identity: that is what binds the eventual verdict to these exact reviewed bytes.
@@ -68,6 +73,11 @@ cheap.
 High-reasoning, **read-only**, semantic review: does this implementation actually do what the
 mapped rule says?
 
+**Runs on the deepest tier available, and is the role not to economise on.** It is the one that
+catches a well-tested, fluently argued implementation of the wrong rule, which is the defect no
+other role in this team can see. A cheaper pass here does not find less; it finds nothing and
+reports that it found nothing.
+
 **Reads the entry packet before it reads the implementation** (`tools/review-packet.py <pr>`
 assembles both, in that order). Anchoring is the failure this role
 exists to catch, and a reviewer who reads the code first will find the code's reading of the rule
@@ -82,6 +92,42 @@ pull request" as an answer. Where two reviewers disagree, the packet and the map
 seniority, not the model, not the implementer's explanation.
 
 ---
+
+## What a turn costs, and what follows
+
+This section exists because the tiering above is a cost claim, and a cost claim with no numbers
+behind it is the kind of sentence that stays true-sounding after it stops being true. It is
+vendor-neutral on purpose: which model is which tier is the engine team's choice, and where that
+choice is written down for a given vendor is that vendor's adapter.
+
+**An agent's cost is its number of turns multiplied by the size of its context, not the size of
+what it prints.** Context grows monotonically within one agent's life and every later turn pays
+for the whole of it. Measured over one live run of this team on a real engine — six agents, 65.9M
+raw tokens — the most expensive agent spent **81%** of its cost on re-reading context, 16% on
+writing it, and **2.6%** on its own output. Everything it printed all run, every test result and
+every file it read, came to 0.26% of its raw tokens.
+
+Three things follow, in the order they are worth acting on:
+
+1. **A narrow assignment is cheaper than a wide one by more than its share of the work.** In that
+   run a narrowly-scoped follow-up fix did real work at an 84k peak context; the implementer it
+   followed reached 275k and cost seven times as much. The packet is what makes an assignment
+   narrow (`AGENTS.md`), so an orchestrator that widens a brief pays for it on every subsequent
+   turn of that agent, not once.
+2. **Batch an inner loop into one invocation rather than driving it turn by turn.** A mutation
+   loop run interactively is a dozen turns over a context that is already large; the same work
+   through one command is one. This is why the contract names a tool for it instead of leaving
+   the loop to each implementer.
+3. **Tier the reviews, and tier them the right way round.** In that same run both reviewers ran
+   on the top tier and the "cheap" structural review cost **2% more** than the semantic one —
+   together a third of the whole session, for one pull request. The saving is in the first
+   review; the second is where the money should go.
+
+**What none of this justifies.** Skipping the semantic review, sampling instead of checking
+exhaustively, or accepting a thinner verdict because a thorough one is dear. The cost of the
+review that sends a pull request back is small against the cost of an engine that reports a rule
+wrongly, and this section is about spending the budget in the right place rather than spending
+less of it.
 
 ## Independent review
 

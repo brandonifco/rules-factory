@@ -69,6 +69,45 @@ posting a status named `validate` — stops counting, which is the point and is 
 any engine doing that. And an engine whose rails were applied before this carries three unpinned
 checks until the next `factory rails --apply`, which `--check` now reports.
 
+## Amendment — a model tier in a vendor adapter is not the provider chain
+
+"Hard-code the provider chain, as `deckard` does" is rejected below, and the acceptance criterion
+in §15 is that changing the chain "touches only `agent-policy.json`". That reading was applied to
+a second question it does not cover, and the answer is recorded here because the two look alike
+and are not.
+
+**The chain is which provider gives an independent verdict on a high-risk change.** It is a policy
+about trust and independence, it has to be auditable from a merged commit, and it belongs to the
+engine's team — so it lives in `.github/agent-policy.json`, engine-owned, and no rail hard-codes
+it. That is unchanged.
+
+**A model tier is which model invokes one in-house role**, and it is neither of those things. It
+changes what a review costs, not whose verdict counts and not what any check will accept: an
+engine produced with the structural reviewer on the wrong tier is still correct, merely dearer.
+And the place it has to be written, for Claude Code, is the front matter of the charter itself —
+a key in `agent-policy.json` would be read by nothing. So:
+
+- **`docs/agent-team.md`, a managed rail, states the requirement without naming any model.** The
+  structural review runs on the cheaper tier and the semantic review on the deepest available,
+  with the measurement that makes it a claim rather than an adjective. Any vendor's team can act
+  on it.
+- **`.claude/agents/*.md` carry the concrete tier**, because they are that vendor's adapter — the
+  emitted `CLAUDE.md` already calls them "Claude-specific adapters, which say how a role is
+  invoked rather than what it may do", and which model invokes a role is exactly that. A team on
+  another vendor writes its own adapter and never reads these, which is the test §3's line is
+  really asking: does a consumer have to *undo* this to work the way they work? They do not.
+
+What prompted it: `repo-steward.md`'s description has said "Cheap" since the rails were
+generalised, and the line that made it true in `deckard` — the hand-built source named in §3 —
+was dropped on the way. In the first measured run of the team on a real engine the structural
+review cost 2% *more* than the semantic review it exists to run before. A claim in a charter that
+nothing carries out is worse than no claim, for the reason §8 already gives about read-only.
+
+**No new check enforces the tier.** [docs/backlog.md](../backlog.md)'s 2026-09-21 triage holds
+that a check earns its maintenance by protecting a product-critical invariant, and this one
+protects a cost. The rails' own consistency test asserts that the two reviewer charters declare
+different tiers, which is the same family as §8's read-only assertion and not a new gate step.
+
 ## Amendment — a factory update is work under the rails
 
 The live run of #157 found it: `faa-part-107#43` failed `pr-policy` and `conformance-gate`, and

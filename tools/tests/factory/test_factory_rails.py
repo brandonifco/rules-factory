@@ -177,6 +177,38 @@ class TestTheEmittedRails(unittest.TestCase):
             self.assertEqual(granted & MUTATING_TOOLS, set(), f"{relative} grants a mutation-capable tool")
             self.assertTrue(granted <= {"read", "grep", "glob"}, granted)
 
+    def test_the_two_reviewer_charters_are_tiered_and_the_cheap_one_is_the_cheaper(self):
+        """The steward's description has said "Cheap" since the rails were generalised from
+        `deckard`, and the line that made it true there was dropped on the way (0029's amendment).
+        In the first measured run of this team the structural review cost 2% more than the
+        semantic review it exists to run before.
+
+        Same family as the read-only assertion above: a charter that claims something the rails do
+        not carry out is worse than one that claims nothing, because it is believed. The tier
+        itself is `docs/agent-team.md`'s, stated without naming a model; this asserts only that
+        the Claude adapter answers it, and answers it the right way round.
+        """
+        steward = frontmatter(self.emitted[".claude/agents/repo-steward.md"])
+        semantic = frontmatter(self.emitted[".claude/agents/rules-conformance.md"])
+        for relative, header in ((".claude/agents/repo-steward.md", steward),
+                                 (".claude/agents/rules-conformance.md", semantic)):
+            self.assertIn("model", header,
+                          f"{relative} names no model, so it inherits whatever dispatched it and the "
+                          f"tiering docs/agent-team.md describes is a description rather than a dispatch")
+        self.assertNotEqual(steward["model"], semantic["model"],
+                            "both reviewers run on one tier, which is the defect 0029's amendment records: "
+                            "the cheap review then costs what the expensive one costs")
+
+    def test_the_team_document_states_the_tiering_without_naming_a_model(self):
+        """0029's amendment: the requirement is the contract's and vendor-neutral, the model name
+        is the vendor adapter's. A model named in the managed team document would be the
+        hard-coded provider chain that record rejects."""
+        team = self.emitted["docs/agent-team.md"]
+        self.assertIn("cheaper tier", team)
+        self.assertIn("deepest tier", team)
+        for vendor in ("sonnet", "opus", "haiku", "claude-", "gpt-", "gemini"):
+            self.assertNotIn(vendor, team.lower(), f"docs/agent-team.md names {vendor}, a vendor's model")
+
     def test_a_managed_rail_names_neither_the_engine_nor_its_map(self):
         # The constraint ownership.py's managed class puts on a recipe, checked on the rails rather
         # than assumed: fixed bytes per version is what a hand edit is detected against.
