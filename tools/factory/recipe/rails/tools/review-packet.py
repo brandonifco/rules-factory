@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Everything a reviewer needs about one pull request, assembled once.
 
-    tools/review-packet.py <pr-number> [--package-map PATH] [--out DIR] [--stdout] [--base main]
+    tools/review-packet.py <pr-number> [--role ROLE] [--package-map PATH] [--out DIR] [--stdout]
 
 Emitted by rules-factory as a managed file (decision 0029). `AGENTS.md` is the contract, and
 `docs/agent-team.md` says which reviewer reads what.
@@ -14,6 +14,32 @@ the rule, restated.
 
 So the context is assembled mechanically, once, from the issue, the pull request, git and the
 map. What a reviewer then adds is judgement, which is the part that cannot be assembled.
+
+**A reviewer is given what its role judges, and not the other role's material.** `--role` cuts
+the packet three ways, and the whole packet is still the default:
+
+  * `structural` -- what the repository steward checks: scope, ownership, evidence, determinism,
+    citation and documents. It carries the pull request's claim in full, because "the template is
+    filled with actual output rather than a claim" is its check, and the changed paths **with the
+    ownership class of each**, because "no generated or managed file was hand-edited" is the first
+    one. It carries **no entry packet**: the steward is forbidden to judge whether the
+    implementation reads the rule correctly (`docs/agent-team.md`), so the map's bytes are not its
+    to weigh -- and without them this role needs no restored map package to read a packet at all.
+  * `semantic` -- the entry packets first, then the acceptance criteria, then the semantic surface
+    and its diff. It does **not** carry the pull request body. That body is the implementer's case
+    for its own reading of the rule, and this reviewer's charter tells it not to accept that case
+    as an answer; handing it over first, several pages of it, is the anchoring this role exists to
+    resist.
+  * `independent` -- the same assignment and the current bytes in full, with no prior reviewer's
+    conclusion, no repair discussion and no pull request narrative, and a section saying so. The
+    value of this verdict is independence, and independence is a property of what it was given.
+
+**The role is part of the identity.** The `.review.json` names the role the packet was cut for and
+hashes the bytes that role was handed, and `tools/record-verdict.py` refuses a verdict the role
+cannot carry: a semantic verdict formed on a packet with no entry packets in it is exactly the
+unbound entry evidence #372 refuses, arriving by another door. A structural packet carries no
+verdict at all, because this engine's policy configures no context for one -- the steward reports
+findings, and the orchestrator decides which of them block.
 
 **Order matters, and the packet is built to enforce it.** A semantic reviewer reads the entry
 packet (`tools/entry-packet.py`, section 3 here) and forms its own reading of the rule BEFORE the
@@ -38,10 +64,16 @@ import hashlib
 import json
 import os
 import pathlib
+import re
 import shutil
 import subprocess
 import sys
 import tempfile
+
+# The ownership class beside each changed path comes from the reviewed commit's vendored
+# scripts/factory/ownership.py, and an imported module leaves its bytecode beside it. The loader
+# reads this flag when the import happens, so it belongs here and not beside the import (#194).
+sys.dont_write_bytecode = True
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 POLICY = ".github/agent-policy.json"
@@ -53,6 +85,26 @@ PACKET_ROOT_VARIABLE = "RULES_ENGINE_PACKET_ROOT"
 # map never changes, and therefore what ties a pull request back to an entry.
 ENTRY_MARKER = "<!-- rules-factory-entry:"
 DIFF_LINE_BUDGET = 2000
+NOT_CHECKED = "NOT CHECKED"
+#: The three cuts, and the whole packet. `ALL` is what a caller that names no role gets, and is
+#: what every caller before `--role` existed got, byte for byte where the sections are the same.
+STRUCTURAL, SEMANTIC, INDEPENDENT, ALL = "structural", "semantic", "independent", "all"
+ROLES = (STRUCTURAL, SEMANTIC, INDEPENDENT)
+#: Which roles read the entry packets -- and therefore which need the map held to the reviewed
+#: commit's declared digest. The steward does not judge the rule, so it is given no reading of it.
+READS_ENTRIES = frozenset({SEMANTIC, INDEPENDENT, ALL})
+#: Which roles are given the pull request's own case for itself. The semantic and independent
+#: reviewers are not: their charters say the map decides, never the implementer's explanation.
+READS_THE_CLAIM = frozenset({STRUCTURAL, ALL})
+#: The sections of an issue each role is given when the issue has them. The whole body is the
+#: fallback, because starving a reviewer is worse than over-feeding one, and the packet says which
+#: happened.
+ISSUE_SECTIONS = {
+    STRUCTURAL: ("Scope, and what it deliberately does not do", "Acceptance criteria",
+                 "Required evidence"),
+    SEMANTIC: ("The rule, if this is rules work", "Acceptance criteria", "Required evidence"),
+    INDEPENDENT: ("The rule, if this is rules work", "Acceptance criteria", "Required evidence"),
+}
 
 
 class Refused(Exception):
@@ -244,8 +296,61 @@ def entry_packet(entry_id, work_dir, source_root, package_maps=()):
             "bytes": data}, None
 
 
+def packet_suffix(role):
+    """What distinguishes one cut's files from another's in a directory that holds several.
+
+    The whole packet keeps the name it always had -- a caller that names no role gets the file it
+    got before `--role` existed -- and each cut adds its own, so three reviews of one head can sit
+    side by side without one overwriting another.
+    """
+    return "" if role == ALL else f"-{role}"
+
+
 def section(title, body):
     return f"## {title}\n\n{body.rstrip()}\n"
+
+
+def ownership_of(snapshot, record):
+    """`path -> ownership class`, from the reviewed commit's own vendored table, or `(None, why)`.
+
+    The steward's first check is that no generated or managed file was hand-edited, and until this
+    existed the packet handed it a list of paths and left it to recognise them. The table is the
+    one `factory produce` wrote the files by, read from the **reviewed** tree, so the packet cannot
+    classify by a newer table than the commit was written under.
+    """
+    name = (record.get("engine") or {}).get("name")
+    if not isinstance(name, str) or not name:
+        return None, f"{PROVENANCE} at the reviewed commit names no engine"
+    sys.path.insert(0, str(snapshot / "scripts" / "factory"))
+    try:
+        import ownership  # noqa: E402  (the factory's ownership table, as this commit vendored it)
+    except ImportError as error:
+        return None, f"scripts/factory/ownership.py is not importable at the reviewed commit ({error})"
+
+    def classify(path):
+        try:
+            if getattr(ownership, "retired", None) is not None and ownership.retired(path, name) is not None:
+                return "retired"
+            row = ownership.classify(path, name)
+        except Exception as error:  # noqa: BLE001  (an unclassifiable path is reported, never guessed)
+            return f"unclassifiable ({error})"
+        return row.cls if row else "not in the table"
+
+    return classify, None
+
+
+def role_diff(base, head, paths):
+    """The bounded diff of exactly `paths`. An empty list is an empty diff, never the whole one."""
+    if not paths:
+        return None
+    text = git("diff", f"{base}...{head}", "--", *paths)
+    lines = text.splitlines()
+    if len(lines) <= DIFF_LINE_BUDGET:
+        return "```diff\n" + text.rstrip() + "\n```"
+    return ("```diff\n" + "\n".join(lines[:DIFF_LINE_BUDGET]) + "\n```\n\n"
+            f"**This diff is {len(lines)} lines and was cut at {DIFF_LINE_BUDGET}.** A change this size "
+            f"against one issue is itself a finding: say so rather than reviewing the visible part and "
+            f"calling it a review. The whole of it: `git diff {base}...{head} -- <the paths above>`.")
 
 
 def bounded_diff(base, head):
@@ -261,7 +366,27 @@ def bounded_diff(base, head):
             f"The whole diff: `git diff {base}...{head}`.")
 
 
-def build(number, base, package_maps=(), recordable=True):
+def named_sections(body, wanted):
+    """`## <heading>` -> text, for the headings in `wanted` the body actually has, in that order.
+
+    A section the issue does not carry is absent rather than empty, so the packet can say the
+    issue states none instead of printing a blank heading over it.
+    """
+    out, current = {}, None
+    for line in (body or "").splitlines():
+        heading = re.match(r"^#{2,3}\s+(.*?)\s*$", line)
+        if heading:
+            current = heading.group(1) if heading.group(1) in wanted else None
+            if current:
+                out[current] = []
+            continue
+        if current:
+            out[current].append(line)
+    kept = {name: "\n".join(lines).strip() for name, lines in out.items()}
+    return {name: kept[name] for name in wanted if kept.get(name)}
+
+
+def build(number, base, package_maps=(), recordable=True, role=ALL):
     pull = json.loads(gh("pr", "view", str(number), "--json",
                          "number,title,body,headRefOid,headRefName,baseRefName,baseRefOid,files,closingIssuesReferences"))
     head = pull.get("headRefOid") or ""
@@ -305,7 +430,7 @@ def build(number, base, package_maps=(), recordable=True):
         maps_read, checked_maps = (maps_read_once(package_maps, record, head, parent) if package_maps
                                    else ({}, []))
         recorded_maps = map_packages(record)
-        if recordable and entries and not maps_read:
+        if recordable and entries and role in READS_ENTRIES and not maps_read:
             raise Refused(f"this packet names {len(entries)} entr" + ("y" if len(entries) == 1 else "ies")
                           + f" ({', '.join(entries)}) and no --package-map was given, so the "
                           + ("map" if len(recorded_maps) < 2 else f"{len(recorded_maps)} maps")
@@ -319,7 +444,21 @@ def build(number, base, package_maps=(), recordable=True):
                              f"({', '.join(m['packageId'] for m in recorded_maps)})")
                           + ", or read this packet with --stdout, which writes no identity.")
 
-        parts = [f"# Review packet: PR #{number} — {pull.get('title', '')}\n",
+        wanted = ISSUE_SECTIONS.get(role)
+        cut = named_sections(issue.get("body"), wanted) if wanted else {}
+        if wanted and cut:
+            assignment = ("\n\n".join(f"### {name}\n\n{text}" for name, text in cut.items())
+                          + f"\n\nThese are the sections of #{issue_number} your role is held to. The rest of "
+                            f"the body is the case for the work; read the issue in full if a finding turns on "
+                            f"something this leaves out.")
+        elif wanted:
+            assignment = (f"#{issue_number} carries none of the sections this role is given "
+                          f"({', '.join(wanted)}), so its whole body is below. An issue with no acceptance "
+                          f"criteria is itself a finding.\n\n---\n\n{issue.get('body') or '(empty)'}")
+        else:
+            assignment = f"---\n\n{issue.get('body') or '(empty)'}"
+
+        parts = [f"# Review packet ({role}): PR #{number} — {pull.get('title', '')}\n",
                  f"Head commit `{head}`. Base commit `{base_sha}`. **Every verdict is recorded against this "
                  f"exact reviewed commit and this packet's identity.** If the pull request gains another commit, "
                  f"regenerate the packet and review the new bytes.\n",
@@ -329,13 +468,43 @@ def build(number, base, package_maps=(), recordable=True):
                          f"Risk: {', '.join(risk) if risk else 'no risk label — that is itself a finding'}"
                          + ("\n\n**Independent review is required for this issue.** A semantic verdict alone does not "
                             "satisfy the gate." if independent else "") +
-                         f"\n\n---\n\n{issue.get('body') or '(empty)'}"),
-                 section("2. What the pull request claims",
-                         (pull.get("body") or "(empty — the PR template is not optional)")),
+                         f"\n\n{assignment}"),
                  ]
+        if role in READS_THE_CLAIM:
+            parts.append(section("2. What the pull request claims",
+                                 (pull.get("body") or "(empty — the PR template is not optional)")))
+        elif role == INDEPENDENT:
+            parts.append(section("2. What you were not given",
+                                 "No earlier reviewer's conclusion, no finding anybody else raised, no repair "
+                                 "discussion, and not the pull request's own narrative. The value of an "
+                                 "independent verdict is independence, and independence is a property of what "
+                                 "the reviewer was handed, so this is a section rather than an omission: if you "
+                                 "find yourself reasoning about what another reviewer thought, you are reasoning "
+                                 "about something that is not here.\n\nWhat you have is the assignment — the map's "
+                                 "own bytes and the issue's acceptance criteria — and the current bytes of the "
+                                 "change, whole."))
+        else:
+            parts.append(section("2. What you were not given",
+                                 "Not the pull request body. It is the implementer's case for its own reading of "
+                                 "the rule, written to be persuasive about it, and your charter says the map and "
+                                 "the entry's evidence decide — never the implementer's explanation. The claim "
+                                 "that the pull request is properly filled in is the structural review's, and it "
+                                 "runs before you.\n\nWhat the pull request says it closes is section 1; what it "
+                                 "actually did is sections 5 to 7."))
 
         packets = []
-        if entries:
+        if role not in READS_ENTRIES:
+            parts.append(section("3. The entries this names",
+                                 ("\n".join(f"- `{entry_id}`" for entry_id in entries)
+                                  + "\n\nThe ids only. Whether the change **cites** its entry and locator is "
+                                    "yours to check; whether it reads the rule correctly is not, so the map's "
+                                    "bytes are not here (`docs/agent-team.md`). That review runs after you, "
+                                    "on a packet built for it."
+                                  if entries else
+                                  "The issue and the pull request name no entry (no `rules-factory-entry` "
+                                  "marker). For a change to the rules surface that is a finding: the next "
+                                  "reviewer cannot check an implementation against a rule nobody named.")))
+        elif entries:
             rendered = []
             for entry_id in entries:
                 packet, problem = entry_packet(entry_id, parent, snapshot, checked_maps)
@@ -366,11 +535,12 @@ def build(number, base, package_maps=(), recordable=True):
                 + "to have the map checked.")
             body = ("Read these **before** the diff. " + provenance_of_map + " Your reading of the rule is formed "
                     "from them, not from the implementation.\n\n" + "\n".join(rendered))
+            parts.append(section("3. The entries, as the map has them", body))
         else:
             body = ("The issue and the pull request name no entry (no `rules-factory-entry` marker). For a change to "
                     "the rules surface that is a finding: the reviewer cannot check an implementation against a rule "
                     "nobody named.")
-        parts.append(section("3. The entries, as the map has them", body))
+            parts.append(section("3. The entries, as the map has them", body))
 
         parts.append(section("4. What this engine was produced from",
                              "".join(
@@ -394,12 +564,51 @@ def build(number, base, package_maps=(), recordable=True):
                              f"`{OVERLAY}/` is unchanged. A change that adds a test without naming it here, or "
                              f"implements an entry without moving its status, is a finding."))
 
-        parts.append(section("6. What changed",
-                             "\n".join(f"- `{path}`" + ("  ← semantic surface" if path in semantic else "")
-                                       for path in changed) or "(no files)"))
-        parts.append(section("7. The diff", bounded_diff(base_sha, head)))
+        classify, why = ownership_of(snapshot, record)
+        def owned(path):
+            return f"  [{NOT_CHECKED.lower()}]" if classify is None else f"  [{classify(path)}]"
 
-        parts.append(section("8. Determinism",
+        if role == SEMANTIC:
+            listed = semantic
+            heading = ("6. What changed on the semantic surface",
+                       ("\n".join(f"- `{path}`" for path in listed)
+                        + f"\n\n{len(changed) - len(listed)} other file(s) changed and are not on the semantic "
+                          f"surface this engine's policy declares. They are the structural review's: a document, "
+                          f"a workflow or a rail cannot make the engine answer a rule differently, and if you "
+                          f"believe one of them can, that is a finding about the policy's `semanticPaths`."
+                        if listed else
+                        "**Nothing here touches the semantic surface** this engine's policy declares, so no "
+                        "semantic verdict is required for this change (section 9). If you think that is wrong, "
+                        "the finding is about `semanticPaths` in `.github/agent-policy.json`."))
+        else:
+            listed = changed
+            heading = ("6. What changed",
+                       ("\n".join(f"- `{path}`{owned(path)}"
+                                  + ("  ← semantic surface" if path in semantic else "")
+                                  for path in changed)
+                        + ("\n\nThe class in brackets beside each path is the reviewed commit's own vendored ownership "
+                           "table — the one `factory produce` wrote the files by. A **generated** or **managed** "
+                           "file changed without a produce is a hand edit, and the whole of this row is what says "
+                           "so." if classify is not None else
+                           f"\n\nOwnership {NOT_CHECKED}: {why}. Which files the factory writes could not be "
+                           f"decided here, so decide it from `provenance.json` rather than assuming.")
+                        if changed else "(no files)"))
+        parts.append(section(*heading))
+        diff = role_diff(base_sha, head, listed) if role == SEMANTIC else bounded_diff(base_sha, head)
+        parts.append(section("7. The diff",
+                             diff if diff is not None else
+                             "Empty: nothing this role judges changed. See section 6."))
+
+        if role == SEMANTIC:
+            parts.append(section("8. Determinism",
+                                 "The structural review checks this, and it runs before you: wall-clock time, "
+                                 "ambient locale, environment-dependent ordering, unseeded randomness, hash "
+                                 "codes or object identity in anything observable. Raise it if you see it — a "
+                                 "reviewer who notices a defect outside its remit reports it — but it is not "
+                                 "what your verdict is about, and the diff you were given is cut to the "
+                                 "semantic surface, so it is not the whole of what that check reads."))
+        else:
+            parts.append(section("8. Determinism",
                              "Check, in the diff above: wall-clock time; ambient locale, culture or encoding; "
                              "environment-dependent ordering (dictionary or set iteration, file-system order); unseeded "
                              "randomness; hash codes or object identity in anything observable; anything that reads the "
@@ -419,12 +628,24 @@ def build(number, base, package_maps=(), recordable=True):
                              "it. The chain advances only when a provider is unavailable — never because its verdict "
                              "was unwelcome."))
 
-        manifest_name = f"pr-{number}-{head[:12]}.review.json"
-        parts.append(section("10. Recording this review",
-                             f"When written to disk, the machine-readable identity for this packet is `{manifest_name}`. "
-                             f"Record a verdict with `tools/record-verdict.py --pr {number} --packet <path-to-{manifest_name}> "
-                             f"--reviewer <id> --verdict pass|fail`. The recorder verifies this packet and its entry "
-                             f"packet digests and refuses if PR #{number} has moved."))
+        manifest_name = f"pr-{number}-{head[:12]}{packet_suffix(role)}.review.json"
+        if role == STRUCTURAL:
+            recording = (f"**No verdict is recorded from a structural packet.** This engine's policy configures no "
+                         f"review context for one: you report findings, and the orchestrator decides which of them "
+                         f"block (`docs/agent-team.md`). The identity written beside this packet, "
+                         f"`{manifest_name}`, records which bytes you were given; `tools/record-verdict.py` refuses "
+                         f"it, by name, rather than letting a verdict be formed on a packet with no entry evidence "
+                         f"in it.")
+        else:
+            recording = (f"When written to disk, the machine-readable identity for this packet is `{manifest_name}`. "
+                         f"Record a verdict with `tools/record-verdict.py --pr {number} --packet <path-to-{manifest_name}> "
+                         f"--reviewer <id> --verdict pass|fail`. The recorder verifies this packet and its entry "
+                         f"packet digests, refuses if PR #{number} has moved, and refuses a reviewer this packet's "
+                         f"role cannot carry — a `{role}` packet records a "
+                         + ("semantic verdict." if role == SEMANTIC else
+                            "verdict under one of the configured independent contexts."
+                            if role == INDEPENDENT else "semantic or an independent verdict."))
+        parts.append(section("10. Recording this review", recording))
 
         # A PR can move while the packet is being assembled. A packet for the earlier immutable commit is
         # internally honest, but handing it to a reviewer after the branch already moved invites a stale review.
@@ -517,6 +738,11 @@ def main(argv=None):
                              "package for a composed engine")
     parser.add_argument("--base", default="origin/main",
                         help="fallback local base ref when GitHub supplies no base SHA (default: origin/main)")
+    parser.add_argument("--role", choices=ROLES,
+                        help="cut the packet for one reviewer: structural (no entry packets, and no "
+                             "restored map package needed), semantic (the entry packets first, and not "
+                             "the pull request's own case), independent (the assignment and the current "
+                             "bytes, with no other reviewer's conclusions). Default: the whole packet")
     parser.add_argument("--stdout", action="store_true",
                         help="display the human packet only; no review-packet identity file is written")
     args = parser.parse_args(argv)
@@ -527,17 +753,24 @@ def main(argv=None):
         # directory first and lands here only once there is nothing left to refuse.
         out_dir = destination(args.out)
         packet_text, head, base_sha, packets, context = build(args.pr, args.base, args.package_map,
-                                                              recordable=not args.stdout)
+                                                              recordable=not args.stdout,
+                                                              role=args.role or ALL)
         if args.stdout:
             sys.stdout.write(packet_text)
             return 0
         out_dir.mkdir(parents=True, exist_ok=True)
-        target = out_dir / f"pr-{args.pr}-{head[:12]}.md"
+        role = args.role or ALL
+        target = out_dir / f"pr-{args.pr}-{head[:12]}{packet_suffix(role)}.md"
         target.write_text(packet_text, encoding="utf-8")
         for packet in packets:
             (out_dir / packet["name"]).write_bytes(packet["bytes"])
         manifest = {
-            "reviewPacketFormat": 1,
+            # Format 2 carries the role. A verdict is evidence about the bytes a reviewer read, and
+            # which bytes those were now depends on the cut as well as the commit, so a recorder
+            # that could not see the role could not tell a semantic verdict formed on entry
+            # evidence from one formed on a packet that never carried any.
+            "reviewPacketFormat": 2,
+            "reviewRole": args.role or ALL,
             "pullRequest": args.pr,
             "reviewedCommit": head,
             "baseCommit": base_sha,
@@ -551,7 +784,7 @@ def main(argv=None):
                 for packet in packets
             ],
         }
-        manifest_target = out_dir / f"pr-{args.pr}-{head[:12]}.review.json"
+        manifest_target = out_dir / f"pr-{args.pr}-{head[:12]}{packet_suffix(role)}.review.json"
         manifest_target.write_text(json.dumps(manifest, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
     except Refused as error:
         print(f"review-packet: REFUSED -- {error}", file=sys.stderr)

@@ -23,6 +23,19 @@ the semantic one it exists to run before.
 Read [`AGENTS.md`](../../AGENTS.md) for the contract this pull request is judged against, and
 [`docs/agent-team.md`](../../docs/agent-team.md) for where you sit.
 
+**Your packet is `tools/review-packet.py <pr number> --role structural`.** It is the whole
+context — nothing here needs rediscovering from the diff. It gives you the issue's scope and
+acceptance criteria, the pull request's claim in full, the entry **ids**, the changed paths **with
+the ownership class of each**, the overlay's mutation evidence, the whole diff and what must be
+green.
+
+It gives you **no entry packet**, because what the rule actually says is not yours to weigh — and
+because of that, this cut needs no restored map package to make at all. No verdict is recorded
+from it either: this engine's policy configures no context for one, so you report and the
+orchestrator decides which of your findings block. The `*.review.json` beside the packet records
+which bytes you were given, and `tools/record-verdict.py` refuses it by name rather than letting a
+verdict be formed on a packet with no entry evidence in it.
+
 ## What you check
 
 **Scope.** The change matches the one issue it closes. Exactly one `Closes #<n>`. Nothing

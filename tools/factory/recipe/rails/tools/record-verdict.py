@@ -59,7 +59,18 @@ ROOT = pathlib.Path(__file__).resolve().parents[1]
 POLICY = ".github/agent-policy.json"
 PROVENANCE = "provenance.json"
 SEMANTIC = "semantic"
-PACKET_FORMAT = 1
+PACKET_FORMAT = 2
+#: The cuts that `tools/review-packet.py` makes with its `--role` flag, and the whole packet.
+#: Which bytes a reviewer actually read now depends on the cut as well as on the commit, so the
+#: identity names it and this recorder holds a verdict to what its cut could carry.
+STRUCTURAL, INDEPENDENT, ALL = "structural", "independent", "all"
+ROLES = (STRUCTURAL, SEMANTIC, INDEPENDENT, ALL)
+#: Which cut can carry which verdict. A structural packet carries none: the steward's findings go
+#: to the orchestrator, and this engine's policy configures no context to record one under.
+CARRIES = {ALL: ("the semantic reviewer and the independent chain", (SEMANTIC, INDEPENDENT)),
+           SEMANTIC: ("the semantic reviewer", (SEMANTIC,)),
+           INDEPENDENT: ("the independent chain", (INDEPENDENT,)),
+           STRUCTURAL: ("nobody", ())}
 SHA256 = re.compile(r"^[0-9a-f]{64}$")
 GIT_SHA = re.compile(r"^[0-9a-f]{40}$")
 
@@ -112,7 +123,7 @@ def packet_member(directory, record, what):
 
 
 def packet_identity(path):
-    """Parse format 1 and verify every human-facing packet byte it binds."""
+    """Parse the identity and verify every human-facing packet byte it binds."""
     identity_path = pathlib.Path(path).expanduser().resolve()
     try:
         raw = identity_path.read_bytes()
@@ -123,7 +134,14 @@ def packet_identity(path):
         raise Refused("review packet identity is not a JSON object")
     if document.get("reviewPacketFormat") != PACKET_FORMAT:
         raise Refused(f"unsupported reviewPacketFormat {document.get('reviewPacketFormat')!r}; "
-                      f"this recorder supports {PACKET_FORMAT}")
+                      f"this recorder supports {PACKET_FORMAT}. A packet is ephemeral and is never "
+                      f"committed, so an older one is regenerated rather than migrated: run "
+                      f"`tools/review-packet.py` again and record from the packet that reviewer read.")
+    role = document.get("reviewRole")
+    if role not in ROLES:
+        raise Refused(f"review packet identity has no valid reviewRole (got {role!r}); "
+                      f"one of {', '.join(ROLES)}. Which bytes a reviewer was given depends on the cut, "
+                      f"so a verdict cannot be bound to a packet that does not say which cut it is.")
 
     pull = document.get("pullRequest")
     if not isinstance(pull, int) or isinstance(pull, bool) or pull < 1:
@@ -223,6 +241,7 @@ def packet_identity(path):
 
     return {
         "path": identity_path,
+        "role": role,
         "sha256": digest(raw),
         "pullRequest": pull,
         "reviewedCommit": reviewed,
@@ -233,6 +252,28 @@ def packet_identity(path):
         "policy": policy,
         "document": document,
     }
+
+
+def role_carries(reviewer, role):
+    """Refuse a verdict the packet's cut could not have been formed on.
+
+    A `--role semantic` packet holds the entry packets and not the pull request's argument; a
+    `--role structural` packet holds neither, because the steward is forbidden to judge the rule.
+    Recording a semantic verdict from a structural packet would put a judgement about the map into
+    the record having read none of it -- the unbound entry evidence #372 refuses, arriving through
+    the role rather than through the digest. The record cannot tell the two apart afterwards, which
+    is why this is refused here rather than left to the caller.
+    """
+    who, allowed = CARRIES[role]
+    kind = SEMANTIC if reviewer == SEMANTIC else INDEPENDENT
+    if kind not in allowed:
+        # The command is built whole and interpolated as one span: a rail that spells a command
+        # out is run exactly as written by a test, and half of one is not a command (#203).
+        command = f"tools/review-packet.py <pr number> --role {kind}"
+        raise Refused(f"this packet was cut for the {role} review, which carries a verdict from {who}. "
+                      f"{reviewer!r} is {'the semantic reviewer' if kind == SEMANTIC else 'an independent reviewer'}, "
+                      f"and the bytes that role needs are not in it. Generate the packet the reviewer "
+                      f"actually read: `{command}`.")
 
 
 def context_for(reviewer, packet_policy):
@@ -274,6 +315,7 @@ def main(argv=None):
             raise Refused(f"--sha says {args.sha}, but the reviewed packet says {reviewed}")
 
         context = context_for(args.reviewer, identity["policy"])
+        role_carries(args.reviewer, identity["role"])
         pull = json.loads(gh("pr", "view", str(args.pr), "--json", "number,headRefOid,state"))
         head = pull.get("headRefOid")
         if not head:

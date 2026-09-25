@@ -339,11 +339,28 @@ decline that names why and cites where — that is the engine working, not the e
   asked for, and it says so.
 - **Report what happened, not what should have happened.** Paste the command and its actual
   output. "Tests pass" is not evidence; a run is.
-- **A reviewer is given the context, not asked to find it.** `tools/review-packet.py <pr number>`
-  snapshots the pull request's exact head commit, then assembles the issue, the claim, the entries
-  as that commit has them, the overlay's before and after, the bounded base-to-head diff and what
-  must be green. Its sections are in the order a semantic reviewer reads them: the entry before the
-  implementation, always. File output includes the human packet, its entry packets and a
+- **A reviewer is given the context its role judges, not asked to find it.**
+  `tools/review-packet.py <pr number>` snapshots the pull request's exact head commit, then
+  assembles the issue, the claim, the entries as that commit has them, the overlay's before and
+  after, the bounded base-to-head diff and what must be green. Its sections are in the order a
+  semantic reviewer reads them: the entry before the implementation, always.
+
+  `--role` cuts it for one reviewer, and the whole packet remains the default:
+
+  ```bash
+  tools/review-packet.py <pr number> --role structural
+  ```
+
+  A **structural** packet carries the pull request's claim in full and the changed paths with the
+  ownership class of each, and no entry packet — the steward does not judge whether the rule was
+  read correctly, so the map's bytes are not its to weigh, and this cut therefore needs no restored
+  map package at all. A **semantic** packet carries the entry packets first and not the pull
+  request's case for its own reading. An **independent** packet carries the assignment and the
+  current bytes whole, with no other reviewer's conclusions, and says so where a reader will look
+  for them. **The role is part of the identity**: the `*.review.json` names it, and
+  `tools/record-verdict.py` refuses a verdict the cut could not have been formed on — a semantic
+  verdict on a packet with no entry evidence in it is what the binding below exists to refuse,
+  arriving by another door. File output includes the human packet, its entry packets and a
   `*.review.json` identity that names the exact head/base commits and hashes the packet bytes,
   reviewed policy and provenance context. The caller's checkout is not review evidence.
 

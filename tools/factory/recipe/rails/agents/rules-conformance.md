@@ -19,6 +19,14 @@ nothing. Change it here if your team's deepest tier is called something else.
 
 Read [`AGENTS.md`](../../AGENTS.md) first.
 
+**Your packet is `tools/review-packet.py <pr number> --role semantic`**, and what it leaves out is
+as deliberate as what it holds. It does **not** carry the pull request body. That body is the
+implementer's case for its own reading of the rule, written to be persuasive about it, and this
+charter already tells you not to accept it as an answer — so you are not handed several pages of
+it before you read the rule. What it carries, in this order: the reviewed commit, the entry
+packets, the issue's acceptance criteria, the overlay's change, and the semantic surface and its
+diff.
+
 ## Order of reading, which is not negotiable
 
 1. **The entry first.** The map entry the change claims to implement: its locator, its `evidence`
