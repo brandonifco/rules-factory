@@ -35,6 +35,7 @@ import io
 import json
 import os
 import re
+import shlex
 import shutil
 import subprocess
 import sys
@@ -1990,6 +1991,9 @@ class TestTheRepairPacket(RailsInAGitEngine):
             "statuses": statuses or {},
         })
 
+    def worktree_path(self, branch=BRANCH):
+        return os.path.join(self.worktrees, branch)
+
     def brief(self, *extra, **environment):
         return subprocess.run([sys.executable, os.path.join(self.out, "tools", "repair-packet.py"), "5", *extra],
                               cwd=self.out, capture_output=True, text=True,
@@ -2161,6 +2165,85 @@ class TestTheRepairPacket(RailsInAGitEngine):
         self.pull_request(head, branch="issue-31-somebody-elses-machine")
         text = self.rendered()
         self.assertIn("git fetch origin issue-31-somebody-elses-machine", text)
+
+    # --- the place it sends the attempt to (#482) -----------------------------------------------
+
+    def test_a_worktree_behind_the_pull_request_head_is_named_as_such(self):
+        """"One agent, one attempt" is exactly the arrangement in which the previous attempt may
+        have pushed from a machine this one does not have. Matching the branch name then sends the
+        repair to bytes nobody reviewed, under a header advertising the ones that were."""
+        self.commit_engine()
+        self.fixture({"issue": {"27": {"title": "Widen the altitude limit", "state": "OPEN",
+                                       "labels": [{"name": "state:ready"}, {"name": "risk:normal"}]}}})
+        self.assertEqual(self.dispatch("27").returncode, 0)
+        worktree = self.worktree_path()
+        self.pull_request("b" * 40)          # the pull request is somewhere this machine is not
+        text = self.rendered()
+        self.assertIn("not at the head this brief is about", text)
+        self.assertIn(worktree, text)
+        self.assertIn("git fetch origin", text, "and the command that brings it over")
+        self.assertIn(f"merge --ff-only {'b' * 40}", text,
+                      "a fast-forward: a checkout of the sha would leave the attempt on a detached HEAD")
+        self.assertNotIn("checkout bbbb", text)
+        self.assertIn("cannot tell which of the two is the attempt", text,
+                      "and it does not decide for the agent which side to keep")
+
+    def test_a_local_branch_behind_the_pull_request_is_not_recreated_as_it_stands(self):
+        """The recreate path had the same hole: `git worktree add <root>/<branch> <branch>` checks out
+        an existing local branch without asking whether its tip is the head the brief names."""
+        self.commit_engine()
+        self.change()                             # the branch exists; nothing has it checked out
+        self.pull_request("c" * 40)               # ... and the pull request has moved on
+        text = self.rendered()
+        self.assertIn("The local branch is not at the pull request's head", text)
+        command = [line for line in text.splitlines() if line.startswith("git fetch origin")][0]
+        self.assertIn(f"-B {self.BRANCH} {'c' * 40}", command, "the branch is put at the head, not left where it was")
+        self.assertIn("git worktree add", command)
+
+    def test_a_worktree_at_the_head_says_nothing_about_reconciling(self):
+        self.commit_engine()
+        self.fixture({"issue": {"27": {"title": "Widen the altitude limit", "state": "OPEN",
+                                       "labels": [{"name": "state:ready"}, {"name": "risk:normal"}]}}})
+        self.assertEqual(self.dispatch("27").returncode, 0)
+        head = git(self.worktree_path(), "rev-parse", "HEAD")
+        self.pull_request(head)
+        text = self.rendered()
+        self.assertNotIn("not at the head this brief is about", text)
+        self.assertNotIn("git fetch origin", text)
+
+    def test_a_dirty_worktree_is_reported_and_not_tidied(self):
+        self.commit_engine()
+        self.fixture({"issue": {"27": {"title": "Widen the altitude limit", "state": "OPEN",
+                                       "labels": [{"name": "state:ready"}, {"name": "risk:normal"}]}}})
+        self.assertEqual(self.dispatch("27").returncode, 0)
+        worktree = self.worktree_path()
+        with open(os.path.join(worktree, "somebody-elses-work.txt"), "w", encoding="utf-8") as handle:
+            handle.write("not mine\n")
+        self.pull_request(git(worktree, "rev-parse", "HEAD"))
+        text = self.rendered()
+        self.assertIn("uncommitted or untracked files", text)
+        self.assertIn("do not delete what you did not create", text)
+
+    def test_a_worktree_root_inside_the_repository_is_refused(self):
+        """`tools/dispatch-agent.sh` refuses this and says why. The brief printed it as a command
+        to run."""
+        self.commit_engine()
+        self.pull_request(self.change())
+        done = self.brief("--finding", "x", RULES_ENGINE_WORKTREE_ROOT=os.path.join(self.out, "worktrees"))
+        self.assertEqual(done.returncode, 1, done.stdout)
+        self.assertIn("resolves inside the repository", done.stderr)
+        self.assertIn("RULES_ENGINE_WORKTREE_ROOT", done.stderr)
+
+    def test_every_path_in_a_printed_command_is_quoted(self):
+        """A rail's commands are run as written (#203), and a worktree root with a space in it
+        produced a command git reads as two arguments."""
+        self.commit_engine()
+        self.pull_request(self.change())
+        spaced = os.path.join(self.tmp, "engine worktrees")
+        text = self.rendered(RULES_ENGINE_WORKTREE_ROOT=spaced)
+        command = [line for line in text.splitlines() if line.startswith("git worktree add")][0]
+        self.assertIn("'", command, f"the path is unquoted: {command}")
+        self.assertEqual(len(shlex.split(command)), 5, f"git reads this as {len(shlex.split(command))} words")
 
     # --- what it refuses ------------------------------------------------------------------
 

@@ -38,6 +38,7 @@ import json
 import os
 import pathlib
 import re
+import shlex
 import subprocess
 import sys
 
@@ -51,6 +52,7 @@ ENTRY_MARKER = "<!-- rules-factory-entry:"
 # persuaded of, because the work is already merged into a branch.
 ISSUE_SECTIONS = ("Acceptance criteria", "Required evidence")
 DEFAULT_WORKTREE_VARIABLE = "RULES_ENGINE_WORKTREE_ROOT"
+NOT_CHECKED = "NOT CHECKED"
 
 
 class Refused(Exception):
@@ -143,8 +145,57 @@ def named_sections(body, wanted):
     return {name: "\n".join(lines).strip() for name, lines in out.items() if "\n".join(lines).strip()}
 
 
-def worktree_for(branch):
-    """Where `branch` is checked out, and what to do when it is nowhere: `(path, how)`.
+class Worktree:
+    """Where a repair attempt works, and everything about that place it is dishonest to assume."""
+
+    def __init__(self, path, tip, head, branch, dirty, recreate, root, variable):
+        self.path, self.tip, self.head, self.branch = path, tip, head, branch
+        self.dirty, self.recreate, self.root, self.variable = dirty, recreate, root, variable
+
+    @property
+    def at_head(self):
+        """True, False, or None when the tip could not be read. None is not False."""
+        return None if self.tip is None else self.tip == self.head
+
+    def reconcile(self):
+        """The command that brings the branch to the pull request's head, quoted.
+
+        A fast-forward, so that the branch stays a branch (a checkout of the sha would leave the
+        attempt on a detached HEAD it cannot push from) and so that a worktree holding commits the
+        pull request lacks refuses instead of being overwritten.
+        """
+        return (f"git fetch origin {shlex.quote(self.branch)} && "
+                f"git -C {shlex.quote(self.path)} merge --ff-only {shlex.quote(self.head)}")
+
+    def recreate_at_head(self):
+        """No worktree exists, and the local branch is not at the head: put one back at the head."""
+        target = os.path.join(self.root, self.branch)
+        return (f"git fetch origin {shlex.quote(self.branch)} && "
+                f"git worktree add {shlex.quote(target)} -B {shlex.quote(self.branch)} {shlex.quote(self.head)}")
+
+
+def worktree_root():
+    """Where worktrees live, and the variable that names it. Refuses one inside the repository.
+
+    `tools/dispatch-agent.sh` refuses the same thing and says why: a worktree inside the repository
+    "eventually gets committed, scanned by a tool that did not expect it, or deleted by a clean
+    step". This printed such a path as a command to run (#482).
+    """
+    document = policy()
+    variable = ((document.get("worktrees") or {}).get("rootEnvironmentVariable")
+                or DEFAULT_WORKTREE_VARIABLE)
+    root = os.environ.get(variable) or os.path.join(
+        os.path.expanduser("~"), "rules-engine-worktrees", ROOT.name)
+    resolved = pathlib.Path(root).expanduser().resolve()
+    if resolved == ROOT or ROOT in resolved.parents:
+        raise Refused(f"${variable} resolves inside the repository ({resolved}), and a worktree there is "
+                      f"eventually committed, scanned by a tool that did not expect it, or deleted by a clean "
+                      f"step -- which is why `tools/dispatch-agent.sh` refuses it too. Point it outside {ROOT}.")
+    return str(resolved), variable
+
+
+def worktree_for(branch, head):
+    """Where `branch` is checked out and whether it holds `head`: a `Worktree`.
 
     A repair attempt works the branch the pull request is already on -- one issue, one branch, one
     worktree, one pull request is unchanged by a second attempt at it (`AGENTS.md` section 4). The
@@ -152,28 +203,40 @@ def worktree_for(branch):
     only what merged at exactly its tip. When a previous session's machine is gone it does not,
     and the command that puts it back is a fact this can compute rather than one the next agent
     has to invent.
+
+    **Matching the branch name is not enough** (#482). "One agent, one attempt" is exactly the
+    arrangement in which the previous attempt may have pushed from a machine this one does not
+    have, so the local branch can sit at A while the pull request advertises B. A brief whose
+    header says B and whose section 1 points at A sends the repair to bytes nobody reviewed. So
+    the tip is compared, the tree's cleanliness is read, and what is found is reported rather than
+    assumed.
     """
+    root, variable = worktree_root()
     listing = git_maybe("worktree", "list", "--porcelain") or ""
-    path = head = None
+    path = found = None
     for line in listing.splitlines():
         if line.startswith("worktree "):
-            path, head = line[len("worktree "):], None
+            path = line[len("worktree "):]
         elif line.startswith("branch ") and line[len("branch "):] == f"refs/heads/{branch}":
-            head = path
+            found = path
             break
-    if head:
-        return head, None
+    if found:
+        tip = (git_maybe("-C", found, "rev-parse", "HEAD") or "").strip() or None
+        status = git_maybe("-C", found, "status", "--porcelain")
+        return Worktree(path=found, tip=tip, head=head, branch=branch,
+                        dirty=None if status is None else bool(status.strip()),
+                        recreate=None, root=root, variable=variable)
 
-    document = policy()
-    variable = ((document.get("worktrees") or {}).get("rootEnvironmentVariable")
-                or DEFAULT_WORKTREE_VARIABLE)
-    root = os.environ.get(variable) or os.path.join(
-        os.path.expanduser("~"), "rules-engine-worktrees", ROOT.name)
     target = os.path.join(root, branch)
-    local = git_maybe("rev-parse", "--verify", "--quiet", f"refs/heads/{branch}")
+    local = (git_maybe("rev-parse", "--verify", "--quiet", f"refs/heads/{branch}") or "").strip() or None
     if local:
-        return None, f"git worktree add {target} {branch}"
-    return None, f"git fetch origin {branch} && git worktree add {target} -b {branch} origin/{branch}"
+        recreate = f"git worktree add {shlex.quote(target)} {shlex.quote(branch)}"
+    else:
+        recreate = (f"git fetch origin {shlex.quote(branch)} && "
+                    f"git worktree add {shlex.quote(target)} -b {shlex.quote(branch)} "
+                    f"origin/{shlex.quote(branch)}")
+    return Worktree(path=None, tip=local, head=head, branch=branch, dirty=None,
+                    recreate=recreate, root=root, variable=variable)
 
 
 def verdicts_at(head, settings):
@@ -292,7 +355,7 @@ def build(number, findings):
                       f"truncated and what this change owes cannot be decided from it. Read the pull request's "
                       f"files directly: `git diff origin/main...{head}`.")
 
-    path, how = worktree_for(branch)
+    where = worktree_for(branch, head)
     entries = entry_ids(issue.get("body"), pull.get("body"))
     standing, note = verdicts_at(head, settings)
 
@@ -305,15 +368,42 @@ def build(number, findings):
              "the result. If something you need is in none of those, say so rather than reconstructing it "
              "from memory.\n"]
 
-    parts.append(section("1. Where you work",
-                         (f"The branch is checked out at:\n\n```\n{path}\n```\n\n"
-                          f"Work there and nowhere else. Confirm it before your first write — "
-                          f"`git rev-parse --git-common-dir` and `git rev-parse --git-dir` must differ."
-                          if path else
-                          f"**No worktree holds `{branch}` on this machine.** Put one back, and work there:\n\n"
-                          f"```bash\n{how}\n```\n\n"
-                          f"One issue, one branch, one worktree, one pull request: this is the same branch the "
-                          f"pull request is already on, not a new one.")))
+    if where.path:
+        held = (f"The branch is checked out at:\n\n```\n{where.path}\n```\n\n"
+                f"Work there and nowhere else. Confirm it before your first write — "
+                f"`git rev-parse --git-common-dir` and `git rev-parse --git-dir` must differ.")
+        if where.at_head is False:
+            held += (f"\n\n**That worktree is not at the head this brief is about.** It holds "
+                     f"`{(where.tip or '')[:12]}`; the pull request is at `{head[:12]}`, and the findings below "
+                     f"are about the pull request's bytes. Bring it over before you change anything:\n\n"
+                     f"```bash\n{where.reconcile()}\n```\n\n"
+                     f"If that refuses, or says the worktree is already up to date, it holds commits the pull "
+                     f"request does not: stop and say so, because this brief cannot tell which of the two is the "
+                     f"attempt.")
+        elif where.at_head is None:
+            held += (f"\n\n**{NOT_CHECKED}**: that worktree's tip could not be read, so whether it holds "
+                     f"`{head[:12]}` is unknown. Check before you change anything: `git -C "
+                     f"{shlex.quote(where.path)} rev-parse HEAD`.")
+        if where.dirty:
+            held += ("\n\n**It has uncommitted or untracked files.** They are somebody's — possibly the "
+                     "previous attempt's, possibly a build's. Look before you build on top of them, and do not "
+                     "delete what you did not create (`AGENTS.md` section 4).")
+        elif where.dirty is None:
+            held += f"\n\n**{NOT_CHECKED}**: whether that worktree is clean could not be read."
+    else:
+        held = (f"**No worktree holds `{branch}` on this machine.** Put one back, and work there:\n\n"
+                f"```bash\n{where.recreate}\n```\n\n"
+                f"One issue, one branch, one worktree, one pull request: this is the same branch the "
+                f"pull request is already on, not a new one.")
+        if where.at_head is False:
+            held += (f"\n\n**The local branch is not at the pull request's head.** It is at "
+                     f"`{(where.tip or '')[:12]}` and the pull request is at `{head[:12]}`, so the command above "
+                     f"checks out bytes the findings are not about. Use this instead, which fetches and "
+                     f"puts the branch at the head:\n\n"
+                     f"```bash\n{where.recreate_at_head()}\n```\n\n"
+                     f"If the local branch holds commits the pull request does not, stop and say so: this "
+                     f"brief cannot tell which of the two is the attempt.")
+    parts.append(section("1. Where you work", held))
 
     parts.append(section("2. What is wrong",
                          "\n\n".join(f"### Finding {index}\n\n{text.strip()}"
