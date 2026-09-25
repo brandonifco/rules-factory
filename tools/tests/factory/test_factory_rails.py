@@ -1939,6 +1939,7 @@ class TestTheRepairPacket(RailsInAGitEngine):
             "pr": {"5": {"number": 5, "title": "Implement the altitude limit", "body": body,
                          "state": state, "isDraft": False,
                          "headRefOid": head, "headRefName": branch, "baseRefName": "main",
+                         "files": [{"path": "overlay/altitude-limit.json"}],
                          "closingIssuesReferences": [{"number": 27}][:issues]}},
             "issue": {"27": {"number": 27, "title": "Widen the altitude limit", "state": "OPEN",
                              "body": ("<!-- rules-factory-entry: altitude-limit -->\n"
@@ -2146,6 +2147,81 @@ class TestTheRepairPacket(RailsInAGitEngine):
         self.assertEqual(done.returncode, 1, done.stdout)
         self.assertIn("closes 0 issues", done.stderr)
 
+    # --- what the brief refuses to assert (#483) -------------------------------------------------
+
+    def test_an_issue_awaiting_a_decision_gets_no_brief(self):
+        """`tools/dispatch-agent.sh` refuses this and says why. A repair attempt is an
+        implementation attempt, so it inherits the refusal — and until this it evaded it, which is
+        the one way #465 weakened a protection the rails already had."""
+        self.commit_engine()
+        self.pull_request(self.change(), labels=("state:needs-decision", "risk:normal"))
+        done = self.brief("--finding", "the disputed row")
+        self.assertEqual(done.returncode, 1, done.stdout)
+        self.assertIn("state:needs-decision", done.stderr)
+        self.assertIn("may not resolve the open question itself", done.stderr)
+        self.assertEqual(done.stdout, "")
+
+    def test_a_blocked_issue_gets_no_brief(self):
+        self.commit_engine()
+        self.pull_request(self.change(), labels=("state:blocked",))
+        done = self.brief("--finding", "x")
+        self.assertEqual(done.returncode, 1, done.stdout)
+        self.assertIn("state:blocked", done.stderr)
+        self.assertIn("not built yet", done.stderr)
+
+    def test_a_closed_issue_gets_no_brief(self):
+        self.commit_engine()
+        head = self.change()
+        self.pull_request(head)
+        document = json.load(open(self.fixture_path, encoding="utf-8"))
+        document["issue"]["27"]["state"] = "CLOSED"
+        self.fixture(document)
+        done = self.brief("--finding", "x")
+        self.assertEqual(done.returncode, 1, done.stdout)
+        self.assertIn("is CLOSED", done.stderr)
+
+    def test_the_readiness_labels_are_the_policy_s(self):
+        self.commit_engine()
+        path = os.path.join(self.out, ".github", "agent-policy.json")
+        policy = json.load(open(path, encoding="utf-8"))
+        policy["labels"]["needsDecision"] = "awaiting-the-owner"
+        with open(path, "w", encoding="utf-8") as handle:
+            json.dump(policy, handle, indent=2)
+        git(self.out, "commit", "-qam", "rename a label")
+        self.pull_request(self.change(), labels=("awaiting-the-owner",))
+        done = self.brief("--finding", "x")
+        self.assertEqual(done.returncode, 1, done.stdout)
+        self.assertIn("awaiting-the-owner", done.stderr)
+
+    def test_the_semantic_verdict_is_owed_only_when_the_change_owes_it(self):
+        """Decided from the changed paths against the policy's surface, the way the review packet
+        and the conformance gate decide it. A rail that overstates what is owed is a rail agents
+        learn to read past."""
+        self.commit_engine()
+        head = self.change()
+        self.pull_request(head)
+        document = json.load(open(self.fixture_path, encoding="utf-8"))
+        document["pr"]["5"]["files"] = [{"path": "overlay/altitude-limit.json"}]
+        self.fixture(document)
+        self.assertIn("a semantic verdict at the new head", self.rendered())
+
+        document["pr"]["5"]["files"] = [{"path": "README.md"}]
+        self.fixture(document)
+        text = self.rendered()
+        self.assertIn("not required as this pull request stands", text)
+        self.assertIn("Your repair can change that", text, "and it says the requirement can come back")
+
+    def test_a_truncated_file_list_leaves_what_is_owed_undecidable(self):
+        self.commit_engine()
+        head = self.change()
+        self.pull_request(head)
+        document = json.load(open(self.fixture_path, encoding="utf-8"))
+        document["pr"]["5"]["changedFiles"] = 101
+        self.fixture(document)
+        done = self.brief("--finding", "x")
+        self.assertEqual(done.returncode, 1, done.stdout)
+        self.assertIn("changed files, so the file list is truncated", done.stderr)
+
     def test_it_writes_nothing_and_leaves_the_checkout_as_it_found_it(self):
         self.commit_engine()
         self.pull_request(self.change())
@@ -2291,6 +2367,77 @@ class TestOrchestratorStatus(RailsInAGitEngine):
         done = self.status()
         self.assertIn("unlabelled=1", done.stdout)
         self.assertEqual(done.returncode, 1)
+
+    # --- what it establishes before it says it (#480) --------------------------------------------
+
+    def test_a_worktree_whose_directory_is_gone_is_reported_not_raised(self):
+        """Registered and deleted is what a stray `rm` leaves behind, and
+        `subprocess.run(cwd=<gone>)` raised `FileNotFoundError` out of the whole report."""
+        self.commit_engine()
+        self.fixture({"issue": {"27": {"title": "Widen the altitude limit", "state": "OPEN",
+                                       "labels": [{"name": "state:ready"}, {"name": "risk:normal"}]}}})
+        self.assertEqual(self.dispatch("27").returncode, 0)
+        shutil.rmtree(os.path.join(self.worktrees, "issue-27-widen-the-altitude-limit"))
+        self.state()
+        done = self.status()
+        self.assertNotIn("Traceback", done.stderr, done.stderr[:400])
+        self.assertIn("could not be read", done.stdout)
+        self.assertEqual(done.returncode, 3, "an unreadable worktree is a partial report")
+
+    def test_an_unreadable_worktree_list_is_not_no_worktrees(self):
+        """"I could not ask" and "there are none" leave the same repository behind, and the empty
+        string turned the first into the second."""
+        self.commit_engine()
+        self.state()
+        shim = os.path.join(self.tmp, "failing-git")
+        os.makedirs(shim, exist_ok=True)
+        with open(os.path.join(shim, "git"), "w", encoding="utf-8") as handle:
+            handle.write('#!/bin/sh\nfor a in "$@"; do [ "$a" = "worktree" ] && exit 1; done\n'
+                         'exec /usr/bin/git "$@"\n')
+        os.chmod(os.path.join(shim, "git"), 0o755)
+        done = self.status(PATH=shim + os.pathsep + os.environ["PATH"])
+        self.assertNotIn("worktrees     0", done.stdout)
+        self.assertIn("could not be listed", done.stdout)
+        self.assertEqual(done.returncode, 3)
+
+    def test_a_list_cut_at_the_ceiling_is_not_a_count(self):
+        """121 open issues printed as `ready=120 blocked=0`, when the one that did not fit was the
+        blocked one, is an answer nobody established."""
+        self.commit_engine()
+        self.state(issues=[(n, f"issue {n}", ["state:ready", "risk:normal"]) for n in range(1, 400)])
+        done = self.status()
+        self.assertIn("issues        NOT CHECKED", done.stdout)
+        self.assertIn("this list is cut", done.stdout)
+        self.assertEqual(done.returncode, 3)
+
+    def test_the_ceiling_does_not_move_with_the_printing_limit(self):
+        """`--limit` says how much to print. How much to read is not the caller's to lower, or a
+        smaller limit would turn a complete answer into a refusal."""
+        self.commit_engine()
+        self.state(issues=[(n, f"issue {n}", ["state:ready", "risk:normal"]) for n in range(20, 40)])
+        done = self.status("--limit", "2")
+        self.assertEqual(done.returncode, 0, done.stdout)
+        self.assertIn("… and 18 more", done.stdout)
+        self.assertNotIn("this list is cut", done.stdout)
+
+    def test_a_checkout_not_level_with_the_default_branch_does_not_exit_zero(self):
+        """The steady state is main, clean, level with it. Exit 0 ignored the last two, and said
+        "steady" over a checkout it had just printed as NOT level."""
+        self.commit_engine()
+        self.state()
+        document = json.load(open(self.fixture_path, encoding="utf-8"))
+        document["repo"]["defaultHead"] = "c" * 40
+        self.fixture(document)
+        done = self.status()
+        self.assertIn("NOT level with the default branch", done.stdout)
+        self.assertEqual(done.returncode, 1, "a checkout behind the default branch is not the steady state")
+
+    def test_a_checkout_on_a_topic_branch_does_not_exit_zero(self):
+        self.commit_engine()
+        git(self.out, "checkout", "-qb", "some-topic-branch")
+        self.state()
+        done = self.status()
+        self.assertEqual(done.returncode, 1, "the steady state is main, and this is not main")
 
     def test_it_carries_no_body_no_diff_and_no_log(self):
         self.commit_engine()
@@ -2599,6 +2746,34 @@ class TestTheReviewPacketRoles(TestTheReviewPacket):
             text = self.cut(role)
             self.assertNotIn("with their diff in the structural cut and not here", text,
                              f"the {role} cut withholds no path, so it has nothing to say about one")
+
+    def test_a_truncated_file_list_is_refused_rather_than_cut_from(self):
+        """`gh pr view --json files` caps at 100, silently. Since the cuts of #467 these paths
+        decide what the diff *contains*, so a partial list drops a change and then says nothing was
+        dropped — `tools/conformance-gate.py` has refused the same list since #193."""
+        self.commit_engine()
+        head = self.change()
+        self.pull_request(head)
+        document = json.load(open(self.fixture_path, encoding="utf-8"))
+        document["pr"]["5"]["changedFiles"] = 101      # GitHub listed 3 of them
+        self.fixture(document)
+        for role in (None, "structural", "semantic", "independent"):
+            done = self.packet("--stdout", *(("--role", role) if role else ()))
+            self.assertEqual(done.returncode, 1, f"the {role or 'whole'} packet was cut from a truncated list")
+            self.assertIn("GitHub listed 3 of PR #5's 101 changed files", done.stderr)
+            self.assertIn("say nothing was dropped", done.stderr)
+            self.assertEqual(done.stdout, "", "a refused packet prints nothing a reviewer could read")
+
+    def test_a_complete_file_list_is_not_refused(self):
+        """The refusal is about disagreement, not about the field being present: a pull request
+        whose count matches is assembled exactly as before."""
+        self.commit_engine()
+        head = self.change()
+        self.pull_request(head)
+        document = json.load(open(self.fixture_path, encoding="utf-8"))
+        document["pr"]["5"]["changedFiles"] = len(document["pr"]["5"]["files"])
+        self.fixture(document)
+        self.assertIn("## 6. What changed", self.cut("structural"))
 
     def test_each_cut_is_smaller_than_the_whole_packet(self):
         """The measurement the change is for, asserted as an ordering rather than a byte count:

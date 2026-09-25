@@ -214,6 +214,21 @@ def readings(paths):
     return out
 
 
+def is_semantic(path, patterns):
+    """Whether `path` is on the semantic surface, by the policy's glob patterns.
+
+    `**` spans directories and `*` does not, which is what the patterns in `agent-policy.json`
+    mean; fnmatch alone would treat `src/*` as matching `src/a/b.cs`. The same reading
+    `tools/review-packet.py` and `tools/conformance-gate.py` use, so a brief cannot say a change
+    owes something the gate will not ask for (#483).
+    """
+    for pattern in patterns:
+        regex = re.escape(pattern).replace(r"\*\*/", "(?:.*/)?").replace(r"\*\*", ".*").replace(r"\*", "[^/]*")
+        if re.fullmatch(regex, path):
+            return True
+    return False
+
+
 def section(title, body):
     return f"## {title}\n\n{body.rstrip()}\n"
 
@@ -221,7 +236,7 @@ def section(title, body):
 def build(number, findings):
     pull = json.loads(gh("pr", "view", str(number), "--json",
                          "number,title,state,isDraft,headRefOid,headRefName,baseRefName,"
-                         "body,closingIssuesReferences"))
+                         "body,files,changedFiles,closingIssuesReferences"))
     state = (pull.get("state") or "").upper()
     if state != "OPEN":
         raise Refused(f"PR #{number} is {state or 'in an unknown state'}. A repair attempt works an open "
@@ -246,6 +261,36 @@ def build(number, findings):
     review = settings.get("review") or {}
     names = settings.get("labels") or {}
     independent = names.get("independentRisk") in labels
+
+    # The readiness refusal `tools/dispatch-agent.sh` makes, made here for the same reason (#483).
+    # A repair attempt is an implementation attempt -- the contract says so -- so an issue that
+    # stopped being workable while its pull request was open stops being workable for the repair
+    # too. This brief read the labels, printed them, and implemented regardless, which is the one
+    # way the change that introduced it weakened a protection the rails already had.
+    issue_state = (issue.get("state") or "").upper()
+    if issue_state and issue_state != "OPEN":
+        raise Refused(f"issue #{issue_number} is {issue_state}, and PR #{number} claims to close it. A repair "
+                      f"attempt implements an open issue; reopen it, or close the pull request.")
+    for key, why in (("needsDecision",
+                      "An implementation agent may not resolve the open question itself (`AGENTS.md` section 6). "
+                      "The answer is the owner's, recorded as a ruling or a decision record; then the label moves "
+                      "and the repair can be briefed."),
+                     ("blocked",
+                      "Something it depends on is not built yet. Work that dependency first, or move the label if "
+                      "it is already done.")):
+        label = names.get(key)
+        if label and label in labels:
+            raise Refused(f"issue #{issue_number} is {label}, and is not implementable. {why}")
+
+    changed = [f["path"] for f in pull.get("files") or []]
+    # `gh pr view --json files` caps at 100, silently, and `changedFiles` says how many there are.
+    # The semantic line below is decided from these paths, and the conformance gate refuses the
+    # same truncation for the same reason (#193).
+    count = pull.get("changedFiles")
+    if isinstance(count, int) and len(changed) != count:
+        raise Refused(f"GitHub listed {len(changed)} of PR #{number}'s {count} changed files, so the file list is "
+                      f"truncated and what this change owes cannot be decided from it. Read the pull request's "
+                      f"files directly: `git diff origin/main...{head}`.")
 
     path, how = worktree_for(branch)
     entries = entry_ids(issue.get("body"), pull.get("body"))
@@ -309,8 +354,17 @@ def build(number, findings):
                          f"That is the mechanism working: the next review reads the new bytes, from a new "
                          f"packet (`tools/review-packet.py {number}`)."))
 
+    # What this change actually owes, decided the way `tools/review-packet.py` and
+    # `tools/conformance-gate.py` decide it: from the changed paths against the policy's declared
+    # semantic surface. It used to be asserted unconditionally, so a repair that fixed a README was
+    # told it owed a verdict neither of them would ask for -- and a rail that overstates what is
+    # owed is a rail agents learn to read past (#483).
+    semantic = [path for path in changed if is_semantic(path, review.get("semanticPaths") or [])]
     gates = ["- `validate` — `./scripts/validate.sh full`, whole, and paste what it printed",
-             f"- `{review.get('semanticContext', '(unset)')}` — a semantic verdict at the new head"]
+             f"- `{review.get('semanticContext', '(unset)')}` — a semantic verdict at the new head"
+             if semantic else
+             f"- `{review.get('semanticContext', '(unset)')}` — **not required as this pull request stands**: "
+             f"nothing in it touches the semantic surface. Your repair can change that, and then it is."]
     if independent:
         chain = " → ".join(link.get("context", "?") for link in review.get("independentFallback") or [])
         gates.append(f"- one of: {chain} — required, because issue #{issue_number} is "
