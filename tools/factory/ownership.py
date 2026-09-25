@@ -172,10 +172,13 @@ TABLE = (
         "whether the rails are active or only present, locally and on GitHub, and what merged work "
         "left behind (0029, #236); the machine's own prerequisites first, because a rail in place on a "
         "machine that cannot run the gate stops nothing (#195)"),
-    Row("tools/orchestrator-status.py", MANAGED, 2,
+    Row("tools/orchestrator-status.py", MANAGED, 3,
         "where the work stands, read from the repository and bounded: the checkout, the worktrees and "
         "their issues, the open pull requests with their heads, checks and recorded verdicts, and the "
-        "issues by state. Read-only, derived, and small enough to restart an orchestrator from (#466)"),
+        "issues by state. Read-only, derived, and small enough to restart an orchestrator from (#466); "
+        "read-only of the index too, which an ordinary `git status` rewrites (#479); and a list it could not "
+        "read whole, a worktree it could not reach, and a checkout not level with the default branch are each "
+        "said rather than counted as nothing (#480)"),
     Row(".editorconfig", MANAGED, 1,
         "the kernel determinism analyzers' severities: a build error in src, off in tests (0029)"),
     Row("global.json", MANAGED, 1,
@@ -439,7 +442,8 @@ RECIPE_SHA256 = {
     },
     "tools/orchestrator-status.py": {
         1: "ae752a3234fcdcf9cd5d478dd1737d8cf0c952c7853fa25918e27b0299a8db17",
-        2: "ae752a3234fcdcf9cd5d478dd1737d8cf0c952c7853fa25918e27b0299a8db17",
+        2: "8ddba7efbe89b47166928c6d6ac1d366f80234e914de5b3745b6211b25ba64de",
+        3: "8ddba7efbe89b47166928c6d6ac1d366f80234e914de5b3745b6211b25ba64de",
     },
     "tools/agent-doctor.py": {
         1: "1b6fced99797d165ab0216523bddae183d6e7254f41d5d5f51cdb1d1c3b8913d",

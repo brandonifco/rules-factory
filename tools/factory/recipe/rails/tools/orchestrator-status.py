@@ -131,11 +131,20 @@ def issue_of(branch):
 
 
 def worktrees():
-    """Every registered worktree but the primary one: path, branch, dirty, and commits ahead.
+    """Every registered worktree but the primary one: `(rows, why it is incomplete)`.
 
     Sorted by path, so two runs against one repository print the same bytes.
+
+    **What could not be read is not "nothing"** (#480). An unreadable `git worktree list` used to
+    become the empty string and therefore no worktrees at all; a registered worktree whose
+    directory has been deleted used to raise `FileNotFoundError` out of `subprocess.run(cwd=...)`
+    and take the whole report with it. Both are now what they are: unknown, reported, and counted
+    against the run's exit code.
     """
-    listing = git("worktree", "list", "--porcelain") or ""
+    listing = git("worktree", "list", "--porcelain")
+    if listing is None:
+        return None, "the registered worktrees could not be listed, so this says nothing about what is in flight"
+    unreadable = []
     found, path, branch = [], None, None
     for line in listing.splitlines() + [""]:
         if line.startswith("worktree "):
@@ -151,18 +160,36 @@ def worktrees():
     for path, branch in found:
         if pathlib.Path(path).resolve() == ROOT:
             continue
-        dirty = subprocess.run(["git", *READ_ONLY, "status", "--porcelain"], cwd=path,
-                               stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, text=True)
-        ahead = subprocess.run(["git", *READ_ONLY, "rev-list", "--count", "main.." + (branch or "HEAD")],
-                               cwd=path, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, text=True)
+        dirty = _in_worktree(path, "status", "--porcelain")
+        ahead = _in_worktree(path, "rev-list", "--count", "main.." + (branch or "HEAD"))
+        if dirty is None:
+            unreadable.append(path)
         out.append({
             "path": path,
             "branch": branch,
             "issue": issue_of(branch or ""),
-            "dirty": bool(dirty.stdout.strip()) if dirty.returncode == 0 else None,
-            "commits": int(ahead.stdout.strip() or 0) if ahead.returncode == 0 and ahead.stdout.strip() else None,
+            "dirty": None if dirty is None else bool(dirty.strip()),
+            "commits": int(ahead.strip()) if ahead and ahead.strip().isdigit() else None,
         })
-    return sorted(out, key=lambda row: row["path"])
+    rows = sorted(out, key=lambda row: row["path"])
+    if unreadable:
+        return rows, (f"{len(unreadable)} worktree(s) could not be read, so whether they hold uncommitted work "
+                      f"is unknown: {', '.join(sorted(unreadable))}")
+    return rows, None
+
+
+def _in_worktree(path, *args):
+    """`git` inside one worktree, or None. A directory that is gone is None, not an exception.
+
+    A worktree can be registered and deleted -- that is what `--sweep` and a stray `rm` both leave
+    behind -- and `subprocess.run(cwd=<gone>)` raises `FileNotFoundError` before git is reached.
+    """
+    try:
+        done = subprocess.run(["git", *READ_ONLY, *args], cwd=path,
+                              stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, text=True)
+    except (OSError, subprocess.SubprocessError):
+        return None
+    return done.stdout if done.returncode == 0 else None
 
 
 def rollup(pull):
@@ -184,9 +211,25 @@ def rollup(pull):
     return out
 
 
+#: How many open pull requests or issues are read before this report stops claiming to have read
+#: them all. A list that comes back exactly this long is indistinguishable from one GitHub cut at
+#: it, so it is reported as cut rather than counted (#480): "ready=120" from a repository with 121
+#: open issues, where the one that did not fit was the blocked one, is an answer nobody
+#: established.
+#:
+#: It is a constant and not a multiple of `--limit` on purpose. `--limit` says how much to
+#: **print**; how much to **read** is not the caller's to lower, or a smaller limit would turn a
+#: complete answer into a refusal.
+FETCH_CEILING = 300
+
+
 def pull_requests(limit):
-    pulls = gh("pr", "list", "--state", "open", "--limit", str(max(limit, 1) * 4), "--json",
+    ceiling = FETCH_CEILING
+    pulls = gh("pr", "list", "--state", "open", "--limit", str(ceiling), "--json",
                "number,title,isDraft,headRefOid,headRefName,closingIssuesReferences,statusCheckRollup")
+    if len(pulls or []) >= ceiling:
+        raise Unreadable(f"more than {ceiling} pull requests are open, so this list is cut and the count below "
+                         f"it would not be a count; raise --limit or read them with `gh pr list`")
     out = []
     for pull in pulls or []:
         closes = [issue.get("number") for issue in pull.get("closingIssuesReferences") or []]
@@ -208,8 +251,12 @@ def issues(labels, limit):
     The vocabulary is the engine's: a repository that renamed `state:ready` is read correctly
     here, because the names come from `.github/agent-policy.json` and not from this file.
     """
-    rows = gh("issue", "list", "--state", "open", "--limit", str(max(limit, 1) * 8),
+    ceiling = FETCH_CEILING
+    rows = gh("issue", "list", "--state", "open", "--limit", str(ceiling),
               "--json", "number,title,labels")
+    if len(rows or []) >= ceiling:
+        raise Unreadable(f"more than {ceiling} issues are open, so this list is cut and the counts below it "
+                         f"would not be counts; raise --limit or read them with `gh issue list`")
     groups = {key: [] for key in ("ready", "blocked", "needsDecision")}
     groups["unlabelled"] = []
     for issue in rows or []:
@@ -237,7 +284,7 @@ def collect(limit, local):
         "head": git("rev-parse", "HEAD"),
         "clean": (git("status", "--porcelain") == ""),
         "remoteHead": None,
-        "worktrees": worktrees(),
+        "worktrees": [],
         # None until read. An unread list that printed as "0 open" would be the exact substitution
         # of a claim for a fact every other rail refuses (`--sweep`, the doctor).
         "pullRequests": None,
@@ -246,6 +293,12 @@ def collect(limit, local):
         "requiredChecks": required_checks(),
         "notChecked": [],
     }
+    state["worktrees"], why = worktrees()
+    if why:
+        state["notChecked"].append(why)
+    if state["requiredChecks"] is None:
+        state["notChecked"].append("which checks are required: scripts/factory/agentrails.py could not be read, "
+                                   "so the per-pull-request rows below say NOT CHECKED rather than naming them")
     if not settings:
         state["notChecked"].append(f"{POLICY} could not be read, so the label vocabulary and the review "
                                    f"contexts below are this engine's defaults and may not be its own")
@@ -298,7 +351,11 @@ def report(state, limit, labels):
     lines.append(f"checkout      {checkout}  [{'clean' if state['clean'] else 'DIRTY'}; {currency}]")
 
     trees = state["worktrees"]
-    lines.append(f"worktrees     {len(trees)}")
+    if trees is None:
+        lines.append(f"worktrees     {NOT_CHECKED}")
+        trees = []
+    else:
+        lines.append(f"worktrees     {len(trees)}")
     for tree in trees:
         issue = f"#{tree['issue']}" if tree["issue"] else "no issue in its name"
         dirty = "DIRTY" if tree["dirty"] else "clean" if tree["dirty"] is False else NOT_CHECKED
@@ -361,9 +418,15 @@ def verdict(state):
     not look" and "there is nothing to do" leave the same repository behind."""
     if state["notChecked"]:
         return 3
+    # The steady state is `main`, clean, level with the default branch (`AGENTS.md` section 4).
+    # Exit 0 used to ignore the last two of those and say "steady" over a checkout printed as
+    # NOT level, on a topic branch (#480).
+    default = ((state["repository"] or {}).get("defaultBranchRef") or {}).get("name") or "main"
     wants_attention = (not state["clean"]
-                       or any(tree["dirty"] for tree in state["worktrees"])
-                       or any(not pull["closes"] for pull in state["pullRequests"])
+                       or (state["branch"] is not None and state["branch"] != default)
+                       or (state["remoteHead"] is not None and state["remoteHead"] != state["head"])
+                       or any(tree["dirty"] for tree in state["worktrees"] or [])
+                       or any(not pull["closes"] for pull in state["pullRequests"] or [])
                        or ((state["issues"] or {}).get("needsDecision") or [])
                        or ((state["issues"] or {}).get("unlabelled") or []))
     return 1 if wants_attention else 0
