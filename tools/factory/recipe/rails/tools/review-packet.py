@@ -570,16 +570,31 @@ def build(number, base, package_maps=(), recordable=True, role=ALL):
 
         if role == SEMANTIC:
             listed = semantic
+            rest = [path for path in changed if path not in semantic]
+            # Named, not counted. A count is not something a reviewer can disagree with, and the
+            # sentence under it invites exactly that disagreement -- so the file that decides what
+            # this cut contains would have reached the reviewer as the number 1 (#475). Paths are
+            # cheap; it is the diff this cut exists to withhold, and it still withholds it.
+            withheld = ("\n\nChanged and **not** on that surface, by name, with their diff in the "
+                        "structural cut and not here:\n\n"
+                        + "\n".join(f"- `{path}`"
+                                    + ("  ← **this file decides what is on the semantic surface**, and "
+                                       "therefore what this packet contains" if path == POLICY else "")
+                                    for path in rest)
+                        + "\n\nA document, a workflow or a rail cannot make the engine answer a rule "
+                          "differently, which is why their diff is the structural review's. If you believe "
+                          "one of these can, that is a finding about `semanticPaths` in "
+                          f"`{POLICY}` -- and if {POLICY} is in the list above, this packet was cut by "
+                          "a rule the same pull request is changing."
+                        if rest else
+                        "\n\nEvery changed file is on that surface; nothing was withheld from this cut.")
             heading = ("6. What changed on the semantic surface",
-                       ("\n".join(f"- `{path}`" for path in listed)
-                        + f"\n\n{len(changed) - len(listed)} other file(s) changed and are not on the semantic "
-                          f"surface this engine's policy declares. They are the structural review's: a document, "
-                          f"a workflow or a rail cannot make the engine answer a rule differently, and if you "
-                          f"believe one of them can, that is a finding about the policy's `semanticPaths`."
+                       ("\n".join(f"- `{path}`" for path in listed) + withheld
                         if listed else
                         "**Nothing here touches the semantic surface** this engine's policy declares, so no "
                         "semantic verdict is required for this change (section 9). If you think that is wrong, "
-                        "the finding is about `semanticPaths` in `.github/agent-policy.json`."))
+                        f"the finding is about `semanticPaths` in `{POLICY}`."
+                        + withheld))
         else:
             listed = changed
             heading = ("6. What changed",
