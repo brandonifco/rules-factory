@@ -139,6 +139,8 @@ public sealed record RegisteredEntry(string Id, EntryStatus Status, Corresponden
     /// </summary>
     public ImmutableArray<string> AssertedBy { get; init; } = [];
 
+REGISTERED_ENTRY_EQUALITY
+
     /// <summary>
     /// The locator its declines cite, the first of <see cref="Locators"/>: the kernel's
     /// <see cref="UnresolvedResult"/> holds one, and the rest are read through <see cref="Registry.Citations"/>.
@@ -293,13 +295,17 @@ REGISTRY_BODY = """
 
 
 def registry_cs(model):
+    support = REGISTRY_SUPPORT.replace(
+        "REGISTERED_ENTRY_EQUALITY",
+        csharp.value_record_equality(
+            "RegisteredEntry", ("Id", "Status", "Row"), ("Locators", "AssertedBy")).rstrip())
     lines = [model.header,
              "using System.Collections.Immutable;\n",
              "using System.Reflection;\n",
              "using RulesKernel.Provenance;\n",
              "using RulesKernel.Resolution;\n\n",
              f"namespace {model.name};\n",
-             REGISTRY_SUPPORT,
+             support,
              "\n/// <summary>Every map entry, the correspondence row it matches first, and the handler that answers it.</summary>\n",
              "public static class Registry\n{\n",
              "    private static readonly ImmutableArray<RegisteredEntry> All =\n    [\n"]

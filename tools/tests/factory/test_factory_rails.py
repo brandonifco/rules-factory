@@ -2671,6 +2671,34 @@ class TestTheReviewPacketRoles(TestTheReviewPacket):
             self.assertNotIn("with their diff in the structural cut and not here", text,
                              f"the {role} cut withholds no path, so it has nothing to say about one")
 
+    def test_a_truncated_file_list_is_refused_rather_than_cut_from(self):
+        """`gh pr view --json files` caps at 100, silently. Since the cuts of #467 these paths
+        decide what the diff *contains*, so a partial list drops a change and then says nothing was
+        dropped — `tools/conformance-gate.py` has refused the same list since #193."""
+        self.commit_engine()
+        head = self.change()
+        self.pull_request(head)
+        document = json.load(open(self.fixture_path, encoding="utf-8"))
+        document["pr"]["5"]["changedFiles"] = 101      # GitHub listed 3 of them
+        self.fixture(document)
+        for role in (None, "structural", "semantic", "independent"):
+            done = self.packet("--stdout", *(("--role", role) if role else ()))
+            self.assertEqual(done.returncode, 1, f"the {role or 'whole'} packet was cut from a truncated list")
+            self.assertIn("GitHub listed 3 of PR #5's 101 changed files", done.stderr)
+            self.assertIn("say nothing was dropped", done.stderr)
+            self.assertEqual(done.stdout, "", "a refused packet prints nothing a reviewer could read")
+
+    def test_a_complete_file_list_is_not_refused(self):
+        """The refusal is about disagreement, not about the field being present: a pull request
+        whose count matches is assembled exactly as before."""
+        self.commit_engine()
+        head = self.change()
+        self.pull_request(head)
+        document = json.load(open(self.fixture_path, encoding="utf-8"))
+        document["pr"]["5"]["changedFiles"] = len(document["pr"]["5"]["files"])
+        self.fixture(document)
+        self.assertIn("## 6. What changed", self.cut("structural"))
+
     def test_each_cut_is_smaller_than_the_whole_packet(self):
         """The measurement the change is for, asserted as an ordering rather than a byte count:
         prose may change, but a cut that stopped being smaller would have stopped being a cut."""

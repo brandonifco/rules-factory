@@ -33,6 +33,7 @@ def map_entries_cs(model):
              "/// <param name=\"Locator\">Corpus id plus citation, as the map records it.</param>\n",
              "public sealed record MapEntry(string Id, string Name, SourceLocator Locator)\n{\n",
              csharp.ASSERTED_BY_MEMBER,
+             csharp.value_record_equality("MapEntry", ("Id", "Name", "Locator"), ("AssertedBy",)),
              "    /// <inheritdoc/>\n",
              "    public override string ToString() => $\"{Id} [{Locator}]\";\n}\n\n",
              "/// <summary>A derived entry (rules-factory decision 0012): a fact the corpus entails and never states.</summary>\n",
@@ -45,6 +46,8 @@ def map_entries_cs(model):
              "/// </param>\n",
              "public sealed record DerivedMapEntry(string Id, string Name, ImmutableArray<string> DerivedFrom, ImmutableArray<SourceLocator> Locators)\n{\n",
              csharp.ASSERTED_BY_MEMBER,
+             csharp.value_record_equality("DerivedMapEntry", ("Id", "Name"),
+                                          ("DerivedFrom", "Locators", "AssertedBy")),
              "    /// <inheritdoc/>\n",
              "    public override string ToString() => $\"{Id} [derived from {string.Join(\", \", DerivedFrom)}]\";\n}\n\n",
              f"/// <summary>The {len(model.entries)} entries of {csharp.xml_text(model.package_id)} {csharp.xml_text(model.version)}, "
