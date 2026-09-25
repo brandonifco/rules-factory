@@ -11,6 +11,7 @@ Run: python3 -m pytest tools/tests/test_validate_repo.py
 import importlib.util
 import io
 import os
+import pathlib
 import subprocess
 import sys
 import tempfile
@@ -319,6 +320,153 @@ class TestTheWrapper(unittest.TestCase):
         proc = subprocess.run([sys.executable, TOOL, "--full", "--release", "hoyle-backgammon"],
                               cwd=ROOT, capture_output=True, text=True)
         self.assertEqual(2, proc.returncode)
+
+
+class TestBriefPrintsLessAndProvesTheSame(unittest.TestCase):
+    """`--brief`: the same steps, the same verdicts, and a passing run that says what it examined
+    rather than everything it did (#470).
+
+    A successful run of this gate is 1167 lines and 157 KB, and an agent carries that in context
+    for the rest of its life and pastes it into a pull request. Almost none of it is evidence
+    anybody reads on a pass: the evidence is which steps ran and what each examined, which is the
+    last line each step already prints.
+
+    What must not move is anything else, so the tests are mostly about that: a failing step still
+    prints the whole of what it printed, a `NOT VERIFIED` is counted rather than dropped, the
+    verdicts and the exit code are the ones a full run gives, and the whole output is really kept
+    where the run says it is.
+    """
+
+    def brief_run(self, steps):
+        """Run `steps` through a brief `Run`, and give back what it printed and its log.
+
+        File descriptor 1 and not `sys.stdout`: the thing under test captures fds, because most of
+        what a real step prints comes from a subprocess, and a test that redirected `sys.stdout`
+        would be testing a path the gate never takes.
+        """
+        handle, path = tempfile.mkstemp(prefix="validate-repo-test-", suffix=".log")
+        os.close(handle)
+        self.addCleanup(os.unlink, path)
+        run = vr.Run(vr.ROOT, vr.full_scope(), brief=pathlib.Path(path))
+        with tempfile.TemporaryFile(mode="w+", encoding="utf-8") as buffer:
+            sys.stdout.flush()
+            saved, stream = os.dup(1), sys.stdout
+            try:
+                os.dup2(buffer.fileno(), 1)
+                sys.stdout = open(1, "w", encoding="utf-8", closefd=False)
+                for what, fn in steps:
+                    run.run(what, fn)
+                sys.stdout.flush()
+            finally:
+                sys.stdout = stream
+                os.dup2(saved, 1)
+                os.close(saved)
+            buffer.seek(0)
+            printed = buffer.read()
+        return run, printed, open(path, encoding="utf-8").read()
+
+    @staticmethod
+    def noisy(lines, ok=True):
+        def step():
+            for line in lines:
+                print(line)
+            return ok
+        return step
+
+    def test_a_passing_step_prints_its_verdict_and_what_it_examined(self):
+        run, printed, log = self.brief_run([
+            ("every map satisfies the schema", self.noisy(
+                ["[ok] one thing", "[ok] another thing", "10 map(s) checked"]))])
+        self.assertIn("10 map(s) checked", printed, "the line that says the step examined something")
+        self.assertIn("ok   every map satisfies the schema", printed)
+        self.assertNotIn("[ok] another thing", printed, "and not every line the checkers printed")
+        self.assertFalse(run.failed)
+
+    def test_the_whole_of_it_is_in_the_log_the_run_names(self):
+        _, printed, log = self.brief_run([("a step", self.noisy(["[ok] one thing", "2 things checked"]))])
+        self.assertIn("[ok] one thing", log, "a claim that a raw log was kept, with nothing keeping it, "
+                                             "would be worse than keeping none")
+        self.assertIn("2 things checked", log)
+
+    def test_a_failing_step_prints_everything_it_printed(self):
+        run, printed, _ = self.brief_run([
+            ("a step that fails", self.noisy(["the first clue", "the second clue"], ok=False))])
+        self.assertIn("the first clue", printed, "a failure's output is the diagnosis")
+        self.assertIn("the second clue", printed)
+        self.assertIn("FAIL a step that fails", printed)
+        self.assertTrue(run.failed)
+
+    def test_a_not_verified_is_counted_rather_than_dropped(self):
+        """A step that passed while examining nothing is the defect this repository has found in
+        its own tools twice. Brief may make it quieter; it may not make it invisible."""
+        _, printed, _ = self.brief_run([
+            ("a step", self.noisy(["[skip] absent: NOT VERIFIED -- nothing to check",
+                                   "[skip] bounds: NOT VERIFIED -- nothing to check",
+                                   "3 map(s) checked"]))])
+        self.assertIn("2 NOT VERIFIED in this step", printed)
+        self.assertIn("validate-repo-test-", printed, "and where the two of them are named")
+
+    def test_a_step_that_raises_is_still_a_failure_and_its_output_is_not_lost(self):
+        def explodes():
+            print("as far as it got")
+            raise RuntimeError("the thing that went wrong")
+        run, printed, log = self.brief_run([("a step that raises", explodes)])
+        self.assertTrue(run.failed)
+        self.assertIn("as far as it got", printed)
+        self.assertIn("RuntimeError: the thing that went wrong", printed)
+
+    def test_the_file_descriptors_come_back_afterwards(self):
+        """The capture is fd 1 and 2, not `sys.stdout`, because most of what a step prints comes
+        from a subprocess. A restore that only happened on the happy path would take the rest of
+        the run's output with the first failing step."""
+        run, printed, _ = self.brief_run([
+            ("a step that raises", lambda: (_ for _ in ()).throw(RuntimeError("boom"))),
+            ("a step after it", self.noisy(["1 thing checked"]))])
+        self.assertIn("1 thing checked", printed)
+        self.assertIn("ok   a step after it", printed)
+
+    def test_the_verdicts_are_the_verdicts_a_loud_run_reaches(self):
+        """The whole claim: `--brief` is about what a passing run prints, and nothing else.
+
+        The same steps, run both ways, must give the same per-step verdict and the same `failed`.
+        Asserted by running them rather than by reading the source: what matters is that the
+        answer does not move, not where the branch is.
+        """
+        cases = [("one", self.noisy(["a", "2 checked"])),
+                 ("two", self.noisy(["b"], ok=False)),
+                 ("three", self.noisy(["c", "NOT VERIFIED -- nothing to check", "1 checked"]))]
+        quiet, printed, _ = self.brief_run(cases)
+        loud = vr.Run(vr.ROOT, vr.full_scope())
+        seen = []
+        for what, fn in cases:
+            loud.run(what, fn)
+            seen.append(loud.failed)
+        self.assertEqual(loud.failed, quiet.failed)
+        self.assertEqual(seen, [False, True, True], "the verdicts a loud run reaches")
+        for what in ("one", "two", "three"):
+            self.assertIn(what, printed, "every step still runs and still reports")
+
+    def test_the_log_is_written_outside_the_checkout(self):
+        """The gate's last step fails on a file this run added to the checkout, and a gate that
+        failed because of its own log would be a useless gate.
+
+        The path is asked for directly rather than by running the gate: this test lives inside the
+        suite the gate's own tool-tests step runs, so a test that invoked the gate would invoke
+        the suite that invokes the gate.
+        """
+        path = vr.brief_log()
+        self.addCleanup(lambda: os.path.exists(path) and os.unlink(path))
+        self.assertTrue(os.path.isfile(path), "the log is created, not merely named")
+        self.assertFalse(str(path).startswith(str(ROOT) + os.sep),
+                         f"the brief log {path} is inside the checkout")
+
+    def test_explain_with_brief_runs_nothing_and_opens_no_log(self):
+        """`--explain` returns before any step, so there is nothing for a log to hold."""
+        proc = subprocess.run([sys.executable, TOOL, "--explain", "--brief", "--changed",
+                               "--base", "HEAD"], cwd=ROOT, capture_output=True, text=True)
+        self.assertEqual(0, proc.returncode, proc.stderr)
+        self.assertNotIn("==> [1]", proc.stdout)
+        self.assertNotIn("validate-repo-", proc.stdout)
 
 
 class TestTheSuiteIsDistributedAndHeldToItsCollection(unittest.TestCase):
