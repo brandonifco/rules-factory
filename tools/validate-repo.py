@@ -53,6 +53,7 @@ Exit 0 when every step that ran passed, 1 when one did not, 2 on a usage error.
 from __future__ import annotations
 
 import argparse
+import contextlib
 import dataclasses
 import glob
 import hashlib
@@ -518,39 +519,61 @@ class Run:
         """Run one step with fd 1 and 2 held in a file: `(ok, what it printed)`.
 
         The file descriptors and not `sys.stdout`, because most of what a step prints comes from a
-        subprocess writing to fd 1 directly. Both are restored in a `finally`, so a step that
-        raises does not take the rest of the run's output with it.
+        subprocess writing to fd 1 directly.
+
+        **Two things happen whatever the step does**, and the nesting below is what makes that
+        true rather than usual (#481). The descriptors are restored in their own innermost
+        `finally`, so nothing -- not a flush failing on a full disk -- can run before them and
+        leave the rest of the run printing into a closed buffer. And the capture reaches the log
+        in an outer `finally`, so a step that raises still has its diagnosis kept: `_invoke`
+        deliberately re-raises `AssertionError`, which is how `--full skipped <step>` aborts a
+        run, and that is exactly the moment the output matters most.
         """
         sys.stdout.flush()
         sys.stderr.flush()
-        with tempfile.TemporaryFile(mode="w+", encoding="utf-8", errors="replace") as buffer:
-            saved = os.dup(1), os.dup(2)
-            streams = sys.stdout, sys.stderr
-            try:
-                os.dup2(buffer.fileno(), 1)
-                os.dup2(buffer.fileno(), 2)
-                # And the Python-level streams onto the same descriptors. A step prints through
-                # both -- `print()` here, a subprocess writing to fd 1 there -- and a capture that
-                # took only the descriptors would miss everything this module printed wherever
-                # `sys.stdout` is not fd 1, which is every test runner that captures output.
-                sys.stdout = open(1, "w", encoding="utf-8", errors="replace", closefd=False)
-                sys.stderr = open(2, "w", encoding="utf-8", errors="replace", closefd=False)
-                ok = self._invoke(fn)
-            finally:
-                out, err = sys.stdout, sys.stderr
-                sys.stdout, sys.stderr = streams
-                for stream in (out, err):
-                    if stream not in streams:
-                        stream.flush()
-                        stream.close()          # closefd=False: the descriptor is restored below
-                os.dup2(saved[0], 1)
-                os.dup2(saved[1], 2)
-                os.close(saved[0])
-                os.close(saved[1])
-            buffer.seek(0)
-            said = buffer.read()
-        with open(self.brief, "a", encoding="utf-8") as log:
-            log.write(said)
+        said = ""
+        try:
+            with tempfile.TemporaryFile(mode="w+", encoding="utf-8", errors="replace") as buffer:
+                try:
+                    saved = os.dup(1), os.dup(2)
+                    streams = sys.stdout, sys.stderr
+                    try:
+                        os.dup2(buffer.fileno(), 1)
+                        os.dup2(buffer.fileno(), 2)
+                        # And the Python-level streams onto the same descriptors. A step prints
+                        # through both -- `print()` here, a subprocess writing to fd 1 there -- and
+                        # a capture that took only the descriptors would miss everything this
+                        # module printed wherever `sys.stdout` is not fd 1, which is every test
+                        # runner that captures output.
+                        sys.stdout = open(1, "w", encoding="utf-8", errors="replace", closefd=False)
+                        sys.stderr = open(2, "w", encoding="utf-8", errors="replace", closefd=False)
+                        ok = self._invoke(fn)
+                    finally:
+                        # The restore, and nothing that can raise before it.
+                        try:
+                            out, err = sys.stdout, sys.stderr
+                            sys.stdout, sys.stderr = streams
+                            for stream in (out, err):
+                                if stream not in streams:
+                                    # closefd=False: the descriptor is restored either way.
+                                    with contextlib.suppress(OSError, ValueError):
+                                        stream.flush()
+                                    with contextlib.suppress(OSError, ValueError):
+                                        stream.close()
+                        finally:
+                            os.dup2(saved[0], 1)
+                            os.dup2(saved[1], 2)
+                            os.close(saved[0])
+                            os.close(saved[1])
+                finally:
+                    with contextlib.suppress(OSError, ValueError):
+                        buffer.seek(0)
+                        said = buffer.read()
+        finally:
+            if said:
+                with contextlib.suppress(OSError):
+                    with open(self.brief, "a", encoding="utf-8") as log:
+                        log.write(said)
         return ok, said
 
     def _summarise(self, said: str, ok: bool) -> None:
@@ -1112,13 +1135,29 @@ def leftovers(root: pathlib.Path) -> list[str]:
     return sorted(p for p in found if not p.startswith(skipped))
 
 
-def brief_log() -> pathlib.Path:
+def brief_log(directory: "str | None" = None) -> pathlib.Path:
     """Where a brief run keeps everything its steps printed.
 
     Outside the checkout, deliberately: the gate's last step fails on any file the run added to
     it, and a gate that failed because of its own log would be a fine joke and a useless gate.
+
+    **Chosen and checked, not assumed** (#481). `tempfile` honours `TMPDIR`, so the requirement in
+    the paragraph above held only as long as nobody pointed `TMPDIR` inside the checkout -- and
+    then the gate failed on its own log, which is a refusal nobody could act on. The same rule
+    `review-packet.py`'s `destination()` applies to a packet directory applies here, and for the
+    same reason.
+
+    `directory` is for the test that proves the refusal: the alternative is patching
+    `tempfile.gettempdir`, which is the module every other test in the process is using.
     """
-    handle, path = tempfile.mkstemp(prefix="validate-repo-", suffix=".log")
+    where = pathlib.Path(directory or tempfile.gettempdir()).resolve()
+    if where == ROOT or ROOT in where.parents or where.is_relative_to(ROOT):
+        raise SystemExit(
+            f"validate-repo.py: --brief keeps the whole output in a log, and the temporary "
+            f"directory is inside the checkout ({where}). The gate's last step fails on any file a "
+            f"run adds to the checkout, so the log would fail the gate it belongs to. Point $TMPDIR "
+            f"outside {ROOT}, or run without --brief.")
+    handle, path = tempfile.mkstemp(prefix="validate-repo-", suffix=".log", dir=str(where))
     os.close(handle)
     return pathlib.Path(path)
 
