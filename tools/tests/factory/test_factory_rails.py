@@ -2022,6 +2022,27 @@ class TestTheRepairPacket(RailsInAGitEngine):
                          "the brief carries the issue's case for itself, which a repair attempt is not "
                          "being asked to judge")
 
+    def test_a_subheading_under_the_criteria_is_kept_with_them(self):
+        """A `### Boundary cases` under `## Acceptance criteria` is ordinary Markdown, and it is
+        exactly where a boundary belongs -- which is what a semantic reviewer is told to check at,
+        just below and just above. It used to end the section and take every criterion with it."""
+        self.commit_engine()
+        head = self.change()
+        self.pull_request(head)
+        document = json.load(open(self.fixture_path, encoding="utf-8"))
+        document["issue"]["27"]["body"] = (
+            "<!-- rules-factory-entry: altitude-limit -->\n"
+            "## Why it exists\n\nWHYSECTIONMARKER\n\n"
+            "## Acceptance criteria\n\n- [ ] it declines above the ceiling\n\n"
+            "### Boundary cases\n\n- [ ] 400 feet exactly\n- [ ] 400 feet over a structure\n\n"
+            "## Required evidence\n\nthe mutation, observed\n")
+        self.fixture(document)
+        text = self.rendered()
+        self.assertIn("400 feet over a structure", text, "the nested criteria were dropped")
+        self.assertIn("### Boundary cases", text, "and their heading with them")
+        self.assertIn("the mutation, observed", text, "the next ## section still ends the first")
+        self.assertNotIn("WHYSECTIONMARKER", text, "and the case for the work is still not here")
+
     def test_an_issue_with_neither_section_is_reported_as_a_finding_not_as_a_blank(self):
         self.commit_engine()
         head = self.change()
@@ -2514,6 +2535,26 @@ class TestTheReviewPacketRoles(TestTheReviewPacket):
         self.assertIn("## 6. What changed", whole)
 
     # --- what the cut withheld, by name (#475) --------------------------------------------------
+
+    def test_a_subheading_under_a_cut_section_is_kept_with_it(self):
+        """The same defect on the packet side: a `###` under a selected `##` used to end it."""
+        self.commit_engine()
+        head = self.change()
+        self.pull_request(head)
+        document = json.load(open(self.fixture_path, encoding="utf-8"))
+        document["issue"]["27"]["body"] = (
+            "<!-- rules-factory-entry: altitude-limit -->\n"
+            "## Why it exists\n\nWHYSECTIONMARKER\n\n"
+            "## Acceptance criteria\n\n- [ ] it declines\n\n"
+            "### Boundary cases\n\n- [ ] 400 feet exactly\n\n"
+            "## Required evidence\n\nthe mutation\n")
+        self.fixture(document)
+        for role in ("structural", "semantic", "independent"):
+            text = self.cut(role)
+            self.assertIn("400 feet exactly", text, f"the {role} cut dropped the nested criteria")
+            self.assertIn("the mutation", text, f"the {role} cut lost the next section")
+            self.assertNotIn("WHYSECTIONMARKER", text,
+                             f"the {role} cut gained a section it was not given")
 
     def test_the_semantic_cut_names_the_files_it_withheld(self):
         """A count is not something a reviewer can disagree with, and the sentence under it invites
