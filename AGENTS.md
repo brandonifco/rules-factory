@@ -44,7 +44,11 @@ the start of every session, so a session starts from the steady state or is told
 - The pull request says `Closes #N` for each issue it finishes, and nothing it does not.
 - `./scripts/validate.sh` passes locally before the pull request is opened. CI runs it again, with
   the engine job and the `documentation` check of section 3, and all three are required checks on
-  `main`.
+  `main`. `./scripts/validate.sh --brief` is the same run: the same steps, the same verdicts, the
+  same exit code, and a **passing** step reduced to its verdict and the line that says what it
+  examined, with the whole output in a log the run names. A failing step still prints everything.
+  It is there because a successful run is 157 KB, and an agent that pastes that into a pull
+  request carries it for the rest of its life.
 - A test is watched failing. The pull request names the mutation that made each new test fail.
 
 ## 3. Every pull request checks all documentation

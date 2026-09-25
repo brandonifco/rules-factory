@@ -37,6 +37,16 @@ Usage:
   validate-repo.py --changed --base <sha>   the checks a diff against <sha> could have broken
   validate-repo.py --release <map>          every check; package only examples/<map>
   validate-repo.py --explain --base <sha>   print the scope and the reason for it, run nothing
+  validate-repo.py --brief                  the same run; on a step that passes, its verdict and
+                                            what it examined, with the rest kept in a log
+
+`--brief` runs **the same steps, in the same order, with the same verdicts and the same exit
+code.** It is about what a passing run *prints*, and nothing else. A successful run of this gate
+is 1167 lines and 157 KB, and almost none of it is evidence anybody reads: the evidence is which
+steps ran and what each examined, which is the last line each step already prints. A failing step
+prints everything it printed, because that is the diagnosis. Every `NOT VERIFIED` is counted per
+step rather than dropped, and the whole output is written to a log whose path is printed -- a
+claim that a raw log was kept, with nothing keeping it, would be worse than keeping none.
 
 Exit 0 when every step that ran passed, 1 when one did not, 2 on a usage error.
 """
@@ -443,15 +453,28 @@ def release_scope(name: str, root: pathlib.Path = ROOT) -> Scope:
 # inputs away deliberately, which is printed as a skip and never reached under --full.
 
 
+#: What a brief run keeps from a step that passed, beyond its verdict: the last line it printed.
+#: Every step that iterates over inputs ends by counting them (`_over_maps`, `step_tool_tests`,
+#: the per-check summaries), so that line is the one that says the step examined something -- which
+#: is the property this repository has twice found its own tools failing.
+#: These are kept as well, wherever in the step they appeared, because a passing run that could not
+#: examine something is not the same as one that examined it.
+BRIEF_KEEP = ("NOT VERIFIED",)
+
+
 class Run:
     """One invocation of the gate: where it runs, what it has printed, and what it found."""
 
-    def __init__(self, root: pathlib.Path, scope: Scope, with_evidence: bool = False):
+    def __init__(self, root: pathlib.Path, scope: Scope, with_evidence: bool = False,
+                 brief: "pathlib.Path | None" = None):
         self.root = root
         self.scope = scope
         # Verify the evidence wherever it lives, fetching what is not in this checkout, rather
         # than reading it from beside the checkers (#349).
         self.with_evidence = with_evidence
+        #: Where the whole output is kept when a run is brief, or None when it is not. Outside the
+        #: checkout: the last step fails on a file this run added to it.
+        self.brief = brief
         self.failed = False
         self.step = 0
 
@@ -473,16 +496,78 @@ class Run:
     def run(self, what: str, fn) -> None:
         self.step += 1
         print(f"\n==> [{self.step}] {what}")
+        if self.brief is None:
+            ok = self._invoke(fn)
+        else:
+            ok, said = self._invoke_captured(fn)
+            self._summarise(said, ok)
+        print(f"{'ok  ' if ok else 'FAIL'} {what}")
+        if not ok:
+            self.failed = True
+
+    def _invoke(self, fn) -> bool:
         try:
-            ok = fn()
+            return bool(fn())
         except AssertionError:
             raise
         except Exception as exc:  # noqa: BLE001
             print(f"{type(exc).__name__}: {exc}", file=sys.stderr)
-            ok = False
-        print(f"{'ok  ' if ok else 'FAIL'} {what}")
+            return False
+
+    def _invoke_captured(self, fn):
+        """Run one step with fd 1 and 2 held in a file: `(ok, what it printed)`.
+
+        The file descriptors and not `sys.stdout`, because most of what a step prints comes from a
+        subprocess writing to fd 1 directly. Both are restored in a `finally`, so a step that
+        raises does not take the rest of the run's output with it.
+        """
+        sys.stdout.flush()
+        sys.stderr.flush()
+        with tempfile.TemporaryFile(mode="w+", encoding="utf-8", errors="replace") as buffer:
+            saved = os.dup(1), os.dup(2)
+            streams = sys.stdout, sys.stderr
+            try:
+                os.dup2(buffer.fileno(), 1)
+                os.dup2(buffer.fileno(), 2)
+                # And the Python-level streams onto the same descriptors. A step prints through
+                # both -- `print()` here, a subprocess writing to fd 1 there -- and a capture that
+                # took only the descriptors would miss everything this module printed wherever
+                # `sys.stdout` is not fd 1, which is every test runner that captures output.
+                sys.stdout = open(1, "w", encoding="utf-8", errors="replace", closefd=False)
+                sys.stderr = open(2, "w", encoding="utf-8", errors="replace", closefd=False)
+                ok = self._invoke(fn)
+            finally:
+                out, err = sys.stdout, sys.stderr
+                sys.stdout, sys.stderr = streams
+                for stream in (out, err):
+                    if stream not in streams:
+                        stream.flush()
+                        stream.close()          # closefd=False: the descriptor is restored below
+                os.dup2(saved[0], 1)
+                os.dup2(saved[1], 2)
+                os.close(saved[0])
+                os.close(saved[1])
+            buffer.seek(0)
+            said = buffer.read()
+        with open(self.brief, "a", encoding="utf-8") as log:
+            log.write(said)
+        return ok, said
+
+    def _summarise(self, said: str, ok: bool) -> None:
+        """What a brief run prints for one step, having kept the whole of it in the log.
+
+        A step that failed prints everything it printed: the output *is* the diagnosis, and a gate
+        that hid it would be trading the only thing a failing run is for.
+        """
         if not ok:
-            self.failed = True
+            sys.stdout.write(said if said.endswith("\n") or not said else said + "\n")
+            return
+        lines = [line for line in said.splitlines() if line.strip()]
+        unverified = [line for line in lines if any(mark in line for mark in BRIEF_KEEP)]
+        if lines:
+            print(lines[-1])
+        if unverified:
+            print(f"     {len(unverified)} NOT VERIFIED in this step, named in {self.brief}")
 
 
 def _manifest_for(root: pathlib.Path, map_path: str) -> list[str]:
@@ -1027,6 +1112,17 @@ def leftovers(root: pathlib.Path) -> list[str]:
     return sorted(p for p in found if not p.startswith(skipped))
 
 
+def brief_log() -> pathlib.Path:
+    """Where a brief run keeps everything its steps printed.
+
+    Outside the checkout, deliberately: the gate's last step fails on any file the run added to
+    it, and a gate that failed because of its own log would be a fine joke and a useless gate.
+    """
+    handle, path = tempfile.mkstemp(prefix="validate-repo-", suffix=".log")
+    os.close(handle)
+    return pathlib.Path(path)
+
+
 def main(argv=None) -> int:
     parser = argparse.ArgumentParser(
         prog="validate-repo.py", description=__doc__,
@@ -1041,6 +1137,9 @@ def main(argv=None) -> int:
     parser.add_argument("--base", metavar="SHA", help="the commit --changed is measured against")
     parser.add_argument("--explain", action="store_true",
                         help="print the scope and the reason for it, and run nothing")
+    parser.add_argument("--brief", action="store_true",
+                        help="the same steps and the same verdicts; a passing step prints its "
+                             "verdict and what it examined, and the whole output goes to a log")
     parser.add_argument("--with-evidence", action="store_true",
                         help="verify every evidence artifact wherever it lives, fetching what "
                              "this checkout does not hold")
@@ -1090,7 +1189,13 @@ def main(argv=None) -> int:
     # else now reaches the checkout, where the last step fails on it.
     before = leftovers(ROOT)
 
-    run = Run(ROOT, scope, with_evidence=args.with_evidence)
+    # Outside the checkout, deliberately: the last step below fails on any file this run added to
+    # it, and a gate that failed because of its own log would be a fine joke and a useless gate.
+    brief = brief_log() if args.brief else None
+    if brief is not None:
+        print(f"  brief: every step runs; the whole output is in {brief}")
+
+    run = Run(ROOT, scope, with_evidence=args.with_evidence, brief=brief)
     for what, fn in STEPS:
         run.run(what, lambda fn=fn: fn(run))
 
@@ -1105,6 +1210,8 @@ def main(argv=None) -> int:
     run.run("validate-repo.py left nothing behind in the checkout", nothing_left_behind)
 
     print()
+    if brief is not None:
+        print(f"the whole output of every step above: {brief}")
     if run.failed:
         print("validate-repo.py: FAIL")
         return 1
