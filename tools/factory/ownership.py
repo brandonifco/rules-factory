@@ -133,13 +133,14 @@ TABLE = (
     Row("tools/re-produce.sh", MANAGED, 6,
         "an overlay edit is finished by a re-produce, from the factory commit the record names (#192); "
         "a record a merge left conflicted is named as one, and --resolve-record settles it (#252)"),
-    Row("tools/review-packet.py", MANAGED, 11,
+    Row("tools/review-packet.py", MANAGED, 12,
         "everything a reviewer needs about one pull request, in the order it is read (0029); every map is "
         "read once and the entry packets are built from those bytes, and a refused packet writes nothing "
         "(#371, #372); a composed engine's maps are each checked against their own recorded digest and the "
         "identity names all of them (#460); --role cuts it for one reviewer, the changed paths carry the "
         "reviewed commit's own ownership class, and the identity names the role (#467); the semantic cut names the files it withheld rather than counting them, the policy among them (#475); "
-        "a cut section keeps what is nested under it (#484)"),
+        "a cut section keeps what is nested under it (#484); a truncated file list is refused, because a cut "
+        "made from one drops a change and says it did not (#478)"),
     Row("tools/repair-packet.py", MANAGED, 3,
         "the bounded brief for one repair attempt: the head, the branch, the worktree, the issue's "
         "acceptance criteria, the entries and the verdicts standing at that head, all derived -- and the "
@@ -173,10 +174,13 @@ TABLE = (
         "whether the rails are active or only present, locally and on GitHub, and what merged work "
         "left behind (0029, #236); the machine's own prerequisites first, because a rail in place on a "
         "machine that cannot run the gate stops nothing (#195)"),
-    Row("tools/orchestrator-status.py", MANAGED, 2,
+    Row("tools/orchestrator-status.py", MANAGED, 3,
         "where the work stands, read from the repository and bounded: the checkout, the worktrees and "
         "their issues, the open pull requests with their heads, checks and recorded verdicts, and the "
-        "issues by state. Read-only, derived, and small enough to restart an orchestrator from (#466)"),
+        "issues by state. Read-only, derived, and small enough to restart an orchestrator from (#466); "
+        "read-only of the index too, which an ordinary `git status` rewrites (#479); and a list it could not "
+        "read whole, a worktree it could not reach, and a checkout not level with the default branch are each "
+        "said rather than counted as nothing (#480)"),
     Row(".editorconfig", MANAGED, 1,
         "the kernel determinism analyzers' severities: a build error in src, off in tests (0029)"),
     Row("global.json", MANAGED, 1,
@@ -391,6 +395,7 @@ RECIPE_SHA256 = {
         9: "7f8da2d694b74485d03179afc7167b1d469655ce08c36be875a74f1748865bdd",
         10: "b074030233fd2e749ed3cbd41beb84d19914ee9bfafa64e9fdde0749cd4d4f69",
         11: "b074030233fd2e749ed3cbd41beb84d19914ee9bfafa64e9fdde0749cd4d4f69",
+        12: "da610117bf1b24962640ba20d93f61f554db20f370984634446e45463fe95873",
     },
     "tools/repair-packet.py": {
         1: "7ec00d9a68ff35fa0af4ab65714411ac6b39cfce34baf448359d9be5e393c2f5",
@@ -441,7 +446,8 @@ RECIPE_SHA256 = {
     },
     "tools/orchestrator-status.py": {
         1: "ae752a3234fcdcf9cd5d478dd1737d8cf0c952c7853fa25918e27b0299a8db17",
-        2: "ae752a3234fcdcf9cd5d478dd1737d8cf0c952c7853fa25918e27b0299a8db17",
+        2: "8ddba7efbe89b47166928c6d6ac1d366f80234e914de5b3745b6211b25ba64de",
+        3: "8ddba7efbe89b47166928c6d6ac1d366f80234e914de5b3745b6211b25ba64de",
     },
     "tools/agent-doctor.py": {
         1: "1b6fced99797d165ab0216523bddae183d6e7254f41d5d5f51cdb1d1c3b8913d",

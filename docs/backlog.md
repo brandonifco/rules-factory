@@ -180,6 +180,49 @@ produced engine green on the reviewed commit, and rounds five and six are what r
 paths — and saying so is the point. A round that reports what it could not reach is what makes the
 rest of its verdict worth something.
 
+### `review8-*` — the review of the context-cost rails, 2026-09-24
+
+Round eight is an independent Codex review of `b4bfceb`, run read-only against a detached worktree
+pinned to that commit and given no earlier reviewer's conclusions. Its subject is narrow and was
+named in the brief: the five changes merged since `68c1218` that exist to reduce what an agent
+re-reads — [#465](https://github.com/brandonifco/rules-factory/issues/465) the repair packet and
+"one agent, one attempt", [#466](https://github.com/brandonifco/rules-factory/issues/466) the
+orchestrator's status report, [#467](https://github.com/brandonifco/rules-factory/issues/467)
+`--role` and the verdict's role binding, [#470](https://github.com/brandonifco/rules-factory/issues/470)
+the gate's `--brief`, and [#475](https://github.com/brandonifco/rules-factory/issues/475) the
+semantic cut naming what it withheld. Its ordered list is
+[#485](https://github.com/brandonifco/rules-factory/issues/485).
+
+It found **no p0 and no p1**. Nothing it found weakens provenance integrity, the verdict-to-commit
+binding, [0053](decisions/0053-a-review-verdict-binds-the-exact-packet-and-reviewed-commit.md)'s map-byte
+binding, the read-only reviewer rule, determinism, or "a check that examined nothing is a failure".
+It demonstrated no way to turn a FAIL into a pass and no merge bypass.
+
+| Label | What belongs in it |
+|---|---|
+| `review8-p2` | **A tool asserting something it did not establish.** Twelve findings, every one an instance of that: a packet cut from a file list GitHub truncates (#478); a report that says it is read-only and rewrites the git index (#479); counts from truncated queries, swallowed local failures, and an exit code that ignores the branch (#480); a `--brief` that can lose the output it says it kept and keep it where it must not (#481); a repair brief pointing at a worktree nobody checked (#482); a repair brief asserting two things the repository contradicts (#483); and a section parser that drops what is nested under the heading it kept (#484). |
+
+**Why twelve findings are seven issues.** Findings in one file and about one rule are one issue,
+and each issue says which findings it carries. That is a judgement this round made and recorded
+rather than a convention; a reader who wants the twelve has them in #485.
+
+**#483 is the only one that weakens a protection the rails already had.**
+`tools/dispatch-agent.sh` refuses to dispatch an issue in the needs-decision or blocked state, with
+the reason written beside the refusal, and a repair brief — which is an implementation brief —
+evaded it.
+
+**What it declined to file is part of the result.** It dropped the concerns that a structural packet
+needs the map's bytes, that shared helpers are hidden from the semantic cut (the default `src/**`
+pattern includes them), and that the role check proves a reviewer read what it was given: "the code
+supports none of those claims". On the last it is exactly right, and says the useful half out loud —
+the check closes incompatible-role use of an honestly generated packet and cannot establish that
+anybody read it, which is the same boundary `AGENTS.md` §7 already states about verdicts. An
+independent reviewer confirming a stated limit is worth as much as one finding a defect.
+
+**What it did not examine** is the map and corpus work in the same commit range, which the brief put
+out of scope. It read source, tests and the installed git documentation, created no files, and left
+the pinned worktree clean; the worktree was removed when the findings were filed (`AGENTS.md` §6).
+
 ### `post-1.0`, `known-limitation` — the ship-first triage, 2026-09-21
 
 An open issue records knowledge. It does not authorise implementation. From 2026-09-21 every open

@@ -400,7 +400,8 @@ def named_sections(body, wanted):
 
 def build(number, base, package_maps=(), recordable=True, role=ALL):
     pull = json.loads(gh("pr", "view", str(number), "--json",
-                         "number,title,body,headRefOid,headRefName,baseRefName,baseRefOid,files,closingIssuesReferences"))
+                         "number,title,body,headRefOid,headRefName,baseRefName,baseRefOid,files,changedFiles,"
+                         "closingIssuesReferences"))
     head = pull.get("headRefOid") or ""
     if not head:
         raise Refused(f"PR #{number} has no head commit")
@@ -426,6 +427,20 @@ def build(number, base, package_maps=(), recordable=True, role=ALL):
         independent = labels.get("independentRisk") in issue_labels
 
         changed = [f["path"] for f in pull.get("files") or []]
+        # `gh pr view --json files` caps at 100 files, silently: no error, no warning, and
+        # `changedFiles` says how many there really are. `tools/conformance-gate.py` has refused a
+        # truncated list since #193, because the semantic surface cannot be decided from half the
+        # files -- and since the cuts of #467 these paths decide what the diff *contains*, not only
+        # what it is labelled. On a truncated list a semantic packet can drop a changed source file
+        # from the diff and then say "nothing was withheld" (#478). A packet that cannot see the
+        # whole change cannot honestly say what it left out of it.
+        count = pull.get("changedFiles")
+        if isinstance(count, int) and len(changed) != count:
+            raise Refused(f"GitHub listed {len(changed)} of PR #{number}'s {count} changed files, so the file list "
+                          f"is truncated. This packet cuts its diff and its withheld-file list from those paths, so "
+                          f"on a partial list it would drop a change and say nothing was dropped. Review this pull "
+                          f"request in pieces it can list, or read the whole diff directly: "
+                          f"`git diff {base_sha}...{head}`.")
         semantic = [path for path in changed if is_semantic(path, review.get("semanticPaths") or [])]
 
         try:
