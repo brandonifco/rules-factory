@@ -16,6 +16,7 @@ import subprocess
 import sys
 import tempfile
 import unittest
+import unittest.mock
 from contextlib import redirect_stdout
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -445,6 +446,67 @@ class TestBriefPrintsLessAndProvesTheSame(unittest.TestCase):
         self.assertEqual(seen, [False, True, True], "the verdicts a loud run reaches")
         for what in ("one", "two", "three"):
             self.assertIn(what, printed, "every step still runs and still reports")
+
+    def test_a_step_that_raises_still_has_its_output_in_the_log(self):
+        """`_invoke` re-raises AssertionError on purpose -- that is how `--full skipped <step>`
+        aborts a run -- and that is exactly when the step's output matters most (#481)."""
+        handle, path = tempfile.mkstemp(prefix="validate-repo-test-", suffix=".log")
+        os.close(handle)
+        self.addCleanup(os.unlink, path)
+        run = vr.Run(vr.ROOT, vr.full_scope(), brief=pathlib.Path(path))
+
+        def aborts():
+            print("the diagnosis, printed before the abort")
+            raise AssertionError("--full skipped a step")
+
+        with self.assertRaises(AssertionError):
+            run.run("a step that aborts the run", aborts)
+        self.assertIn("the diagnosis, printed before the abort", open(path, encoding="utf-8").read(),
+                      "the abort took the step's output with it")
+
+    def test_a_flush_that_fails_does_not_stop_the_descriptors_coming_back(self):
+        """Reproduced by the independent review as `fd operations [(900, 1), (900, 2)]` -- the two
+        restores absent, so the rest of the run printed into a closed buffer."""
+        handle, path = tempfile.mkstemp(prefix="validate-repo-test-", suffix=".log")
+        os.close(handle)
+        self.addCleanup(os.unlink, path)
+        run = vr.Run(vr.ROOT, vr.full_scope(), brief=pathlib.Path(path))
+
+        class Hostile(io.StringIO):
+            def flush(self):
+                raise OSError("disk full on capture flush")
+
+        # The streams this replaces are the ones `_invoke_captured` opens onto fds 1 and 2.
+        import builtins
+        opened = []
+        real_open = builtins.open
+
+        def fake_open(target, *args, **kwargs):
+            if target == 1 or target == 2:
+                stream = Hostile()
+                opened.append(stream)
+                return stream
+            return real_open(target, *args, **kwargs)
+
+        before = os.fstat(1).st_ino, os.fstat(2).st_ino
+        with unittest.mock.patch("builtins.open", side_effect=fake_open):
+            run.run("a step whose flush fails", lambda: True)
+        self.assertEqual((os.fstat(1).st_ino, os.fstat(2).st_ino), before,
+                         "the descriptors were not restored, so the rest of the run prints nowhere")
+        self.assertTrue(opened, "the test did not exercise the stream it meant to")
+
+    def test_a_temporary_directory_inside_the_checkout_is_refused(self):
+        """The gate's last step fails on any file a run adds to the checkout, so a log written
+        there would fail the gate it belongs to -- a refusal nobody could act on (#481)."""
+        inside = os.path.join(ROOT, ".brief-tmp-for-a-test")
+        os.makedirs(inside, exist_ok=True)
+        self.addCleanup(lambda: os.path.isdir(inside) and os.rmdir(inside))
+        with unittest.mock.patch.object(vr.tempfile, "gettempdir", return_value=inside):
+            with self.assertRaises(SystemExit) as refused:
+                vr.brief_log()
+        self.assertIn("inside the checkout", str(refused.exception))
+        self.assertIn("$TMPDIR", str(refused.exception))
+        self.assertEqual(os.listdir(inside), [], "a refused run wrote a log anyway")
 
     def test_the_log_is_written_outside_the_checkout(self):
         """The gate's last step fails on a file this run added to the checkout, and a gate that
