@@ -12,6 +12,7 @@ import importlib.util
 import io
 import os
 import pathlib
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -498,15 +499,16 @@ class TestBriefPrintsLessAndProvesTheSame(unittest.TestCase):
     def test_a_temporary_directory_inside_the_checkout_is_refused(self):
         """The gate's last step fails on any file a run adds to the checkout, so a log written
         there would fail the gate it belongs to -- a refusal nobody could act on (#481)."""
-        inside = os.path.join(ROOT, ".brief-tmp-for-a-test")
-        os.makedirs(inside, exist_ok=True)
-        self.addCleanup(lambda: os.path.isdir(inside) and os.rmdir(inside))
-        with unittest.mock.patch.object(vr.tempfile, "gettempdir", return_value=inside):
-            with self.assertRaises(SystemExit) as refused:
-                vr.brief_log()
+        inside = tempfile.mkdtemp(prefix=".brief-tmp-for-a-test-", dir=str(ROOT))
+        self.addCleanup(shutil.rmtree, inside, True)
+        # The directory is passed rather than `tempfile.gettempdir` patched: that module is the one
+        # every other test in this process is using, and the suite runs under xdist.
+        with self.assertRaises(SystemExit) as refused:
+            vr.brief_log(inside)
         self.assertIn("inside the checkout", str(refused.exception))
         self.assertIn("$TMPDIR", str(refused.exception))
         self.assertEqual(os.listdir(inside), [], "a refused run wrote a log anyway")
+        self.assertIsNot(vr.brief_log.__defaults__, None, "the parameter is optional, as the gate calls it")
 
     def test_the_log_is_written_outside_the_checkout(self):
         """The gate's last step fails on a file this run added to the checkout, and a gate that

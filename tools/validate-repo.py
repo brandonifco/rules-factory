@@ -1135,7 +1135,7 @@ def leftovers(root: pathlib.Path) -> list[str]:
     return sorted(p for p in found if not p.startswith(skipped))
 
 
-def brief_log() -> pathlib.Path:
+def brief_log(directory: "str | None" = None) -> pathlib.Path:
     """Where a brief run keeps everything its steps printed.
 
     Outside the checkout, deliberately: the gate's last step fails on any file the run added to
@@ -1146,8 +1146,11 @@ def brief_log() -> pathlib.Path:
     then the gate failed on its own log, which is a refusal nobody could act on. The same rule
     `review-packet.py`'s `destination()` applies to a packet directory applies here, and for the
     same reason.
+
+    `directory` is for the test that proves the refusal: the alternative is patching
+    `tempfile.gettempdir`, which is the module every other test in the process is using.
     """
-    where = pathlib.Path(tempfile.gettempdir()).resolve()
+    where = pathlib.Path(directory or tempfile.gettempdir()).resolve()
     if where == ROOT or ROOT in where.parents or where.is_relative_to(ROOT):
         raise SystemExit(
             f"validate-repo.py: --brief keeps the whole output in a log, and the temporary "
