@@ -67,9 +67,14 @@ description. What this role checks has a right answer that does not need the mod
 fluent implementation of the wrong rule; running it on the same tier as the next role costs the
 same as the review it exists to run before, and buys nothing. See *What a turn costs*, below.
 
-**Reads:** the human packet emitted by `tools/review-packet.py <pr number>`, which is the whole
-context — nothing here needs rediscovering from the diff. Keep its adjacent `*.review.json`
-identity: that is what binds the eventual verdict to these exact reviewed bytes.
+**Reads:** the packet cut for this role — `tools/review-packet.py <pr number> --role structural`
+— which is the whole context, and nothing here needs rediscovering from the diff. It carries the
+pull request's claim in full, because judging that claim is this role's, and the changed paths
+with the ownership class of each, because the first thing this role asks is whether a generated or
+managed file was hand-edited. It carries **no entry packet**: what the rule says is the next
+role's, and a cut that leaves it out needs no restored map package to make, which is part of what
+makes this review the cheap one. Keep the adjacent `*.review.json`: it records which bytes you
+were given.
 
 **Checks:** the change is within the issue's scope and contains nothing unrelated; generated
 files were not hand-edited and the ownership classes are respected; the determinism rules hold;
@@ -91,10 +96,10 @@ catches a well-tested, fluently argued implementation of the wrong rule, which i
 other role in this team can see. A cheaper pass here does not find less; it finds nothing and
 reports that it found nothing.
 
-**Reads the entry packet before it reads the implementation** (`tools/review-packet.py <pr>`
-assembles both, in that order). Anchoring is the failure this role
-exists to catch, and a reviewer who reads the code first will find the code's reading of the rule
-persuasive, because it was written to be.
+**Reads the entry packet before it reads the implementation** (`tools/review-packet.py <pr>
+--role semantic` assembles both, in that order, and leaves out the pull request's own argument).
+Anchoring is the failure this role exists to catch, and a reviewer who reads the code first will
+find the code's reading of the rule persuasive, because it was written to be.
 
 **Tries to falsify.** Finite tables are checked exhaustively rather than sampled; boundaries are
 checked at and either side of every stated threshold; gating and ordering are checked in both
@@ -160,9 +165,13 @@ second verdict exists to catch — so a fallback to another in-house pass is a r
 accepted deliberately to avoid every merge being blocked by one provider's outage, and made
 visible by recording the verdict under its own context rather than a generic one.
 
-**The independent reviewer receives** the entry packet, the review packet and the issue's
-acceptance criteria. **It does not receive any other reviewer's conclusions** before producing
-its own.
+**The independent reviewer receives** `tools/review-packet.py <pr> --role independent`: the entry
+packets, the issue's acceptance criteria, and the current bytes of the change in full. **It does
+not receive any other reviewer's conclusions** before producing its own — not a finding, not a
+repair discussion, and not the pull request's narrative, which by the time an independent review
+happens is often a record of what earlier reviewers asked for. That packet says so in a section of
+its own, because independence is a property of what a reviewer was handed rather than of its
+intentions.
 
 A verdict is recorded with `tools/record-verdict.py --pr <n> --packet <packet.review.json>
 --reviewer <id> --verdict pass|fail`. The recorder verifies the human/entry packet digests, uses

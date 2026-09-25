@@ -309,7 +309,7 @@ class TestBytecodeStaysOutOfTheCheckout(unittest.TestCase):
         self.assertEqual(sorted(importers),
                          ["scripts/engine-gate.py", "scripts/map-overlay.py", "tools/agent-doctor.py",
                           "tools/entry-packet.py", "tools/orchestrator-status.py",
-                          "tools/pr-policy.py"])
+                          "tools/pr-policy.py", "tools/review-packet.py"])
 
 
 class TestAProducedEngine(unittest.TestCase):
@@ -2346,6 +2346,146 @@ class TestOrchestratorStatus(RailsInAGitEngine):
         self.assertEqual(document["notChecked"], [])
 
 
+#: A pull request body of the size a real one reaches: every template section filled, the gate's
+#: output pasted in, the mutations named. It is what the semantic reviewer used to be handed
+#: before it read the rule, and the reason that matters is not its size but what it is -- the
+#: implementer's case for its own reading.
+A_REAL_PR_BODY = ("## Linked Issue\nCloses #27\n\n## What this does\n"
+                  + "The altitude limit declines above the ceiling, and here is why that reading "
+                    "of the rule is the right one.\n" * 12
+                  + "\n## Tests and evidence\n```\n$ ./scripts/validate.sh full\n"
+                  + "ok   a step\n" * 30
+                  + "validate.sh full: PASS\n```\n")
+
+
+class TestTheReviewPacketRoles(TestTheReviewPacket):
+    """`--role`: each reviewer is given what its role judges, and not the other's (#467).
+
+    `docs/agent-team.md` has always said the two reviewers read for different things and that the
+    steward may not judge whether the rule was read correctly. The packet did not act on it: one
+    cut, handed to whoever asked, so the steward paid for the map's bytes it is forbidden to weigh
+    and the semantic reviewer was handed the implementer's argument before it read the rule.
+    """
+
+    def cut(self, role, *extra):
+        done = self.packet("--role", role, "--stdout", *extra)
+        self.assertEqual(done.returncode, 0, done.stderr)
+        return done.stdout
+
+    # --- structural -----------------------------------------------------------------------------
+
+    def test_the_structural_cut_carries_the_claim_and_no_entry_packet(self):
+        self.commit_engine()
+        self.pull_request(self.change(), body=A_REAL_PR_BODY)
+        text = self.cut("structural")
+        self.assertIn("## 2. What the pull request claims", text)
+        self.assertIn("this reading of the rule", text.replace("that reading", "this reading"))
+        self.assertIn("altitude-limit", text, "the entry id, so citation can be checked")
+        self.assertNotIn("entry-altitude-limit.md", text, "and not the entry packet")
+        self.assertIn("what the rule says is the next", text.replace("That review runs after you",
+                                                                     "what the rule says is the next"))
+
+    def test_the_structural_cut_names_the_ownership_class_of_every_changed_path(self):
+        """The steward's first check is that no generated or managed file was hand-edited, and it
+        used to be given a list of paths and left to recognise them."""
+        self.commit_engine()
+        self.pull_request(self.change(), body=A_REAL_PR_BODY)
+        text = self.cut("structural")
+        self.assertIn("`overlay/altitude-limit.json`  [engine-owned]", text)
+        self.assertIn("[engine-owned]", text)
+        self.assertIn("vendored ownership", text, "and says where the classification came from")
+
+    def test_the_structural_cut_needs_no_restored_map_package(self):
+        """It builds no entry packet, so there is no map for it to be held to -- which is also why
+        the cheap review no longer needs a restore before it can be read at all."""
+        self.commit_engine()
+        self.pull_request(self.change())
+        done = subprocess.run([sys.executable, os.path.join(self.out, "tools", "review-packet.py"), "5",
+                               "--base", "main", "--role", "structural",
+                               "--out", os.path.join(self.tmp, "structural-packets")],
+                              cwd=self.out, capture_output=True, text=True, env=self.environment())
+        self.assertEqual(done.returncode, 0, done.stderr)
+        self.assertNotIn("--package-map", done.stderr)
+
+    # --- semantic -------------------------------------------------------------------------------
+
+    def test_the_semantic_cut_carries_the_entry_first_and_not_the_pull_requests_argument(self):
+        self.commit_engine()
+        self.pull_request(self.change(), body=A_REAL_PR_BODY)
+        text = self.cut("semantic")
+        self.assertIn("## 3. The entries, as the map has them", text)
+        self.assertLess(text.index("## 3. The entries"), text.index("## 7. The diff"))
+        self.assertNotIn("is the right one", text,
+                         "the implementer's case for its own reading reached the reviewer told not to take it")
+        self.assertIn("Not the pull request body", text, "and the packet says so, rather than silently omitting it")
+
+    def test_the_semantic_cut_is_the_semantic_surface_and_says_what_it_left_out(self):
+        self.commit_engine()
+        self.pull_request(self.change())
+        text = self.cut("semantic")
+        self.assertIn("## 6. What changed on the semantic surface", text)
+        self.assertIn("overlay/altitude-limit.json", text)
+        self.assertNotIn("README.md", text, "a document cannot make the engine answer a rule differently")
+        self.assertIn("not on the semantic surface", text)
+
+    def test_the_semantic_cut_carries_the_issues_acceptance_criteria(self):
+        self.commit_engine()
+        self.pull_request(self.change())
+        self.assertIn("it declines", self.cut("semantic"))
+
+    # --- independent ----------------------------------------------------------------------------
+
+    def test_the_independent_cut_says_what_it_was_not_given(self):
+        self.commit_engine()
+        self.pull_request(self.change(), body=A_REAL_PR_BODY)
+        text = self.cut("independent")
+        self.assertIn("## 2. What you were not given", text)
+        self.assertIn("No earlier reviewer's conclusion", text)
+        self.assertNotIn("is the right one", text, "nor the pull request's own narrative")
+        self.assertIn("## 3. The entries, as the map has them", text, "it still gets the assignment")
+        self.assertIn("README.md", text, "and the current bytes whole, not a cut of them")
+
+    # --- the identity ---------------------------------------------------------------------------
+
+    def test_the_identity_names_the_role_and_the_files_do_not_collide(self):
+        self.commit_engine()
+        head = self.change()
+        self.pull_request(head)
+        for role in ("structural", "semantic", "independent"):
+            done = self.packet("--role", role)
+            self.assertEqual(done.returncode, 0, done.stderr)
+            identity = [line for line in done.stdout.splitlines() if line.endswith(".review.json")][0]
+            self.assertIn(f"-{role}.review.json", identity)
+            document = json.load(open(identity, encoding="utf-8"))
+            self.assertEqual(document["reviewRole"], role)
+            self.assertEqual(document["reviewPacketFormat"], 2)
+            self.assertEqual(document["reviewedCommit"], head)
+
+    def test_the_whole_packet_keeps_the_name_and_the_shape_it_had(self):
+        """`--role` is added, not substituted: a caller that names none gets what it always got."""
+        self.commit_engine()
+        head = self.change()
+        self.pull_request(head, body=A_REAL_PR_BODY)
+        done = self.packet()
+        self.assertEqual(done.returncode, 0, done.stderr)
+        self.assertIn(f"pr-5-{head[:12]}.md", done.stdout)
+        whole = self.rendered()
+        self.assertIn("## 2. What the pull request claims", whole)
+        self.assertIn("## 3. The entries, as the map has them", whole)
+        self.assertIn("is the right one", whole)
+        self.assertIn("## 6. What changed", whole)
+
+    def test_each_cut_is_smaller_than_the_whole_packet(self):
+        """The measurement the change is for, asserted as an ordering rather than a byte count:
+        prose may change, but a cut that stopped being smaller would have stopped being a cut."""
+        self.commit_engine()
+        self.pull_request(self.change(), body=A_REAL_PR_BODY)
+        whole = len(self.rendered().encode())
+        for role in ("structural", "semantic"):
+            self.assertLess(len(self.cut(role).encode()), whole,
+                            f"the {role} cut is not smaller than the whole packet")
+
+
 class TestPrPolicy(RailsInAGitEngine):
     """`tools/pr-policy.py`: the contract, checked mechanically (#153)."""
 
@@ -3003,8 +3143,8 @@ if argv_api := [a for a in sys.argv[1:] if a.startswith("repos/")]:
             handle.write(GH_STATUS_STUB)
         os.chmod(self.gh, 0o755)
 
-    def review_identity(self, pr="5"):
-        """A format-1 review identity for the fixture's current PR head.
+    def review_identity(self, pr="5", role="all"):
+        """A review identity for the fixture's current PR head, cut for `role`.
 
         Most verdict tests are about status/gate semantics rather than packet assembly, so they use
         this tiny mechanically self-consistent packet. TestTheReviewPacket proves the real producer.
@@ -3014,7 +3154,7 @@ if argv_api := [a for a in sys.argv[1:] if a.startswith("repos/")]:
         directory = os.path.join(self.tmp, "record-packets")
         os.makedirs(directory, exist_ok=True)
 
-        human = os.path.join(directory, f"pr-{pr}-{head[:12]}.md")
+        human = os.path.join(directory, f"pr-{pr}-{head[:12]}-{role}.md")
         with open(human, "w", encoding="utf-8") as handle:
             handle.write(f"# Review packet\n\nHead commit `{head}`.\n")
 
@@ -3026,7 +3166,8 @@ if argv_api := [a for a in sys.argv[1:] if a.startswith("repos/")]:
         provenance = json.loads(provenance_bytes)
 
         identity = {
-            "reviewPacketFormat": 1,
+            "reviewPacketFormat": 2,
+            "reviewRole": role,
             "pullRequest": int(pr),
             "reviewedCommit": head,
             "baseCommit": "0" * 40,
@@ -3056,7 +3197,7 @@ if argv_api := [a for a in sys.argv[1:] if a.startswith("repos/")]:
             },
             "entryPackets": [],
         }
-        path = os.path.join(directory, f"pr-{pr}-{head[:12]}.review.json")
+        path = os.path.join(directory, f"pr-{pr}-{head[:12]}-{role}.review.json")
         with open(path, "w", encoding="utf-8") as handle:
             json.dump(identity, handle, indent=2)
             handle.write("\n")
@@ -3089,6 +3230,72 @@ if argv_api := [a for a in sys.argv[1:] if a.startswith("repos/")]:
         })
         with open(self.statuses, "w", encoding="utf-8") as handle:
             json.dump({}, handle)
+
+
+    # --- the role a packet was cut for is part of what a verdict is bound to (#467) -------------
+
+    def test_a_structural_packet_records_no_verdict_at_all(self):
+        """The cheap review holds no entry evidence, because it is forbidden to judge the rule. A
+        semantic verdict formed on it would be the unbound entry evidence #372 refuses, arriving
+        through the role rather than through the digest -- and afterwards the record cannot tell
+        the two apart."""
+        self.produced()
+        self.scenario()
+        done = self.record("--pr", "5", "--reviewer", "semantic", "--verdict", "pass",
+                           "--packet", self.review_identity("5", role="structural"))
+        self.assertEqual(done.returncode, 1, done.stdout)
+        self.assertIn("cut for the structural review", done.stderr)
+        self.assertIn("carries a verdict from nobody", done.stderr)
+        self.assertFalse(json.load(open(self.statuses, encoding="utf-8")), "and nothing was posted")
+
+    def test_a_semantic_packet_cannot_carry_an_independent_verdict(self):
+        self.produced()
+        self.scenario()
+        done = self.record("--pr", "5", "--reviewer", "codex", "--verdict", "pass",
+                           "--packet", self.review_identity("5", role="semantic"))
+        self.assertEqual(done.returncode, 1, done.stdout)
+        self.assertIn("--role independent", done.stderr, "and it names the packet to generate instead")
+
+    def test_an_independent_packet_cannot_carry_the_semantic_verdict(self):
+        self.produced()
+        self.scenario()
+        done = self.record("--pr", "5", "--reviewer", "semantic", "--verdict", "pass",
+                           "--packet", self.review_identity("5", role="independent"))
+        self.assertEqual(done.returncode, 1, done.stdout)
+        self.assertIn("--role semantic", done.stderr)
+
+    def test_the_cut_that_matches_records_and_so_does_the_whole_packet(self):
+        self.produced()
+        self.scenario()
+        for role, reviewer in (("semantic", "semantic"), ("independent", "codex"), ("all", "semantic")):
+            done = self.record("--pr", "5", "--reviewer", reviewer, "--verdict", "pass",
+                               "--packet", self.review_identity("5", role=role))
+            self.assertEqual(done.returncode, 0, done.stderr)
+
+    def test_a_packet_that_does_not_say_which_cut_it_is_cannot_carry_a_verdict(self):
+        self.produced()
+        self.scenario()
+        path = self.review_identity("5")
+        document = json.load(open(path, encoding="utf-8"))
+        del document["reviewRole"]
+        with open(path, "w", encoding="utf-8") as handle:
+            json.dump(document, handle, indent=2)
+        done = self.record("--pr", "5", "--reviewer", "semantic", "--verdict", "pass", "--packet", path)
+        self.assertEqual(done.returncode, 1, done.stdout)
+        self.assertIn("no valid reviewRole", done.stderr)
+
+    def test_an_identity_from_before_the_role_existed_is_regenerated_not_migrated(self):
+        self.produced()
+        self.scenario()
+        path = self.review_identity("5")
+        document = json.load(open(path, encoding="utf-8"))
+        document["reviewPacketFormat"] = 1
+        with open(path, "w", encoding="utf-8") as handle:
+            json.dump(document, handle, indent=2)
+        done = self.record("--pr", "5", "--reviewer", "semantic", "--verdict", "pass", "--packet", path)
+        self.assertEqual(done.returncode, 1, done.stdout)
+        self.assertIn("unsupported reviewPacketFormat 1", done.stderr)
+        self.assertIn("regenerated rather than migrated", done.stderr)
 
     def test_a_verdict_is_recorded_at_the_head_commit(self):
         self.produced()
@@ -3123,7 +3330,8 @@ if argv_api := [a for a in sys.argv[1:] if a.startswith("repos/")]:
         policy = json.loads(policy_bytes)
         provenance = json.loads(provenance_bytes)
         manifest = {
-            "reviewPacketFormat": 1,
+            "reviewPacketFormat": 2,
+            "reviewRole": "all",
             "pullRequest": 5,
             "reviewedCommit": reviewed,
             "baseCommit": git(self.out, "rev-parse", "main"),
