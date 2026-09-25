@@ -19,9 +19,10 @@ So this checks what can be checked mechanically, and nothing it cannot:
   2. every mandatory section is present and filled, not left as its placeholder;
   3. the evidence section shows a command and its output, not a claim that it passed;
   4. a change touching the semantic surface names an entry and a locator;
-  5. agent provenance says who implemented and who reviewed;
-  6. the linked issue carries exactly one risk label and exactly one state label;
-  7. every document this engine owns is accounted for, and what is said matches the diff.
+  5. the named entry, linked issue and overlay status transition describe the same work;
+  6. agent provenance says who implemented and who reviewed;
+  7. the linked issue carries exactly one risk label and exactly one state label;
+  8. every document this engine owns is accounted for, and what is said matches the diff.
 
 **The documentation section (#236).** A change that makes a document untrue is not finished, and
 almost none of what makes one untrue is something a parser can see. So the body carries a line per
@@ -136,6 +137,9 @@ OPTIONAL = frozenset({PRODUCE_SECTION})
 # Fixed, and matched in the raw body rather than in the parsed section: the template's guidance
 # lives in HTML comments, which sections() strips, and so does this.
 PRODUCE_MARKER = "<!-- rules-factory-produce -->"
+ENTRY_MARKER = re.compile(r"<!--\s*rules-factory-entry:\s*(?P<entry>[^\s>]+)\s*-->")
+OVERLAY_FILE = re.compile(r"\Aoverlay/(?P<entry>[A-Za-z0-9][A-Za-z0-9._-]*)\.json\Z")
+RETIRED_OVERLAY = "corpus-map.overlay.json"
 # The three facts a produce update declares, and where provenance.json holds each. A declaration is
 # only worth checking because it can be wrong: each of these is in the diff the pull request carries.
 PRODUCE_FACTS = (
@@ -312,6 +316,134 @@ def base_record(base_oid):
     except (UnicodeDecodeError, ValueError):
         return None
     return record if isinstance(record, dict) else None
+
+
+def json_object(raw, where, findings):
+    """A JSON object from `raw`, or None with a finding that prevents a silent partial check."""
+    try:
+        document = json.loads(raw.decode("utf-8"))
+    except (UnicodeDecodeError, ValueError) as error:
+        findings.append(f"the overlay at {where} is not readable JSON ({error}), so pr-policy cannot tell "
+                        "which entry this diff implements")
+        return None
+    if not isinstance(document, dict):
+        findings.append(f"the overlay at {where} is not an object, so pr-policy cannot tell which entry "
+                        "this diff implements")
+        return None
+    return document
+
+
+def head_object(path, findings):
+    """The JSON object at `path` in the checked-out pull-request head, or None with a finding."""
+    try:
+        raw = (ROOT / path).read_bytes()
+    except OSError as error:
+        findings.append(f"the changed overlay `{path}` cannot be read at the pull request head ({error}), so "
+                        "pr-policy cannot tell which entry this diff implements")
+        return None
+    return json_object(raw, f"the pull request head's `{path}`", findings)
+
+
+def base_object(path, change, base_oid, findings):
+    """The base version of one changed overlay object; an added file has an empty base."""
+    if change == "ADDED":
+        return {}
+    raw = base_bytes(base_oid, path)
+    if raw is None:
+        findings.append(f"the changed overlay `{path}` cannot be read at base commit {base_oid}, so pr-policy "
+                        "cannot tell whether this diff sets its entry to implemented")
+        return None
+    return json_object(raw, f"base commit {base_oid}'s `{path}`", findings)
+
+
+def implemented_entries(changed, base_oid, findings):
+    """Entry ids whose overlay status becomes `implemented` in this pull request.
+
+    The ordinary form is one file per entry. The retired shared overlay remains readable here so
+    an engine whose own policy still names it gets the same protection before its next produce.
+    A removed overlay implements nothing; produce-mode migrations are exempt before this is called.
+    """
+    implemented = set()
+    for path, change in changed.items():
+        match = OVERLAY_FILE.match(path)
+        if match:
+            if change == "REMOVED":
+                continue
+            before = base_object(path, change, base_oid, findings)
+            after = head_object(path, findings)
+            if before is None or after is None:
+                continue
+            if after.get("status") == "implemented" and before.get("status") != "implemented":
+                implemented.add(match["entry"])
+        elif path == RETIRED_OVERLAY and change != "REMOVED":
+            before = base_object(path, change, base_oid, findings)
+            after = head_object(path, findings)
+            if before is None or after is None:
+                continue
+            for entry_id, item in after.items():
+                old = before.get(entry_id)
+                if isinstance(item, dict) and item.get("status") == "implemented" and \
+                        (not isinstance(old, dict) or old.get("status") != "implemented"):
+                    implemented.add(entry_id)
+    return implemented
+
+
+def declared_entries(filled, findings):
+    """The entry ids named by the pull request's conformance section.
+
+    The template puts the declaration on one labelled line and permits more than one id. A set is
+    the fact compared with the diff, but duplicate spelling is still a finding: a repeated id is
+    not an honest accounting of each entry once.
+    """
+    conformance = filled.get("Map and rules conformance")
+    raw = labelled(conformance, "entry") if conformance is not None else None
+    if raw is None:
+        return set()
+    entries = [part.strip().strip("`") for part in raw.split(",")]
+    unreadable = [part for part in entries if not OVERLAY_FILE.match(f"overlay/{part}.json")]
+    if unreadable:
+        findings.append("`## Map and rules conformance` has an entry id list pr-policy cannot read "
+                        f"({', '.join(repr(part) for part in unreadable)}); name ids separated by commas")
+        return set(entries)
+    duplicates = sorted({entry for entry in entries if entries.count(entry) > 1})
+    if duplicates:
+        findings.append(f"`## Map and rules conformance` names the same entry more than once: "
+                        f"{', '.join(f'`{entry}`' for entry in duplicates)}")
+    return set(entries)
+
+
+def issue_entry(issue, findings):
+    """The one entry marker in an issue body, or None when the issue names no entry."""
+    matches = ENTRY_MARKER.findall(issue.get("body") or "")
+    if len(matches) > 1:
+        findings.append(f"issue #{issue.get('number')} carries {len(matches)} `rules-factory-entry` markers; "
+                        "an issue has at most one entry identity")
+        return None
+    return matches[0] if matches else None
+
+
+def show_entries(entries):
+    """A stable, quoted rendering for correspondence findings."""
+    return ", ".join(f"`{entry}`" for entry in sorted(entries)) or "none"
+
+
+def check_entry_correspondence(filled, issue, implemented, findings):
+    """Bind the pull request and linked issue to the entry identity carried by the diff (#451)."""
+    declared = declared_entries(filled, findings)
+    if implemented and declared != implemented:
+        findings.append(f"the pull request names {show_entries(declared)}, but this diff sets "
+                        f"{show_entries(implemented)} to `implemented`; those sets must be equal")
+
+    linked = issue_entry(issue, findings)
+    if linked is None:
+        return
+    if len(implemented) == 1:
+        (only,) = implemented
+        if linked != only:
+            findings.append(f"issue #{issue.get('number')} names `{linked}`, but this diff implements `{only}`")
+    elif not implemented and declared != {linked}:
+        findings.append(f"issue #{issue.get('number')} names `{linked}`, but the pull request names "
+                        f"{show_entries(declared)}")
 
 
 def the_factorys_to_delete(path, base_oid, base, ownership, name):
@@ -673,7 +805,7 @@ def check_provenance(filled, findings):
 
 
 def check_issue_labels(number, settings, findings):
-    issue = json.loads(gh("issue", "view", str(number), "--json", "number,state,labels"))
+    issue = json.loads(gh("issue", "view", str(number), "--json", "number,state,labels,body"))
     names = {label["name"] for label in issue.get("labels") or []}
     labels = settings.get("labels") or {}
     risks = names & {labels.get("normalRisk"), labels.get("independentRisk")}
@@ -750,7 +882,12 @@ def main(argv=None):
         living = check_documentation(filled, changed, findings, truncated=truncated, produce=produce)
         check_provenance(filled, findings)
         if linked is not None:
-            check_issue_labels(linked, settings, findings)
+            issue = check_issue_labels(linked, settings, findings)
+            # A produce changes the map as a whole, and a truncated file list cannot identify all
+            # transitions. Both cases are explicitly outside this correspondence decision.
+            if not produce and not truncated:
+                implemented = implemented_entries(changed, pull.get("baseRefOid"), findings)
+                check_entry_correspondence(filled, issue, implemented, findings)
     except Failed as error:
         print(f"pr-policy: cannot check PR #{args.pr} -- {error}", file=sys.stderr)
         return 2

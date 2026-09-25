@@ -49,6 +49,11 @@ Closes #
 
 <!-- For anything touching the rules surface. "N/A" only where nothing here does.
 
+     The entry ids are a comma-separated set. For an implementation, tools/pr-policy.py compares
+     that set with the overlay entries this diff moves to `implemented`, and compares the linked
+     issue's `rules-factory-entry` marker with the same identity. For a defect fix or document
+     change with no status transition, an issue marker still has to match the entry named here.
+
      A factory update (above) names the map package and version and nothing else here: a map
      version bump regenerates every entry, so there is no single entry id and no single locator,
      and "all of them" names nothing a reviewer can check. -->
