@@ -170,7 +170,7 @@ TABLE = (
         "whether the rails are active or only present, locally and on GitHub, and what merged work "
         "left behind (0029, #236); the machine's own prerequisites first, because a rail in place on a "
         "machine that cannot run the gate stops nothing (#195)"),
-    Row("tools/orchestrator-status.py", MANAGED, 1,
+    Row("tools/orchestrator-status.py", MANAGED, 2,
         "where the work stands, read from the repository and bounded: the checkout, the worktrees and "
         "their issues, the open pull requests with their heads, checks and recorded verdicts, and the "
         "issues by state. Read-only, derived, and small enough to restart an orchestrator from (#466)"),
@@ -434,7 +434,8 @@ RECIPE_SHA256 = {
         2: "8ab0d0de2df9777f3e545fedb66c118816e3c658a0fce87db63261967332780a",
     },
     "tools/orchestrator-status.py": {
-        1: "10f98864459a80a3fa87aeeda5d4c55583cb5c873887d5121373c3cc45b5ad69",
+        1: "ae752a3234fcdcf9cd5d478dd1737d8cf0c952c7853fa25918e27b0299a8db17",
+        2: "ae752a3234fcdcf9cd5d478dd1737d8cf0c952c7853fa25918e27b0299a8db17",
     },
     "tools/agent-doctor.py": {
         1: "1b6fced99797d165ab0216523bddae183d6e7254f41d5d5f51cdb1d1c3b8913d",
