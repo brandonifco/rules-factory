@@ -371,12 +371,24 @@ def named_sections(body, wanted):
 
     A section the issue does not carry is absent rather than empty, so the packet can say the
     issue states none instead of printing a blank heading over it.
+
+    **A section ends at the next heading of the same or shallower depth, and nothing sooner**
+    (#484). It used to end at the next `##` *or `###`*, so a `### Boundary cases` written under
+    `## Acceptance criteria` -- ordinary Markdown, and exactly where a boundary belongs -- silently
+    took every criterion under it out of the packet. The whole-body fallback did not rescue them
+    either: it fires only when no wanted section was found at all, and one had been.
     """
-    out, current = {}, None
+    out, current, depth = {}, None, 0
     for line in (body or "").splitlines():
-        heading = re.match(r"^#{2,3}\s+(.*?)\s*$", line)
+        heading = re.match(r"^(#{1,6})\s+(.*?)\s*$", line)
         if heading:
-            current = heading.group(1) if heading.group(1) in wanted else None
+            level, title = len(heading.group(1)), heading.group(2)
+            if current is not None and level > depth:
+                # Nested under the section being kept: it belongs to it, heading and all.
+                out[current].append(line)
+                continue
+            current = title if title in wanted else None
+            depth = level
             if current:
                 out[current] = []
             continue

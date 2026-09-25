@@ -133,16 +133,18 @@ TABLE = (
     Row("tools/re-produce.sh", MANAGED, 6,
         "an overlay edit is finished by a re-produce, from the factory commit the record names (#192); "
         "a record a merge left conflicted is named as one, and --resolve-record settles it (#252)"),
-    Row("tools/review-packet.py", MANAGED, 10,
+    Row("tools/review-packet.py", MANAGED, 11,
         "everything a reviewer needs about one pull request, in the order it is read (0029); every map is "
         "read once and the entry packets are built from those bytes, and a refused packet writes nothing "
         "(#371, #372); a composed engine's maps are each checked against their own recorded digest and the "
         "identity names all of them (#460); --role cuts it for one reviewer, the changed paths carry the "
-        "reviewed commit's own ownership class, and the identity names the role (#467); the semantic cut names the files it withheld rather than counting them, the policy among them (#475)"),
-    Row("tools/repair-packet.py", MANAGED, 1,
+        "reviewed commit's own ownership class, and the identity names the role (#467); the semantic cut names the files it withheld rather than counting them, the policy among them (#475); "
+        "a cut section keeps what is nested under it (#484)"),
+    Row("tools/repair-packet.py", MANAGED, 2,
         "the bounded brief for one repair attempt: the head, the branch, the worktree, the issue's "
         "acceptance criteria, the entries and the verdicts standing at that head, all derived -- and the "
-        "blocking findings, which are the caller's judgement and the only thing it is given (#465)"),
+        "blocking findings, which are the caller's judgement and the only thing it is given (#465); a section "
+        "of the issue keeps what is nested under it (#484)"),
     Row("tools/pr-policy.py", MANAGED, 7,
         "the pull request contract, checked mechanically; a produce update's claim is checked, not taken "
         "(#193); every document the engine owns is accounted for (#236)"),
@@ -386,10 +388,12 @@ RECIPE_SHA256 = {
         7: "7aa09461a5229497fedd360ec47cd05c8279e369be59626ef7a634caeb0d00ee",
         8: "c511f80d77be24490ff8f259ea7fdec386db331ada4fed3812fee2d56fe9d3b1",
         9: "7f8da2d694b74485d03179afc7167b1d469655ce08c36be875a74f1748865bdd",
-        10: "7f8da2d694b74485d03179afc7167b1d469655ce08c36be875a74f1748865bdd",
+        10: "b074030233fd2e749ed3cbd41beb84d19914ee9bfafa64e9fdde0749cd4d4f69",
+        11: "b074030233fd2e749ed3cbd41beb84d19914ee9bfafa64e9fdde0749cd4d4f69",
     },
     "tools/repair-packet.py": {
-        1: "826afdea09ade3f5ac07667a57b38827d40e0fadd9e27f2658ab9f67033bd13b",
+        1: "7ec00d9a68ff35fa0af4ab65714411ac6b39cfce34baf448359d9be5e393c2f5",
+        2: "7ec00d9a68ff35fa0af4ab65714411ac6b39cfce34baf448359d9be5e393c2f5",
     },
     "tools/pr-policy.py": {
         1: "79a33c7fe1ea8d888e4d6912a43ac60afe285c7a8bf43fbe9f7be87d6947b76e",
