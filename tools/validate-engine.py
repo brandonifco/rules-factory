@@ -1572,7 +1572,7 @@ class FakeGitHub:
         env = dict(os.environ, RULES_ENGINE_GH=self.script, VALIDATE_ENGINE_FAKE_GH_STATE=self.state)
         return run_to(log, [PYTHON, *command], cwd=railed, env=env, both=True)
 
-    def review_identity(self, railed):
+    def review_identity(self, railed, role="all"):
         """A packet identity for the fake PR head, carrying the produced engine's exact review context.
 
         The fake GitHub uses synthetic commit ids so review-packet.py cannot make a real detached
@@ -1598,7 +1598,11 @@ class FakeGitHub:
         provenance = json.loads(provenance_bytes)
 
         identity = {
-            "reviewPacketFormat": 1,
+            # Format 2 names the cut the packet was made for (#467). "all" is the whole packet,
+            # which is what `tools/review-packet.py` with no --role writes and what carries either
+            # verdict; a structural cut carries none, and the recorder refuses it by name.
+            "reviewPacketFormat": 2,
+            "reviewRole": role,
             "pullRequest": int(PR),
             "reviewedCommit": head,
             "baseCommit": COMMIT_BASE,
@@ -1629,7 +1633,7 @@ class FakeGitHub:
             },
             "entryPackets": [],
         }
-        path = os.path.join(packet_dir, f"pr-{PR}-{head[:12]}.review.json")
+        path = os.path.join(packet_dir, f"pr-{PR}-{head[:12]}-{role}.review.json")
         write(path, json.dumps(identity, indent=2) + "\n")
         return path
 
@@ -1639,6 +1643,23 @@ class FakeGitHub:
                      "--reviewer", reviewer, "--verdict", "pass") != 0:
             cat(log)
             fail(f"tools/record-verdict.py could not record a pass by {reviewer} in a produced engine")
+
+    def refuses_a_cut_that_cannot_carry_it(self, railed, log, reviewer):
+        """A structural packet records no verdict, in a really produced engine (#467).
+
+        The steward is forbidden to judge whether the rule was read correctly, so its cut carries
+        no entry packet at all -- and a verdict formed on it would be the unbound entry evidence
+        #372 refuses, arriving through the role rather than through the digest. The unit tests
+        assert the refusal against the recipe; this asserts it against the file `produce` wrote.
+        """
+        packet = self.review_identity(railed, role="structural")
+        if self.tool(railed, log, "tools/record-verdict.py", "--pr", PR, "--packet", packet,
+                     "--reviewer", reviewer, "--verdict", "pass") != 1:
+            cat(log)
+            fail("tools/record-verdict.py recorded a verdict from a structural packet, which carries none")
+        if not grep_fixed(log, "cut for the structural review"):
+            cat(log)
+            fail("tools/record-verdict.py refused a structural packet without saying the cut was the reason")
 
     def gate(self, railed, log):
         return self.tool(railed, log, "tools/conformance-gate.py", PR)
@@ -1709,6 +1730,9 @@ def a_verdict_at_one_commit_does_not_pass_another(r, railed, github):
     policy = railed_policy(railed)
     log = r.s("verdict-at-sha.log")
     github.serve(railed, COMMIT_A, ready(policy, "normalRisk"))
+    # Before the verdict that works, the cut that cannot carry one (#467): otherwise the refusal
+    # is only ever asserted against the recipe, never against the file `produce` wrote.
+    github.refuses_a_cut_that_cannot_carry_it(railed, log, "semantic")
     github.record(railed, log, "semantic")
     if github.gate(railed, log) != 0:
         cat(log)
