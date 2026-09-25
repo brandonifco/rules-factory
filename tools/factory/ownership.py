@@ -141,11 +141,12 @@ TABLE = (
         "reviewed commit's own ownership class, and the identity names the role (#467); the semantic cut names the files it withheld rather than counting them, the policy among them (#475); "
         "a cut section keeps what is nested under it (#484); a truncated file list is refused, because a cut "
         "made from one drops a change and says it did not (#478)"),
-    Row("tools/repair-packet.py", MANAGED, 2,
+    Row("tools/repair-packet.py", MANAGED, 3,
         "the bounded brief for one repair attempt: the head, the branch, the worktree, the issue's "
         "acceptance criteria, the entries and the verdicts standing at that head, all derived -- and the "
         "blocking findings, which are the caller's judgement and the only thing it is given (#465); a section "
-        "of the issue keeps what is nested under it (#484)"),
+        "of the issue keeps what is nested under it (#484); it makes the readiness refusal dispatch "
+        "makes, and says a semantic verdict is owed only when the change owes one (#483)"),
     Row("tools/pr-policy.py", MANAGED, 7,
         "the pull request contract, checked mechanically; a produce update's claim is checked, not taken "
         "(#193); every document the engine owns is accounted for (#236)"),
@@ -399,6 +400,7 @@ RECIPE_SHA256 = {
     "tools/repair-packet.py": {
         1: "7ec00d9a68ff35fa0af4ab65714411ac6b39cfce34baf448359d9be5e393c2f5",
         2: "7ec00d9a68ff35fa0af4ab65714411ac6b39cfce34baf448359d9be5e393c2f5",
+        3: "d3a63261fd6edfbb352b01259d797bcba434b9a5845d4be458d2bc7b2ae83adf",
     },
     "tools/pr-policy.py": {
         1: "79a33c7fe1ea8d888e4d6912a43ac60afe285c7a8bf43fbe9f7be87d6947b76e",

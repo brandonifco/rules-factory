@@ -1939,6 +1939,7 @@ class TestTheRepairPacket(RailsInAGitEngine):
             "pr": {"5": {"number": 5, "title": "Implement the altitude limit", "body": body,
                          "state": state, "isDraft": False,
                          "headRefOid": head, "headRefName": branch, "baseRefName": "main",
+                         "files": [{"path": "overlay/altitude-limit.json"}],
                          "closingIssuesReferences": [{"number": 27}][:issues]}},
             "issue": {"27": {"number": 27, "title": "Widen the altitude limit", "state": "OPEN",
                              "body": ("<!-- rules-factory-entry: altitude-limit -->\n"
@@ -2145,6 +2146,81 @@ class TestTheRepairPacket(RailsInAGitEngine):
         done = self.brief("--finding", "x")
         self.assertEqual(done.returncode, 1, done.stdout)
         self.assertIn("closes 0 issues", done.stderr)
+
+    # --- what the brief refuses to assert (#483) -------------------------------------------------
+
+    def test_an_issue_awaiting_a_decision_gets_no_brief(self):
+        """`tools/dispatch-agent.sh` refuses this and says why. A repair attempt is an
+        implementation attempt, so it inherits the refusal — and until this it evaded it, which is
+        the one way #465 weakened a protection the rails already had."""
+        self.commit_engine()
+        self.pull_request(self.change(), labels=("state:needs-decision", "risk:normal"))
+        done = self.brief("--finding", "the disputed row")
+        self.assertEqual(done.returncode, 1, done.stdout)
+        self.assertIn("state:needs-decision", done.stderr)
+        self.assertIn("may not resolve the open question itself", done.stderr)
+        self.assertEqual(done.stdout, "")
+
+    def test_a_blocked_issue_gets_no_brief(self):
+        self.commit_engine()
+        self.pull_request(self.change(), labels=("state:blocked",))
+        done = self.brief("--finding", "x")
+        self.assertEqual(done.returncode, 1, done.stdout)
+        self.assertIn("state:blocked", done.stderr)
+        self.assertIn("not built yet", done.stderr)
+
+    def test_a_closed_issue_gets_no_brief(self):
+        self.commit_engine()
+        head = self.change()
+        self.pull_request(head)
+        document = json.load(open(self.fixture_path, encoding="utf-8"))
+        document["issue"]["27"]["state"] = "CLOSED"
+        self.fixture(document)
+        done = self.brief("--finding", "x")
+        self.assertEqual(done.returncode, 1, done.stdout)
+        self.assertIn("is CLOSED", done.stderr)
+
+    def test_the_readiness_labels_are_the_policy_s(self):
+        self.commit_engine()
+        path = os.path.join(self.out, ".github", "agent-policy.json")
+        policy = json.load(open(path, encoding="utf-8"))
+        policy["labels"]["needsDecision"] = "awaiting-the-owner"
+        with open(path, "w", encoding="utf-8") as handle:
+            json.dump(policy, handle, indent=2)
+        git(self.out, "commit", "-qam", "rename a label")
+        self.pull_request(self.change(), labels=("awaiting-the-owner",))
+        done = self.brief("--finding", "x")
+        self.assertEqual(done.returncode, 1, done.stdout)
+        self.assertIn("awaiting-the-owner", done.stderr)
+
+    def test_the_semantic_verdict_is_owed_only_when_the_change_owes_it(self):
+        """Decided from the changed paths against the policy's surface, the way the review packet
+        and the conformance gate decide it. A rail that overstates what is owed is a rail agents
+        learn to read past."""
+        self.commit_engine()
+        head = self.change()
+        self.pull_request(head)
+        document = json.load(open(self.fixture_path, encoding="utf-8"))
+        document["pr"]["5"]["files"] = [{"path": "overlay/altitude-limit.json"}]
+        self.fixture(document)
+        self.assertIn("a semantic verdict at the new head", self.rendered())
+
+        document["pr"]["5"]["files"] = [{"path": "README.md"}]
+        self.fixture(document)
+        text = self.rendered()
+        self.assertIn("not required as this pull request stands", text)
+        self.assertIn("Your repair can change that", text, "and it says the requirement can come back")
+
+    def test_a_truncated_file_list_leaves_what_is_owed_undecidable(self):
+        self.commit_engine()
+        head = self.change()
+        self.pull_request(head)
+        document = json.load(open(self.fixture_path, encoding="utf-8"))
+        document["pr"]["5"]["changedFiles"] = 101
+        self.fixture(document)
+        done = self.brief("--finding", "x")
+        self.assertEqual(done.returncode, 1, done.stdout)
+        self.assertIn("changed files, so the file list is truncated", done.stderr)
 
     def test_it_writes_nothing_and_leaves_the_checkout_as_it_found_it(self):
         self.commit_engine()
