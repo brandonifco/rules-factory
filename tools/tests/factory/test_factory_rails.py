@@ -2916,6 +2916,13 @@ ceiling instead of declining" (observed).""", "Tests pass.")
         self.assertEqual(done.returncode, 1, done.stdout)
         self.assertIn("issue #27 names `speed-limit`, but this diff implements `altitude-limit`", done.stdout)
 
+    def test_an_implemented_entry_requires_the_linked_issues_entry_marker(self):
+        self.produced()
+        self.pull_request(issue_body="")
+        done = self.policy_check()
+        self.assertEqual(done.returncode, 1, done.stdout)
+        self.assertIn("issue #27 names no entry, but this diff implements `altitude-limit`", done.stdout)
+
     def test_an_entry_linked_issue_still_matches_when_no_status_changes(self):
         """#451 criterion 4: a defect fix has no transition, but its issue marker still binds it."""
         self.produced()
@@ -3233,6 +3240,11 @@ class TestAProduceUpdateIsAPullRequestLikeAnyOther(TestPrPolicy):
         self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
         self.assertNotIn("the entry id", done.stdout)
         self.assertNotIn("the locator", done.stdout)
+
+    def test_it_is_exempt_from_entry_correspondence(self):
+        self.produce_request(issue_body="<!-- rules-factory-entry: an-entry-this-produce-does-not-name -->\n")
+        done = self.policy_check()
+        self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
 
     def test_one_hand_written_file_voids_the_claim_and_is_named(self):
         # The escape-hatch test. Everything else in this class is about a claim that holds; this is

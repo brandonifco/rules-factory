@@ -140,6 +140,7 @@ PRODUCE_MARKER = "<!-- rules-factory-produce -->"
 ENTRY_MARKER = re.compile(r"<!--\s*rules-factory-entry:\s*(?P<entry>[^\s>]+)\s*-->")
 OVERLAY_FILE = re.compile(r"\Aoverlay/(?P<entry>[A-Za-z0-9][A-Za-z0-9._-]*)\.json\Z")
 RETIRED_OVERLAY = "corpus-map.overlay.json"
+INVALID_ISSUE_ENTRY = object()
 # The three facts a produce update declares, and where provenance.json holds each. A declaration is
 # only worth checking because it can be wrong: each of these is in the diff the pull request carries.
 PRODUCE_FACTS = (
@@ -418,7 +419,7 @@ def issue_entry(issue, findings):
     if len(matches) > 1:
         findings.append(f"issue #{issue.get('number')} carries {len(matches)} `rules-factory-entry` markers; "
                         "an issue has at most one entry identity")
-        return None
+        return INVALID_ISSUE_ENTRY
     return matches[0] if matches else None
 
 
@@ -435,13 +436,16 @@ def check_entry_correspondence(filled, issue, implemented, findings):
                         f"{show_entries(implemented)} to `implemented`; those sets must be equal")
 
     linked = issue_entry(issue, findings)
-    if linked is None:
+    if linked is INVALID_ISSUE_ENTRY:
         return
     if len(implemented) == 1:
         (only,) = implemented
-        if linked != only:
+        if linked is None:
+            findings.append(f"issue #{issue.get('number')} names no entry, but this diff implements `{only}`; "
+                            "add its `rules-factory-entry` marker")
+        elif linked != only:
             findings.append(f"issue #{issue.get('number')} names `{linked}`, but this diff implements `{only}`")
-    elif not implemented and declared != {linked}:
+    elif not implemented and linked is not None and declared != {linked}:
         findings.append(f"issue #{issue.get('number')} names `{linked}`, but the pull request names "
                         f"{show_entries(declared)}")
 

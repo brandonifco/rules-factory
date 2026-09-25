@@ -147,9 +147,10 @@ TABLE = (
         "blocking findings, which are the caller's judgement and the only thing it is given (#465); a section "
         "of the issue keeps what is nested under it (#484); it makes the readiness refusal dispatch "
         "makes, and says a semantic verdict is owed only when the change owes one (#483)"),
-    Row("tools/pr-policy.py", MANAGED, 7,
+    Row("tools/pr-policy.py", MANAGED, 8,
         "the pull request contract, checked mechanically; a produce update's claim is checked, not taken "
-        "(#193); every document the engine owns is accounted for (#236)"),
+        "(#193); every document the engine owns is accounted for (#236); the entry declaration, linked issue "
+        "marker and overlay transition must identify the same work (#451)"),
     Row("tools/record-verdict.py", MANAGED, 5,
         "a review verdict as a commit status on the exact commit reviewed, from entry evidence bound to "
         "that commit (0029, #372) -- every map of a composed engine, not one of them (#460); and from a packet "
@@ -161,9 +162,10 @@ TABLE = (
         "asks the gate to report again when something outside the pull request changed what it "
         "would answer: a verdict recorded at its head (#191), or the risk label on the issue it "
         "closes (#230)"),
-    Row(".github/pull_request_template.md", MANAGED, 4,
+    Row(".github/pull_request_template.md", MANAGED, 5,
         "the pull request shape pr-policy.py checks, documentation section included (0029, #236); "
-        "\"Unrelated changes\" says what belongs in it and what is part of the change (#196)"),
+        "\"Unrelated changes\" says what belongs in it and what is part of the change (#196); the entry list "
+        "states the correspondence pr-policy checks (#451)"),
     Row(".github/workflows/pr-policy.yml", MANAGED, 1, "the required check that runs pr-policy.py (0029)"),
     Row(".github/workflows/conformance-gate.yml", MANAGED, 2,
         "the required check that runs conformance-gate.py (0029)"),
@@ -410,6 +412,7 @@ RECIPE_SHA256 = {
         5: "c17dbf45d593454342680dc2b8333c88028ce9ec23367bdc668e8204202d4dc1",
         6: "308cbb15d1d908bc8db2c326633bd3ff7da97cc9447c057ba63fd81cc3574db5",
         7: "0606f6993cb2667b79788f8c4a0356e2d2e86dab12603628759ac906d1ed7941",
+        8: "e5ee81be7c570a9b8df49b77ca9b306bd82ff57994d07da4a293867862014aae",
     },
     "tools/record-verdict.py": {
         1: "48f7b11f7fc829cdaebd776a3eb5db04e27cade97c427c6806b72f58805d83db",
@@ -432,6 +435,7 @@ RECIPE_SHA256 = {
         2: "8b679be11d7a53d3df4ee29fa687bff03042da01efa46a639da1d70e5dfe4234",
         3: "89a364ba817959aa0c3842b1fa3a9138df39d2dccd9f59f04ba33ce90d064f71",
         4: "3c21dc914830df9656fb49ec5cd56cbb56542f8121a219395cfc7d13f08aab74",
+        5: "3a343651e908d6b6bc36594fa663c2aee9e88996147516173c39e3bea63ede78",
     },
     ".github/workflows/pr-policy.yml": {
         1: "caa3394a473d5fdd45b274176d8e28c48d9f5425176318194ba68fbea8453fa2",
