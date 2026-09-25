@@ -579,6 +579,32 @@ class TestDerivedProvenance(unittest.TestCase):
                       '{ AssertedBy = ["GM", "players"] },', registry)
         self.assertIn('new("a", EntryStatus.Mapped, CorrespondenceRow.NotBuilt, [MapEntries.A.Locator]),', registry)
 
+    def test_records_compare_collection_members_by_value(self):
+        """#462: every generated record collection participates element-wise in equality and hashing."""
+        assertion = dict(self.located("ties", "p. 13"), kind="assertion", assertedBy=["GM", "players"])
+        model = self.model([assertion, self.located("a", "p. 1"), self.derived("both", "ties", "a")])
+        entries = entries_step.map_entries_cs(model)
+        registry = registry_step.registry_cs(model)
+        tests = correspondence.tests_cs(model)
+
+        for generated, record, collections in (
+                (entries, "MapEntry", ("AssertedBy",)),
+                (entries, "DerivedMapEntry", ("DerivedFrom", "Locators", "AssertedBy")),
+                (registry, "RegisteredEntry", ("Locators", "AssertedBy"))):
+            body = generated[generated.index(f"public sealed record {record}"):]
+            body = body[:body.index("\n}\n")]
+            self.assertIn(f"public bool Equals({record}? other)", body)
+            self.assertIn("public override int GetHashCode()", body)
+            for member in collections:
+                self.assertIn(f"{member}.SequenceEqual(other.{member})", body)
+                self.assertIn(f"hash.Add({member}.Count());", body)
+                self.assertIn(f"foreach (var item in {member})", body)
+        self.assertIn("public void Generated_records_compare_collection_members_by_value()", tests)
+        self.assertEqual(tests.count("Assert.Equal(mapLeft, mapRight);"), 1)
+        self.assertEqual(tests.count("Assert.Equal(derivedLeft, derivedRight);"), 1)
+        self.assertEqual(tests.count("Assert.Equal(registeredLeft, registeredRight);"), 1)
+        self.assertEqual(tests.count("GetHashCode(),"), 3)
+
     def test_a_cycle_is_refused(self):
         with self.assertRaisesRegex(semantics.GenerationError, "through a cycle"):
             self.model([self.derived("x", "y", "a"), self.derived("y", "x", "a"), self.located("a", "p. 1")])
