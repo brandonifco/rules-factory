@@ -49,6 +49,44 @@ ASSERTED_BY_MEMBER = (
     "    public ImmutableArray<string> AssertedBy { get; init; } = [];\n\n")
 
 
+def value_record_equality(record, scalar_members, collection_members):
+    """Value equality for a sealed record whose collections must compare element by element.
+
+    C# records otherwise compare a collection member through EqualityComparer<T>.Default, which
+    makes ImmutableArray and interface-typed collections compare their backing objects. Keeping
+    this renderer about collection *members*, rather than ImmutableArray specifically, gives every
+    record renderer one shape to use when it owns sequence-valued state.
+    """
+    comparisons = [f"{member} == other.{member}" for member in scalar_members]
+    comparisons.extend(f"{member}.SequenceEqual(other.{member})" for member in collection_members)
+    equality = " &&\n        ".join(comparisons)
+    lines = [
+        "    /// <inheritdoc/>\n",
+        f"    public bool Equals({record}? other) =>\n",
+        "        other is not null &&\n",
+        f"        {equality};\n\n",
+        "    /// <inheritdoc/>\n",
+        "    public override int GetHashCode()\n",
+        "    {\n",
+        "        var hash = new HashCode();\n",
+    ]
+    for member in scalar_members:
+        lines.append(f"        hash.Add({member});\n")
+    for member in collection_members:
+        lines.extend([
+            f"        hash.Add({member}.Count());\n",
+            f"        foreach (var item in {member})\n",
+            "        {\n",
+            "            hash.Add(item);\n",
+            "        }\n",
+        ])
+    lines.extend([
+        "        return hash.ToHashCode();\n",
+        "    }\n\n",
+    ])
+    return "".join(lines)
+
+
 def asserted_by_init(entry):
     """The object initializer carrying `assertedBy` (0025), or nothing on an entry without one.
 
