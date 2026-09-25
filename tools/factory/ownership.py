@@ -133,12 +133,12 @@ TABLE = (
     Row("tools/re-produce.sh", MANAGED, 6,
         "an overlay edit is finished by a re-produce, from the factory commit the record names (#192); "
         "a record a merge left conflicted is named as one, and --resolve-record settles it (#252)"),
-    Row("tools/review-packet.py", MANAGED, 9,
+    Row("tools/review-packet.py", MANAGED, 10,
         "everything a reviewer needs about one pull request, in the order it is read (0029); every map is "
         "read once and the entry packets are built from those bytes, and a refused packet writes nothing "
         "(#371, #372); a composed engine's maps are each checked against their own recorded digest and the "
         "identity names all of them (#460); --role cuts it for one reviewer, the changed paths carry the "
-        "reviewed commit's own ownership class, and the identity names the role (#467)"),
+        "reviewed commit's own ownership class, and the identity names the role (#467); the semantic cut names the files it withheld rather than counting them, the policy among them (#475)"),
     Row("tools/repair-packet.py", MANAGED, 1,
         "the bounded brief for one repair attempt: the head, the branch, the worktree, the issue's "
         "acceptance criteria, the entries and the verdicts standing at that head, all derived -- and the "
@@ -385,7 +385,8 @@ RECIPE_SHA256 = {
         6: "445377e001ec8f17a881f7369e82eacb9ecf9646a87d225ea80022efef98d2d5",
         7: "7aa09461a5229497fedd360ec47cd05c8279e369be59626ef7a634caeb0d00ee",
         8: "c511f80d77be24490ff8f259ea7fdec386db331ada4fed3812fee2d56fe9d3b1",
-        9: "e3a0f496ef02aa052ff7bc0f05e06dc11c4f2b058a4620479ce382b72c707a89",
+        9: "7f8da2d694b74485d03179afc7167b1d469655ce08c36be875a74f1748865bdd",
+        10: "7f8da2d694b74485d03179afc7167b1d469655ce08c36be875a74f1748865bdd",
     },
     "tools/repair-packet.py": {
         1: "826afdea09ade3f5ac07667a57b38827d40e0fadd9e27f2658ab9f67033bd13b",

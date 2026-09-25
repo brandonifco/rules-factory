@@ -2425,8 +2425,12 @@ class TestTheReviewPacketRoles(TestTheReviewPacket):
         text = self.cut("semantic")
         self.assertIn("## 6. What changed on the semantic surface", text)
         self.assertIn("overlay/altitude-limit.json", text)
-        self.assertNotIn("README.md", text, "a document cannot make the engine answer a rule differently")
-        self.assertIn("not on the semantic surface", text)
+        self.assertIn("not** on that surface", text)
+        # `README.md` is named (#475) and its diff is not here, which is the whole of the cut.
+        self.assertIn("README.md", text, "the reviewer is told which files were withheld, not how many")
+        self.assertNotIn("diff --git a/README.md", text,
+                         "a document cannot make the engine answer a rule differently, so its diff is "
+                         "the structural review's")
 
     def test_the_semantic_cut_carries_the_issues_acceptance_criteria(self):
         self.commit_engine()
@@ -2474,6 +2478,52 @@ class TestTheReviewPacketRoles(TestTheReviewPacket):
         self.assertIn("## 3. The entries, as the map has them", whole)
         self.assertIn("is the right one", whole)
         self.assertIn("## 6. What changed", whole)
+
+    # --- what the cut withheld, by name (#475) --------------------------------------------------
+
+    def test_the_semantic_cut_names_the_files_it_withheld(self):
+        """A count is not something a reviewer can disagree with, and the sentence under it invites
+        exactly that disagreement."""
+        self.commit_engine()
+        self.pull_request(self.change())
+        text = self.cut("semantic")
+        self.assertIn("`README.md`", text, "the file is named, so a reviewer can act on it")
+        self.assertIn("with their diff in the structural cut and not here", text)
+        self.assertNotIn("the readme changed", text.lower(),
+                         "and its diff is still not here -- names are cheap, the diff is what this cut drops")
+
+    def test_a_change_to_the_policy_is_called_out_by_name_in_the_semantic_cut(self):
+        """`.github/agent-policy.json` is engine-owned and not on the semantic surface, and it is
+        the one file whose change decides what this cut contains. It reached the reviewer as the
+        number 1."""
+        self.commit_engine()
+        head = self.change()
+        self.pull_request(head)
+        document = json.load(open(self.fixture_path, encoding="utf-8"))
+        document["pr"]["5"]["files"].append({"path": ".github/agent-policy.json"})
+        self.fixture(document)
+        text = self.cut("semantic")
+        self.assertIn("`.github/agent-policy.json`", text)
+        self.assertIn("this file decides what is on the semantic surface", text)
+        self.assertIn("cut by a rule the same pull request is changing", " ".join(text.split()))
+
+    def test_a_cut_that_withheld_nothing_says_so_rather_than_printing_an_empty_list(self):
+        self.commit_engine()
+        head = self.change()
+        self.pull_request(head)
+        document = json.load(open(self.fixture_path, encoding="utf-8"))
+        document["pr"]["5"]["files"] = [{"path": "overlay/altitude-limit.json"}]
+        self.fixture(document)
+        text = self.cut("semantic")
+        self.assertIn("nothing was withheld from this cut", text)
+
+    def test_the_other_cuts_are_unchanged_by_this(self):
+        self.commit_engine()
+        self.pull_request(self.change())
+        for role in ("structural", "independent"):
+            text = self.cut(role)
+            self.assertNotIn("with their diff in the structural cut and not here", text,
+                             f"the {role} cut withholds no path, so it has nothing to say about one")
 
     def test_each_cut_is_smaller_than_the_whole_packet(self):
         """The measurement the change is for, asserted as an ordering rather than a byte count:
