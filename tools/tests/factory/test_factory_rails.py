@@ -2793,20 +2793,38 @@ class TestPrPolicy(RailsInAGitEngine):
     BASE = "0000000000000000000000000000000000000000"
 
     def pull_request(self, body=GOOD_PR_BODY, labels=("state:ready", "risk:normal"), files=None,
-                     changed_files=None, base_record=None):
+                     changed_files=None, base_record=None, issue_body=None,
+                     head_overlay=None, base_overlay=None):
         files = files if files is not None else [{"path": "overlay/altitude-limit.json"},
                                                  {"path": f"src/{NAME}/Rules/AltitudeLimit.cs"}]
+        overlay_paths = [item["path"] if isinstance(item, dict) else item for item in files]
+        overlay_entries = [path[len("overlay/"):-len(".json")] for path in overlay_paths
+                           if path.startswith("overlay/") and path.endswith(".json")]
+        if overlay_entries:
+            head = head_overlay if head_overlay is not None else {
+                "altitude-limit": {"status": "implemented", "implementedIn": "Rules/AltitudeLimit.cs",
+                                   "tests": [{"name": "AltitudeLimit_DeclinesAboveTheCeiling",
+                                              "mutation": "return the ceiling instead of declining"}]}}
+            write_overlay(self.out, head)
+        before = base_overlay if base_overlay is not None else {
+            entry_id: {"status": "mapped"} for entry_id in overlay_entries}
+        contents = dict(base_record or {})
+        for entry_id, item in before.items():
+            contents.setdefault(f"overlay/{entry_id}.json", json.dumps(item))
+        if issue_body is None:
+            issue_body = (f"<!-- rules-factory-entry: {overlay_entries[0]} -->\n"
+                          if len(overlay_entries) == 1 else "")
         self.fixture({
             # `changedFiles` is GitHub's own count, and defaults here to the length of the list:
             # a fixture where they disagree is a truncated list, which is its own test below.
             "pr": {"5": {"number": 5, "title": "Implement the altitude limit", "body": body,
                          "files": files, "baseRefOid": self.BASE,
                          "changedFiles": len(files) if changed_files is None else changed_files}},
-            "issue": {"27": {"number": 27, "state": "OPEN",
+            "issue": {"27": {"number": 27, "state": "OPEN", "body": issue_body,
                              "labels": [{"name": name} for name in labels]}},
             # `gh api .../contents/<path>?ref=<base>`: the base commit's files, read only when a
             # retired path is in the diff (#243). Absent unless a test puts them there.
-            "contents": {self.BASE: base_record} if base_record is not None else {},
+            "contents": {self.BASE: contents},
         })
 
     def policy_check(self):
@@ -2880,6 +2898,57 @@ ceiling instead of declining" (observed).""", "Tests pass.")
         done = self.policy_check()
         self.assertEqual(done.returncode, 1, done.stdout)
         self.assertIn("touches the semantic surface", done.stdout)
+
+    def test_named_entry_must_be_the_entry_the_diff_implements(self):
+        """#451: a crossed PR body cannot name another entry and still pass policy."""
+        self.produced()
+        body = GOOD_PR_BODY.replace("- entry id(s): altitude-limit", "- entry id(s): speed-limit")
+        self.pull_request(body=body)
+        done = self.policy_check()
+        self.assertEqual(done.returncode, 1, done.stdout)
+        self.assertIn("names `speed-limit`, but this diff sets `altitude-limit`", done.stdout)
+
+    def test_linked_issue_must_name_the_entry_the_diff_implements(self):
+        """#451: the right PR declaration cannot disguise a crossed Closes line."""
+        self.produced()
+        self.pull_request(issue_body="<!-- rules-factory-entry: speed-limit -->\n")
+        done = self.policy_check()
+        self.assertEqual(done.returncode, 1, done.stdout)
+        self.assertIn("issue #27 names `speed-limit`, but this diff implements `altitude-limit`", done.stdout)
+
+    def test_an_implemented_entry_requires_the_linked_issues_entry_marker(self):
+        self.produced()
+        self.pull_request(issue_body="")
+        done = self.policy_check()
+        self.assertEqual(done.returncode, 1, done.stdout)
+        self.assertIn("issue #27 names no entry, but this diff implements `altitude-limit`", done.stdout)
+
+    def test_an_entry_linked_issue_still_matches_when_no_status_changes(self):
+        """#451 criterion 4: a defect fix has no transition, but its issue marker still binds it."""
+        self.produced()
+        body = GOOD_PR_BODY.replace("- entry id(s): altitude-limit", "- entry id(s): speed-limit")
+        self.pull_request(body=body, files=[{"path": f"src/{NAME}/Rules/AltitudeLimit.cs"}],
+                          issue_body="<!-- rules-factory-entry: altitude-limit -->\n")
+        done = self.policy_check()
+        self.assertEqual(done.returncode, 1, done.stdout)
+        self.assertIn("issue #27 names `altitude-limit`, but the pull request names `speed-limit`", done.stdout)
+
+    def test_every_entry_the_diff_implements_is_named_once_as_a_set(self):
+        self.produced()
+        body = GOOD_PR_BODY.replace("- entry id(s): altitude-limit",
+                                    "- entry id(s): altitude-limit, speed-limit")
+        entries = {
+            "altitude-limit": {"status": "implemented", "implementedIn": "Rules/AltitudeLimit.cs",
+                               "tests": [{"name": "T.altitude", "mutation": "return another value"}]},
+            "speed-limit": {"status": "implemented", "implementedIn": "Rules/SpeedLimit.cs",
+                            "tests": [{"name": "T.speed", "mutation": "return another value"}]},
+        }
+        files = [{"path": f"overlay/{entry_id}.json"} for entry_id in entries]
+        self.pull_request(body=body, files=files, head_overlay=entries,
+                          base_overlay={entry_id: {"status": "mapped"} for entry_id in entries},
+                          issue_body="")
+        done = self.policy_check()
+        self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
 
     def test_a_change_off_the_semantic_surface_need_not_name_an_entry(self):
         self.produced()
@@ -3171,6 +3240,11 @@ class TestAProduceUpdateIsAPullRequestLikeAnyOther(TestPrPolicy):
         self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
         self.assertNotIn("the entry id", done.stdout)
         self.assertNotIn("the locator", done.stdout)
+
+    def test_it_is_exempt_from_entry_correspondence(self):
+        self.produce_request(issue_body="<!-- rules-factory-entry: an-entry-this-produce-does-not-name -->\n")
+        done = self.policy_check()
+        self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
 
     def test_one_hand_written_file_voids_the_claim_and_is_named(self):
         # The escape-hatch test. Everything else in this class is about a claim that holds; this is

@@ -1420,6 +1420,9 @@ COMMIT_STRANGER = "c" * 40
 COMMIT_BASE = "d" * 40
 GATE_RUN = 4242
 
+# The linked issue as tools/factory/backlog.py writes it: the entry marker first, under the title.
+ISSUE_BODY = "<!-- rules-factory-entry: player-count -->\nThe number of players.\n"
+
 # A pull request filled the way the emitted template asks: every section, one `Closes`, a command
 # and its output, a mutation, and who implemented and reviewed. If the contract rejects this, the
 # rejection of the malformed body below proves nothing about the body.
@@ -1507,7 +1510,10 @@ class FakeGitHub:
                            "headRefOid": head, "baseRefOid": COMMIT_BASE, "files": changed,
                            "changedFiles": len(changed),
                            "closingIssuesReferences": [{"number": ISSUE}]}},
-            "issues": {str(ISSUE): {"number": ISSUE, "state": "OPEN", "labels": [{"name": name} for name in labels]}},
+            # The body carries the entry marker the factory's backlog writes, because pr-policy.py
+            # holds the issue, the pull request and the overlay to one entry identity (#451).
+            "issues": {str(ISSUE): {"number": ISSUE, "state": "OPEN", "labels": [{"name": name} for name in labels],
+                                    "body": ISSUE_BODY}},
             "statuses": {},
             "runs": {head: [{"id": GATE_RUN, "run_number": 1, "status": "completed", "conclusion": "failure"}]},
             "reruns": [],
