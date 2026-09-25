@@ -39,6 +39,7 @@ import shutil
 import subprocess
 import sys
 import tempfile
+import time
 import unittest
 import unittest.mock
 from contextlib import redirect_stderr, redirect_stdout
@@ -2315,6 +2316,39 @@ class TestOrchestratorStatus(RailsInAGitEngine):
         self.status("--json")
         self.assertEqual(git(self.out, "status", "--porcelain"), before,
                          "a read-only report that dirties the checkout stops the next dispatch (#194)")
+
+    def test_it_does_not_rewrite_the_git_index(self):
+        """`git status` refreshes and rewrites the index by default, and takes its lock to do it.
+
+        This is the test the porcelain comparison could not be: `test_it_writes_nothing_at_all`
+        compares `git status --porcelain` before and after, and an index write is invisible to it.
+        The cached stat information is made stale first, because that is the state in which the
+        plain command rewrites the index; without that step the assertion passes either way.
+        """
+        self.commit_engine()
+        self.state()
+        index = os.path.join(self.out, ".git", "index")
+        stale = time.time() + 5
+        for name in os.listdir(self.out):
+            path = os.path.join(self.out, name)
+            if os.path.isfile(path):
+                os.utime(path, (stale, stale))
+        before = (os.stat(index).st_mtime_ns, hashlib.sha256(open(index, "rb").read()).hexdigest())
+        self.status()
+        after = (os.stat(index).st_mtime_ns, hashlib.sha256(open(index, "rb").read()).hexdigest())
+        self.assertEqual(before, after,
+                         "the report rewrote .git/index; a read-only report takes no lock on a "
+                         "checkout another agent may be committing in (#479)")
+
+    def test_every_git_the_report_runs_is_told_not_to_take_optional_locks(self):
+        """Named rather than counted: a git call added without the flag is the defect returning,
+        and it would pass the test above whenever the index happened not to need refreshing."""
+        self.produced()
+        source = self.read("tools/orchestrator-status.py")
+        calls = re.findall(r'subprocess\.run\(\[\s*"git"([^]]*)\]', source)
+        self.assertGreater(len(calls), 1, "no git calls were found -- this check proved nothing")
+        for call in calls:
+            self.assertIn("READ_ONLY", call, f'a git call omits the read-only flags: ["git"{call}]')
 
     def test_a_github_it_cannot_read_is_not_checked_and_never_a_clean_repository(self):
         self.commit_engine()

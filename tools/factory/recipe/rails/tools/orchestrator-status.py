@@ -28,8 +28,9 @@ are one `gh issue view` away when a decision turns on them, and the whole point 
 that it can be read in full, every time, for the price of reading it once.
 
 **Read-only, and it says what it could not read.** It runs no command that writes -- not even a
-fetch, which moves refs -- and a GitHub it could not reach is `NOT CHECKED`, never a clean
-repository. It exits 0 when everything was readable, 1 when the repository is not in the steady
+fetch, which moves refs, and not an ordinary `git status`, which refreshes and rewrites the index
+by default and takes its lock to do it (`--no-optional-locks`, #479) -- and a GitHub it could not
+reach is `NOT CHECKED`, never a clean repository. It exits 0 when everything was readable, 1 when the repository is not in the steady
 state or something needs a decision, and 3 when a part of the answer is missing.
 
 Standard library only, plus `gh` (or `$RULES_ENGINE_GH`) and `git`.
@@ -74,8 +75,17 @@ def gh(*args):
         raise Unreadable(f"{' '.join(command[:3])} did not answer with JSON ({error})")
 
 
+#: What makes `git status` read-only. Git's own documentation, under BACKGROUND REFRESH: "By
+#: default, `git status` will automatically refresh the index, updating the cached stat information
+#: from the working tree and writing out the result." That write takes `.git/index`'s lock, in a
+#: checkout another agent may be committing in, from a command whose whole claim is that it changes
+#: nothing. `--no-optional-locks` is how git is told not to (#479).
+READ_ONLY = ("--no-optional-locks",)
+
+
 def git(*args):
-    done = subprocess.run(["git", *args], stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, cwd=ROOT)
+    done = subprocess.run(["git", *READ_ONLY, *args], stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                          text=True, cwd=ROOT)
     return done.stdout.strip() if done.returncode == 0 else None
 
 
@@ -141,10 +151,10 @@ def worktrees():
     for path, branch in found:
         if pathlib.Path(path).resolve() == ROOT:
             continue
-        dirty = subprocess.run(["git", "status", "--porcelain"], cwd=path,
+        dirty = subprocess.run(["git", *READ_ONLY, "status", "--porcelain"], cwd=path,
                                stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, text=True)
-        ahead = subprocess.run(["git", "rev-list", "--count", "main.." + (branch or "HEAD")], cwd=path,
-                               stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, text=True)
+        ahead = subprocess.run(["git", *READ_ONLY, "rev-list", "--count", "main.." + (branch or "HEAD")],
+                               cwd=path, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, text=True)
         out.append({
             "path": path,
             "branch": branch,
