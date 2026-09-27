@@ -331,10 +331,11 @@ class TheRecordOfAComposition(unittest.TestCase):
                            "checker": "tools/check-map.py", "verification": "map/verification.json"}
         return made
 
-    def test_the_format_is_eight(self):
-        """7 added `maps`; 8 added `distribution` (0068). Both are read by the tests below."""
+    def test_the_format_is_nine(self):
+        """7 added `maps`; 8 added `distribution` (0068); 9 added `repository` (0069). All three are
+        read by the tests below."""
         provenance, _ = self.record(self.packaged("RulesFactory.Maps.One", [entry("a", "x")]))
-        self.assertEqual(8, provenance.FORMAT)
+        self.assertEqual(9, provenance.FORMAT)
 
     def test_a_list_keyed_by_package_id_compares_by_that_key(self):
         """So a mismatch reads `maps[RulesFactory.Maps.One].version`, not two dumped lists."""

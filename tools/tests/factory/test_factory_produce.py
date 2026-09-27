@@ -860,7 +860,7 @@ class TestTheOverlayIsOneFilePerEntry(ProduceCase):
         record = json.loads(self.read(out, "provenance.json"))
         # 8 since #497: `distribution` (0068), on top of 7's `maps`. Pinned as a literal on
         # purpose -- a format bump is a deliberate edit.
-        self.assertEqual(record["provenanceFormat"], 8)
+        self.assertEqual(record["provenanceFormat"], 9)
         self.assertEqual({item["path"] for item in record["buildInputs"] if item["path"].startswith("overlay/")},
                          {f"overlay/{entry_id}.json" for entry_id in ids})
         self.assertFalse([item for item in record["buildInputs"] + record["engineOwned"]
