@@ -481,6 +481,43 @@ RECIPE_SHA256 = {
 }
 
 
+# --- what a repository root holds (0069) -----------------------------------------------------
+
+
+#: The automation a **repository root** holds for an engine embedded beneath it (#501, decision
+#: 0069): repository-relative paths, in their own table because they are not the engine's files.
+#: GitHub reads a workflow only from `.github/workflows` at the root of a repository, so an engine
+#: produced under a host repository does not own its rails -- the root does, and these are the
+#: bytes it holds. Generated, every one: they are a function of the recipe and the engine's path
+#: under the root, rewritten by every `produce`, and hashed in `provenance.json`'s `repository`
+#: section rather than in `generated`, which is engine-relative. A standalone engine has no row
+#: here: its own `.github/workflows` **is** its repository's.
+REPOSITORY_TABLE = (
+    Row(".github/workflows/validate.yml", GENERATED, None,
+        "the gate recipe, rendered to run validate.sh full in the engine"),
+    Row(".github/workflows/pr-policy.yml", GENERATED, None,
+        "the required check that runs the engine's pr-policy.py (0029)"),
+    Row(".github/workflows/conformance-gate.yml", GENERATED, None,
+        "the required check that runs the engine's conformance-gate.py (0029)"),
+    Row(".github/workflows/verdict-requeue.yml", GENERATED, None,
+        "runs the engine's requeue-gate.py on the status and issues events (#191, #230)"),
+)
+
+
+def classify_repository(relative):
+    """The one `REPOSITORY_TABLE` row a repository-relative path matches, or None.
+
+    None is not a fault: a repository root holds its own workflows, its own README and whatever
+    else the product is, and none of that is the factory's. What matters is that the four the
+    factory does write are recognisable as its work wherever they are read -- by `produce`, which
+    rewrites them, and by `tools/pr-policy.py`, which judges a changed path in a pull request.
+    """
+    found = [row for row in REPOSITORY_TABLE if _matches(row.pattern, relative)]
+    if len(found) > 1:
+        raise OwnershipError(f"{relative} matches {len(found)} rows of the repository table; it must match one")
+    return found[0] if found else None
+
+
 class OwnershipError(Exception):
     """A managed file cannot be written without discarding an edit, or a flag names no managed file."""
 

@@ -190,12 +190,15 @@ def distribution_notice(name, intake):
         f"This file is generated. `factory produce` rewrites it every run, and removes it if the "
         f"engine ever stops being private.\n")
 
-def produce(intake, name, out, log=None, adopt=(), reset=()):
+def produce(intake, name, out, log=None, adopt=(), reset=(), engine_path=None):
     """Write an engine for `intake` under `out`, each file as its ownership class says.
 
     Engine-owned files are written when absent; managed files as ownership.plan_managed decides
     (`adopt` and `reset` are the managed paths given to --adopt and --reset); generated files
-    always. The returned model carries `managed` ({path: recipe version}) and `adopted` (managed
+    always. `engine_path` is the engine's path under its repository root, or None when the engine
+    is that root: an embedded engine is written without the managed workflows, which its repository
+    root holds instead (repository.py, 0069), and they are neither planned nor recorded as managed
+    here -- an inert copy under the engine is what #501 was. The returned model carries `managed` ({path: recipe version}) and `adopted` (managed
     paths now engine-owned) for provenance to record. Every refusal is raised before any write.
     """
     # #247: the overlay is one file per entry. An engine produced before it has the one shared
@@ -211,7 +214,8 @@ def produce(intake, name, out, log=None, adopt=(), reset=()):
     pins.refuse_split_pins(model, out)
     try:
         managed_writes, model.managed, model.adopted, notes = ownership.plan_managed(
-            out, name, {p: t.encode("utf-8") for p, t in scaffold.managed_files().items()}, adopt, reset)
+            out, name, {p: t.encode("utf-8") for p, t in scaffold.managed_files().items()
+                        if not (engine_path and ownership.classify_repository(p) is not None)}, adopt, reset)
     except ownership.OwnershipError as error:
         raise GenerationError(str(error))
     # Every corpus the map cites is shipped with the engine, not only the principal one: a rule

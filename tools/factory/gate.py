@@ -64,11 +64,24 @@ FILES = {
     ".github/workflows/validate.yml": (os.path.join(RECIPE, "validate.yml"), False),
 }
 
+#: The recipe files a **repository root** owns rather than the engine, when the engine is embedded
+#: under one (repository.py, decision 0069). Named here, beside FILES, so that what moves out of an
+#: embedded engine is decided where the writing is decided and not remembered in two places.
+REPOSITORY_OWNED = frozenset({".github/workflows/validate.yml"})
 
-def files(name):
-    """The recipe for engine `name`: published path -> (bytes, executable)."""
+
+def files(name, engine_path=None):
+    """The recipe for engine `name`: published path -> (bytes, executable).
+
+    `engine_path` is the engine's path under its repository root, or None when the engine **is**
+    that root (repository.py, 0069). An embedded engine receives no `.github/workflows/`: GitHub
+    reads a workflow only from the repository root, so the gate workflow is written there instead,
+    rendered to run in the engine, and a copy here would be an inert file that reads as a rail.
+    """
     out = {}
     for relative, (source, executable) in FILES.items():
+        if engine_path and relative in REPOSITORY_OWNED:
+            continue
         with open(source, "rb") as handle:
             data = handle.read()
         if relative == "scripts/validate.sh":
@@ -77,8 +90,8 @@ def files(name):
     return out
 
 
-def emit(name, out, log=None):
-    for relative, (data, executable) in files(name).items():
+def emit(name, out, engine_path=None, log=None):
+    for relative, (data, executable) in files(name, engine_path).items():
         path = os.path.join(out, *relative.split("/"))
         os.makedirs(os.path.dirname(path), exist_ok=True)
         with open(path, "wb") as handle:

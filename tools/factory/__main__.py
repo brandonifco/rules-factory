@@ -2,9 +2,18 @@
 """The rules factory (#3): produce a .NET engine from a published corpus-map package.
 
   python3 tools/factory produce --package <nupkg path | Id@Version> --corpus <file> [--corpus <file> ...]
-                                --name <PascalName> --out <dir> [--no-verify]
+                                --name <PascalName> --out <dir> [--repo-root <dir>] [--no-verify]
   python3 tools/factory backlog --create --repo <owner/name> --dir <engine dir>
   python3 tools/factory backlog --render --dir <engine dir> [--to <directory>]
+
+Where the engine sits in its repository is decided before any of it runs (repository.py, decision
+0069). An `--out` that is its own repository root, or is in no repository, is **standalone** and
+produces exactly what it always did. An `--out` under a repository root is **embedded**, and the
+files GitHub reads only from a repository root -- the four workflows and the pull request template
+-- are written at `--repo-root` instead, rendered to run in the engine, and are not written under
+the engine at all: GitHub runs no workflow below the root, so a copy there is an inert file that
+reads as a live rail (#501). An embedded `--out` with no `--repo-root` is refused, naming both
+answers, rather than produced with dark rails.
 
 `produce` runs, in order, and stops at the first refusal. Every step writes into a staging copy
 of `--out`, and the result is written to `--out` only after the last step passed, so a
@@ -128,6 +137,7 @@ import ownership  # noqa: E402
 import intake as intake_step  # noqa: E402
 import provenance  # noqa: E402
 import rails as rails_step  # noqa: E402
+import repository as repository_step  # noqa: E402
 import transaction  # noqa: E402
 import verify as verify_step  # noqa: E402
 
@@ -176,6 +186,11 @@ def produce(args):
         directory = os.path.dirname(os.path.abspath(args.produce_report))
         if not os.path.isdir(directory):
             raise intake_step.Usage(f"--produce-report {args.produce_report}: {directory} is not a directory")
+    # Where the engine is, decided before a byte is written and refused before one is: an engine
+    # embedded under a repository root takes its rails from that root, because GitHub runs no
+    # workflow below one (repository.py, 0069, #501).
+    topology = repository_step.decide(args.out, getattr(args, "repo_root", None))
+    automation = repository_step.files(args.name, topology)
     state = provenance.factory_state()
     provenance.require_clean(state, args.allow_dirty)
     # Here as well as inside `recipes()`, which is the one definition of it: the record is written
@@ -186,6 +201,11 @@ def produce(args):
     # staging copy is about to be overwritten with the new one, and an absent file is the first
     # produce of this engine, which the report says rather than guesses at.
     before = read_record(args.out)
+    repository_step.refuse_unowned(topology, automation, before)
+    if topology.embedded:
+        print(f"the engine is embedded at {topology.engine_path}/ under {topology.root}: "
+              f"{len(automation)} file(s) GitHub reads only from a repository root are written there, "
+              f"rendered to run in {topology.engine_path}/ (0069)")
     # Every step writes into `out`, a staging copy of --out; --out itself is only touched by
     # commit(), after the last step passed -- which puts files in place and makes no git commit
     # (transaction.py).
@@ -200,8 +220,9 @@ def produce(args):
             for line in result.lines():
                 print(line)
             model = generate.produce(result, args.name, out, log=sys.stdout,
-                                     adopt=getattr(args, "adopt", None) or (), reset=getattr(args, "reset", None) or ())
-            gate.emit(args.name, out, log=sys.stdout)
+                                     adopt=getattr(args, "adopt", None) or (), reset=getattr(args, "reset", None) or (),
+                                     engine_path=topology.engine_path)
+            gate.emit(args.name, out, topology.engine_path, log=sys.stdout)
             # What the factory used to write and no longer does is removed here, by the retired
             # patterns of the ownership table, and the removal is committed with everything else
             # this run did, or not at all (transaction.py). Two things are retired: the `backlog/`
@@ -211,19 +232,35 @@ def produce(args):
             # `overlay/<entry id>.json`. Each is deleted only if the bytes say it may be.
             for line in remove_retired(args.name, out):
                 print(line)
+            # An engine produced before 0069 under a host repository carries the four workflows and
+            # the pull request template it could never run. They are deleted here, in the staging
+            # copy and so in the one transaction, and only where the record says the bytes are the
+            # factory's; anything else is named and left (repository.remove_inert).
+            if topology.embedded:
+                gone, kept = repository_step.remove_inert(out, args.name, before)
+                for relative in gone:
+                    print(f"removed {relative}: the repository root holds it now, and GitHub reads no "
+                          f"workflow below the root (0069)")
+                for relative, why in kept:
+                    print(f"WARNING {relative} is still in the engine and cannot run there: {why}")
             provenance.emit(model, out)
         # Provenance is written last, outside the recorder: every step above is in `generated`.
         # The same expression that decides the guard, the word on the last line and the exit code
         # decides what the record says, so the four cannot disagree (#222, #335).
         verified = not args.no_verify
-        document = provenance.build(state, result, model, recorder, verified=verified)
+        # The invariant of #501, over what this run actually wrote and not over what it meant to:
+        # a run that writes a workflow at all writes one where GitHub will run it.
+        repository_step.assure_active(topology, recorder.paths, automation)
+        record = topology.record(repository_step.digests(automation))
+        document = provenance.build(state, result, model, recorder, verified=verified, repository=record)
         provenance.write(out, document)
         print(f"wrote {provenance.FILE_NAME}: factory {state['version']}{' (dirty)' if state['dirty'] else ''}, "
               f"{len(document['generated'])} generated files")
         overridden = None
 
         def record_lock_files():
-            provenance.write(out, provenance.build(state, result, model, recorder, verified=verified))
+            provenance.write(out, provenance.build(state, result, model, recorder, verified=verified,
+                                                   repository=record))
             print(f"rewrote {provenance.FILE_NAME}: the lock files restore wrote are build inputs")
         if args.no_verify:
             # Nothing is built or tested, but lock files that resolve other versions than the pins just
@@ -248,6 +285,13 @@ def produce(args):
         # (transaction.Stage.drift, #335), and a --no-verify run, which claims nothing about a build,
         # is held only to the paths it writes, as before.
         added, changed, removed = stage.commit(verified=verified)
+    # After the engine, and outside its transaction: the rails at the repository root name the
+    # engine they run, so the engine is in place before anything points at it (repository.commit).
+    repository_step.commit(topology, automation, log=sys.stdout)
+    if topology.embedded:
+        print(f"{topology.root} holds {', '.join(sorted(automation))} for the engine at "
+              f"{topology.engine_path}/, and the engine holds none of them: GitHub reads them only from "
+              f"the repository root (0069)")
 
     if getattr(args, "produce_report", None):
         write_produce_report(args.produce_report, before, document, added, changed, removed)
@@ -501,10 +545,10 @@ def produce_command(args, override):
 
 def recompute_provenance(engine_dir, package=None):
     """Every provenance field of `engine_dir` that re-producing does not reproduce; [] when all match."""
-    def produce_into(spec, corpora, name, out):
+    def produce_into(spec, corpora, name, out, repo_root):
         with contextlib.redirect_stdout(io.StringIO()):
             return produce(argparse.Namespace(package=spec, corpus=corpora, name=name, out=out, allow_dirty=True,
-                                              no_verify=True, check_locks=False))
+                                              no_verify=True, check_locks=False, repo_root=repo_root))
     return provenance.recompute(engine_dir, produce_into, package)
 
 
@@ -584,6 +628,12 @@ def build_parser():
                    help="a corpus file the map cites; repeat once per cited corpus (0039)")
     p.add_argument("--name", required=True, help="PascalCase engine name")
     p.add_argument("--out", required=True, help="directory the engine is written to")
+    p.add_argument("--repo-root", metavar="DIR",
+                   help="the root of the repository --out is in, when the engine is embedded under one: the "
+                        "workflows and the pull request template GitHub reads only from a repository root are "
+                        "written there, rendered to run in the engine (0069). --repo-root equal to --out declares "
+                        "the engine its own repository root. Default: git decides, and an --out under a repository "
+                        "root is refused rather than given rails GitHub cannot run")
     p.add_argument("--allow-dirty", action="store_true",
                    help="produce from a factory with uncommitted changes, recording dirty: true")
     p.add_argument("--no-verify", action="store_true",
