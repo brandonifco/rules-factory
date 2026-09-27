@@ -394,17 +394,38 @@ class TestEveryCommittedMapIsInventoried(unittest.TestCase):
                 self.assertNotIn("enumerated:  0 unit(s)", out)
                 self.assertNotIn("of 0 entries", out)
 
-    def test_all_three_grammars_are_exercised(self):
-        """Three adapters, and each one is reached by some committed map: an adapter no map
-        exercises has only ever been run on this file's own fixture."""
-        used = set()
+    def test_every_grammar_is_exercised(self):
+        """Every adapter is reached by some committed map: one no map exercises has only ever
+        been run on this file's own fixture.
+
+        A registered name is exempt only by being an **alias** -- a subclass of an exercised
+        adapter that adds nothing but its own `name`. `page-marked-text` is one: it is
+        `pdftotext-page-marked`'s reader, registered so that a page-marked text pdftotext did not
+        write need not claim it did (#499), and the four committed SRD maps run that reader. The
+        moment such a class sets anything else -- another `MARKER`, its own `units` -- it is a
+        grammar of its own with no committed map behind it, and this fails.
+        """
+        declared = set()
         for path in maps():
             document = json.load(open(path, encoding="utf-8"))
             manifest = json.load(open(cli._find_manifest(path), encoding="utf-8"))
-            for declared in manifest.get("corpora") or []:
-                if declared.get("sourceId") == document.get("corpus"):
-                    used.add(declared.get("adapter"))
-        self.assertEqual(used, set(corpus.ADAPTERS))
+            for entry in manifest.get("corpora") or []:
+                if entry.get("sourceId") == document.get("corpus"):
+                    declared.add(entry.get("adapter"))
+        self.assertLessEqual(declared, set(corpus.ADAPTERS))
+        exercised = {corpus.ADAPTERS[name] for name in declared}
+        for name, adapter in sorted(corpus.ADAPTERS.items()):
+            if adapter in exercised:
+                continue
+            with self.subTest(adapter=name):
+                base = adapter.__mro__[1]
+                self.assertIn(base, exercised,
+                              f"{name} is not declared by any committed map and does not subclass "
+                              f"one that is")
+                self.assertEqual({"name"},
+                                 set(vars(adapter)) - {"__module__", "__qualname__", "__doc__"},
+                                 f"{name} adds more than a name to {base.__name__}, so it is a "
+                                 f"grammar of its own and needs a committed map that runs it")
 
 
 # A corpus whose page turn falls mid-sentence, the way Project Gutenberg's does. The quote of

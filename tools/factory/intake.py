@@ -119,6 +119,15 @@ HASH_DERIVATIONS = {
     # here because the committed file is the derivation's output; the PDF's own digest is the
     # manifest's `sourcePdf.sha256`, and `extract.py --check` holds the two together.
     "srd-5.2.1-pdftotext-24.02.0-page-marked": _sha256_of_bytes,
+    # SHA-256 over the committed page-marked text, byte for byte -- for a source no tool can
+    # read. A scan carries page images and no text layer, so `pdftotext` returns nothing from
+    # it and the only text it can have is one a reader transcribed from those images and
+    # checked back against them. The digest is exact, because the committed file is the
+    # derivation's output; what this name does **not** claim is that a machine can re-derive
+    # it, because no machine wrote it. A corpus declaring this says so in the open, rather
+    # than borrowing the name of a tool that never ran over it, and the project that commits
+    # it holds this digest to its source scan's the way `extract.py --check` does (0013).
+    "transcribed-from-page-images-page-marked": _sha256_of_bytes,
 }
 SHA256_HEX = re.compile(r"^[0-9a-f]{64}$")
 VERIFICATION_FORMAT = 1

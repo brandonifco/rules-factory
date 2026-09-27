@@ -121,6 +121,13 @@ LOCATOR_CHECKERS = {
     "plain-text": os.path.join(REPO, "tools", "check-locators.py"),
     "ecfr-xml": os.path.join(REPO, "examples", "faa-part-107", "check-locators-section.py"),
     "pdftotext-page-marked": os.path.join(REPO, "examples", "srd-52-combat", "check-locators-pdf-text.py"),
+    # The same grammar, the same checker, under a name that does not name a tool. Nothing in
+    # check-locators-pdf-text.py is pdftotext's -- it reads `{N}` markers and
+    # heading-path-and-printed-page locators -- and a page-marked text can also come from a
+    # scan no tool can extract, transcribed from its page images. That corpus declares this
+    # adapter, so its manifest names no tool that never ran (#499). The older spelling stays:
+    # it is what four committed SRD manifests and every published SRD package declare.
+    "page-marked-text": os.path.join(REPO, "examples", "srd-52-combat", "check-locators-pdf-text.py"),
 }
 
 MAP_NAME = re.compile(r"^[a-z0-9]+(?:-[a-z0-9]+)*$")
