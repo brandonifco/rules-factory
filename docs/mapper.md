@@ -350,6 +350,7 @@ corpus into the units an extent selects, in reading order, each with a stable ke
 |---|---|---|
 | `plain-text` | `page` | a blank-line-separated block, keyed `p. 271 block 3` |
 | `pdftotext-page-marked` | `page`, with `startsAfter` and `endsBefore` (0024, 0064) | the same, with the marker on a line of its own |
+| `page-marked-text` | the same | the same reader under a name that does not name a tool, for a page-marked text `pdftotext` did not write — a scan with no text layer, transcribed from its page images (#499) |
 | `ecfr-xml` | `section-designation`, with `tables` (0035) | a paragraph, a worked example, a section's heading, or a **row** of a table the extent slices, keyed `§ 107.29 ¶4 (a)` or `§ 172.101 table 3, row [column 2 = "Acetal"]` |
 | `uslm-xml` | `section-designation`, spelled `Rule 6` | the text an identified element prints **itself**, keyed by the citation that names it: `Rule 6(a)(1)(A)`. The rule element prints twice — its heading, then its source credit — so it yields two units, `Rule 6 heading` and `Rule 6 source credit` |
 

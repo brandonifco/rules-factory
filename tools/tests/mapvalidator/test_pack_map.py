@@ -652,3 +652,101 @@ class ThePublishGateReadsTheVersionItReplaces(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class TestPageMarkedTextAdapter(unittest.TestCase):
+    """A page-marked corpus no tool extracted packs under names that do not name a tool (#499).
+
+    The subject is `examples/srd-52-damage-and-healing`, a real page-marked map, with its
+    `adapter` and `hashDerivation` renamed to the generic spellings and nothing else touched. It
+    stands in for a corpus transcribed from the page images of a scan: the grammar and the bytes
+    are the same, and what differs is only that no tool's name may honestly appear in the
+    manifest. If either registry -- `LOCATOR_CHECKERS` here, `HASH_DERIVATIONS` in intake -- did
+    not carry the generic name, the gate would refuse it, which is what the refusal case below
+    holds still.
+
+    The real map is left declaring `pdftotext-page-marked`: that is what `extract.py` did to it,
+    and four committed manifests and every published SRD package say so.
+    """
+
+    SOURCE = os.path.join(REPO, "examples", "srd-52-damage-and-healing")
+    CORPUS = os.path.join(REPO, "examples", "srd-52-combat", "srd-5.2.1.txt")
+    ADAPTER = "page-marked-text"
+    DERIVATION = "transcribed-from-page-images-page-marked"
+
+    def setUp(self):
+        self.tmp = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, self.tmp, True)
+        self.map_dir = os.path.join(self.tmp, "srd-52-damage-and-healing")
+        os.makedirs(self.map_dir)
+        for name in ("corpus-map.json", "corpus-manifest.json", "map-package.json",
+                     "CORPUS-LICENCE.txt"):
+            shutil.copy(os.path.join(self.SOURCE, name), self.map_dir)
+        shutil.copy(self.CORPUS, self.map_dir)
+        self.out = os.path.join(self.tmp, "out")
+        self.rewrite(adapter=self.ADAPTER, derivation=self.DERIVATION)
+
+    def rewrite(self, adapter, derivation):
+        """Say the same things about the same bytes under the names given."""
+        manifest_path = os.path.join(self.map_dir, "corpus-manifest.json")
+        with open(manifest_path, encoding="utf-8") as handle:
+            manifest = json.load(handle)
+        corpus = manifest["corpora"][0]
+        corpus["adapter"] = adapter
+        corpus["hashDerivation"] = derivation
+        corpus["quotedText"]["derivation"] = derivation
+        # The map dir is its own root here, and the source PDF is `extract.py`'s business, not
+        # the gate's: the corpus travels beside the manifest and the PDF does not travel at all.
+        corpus["committedPath"] = os.path.basename(self.CORPUS)
+        corpus.pop("sourcePdf", None)
+        with open(manifest_path, "w", encoding="utf-8") as handle:
+            json.dump(manifest, handle, indent=2, ensure_ascii=False)
+        map_path = os.path.join(self.map_dir, "corpus-map.json")
+        with open(map_path, encoding="utf-8") as handle:
+            document = json.load(handle)
+        document["baseline"]["hashDerivation"] = derivation
+        with open(map_path, "w", encoding="utf-8") as handle:
+            json.dump(document, handle, indent=2, ensure_ascii=False)
+
+    def pack(self):
+        buffer = io.StringIO()
+        with redirect_stdout(buffer), redirect_stderr(buffer):
+            code = pack_map.main([self.map_dir, "--out", self.out])
+        return code, buffer.getvalue()
+
+    def packages(self):
+        return sorted(os.listdir(self.out)) if os.path.isdir(self.out) else []
+
+    def test_the_generic_adapter_has_a_locator_checker(self):
+        self.assertIn(self.ADAPTER, pack_map.LOCATOR_CHECKERS)
+
+    def test_it_is_the_same_checker_the_tool_named_spelling_uses(self):
+        self.assertEqual(pack_map.LOCATOR_CHECKERS["pdftotext-page-marked"],
+                         pack_map.LOCATOR_CHECKERS[self.ADAPTER])
+
+    def test_a_map_under_the_generic_names_packs(self):
+        code, output = self.pack()
+        self.assertEqual(code, 0, output)
+        self.assertEqual(["RulesFactory.Maps.Srd52DamageAndHealing.1.0.0.nupkg"], self.packages())
+        self.assertIn(self.ADAPTER, output)
+
+    def test_the_package_records_the_derivation_it_verified_under(self):
+        code, output = self.pack()
+        self.assertEqual(code, 0, output)
+        with zipfile.ZipFile(os.path.join(self.out, self.packages()[0])) as archive:
+            record = json.loads(archive.read("map/verification.json").decode("utf-8"))
+        self.assertEqual([self.DERIVATION], [c["hashDerivation"] for c in record["corpora"]])
+
+    def test_an_unregistered_adapter_is_still_refused(self):
+        self.rewrite(adapter="transcribed-by-somebody", derivation=self.DERIVATION)
+        code, output = self.pack()
+        self.assertEqual(code, 1, output)
+        self.assertEqual([], self.packages(), f"a refused map left a package behind:\n{output}")
+        self.assertIn("no locator checker for adapter", output)
+
+    def test_an_unregistered_derivation_is_still_refused(self):
+        self.rewrite(adapter=self.ADAPTER, derivation="transcribed-somehow")
+        code, output = self.pack()
+        self.assertEqual(code, 1, output)
+        self.assertEqual([], self.packages(), f"a refused map left a package behind:\n{output}")
+        self.assertIn("no way to compute hashDerivation", output)

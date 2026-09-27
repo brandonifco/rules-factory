@@ -1675,6 +1675,18 @@ covers. A boundary policy is a property of the licence, and the two engines this
 derived from answer it in opposite directions — one commits its extracted corpus because the
 SRD is CC-BY, the other commits nothing because its rulebook is commercial.
 
+`hashDerivation` is drawn from a closed set — `intake.HASH_DERIVATIONS` — and a corpus naming a
+derivation that is not in it is refused rather than hashed some other way. One of them describes
+text no tool produced: `transcribed-from-page-images-page-marked` is SHA-256 over a committed
+page-marked text for a source that is a **scan**, a PDF of page images with no text layer, from
+which `pdftotext` returns nothing. The digest is exact, because the committed file is the
+derivation's output. What the name deliberately does not claim is mechanical re-derivation, and a
+corpus declaring it says so in the open instead of borrowing the name of a tool that never ran.
+Such a corpus declares the `page-marked-text` adapter for the same reason
+([mapper.md](mapper.md#the-adapter-interface)); the project that commits it is the one that holds
+the transcription's digest to its source scan's, the way `examples/srd-52-combat/extract.py
+--check` holds text to PDF.
+
 `verification` and `quotation` are the same question asked of a map's *consumers*, and are
 answered per corpus for the same reason ([0013](decisions/0013-verification-posture-belongs-to-the-corpus.md)):
 

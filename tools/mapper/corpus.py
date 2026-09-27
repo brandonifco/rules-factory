@@ -279,6 +279,22 @@ class PageMarkedPdfText(PageMarkedText):
     MARKER = re.compile(r"^\{(\d+)\}$", re.M)
 
 
+class PageMarkedTranscription(PageMarkedPdfText):
+    """The same reader, under a name that does not name a tool (#499).
+
+    A scan carries page images and no text layer, so `pdftotext` returns nothing from it and the
+    only text it can have is one a reader transcribed from those images. That text is this
+    grammar -- `{N}` on a line of its own, blank-line-separated blocks -- and declaring
+    `pdftotext-page-marked` for it would put a tool in the manifest that never ran. Nothing in
+    `PageMarkedPdfText` is pdftotext's but its name, so the whole of the difference is the name.
+
+    Both spellings stay registered: the older one is what `extract.py` did to the SRD, and four
+    committed manifests and every published SRD package declare it.
+    """
+
+    name = "page-marked-text"
+
+
 # --- table geometry, and the row key a citation names (0035) -----------------------------------
 # A rule stated in a row of a table is cited by a cell that identifies the row, in the corpus's
 # own column numbering, and never by the row's position: a table this corpus amends constantly
@@ -1324,7 +1340,8 @@ class UslmXml(Adapter):
         return found
 
 
-ADAPTERS = {cls.name: cls for cls in (PageMarkedText, PageMarkedPdfText, EcfrXml, UslmXml)}
+ADAPTERS = {cls.name: cls for cls in
+            (PageMarkedText, PageMarkedPdfText, PageMarkedTranscription, EcfrXml, UslmXml)}
 
 
 def open_corpus(manifest, source_id, manifest_dir):
