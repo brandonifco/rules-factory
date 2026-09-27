@@ -282,9 +282,11 @@ class TwoCorpusMap(unittest.TestCase):
             self.assertTrue(os.path.isfile(os.path.join(out, "corpus", name)), name)
         with open(os.path.join(out, "provenance.json"), encoding="utf-8") as handle:
             record = json.load(handle)
-        # 7 since #446: `maps` names every package the engine is composed of, where 6 named one
-        # under `map`. Pinned as a literal on purpose -- a format bump is a deliberate edit.
-        self.assertEqual(record["provenanceFormat"], 7)
+        # 8 since #497: `distribution`, the strictest requirement of the corpora the engine is
+        # made from (0068), on top of 7's `maps`. Pinned as a literal on purpose -- a format bump
+        # is a deliberate edit.
+        self.assertEqual(record["provenanceFormat"], 8)
+        self.assertEqual(record["distribution"], "public")
         self.assertNotIn("corpus", record)
         self.assertEqual([c["sourceId"] for c in record["corpora"]], ["cfr-9-9.101", "cfr-9-9.102"])
         self.assertEqual([c["principal"] for c in record["corpora"]], [True, False])
@@ -292,6 +294,70 @@ class TwoCorpusMap(unittest.TestCase):
                          ["corpus/section-9.101.xml", "corpus/section-9.102.xml"])
         for corpus in record["corpora"]:
             self.assertTrue(corpus["recomputed"])
+
+    # --- 0068: one restricted corpus among several restricts the whole ----------------------
+    #
+    # Both corpora stay public-domain 9 CFR fixture text. Only the manifest's `distribution` is
+    # rewritten, so nothing proprietary enters this repository (0068 section 6).
+
+    def mixed_package(self, second_licence=None):
+        """A map over two corpora, the second declaring private distribution."""
+        directory = os.path.join(self.tmp, "mixed", "two-section")
+        self.write_map(directory)
+        path = os.path.join(directory, "corpus-manifest.json")
+        with open(path, encoding="utf-8") as handle:
+            manifest = json.load(handle)
+        second = next(c for c in manifest["corpora"] if c["sourceId"] == "cfr-9-9.102")
+        second["distribution"] = "private"
+        if second_licence is not None:
+            second["licence"] = second_licence
+            with open(os.path.join(directory, "CORPUS-LICENCE.txt"), "a", encoding="utf-8") as terms:
+                terms.write("\n" + second_licence + "\n")
+        with open(path, "w", encoding="utf-8") as handle:
+            json.dump(manifest, handle, indent=2, ensure_ascii=False)
+        return directory, self.pack(directory, os.path.join(self.tmp, "mixed", "out"))
+
+    def test_one_private_corpus_among_two_makes_the_package_private(self):
+        directory, nupkg = self.mixed_package()
+        with zipfile.ZipFile(nupkg) as archive:
+            record = json.loads(archive.read("map/verification.json"))
+        self.assertEqual("private", record.get("distribution"))
+
+    def test_one_private_corpus_among_two_makes_the_engine_private(self):
+        directory, nupkg = self.mixed_package()
+        code, output, out = self.produce(os.path.join(directory, "section-9.101.xml"),
+                                         os.path.join(directory, "section-9.102.xml"),
+                                         package=nupkg)
+        self.assertEqual(code, NOT_VERIFIED, output)
+        with open(os.path.join(out, "provenance.json"), encoding="utf-8") as handle:
+            self.assertEqual("private", json.load(handle)["distribution"])
+        self.assertTrue(os.path.isfile(os.path.join(out, "DISTRIBUTION.md")))
+        self.assertIn("cfr-9-9.102", self.read_text(os.path.join(out, "DISTRIBUTION.md")))
+        self.assertNotIn("cfr-9-9.101", self.read_text(os.path.join(out, "DISTRIBUTION.md")))
+
+    def test_a_licensed_second_corpus_restricts_a_public_first_one(self):
+        directory, nupkg = self.mixed_package("licensed-proprietary; synthetic permission SYN-2")
+        code, output, out = self.produce(os.path.join(directory, "section-9.101.xml"),
+                                         os.path.join(directory, "section-9.102.xml"),
+                                         package=nupkg)
+        self.assertEqual(code, NOT_VERIFIED, output)
+        with open(os.path.join(out, "provenance.json"), encoding="utf-8") as handle:
+            self.assertEqual("private", json.load(handle)["distribution"])
+
+    def test_a_mixed_map_is_refused_on_the_publish_path(self):
+        directory, _ = self.mixed_package()
+        completed = subprocess.run(
+            [sys.executable, PACK, directory, "--out", os.path.join(self.tmp, "mixed", "tagged"),
+             "--tag", "map/two-section/v1.0.0"],
+            stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
+        self.assertEqual(1, completed.returncode, completed.stdout)
+        self.assertIn("docs/decisions/0068", completed.stdout)
+        self.assertIn("cfr-9-9.102", completed.stdout)
+
+    @staticmethod
+    def read_text(path):
+        with open(path, encoding="utf-8") as handle:
+            return handle.read()
 
     def test_recomputation_detects_modification_of_either_corpus(self):
         for name, source_id in (("section-9.101.xml", "cfr-9-9.101"), ("section-9.102.xml", "cfr-9-9.102")):

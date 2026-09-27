@@ -154,6 +154,81 @@ class ProduceCase(unittest.TestCase):
             return handle.read()
 
 
+class TestDistribution(ProduceCase):
+    """0068: an engine inherits the strictest requirement of its corpora, and says so.
+
+    The corpus stays 14 CFR Part 107, public-domain text. Only the manifest's declaration is
+    rewritten, so nothing proprietary enters this repository (0068 section 6).
+    """
+
+    def private_package(self, licence=None):
+        copy = os.path.join(self.tmp, "private-map", "faa-part-107")
+        shutil.copytree(PART107, copy)
+        path = os.path.join(copy, "corpus-manifest.json")
+        with open(path, encoding="utf-8") as handle:
+            manifest = json.load(handle)
+        manifest["corpora"][0]["distribution"] = "private"
+        if licence is not None:
+            manifest["corpora"][0]["licence"] = licence
+            with open(os.path.join(copy, "CORPUS-LICENCE.txt"), "w", encoding="utf-8") as terms:
+                terms.write(licence + "\n")
+        with open(path, "w", encoding="utf-8") as handle:
+            json.dump(manifest, handle, indent=2, ensure_ascii=False)
+        return pack(copy, os.path.join(self.tmp, "private-map", "out"))
+
+    def provenance_of(self, out):
+        return json.loads(self.read(out, "provenance.json"))
+
+    def test_a_public_engine_records_public_distribution(self):
+        out = self.produced()
+        self.assertEqual("public", self.provenance_of(out)["distribution"])
+
+    def test_a_public_engine_carries_no_distribution_notice(self):
+        out = self.produced()
+        self.assertFalse(os.path.exists(os.path.join(out, "DISTRIBUTION.md")),
+                         "a public engine must not claim a restriction it does not have")
+
+    def test_a_private_engine_records_private_distribution(self):
+        out = self.produced(package=self.private_package())
+        self.assertEqual("private", self.provenance_of(out)["distribution"])
+
+    def test_a_licensed_proprietary_engine_records_private_distribution(self):
+        package = self.private_package("licensed-proprietary; synthetic permission SYN-1")
+        self.assertEqual("private", self.provenance_of(self.produced(package=package))["distribution"])
+
+    def test_a_private_engine_carries_a_conspicuous_notice(self):
+        out = self.produced(package=self.private_package())
+        notice = self.read(out, "DISTRIBUTION.md")
+        self.assertIn("private", notice.lower())
+        self.assertIn("docs/decisions/0068", notice)
+        self.assertIn("not a security mechanism", notice.lower())
+
+    def test_the_notice_names_the_corpus_that_restricts_the_engine(self):
+        out = self.produced(package=self.private_package())
+        self.assertIn("cfr-14-107", self.read(out, "DISTRIBUTION.md"))
+
+    def test_the_notice_carries_no_licence_terms_or_corpus_text(self):
+        """0068 section 7: the notice states the contract, never the commercial terms."""
+        notice = self.read(self.produced(package=self.private_package()), "DISTRIBUTION.md")
+        self.assertNotIn("SYN-1", notice)
+        self.assertLess(len(notice), 4000, "a distribution notice is a notice, not a document")
+
+    def test_the_notice_is_retired_when_an_engine_stops_being_private(self):
+        """A generated file the factory no longer writes is removed, as the backlog was (#243)."""
+        out = os.path.join(self.tmp, "engine")
+        self.produced(out=out, package=self.private_package())
+        self.assertTrue(os.path.exists(os.path.join(out, "DISTRIBUTION.md")))
+
+        self.produced(out=out)
+        self.assertFalse(os.path.exists(os.path.join(out, "DISTRIBUTION.md")),
+                         "the notice outlived the restriction that produced it")
+        self.assertEqual("public", self.provenance_of(out)["distribution"])
+
+    def test_the_run_says_which_it_produced(self):
+        _, output = self.produce(os.path.join(self.tmp, "engine"), package=self.private_package())
+        self.assertIn("distribution private", output)
+
+
 class TestDeterminism(ProduceCase):
     def test_two_runs_are_byte_identical(self):
         first = tree(self.produced(os.path.join(self.tmp, "a")))
@@ -783,9 +858,9 @@ class TestTheOverlayIsOneFilePerEntry(ProduceCase):
         for entry_id in ids:
             self.assertEqual(json.loads(self.read(out, f"overlay/{entry_id}.json")), self.BLOCKED)
         record = json.loads(self.read(out, "provenance.json"))
-        # 7 since #446: `maps` names every package the engine is composed of, where 6 named one
-        # under `map`. Pinned as a literal on purpose -- a format bump is a deliberate edit.
-        self.assertEqual(record["provenanceFormat"], 7)
+        # 8 since #497: `distribution` (0068), on top of 7's `maps`. Pinned as a literal on
+        # purpose -- a format bump is a deliberate edit.
+        self.assertEqual(record["provenanceFormat"], 8)
         self.assertEqual({item["path"] for item in record["buildInputs"] if item["path"].startswith("overlay/")},
                          {f"overlay/{entry_id}.json" for entry_id in ids})
         self.assertFalse([item for item in record["buildInputs"] + record["engineOwned"]

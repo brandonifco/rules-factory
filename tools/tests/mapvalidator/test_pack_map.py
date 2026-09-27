@@ -287,6 +287,92 @@ class TestRefuses(PackCase):
         self.assert_refused(code, output)
         self.assertIn("NOT VERIFIED", output)
 
+    # --- 0068: a private map packs, and never publishes ------------------------------------
+    #
+    # `distribution` is the only thing rewritten below. The corpus stays Hoyle 1909, public-domain
+    # text, so nothing proprietary enters this repository (0068 section 6).
+
+    def private(self, licence=None):
+        def change(manifest):
+            manifest["corpora"][0]["distribution"] = "private"
+            if licence is not None:
+                manifest["corpora"][0]["licence"] = licence
+        self.edit("corpus-manifest.json", change)
+        if licence is not None:
+            with open(os.path.join(self.map_dir, "CORPUS-LICENCE.txt"), "w", encoding="utf-8") as handle:
+                handle.write(licence + "\n")
+
+    def verification(self):
+        (name,) = self.packages()
+        with zipfile.ZipFile(os.path.join(self.out, name)) as archive:
+            return json.loads(archive.read("map/verification.json"))
+
+    def test_a_private_map_packs_when_no_publish_tag_is_passed(self):
+        """A private project has to be able to build the package its own produce consumes (0068 section 5)."""
+        self.private()
+        code, output = self.pack()
+        self.assertEqual(code, 0, output)
+        self.assertEqual(len(self.packages()), 1, output)
+        self.assertIn("private", output)
+
+    def test_a_licensed_proprietary_map_declaring_private_packs(self):
+        self.private(licence="licensed-proprietary; synthetic permission SYN-1")
+        code, output = self.pack()
+        self.assertEqual(code, 0, output)
+        self.assertEqual(len(self.packages()), 1, output)
+
+    def test_a_private_map_is_refused_on_the_publish_path(self):
+        """--tag is how a pack becomes a publication, and publish-map.yml is the only caller."""
+        self.private()
+        code, output = self.pack("--tag", f"map/hoyle-backgammon/v{VERSION}")
+        self.assert_refused(code, output)
+        self.assertIn("private", output)
+        self.assertIn("docs/decisions/0068", output)
+
+    def test_a_licensed_proprietary_map_is_refused_on_the_publish_path(self):
+        self.private(licence="licensed-proprietary; synthetic permission SYN-1")
+        code, output = self.pack("--tag", f"map/hoyle-backgammon/v{VERSION}")
+        self.assert_refused(code, output)
+        self.assertIn("docs/decisions/0068", output)
+
+    def test_a_private_package_records_its_inherited_distribution(self):
+        """Machine-readable and deterministic, not a description string (0068 section 5)."""
+        self.private()
+        code, output = self.pack()
+        self.assertEqual(code, 0, output)
+        self.assertEqual("private", self.verification().get("distribution"))
+
+    def test_a_public_package_says_nothing_and_keeps_its_bytes(self):
+        """Public is the default and is derivable, so no published map's bytes move (0068)."""
+        code, output = self.pack()
+        self.assertEqual(code, 0, output)
+        self.assertNotIn("distribution", self.verification())
+
+    def test_a_public_package_is_byte_identical_with_and_without_the_new_field(self):
+        code, output = self.pack()
+        self.assertEqual(code, 0, output)
+        (name,) = self.packages()
+        with open(os.path.join(self.out, name), "rb") as handle:
+            public = hashlib.sha256(handle.read()).hexdigest()
+
+        self.private()
+        second = os.path.join(self.tmp, "private-out")
+        code, output = self.pack(out=second)
+        self.assertEqual(code, 0, output)
+        (name,) = self.packages(second)
+        with open(os.path.join(second, name), "rb") as handle:
+            self.assertNotEqual(public, hashlib.sha256(handle.read()).hexdigest(),
+                                "a private package must differ from the public one it was made from")
+
+    def test_no_flag_opens_the_publish_path_to_a_private_map(self):
+        """0068 section 5: there is no --force, --allow-private or licensed-copy exception."""
+        self.private()
+        for flag in ("--force", "--allow-private", "--licensed-copy-exception", "--public"):
+            with self.subTest(flag=flag):
+                with self.assertRaises(SystemExit):
+                    self.pack(flag, "--tag", f"map/hoyle-backgammon/v{VERSION}")
+                self.assertEqual(self.packages(), [], "a rejected flag still wrote a package")
+
     def test_a_tag_that_disagrees_with_the_reviewed_version_is_refused(self):
         code, output = self.pack("--tag", "map/hoyle-backgammon/v0.0.1")
         self.assert_refused(code, output, expect_code=2)

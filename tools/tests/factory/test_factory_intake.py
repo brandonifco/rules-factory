@@ -250,17 +250,17 @@ class TestRefuses(IntakeCase):
         return rewrite(self.part107, os.path.join(self.tmp, "licence.nupkg"),
                        {"map/corpus-manifest.json": json.dumps(manifest).encode("utf-8")})
 
-    def test_a_licence_that_is_not_public_domain_or_open(self):
-        """0028: the factory admits only corpora whose licence permits committing and publishing them."""
+    def test_a_licence_the_factory_does_not_know(self):
+        """0028, 0068: a licence the factory cannot classify is refused until a decision admits it."""
         for licence in ("commercial", "All rights reserved", "CC-BY-NC-4.0", "CC-BY-4.0-with-exceptions",
-                        "public-domainish", "Public-Domain", "", None):
+                        "public-domainish", "Public-Domain", "licensed-proprietaryish", "", None):
             with self.subTest(licence=licence):
                 package = self.part107_with_licence(licence)
                 self.assert_refused(package, PART107_XML, f"cfr-14-107's manifest `licence` is {licence!r}",
-                                    "neither public domain", "docs/decisions/0028")
+                                    "not public domain", "docs/decisions/0028")
                 self.assertFalse(os.path.exists(os.path.join(self.tmp, "out")), "a refused intake wrote the engine")
 
-    def test_a_licensed_corpus_is_refused_by_its_licence_before_its_posture(self):
+    def test_an_unadmitted_corpus_is_refused_by_its_licence_before_its_posture(self):
         package = self.part107_with_licence("commercial", verification="local-copy", boundaryPolicy="never-commit",
                                             quotation="withheld", envVar="PART107_XML")
         output = self.assert_refused(package, PART107_XML, "docs/decisions/0028")
@@ -272,6 +272,42 @@ class TestRefuses(IntakeCase):
             with self.subTest(licence=licence):
                 self.assert_passes(self.part107_with_licence(licence), PART107_XML)
                 shutil.rmtree(os.path.join(self.tmp, "out"), True)
+
+    # --- 0068: distribution is a second declared fact --------------------------------------
+    #
+    # Every proprietary licence below is invented. The corpus is Part 107, which is public-domain
+    # text; only the manifest's declaration is rewritten, so nothing proprietary enters this
+    # repository (0068 section 6).
+
+    def test_a_public_corpus_may_declare_either_distribution(self):
+        for distribution in ("public", "private"):
+            with self.subTest(distribution=distribution):
+                self.assert_passes(self.part107_with_licence("public-domain-us-government",
+                                                             distribution=distribution), PART107_XML)
+                shutil.rmtree(os.path.join(self.tmp, "out"), True)
+
+    def test_a_licensed_proprietary_corpus_declaring_private_is_admitted(self):
+        """0068: a licensed corpus produces through the ordinary path inside a private boundary."""
+        self.assert_passes(
+            self.part107_with_licence("licensed-proprietary; synthetic permission SYN-1", distribution="private"),
+            PART107_XML)
+
+    def test_a_licensed_proprietary_corpus_declaring_public_is_refused(self):
+        package = self.part107_with_licence("licensed-proprietary; synthetic permission SYN-1",
+                                            distribution="public")
+        self.assert_refused(package, PART107_XML, "licensed-proprietary", "docs/decisions/0068")
+        self.assertFalse(os.path.exists(os.path.join(self.tmp, "out")), "a refused intake wrote the engine")
+
+    def test_a_licensed_proprietary_corpus_declaring_nothing_is_refused(self):
+        package = self.part107_with_licence("licensed-proprietary; synthetic permission SYN-1")
+        self.assert_refused(package, PART107_XML, "declares no `distribution`", "docs/decisions/0068")
+        self.assertFalse(os.path.exists(os.path.join(self.tmp, "out")), "a refused intake wrote the engine")
+
+    def test_a_distribution_the_factory_cannot_read_is_refused(self):
+        for distribution in ("PUBLIC", "restricted", ""):
+            with self.subTest(distribution=distribution):
+                package = self.part107_with_licence("public-domain", distribution=distribution)
+                self.assert_refused(package, PART107_XML, "`distribution`", "docs/decisions/0068")
 
     def test_a_manifest_that_does_not_declare_randomness(self):
         """0019: a package from before the field is refused, never read as `none`."""

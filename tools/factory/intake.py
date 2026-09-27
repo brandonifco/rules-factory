@@ -17,9 +17,11 @@ refusal rather than a warning:
      verification record names the map, manifest and packaged checker by SHA-256 and names every
      corpus the map cites by sourceId, hashDerivation and contentHash. Those artifact digests are
      compared with the actual package members; a legacy package with no binding is refused.
-  4. **Every cited corpus may be committed and published, and is verifiable here.** Its
-     `licence` is public domain or an admitted open licence (0028), and its `verification` is
-     `committed-copy` (0013). A local-copy corpus is NOT VERIFIED.
+  4. **Every cited corpus is admitted, and is verifiable here.** Its `licence` is public domain,
+     an admitted open licence, or `licensed-proprietary` declaring `distribution: private`
+     (0028, 0068), and its `verification` is `committed-copy` (0013). A local-copy corpus is NOT
+     VERIFIED. The package's distribution requirement is the strictest of its corpora's, and
+     `private` restricts where the engine may go, never what is established about it.
   5. **Every resolved corpus file is the exact identity this package was verified against.**
      The map's principal `baseline` agrees with the manifest; each supplied file is recomputed
      under the one canonical `hashDerivation` table, must equal its manifest contentHash, and
@@ -125,15 +127,34 @@ VERIFICATION_FORMAT = 1
 # draw, and only through RulesKernel.Randomness's seeded, replayable source.
 RANDOMNESS = ("none", "seeded")
 
-# Decision 0028: the factory admits a corpus only when its licence permits committing and publishing
-# its text and its map. The class is read from the leading identifier of the manifest's `licence`
-# (before any whitespace, `;`, `,` or closing `.`): `public-domain`, or a `public-domain-` form that
-# says whose (`public-domain-us-government`), is public domain; an identifier in OPEN_LICENCES is open.
-# Anything else, a missing `licence` included, is neither, and is refused. An open licence is added
-# here only with a decision that admits it.
+# Admission is two facts, and neither is read from the other (decision 0068).
+#
+# The **licence class** says whether the factory may consume the corpus at all. It is read from the
+# leading identifier of the manifest's `licence` (before any whitespace, `;`, `,` or closing `.`):
+# `public-domain`, or a `public-domain-` form that says whose (`public-domain-us-government`), is
+# public domain; an identifier in OPEN_LICENCES is open; LICENSED_PROPRIETARY is licensed
+# proprietary. Anything else, a missing `licence` included, is refused. A licence is added here
+# only with a decision that admits it.
+#
+# The **distribution requirement** says where what comes out of it may go. It is the manifest's
+# `distribution`, `public` or `private`. Absent it reads as `public` -- except under
+# `licensed-proprietary`, where absence is refused and there is no default (0068 section 2). A
+# public-domain or open corpus may declare `private` and the factory honours it; a
+# licensed-proprietary corpus may never reach public distribution.
+#
+# 0028 wrote the first fact and inferred the second from it. It still governs public distribution,
+# and is why proprietary material cannot enter this repository's examples or its map publication.
 PUBLIC_DOMAIN = "public-domain"
 OPEN_LICENCES = ("CC-BY-4.0", "CC0-1.0")
+LICENSED_PROPRIETARY = "licensed-proprietary"
 LICENCE_IDENTIFIER = re.compile(r"\A([A-Za-z0-9][A-Za-z0-9.-]*?)\.?(?=[\s;,]|\Z)")
+
+PUBLIC, PRIVATE = "public", "private"
+DISTRIBUTIONS = (PUBLIC, PRIVATE)
+
+#: Absent, told apart from a declared `null`. Writing `"distribution": null` states nothing and is
+#: refused; leaving the key out is what reads as public for a licence that permits publishing.
+ABSENT = object()
 
 # The factory's own checker: tools/check-map.py, one directory above this package. It is a
 # hyphenated script rather than a module, so it is loaded by path, once, on first use.
@@ -449,25 +470,88 @@ def _json(label, raw):
 
 
 def licence_class(licence):
-    """`public-domain` or `open` for a manifest `licence` the factory admits (0028); None for any other."""
+    """`public-domain`, `open` or `licensed-proprietary` for a `licence` the factory knows; else None."""
     found = LICENCE_IDENTIFIER.match(licence) if isinstance(licence, str) else None
     identifier = found.group(1) if found else ""
     if identifier == PUBLIC_DOMAIN or identifier.startswith(PUBLIC_DOMAIN + "-"):
         return "public-domain"
     if identifier in OPEN_LICENCES:
         return "open"
+    if identifier == LICENSED_PROPRIETARY:
+        return LICENSED_PROPRIETARY
     return None
 
 
+def admit(corpus):
+    """`(licence class, distribution)` for an admissible corpus; `Refused` for any other (0068).
+
+    The one place a manifest corpus is classified. Every command that reads a corpus reaches here,
+    so there is no second string-parsing of `licence` anywhere and no path that admits a
+    licensed-proprietary corpus into public distribution. Fail-closed: anything unclassifiable is
+    refused, and nothing defaults where a default could be wrong.
+    """
+    if not isinstance(corpus, dict):
+        raise Refused(f"a manifest corpus is an object declaring `licence` and, where it is "
+                      f"restricted, `distribution`; this is {type(corpus).__name__} "
+                      f"(docs/decisions/0068)")
+
+    source_id = corpus.get("sourceId")
+    licence = corpus.get("licence")
+    found = licence_class(licence)
+    if found is None:
+        raise Refused(f"{source_id}'s manifest `licence` is {licence!r}, which is not public domain "
+                      f"(`{PUBLIC_DOMAIN}`, or `{PUBLIC_DOMAIN}-<whose>`), not an open licence the factory "
+                      f"admits ({', '.join(OPEN_LICENCES)}), and not `{LICENSED_PROPRIETARY}`: the factory "
+                      f"admits only a corpus whose licence it knows, and a licence it does not know is "
+                      f"refused until a decision admits it (docs/decisions/0028, docs/decisions/0068)")
+
+    declared = corpus.get("distribution", ABSENT)
+    if declared is not ABSENT and (isinstance(declared, bool) or declared not in DISTRIBUTIONS):
+        raise Refused(f"{source_id}'s manifest `distribution` is {declared!r}, outside "
+                      f"{{{', '.join(DISTRIBUTIONS)}}}: where artifacts derived from a corpus may go is "
+                      f"declared, and a value the factory cannot read is refused rather than guessed "
+                      f"(docs/decisions/0068)")
+
+    if found == LICENSED_PROPRIETARY:
+        if declared is ABSENT:
+            raise Refused(f"{source_id} is `{LICENSED_PROPRIETARY}` and declares no `distribution`: a "
+                          f"licensed corpus is admitted only inside a private distribution boundary, and "
+                          f"absence is a refusal here rather than a default (docs/decisions/0068)")
+        if declared == PUBLIC:
+            raise Refused(f"{source_id} is `{LICENSED_PROPRIETARY}` and declares `distribution` "
+                          f"{PUBLIC!r}: licensed material may be produced and verified, and may not be "
+                          f"publicly distributed. Declare `{PRIVATE}`, or admit the corpus under a licence "
+                          f"that permits publishing it (docs/decisions/0068, docs/decisions/0028)")
+        return found, PRIVATE
+
+    return found, PUBLIC if declared is ABSENT else declared
+
+
+def distribution_requirement(corpus):
+    """Where artifacts derived from this corpus may go: `public` or `private` (0068)."""
+    return admit(corpus)[1]
+
+
+def strictest_distribution(distributions):
+    """The strictest of several requirements: private wins over public (0068 section 3).
+
+    A map citing several corpora, a package, a composition and an engine all inherit through here,
+    so `public + private -> private` is written once and cannot disagree with itself.
+    """
+    strictest = PUBLIC
+    for distribution in distributions:
+        if distribution not in DISTRIBUTIONS:
+            raise Refused(f"{distribution!r} is not a distribution requirement the factory knows "
+                          f"({', '.join(DISTRIBUTIONS)}); it is refused rather than treated as "
+                          f"unrestricted (docs/decisions/0068)")
+        if distribution == PRIVATE:
+            strictest = PRIVATE
+    return strictest
+
+
 def refuse_unadmitted_licence(corpus):
-    """Refused unless the manifest corpus's `licence` is public domain or open (0028)."""
-    licence = corpus.get("licence") if isinstance(corpus, dict) else None
-    if licence_class(licence) is None:
-        source_id = corpus.get("sourceId") if isinstance(corpus, dict) else None
-        raise Refused(f"{source_id}'s manifest `licence` is {licence!r}, which is neither public domain "
-                      f"(`{PUBLIC_DOMAIN}`, or `{PUBLIC_DOMAIN}-<whose>`) nor an open licence the factory admits "
-                      f"({', '.join(OPEN_LICENCES)}): the factory admits only corpora whose licence permits "
-                      f"committing and publishing their text and maps (docs/decisions/0028)")
+    """Kept as the refusal-only spelling of `admit`, for callers that read no classification."""
+    admit(corpus)
 
 
 def cited_corpora(document):
@@ -584,8 +668,12 @@ def read_corpus(corpus_path):
 
 
 def verify_one(source_id, corpus, corpus_path):
-    """(corpus, bytes) once this corpus is proved admissible (0028) and to be its own baseline."""
-    refuse_unadmitted_licence(corpus)
+    """(corpus, bytes, distribution) once this corpus is admissible and is its own baseline.
+
+    Admission is the first thing read (0028, 0068), before the posture, so a corpus the factory
+    may not consume is refused for that and not reported as NOT VERIFIED.
+    """
+    _, distribution = admit(corpus)
 
     posture = corpus.get("verification")
     if posture != "committed-copy":
@@ -599,7 +687,7 @@ def verify_one(source_id, corpus, corpus_path):
 
     corpus_bytes = read_corpus(corpus_path)
     verify_declared_corpus_digest(source_id, corpus, corpus_bytes, corpus_path)
-    return corpus, corpus_bytes
+    return corpus, corpus_bytes, distribution
 
 
 def verify_corpora(document, manifest, corpus_paths):
@@ -634,9 +722,10 @@ def verify_corpora(document, manifest, corpus_paths):
     bound = bind_corpora(cited, declared, list(corpus_paths))
     verified = []
     for source_id in sorted(cited):
-        corpus, corpus_bytes = verify_one(source_id, declared[source_id], bound[source_id])
+        corpus, corpus_bytes, distribution = verify_one(source_id, declared[source_id], bound[source_id])
         verified.append({"sourceId": source_id, "corpus": corpus, "bytes": corpus_bytes,
-                         "path": bound[source_id], "name": os.path.basename(bound[source_id])})
+                         "path": bound[source_id], "name": os.path.basename(bound[source_id]),
+                         "distribution": distribution})
 
     # An engine has one randomness posture (0019) and nothing says whose it would be. Two corpora
     # that disagree are refused rather than resolved by taking the envelope's, which would be
@@ -836,6 +925,8 @@ def intake(package_spec, corpus_paths, log=None):
                    f"recomputed from {verified['path']}")
     _note(log, f"randomness {corpora[0]['corpus']['randomness']} (0019), agreed by all "
                f"{len(corpora)} cited corpus(es)")
+    distribution = strictest_distribution(v["distribution"] for v in corpora)
+    _note(log, f"distribution {distribution} (0068), the strictest of {len(corpora)} cited corpus(es)")
     _note(log, "--- intake: the factory's check-map.py --phase consumer (the package's checker is not run)")
     run_consumer_checks(parts, log)
     return Intake(
@@ -851,4 +942,7 @@ def intake(package_spec, corpus_paths, log=None):
         # beyond the stamp having to agree with it (0039).
         corpus=next(v["corpus"] for v in corpora if v["sourceId"] == document.get("corpus")),
         randomness=corpora[0]["corpus"]["randomness"],
+        # Where what is built from this package may go: the strictest of its corpora (0068). A
+        # composition folds these again, so one package and several are the same rule.
+        distribution=distribution,
     )

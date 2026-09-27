@@ -82,6 +82,9 @@ TABLE = (
         "the correspondence and provenance tests, from the same merge"),
     Row("corpus/*", GENERATED, None,
         "the corpus copy intake proved against the map's baseline"),
+    Row("DISTRIBUTION.md", GENERATED, None,
+        "the notice a private engine carries, and which produce removes from one that stops "
+        "being private (0068)"),
     Row("scripts/validate.sh", GENERATED, None, "the gate recipe (M3): the factory's definition of acceptable"),
     Row("scripts/map-overlay.py", GENERATED, None, "the gate recipe: 0015's merge"),
     Row("scripts/engine-gate.py", GENERATED, None, "the gate recipe: its non-dotnet checks"),

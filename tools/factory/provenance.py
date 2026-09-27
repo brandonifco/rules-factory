@@ -151,13 +151,16 @@ import pins
 import semantics
 
 FILE_NAME = "provenance.json"
-FORMAT = 7  # 2: buildInputs (#69); 3: managed and engineOwned (#72); 4: the overlay is a directory (#247);
+FORMAT = 8  # 2: buildInputs (#69); 3: managed and engineOwned (#72); 4: the overlay is a directory (#247);
 #            5: `corpora`, every corpus the map cites, replaces the single `corpus` (#300, 0039);
 #            6: `verification`, whether the produce that wrote this built and tested the engine (#222);
 #            7: `maps`, every map package the engine is composed of, replaces the single `map`
 #               (#446, 0067). The same move 5 made for corpora, one level up, and for the same
 #               reason: a record that names one of several says nothing about the rest, and a
-#               reader cannot tell which one it named
+#               reader cannot tell which one it named;
+#            8: `distribution`, the strictest requirement of the corpora this engine is made from
+#               (#497, 0068). Recorded rather than derived at read time, because a reader asking
+#               "may this repository be public?" must not have to re-open the map packages
 FACTORY_DIR = os.path.dirname(os.path.abspath(__file__))
 TAG = re.compile(r"^factory/v(\d+)\.(\d+)\.(\d+)$")
 SHORT_SHA = 12
@@ -596,6 +599,10 @@ def build(state, result, model, recorder, factory_dir=FACTORY_DIR, verified=Fals
         "provenanceFormat": FORMAT,
         "verification": verification(verified),
         "engine": {"name": model.name},
+        # Where this engine may go: the strictest requirement of the corpora it is made from
+        # (0068). `private` restricts distribution and says nothing about verification -- the
+        # record beside it establishes exactly what a public engine's does.
+        "distribution": result.distribution,
         "factory": {"version": state["version"], "commit": state["commit"], "dirty": state["dirty"]},
         # Every package this engine is composed of, ordered by package id so the record is a
         # function of the inputs and not of the order they were given in (0067).

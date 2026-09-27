@@ -353,8 +353,12 @@ class TestTheCommandLineRefuses(unittest.TestCase):
         shutil.copy(os.path.join(FACTORY, "rulings.py"), os.path.join(scripts, "factory", "rulings.py"))
         shutil.copy(os.path.join(FACTORY, "overlay.py"), os.path.join(scripts, "factory", "overlay.py"))
         # Composing the restored packages before the overlay is applied is the recipe's, so the
-        # module is beside it in a produced engine too (rules-factory 0067).
-        shutil.copy(os.path.join(FACTORY, "compose.py"), os.path.join(scripts, "factory", "compose.py"))
+        # module is beside it in a produced engine too (rules-factory 0067) -- and so is intake.py,
+        # which compose imports for the one strictest-wins distribution fold (0068). Every module
+        # a produced engine receives is `gate.py`'s FILES, and the closure is held to it by
+        # test_factory_modules.py; this fixture is that layout in miniature.
+        for module in ("compose.py", "intake.py"):
+            shutil.copy(os.path.join(FACTORY, module), os.path.join(scripts, "factory", module))
         self.package_map = os.path.join(self.tmp, "package-map.json")
         self.overlay = os.path.join(self.tmp, "overlay")
         self.out = os.path.join(self.tmp, "corpus-map.json")

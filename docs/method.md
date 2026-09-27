@@ -53,9 +53,13 @@ the two existing engines answer it in opposite directions and are both right. A 
 rulebook is `never-commit`: the repository holds its hash and its metadata and nothing else.
 A CC-BY SRD or a public-domain statute is `pin-in-repo`: committing it is what makes the
 engine reproducible without a licence. Getting this wrong is a legal problem in one
-direction and a reproducibility problem in the other. The factory itself goes further, and uses
-only a corpus whose licence permits committing and publishing its text and its map: public domain,
-or an open licence. See [0028](decisions/0028-the-factory-admits-only-corpora-whose-licence-permits-publishing-them.md).
+direction and a reproducibility problem in the other. The factory itself goes further, and uses only
+a corpus whose licence it can classify: public domain, an open licence it admits, or
+`licensed-proprietary` — and the last is admitted only where the manifest also declares
+`distribution: private`, which restricts where the map and the engine may go and nothing about how
+they are verified. See
+[0028](decisions/0028-the-factory-admits-only-corpora-whose-licence-permits-publishing-them.md) and
+[0068](decisions/0068-a-licensed-corpus-may-be-produced-and-verified-inside-a-private-distribution-boundary.md).
 
 **How is it verified, and may the map quote it?** The same question, asked for whoever consumes
 the map — an engine built from it included. A committed corpus is `committed-copy` and anyone

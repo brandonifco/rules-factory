@@ -197,6 +197,11 @@ class TestTheTable(OwnershipCase):
         record = self.record()
         self.assertEqual({e["path"] for e in record["engineOwned"]}, set(ENGINE_OWNED + LOCKS + (OVERLAY_FILE,)))
         self.assertEqual({b["path"] for b in record["buildInputs"]}, set(ENGINE_OWNED + LOCKS + (OVERLAY_FILE,)))
+        # DISTRIBUTION.md is written only for an engine whose corpora restrict it (0068), and this
+        # engine's do not. It is put in place here so that its row is exercised like every other;
+        # that produce writes and retires it for real is TestDistribution in test_factory_produce.py.
+        self.write(generate.DISTRIBUTION_NOTICE, "# Distribution: private\n")
+        classes = self.assert_every_file_has_one_class(self.out, NAME)
         for row in ownership.rows(NAME):
             self.assertTrue(any(ownership.matching(p, NAME) == [row] for p in classes), f"row {row.pattern} matches nothing")
 

@@ -804,6 +804,49 @@ def check_bodies(credit, files):
             f"({credit['terms']}) requires (0023)"]
 
 
+
+def refuse_public_repository_for_a_private_engine(repo, engine_dir, gh, log):
+    """Refuse to file a private engine's backlog into a public repository (0068).
+
+    `--create` sends every item's body -- the entry's evidence, quoted from the corpus, included --
+    to GitHub. For an engine produced from a corpus that declares `distribution: private`, that is
+    a distribution of map-derived content, and a public repository is the one place it may not go.
+
+    Read before anything is rendered or written, and fail-closed both ways: an engine whose record
+    does not say where it may go is refused, and so is a repository `gh` cannot answer for. Nothing
+    else in the factory is made to depend on GitHub by this -- `--create` already requires `gh`,
+    which is why the question is free here and is asked nowhere else.
+    """
+    path = os.path.join(engine_dir, "provenance.json")
+    try:
+        with open(path, encoding="utf-8") as handle:
+            record = json.load(handle)
+        distribution = record["distribution"]
+    except (OSError, ValueError, KeyError, TypeError):
+        raise BacklogError(
+            f"{path} does not record a `distribution`, so nothing says whether this engine's "
+            f"backlog may be filed into {repo}. Run `factory produce` again; a record written "
+            f"before provenanceFormat 8 says nothing about it (docs/decisions/0068)")
+    if distribution != "private":
+        return
+
+    try:
+        answer = json.loads(_gh(["repo", "view", repo, "--json", "isPrivate"], gh))
+        is_private = answer["isPrivate"]
+    except (BacklogError, ValueError, KeyError, TypeError) as error:
+        raise BacklogError(
+            f"this engine records `distribution: private` and whether {repo} is private could not "
+            f"be established ({error}); the sync is refused rather than risked "
+            f"(docs/decisions/0068)")
+    if is_private is not True:
+        raise BacklogError(
+            f"this engine records `distribution: private` and {repo} is public. Filing its backlog "
+            f"there would publish the entries and the corpus evidence they quote. Create the "
+            f"issues in a private repository, or re-produce the engine from a corpus whose licence "
+            f"permits publishing it (docs/decisions/0068)")
+    print(f"--- backlog: this engine is private and {repo} is private (docs/decisions/0068)", file=log)
+
+
 def create(repo, engine_dir, log, gh="gh", package=None):
     """Synchronise the repository's issues with the engine's backlog, in build order.
 
@@ -840,6 +883,9 @@ def create(repo, engine_dir, log, gh="gh", package=None):
     Returns ({outcome: count}, [numbers of issues not in the backlog]).
     """
     rendered, credit = engine_backlog(engine_dir, package)
+    # Before the first GitHub read, and long before the first write. Rendering above touches
+    # nothing outside this machine.
+    refuse_public_repository_for_a_private_engine(repo, engine_dir, gh, log)
     files = _read_items(rendered)
     if not files:
         raise BacklogError(f"{engine_dir} has no backlog items -- every entry of its map is built, ruled out "

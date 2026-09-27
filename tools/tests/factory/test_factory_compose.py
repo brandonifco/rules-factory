@@ -38,10 +38,12 @@ class FakeIntake:
     """What `compose` reads of an `intake.Intake`, and nothing else."""
 
     def __init__(self, package_id, entries, version="1.0.0", corpus="demo",
-                 content_hash="a" * 64, derivation="demo-1", randomness="none"):
+                 content_hash="a" * 64, derivation="demo-1", randomness="none",
+                 distribution="public"):
         self.package_id = package_id
         self.version = version
         self.randomness = randomness
+        self.distribution = distribution
         self.map = {"schemaVersion": 1, "corpus": corpus,
                     "baseline": {"contentHash": content_hash, "hashDerivation": derivation},
                     "entries": entries}
@@ -64,7 +66,8 @@ class TheIdentityIsThePackageAndTheId(unittest.TestCase):
         composed = compose.compose([only])
         self.assertFalse(composed.composed)
         self.assertEqual(["a"], [e["id"] for e in composed.map["entries"]])
-        self.assertEqual(["intake passed: RulesFactory.Maps.Demo 1.0.0, 1 entries"],
+        self.assertEqual(["intake passed: RulesFactory.Maps.Demo 1.0.0, 1 entries",
+                          "distribution public"],
                          composed.lines())
 
     def test_several_packages_qualify_every_id(self):
@@ -265,6 +268,45 @@ class TheComposedDocument(unittest.TestCase):
         self.assertEqual(["demo"], [v["sourceId"] for v in composed.corpora])
 
 
+class ACompositionInheritsTheStrictestDistribution(unittest.TestCase):
+    """0068 section 3: public + private is private, and a composition is no way round it."""
+
+    def composed(self, *distributions):
+        return compose.compose([
+            FakeIntake(f"RulesFactory.Maps.P{index}", [entry(f"e{index}", f"Rule {index} applies.")],
+                       distribution=distribution)
+            for index, distribution in enumerate(distributions)
+        ])
+
+    def test_public_and_public_is_public(self):
+        self.assertEqual("public", self.composed("public", "public").distribution)
+
+    def test_public_and_private_is_private(self):
+        self.assertEqual("private", self.composed("public", "private").distribution)
+
+    def test_private_and_public_is_private(self):
+        """Order cannot change it: the composition is sorted by package id, and this is a fold."""
+        self.assertEqual("private", self.composed("private", "public").distribution)
+
+    def test_private_and_private_is_private(self):
+        self.assertEqual("private", self.composed("private", "private").distribution)
+
+    def test_one_package_carries_its_own(self):
+        self.assertEqual("private", self.composed("private").distribution)
+        self.assertEqual("public", self.composed("public").distribution)
+
+    def test_mixed_distributions_are_composed_rather_than_refused(self):
+        """Two readings of one ruleset are still two readings when one is restricted; what the
+        restriction changes is where the result may go, not whether the maps compose."""
+        composed = self.composed("public", "private")
+        self.assertEqual(2, len(composed.packages))
+        self.assertEqual(2, len(composed.map["entries"]))
+
+    def test_the_run_says_the_composition_is_private(self):
+        self.assertTrue(any("private" in line for line in self.composed("public", "private").lines()),
+                        "a composition that inherits a private requirement must say so")
+
+
 class TheRecordOfAComposition(unittest.TestCase):
     """provenanceFormat 7: `maps` replaces `map`, and `supersedes` says what one package's entries
     supersede in another. The same move format 5 made for corpora (0039), one level up."""
@@ -289,9 +331,10 @@ class TheRecordOfAComposition(unittest.TestCase):
                            "checker": "tools/check-map.py", "verification": "map/verification.json"}
         return made
 
-    def test_the_format_is_seven(self):
+    def test_the_format_is_eight(self):
+        """7 added `maps`; 8 added `distribution` (0068). Both are read by the tests below."""
         provenance, _ = self.record(self.packaged("RulesFactory.Maps.One", [entry("a", "x")]))
-        self.assertEqual(7, provenance.FORMAT)
+        self.assertEqual(8, provenance.FORMAT)
 
     def test_a_list_keyed_by_package_id_compares_by_that_key(self):
         """So a mismatch reads `maps[RulesFactory.Maps.One].version`, not two dumped lists."""

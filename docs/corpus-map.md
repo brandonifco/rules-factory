@@ -1636,6 +1636,21 @@ Beside the entries, the corpora they cite:
       "randomness": "none"
     },
     {
+      "sourceId": "house-rules",
+      "title": "A Licensed Rulebook",
+      "adapter": "pdf",
+      "locatorGrammar": "printed-page",
+      "contentHash": "…64 hex…",
+      "hashDerivation": "pdf-bytes",
+      "boundaryPolicy": "pin-in-repo",
+      "licence": "licensed-proprietary; written permission of 2026-01-01, reference ABC-123",
+      "distribution": "private",
+      "verification": "committed-copy",
+      "committedPath": "house-rules.txt",
+      "quotation": "verbatim",
+      "randomness": "none"
+    },
+    {
       "sourceId": "core-rules",
       "title": "Core Rulebook",
       "edition": "First printing",
@@ -1685,16 +1700,32 @@ declares it from the rules. Nothing infers it, and a missing value is a failure,
 entries draw, and how many of what, is the map's `draws` field, which is refused under `none`
 ([0025](decisions/0025-an-assertion-names-who-asserts-it-and-an-operation-names-what-it-draws.md)).
 
-**`licence` decides whether the factory uses the corpus at all**
-([0028](decisions/0028-the-factory-admits-only-corpora-whose-licence-permits-publishing-them.md)).
-The factory admits only a corpus whose licence permits committing and publishing its text and its
-map. The class is read from the licence's leading
-identifier: `public-domain` or `public-domain-<whose>` is public domain, and `CC-BY-4.0` or `CC0-1.0`
-is open. Any other licence, or none, is refused by intake (`produce`, `verify`, `provenance`) and by
-`pack-map.py`, naming 0028. `core-rules` in the example above is such a corpus: the schema can
-describe it and `check-map.py` checks its declarations, but the factory neither packs its map nor
-produces from it. The same holds for `never-commit`, `local-copy` and `withheld`, which no corpus the
-factory admits uses today.
+**`licence` decides whether the factory uses the corpus at all, and `distribution` decides where
+what it makes may go**
+([0028](decisions/0028-the-factory-admits-only-corpora-whose-licence-permits-publishing-them.md),
+[0068](decisions/0068-a-licensed-corpus-may-be-produced-and-verified-inside-a-private-distribution-boundary.md)).
+They are two declared facts and neither is read from the other. The licence class is read from the
+licence's leading identifier: `public-domain` or `public-domain-<whose>` is public domain,
+`CC-BY-4.0` or `CC0-1.0` is open, and `licensed-proprietary` is licensed proprietary. Any other
+licence, or none, is refused.
+
+`distribution` is `public` or `private`. Left out it reads as `public` — **except** under
+`licensed-proprietary`, where leaving it out is a refusal and there is no default. A public-domain
+or open corpus may declare `private` and the factory honours it; a licensed-proprietary corpus
+declaring `public` is refused. One classification does all of this, `intake.admit`, and intake
+(`produce`, `verify`, `provenance`) and `pack-map.py` both reach it.
+
+What `private` changes is publication, not verification: a private corpus is hashed, located,
+checked, produced from and gated exactly as a public one is. `pack-map.py` packs its map — that is
+how a private project builds the package its own `produce` consumes — and refuses to pack it with
+`--tag`, which is the publish path. The package records `distribution: private` in
+`map/verification.json`, an engine records it in `provenance.json` and carries a generated
+`DISTRIBUTION.md`, and a product made from several corpora inherits the strictest of them.
+
+`core-rules` in the example above is a corpus the factory refuses: the schema can describe it and
+`check-map.py` checks its declarations, but its licence is not one the factory classifies, so the
+factory neither packs its map nor produces from it. The same holds for `never-commit`, `local-copy`
+and `withheld`, which no corpus the factory admits uses today.
 
 `check-map.py --only postures` requires all three on every admitted corpus, refuses a `never-commit`
 `committed-copy`, a `local-copy` with no `envVar`, a `committedPath` that is not a file, and any
