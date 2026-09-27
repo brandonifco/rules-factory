@@ -26,6 +26,10 @@ finds nothing to examine fails: a check with no inputs has proven nothing.
   named-tests DIR --map MAP          every test an implemented entry names exists and ran
   rails                              the agent rails hold: read-only reviewers, no dangling
                                      citation, a policy the rails can read
+  repository [--root DIR]            the repository's rails are where GitHub runs them and are the
+                                     bytes this engine's record names: for an engine embedded under
+                                     a repository root, the four workflows and the pull request
+                                     template are at that root and nowhere under the engine (0069)
 
 Run from the engine root. Standard library only.
 """
@@ -1013,6 +1017,103 @@ def rails(_args):
                             f"and path(s) that resolve, and a policy the rails can read")
 
 
+#: The files GitHub reads only from the root of a repository, and the record's section for them
+#: (rules-factory decision 0069). An engine that **is** its own repository root carries them; an
+#: engine embedded under one does not, and its repository root does.
+REPOSITORY_FILES = (".github/workflows/validate.yml",
+                    ".github/workflows/pr-policy.yml",
+                    ".github/workflows/conformance-gate.yml",
+                    ".github/workflows/verdict-requeue.yml",
+                    ".github/pull_request_template.md")
+WORKFLOW_DIR = ".github/workflows"
+
+
+def repository(args):
+    """The rails are where GitHub runs them, and they are the bytes this engine's record names.
+
+    GitHub reads a workflow only from `.github/workflows/` at the root of a repository, and a pull
+    request template only from the root. So this engine's record says where the engine sits
+    (`repository.enginePath`, provenanceFormat 9) and what the root holds for it, and this is the
+    check that the two agree with the disk:
+
+      * **embedded** -- no workflow file anywhere under the engine, because one there is inert and
+        reads as a live rail, which is the whole of rules-factory #501; the record names every file
+        the root holds; each is at the root with the recorded bytes; and the engine really is
+        `enginePath` under that root, so the tree being checked is the one the record describes;
+      * **standalone** -- the engine is its own root and carries the files itself, which
+        `provenance` already hashes; what is checked here is that they are present, since a
+        repository with no gate workflow has no gate.
+
+    The repository root defaults to `enginePath` levels above the engine, which is what it is in
+    any checkout of the repository, the runner's included; `--root` states it instead.
+    """
+    path = ROOT / RECORD
+    if not path.is_file():
+        return report([f"{RECORD} is not here, so nothing says where this engine sits in its repository; "
+                       f"run `{RE_PRODUCE}`"], "")
+    try:
+        document = json.loads(path.read_bytes().decode("utf-8"))
+    except (UnicodeDecodeError, ValueError) as error:
+        return report([f"{RECORD} is not readable JSON ({error})"], "")
+    if not isinstance(document, dict):
+        return report([f"{RECORD} is not a JSON object"], "")
+    section = document.get("repository")
+    if not isinstance(section, dict):
+        return report([f"{RECORD} records no `repository` section: it was written by a factory before "
+                       f"provenanceFormat 9 and says nothing about where this engine sits, so whether its rails "
+                       f"are where GitHub runs them cannot be answered. Re-produce the engine"], "")
+    engine_path = str(section.get("enginePath") or "")
+    problems, examined = [], 0
+
+    if not engine_path:
+        for relative in REPOSITORY_FILES:
+            examined += 1
+            if not (ROOT / relative).is_file():
+                problems.append(f"{relative} is missing, and this engine is its own repository root: nothing "
+                                f"would post the check it runs")
+        return report(problems, f"this engine is its own repository root and carries {examined} rail(s) where "
+                                f"GitHub reads them")
+
+    inert = sorted(str(path.relative_to(ROOT)).replace(os.sep, "/")
+                   for path in (ROOT / ".github" / "workflows").glob("*")
+                   if path.is_file() and path.suffix in (".yml", ".yaml"))
+    for relative in inert:
+        problems.append(f"{relative} is under an engine embedded at {engine_path}/, where GitHub will never run "
+                        f"it: a workflow file is read only from {WORKFLOW_DIR} at the repository root. Remove it, "
+                        f"or move what it does into the repository's own workflows (0069)")
+
+    automation = [item for item in section.get("automation") or [] if isinstance(item, dict)]
+    named = sorted(str(item.get("path")) for item in automation)
+    if named != sorted(REPOSITORY_FILES):
+        problems.append(f"{RECORD} says the repository root holds {named or 'nothing'} for this engine, and "
+                        f"the factory writes {sorted(REPOSITORY_FILES)}: an engine whose record names no rail at "
+                        f"its root has none anywhere GitHub can run one")
+
+    root = pathlib.Path(args.root).resolve() if args.root else ROOT.parents[len(engine_path.split("/")) - 1]
+    if (root / engine_path).resolve() != ROOT.resolve():
+        problems.append(f"this engine is at {ROOT}, and the record puts it at {engine_path}/ under {root}, which "
+                        f"is {(root / engine_path)}: the tree checked is not the one the record describes")
+    else:
+        for item in automation:
+            relative = str(item.get("path"))
+            path = root / relative
+            examined += 1
+            if not path.is_file():
+                problems.append(f"{relative} is named by this engine's record and is not at the repository root "
+                                f"{root}: the rail it carries runs nowhere")
+                continue
+            digest = hashlib.sha256(path.read_bytes()).hexdigest()
+            if digest != item.get("sha256"):
+                problems.append(f"{relative}: the record hashes {item.get('sha256')} and the repository root holds "
+                                f"{digest}. The root's rails are generated, so a hand edit here is a rail nobody "
+                                f"produced; re-produce the engine, or put the change in the factory's recipe")
+    if not examined and not problems:
+        print("no repository rails found to examine -- this check proved nothing", file=sys.stderr)
+        return 1
+    return report(problems, f"the engine at {engine_path}/ carries no workflow of its own, and the repository root "
+                            f"holds {examined} rail(s) with the bytes its record names")
+
+
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__.split("\n")[0])
     sub = parser.add_subparsers(dest="command", required=True)
@@ -1046,6 +1147,9 @@ def main(argv=None):
     n.add_argument("--map", required=True)
     n.set_defaults(run=named_tests)
     sub.add_parser("rails").set_defaults(run=rails)
+    q = sub.add_parser("repository")
+    q.add_argument("--root", help="the repository root (default: enginePath levels above the engine)")
+    q.set_defaults(run=repository)
     args = parser.parse_args(argv)
     return args.run(args)
 

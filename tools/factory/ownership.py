@@ -150,10 +150,12 @@ TABLE = (
         "blocking findings, which are the caller's judgement and the only thing it is given (#465); a section "
         "of the issue keeps what is nested under it (#484); it makes the readiness refusal dispatch "
         "makes, and says a semantic verdict is owed only when the change owes one (#483)"),
-    Row("tools/pr-policy.py", MANAGED, 8,
+    Row("tools/pr-policy.py", MANAGED, 9,
         "the pull request contract, checked mechanically; a produce update's claim is checked, not taken "
         "(#193); every document the engine owns is accounted for (#236); the entry declaration, linked issue "
-        "marker and overlay transition must identify the same work (#451)"),
+        "marker and overlay transition must identify the same work (#451); a changed path is judged in the "
+        "engine's own terms, which for an engine embedded under a repository root is not the path GitHub "
+        "reports (#501, 0069)"),
     Row("tools/record-verdict.py", MANAGED, 5,
         "a review verdict as a commit status on the exact commit reviewed, from entry evidence bound to "
         "that commit (0029, #372) -- every map of a composed engine, not one of them (#460); and from a packet "
@@ -175,10 +177,12 @@ TABLE = (
     Row(".github/workflows/verdict-requeue.yml", MANAGED, 2,
         "runs requeue-gate.py on the status and issues events; deliberately not a required check "
         "(#191, #230)"),
-    Row("tools/agent-doctor.py", MANAGED, 6,
+    Row("tools/agent-doctor.py", MANAGED, 7,
         "whether the rails are active or only present, locally and on GitHub, and what merged work "
         "left behind (0029, #236); the machine's own prerequisites first, because a rail in place on a "
-        "machine that cannot run the gate stops nothing (#195)"),
+        "machine that cannot run the gate stops nothing (#195); it looks for the gate workflow where "
+        "GitHub reads one, which for an embedded engine is the repository root and not the engine "
+        "(#501, 0069)"),
     Row("tools/orchestrator-status.py", MANAGED, 3,
         "where the work stands, read from the repository and bounded: the checkout, the worktrees and "
         "their issues, the open pull requests with their heads, checks and recorded verdicts, and the "
@@ -416,6 +420,7 @@ RECIPE_SHA256 = {
         6: "308cbb15d1d908bc8db2c326633bd3ff7da97cc9447c057ba63fd81cc3574db5",
         7: "0606f6993cb2667b79788f8c4a0356e2d2e86dab12603628759ac906d1ed7941",
         8: "e5ee81be7c570a9b8df49b77ca9b306bd82ff57994d07da4a293867862014aae",
+        9: "20666192adbbdfc24cacbf8abd57d5f42b1c1bc826691382017d69f9735f8313",
     },
     "tools/record-verdict.py": {
         1: "48f7b11f7fc829cdaebd776a3eb5db04e27cade97c427c6806b72f58805d83db",
@@ -463,6 +468,7 @@ RECIPE_SHA256 = {
         4: "4af176ea1850a69a148973f301a12ef6dafbd125ecc3d3bd4afff5c8581709f6",
         5: "48192fc3bfea14393824f39b049c73606631f07db8caecdf8107f2500bd18af6",
         6: "29a12d22a4befe577fcf67ab1ae868f0c1db3bc41d4d32babd812dd547324ab0",
+        7: "3483e812ad0e5fead7940ddddb45880d7de21ac3e788cfc5f2e9a53660efa26c",
     },
     ".editorconfig": {
         1: "4109d1ef55053ef656e536d7818934deb73016fbe950f153bae6b2a163591cb2",
@@ -501,6 +507,8 @@ REPOSITORY_TABLE = (
         "the required check that runs the engine's conformance-gate.py (0029)"),
     Row(".github/workflows/verdict-requeue.yml", GENERATED, None,
         "runs the engine's requeue-gate.py on the status and issues events (#191, #230)"),
+    Row(".github/pull_request_template.md", GENERATED, None,
+        "the pull request contract pr-policy.py checks, which GitHub shows only from the root"),
 )
 
 
@@ -814,7 +822,7 @@ def managed_states(out, paths):
     return states
 
 
-def plan_managed(out, name, recipes, adopt=(), reset=()):
+def plan_managed(out, name, recipes, adopt=(), reset=(), elsewhere=()):
     """Decide every managed file for a run into `out`.
 
     `recipes` maps each managed path to the current recipe's bytes. Returns (writes, managed,
@@ -822,8 +830,15 @@ def plan_managed(out, name, recipes, adopt=(), reset=()):
     stay managed, the set that is engine-owned by adoption, and a line per decision worth
     logging. Raises OwnershipError, before anything is written, for a flag that names no managed
     file and for every hand-edited managed file neither flag settles.
+
+    `elsewhere` names the managed paths this engine does not receive at all because another owner
+    writes them -- the rails an embedded engine's repository root holds, which GitHub reads only
+    from there (repository.py, 0069). They are dropped from the recipes **and** from the rows, so
+    the two still have to agree: an engine cannot quietly stop receiving a managed file, and a
+    file nothing writes cannot be planned as managed either.
     """
-    table = {row.pattern: row for row in managed_rows(name)}
+    recipes = {path: data for path, data in recipes.items() if path not in set(elsewhere)}
+    table = {row.pattern: row for row in managed_rows(name) if row.pattern not in set(elsewhere)}
     if set(recipes) != set(table):
         raise OwnershipError(f"the managed recipes ({sorted(recipes)}) are not the managed rows of the "
                              f"ownership table ({sorted(table)})")

@@ -214,8 +214,9 @@ def produce(intake, name, out, log=None, adopt=(), reset=(), engine_path=None):
     pins.refuse_split_pins(model, out)
     try:
         managed_writes, model.managed, model.adopted, notes = ownership.plan_managed(
-            out, name, {p: t.encode("utf-8") for p, t in scaffold.managed_files().items()
-                        if not (engine_path and ownership.classify_repository(p) is not None)}, adopt, reset)
+            out, name, {p: t.encode("utf-8") for p, t in scaffold.managed_files().items()}, adopt, reset,
+            elsewhere=[p for p in scaffold.managed_files()
+                       if engine_path and ownership.classify_repository(p) is not None])
     except ownership.OwnershipError as error:
         raise GenerationError(str(error))
     # Every corpus the map cites is shipped with the engine, not only the principal one: a rule

@@ -207,20 +207,24 @@ def decide(out, repo_root=None):
             f"{under(top, out)}/; --repo-root {out} declares this engine its own repository root and writes "
             f"them where it always did")
     root = _real(repo_root)
-    if not os.path.isdir(root):
-        raise RepositoryError(f"--repo-root {root} is not a directory")
+    if os.path.lexists(root) and not os.path.isdir(root):
+        raise RepositoryError(f"--repo-root {root} exists and is not a directory")
     relative = under(root, out)
     if relative is None:
         raise RepositoryError(f"--repo-root {root} does not contain --out {out}; the repository root is an "
                               f"ancestor of the engine, or the engine itself")
+    if not relative:
+        # `--repo-root` equal to `--out`: the engine is declared its own repository root, which is
+        # what a trial or a scratch copy inside another checkout is. git is not asked to contradict
+        # it -- the declaration is exactly for the case where git's answer is not the one wanted --
+        # and the engine keeps the workflows it has always had.
+        return Topology(root, None)
     top = git_root(root)
     if top is not None and top != root:
         raise RepositoryError(
             f"--repo-root {root} is not a repository root: git reports the root of the repository it is in as "
             f"{top}. Workflows written at {root}/{WORKFLOW_DIR} would not be run by GitHub either, which is "
             f"the whole of what this declaration is for (decision 0069)")
-    if not relative:
-        return Topology(root, None)
     return Topology(root, relative)
 
 
@@ -373,7 +377,12 @@ def refuse_unowned(topology, automation, record):
             continue
         with open(path, "rb") as handle:
             present = handle.read()
-        if present == data or _sha256(present) == _recorded_hash(record, relative, "repository"):
+        # The factory's own, either way: the bytes this run would write, or a path the last run's
+        # record says it wrote here. A path the record names whose bytes have since moved is a hand
+        # edit of a generated file, and generated means the recipe wins -- the edit is overwritten,
+        # as it is anywhere else in an engine. What is protected here is a file the factory never
+        # wrote, which is a different thing and the only thing this refuses over.
+        if present == data or _recorded_hash(record, relative, "repository"):
             continue
         raise RepositoryError(
             f"{path} exists and is not a file this factory wrote: an engine embedded at "
@@ -434,6 +443,13 @@ def remove_inert(out, name, record):
             path = os.path.join(directory, leaf)
             relative = os.path.relpath(path, out).replace(os.sep, "/")
             if relative not in FILES:
+                # Not the factory's, and still unrunnable where it is: a workflow somebody added
+                # under the engine is named, so nobody reads it as a rail (#501). Anything else
+                # under `.github` -- the engine-owned agent policy, which the engine's own scripts
+                # read by path and GitHub never looks at -- is where it belongs and is not mentioned.
+                if is_workflow(relative):
+                    kept.append((relative, "GitHub reads no workflow below the repository root, and the factory "
+                                           "did not write this one, so it is left where it is"))
                 continue
             with open(path, "rb") as handle:
                 data = handle.read()

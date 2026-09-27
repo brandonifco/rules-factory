@@ -408,11 +408,43 @@ def local_rows(generate, error):
     if not runs_rails:
         problems.append("the gate does not check the rails, so a reviewer charter that can write would pass it")
     # The gate's workflow is the gate's recipe rather than a rail, so the bytes above do not cover it;
-    # without it the `validate` check the ruleset requires has nothing to post it.
-    if not (ROOT / ".github" / "workflows" / "validate.yml").is_file():
-        rows.append(row("Gate workflow", MISSING, ".github/workflows/validate.yml"))
-        problems.append(".github/workflows/validate.yml is missing, so nothing posts the required validate check")
+    # without it the `validate` check the ruleset requires has nothing to post it. **Where it is** is
+    # the engine's record to say: GitHub runs a workflow only from `.github/workflows/` at the root
+    # of the repository, so an engine embedded under one has its rails at that root and none of its
+    # own (rules-factory 0069). Looking for it under the engine reported a rail present where GitHub
+    # would never have run it, which is the failure that decision exists to prevent.
+    where, at_root = repository_workflows()
+    if not (where / "validate.yml").is_file():
+        rows.append(row("Gate workflow", MISSING, f"{where}/validate.yml"))
+        problems.append(f"{where}/validate.yml is missing, so nothing posts the required validate check")
+    elif not at_root:
+        rows.append(row("Gate workflow", OK, "this engine is its own repository root"))
+    else:
+        rows.append(row("Gate workflow", OK, f"at the repository root, which is where GitHub reads one "
+                                             f"({where})"))
     return rows, problems
+
+
+def repository_workflows():
+    """Where GitHub reads this repository's workflows from, and whether that is above the engine.
+
+    `(directory, embedded)`. The engine's own `.github/workflows` when the engine is its own
+    repository root, and the root's when it is embedded under one (rules-factory 0069, recorded in
+    provenance.json as `repository.enginePath`). A record that cannot be read, or one written before
+    the topology was recorded, answers the engine's own directory, which is what such an engine is.
+    """
+    try:
+        record = json.loads((ROOT / "provenance.json").read_text(encoding="utf-8"))
+        section = record.get("repository") if isinstance(record, dict) else None
+        path = str((section or {}).get("enginePath") or "") if isinstance(section, dict) else ""
+    except (OSError, ValueError):
+        path = ""
+    if not path:
+        return ROOT / ".github" / "workflows", False
+    root = ROOT
+    for _ in path.split("/"):
+        root = root.parent
+    return root / ".github" / "workflows", True
 
 
 def remote_rows(repo, generate, unavailable):
