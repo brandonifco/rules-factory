@@ -43,6 +43,8 @@ import re
 #: splits on every non-alphanumeric, so `Srd52Combat.round-down` is `Srd52CombatRoundDown`.
 SEPARATOR = "."
 
+import intake  # the one admission contract and the one strictest-wins fold (0028, 0068)
+
 #: Entry fields holding an id of the same map. Rewritten with the ids they name, so a composed
 #: document's relations stay inside the package that authored them: `dependsOn` orders work within
 #: one mapper's reading, and nothing in the contract lets one map order another's.
@@ -235,6 +237,10 @@ class Composition:
         self.repeated = repeated
         principal = self.packages[0]
         self.randomness = principal.randomness
+        # Strictest wins (0068 section 3). Mixed distributions are not a compatibility failure:
+        # two readings of one ruleset are still two readings when one of them is restricted, and
+        # what the restriction decides is where the composed engine may go.
+        self.distribution = intake.strictest_distribution(i.distribution for i in self.packages)
         self.corpora = [v for i in self.packages for v in i.corpora]
         seen = {}
         for verified in self.corpora:
@@ -256,7 +262,8 @@ class Composition:
         if not self.composed:
             only = self.packages[0]
             return [f"intake passed: {only.package_id} {only.version}, "
-                    f"{len(self.map.get('entries') or [])} entries"]
+                    f"{len(self.map.get('entries') or [])} entries",
+                    self._distribution_line()]
         said = [f"composed {len(self.packages)} package(s) into {len(self.map['entries'])} entries"]
         for intake in self.packages:
             said.append(f"  {intake.package_id} {intake.version}: "
@@ -271,7 +278,17 @@ class Composition:
                         f"by it (0030)")
         if not self.superseded:
             said.append("  no entry of one package names a passage another holds in scope")
+        said.append(self._distribution_line())
         return said
+
+    def _distribution_line(self):
+        """Said every run, because a reader has to know before the engine exists (0068)."""
+        if self.distribution == intake.PRIVATE:
+            restricted = sorted(i.package_id for i in self.packages if i.distribution == intake.PRIVATE)
+            return (f"distribution private, inherited from {', '.join(restricted)}: what is produced "
+                    f"from this map is verified in full and is never publicly distributed "
+                    f"(docs/decisions/0068)")
+        return "distribution public"
 
 
 def compose(intakes, corpora_text=None):

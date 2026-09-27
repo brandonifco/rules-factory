@@ -31,6 +31,29 @@ jobs:
         with:
           persist-credentials: false
 
+      # The accidental-publication guardrail (docs/decisions/0068). An engine produced from a
+      # corpus whose manifest declares `distribution: private` records that in provenance.json,
+      # and this repository must not be public. GitHub already knows whether it is, so the check
+      # costs nothing here -- and it lives here alone: ./scripts/validate.sh must pass with no
+      # network and no GitHub, so verification never depends on either.
+      #
+      # This is not a security mechanism. It cannot unpublish anything; it fails the build so a
+      # person finds out.
+      - name: Refuse a private engine in a public repository
+        env:
+          REPOSITORY_IS_PRIVATE: ${{ github.event.repository.private }}
+        run: |
+          distribution="$(python3 -c 'import json;print(json.load(open("provenance.json")).get("distribution","public"))')"
+          echo "provenance distribution: $distribution; repository private: ${REPOSITORY_IS_PRIVATE:-unknown}"
+          if [[ "$distribution" != "private" ]]; then
+            exit 0
+          fi
+          if [[ "$REPOSITORY_IS_PRIVATE" == "false" ]]; then
+            echo "::error::provenance.json records distribution private, and GitHub reports this repository as public. This engine is produced from licensed material that may not be publicly distributed (docs/decisions/0068). Make the repository private, or re-produce it from a corpus whose licence permits publishing."
+            exit 1
+          fi
+          echo "a private engine in a repository GitHub does not report as public"
+
       - name: Read the pinned SDK version
         id: sdk
         run: echo "version=$(python3 -c 'import json;print(json.load(open("global.json"))["sdk"]["version"])')" >> "$GITHUB_OUTPUT"

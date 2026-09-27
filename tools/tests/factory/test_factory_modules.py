@@ -64,10 +64,12 @@ LAYERS = {
     # `compose`: a backlog is the whole engine's work, so an engine composed of several map
     # packages is rendered from all of them, composed the way the factory composed them (#460).
     "backlog": {"agentrails", "compose", "intake", "overlay", "semantics"},
-    # Several map packages read as one (0067). It imports nothing of the factory: what it reads of
-    # an `intake.Intake` is five attributes, and holding it to the class would make a composition
-    # untestable without a package.
-    "compose": set(),
+    # Several map packages read as one (0067). What it reads of an `intake.Intake` is six
+    # attributes, duck-typed -- holding it to the class would make a composition untestable
+    # without a package. The one import is the strictest-wins fold and the distribution
+    # vocabulary (0068), which exist once in `intake` so that a package, a composition and an
+    # engine cannot disagree about what `public + private` means.
+    "compose": {"intake"},
     "gate": set(),
     "intake": set(),
     "overlay": set(),

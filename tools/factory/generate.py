@@ -144,6 +144,52 @@ def split_notes(out, split):
     return lines
 
 
+
+#: The conspicuous notice a private engine carries (0068 section 5). Not a secret, not a licence,
+#: and not a security mechanism: a machine-checkable contract and a guardrail against publishing
+#: by accident.
+DISTRIBUTION_NOTICE = "DISTRIBUTION.md"
+
+
+def distribution_notice(name, intake):
+    """`DISTRIBUTION.md` for an engine that inherited a private distribution requirement.
+
+    It names the corpora that restrict the engine and nothing else about them. No licence text, no
+    commercial term, no contract reference: the manifest records an owner's assertion and this
+    repeats only its consequence (0068 section 7).
+    """
+    restricted = sorted(v["sourceId"] for v in intake.corpora if v.get("distribution") == "private")
+    packages = sorted(p.package_id for p in intake.packages)
+    return (
+        f"# Distribution: private\n"
+        f"\n"
+        f"**This repository must not be made public.**\n"
+        f"\n"
+        f"`{name}` is produced from a corpus whose manifest declares `distribution: private`, so "
+        f"everything derived from it -- this engine, its committed corpus, its map package and its "
+        f"generated code -- inherits that requirement. The strictest requirement of the corpora an "
+        f"engine is built from is the engine's (docs/decisions/0068).\n"
+        f"\n"
+        f"Restricted by: {', '.join(restricted)}\n"
+        f"\n"
+        f"From: {', '.join(packages)}\n"
+        f"\n"
+        f"## What this does and does not mean\n"
+        f"\n"
+        f"Private is a restriction on **distribution**, not on verification. This engine is built, "
+        f"gated and verified exactly as a public one is: the corpus is committed here, its hash is "
+        f"recomputed on every run, and `scripts/validate.sh` establishes the same things it would "
+        f"anywhere. Nothing is weakened because the repository is private.\n"
+        f"\n"
+        f"This file is **not a security mechanism**. It encrypts nothing, hides nothing and "
+        f"controls access to nothing. It is a machine-checkable statement of the contract -- the "
+        f"same fact `provenance.json` records as `\"distribution\": \"private\"` -- and a "
+        f"guardrail against publishing this repository by accident. CI fails loudly if GitHub "
+        f"reports the repository as public.\n"
+        f"\n"
+        f"This file is generated. `factory produce` rewrites it every run, and removes it if the "
+        f"engine ever stops being private.\n")
+
 def produce(intake, name, out, log=None, adopt=(), reset=()):
     """Write an engine for `intake` under `out`, each file as its ownership class says.
 
@@ -202,6 +248,16 @@ def produce(intake, name, out, log=None, adopt=(), reset=()):
     if not model.rulings and os.path.isfile(stale_rulings):
         os.remove(stale_rulings)
         written.append(f"(removed) src/{name}/Generated/{entries.RULINGS_FILE}")
+    # The distribution notice, written for a private engine and removed from one that stops being
+    # private -- the same shape as the rulings file above, and for the same reason: a notice that
+    # outlived its restriction says something false (0068 section 5).
+    notice_path = os.path.join(out, DISTRIBUTION_NOTICE)
+    if intake.distribution == "private":
+        _write(notice_path, distribution_notice(name, intake).encode("utf-8"))
+        written.append(DISTRIBUTION_NOTICE)
+    elif os.path.isfile(notice_path):
+        os.remove(notice_path)
+        written.append(f"(removed) {DISTRIBUTION_NOTICE}")
     if log is not None:
         rows = {}
         for item in model.entries:

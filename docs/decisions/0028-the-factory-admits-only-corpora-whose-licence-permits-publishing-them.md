@@ -2,7 +2,7 @@
 
 ## Status
 
-Accepted — 2026-09-15. Decided by Brandon on 2026-09-15. **Supersedes
+Accepted — 2026-09-15. Decided by Brandon on 2026-09-15. **Partially superseded by [0068](0068-a-licensed-corpus-may-be-produced-and-verified-inside-a-private-distribution-boundary.md)** (2026-09-27), which separates *admission* from *distribution*: a `licensed-proprietary` corpus declaring `distribution: private` is admitted and produces through this same path, and the restriction moves to publication. **This record remains authoritative for public distribution** — a corpus for a public product still needs a public-domain or open licence, and it is still why no proprietary material may enter this repository's examples or its map publication. Read 0068 for licensed-private production; everything below stands except the inference that a corpus the factory may not *publish* is a corpus it may not *consume*. **Supersedes
 [0022](0022-a-licensed-copy-is-used-locally-by-a-named-operator-and-never-published.md)**, which
 is withdrawn in full. **Supersedes the parts of
 [0013](0013-verification-posture-belongs-to-the-corpus.md),

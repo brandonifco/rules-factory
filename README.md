@@ -2,11 +2,18 @@
 
 The production apparatus for deterministic rules engines built from plain-language rulesets:
 a mapper that reads a ruleset, validation that certifies what it produced, and a factory that
-turns a certified map into an engine. It admits only
-rulesets that are public domain or openly licensed, because the corpus and its map are committed
-and published
-([0028](docs/decisions/0028-the-factory-admits-only-corpora-whose-licence-permits-publishing-them.md));
-a commercial rulebook is outside it.
+turns a certified map into an engine. It processes **publicly redistributable rulesets for public
+products** — public domain or an open licence, whose corpus and map are committed and published
+([0028](docs/decisions/0028-the-factory-admits-only-corpora-whose-licence-permits-publishing-them.md))
+— and **properly licensed proprietary rulesets inside a private distribution boundary**, where the
+corpus, its map and the engine stay in one private repository and are published nowhere
+([0068](docs/decisions/0068-a-licensed-corpus-may-be-produced-and-verified-inside-a-private-distribution-boundary.md)).
+Both use the same production and verification path; private restricts distribution, not
+verification. A ruleset whose licence the factory cannot classify is refused.
+
+The manifest records what the person who wrote it asserts about the licence and the distribution.
+The factory does not determine whether anyone holds sufficient rights, and none of this is legal
+advice; what it does is enforce the assertion mechanically once it is made.
 
 The engine is the product. This is the factory: it takes a published corpus-map package, the
 corpus that map was made of, and an engine name, and writes a .NET solution on
@@ -102,9 +109,9 @@ the diff ([AGENTS.md](AGENTS.md) §3).
 |---|---|---|---|
 | `produce` | — | implemented | intake, generation, gate, provenance, verify, write out. It writes no backlog, and removes one an earlier produce committed ([#243](https://github.com/brandonifco/rules-factory/issues/243)) |
 | `produce` | `--package` | implemented | a `.nupkg` path, or `Id@Version`. **Repeatable**: several maps of one ruleset compose into one engine, entry ids qualified by their package and a passage one map declines superseded by another that holds it ([0067](docs/decisions/0067-a-composition-is-a-union-with-a-namespace-and-what-it-merges-it-derives.md), [#446](https://github.com/brandonifco/rules-factory/issues/446)) |
-| `produce` | `--corpus` | implemented | one file per cited corpus: `committed-copy`, public domain or openly licensed ([0028](docs/decisions/0028-the-factory-admits-only-corpora-whose-licence-permits-publishing-them.md)), hashing to its manifest identity and to the same identity bound into the package by [0048](docs/decisions/0048-a-verified-map-package-binds-the-exact-artifacts-its-publish-gate-read.md) |
+| `produce` | `--corpus` | implemented | one file per cited corpus: `committed-copy`, and admitted — public domain, an open licence, or `licensed-proprietary` declaring `distribution: private` ([0028](docs/decisions/0028-the-factory-admits-only-corpora-whose-licence-permits-publishing-them.md), [0068](docs/decisions/0068-a-licensed-corpus-may-be-produced-and-verified-inside-a-private-distribution-boundary.md)) — hashing to its manifest identity and to the same identity bound into the package by [0048](docs/decisions/0048-a-verified-map-package-binds-the-exact-artifacts-its-publish-gate-read.md) |
 | `produce` | `--name` | implemented | the engine's PascalCase name |
-| `produce` | `--out` | implemented | the engine directory: created when absent, updated when it exists |
+| `produce` | `--out` | implemented | the engine directory: created when absent, updated when it exists. The engine inherits the strictest distribution of its corpora, records it in `provenance.json` (format 8) and carries a generated `DISTRIBUTION.md` when private ([0068](docs/decisions/0068-a-licensed-corpus-may-be-produced-and-verified-inside-a-private-distribution-boundary.md)) |
 | `produce` | `--allow-dirty` | implemented | produce from a factory with uncommitted changes, recorded as `dirty: true` |
 | `produce` | `--no-verify` | implemented | write without building or testing; the output says so, and the run ends **NOT VERIFIED (exit 3)**, never 0 |
 | `produce` | `--adopt` | implemented | make a managed file engine-owned, keeping its edits |
@@ -117,7 +124,7 @@ the diff ([AGENTS.md](AGENTS.md) §3).
 | `compose` | `--corpus` | implemented | one file per cited corpus, as `produce` takes them. Supersession is decided by the span an entry's evidence occupies in the corpus, so the bytes are what says two entries are one passage |
 | `compose` | `--out` | implemented | write the composed map here; the default reports and writes nothing |
 | `backlog` | — | implemented | render an engine's backlog from its map package and its `overlay/`, and either file it as GitHub issues through `gh` or print it. `--create` labels each issue: state from the item's dependencies, `normal` risk on an issue with none. A `needs-decision` state and a promoted risk are a person's, and a sync never undoes either ([0029](docs/decisions/0029-the-rails-are-emitted-by-default-and-vendor-choice-is-engine-owned-configuration.md)) |
-| `backlog` | `--create` | implemented | create missing issues and update changed ones; never closes or deletes an issue |
+| `backlog` | `--create` | implemented | create missing issues and update changed ones; never closes or deletes an issue. Refused when the engine records `distribution: private` and `gh` does not say the target repository is private: an item's body quotes the corpus, so filing it publicly would publish it ([0068](docs/decisions/0068-a-licensed-corpus-may-be-produced-and-verified-inside-a-private-distribution-boundary.md)) |
 | `backlog` | `--render` | implemented | print the rendering as one Markdown document and send nothing; the replacement for the `backlog/` the factory no longer commits ([#243](https://github.com/brandonifco/rules-factory/issues/243)) |
 | `backlog` | `--repo` | implemented | `owner/name` |
 | `backlog` | `--dir` | implemented | the engine directory |
@@ -171,8 +178,12 @@ What never happens again is `NOT VERIFIED` on stdout and `0` in `$?`.
   record inside. The record's map, manifest and checker digests match those actual package members,
   and every cited corpus supplied to intake re-derives to the same sourceId/hashDerivation/contentHash
   identity the package says its publish gate verified ([0048](docs/decisions/0048-a-verified-map-package-binds-the-exact-artifacts-its-publish-gate-read.md)).
-  The map is in a schema version this factory reads. Every cited corpus is public domain or openly
-  licensed ([0028](docs/decisions/0028-the-factory-admits-only-corpora-whose-licence-permits-publishing-them.md)).
+  The map is in a schema version this factory reads. Every cited corpus is admitted — public
+  domain, an open licence the factory knows, or `licensed-proprietary` declaring
+  `distribution: private`
+  ([0028](docs/decisions/0028-the-factory-admits-only-corpora-whose-licence-permits-publishing-them.md),
+  [0068](docs/decisions/0068-a-licensed-corpus-may-be-produced-and-verified-inside-a-private-distribution-boundary.md))
+  — and the engine inherits the strictest distribution requirement among them.
   The factory's own `check-map.py --phase consumer` then passes on the packaged map.
 - **The build.** `verify` recomputes provenance, restores (writing the lock files the first
   time, and re-locking them when the run changed the generated pins, as a map version bump
@@ -341,8 +352,11 @@ found at run time, not at compile time. The string-keyed `Registry` and reflecti
 `hoyle-backgammon` was built by hand first and is now produced by the factory. Its generated
 files, managed files and provenance are the factory's output. Its rules code, tests and extra
 projects are engine-owned. `deckard` and `SRD_Combat` are still built by hand. They are what the
-method was derived from. `deckard`'s corpus is commercial, so it stays hand-built and outside the
-factory ([0028](docs/decisions/0028-the-factory-admits-only-corpora-whose-licence-permits-publishing-them.md)).
+method was derived from. `deckard` stays hand-built and outside the factory: 0028 closed the SR6
+rebuild and 0068 does not reopen it — a licensed corpus is admitted only with an explicit private
+distribution, and no such declaration exists for that corpus
+([0028](docs/decisions/0028-the-factory-admits-only-corpora-whose-licence-permits-publishing-them.md),
+[0068](docs/decisions/0068-a-licensed-corpus-may-be-produced-and-verified-inside-a-private-distribution-boundary.md)).
 
 ## The shape of a run
 

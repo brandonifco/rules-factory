@@ -345,6 +345,7 @@ written path the table does not classify.
 | `src/{name}/Generated/*.g.cs` | generated |  | The map, registry, typed contracts and embedded provenance, from merge(package, overlay). |
 | `tests/{name}.Tests/Generated/*.g.cs` | generated |  | The correspondence and provenance tests, from the same merge. |
 | `corpus/*` | generated |  | The corpus copy intake proved against the map's baseline. |
+| `DISTRIBUTION.md` | generated |  | The notice a private engine carries, and which produce removes from one that stops being private (0068). |
 | `scripts/validate.sh` | generated |  | The gate recipe (M3): the factory's definition of acceptable, which an engine must not weaken by editing. |
 | `scripts/map-overlay.py` | generated |  | Gate recipe: 0015's merge. |
 | `scripts/engine-gate.py` | generated |  | Gate recipe: the non-dotnet checks. |

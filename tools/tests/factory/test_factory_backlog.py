@@ -510,7 +510,9 @@ with open(state + ".calls", "a") as log:
     log.write(json.dumps(args) + "\n")
 def save():
     json.dump(issues, open(state, "w"))
-if args[:2] == ["issue", "list"]:
+if args[:2] == ["repo", "view"]:
+    print(json.dumps({{"isPrivate": os.environ.get("GH_STUB_REPO_PRIVATE") == "1"}}))
+elif args[:2] == ["issue", "list"]:
     assert args[args.index("--repo") + 1] == "example/engine"
     assert args[args.index("--state") + 1] == "all"
     assert args[args.index("--json") + 1] == "number,title,body,labels"
@@ -597,6 +599,9 @@ class CreateCase(unittest.TestCase):
         self.addCleanup(shutil.rmtree, self.tmp, True)
         self.engine = os.path.join(self.tmp, "engine")
         os.makedirs(self.engine)
+        # A produced engine records where it may go (0068). `create` reads it before it writes
+        # anything to GitHub, so the fixture carries one as a real engine does.
+        self.record_distribution("public")
         self.emit(entries())
         self.state = os.path.join(self.tmp, "issues.json")
         self.gh = os.path.join(self.tmp, "gh")
@@ -607,6 +612,11 @@ class CreateCase(unittest.TestCase):
         os.environ["FACTORY_GH"] = self.gh
         self.addCleanup(os.environ.pop, "GH_STUB_STATE", None)
         self.addCleanup(os.environ.pop, "FACTORY_GH", None)
+
+    def record_distribution(self, distribution):
+        with open(os.path.join(self.engine, "provenance.json"), "w", encoding="utf-8") as handle:
+            json.dump({"provenanceFormat": 8, "engine": {"name": "Engine"},
+                       "distribution": distribution}, handle)
 
     def emit(self, listed):
         self.rendered = backlog.render(listed, CONTEXT)
@@ -632,7 +642,8 @@ class CreateCase(unittest.TestCase):
         with open(calls, encoding="utf-8") as handle:
             seen = [json.loads(line) for line in handle]
         os.remove(calls)
-        return [c[:2] + c[2:3] * (c[1] == "edit") for c in seen if c[:2] != ["issue", "list"]]
+        reads = (["issue", "list"], ["repo", "view"])
+        return [c[:2] + c[2:3] * (c[1] == "edit") for c in seen if c[:2] not in reads]
 
     def body(self, name):
         """The rendered item without its `# ` title line, which is what `create` sends as a body."""
@@ -966,6 +977,48 @@ class TestAttribution(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class TestPrivateDistributionIsNotSyncedToAPublicRepository(CreateCase):
+    """0068: `backlog --create` sends a map's entries, evidence included, to a GitHub repository.
+
+    That is a distribution of map-derived content, so it is refused when the engine is private and
+    the repository is not. `gh` is already required by `--create`, so asking what the repository is
+    costs nothing here -- and nothing else in the factory is made to depend on GitHub by it.
+    """
+
+    def setUp(self):
+        super().setUp()
+        self.addCleanup(os.environ.pop, "GH_STUB_REPO_PRIVATE", None)
+
+    def test_a_public_engine_is_synced_whatever_the_repository_is(self):
+        for visibility in ("0", "1"):
+            with self.subTest(repository_private=visibility):
+                os.environ["GH_STUB_REPO_PRIVATE"] = visibility
+                code, log = self.create()
+                self.assertEqual(code, 0, log)
+
+    def test_a_private_engine_is_synced_to_a_private_repository(self):
+        self.record_distribution("private")
+        os.environ["GH_STUB_REPO_PRIVATE"] = "1"
+        code, log = self.create()
+        self.assertEqual(code, 0, log)
+
+    def test_a_private_engine_is_refused_against_a_public_repository(self):
+        self.record_distribution("private")
+        os.environ["GH_STUB_REPO_PRIVATE"] = "0"
+        code, log = self.create()
+        self.assertEqual(code, 1, log)
+        self.assertIn("docs/decisions/0068", log)
+        self.assertEqual([], self.writes(), "a refused sync wrote to GitHub")
+
+    def test_an_engine_whose_record_does_not_say_is_refused(self):
+        """Absence is not read as public here: the record is how the factory says where it may go."""
+        os.remove(os.path.join(self.engine, "provenance.json"))
+        os.environ["GH_STUB_REPO_PRIVATE"] = "0"
+        code, log = self.create()
+        self.assertEqual(code, 1, log)
+        self.assertEqual([], self.writes(), "a refused sync wrote to GitHub")
 
 
 class TestLabels(CreateCase):

@@ -9,8 +9,14 @@ flag that packs without gating, because a package built without its gate is the 
 
 The gate, in order:
 
-  * every cited corpus's licence -- the manifest's `licence` is public domain or an open licence
-    the factory admits (intake's shared admission contract, decision 0028); any other is refused;
+  * every cited corpus's admission -- intake's one classification (`intake.admit`): the manifest's
+    `licence` is public domain, an open licence the factory admits, or `licensed-proprietary`
+    (0028, 0068); any other is refused. A `licensed-proprietary` corpus must declare
+    `distribution: private`, and declaring nothing is a refusal rather than a default;
+  * the package's inherited distribution -- the strictest of its cited corpora (0068). Packing a
+    private map is allowed, because that is how a private project builds the package its own
+    `factory produce` consumes; packing one **with `--tag`** is refused, because `--tag` is the
+    publish path and `publish-map.yml` is its only caller. There is no flag that opens it;
   * every cited corpus's committed bytes are read and recomputed through intake's one
     `hashDerivation` table. Unknown derivations, malformed digests and mismatches are refusals;
   * exact map, packaged-manifest and verified-corpus bytes are written to a private immutable
@@ -36,7 +42,8 @@ The package, and why it is byte-for-byte deterministic:
     only the standard library, so it is the whole of what that phase needs;
   * `map/verification.json` -- verificationFormat 1: SHA-256 identities of the packaged map,
     manifest and checker, plus sourceId/hashDerivation/contentHash for every cited corpus whose
-    exact bytes the locator run read (0048);
+    exact bytes the locator run read (0048), and `distribution: private` when the package inherits
+    that requirement -- written only then, so a public package's bytes are unchanged (0068);
   * `build/<id>.props` -- one `RulesFactoryMap` item, so an engine finds the files (the
     checker as `ConsumerChecker`, the relationship record as `Verification`) without knowing
     where NuGet extracts packages;
@@ -101,7 +108,7 @@ PROJECT_URL = "https://github.com/brandonifco/rules-factory"
 # happens, so it belongs above the path insert.
 sys.dont_write_bytecode = True
 sys.path.insert(0, os.path.join(TOOLS, "factory"))
-import intake  # noqa: E402  (its licence_class, decision 0028; standard library only)
+import intake  # noqa: E402  (its admission contract, decisions 0028 and 0068; standard library only)
 
 # The locator checker for each adapter. A corpus whose adapter is not here cannot have its
 # citations checked, and a map whose citations cannot be checked is not published.
@@ -362,23 +369,41 @@ def run_step(what, argv):
         raise Refused(f"{what} exited {completed.returncode}")
 
 
-def gate(inputs, repo_root):
-    """Run every gate against immutable snapshots, returning every verified cited corpus (0048)."""
+def gate(inputs, repo_root, publishing):
+    """Run every gate against immutable snapshots, returning every verified cited corpus (0048).
+
+    `publishing` is whether this pack is on the publish path -- `--tag`, which only
+    `publish-map.yml` passes. A package whose inherited distribution is private is refused there
+    and written anywhere else, because a private project has to be able to build the package its
+    own `factory produce` consumes (0068 section 5).
+    """
     corpora = {c.get("sourceId"): c for c in inputs["manifest"].get("corpora") or [] if isinstance(c, dict)}
     cited = sorted(cited_corpora(inputs["map"]))
     if not cited:
         raise Refused("the map cites no corpus")
+    declared = {}
     for source_id in cited:
         corpus = corpora.get(source_id)
         if corpus is None:
             raise Refused(f"the map cites {source_id!r}, which the manifest does not declare")
         try:
-            intake.refuse_unadmitted_licence(corpus)
+            _, declared[source_id] = intake.admit(corpus)
         except intake.Refused as error:
             raise Refused(str(error))
         if corpus.get("verification") != "committed-copy":
             raise Refused(f"NOT VERIFIED -- {source_id} is {corpus.get('verification')!r}, not "
                           f"committed-copy, so no publish job can read the corpus to check a citation")
+
+    try:
+        inputs["distribution"] = intake.strictest_distribution(declared.values())
+    except intake.Refused as error:
+        raise Refused(str(error))
+    if publishing and inputs["distribution"] == intake.PRIVATE:
+        restricted = sorted(s for s, d in declared.items() if d == intake.PRIVATE)
+        raise Refused(f"this map's inherited distribution is private, because {', '.join(restricted)} "
+                      f"declare(s) it: a private package is produced and verified in full and is never "
+                      f"published. `--tag` is the publish path and there is no flag that opens it "
+                      f"(docs/decisions/0068)")
 
     adapters = {corpora[source_id].get("adapter") for source_id in cited}
     if len(adapters) != 1:
@@ -487,6 +512,10 @@ def verification_record(inputs, verified):
 
     document = {
         "verificationFormat": intake.VERIFICATION_FORMAT,
+        # Written when and only when the requirement is private (0068 section 5). A public package
+        # is byte for byte what it was, which is why no published map needs a version bump; public
+        # is the default and a reader derives it from the packaged manifest.
+        **({"distribution": intake.PRIVATE} if inputs.get("distribution") == intake.PRIVATE else {}),
         "artifacts": [
             {"role": "map", "path": "map/corpus-map.json", "sha256": digest(inputs["map_raw"])},
             {"role": "manifest", "path": "map/corpus-manifest.json",
@@ -650,7 +679,8 @@ def main(argv=None):
         print(f"{inputs['id']} {inputs['version']} from {inputs['map_path']}")
         inputs["corpus_terms"] = corpus_terms(inputs)
         inputs["packaged_manifest_raw"] = packaged_manifest(inputs)
-        verified = gate(inputs, args.repo_root)
+        verified = gate(inputs, args.repo_root, publishing=args.tag is not None)
+        print(f"distribution {inputs['distribution']}")
         inputs["verification_raw"] = verification_record(inputs, verified)
     except Usage as error:
         print(f"pack-map: {error}", file=sys.stderr)
