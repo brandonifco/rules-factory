@@ -6,6 +6,10 @@
 #   tools/re-produce.sh --resolve-record  take one side of a merge-conflicted provenance.json first
 #   tools/re-produce.sh --no-verify     (and any other argument) passed through to produce
 #
+# It reads the repository root from the record too (0069), so an embedded engine re-produces
+# with no arguments of its own. An explicit --repo-root wins, which is how a moved engine is
+# re-produced at its new place.
+#
 # Emitted by rules-factory as a managed file (decision 0029).
 #
 # **An overlay edit is finished by a re-produce.** `provenance.json` is a generated file
@@ -169,12 +173,17 @@ print(corpora[0])
 print(name)
 print(factory.get("repository") or sys.argv[2])
 print("dirty" if factory.get("dirty") else "clean")
+# Where the engine sits inside its repository (0069). Absent in a record written before
+# provenanceFormat 9, and empty for an engine that is its own repository root -- both of which
+# mean the same thing here, and both of which are the standalone case.
+print((record.get("repository") or {}).get("enginePath") or "")
 PY
 )" || die "the record does not say what to re-produce (above)"
 
 mapfile -t FIELD <<<"$FIELDS"
 COMMIT="${FIELD[0]}"; read -r -a PACKAGES <<<"${FIELD[1]}"; CORPUS="${FIELD[2]}"; NAME="${FIELD[3]}"
 FACTORY_REPO="${RULES_ENGINE_FACTORY_REPO:-${FIELD[4]}}"; FACTORY_DIRTY="${FIELD[5]}"
+ENGINE_PATH="${FIELD[6]:-}"
 
 [[ -f "$CORPUS" ]] || die "$RECORD names the corpus $CORPUS, which is not in this engine"
 
@@ -211,15 +220,54 @@ fi
 
 [[ "$FACTORY_DIRTY" == "clean" ]] || printf 'note: %s records factory.dirty: true, so commit %s is not the whole of the\n      code that produced this engine; this re-produce runs that commit as committed.\n' "$RECORD" "$COMMIT" >&2
 
+# Since 0069 there is a fifth thing produce has to be told, and the record carries it like the rest.
+# An embedded engine's workflows and pull request template belong at the repository root, where
+# GitHub reads them; a standalone engine's belong beside the engine. Produce refuses to guess between
+# the two, and this script exists so that nobody has to answer it by hand -- an operator who gets
+# `--repo-root` wrong produces a working engine whose rails are dark, which is the exact failure 0069
+# was written about.
+#
+# The root is the engine directory with the recorded `enginePath` taken off the end, so the two
+# always compose back to where this script is running. An explicit `--repo-root` still wins: it is
+# how an engine that is being moved is re-produced at its new place.
+REPOSITORY_ROOT="$REPO_ROOT"
+if [[ -n "$ENGINE_PATH" ]]; then
+  SEPARATORS="${ENGINE_PATH//[^\/]/}"
+  for (( LEVEL = 0; LEVEL <= ${#SEPARATORS}; LEVEL++ )); do
+    REPOSITORY_ROOT="$(dirname "$REPOSITORY_ROOT")"
+  done
+  [[ "$REPOSITORY_ROOT/$ENGINE_PATH" == "$REPO_ROOT" ]] || die "$RECORD records repository.enginePath
+       $ENGINE_PATH, which does not compose back to $REPO_ROOT. The engine has been moved, and
+       re-producing it here would write its workflows somewhere nobody has checked. Produce it
+       deliberately with an explicit --repo-root, on its own issue."
+  # git is the second opinion, and a disagreement means the engine moved between repositories rather
+  # than within one. Asked only where there is a checkout to ask.
+  if TOP_LEVEL="$("$GIT" rev-parse --path-format=absolute --show-toplevel 2>/dev/null)" \
+     && [[ -n "$TOP_LEVEL" && "$TOP_LEVEL" != "$REPOSITORY_ROOT" ]]; then
+    die "$RECORD puts this engine at $ENGINE_PATH inside $REPOSITORY_ROOT, and git reports the
+       repository root as $TOP_LEVEL. One of the two is wrong, and this script will not pick. Re-
+       produce with an explicit --repo-root once you know which."
+  fi
+fi
+
+ROOT_ARGS=(--repo-root "$REPOSITORY_ROOT")
+for ARGUMENT in ${EXTRA[@]+"${EXTRA[@]}"}; do
+  [[ "$ARGUMENT" == "--repo-root" || "$ARGUMENT" == --repo-root=* ]] && ROOT_ARGS=()
+done
+
 PACKAGE_ARGS=()
 for PACKAGE in "${PACKAGES[@]}"; do PACKAGE_ARGS+=(--package "$PACKAGE"); done
 PRODUCE=("$PYTHON" "<factory>/tools/factory" produce "${PACKAGE_ARGS[@]}" --corpus "$REPO_ROOT/$CORPUS"
-         --name "$NAME" --out "$REPO_ROOT" ${EXTRA[@]+"${EXTRA[@]}"})
+         --name "$NAME" --out "$REPO_ROOT" ${ROOT_ARGS[@]+"${ROOT_ARGS[@]}"}
+         ${EXTRA[@]+"${EXTRA[@]}"})
 
 printf 'factory   %s at %s\n' "$FACTORY_REPO" "$COMMIT"
 printf 'package   %s\n' "${PACKAGES[*]}"
 printf 'corpus    %s\n' "$CORPUS"
 printf 'engine    %s (%s)\n' "$NAME" "$REPO_ROOT"
+if [[ -n "$ENGINE_PATH" ]]; then
+  printf 'repo      %s (the engine is embedded at %s/)\n' "$REPOSITORY_ROOT" "$ENGINE_PATH"
+fi
 printf 'produce   %s\n' "${PRODUCE[*]}"
 
 if [[ "$DRY_RUN" -eq 1 ]]; then
