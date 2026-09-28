@@ -563,3 +563,57 @@ class TestTheRailsReadAPathInTheEnginesOwnTerms(RepositoryCase):
         self.assertIn("updated", [line.split("—")[1].split(":")[0].strip()
                                   for line in done.stdout.splitlines()
                                   if line.startswith("- [ ]") and "`AGENTS.md`" in line])
+
+
+class TestARailAtTheRootIsReportedWhereItIs(RepositoryCase):
+    """A report about where the rails are must be right about where they are (#509).
+
+    `factory rails --check` and `tools/agent-doctor.py` both judged every rail by looking for it in
+    the engine and comparing its bytes with the recipe history. Four of them are not in an embedded
+    engine and must not be, and their bytes at the root are rendered for the engine's path, so no
+    version of any recipe wrote them: both reports called four rails absent that were exactly where
+    they belong, and told the reader to run the produce that had just put them there.
+    """
+
+    def embedded(self):
+        host = init(os.path.join(self.tmp, "host"))
+        engine = os.path.join(host, "engine")
+        self.produce(engine, "--repo-root", host)
+        return host, engine
+
+    def test_the_record_places_the_root_and_the_rails_it_holds(self):
+        host, engine = self.embedded()
+        self.assertEqual("engine", ownership.engine_path(engine))
+        self.assertEqual(os.path.realpath(host), os.path.realpath(ownership.repository_root(engine)))
+        states = ownership.repository_states(engine)
+        self.assertEqual(sorted(FILES), sorted(states))
+        self.assertEqual({ownership.CURRENT}, {state for state, _ in states.values()},
+                         "every rail at the root is the bytes the record names")
+
+    def test_a_standalone_engine_has_no_rails_at_another_root(self):
+        engine = os.path.join(self.tmp, "engine")
+        self.produce(engine)
+        self.assertEqual("", ownership.engine_path(engine))
+        self.assertEqual({}, ownership.repository_states(engine),
+                         "its own .github IS its repository's, and managed_states judges those")
+
+    def test_an_edited_or_missing_rail_at_the_root_is_named_as_that(self):
+        host, engine = self.embedded()
+        with open(os.path.join(host, *WORKFLOWS[1].split("/")), "ab") as handle:
+            handle.write(b"\n# somebody's change\n")
+        os.remove(os.path.join(host, *WORKFLOWS[2].split("/")))
+        states = ownership.repository_states(engine)
+        self.assertEqual(ownership.EDITED, states[WORKFLOWS[1]][0])
+        self.assertEqual(ownership.ABSENT, states[WORKFLOWS[2]][0])
+        self.assertEqual(ownership.CURRENT, states[WORKFLOWS[0]][0])
+
+    def test_the_rails_report_says_the_root_holds_them_rather_than_that_they_are_missing(self):
+        host, engine = self.embedded()
+        import rails as rails_step
+        files = rails_step.agent_files(engine)
+        wrong = rails_step.unfaithful_files(files)
+        self.assertEqual([], [path for path, _state, _versions in wrong],
+                         "nothing is missing: three rails are at the root and the rest in the engine")
+        self.assertEqual(sorted(p for p in FILES if p in files),
+                         sorted(p for p in files if p in ownership.repository_states(engine)),
+                         "and the ones at the root are the ones judged there")

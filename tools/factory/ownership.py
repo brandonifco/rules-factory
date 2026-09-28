@@ -180,7 +180,7 @@ TABLE = (
     Row(".github/workflows/verdict-requeue.yml", MANAGED, 2,
         "runs requeue-gate.py on the status and issues events; deliberately not a required check "
         "(#191, #230)"),
-    Row("tools/agent-doctor.py", MANAGED, 7,
+    Row("tools/agent-doctor.py", MANAGED, 8,
         "whether the rails are active or only present, locally and on GitHub, and what merged work "
         "left behind (0029, #236); the machine's own prerequisites first, because a rail in place on a "
         "machine that cannot run the gate stops nothing (#195); it looks for the gate workflow where "
@@ -475,6 +475,7 @@ RECIPE_SHA256 = {
         5: "48192fc3bfea14393824f39b049c73606631f07db8caecdf8107f2500bd18af6",
         6: "29a12d22a4befe577fcf67ab1ae868f0c1db3bc41d4d32babd812dd547324ab0",
         7: "3483e812ad0e5fead7940ddddb45880d7de21ac3e788cfc5f2e9a53660efa26c",
+        8: "04b0ebbffc8638fa322543a8591096abb54ef5c5a7e5be4151de6e4066fff4ff",
     },
     ".editorconfig": {
         1: "4109d1ef55053ef656e536d7818934deb73016fbe950f153bae6b2a163591cb2",
@@ -825,6 +826,69 @@ def managed_states(out, paths):
             states[path] = (CURRENT, versions)
         else:
             states[path] = (EARLIER, versions)
+    return states
+
+
+def engine_path(out):
+    """Where `out` sits under its repository root, or "" when it **is** that root (0069).
+
+    Read from the engine's own `provenance.json`, which is the one place it is recorded. "" for a
+    record that cannot be read or was written before format 9: such an engine was produced as a
+    repository root, which is what it was assumed to be.
+    """
+    try:
+        with open(os.path.join(out, PROVENANCE), encoding="utf-8") as handle:
+            record = json.load(handle)
+    except (OSError, ValueError):
+        return ""
+    section = record.get("repository") if isinstance(record, dict) else None
+    return str((section or {}).get("enginePath") or "") if isinstance(section, dict) else ""
+
+
+def repository_root(out):
+    """The repository root `out` is in, by its own record: `out` itself when it is that root."""
+    path = engine_path(out)
+    root = os.path.abspath(out)
+    for _ in path.split("/") if path else []:
+        root = os.path.dirname(root)
+    return root
+
+
+def repository_states(out, paths=None):
+    """What each rail at the **repository root** is, judged against the record (0069): {path: (state, [])}.
+
+    `current` when the bytes at the root are the SHA-256 `provenance.json` records for that path in
+    `repository.automation`; `absent` when the file is not there; `edited by hand` when it is and the
+    bytes are not the record's.
+
+    The recipe history cannot judge these and never could: at a repository root the bytes are
+    rendered for the engine's path beneath it, so they are generated rather than managed
+    (repository.py), and one fixed sequence of bytes per recipe version -- what `managed_states`
+    compares against -- is exactly what they are not. What says whether a rail at a root is the
+    factory's is the record the produce that wrote it left behind, which is also what the engine's
+    own `scripts/engine-gate.py repository` holds them to. `{}` for a standalone engine: its rails
+    are its own files, and `managed_states` judges them as it always has.
+    """
+    try:
+        with open(os.path.join(out, PROVENANCE), encoding="utf-8") as handle:
+            record = json.load(handle)
+    except (OSError, ValueError):
+        record = {}
+    section = record.get("repository") if isinstance(record, dict) else None
+    if not isinstance(section, dict) or not section.get("enginePath"):
+        return {}
+    root = repository_root(out)
+    recorded = {str(item.get("path")): str(item.get("sha256") or "")
+                for item in section.get("automation") or [] if isinstance(item, dict)}
+    states = {}
+    for path in sorted(paths if paths is not None else recorded):
+        target = os.path.join(root, *path.split("/"))
+        if not os.path.isfile(target):
+            states[path] = (ABSENT, [])
+            continue
+        with open(target, "rb") as handle:
+            digest = sha256(handle.read())
+        states[path] = (CURRENT if digest == recorded.get(path) else EDITED, [])
     return states
 
 

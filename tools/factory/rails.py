@@ -176,8 +176,18 @@ def agent_files(engine_dir):
     (#211). A file of the right name is not a rail as the factory wrote it -- a truncated
     `conformance-gate.py` is a file that exists -- and a row that says OK about it was reporting
     on the file listing, not on the rail.
+
+    **A rail at the repository root is judged where it is** (0069, #509). An engine embedded under a
+    repository root does not carry the workflows and the template GitHub reads only from that root;
+    they are there, rendered for the engine's path, so the recipe history cannot judge their bytes
+    and looking for them here reported four rails absent that were exactly where they belong.
+    `ownership.repository_states` judges those against the record the produce that wrote them left,
+    which is what the engine's own `scripts/engine-gate.py repository` holds them to.
     """
-    return ownership_step.managed_states(engine_dir, agentrails.RAILS)
+    at_root = {path: state for path, state in ownership_step.repository_states(engine_dir).items()
+               if path in agentrails.RAILS}
+    here = [path for path in agentrails.RAILS if path not in at_root]
+    return {**ownership_step.managed_states(engine_dir, here), **at_root}
 
 
 def unfaithful_files(files):
@@ -283,6 +293,7 @@ def survey(repo, engine_dir, gh):
     return {
         "branch": branch,
         "checksApp": app,
+        "engine": engine_dir,
         "files": agent_files(engine_dir),
         "policy": document,
         # The one rule the engine's gate and tools/agent-doctor.py judge the same file by (#211).
@@ -327,8 +338,13 @@ def report(state):
     wrong = unfaithful_files(files)
     adopted = sorted(path for path, (kind, _) in files.items() if kind == ownership.ADOPTED)
     faithful = sum(1 for kind, _ in files.values() if kind == ownership.CURRENT)
+    # How many of them the repository root holds rather than the engine, so an OK row says where it
+    # looked as well as what it found (0069).
+    at_root = len(ownership_step.repository_states(state["engine"])) if state.get("engine") else 0
     if not wrong:
         lines.append(_row("Agent files", OK, f"{faithful} byte for byte as the current recipe writes them"
+                                             + (f", {at_root} of them at the repository root, where GitHub "
+                                                f"reads them" if at_root else "")
                                              + (f"; adopted by the engine: {', '.join(adopted)}" if adopted else "")))
     else:
         absent_only = all(kind == ownership.ABSENT for _, kind, _ in wrong)
