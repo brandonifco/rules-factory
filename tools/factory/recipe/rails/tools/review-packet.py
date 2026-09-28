@@ -156,8 +156,30 @@ def policy(root):
         raise Refused(f"{POLICY} cannot be read at reviewed commit ({error}); it holds the labels and the review contexts")
 
 
+def engine_path():
+    """This engine's path under its repository root, or "" when the engine **is** that root.
+
+    Read from `provenance.json` (`repository.enginePath`, provenanceFormat 9, rules-factory decision
+    0069). A worktree holds the **repository**, so for an engine embedded under one the engine inside
+    a reviewed snapshot is this much deeper -- and every read of the snapshot here is a read of the
+    engine: the policy, the record, the overlay, the vendored ownership table.
+    """
+    try:
+        record = json.loads((ROOT / PROVENANCE).read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return ""
+    section = record.get("repository") if isinstance(record, dict) else None
+    return str((section or {}).get("enginePath") or "") if isinstance(section, dict) else ""
+
+
 def reviewed_snapshot(head):
-    """A detached worktree containing exactly `head`, plus the private directory that owns it.
+    """The reviewed commit's **engine**, plus the private directory that owns the worktree.
+
+    A detached worktree containing exactly `head` is made first; what is returned is the engine
+    inside it, which is the worktree itself for an engine that is its own repository root and
+    `<worktree>/<enginePath>` for one embedded under a repository root (0069). Everything the
+    assembly reads is engine-relative, so returning the engine is what makes the rest of this file
+    read the same for either topology.
 
     The parent is this run's own scratch space, and everything the assembly produces is built
     there first: the map copy the entry packets are read from, and the entry packets themselves.
@@ -165,18 +187,30 @@ def reviewed_snapshot(head):
     leaves nothing behind (#371).
     """
     parent = pathlib.Path(tempfile.mkdtemp(prefix="rules-engine-review-"))
-    snapshot = parent / "reviewed"
+    worktree = parent / "reviewed"
     try:
-        git("worktree", "add", "--detach", "--quiet", str(snapshot), head)
+        git("worktree", "add", "--detach", "--quiet", str(worktree), head)
     except Exception:
         shutil.rmtree(parent, ignore_errors=True)
         raise
+    inside = engine_path()
+    snapshot = worktree / inside if inside else worktree
+    if not (snapshot / PROVENANCE).is_file():
+        remove_reviewed_snapshot(parent, snapshot)
+        raise Refused(f"the reviewed commit {head[:12]} holds no {PROVENANCE} at "
+                      f"{inside or '.'}, where this engine's own record says the engine is; the "
+                      f"packet is cut from the engine inside the reviewed tree and there is none "
+                      f"there (rules-factory decision 0069)")
     return parent, snapshot
 
 
 def remove_reviewed_snapshot(parent, snapshot):
-    """Remove the temporary worktree on both success and failure."""
-    subprocess.run(["git", "worktree", "remove", "--force", str(snapshot)], cwd=ROOT,
+    """Remove the temporary worktree on both success and failure.
+
+    `snapshot` may be the engine inside the worktree rather than the worktree itself (0069), and
+    git removes a worktree by its own root, so the root is taken from `parent` and not from it.
+    """
+    subprocess.run(["git", "worktree", "remove", "--force", str(parent / "reviewed")], cwd=ROOT,
                    stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
     shutil.rmtree(parent, ignore_errors=True)
     subprocess.run(["git", "worktree", "prune"], cwd=ROOT,
