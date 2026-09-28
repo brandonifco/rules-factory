@@ -152,19 +152,20 @@ TABLE = (
         "blocking findings, which are the caller's judgement and the only thing it is given (#465); a section "
         "of the issue keeps what is nested under it (#484); it makes the readiness refusal dispatch "
         "makes, and says a semantic verdict is owed only when the change owes one (#483)"),
-    Row("tools/pr-policy.py", MANAGED, 9,
+    Row("tools/pr-policy.py", MANAGED, 10,
         "the pull request contract, checked mechanically; a produce update's claim is checked, not taken "
         "(#193); every document the engine owns is accounted for (#236); the entry declaration, linked issue "
         "marker and overlay transition must identify the same work (#451); a changed path is judged in the "
         "engine's own terms, which for an engine embedded under a repository root is not the path GitHub "
-        "reports (#501, 0069)"),
+        "reports (#501, 0069), the documentation skeleton included (#507)"),
     Row("tools/record-verdict.py", MANAGED, 5,
         "a review verdict as a commit status on the exact commit reviewed, from entry evidence bound to "
         "that commit (0029, #372) -- every map of a composed engine, not one of them (#460); and from a packet "
         "whose role could carry it, because a structural cut holds no entry evidence at all (#467)"),
-    Row("tools/conformance-gate.py", MANAGED, 3,
+    Row("tools/conformance-gate.py", MANAGED, 4,
         "whether the verdicts this change needs are recorded at the commit being merged; a truncated "
-        "file list is undecidable (0029, #193)"),
+        "file list is undecidable (0029, #193); the semantic surface is read in the engine's own paths, "
+        "which for an embedded engine is not what GitHub reports (#507, 0069)"),
     Row("tools/requeue-gate.py", MANAGED, 2,
         "asks the gate to report again when something outside the pull request changed what it "
         "would answer: a verdict recorded at its head (#191), or the risk label on the issue it "
@@ -424,6 +425,7 @@ RECIPE_SHA256 = {
         7: "0606f6993cb2667b79788f8c4a0356e2d2e86dab12603628759ac906d1ed7941",
         8: "e5ee81be7c570a9b8df49b77ca9b306bd82ff57994d07da4a293867862014aae",
         9: "20666192adbbdfc24cacbf8abd57d5f42b1c1bc826691382017d69f9735f8313",
+        10: "9017ed3f13402056e4a5b6ebb3f9b52349348904addf75ff6f0701f8dc7b5512",
     },
     "tools/record-verdict.py": {
         1: "48f7b11f7fc829cdaebd776a3eb5db04e27cade97c427c6806b72f58805d83db",
@@ -436,6 +438,7 @@ RECIPE_SHA256 = {
         1: "567972b60f16d1f86c661e97efa56fa2878c9a5aa92fb820c4aea07a402cbd24",
         2: "6e4a57468144caf4eaf74dce4d178a582322235ba37eb04d92bd72ddb929e58a",
         3: "ed0db727f1ac5500be0496bc42351d19faa353f3fc578b6d195e0b41cc23c634",
+        4: "4c0e5daef3375bb4b17d7a751bc5fb5d221925fabbb2b13e38fac519c556574b",
     },
     "tools/requeue-gate.py": {
         1: "a4315a5fa76a696ee616e5ef190d6bbec0d023c04e22086082d4031c460aec8d",

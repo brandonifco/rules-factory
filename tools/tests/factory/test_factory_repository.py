@@ -482,3 +482,84 @@ class TestTheEngineGateChecksTheRepositoryRoot(RepositoryCase):
         code, output = self.gate(engine)
         self.assertEqual(1, code, output)
         self.assertIn("records no `repository` section", output)
+
+
+class TestTheRailsReadAPathInTheEnginesOwnTerms(RepositoryCase):
+    """A path GitHub reports is not the path an embedded engine's own tables are written in (#507).
+
+    The workflows being at the root (#501) is half of it. The scripts they run read `gh pr view
+    --json files`, whose paths are relative to the **repository**, and judge them against the
+    engine's semantic surface, its ownership table and its documents, all of which are written in
+    engine-relative paths. For an embedded engine `engine/src/Rules/X.cs` matches none of `src/**`,
+    and a conformance gate that finds nothing semantic requires no verdict of the one kind of change
+    it exists to hold.
+    """
+
+    def embedded(self):
+        host = init(os.path.join(self.tmp, "host"))
+        engine = os.path.join(host, "engine")
+        self.produce(engine, "--repo-root", host)
+        return host, engine
+
+    def script(self, engine, name):
+        """The emitted script as a module, with its ROOT at `engine`."""
+        spec = importlib.util.spec_from_file_location(f"emitted_{name}_{id(engine)}",
+                                                     os.path.join(engine, "tools", f"{name}.py"))
+        module = importlib.util.module_from_spec(spec)
+        writes, sys.dont_write_bytecode = sys.dont_write_bytecode, True
+        try:
+            spec.loader.exec_module(module)
+        finally:
+            sys.dont_write_bytecode = writes
+        return module
+
+    def test_the_conformance_gate_reads_the_engine_path_from_the_record(self):
+        _host, engine = self.embedded()
+        gate = self.script(engine, "conformance-gate")
+        self.assertEqual("engine", gate.engine_path(), "the record says where the engine is (0069)")
+
+    def test_a_changed_source_under_the_engine_is_on_the_semantic_surface(self):
+        _host, engine = self.embedded()
+        gate = self.script(engine, "conformance-gate")
+        patterns = ["src/**", "overlay/**"]
+        changed = [f"engine/src/{NAME}/Rules/AltitudeLimit.cs", "engine/overlay/altitude-limit.json",
+                   "corpus/hallertau/README.md", "README.md", ".github/workflows/validate.yml"]
+        self.assertEqual(sorted(["overlay/altitude-limit.json", f"src/{NAME}/Rules/AltitudeLimit.cs"]),
+                         sorted(gate.semantic_surface(changed, patterns, "engine")),
+                         "the engine's sources are semantic; the repository's own files are not this "
+                         "engine's surface and cannot be what a verdict about it is about")
+
+    def test_a_standalone_engine_s_surface_is_unchanged(self):
+        engine = os.path.join(self.tmp, "engine")
+        self.produce(engine)
+        gate = self.script(engine, "conformance-gate")
+        self.assertEqual("", gate.engine_path())
+        self.assertEqual([f"src/{NAME}/Rules/AltitudeLimit.cs"],
+                         gate.semantic_surface([f"src/{NAME}/Rules/AltitudeLimit.cs", "README.md"],
+                                               ["src/**"], ""))
+
+    def test_the_documentation_skeleton_speaks_one_path_language(self):
+        host, engine = self.embedded()
+        git(host, "add", "-A")
+        git(host, "-c", "user.email=t@t", "-c", "user.name=t", "commit", "-q", "-m", "the engine")
+        git(host, "branch", "-M", "main")
+        git(host, "checkout", "-q", "-b", "two-documents")
+        with open(os.path.join(engine, "AGENTS.md"), "a", encoding="utf-8") as handle:
+            handle.write("\n<!-- a change to the engine's own contract -->\n")
+        with open(os.path.join(host, "README.md"), "w", encoding="utf-8") as handle:
+            handle.write("# the repository's own README\n")
+        git(host, "add", "-A")
+        git(host, "-c", "user.email=t@t", "-c", "user.name=t", "commit", "-q", "-m", "two documents")
+        done = subprocess.run([sys.executable, os.path.join(engine, "tools", "pr-policy.py"), "--docs-skeleton"],
+                              cwd=engine, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True,
+                              env={**os.environ, "PYTHONDONTWRITEBYTECODE": "1"})
+        self.assertEqual(0, done.returncode, done.stdout)
+        listed = [line.split("`")[1] for line in done.stdout.splitlines() if line.startswith("- [ ]")]
+        self.assertIn("AGENTS.md", listed, "the engine's own contract, by the path the engine knows it as")
+        self.assertNotIn("engine/AGENTS.md", listed, "and not a second time under the repository's path for it")
+        self.assertNotIn("README.md", listed,
+                         "the repository's own README is not a document this engine owns, and the check "
+                         "the skeleton is written for would reject it")
+        self.assertIn("updated", [line.split("—")[1].split(":")[0].strip()
+                                  for line in done.stdout.splitlines()
+                                  if line.startswith("- [ ]") and "`AGENTS.md`" in line])

@@ -807,7 +807,15 @@ def changed_documents_here():
         diff = subprocess.run(["git", "-C", str(ROOT), "diff", "--name-only", "--no-renames", f"{base}...HEAD"],
                               stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
         if diff.returncode == 0:
-            return sorted(path for path in diff.stdout.splitlines() if path.endswith(".md"))
+            # git prints a path relative to the **repository**, and every other line of the skeleton
+            # is an engine-relative path from `living_documents`. For an embedded engine (0069) those
+            # differ, and a skeleton that mixed the two listed one document twice under two names and
+            # the repository's own README as though this engine owned it -- and the check the skeleton
+            # is written for rejected both. A document outside the engine is not the engine's to
+            # account for, which is what `engine_relative` returning None says.
+            prefix = engine_path()
+            return sorted({inside for path in diff.stdout.splitlines() if path.endswith(".md")
+                           for inside in [engine_relative(path, prefix)] if inside is not None})
     print("pr-policy: git could not say what this branch changes, so every line below reads `checked, no "
           "change`; mark as `updated` each document this pull request edits.", file=sys.stderr)
     return []
