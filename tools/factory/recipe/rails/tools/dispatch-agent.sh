@@ -82,10 +82,19 @@ usage() {
   exit "${1:-0}"
 }
 
+# A linked worktree's `--git-dir` is a directory under the main repository's, and its
+# `--git-common-dir` is that main one; in the primary checkout the two are the same directory. What
+# they are *spelled* as is not part of that: `--git-dir` returns a path relative to the current
+# directory only when the current directory is the repository's top level, and an absolute path
+# otherwise, while `--git-common-dir` stays relative. So comparing the two as strings is a test of
+# where the caller stands, not of which checkout this is -- and since this script cd's to the
+# engine directory first, an embedded engine (0069) was never at the top level and was refused as a
+# worktree on every command. `--path-format=absolute` asks for the one spelling both can be
+# compared in.
 assert_primary_checkout() {
   local common dir
-  common="$(git rev-parse --git-common-dir)"
-  dir="$(git rev-parse --git-dir)"
+  common="$(git rev-parse --path-format=absolute --git-common-dir)"
+  dir="$(git rev-parse --path-format=absolute --git-dir)"
   [[ "$common" == "$dir" ]] || die "run this from the primary checkout, not a worktree"
 }
 
