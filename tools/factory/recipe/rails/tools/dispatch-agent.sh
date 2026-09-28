@@ -28,6 +28,16 @@ set -euo pipefail
 
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$REPO_ROOT"
+# Where this engine sits under its repository root, from its own record ("" when it IS that root;
+# rules-factory decision 0069). A worktree holds the repository, so this is what every engine-relative
+# command in a fresh worktree is relative to.
+ENGINE_PATH="$(python3 -c 'import json,sys
+try:
+    record = json.load(open("provenance.json"))
+    section = record.get("repository") or {}
+    print(section.get("enginePath") or "")
+except Exception:
+    print("")' 2>/dev/null || printf '')"
 
 GH="${RULES_ENGINE_GH:-gh}"
 POLICY=".github/agent-policy.json"
@@ -314,7 +324,11 @@ do_create() {
   printf '  branch   %s\n' "$branch"
   printf '  path     %s\n' "$path"
   printf '  base     %s\n\n' "$base"
-  printf 'Work there, not here:\n  cd %s\n\n' "$path"
+  # The worktree is the **repository's**, and for an engine embedded under a repository root
+  # (rules-factory decision 0069) every command below is the engine's, one directory deeper. So the
+  # directory to work in is printed with that path appended rather than leaving an agent to find out
+  # by running `tools/entry-packet.py` one level above it.
+  printf 'Work there, not here:\n  cd %s%s\n\n' "$path" "${ENGINE_PATH:+/$ENGINE_PATH}"
   printf 'The entry this issue names, as the map has it:\n  tools/entry-packet.py <entry-id>\n\n'
   # The re-produce comes first, and is printed whether or not this issue's work will touch the
   # overlay (#202). Marking an entry `implemented` edits corpus-map.overlay.json, and since #192

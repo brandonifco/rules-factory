@@ -617,3 +617,93 @@ class TestARailAtTheRootIsReportedWhereItIs(RepositoryCase):
         self.assertEqual(sorted(p for p in FILES if p in files),
                          sorted(p for p in files if p in ownership.repository_states(engine)),
                          "and the ones at the root are the ones judged there")
+
+
+class TestAPacketIsCutFromTheEngineInsideTheReviewedTree(RepositoryCase):
+    """A worktree holds the repository; the packet is the engine's (#512).
+
+    `tools/review-packet.py` snapshots the reviewed commit with `git worktree add` and reads the
+    engine's policy, record, overlay and vendored table at that worktree's root. For an engine
+    embedded under a repository root the engine is a directory deeper, so every one of those reads
+    missed and the packet was refused -- which blocks the conformance gate, because a verdict is
+    bound to a packet and the packet could not be built.
+    """
+
+    def committed(self):
+        """An embedded engine in a repository with a commit to review."""
+        host = init(os.path.join(self.tmp, "host"))
+        with open(os.path.join(host, "README.md"), "w", encoding="utf-8") as handle:
+            handle.write("# the host repository\n")
+        git(host, "add", "-A")
+        git(host, "-c", "user.email=t@t", "-c", "user.name=t", "commit", "-q", "-m", "the repository")
+        self.before = subprocess.run(["git", "-C", host, "rev-parse", "HEAD"], stdout=subprocess.PIPE,
+                                     text=True, check=True).stdout.strip()
+        engine = os.path.join(host, "engine")
+        self.produce(engine, "--repo-root", host)
+        git(host, "add", "-A")
+        git(host, "-c", "user.email=t@t", "-c", "user.name=t", "commit", "-q", "-m", "the engine")
+        head = subprocess.run(["git", "-C", host, "rev-parse", "HEAD"], stdout=subprocess.PIPE,
+                              text=True, check=True).stdout.strip()
+        return host, engine, head
+
+    def script(self, engine, name):
+        spec = importlib.util.spec_from_file_location(f"emitted_{name}_{id(engine)}",
+                                                     os.path.join(engine, "tools", f"{name}.py"))
+        module = importlib.util.module_from_spec(spec)
+        writes, sys.dont_write_bytecode = sys.dont_write_bytecode, True
+        try:
+            spec.loader.exec_module(module)
+        finally:
+            sys.dont_write_bytecode = writes
+        return module
+
+    def test_the_snapshot_is_the_engine_and_carries_its_record(self):
+        _host, engine, head = self.committed()
+        packet = self.script(engine, "review-packet")
+        packet.ROOT = __import__("pathlib").Path(engine)
+        self.assertEqual("engine", packet.engine_path())
+        parent, snapshot = packet.reviewed_snapshot(head)
+        try:
+            self.assertTrue(os.path.isfile(os.path.join(str(snapshot), "provenance.json")),
+                            "the packet is cut from the engine, and the engine has the record")
+            self.assertTrue(os.path.isfile(os.path.join(str(snapshot), ".github", "agent-policy.json")),
+                            "and the policy that says what the semantic surface is")
+            self.assertEqual("engine", os.path.basename(str(snapshot)),
+                             "which is the engine inside the reviewed worktree, not the worktree")
+        finally:
+            packet.remove_reviewed_snapshot(parent, snapshot)
+        self.assertFalse(os.path.exists(str(parent)), "and the worktree is removed by its own root")
+
+    def test_a_standalone_engine_s_snapshot_is_the_worktree_itself(self):
+        engine = init(os.path.join(self.tmp, "engine"))
+        self.produce(engine)
+        git(engine, "add", "-A")
+        git(engine, "-c", "user.email=t@t", "-c", "user.name=t", "commit", "-q", "-m", "the engine")
+        head = subprocess.run(["git", "-C", engine, "rev-parse", "HEAD"], stdout=subprocess.PIPE,
+                              text=True, check=True).stdout.strip()
+        packet = self.script(engine, "review-packet")
+        packet.ROOT = __import__("pathlib").Path(engine)
+        self.assertEqual("", packet.engine_path())
+        parent, snapshot = packet.reviewed_snapshot(head)
+        try:
+            self.assertEqual("reviewed", os.path.basename(str(snapshot)))
+            self.assertTrue(os.path.isfile(os.path.join(str(snapshot), "provenance.json")))
+        finally:
+            packet.remove_reviewed_snapshot(parent, snapshot)
+
+    def test_a_reviewed_commit_with_no_engine_where_the_record_says_is_refused(self):
+        """A commit from before the engine existed: refused, by name, rather than read as empty."""
+        _host, engine, _head = self.committed()
+        packet = self.script(engine, "review-packet")
+        packet.ROOT = __import__("pathlib").Path(engine)
+        with self.assertRaises(packet.Refused) as caught:
+            packet.reviewed_snapshot(self.before)
+        self.assertIn("holds no provenance.json at engine", str(caught.exception))
+
+    def test_dispatch_sends_an_agent_into_the_engine(self):
+        _host, engine, _head = self.committed()
+        with open(os.path.join(engine, "tools", "dispatch-agent.sh"), encoding="utf-8") as handle:
+            script = handle.read()
+        self.assertIn('ENGINE_PATH="$(python3 -c', script)
+        self.assertIn('cd %s%s\\n\\n\' "$path" "${ENGINE_PATH:+/$ENGINE_PATH}"', script,
+                      "the worktree is the repository's; the commands it prints next are the engine's")

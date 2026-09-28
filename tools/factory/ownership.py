@@ -123,9 +123,11 @@ TABLE = (
     Row(".claude/hooks/primary-checkout-guard.py", MANAGED, 1,
         "the PreToolUse guard that keeps implementation work out of the primary checkout (0029)"),
     Row(".claude/settings.json", MANAGED, 1, "which tools the guard runs before (0029)"),
-    Row("tools/dispatch-agent.sh", MANAGED, 4,
+    Row("tools/dispatch-agent.sh", MANAGED, 5,
         "one issue, one worktree, one branch; it refuses what is not ready to work, and --sweep "
-        "removes what merged work left behind, before every dispatch (0029, #236)"),
+        "removes what merged work left behind, before every dispatch (0029, #236); the directory it "
+        "sends an agent to is the engine inside the new worktree, which for an embedded engine is not "
+        "its root (#512, 0069)"),
     Row("tools/new-issue.sh", MANAGED, 2,
         "an issue with the shape the rails expect, a factory update's included (0029, #193)"),
     Row("tools/entry-packet.py", MANAGED, 7,
@@ -138,7 +140,7 @@ TABLE = (
     Row("tools/re-produce.sh", MANAGED, 6,
         "an overlay edit is finished by a re-produce, from the factory commit the record names (#192); "
         "a record a merge left conflicted is named as one, and --resolve-record settles it (#252)"),
-    Row("tools/review-packet.py", MANAGED, 12,
+    Row("tools/review-packet.py", MANAGED, 13,
         "everything a reviewer needs about one pull request, in the order it is read (0029); every map is "
         "read once and the entry packets are built from those bytes, and a refused packet writes nothing "
         "(#371, #372); a composed engine's maps are each checked against their own recorded digest and the "
@@ -371,6 +373,7 @@ RECIPE_SHA256 = {
         2: "5e66ff9229bf31ed43d4a70c957e774696462dba3ff4e7f75b566132a6858cb5",
         3: "0f62f797181512f7e7e2b5b2314faaf50566866509f882927879e9361a7b6bfc",
         4: "a9f9d81b4fb2386acaa07f905f81f0848e02b6a93351aedc1f5a978f9225ca70",
+        5: "561792adb28e18083b0210f771831532db5ed13ea9a80e95d897cbb3a6352ea0",
     },
     "tools/new-issue.sh": {
         1: "382a2f516f81f593e74ed9e57262080c25edbac1a16d542ffb235eb772b10e88",
@@ -409,6 +412,7 @@ RECIPE_SHA256 = {
         10: "b074030233fd2e749ed3cbd41beb84d19914ee9bfafa64e9fdde0749cd4d4f69",
         11: "b074030233fd2e749ed3cbd41beb84d19914ee9bfafa64e9fdde0749cd4d4f69",
         12: "da610117bf1b24962640ba20d93f61f554db20f370984634446e45463fe95873",
+        13: "9f9ee16c5bd75d0e3ec95863274187ec2591adfa7992950c7cceade3501ace63",
     },
     "tools/repair-packet.py": {
         1: "7ec00d9a68ff35fa0af4ab65714411ac6b39cfce34baf448359d9be5e393c2f5",
