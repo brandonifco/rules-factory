@@ -123,11 +123,12 @@ TABLE = (
     Row(".claude/hooks/primary-checkout-guard.py", MANAGED, 1,
         "the PreToolUse guard that keeps implementation work out of the primary checkout (0029)"),
     Row(".claude/settings.json", MANAGED, 1, "which tools the guard runs before (0029)"),
-    Row("tools/dispatch-agent.sh", MANAGED, 5,
+    Row("tools/dispatch-agent.sh", MANAGED, 6,
         "one issue, one worktree, one branch; it refuses what is not ready to work, and --sweep "
         "removes what merged work left behind, before every dispatch (0029, #236); the directory it "
         "sends an agent to is the engine inside the new worktree, which for an embedded engine is not "
-        "its root (#512, 0069)"),
+        "its root (#512, 0069); the primary checkout is recognised from a subdirectory, so an embedded "
+        "engine is not mistaken for a worktree (#518)"),
     Row("tools/new-issue.sh", MANAGED, 2,
         "an issue with the shape the rails expect, a factory update's included (0029, #193)"),
     Row("tools/entry-packet.py", MANAGED, 7,
@@ -374,6 +375,7 @@ RECIPE_SHA256 = {
         3: "0f62f797181512f7e7e2b5b2314faaf50566866509f882927879e9361a7b6bfc",
         4: "a9f9d81b4fb2386acaa07f905f81f0848e02b6a93351aedc1f5a978f9225ca70",
         5: "561792adb28e18083b0210f771831532db5ed13ea9a80e95d897cbb3a6352ea0",
+        6: "c34826d451b6f8602a31b7e838d68f24baf1b276adb3f7e8e6b319b1a86b7b51",
     },
     "tools/new-issue.sh": {
         1: "382a2f516f81f593e74ed9e57262080c25edbac1a16d542ffb235eb772b10e88",

@@ -5839,3 +5839,56 @@ class TestTheMutationRunner(RailsInAGitEngine):
         done = self.mutate({"edits": [{"file": PROBE, "old": "beta", "new": "BETA"}]})
         self.assertEqual(done.returncode, 1)
         self.assertIn("names no `test`", done.stdout + done.stderr)
+
+
+class TestDispatchRecognisesThePrimaryCheckout(RailsInAGitEngine):
+    """#518: the primary checkout is where the repository is, not where the caller stands.
+
+    A linked worktree's `--git-dir` is a directory under the main repository's, and the two are the
+    same directory in the primary checkout. What they are *spelled* as is not part of that:
+    `--git-dir` is relative only at the repository's top level and absolute anywhere else, while
+    `--git-common-dir` stays relative. `dispatch-agent.sh` cd's to the engine directory before
+    asking, so for an embedded engine (0069) the comparison never held and every command -- dispatch,
+    sweep, list, cleanup -- died with "run this from the primary checkout, not a worktree".
+
+    A standalone engine hid it: there the engine directory *is* the top level, both spellings are
+    `.git`, and the comparison held by coincidence.
+    """
+
+    def setUp(self):
+        super().setUp()
+        self.repo = os.path.join(self.tmp, "repo")
+        self.out = os.path.join(self.repo, "engine")
+
+    def embedded(self):
+        self.produced("--repo-root", self.repo)
+        git(self.repo, "init", "-q", "-b", "main")
+        git(self.repo, "config", "user.email", "t@example.invalid")
+        git(self.repo, "config", "user.name", "t")
+        git(self.repo, "add", ".")
+        git(self.repo, "commit", "-qm", "the produced engine")
+
+    def test_an_embedded_engine_is_not_mistaken_for_a_worktree(self):
+        self.embedded()
+        done = self.dispatch("--list")
+        self.assertNotIn("not a worktree", done.stdout + done.stderr,
+                         "the primary checkout of an embedded engine was refused as a worktree")
+        self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+
+    def test_a_standalone_engine_is_still_the_primary_checkout(self):
+        self.out = os.path.join(self.tmp, "engine")
+        self.commit_engine()
+        done = self.dispatch("--list")
+        self.assertNotIn("not a worktree", done.stdout + done.stderr)
+        self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+
+    def test_a_real_worktree_is_still_refused(self):
+        """The check still does its job: the point was never to stop checking."""
+        self.out = os.path.join(self.tmp, "engine")
+        self.commit_engine()
+        tree = os.path.join(self.tmp, "a-worktree")
+        git(self.out, "worktree", "add", "-q", "-b", "elsewhere", tree)
+        done = subprocess.run(["bash", os.path.join(tree, "tools", "dispatch-agent.sh"), "--list"],
+                              cwd=tree, capture_output=True, text=True, env=self.environment())
+        self.assertEqual(done.returncode, 1, done.stdout + done.stderr)
+        self.assertIn("not a worktree", done.stderr)
