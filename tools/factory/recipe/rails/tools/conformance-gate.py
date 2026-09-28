@@ -32,6 +32,11 @@ rather than catches. A chain that could be walked until one link agrees would pr
 outcome it exists to prevent, at more expense. So the chain advances only when a provider was
 unavailable, and a fail anywhere in it stands until the code, the map or an owner's ruling changes.
 
+A changed path arrives from GitHub relative to the **repository**, and the semantic surface is
+written in the engine's own paths. For an engine embedded under a repository root (rules-factory
+decision 0069) those are not the same string, and the engine's record says what the difference is
+(`repository.enginePath`).
+
 Standard library only, plus `gh` (or `$RULES_ENGINE_GH`).
 """
 import argparse
@@ -56,6 +61,42 @@ def gh(*args):
     if done.returncode != 0:
         raise Undecidable(f"{' '.join(command)} failed: {done.stderr.strip() or done.stdout.strip()}")
     return done.stdout
+
+
+def engine_path():
+    """This engine's path under its repository root, or "" when the engine **is** that root.
+
+    Read from `provenance.json` (`repository.enginePath`, provenanceFormat 9, rules-factory decision
+    0069) and "" for a record that cannot be read or predates it -- which is what every engine that
+    is its own repository root has always been. GitHub reports a changed path relative to the
+    repository, and for an engine embedded under one that is not the path the semantic surface is
+    written in: `engine/src/Rules/X.cs` matches none of `src/**`, so **nothing would ever be
+    semantic** and this gate would require no verdict of exactly the work it exists to hold.
+    """
+    try:
+        record = json.loads((ROOT / "provenance.json").read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return ""
+    section = record.get("repository") if isinstance(record, dict) else None
+    return str((section or {}).get("enginePath") or "") if isinstance(section, dict) else ""
+
+
+def engine_relative(path, prefix):
+    """`path`, as GitHub reports it, in the engine's own terms -- or None when it is not the engine's.
+
+    None is a file of the repository the engine is embedded in: its README, its own workflows. Those
+    are not on this engine's semantic surface, and a verdict about this engine cannot be about them.
+    """
+    if not prefix:
+        return path
+    return path[len(prefix) + 1:] if path.startswith(prefix + "/") else None
+
+
+def semantic_surface(changed, patterns, prefix):
+    """The changed paths on the semantic surface, in the engine's own terms, sorted."""
+    return sorted({inside for path in changed
+                   for inside in [engine_relative(path, prefix)]
+                   if inside is not None and is_semantic(inside, patterns)})
 
 
 def is_semantic(path, patterns):
@@ -104,7 +145,7 @@ def main(argv=None):
             raise Undecidable(f"GitHub listed {len(changed)} of PR #{args.pr}'s {count} changed files, so the file "
                               f"list is truncated. The semantic surface cannot be decided from a partial list, and "
                               f"a gate that decides on half the files is the failure this check exists to prevent")
-        touched = sorted(path for path in changed if is_semantic(path, review.get("semanticPaths") or []))
+        touched = semantic_surface(changed, review.get("semanticPaths") or [], engine_path())
 
         issues = pull.get("closingIssuesReferences") or []
         if len(issues) != 1:
