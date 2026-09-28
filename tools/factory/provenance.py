@@ -151,7 +151,7 @@ import pins
 import semantics
 
 FILE_NAME = "provenance.json"
-FORMAT = 8  # 2: buildInputs (#69); 3: managed and engineOwned (#72); 4: the overlay is a directory (#247);
+FORMAT = 9  # 2: buildInputs (#69); 3: managed and engineOwned (#72); 4: the overlay is a directory (#247);
 #            5: `corpora`, every corpus the map cites, replaces the single `corpus` (#300, 0039);
 #            6: `verification`, whether the produce that wrote this built and tested the engine (#222);
 #            7: `maps`, every map package the engine is composed of, replaces the single `map`
@@ -161,6 +161,13 @@ FORMAT = 8  # 2: buildInputs (#69); 3: managed and engineOwned (#72); 4: the ove
 #            8: `distribution`, the strictest requirement of the corpora this engine is made from
 #               (#497, 0068). Recorded rather than derived at read time, because a reader asking
 #               "may this repository be public?" must not have to re-open the map packages
+#            9: `repository`, where this engine sits in its repository and what the repository
+#               root holds for it (#501, 0069). `enginePath` is null for an engine that is its own
+#               repository root -- what every engine before this was -- and the path under the root
+#               for one embedded beneath it, whose four workflows are written **there**, because
+#               GitHub runs a workflow only from the root. Recorded rather than inferred from the
+#               engine's own directory: a reader with the record and not the checkout, and every
+#               emitted script that has to find those bytes, asks this field
 FACTORY_DIR = os.path.dirname(os.path.abspath(__file__))
 TAG = re.compile(r"^factory/v(\d+)\.(\d+)\.(\d+)$")
 SHORT_SHA = 12
@@ -567,7 +574,8 @@ def verification(verified):
     return {"verified": False, "ran": [], "why": NOT_VERIFIED_WHY}
 
 
-def build(state, result, model, recorder, factory_dir=FACTORY_DIR, verified=False):
+def build(state, result, model, recorder, factory_dir=FACTORY_DIR, verified=False,
+          repository=None):
     root = recorder.root
     generated_files = []
     for relative in sorted(recorder.paths, key=lambda p: p.encode("utf-8")):
@@ -599,6 +607,10 @@ def build(state, result, model, recorder, factory_dir=FACTORY_DIR, verified=Fals
         "provenanceFormat": FORMAT,
         "verification": verification(verified),
         "engine": {"name": model.name},
+        # Where the engine is, and what its repository root holds for it (0069). Always present,
+        # so a reader can tell a standalone engine ("enginePath": null, and the four workflows are
+        # the engine's own files) from a record written by a factory that could not say.
+        "repository": repository if repository is not None else {"enginePath": None, "automation": []},
         # Where this engine may go: the strictest requirement of the corpora it is made from
         # (0068). `private` restricts distribution and says nothing about verification -- the
         # record beside it establishes exactly what a public engine's does.
@@ -715,8 +727,10 @@ def diff(recorded, actual, field=""):
 def recompute(engine_dir, produce_into, package=None):
     """Every way `engine_dir/provenance.json` is not what re-producing gives; [] when it is.
 
-    `produce_into(package, corpus, name, out)` runs the whole of `produce` with --allow-dirty and
-    returns the provenance document it wrote (raising intake.Refused or GenerationError).
+    `produce_into(package, corpus, name, out, repo_root)` runs the whole of `produce` with
+    --allow-dirty and returns the provenance document it wrote (raising intake.Refused or
+    GenerationError). `repo_root` is the repository root the copy is produced under, which for an
+    embedded engine is the directory the copy was laid out beneath (0069).
     """
     path = os.path.join(engine_dir, FILE_NAME)
     try:
@@ -808,12 +822,21 @@ def recompute(engine_dir, produce_into, package=None):
                              f"{len(given)} were supplied; a composition is re-produced from every "
                              f"package it was composed of, or from none of them"]
     spec = given or [f"{m.get('packageId')}@{m.get('version')}" for m in recorded_maps]
+    # The record says where the engine sits in its repository (0069) and the scratch copy is laid
+    # out that way: an engine embedded at `engine/` is re-produced at `<scratch>/engine` with
+    # `<scratch>` as its repository root, so the `repository` section -- the workflows that root
+    # holds, rendered for that path -- is recomputed from the topology the engine was produced
+    # with and not from wherever a copy of it happens to sit. A standalone engine copies to
+    # `<scratch>/engine`, which is its own root, exactly as it always did.
+    section = recorded.get("repository")
+    embedded = str((section or {}).get("enginePath") or "") if isinstance(section, dict) else ""
     with tempfile.TemporaryDirectory(prefix="factory-recompute-") as scratch:
-        copy = os.path.join(scratch, "engine")
+        copy = os.path.join(scratch, *(embedded.split("/") if embedded else ["engine"]))
+        os.makedirs(os.path.dirname(copy), exist_ok=True)
         shutil.copytree(engine_dir, copy, ignore=COPY_IGNORE)
         try:
             actual = produce_into(spec, [os.path.join(copy, *f.split("/")) for f in corpus_files],
-                                  name, copy)
+                                  name, copy, scratch if embedded else copy)
         except (intake_step.Refused, intake_step.Usage, semantics.GenerationError) as error:
             return mismatches + [f"produce refused to re-produce the engine, so nothing else was compared: {error}"]
     if isinstance(recorded_inputs, list) and isinstance(actual.get("buildInputs"), list):

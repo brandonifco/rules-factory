@@ -190,6 +190,44 @@ def policy():
         return json.load(handle)
 
 
+def engine_path():
+    """This engine's path under its repository root, or "" when the engine **is** that root (0069).
+
+    Read from `provenance.json`, which is the one place it is recorded, and "" for a record that
+    cannot be read or was written before format 9 -- which is what every engine that is its own
+    repository root has always been, so the default changes nothing for one. GitHub reports a
+    changed path relative to the repository, and for an engine embedded under one that is not the
+    path the engine's own ownership table, semantic surface or documentation section speak in.
+    """
+    try:
+        with open(ROOT / PROVENANCE, encoding="utf-8") as handle:
+            record = json.load(handle)
+    except (OSError, ValueError):
+        return ""
+    section = record.get("repository")
+    return str((section or {}).get("enginePath") or "") if isinstance(section, dict) else ""
+
+
+def engine_relative(path, prefix=None):
+    """`path`, as GitHub reports it, in the engine's own terms -- or None when it is not the engine's.
+
+    None is the repository's own file: its README, a workflow it keeps for itself, the rails the
+    factory writes at its root. Those are judged where they are judged and are not engine paths.
+    """
+    prefix = engine_path() if prefix is None else prefix
+    if not prefix:
+        return path
+    return path[len(prefix) + 1:] if path.startswith(prefix + "/") else None
+
+
+def retired_here(ownership, path, name):
+    """`ownership.retired` for a path GitHub reported, or None when the path is not the engine's."""
+    inside = engine_relative(path)
+    if inside is None or getattr(ownership, "retired", None) is None:
+        return None
+    return ownership.retired(inside, name)
+
+
 def is_semantic(path, patterns):
     """Whether `path` is on the semantic surface. `**` spans directories; `*` does not."""
     for pattern in patterns:
@@ -365,20 +403,26 @@ def implemented_entries(changed, base_oid, findings):
     A removed overlay implements nothing; produce-mode migrations are exempt before this is called.
     """
     implemented = set()
+    prefix = engine_path()
     for path, change in changed.items():
-        match = OVERLAY_FILE.match(path)
+        # `path` is what GitHub reported and is what the API is asked for; `inside` is the engine's
+        # own path, which is what an overlay file is recognised by (0069).
+        inside = engine_relative(path, prefix)
+        if inside is None:
+            continue
+        match = OVERLAY_FILE.match(inside)
         if match:
             if change == "REMOVED":
                 continue
             before = base_object(path, change, base_oid, findings)
-            after = head_object(path, findings)
+            after = head_object(inside, findings)
             if before is None or after is None:
                 continue
             if after.get("status") == "implemented" and before.get("status") != "implemented":
                 implemented.add(match["entry"])
-        elif path == RETIRED_OVERLAY and change != "REMOVED":
+        elif inside == RETIRED_OVERLAY and change != "REMOVED":
             before = base_object(path, change, base_oid, findings)
-            after = head_object(path, findings)
+            after = head_object(inside, findings)
             if before is None or after is None:
                 continue
             for entry_id, item in after.items():
@@ -466,11 +510,16 @@ def the_factorys_to_delete(path, base_oid, base, ownership, name):
     `ROOT` is the head tree the workflow checked out, which is what a witness reads: for the
     overlay's, whether `overlay/` **in this pull request** carries every key the deleted file held.
     """
+    inside = engine_relative(path)
+    if inside is None:
+        return False
+    # The bytes are fetched by the path GitHub knows, and judged by the path the engine's own table
+    # is written in: for an embedded engine those are not the same string (0069).
     data = base_bytes(base_oid, path)
     if data is None:
         return False
     try:
-        return ownership.authorised(str(ROOT), path, data, name, base)
+        return ownership.authorised(str(ROOT), inside, data, name, base)
     except (ownership.OwnershipError, AttributeError):
         return False
 
@@ -496,9 +545,16 @@ def factory_written(path, change, ownership, name, attributed):
     Everything else an engine owns -- its overlay files, its projects, its rails configuration, its
     hand-written code -- is a decision the factory did not make, and is what voids a claim.
     """
-    if getattr(ownership, "retired", None) is not None and ownership.retired(path, name) is not None:
+    inside = engine_relative(path)
+    if inside is None:
+        # Outside the engine: for an engine embedded under a repository root, the rails the factory
+        # writes at that root are its work on every run, like any generated file, and the
+        # repository's own files are not (0069).
+        row = getattr(ownership, "classify_repository", lambda _p: None)(path)
+        return row is not None and row.cls == ownership.GENERATED
+    if retired_here(ownership, path, name) is not None:
         return change == "REMOVED" and attributed(path)
-    row = ownership.classify(path, name)
+    row = ownership.classify(inside, name)
     if row is None:
         return False
     if row.cls in (ownership.GENERATED, ownership.MANAGED):
@@ -553,8 +609,7 @@ def check_produce(body, filled, changed, findings, base_oid=None):
     # Only fetched when the diff holds a retired path, so an ordinary produce update makes no
     # extra call and a failure to fetch is a refusal only where it decides something.
     base, attributed = None, lambda _path: False
-    if any(getattr(ownership, "retired", None) is not None and ownership.retired(path, name) is not None
-           for path in changed):
+    if any(retired_here(ownership, path, name) is not None for path in changed):
         base = base_record(base_oid) if base_oid else None
         if base is None:
             problems.append(f"it changes a file under a retired pattern, and the base commit's {PROVENANCE} "
@@ -683,7 +738,10 @@ def check_documentation(filled, changed, findings, truncated=False, produce=Fals
                         f"check cannot examine is not admitted.")
         return None
     living = living_documents(ownership, name, ownership.adopted(str(ROOT)))
-    changed_documents = sorted(path for path in changed if path.endswith(".md"))
+    prefix = engine_path()
+    changed_documents = sorted(inside for path in changed
+                               for inside in [engine_relative(path, prefix)]
+                               if inside is not None and inside.endswith(".md"))
 
     listed = {}
     for line in section.splitlines():
@@ -872,8 +930,12 @@ def main(argv=None):
         # otherwise. An absent changeType reads as "" and is therefore never a deletion.
         changed = {f["path"]: f.get("changeType") or "" for f in pull.get("files") or []}
         truncated = truncation(pull, changed, findings)
-        semantic_files = {path for path in changed
-                          if is_semantic(path, (settings.get("review") or {}).get("semanticPaths") or [])}
+        # In the engine's own terms: the semantic surface is `src/**`, and GitHub reports
+        # `engine/src/**` for an engine embedded under a repository root (0069).
+        prefix = engine_path()
+        semantic_files = {inside for path in changed
+                          for inside in [engine_relative(path, prefix)] if inside is not None
+                          and is_semantic(inside, (settings.get("review") or {}).get("semanticPaths") or [])}
 
         linked = check_closes(body, findings)
         filled = check_sections(body, findings)

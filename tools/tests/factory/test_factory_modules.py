@@ -60,7 +60,7 @@ LAYERS = {
                  "pins", "registry", "rulings", "scaffold", "semantics"},
     # The rest of the factory.
     "__main__": {"backlog", "compose", "gate", "generate", "intake", "ownership", "provenance",
-                 "rails", "transaction", "verify"},
+                 "rails", "repository", "transaction", "verify"},
     # `compose`: a backlog is the whole engine's work, so an engine composed of several map
     # packages is rendered from all of them, composed the way the factory composed them (#460).
     "backlog": {"agentrails", "compose", "intake", "overlay", "semantics"},
@@ -76,6 +76,13 @@ LAYERS = {
     "ownership": {"overlay"},
     "provenance": {"agentrails", "intake", "overlay", "ownership", "pins", "semantics"},
     "rails": {"agentrails", "ownership"},
+    # Where a produced engine sits in its repository, and the rails a repository root holds for an
+    # embedded one (0069). It reads the two modules that hold those recipes -- so the root's copy and
+    # a standalone engine's are one sequence of bytes -- and raises `intake.Refused`, because a
+    # topology that cannot be acted on is a refusal like any other, and `transaction`, because what
+    # it writes at a repository root is written the way everything else produce writes is: staged,
+    # journaled, and rolled back rather than half applied.
+    "repository": {"agentrails", "gate", "intake", "transaction"},
     "rulings": set(),
     "transaction": {"intake"},
     "verify": {"intake"},

@@ -285,7 +285,7 @@ class TwoCorpusMap(unittest.TestCase):
         # 8 since #497: `distribution`, the strictest requirement of the corpora the engine is
         # made from (0068), on top of 7's `maps`. Pinned as a literal on purpose -- a format bump
         # is a deliberate edit.
-        self.assertEqual(record["provenanceFormat"], 8)
+        self.assertEqual(record["provenanceFormat"], 9)
         self.assertEqual(record["distribution"], "public")
         self.assertNotIn("corpus", record)
         self.assertEqual([c["sourceId"] for c in record["corpora"]], ["cfr-9-9.101", "cfr-9-9.102"])
