@@ -707,3 +707,55 @@ class TestAPacketIsCutFromTheEngineInsideTheReviewedTree(RepositoryCase):
         self.assertIn('ENGINE_PATH="$(python3 -c', script)
         self.assertIn('cd %s%s\\n\\n\' "$path" "${ENGINE_PATH:+/$ENGINE_PATH}"', script,
                       "the worktree is the repository's; the commands it prints next are the engine's")
+
+
+class TestThePacketJudgesTheSurfaceInTheEnginesTerms(RepositoryCase):
+    """A semantic reviewer is told what changed on the engine's surface, not on the repository's (#515).
+
+    `semanticPaths` are engine-relative and GitHub reports a changed path relative to the repository.
+    Matching the wrong one told the reviewer of an engine's **first** rules implementation that none of
+    it was its business, and withheld the entry packets the charter has it read first, because the
+    surface looked empty.
+    """
+
+    def script(self, engine, name):
+        spec = importlib.util.spec_from_file_location(f"emitted_{name}_{id(engine)}",
+                                                     os.path.join(engine, "tools", f"{name}.py"))
+        module = importlib.util.module_from_spec(spec)
+        writes, sys.dont_write_bytecode = sys.dont_write_bytecode, True
+        try:
+            spec.loader.exec_module(module)
+        finally:
+            sys.dont_write_bytecode = writes
+        return module
+
+    def test_a_changed_source_under_the_engine_is_on_the_surface(self):
+        host = init(os.path.join(self.tmp, "host"))
+        engine = os.path.join(host, "engine")
+        self.produce(engine, "--repo-root", host)
+        packet = self.script(engine, "review-packet")
+        patterns = ["src/**", "tests/**", "overlay/**"]
+        changed = [f"engine/src/{NAME}/Setup/FieldBoard.cs", "engine/overlay/field-placement-and-cap.json",
+                   "engine/README.md", "tools/build-map.py", "README.md"]
+        on_surface = packet.semantic_surface(changed, patterns, "engine")
+        self.assertEqual([f"engine/src/{NAME}/Setup/FieldBoard.cs", "engine/overlay/field-placement-and-cap.json"],
+                         on_surface,
+                         "the engine's sources and overlay are its surface; the host repository's files are not")
+
+    def test_a_standalone_engine_s_surface_is_unchanged(self):
+        engine = os.path.join(self.tmp, "engine")
+        self.produce(engine)
+        packet = self.script(engine, "review-packet")
+        self.assertEqual("", packet.engine_path())
+        self.assertEqual(f"src/{NAME}/X.cs", packet.engine_relative(f"src/{NAME}/X.cs", ""))
+        self.assertTrue(packet.is_semantic(f"src/{NAME}/X.cs", ["src/**"]))
+
+    def test_a_path_outside_the_engine_is_not_its_surface(self):
+        host = init(os.path.join(self.tmp, "host"))
+        engine = os.path.join(host, "engine")
+        self.produce(engine, "--repo-root", host)
+        packet = self.script(engine, "review-packet")
+        self.assertIsNone(packet.engine_relative("tools/build-map.py", "engine"))
+        self.assertIsNone(packet.engine_relative("engineering/src/X.cs", "engine"),
+                          "a sibling directory whose name starts with the engine's is not inside it")
+        self.assertEqual("src/X.cs", packet.engine_relative("engine/src/X.cs", "engine"))

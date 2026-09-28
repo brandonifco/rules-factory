@@ -475,7 +475,13 @@ def build(number, base, package_maps=(), recordable=True, role=ALL):
                           f"on a partial list it would drop a change and say nothing was dropped. Review this pull "
                           f"request in pieces it can list, or read the whole diff directly: "
                           f"`git diff {base_sha}...{head}`.")
-        semantic = [path for path in changed if is_semantic(path, review.get("semanticPaths") or [])]
+        # In the engine's own terms. `semanticPaths` are engine-relative (`src/**`, `overlay/**`), and
+        # GitHub reports a changed path relative to the **repository** -- for an engine embedded under
+        # a repository root (rules-factory decision 0069) those are not the same string, and matching
+        # the wrong one told a semantic reviewer that twenty new handlers and their tests were not its
+        # business, with the entry packets withheld because the surface looked empty (#515). A path
+        # outside the engine is not this engine's surface and is listed among what was withheld.
+        semantic = semantic_surface(changed, review.get("semanticPaths") or [], engine_path())
 
         try:
             provenance_bytes = (snapshot / PROVENANCE).read_bytes()
@@ -776,6 +782,33 @@ def build(number, base, package_maps=(), recordable=True, role=ALL):
         return "\n".join(parts), head, base_sha, packets, context
     finally:
         remove_reviewed_snapshot(parent, snapshot)
+
+
+def engine_relative(path, prefix):
+    """`path`, as GitHub reports it, in the engine's own terms -- or None when it is not the engine's.
+
+    None is a file of the repository the engine is embedded in: its README, its own workflows, the
+    corpus and tooling a host product keeps beside the engine. Those are not on this engine's semantic
+    surface, and a verdict about this engine is not about them (0069, #515).
+    """
+    if not prefix:
+        return path
+    return path[len(prefix) + 1:] if path.startswith(prefix + "/") else None
+
+
+def semantic_surface(changed, patterns, prefix):
+    """The changed paths on the engine's semantic surface, in the order they were given.
+
+    One function rather than a comprehension at the call site, so a test can reach it: the defect this
+    closes (#515) was invisible because nothing but `main` computed the surface, and `main` needs a
+    pull request to run.
+    """
+    found = []
+    for path in changed:
+        relative = engine_relative(path, prefix)
+        if relative is not None and is_semantic(relative, patterns):
+            found.append(path)
+    return found
 
 
 def is_semantic(path, patterns):

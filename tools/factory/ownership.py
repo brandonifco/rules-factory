@@ -140,7 +140,7 @@ TABLE = (
     Row("tools/re-produce.sh", MANAGED, 6,
         "an overlay edit is finished by a re-produce, from the factory commit the record names (#192); "
         "a record a merge left conflicted is named as one, and --resolve-record settles it (#252)"),
-    Row("tools/review-packet.py", MANAGED, 13,
+    Row("tools/review-packet.py", MANAGED, 14,
         "everything a reviewer needs about one pull request, in the order it is read (0029); every map is "
         "read once and the entry packets are built from those bytes, and a refused packet writes nothing "
         "(#371, #372); a composed engine's maps are each checked against their own recorded digest and the "
@@ -413,6 +413,7 @@ RECIPE_SHA256 = {
         11: "b074030233fd2e749ed3cbd41beb84d19914ee9bfafa64e9fdde0749cd4d4f69",
         12: "da610117bf1b24962640ba20d93f61f554db20f370984634446e45463fe95873",
         13: "9f9ee16c5bd75d0e3ec95863274187ec2591adfa7992950c7cceade3501ace63",
+        14: "1c9adb51ce31986d763ce3c48a445bae95ceca0a95b7372767f02221a2840fa9",
     },
     "tools/repair-packet.py": {
         1: "7ec00d9a68ff35fa0af4ab65714411ac6b39cfce34baf448359d9be5e393c2f5",
