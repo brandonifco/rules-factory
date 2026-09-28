@@ -118,6 +118,20 @@ A branch closes **exactly one** issue, and its pull request says so with one `Cl
 Stage explicit paths; `git add -A` and `git add .` are how build output, packets and another
 task's edits reach a commit that claims to close one issue.
 
+**Where the rails are, when this engine is not the whole repository.** GitHub runs a workflow only
+from `.github/workflows/` at the root of a repository, and shows a pull request template only from
+the root. So an engine produced into a subdirectory of a larger repository carries neither: its
+`validate`, `pr-policy`, `conformance-gate` and `verdict-requeue` workflows and its pull request
+template are at the **repository root**, written there by `factory produce`, rendered so every step
+runs in this directory, and rewritten on every produce. `provenance.json` records where this engine
+sits (`repository.enginePath`) and hashes what the root holds, `scripts/engine-gate.py repository`
+holds the two to each other, and `tools/agent-doctor.py` reports the gate workflow where GitHub
+reads it. Every path this document names below is relative to this engine, wherever the workflow
+that runs it lives; an engine that **is** its repository root carries all five files itself, and
+nothing about this section applies to it. What is never right is a workflow file under an embedded
+engine: GitHub would not run it, and a rail that cannot run is worse than a missing one because it
+reads as present (rules-factory decision 0069).
+
 The pull request is filled in from `.github/pull_request_template.md`, and `tools/pr-policy.py`
 checks it mechanically as a required check: one linked issue, every section filled, a command and
 its output rather than a claim, an entry and a locator for semantic work, a line for every living

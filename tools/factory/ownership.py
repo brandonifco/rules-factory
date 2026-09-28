@@ -90,7 +90,7 @@ TABLE = (
     Row("scripts/engine-gate.py", GENERATED, None, "the gate recipe: its non-dotnet checks"),
     Row("scripts/factory/*.py", GENERATED, None, "the factory's generator, vendored so the gate can regenerate"),
     Row(".github/workflows/validate.yml", GENERATED, None, "the gate recipe: CI runs validate.sh full"),
-    Row("AGENTS.md", MANAGED, 23,
+    Row("AGENTS.md", MANAGED, 24,
         "the governing contract every agent works this engine under (decision 0029); section 4 carries "
         "the sweep, the documentation section, and delete-only-what-you-created (#236); a packet that "
         "names an entry is made with the map the reviewed commit declares, one per package for a "
@@ -99,7 +99,9 @@ TABLE = (
         "(#195); section 9 names the two emitted things that do name a vendor, as the defaults they "
         "are (#174); section 4 ends an implementation attempt at the review boundary, and names the "
         "brief the next one reads (#465); section 3 says the orchestrator holds the scheduling decision and the repository holds the state, and names the command that reads it (#466); section 7 says a reviewer is given what its role judges, "
-        "and that the role is part of the packet identity (#467)"),
+        "and that the role is part of the packet identity (#467); section 3 says where the rails are when the "
+        "engine is embedded under a repository root, because GitHub runs a workflow only from the root (#501, "
+        "0069)"),
     Row("CLAUDE.md", MANAGED, 1,
         "a pointer to AGENTS.md and the Claude adapters; it states no rule of its own (0029)"),
     Row("docs/agent-team.md", MANAGED, 9,
@@ -347,6 +349,7 @@ RECIPE_SHA256 = {
         21: "45a258a0b0ae9fc05390b4d41075d1c1419f8612006340505a7e4bc65ca95abd",
         22: "4a146a7566423fd5e2e57c6cf24426534878f70c02a852a539035b5d3aa4ee9e",
         23: "242b166fe723abccd63942c6eadad4575d407a922915cdf12397f2eed333eb52",
+        24: "02468d2b206814e1fac4e7ebeaa48ec480011e68ae1355bfbe1d114aaa31be28",
     },
     "CLAUDE.md": {
         1: "04c07ad36e742fa60efafeca54d20bd96d16b6e338a44e46fad2b679ab8dfd9f",
