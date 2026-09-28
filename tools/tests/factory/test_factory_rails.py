@@ -5841,6 +5841,129 @@ class TestTheMutationRunner(RailsInAGitEngine):
         self.assertIn("names no `test`", done.stdout + done.stderr)
 
 
+class TestReProducingAnEmbeddedEngine(AFactoryToReProduceFrom, RailsInAGitEngine):
+    """#517: an embedded engine re-produces with no arguments of its own.
+
+    `re-produce.sh` exists so that nobody has to reconstruct a produce by hand. Since 0069 there is
+    a fifth thing produce must be told -- where the repository root is -- and before this the script
+    read the other four out of the record and not that one, so every embedded engine was refused on
+    its own re-produce, which is the command an overlay edit is finished with.
+
+    The value is in the record already: `repository.enginePath`. Getting it wrong by hand produces a
+    working engine whose rails are dark, which is what 0069 was written about, so it is not a value
+    to leave to an operator.
+    """
+
+    def setUp(self):
+        super().setUp()
+        self.repo = os.path.join(self.tmp, "repo")
+        self.out = os.path.join(self.repo, "engine")
+
+    def embedded(self):
+        """A produced engine at `<repo>/engine`, whose record says so, committed to git.
+
+        In the order the script cares about: produce, point the record at the stand-in factory's
+        recorded commit, and only then commit -- the script compares the working tree's
+        `factory.commit` with the committed one and refuses a difference.
+        """
+        self.produced("--repo-root", self.repo)
+        with open(os.path.join(self.out, "provenance.json"), encoding="utf-8") as handle:
+            self.assertEqual("engine", (json.load(handle).get("repository") or {}).get("enginePath"),
+                             "the fixture is not an embedded engine")
+        repo, commits = self.factory_repo()
+        self.record_commit(commits["recorded"])
+        git(self.repo, "init", "-q", "-b", "main")
+        git(self.repo, "config", "user.email", "t@example.invalid")
+        git(self.repo, "config", "user.name", "t")
+        git(self.repo, "add", ".")
+        git(self.repo, "commit", "-qm", "the produced engine")
+        return repo
+
+    def test_it_passes_the_repository_root_the_record_names(self):
+        repo = self.embedded()
+        done = self.re_produce(repo=repo)
+        self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+        with open(os.path.join(self.out, "re-produced-by.json"), encoding="utf-8") as handle:
+            argv = json.load(handle)["argv"]
+        self.assertIn("--repo-root", argv, f"the produce it ran says nothing about the root: {argv}")
+        self.assertEqual(self.repo, argv[argv.index("--repo-root") + 1])
+        self.assertEqual(self.out, argv[argv.index("--out") + 1],
+                         "--out is still the engine; only --repo-root is the repository")
+
+    def test_it_says_where_the_engine_sits(self):
+        repo = self.embedded()
+        done = self.re_produce("--dry-run", repo=repo)
+        self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+        self.assertIn(f"the engine is embedded at engine/", done.stdout)
+        self.assertIn(f"--repo-root {self.repo}", done.stdout)
+
+    def test_an_explicit_root_wins_so_a_moved_engine_can_be_produced(self):
+        repo = self.embedded()
+        done = self.re_produce("--repo-root", self.repo, repo=repo)
+        self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+        with open(os.path.join(self.out, "re-produced-by.json"), encoding="utf-8") as handle:
+            argv = json.load(handle)["argv"]
+        self.assertEqual(1, argv.count("--repo-root"),
+                         f"the recorded root was passed as well as the explicit one: {argv}")
+
+    def test_a_record_whose_engine_path_does_not_compose_back_is_refused(self):
+        """A moved engine is a deliberate act, not something to re-root silently.
+
+        The refusal is the point: re-producing at a root nobody checked writes four workflows and a
+        pull request template somewhere, and the only sign is that nothing ever runs them.
+        """
+        repo = self.embedded()
+        path = os.path.join(self.out, "provenance.json")
+        with open(path, encoding="utf-8") as handle:
+            record = json.load(handle)
+        record["repository"]["enginePath"] = "somewhere/else"
+        with open(path, "w", encoding="utf-8") as handle:
+            handle.write(json.dumps(record, indent=2, ensure_ascii=False) + "\n")
+        done = self.re_produce(repo=repo)
+        self.assertEqual(done.returncode, 1, done.stdout + done.stderr)
+        self.assertIn("does not compose back", done.stderr)
+        self.assertFalse(os.path.exists(os.path.join(self.out, "re-produced-by.json")))
+
+
+class TestReProducingAStandaloneEngineIsUnchanged(AFactoryToReProduceFrom, RailsInAGitEngine):
+    """#517's other half: the engine that is its own repository root still re-produces as it did.
+
+    It is told so explicitly rather than by omission, because produce refuses to guess -- and an
+    engine whose record predates provenanceFormat 9 carries no `repository` object at all, which is
+    the same case and has to reach the same answer.
+    """
+
+    def test_a_standalone_engine_is_produced_at_its_own_root(self):
+        self.produced()
+        repo, commits = self.factory_repo()
+        self.record_commit(commits["recorded"])
+        self.commit_engine_as_is()
+        done = self.re_produce(repo=repo)
+        self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+        with open(os.path.join(self.out, "re-produced-by.json"), encoding="utf-8") as handle:
+            argv = json.load(handle)["argv"]
+        self.assertEqual(self.out, argv[argv.index("--repo-root") + 1])
+        self.assertEqual(self.out, argv[argv.index("--out") + 1])
+        self.assertNotIn("is embedded at", done.stdout)
+
+    def test_a_record_written_before_format_9_reaches_the_same_answer(self):
+        self.produced()
+        repo, commits = self.factory_repo()
+        self.record_commit(commits["recorded"])
+        self.commit_engine_as_is()
+        path = os.path.join(self.out, "provenance.json")
+        with open(path, encoding="utf-8") as handle:
+            record = json.load(handle)
+        record.pop("repository", None)
+        with open(path, "w", encoding="utf-8") as handle:
+            handle.write(json.dumps(record, indent=2, ensure_ascii=False) + "\n")
+        done = self.re_produce(repo=repo)
+        self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+        with open(os.path.join(self.out, "re-produced-by.json"), encoding="utf-8") as handle:
+            argv = json.load(handle)["argv"]
+        self.assertEqual(self.out, argv[argv.index("--repo-root") + 1])
+
+
 class TestDispatchRecognisesThePrimaryCheckout(RailsInAGitEngine):
     """#518: the primary checkout is where the repository is, not where the caller stands.
 
