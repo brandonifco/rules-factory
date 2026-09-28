@@ -90,7 +90,7 @@ NOTE = """# Rendered by rules-factory for the engine at `{path}/` (decision 0069
 # Factory-managed and generated: rewritten by every `factory produce`, and a hand edit here is
 # overwritten and fails `{path}/scripts/engine-gate.py repository`. Change the recipe in the
 # factory, not this file. A workflow this repository owns itself is any other file in this
-# directory; the factory writes these four and touches nothing else.
+# directory; the factory writes {count} paths under `.github/` and touches nothing else.
 """
 
 #: The step the gate workflow gains at a repository root: the bytes in this directory are the ones
@@ -285,7 +285,7 @@ def render(text, engine_path, where=""):
             raise RepositoryError(f"{where} does not check out the repository exactly once; the step that holds "
                                  f"this directory to the engine's record is inserted after the checkout")
         body = body.replace(AFTER_CHECKOUT, AFTER_CHECKOUT + "\n" + RECORD_STEP.rstrip("\n") + "\n", 1)
-    return f"{head}\n\n{NOTE.format(path=engine_path)}#\n{body}"
+    return f"{head}\n\n{NOTE.format(path=engine_path, count=len(FILES))}#\n{body}"
 
 
 def files(name, topology):
