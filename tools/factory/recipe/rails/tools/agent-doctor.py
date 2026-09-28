@@ -335,12 +335,24 @@ def local_rows(generate, error):
         problems.append(f"the rail files were not examined: {error}")
     else:
         ownership = generate.ownership
-        states = ownership.managed_states(str(ROOT), generate.RAILS)
+        # A rail at the repository root is judged where it is (rules-factory 0069, #509). This engine
+        # does not carry the workflows and the template GitHub reads only from a repository root when
+        # it is embedded under one -- they are there, rendered for this engine's path, so no version
+        # of the recipe wrote those bytes and looking for them here reported four rails absent that
+        # were exactly where they belong. They are judged against the record instead, which is what
+        # `scripts/engine-gate.py repository` holds them to.
+        at_root = {path: state for path, state in
+                   (getattr(ownership, "repository_states", lambda _o: {})(str(ROOT))).items()
+                   if path in generate.RAILS}
+        here = [path for path in generate.RAILS if path not in at_root]
+        states = {**ownership.managed_states(str(ROOT), here), **at_root}
         wrong = [(path, kind) for path, (kind, _) in sorted(states.items())
                  if kind not in (ownership.CURRENT, ownership.ADOPTED)]
         adopted = [path for path, (kind, _) in sorted(states.items()) if kind == ownership.ADOPTED]
         if not wrong:
             rows.append(row("Rail files", OK, "byte for byte as the recipe writes them"
+                                              + (f", {len(at_root)} of them at the repository root, where "
+                                                 f"GitHub reads them" if at_root else "")
                                               + (f"; adopted by this engine: {', '.join(adopted)}" if adopted else "")))
         else:
             absent_only = all(kind == ownership.ABSENT for _, kind in wrong)
@@ -353,7 +365,8 @@ def local_rows(generate, error):
                                                 "settles each")):
             paths = [path for path, found in wrong if found == kind]
             if paths:
-                problems.append(f"{len(paths)} rail(s) in this engine are {kind} ({', '.join(paths[:3])}"
+                where = "at this repository's root" if all(path in at_root for path in paths) else "in this engine"
+                problems.append(f"{len(paths)} rail(s) {where} are {kind} ({', '.join(paths[:3])}"
                                 f"{', ...' if len(paths) > 3 else ''}); {advice}")
 
     # A guard nothing invokes is a guard that stops nothing, and reads exactly like one that works.
