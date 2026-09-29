@@ -287,6 +287,32 @@ class TestRefuses(PackCase):
         self.assert_refused(code, output)
         self.assertIn("NOT VERIFIED", output)
 
+    # --- #529: which adapters' locator checkers read several corpora in one run ----------------
+
+    def test_both_page_marked_adapters_read_several_corpora_and_plain_text_still_reads_one(self):
+        """The page-marked checker checks each entry against its own corpus (#529), as the eCFR
+        one does (#298). `plain-text`'s does not, and a map citing two of those stays refused."""
+        for adapter in ("ecfr-xml", "page-marked-text", "pdftotext-page-marked"):
+            self.assertIn(adapter, pack_map.MULTI_CORPUS_ADAPTERS, adapter)
+        self.assertNotIn("plain-text", pack_map.MULTI_CORPUS_ADAPTERS)
+
+    def test_a_plain_text_map_citing_two_corpora_is_still_refused(self):
+        def add_second(manifest):
+            second = json.loads(json.dumps(manifest["corpora"][0]))
+            second["sourceId"] = "hoyle-second"
+            manifest["corpora"].append(second)
+        self.edit("corpus-manifest.json", add_second)
+
+        def cite_it(document):
+            extra = json.loads(json.dumps(document["entries"][0]))
+            extra["id"] = "cites-the-second-corpus"
+            extra["locator"]["sourceId"] = "hoyle-second"
+            document["entries"].append(extra)
+        self.edit("corpus-map.json", cite_it)
+        code, output = self.pack()
+        self.assert_refused(code, output)
+        self.assertIn("NOT VERIFIED", output)
+
     # --- 0068: a private map packs, and never publishes ------------------------------------
     #
     # `distribution` is the only thing rewritten below. The corpus stays Hoyle 1909, public-domain

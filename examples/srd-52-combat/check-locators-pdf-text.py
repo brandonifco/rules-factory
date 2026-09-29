@@ -99,6 +99,7 @@ between a sentence's halves is a sidebar, and not that `renderedReading` is righ
 interleaved table or split sentence passes.
 
 Usage: check-locators-pdf-text.py <corpus-map.json> <srd-5.2.1.txt>
+       check-locators-pdf-text.py <corpus-map.json> <sourceId>=<corpus.txt> ...
 Exit 0 if every entry was located on its cited page and the other checks passed; 1 otherwise; 2 on
 a usage error (including a corpus with no page markers, or markers out of sequence).
 """
@@ -585,25 +586,57 @@ def check_extraction(page_checker, entries, corpus, starts):
                            f"not verified, listed below", readings)
 
 
-def main(argv=None):
-    argv = sys.argv[1:] if argv is None else argv
-    if len(argv) != 2:
-        print(__doc__.split("Usage:")[1].strip(), file=sys.stderr)
-        return 2
-    map_path, corpus_path = argv
+class Usage(Exception):
+    """The run was called wrongly. Exit 2, with the reason."""
+
+
+def named_corpora(args, cited):
+    """`[(sourceId, path)]` for the run, or `[(None, path)]` for the one-bare-path form.
+
+    One bare path serves a map whose entries cite one corpus, exactly as it always has. A map that
+    cites more names every corpus it was given as `<sourceId>=<corpus.txt>`, because nothing in the
+    run says which file is which, and the bare form would check every entry against whichever file
+    it was handed (#529, and #298 for the eCFR checker).
+    """
+    if len(args) == 1 and "=" not in args[0]:
+        if len(cited) > 1:
+            raise Usage(f"the map's entries cite {len(cited)} corpora ({', '.join(cited)}) and this run "
+                        f"was given one file naming no sourceId, so every entry would be checked "
+                        f"against whichever corpus that file is. Name each one: <sourceId>=<corpus.txt>")
+        return [(None, args[0])]
+    named = []
+    for arg in args:
+        source, sep, path = arg.partition("=")
+        if not sep or not source or not path:
+            raise Usage(f"{arg!r} is not <sourceId>=<corpus.txt>. With more than one corpus, every "
+                        f"one names the sourceId its entries cite")
+        if source in [s for s, _ in named]:
+            raise Usage(f"sourceId {source!r} is given twice")
+        named.append((source, path))
+    return named
+
+
+def check_one(map_path, document, corpus_path, principal=True):
+    """The whole locator run for one corpus, over the entries that cite it.
+
+    `principal` is whether the map's page `extent` describes this corpus. It describes the
+    map's own `corpus` and no other, as it did when a map cited one: a second corpus is read
+    for its locators, its quotes and its extraction, and makes no extent claim -- so its
+    absence, coverage and extent checks are reported as not verified rather than passed (#529).
+
+    Returns `(passed, failed, skipped, fatal)`, or None for a corpus that could not be read.
+    """
     try:
-        with open(map_path, encoding="utf-8") as handle:
-            document = json.load(handle)
         with open(corpus_path, encoding="utf-8") as handle:
             corpus = handle.read()
         starts = page_starts(corpus)
     except (OSError, ValueError) as error:
         print(f"cannot check {map_path} against {corpus_path}: {error}", file=sys.stderr)
-        return 2
+        return None
 
     page_checker = load_page_checker()
     entries = [e for e in document.get("entries") or [] if isinstance(e, dict)]
-    declared = page_extent(document)
+    declared = page_extent(document) if principal else None
     boundary, problem = extent_end(declared, corpus, starts)
     opening, opening_problem = extent_start(declared, corpus, starts)
     extent, region = None, None
@@ -630,14 +663,25 @@ def main(argv=None):
         ("bounds", check_locators(page_checker, bounds, corpus, starts, set())
          if bounds else page_checker.skip("no entry carries `ambiguity.bounds`, so no authored "
                                           "example bounds a term in this map", had_subject=False)),
-        ("extent-start", check_extent_start(page_checker, entries, corpus, starts, declared,
-                                            opening, opening_problem, boundary)),
-        ("extent-end", check_extent_end(page_checker, entries, corpus, starts, declared, boundary, problem)),
-        ("extraction", check_extraction(page_checker, entries, corpus, starts)),
-        ("absence", page_checker.check_absence(entries, extent)),
-        ("coverage", page_checker.check_coverage(document, reached, region, quoted)),
-        ("extent-bounds", page_checker.check_extent_bounds(document, placed)),
     ]
+    if principal:
+        results += [
+            ("extent-start", check_extent_start(page_checker, entries, corpus, starts, declared,
+                                                opening, opening_problem, boundary)),
+            ("extent-end", check_extent_end(page_checker, entries, corpus, starts, declared, boundary, problem)),
+            ("extraction", check_extraction(page_checker, entries, corpus, starts)),
+            ("absence", page_checker.check_absence(entries, extent)),
+            ("coverage", page_checker.check_coverage(document, reached, region, quoted)),
+            ("extent-bounds", page_checker.check_extent_bounds(document, placed)),
+        ]
+    else:
+        results += [
+            ("extraction", check_extraction(page_checker, entries, corpus, starts)),
+            ("extent", page_checker.skip(
+                "the map's page extent describes its principal corpus, and this corpus declares "
+                "none of its own, so which of its pages are reached, and how much is quoted, "
+                "is not held by this run", had_subject=False)),
+        ]
     passed = failed = skipped = fatal = 0
     for name, result in results:
         print(f"[{result.status}] {name}: {result.summary}")
@@ -647,6 +691,71 @@ def main(argv=None):
         failed += result.status == "fail"
         skipped += result.status == "skip"
         fatal += result.fatal
+    return passed, failed, skipped, fatal
+
+
+def cited_sources(document):
+    """Every `locator.sourceId` the map's entries name, in the order they first appear."""
+    found = []
+    for entry in document.get("entries") or []:
+        source = (entry.get("locator") or {}).get("sourceId") if isinstance(entry, dict) else None
+        if source and source not in found:
+            found.append(source)
+    return found
+
+
+def main(argv=None):
+    argv = sys.argv[1:] if argv is None else argv
+    if len(argv) < 2:
+        print(__doc__.split("Usage:")[1].strip(), file=sys.stderr)
+        return 2
+    map_path, *corpus_args = argv
+    try:
+        with open(map_path, encoding="utf-8") as handle:
+            document = json.load(handle)
+    except (OSError, ValueError) as error:
+        print(f"cannot check {map_path}: {error}", file=sys.stderr)
+        return 2
+    cited = cited_sources(document)
+    try:
+        wanted = named_corpora(corpus_args, cited)
+    except Usage as error:
+        print(str(error), file=sys.stderr)
+        return 2
+
+    if wanted[0][0] is None:
+        # The one-corpus form, byte for byte what it always was.
+        ran = check_one(map_path, document, wanted[0][1])
+        runs = [] if ran is None else [ran]
+        if ran is None:
+            return 2
+    else:
+        principal = document.get("corpus")
+        runs = []
+        unread = [source for source in cited if source not in dict(wanted)]
+        if unread:
+            for source in unread:
+                names = [e.get("id") for e in document["entries"]
+                         if (e.get("locator") or {}).get("sourceId") == source]
+                print(f"X  corpus {source!r} was not given to this run, so its entries "
+                      f"({', '.join(map(str, names))}) were not checked against anything", file=sys.stderr)
+            return 1
+        for source, path in wanted:
+            def cites(entry):
+                named = (entry.get("locator") or {}).get("sourceId")
+                return named == source or (named is None and source == principal)
+
+            view = dict(document, entries=[e for e in document.get("entries") or []
+                                           if isinstance(e, dict) and cites(e)])
+            print(f"== corpus {source}" + (" (principal)" if source == principal else ""))
+            ran = check_one(map_path, view, path, principal=(source == principal))
+            if ran is None:
+                return 2
+            runs.append(ran)
+    passed = sum(r[0] for r in runs)
+    failed = sum(r[1] for r in runs)
+    skipped = sum(r[2] for r in runs)
+    fatal = sum(r[3] for r in runs)
     print(f"\n{passed} ok, {failed} failed, {skipped} not verified")
     if fatal:
         return 1
