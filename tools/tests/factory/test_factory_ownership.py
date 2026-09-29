@@ -53,6 +53,8 @@ NAME = "FaaPart107"
 MANAGED = ("Directory.Build.props", "NuGet.config", "global.json",
            # The agent rails (decision 0029).
            "AGENTS.md", "CLAUDE.md", "docs/agent-team.md", ".claude/agents/engine-dev.md",
+           # What a review covered, and the attack owed before one (decision 0071).
+           "docs/review-evidence.md", "docs/adversarial-self-review.md", "tools/review-scope.py",
            ".claude/agents/repo-steward.md", ".claude/agents/rules-conformance.md",
            ".claude/hooks/primary-checkout-guard.py", ".claude/settings.json",
            "tools/dispatch-agent.sh", "tools/new-issue.sh", "tools/entry-packet.py", "tools/mutate.py", "tools/re-produce.sh",

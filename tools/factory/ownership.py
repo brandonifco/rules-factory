@@ -90,7 +90,7 @@ TABLE = (
     Row("scripts/engine-gate.py", GENERATED, None, "the gate recipe: its non-dotnet checks"),
     Row("scripts/factory/*.py", GENERATED, None, "the factory's generator, vendored so the gate can regenerate"),
     Row(".github/workflows/validate.yml", GENERATED, None, "the gate recipe: CI runs validate.sh full"),
-    Row("AGENTS.md", MANAGED, 24,
+    Row("AGENTS.md", MANAGED, 25,
         "the governing contract every agent works this engine under (decision 0029); section 4 carries "
         "the sweep, the documentation section, and delete-only-what-you-created (#236); a packet that "
         "names an entry is made with the map the reviewed commit declares, one per package for a "
@@ -101,25 +101,32 @@ TABLE = (
         "brief the next one reads (#465); section 3 says the orchestrator holds the scheduling decision and the repository holds the state, and names the command that reads it (#466); section 7 says a reviewer is given what its role judges, "
         "and that the role is part of the packet identity (#467); section 3 says where the rails are when the "
         "engine is embedded under a repository root, because GitHub runs a workflow only from the root (#501, "
-        "0069)"),
+        "0069); section 7 says a review leaves an attestation, the review after a repair is a delta of it, a full review needs a reason, a final acceptance review rereads the slice once, a reviewer starts clean, and no reviewer is paid before the self-review (0071)"),
     Row("CLAUDE.md", MANAGED, 1,
         "a pointer to AGENTS.md and the Claude adapters; it states no rule of its own (0029)"),
-    Row("docs/agent-team.md", MANAGED, 9,
+    Row("docs/agent-team.md", MANAGED, 10,
         "the four roles, what each may not do, and what a turn costs: the tiering the two reviews are "
         "dispatched on, stated without naming any vendor's model (0029 amendment, #455); one instance of "
         "the implementer is one attempt, and a fourth consequence of the cost model says why (#465); the orchestrator holds the scheduling decision and reads the rest (#466); each reviewer's section "
-        "names the cut of the packet it reads and what that cut leaves out (#467)"),
-    Row(".claude/agents/engine-dev.md", MANAGED, 10,
+        "names the cut of the packet it reads and what that cut leaves out (#467); the semantic reviewer starts clean with a packet and reads what a repair could have changed, and a fifth consequence of the cost model says why (0071)"),
+    Row("docs/review-evidence.md", MANAGED, 1,
+        "what a review covered and what a repair invalidates of it: the lifecycle, what can be reused, when a "
+        "full review is mandatory, the final acceptance review, clean reviewer sessions, reading an "
+        "attestation, and migrating an engine produced before it (0071)"),
+    Row("docs/adversarial-self-review.md", MANAGED, 1,
+        "the twenty classes an implementer attacks before a reviewer is paid, each with a test template, and "
+        "the record a semantic packet requires per entry (0071)"),
+    Row(".claude/agents/engine-dev.md", MANAGED, 11,
         "the implementer's charter (0029); it ends with the attempt, and says what a repair attempt "
-        "reads and what it may not reconstruct (#465)"),
+        "reads and what it may not reconstruct (#465); it attacks its own work before review and commits the attestation a repair answers (0071)"),
     Row(".claude/agents/repo-steward.md", MANAGED, 3,
         "the structural reviewer's charter, read-only, and on the cheaper tier its description has always "
         "claimed (0029 amendment, #455); it reads the structural cut of the packet, which carries no entry "
         "packet and needs no restored map package (#467)"),
-    Row(".claude/agents/rules-conformance.md", MANAGED, 6,
+    Row(".claude/agents/rules-conformance.md", MANAGED, 7,
         "the semantic reviewer's charter, read-only, on the deepest tier: the role not to economise on "
         "(0029 amendment, #455); it reads the semantic cut, which carries the entry packets and not the "
-        "implementer's case for its own reading (#467)"),
+        "implementer's case for its own reading (#467); it starts from a clean session, reads a full, delta or final packet as each asks, and names the claim of each finding (0071)"),
     Row(".claude/hooks/primary-checkout-guard.py", MANAGED, 1,
         "the PreToolUse guard that keeps implementation work out of the primary checkout (0029)"),
     Row(".claude/settings.json", MANAGED, 1, "which tools the guard runs before (0029)"),
@@ -143,30 +150,35 @@ TABLE = (
         "a record a merge left conflicted is named as one, and --resolve-record settles it (#252); "
         "the repository root comes from the record too, so an embedded engine re-produces with no "
         "arguments of its own (#517, 0069)"),
-    Row("tools/review-packet.py", MANAGED, 14,
+    Row("tools/review-packet.py", MANAGED, 15,
         "everything a reviewer needs about one pull request, in the order it is read (0029); every map is "
         "read once and the entry packets are built from those bytes, and a refused packet writes nothing "
         "(#371, #372); a composed engine's maps are each checked against their own recorded digest and the "
         "identity names all of them (#460); --role cuts it for one reviewer, the changed paths carry the "
         "reviewed commit's own ownership class, and the identity names the role (#467); the semantic cut names the files it withheld rather than counting them, the policy among them (#475); "
         "a cut section keeps what is nested under it (#484); a truncated file list is refused, because a cut "
-        "made from one drops a change and says it did not (#478)"),
-    Row("tools/repair-packet.py", MANAGED, 3,
+        "made from one drops a change and says it did not (#478); a packet with entry evidence writes the scope a verdict attests, --review final and --prior make the acceptance review and the reasoned full one, and it is refused until the self-review is current (0071)"),
+    Row("tools/review-scope.py", MANAGED, 1,
+        "what a semantic review covered and what a repair invalidates of it, computed from the map's "
+        "dependencies, a lexical reference graph and recorded fingerprints; the delta packet a bounded "
+        "review reads, or the reasons a full one is owed; the self-review skeleton and check; an "
+        "attestation's integrity; and review telemetry (0071)"),
+    Row("tools/repair-packet.py", MANAGED, 4,
         "the bounded brief for one repair attempt: the head, the branch, the worktree, the issue's "
         "acceptance criteria, the entries and the verdicts standing at that head, all derived -- and the "
         "blocking findings, which are the caller's judgement and the only thing it is given (#465); a section "
         "of the issue keeps what is nested under it (#484); it makes the readiness refusal dispatch "
-        "makes, and says a semantic verdict is owed only when the change owes one (#483)"),
+        "makes, and says a semantic verdict is owed only when the change owes one (#483); the brief says to commit the attestation it answers and that the next review is a delta of it (0071)"),
     Row("tools/pr-policy.py", MANAGED, 10,
         "the pull request contract, checked mechanically; a produce update's claim is checked, not taken "
         "(#193); every document the engine owns is accounted for (#236); the entry declaration, linked issue "
         "marker and overlay transition must identify the same work (#451); a changed path is judged in the "
         "engine's own terms, which for an engine embedded under a repository root is not the path GitHub "
         "reports (#501, 0069), the documentation skeleton included (#507)"),
-    Row("tools/record-verdict.py", MANAGED, 5,
+    Row("tools/record-verdict.py", MANAGED, 6,
         "a review verdict as a commit status on the exact commit reviewed, from entry evidence bound to "
         "that commit (0029, #372) -- every map of a composed engine, not one of them (#460); and from a packet "
-        "whose role could carry it, because a structural cut holds no entry evidence at all (#467)"),
+        "whose role could carry it, because a structural cut holds no entry evidence at all (#467); every verdict leaves a validated attestation whose digest is in the status, a delta PASS posts a context no gate requires, and a carry posts a comprehensive PASS again only when nothing moved (0071)"),
     Row("tools/conformance-gate.py", MANAGED, 4,
         "whether the verdicts this change needs are recorded at the commit being merged; a truncated "
         "file list is undecidable (0029, #193); the semantic surface is read in the engine's own paths, "
@@ -300,6 +312,15 @@ RETIRED = (
 # Version 1 of each is what the write-once scaffold wrote before #72. Never remove a version: an
 # engine still carrying those bytes is unedited, and is migrated rather than refused.
 RECIPE_SHA256 = {
+    "docs/review-evidence.md": {
+        1: "f92e66cf87a59abd7ad2c07278049a32083ce9cf67815eef806af0e5766ddacc",
+    },
+    "docs/adversarial-self-review.md": {
+        1: "196139d2f4db48d1a61c97a365f8969893defde31300f36a571b7a1020b88ef6",
+    },
+    "tools/review-scope.py": {
+        1: "aa5eb04ec27b0665da242b292181e8155dc36c5b8793444aefe99b341db8d0ad",
+    },
     ".claude/agents/engine-dev.md": {
         1: "22dbac892b04903992d13516e5a08ac04d92d02b0d8d4ce5e4bfa9ef53543287",
         2: "5f0dd905e2b3857115d93196a66a168e17b505f87dda13a7d200f2bc12572bdb",
@@ -311,6 +332,7 @@ RECIPE_SHA256 = {
         8: "d7838a14be85667f9f97e5a483be681a4a3a2ae969399aa7437762631639cc7c",
         9: "9bb4c07be9a29dd45b6e6d2e7ea96be95fa7227c9fbb20ea8251b21aaed6b693",
         10: "57f96a153377f78df2a926fc29e0b998c3a547687a82f650881438b7924c2eac",
+        11: "e21b5cf0006cfdad5a49aa83becbbb0ff6914bf7bf91e7e50a8034805db3328b",
     },
     ".claude/agents/repo-steward.md": {
         1: "6a2662ac958da76bb02263914d4e3b293a8dc15837e8a6ffccb14177b013bde7",
@@ -324,6 +346,7 @@ RECIPE_SHA256 = {
         4: "4f63b9d3336f708c76fbe1cc9ab1b73a62ffd4c382419a4f979ca0329ffd4c8d",
         5: "84289349255eee63078b42e155ebe7174e336c8b5028f35a01c2d38b22e40c05",
         6: "80e8837ae312f1452ceaf6fa32b9fe5e54bb2db352472f998f83300de508585c",
+        7: "a7fc0628568d6ba61cce0228f0c08040f45f69e7dc63f389c34ddd9dc6d5fd60",
     },
     ".claude/hooks/primary-checkout-guard.py": {
         1: "a263531db502dfad98b38bf1dd90df7b1bec5f22133db016b6f30dc38509d16d",
@@ -356,6 +379,7 @@ RECIPE_SHA256 = {
         22: "4a146a7566423fd5e2e57c6cf24426534878f70c02a852a539035b5d3aa4ee9e",
         23: "242b166fe723abccd63942c6eadad4575d407a922915cdf12397f2eed333eb52",
         24: "02468d2b206814e1fac4e7ebeaa48ec480011e68ae1355bfbe1d114aaa31be28",
+        25: "499f46875eed3197f6cece2541a4c8b1b411d642436770ed6d8d53db9c3a1215",
     },
     "CLAUDE.md": {
         1: "04c07ad36e742fa60efafeca54d20bd96d16b6e338a44e46fad2b679ab8dfd9f",
@@ -370,6 +394,7 @@ RECIPE_SHA256 = {
         7: "f73289cfb230cfd5b32b986afd699ee99e1890810e7c86ed9428a60d84aa4625",
         8: "3b11dcacc164b799313061341f8c65bf1c1765fd3754a92647d72268804dc97d",
         9: "b426507e5f18c1602779d685aaf788b28764ee21ccfac865da342a127636ea30",
+        10: "cd5cdcdcc08ba549f0c98339e06c791313e0fe9550c39be25892dcdfd331382c",
     },
     "tools/dispatch-agent.sh": {
         1: "868ce983b51d784a83a6a0fcac7456608b31f0af025c75ac5eeac64a373dca2b",
@@ -419,11 +444,13 @@ RECIPE_SHA256 = {
         12: "da610117bf1b24962640ba20d93f61f554db20f370984634446e45463fe95873",
         13: "9f9ee16c5bd75d0e3ec95863274187ec2591adfa7992950c7cceade3501ace63",
         14: "1c9adb51ce31986d763ce3c48a445bae95ceca0a95b7372767f02221a2840fa9",
+        15: "32cbcba1add7c89f5c39cba05086d581199f83d26e861649faca5bbbff8240bf",
     },
     "tools/repair-packet.py": {
         1: "7ec00d9a68ff35fa0af4ab65714411ac6b39cfce34baf448359d9be5e393c2f5",
         2: "7ec00d9a68ff35fa0af4ab65714411ac6b39cfce34baf448359d9be5e393c2f5",
         3: "d3a63261fd6edfbb352b01259d797bcba434b9a5845d4be458d2bc7b2ae83adf",
+        4: "8c07761cd9bc19bdd1b98a5e7ea69e1e748cb8842215a0fcbc8d14d61fa990db",
     },
     "tools/pr-policy.py": {
         1: "79a33c7fe1ea8d888e4d6912a43ac60afe285c7a8bf43fbe9f7be87d6947b76e",
@@ -443,6 +470,7 @@ RECIPE_SHA256 = {
         3: "678b501239f684946dccbb6186035a39b5916257f0b3dadf13d35e6be97739a5",
         4: "79ce6388ca3409c99bfdecccf46b3b9e0277756bfd6d0f7588a79fb6181f48cf",
         5: "fd493c0e21a738f5e6bdc47c406a907e0a121e124fadfe3b9358d70580ac26e4",
+        6: "c6bf4e0cf1a7697f344c6aa69b402768ac1f55389e17baff327a0915aa80252b",
     },
     "tools/conformance-gate.py": {
         1: "567972b60f16d1f86c661e97efa56fa2878c9a5aa92fb820c4aea07a402cbd24",

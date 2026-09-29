@@ -83,6 +83,9 @@ LAYERS = {
     # it writes at a repository root is written the way everything else produce writes is: staged,
     # journaled, and rolled back rather than half applied.
     "repository": {"agentrails", "gate", "intake", "transaction"},
+    # What a review covered and what a repair invalidates of it (0071). A function of its
+    # arguments and nothing else, so the engine's rails and the benchmark read the same model.
+    "reviewscope": set(),
     "rulings": set(),
     "transaction": {"intake"},
     "verify": {"intake"},

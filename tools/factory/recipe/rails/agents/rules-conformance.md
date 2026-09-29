@@ -19,6 +19,11 @@ nothing. Change it here if your team's deepest tier is called something else.
 
 Read [`AGENTS.md`](../../AGENTS.md) first.
 
+**The packet is your whole assignment, and the conversation that produced the change is not part
+of it.** Start from a clean session. Everything you need is in the repository and the packet built
+from it; an implementer's transcript, an earlier reviewer's reasoning, or an orchestrator's summary
+is not evidence here, and reading it anchors you to exactly the reading you exist to test.
+
 **Your packet is `tools/review-packet.py <pr number> --role semantic`**, and what it leaves out is
 as deliberate as what it holds. It does **not** carry the pull request body. That body is the
 implementer's case for its own reading of the rule, written to be persuasive about it, and this
@@ -26,6 +31,19 @@ charter already tells you not to accept it as an answer — so you are not hande
 it before you read the rule. What it carries, in this order: the reviewed commit, the entry
 packets, the issue's acceptance criteria, the overlay's change, and the semantic surface and its
 diff.
+
+**Three kinds of packet** ([`docs/review-evidence.md`](../../docs/review-evidence.md)):
+
+- **Full** — the first review of a change, or one a delta was refused for; its section 0 then says
+  why. Review every entry it names.
+- **Delta** — `tools/review-scope.py delta` wrote it after a repair. It names the claims the repair
+  invalidated and why, the blocking findings being repaired, their entries, and the diff since the
+  prior review within their closure. Review **every** claim in its section 3 and resolve every
+  finding in its section 2; the retained claims rest on bytes proved unchanged, and you are not
+  asked to reread them — but a defect you see in one is still a finding. A delta pass does not
+  merge anything.
+- **Final** — the acceptance review at the merge boundary: the whole slice, reread, with no earlier
+  conclusion given to you. Treat it as the first review of the change.
 
 ## Order of reading, which is not negotiable
 
@@ -69,13 +87,17 @@ that answers anyway is a finding no matter how sensible its answer is.
 ## How you report
 
 A verdict — **pass** or **fail** — and then the findings that justify it, most severe first, each
-with the entry id, the locator, what the rule requires, what the code does, and the input that
-separates them. A pass with unstated reservations is a fail you did not have the nerve to record.
+with the **claim** it is about (`entry:<id>`, `invariant:<id>`, or `change:<path>`), the locator,
+what the rule requires, what the code does, and the input that separates them. A pass with unstated
+reservations is a fail you did not have the nerve to record. Name the claim because the review
+after the repair rereads exactly the claims you failed, whether or not their bytes moved.
 
 Your verdict is recorded against the exact commit you reviewed
-(`tools/record-verdict.py --pr <n> --reviewer semantic --verdict pass|fail --packet <packet.review.json>`). If the pull request
-gains another commit, your verdict no longer applies to it, and that is the mechanism working:
-review the new head or say you have not. Recording it is the whole of the step:
+(`tools/record-verdict.py --pr <n> --reviewer semantic --verdict pass|fail --packet <packet.review.json>`,
+with `--finding <claim>=<text>` for each blocking finding). The recorder leaves an attestation of
+what you covered. If the pull request gains another commit, your verdict no longer applies to it,
+and that is the mechanism working: the next review is bounded by what the new commit could have
+changed, and it is computed, not claimed. Recording it is the whole of the step:
 `.github/workflows/verdict-requeue.yml` asks the gate to report again at that commit, so a gate
 still red for a moment afterwards is bookkeeping catching up, not your verdict failing to register.
 

@@ -40,6 +40,24 @@ when a provider is unavailable -- unreachable, rate-limited, returning no verdic
 because its verdict was unwelcome. A failure is answered by fixing the code, fixing the map, or
 getting an owner's ruling.
 
+**Every verdict leaves an attestation** (rules-factory 0071). Beside the identity it consumed, the
+recorder writes `<identity>.attestation.json`: what kind of review it was, the claims it covered and
+the fingerprint of every unit each rests on, the findings, the parent it follows, what it retained
+and what it invalidated, and why. Its SHA-256 goes into the status description, so an attestation
+edited afterwards no longer matches what was recorded. Commit it under `reviews/attestations/` with
+the repair that answers it: `tools/review-scope.py delta` reads it from there, and bounds the next
+review by what the repair could have changed.
+
+**Which context a verdict posts is the attestation's type.** A full or final PASS posts the context
+the merge gate requires. A delta PASS posts `<context>/delta`, which nothing requires: a chain of
+bounded reviews reaches the merge only through one final acceptance review. A FAIL of any kind
+posts a failure, which blocks. And a carry -- a packet `review-scope.py delta` wrote because nothing
+a comprehensive PASS rested on moved -- posts that PASS again at the new head, and nothing else.
+
+**A failure says what failed.** A scoped FAIL names the claim each blocking finding is about
+(`--finding CLAIM=TEXT`, or `--findings <file>`), because the review after the repair rereads
+exactly those claims whether or not their bytes moved.
+
 **What this cannot check.** Which person/model actually produced the verdict, or that the provider
 chain was tried in order. The packet binding is an integrity boundary, not reviewer authentication.
 Provider signatures or authentication are deliberately outside this mechanism.
@@ -47,6 +65,7 @@ Provider signatures or authentication are deliberately outside this mechanism.
 Standard library only, plus `gh` (or `$RULES_ENGINE_GH`).
 """
 import argparse
+import datetime
 import hashlib
 import json
 import os
@@ -54,6 +73,10 @@ import pathlib
 import re
 import subprocess
 import sys
+
+# The attestation is built by the factory's own model, vendored under scripts/factory, and an
+# import leaves bytecode beside it unless this is set first (#194).
+sys.dont_write_bytecode = True
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 POLICY = ".github/agent-policy.json"
@@ -72,6 +95,9 @@ CARRIES = {ALL: ("the semantic reviewer and the independent chain", (SEMANTIC, I
            INDEPENDENT: ("the independent chain", (INDEPENDENT,)),
            STRUCTURAL: ("nobody", ())}
 SHA256 = re.compile(r"^[0-9a-f]{64}$")
+#: What a packet identity may say it was for (0071). `carry` is written by `review-scope.py delta`
+#: when nothing moved: no review, and a comprehensive PASS posted again.
+REVIEW_TYPES = ("full", "delta", "final", "carry")
 GIT_SHA = re.compile(r"^[0-9a-f]{40}$")
 
 
@@ -151,6 +177,26 @@ def packet_identity(path):
 
     directory = identity_path.parent
     human_path, human_digest = packet_member(directory, document.get("reviewPacket"), "review packet")
+    review_type = document.get("reviewType", "full")
+    if review_type not in REVIEW_TYPES:
+        raise Refused(f"reviewType {review_type!r} is not one of {', '.join(REVIEW_TYPES)}")
+    scope = prior = None
+    if document.get("scope") is not None:
+        scope_path, _ = packet_member(directory, document.get("scope"), "review scope")
+        try:
+            scope = json.loads(scope_path.read_text(encoding="utf-8"))
+        except (OSError, ValueError) as error:
+            raise Refused(f"review scope cannot be read ({error})")
+    if document.get("prior") is not None:
+        prior_path, _ = packet_member(directory, document.get("prior"), "prior attestation")
+        try:
+            prior = json.loads(prior_path.read_text(encoding="utf-8"))
+        except (OSError, ValueError) as error:
+            raise Refused(f"prior attestation cannot be read ({error})")
+        prior = prior if isinstance(prior, dict) else None
+    if review_type in ("delta", "carry", "final") and (scope is None or prior is None):
+        raise Refused(f"a {review_type} packet carries the scope and the prior attestation it follows, and this "
+                      f"identity does not; regenerate it")
 
     entries = document.get("entryPackets")
     if not isinstance(entries, list):
@@ -251,6 +297,9 @@ def packet_identity(path):
         "entryPackets": verified_entries,
         "policy": policy,
         "document": document,
+        "reviewType": review_type,
+        "scope": scope,
+        "prior": prior,
     }
 
 
@@ -288,6 +337,92 @@ def context_for(reviewer, packet_policy):
                   f"If the policy changed, regenerate and re-review the packet; do not reinterpret an old review.")
 
 
+def scope_model():
+    sys.path.insert(0, str(ROOT / "scripts" / "factory"))
+    try:
+        import reviewscope
+    except ImportError as error:
+        raise Refused(f"scripts/factory/reviewscope.py is not importable ({error}); run `factory produce` again")
+    return reviewscope
+
+
+def findings_of(args, scope):
+    """(blocking, non-blocking) as the caller gave them, each blocking one bound to a claim where it can be."""
+    blocking, observations = [], []
+    if args.findings:
+        try:
+            given = json.loads(pathlib.Path(args.findings).read_text(encoding="utf-8"))
+        except (OSError, ValueError) as error:
+            raise Refused(f"--findings {args.findings} cannot be read ({error})")
+        if not isinstance(given, dict):
+            raise Refused("--findings is a JSON object with blocking and nonBlocking lists")
+        blocking += [dict(f) for f in given.get("blocking") or [] if isinstance(f, dict)]
+        observations += [dict(f) for f in given.get("nonBlocking") or [] if isinstance(f, dict)]
+    for text in args.finding:
+        claim, separator, summary = text.partition("=")
+        if not separator or not summary.strip():
+            raise Refused(f"--finding {text!r} is not CLAIM=TEXT")
+        blocking.append({"claim": claim.strip(), "summary": summary.strip()})
+    claims = sorted((scope or {}).get("state", {}).get("claims") or {})
+    if args.verdict == "fail" and not blocking:
+        blocking.append({"summary": args.note or f"fail by {args.reviewer}", **({"claim": claims[0]} if len(claims) == 1 else {})})
+    if args.verdict == "pass" and blocking:
+        raise Refused(f"a pass cannot carry {len(blocking)} blocking finding(s); a blocking finding is a fail")
+    return blocking, observations
+
+
+def attest(args, identity, model):
+    """The attestation of this verdict, validated, and checked against the parent it follows."""
+    scope = identity["scope"]
+    blocking, observations = findings_of(args, scope)
+    document = identity["document"]
+    packet = {"identitySha256": identity["sha256"], "sha256": identity["reviewPacketSha256"],
+              "role": identity["role"],
+              "entryPackets": [{"entryId": e, "sha256": d} for e, _, d in identity["entryPackets"]]}
+    telemetry = dict((scope or {}).get("telemetry") or {})
+    if args.tokens is not None:
+        telemetry["tokens"] = args.tokens
+    common = dict(
+        reviewed_commit=identity["reviewedCommit"], base_commit=identity["baseCommit"],
+        review_type=identity["reviewType"], reviewer={"id": args.reviewer, "family": args.reviewer_family},
+        packet=packet, result="PASS" if args.verdict == "pass" else "FAIL", blocking=blocking,
+        non_blocking=observations, evidence_used=[{"kind": "entry-packet", "entryId": e, "sha256": d}
+                                                 for e, _, d in identity["entryPackets"]],
+        telemetry=telemetry,
+        audit={"recordedAt": datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")})
+    if scope is None:
+        # A packet with no entry evidence -- or one written before 0071 -- leaves an attestation
+        # that says so, and can never be the parent of a delta (`legacy-evidence-unscoped`).
+        attestation = model.build_attestation(
+            project={"engine": None}, charter={}, maps=[{"packageId": m.get("packageId"), "version": m.get("version")}
+                                                          for m in document["reviewContext"].get("maps") or []],
+            corpora=[], current={"units": {}, "claims": {}}, scoped=False, **common)
+    else:
+        attestation = model.build_attestation(
+            project=scope.get("project") or {}, charter=scope.get("charter") or {}, maps=scope.get("maps") or [],
+            corpora=scope.get("corpora") or [], current=scope["state"], parent=identity["prior"],
+            impact_record=scope.get("impact") or {}, locators=scope.get("locators"), **common)
+    problems = model.validate_attestation(attestation)
+    if identity["prior"] is not None and identity["reviewType"] == "delta":
+        problems += model.check_chain(attestation, identity["prior"])
+    if problems:
+        raise Refused("the attestation this verdict would leave is not well formed, so nothing is recorded:\n"
+                      + "\n".join(f"  - {p}" for p in problems))
+    return attestation
+
+
+def carried(args, identity, model, context):
+    """(context, description tail) for a carry: a comprehensive PASS posted again, and nothing else."""
+    prior, impact = identity["prior"], (identity["scope"] or {}).get("impact") or {}
+    if args.verdict != "pass" or args.reviewer != SEMANTIC:
+        raise Refused("a carry records the semantic reviewer's earlier pass again, and nothing else: "
+                      "--reviewer semantic --verdict pass")
+    if not model.may_carry(prior, impact):
+        raise Refused("nothing can be carried: the prior attestation is not a full or final PASS, or something it "
+                      "rested on moved. Review the change.")
+    return context, f"carried from {prior['reviewedCommit'][:12]}; attestation {model.attestation_digest(prior)}"
+
+
 def main(argv=None):
     parser = argparse.ArgumentParser(prog="record-verdict.py", description=__doc__.split("\n")[0])
     parser.add_argument("--pr", type=int, required=True, help="the pull request reviewed")
@@ -296,6 +431,14 @@ def main(argv=None):
                         help=f"'{SEMANTIC}', or an id from the reviewed packet's independent review chain")
     parser.add_argument("--verdict", required=True, choices=("pass", "fail"))
     parser.add_argument("--note", default="", help="one line, shown beside the status")
+    parser.add_argument("--finding", action="append", default=[], metavar="CLAIM=TEXT",
+                        help="a blocking finding and the claim it is about (entry:<id>, invariant:<id>, "
+                             "change:<path>); repeat for each")
+    parser.add_argument("--findings", metavar="PATH",
+                        help='a JSON file: {"blocking": [{"claim", "summary", "category"}], "nonBlocking": [...]}')
+    parser.add_argument("--reviewer-family", default=None, help="the reviewer's model family, where known")
+    parser.add_argument("--tokens", type=int, default=None,
+                        help="the review's token count, only where the environment reports it reliably")
     parser.add_argument("--sha",
                         help="optional assertion of the reviewed SHA; it must equal the packet and never selects a SHA")
     parser.add_argument("--dry-run", action="store_true", help="print what would be recorded, and record nothing")
@@ -316,6 +459,14 @@ def main(argv=None):
 
         context = context_for(args.reviewer, identity["policy"])
         role_carries(args.reviewer, identity["role"])
+        model = scope_model()
+        attestation = None
+        if identity["reviewType"] == "carry":
+            context, description_tail = carried(args, identity, model, context)
+        else:
+            attestation = attest(args, identity, model)
+            context, _ = model.status_for(attestation, context)
+            description_tail = f"attestation {model.attestation_digest(attestation)}"
         pull = json.loads(gh("pr", "view", str(args.pr), "--json", "number,headRefOid,state"))
         head = pull.get("headRefOid")
         if not head:
@@ -326,13 +477,19 @@ def main(argv=None):
 
         state = "success" if args.verdict == "pass" else "failure"
         packet_tag = identity["sha256"][:12]
-        description = (args.note or f"{args.verdict} by {args.reviewer}")
-        description = f"{description}; packet {packet_tag}"[:140]
+        # The digest is the part a later reader checks, so it is never the part cut to fit.
+        tail = f"; packet {packet_tag}; {description_tail}"
+        description = (args.note or f"{args.verdict} by {args.reviewer}")[:max(0, 140 - len(tail))] + tail
         repository = json.loads(gh("repo", "view", "--json", "nameWithOwner"))["nameWithOwner"]
 
         if args.dry_run:
             print(f"{repository} {reviewed} {context} {state} {description!r} packet={identity['path']}")
             return 0
+        # Written before the status is posted: a file whose digest no status names is merely unusable,
+        # and a status naming a digest nobody kept would be a verdict nobody can bound a review by.
+        if attestation is not None:
+            written = identity["path"].with_name(identity["path"].name.replace(".review.json", "") + ".attestation.json")
+            written.write_bytes(model.pretty(attestation))
         gh("api", f"repos/{repository}/statuses/{reviewed}", "-X", "POST",
            "-f", f"state={state}", "-f", f"context={context}", "-f", f"description={description}")
     except Refused as error:
@@ -340,6 +497,14 @@ def main(argv=None):
         return 1
 
     print(f"recorded {state} at {context} on {reviewed[:12]} (PR #{args.pr}, packet {packet_tag})")
+    if attestation is not None:
+        committed = f"{model.ATTESTATIONS}/pr-{args.pr}-{reviewed[:12]}-{attestation['reviewType']}.json"
+        print(f"attestation {model.attestation_digest(attestation)} written to {written}")
+        print(f"commit it as {committed}: the next review of this pull request reads it from there")
+        if attestation["reviewType"] == "delta" and attestation["result"] == "PASS":
+            print("A delta PASS does not satisfy the merge gate. The final acceptance review does: "
+                  f"`tools/review-packet.py {args.pr} --role semantic --review final --prior {committed} "
+                  f"--package-map <path>` once the attestation is committed.")
     if args.verdict == "fail":
         print("A recorded failure blocks the merge outright. It is answered by fixing the code, fixing the map, or "
               "getting an owner's ruling -- never by asking another provider until one agrees.")
