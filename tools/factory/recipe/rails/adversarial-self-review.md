@@ -10,8 +10,8 @@ the person who wrote the code, and expensive to find by anyone else. So before a
 be written, **every entry it names has a committed record of this attack**.
 
 ```bash
-tools/review-scope.py self-review <entry id> --package-map <map>           # the skeleton, with the claim digest
-tools/review-scope.py self-review <entry id> --package-map <map> --check   # what the packet will hold you to
+tools/review-scope.py self-review <entry id> --package-map <path>           # the skeleton, with the claim digest
+tools/review-scope.py self-review <entry id> --package-map <path> --check   # what the packet will hold you to
 ```
 
 Write the record to `reviews/self-review/<entry id>.json` and commit it. Each of the twenty classes

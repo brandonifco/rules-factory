@@ -114,7 +114,7 @@ session with the packet and the repository, and nothing else: not the implemente
 not an earlier reviewer's reasoning, not the orchestrator's summary. The packet is the interface.
 
 **Reads what a repair could have changed, and the whole slice once.** The first review of a change
-is full. After a repair, `tools/review-scope.py delta` computes which claims the repair invalidated
+is full. After a repair, `tools/review-scope.py`'s `delta` computes which claims the repair invalidated
 — from the map's dependencies, a reference graph of the code and the fingerprints the last review
 recorded, never from anyone's say-so — and hands this reviewer only those, with the findings being
 repaired. When a change cannot be bounded it says why, and the review is full again. A delta pass

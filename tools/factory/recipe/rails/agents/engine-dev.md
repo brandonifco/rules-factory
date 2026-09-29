@@ -112,7 +112,7 @@ name.
   and the map decide, never an implementer's explanation — yours or the last one's.
 - A finding that is not in the brief is not yours to fix on this branch. Say you found it.
 - **Commit the attestation the brief names** under `reviews/attestations/`, with the repair. It is
-  what bounds the next review: `tools/review-scope.py delta` compares it with your head and hands
+  what bounds the next review: `tools/review-scope.py`'s `delta` compares it with your head and hands
   the reviewer only the claims your repair could have changed. Your commit moves the head, so every
   verdict recorded before it stops applying; what survives is the evidence your change provably did
   not touch.
@@ -128,7 +128,7 @@ No semantic packet is written until every entry it names has a committed
 overflow, empty collections, crafted input, invalid construction, phase boundaries, order
 dependence, partial mutation before refusal, exception leakage, refusal classification, and the
 rest — each with the tests that attack it or a reason it does not apply. Start from
-`tools/review-scope.py self-review <entry id> --package-map <map>`, which prints the skeleton and
+`tools/review-scope.py self-review <entry id> --package-map <path>`, which prints the skeleton and
 the claim digest to bind it to, and finish with `--check`. The reviewer is the most expensive agent
 this team runs; what it finds should be what only a reviewer can.
 

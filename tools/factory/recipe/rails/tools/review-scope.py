@@ -27,7 +27,7 @@ blocking findings being repaired, and nothing else -- no conversation, because n
 **A full review needs a reason.** When the change cannot be bounded -- the charter, the policy, a
 corpus, a map's frame, a foundational file or a decision record moved; a file the graph cannot
 read changed; the repair invalidated too much -- `delta` refuses and prints the reasons, and
-`tools/review-packet.py <pr> --prior <path>` writes the full packet that answers them. That the
+`tools/review-packet.py <pr> --role semantic --prior <attestation> --package-map <path>` writes the full packet that answers them. That the
 head changed is never one of them.
 
 **Integrity.** The prior attestation is read from the reviewed commit, where the repair committed

@@ -45,13 +45,13 @@ recorder writes `<identity>.attestation.json`: what kind of review it was, the c
 the fingerprint of every unit each rests on, the findings, the parent it follows, what it retained
 and what it invalidated, and why. Its SHA-256 goes into the status description, so an attestation
 edited afterwards no longer matches what was recorded. Commit it under `reviews/attestations/` with
-the repair that answers it: `tools/review-scope.py delta` reads it from there, and bounds the next
+the repair that answers it: `tools/review-scope.py`'s `delta` reads it from there, and bounds the next
 review by what the repair could have changed.
 
 **Which context a verdict posts is the attestation's type.** A full or final PASS posts the context
 the merge gate requires. A delta PASS posts `<context>/delta`, which nothing requires: a chain of
 bounded reviews reaches the merge only through one final acceptance review. A FAIL of any kind
-posts a failure, which blocks. And a carry -- a packet `review-scope.py delta` wrote because nothing
+posts a failure, which blocks. And a carry -- a packet `review-scope.py`'s `delta` wrote because nothing
 a comprehensive PASS rested on moved -- posts that PASS again at the new head, and nothing else.
 
 **A failure says what failed.** A scoped FAIL names the claim each blocking finding is about
@@ -95,7 +95,7 @@ CARRIES = {ALL: ("the semantic reviewer and the independent chain", (SEMANTIC, I
            INDEPENDENT: ("the independent chain", (INDEPENDENT,)),
            STRUCTURAL: ("nobody", ())}
 SHA256 = re.compile(r"^[0-9a-f]{64}$")
-#: What a packet identity may say it was for (0071). `carry` is written by `review-scope.py delta`
+#: What a packet identity may say it was for (0071). `carry` is written by `review-scope.py`'s `delta`
 #: when nothing moved: no review, and a comprehensive PASS posted again.
 REVIEW_TYPES = ("full", "delta", "final", "carry")
 GIT_SHA = re.compile(r"^[0-9a-f]{40}$")

@@ -356,7 +356,7 @@ def build(number, findings):
                          f"repair does not touch (rules-factory 0071): commit the attestation "
                          f"`tools/record-verdict.py` wrote for it under `reviews/attestations/` in your repair, "
                          f"and the next packet is `tools/review-scope.py delta {number} --prior "
-                         f"reviews/attestations/<its name>` -- only the claims your change could have altered, "
+                         f"<attestation>` -- only the claims your change could have altered, "
                          f"computed, not claimed. Redo the adversarial self-review of every entry your repair "
                          f"touches (`docs/adversarial-self-review.md`): the record is bound to what the entry "
                          f"rests on, and the packet is refused while it is stale."))

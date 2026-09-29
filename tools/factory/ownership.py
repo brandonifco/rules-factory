@@ -313,13 +313,13 @@ RETIRED = (
 # engine still carrying those bytes is unedited, and is migrated rather than refused.
 RECIPE_SHA256 = {
     "docs/review-evidence.md": {
-        1: "f92e66cf87a59abd7ad2c07278049a32083ce9cf67815eef806af0e5766ddacc",
+        1: "955785f692d9aacef542361909e668ec566c0284cd328a90f98d90d741b311f4",
     },
     "docs/adversarial-self-review.md": {
-        1: "196139d2f4db48d1a61c97a365f8969893defde31300f36a571b7a1020b88ef6",
+        1: "9faff906492d809a701516c2a741fb89d5563e646b7a759e0d27bb64f08c3b06",
     },
     "tools/review-scope.py": {
-        1: "aa5eb04ec27b0665da242b292181e8155dc36c5b8793444aefe99b341db8d0ad",
+        1: "d52b2f070c024979a932e385d0e063abb661049144c5e7ed8fe900975c26dd1e",
     },
     ".claude/agents/engine-dev.md": {
         1: "22dbac892b04903992d13516e5a08ac04d92d02b0d8d4ce5e4bfa9ef53543287",
@@ -332,7 +332,7 @@ RECIPE_SHA256 = {
         8: "d7838a14be85667f9f97e5a483be681a4a3a2ae969399aa7437762631639cc7c",
         9: "9bb4c07be9a29dd45b6e6d2e7ea96be95fa7227c9fbb20ea8251b21aaed6b693",
         10: "57f96a153377f78df2a926fc29e0b998c3a547687a82f650881438b7924c2eac",
-        11: "e21b5cf0006cfdad5a49aa83becbbb0ff6914bf7bf91e7e50a8034805db3328b",
+        11: "10ac2f2159b2b93d65f6665274453902fa252c56f2d2cd0707ac76fda2e2d9fe",
     },
     ".claude/agents/repo-steward.md": {
         1: "6a2662ac958da76bb02263914d4e3b293a8dc15837e8a6ffccb14177b013bde7",
@@ -346,7 +346,7 @@ RECIPE_SHA256 = {
         4: "4f63b9d3336f708c76fbe1cc9ab1b73a62ffd4c382419a4f979ca0329ffd4c8d",
         5: "84289349255eee63078b42e155ebe7174e336c8b5028f35a01c2d38b22e40c05",
         6: "80e8837ae312f1452ceaf6fa32b9fe5e54bb2db352472f998f83300de508585c",
-        7: "a7fc0628568d6ba61cce0228f0c08040f45f69e7dc63f389c34ddd9dc6d5fd60",
+        7: "a86b4d07daccede53261077c430114fae3236d7611e7dfc287431caded6ecc04",
     },
     ".claude/hooks/primary-checkout-guard.py": {
         1: "a263531db502dfad98b38bf1dd90df7b1bec5f22133db016b6f30dc38509d16d",
@@ -379,7 +379,7 @@ RECIPE_SHA256 = {
         22: "4a146a7566423fd5e2e57c6cf24426534878f70c02a852a539035b5d3aa4ee9e",
         23: "242b166fe723abccd63942c6eadad4575d407a922915cdf12397f2eed333eb52",
         24: "02468d2b206814e1fac4e7ebeaa48ec480011e68ae1355bfbe1d114aaa31be28",
-        25: "499f46875eed3197f6cece2541a4c8b1b411d642436770ed6d8d53db9c3a1215",
+        25: "b74e580e1b591e8d8b959c52f3e2c86ae0005462d57633df2ad8977defba4c48",
     },
     "CLAUDE.md": {
         1: "04c07ad36e742fa60efafeca54d20bd96d16b6e338a44e46fad2b679ab8dfd9f",
@@ -394,7 +394,7 @@ RECIPE_SHA256 = {
         7: "f73289cfb230cfd5b32b986afd699ee99e1890810e7c86ed9428a60d84aa4625",
         8: "3b11dcacc164b799313061341f8c65bf1c1765fd3754a92647d72268804dc97d",
         9: "b426507e5f18c1602779d685aaf788b28764ee21ccfac865da342a127636ea30",
-        10: "cd5cdcdcc08ba549f0c98339e06c791313e0fe9550c39be25892dcdfd331382c",
+        10: "e1fd3fe7e2a27ba99d485e946a00b893b2e2e39b6fece2cca001b1f9fd82c40d",
     },
     "tools/dispatch-agent.sh": {
         1: "868ce983b51d784a83a6a0fcac7456608b31f0af025c75ac5eeac64a373dca2b",
@@ -444,13 +444,13 @@ RECIPE_SHA256 = {
         12: "da610117bf1b24962640ba20d93f61f554db20f370984634446e45463fe95873",
         13: "9f9ee16c5bd75d0e3ec95863274187ec2591adfa7992950c7cceade3501ace63",
         14: "1c9adb51ce31986d763ce3c48a445bae95ceca0a95b7372767f02221a2840fa9",
-        15: "32cbcba1add7c89f5c39cba05086d581199f83d26e861649faca5bbbff8240bf",
+        15: "47c0673147d48a65a4ffd4126e23291208726d8644976bdb22b15d2414611c38",
     },
     "tools/repair-packet.py": {
         1: "7ec00d9a68ff35fa0af4ab65714411ac6b39cfce34baf448359d9be5e393c2f5",
         2: "7ec00d9a68ff35fa0af4ab65714411ac6b39cfce34baf448359d9be5e393c2f5",
         3: "d3a63261fd6edfbb352b01259d797bcba434b9a5845d4be458d2bc7b2ae83adf",
-        4: "8c07761cd9bc19bdd1b98a5e7ea69e1e748cb8842215a0fcbc8d14d61fa990db",
+        4: "4ac24b78411f3ea457e497838f5959d0374c8f3126c249bfb88393c2485318ed",
     },
     "tools/pr-policy.py": {
         1: "79a33c7fe1ea8d888e4d6912a43ac60afe285c7a8bf43fbe9f7be87d6947b76e",
@@ -470,7 +470,7 @@ RECIPE_SHA256 = {
         3: "678b501239f684946dccbb6186035a39b5916257f0b3dadf13d35e6be97739a5",
         4: "79ce6388ca3409c99bfdecccf46b3b9e0277756bfd6d0f7588a79fb6181f48cf",
         5: "fd493c0e21a738f5e6bdc47c406a907e0a121e124fadfe3b9358d70580ac26e4",
-        6: "c6bf4e0cf1a7697f344c6aa69b402768ac1f55389e17baff327a0915aa80252b",
+        6: "de4b282a31bb042c4b894fe99bf070ac1f31925e0729c4c783a9ba02954dd8f9",
     },
     "tools/conformance-gate.py": {
         1: "567972b60f16d1f86c661e97efa56fa2878c9a5aa92fb820c4aea07a402cbd24",

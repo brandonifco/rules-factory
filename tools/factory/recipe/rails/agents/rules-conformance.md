@@ -36,7 +36,7 @@ diff.
 
 - **Full** — the first review of a change, or one a delta was refused for; its section 0 then says
   why. Review every entry it names.
-- **Delta** — `tools/review-scope.py delta` wrote it after a repair. It names the claims the repair
+- **Delta** — `tools/review-scope.py`'s `delta` wrote it after a repair. It names the claims the repair
   invalidated and why, the blocking findings being repaired, their entries, and the diff since the
   prior review within their closure. Review **every** claim in its section 3 and resolve every
   finding in its section 2; the retained claims rest on bytes proved unchanged, and you are not

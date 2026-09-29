@@ -188,7 +188,7 @@ Nothing else changes. The branch still closes exactly one issue with one `Closes
 repair commit still moves the head and still ends every verdict recorded before it (§7); the new
 head is reviewed from a new packet, by a new reviewer. What the repair does not end is the
 **evidence** the last review established about what it did not touch: the repair commits that
-review's attestation, and the next packet is a delta of it (`tools/review-scope.py delta`, §7).
+review's attestation, and the next packet is a delta of it (`tools/review-scope.py`'s `delta`, §7).
 
 ### A factory update is work under these rails too
 
@@ -439,7 +439,7 @@ decline that names why and cites where — that is the engine working, not the e
   `reviews/attestations/` with the repair. Then:
 
   ```bash
-  tools/review-scope.py delta <pr number> --prior reviews/attestations/<file> --package-map <path>
+  tools/review-scope.py delta <pr number> --prior <attestation> --package-map <path>
   ```
 
   computes, from the map's dependencies, a lexical reference graph of the C# and those
@@ -448,8 +448,8 @@ decline that names why and cites where — that is the engine working, not the e
   bounded — the charter, the review policy, a corpus, a map's frame, a foundational file or a
   decision record moved; a file the graph cannot read changed; the repair invalidated too much — it
   refuses and names the reason, and `tools/review-packet.py <pr number> --role semantic --prior
-  <file>` writes the full packet that answers it. A delta PASS posts `<context>/delta`, which no
-  gate requires; **the final acceptance review** (`--review final --prior <last attestation>`)
+  <attestation>` writes the full packet that answers it. A delta PASS posts `<context>/delta`, which no
+  gate requires; **the final acceptance review** (`--review final --prior <attestation>`)
   rereads the whole slice once and posts the verdict the merge needs. A full review that passes
   first time needs no final one. When nothing a comprehensive PASS rested on moved, `delta` writes
   a carry, and recording it posts that PASS at the new head. `docs/review-evidence.md` says how to

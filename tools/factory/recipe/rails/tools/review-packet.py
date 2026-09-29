@@ -59,7 +59,7 @@ thing that can refuse; until then the packet is assembled in this run's own priv
 packet that carries entry evidence also writes a `*.scope.json` beside its identity: the claims of
 the slice -- each entry, each invariant `reviews/invariants.json` declares -- and the fingerprint of
 every unit each rests on. `tools/record-verdict.py` turns it into the review's attestation. After a
-repair, `tools/review-scope.py delta` compares that attestation with the new head and writes the
+repair, `tools/review-scope.py`'s `delta` compares that attestation with the new head and writes the
 bounded packet; this one is for the reviews that read everything: the first (`--review full`), one
 whose delta was refused for a stated reason (`--review full --prior <attestation>`), and the final
 acceptance review at the merge boundary (`--review final --prior <attestation>`).
@@ -516,7 +516,7 @@ def review_scope(snapshot, checked_maps, entries, head, review, prior):
                           "entriesPresented": len(entries)}}, prior_document
 
 
-def build(number, base, package_maps=(), recordable=True, role=ALL, review="full", prior=None):
+def build(number, base, package_maps=(), recordable=True, role=ALL, review_type="full", prior=None):
     pull = json.loads(gh("pr", "view", str(number), "--json",
                          "number,title,body,headRefOid,headRefName,baseRefName,baseRefOid,files,changedFiles,"
                          "closingIssuesReferences"))
@@ -595,15 +595,6 @@ def build(number, base, package_maps=(), recordable=True, role=ALL, review="full
                              f"({', '.join(m['packageId'] for m in recorded_maps)})")
                           + ", or read this packet with --stdout, which writes no identity.")
 
-        # What a comprehensive review is formed on, and the gate in front of it: only for a packet a
-        # verdict can be recorded from, and only where there is entry evidence to scope (0071).
-        scope, prior_document = ((review_scope(snapshot, checked_maps, entries, head, review, prior))
-                                 if recordable and entries and role in READS_ENTRIES and maps_read
-                                 else (None, None))
-        if prior and scope is None and recordable:
-            raise Refused("--prior applies to a packet that carries entry evidence: a semantic, independent or whole "
-                          "packet that names an entry, with --package-map")
-
         wanted = ISSUE_SECTIONS.get(role)
         cut = named_sections(issue.get("body"), wanted) if wanted else {}
         if wanted and cut:
@@ -621,7 +612,7 @@ def build(number, base, package_maps=(), recordable=True, role=ALL, review="full
         parts = [f"# Review packet ({role}): PR #{number} — {pull.get('title', '')}\n",
                  f"Head commit `{head}`. Base commit `{base_sha}`. **Every verdict is recorded against this "
                  f"exact reviewed commit and this packet's identity.** If the pull request gains another commit, "
-                 f"`tools/review-scope.py delta` says what of this review it invalidates.\n",
+                 f"`tools/review-scope.py`'s `delta` says what of this review it invalidates.\n",
                  "This packet is the whole of your assignment. It is built from the repository and the map; there is "
                  "no conversation behind it, and you need none. Start from a clean session.\n",
                  section("1. The issue this closes",
@@ -632,18 +623,6 @@ def build(number, base, package_maps=(), recordable=True, role=ALL, review="full
                             "satisfy the gate." if independent else "") +
                          f"\n\n{assignment}"),
                  ]
-        if review == "final":
-            parts.insert(3, section("0. Final acceptance review",
-                                    "This is the **final acceptance review**: the complete claimed slice, reread once, from "
-                                    "a clean snapshot of the head being merged. It exists to catch what a chain of bounded "
-                                    "reviews cannot -- an invalidation computed wrongly, an interaction between two repairs, "
-                                    "a blind spot of an earlier reviewer, a reading that drifted. You are not given the "
-                                    "earlier reviews' conclusions, on purpose. Review every entry below as if nothing had "
-                                    "been reviewed before."))
-        elif scope and scope["impact"]["reasons"]:
-            parts.insert(3, section("0. Why this review is a full one",
-                                    "\n".join(f"- `{r['code']}`: {r['detail']}" for r in scope["impact"]["reasons"])
-                                    + "\n\nA full review needs a reason, and these are this one's (rules-factory 0071)."))
         if role in READS_THE_CLAIM:
             parts.append(section("2. What the pull request claims",
                                  (pull.get("body") or "(empty — the PR template is not optional)")))
@@ -716,6 +695,27 @@ def build(number, base, package_maps=(), recordable=True, role=ALL, review="full
                     "nobody named.")
             parts.append(section("3. The entries, as the map has them", body))
 
+        # What a comprehensive review is formed on, and the gate in front of it: only for a packet a
+        # verdict can be recorded from, and only where there is entry evidence to scope (0071). After
+        # the entry packets, so an entry nobody can build a packet for is refused for that first.
+        scope, prior_document = ((review_scope(snapshot, checked_maps, entries, head, review_type, prior))
+                                 if recordable and entries and role in READS_ENTRIES and maps_read
+                                 else (None, None))
+        if prior and scope is None and recordable:
+            raise Refused("--prior applies to a packet that carries entry evidence: a semantic, independent or whole "
+                          "packet that names an entry, with --package-map")
+        if review_type == "final":
+            parts.insert(3, section("0. Final acceptance review",
+                                    "This is the **final acceptance review**: the complete claimed slice, reread once, from "
+                                    "a clean snapshot of the head being merged. It exists to catch what a chain of bounded "
+                                    "reviews cannot -- an invalidation computed wrongly, an interaction between two repairs, "
+                                    "a blind spot of an earlier reviewer, a reading that drifted. You are not given the "
+                                    "earlier reviews' conclusions, on purpose. Review every entry below as if nothing had "
+                                    "been reviewed before."))
+        elif scope and scope["impact"]["reasons"]:
+            parts.insert(3, section("0. Why this review is a full one",
+                                    "\n".join(f"- `{r['code']}`: {r['detail']}" for r in scope["impact"]["reasons"])
+                                    + "\n\nA full review needs a reason, and these are this one's (rules-factory 0071)."))
         parts.append(section("4. What this engine was produced from",
                              "".join(
                                  f"- map `{m.get('packageId')}` {m.get('version')} "
@@ -986,7 +986,7 @@ def main(argv=None):
         out_dir = destination(args.out)
         packet_text, head, base_sha, packets, context, scope = build(args.pr, args.base, args.package_map,
                                                                      recordable=not args.stdout,
-                                                                     role=args.role or ALL, review=args.review,
+                                                                     role=args.role or ALL, review_type=args.review,
                                                                      prior=args.prior)
         if args.stdout:
             sys.stdout.write(packet_text)

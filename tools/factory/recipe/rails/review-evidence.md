@@ -23,14 +23,14 @@ repair could have changed. The rule is:
 1. Implement, run the gate (`./scripts/validate.sh full`), record the mutations.
 2. **Attack your own work** before anyone is paid to: [`docs/adversarial-self-review.md`](adversarial-self-review.md),
    one committed record per entry under `reviews/self-review/`.
-3. **Full semantic review** — `tools/review-packet.py <pr> --role semantic --package-map <map>`.
+3. **Full semantic review** — `tools/review-packet.py <pr> --role semantic --package-map <path>`.
 4. On FAIL: repair the blocking findings, and commit the attestation the recorder wrote under
    `reviews/attestations/` in the same repair.
-5. **Delta review** — `tools/review-scope.py delta <pr> --prior reviews/attestations/<file> --package-map <map>`.
+5. **Delta review** — `tools/review-scope.py delta <pr> --prior <attestation> --package-map <path>`.
    It writes a packet of only the invalidated claims, or refuses and says why a full review is
    owed.
 6. Repeat 4 and 5 until a delta passes.
-7. **Final acceptance review** — `tools/review-packet.py <pr> --role semantic --review final --prior <last attestation> --package-map <map>`.
+7. **Final acceptance review** — `tools/review-packet.py <pr> --role semantic --review final --prior <attestation> --package-map <path>`.
    The whole slice, once, from a clean snapshot. Only a full or final PASS posts the verdict the
    merge gate requires.
 
@@ -64,7 +64,7 @@ a reason per unit.
 
 ## When a full review is mandatory
 
-`tools/review-scope.py delta` refuses, naming the reason, when:
+`tools/review-scope.py`'s `delta` refuses, naming the reason, when:
 
 - there is no prior attestation, it cannot be proved to be the one recorded, or it has no scope;
 - the charter, the review policy, the factory commit, a map's frame or a cited corpus changed;
@@ -88,8 +88,8 @@ conversation is anchored by it and pays for every token of it on every turn.
 ## Reading what the tools write
 
 ```bash
-tools/review-scope.py impact --prior <attestation> --package-map <map>   # what this head invalidates, and why
-tools/review-scope.py state --package-map <map> --entry <id>              # the claims and units at a commit
+tools/review-scope.py impact --prior <attestation> --package-map <path>   # what this head invalidates, and why
+tools/review-scope.py state --package-map <path> --entry <id>              # the claims and units at a commit
 tools/review-scope.py verify <attestation>                                # is this the attestation that was recorded?
 tools/review-scope.py telemetry                                           # review cost and reuse, from reviews/attestations/
 ```
