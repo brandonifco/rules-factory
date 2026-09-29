@@ -119,10 +119,10 @@ TABLE = (
     Row(".claude/agents/engine-dev.md", MANAGED, 11,
         "the implementer's charter (0029); it ends with the attempt, and says what a repair attempt "
         "reads and what it may not reconstruct (#465); it attacks its own work before review and commits the attestation a repair answers (0071)"),
-    Row(".claude/agents/repo-steward.md", MANAGED, 3,
+    Row(".claude/agents/repo-steward.md", MANAGED, 4,
         "the structural reviewer's charter, read-only, and on the cheaper tier its description has always "
         "claimed (0029 amendment, #455); it reads the structural cut of the packet, which carries no entry "
-        "packet and needs no restored map package (#467)"),
+        "packet and needs no restored map package (#467); it knows a committed attestation or self-review record is review evidence the rails ask for, and what makes one a finding (0071)"),
     Row(".claude/agents/rules-conformance.md", MANAGED, 7,
         "the semantic reviewer's charter, read-only, on the deepest tier: the role not to economise on "
         "(0029 amendment, #455); it reads the semantic cut, which carries the entry packets and not the "
@@ -338,6 +338,7 @@ RECIPE_SHA256 = {
         1: "6a2662ac958da76bb02263914d4e3b293a8dc15837e8a6ffccb14177b013bde7",
         2: "2a991d61d6827a519878eb2659004c3ff451292a971a34636378a8bd449a2e43",
         3: "4c022efad144ceec74ffe6036710eb0f8b8defd5379ebc0a4b22e8bfd69429af",
+        4: "df19aaa2a13662ff88c556e11b49b4033c4efa188386e5528631142aa7579834",
     },
     ".claude/agents/rules-conformance.md": {
         1: "95eac2e802b474bdefad5a6053528dceda7465bbacfc946a0dd3c52a09705e78",

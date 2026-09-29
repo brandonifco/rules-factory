@@ -141,8 +141,9 @@ invalidation the graph got wrong, an interaction between two repairs, and a revi
 
 ### 6. Evidence may cross a commit that changed nothing it rests on
 
-`record-verdict.py --carry <attestation>` posts the semantic context at the current head only when
-the attestation is a comprehensive PASS and the impact to the current head is `none`. This is how
+When the impact to the current head is `none`, `tools/review-scope.py delta` writes a **carry**
+identity instead of a packet, and `record-verdict.py` posts the semantic context at the current head
+from it only when the prior attestation is a comprehensive PASS (`reviewscope.may_carry`). This is how
 the attestation-only commit that stores the last verdict, or a README fix after acceptance, keeps
 the verdict: not because the commit is unimportant, but because every byte the verdict rested on is
 proved unchanged. 0053's invariant — a verdict applies only to bytes somebody read — is preserved,
@@ -173,11 +174,53 @@ supplies one; byte, file and entry counts are the proxies.
 
 ## Measured
 
-`tools/review-cost-benchmark.py` replays a realistic repair chain — full FAIL, repair, delta FAIL,
-repair, delta PASS, final PASS — over the 32 entries of the FAA Part 107 map, with an implementation
-of one file per entry plus two shared primitives. The old model is a complete semantic packet at
-every head; the new is one full packet, two delta packets and one final packet. Its output is in
-the pull request that closes #532 and in the benchmark's own test, which holds the reduction.
+**What a reviewer is handed.** `tools/review-cost-benchmark.py` replays a repair chain over three
+real maps — FAA part 107 (regulatory), 49 CFR 172.101 (hazardous materials), SRD 5.2 combat (a
+game) — with a 24-entry slice implemented one handler per entry, coupled exactly as each map's
+`dependsOn`, `enabledBy` and `suspendedBy` declare, a shared primitive under a third of them, and a
+test file each. The old model hands over a complete packet at every head; the new one a full packet,
+a delta per repair, and a final packet when the chain ended on a delta. No token count is invented:
+bytes, entries, implementation bytes and corpus-evidence bytes are what is measured, and every run
+prints the same table.
+
+| map | findings | repairs | comprehensive reviews, old → new | bytes presented, new / old | claims reused |
+|---|---|---|---|---|---|
+| faa-part-107 | local | 7 | 8 → 2 | 162,322 / 445,312 (36%) | 160 |
+| hazmat-172-table | local | 7 | 8 → 2 | 182,085 / 508,928 (36%) | 160 |
+| srd-52-combat | local | 7 | 8 → 2 | 159,476 / 444,600 (36%) | 160 |
+| each of the three | local | 2 | 3 → 2 | 76–79% | 45 |
+| srd-52-combat | hub | 7 | 8 → 2 | 183,725 / 444,600 (41%) | 154 |
+| hazmat-172-table | hub | 7 | 8 → 3 | 234,677 / 508,928 (46%) | 138 |
+| faa-part-107 | hub | 7 | 8 → 8 | 445,312 / 445,312 (100%), every repair `repair-too-broad` | 0 |
+
+"Local" findings land on the entries of the slice fewest others rest on; "hub" findings on the two
+most rested on. The last row is the model being right, not the model failing: in part 107,
+`waivable-regulations` cross-references nearly every operating rule, and a rule that suspends by
+reference to it rests on all of them, so a repair there *is* a change to most of the slice and is
+reviewed as one, for a stated reason, at no more than the old cost. The worst any chain does is one
+extra comprehensive review — the final one after a delta — and `tools/tests/test_review_cost_benchmark.py`
+holds both bounds.
+
+**What the rails were watched catching.** `tools/tests/factory/test_review_scope_mutations.py`
+applies twenty mutations to `reviewscope.py` and runs the scenarios against each; all twenty are
+killed. Among them: a changed entry or file marked unaffected, a map dependent or a shared
+primitive's caller dropped from the closure, a grown dependency set not invalidating, the wrong
+prior head, map digest or corpus digest accepted, an edited attestation accepted, a changed charter
+accepted, a delta PASS that skipped an invalidated claim, a failed claim not reviewed again, a delta
+PASS posting the merge gate's context, a final review retaining evidence, a changed head treated as
+a reason, legacy unscoped evidence reused, a retained claim at unrecorded fingerprints, a stale
+self-review accepted, and a carry across a changed state.
+
+## A stronger invariant, kept
+
+The assignment asks that a changed SHA never invalidate review evidence. 0053's invariant is that a
+verdict applies only to bytes somebody read, and it is kept in its strong form: a **commit status**
+still ends at the next commit, the gate still requires one at the head being merged, and nothing
+here makes a status inherit across commits. What survives a commit is the *evidence* — the
+attestation's per-claim fingerprints — which bounds the next review. The one place a status is
+posted without a new review is a carry, and only when every unit the comprehensive PASS rested on
+is proved byte-identical at the new head: the bytes somebody read are the bytes being merged,
+which is 0053's own condition, checked unit by unit rather than by commit.
 
 ## Alternatives considered
 
