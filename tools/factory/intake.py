@@ -143,6 +143,16 @@ HASH_DERIVATIONS = {
     # way `extract.py --check` does (0013). The digest is exact because the committed file is
     # the derivation's output; the PDF's own digest is the manifest's `sourcePdf.sha256`.
     "pdftotext-24.02.0-bbox-layout-declared-reading-order-page-marked": _sha256_of_bytes,
+    # SHA-256 over the committed page-marked text, byte for byte -- for a printed board, read by
+    # grid position and not in reading order, some of whose facts are artwork. Two claims, in
+    # stated proportions, and the name carries both. The cell text is the text layer's, cut by a
+    # committed declaration of cell rectangles (geometry, never text), so it is mechanically
+    # re-derivable and the project that commits it holds it to its source by deriving it again
+    # and comparing. What the layer does not carry -- which spaces bear a flag, the tables of a
+    # track -- is printed as artwork, and the corpus states it as **labels a reader wrote**,
+    # checked only by a second reading. Neither sibling says that: the reading-order name claims
+    # every byte is the layer's, and the transcription name claims no machine wrote any.
+    "pdftotext-24.02.0-bbox-layout-declared-cells-and-artwork-labels-page-marked": _sha256_of_bytes,
 }
 SHA256_HEX = re.compile(r"^[0-9a-f]{64}$")
 VERIFICATION_FORMAT = 1

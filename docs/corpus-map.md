@@ -1701,6 +1701,19 @@ reproducible, and the project that commits it holds the corpus to its source by 
 and comparing byte for byte. The name sits between the other two deliberately: calling it a
 transcription would understate it, and calling it a plain `pdftotext` would overstate it.
 
+A fourth describes a source that is part text and part picture.
+`pdftotext-24.02.0-bbox-layout-declared-cells-and-artwork-labels-page-marked` is SHA-256 over a
+committed page-marked text for a **printed board** (or any component read by grid position rather
+than in reading order). Its cell text is real text in the layer, cut by a committed declaration of
+cell rectangles — geometry, never text — so **that half is mechanically re-derivable**, and the
+project that commits it holds it to its source by deriving it again and comparing. What the layer
+does not carry is printed as artwork: which spaces bear a flag, the tables of a track. A corpus
+that wants those quotable states them as **labels a reader wrote**, marked as such in the text.
+**That half is not re-derivable**, and the name says so instead of borrowing either sibling's
+claim: the reading-order name says every byte is the layer's, and the transcription name says no
+machine wrote any. A label is checked only by a second reading, which is a reviewer's and not a
+tool's.
+
 `verification` and `quotation` are the same question asked of a map's *consumers*, and are
 answered per corpus for the same reason ([0013](decisions/0013-verification-posture-belongs-to-the-corpus.md)):
 
