@@ -412,14 +412,34 @@ def attest(args, identity, model):
 
 
 def carried(args, identity, model, context):
-    """(context, description tail) for a carry: a comprehensive PASS posted again, and nothing else."""
-    prior, impact = identity["prior"], (identity["scope"] or {}).get("impact") or {}
-    if args.verdict != "pass" or args.reviewer != SEMANTIC:
-        raise Refused("a carry records the semantic reviewer's earlier pass again, and nothing else: "
-                      "--reviewer semantic --verdict pass")
-    if not model.may_carry(prior, impact):
-        raise Refused("nothing can be carried: the prior attestation is not a full or final PASS, or something it "
-                      "rested on moved. Review the change.")
+    """(context, description tail) for a carry: a reviewer's own comprehensive PASS posted again, and nothing else.
+
+    Nothing in the packet directory is taken for it. A carry posts a verdict nobody formed at this
+    head, so the prior is read from the reviewed commit, checked, and its impact computed afresh
+    (`tools/review-scope.py`), exactly as the delta tool computed it."""
+    if args.verdict != "pass":
+        raise Refused("a carry records an earlier pass again, and nothing else: --verdict pass")
+    if not args.package_map:
+        raise Refused("a carry is recomputed from the repository before it is posted, and that needs the map: "
+                      "--package-map <path>, once per package")
+    source = (identity["document"].get("prior") or {}).get("source")
+    if not isinstance(source, str):
+        raise Refused("the carry identity does not say which committed attestation it carries")
+    import importlib.util
+    spec = importlib.util.spec_from_file_location("review_scope_for_carry", ROOT / "tools" / "review-scope.py")
+    tool = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(tool)
+    entries = [c[len("entry:"):] for c in ((identity["scope"] or {}).get("state") or {}).get("claims") or {}
+               if c.startswith("entry:")]
+    try:
+        prior, impact, why = tool.recompute(identity["reviewedCommit"], source, args.package_map, entries)
+    except (tool.Refused, tool.PACKET.Refused) as error:
+        raise Refused(f"the carry could not be recomputed: {error}")
+    reviewer = SEMANTIC if args.reviewer == SEMANTIC else args.reviewer
+    if not isinstance(prior, dict) or not model.may_carry(prior, impact, reviewer):
+        raise Refused(f"nothing can be carried: the prior attestation is not {args.reviewer}'s own full or final "
+                      f"PASS, it cannot be proved to be the latest one recorded, or something it rested on moved"
+                      + (f" ({why})" if why else "") + ". Review the change.")
     return context, f"carried from {prior['reviewedCommit'][:12]}; attestation {model.attestation_digest(prior)}"
 
 
@@ -437,6 +457,9 @@ def main(argv=None):
     parser.add_argument("--findings", metavar="PATH",
                         help='a JSON file: {"blocking": [{"claim", "summary", "category"}], "nonBlocking": [...]}')
     parser.add_argument("--reviewer-family", default=None, help="the reviewer's model family, where known")
+    parser.add_argument("--package-map", action="append", default=[], metavar="PATH",
+                        help="for a carry: the restored package's corpus-map.json, so the carry is recomputed "
+                             "from the repository rather than taken from the packet directory")
     parser.add_argument("--tokens", type=int, default=None,
                         help="the review's token count, only where the environment reports it reliably")
     parser.add_argument("--sha",

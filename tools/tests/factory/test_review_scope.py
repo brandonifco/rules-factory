@@ -560,6 +560,99 @@ class TestTheGeneratorsConventions(Scenario):
         self.assertEqual(self.m.partial_members(text), ({"Handlers"}, {"Label", "Clamp"}))
 
 
+class TestWhatAnAdversaryFound(Scenario):
+    """The holes an adversarial review of this model found (#532), each held shut."""
+
+    def test_another_reviewers_pass_is_not_carried_as_this_ones(self):
+        engine, current, prior = self.baseline()
+        independent = dict(prior, reviewer={"id": "independent-x"})
+        result = self.m.impact(independent, current)
+        self.assertEqual(result["mode"], "none")
+        self.assertFalse(self.m.may_carry(independent, result, "semantic"),
+                         "an independent PASS carried as the semantic verdict answers a semantic FAIL nobody reviewed")
+        self.assertTrue(self.m.may_carry(prior, result, "semantic"))
+
+    def test_an_invariant_weakened_in_place_is_reviewed_again(self):
+        engine, _, prior = self.baseline()
+        engine.invariants[0]["statement"] = "a resolution rarely mutates its request"
+        result = self.m.impact(prior, self.m.state(engine.snapshot(self.m)))
+        self.assertEqual(result["review"], ["invariant:X"])
+
+    def test_an_invariant_removed_is_not_carried(self):
+        engine, _, prior = self.baseline()
+        engine.invariants = []
+        result = self.m.impact(prior, self.m.state(engine.snapshot(self.m)))
+        self.assertIn("invariant:X", result["invalidated"])
+        self.assertNotEqual(result["mode"], "none")
+        self.assertFalse(self.m.may_carry(prior, result))
+
+    def test_a_dependency_dropped_from_a_claim_is_an_invalidation(self):
+        """Narrowing what a claim rests on, with every unit unchanged, is still a different claim."""
+        engine2, _, prior2 = self.baseline()
+        engine2.invariants[0]["anchors"] = []
+        result2 = self.m.impact(prior2, self.m.state(engine2.snapshot(self.m)))
+        self.assertIn("dependency-dropped: file:src/Engine/Rules/CRule.cs", result2["invalidated"]["invariant:X"])
+
+    def test_a_final_review_follows_a_delta_pass_and_nothing_else(self):
+        engine = Engine()
+        current = self.m.state(engine.snapshot(self.m))
+        failed = attest(current, head=HEAD_1, review_type="full", result="FAIL", impact=self.m.impact(None, current),
+                        blocking=[{"claim": "entry:c", "summary": "c is wrong"}], module=self.m)
+        final = attest(current, head=HEAD_1, review_type="final", result="PASS", parent=failed, impact={},
+                       module=self.m)
+        self.assertTrue(any("follows a delta PASS" in p for p in self.m.validate_attestation(final)))
+
+    def test_a_call_through_an_interface_depends_on_its_implementations(self):
+        engine = Engine()
+        engine.files["src/Engine/Rules/IPolicy.cs"] = b"internal interface IPolicy { int Limit(int v); }\n"
+        engine.files["src/Engine/Rules/DefaultPolicy.cs"] = (b"internal sealed class DefaultPolicy : IPolicy "
+                                                             b"{ public int Limit(int v) => v; }\n")
+        engine.files["src/Engine/Rules/ARule.cs"] = b"internal static class ARule { static int M(IPolicy p) => p.Limit(3); }\n"
+        engine.files["src/Engine/Rules/BRule.cs"] = b"internal static class BRule { static object M() => new DefaultPolicy(); }\n"
+        engine, _, prior = self.baseline(engine)
+        engine.files["src/Engine/Rules/DefaultPolicy.cs"] = engine.files["src/Engine/Rules/DefaultPolicy.cs"].replace(
+            b"=> v", b"=> v - 1")
+        result = self.m.impact(prior, self.m.state(engine.snapshot(self.m)))
+        self.assertIn("entry:a", result["review"], "a answers through IPolicy, and DefaultPolicy is what answers")
+
+    def test_a_constructor_in_one_file_of_a_partial_type_is_reached_by_new(self):
+        graph = self.m.reference_graph({
+            "src/H1.cs": b"partial class H\n{\n    public H() { Seed = 3; }\n    int Seed;\n}\n",
+            "src/H2.cs": b"partial class H\n{\n    int Twice() { var x = 2; return x; }\n}\n",
+            "src/B.cs": b"class BRule { void M() { var h = new H(); } }\n"})
+        self.assertIn("src/H1.cs", graph["src/B.cs"])
+
+    def test_a_finding_on_a_change_is_reviewed_again(self):
+        engine = Engine()
+        engine.files["src/Engine/Util.cs"] = b"internal static class Util { }\n"
+        engine, current, _ = self.baseline(engine)
+        failed = attest(current, head=HEAD_1, review_type="full", result="FAIL", impact=self.m.impact(None, current),
+                        blocking=[{"claim": "entry:a", "summary": "a"}], module=self.m)
+        engine.files["src/Engine/Util.cs"] = b"internal static class Util { /* moved */ }\n"
+        state_2 = self.m.state(engine.snapshot(self.m))
+        impact_2 = self.m.impact(failed, state_2)
+        delta = attest(state_2, head=HEAD_2, review_type="delta", result="FAIL", parent=failed, impact=impact_2,
+                       blocking=[{"claim": "change:src/Engine/Util.cs", "summary": "util is wrong"}], module=self.m)
+        self.assertEqual(self.m.validate_attestation(delta), [])
+        impact_3 = self.m.impact(delta, self.m.state(engine.snapshot(self.m)))
+        self.assertIn("change:src/Engine/Util.cs", impact_3["review"],
+                      "a finding on a change is answered by reading the change again, not left to deadlock")
+
+    def test_a_reason_nobody_can_check_is_a_placeholder(self):
+        for reason in ("Not applicable here.", "not applicable to this entry", "n/a n/a n/a n/a n/a"):
+            self.assertTrue(self.m._placeholder(reason), reason)
+        self.assertFalse(self.m._placeholder("the entry states one threshold and no disjunction at all"))
+
+    def test_a_self_review_may_name_only_a_test_method(self):
+        tests = self.m.declared_tests({"tests/Engine.Tests/ATests.cs": b"public class ATests { [Fact] public void "
+                                                                          b"A_holds() => Assert.True(true); }"})
+        self.assertEqual(tests, {"A_holds"})
+
+    def test_a_response_file_and_a_solution_are_foundational(self):
+        for path in ("Directory.Build.rsp", "Engine.slnx", ".editorconfig", "src/.globalconfig"):
+            self.assertEqual(self.m.classify(path), "foundational", path)
+
+
 class TestTheSelfReview(Scenario):
     """The adversarial pre-review an implementer owes before a semantic packet can be written."""
 

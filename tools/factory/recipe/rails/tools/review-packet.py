@@ -459,7 +459,7 @@ def scope_tool():
     return module
 
 
-def review_scope(snapshot, checked_maps, entries, head, review, prior):
+def review_scope(snapshot, checked_maps, entries, head, review, prior, base=None):
     """The scope record a comprehensive review is formed on, after the self-review gate (0071).
 
     Refuses when an entry has no current adversarial self-review, when `--review final` has no
@@ -490,6 +490,10 @@ def review_scope(snapshot, checked_maps, entries, head, review, prior):
                 if not reusable:
                     raise Refused(f"a final review follows the chain it accepts, and {prior} cannot be proved to be "
                                   f"the attestation recorded ({why})")
+                if (prior_document.get("reviewType"), prior_document.get("result")) != ("delta", "PASS"):
+                    raise Refused(f"a final review follows a delta PASS, and {prior} is a "
+                                  f"{prior_document.get('reviewType')} {prior_document.get('result')}: answer its "
+                                  f"findings with a repair and a delta review first. A full PASS needs no final review.")
                 result = {"mode": "full", "reasons": [], "review": sorted(current["claims"]), "retained": [],
                           "invalidated": {}, "new": [], "changes": [], "carriedFindings": [], "changedUnits": []}
             else:
@@ -505,6 +509,13 @@ def review_scope(snapshot, checked_maps, entries, head, review, prior):
             if review == "final":
                 raise Refused("a final acceptance review follows a chain of reviews: name its last attestation with "
                               "--prior. The first review of a change is --review full.")
+            earlier = tool.committed_on_branch(snapshot, base) if base else []
+            if earlier:
+                # A baseline taken while this branch already has reviews would drop their findings
+                # and call itself the first. The latest is the prior; its impact says what is owed.
+                raise Refused(f"this branch already carries {len(earlier)} review attestation(s) "
+                              f"({', '.join(earlier)}): name the latest with --prior. A full review of a change "
+                              f"that has been reviewed before answers its findings, and needs a reason.")
             result = model.impact(None, current)
     except tool.Refused as error:
         raise Refused(str(error))
@@ -698,7 +709,7 @@ def build(number, base, package_maps=(), recordable=True, role=ALL, review_type=
         # What a comprehensive review is formed on, and the gate in front of it: only for a packet a
         # verdict can be recorded from, and only where there is entry evidence to scope (0071). After
         # the entry packets, so an entry nobody can build a packet for is refused for that first.
-        scope, prior_document = ((review_scope(snapshot, checked_maps, entries, head, review_type, prior))
+        scope, prior_document = ((review_scope(snapshot, checked_maps, entries, head, review_type, prior, base_sha))
                                  if recordable and entries and role in READS_ENTRIES and maps_read
                                  else (None, None))
         if prior and scope is None and recordable:

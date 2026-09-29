@@ -139,7 +139,7 @@ def pretty(value):
 FOUNDATIONAL_NAMES = frozenset({"Directory.Build.props", "Directory.Build.targets", "Directory.Packages.props",
                                 "global.json", "NuGet.config", "nuget.config", "NuGet.Config",
                                 "packages.lock.json", "RulesFactory.Packages.g.props"})
-FOUNDATIONAL_SUFFIXES = (".csproj", ".props", ".targets", ".sln")
+FOUNDATIONAL_SUFFIXES = (".csproj", ".props", ".targets", ".sln", ".slnx", ".rsp", ".editorconfig", ".globalconfig")
 IMPLEMENTATION_ROOTS = ("src/", "tests/")
 CHARTER = ".claude/agents/rules-conformance.md"
 POLICY = ".github/agent-policy.json"
@@ -273,10 +273,18 @@ def partial_members(text):
     each declares, not by the type's name: the generator puts every entry's handler in one partial
     class, and linking by that name would make every handler depend on every other one.
     """
+    types, members, _ = partial_structure(text)
+    return types, members
+
+
+def partial_structure(text):
+    """`partial_members`, and which of the partial types the file *constructs* in: declares a
+    constructor of, or a field initialiser in -- what `new Type(...)` runs without naming a member."""
     stripped = blank_literals(text)
-    types, members = set(), set()
+    types, members, constructing = set(), set(), set()
     for match in PARTIAL_TYPE.finditer(stripped):
         types.add(match.group(1))
+        before = set(members)
         opening = stripped.find("{", match.end())
         if opening < 0:
             continue
@@ -297,12 +305,16 @@ def partial_members(text):
                         _member(head, members)
                     head, skipping = [], False
                 elif c == "=" and not skipping:
+                    if stripped[i + 1:i + 2] != ">" and "(" not in "".join(head):
+                        constructing.add(match.group(1))  # a field initialiser, run by construction
                     _member(head, members)
                     head, skipping = [], True             # an initialiser or an expression body
                 elif not skipping:
                     head.append(c)
             i += 1
-    return types, members
+        if match.group(1) in members - before:
+            constructing.add(match.group(1))              # a constructor
+    return types, members, constructing
 
 
 def _member(head, members):
@@ -314,12 +326,29 @@ def _member(head, members):
     members.update(name for name in names if name not in KEYWORDS)
 
 
+BASE_LIST = re.compile(r"\b(?:class|struct|record|interface)\s+@?[A-Za-z_][A-Za-z0-9_]*\s*(?:<[^{:;]*>)?\s*"
+                       r"(?:\([^)]*\))?\s*:\s*([^{;]+)")
+
+
+def implemented_names(text):
+    """The base types and interfaces a file's types derive from or implement.
+
+    A call through an interface (`policy.Limit(x)`) names the interface and never the class that
+    answers it, so the file that implements `IPolicy` is reachable by the name `IPolicy`: a file
+    mentioning an interface depends on every implementation of it. Over-approximate, as it must be.
+    """
+    names = set()
+    for bases in BASE_LIST.findall(blank_literals(text)):
+        names |= set(IDENTIFIER.findall(re.split(r"\bwhere\b", bases)[0]))
+    return names - KEYWORDS
+
+
 def declared_names(text):
     """The names a C# file declares that another file could reach it by: its types, its delegates, its
-    extension methods, and the members it declares inside a partial type."""
+    extension methods, the members it declares inside a partial type, and the bases it implements."""
     _, members = partial_members(text)
     return (set(TYPE_DECLARATION.findall(text)) | set(DELEGATE_DECLARATION.findall(text))
-            | set(EXTENSION_METHOD.findall(text)) | members)
+            | set(EXTENSION_METHOD.findall(text)) | members | implemented_names(text))
 
 
 def reference_graph(files):
@@ -336,16 +365,20 @@ def reference_graph(files):
     """
     texts = {path: data.decode("utf-8", "replace") for path, data in files.items()
              if classify(path) == "implementation"}
-    declared, partial_in = {}, {}
+    declared, partial_in, constructs = {}, {}, {}
     for path, text in texts.items():
-        types, _ = partial_members(text)
+        types, _, constructing = partial_structure(text)
         declared[path] = declared_names(text)
+        constructs[path] = constructing
         for name in types:
             partial_in.setdefault(name, set()).add(path)
     shared = {name for name, paths in partial_in.items() if len(paths) > 1}
     declares = {}
     for path, names in declared.items():
-        for name in names - shared:
+        # A file of a shared partial type keeps the type's name when it declares what `new Type(...)`
+        # runs: a constructor, or a field initialiser.
+        keeps = shared & constructs[path]
+        for name in (names - shared) | keeps:
             declares.setdefault(name, set()).add(path)
     graph = {}
     for path, text in texts.items():
@@ -421,6 +454,15 @@ def resolve_implemented_in(value, paths):
 def test_names(row):
     return [str(test.get("name")) for test in (row or {}).get("tests") or []
             if isinstance(test, dict) and test.get("name")]
+
+
+TEST_METHOD = re.compile(r"\b(?:void|Task|ValueTask)\s+@?([A-Za-z_][A-Za-z0-9_]*)\s*\(")
+
+
+def declared_tests(files):
+    """The methods the engine's test files declare -- what a self-review may name as a test."""
+    return {name for path, data in files.items() if path.startswith("tests/") and classify(path) == "implementation"
+            for name in TEST_METHOD.findall(data.decode("utf-8", "replace"))}
 
 
 def tokens_of(files, root):
@@ -588,6 +630,10 @@ def state(snapshot):
     for invariant in snapshot.invariants:
         claim = f"invariant:{invariant['id']}"
         claim_notes, needed = [], set()
+        # What the invariant says is part of what was reviewed: a statement weakened in place is a
+        # different claim, whatever its anchors do.
+        units[f"invariant-statement:{invariant['id']}"] = fingerprint(invariant)
+        needed.add(f"invariant-statement:{invariant['id']}")
         for anchor in invariant.get("anchors") or []:
             if anchor.startswith("entry:"):
                 needed |= rests_on([anchor[len("entry:"):]], claim_notes)
@@ -698,6 +744,8 @@ def impact(prior, current, *, ceiling=DEFAULT_DELTA_CEILING, reusable=True):
         why = [f"unit-changed: {unit}" if unit in after else f"unit-removed: {unit}"
                for unit in sorted(recorded) if after.get(unit) != recorded[unit]]
         why += [f"dependency-added: {unit}" for unit in current["claims"][claim] if unit not in recorded]
+        why += [f"dependency-dropped: {unit}" for unit in sorted(recorded)
+                if unit not in current["claims"][claim] and after.get(unit) == recorded[unit]]
         if why:
             invalidated[claim] = why
         else:
@@ -715,6 +763,10 @@ def impact(prior, current, *, ceiling=DEFAULT_DELTA_CEILING, reusable=True):
     # again whether or not anything it rests on moved.
     carried = sorted({f.get("claim") for f in (prior.get("findings") or {}).get("blocking") or []
                       if isinstance(f, dict) and f.get("claim") in current["claims"]})
+    # A finding on a change no claim rests on is answered by reading that change again.
+    changes = sorted(set(changes) | {f.get("claim") for f in (prior.get("findings") or {}).get("blocking") or []
+                                     if isinstance(f, dict) and str(f.get("claim") or "").startswith("change:")
+                                     and f"file:{f['claim'][len('change:'):]}" in after})
     for claim in carried:
         if claim in retained:
             retained.remove(claim)
@@ -731,7 +783,9 @@ def impact(prior, current, *, ceiling=DEFAULT_DELTA_CEILING, reusable=True):
         out = _full(reasons, current)
         out.update({"changedUnits": changed})
         return out
-    mode = "delta" if review else "none"
+    # A claim dropped from the slice is invalidated and has nothing left to review; it still means
+    # the evidence does not stand whole, so the impact is never `none` and nothing is carried.
+    mode = "delta" if review or invalidated else "none"
     return {"mode": mode, "reasons": [], "retained": sorted(retained), "invalidated": dict(sorted(invalidated.items())),
             "new": sorted(new), "changes": changes, "carriedFindings": carried, "review": review,
             "changedUnits": changed}
@@ -930,6 +984,11 @@ def validate_attestation(document):
                 out.append(f"{claim} was invalidated and not reviewed")
     if kind == "final" and not isinstance(parent, dict):
         out.append("a final review has no parent: a comprehensive review with nothing before it is a full one")
+    elif kind == "final" and (parent.get("reviewType") != "delta" or parent.get("result") != "PASS"):
+        # The acceptance review ends a chain of repairs that passed. After a FAIL it would be a
+        # fresh reviewer who was never shown the finding -- asking again until someone agrees.
+        out.append(f"a final review follows a delta PASS, and its parent is a {parent.get('reviewType')} "
+                   f"{parent.get('result')}: answer that review's findings with a repair and a delta first")
     if kind == "full" and isinstance(parent, dict) and not reasons:
         out.append("a full review with a prior attestation names no reason for not being a delta")
     evidence = document.get("evidence")
@@ -1018,11 +1077,15 @@ def status_for(document, semantic_context):
     return f"{semantic_context}/delta", "success"
 
 
-def may_carry(document, impact_record):
-    """Whether a verdict may be posted at a new head without a review: a comprehensive PASS whose
-    every unit is unchanged there. The reason is the fingerprints, never the commit (0071 part 6)."""
+def may_carry(document, impact_record, reviewer="semantic"):
+    """Whether `reviewer`'s verdict may be posted at a new head without a review: that reviewer's
+    own comprehensive PASS, every unit of which is unchanged there, and no claim of which has been
+    dropped. The reason is the fingerprints, never the commit (0071 part 6). Another reviewer's PASS
+    is not this reviewer's: an independent PASS carried as the semantic verdict would answer a
+    semantic FAIL nobody reviewed."""
     return (document.get("result") == "PASS" and document.get("reviewType") in COMPREHENSIVE
-            and impact_record.get("mode") == "none")
+            and (document.get("reviewer") or {}).get("id") == reviewer
+            and impact_record.get("mode") == "none" and not impact_record.get("invalidated"))
 
 
 # --- the adversarial self-review ---------------------------------------------------------------
@@ -1037,8 +1100,10 @@ def self_review_skeleton(entry_id, digest):
 def _placeholder(text):
     words = re.findall(r"[A-Za-z0-9']+", text.lower())
     stripped = text.strip().lower().strip(".!")
-    return (stripped in PLACEHOLDERS or len(words) < 3 or len(text.strip()) < 12
-            or len(set(words)) == 1)
+    # Five words and thirty characters: enough to say *why* a class cannot occur for this entry,
+    # which "not applicable here" does not.
+    return (stripped in PLACEHOLDERS or len(words) < 5 or len(text.strip()) < 30
+            or len(set(words)) < 3 or re.fullmatch(r"(?:it is |this is )?not applicable(?: here| to this entry)?", stripped) is not None)
 
 
 def self_review_problems(record, entry_id, digest, declared_tests):

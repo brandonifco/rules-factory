@@ -313,13 +313,13 @@ RETIRED = (
 # engine still carrying those bytes is unedited, and is migrated rather than refused.
 RECIPE_SHA256 = {
     "docs/review-evidence.md": {
-        1: "d031157ed4bbb7bc6a3ebb22ca02bd3499790fcbef09b60b6aed487d93d378c9",
+        1: "acd33f7680250b25b17620781c9cb0eff18b05f6fe693f55fd878e459651c3dd",
     },
     "docs/adversarial-self-review.md": {
         1: "9faff906492d809a701516c2a741fb89d5563e646b7a759e0d27bb64f08c3b06",
     },
     "tools/review-scope.py": {
-        1: "d2322a20a65baa162c975bb5f2f0c59200f274ad73e361bf418a650e7088e5a5",
+        1: "84a69642db7a30efe6729d9557725794567462354072655ff4c223c7f6cbccf4",
     },
     ".claude/agents/engine-dev.md": {
         1: "22dbac892b04903992d13516e5a08ac04d92d02b0d8d4ce5e4bfa9ef53543287",
@@ -380,7 +380,7 @@ RECIPE_SHA256 = {
         22: "4a146a7566423fd5e2e57c6cf24426534878f70c02a852a539035b5d3aa4ee9e",
         23: "242b166fe723abccd63942c6eadad4575d407a922915cdf12397f2eed333eb52",
         24: "02468d2b206814e1fac4e7ebeaa48ec480011e68ae1355bfbe1d114aaa31be28",
-        25: "b74e580e1b591e8d8b959c52f3e2c86ae0005462d57633df2ad8977defba4c48",
+        25: "6c95e3eafff98e597eca267f100a5a615aa086624f1f3fd5df7a1e8f16bdcacc",
     },
     "CLAUDE.md": {
         1: "04c07ad36e742fa60efafeca54d20bd96d16b6e338a44e46fad2b679ab8dfd9f",
@@ -445,7 +445,7 @@ RECIPE_SHA256 = {
         12: "da610117bf1b24962640ba20d93f61f554db20f370984634446e45463fe95873",
         13: "9f9ee16c5bd75d0e3ec95863274187ec2591adfa7992950c7cceade3501ace63",
         14: "1c9adb51ce31986d763ce3c48a445bae95ceca0a95b7372767f02221a2840fa9",
-        15: "47c0673147d48a65a4ffd4126e23291208726d8644976bdb22b15d2414611c38",
+        15: "bbbfd33e2385ab884863f02d35c3a836405d21fbf95d3347fddd937f92ece238",
     },
     "tools/repair-packet.py": {
         1: "7ec00d9a68ff35fa0af4ab65714411ac6b39cfce34baf448359d9be5e393c2f5",
@@ -471,7 +471,7 @@ RECIPE_SHA256 = {
         3: "678b501239f684946dccbb6186035a39b5916257f0b3dadf13d35e6be97739a5",
         4: "79ce6388ca3409c99bfdecccf46b3b9e0277756bfd6d0f7588a79fb6181f48cf",
         5: "fd493c0e21a738f5e6bdc47c406a907e0a121e124fadfe3b9358d70580ac26e4",
-        6: "de4b282a31bb042c4b894fe99bf070ac1f31925e0729c4c783a9ba02954dd8f9",
+        6: "9dc1d7aafa536a37278bf526693893e106a43c43183bdcccddceac4e8fe45231",
     },
     "tools/conformance-gate.py": {
         1: "567972b60f16d1f86c661e97efa56fa2878c9a5aa92fb820c4aea07a402cbd24",

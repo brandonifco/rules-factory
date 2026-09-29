@@ -168,9 +168,7 @@ def engine_state(snapshot, checked_maps, slice_entries):
         "charter": {"path": model.CHARTER, "sha256": snap.charter},
         "locators": {e: (entries[e]["entry"].get("locator")) for e in slice_entries},
         "tests": {e: (entries[e]["overlay"] or {}).get("tests") or [] for e in slice_entries},
-        "declaredTests": {token for path, data in files.items() if path.startswith("tests/")
-                          and model.classify(path) == "implementation"
-                          for token in model.IDENTIFIER.findall(data.decode("utf-8", "replace"))},
+        "declaredTests": model.declared_tests(files),
         "policy": policy,
     }
     return model, current, facts
@@ -235,6 +233,20 @@ def load_prior(snapshot, path, head):
     except (PACKET.Refused, ValueError, KeyError) as error:
         return document, False, f"the statuses at {prior_commit[:12]} cannot be read ({error}), so its integrity is NOT CHECKED"
     digest = model.attestation_digest(document)
+    # The prior is the *latest* review, not any ancestor's: a review recorded after it -- a delta that
+    # failed, even at a commit a later revert took back -- would otherwise be skipped by naming an
+    # older PASS, and its findings with it.
+    try:
+        later = []
+        for commit in PACKET.git("rev-list", f"{prior_commit}..{head}").split():
+            found = recorded_digests(commit) - {digest}
+            if found:
+                later.append(f"{commit[:12]} ({', '.join(sorted(d[:12] for d in found))})")
+    except (PACKET.Refused, ValueError, KeyError) as error:
+        return document, False, f"the statuses after {prior_commit[:12]} cannot be read ({error}), so whether this is the latest review is NOT CHECKED"
+    if later:
+        return document, False, (f"a later review was recorded after {prior_commit[:12]}, at {'; '.join(later)}: the "
+                                 f"prior is the latest attestation, and its findings are not skipped by naming an older one")
     problems = model.check_binding(document, recorded_digest=digest if digest in recorded else "none recorded",
                                    reviewed_commit=prior_commit, maps=maps,
                                    project=(at_prior.get("engine") or {}).get("name"))
@@ -266,6 +278,41 @@ def checked(package_maps, snapshot, head, parent):
 def ceiling_of(policy, model):
     value = (policy.get("review") or {}).get("deltaCeiling", model.DEFAULT_DELTA_CEILING)
     return value if isinstance(value, (int, float)) and 0 < value <= 1 else model.DEFAULT_DELTA_CEILING
+
+
+def recompute(head, prior_path, package_maps, entries):
+    """(prior, impact) at `head`, computed afresh from the repository: what a carry is posted on.
+
+    The recorder calls this rather than trusting a scope file in a packet directory, because a carry
+    posts a verdict with no review behind it, and so rests entirely on this computation."""
+    parent, snapshot = PACKET.reviewed_snapshot(head)
+    try:
+        prior, reusable, why = load_prior(snapshot, prior_path, head)
+        slice_entries = sorted(set(entries) | {c["id"][len("entry:"):] for c in (prior or {}).get("claims") or []
+                                               if str(c.get("id", "")).startswith("entry:")})
+        model, current, facts = engine_state(snapshot, checked(package_maps, snapshot, head, parent), slice_entries)
+        result = model.impact(prior if prior is not None else {}, current, ceiling=ceiling_of(facts["policy"], model),
+                              reusable=reusable)
+        return prior, result, why
+    finally:
+        PACKET.remove_reviewed_snapshot(parent, snapshot)
+
+
+def committed_on_branch(snapshot, base):
+    """The attestations committed at the snapshot that were recorded on this branch: of commits the
+    base does not already hold. What a full review with no --prior would be ignoring."""
+    model = scope_model()
+    out = []
+    for path in sorted((snapshot / model.ATTESTATIONS).glob("*.json")) if (snapshot / model.ATTESTATIONS).is_dir() else []:
+        try:
+            commit = json.loads(path.read_text(encoding="utf-8")).get("reviewedCommit")
+        except (OSError, ValueError):
+            continue
+        if isinstance(commit, str) and subprocess.run(["git", "merge-base", "--is-ancestor", commit, base],
+                                                      cwd=PACKET.ROOT, stdout=subprocess.DEVNULL,
+                                                      stderr=subprocess.DEVNULL).returncode != 0:
+            out.append(f"{model.ATTESTATIONS}/{path.name}")
+    return out
 
 
 def command_state(args):
@@ -370,7 +417,8 @@ def command_delta(args):
             text = (f"# Nothing to review: `{head}`\n\nEvery unit the prior attestation `{prior_digest}` rested on is "
                     f"unchanged at this head. Its evidence stands whole, and a comprehensive PASS is carried with "
                     f"`tools/record-verdict.py --pr {args.pr} --packet <this identity> --reviewer semantic "
-                    f"--verdict pass`.\n")
+                    f"--verdict pass --package-map <path>`, which computes the carry again from the repository "
+                    f"before it posts anything.\n")
         measured = model.measure(text, [p["bytes"] for p in packets])
         scope = {
             "scopeFormat": 1, "project": facts["project"], "state": {"units": current["units"],

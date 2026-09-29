@@ -2768,7 +2768,10 @@ class TestReviewEvidenceAcrossRepairs(RailsInAGitEngine):
         self.assertEqual(done.returncode, 0, done.stderr)
         self.assertIn("NONE", done.stdout)
         _, identity = self.packet_paths(done)
-        done, context, written, _ = self.record(identity, "pass")
+        refused = self.run_tool("record-verdict.py", "--pr", "5", "--packet", identity, "--reviewer", "semantic",
+                                "--verdict", "pass")
+        self.assertEqual(refused.returncode, 1, "a carry is recomputed from the repository, which needs the map")
+        done, context, written, _ = self.record(identity, "pass", "--package-map", self.MAP)
         self.assertEqual(context, "rules-verdict/semantic")
         self.assertIsNone(written, "a carry reviews nothing and attests nothing new")
 
@@ -2777,6 +2780,23 @@ class TestReviewEvidenceAcrossRepairs(RailsInAGitEngine):
         measured = json.loads(telemetry.stdout)
         self.assertEqual((measured["fullReviews"], measured["deltaReviews"], measured["finalReviews"]), (1, 1, 1))
         self.assertEqual(measured["claimsReused"], 1)
+
+    def test_an_older_attestation_cannot_skip_a_later_review(self):
+        """The prior is the latest review: naming an older PASS or FAIL does not skip a later finding."""
+        attestation, _ = self.failed_full_review()
+        head, committed = self.repair(attestation)
+        done = self.run_tool("review-scope.py", "delta", "5", "--prior", committed, "--package-map", self.MAP,
+                             "--out", os.path.join(self.tmp, "delta"))
+        self.assertEqual(done.returncode, 0, done.stderr)
+        _, identity = self.packet_paths(done)
+        self.record(identity, "fail", "--finding", "entry:altitude-limit=still inclusive")
+        self.write(f"src/{NAME}/Rules/AltitudeLimit.cs", "internal static class AltitudeLimit { /* again */ }\n")
+        later = self.commit("another repair", "src")
+        self.publish(later)
+        done = self.run_tool("review-scope.py", "delta", "5", "--prior", committed, "--package-map", self.MAP,
+                             "--out", os.path.join(self.tmp, "skipping"))
+        self.assertEqual(done.returncode, 1, done.stdout)
+        self.assertIn("a later review was recorded", done.stderr)
 
     def test_an_attestation_edited_after_it_was_recorded_is_not_reused(self):
         attestation, _ = self.failed_full_review()

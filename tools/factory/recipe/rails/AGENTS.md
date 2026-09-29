@@ -452,7 +452,10 @@ decline that names why and cites where — that is the engine working, not the e
   gate requires; **the final acceptance review** (`--review final --prior <attestation>`)
   rereads the whole slice once and posts the verdict the merge needs. A full review that passes
   first time needs no final one. When nothing a comprehensive PASS rested on moved, `delta` writes
-  a carry, and recording it posts that PASS at the new head. `docs/review-evidence.md` says how to
+  a carry, and recording it with `--package-map` posts that reviewer's own PASS at the new head,
+  after computing the carry again from the repository. The prior is always the **latest** review
+  recorded on the branch: an older one is refused, so a later finding cannot be skipped by naming
+  an earlier pass. `docs/review-evidence.md` says how to
   read all of it, what can and cannot be reused, and how an engine produced before this migrates:
   its first review is a full one, and that is its baseline.
 - **No reviewer is paid before the implementer has attacked its own work.** A semantic,

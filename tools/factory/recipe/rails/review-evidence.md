@@ -37,6 +37,12 @@ repair could have changed. The rule is:
 A full review that passes first time needs no final review: it already read everything at the
 head being merged.
 
+The prior is always the latest review recorded on the branch, and a final review follows only a
+delta PASS. When a commit changes nothing a comprehensive PASS rested on — the attestation-only
+commit that stores it, a README fix — `delta` writes a **carry** instead of a packet; recording it
+(`--package-map` again) recomputes the carry from the repository and posts the same reviewer's PASS
+at the new head. Nothing is reviewed, because nothing it rested on moved.
+
 ## What can be reused, and what cannot
 
 A review's attestation lists **claims** — one per entry of the pull request's slice, and one per
@@ -77,6 +83,9 @@ a reason per unit.
 - a generated file does not hash to what `provenance.json` records;
 - more than half of the slice's entries changed in the map, or the repair invalidated more of the
   prior claims than `review.deltaCeiling` in `.github/agent-policy.json` (default one half) allows.
+
+And a full review with no `--prior` is refused on a branch that already carries attestations: it
+would drop their findings and call itself the first.
 
 "The head changed" is never a reason, and an attestation that gives it is refused.
 

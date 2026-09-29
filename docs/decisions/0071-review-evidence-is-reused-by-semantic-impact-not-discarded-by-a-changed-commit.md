@@ -131,7 +131,9 @@ retained evidence and the invalidated evidence. It carries no conversation. When
 bound.
 
 The prior attestation must be **committed** at the new head, under `reviews/attestations/`, and its
-digest must equal the digest the recorder put in the status at the prior reviewed commit. An
+digest must equal the digest the recorder put in the status at the prior reviewed commit, and it
+must be the **latest** review recorded on the branch: no status after its commit may name another
+attestation, so a later finding cannot be skipped by naming an earlier pass. An
 attestation edited after it was recorded — PASS written over FAIL, a claim's fingerprints changed —
 therefore fails to match and is refused, not reused. It is the same integrity boundary 0053 draws: a
 person with status-write access can still forge a self-consistent record, and that is out of scope
@@ -210,8 +212,8 @@ extra comprehensive review — the final one after a delta — and `tools/tests/
 holds both bounds.
 
 **What the rails were watched catching.** `tools/tests/factory/test_review_scope_mutations.py`
-applies twenty-three mutations to `reviewscope.py` and runs the scenarios against each; all
-twenty-three are killed. Among them: a changed entry or file marked unaffected, a map dependent or a
+applies thirty mutations to `reviewscope.py` and runs the scenarios against each; all thirty are
+killed. Among them: a changed entry or file marked unaffected, a map dependent or a
 shared primitive's caller dropped from the closure, a partial class's member declared in another
 file ignored, an entry reached through generated code ignored, a partial class's shared name linking
 every handler to every other, a grown dependency set not invalidating, the wrong
@@ -220,6 +222,20 @@ accepted, a delta PASS that skipped an invalidated claim, a failed claim not rev
 PASS posting the merge gate's context, a final review retaining evidence, a changed head treated as
 a reason, legacy unscoped evidence reused, a retained claim at unrecorded fingerprints, a stale
 self-review accepted, and a carry across a changed state.
+
+**What an adversary found first.** An adversarial review of the first cut, from a clean session
+given only the pinned commit, found ten holes, and each is now a test and a killed mutation: an
+independent reviewer's PASS could be carried as the semantic verdict (a carry now needs the
+reviewer's *own* comprehensive PASS, and the recorder recomputes it from the repository rather than
+from the packet directory); an invariant's statement was not a unit, and a claim removed or a
+dependency dropped left the evidence "whole"; any ancestor's attestation could be named as the
+prior, skipping a later FAIL (the prior must now be the latest review recorded on the branch); a
+final review could follow a FAIL, showing a fresh reviewer none of its findings (it now follows only
+a delta PASS); a call through an interface did not reach its implementations, nor `new` a partial
+type's constructor in another file; a finding on a `change:` claim deadlocked the chain; the
+self-review accepted any identifier as a test and "Not applicable here." as a reason; a full review
+with no `--prior` could be taken on a branch that already had reviews; and a response file, a
+solution or an `.editorconfig` changed nothing the model saw.
 
 ## A stronger invariant, kept
 
