@@ -128,6 +128,21 @@ HASH_DERIVATIONS = {
     # than borrowing the name of a tool that never ran over it, and the project that commits
     # it holds this digest to its source scan's the way `extract.py --check` does (0013).
     "transcribed-from-page-images-page-marked": _sha256_of_bytes,
+    # SHA-256 over the committed page-marked text, byte for byte -- for a born-digital print
+    # master whose extraction order is not its reading order. Between the two names above sits
+    # a source neither describes: the text layer is real and complete, so nothing is
+    # transcribed, and a straight `pdftotext` of it is still not the document. A design-heavy
+    # rulebook runs prose in two interleaved columns, reproduces its own components as
+    # illustrations whose text is real text at a fraction of prose size, clips that artwork so
+    # much of it extracts without ever being visible, and merges a prose line with an artwork
+    # fragment sharing its baseline. What such a corpus adds is a committed, per-page
+    # declaration of which rectangle holds which column, in what order, and which holds
+    # artwork: **geometry, never text**. Every byte still comes out of the text layer, so
+    # unlike a transcription this one *is* mechanically reproducible, and the project that
+    # commits it holds the corpus to its source by re-deriving and comparing byte for byte, the
+    # way `extract.py --check` does (0013). The digest is exact because the committed file is
+    # the derivation's output; the PDF's own digest is the manifest's `sourcePdf.sha256`.
+    "pdftotext-24.02.0-bbox-layout-declared-reading-order-page-marked": _sha256_of_bytes,
 }
 SHA256_HEX = re.compile(r"^[0-9a-f]{64}$")
 VERIFICATION_FORMAT = 1
