@@ -151,6 +151,14 @@ citations run 271–277, and the throw enumeration that #20 is about is on 278�
   to the corpus checker that resolves it: the eCFR checker for `§`, and
   `examples/frcp-6-12-81/check-locators-uslm.py` for `Rule`.
 
+**A page extent describes the map's principal corpus, and a map may cite more than one page-marked
+corpus** ([0070](decisions/0070-a-page-marked-map-may-cite-several-corpora-each-entry-checked-against-its-own.md)).
+`check-locators-pdf-text.py <corpus-map.json> <sourceId>=<corpus.txt> ...` checks each entry against
+the corpus its own `locator.sourceId` names; another corpus makes no extent claim, and the run prints
+that as NOT VERIFIED rather than passing it. Page numbers in an entry's citation are the page markers
+of *its* corpus, so a page cited in a secondary corpus must still fall inside the map's extent
+numerically, which the structural check reads without knowing which corpus a page belongs to.
+
 **A section-designation extent that reads a table says which rows it took.** Decided in
 [0035](decisions/0035-a-rule-stated-in-a-table-row-is-cited-by-its-row.md)
 ([#280](https://github.com/brandonifco/rules-factory/issues/280)).

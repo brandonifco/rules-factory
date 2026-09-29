@@ -115,7 +115,7 @@ import intake  # noqa: E402  (its admission contract, decisions 0028 and 0068; s
 #: Adapters whose locator checker reads a map citing several corpora, each entry against the one
 #: its own `locator.sourceId` names (#298). The others read one corpus per run, and a map citing
 #: several is refused for them -- accurately, and not for the whole class.
-MULTI_CORPUS_ADAPTERS = {"ecfr-xml"}
+MULTI_CORPUS_ADAPTERS = {"ecfr-xml", "page-marked-text", "pdftotext-page-marked"}
 
 LOCATOR_CHECKERS = {
     "plain-text": os.path.join(REPO, "tools", "check-locators.py"),

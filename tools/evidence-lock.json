@@ -1556,8 +1556,8 @@
     },
     {
       "path": "examples/srd-52-combat/check-locators-pdf-text.py",
-      "sha256": "fdf4f38a8ecf87fb739037c4f6e4c78c907823a836200f89a977625790aca0cc",
-      "bytes": 37925,
+      "sha256": "914ceb670752d43b4e1e9e9998964f95e570025f193525b879c87233a1b3a6d6",
+      "bytes": 42931,
       "role": "active",
       "readBy": [
         "checks"
