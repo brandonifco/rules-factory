@@ -54,8 +54,11 @@ fingerprint:
 A claim's units are computed, never declared: the entry, every entry it depends on through
 `dependsOn`, `enabledBy`, `suspendedBy`, `crossReferences[].resolvedBy` and `derivedFrom`, the
 corpora they cite, and the files `implementedIn` and the overlay's tests name, **closed over the
-lexical reference graph** — a file depends on every file declaring a type or extension method whose
-name it mentions. The graph over-approximates on purpose.
+lexical reference graph** — a file depends on every file declaring a type, delegate or extension
+method whose name it mentions, and on every file of a partial class that declares a member it
+names. A file that names another entry's member, its generated request type or its id as a string
+depends on that entry too, because generated code — the registry, the requests — is not in the
+graph. The graph over-approximates on purpose.
 
 A prior claim is **retained** only when every unit it recorded is unchanged and its dependency set
 has not grown. A changed file no claim rests on is reviewed as a claim of its own. A claim the prior

@@ -9,11 +9,12 @@ what a reviewer is *handed* -- bytes, entries, implementation bytes, corpus evid
 is what a reviewer's context is made of, and it measures it deterministically, so two runs print
 the same table and a later factory can be compared with this one.
 
-**The engine.** Each map is a real one from `examples/`. Every entry of the slice is implemented by
-one C# file that calls the files of the entries it depends on (`dependsOn`, `enabledBy`,
-`suspendedBy`) and, for a third of the entries, a shared primitive; each has one test file. That
-is the shape the factory's rails produce -- one handler per entry -- with the coupling the map
-itself declares.
+**The engine.** Each map is a real one from `examples/`. Every entry of the slice is implemented the
+way the generator's convention has it: one handler per file, every handler a member of one partial
+class, resolving the entries it depends on (`dependsOn`, `enabledBy`, `suspendedBy`) through their
+generated request types, and a third of them calling a helper another file of the same partial
+class declares; each entry has one test file, resolving through the registry. That is the coupling
+the map itself declares, written the way a produced engine writes it.
 
 **The chain.** A full review at the first head fails with two findings. Each repair edits the file
 of the entry a finding named; a round that is not the last fails again on a dependent of the
@@ -75,53 +76,55 @@ class Engine:
         for entry in entries:
             implemented = entry["id"] in self.slice
             self.entries[entry["id"]] = {"entry": entry, "overlay": {
-                "status": "implemented", "implementedIn": f"Rules/{pascal(entry['id'])}.cs",
+                "status": "implemented", "implementedIn": f"Handlers/{pascal(entry['id'])}.cs",
                 "tests": [{"name": f"{pascal(entry['id'])}_Holds", "mutation": f"invert {entry['id']}"}]}
                 if implemented else None}
-        self.files = {"src/Engine/Rules/Bounds.cs": self.primitive("Bounds"),
+        self.files = {"src/Engine/Handlers/Shared.cs": self.primitive(),
                       "src/Engine/Engine.csproj": b"<Project />\n"}
-        for index, entry_id in enumerate(self.slice):
-            entry = self.entries[entry_id]["entry"]
-            uses = [pascal(d) for d in (entry.get("dependsOn") or []) + (entry.get("enabledBy") or [])
-                    + (entry.get("suspendedBy") or []) if d in self.slice]
-            if index % 3 == 0:
-                uses.append("Bounds")
-            self.files[f"src/Engine/Rules/{pascal(entry_id)}.cs"] = self.rule(entry_id, uses)
+        for entry_id in self.slice:
+            self.files[f"src/Engine/Handlers/{pascal(entry_id)}.cs"] = self.rule(entry_id)
             self.files[f"tests/Engine.Tests/{pascal(entry_id)}Tests.cs"] = self.test(entry_id)
         self.frame = {k: v for k, v in document.items() if k != "entries"}
 
     @staticmethod
-    def primitive(name):
-        return (f"namespace Engine.Rules;\n\ninternal static class {name}\n{{\n    internal static bool Within(int value, "
-                f"int low, int high) => value >= low && value <= high;\n}}\n").encode()
+    def primitive(revision=0):
+        """A helper the handlers share, declared in the same partial class as they are."""
+        return (f"namespace Engine;\n\ninternal static partial class Handlers\n{{\n"
+                f"    private static bool Within(int value, int low, int high) => value >= low + {revision} && value <= high;\n"
+                f"}}\n").encode()
 
-    def rule(self, entry_id, uses, revision=0):
+    def uses(self, entry_id):
         entry = self.entries[entry_id]["entry"]
-        calls = "".join(f"        if (!{u}.Holds(request)) return Resolution.Unresolved(\"{u}\");\n" for u in uses)
+        return [d for d in (entry.get("dependsOn") or []) + (entry.get("enabledBy") or [])
+                + (entry.get("suspendedBy") or []) if d in self.slice]
+
+    def rule(self, entry_id, revision=0):
+        """One entry's handler, as the generator's convention writes it: a member of the one partial
+        class every handler shares, resolving what it depends on through their request types."""
+        entry = self.entries[entry_id]["entry"]
+        member = pascal(entry_id)
+        calls = "".join(f"        if (!{pascal(d)}(new {pascal(d)}Request(request.Value)).IsAllowed) "
+                        f"return Resolution<bool>.Unresolved(\"{d}\");\n" for d in self.uses(entry_id))
+        if self.slice.index(entry_id) % 3 == 0:
+            calls += "        if (!Within(request.Value, 0, 400)) return Resolution<bool>.Refused(\"bound\");\n"
         body = (f"// {entry.get('name', entry_id)} -- {json.dumps((entry.get('locator') or {}).get('citation'))}\n"
-                f"namespace Engine.Rules;\n\ninternal static class {pascal(entry_id)}\n{{\n"
-                f"    internal static bool Holds(Request request) => Resolve(request).IsAllowed;\n\n"
-                f"    internal static Resolution Resolve(Request request)\n    {{\n"
-                f"        if (request is null) return Resolution.Refused(\"null request\");\n{calls}"
-                f"        return request.Value >= {revision} ? Resolution.Allowed : Resolution.Refused(\"{entry_id}\");\n"
-                f"    }}\n}}\n")
+                f"namespace Engine;\n\ninternal static partial class Handlers\n{{\n"
+                f"    internal static partial Resolution<bool> {member}({member}Request request)\n    {{\n"
+                f"        if (request is null) return Resolution<bool>.Refused(\"null request\");\n{calls}"
+                f"        return request.Value >= {revision} ? Resolution<bool>.Allowed : "
+                f"Resolution<bool>.Refused(\"{entry_id}\");\n    }}\n}}\n")
         return body.encode()
 
     def test(self, entry_id):
         name = pascal(entry_id)
         return (f"namespace Engine.Tests;\n\npublic class {name}Tests\n{{\n    [Fact]\n    public void {name}_Holds() =>\n"
-                f"        Assert.True({name}.Resolve(new Request(1)).IsAllowed);\n}}\n").encode()
+                f"        Assert.True(Registry.Resolve(new {name}Request(1)).IsAllowed);\n}}\n").encode()
 
     def repair(self, entry_id, revision):
-        entry = self.entries[entry_id]["entry"]
-        uses = [pascal(d) for d in (entry.get("dependsOn") or []) + (entry.get("enabledBy") or [])
-                + (entry.get("suspendedBy") or []) if d in self.slice]
-        if self.slice.index(entry_id) % 3 == 0:
-            uses.append("Bounds")
-        before = self.files[f"src/Engine/Rules/{pascal(entry_id)}.cs"]
-        after = self.rule(entry_id, uses, revision)
-        self.files[f"src/Engine/Rules/{pascal(entry_id)}.cs"] = after
-        return f"src/Engine/Rules/{pascal(entry_id)}.cs", before, after
+        path = f"src/Engine/Handlers/{pascal(entry_id)}.cs"
+        before = self.files[path]
+        self.files[path] = after = self.rule(entry_id, revision)
+        return path, before, after
 
     def snapshot(self, m):
         return m.Snapshot(entries=self.entries, slice=self.slice, files=self.files,

@@ -492,6 +492,74 @@ class TestLegacyEvidence(Scenario):
         self.assertEqual([r["code"] for r in self.m.impact(None, current)["reasons"]], ["no-prior-attestation"])
 
 
+def handler(member, body="return Resolution.Allowed;", extra=""):
+    """One entry's handler as the generator's convention writes it: a member of the one partial
+    class every handler shares, in a file of its own."""
+    return (f"namespace Engine;\n\ninternal static partial class Handlers\n{{\n"
+            f"    internal static partial Resolution<bool> {member}({member}Request request)\n    {{\n"
+            f"        {body}\n    }}\n{extra}}}\n").encode()
+
+
+class TestTheGeneratorsConventions(Scenario):
+    """What a produced engine's code actually looks like: every handler a member of one partial
+    class, and one entry reaching another through the generated request types and registry."""
+
+    def engine(self):
+        engine = Engine()
+        for letter in LETTERS:
+            member = letter.upper()
+            engine.files.pop(f"src/Engine/Rules/{member}Rule.cs")
+            engine.files[f"src/Engine/Handlers/{member}.cs"] = handler(member)
+            engine.entries[letter]["overlay"]["implementedIn"] = f"Handlers/{member}.cs"
+        engine.invariants[0]["anchors"] = ["src/Engine/Handlers/C.cs"]
+        return engine
+
+    def test_one_partial_class_does_not_make_every_handler_depend_on_every_other(self):
+        engine = self.engine()
+        engine, _, prior = self.baseline(engine)
+        engine.files["src/Engine/Handlers/K.cs"] = handler("K", "return Resolution.Refused(\"k\");")
+        result = self.m.impact(prior, self.m.state(engine.snapshot(self.m)))
+        self.assertEqual((result["mode"], result["review"]), ("delta", ["entry:k"]))
+
+    def test_a_helper_declared_in_another_file_of_the_partial_class_is_a_dependency(self):
+        engine = self.engine()
+        engine.files["src/Engine/Handlers/Shared.cs"] = (
+            b"namespace Engine;\n\ninternal static partial class Handlers\n{\n"
+            b"    private static bool Within(int value) => value is >= 0 and <= 400;\n}\n")
+        engine.files["src/Engine/Handlers/K.cs"] = handler("K", "return Within(request.Value) ? Resolution.Allowed : "
+                                                                "Resolution.Refused(\"k\");")
+        engine, _, prior = self.baseline(engine)
+        engine.files["src/Engine/Handlers/Shared.cs"] = engine.files["src/Engine/Handlers/Shared.cs"].replace(b"400", b"399")
+        result = self.m.impact(prior, self.m.state(engine.snapshot(self.m)))
+        self.assertEqual(result["review"], ["entry:k"],
+                         "k calls a private member another file of the same partial class declares")
+
+    def test_an_entry_reached_through_its_generated_request_type_is_a_dependency(self):
+        engine = self.engine()
+        engine.files["src/Engine/Handlers/K.cs"] = handler(
+            "K", "return Registry.Resolve(new QRequest(request.Value)).IsAllowed ? Resolution.Allowed : "
+                 "Resolution.Refused(\"k\");")
+        engine, _, prior = self.baseline(engine)
+        engine.files["src/Engine/Handlers/Q.cs"] = handler("Q", "return Resolution.Refused(\"q\");")
+        result = self.m.impact(prior, self.m.state(engine.snapshot(self.m)))
+        self.assertEqual(result["review"], ["entry:k", "entry:q"],
+                         "the map says nothing of it, and k's answer turns on q's handler all the same")
+
+    def test_an_entry_reached_by_its_id_as_a_string_is_a_dependency(self):
+        engine = self.engine()
+        engine.files["src/Engine/Handlers/K.cs"] = handler(
+            "K", "return Registry.Resolve(\"q\", request).IsAllowed ? Resolution.Allowed : Resolution.Refused(\"k\");")
+        engine, _, prior = self.baseline(engine)
+        engine.files["src/Engine/Handlers/Q.cs"] = handler("Q", "return Resolution.Refused(\"q\");")
+        result = self.m.impact(prior, self.m.state(engine.snapshot(self.m)))
+        self.assertIn("entry:k", result["review"])
+
+    def test_a_brace_in_a_string_or_a_comment_is_not_structure(self):
+        text = ('internal static partial class Handlers\n{\n    // a stray { in a comment\n'
+                '    static string Label(int v) => $"{v} }} {{";\n    static int Clamp(int v) { var s = "}"; return v; }\n}\n')
+        self.assertEqual(self.m.partial_members(text), ({"Handlers"}, {"Label", "Clamp"}))
+
+
 class TestTheSelfReview(Scenario):
     """The adversarial pre-review an implementer owes before a semantic packet can be written."""
 

@@ -191,25 +191,161 @@ EXTENSION_METHOD = re.compile(
 GLOBAL_USING = re.compile(r"^\s*global\s+using\b", re.MULTILINE)
 
 
+PARTIAL_TYPE = re.compile(r"\bpartial\s+(?:(?:record|readonly|ref|unsafe|abstract|sealed|static|new|public|internal|"
+                          r"private|protected)\s+)*(?:class|struct|interface|record)\s+(?:(?:class|struct)\s+)?@?"
+                          r"([A-Za-z_][A-Za-z0-9_]*)")
+KEYWORDS = frozenset("""abstract as async await base bool break byte case catch char checked class const continue decimal
+default delegate do double else enum event explicit extern false finally fixed float for foreach get goto if implicit in
+init int interface internal is lock long namespace new null object operator out override params partial private
+protected public readonly record ref required return sbyte sealed set short sizeof stackalloc static string struct
+switch this throw true try typeof uint ulong unchecked unsafe ushort using var virtual void volatile when where while
+yield""".split())
+
+
+def blank_literals(text):
+    """`text` with every comment and every string or character literal's contents replaced by spaces.
+
+    Only for finding where a type's body and its members are: a brace inside `$"{x}"` or a comment
+    is not structure. Newlines are kept, so positions still mean lines. Identifiers are read from
+    the unblanked text elsewhere, because a name inside a string can still be code.
+    """
+    out, i, n = list(text), 0, len(text)
+
+    def blank(start, stop):
+        for k in range(start, min(stop, n)):
+            if out[k] != "\n":
+                out[k] = " "
+
+    while i < n:
+        c = text[i]
+        if text.startswith("//", i):
+            j = text.find("\n", i)
+            j = n if j < 0 else j
+            blank(i, j)
+            i = j
+        elif text.startswith("/*", i):
+            j = text.find("*/", i + 2)
+            j = n if j < 0 else j + 2
+            blank(i, j)
+            i = j
+        elif c == '"' or (c in "$@" and '"' in text[i:i + 3]):
+            k = i
+            while k < n and text[k] in "$@":
+                k += 1
+            verbatim = "@" in text[i:k]
+            quotes = 0
+            while k + quotes < n and text[k + quotes] == '"':
+                quotes += 1
+            if quotes >= 3:                                   # a raw string literal
+                j = text.find('"' * quotes, k + quotes)
+                j = n if j < 0 else j + quotes
+            else:
+                j = k + 1
+                while j < n:
+                    if text[j] == "\\" and not verbatim:
+                        j += 2
+                        continue
+                    if text[j] == '"':
+                        if verbatim and j + 1 < n and text[j + 1] == '"':
+                            j += 2
+                            continue
+                        j += 1
+                        break
+                    j += 1
+            blank(i, j)
+            i = j
+        elif c == "'":
+            j = i + 1
+            while j < n and text[j] != "'":
+                j += 2 if text[j] == "\\" else 1
+            blank(i, j + 1)
+            i = j + 1
+        else:
+            i += 1
+    return "".join(out)
+
+
+def partial_members(text):
+    """(the partial types a file declares, the names of the members it declares inside them).
+
+    A partial type is one type written in several files, and its members call each other by bare
+    name -- `Clamp(value)`, never `Handlers.Clamp(value)`. So its files are linked by the members
+    each declares, not by the type's name: the generator puts every entry's handler in one partial
+    class, and linking by that name would make every handler depend on every other one.
+    """
+    stripped = blank_literals(text)
+    types, members = set(), set()
+    for match in PARTIAL_TYPE.finditer(stripped):
+        types.add(match.group(1))
+        opening = stripped.find("{", match.end())
+        if opening < 0:
+            continue
+        depth, head, skipping, i = 1, [], False, opening + 1
+        while i < len(stripped) and depth > 0:
+            c = stripped[i]
+            if c == "{":
+                if depth == 1 and not skipping:
+                    _member(head, members)
+                head, skipping = [], False
+                depth += 1
+            elif c == "}":
+                depth -= 1
+                head = [] if depth == 1 else head
+            elif depth == 1:
+                if c == ";":
+                    if not skipping:
+                        _member(head, members)
+                    head, skipping = [], False
+                elif c == "=" and not skipping:
+                    _member(head, members)
+                    head, skipping = [], True             # an initialiser or an expression body
+                elif not skipping:
+                    head.append(c)
+            i += 1
+    return types, members
+
+
+def _member(head, members):
+    text = re.sub(r"\[[^\]]*\]", " ", "".join(head)).strip()
+    if not text or re.search(r"\b(?:class|struct|interface|enum|record|delegate|namespace)\b", text):
+        return
+    method = re.search(r"@?([A-Za-z_][A-Za-z0-9_]*)\s*(?:<[^()]*>)?\s*\(", text)
+    names = [method.group(1)] if method else IDENTIFIER.findall(text)[-1:]
+    members.update(name for name in names if name not in KEYWORDS)
+
+
 def declared_names(text):
-    """The names a C# file declares that another file could reach it by."""
+    """The names a C# file declares that another file could reach it by: its types, its delegates, its
+    extension methods, and the members it declares inside a partial type."""
+    _, members = partial_members(text)
     return (set(TYPE_DECLARATION.findall(text)) | set(DELEGATE_DECLARATION.findall(text))
-            | set(EXTENSION_METHOD.findall(text)))
+            | set(EXTENSION_METHOD.findall(text)) | members)
 
 
 def reference_graph(files):
     """`{path: sorted paths it depends on}` over the hand-written C# in `files` ({path: bytes}).
 
     A file depends on every other file that declares a name it mentions. Comments and strings are
-    deliberately not stripped: an interpolated string holds code, and a name mentioned in a comment
-    costs one edge too many, never one too few. Over-approximation is the direction this errs in,
-    because an edge too many costs review and an edge too few costs correctness.
+    deliberately not stripped from what a file mentions: an interpolated string holds code, and a
+    name mentioned in a comment costs one edge too many, never one too few. Over-approximation is
+    the direction this errs in, because an edge too many costs review and an edge too few costs
+    correctness.
+
+    The one name that is not an edge is a partial type's, when more than one file declares it: those
+    files are joined by the members each declares, which is how their code reaches one another.
     """
     texts = {path: data.decode("utf-8", "replace") for path, data in files.items()
              if classify(path) == "implementation"}
-    declares = {}
+    declared, partial_in = {}, {}
     for path, text in texts.items():
-        for name in declared_names(text):
+        types, _ = partial_members(text)
+        declared[path] = declared_names(text)
+        for name in types:
+            partial_in.setdefault(name, set()).add(path)
+    shared = {name for name, paths in partial_in.items() if len(paths) > 1}
+    declares = {}
+    for path, names in declared.items():
+        for name in names - shared:
             declares.setdefault(name, set()).add(path)
     graph = {}
     for path, text in texts.items():
@@ -307,11 +443,13 @@ class Snapshot:
     `generated_recorded` -- {path: sha256} of the generated files provenance.json records; `maps`
     -- [{"packageId", "version", "sha256", "frame"}] where `frame` is the map minus its entries;
     `corpora` -- {sourceId: contentHash}; `charter`, `policy_review`, `factory` -- digests or ids;
-    `invariants` -- [{"id", "statement", "anchors"}], anchors being paths or `entry:<id>`.
+    `invariants` -- [{"id", "statement", "anchors"}], anchors being paths or `entry:<id>`;
+    `members` -- {entry id: the C# member the generator names it by}, `pascal` of the id when not
+    given, which is the generator's own rule for an id with no reserved collision.
     """
 
     def __init__(self, *, entries, slice, files, maps, corpora, charter, policy_review, factory,
-                 generated_recorded=None, invariants=()):
+                 generated_recorded=None, invariants=(), members=None):
         self.entries = entries
         self.slice = list(dict.fromkeys(slice))
         self.files = files
@@ -322,6 +460,37 @@ class Snapshot:
         self.factory = factory
         self.generated_recorded = generated_recorded
         self.invariants = list(invariants)
+        self.members = members or {entry_id: pascal(entry_id) for entry_id in entries}
+
+
+def pascal(entry_id):
+    """The generator's member name for an entry id (semantics.pascal, less its reserved-word suffix)."""
+    parts = [p for p in re.split(r"[^A-Za-z0-9]+", str(entry_id)) if p]
+    name = "".join(p[0].upper() + p[1:] for p in parts)
+    return name if name and name[0].isalpha() else "Entry" + name
+
+
+def entry_references(implementation, members):
+    """`{path: entry ids the file reaches through generated code}`.
+
+    The generated registry, request types and contracts are not in the reference graph -- they are
+    a function of map and overlay, which are units of their own -- so a handler that resolves
+    another entry *through* them (`new SpeedLimitRequest(...)`, `Registry.Resolve("speed-limit")`)
+    would reach that entry's handler by no edge at all. A file that names an entry's member, its
+    request type, or its id as a string literal therefore depends on that entry.
+    """
+    by_token = {}
+    for entry_id, member in members.items():
+        by_token.setdefault(member, set()).add(entry_id)
+        by_token.setdefault(member + "Request", set()).add(entry_id)
+    out = {}
+    for path, data in implementation.items():
+        text = data.decode("utf-8", "replace")
+        tokens = set(IDENTIFIER.findall(text))
+        reached = {entry for token in tokens for entry in by_token.get(token, ())}
+        reached |= {entry for entry in members if f'"{entry}"' in text}
+        out[path] = sorted(reached)
+    return out
 
 
 def state(snapshot):
@@ -383,18 +552,37 @@ def state(snapshot):
                 anchors += test_files
         return closure(graph, anchors)
 
+    references = entry_references(implementation, snapshot.members)
+
+    def rests_on(entry_ids, notes):
+        """Every unit the entries in `entry_ids` rest on: their map closure, the corpora they cite,
+        the files their anchors reach, and -- to a fixpoint -- every entry those files reach through
+        generated code, with its own closure."""
+        needed, todo, seen, files_seen = set(), list(entry_ids), set(), set()
+        while todo:
+            member = todo.pop()
+            if member in seen:
+                continue
+            seen.add(member)
+            for dependency in entry_closure(snapshot.entries, member):
+                needed.add(f"entry:{dependency}")
+                entry = (snapshot.entries.get(dependency) or {}).get("entry") or {}
+                source = (entry.get("locator") or {}).get("sourceId") if isinstance(entry.get("locator"), dict) else None
+                if source:
+                    needed.add(f"corpus:{source}")
+                for path in files_of(dependency, notes):
+                    needed.add(f"file:{path}")
+                    if path not in files_seen:
+                        files_seen.add(path)
+                        todo.extend(r for r in references.get(path, ()) if r not in seen)
+                todo.extend(d for d in [dependency] if d not in seen)
+        return needed
+
     claims, notes = {}, {}
     for entry_id in snapshot.slice:
         claim = f"entry:{entry_id}"
         claim_notes = []
-        needed = set()
-        for member in entry_closure(snapshot.entries, entry_id):
-            needed.add(f"entry:{member}")
-            entry = (snapshot.entries.get(member) or {}).get("entry") or {}
-            source = (entry.get("locator") or {}).get("sourceId") if isinstance(entry.get("locator"), dict) else None
-            if source:
-                needed.add(f"corpus:{source}")
-            needed |= {f"file:{path}" for path in files_of(member, claim_notes)}
+        needed = rests_on([entry_id], claim_notes)
         claims[claim] = sorted(needed)
         notes[claim] = claim_notes
     for invariant in snapshot.invariants:
@@ -402,12 +590,11 @@ def state(snapshot):
         claim_notes, needed = [], set()
         for anchor in invariant.get("anchors") or []:
             if anchor.startswith("entry:"):
-                entry_id = anchor[len("entry:"):]
-                for member in entry_closure(snapshot.entries, entry_id):
-                    needed.add(f"entry:{member}")
-                    needed |= {f"file:{path}" for path in files_of(member, claim_notes)}
+                needed |= rests_on([anchor[len("entry:"):]], claim_notes)
             elif anchor in implementation:
-                needed |= {f"file:{path}" for path in closure(graph, [anchor])}
+                paths = closure(graph, [anchor])
+                needed |= {f"file:{path}" for path in paths}
+                needed |= rests_on(sorted({r for path in paths for r in references.get(path, ())}), claim_notes)
             else:
                 claim_notes.append(f"anchor {anchor!r} is neither an entry nor a hand-written file, so the "
                                    f"invariant depends on every source file")

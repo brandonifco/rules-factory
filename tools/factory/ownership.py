@@ -313,13 +313,13 @@ RETIRED = (
 # engine still carrying those bytes is unedited, and is migrated rather than refused.
 RECIPE_SHA256 = {
     "docs/review-evidence.md": {
-        1: "955785f692d9aacef542361909e668ec566c0284cd328a90f98d90d741b311f4",
+        1: "d031157ed4bbb7bc6a3ebb22ca02bd3499790fcbef09b60b6aed487d93d378c9",
     },
     "docs/adversarial-self-review.md": {
         1: "9faff906492d809a701516c2a741fb89d5563e646b7a759e0d27bb64f08c3b06",
     },
     "tools/review-scope.py": {
-        1: "1e92b62da536390296118a4e9987ea45937881340e380f64aded14b57b714fd7",
+        1: "d2322a20a65baa162c975bb5f2f0c59200f274ad73e361bf418a650e7088e5a5",
     },
     ".claude/agents/engine-dev.md": {
         1: "22dbac892b04903992d13516e5a08ac04d92d02b0d8d4ce5e4bfa9ef53543287",

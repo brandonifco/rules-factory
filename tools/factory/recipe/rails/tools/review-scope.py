@@ -155,7 +155,10 @@ def engine_state(snapshot, checked_maps, slice_entries):
         factory=str((record.get("factory") or {}).get("commit") or ""),
         generated_recorded={g["path"]: g.get("sha256") for g in record.get("generated") or []
                             if isinstance(g, dict) and "path" in g},
-        invariants=invariants)
+        invariants=invariants,
+        # The generator's own member names, reserved-word suffix and all, so an entry reached through
+        # its generated request type is recognised by the name the build gives it.
+        members={entry_id: vendored("semantics").pascal(entry_id) for entry_id in entries})
     current = model.state(snap)
     facts = {
         "project": {"engine": (record.get("engine") or {}).get("name"),

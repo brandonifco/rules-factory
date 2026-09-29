@@ -935,6 +935,7 @@ class TestNoBytecodeReachesTheCheckout(unittest.TestCase):
             "tools/fetch-evidence.py",
             "tools/mapper/__main__.py",
             "tools/pack-map.py",
+            "tools/review-cost-benchmark.py",
             "tools/validate-engine.py",
         ])
 

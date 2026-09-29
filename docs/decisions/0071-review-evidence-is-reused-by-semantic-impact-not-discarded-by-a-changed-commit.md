@@ -67,8 +67,15 @@ row, every entry it depends on through `dependsOn`, `enabledBy`, `suspendedBy`,
 `crossReferences[].resolvedBy` and `derivedFrom` (transitively), the corpus each cites, and the
 implementation and test files each is anchored to — `implementedIn` and the files declaring the
 tests the overlay names — **closed over a lexical reference graph** of the engine's C#: a file
-depends on every file that declares a type or extension method whose name it mentions. The graph
-over-approximates on purpose; a name that is also a word adds an edge, never loses one.
+depends on every file that declares a type, a delegate or an extension method whose name it
+mentions. Two conventions of produced code are read as what they are. Every handler is a member of
+one partial class, so the files of a partial class are joined by the **members** each declares —
+a private helper in another file is a dependency, and the shared class name is not, or every
+handler would depend on every other. And generated code is not in the graph, so a file that names an
+entry's member, its generated request type or its id as a string reaches **that entry** and all it
+rests on: a handler that resolves another rule through the registry depends on that rule even where
+the map declares nothing. The graph over-approximates on purpose; a name that is also a word adds an
+edge, never loses one.
 
 A prior claim is **retained** only when every unit it recorded still has the same fingerprint *and*
 its dependency set at the new head adds no unit it did not record. Everything else is invalidated,
@@ -176,22 +183,23 @@ supplies one; byte, file and entry counts are the proxies.
 
 **What a reviewer is handed.** `tools/review-cost-benchmark.py` replays a repair chain over three
 real maps — FAA part 107 (regulatory), 49 CFR 172.101 (hazardous materials), SRD 5.2 combat (a
-game) — with a 24-entry slice implemented one handler per entry, coupled exactly as each map's
-`dependsOn`, `enabledBy` and `suspendedBy` declare, a shared primitive under a third of them, and a
-test file each. The old model hands over a complete packet at every head; the new one a full packet,
+game) — with a 24-entry slice written the way the generator's convention writes it: one handler per
+file, every handler a member of one partial class, each resolving the entries its map entry depends
+on through their generated request types, a third of them calling a helper another file of the
+partial class declares, and a test file each. The old model hands over a complete packet at every head; the new one a full packet,
 a delta per repair, and a final packet when the chain ended on a delta. No token count is invented:
 bytes, entries, implementation bytes and corpus-evidence bytes are what is measured, and every run
 prints the same table.
 
 | map | findings | repairs | comprehensive reviews, old → new | bytes presented, new / old | claims reused |
 |---|---|---|---|---|---|
-| faa-part-107 | local | 7 | 8 → 2 | 162,322 / 445,312 (36%) | 160 |
-| hazmat-172-table | local | 7 | 8 → 2 | 182,085 / 508,928 (36%) | 160 |
-| srd-52-combat | local | 7 | 8 → 2 | 159,476 / 444,600 (36%) | 160 |
+| faa-part-107 | local | 7 | 8 → 2 | 163,122 / 447,704 (36%) | 160 |
+| hazmat-172-table | local | 7 | 8 → 2 | 187,979 / 517,488 (36%) | 160 |
+| srd-52-combat | local | 7 | 8 → 2 | 160,755 / 449,776 (36%) | 160 |
 | each of the three | local | 2 | 3 → 2 | 76–79% | 45 |
-| srd-52-combat | hub | 7 | 8 → 2 | 183,725 / 444,600 (41%) | 154 |
-| hazmat-172-table | hub | 7 | 8 → 3 | 234,677 / 508,928 (46%) | 138 |
-| faa-part-107 | hub | 7 | 8 → 8 | 445,312 / 445,312 (100%), every repair `repair-too-broad` | 0 |
+| srd-52-combat | hub | 7 | 8 → 2 | 186,977 / 449,776 (42%) | 154 |
+| hazmat-172-table | hub | 7 | 8 → 3 | 241,223 / 517,488 (47%) | 138 |
+| faa-part-107 | hub | 7 | 8 → 8 | 447,704 / 447,704 (100%), every repair `repair-too-broad` | 0 |
 
 "Local" findings land on the entries of the slice fewest others rest on; "hub" findings on the two
 most rested on. The last row is the model being right, not the model failing: in part 107,
@@ -202,9 +210,11 @@ extra comprehensive review — the final one after a delta — and `tools/tests/
 holds both bounds.
 
 **What the rails were watched catching.** `tools/tests/factory/test_review_scope_mutations.py`
-applies twenty mutations to `reviewscope.py` and runs the scenarios against each; all twenty are
-killed. Among them: a changed entry or file marked unaffected, a map dependent or a shared
-primitive's caller dropped from the closure, a grown dependency set not invalidating, the wrong
+applies twenty-three mutations to `reviewscope.py` and runs the scenarios against each; all
+twenty-three are killed. Among them: a changed entry or file marked unaffected, a map dependent or a
+shared primitive's caller dropped from the closure, a partial class's member declared in another
+file ignored, an entry reached through generated code ignored, a partial class's shared name linking
+every handler to every other, a grown dependency set not invalidating, the wrong
 prior head, map digest or corpus digest accepted, an edited attestation accepted, a changed charter
 accepted, a delta PASS that skipped an invalidated claim, a failed claim not reviewed again, a delta
 PASS posting the merge gate's context, a final review retaining evidence, a changed head treated as
