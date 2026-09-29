@@ -102,8 +102,8 @@ class Engine:
             generated_recorded={"src/Engine/Generated/Registry.g.cs": MODULE.sha256(self.files["src/Engine/Generated/Registry.g.cs"])},
             invariants=self.invariants)
 
-    def state(self):
-        return MODULE.state(self.snapshot())
+    def state(self, module=None):
+        return (module or MODULE).state(self.snapshot(module))
 
 
 def attest(state, *, head, review_type, result, parent=None, impact=None, blocking=(), module=None):
@@ -504,20 +504,20 @@ class TestTheSelfReview(Scenario):
         return record
 
     def test_a_complete_current_record_passes(self):
-        current = Engine().state()
+        current = Engine().state(self.m)
         digest = self.m.claim_digest(current, "entry:c")
         self.assertEqual(self.m.self_review_problems(self.complete(digest), "c", digest, {"CRule_holds"}), [])
 
     def test_a_record_made_before_the_repair_is_stale(self):
         engine = Engine()
-        before = self.m.claim_digest(engine.state(), "entry:c")
+        before = self.m.claim_digest(engine.state(self.m), "entry:c")
         engine.files["src/Engine/Rules/CRule.cs"] += b"// repaired\n"
-        after = self.m.claim_digest(engine.state(), "entry:c")
+        after = self.m.claim_digest(engine.state(self.m), "entry:c")
         problems = self.m.self_review_problems(self.complete(before), "c", after, {"CRule_holds"})
         self.assertTrue(any("attack it again" in p for p in problems), problems)
 
     def test_an_unanswered_class_a_missing_test_and_a_placeholder_are_each_refused(self):
-        digest = self.m.claim_digest(Engine().state(), "entry:c")
+        digest = self.m.claim_digest(Engine().state(self.m), "entry:c")
         record = self.complete(digest)
         del record["classes"]["idempotence"]
         record["classes"]["immutability"] = {"outcome": "tested", "tests": ["NoSuchTest"]}
