@@ -179,7 +179,7 @@ def engine_state(snapshot, checked_maps, slice_entries):
 def recorded_digests(sha):
     """Every attestation digest a status at `sha` names: what the recorder wrote, read back."""
     repository = json.loads(PACKET.gh("repo", "view", "--json", "nameWithOwner"))["nameWithOwner"]
-    statuses = json.loads(PACKET.gh("api", f"repos/{repository}/commits/{sha}/statuses"))
+    statuses = json.loads(PACKET.gh("api", f"repos/{repository}/commits/{sha}/statuses?per_page=100"))
     found = set()
     for status in statuses if isinstance(statuses, list) else []:
         words = str(status.get("description") or "").split()

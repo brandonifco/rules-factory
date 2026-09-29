@@ -319,7 +319,7 @@ RECIPE_SHA256 = {
         1: "9faff906492d809a701516c2a741fb89d5563e646b7a759e0d27bb64f08c3b06",
     },
     "tools/review-scope.py": {
-        1: "d52b2f070c024979a932e385d0e063abb661049144c5e7ed8fe900975c26dd1e",
+        1: "1e92b62da536390296118a4e9987ea45937881340e380f64aded14b57b714fd7",
     },
     ".claude/agents/engine-dev.md": {
         1: "22dbac892b04903992d13516e5a08ac04d92d02b0d8d4ce5e4bfa9ef53543287",
