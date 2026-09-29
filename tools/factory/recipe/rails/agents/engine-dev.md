@@ -111,8 +111,26 @@ name.
 - **Do not argue a finding down.** If a finding is wrong, say why with the map's bytes. The packet
   and the map decide, never an implementer's explanation — yours or the last one's.
 - A finding that is not in the brief is not yours to fix on this branch. Say you found it.
-- Your commit moves the head, so every verdict recorded before it stops applying. That is the
-  mechanism working: the new head is reviewed from a new packet.
+- **Commit the attestation the brief names** under `reviews/attestations/`, with the repair. It is
+  what bounds the next review: `tools/review-scope.py`'s `delta` compares it with your head and hands
+  the reviewer only the claims your repair could have changed. Your commit moves the head, so every
+  verdict recorded before it stops applying; what survives is the evidence your change provably did
+  not touch.
+- **Redo the adversarial self-review of every entry the repair touches.** The record is bound to
+  the entry's claim digest, and a repair that changes anything the entry rests on makes it stale;
+  the packet is refused until it is current (`docs/adversarial-self-review.md`).
+
+## Before you ask for review: attack it yourself
+
+No semantic packet is written until every entry it names has a committed
+`reviews/self-review/<entry id>.json` answering all twenty classes of
+[`docs/adversarial-self-review.md`](../../docs/adversarial-self-review.md) — integer extremes,
+overflow, empty collections, crafted input, invalid construction, phase boundaries, order
+dependence, partial mutation before refusal, exception leakage, refusal classification, and the
+rest — each with the tests that attack it or a reason it does not apply. Start from
+`tools/review-scope.py self-review <entry id> --package-map <path>`, which prints the skeleton and
+the claim digest to bind it to, and finish with `--check`. The reviewer is the most expensive agent
+this team runs; what it finds should be what only a reviewer can.
 
 ## When you are done
 

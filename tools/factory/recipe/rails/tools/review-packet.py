@@ -55,6 +55,20 @@ writes nothing, so nothing can be recorded from it (#372).
 **A refusal leaves nothing.** Every file, the output directory included, is written after the last
 thing that can refuse; until then the packet is assembled in this run's own private directory.
 
+**What a review covered is recorded, so the next one can be bounded** (rules-factory 0071). A file
+packet that carries entry evidence also writes a `*.scope.json` beside its identity: the claims of
+the slice -- each entry, each invariant `reviews/invariants.json` declares -- and the fingerprint of
+every unit each rests on. `tools/record-verdict.py` turns it into the review's attestation. After a
+repair, `tools/review-scope.py`'s `delta` compares that attestation with the new head and writes the
+bounded packet; this one is for the reviews that read everything: the first (`--review full`), one
+whose delta was refused for a stated reason (`--review full --prior <attestation>`), and the final
+acceptance review at the merge boundary (`--review final --prior <attestation>`).
+
+**A reviewer is paid only after the implementer has attacked its own work.** A semantic,
+independent or whole packet that names an entry is refused until every entry has a committed
+`reviews/self-review/<entry id>.json` answering all twenty classes of
+`docs/adversarial-self-review.md`, made against the entry's claim digest at the reviewed head.
+
 **Ephemeral**, for the reason an entry packet is: written outside the repository, never committed.
 
 Standard library only, plus `gh` (or `$RULES_ENGINE_GH`) and `git`.
@@ -432,7 +446,88 @@ def named_sections(body, wanted):
     return {name: kept[name] for name in wanted if kept.get(name)}
 
 
-def build(number, base, package_maps=(), recordable=True, role=ALL):
+REVIEWS = ("full", "final")
+
+
+def scope_tool():
+    """`tools/review-scope.py`, loaded by path: the one reading of the engine's review state."""
+    import importlib.util
+    spec = importlib.util.spec_from_file_location("review_scope_tool", pathlib.Path(__file__).resolve().parent
+                                                  / "review-scope.py")
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+def review_scope(snapshot, checked_maps, entries, head, review, prior, base=None):
+    """The scope record a comprehensive review is formed on, after the self-review gate (0071).
+
+    Refuses when an entry has no current adversarial self-review, when `--review final` has no
+    prior to follow, and when `--review full --prior` names a prior this change is only a delta of:
+    a full review after a prior needs a reason, and "the head changed" is not one.
+    """
+    tool = scope_tool()
+    try:
+        model, current, facts = tool.engine_state(snapshot, checked_maps, entries)
+        problems = []
+        for entry_id in entries:
+            record_path = snapshot / model.SELF_REVIEWS / f"{entry_id}.json"
+            try:
+                record = json.loads(record_path.read_text(encoding="utf-8")) if record_path.is_file() else None
+            except (OSError, ValueError) as error:
+                record = {"unreadable": str(error)}
+            problems += model.self_review_problems(record, entry_id, model.claim_digest(current, f"entry:{entry_id}"),
+                                                   facts["declaredTests"])
+        if problems:
+            raise Refused("the implementer's adversarial self-review is not complete at this head, so no reviewer is "
+                          "paid yet:\n" + "\n".join(f"  - {p}" for p in problems)
+                          + "\nWrite each record from `tools/review-scope.py self-review <entry id> --package-map "
+                            "<path>` and commit it under reviews/self-review/ (docs/adversarial-self-review.md).")
+        prior_document = None
+        if prior:
+            prior_document, reusable, why = tool.load_prior(snapshot, prior, head)
+            if review == "final":
+                if not reusable:
+                    raise Refused(f"a final review follows the chain it accepts, and {prior} cannot be proved to be "
+                                  f"the attestation recorded ({why})")
+                if (prior_document.get("reviewType"), prior_document.get("result")) != ("delta", "PASS"):
+                    raise Refused(f"a final review follows a delta PASS, and {prior} is a "
+                                  f"{prior_document.get('reviewType')} {prior_document.get('result')}: answer its "
+                                  f"findings with a repair and a delta review first. A full PASS needs no final review.")
+                result = {"mode": "full", "reasons": [], "review": sorted(current["claims"]), "retained": [],
+                          "invalidated": {}, "new": [], "changes": [], "carriedFindings": [], "changedUnits": []}
+            else:
+                result = model.impact(prior_document if prior_document is not None else {}, current,
+                                      reusable=reusable)
+                if result["mode"] != "full":
+                    raise Refused(f"this change is a {result['mode']} of {prior}, not a full review: nothing it "
+                                  f"changed forces one, and the head changing is not a reason. Write the bounded "
+                                  f"packet with `tools/review-scope.py delta <pr> --prior {prior} --package-map "
+                                  f"<path>`" + (", or carry the verdict: nothing it rested on moved"
+                                                if result["mode"] == "none" else "") + ".")
+        else:
+            if review == "final":
+                raise Refused("a final acceptance review follows a chain of reviews: name its last attestation with "
+                              "--prior. The first review of a change is --review full.")
+            earlier = tool.committed_on_branch(snapshot, base) if base else []
+            if earlier:
+                # A baseline taken while this branch already has reviews would drop their findings
+                # and call itself the first. The latest is the prior; its impact says what is owed.
+                raise Refused(f"this branch already carries {len(earlier)} review attestation(s) "
+                              f"({', '.join(earlier)}): name the latest with --prior. A full review of a change "
+                              f"that has been reviewed before answers its findings, and needs a reason.")
+            result = model.impact(None, current)
+    except tool.Refused as error:
+        raise Refused(str(error))
+    return {"scopeFormat": 1, "project": facts["project"],
+            "state": {"units": current["units"], "claims": current["claims"]}, "impact": result,
+            "maps": facts["maps"], "corpora": facts["corpora"], "charter": facts["charter"],
+            "locators": {e: facts["locators"].get(e) for e in entries},
+            "telemetry": {"closureSize": len({u for c in current["claims"].values() for u in c if u.startswith("file:")}),
+                          "entriesPresented": len(entries)}}, prior_document
+
+
+def build(number, base, package_maps=(), recordable=True, role=ALL, review_type="full", prior=None):
     pull = json.loads(gh("pr", "view", str(number), "--json",
                          "number,title,body,headRefOid,headRefName,baseRefName,baseRefOid,files,changedFiles,"
                          "closingIssuesReferences"))
@@ -528,7 +623,9 @@ def build(number, base, package_maps=(), recordable=True, role=ALL):
         parts = [f"# Review packet ({role}): PR #{number} — {pull.get('title', '')}\n",
                  f"Head commit `{head}`. Base commit `{base_sha}`. **Every verdict is recorded against this "
                  f"exact reviewed commit and this packet's identity.** If the pull request gains another commit, "
-                 f"regenerate the packet and review the new bytes.\n",
+                 f"`tools/review-scope.py`'s `delta` says what of this review it invalidates.\n",
+                 "This packet is the whole of your assignment. It is built from the repository and the map; there is "
+                 "no conversation behind it, and you need none. Start from a clean session.\n",
                  section("1. The issue this closes",
                          f"**#{issue_number} — {issue.get('title', '')}** ({issue.get('state', '')})\n\n"
                          f"Labels: {', '.join(issue_labels) or 'none'}\n\n"
@@ -609,6 +706,27 @@ def build(number, base, package_maps=(), recordable=True, role=ALL):
                     "nobody named.")
             parts.append(section("3. The entries, as the map has them", body))
 
+        # What a comprehensive review is formed on, and the gate in front of it: only for a packet a
+        # verdict can be recorded from, and only where there is entry evidence to scope (0071). After
+        # the entry packets, so an entry nobody can build a packet for is refused for that first.
+        scope, prior_document = ((review_scope(snapshot, checked_maps, entries, head, review_type, prior, base_sha))
+                                 if recordable and entries and role in READS_ENTRIES and maps_read
+                                 else (None, None))
+        if prior and scope is None and recordable:
+            raise Refused("--prior applies to a packet that carries entry evidence: a semantic, independent or whole "
+                          "packet that names an entry, with --package-map")
+        if review_type == "final":
+            parts.insert(3, section("0. Final acceptance review",
+                                    "This is the **final acceptance review**: the complete claimed slice, reread once, from "
+                                    "a clean snapshot of the head being merged. It exists to catch what a chain of bounded "
+                                    "reviews cannot -- an invalidation computed wrongly, an interaction between two repairs, "
+                                    "a blind spot of an earlier reviewer, a reading that drifted. You are not given the "
+                                    "earlier reviews' conclusions, on purpose. Review every entry below as if nothing had "
+                                    "been reviewed before."))
+        elif scope and scope["impact"]["reasons"]:
+            parts.insert(3, section("0. Why this review is a full one",
+                                    "\n".join(f"- `{r['code']}`: {r['detail']}" for r in scope["impact"]["reasons"])
+                                    + "\n\nA full review needs a reason, and these are this one's (rules-factory 0071)."))
         parts.append(section("4. What this engine was produced from",
                              "".join(
                                  f"- map `{m.get('packageId')}` {m.get('version')} "
@@ -779,7 +897,7 @@ def build(number, base, package_maps=(), recordable=True, role=ALL):
                              else "MSBuild inside the reviewed tree -- NOT VERIFIED" if entries
                              else "not read: this packet names no entry, so no entry packet was built"),
         }
-        return "\n".join(parts), head, base_sha, packets, context
+        return "\n".join(parts), head, base_sha, packets, context, scope
     finally:
         remove_reviewed_snapshot(parent, snapshot)
 
@@ -825,6 +943,16 @@ def is_semantic(path, patterns):
     return False
 
 
+def _committed(head, path):
+    """The bytes of `path` as `head` commits them, engine-relative."""
+    prefix = (engine_path() + "/") if engine_path() else ""
+    done = subprocess.run(["git", "show", f"{head}:{prefix}{path}"], cwd=ROOT, stdout=subprocess.PIPE,
+                          stderr=subprocess.PIPE)
+    if done.returncode != 0:
+        raise Refused(f"{path} is not committed at {head[:12]}")
+    return done.stdout
+
+
 def destination(out):
     if out is None:
         root = os.environ.get(PACKET_ROOT_VARIABLE) or os.path.join(tempfile.gettempdir(), "rules-engine-packets")
@@ -852,6 +980,12 @@ def main(argv=None):
                              "restored map package needed), semantic (the entry packets first, and not "
                              "the pull request's own case), independent (the assignment and the current "
                              "bytes, with no other reviewer's conclusions). Default: the whole packet")
+    parser.add_argument("--review", choices=REVIEWS, default="full",
+                        help="full (the first review, or one a delta was refused for) or final (the acceptance "
+                             "review at the merge boundary, which rereads the whole slice). Default: full")
+    parser.add_argument("--prior", metavar="PATH",
+                        help="the prior attestation, as committed under reviews/attestations/: required for "
+                             "--review final, and for a full review that follows one")
     parser.add_argument("--stdout", action="store_true",
                         help="display the human packet only; no review-packet identity file is written")
     args = parser.parse_args(argv)
@@ -861,15 +995,17 @@ def main(argv=None):
         # directory is a write (#371). Everything below is built in the run's own private
         # directory first and lands here only once there is nothing left to refuse.
         out_dir = destination(args.out)
-        packet_text, head, base_sha, packets, context = build(args.pr, args.base, args.package_map,
-                                                              recordable=not args.stdout,
-                                                              role=args.role or ALL)
+        packet_text, head, base_sha, packets, context, scope = build(args.pr, args.base, args.package_map,
+                                                                     recordable=not args.stdout,
+                                                                     role=args.role or ALL, review_type=args.review,
+                                                                     prior=args.prior)
         if args.stdout:
             sys.stdout.write(packet_text)
             return 0
         out_dir.mkdir(parents=True, exist_ok=True)
         role = args.role or ALL
-        target = out_dir / f"pr-{args.pr}-{head[:12]}{packet_suffix(role)}.md"
+        stem = f"pr-{args.pr}-{head[:12]}{packet_suffix(role)}" + ("-final" if args.review == "final" else "")
+        target = out_dir / f"{stem}.md"
         target.write_text(packet_text, encoding="utf-8")
         for packet in packets:
             (out_dir / packet["name"]).write_bytes(packet["bytes"])
@@ -892,8 +1028,24 @@ def main(argv=None):
                 {"entryId": packet["entryId"], "path": packet["name"], "sha256": packet["sha256"]}
                 for packet in packets
             ],
+            # What kind of review this packet is for, and -- where it carries entry evidence -- the
+            # scope a verdict on it attests (0071). A packet with no scope still records a verdict,
+            # and its attestation says it is unscoped, so it can never be a delta's parent.
+            "reviewType": args.review,
         }
-        manifest_target = out_dir / f"pr-{args.pr}-{head[:12]}{packet_suffix(role)}.review.json"
+        if scope is not None:
+            measured = scope_tool().scope_model().measure(packet_text, [p["bytes"] for p in packets])
+            scope["telemetry"].update({"packetBytes": measured["bytes"], "packetCharacters": measured["characters"],
+                                       "packetFiles": measured["files"]})
+            scope_bytes = (json.dumps(scope, sort_keys=True, indent=2, ensure_ascii=False) + "\n").encode("utf-8")
+            (out_dir / f"{stem}.scope.json").write_bytes(scope_bytes)
+            manifest["scope"] = {"path": f"{stem}.scope.json", "sha256": hashlib.sha256(scope_bytes).hexdigest()}
+            if args.prior:
+                prior_bytes = _committed(head, args.prior)
+                (out_dir / f"{stem}.prior.attestation.json").write_bytes(prior_bytes)
+                manifest["prior"] = {"path": f"{stem}.prior.attestation.json", "source": args.prior,
+                                     "sha256": hashlib.sha256(prior_bytes).hexdigest()}
+        manifest_target = out_dir / f"{stem}.review.json"
         manifest_target.write_text(json.dumps(manifest, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
     except Refused as error:
         print(f"review-packet: REFUSED -- {error}", file=sys.stderr)

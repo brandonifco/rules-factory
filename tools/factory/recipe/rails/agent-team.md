@@ -109,6 +109,18 @@ directions; every unresolved case is checked for citing the right reason and the
 pull request" as an answer. Where two reviewers disagree, the packet and the map decide — not
 seniority, not the model, not the implementer's explanation.
 
+**Starts clean, and reads a packet, not a conversation.** A reviewer is launched from a fresh
+session with the packet and the repository, and nothing else: not the implementer's transcript,
+not an earlier reviewer's reasoning, not the orchestrator's summary. The packet is the interface.
+
+**Reads what a repair could have changed, and the whole slice once.** The first review of a change
+is full. After a repair, `tools/review-scope.py`'s `delta` computes which claims the repair invalidated
+— from the map's dependencies, a reference graph of the code and the fingerprints the last review
+recorded, never from anyone's say-so — and hands this reviewer only those, with the findings being
+repaired. When a change cannot be bounded it says why, and the review is full again. A delta pass
+merges nothing: a **final acceptance review** rereads the whole slice at the merge boundary, once
+(`docs/review-evidence.md`).
+
 ---
 
 ## What a turn costs, and what follows
@@ -125,7 +137,7 @@ raw tokens — the most expensive agent spent **81%** of its cost on re-reading 
 writing it, and **2.6%** on its own output. Everything it printed all run, every test result and
 every file it read, came to 0.26% of its raw tokens.
 
-Four things follow, in the order they are worth acting on:
+Five things follow, in the order they are worth acting on:
 
 1. **A narrow assignment is cheaper than a wide one by more than its share of the work.** In that
    run a narrowly-scoped follow-up fix did real work at an 84k peak context; the implementer it
@@ -147,6 +159,14 @@ Four things follow, in the order they are worth acting on:
    roughly eight review rounds it stayed alive through. One instance is one attempt
    (`AGENTS.md` §4), and the next attempt reads the repository rather than the last one's
    transcript.
+
+5. **Review what changed, not everything again.** The fourth point ended the implementer at the
+   review boundary; the same arithmetic applies to the reviewer. A full semantic reread after every
+   one-line repair is `rounds × slice` — on one produced engine, about half of a 29M-token session.
+   Each review now leaves an attestation of what it covered, the next is bounded by the semantic
+   impact of the repair, and one final review rereads everything at the merge
+   (`docs/review-evidence.md`). `tools/review-scope.py telemetry` reports how much each review
+   read and reused, so this claim is measured rather than asserted.
 
 **What none of this justifies.** Skipping the semantic review, sampling instead of checking
 exhaustively, or accepting a thinner verdict because a thorough one is dear. The cost of the

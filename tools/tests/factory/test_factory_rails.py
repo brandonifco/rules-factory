@@ -310,7 +310,8 @@ class TestBytecodeStaysOutOfTheCheckout(unittest.TestCase):
         self.assertEqual(sorted(importers),
                          ["scripts/engine-gate.py", "scripts/map-overlay.py", "tools/agent-doctor.py",
                           "tools/entry-packet.py", "tools/orchestrator-status.py",
-                          "tools/pr-policy.py", "tools/review-packet.py"])
+                          "tools/pr-policy.py", "tools/record-verdict.py", "tools/review-packet.py",
+                          "tools/review-scope.py"])
 
 
 class TestAProducedEngine(unittest.TestCase):
@@ -797,6 +798,18 @@ if kind in ("pr", "issue") and len(argv) > 1 and argv[1] == "list" and "--state"
     rows = fixture.get(kind + "_list") or []
     print(json.dumps([{f: row.get(f) for f in fields} for row in rows]))
     sys.exit(0)
+if kind == "api" and "/statuses/" in argv[1] and "-X" in argv and argv[argv.index("-X") + 1] == "POST":
+    # `gh api repos/{owner}/{repo}/statuses/<sha> -X POST -f ...`: a verdict recorded. Kept, newest
+    # first as GitHub lists them, in $GH_STATUSES when a test gives one, so a later read of the
+    # statuses at that commit sees what the recorder actually posted (0071).
+    store = os.environ.get("GH_STATUSES")
+    fields = dict(argv[i + 1].split("=", 1) for i, a in enumerate(argv) if a == "-f")
+    if store:
+        kept = json.load(open(store, encoding="utf-8")) if os.path.exists(store) else {}
+        kept.setdefault(argv[1].split("/statuses/", 1)[1], []).insert(0, fields)
+        json.dump(kept, open(store, "w", encoding="utf-8"))
+    print("{}")
+    sys.exit(0)
 if kind == "api" and "/status" in argv[1]:
     # `gh api repos/{owner}/{repo}/commits/<sha>/status --jq ...`: the verdicts standing at one
     # commit, which tools/repair-packet.py reports and must call NOT CHECKED when it cannot read
@@ -805,6 +818,10 @@ if kind == "api" and "/status" in argv[1]:
         sys.stderr.write("could not read commit statuses: HTTP 403\\n")
         sys.exit(1)
     sha = argv[1].split("/commits/", 1)[1].split("/")[0]
+    store = os.environ.get("GH_STATUSES")
+    if store and os.path.exists(store) and sha in json.load(open(store, encoding="utf-8")):
+        print(json.dumps(json.load(open(store, encoding="utf-8"))[sha]))
+        sys.exit(0)
     print(json.dumps((fixture.get("statuses") or {}).get(sha) or []))
     sys.exit(0)
 if kind == "api":
@@ -1303,6 +1320,28 @@ class TestTheReviewPacket(RailsInAGitEngine):
             handle.write("// the altitude limit\n")
         git(self.out, "add", "-A")
         git(self.out, "commit", "-qm", "implement the altitude limit")
+        return self.self_reviewed("altitude-limit")
+
+    def self_reviewed(self, entry):
+        """Commit the adversarial self-review a semantic packet requires of `entry` (0071), and the new head.
+
+        Bound to the entry's claim digest as `tools/review-scope.py self-review` prints it at HEAD, and
+        committed under `reviews/`, which no claim rests on -- so the commit that holds it leaves the
+        digest it was made against unchanged.
+        """
+        done = subprocess.run([sys.executable, os.path.join(self.out, "tools", "review-scope.py"), "self-review",
+                               entry, "--package-map", os.path.join(PART107, "corpus-map.json")],
+                              cwd=self.out, capture_output=True, text=True, env=self.environment())
+        self.assertEqual(done.returncode, 0, done.stderr)
+        record = json.loads("\n".join(line for line in done.stdout.splitlines() if not line.startswith("#")))
+        for answer in record["classes"].values():
+            answer.update(outcome="not-applicable", reason="this test engine's handler holds no logic to attack")
+        path = os.path.join(self.out, "reviews", "self-review", f"{entry}.json")
+        os.makedirs(os.path.dirname(path), exist_ok=True)
+        with open(path, "w", encoding="utf-8") as handle:
+            json.dump(record, handle, indent=2)
+        git(self.out, "add", path)
+        git(self.out, "commit", "-qm", f"the adversarial self-review of {entry}")
         return git(self.out, "rev-parse", "HEAD")
 
     def pull_request(self, head, *, labels=("state:ready", "risk:normal"), issues=1, body="## Linked Issue\nCloses #27"):
@@ -2558,6 +2597,258 @@ A_REAL_PR_BODY = ("## Linked Issue\nCloses #27\n\n## What this does\n"
                   + "\n## Tests and evidence\n```\n$ ./scripts/validate.sh full\n"
                   + "ok   a step\n" * 30
                   + "validate.sh full: PASS\n```\n")
+
+
+class TestReviewEvidenceAcrossRepairs(RailsInAGitEngine):
+    """A review chain in a produced engine, end to end, with real git and the stand-in `gh` (0071, #532).
+
+    full FAIL -> repair -> delta PASS -> final PASS -> an attestation-only commit carried, and the two
+    ways evidence is refused: edited after it was recorded, and a legacy record with no scope. Every
+    packet here is built from the repository, the map and the committed attestations alone: no
+    conversation is an input to any of it, which is scenario G's claim, made of the real tools.
+
+    The stand-in `gh` stores nothing a tool posts, so after each recording the test puts in the
+    fixture the status GitHub would now hold -- the recorder's context and the attestation digest in
+    its description -- exactly as the recorder printed it.
+    """
+
+    MAP = os.path.join(PART107, "corpus-map.json")
+    # Two entries of part 107 whose closures do not meet: `hazardous-material` rests on nothing
+    # `altitude-limit` does. Most of the map is joined through `waivable-regulations`, whose
+    # cross-references land on nearly every operating rule -- which is the model being conservative
+    # about a real map, and why a repair of one of those is correctly a review of many.
+    ISSUE = ("<!-- rules-factory-entry: altitude-limit -->\n<!-- rules-factory-entry: hazardous-material -->\n"
+             "## Acceptance criteria\n- [ ] each declines where its rule says")
+
+    def run_tool(self, *argv):
+        return subprocess.run([sys.executable, os.path.join(self.out, "tools", argv[0]), *argv[1:]],
+                              cwd=self.out, capture_output=True, text=True,
+                              env=self.environment(GH_STATUSES=os.path.join(self.tmp, "statuses.json")))
+
+    def write(self, relative, text):
+        path = os.path.join(self.out, *relative.split("/"))
+        os.makedirs(os.path.dirname(path), exist_ok=True)
+        with open(path, "w", encoding="utf-8") as handle:
+            handle.write(text)
+
+    def commit(self, message, *paths):
+        git(self.out, "add", *paths)
+        git(self.out, "commit", "-qm", message)
+        return git(self.out, "rev-parse", "HEAD")
+
+    def self_review(self, *entries):
+        for entry in entries:
+            head = TestTheReviewPacket.self_reviewed(self, entry)
+        return head
+
+    def publish(self, head):
+        """The pull request at `head`. The statuses are what the recorder posted, kept by the stand-in."""
+        self.fixture({
+            "repo": {"nameWithOwner": "example/engine"},
+            "pr": {"5": {"number": 5, "title": "A limit and a hazard", "body": "## Linked Issue\nCloses #27",
+                         "headRefOid": head, "headRefName": "issue-27", "baseRefName": "main",
+                         "baseRefOid": self.base,
+                         "files": [{"path": "overlay/altitude-limit.json"}, {"path": "overlay/hazardous-material.json"},
+                                   {"path": f"src/{NAME}/Rules/AltitudeLimit.cs"},
+                                   {"path": f"src/{NAME}/Rules/HazardousMaterial.cs"}],
+                         "closingIssuesReferences": [{"number": 27}]}},
+            "issue": {"27": {"number": 27, "title": "A limit and a hazard", "state": "OPEN", "body": self.ISSUE,
+                             "labels": [{"name": "state:ready"}, {"name": "risk:normal"}]}},
+        })
+
+    def record(self, identity, verdict, *extra):
+        done = self.run_tool("record-verdict.py", "--pr", "5", "--packet", identity, "--reviewer", "semantic",
+                             "--verdict", verdict, *extra)
+        self.assertEqual(done.returncode, 0, done.stderr)
+        context = done.stdout.split(" at ", 1)[1].split(" on ", 1)[0]
+        attestation = next((line.split(" written to ", 1)[1] for line in done.stdout.splitlines()
+                            if line.startswith("attestation ")), None)
+        digest = next((line.split()[1] for line in done.stdout.splitlines() if line.startswith("attestation ")), None)
+        return done, context, attestation, digest
+
+    def packet_paths(self, done):
+        lines = done.stdout.strip().splitlines()
+        return next(p for p in lines if p.endswith(".md")), next(p for p in lines if p.endswith(".review.json"))
+
+    def setUp(self):
+        super().setUp()
+        self.commit_engine()
+        self.base = git(self.out, "rev-parse", "HEAD")
+        git(self.out, "checkout", "-qb", "issue-27")
+        write_overlay(self.out, {
+            "altitude-limit": {"status": "implemented", "implementedIn": "Rules/AltitudeLimit.cs",
+                               "tests": [{"name": "AltitudeLimit_Declines", "mutation": "return the ceiling"}]},
+            "hazardous-material": {"status": "implemented", "implementedIn": "Rules/HazardousMaterial.cs",
+                            "tests": [{"name": "HazardousMaterial_Declines", "mutation": "allow the hazardous load"}]}})
+        self.write(f"src/{NAME}/Rules/AltitudeLimit.cs", "internal static class AltitudeLimit { }\n")
+        self.write(f"src/{NAME}/Rules/HazardousMaterial.cs", "internal static class HazardousMaterial { }\n")
+        self.commit("implement the limit and the hazard", "overlay", "src")
+        self.full_head = self.self_review("altitude-limit", "hazardous-material")
+        self.publish(self.full_head)
+
+    def failed_full_review(self):
+        done = self.run_tool("review-packet.py", "5", "--role", "semantic", "--package-map", self.MAP,
+                             "--base", "main", "--out", os.path.join(self.tmp, "full"))
+        self.assertEqual(done.returncode, 0, done.stderr)
+        identity = next(p for p in done.stdout.splitlines() if p.endswith(".review.json"))
+        self.assertTrue(os.path.isfile(identity.replace(".review.json", ".scope.json")),
+                        "a packet with entry evidence writes the scope its verdict attests")
+        done, context, attestation, digest = self.record(identity, "fail", "--finding",
+                                                         "entry:altitude-limit=the ceiling is inclusive")
+        self.assertEqual(context, "rules-verdict/semantic")
+        return attestation, digest
+
+    def repair(self, attestation):
+        """The repair: the code the finding named, its self-review again, and the attestation committed."""
+        self.write(f"src/{NAME}/Rules/AltitudeLimit.cs", "internal static class AltitudeLimit { /* exclusive */ }\n")
+        self.commit("the ceiling is exclusive", "src")
+        committed = f"reviews/attestations/pr-5-{self.full_head[:12]}-full.json"
+        shutil.copyfile(attestation, self._mkdir_for(committed))
+        self.commit("the attestation this repair answers", committed)
+        head = self.self_review("altitude-limit")
+        self.publish(head)
+        return head, committed
+
+    def _mkdir_for(self, relative):
+        path = os.path.join(self.out, *relative.split("/"))
+        os.makedirs(os.path.dirname(path), exist_ok=True)
+        return path
+
+    def test_a_repair_is_reviewed_as_a_delta_and_the_final_review_rereads_the_slice(self):
+        attestation, _ = self.failed_full_review()
+        head, committed = self.repair(attestation)
+
+        done = self.run_tool("review-scope.py", "delta", "5", "--prior", committed, "--package-map", self.MAP,
+                             "--out", os.path.join(self.tmp, "delta"))
+        self.assertEqual(done.returncode, 0, done.stderr)
+        self.assertIn("DELTA", done.stdout)
+        packet, identity = self.packet_paths(done)
+        text = open(packet, encoding="utf-8").read()
+        self.assertIn("`entry:altitude-limit`", text.split("## 4.")[0], "the repaired entry is in the review set")
+        self.assertNotIn("`entry:hazardous-material`", text.split("## 9.")[0], "the untouched entry is not reread")
+        self.assertIn("`entry:hazardous-material`", text.split("## 9.")[1], "and its evidence is named as retained")
+        self.assertIn("the ceiling is inclusive", text, "the finding being repaired")
+        self.assertIn("/* exclusive */", text, "the diff since the prior review")
+        self.assertIn("entry-altitude-limit.md", text)
+        self.assertNotIn("entry-hazardous-material.md", text)
+        self.assertIn("no implementation conversation", text)
+
+        done, context, delta_attestation, digest = self.record(identity, "pass")
+        self.assertEqual(context, "rules-verdict/semantic/delta",
+                         "a delta PASS posts a context the merge gate does not require")
+        self.assertIn("--review final", done.stdout)
+        document = json.load(open(delta_attestation, encoding="utf-8"))
+        self.assertEqual((document["reviewType"], document["retained"]), ("delta", ["entry:hazardous-material"]))
+
+        committed_delta = f"reviews/attestations/pr-5-{head[:12]}-delta.json"
+        shutil.copyfile(delta_attestation, os.path.join(self.out, *committed_delta.split("/")))
+        final_head = self.commit("the delta attestation", committed_delta)
+        self.publish(final_head)
+        done = self.run_tool("review-packet.py", "5", "--role", "semantic", "--review", "final", "--prior",
+                             committed_delta, "--package-map", self.MAP, "--base", "main",
+                             "--out", os.path.join(self.tmp, "final"))
+        self.assertEqual(done.returncode, 0, done.stderr)
+        final_packet = next(p for p in done.stdout.splitlines() if p.endswith("-final.md"))
+        self.assertIn("Final acceptance review", open(final_packet, encoding="utf-8").read())
+        identity = next(p for p in done.stdout.splitlines() if p.endswith(".review.json"))
+        done, context, final_attestation, digest = self.record(identity, "pass")
+        self.assertEqual(context, "rules-verdict/semantic", "the final PASS is the verdict the merge needs")
+        final = json.load(open(final_attestation, encoding="utf-8"))
+        self.assertEqual(final["reviewed"]["entries"], ["altitude-limit", "hazardous-material"])
+        self.assertEqual(final["retained"], [])
+
+        # The final attestation committed on its own: every unit it rests on is unchanged, so its
+        # PASS is carried to the new head, and nothing is reviewed again.
+        committed_final = f"reviews/attestations/pr-5-{final_head[:12]}-final.json"
+        shutil.copyfile(final_attestation, os.path.join(self.out, *committed_final.split("/")))
+        carried_head = self.commit("the final attestation", committed_final)
+        self.publish(carried_head)
+        done = self.run_tool("review-scope.py", "delta", "5", "--prior", committed_final, "--package-map", self.MAP,
+                             "--out", os.path.join(self.tmp, "carry"))
+        self.assertEqual(done.returncode, 0, done.stderr)
+        self.assertIn("NONE", done.stdout)
+        _, identity = self.packet_paths(done)
+        refused = self.run_tool("record-verdict.py", "--pr", "5", "--packet", identity, "--reviewer", "semantic",
+                                "--verdict", "pass")
+        self.assertEqual(refused.returncode, 1, "a carry is recomputed from the repository, which needs the map")
+        done, context, written, _ = self.record(identity, "pass", "--package-map", self.MAP)
+        self.assertEqual(context, "rules-verdict/semantic")
+        self.assertIsNone(written, "a carry reviews nothing and attests nothing new")
+
+        telemetry = self.run_tool("review-scope.py", "telemetry")
+        self.assertEqual(telemetry.returncode, 0, telemetry.stderr)
+        measured = json.loads(telemetry.stdout)
+        self.assertEqual((measured["fullReviews"], measured["deltaReviews"], measured["finalReviews"]), (1, 1, 1))
+        self.assertEqual(measured["claimsReused"], 1)
+
+    def test_an_older_attestation_cannot_skip_a_later_review(self):
+        """The prior is the latest review: naming an older PASS or FAIL does not skip a later finding."""
+        attestation, _ = self.failed_full_review()
+        head, committed = self.repair(attestation)
+        done = self.run_tool("review-scope.py", "delta", "5", "--prior", committed, "--package-map", self.MAP,
+                             "--out", os.path.join(self.tmp, "delta"))
+        self.assertEqual(done.returncode, 0, done.stderr)
+        _, identity = self.packet_paths(done)
+        self.record(identity, "fail", "--finding", "entry:altitude-limit=still inclusive")
+        self.write(f"src/{NAME}/Rules/AltitudeLimit.cs", "internal static class AltitudeLimit { /* again */ }\n")
+        later = self.commit("another repair", "src")
+        self.publish(later)
+        done = self.run_tool("review-scope.py", "delta", "5", "--prior", committed, "--package-map", self.MAP,
+                             "--out", os.path.join(self.tmp, "skipping"))
+        self.assertEqual(done.returncode, 1, done.stdout)
+        self.assertIn("a later review was recorded", done.stderr)
+
+    def test_an_attestation_edited_after_it_was_recorded_is_not_reused(self):
+        attestation, _ = self.failed_full_review()
+        document = json.load(open(attestation, encoding="utf-8"))
+        document["result"], document["findings"]["blocking"] = "PASS", []
+        with open(attestation, "w", encoding="utf-8") as handle:
+            json.dump(document, handle)
+        _, committed = self.repair(attestation)
+        done = self.run_tool("review-scope.py", "delta", "5", "--prior", committed, "--package-map", self.MAP,
+                             "--out", os.path.join(self.tmp, "delta"))
+        self.assertEqual(done.returncode, 1, done.stdout)
+        self.assertIn("prior-attestation-unusable", done.stderr)
+        self.assertIn("edited after it was recorded", done.stderr)
+        self.assertFalse(os.path.exists(os.path.join(self.tmp, "delta")), "a refusal writes nothing")
+
+    def test_a_legacy_record_with_no_scope_needs_one_full_review(self):
+        legacy = {"reviewPacketFormat": 2, "reviewRole": "all", "pullRequest": 5,
+                  "reviewedCommit": self.full_head, "baseCommit": self.base}
+        committed = "reviews/attestations/legacy.json"
+        self.write(committed, json.dumps(legacy))
+        head = self.commit("a legacy record", committed)
+        self.publish(head)
+        done = self.run_tool("review-scope.py", "delta", "5", "--prior", committed, "--package-map", self.MAP,
+                             "--out", os.path.join(self.tmp, "delta"))
+        self.assertEqual(done.returncode, 1, done.stdout)
+        self.assertIn("prior-attestation-unusable", done.stderr)
+        self.assertIn("--role semantic --prior", done.stderr, "and it says which full packet answers it")
+        done = self.run_tool("review-packet.py", "5", "--role", "semantic", "--prior", committed, "--package-map",
+                             self.MAP, "--base", "main", "--out", os.path.join(self.tmp, "baseline"))
+        self.assertEqual(done.returncode, 0, done.stderr)
+        text = open(next(p for p in done.stdout.splitlines() if p.endswith(".md") and "entry-" not in p),
+                    encoding="utf-8").read()
+        self.assertIn("Why this review is a full one", text)
+
+    def test_a_full_review_is_refused_when_the_change_is_only_a_delta(self):
+        attestation, _ = self.failed_full_review()
+        _, committed = self.repair(attestation)
+        self.assertIn("hazardous-material", open(os.path.join(self.out, "reviews", "self-review",
+                                                              "hazardous-material.json")).read())
+        done = self.run_tool("review-packet.py", "5", "--role", "semantic", "--prior", committed, "--package-map",
+                             self.MAP, "--base", "main", "--out", os.path.join(self.tmp, "full-again"))
+        self.assertEqual(done.returncode, 1, done.stdout)
+        self.assertIn("the head changing is not a reason", done.stderr)
+
+    def test_a_stale_self_review_refuses_the_packet(self):
+        self.write(f"src/{NAME}/Rules/HazardousMaterial.cs", "internal static class HazardousMaterial { /* moved */ }\n")
+        head = self.commit("move hazardous-material after its self-review", "src")
+        self.publish(head)
+        done = self.run_tool("review-packet.py", "5", "--role", "semantic", "--package-map", self.MAP,
+                             "--base", "main", "--out", os.path.join(self.tmp, "stale"))
+        self.assertEqual(done.returncode, 1, done.stdout)
+        self.assertIn("hazardous-material: the record was made against claim digest", done.stderr)
 
 
 class TestTheReviewPacketRoles(TestTheReviewPacket):
@@ -4553,7 +4844,11 @@ PLACEHOLDERS = {"<n>": "1", "<issue number>": "1", "<entry id>": "speed-limit", 
                 "<path>": os.path.join(PART107, "corpus-map.json"),
                 # No such file: record-verdict.py then refuses because the manifest cannot be
                 # read -- a refusal about what it was asked, not how it was called (#386).
-                "<packet.review.json>": "pr-1-abcdef123456.review.json"}
+                "<packet.review.json>": "pr-1-abcdef123456.review.json",
+                # A committed attestation's path (0071). None is committed in the test engine, so the
+                # tools refuse for that -- a refusal about what they were asked, not how.
+                "<attestation>": "reviews/attestations/pr-1-abcdef123456-full.json",
+                "{args.prior}": "reviews/attestations/pr-1-abcdef123456-full.json"}
 # `scripts/validate.sh` is the gate itself: running it here would restore, build and test an engine
 # in every target framework from inside a unit test. scripts/validate-engine.sh runs it against a
 # produced engine for real, which is where its runnability is proven.

@@ -61,6 +61,9 @@ FILES = {
     "scripts/factory/ownership.py": (os.path.join(HERE, "ownership.py"), False),
     "scripts/factory/provenance.py": (os.path.join(HERE, "provenance.py"), False),
     "scripts/factory/rulings.py": (os.path.join(HERE, "rulings.py"), False),
+    # What a review covered and what a repair invalidates of it (0071): the engine's review-packet,
+    # review-scope and record-verdict compute with the factory's model rather than a copy of it.
+    "scripts/factory/reviewscope.py": (os.path.join(HERE, "reviewscope.py"), False),
     ".github/workflows/validate.yml": (os.path.join(RECIPE, "validate.yml"), False),
 }
 

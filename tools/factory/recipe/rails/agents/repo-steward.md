@@ -50,6 +50,13 @@ finding. `corpus/` untouched. No baseline or hash edited to make a check pass.
 finding. Every new or changed test has its mutation recorded in the overlay, and the mutation is
 specific enough to be re-run — not "changed the logic".
 
+**Review evidence.** A `reviews/attestations/*.json` file is the record of an earlier review this
+change answers, and a `reviews/self-review/<entry id>.json` is the implementer's adversarial
+self-review of an entry the change touches: both are evidence the rails ask for, not scope creep.
+What is a finding is one edited by hand — an attestation is written by the recorder and is reused
+only while it hashes to what was recorded — or a self-review whose `not-applicable` reasons nobody
+could check ([`docs/review-evidence.md`](../../docs/review-evidence.md)).
+
 **Determinism.** No wall-clock time, ambient locale or culture, environment-dependent ordering,
 unseeded randomness, or hash codes and object identity in anything observable.
 

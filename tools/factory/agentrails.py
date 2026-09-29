@@ -34,6 +34,10 @@ RAILS = {
     "AGENTS.md": "AGENTS.md",
     "CLAUDE.md": "CLAUDE.md",
     "docs/agent-team.md": "agent-team.md",
+    # What a review covered and what a repair invalidates of it, and the attack an implementer owes
+    # before a reviewer is paid (0071).
+    "docs/review-evidence.md": "review-evidence.md",
+    "docs/adversarial-self-review.md": "adversarial-self-review.md",
     ".claude/agents/engine-dev.md": "agents/engine-dev.md",
     ".claude/agents/repo-steward.md": "agents/repo-steward.md",
     ".claude/agents/rules-conformance.md": "agents/rules-conformance.md",
@@ -45,6 +49,7 @@ RAILS = {
     "tools/mutate.py": "tools/mutate.py",
     "tools/re-produce.sh": "tools/re-produce.sh",
     "tools/review-packet.py": "tools/review-packet.py",
+    "tools/review-scope.py": "tools/review-scope.py",
     "tools/repair-packet.py": "tools/repair-packet.py",
     "tools/pr-policy.py": "tools/pr-policy.py",
     "tools/record-verdict.py": "tools/record-verdict.py",
@@ -68,7 +73,7 @@ RAILS = {
 # it through `python3`, and nobody runs it by hand. The mode is not part of a recipe's bytes, so it
 # plays no part in hand-edit detection.
 EXECUTABLE = frozenset({"tools/dispatch-agent.sh", "tools/new-issue.sh", "tools/entry-packet.py",
-                        "tools/mutate.py", "tools/review-packet.py", "tools/repair-packet.py",
+                        "tools/mutate.py", "tools/review-packet.py", "tools/review-scope.py", "tools/repair-packet.py",
                         "tools/pr-policy.py", "tools/record-verdict.py", "tools/conformance-gate.py",
                         "tools/agent-doctor.py", "tools/orchestrator-status.py",
                         "tools/re-produce.sh"})
@@ -156,6 +161,10 @@ def review_problems(document, where=AGENT_POLICY):
         out.append(f"{where} configures no independent reviewer, so an issue classified as needing one can never "
                    f"be merged")
         return out
+    ceiling = review.get("deltaCeiling", 0.5)
+    if isinstance(ceiling, bool) or not isinstance(ceiling, (int, float)) or not 0 < ceiling <= 1:
+        out.append(f"{where} sets review.deltaCeiling to {ceiling!r}; it is the fraction of a prior review's claims "
+                   f"a repair may invalidate and still be reviewed as a delta, a number above 0 and at most 1")
     for link in chain:
         if not (isinstance(link, dict) and link.get("id") and link.get("context")):
             out.append(f"{where}: every review.independentFallback link needs an id and a context (got {link!r}). "
@@ -310,6 +319,9 @@ def agent_policy():
             "semanticContext": "rules-verdict/semantic",
             "semanticPaths": ["src/**", "tests/**", f"{overlay_step.DIRECTORY}/**", pins.PACKAGES_PROPS,
                               "corpus/**", "docs/decisions/**"],
+            # The fraction of a prior review's claims a repair may invalidate and still be reviewed
+            # as a delta of it (0071). Past it, a bounded review is no longer credible as bounded.
+            "deltaCeiling": 0.5,
             "independentFallback": [
                 {"id": "codex", "context": "rules-verdict/codex"},
                 {"id": "gemini", "context": "rules-verdict/gemini"},

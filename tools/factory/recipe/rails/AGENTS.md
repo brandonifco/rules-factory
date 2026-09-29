@@ -185,8 +185,10 @@ orchestration around them — and a repair attempt handed the argument it is rep
 by it.
 
 Nothing else changes. The branch still closes exactly one issue with one `Closes #<n>`; the
-repair commit still moves the head and still invalidates every verdict recorded before it (§7);
-the new head is reviewed from a new packet, by a new reviewer.
+repair commit still moves the head and still ends every verdict recorded before it (§7); the new
+head is reviewed from a new packet, by a new reviewer. What the repair does not end is the
+**evidence** the last review established about what it did not touch: the repair commits that
+review's attestation, and the next packet is a delta of it (`tools/review-scope.py`'s `delta`, §7).
 
 ### A factory update is work under these rails too
 
@@ -397,8 +399,8 @@ decline that names why and cites where — that is the engine working, not the e
   records the status only when the pull request still has the exact reviewed head. It takes the
   review context from that packet, not from the caller's checkout. A later commit is therefore
   refused rather than inheriting an earlier review; regenerate the packet and review the new
-  bytes. Legacy commit statuses remain readable, but a new verdict is never inferred from the
-  current head. A verdict that lives only in a conversation is worth nothing to this repository.
+  bytes — or, after a repair, the delta of them (below). Legacy commit statuses remain readable, but
+  a new verdict is never inferred from the current head. A verdict that lives only in a conversation is worth nothing to this repository.
 
   **What the verdict gate proves, and what it does not.** A verdict is a commit status, and
   **anyone who can write a commit status on this repository can post one**: any collaborator with
@@ -430,6 +432,41 @@ decline that names why and cites where — that is the engine working, not the e
   not clear it: the chain advances when a provider is unavailable, never because its verdict was
   unwelcome. A failure is answered by fixing the code, fixing the map, or getting an owner's
   ruling.
+- **A review leaves an attestation, and the review after a repair is bounded by it.** The recorder
+  writes, beside the identity it consumed, a deterministic attestation of the claims the review
+  covered — each entry of the slice, each invariant `reviews/invariants.json` declares — and the
+  fingerprint of every unit each rests on; the status carries its SHA-256. Commit it under
+  `reviews/attestations/` with the repair. Then:
+
+  ```bash
+  tools/review-scope.py delta <pr number> --prior <attestation> --package-map <path>
+  ```
+
+  computes, from the map's dependencies, a lexical reference graph of the C# and those
+  fingerprints — never from anybody's word — which claims the repair invalidated, and writes a
+  packet of those alone. **A changed commit alone invalidates nothing.** Where the change cannot be
+  bounded — the charter, the review policy, a corpus, a map's frame, a foundational file or a
+  decision record moved; a file the graph cannot read changed; the repair invalidated too much — it
+  refuses and names the reason, and `tools/review-packet.py <pr number> --role semantic --prior
+  <attestation>` writes the full packet that answers it. A delta PASS posts `<context>/delta`, which no
+  gate requires; **the final acceptance review** (`--review final --prior <attestation>`)
+  rereads the whole slice once and posts the verdict the merge needs. A full review that passes
+  first time needs no final one. When nothing a comprehensive PASS rested on moved, `delta` writes
+  a carry, and recording it with `--package-map` posts that reviewer's own PASS at the new head,
+  after computing the carry again from the repository. The prior is always the **latest** review
+  recorded on the branch: an older one is refused, so a later finding cannot be skipped by naming
+  an earlier pass. `docs/review-evidence.md` says how to
+  read all of it, what can and cannot be reused, and how an engine produced before this migrates:
+  its first review is a full one, and that is its baseline.
+- **No reviewer is paid before the implementer has attacked its own work.** A semantic,
+  independent or final packet is refused until every entry it names has a committed
+  `reviews/self-review/<entry id>.json` answering the twenty classes of
+  `docs/adversarial-self-review.md`, bound to the entry's claim digest at the reviewed head
+  (`tools/review-scope.py self-review <entry id> --package-map <path>`). A repair that touches what
+  the entry rests on makes the record stale, and the attack is redone.
+- **A reviewer starts from a clean session with a packet.** The packet is the interface and the
+  conversation is not: no implementer transcript, no earlier reviewer's reasoning, no summary is
+  review evidence, and a reviewer handed one is anchored by it.
 - **An overlay change is finished by a re-produce.** `tools/re-produce.sh` runs it. Marking an
   entry implemented writes `overlay/<entry id>.json`, and the generated files and `provenance.json`
   are both derived from the overlay; the gate hashes the derived files against the record.

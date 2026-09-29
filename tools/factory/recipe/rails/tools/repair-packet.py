@@ -352,7 +352,14 @@ def build(number, findings):
                          recorded +
                          f"\n\nYour repair commit moves the head, so every verdict above stops applying to it. "
                          f"That is the mechanism working: the next review reads the new bytes, from a new "
-                         f"packet (`tools/review-packet.py {number}`)."))
+                         f"packet. What survives is the evidence the last review established about what your "
+                         f"repair does not touch (rules-factory 0071): commit the attestation "
+                         f"`tools/record-verdict.py` wrote for it under `reviews/attestations/` in your repair, "
+                         f"and the next packet is `tools/review-scope.py delta {number} --prior "
+                         f"<attestation>` -- only the claims your change could have altered, "
+                         f"computed, not claimed. Redo the adversarial self-review of every entry your repair "
+                         f"touches (`docs/adversarial-self-review.md`): the record is bound to what the entry "
+                         f"rests on, and the packet is refused while it is stale."))
 
     # What this change actually owes, decided the way `tools/review-packet.py` and
     # `tools/conformance-gate.py` decide it: from the changed paths against the policy's declared
