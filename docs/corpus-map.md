@@ -1687,6 +1687,20 @@ Such a corpus declares the `page-marked-text` adapter for the same reason
 the transcription's digest to its source scan's, the way `examples/srd-52-combat/extract.py
 --check` holds text to PDF.
 
+Another describes text a tool produced but did not order.
+`pdftotext-24.02.0-bbox-layout-declared-reading-order-page-marked` is SHA-256 over a committed
+page-marked text for a **born-digital print master**: the text layer is real and complete, so
+nothing is transcribed, and its extraction order is still not its reading order. A design-heavy
+rulebook runs prose in two interleaved columns, reproduces its own components as illustrations
+whose text is real text at a fraction of prose size, clips that artwork so that much of it
+extracts without ever being visible, and merges a prose line with an artwork fragment sharing its
+baseline. Such a corpus commits a per-page declaration of which rectangle holds which column, in
+what order, and which holds artwork — geometry, never text — and every byte of the result still
+comes out of the layer. So unlike a transcription this derivation **is** mechanically
+reproducible, and the project that commits it holds the corpus to its source by deriving it again
+and comparing byte for byte. The name sits between the other two deliberately: calling it a
+transcription would understate it, and calling it a plain `pdftotext` would overstate it.
+
 `verification` and `quotation` are the same question asked of a map's *consumers*, and are
 answered per corpus for the same reason ([0013](decisions/0013-verification-posture-belongs-to-the-corpus.md)):
 
