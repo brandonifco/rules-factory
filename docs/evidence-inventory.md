@@ -2,11 +2,11 @@
 
 `examples/` is this repository's evidence: five corpora, nine maps, the transcripts of blind
 second mappings, trial reports, independent verdicts, and the results of the injection, collapse
-and validator-attack measurements. 224 tracked files, 15.8 MB, out of 20.4 MB tracked in all.
-Those three numbers are the ones
-[#439](https://github.com/brandonifco/rules-factory/issues/439) is about: they are derived from
-the lock and nothing holds them to it, so they go stale whenever evidence is added, and are
-corrected by hand when somebody notices.
+and validator-attack measurements: <!-- derived:evidence-totals -->224 tracked files, 15.8 MB, out of 20.4 MB tracked in all<!-- /derived:evidence-totals -->.
+Those figures are written by `check-evidence.py --measure` and held to the lock by the gate, the way
+the commit named under *By trial* is
+([#439](https://github.com/brandonifco/rules-factory/issues/439)): a count typed here that the
+lock disagrees with fails the run.
 
 Until [#349](https://github.com/brandonifco/rules-factory/issues/349) nothing said which of it any
 check reads. This document and [`tools/evidence-lock.json`](../tools/evidence-lock.json) say so,

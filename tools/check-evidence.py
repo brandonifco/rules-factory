@@ -63,7 +63,16 @@ LOCK = ROOT / "tools" / "evidence-lock.json"
 INVENTORY = ROOT / "docs" / "evidence-inventory.md"
 MEASURED_AT_LABEL = re.compile(r"^Measured at `([0-9a-f]{7,40})`", re.M)
 EVIDENCE = "examples"
-ROLES = ("active", "release", "archived")
+# Sentences in prose that state figures derived from the lock. `--measure` writes each span and
+# `verify` holds each to the lock, so a count typed beside the measurement cannot outlive it
+# (#439). A span is `<!-- derived:NAME -->text<!-- /derived:NAME -->`; the documents that must
+# carry one are listed here, so deleting the markers is a failure and not a way out of the check.
+DERIVED_SPAN = "<!-- derived:{name} -->{text}<!-- /derived:{name} -->"
+DERIVED_IN = {
+    "docs/evidence-inventory.md": ("evidence-totals",),
+    "README.md": ("evidence-roles",),
+}
+ROLES =("active", "release", "archived")
 READERS = ("checks", "links", "package")
 
 
@@ -342,8 +351,97 @@ def build(root: pathlib.Path, readers: dict[str, list[str]], previous: dict | No
             "links": "the repository-wide markdown link check, which opens every tracked *.md",
             "package": "tools/pack-map.py",
         },
+        # What the repository tracks in all, at this measurement, for the prose that sets the
+        # evidence against it (#439).
+        "repository": repository_size(root),
         "artifacts": artifacts,
     }
+
+
+def repository_size(root: pathlib.Path) -> dict:
+    """What the repository tracks in all, for the sentence that sets `examples/` against it.
+
+    Recorded at measurement rather than recomputed by the gate: every pull request changes some
+    tracked file, so holding prose to a live total would fail all of them for a reason nobody
+    changed. The lock says when the figure was taken, as it does for everything it records."""
+    out = subprocess.run(["git", "ls-files", "-z"], cwd=root, capture_output=True,
+                         check=True).stdout.decode("utf-8", "surrogateescape")
+    paths = [p for p in out.split("\0") if p and (root / p).is_file()]
+    return {"trackedFiles": len(paths), "trackedBytes": sum((root / p).stat().st_size
+                                                             for p in paths)}
+
+
+def _mb(size: int) -> str:
+    # Mebibytes under the name the tables already use: their KB are 1024 bytes too.
+    return f"{size / (1 << 20):.1f} MB"
+
+
+def figures(lock: dict) -> dict[str, str]:
+    """The sentences that state figures from the lock, keyed by the span that holds each."""
+    artifacts = lock.get("artifacts") or []
+    by_role = {role: sum(a.get("bytes", 0) for a in artifacts if a.get("role") == role)
+               for role in ROLES}
+    repository = lock.get("repository") or {}
+    tracked = repository.get("trackedBytes")
+    out = {"evidence-roles": f"{_mb(by_role['active'])} read by the checks, "
+                             f"{_mb(by_role['release'])} packed into published packages, and "
+                             f"{_mb(by_role['archived'])} read by nothing at all"}
+    if tracked is not None:
+        out["evidence-totals"] = (f"{len(artifacts)} tracked files, "
+                                  f"{_mb(sum(a.get('bytes', 0) for a in artifacts))}, out of "
+                                  f"{_mb(tracked)} tracked in all")
+    return out
+
+
+def _span(name: str) -> re.Pattern:
+    return re.compile(DERIVED_SPAN.format(name=re.escape(name), text="(?P<text>.*?)"), re.S)
+
+
+def derived_problems(root: pathlib.Path, lock: dict) -> list[str]:
+    """Whether the prose that restates figures from the lock still agrees with it (#439).
+
+    `measured_at_problems` holds the commit the inventory names; this holds the numbers it
+    derives, which drifted the same way -- 207 files where the lock said 214, and a README that
+    disagreed with the inventory about one figure. A document absent from `root` is skipped, as
+    the inventory is above: a checkout that does not carry it has nothing to be stale."""
+    want = figures(lock)
+    problems = []
+    for relative, names in DERIVED_IN.items():
+        document = root / relative
+        if not document.exists():
+            continue
+        text = document.read_text(encoding="utf-8")
+        for name in names:
+            found = _span(name).search(text)
+            if name not in want:
+                problems.append(f"the lock does not record what {relative}'s {name} figures "
+                                f"derive from; re-measure with --measure")
+            elif not found:
+                problems.append(f"{relative} has no <!-- derived:{name} --> span, so its "
+                                f"figures are not held to the lock")
+            elif found.group("text") != want[name]:
+                problems.append(f"{relative} says {found.group('text')!r} and the lock says "
+                                f"{want[name]!r}; --measure rewrites it")
+    return problems
+
+
+def write_derived(root: pathlib.Path, lock: dict) -> list[str]:
+    """Rewrite each derived span from the lock. Returns the documents it changed."""
+    want = figures(lock)
+    changed = []
+    for relative, names in DERIVED_IN.items():
+        document = root / relative
+        if not document.exists():
+            continue
+        before = text = document.read_text(encoding="utf-8")
+        for name in names:
+            if name in want and _span(name).search(text):
+                text = _span(name).sub(
+                    lambda _: DERIVED_SPAN.format(name=name, text=want[name]), text, count=1)
+        if text != before:
+            document.write_text(text, encoding="utf-8")
+            changed.append(relative)
+    return changed
 
 
 def measured_at_problems(root: pathlib.Path, lock: dict) -> list[str]:
@@ -390,7 +488,7 @@ def verify(root: pathlib.Path, lock: dict) -> list[str]:
         # Sole message, deliberately: a lock that names nothing proved nothing, and what commit
         # it says it proved nothing at adds no information.
         return ["the lock names no artifact -- this check proved nothing"]
-    problems = measured_at_problems(root, lock)
+    problems = measured_at_problems(root, lock) + derived_problems(root, lock)
 
     locked = {a["path"]: a for a in artifacts}
     if len(locked) != len(artifacts):
@@ -470,6 +568,9 @@ def main(argv=None) -> int:
         lock = build(ROOT, readers, previous, failed)
         lock_path.write_text(json.dumps(lock, indent=2, sort_keys=False) + "\n", encoding="utf-8")
         print(f"\nwrote {lock_path.relative_to(ROOT)}")
+        if lock_path.resolve() == LOCK.resolve():
+            for relative in write_derived(ROOT, lock):
+                print(f"wrote the figures in {relative}")
         for role, count, size in totals(lock):
             print(f"  {role:9s} {count:4d} artifact(s)  {size / 1024:9.0f} KB")
         if previous:
