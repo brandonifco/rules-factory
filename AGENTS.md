@@ -126,7 +126,9 @@ git push origin factory/vX.Y.Z
   of the release candidate (§6), with every finding filed. A human review is recommended as well
   (#169).
 - **Maps** are released separately, by `map/<name>/vX.Y.Z`, which `publish-map.yml` publishes to
-  nuget.org. A map whose `map-package.json` declares a version with no tag is reported as `map`.
+  nuget.org. A map whose `map-package.json` declares a version with no tag is reported as `map`,
+  unless it declares `"held": "<why>"` ([0073](docs/decisions/0073-a-map-held-from-publication-declares-why-in-the-file-that-declares-its-version.md)):
+  then it is a note, and `pack-map.py --tag` refuses it until a reviewed commit removes `held`.
   Publishing cannot be undone, so that tag is a person's decision.
 
 ## 6. Independent review
