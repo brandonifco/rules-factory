@@ -10,12 +10,16 @@ This reports every such leftover, and with `--fix` removes the ones that are pro
 
   * behind     the primary checkout is on `main`, clean, and behind `origin/main`: fast-forwarded
   * branch     a local branch no worktree has checked out, whose tip is already in `origin/main`,
-               or is exactly the head of a merged pull request that `origin/main` holds (a squash
-               merge): deleted. Its commits are in `main` or on the pull request, so nothing is
-               lost, even for a branch that never had a commit of its own
-  * worktree   a clean worktree on a branch whose pull request merged at exactly that tip -- the
-               tip is in `origin/main`, or the pull request was squash-merged into `main` and its
-               merge commit is -- or a clean detached worktree at a commit in `origin/main`,
+               or is the head of a merged pull request that `origin/main` holds, or an ancestor of
+               that head (a squash merge, after `gh pr update-branch` added a commit on GitHub):
+               deleted, only at the tip proven. Its commits are in `main` or on the pull request,
+               so nothing is lost, even for a branch that never had a commit of its own. The
+               pull request's head is fetched from `refs/pull/<n>/head` when it is not here, and
+               no ref is left behind
+  * worktree   a clean worktree on a branch whose pull request merged holding that tip -- the
+               tip is in `origin/main`, or the pull request was squash-merged into `main`, its
+               merge commit is in `origin/main`, and the tip is the pull request's head or an
+               ancestor of it -- or a clean detached worktree at a commit in `origin/main`,
                unlocked and more than a day old: removed. A fresh worktree on a new branch is also
                "in main", so a branch worktree needs the merged pull request as proof -- an agent
                that has not yet committed is not finished
@@ -179,33 +183,58 @@ class Report:
 def merged_pulls():
     """{head branch name: {head commit: the pull request}} for merged pull requests.
 
-    A pull request is {"number", "base", "merge"}: where it merged, and the commit that holds it.
+    A pull request is {"number", "base", "head", "merge"}: where it merged, the head it recorded,
+    and the commit that holds it.
     """
     rows = gh_json("pr", "list", "--repo", REPO, "--state", "merged", "--limit", "1000",
                    "--json", "headRefName,headRefOid,number,baseRefName,mergeCommit")
     heads = {}
     for row in rows or []:
         heads.setdefault(row["headRefName"], {})[row["headRefOid"]] = {
-            "number": row.get("number"), "base": row.get("baseRefName"),
+            "number": row.get("number"), "base": row.get("baseRefName"), "head": row["headRefOid"],
             "merge": (row.get("mergeCommit") or {}).get("oid")}
     return heads
 
 
-def merged_at_tip(root, head, branch, pulls):
-    """The pull request that merged exactly `head` into main, or None when that is not provable.
+def has_commit(root, commit):
+    return git("cat-file", "-e", f"{commit}^{{commit}}", cwd=root, check=False).returncode == 0
 
-    Either the tip is in `origin/main`, or the pull request's recorded head is this tip and its
-    merge commit is in `origin/main`: a squash or rebase merge replaces the tip with a new commit,
-    which is how this repository merges. The pull request's head is still the same commit, so the
-    worktree holds nothing the merge did not take, and GitHub keeps it at `refs/pull/<n>/head`.
+
+def pull_head_is_here(root, pull):
+    """Whether the pull request's recorded head is an object this repository has, fetching it if not.
+
+    GitHub keeps every pull request's head at `refs/pull/<n>/head`, including the commit
+    `gh pr update-branch` adds, which no local branch ever held. The fetch names no destination,
+    so it leaves no ref behind (the objects stay only until git collects them), and it writes no
+    FETCH_HEAD either.
     """
-    pull = pulls.get(branch, {}).get(head)
-    if pull is None:
-        return None
-    if is_ancestor(root, head):
-        return pull
-    if pull["base"] == MAIN and pull["merge"] and is_ancestor(root, pull["merge"]):
-        return pull
+    if has_commit(root, pull["head"]):
+        return True
+    git("fetch", "-q", "--no-tags", "--no-write-fetch-head", "origin",
+        f"refs/pull/{pull['number']}/head", cwd=root, check=False)
+    return has_commit(root, pull["head"])
+
+
+def merged_at_tip(root, head, branch, pulls):
+    """The pull request that merged `head` into main, or None when that is not provable.
+
+    Either the tip is in `origin/main` and a pull request recorded it as its head, or a pull
+    request merged into `main`, its merge commit is in `origin/main`, and the tip is its recorded
+    head or an ancestor of it. A squash or rebase merge replaces the tip with a new commit, which
+    is how this repository merges. `main` also requires a branch to be up to date, so the ordinary
+    path is `gh pr update-branch`, which adds a merge commit on GitHub: the recorded head is then
+    ahead of the worktree's tip, and GitHub keeps it at `refs/pull/<n>/head`. Every commit of the
+    tip is on the pull request, so the worktree holds nothing the merge did not take. A tip with a
+    commit the recorded head lacks is not proven.
+    """
+    candidates = pulls.get(branch, {})
+    if head in candidates and is_ancestor(root, head):
+        return candidates[head]
+    for recorded, pull in candidates.items():
+        if pull["base"] != MAIN or not pull["merge"] or not is_ancestor(root, pull["merge"]):
+            continue
+        if recorded == head or (pull_head_is_here(root, pull) and is_ancestor(root, head, recorded)):
+            return pull
     return None
 
 
@@ -332,7 +361,8 @@ def check_branches(root, pulls, fix, report):
             pull = merged_at_tip(root, sha, name, pulls) if pulls is not None else None
             if pull is None:
                 continue
-            proof, remedy = f"its pull request #{pull['number']} merged at this tip", f"git branch -D {name}"
+            holds = "at this tip" if pull["head"] == sha else "with this tip in its head"
+            proof, remedy = f"its pull request #{pull['number']} merged {holds}", f"git branch -D {name}"
         finished.add(name)
         if fix:
             # update-ref with the expected old value, not `branch -d`: -d judges "merged" against
