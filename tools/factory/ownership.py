@@ -167,12 +167,12 @@ TABLE = (
         "dependencies, a lexical reference graph and recorded fingerprints; the delta packet a bounded "
         "review reads, or the reasons a full one is owed; the self-review skeleton and check; an "
         "attestation's integrity; and review telemetry (0071)"),
-    Row("tools/repair-packet.py", MANAGED, 5,
+    Row("tools/repair-packet.py", MANAGED, 6,
         "the bounded brief for one repair attempt: the head, the branch, the worktree, the issue's "
         "acceptance criteria, the entries and the verdicts standing at that head, all derived -- and the "
         "blocking findings, which are the caller's judgement and the only thing it is given (#465); a section "
         "of the issue keeps what is nested under it (#484); it makes the readiness refusal dispatch "
-        "makes, and says a semantic verdict is owed only when the change owes one (#483); the brief says to commit the attestation it answers and that the next review is a delta of it (0071); the worktree it names is checked against the head it advertises, and every path it prints is quoted (#482)"),
+        "makes, and says a semantic verdict is owed only when the change owes one (#483); the brief says to commit the attestation it answers and that the next review is a delta of it (0071); the worktree it names is checked against the head it advertises, and every path it prints is quoted (#482); the changed paths are matched against the semantic surface in the engine's own terms, as the gate matches them, so an embedded engine is not told no verdict is owed when the gate will ask for one (#535)"),
     Row("tools/pr-policy.py", MANAGED, 11,
         "the pull request contract, checked mechanically; a produce update's claim is checked, not taken "
         "(#193); every document the engine owns is accounted for (#236); the entry declaration, linked issue "
@@ -464,6 +464,7 @@ RECIPE_SHA256 = {
         3: "d3a63261fd6edfbb352b01259d797bcba434b9a5845d4be458d2bc7b2ae83adf",
         4: "4ac24b78411f3ea457e497838f5959d0374c8f3126c249bfb88393c2485318ed",
         5: "c9c35317247883f7076972c29a19e9ca5ccfc3166882a5b2e218a6108dcddd9f",
+        6: "67e36ff58616171e5222ac3449bee618b13bba840f376069ecfcc7d577f8bc9f",
     },
     "tools/pr-policy.py": {
         1: "79a33c7fe1ea8d888e4d6912a43ac60afe285c7a8bf43fbe9f7be87d6947b76e",

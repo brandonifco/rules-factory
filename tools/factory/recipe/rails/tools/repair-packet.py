@@ -292,6 +292,46 @@ def is_semantic(path, patterns):
     return False
 
 
+def engine_path():
+    """This engine's path under its repository root, or "" when the engine **is** that root (0069).
+
+    Read from `provenance.json` (`repository.enginePath`), which is the one place it is recorded, and
+    "" for a record that cannot be read or predates it -- what every engine that is its own repository
+    root has always been. GitHub reports a changed path relative to the **repository**, and the policy's
+    `semanticPaths` are written relative to the engine.
+    """
+    try:
+        record = json.loads((ROOT / "provenance.json").read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return ""
+    repository = record.get("repository") if isinstance(record, dict) else None
+    return str((repository or {}).get("enginePath") or "") if isinstance(repository, dict) else ""
+
+
+def engine_relative(path, prefix):
+    """`path`, as GitHub reports it, in the engine's own terms -- or None when it is not the engine's.
+
+    The same reading `tools/conformance-gate.py`, `tools/review-packet.py` and `tools/pr-policy.py` make
+    of a changed path (#507, #515). None is a file of the repository the engine is embedded in, which
+    is not on this engine's semantic surface.
+    """
+    if not prefix:
+        return path
+    return path[len(prefix) + 1:] if path.startswith(prefix + "/") else None
+
+
+def semantic_surface(changed, patterns, prefix):
+    """The changed paths on the engine's semantic surface, in the order they were given.
+
+    Matched in the engine's own terms, as the gate matches them: `engine/src/X.cs` is `src/X.cs` to an
+    engine embedded at `engine` (#535). Matching the repository path against the engine's patterns
+    finds nothing there, and the brief then says no verdict is owed when the gate will ask for one.
+    """
+    return [path for path in changed
+            if engine_relative(path, prefix) is not None
+            and is_semantic(engine_relative(path, prefix), patterns)]
+
+
 def section(title, body):
     return f"## {title}\n\n{body.rstrip()}\n"
 
@@ -456,7 +496,7 @@ def build(number, findings):
     # semantic surface. It used to be asserted unconditionally, so a repair that fixed a README was
     # told it owed a verdict neither of them would ask for -- and a rail that overstates what is
     # owed is a rail agents learn to read past (#483).
-    semantic = [path for path in changed if is_semantic(path, review.get("semanticPaths") or [])]
+    semantic = semantic_surface(changed, review.get("semanticPaths") or [], engine_path())
     gates = ["- `validate` — `./scripts/validate.sh full`, whole, and paste what it printed",
              f"- `{review.get('semanticContext', '(unset)')}` — a semantic verdict at the new head"
              if semantic else
