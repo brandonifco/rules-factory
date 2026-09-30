@@ -517,6 +517,21 @@ never touches it again.
 No emitted **script** names a vendor: a vendor named in code would be one you had to edit code to
 change, and that is a defect worth an issue.
 
+**The semantic surface is this engine's alone.** `review.semanticPaths` are written relative to the
+engine (`src/**`, `overlay/**`, `corpus/**`), and every check that reads them --
+`tools/conformance-gate.py`, `tools/review-packet.py` and `tools/pr-policy.py` -- first takes a
+changed path in the engine's own terms and drops one that is not under it. For an engine embedded
+beneath a repository root, a file of the host repository (a script that authors the map, a README,
+the host's own workflows) is therefore never on the semantic surface, and no string in
+`semanticPaths` can put it there: `../tools/build-map.py` and `engine/src/**` do not reach the host,
+they match nothing the engine holds. **A host repository is responsible for gating its own
+rule-bearing files.** This engine's rails will not ask for a semantic verdict on account of one.
+What keeps the gate firing today is a side effect, not a guarantee: a
+change to a host file that this engine is generated from regenerates `src/**`, and those files are on
+the surface. A host file that decides a rule and that no generated file follows is the case it does
+not cover; give it a check of the host's own, such as a workflow at the repository root that
+regenerates from it and fails when the committed output differs (rules-factory decision 0072).
+
 Two emitted things do name vendors, and both are defaults rather than the contract:
 
 - **A bundled Claude adapter.** `CLAUDE.md` and `.claude/` point at this file and state no rule of

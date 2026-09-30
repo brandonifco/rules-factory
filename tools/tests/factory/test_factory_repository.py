@@ -529,6 +529,26 @@ class TestTheRailsReadAPathInTheEnginesOwnTerms(RepositoryCase):
                          "the engine's sources are semantic; the repository's own files are not this "
                          "engine's surface and cannot be what a verdict about it is about")
 
+    def test_no_semantic_path_string_reaches_a_file_of_the_host_repository(self):
+        """0072: the surface is the engine's alone, so a string that names the host matches nothing.
+
+        A maintainer might write `tools/build-map.py`, `../tools/build-map.py` or `engine/src/**` to
+        put the host's map script on the surface. Each is read as engine-relative by all three checks
+        that read `semanticPaths`, and none of them puts a host file, or an engine file spelled with its
+        repository path, on the surface.
+        """
+        _host, engine = self.embedded()
+        changed = ["tools/build-map.py", "corpus/hallertau-rulebook/corpus-map.json", "README.md",
+                   f"engine/src/{NAME}/Rules/AltitudeLimit.cs"]
+        patterns = ["tools/build-map.py", "../tools/build-map.py", "corpus/**", "engine/src/**"]
+        gate = self.script(engine, "conformance-gate")
+        packet = self.script(engine, "review-packet")
+        policy = self.script(engine, "pr-policy")
+        self.assertEqual([], gate.semantic_surface(changed, patterns, "engine"))
+        self.assertEqual([], packet.semantic_surface(changed, patterns, "engine"))
+        self.assertEqual([], [inside for path in changed for inside in [policy.engine_relative(path, "engine")]
+                              if inside is not None and policy.is_semantic(inside, patterns)])
+
     def test_a_standalone_engine_s_surface_is_unchanged(self):
         engine = os.path.join(self.tmp, "engine")
         self.produce(engine)
