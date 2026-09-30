@@ -529,6 +529,26 @@ class TestTheRailsReadAPathInTheEnginesOwnTerms(RepositoryCase):
                          "the engine's sources are semantic; the repository's own files are not this "
                          "engine's surface and cannot be what a verdict about it is about")
 
+    def test_no_semantic_path_string_reaches_a_file_of_the_host_repository(self):
+        """0072: the surface is the engine's alone, so a string that names the host matches nothing.
+
+        A maintainer might write `tools/build-map.py`, `../tools/build-map.py` or `engine/src/**` to
+        put the host's map script on the surface. Each is read as engine-relative by all three checks
+        that read `semanticPaths`, and none of them puts a host file, or an engine file spelled with its
+        repository path, on the surface.
+        """
+        _host, engine = self.embedded()
+        changed = ["tools/build-map.py", "corpus/hallertau-rulebook/corpus-map.json", "README.md",
+                   f"engine/src/{NAME}/Rules/AltitudeLimit.cs"]
+        patterns = ["tools/build-map.py", "../tools/build-map.py", "corpus/**", "engine/src/**"]
+        gate = self.script(engine, "conformance-gate")
+        packet = self.script(engine, "review-packet")
+        policy = self.script(engine, "pr-policy")
+        self.assertEqual([], gate.semantic_surface(changed, patterns, "engine"))
+        self.assertEqual([], packet.semantic_surface(changed, patterns, "engine"))
+        self.assertEqual([], [inside for path in changed for inside in [policy.engine_relative(path, "engine")]
+                              if inside is not None and policy.is_semantic(inside, patterns)])
+
     def test_a_standalone_engine_s_surface_is_unchanged(self):
         engine = os.path.join(self.tmp, "engine")
         self.produce(engine)
@@ -749,6 +769,20 @@ class TestThePacketJudgesTheSurfaceInTheEnginesTerms(RepositoryCase):
         self.assertEqual("", packet.engine_path())
         self.assertEqual(f"src/{NAME}/X.cs", packet.engine_relative(f"src/{NAME}/X.cs", ""))
         self.assertTrue(packet.is_semantic(f"src/{NAME}/X.cs", ["src/**"]))
+
+    def test_the_repair_brief_judges_the_surface_as_the_gate_does(self):
+        host = init(os.path.join(self.tmp, "host"))
+        engine = os.path.join(host, "engine")
+        self.produce(engine, "--repo-root", host)
+        repair = self.script(engine, "repair-packet")
+        self.assertEqual("engine", repair.engine_path())
+        patterns = ["src/**", "tests/**", "overlay/**"]
+        changed = [f"engine/src/{NAME}/Setup/FieldBoard.cs", "engine/README.md", "tools/build-map.py", "README.md"]
+        on_surface = repair.semantic_surface(changed, patterns, "engine")
+        self.assertEqual([f"engine/src/{NAME}/Setup/FieldBoard.cs"], on_surface)
+        gate = self.script(engine, "conformance-gate")
+        self.assertEqual([f"engine/{path}" for path in gate.semantic_surface(changed, patterns, "engine")],
+                         on_surface, "the brief and the gate agree on what is on the surface")
 
     def test_a_path_outside_the_engine_is_not_its_surface(self):
         host = init(os.path.join(self.tmp, "host"))

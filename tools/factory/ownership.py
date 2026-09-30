@@ -90,7 +90,7 @@ TABLE = (
     Row("scripts/engine-gate.py", GENERATED, None, "the gate recipe: its non-dotnet checks"),
     Row("scripts/factory/*.py", GENERATED, None, "the factory's generator, vendored so the gate can regenerate"),
     Row(".github/workflows/validate.yml", GENERATED, None, "the gate recipe: CI runs validate.sh full"),
-    Row("AGENTS.md", MANAGED, 26,
+    Row("AGENTS.md", MANAGED, 27,
         "the governing contract every agent works this engine under (decision 0029); section 4 carries "
         "the sweep, the documentation section, and delete-only-what-you-created (#236); a packet that "
         "names an entry is made with the map the reviewed commit declares, one per package for a "
@@ -101,7 +101,7 @@ TABLE = (
         "brief the next one reads (#465); section 3 says the orchestrator holds the scheduling decision and the repository holds the state, and names the command that reads it (#466); section 7 says a reviewer is given what its role judges, "
         "and that the role is part of the packet identity (#467); section 3 says where the rails are when the "
         "engine is embedded under a repository root, because GitHub runs a workflow only from the root (#501, "
-        "0069); section 7 says a review leaves an attestation, the review after a repair is a delta of it, a full review needs a reason, a final acceptance review rereads the slice once, a reviewer starts clean, and no reviewer is paid before the self-review (0071); section 4 says a changed document outside an embedded engine is listed under its path relative to the engine, `../README.md` (#523)"),
+        "0069); section 7 says a review leaves an attestation, the review after a repair is a delta of it, a full review needs a reason, a final acceptance review rereads the slice once, a reviewer starts clean, and no reviewer is paid before the self-review (0071); section 4 says a changed document outside an embedded engine is listed under its path relative to the engine, `../README.md` (#523); section 9 says the semantic surface is the engine's alone, so a host repository gates its own rule-bearing files (0072)"),
     Row("CLAUDE.md", MANAGED, 1,
         "a pointer to AGENTS.md and the Claude adapters; it states no rule of its own (0029)"),
     Row("docs/agent-team.md", MANAGED, 10,
@@ -167,12 +167,12 @@ TABLE = (
         "dependencies, a lexical reference graph and recorded fingerprints; the delta packet a bounded "
         "review reads, or the reasons a full one is owed; the self-review skeleton and check; an "
         "attestation's integrity; and review telemetry (0071)"),
-    Row("tools/repair-packet.py", MANAGED, 5,
+    Row("tools/repair-packet.py", MANAGED, 6,
         "the bounded brief for one repair attempt: the head, the branch, the worktree, the issue's "
         "acceptance criteria, the entries and the verdicts standing at that head, all derived -- and the "
         "blocking findings, which are the caller's judgement and the only thing it is given (#465); a section "
         "of the issue keeps what is nested under it (#484); it makes the readiness refusal dispatch "
-        "makes, and says a semantic verdict is owed only when the change owes one (#483); the brief says to commit the attestation it answers and that the next review is a delta of it (0071); the worktree it names is checked against the head it advertises, and every path it prints is quoted (#482)"),
+        "makes, and says a semantic verdict is owed only when the change owes one (#483); the brief says to commit the attestation it answers and that the next review is a delta of it (0071); the worktree it names is checked against the head it advertises, and every path it prints is quoted (#482); the changed paths are matched against the semantic surface in the engine's own terms, as the gate matches them, so an embedded engine is not told no verdict is owed when the gate will ask for one (#535)"),
     Row("tools/pr-policy.py", MANAGED, 12,
         "the pull request contract, checked mechanically; a produce update's claim is checked, not taken "
         "(#193); every document the engine owns is accounted for (#236); the entry declaration, linked issue "
@@ -391,6 +391,7 @@ RECIPE_SHA256 = {
         24: "02468d2b206814e1fac4e7ebeaa48ec480011e68ae1355bfbe1d114aaa31be28",
         25: "6c95e3eafff98e597eca267f100a5a615aa086624f1f3fd5df7a1e8f16bdcacc",
         26: "8be45eef569c2a2e46dfaac0b564798431f688bba229c850d7ac73f95d0b70d0",
+        27: "0fc0caeb0b289d9a4ed6c3cc397529b746f07ed7ac3bebbd8cc219f85e5f51f0",
     },
     "CLAUDE.md": {
         1: "04c07ad36e742fa60efafeca54d20bd96d16b6e338a44e46fad2b679ab8dfd9f",
@@ -465,6 +466,7 @@ RECIPE_SHA256 = {
         3: "d3a63261fd6edfbb352b01259d797bcba434b9a5845d4be458d2bc7b2ae83adf",
         4: "4ac24b78411f3ea457e497838f5959d0374c8f3126c249bfb88393c2485318ed",
         5: "c9c35317247883f7076972c29a19e9ca5ccfc3166882a5b2e218a6108dcddd9f",
+        6: "67e36ff58616171e5222ac3449bee618b13bba840f376069ecfcc7d577f8bc9f",
     },
     "tools/pr-policy.py": {
         1: "79a33c7fe1ea8d888e4d6912a43ac60afe285c7a8bf43fbe9f7be87d6947b76e",
