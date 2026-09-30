@@ -460,6 +460,23 @@ def implemented_entries(changed, base_oid, findings):
     return implemented
 
 
+def named_entries(conformance):
+    """`(ids, unreadable)` from a `## Map and rules conformance` section's text.
+
+    The ids are what its `entry id(s):` line names, in the order it names them and repeats
+    included; `unreadable` is the parts of that line that are not an entry id at all. One reading of
+    the bullet, for everything that needs the entries a pull request names: this file judges it, and
+    `tools/review-packet.py` loads it, so a pull request this file accepted names the same entries
+    in the packet a reviewer is handed (#464). Nothing is added to a finding here.
+    """
+    raw = labelled(conformance, "entry") if conformance is not None else None
+    if raw is None:
+        return [], []
+    entries = [part.strip().strip("`") for part in raw.split(",")]
+    unreadable = [part for part in entries if not OVERLAY_FILE.match(f"overlay/{part}.json")]
+    return entries, unreadable
+
+
 def declared_entries(filled, findings):
     """The entry ids named by the pull request's conformance section.
 
@@ -467,12 +484,7 @@ def declared_entries(filled, findings):
     the fact compared with the diff, but duplicate spelling is still a finding: a repeated id is
     not an honest accounting of each entry once.
     """
-    conformance = filled.get("Map and rules conformance")
-    raw = labelled(conformance, "entry") if conformance is not None else None
-    if raw is None:
-        return set()
-    entries = [part.strip().strip("`") for part in raw.split(",")]
-    unreadable = [part for part in entries if not OVERLAY_FILE.match(f"overlay/{part}.json")]
+    entries, unreadable = named_entries(filled.get("Map and rules conformance"))
     if unreadable:
         findings.append("`## Map and rules conformance` has an entry id list pr-policy cannot read "
                         f"({', '.join(repr(part) for part in unreadable)}); name ids separated by commas")

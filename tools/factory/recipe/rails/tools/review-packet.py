@@ -231,6 +231,22 @@ def remove_reviewed_snapshot(parent, snapshot):
                    stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
 
+def policy_tool():
+    """`tools/pr-policy.py`, loaded by path: the one reading of what a pull request says it implements.
+
+    `pr-policy.py` requires the pull request body's `## Map and rules conformance` bullet to name the
+    entry, and reads it. A packet that read only the HTML marker told a reviewer that a pull request
+    policy had accepted named no entry (#464), so the bullet is read by the same functions and the two
+    cannot come to disagree about what counts as naming one.
+    """
+    import importlib.util
+    spec = importlib.util.spec_from_file_location("pr_policy_tool", pathlib.Path(__file__).resolve().parent
+                                                  / "pr-policy.py")
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
 def entry_ids(*texts):
     """Every entry id named by a marker in `texts`, in first-seen order."""
     found = []
@@ -240,6 +256,39 @@ def entry_ids(*texts):
             if entry_id and entry_id not in found:
                 found.append(entry_id)
     return found
+
+
+def entries_named(issue_body, pull_body):
+    """`(ids, unreadable)`: every entry the issue or the pull request names, and what is not an id.
+
+    The issue's marker, the pull request's marker, and the ids on the `entry id(s):` line of the pull
+    request's `## Map and rules conformance` section -- which is where `tools/pr-policy.py` requires
+    them, and where an issue that legitimately carries several finds room for them (#464, #526). In
+    first-seen order, each once. `unreadable` is the parts of that line no entry id can be: they are
+    reported in section 3 and never silently dropped.
+    """
+    tool = policy_tool()
+    listed, unreadable = tool.named_entries(tool.sections(pull_body).get("Map and rules conformance"))
+    ids = entry_ids(issue_body, pull_body)
+    for entry_id in listed:
+        if entry_id not in unreadable and entry_id not in ids:
+            ids.append(entry_id)
+    return ids, unreadable
+
+
+def naming_note(unreadable):
+    """A sentence for section 3 about the parts of the conformance bullet that name no entry, or ""."""
+    if not unreadable:
+        return ""
+    return ("\n\nThe pull request's `## Map and rules conformance` `entry id(s):` line also holds "
+            + ", ".join(f"`{part}`" for part in unreadable)
+            + ", which is not an entry id and was not read as one. `tools/pr-policy.py` reads the same line "
+              "and reports it too.")
+
+
+NAMES_NO_ENTRY = ("The issue and the pull request name no entry: there is no `rules-factory-entry` marker in "
+                  "either body, and the `entry id(s):` line of the pull request's `## Map and rules conformance` "
+                  "section names none.")
 
 
 def maps_read_once(package_maps, record, head, work_dir):
@@ -388,10 +437,31 @@ def ownership_of(snapshot, record):
 
 
 def role_diff(base, head, paths):
-    """The bounded diff of exactly `paths`. An empty list is an empty diff, never the whole one."""
+    """The bounded diff of exactly `paths`. An empty list is an empty diff, never the whole one.
+
+    `paths` are as GitHub reports them, **repository**-relative, and git runs in the engine, which for
+    an engine embedded under a repository root (0069) is a directory below the repository's. A pathspec
+    is relative to where git runs, so `engine/src/X.cs` matched nothing and section 7 of every such
+    packet was an empty fence (#522, #526). `:(top)` anchors each at the repository's root, and
+    `literal` keeps a file name with a glob character in it a file name.
+
+    **A listed path that yields no diff is a refusal, not an empty section.** Every path here is one
+    GitHub reported as changed between exactly these two commits, so nothing but a wrong pathspec can
+    make git say otherwise -- and a reviewer handed an empty diff over a listed surface would form a
+    verdict on bytes it was never shown.
+    """
     if not paths:
         return None
-    text = git("diff", f"{base}...{head}", "--", *paths)
+    specs = [f":(top,literal){path}" for path in paths]
+    shown = set(git("diff", "--name-only", "-z", f"{base}...{head}", "--", *specs).split("\0"))
+    missing = [path for path in paths if path not in shown]
+    if missing:
+        raise Refused(f"git shows no change to {len(missing)} of the {len(paths)} path(s) GitHub lists as changed "
+                      f"between {base[:12]} and {head[:12]}: {', '.join(missing[:5])}"
+                      + (", ..." if len(missing) > 5 else "")
+                      + ". A diff that examined nothing is not an empty diff, and a semantic reviewer given one "
+                        "would judge a surface it was never shown; the pathspec or the commits are wrong.")
+    text = git("diff", f"{base}...{head}", "--", *specs)
     lines = text.splitlines()
     if len(lines) <= DIFF_LINE_BUDGET:
         return "```diff\n" + text.rstrip() + "\n```"
@@ -401,9 +471,16 @@ def role_diff(base, head, paths):
             f"calling it a review. The whole of it: `git diff {base}...{head} -- <the paths above>`.")
 
 
-def bounded_diff(base, head):
-    """The diff, with a line budget: a reviewer that skims a 6000-line diff reviewed nothing."""
+def bounded_diff(base, head, changed=()):
+    """The diff, with a line budget: a reviewer that skims a 6000-line diff reviewed nothing.
+
+    `changed` is the files GitHub says the pull request changes. A diff that comes back empty over a
+    non-empty list is refused for the reason `role_diff` refuses one (#522).
+    """
     text = git("diff", f"{base}...{head}")
+    if changed and not text.strip():
+        raise Refused(f"git shows no diff between {base[:12]} and {head[:12]}, but GitHub lists {len(changed)} "
+                      f"changed file(s). A diff that examined nothing is not an empty diff.")
     lines = text.splitlines()
     if len(lines) <= DIFF_LINE_BUDGET:
         return "```diff\n" + text.rstrip() + "\n```"
@@ -585,7 +662,7 @@ def build(number, base, package_maps=(), recordable=True, role=ALL, review_type=
         except (OSError, UnicodeDecodeError, ValueError) as error:
             raise Refused(f"reviewed commit {head[:12]} does not carry readable review context ({error})")
 
-        entries = entry_ids(issue.get("body"), pull.get("body"))
+        entries, unreadable = entries_named(issue.get("body"), pull.get("body"))
 
         # Before any entry packet is built, and before anything is written: an entry packet made
         # from the wrong map is the one artifact a semantic reviewer is told to read first.
@@ -665,9 +742,9 @@ def build(number, base, package_maps=(), recordable=True, role=ALL, review_type=
                                     "bytes are not here (`docs/agent-team.md`). That review runs after you, "
                                     "on a packet built for it."
                                   if entries else
-                                  "The issue and the pull request name no entry (no `rules-factory-entry` "
-                                  "marker). For a change to the rules surface that is a finding: the next "
-                                  "reviewer cannot check an implementation against a rule nobody named.")))
+                                  NAMES_NO_ENTRY + " For a change to the rules surface that is a finding: the "
+                                  "next reviewer cannot check an implementation against a rule nobody named.")
+                                 + naming_note(unreadable)))
         elif entries:
             rendered = []
             for entry_id in entries:
@@ -698,12 +775,11 @@ def build(number, base, package_maps=(), recordable=True, role=ALL, review_type=
                    if several else "with the restored package's `corpus-map.json` ")
                 + "to have the map checked.")
             body = ("Read these **before** the diff. " + provenance_of_map + " Your reading of the rule is formed "
-                    "from them, not from the implementation.\n\n" + "\n".join(rendered))
+                    "from them, not from the implementation.\n\n" + "\n".join(rendered) + naming_note(unreadable))
             parts.append(section("3. The entries, as the map has them", body))
         else:
-            body = ("The issue and the pull request name no entry (no `rules-factory-entry` marker). For a change to "
-                    "the rules surface that is a finding: the reviewer cannot check an implementation against a rule "
-                    "nobody named.")
+            body = (NAMES_NO_ENTRY + " For a change to the rules surface that is a finding: the reviewer cannot "
+                    "check an implementation against a rule nobody named." + naming_note(unreadable))
             parts.append(section("3. The entries, as the map has them", body))
 
         # What a comprehensive review is formed on, and the gate in front of it: only for a packet a
@@ -794,7 +870,7 @@ def build(number, base, package_maps=(), recordable=True, role=ALL, review_type=
                            f"decided here, so decide it from `provenance.json` rather than assuming.")
                         if changed else "(no files)"))
         parts.append(section(*heading))
-        diff = role_diff(base_sha, head, listed) if role == SEMANTIC else bounded_diff(base_sha, head)
+        diff = role_diff(base_sha, head, listed) if role == SEMANTIC else bounded_diff(base_sha, head, changed)
         parts.append(section("7. The diff",
                              diff if diff is not None else
                              "Empty: nothing this role judges changed. See section 6."))

@@ -3346,6 +3346,228 @@ class TestTheReviewPacketRoles(TestTheReviewPacket):
             self.assertLess(len(self.cut(role).encode()), whole,
                             f"the {role} cut is not smaller than the whole packet")
 
+    # --- a diff that examined nothing is not an empty diff (#522) ---------------------------------
+
+    def test_a_listed_path_git_shows_no_change_to_is_refused_rather_than_rendered_empty(self):
+        """Every listed path is one GitHub says changed between these two commits, so git showing
+        none of it is a wrong pathspec, and the packet used to print an empty fence over it."""
+        self.commit_engine()
+        head = self.change()
+        self.pull_request(head)
+        document = json.load(open(self.fixture_path, encoding="utf-8"))
+        document["pr"]["5"]["files"] = [{"path": f"src/{NAME}/NeverChanged.cs"}]
+        document["pr"]["5"]["changedFiles"] = 1
+        self.fixture(document)
+        done = self.packet("--role", "semantic", "--stdout")
+        self.assertEqual(done.returncode, 1, done.stdout)
+        self.assertIn("git shows no change to 1 of the 1 path(s)", done.stderr)
+        self.assertIn(f"src/{NAME}/NeverChanged.cs", done.stderr)
+        self.assertEqual(done.stdout, "", "a refused packet prints nothing a reviewer could read")
+
+    def test_one_unchanged_path_among_changed_ones_is_still_refused(self):
+        self.commit_engine()
+        head = self.change()
+        self.pull_request(head)
+        document = json.load(open(self.fixture_path, encoding="utf-8"))
+        document["pr"]["5"]["files"].append({"path": f"src/{NAME}/NeverChanged.cs"})
+        document["pr"]["5"]["changedFiles"] = len(document["pr"]["5"]["files"])
+        self.fixture(document)
+        done = self.packet("--role", "semantic", "--stdout")
+        self.assertEqual(done.returncode, 1, done.stdout)
+        self.assertIn("git shows no change to 1 of the 3 path(s)", done.stderr)
+
+    def test_a_whole_diff_that_is_empty_over_listed_files_is_refused(self):
+        self.commit_engine()
+        head = self.change()
+        self.pull_request(head)
+        for role in ("structural", "independent"):
+            self.assertIn("```diff\ndiff --git", self.cut(role), f"the {role} cut has its diff")
+        git(self.out, "checkout", "-q", "main")
+        git(self.out, "checkout", "-qb", "nothing-changed")
+        self.pull_request(git(self.out, "rev-parse", "HEAD"))
+        done = self.packet("--role", "structural", "--stdout")
+        self.assertEqual(done.returncode, 1, done.stdout)
+        self.assertIn("git shows no diff", done.stderr)
+
+    # --- the entries a pull request names are the ones pr-policy requires it to name (#464) ------
+
+    def named_by_the_bullet(self, bullet, *, marker=False):
+        """A pull request whose only naming of an entry is its conformance bullet."""
+        self.commit_engine()
+        head = self.change()
+        self.pull_request(head, body="## Linked Issue\nCloses #27\n\n## Map and rules conformance\n" + bullet + "\n")
+        document = json.load(open(self.fixture_path, encoding="utf-8"))
+        if not marker:
+            document["issue"]["27"]["body"] = "## Acceptance criteria\n- [ ] it declines"
+        self.fixture(document)
+
+    def test_an_entry_named_only_in_the_conformance_bullet_is_in_the_packet(self):
+        self.named_by_the_bullet("- entry id(s): `altitude-limit`\n- map package and version: x 1\n"
+                                 "- source locator(s): 107.51")
+        for role in ("semantic", "independent"):
+            text = self.cut(role)
+            self.assertIn("entry-altitude-limit.md", text, f"the {role} packet names no entry pr-policy accepted")
+            self.assertNotIn("name no entry", text)
+
+    def test_several_entries_in_the_bullet_each_get_an_entry_packet(self):
+        self.named_by_the_bullet("- entry id(s): `altitude-limit`, `speed-limit`")
+        text = self.cut("semantic")
+        self.assertIn("entry-altitude-limit.md", text)
+        self.assertIn("entry-speed-limit.md", text)
+        self.assertLess(text.index("entry-altitude-limit.md"), text.index("entry-speed-limit.md"),
+                        "in the order the bullet names them")
+
+    def test_the_structural_cut_lists_the_bullets_ids_too(self):
+        self.named_by_the_bullet("- entry id(s): `altitude-limit`, `speed-limit`")
+        text = self.cut("structural")
+        self.assertIn("- `altitude-limit`", text)
+        self.assertIn("- `speed-limit`", text)
+
+    def test_an_entry_named_in_the_marker_and_the_bullet_is_one_entry(self):
+        self.named_by_the_bullet("- entry id(s): `altitude-limit`, `speed-limit`", marker=True)
+        text = self.cut("structural")
+        self.assertEqual(text.count("- `altitude-limit`"), 1)
+        self.assertIn("- `speed-limit`", text)
+
+    def test_the_bullet_is_read_by_pr_policy_s_own_function(self):
+        """Not a second parser that happens to agree today: the packet loads pr-policy's."""
+        rails = os.path.join(FACTORY, "recipe", "rails", "tools")
+        spec = importlib.util.spec_from_file_location("rp_under_test", os.path.join(rails, "review-packet.py"))
+        module = importlib.util.module_from_spec(spec)
+        writes, sys.dont_write_bytecode = sys.dont_write_bytecode, True
+        try:
+            spec.loader.exec_module(module)
+            body = ("## Map and rules conformance\n<!-- entry id(s): `from-a-comment` -->\n"
+                    "- Entry id(s): `one`, two ,`three`\n- source locator(s): x\n")
+            self.assertEqual((["one", "two", "three"], []), module.entries_named("", body))
+            self.assertEqual((["m", "one"], []),
+                             module.entries_named("<!-- rules-factory-entry: m -->",
+                                                  "## Map and rules conformance\n- entry id(s): `m`, `one`"),
+                             "the issue's marker first, and each id once")
+            self.assertEqual(([], []), module.entries_named("", "## Map and rules conformance\nN/A\n"))
+        finally:
+            sys.dont_write_bytecode = writes
+
+    def test_a_part_of_the_bullet_that_is_no_entry_id_is_reported_and_not_read_as_one(self):
+        self.named_by_the_bullet("- entry id(s): `altitude-limit`, see the issue")
+        text = self.cut("structural")
+        self.assertIn("- `altitude-limit`", text)
+        self.assertIn("`see the issue`, which is not an entry id and was not read as one", text)
+        self.assertNotIn("- `see the issue`", text, "it is reported, and it is not listed among the entries")
+
+    def test_no_entry_anywhere_is_a_finding_that_says_where_it_looked(self):
+        self.commit_engine()
+        self.pull_request(self.change(), body="## Map and rules conformance\nN/A\n")
+        document = json.load(open(self.fixture_path, encoding="utf-8"))
+        document["issue"]["27"]["body"] = "## Acceptance criteria\n- [ ] it declines"
+        self.fixture(document)
+        text = " ".join(self.cut("independent").split())
+        self.assertIn("name no entry: there is no `rules-factory-entry` marker in either body", text)
+        self.assertIn("`entry id(s):` line of the pull request's `## Map and rules conformance`", text)
+
+
+class TestAnEmbeddedEnginesPacketCarriesItsDiff(RailsInAGitEngine):
+    """#522, #526: an engine produced into a subdirectory (0069) has a semantic diff in section 7.
+
+    GitHub reports `engine/src/X.cs`; git runs in `engine/`. The pathspec is relative to where git
+    runs, so it matched nothing, and section 7 was an empty fence over a section 6 that listed the
+    files. The standalone engine's paths are the same in both terms, which is why every other test
+    of the packet passed.
+    """
+
+    def setUp(self):
+        super().setUp()
+        self.repo = os.path.join(self.tmp, "repo")
+        self.out = os.path.join(self.repo, "engine")
+
+    def commit_engine(self):
+        self.produced("--repo-root", self.repo)
+        git(self.repo, "init", "-q", "-b", "main")
+        git(self.repo, "config", "user.email", "t@example.invalid")
+        git(self.repo, "config", "user.name", "t")
+        with open(os.path.join(self.repo, "README.md"), "w", encoding="utf-8") as handle:
+            handle.write("# the host repository\n")
+        git(self.repo, "add", ".")
+        git(self.repo, "commit", "-qm", "the produced engine")
+
+    def change(self):
+        git(self.repo, "checkout", "-qb", "issue-27")
+        write_overlay(self.out, {"altitude-limit": {
+            "status": "implemented", "implementedIn": "Rules/AltitudeLimit.cs",
+            "tests": [{"name": "AltitudeLimit_DeclinesAboveTheCeiling",
+                       "mutation": "return the ceiling instead of declining"}]}})
+        os.makedirs(os.path.join(self.out, "src", NAME, "Rules"), exist_ok=True)
+        with open(os.path.join(self.out, "src", NAME, "Rules", "AltitudeLimit.cs"), "w", encoding="utf-8") as handle:
+            handle.write("// the altitude limit\n")
+        with open(os.path.join(self.repo, "README.md"), "a", encoding="utf-8") as handle:
+            handle.write("the host repository's own change\n")
+        git(self.repo, "add", "-A")
+        git(self.repo, "commit", "-qm", "implement the altitude limit")
+        return subprocess.run(["git", "-C", self.repo, "rev-parse", "HEAD"], capture_output=True, text=True,
+                              check=True).stdout.strip()
+
+    def pull_request(self, head, body="## Linked Issue\nCloses #27", issue_body=None):
+        self.fixture({
+            "pr": {"5": {"number": 5, "title": "Implement the altitude limit", "body": body,
+                         "headRefOid": head, "headRefName": "issue-27", "baseRefName": "main",
+                         "files": [{"path": "engine/overlay/altitude-limit.json"},
+                                   {"path": f"engine/src/{NAME}/Rules/AltitudeLimit.cs"},
+                                   {"path": "README.md"}],
+                         "closingIssuesReferences": [{"number": 27}]}},
+            "issue": {"27": {"number": 27, "title": "Widen the altitude limit", "state": "OPEN",
+                             "body": issue_body or ("<!-- rules-factory-entry: altitude-limit -->\n"
+                                                    "## Acceptance criteria\n- [ ] it declines"),
+                             "labels": [{"name": "state:ready"}, {"name": "risk:normal"}]}},
+        })
+
+    def cut(self, role):
+        done = subprocess.run([sys.executable, os.path.join(self.out, "tools", "review-packet.py"), "5",
+                               "--base", "main", "--package-map", os.path.join(PART107, "corpus-map.json"),
+                               "--role", role, "--stdout"],
+                              cwd=self.out, capture_output=True, text=True, env=self.environment())
+        self.assertEqual(done.returncode, 0, done.stderr)
+        return done.stdout
+
+    @staticmethod
+    def section_seven(text):
+        return text[text.index("## 7. The diff"):text.index("## 8. Determinism")]
+
+    def test_the_semantic_diff_is_the_semantic_surface_s_diff(self):
+        self.commit_engine()
+        self.pull_request(self.change())
+        text = self.cut("semantic")
+        self.assertIn(f"`engine/src/{NAME}/Rules/AltitudeLimit.cs`", text, "section 6 lists it")
+        diff = self.section_seven(text)
+        self.assertIn(f"diff --git a/engine/src/{NAME}/Rules/AltitudeLimit.cs", diff)
+        self.assertIn("+// the altitude limit", diff)
+        self.assertIn("diff --git a/engine/overlay/altitude-limit.json", diff)
+        self.assertNotIn("the host repository's own change", diff,
+                         "and only the surface's: the host's README is withheld from this cut")
+
+    def test_an_empty_fence_is_never_what_the_reader_is_left_with(self):
+        self.commit_engine()
+        self.pull_request(self.change())
+        for role in ("semantic", "structural", "independent"):
+            self.assertNotRegex(self.section_seven(self.cut(role)), r"```diff\n\s*```",
+                                f"the {role} packet's section 7 is an empty fence")
+
+    def test_the_other_cuts_still_carry_the_whole_diff(self):
+        self.commit_engine()
+        self.pull_request(self.change())
+        for role in ("structural", "independent"):
+            diff = self.section_seven(self.cut(role))
+            self.assertIn("+// the altitude limit", diff)
+            self.assertIn("the host repository's own change", diff)
+
+    def test_entries_named_in_the_bullet_reach_an_embedded_engine_s_packet(self):
+        self.commit_engine()
+        self.pull_request(self.change(), body="## Linked Issue\nCloses #27\n\n## Map and rules conformance\n"
+                                              "- entry id(s): `altitude-limit`, `speed-limit`\n",
+                          issue_body="## Acceptance criteria\n- [ ] it declines")
+        text = self.cut("semantic")
+        self.assertIn("entry-altitude-limit.md", text)
+        self.assertIn("entry-speed-limit.md", text)
+
 
 class TestPrPolicy(RailsInAGitEngine):
     """`tools/pr-policy.py`: the contract, checked mechanically (#153)."""
