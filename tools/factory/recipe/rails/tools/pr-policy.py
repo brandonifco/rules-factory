@@ -48,6 +48,15 @@ only to that one rule: the claim was granted by showing every changed path is on
 writes, which says more than a tick beside twenty rails whose honest note is all the same sentence.
 The engine's own documents are listed in a produce update like any other.
 
+**A document outside the engine has one spelling: its path relative to the engine directory.** An
+engine embedded under a repository root (decision 0069) shares its pull requests with that
+repository, so the diff can touch the root's `README.md`, and the same rule -- every changed `*.md`
+is listed as `updated`, whoever owns it -- applies to it. It is written `../README.md`, and
+`../.github/pull_request_template.md` for a template, as `cd engine && cat ../README.md` would spell
+it. An engine's own paths never begin with `..`, so the spelling cannot mean anything else, and
+`README.md` keeps meaning the engine's own. The check and `--docs-skeleton` both use it. A listed path
+that is neither living nor changed is still a typo.
+
 This cannot tell whether anyone read a file. That part rests on the author's word, and the note is
 where they give it.
 
@@ -98,6 +107,7 @@ import binascii
 import json
 import os
 import pathlib
+import posixpath
 import re
 import subprocess
 import sys
@@ -156,11 +166,14 @@ PRODUCE_FACTS = (
 # in the diff because of it. A produce report (`factory produce --produce-report`) writes all four.
 PRODUCE_PROSE = "what moved"
 DOCUMENTATION = "Documentation"
-# One document's line. The same grammar rules-factory's own tools/check-pr-docs.py reads, so an
-# agent that has worked in both writes the same thing in both.
+# One document's line. The grammar rules-factory's own tools/check-pr-docs.py reads, and one thing
+# more: the verdict may be set in bold, which is what an author reaches for and is not a defect in
+# the claim (#523).
 DOCUMENT_LINE = re.compile(
-    r"^[-*]\s*\[(?P<tick>[ xX])\]\s*`?(?P<path>[^`\s]+\.md)`?\s*[—–-]+\s*"
-    r"(?P<verdict>updated|checked, no change)\s*:\s*(?P<note>.*?)\s*$")
+    r"^[-*]\s*\[(?P<tick>[ xX])\]\s*`?(?P<path>[^`\s]+\.md)`?\s*[—–-]+\s*\*{0,2}"
+    r"(?P<verdict>updated|checked, no change)\*{0,2}\s*:\s*\*{0,2}\s*(?P<note>.*?)\s*$")
+# A list marker: `-`, or `*` followed by whitespace. `**bold**` opens a paragraph, not a line.
+BULLET = re.compile(r"^(?:-|\*\s)")
 # Frozen by design: a numbered decision record is superseded by a new record, never rewritten.
 FROZEN_DOCUMENT = re.compile(r"^docs/decisions/\d{4}-[^/]+\.md$")
 # Not the engine's writing and not in its history: what restore, build and test left behind. A
@@ -218,6 +231,20 @@ def engine_relative(path, prefix=None):
     if not prefix:
         return path
     return path[len(prefix) + 1:] if path.startswith(prefix + "/") else None
+
+
+def document_spelling(path, prefix=None):
+    """How `## Documentation` writes a changed `*.md`: relative to the engine directory.
+
+    Inside the engine that is the engine's own path, `docs/method.md`. Outside it -- the repository's
+    README, a template it keeps at its root -- it is `../README.md`, which cannot be mistaken for an
+    engine path because none of those begins with `..`. GitHub reports repository-relative paths
+    and the section speaks engine-relative ones; this is the one place the two are joined, for both
+    the check and the skeleton (#523).
+    """
+    prefix = engine_path() if prefix is None else prefix
+    inside = engine_relative(path, prefix)
+    return inside if inside is not None else posixpath.relpath(path, prefix)
 
 
 def retired_here(ownership, path, name):
@@ -739,9 +766,9 @@ def check_documentation(filled, changed, findings, truncated=False, produce=Fals
         return None
     living = living_documents(ownership, name, ownership.adopted(str(ROOT)))
     prefix = engine_path()
-    changed_documents = sorted(inside for path in changed
-                               for inside in [engine_relative(path, prefix)]
-                               if inside is not None and inside.endswith(".md"))
+    changed_documents = sorted({document_spelling(path, prefix) for path in changed if path.endswith(".md")})
+    outside = (f" A document outside the engine is written relative to the engine directory, "
+               f"`{document_spelling('README.md', prefix)}` for the repository's README." if prefix else "")
 
     listed = {}
     for line in section.splitlines():
@@ -750,7 +777,7 @@ def check_documentation(filled, changed, findings, truncated=False, produce=Fals
             continue
         match = DOCUMENT_LINE.match(line)
         if not match:
-            if line.startswith(("-", "*")):
+            if BULLET.match(line):
                 findings.append(f"`## {DOCUMENTATION}` cannot read {line!r}. One line per document: "
                                 f"- [x] `path.md` — updated: what you changed, or "
                                 f"- [x] `path.md` — checked, no change: what you looked for.")
@@ -778,7 +805,7 @@ def check_documentation(filled, changed, findings, truncated=False, produce=Fals
                 findings.append(f"`{path}` is changed by this pull request and is not listed in "
                                 f"`## {DOCUMENTATION}`. A document the diff touches is accounted for whoever "
                                 f"owns it: the one exception is an admitted factory update, which has already "
-                                f"shown every changed path is one the factory writes.")
+                                f"shown every changed path is one the factory writes.{outside}")
             elif listed[path]["verdict"] != "updated":
                 findings.append(f"`{path}` is changed by this pull request but listed as checked, no change.")
     for path, match in listed.items():
@@ -786,7 +813,7 @@ def check_documentation(filled, changed, findings, truncated=False, produce=Fals
             break
         if path not in living and path not in changed_documents:
             findings.append(f"`{path}` is neither a living document of this engine nor changed here. "
-                            f"A path that is neither is a typo, and a typo ticks nothing.")
+                            f"A path that is neither is a typo, and a typo ticks nothing.{outside}")
         elif match["verdict"] == "updated" and path not in changed_documents:
             findings.append(f"`{path}` is listed as updated but this pull request does not change it.")
     return len(living)
@@ -804,18 +831,22 @@ def changed_documents_here():
                                stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
         if found.returncode != 0:
             continue
-        diff = subprocess.run(["git", "-C", str(ROOT), "diff", "--name-only", "--no-renames", f"{base}...HEAD"],
+        diff = subprocess.run(["git", "-C", str(ROOT), "diff", "--name-only", "--find-renames", f"{base}...HEAD"],
                               stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
         if diff.returncode == 0:
             # git prints a path relative to the **repository**, and every other line of the skeleton
             # is an engine-relative path from `living_documents`. For an embedded engine (0069) those
-            # differ, and a skeleton that mixed the two listed one document twice under two names and
-            # the repository's own README as though this engine owned it -- and the check the skeleton
-            # is written for rejected both. A document outside the engine is not the engine's to
-            # account for, which is what `engine_relative` returning None says.
+            # differ, and a skeleton that mixed the two listed one document twice under two names.
+            # `document_spelling` joins them, exactly as the check does, so a document outside the
+            # engine is listed as `../README.md` and the check accepts what is printed here (#523).
+            #
+            # Renames are followed, not split into a deletion and an addition: GitHub's file list,
+            # which the check reads, reports a rename's new path only, so a skeleton that named the
+            # old one printed a line the check called a typo (#511). `--find-renames` is spelled out
+            # so a user's `diff.renames=false` cannot bring the disagreement back.
             prefix = engine_path()
-            return sorted({inside for path in diff.stdout.splitlines() if path.endswith(".md")
-                           for inside in [engine_relative(path, prefix)] if inside is not None})
+            return sorted({document_spelling(path, prefix) for path in diff.stdout.splitlines()
+                           if path.endswith(".md")})
     print("pr-policy: git could not say what this branch changes, so every line below reads `checked, no "
           "change`; mark as `updated` each document this pull request edits.", file=sys.stderr)
     return []

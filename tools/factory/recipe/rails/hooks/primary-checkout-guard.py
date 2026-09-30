@@ -63,11 +63,18 @@ reason is kept because it is a bug this file already had:
         and a segment is blocked when it is blocked in ANY of them: the two sides of `||`
         (`cd X || true; cmd`), and a `cd` on either side of `|` or `&`, which the shell runs
         in a subshell. After `||`, the set is every directory seen so far.
-      - Out of scope, declared so it is not inferred: a `cd` inside a subshell, a group, a
-        command substitution, an `if`/`while` head, behind `builtin`/`command`, and
-        `pushd`/`popd`/`eval`/`source`. Each is treated as a `cd` the guard could not read,
-        which is the unresolvable case above. A directory change made by a shell function,
-        an alias or a sourced file cannot be seen and is not modelled.
+      - A subshell `( ... )` and a command substitution `$( ... )` are scopes: a `cd` at the
+        head of one is read like any other, and the shell is put back where it was at the
+        `)`, so `(cd x)&&git commit` judges the commit where the shell was before the
+        subshell. Parentheses stuck to an operator (`)&&`, `);`) are split apart first.
+      - A reserved word before a command (`then`, `do`, `else`, `elif`, `if`, `while`,
+        `until`, `!`, `{`, `time`) and the parentheses around one are not the command:
+        `if true; then git commit -m x; fi` is judged as `git commit -m x`.
+      - Out of scope, declared so it is not inferred: a `cd` behind a reserved word, `{`,
+        `builtin`/`command`, mid-segment inside a substitution, and `pushd`/`popd`/`eval`/
+        `source`. Each is treated as a `cd` the guard could not read, which is the
+        unresolvable case above. A directory change made by a shell function, an alias or a
+        sourced file cannot be seen and is not modelled.
 
 Escape hatch, deliberately explicit and documented in AGENTS.md section 4:
 
@@ -251,6 +258,18 @@ def strip_heredocs(command: str) -> str:
     return "\n".join(kept)
 
 
+def _split_parentheses(token: str) -> list[str]:
+    """`)&&` is `)` then `&&`: shlex returns a run of operator characters as ONE token.
+
+    Left fused, `(cd x)&&git commit` had no `&&` in it for the segment splitter to see, and
+    the `git` after it was an argument of nothing. Only a token made entirely of operator
+    characters is split, so an argument such as `fix (x)` is never touched.
+    """
+    if ("(" in token or ")" in token) and set(token) <= set(_PUNCTUATION):
+        return re.findall(r"[()]|[^()]+", token)
+    return [token]
+
+
 def full_tokenize(command: str) -> list[str]:
     """Tokenise an entire (heredoc-stripped) command in one quote-aware pass.
 
@@ -265,7 +284,7 @@ def full_tokenize(command: str) -> list[str]:
         lexer = shlex.shlex(command, posix=True, punctuation_chars=_PUNCTUATION)
         lexer.whitespace_split = True
         lexer.whitespace = lexer.whitespace.replace("\n", "")
-        return list(lexer)
+        return [piece for token in lexer for piece in _split_parentheses(token)]
     except ValueError:
         # Unbalanced quotes. Fall back to whitespace splitting rather than failing
         # open on a command we could not parse -- segment and redirect boundaries are
@@ -603,6 +622,27 @@ UNCERTAIN_JOINS = {"||", "|", "&"}
 COMMAND_PREFIX_WORDS = {"{", "!", "if", "then", "else", "elif", "do", "while", "until", "time",
                         "builtin", "command", "exec", "sudo", "env", "nohup"}
 
+#: Reserved words that put the next word in command position: `if git commit; then git push; fi`
+#: runs both. A segment is judged from the word after them.
+SHELL_KEYWORDS = {"!", "if", "then", "else", "elif", "do", "while", "until", "{", "time"}
+
+
+def command_of(segment: list[str]) -> list[str]:
+    """The simple command a segment holds: without the subshell parentheses and reserved words
+    that lead it, and the closing parentheses that trail it.
+
+    `then git commit -m x` and `(git commit -m x)` are `git commit -m x`. Without this the
+    guard read their first word, `then` or `(`, as the command, and a `git` behind either
+    was never looked at.
+    """
+    start, end = 0, len(segment)
+    while start < end and (segment[start] in SHELL_KEYWORDS or segment[start] == "("):
+        start += 1
+    while end > start and segment[end - 1] == ")":
+        end -= 1
+    return segment[start:end]
+
+
 #: Commands that change the shell's directory, or run text that may, in a way not read here.
 UNREADABLE_DIRECTORY_CHANGERS = {"pushd", "popd", "eval", "source", "."}
 
@@ -665,14 +705,23 @@ def directories_seen_by(tokens: list[str], cwd: str) -> list[tuple[list[str], li
     chain = split_chain(tokens)
     candidates = [cwd]
     seen = [cwd]
+    scopes: list[list[str]] = []
     result: list[tuple[list[str], list[str]]] = []
     for before, segment, after in chain:
         if before == "||":
             candidates = list(seen)
         result.append((segment, list(candidates)))
 
-        if segment[0] == "cd":
-            args = extract_redirects(segment)[0][1:]
+        # A subshell, and a command substitution, is a scope: what a `cd` inside it does is
+        # undone at its `)`. Its opening parentheses save where the shell was, its closing
+        # ones put it back.
+        scopes += [list(candidates)] * segment.count("(")
+        core = command_of(segment)
+        leading = 0
+        while leading < len(segment) and segment[leading] == "(":
+            leading += 1
+        if core and core[0] == "cd" and segment[leading:leading + 1] == ["cd"]:
+            args = extract_redirects(core)[0][1:]
             target = _cd_target(args)
             if target is None:
                 moved = _remember(candidates, [cwd])
@@ -684,6 +733,9 @@ def directories_seen_by(tokens: list[str], cwd: str) -> list[tuple[list[str], li
         elif _changes_directory_unreadably(segment):
             candidates = _remember(candidates, [cwd])
         seen = _remember(seen, candidates)
+        for _ in range(segment.count(")")):
+            if scopes:
+                candidates = scopes.pop()
     return result
 
 
@@ -719,8 +771,8 @@ def main() -> int:
     tokens = full_tokenize(strip_heredocs(command))
     for segment, directories in directories_seen_by(tokens, cwd):
         for directory in directories:
-            check_git(segment, directory)
-            check_shell_writes(segment, directory)
+            check_git(command_of(segment), directory)
+            check_shell_writes(command_of(segment), directory)
 
     return 0
 
