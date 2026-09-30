@@ -53,7 +53,7 @@ def map_entries_cs(model):
              f"/// <summary>The {len(model.entries)} entries of {csharp.xml_text(model.package_id)} {csharp.xml_text(model.version)}, "
              "one static per entry, citations copied verbatim from the map.</summary>\n",
              "public static class MapEntries\n{\n",
-             "    /// <summary>The corpus every entry cites.</summary>\n",
+             "    /// <summary>The map's principal corpus. An entry of a multi-corpus map may cite another; its own locator names it.</summary>\n",
              f"    public const string SourceId = {csharp.cs_string(model.source_id)};\n\n",
              "    /// <summary>The corpus baseline the map is true of.</summary>\n",
              "    public static SourceBaselineId Baseline { get; } = new(\n",

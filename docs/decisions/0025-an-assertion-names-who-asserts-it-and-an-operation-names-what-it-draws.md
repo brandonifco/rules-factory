@@ -101,7 +101,7 @@ It lives inside the block for 0007's reason: only an ambiguous entry has an unse
 
 | map | entries | change |
 |---|---|---|
-| `faa-part-107` (2026) | 10 assertions | `remote pilot in command` ×6 (4 anchored in § 107.49's quoted lead-in), the three named persons on § 107.31(a) and § 107.33(c), `caller` on `collision-hazard-proximity`, `reasonable-protection`, `flash-rate-sufficient` |
+| `faa-part-107` (2026) | 10 assertions | `remote pilot in command` ×5 (4 anchored in § 107.49's quoted lead-in), the three named persons on § 107.31(a) and § 107.33(c), `caller` on `collision-hazard-proximity`, `reasonable-protection`, `flash-rate-sufficient` |
 | `faa-part-107-temporal` (2020) | 9 assertions | the same, without `flash-rate-sufficient` |
 | `hoyle-backgammon` | 1 assertion, 2 operations | `agreed-backgammon-multiple`: `caller`; `opening-roll`: die, one per player and again after each tie; `throw-two-dice`: dice, 2 |
 | `srd-52-combat` | 3 assertions, 4 operations | `initiative-ties`: GM, players; `gm-requires-action`: GM; `sides-agree-to-end`: both sides; `initiative-roll`, `group-initiative` (`affectsDraws: true`), `attack-resolution`, `falling-off` |
