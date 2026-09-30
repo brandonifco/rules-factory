@@ -103,6 +103,18 @@ jobs:
       # What is not narrowed is this map's own double pack: the step below packs it, the publish
       # job packs it again from a separate checkout, and the two digests are compared before
       # anything is pushed.
+      # Every corpus is built and verified by rules-corpus, fetched at the commit
+      # tools/factory/rulescorpus.py pins and run with `dotnet run` (0074), so the gate and the
+      # pack both need the SDK. The version is the factory's pin, read as validate.yml reads it.
+      - name: Read the pinned SDK
+        id: pin
+        run: echo "sdk=$(./scripts/validate-engine.sh --print-sdk)" >> "$GITHUB_OUTPUT"
+
+      - name: Set up .NET
+        uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
+        with:
+          dotnet-version: ${{ steps.pin.outputs.sdk }}
+
       - name: Validate
         run: python3 tools/validate-repo.py --release "$MAP"
         env:
@@ -152,6 +164,14 @@ jobs:
         with:
           python-version: '3.12.14'
 
+      # The re-pack builds and verifies the corpus with rules-corpus (0074), and `dotnet nuget
+      # push` needs the SDK too. Pinned to the release rules-kernel's publish job uses, a version
+      # known to install, which is also the factory's SDK pin.
+      - name: Set up .NET
+        uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
+        with:
+          dotnet-version: '10.0.112'
+
       - name: Re-pack, and require the bytes the gate checked
         env:
           MAP: ${{ needs.gate.outputs.map }}
@@ -170,13 +190,6 @@ jobs:
             exit 1
           fi
           ls -l artifacts
-
-      # Only `dotnet nuget push` needs the SDK; the package is built by pack-map.py above.
-      # Pinned to the release rules-kernel's publish job uses, a version known to install.
-      - name: Set up .NET
-        uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
-        with:
-          dotnet-version: '10.0.112'
 
       - name: Exchange the OIDC token for a short-lived API key
         id: login
