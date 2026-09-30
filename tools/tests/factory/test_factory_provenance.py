@@ -221,7 +221,7 @@ class TestRecord(ProvenanceCase):
                                               "path": "corpus/part107.xml", "principal": True,
                                               "recomputed": True}])
         self.assertNotIn("corpus", record)
-        self.assertEqual(record["kernel"], {"packageId": "RulesKernel", "version": "0.3.0"})
+        self.assertEqual(record["kernel"], {"packageId": "RulesKernel", "version": "1.0.0"})
         self.assertEqual(record["packs"], [])
         self.assertEqual(record["randomness"], "none")
 

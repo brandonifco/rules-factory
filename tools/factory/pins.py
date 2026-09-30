@@ -18,7 +18,7 @@ import re
 import csharp
 import semantics
 
-KERNEL_VERSION = "0.3.0"
+KERNEL_VERSION = "1.0.0"
 
 
 # The SDK rules-kernel pins (its global.json), so a produced engine builds with the kernel's

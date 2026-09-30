@@ -343,7 +343,7 @@ found at run time, not at compile time. The string-keyed `Registry` and reflecti
 
 | Piece | Repository | Status |
 |---|---|---|
-| Kernel — identity, provenance, resolution | [`rules-kernel`](https://github.com/brandonifco/rules-kernel) | published; engines pin 0.3.0 |
+| Kernel — identity, provenance, resolution | [`rules-kernel`](https://github.com/brandonifco/rules-kernel) | published; engines pin 1.0.0 |
 | Corpus maps — schema, checker, packages | this | maps of six corpus slices; `hoyle-backgammon`, `faa-part-107` and `srd-52-combat` published as packages; `tax-121-principal-residence` declares a package and has no `map/` tag, so it is unpublished |
 | Corpus toolkit — adapters, locators, boundary policy | none | locator checkers for four citation grammars live here (page markers, eCFR sections, PDF-extracted text, USLM court rules); no adapters |
 | Domain packs — tabletop, legal | none | not implemented |
