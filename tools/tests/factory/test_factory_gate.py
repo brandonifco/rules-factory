@@ -957,6 +957,37 @@ class TestImplementedNamesItsTests(GateCase):
         engine = self.engine()
         code, output = self.named(engine, self.merge(engine)[2])
         self.assertEqual(code, 0, output)
+        self.assertIn("no entry is implemented and none names a test, so no named test was required", output)
+
+    def test_tests_on_a_mapped_entry_are_counted_and_reported_as_having_run(self):
+        """#521: a test recorded against a `mapped` entry is checked, so the summary says how many ran
+        and over which set of entries, rather than that none was required."""
+        engine = self.engine()
+        write_overlay(engine, {"speed-limit": {
+            "status": "mapped", "tests": [{"test": "CorrespondenceTests.first_bullet", "mutation": MUTATION},
+                                          {"test": "CorrespondenceTests.second_bullet", "mutation": MUTATION}]}})
+        results = os.path.join(self.tmp, "mapped-results")
+        for framework in ("net8.0", "net10.0"):
+            write_trx(os.path.join(results, f"{framework}.trx"),
+                      [("first_bullet", "Passed"), ("second_bullet", "Passed")], framework=framework)
+        code, output = self.named(engine, self.merge(engine)[2], results)
+        self.assertEqual(code, 0, output)
+        self.assertIn("2 test(s) named by 1 entr(ies) (0 implemented), every one found and executed in all 2", output)
+        self.assertNotIn("no named test was required", output)
+
+    def test_the_entry_count_and_the_test_count_are_over_the_entries_that_name_tests(self):
+        engine = self.engine()
+        write_overlay(engine, {
+            "speed-limit": {"status": "implemented", "implementedIn": IMPLEMENTED_IN,
+                            "tests": [{"test": "CorrespondenceTests.a", "mutation": MUTATION}]},
+            "altitude-limit": {"status": "mapped", "tests": [{"test": "CorrespondenceTests.b", "mutation": MUTATION}]}})
+        results = os.path.join(self.tmp, "both-results")
+        for framework in ("net8.0", "net10.0"):
+            write_trx(os.path.join(results, f"{framework}.trx"), [("a", "Passed"), ("b", "Passed")],
+                      framework=framework)
+        code, output = self.named(engine, self.merge(engine)[2], results)
+        self.assertEqual(code, 0, output)
+        self.assertIn("2 test(s) named by 2 entr(ies) (1 implemented)", output)
 
     def test_fails_on_implemented_without_tests(self):
         engine = self.engine()
@@ -1408,7 +1439,7 @@ class TestValidateShWithDotnet(GateCase):
                          "    }\n}\n")
         code, output = self.validate(engine, "full")
         self.assertEqual(code, 0, output[-4000:])
-        self.assertIn("1 test(s) named by 1 implemented entries, every one found and executed in all 2", output)
+        self.assertIn("1 test(s) named by 1 entr(ies) (1 implemented), every one found and executed in all 2", output)
 
     def test_a_missing_or_mis_typed_handler_or_request_is_a_build_error(self):
         """#76: what reflection used to refuse at runtime, or never checked, the compiler refuses."""

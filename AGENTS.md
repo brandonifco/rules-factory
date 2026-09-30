@@ -52,7 +52,9 @@ the start of every session, so a session starts from the steady state or is told
   same exit code, and a **passing** step reduced to its verdict and the line that says what it
   examined, with the whole output in a log the run names. A failing step still prints everything.
   It is there because a successful run is 157 KB, and an agent that pastes that into a pull
-  request carries it for the rest of its life.
+  request carries it for the rest of its life. `./scripts/validate-engine.sh --brief`, which the
+  `engine` job runs, is the same rule for the run that produces an engine: 720 lines and 45 KB
+  become 91 lines and 6 KB, a failing step still prints everything, and the log is named.
 - A test is watched failing. The pull request names the mutation that made each new test fail.
 
 ## 3. Every pull request checks all documentation

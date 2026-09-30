@@ -46,11 +46,24 @@ function below, and where the shell let a command's own exit code end the run (`
 carries that code out unchanged. The parts that need no dotnet are tested in
 tools/tests/factory/test_validate_engine.py.
 
-Usage: validate-engine.sh [--print-sdk]
+Usage: validate-engine.sh [--print-sdk] [--brief]
+
+`--brief` runs **the same steps, in the same order, with the same verdicts and the same exit
+code** (#476; the rule #470 settled for `validate.sh --brief`). It is about what a passing run
+*prints*, and nothing else. A successful run of this script is 720 lines and 45 KB, and most of it
+is the produced engines' own gates, `dotnet` restore and build chatter, and the rails' output as
+each is exercised: none of it is evidence anybody reads on a pass, because the evidence is which
+steps ran and what each proved. So a step that passes prints its heading and its own `ok` lines
+(or the last line it printed, when it wrote none); a step that fails prints everything it printed,
+because that is the diagnosis; every `NOT VERIFIED` is counted per step rather than dropped; and
+the whole output is written to a log outside the checkout whose path is printed. CI runs this form:
+a failure prints in full in the Actions log, and a pass does not bury the next reader.
+
 Exit 0 when every check passes; 1 when one fails; 2 on a usage error; otherwise the exit code of
 the factory command that stopped the run. Standard library only.
 """
 import base64
+import contextlib
 import glob
 import hashlib
 import importlib.util
@@ -96,11 +109,146 @@ def fail(message):
 
 
 def step(message):
+    if BRIEF is not None:
+        BRIEF.begin(message)
+        return
     print(f"\n==> {message}", flush=True)
 
 
 def ok(message):
     print(f"ok   {message}", flush=True)
+    if BRIEF is not None:
+        BRIEF.verdicts.append(f"ok   {message}")
+
+
+#: What a brief run keeps from a step that passed, wherever in the step it appeared: a run that
+#: could not examine something is not the same as one that examined it (#470).
+BRIEF_KEEP = ("NOT VERIFIED",)
+
+#: The brief run in progress, or None. `step()` and `ok()` consult it; nothing else does, so a
+#: caller that never asks for brief sees the script it always did.
+BRIEF = None
+
+
+class Brief:
+    """What a brief run prints, and where it keeps the rest.
+
+    A **section** is what one `step()` prints, up to the next `step()` (or the end of the run).
+    Each section's output is held in a file, at descriptors 1 and 2 and not through `sys.stdout`,
+    because most of what a step prints comes from a subprocess writing there directly. When the
+    section ends it is appended, whole, to the log, and then printed as its heading and its own
+    `ok` lines if it passed, or in full if it did not. Output before the first step has no
+    heading and no verdict of its own, so it is always printed in full: it is a warning or a
+    refusal, never volume.
+
+    The descriptors are restored in their own innermost `finally`, before anything that can fail,
+    so a flush that fails on a full disk cannot leave the rest of the run printing into a closed
+    buffer; and the section reaches the log in an outer `finally`, so a section that ended in an
+    exception still has its diagnosis kept (#481 fixed both in validate-repo.py).
+    """
+
+    def __init__(self, log):
+        self.log = log
+        self.title = None
+        self.verdicts = []
+        self._buffer = None
+
+    def begin(self, title):
+        """End the section in progress as a pass, and open the one `title` names."""
+        self.end(True)
+        print(f"\n==> {title}", flush=True)
+        self.open_section(title)
+
+    def open_section(self, title):
+        sys.stdout.flush()
+        sys.stderr.flush()
+        self.title = title
+        self.verdicts = []
+        self._buffer = tempfile.TemporaryFile(mode="w+", encoding="utf-8", errors="replace")
+        self._saved = os.dup(1), os.dup(2)
+        self._streams = sys.stdout, sys.stderr
+        os.dup2(self._buffer.fileno(), 1)
+        os.dup2(self._buffer.fileno(), 2)
+        # The Python-level streams onto the same descriptors: a step prints through both, and
+        # wherever `sys.stdout` is not fd 1 (a test runner that captures output) a capture of the
+        # descriptors alone would miss everything this module printed.
+        sys.stdout = open(1, "w", encoding="utf-8", errors="replace", closefd=False, buffering=1)
+        sys.stderr = open(2, "w", encoding="utf-8", errors="replace", closefd=False, buffering=1)
+
+    def end(self, passed):
+        """Close the section in progress: keep all of it in the log, print what it earns."""
+        if self._buffer is None:
+            return
+        said = ""
+        try:
+            try:
+                # The restore, and nothing that can raise before it.
+                try:
+                    out, err = sys.stdout, sys.stderr
+                    sys.stdout, sys.stderr = self._streams
+                    for stream in (out, err):
+                        with contextlib.suppress(OSError, ValueError):
+                            stream.flush()
+                        with contextlib.suppress(OSError, ValueError):
+                            stream.close()
+                finally:
+                    os.dup2(self._saved[0], 1)
+                    os.dup2(self._saved[1], 2)
+                    os.close(self._saved[0])
+                    os.close(self._saved[1])
+            finally:
+                with contextlib.suppress(OSError, ValueError):
+                    self._buffer.seek(0)
+                    said = self._buffer.read()
+                with contextlib.suppress(OSError):
+                    self._buffer.close()
+        finally:
+            title, verdicts, self._buffer, self.title, self.verdicts = self.title, self.verdicts, None, None, []
+            self._keep(title, said)
+        self._print(title, said, passed, verdicts)
+
+    def _keep(self, title, said):
+        try:
+            with open(self.log, "a", encoding="utf-8") as handle:
+                if title is not None:
+                    handle.write(f"\n==> {title}\n")
+                handle.write(said)
+        except OSError as exc:
+            # Said, not swallowed: a log that was not kept must not be described as one that was.
+            print(f"validate-engine.sh: could not write {self.log}: {exc}", file=sys.stderr, flush=True)
+
+    def _print(self, title, said, passed, verdicts):
+        if not passed or title is None:
+            sys.stdout.write(said if said.endswith("\n") or not said else said + "\n")
+            sys.stdout.flush()
+            return
+        lines = [line for line in said.splitlines() if line.strip()]
+        for line in verdicts or lines[-1:]:
+            print(line)
+        unverified = [line for line in lines if any(mark in line for mark in BRIEF_KEEP)]
+        if unverified:
+            print(f"     {len(unverified)} NOT VERIFIED in this step, named in {self.log}")
+        sys.stdout.flush()
+
+
+def brief_log(directory=None):
+    """Where a brief run keeps everything its steps printed: a new file, outside the checkout.
+
+    Outside, and checked rather than assumed, because `tempfile` honours `TMPDIR` and a log that
+    landed in the checkout would be an untracked file the run added to it. The same rule, for the
+    same reason, as `brief_log()` in tools/validate-repo.py; this script is standard library only
+    and does not import that one. `directory` is for the test that proves the refusal.
+    """
+    where = os.path.realpath(directory or tempfile.gettempdir())
+    root = os.path.realpath(ROOT)
+    if where == root or where.startswith(root + os.sep):
+        print(f"validate-engine.sh: --brief keeps the whole output in a log, and the temporary "
+              f"directory is inside the checkout ({where}). Point $TMPDIR outside {root}, or run "
+              f"without --brief.", file=sys.stderr)
+        raise Stop(2)
+    handle, path = tempfile.mkstemp(prefix="validate-engine-", suffix=".log", dir=where)
+    os.close(handle)
+    return path
 
 
 def check(code):
@@ -2491,15 +2639,19 @@ def every_other_example_passes_its_gate(r):
 
 
 def usage(argv0):
-    return f"usage: {argv0} [--print-sdk]"
+    return f"usage: {argv0} [--print-sdk] [--brief]"
 
 
 def main(argv=None):
+    global BRIEF
     argv = sys.argv[1:] if argv is None else argv
     argv0 = os.environ.pop(ARGV0, "scripts/validate-engine.sh")
     for stream in (sys.stdout, sys.stderr):
         if hasattr(stream, "reconfigure"):
             stream.reconfigure(line_buffering=True)
+    brief = "--brief" in argv
+    argv = [arg for arg in argv if arg != "--brief"]
+    log = None
     try:
         if argv[:1] == ["--print-sdk"]:
             print(sdk_pin())
@@ -2508,6 +2660,11 @@ def main(argv=None):
             print(usage(argv0), file=sys.stderr)
             return 2
         os.chdir(ROOT)
+        if brief:
+            log = brief_log()
+            print(f"  brief: every step runs; the whole output is in {log}", flush=True)
+            BRIEF = Brief(log)
+            BRIEF.open_section(None)
         pin = sdk_pin()
         if not pin:
             fail("could not read SDK_VERSION from tools/factory/generate.py")
@@ -2539,10 +2696,23 @@ def main(argv=None):
         finally:
             shutil.rmtree(scratch, ignore_errors=True)
 
+        if BRIEF is not None:
+            BRIEF.end(True)
+            print(f"\nthe whole output of every step above: {log}")
         print(f"\nvalidate-engine.sh: PASS (SDK {sdk}{'' if sdk == pin else f', OVERRIDDEN from {pin}'})")
         return 0
     except Stop as stop:
+        # The section that was running is the one that failed: all of it, then where the rest is.
+        if BRIEF is not None:
+            BRIEF.end(stop.code == 0)
+            print(f"\nthe whole output of every step above: {log}")
         return stop.code
+    finally:
+        # Anything else that escapes (a traceback) still gets the section it interrupted printed,
+        # and the descriptors put back.
+        if BRIEF is not None:
+            BRIEF.end(False)
+        BRIEF = None
 
 
 if __name__ == "__main__":
