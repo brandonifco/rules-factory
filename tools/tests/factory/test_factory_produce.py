@@ -571,6 +571,13 @@ class TestGeneration(ProduceCase):
         self.assertIsNotNone(decline)
         self.assertEqual(decline.group(1).count("new SourceLocator("), 2)
 
+    def test_the_source_id_summary_does_not_claim_every_entry_cites_it(self):
+        """#533: a multi-corpus map's entries may cite another corpus, so the constant is only the principal one."""
+        out = self.produced(package=self.hoyle, corpus=os.path.join(HOYLE, "hoyle.txt"), name="HoyleBackgammon")
+        entries = self.read(out, "src/HoyleBackgammon/Generated/MapEntries.g.cs")
+        self.assertNotIn("every entry cites", entries)
+        self.assertRegex(entries, r"/// <summary>The map's principal corpus\.[^\n]*</summary>\n    public const string SourceId")
+
 
 class TestDerivedProvenance(unittest.TestCase):
     """#73: a derived entry's citation is every leaf locator, found recursively, in a fixed order.

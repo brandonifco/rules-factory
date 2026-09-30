@@ -137,8 +137,11 @@ if record_is_conflicted; then
 fi
 
 # Everything produce needs, read from the record in one pass so a malformed field is named once.
-# The corpus is the one generated file under corpus/ -- the same rule provenance.recompute uses to
-# find it, and it refuses anything but exactly one.
+# The corpora are the record's `corpora` (0039, 0070): a map may cite several, and produce is given
+# one --corpus for each. The principal -- the one the map's envelope names -- goes first, then the
+# rest in the record's own order (sorted by sourceId), so the same record always makes the same
+# produce. A record that does not say which corpus is the principal, or names a corpus twice, or
+# names one that is not a file under corpus/, does not say what to re-produce and is refused.
 FIELDS="$("$PYTHON" - "$RECORD" "$FACTORY_REPO_DEFAULT" <<'PY'
 import json, sys
 try:
@@ -154,10 +157,24 @@ if not (isinstance(commit, str) and len(commit) == 40 and all(c in "0123456789ab
 # case; a composed engine is re-produced from all of them or from none.
 packages = [m for m in record.get("maps") or [] if isinstance(m, dict)]
 name = (record.get("engine") or {}).get("name")
-corpora = [item.get("path") for item in record.get("generated") or []
-           if isinstance(item, dict) and str(item.get("path", "")).startswith("corpus/")]
-if len(corpora) != 1:
-    sys.exit(f"{sys.argv[1]} names {len(corpora)} corpus/ files; exactly one is the corpus")
+corpora = [item for item in record.get("corpora") or [] if isinstance(item, dict)]
+if not corpora:
+    sys.exit(f"{sys.argv[1]} names no corpus under `corpora`; a record written before "
+             f"provenanceFormat 5 names one under `corpus` and this script cannot re-produce from it")
+paths = []
+for position, corpus in enumerate(corpora):
+    path = corpus.get("path")
+    if not (isinstance(path, str) and path.startswith("corpus/") and len(path) > len("corpus/")
+            and path.isprintable()):
+        sys.exit(f"{sys.argv[1]} names no corpus/ file at corpora[{position}].path (got {path!r})")
+    if path in paths:
+        sys.exit(f"{sys.argv[1]} names {path} more than once under `corpora`")
+    paths.append(path)
+principals = [c["path"] for c in corpora if c.get("principal") is True]
+if len(principals) != 1:
+    sys.exit(f"{sys.argv[1]} marks {len(principals)} corpora as principal; exactly one is the corpus "
+             f"the map names, and produce takes it first")
+ordered = principals + [p for p in paths if p != principals[0]]
 if not packages:
     sys.exit(f"{sys.argv[1]} names no map package under `maps`; a record written before "
              f"provenanceFormat 7 names one under `map` and this script cannot re-produce from it")
@@ -169,7 +186,6 @@ if not name:
     sys.exit(f"{sys.argv[1]} names no engine.name")
 print(commit)
 print(" ".join(f"{m['packageId']}@{m['version']}" for m in packages))
-print(corpora[0])
 print(name)
 print(factory.get("repository") or sys.argv[2])
 print("dirty" if factory.get("dirty") else "clean")
@@ -177,15 +193,21 @@ print("dirty" if factory.get("dirty") else "clean")
 # provenanceFormat 9, and empty for an engine that is its own repository root -- both of which
 # mean the same thing here, and both of which are the standalone case.
 print((record.get("repository") or {}).get("enginePath") or "")
+# The corpora come last, one to a line, principal first: there is a variable number of them.
+for path in ordered:
+    print(path)
 PY
 )" || die "the record does not say what to re-produce (above)"
 
 mapfile -t FIELD <<<"$FIELDS"
-COMMIT="${FIELD[0]}"; read -r -a PACKAGES <<<"${FIELD[1]}"; CORPUS="${FIELD[2]}"; NAME="${FIELD[3]}"
-FACTORY_REPO="${RULES_ENGINE_FACTORY_REPO:-${FIELD[4]}}"; FACTORY_DIRTY="${FIELD[5]}"
-ENGINE_PATH="${FIELD[6]:-}"
+COMMIT="${FIELD[0]}"; read -r -a PACKAGES <<<"${FIELD[1]}"; NAME="${FIELD[2]}"
+FACTORY_REPO="${RULES_ENGINE_FACTORY_REPO:-${FIELD[3]}}"; FACTORY_DIRTY="${FIELD[4]}"
+ENGINE_PATH="${FIELD[5]:-}"
+CORPORA=("${FIELD[@]:6}")
 
-[[ -f "$CORPUS" ]] || die "$RECORD names the corpus $CORPUS, which is not in this engine"
+for CORPUS in "${CORPORA[@]}"; do
+  [[ -f "$CORPUS" ]] || die "$RECORD names the corpus $CORPUS, which is not in this engine"
+done
 
 # A dirty working tree is the normal case here: this is what you run *after* writing your entry's
 # overlay file and regenerating, so the overlay and the generated C# are modified by definition,
@@ -257,13 +279,15 @@ done
 
 PACKAGE_ARGS=()
 for PACKAGE in "${PACKAGES[@]}"; do PACKAGE_ARGS+=(--package "$PACKAGE"); done
-PRODUCE=("$PYTHON" "<factory>/tools/factory" produce "${PACKAGE_ARGS[@]}" --corpus "$REPO_ROOT/$CORPUS"
+CORPUS_ARGS=()
+for CORPUS in "${CORPORA[@]}"; do CORPUS_ARGS+=(--corpus "$REPO_ROOT/$CORPUS"); done
+PRODUCE=("$PYTHON" "<factory>/tools/factory" produce "${PACKAGE_ARGS[@]}" "${CORPUS_ARGS[@]}"
          --name "$NAME" --out "$REPO_ROOT" ${ROOT_ARGS[@]+"${ROOT_ARGS[@]}"}
          ${EXTRA[@]+"${EXTRA[@]}"})
 
 printf 'factory   %s at %s\n' "$FACTORY_REPO" "$COMMIT"
 printf 'package   %s\n' "${PACKAGES[*]}"
-printf 'corpus    %s\n' "$CORPUS"
+printf 'corpus    %s\n' "${CORPORA[*]}"
 printf 'engine    %s (%s)\n' "$NAME" "$REPO_ROOT"
 if [[ -n "$ENGINE_PATH" ]]; then
   printf 'repo      %s (the engine is embedded at %s/)\n' "$REPOSITORY_ROOT" "$ENGINE_PATH"
