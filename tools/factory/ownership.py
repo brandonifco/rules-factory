@@ -150,14 +150,14 @@ TABLE = (
         "a record a merge left conflicted is named as one, and --resolve-record settles it (#252); "
         "the repository root comes from the record too, so an embedded engine re-produces with no "
         "arguments of its own (#517, 0069)"),
-    Row("tools/review-packet.py", MANAGED, 15,
+    Row("tools/review-packet.py", MANAGED, 16,
         "everything a reviewer needs about one pull request, in the order it is read (0029); every map is "
         "read once and the entry packets are built from those bytes, and a refused packet writes nothing "
         "(#371, #372); a composed engine's maps are each checked against their own recorded digest and the "
         "identity names all of them (#460); --role cuts it for one reviewer, the changed paths carry the "
         "reviewed commit's own ownership class, and the identity names the role (#467); the semantic cut names the files it withheld rather than counting them, the policy among them (#475); "
         "a cut section keeps what is nested under it (#484); a truncated file list is refused, because a cut "
-        "made from one drops a change and says it did not (#478); a packet with entry evidence writes the scope a verdict attests, --review final and --prior make the acceptance review and the reasoned full one, and it is refused until the self-review is current (0071)"),
+        "made from one drops a change and says it did not (#478); a packet with entry evidence writes the scope a verdict attests, --review final and --prior make the acceptance review and the reasoned full one, and it is refused until the self-review is current (0071); the semantic diff is asked for by paths anchored at the repository root, and a listed path the diff shows no change to is a refusal and not an empty fence (#522, #526); the entries are the ones pr-policy.py reads from the conformance bullet as well as the marker (#464)"),
     Row("tools/review-scope.py", MANAGED, 1,
         "what a semantic review covered and what a repair invalidates of it, computed from the map's "
         "dependencies, a lexical reference graph and recorded fingerprints; the delta packet a bounded "
@@ -169,14 +169,15 @@ TABLE = (
         "blocking findings, which are the caller's judgement and the only thing it is given (#465); a section "
         "of the issue keeps what is nested under it (#484); it makes the readiness refusal dispatch "
         "makes, and says a semantic verdict is owed only when the change owes one (#483); the brief says to commit the attestation it answers and that the next review is a delta of it (0071)"),
-    Row("tools/pr-policy.py", MANAGED, 11,
+    Row("tools/pr-policy.py", MANAGED, 12,
         "the pull request contract, checked mechanically; a produce update's claim is checked, not taken "
         "(#193); every document the engine owns is accounted for (#236); the entry declaration, linked issue "
         "marker and overlay transition must identify the same work (#451); a changed path is judged in the "
         "engine's own terms, which for an engine embedded under a repository root is not the path GitHub "
         "reports (#501, 0069), the documentation skeleton included (#507); a changed document outside an "
         "embedded engine is listed under its path relative to the engine, `../README.md`, by the check and "
-        "the skeleton alike, and a rename is its new path (#523, #511)"),
+        "the skeleton alike, and a rename is its new path (#523, #511); the entry ids the conformance "
+        "bullet names are read by one function that review-packet.py loads, so the two cannot disagree (#464)"),
     Row("tools/record-verdict.py", MANAGED, 6,
         "a review verdict as a commit status on the exact commit reviewed, from entry evidence bound to "
         "that commit (0029, #372) -- every map of a composed engine, not one of them (#460); and from a packet "
@@ -449,6 +450,7 @@ RECIPE_SHA256 = {
         13: "9f9ee16c5bd75d0e3ec95863274187ec2591adfa7992950c7cceade3501ace63",
         14: "1c9adb51ce31986d763ce3c48a445bae95ceca0a95b7372767f02221a2840fa9",
         15: "bbbfd33e2385ab884863f02d35c3a836405d21fbf95d3347fddd937f92ece238",
+        16: "035d4fe896df6573a295f2350ac16739f05a09fa4f4c718972fa1c6f2eddafc3",
     },
     "tools/repair-packet.py": {
         1: "7ec00d9a68ff35fa0af4ab65714411ac6b39cfce34baf448359d9be5e393c2f5",
@@ -468,6 +470,7 @@ RECIPE_SHA256 = {
         9: "20666192adbbdfc24cacbf8abd57d5f42b1c1bc826691382017d69f9735f8313",
         10: "9017ed3f13402056e4a5b6ebb3f9b52349348904addf75ff6f0701f8dc7b5512",
         11: "c8fce86c6cffc79afca5c3b1a06cfe8bcfc1a42962013f2c530dc81f9a7bb286",
+        12: "03d43a550a8f6fec9e2943f5f06f0f830dfc450650eed79e3f0640c537235268",
     },
     "tools/record-verdict.py": {
         1: "48f7b11f7fc829cdaebd776a3eb5db04e27cade97c427c6806b72f58805d83db",
