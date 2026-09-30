@@ -2,7 +2,7 @@
 
 `examples/` is this repository's evidence: five corpora, nine maps, the transcripts of blind
 second mappings, trial reports, independent verdicts, and the results of the injection, collapse
-and validator-attack measurements: <!-- derived:evidence-totals -->224 tracked files, 15.8 MB, out of 21.2 MB tracked in all<!-- /derived:evidence-totals -->.
+and validator-attack measurements: <!-- derived:evidence-totals -->236 tracked files, 15.8 MB, out of 21.4 MB tracked in all<!-- /derived:evidence-totals -->.
 Those figures are written by `check-evidence.py --measure` and held to the lock by the gate, the way
 the commit named under *By trial* is
 ([#439](https://github.com/brandonifco/rules-factory/issues/439)): a count typed here that the
