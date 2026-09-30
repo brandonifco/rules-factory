@@ -887,9 +887,12 @@ def named_tests(args):
             ran[name] = ran.get(name, 0) + 1
 
     mapped = json.loads(pathlib.Path(args.map).read_text(encoding="utf-8"))
-    problems, named, implemented = [], 0, 0
+    # Two stated sets: the entries that name a test, whatever their status (every one of those tests
+    # is checked), and the implemented entries (every one of which must name one).
+    problems, named, naming, implemented = [], 0, 0, 0
     for entry in mapped.get("entries") or []:
         tests = entry.get("tests") or []
+        naming += 1 if tests else 0
         if entry.get("status") == "implemented":
             implemented += 1
             if not tests:
@@ -906,11 +909,12 @@ def named_tests(args):
             elif ran[test] != frameworks:
                 problems.append(f"{entry.get('id')}: {test!r} ran in {ran[test]} result file(s), expected one per "
                                 f"target framework ({frameworks})")
-    if not problems and implemented == 0:
-        print("     no entry is implemented, so no named test was required (nothing here to prove yet)")
+    if not problems and named == 0 and implemented == 0:
+        print("     no entry is implemented and none names a test, so no named test was required "
+              "(nothing here to prove yet)")
         return 0
-    return report(problems, f"{named} test(s) named by {implemented} implemented entries, every one found and "
-                            f"executed in all {frameworks} target framework(s)")
+    return report(problems, f"{named} test(s) named by {naming} entr(ies) ({implemented} implemented), every one "
+                            f"found and executed in all {frameworks} target framework(s)")
 
 
 # --- the rails (rules-factory decision 0029) -------------------------------------------------
