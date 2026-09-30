@@ -640,13 +640,58 @@ class TestTheGuard(unittest.TestCase):
 
     def test_a_cd_the_guard_does_not_read_is_treated_as_one_it_cannot_resolve(self):
         scratch = self.outside("scratch")
-        self.assertBlocked(f"(cd {scratch} && echo hi > out.txt)")
         self.assertBlocked(f'cd {scratch} && (cd "$DIR"; echo hi > out.txt)')
         self.assertBlocked(f'cd {scratch} && if cd "$DIR"; then echo hi > out.txt; fi')
         self.assertBlocked(f'cd {scratch} && pushd "$DIR" && echo hi > out.txt')
         self.assertBlocked(f'cd {scratch} && eval "cd $DIR" && echo hi > out.txt')
         # An argument that only spells "cd" is not a directory change.
         self.assertAllowed(f"cd {scratch} && echo cd > out.txt")
+
+    # A git command behind a subshell's `)&&` or a reserved word is still a git command (#550).
+
+    def test_a_command_after_a_subshell_glued_to_its_operator_is_judged(self):
+        self.assertBlocked("(cd src)&&git commit -m x")
+        self.assertBlocked("(true);git commit -m x")
+        self.assertBlocked("(true)&&(git commit -m x)")
+        self.assertBlocked("(true)&&rm README.md")
+        self.assertBlocked("(true)||echo hi > out.txt")
+        self.assertBlocked("echo $(true)&&git commit -m x")
+        # A quoted argument that has parentheses in it is one argument, not operators.
+        worktree = self.worktree("issue-parens")
+        self.assertAllowed("git commit -m 'fix (x)&&(y)'", cwd=worktree)
+
+    def test_the_directory_of_a_subshell_is_not_carried_out_of_it(self):
+        scratch = self.outside("scratch")
+        worktree = self.worktree("issue-subshell")
+        self.assertBlocked(f"(cd {scratch})&&git commit -m x")
+        self.assertBlocked(f"(cd {scratch}) && echo hi > out.txt")
+        self.assertBlocked(f"(cd {scratch}); echo hi > out.txt")
+        self.assertBlocked(f"echo $(cd {scratch} && pwd) && echo hi > out.txt")
+        self.assertBlocked(f"(cd {worktree}); git commit -m x")
+        # The subshell's own segments are judged where its `cd` put them, and the parent is
+        # judged where it was.
+        self.assertAllowed(f"(cd {worktree} && git commit -m x)")
+        self.assertAllowed(f"(cd {scratch} && echo hi > out.txt)")
+        # The `)` that closes a subshell is not an argument of the command before it.
+        self.assertAllowed(f"(rm -f {scratch}/out.txt)")
+        self.assertAllowed(f"cd {worktree} && (cd {scratch})&&git commit -m x")
+        self.assertBlocked(f"(cd {worktree} && true)&&git commit -m x")
+
+    def test_a_command_after_a_reserved_word_is_judged(self):
+        for command in ("if true; then git commit -m x; fi",
+                        "if true; then true; else git commit -m x; fi",
+                        "for i in 1 2; do git commit -m x; done",
+                        "while true; do git commit -m x; done",
+                        "if git commit -m x; then true; fi",
+                        "! git commit -m x",
+                        "time git commit -m x",
+                        "if true; then rm README.md; fi",
+                        "if true; then git add -A; fi"):
+            with self.subTest(command=command):
+                self.assertBlocked(command)
+        worktree = self.worktree("issue-keyword")
+        self.assertAllowed("if true; then git commit -m x; fi", cwd=worktree)
+        self.assertAllowed("for i in 1 2; do rm -f build.log; done", cwd=worktree)
 
 
 if __name__ == "__main__":
