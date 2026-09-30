@@ -91,11 +91,66 @@ import rulescorpus
 
 FLAT_CONTAINER = "https://api.nuget.org/v3-flatcontainer"
 
-# A corpus's baseline is computed by rules-corpus from the build definition committed beside it,
-# and by nothing here (rulescorpus.py, #558). This module once held the recipe, a table from each
-# `hashDerivation` name to a function over the file's bytes; every engine received a copy, and the
-# copies drifted (rules-corpus#4). A `hashDerivation` is now a name the build definition's baseline
-# declares and rules-corpus records, and what it covers is that definition's derivation chain.
+# The `hashDerivation` names the factory admits, and what each claims about the bytes it names. The
+# set is closed: a corpus naming anything else is refused (intake, pack-map and every engine's gate
+# all ask `verify_declared_corpus`), because each name is a claim a reviewer read -- that a text is
+# what a tool extracted, or what a reader transcribed -- and an unreviewed one claims nothing.
+#
+# The digest itself is not computed here. rules-corpus builds the corpus from the build definition
+# committed beside it and records the SHA-256 of the artifact its baseline names (rulescorpus.py,
+# #558). This module once held a function per name, the recipe every engine received a copy of,
+# and the copies drifted (rules-corpus#4). What bytes a name covers is now the definition's
+# derivation chain, and the name has to be the one that definition's baseline declares.
+#
+#   * ecfr-versioner-xml -- the XML document the eCFR versioner API serves for the part and
+#     date, not the rendered HTML or the printed volume (examples/faa-part-107/README.md);
+#   * gutenberg-plain-text-including-boilerplate -- the Project Gutenberg `.txt.utf-8`
+#     including its licence header and footer, not the work text alone
+#     (examples/hoyle-backgammon/README.md, finding 6).
+ADMITTED_HASH_DERIVATIONS = frozenset({
+    "ecfr-versioner-xml",
+    "gutenberg-plain-text-including-boilerplate",
+    # SHA-256 over the committed page-marked text, byte for byte -- which is *not* what was
+    # retrieved: WotC publishes a PDF, and examples/srd-52-combat/extract.py derives the text
+    # from it with pdftotext 24.02.0 and a `{N}` marker per page. The digest is exact
+    # because the committed file is the derivation's output; the PDF's own digest is the
+    # manifest's `sourcePdf.sha256`, and `extract.py --check` holds the two together.
+    "srd-5.2.1-pdftotext-24.02.0-page-marked",
+    # SHA-256 over the committed page-marked text, byte for byte -- for a source no tool can
+    # read. A scan carries page images and no text layer, so `pdftotext` returns nothing from
+    # it and the only text it can have is one a reader transcribed from those images and
+    # checked back against them. The digest is exact, because the committed file is the
+    # derivation's output; what this name does **not** claim is that a machine can re-derive
+    # it, because no machine wrote it. A corpus declaring this says so in the open, rather
+    # than borrowing the name of a tool that never ran over it, and the project that commits
+    # it holds this digest to its source scan's the way `extract.py --check` does (0013).
+    "transcribed-from-page-images-page-marked",
+    # SHA-256 over the committed page-marked text, byte for byte -- for a born-digital print
+    # master whose extraction order is not its reading order. Between the two names above sits
+    # a source neither describes: the text layer is real and complete, so nothing is
+    # transcribed, and a straight `pdftotext` of it is still not the document. A design-heavy
+    # rulebook runs prose in two interleaved columns, reproduces its own components as
+    # illustrations whose text is real text at a fraction of prose size, clips that artwork so
+    # much of it extracts without ever being visible, and merges a prose line with an artwork
+    # fragment sharing its baseline. What such a corpus adds is a committed, per-page
+    # declaration of which rectangle holds which column, in what order, and which holds
+    # artwork: **geometry, never text**. Every byte still comes out of the text layer, so
+    # unlike a transcription this one *is* mechanically reproducible, and the project that
+    # commits it holds the corpus to its source by re-deriving and comparing byte for byte, the
+    # way `extract.py --check` does (0013). The digest is exact because the committed file is
+    # the derivation's output; the PDF's own digest is the manifest's `sourcePdf.sha256`.
+    "pdftotext-24.02.0-bbox-layout-declared-reading-order-page-marked",
+    # SHA-256 over the committed page-marked text, byte for byte -- for a printed board, read by
+    # grid position and not in reading order, some of whose facts are artwork. Two claims, in
+    # stated proportions, and the name carries both. The cell text is the text layer's, cut by a
+    # committed declaration of cell rectangles (geometry, never text), so it is mechanically
+    # re-derivable and the project that commits it holds it to its source by deriving it again
+    # and comparing. What the layer does not carry -- which spaces bear a flag, the tables of a
+    # track -- is printed as artwork, and the corpus states it as **labels a reader wrote**,
+    # checked only by a second reading. Neither sibling says that: the reading-order name claims
+    # every byte is the layer's, and the transcription name claims no machine wrote any.
+    "pdftotext-24.02.0-bbox-layout-declared-cells-and-artwork-labels-page-marked",
+})
 SHA256_HEX = re.compile(r"^[0-9a-f]{64}$")
 VERIFICATION_FORMAT = 1
 
@@ -600,6 +655,9 @@ def verify_declared_corpus(source_id, corpus, corpus_path):
     if not isinstance(expected, str) or SHA256_HEX.fullmatch(expected) is None:
         raise Refused(f"{source_id} declares malformed contentHash {expected!r}; expected 64 lower-case "
                       f"hexadecimal SHA-256 characters for {derivation}")
+    if derivation not in ADMITTED_HASH_DERIVATIONS:
+        raise Refused(f"NOT VERIFIED -- {source_id} declares hashDerivation {derivation!r}, which this "
+                      f"factory does not admit; admitted: {', '.join(sorted(ADMITTED_HASH_DERIVATIONS))}")
     try:
         built = rulescorpus.build_and_verify(corpus_path, read_corpus)
     except (rulescorpus.Refused, rulescorpus.Unavailable) as error:
