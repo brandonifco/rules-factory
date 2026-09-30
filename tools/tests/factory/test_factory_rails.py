@@ -3590,6 +3590,33 @@ ceiling instead of declining" (observed).""", "Tests pass.")
         self.assertNotIn("AGENTS.md", done.stdout)
         self.assertNotIn("0001-we-decline-rather-than-guess", done.stdout)
 
+    def test_a_verdict_set_in_bold_is_still_the_verdict(self):
+        # #523: `**updated**` is ordinary markdown emphasis, and the claim under it is unchanged.
+        self.produced()
+        self.document("README.md")
+        conformance = GOOD_PR_BODY.split("## Map and rules conformance")[1].split("## Tests")[0]
+        body = self.listing("- [x] `README.md` — **updated**: the engine's own overview").replace(
+            conformance, "\n\nN/A\n\n")
+        self.pull_request(body=body, files=[{"path": "README.md"}])
+        done = self.policy_check()
+        self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+
+    def test_a_paragraph_that_opens_in_bold_is_not_a_document_line(self):
+        # #523: `*` followed by whitespace is a bullet; `**` is emphasis opening a sentence.
+        self.produced()
+        self.pull_request(body=self.listing(
+            "**Nothing here changes a document**, and this engine owns none."))
+        done = self.policy_check()
+        self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+        self.assertNotIn("cannot read", done.stdout)
+
+    def test_a_star_bullet_that_cannot_be_read_is_still_reported(self):
+        self.produced()
+        self.pull_request(body=self.listing("* [x] the readme, I looked"))
+        done = self.policy_check()
+        self.assertEqual(done.returncode, 1, done.stdout)
+        self.assertIn("cannot read", done.stdout)
+
     def test_a_truncated_file_list_is_refused_rather_than_judged(self):
         # `gh pr view --json files` caps at 100 with no error (#193). Everything pr-policy.py
         # decides about the diff comes from that list, so half of it is not a smaller diff.
@@ -3599,6 +3626,177 @@ ceiling instead of declining" (observed).""", "Tests pass.")
         self.assertEqual(done.returncode, 1, done.stdout)
         self.assertIn("GitHub returned 1 of this pull request's 140 changed files", done.stdout)
         self.assertIn("cannot be decided from a partial list", done.stdout)
+
+
+class TestPrPolicyOfAnEmbeddedEngine(RailsInAGitEngine):
+    """#523 and #511: `## Documentation` for an engine that lives under a repository root (0069).
+
+    GitHub reports a changed path relative to the repository and the section is written relative to
+    the engine, so a repository-root `README.md` had no spelling the check would take -- and the
+    engine rails' AGENTS.md section 4 asks for a line for every changed document, whoever owns it.
+    The spelling is the path relative to the engine directory, `../README.md`; the skeleton prints
+    it, the check demands it, and a rename is the one path GitHub reports for it.
+    """
+
+    BASE = TestPrPolicy.BASE
+    pull_request = TestPrPolicy.pull_request
+    policy_check = TestPrPolicy.policy_check
+    document = TestPrPolicy.document
+    listing = TestPrPolicy.listing
+
+    def setUp(self):
+        super().setUp()
+        self.repo = os.path.join(self.tmp, "repo")
+        self.out = os.path.join(self.repo, "engine")
+        self.produced("--repo-root", self.repo)
+
+    def without_a_conformance_answer(self, body):
+        conformance = GOOD_PR_BODY.split("## Map and rules conformance")[1].split("## Tests")[0]
+        return body.replace(conformance, "\n\nN/A\n\n")
+
+    def outside(self, relative, text="# the repository's own document\n"):
+        path = os.path.join(self.repo, *relative.split("/"))
+        os.makedirs(os.path.dirname(path), exist_ok=True)
+        with open(path, "w", encoding="utf-8") as handle:
+            handle.write(text)
+
+    def skeleton(self):
+        done = subprocess.run([sys.executable, os.path.join(self.out, "tools", "pr-policy.py"),
+                               "--docs-skeleton"], cwd=self.out, capture_output=True, text=True,
+                              env=self.environment())
+        self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+        return done.stdout
+
+    def repository(self):
+        git(self.repo, "init", "-q", "-b", "main")
+        git(self.repo, "config", "user.email", "t@example.invalid")
+        git(self.repo, "config", "user.name", "t")
+        git(self.repo, "add", ".")
+        git(self.repo, "commit", "-qm", "the produced engine")
+        git(self.repo, "switch", "-q", "-c", "work")
+
+    def commit(self, message="a change"):
+        git(self.repo, "add", "-A")
+        git(self.repo, "commit", "-qm", message)
+
+    def test_a_changed_document_outside_the_engine_is_demanded_under_its_relative_path(self):
+        self.pull_request(files=[{"path": "README.md", "changeType": "MODIFIED"}])
+        done = self.policy_check()
+        self.assertEqual(done.returncode, 1, done.stdout)
+        self.assertIn("`../README.md` is changed by this pull request and is not listed", done.stdout)
+        self.assertIn("relative to the engine directory", done.stdout, "it says how to spell it")
+
+    def test_a_document_outside_the_engine_listed_as_updated_is_accepted(self):
+        body = self.without_a_conformance_answer(
+            self.listing("- [x] `../README.md` — updated: the repository's overview names the engine"))
+        self.pull_request(body=body, files=[{"path": "README.md", "changeType": "MODIFIED"}])
+        done = self.policy_check()
+        self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+
+    def test_a_document_outside_the_engine_listed_as_no_change_is_refused(self):
+        body = self.without_a_conformance_answer(
+            self.listing("- [x] `../README.md` — checked, no change: it does not say"))
+        self.pull_request(body=body, files=[{"path": "README.md", "changeType": "MODIFIED"}])
+        done = self.policy_check()
+        self.assertEqual(done.returncode, 1, done.stdout)
+        self.assertIn("`../README.md` is changed by this pull request but listed as checked, no change",
+                      done.stdout)
+
+    def test_the_engines_own_readme_and_the_repositorys_are_two_documents(self):
+        # Only the repository's README changes. The engine's is living and unchanged; listing the
+        # root's change as `README.md` would be a claim about the wrong file.
+        self.document("README.md")
+        body = self.without_a_conformance_answer(self.listing(
+            "- [x] `README.md` — updated: the overview",
+            "- [x] `../README.md` — checked, no change: nothing"))
+        self.pull_request(body=body, files=[{"path": "README.md", "changeType": "MODIFIED"}])
+        done = self.policy_check()
+        self.assertEqual(done.returncode, 1, done.stdout)
+        self.assertIn("`README.md` is listed as updated but this pull request does not change it", done.stdout)
+        self.assertIn("`../README.md` is changed by this pull request but listed as checked, no change",
+                      done.stdout)
+
+    def test_a_path_that_is_neither_living_nor_changed_is_still_a_typo_outside_the_engine_too(self):
+        body = self.listing("- [x] `../READNE.md` — checked, no change: the overview")
+        self.pull_request(body=body)
+        done = self.policy_check()
+        self.assertEqual(done.returncode, 1, done.stdout)
+        self.assertIn("`../READNE.md` is neither a living document of this engine nor changed here",
+                      done.stdout)
+
+    def test_the_repository_relative_spelling_of_an_outside_document_is_not_accepted(self):
+        # One spelling, not two: `README.md` is the engine's, and the engine has no README here.
+        body = self.without_a_conformance_answer(
+            self.listing("- [x] `README.md` — updated: the repository's overview"))
+        self.pull_request(body=body, files=[{"path": "README.md", "changeType": "MODIFIED"}])
+        done = self.policy_check()
+        self.assertEqual(done.returncode, 1, done.stdout)
+        self.assertIn("`README.md` is neither a living document of this engine nor changed here", done.stdout)
+        self.assertIn("`../README.md` is changed by this pull request and is not listed", done.stdout)
+
+    def test_a_document_in_a_directory_beside_the_engine_is_spelled_from_the_engine(self):
+        self.pull_request(files=[{"path": "docs/guide/how.md", "changeType": "ADDED"}])
+        done = self.policy_check()
+        self.assertIn("`../docs/guide/how.md` is changed by this pull request", done.stdout)
+
+    def test_a_directory_whose_name_starts_like_the_engines_is_outside_it(self):
+        self.pull_request(files=[{"path": "engine-notes/README.md", "changeType": "ADDED"}])
+        done = self.policy_check()
+        self.assertIn("`../engine-notes/README.md` is changed by this pull request", done.stdout)
+
+    def test_a_rename_is_one_line_at_the_new_path(self):
+        # GitHub's list carries a rename's new path only, and that is the path the section names.
+        self.document("docs/moved.md")
+        body = self.without_a_conformance_answer(
+            self.listing("- [x] `docs/moved.md` — updated: moved from docs/notes.md, text unchanged"))
+        self.pull_request(body=body, files=[{"path": "engine/docs/moved.md", "changeType": "RENAMED"}])
+        done = self.policy_check()
+        self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+
+    def test_the_skeleton_names_a_changed_outside_document_as_the_check_spells_it(self):
+        self.document("docs/how-we-read-the-corpus.md")
+        self.repository()
+        self.outside("README.md")
+        self.commit()
+        lines = self.skeleton().splitlines()
+        self.assertIn("- [ ] `../README.md` — updated: ", lines)
+        self.assertIn("- [ ] `docs/how-we-read-the-corpus.md` — checked, no change: ", lines)
+        self.assertNotIn("- [ ] `README.md` — updated: ", lines)
+
+    def test_the_skeleton_and_the_check_agree_about_a_document_moved_out_of_the_engine(self):
+        # #511, seen on a pull request template moved to the repository root. `--no-renames` made
+        # the skeleton print a deletion at the old, engine-relative path; GitHub's list carries the
+        # new path only, so the printed line was one the check called a typo.
+        self.document("docs/notes.md")
+        self.repository()
+        os.replace(os.path.join(self.out, "docs", "notes.md"), os.path.join(self.repo, "notes.md"))
+        self.commit("move the notes to the repository root")
+        skeleton = self.skeleton()
+        self.assertIn("- [ ] `../notes.md` — updated: ", skeleton)
+        self.assertNotIn("docs/notes.md", skeleton, "the old path is not a line the check will accept")
+        filled = "\n".join(line.replace("- [ ]", "- [x]") + "the notes moved"
+                           for line in skeleton.splitlines() if line.startswith("- [ ]"))
+        self.pull_request(body=self.without_a_conformance_answer(self.listing(filled)),
+                          files=[{"path": "notes.md", "changeType": "RENAMED"}])
+        done = self.policy_check()
+        self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+
+    def test_the_skeleton_follows_a_rename_inside_the_engine_to_its_new_path(self):
+        self.document("docs/notes.md")
+        self.repository()
+        os.replace(os.path.join(self.out, "docs", "notes.md"), os.path.join(self.out, "docs", "moved.md"))
+        self.commit("rename the notes")
+        skeleton = self.skeleton()
+        self.assertIn("- [ ] `docs/moved.md` — updated: ", skeleton)
+        self.assertNotIn("docs/notes.md", skeleton)
+
+    def test_the_skeleton_does_not_let_a_users_rename_setting_bring_the_disagreement_back(self):
+        self.document("docs/notes.md")
+        self.repository()
+        git(self.repo, "config", "diff.renames", "false")
+        os.replace(os.path.join(self.out, "docs", "notes.md"), os.path.join(self.out, "docs", "moved.md"))
+        self.commit("rename the notes")
+        self.assertNotIn("docs/notes.md", self.skeleton())
 
 
 # The `## Produced by the factory` section, filled as `factory produce --produce-report` gives it.

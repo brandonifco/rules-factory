@@ -155,6 +155,13 @@ only when this change edits it. Every other `*.md` the diff touches is listed as
 whoever owns it. An engine that owns no documents yet says so in a sentence, and that answer stops
 being true the day somebody writes a README.
 
+Paths in that section are written relative to the engine directory. For an engine embedded under a
+repository root, a changed document outside the engine — the repository's `README.md`, a template
+it keeps at its root — is spelled `../README.md`, `../.github/pull_request_template.md`: the
+engine's own `README.md` stays `README.md`, and no engine path begins with `..`. The skeleton
+prints that spelling; the check demands it and accepts no other for such a document. A rename is one line, at the new
+path, because that is the only path GitHub reports.
+
 ### One agent, one attempt: a review finding starts a fresh one
 
 The four things above do not move when a review sends work back. **The agent does.**
