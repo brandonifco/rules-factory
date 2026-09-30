@@ -262,8 +262,11 @@ verdict and the line that says what it examined, with the whole output kept in a
 the run names. A failing step still prints everything it printed, because that is the diagnosis
 ([0049](docs/decisions/0049-the-gate-can-say-which-of-its-checks-a-change-owes.md),
 [0050](docs/decisions/0050-a-pull-request-is-gated-on-what-its-own-diff-owes.md)). The `engine`
-job runs [`scripts/validate-engine.sh`](scripts/validate-engine.sh), which produces an engine
-from the `hoyle-backgammon` package on the pinned SDK and verifies it.
+job runs [`scripts/validate-engine.sh --brief`](scripts/validate-engine.sh), which produces an engine
+from the `hoyle-backgammon` package on the pinned SDK and verifies it. `--brief` is the same rule
+there: the same steps, verdicts and exit code, a passing step reduced to its own `ok` lines, a
+failing step printed in full, every `NOT VERIFIED` counted, and the whole output kept in a log
+whose path the run prints.
 
 Every artifact under `examples/` is named in
 [`tools/evidence-lock.json`](tools/evidence-lock.json) with its SHA-256 and the parts of CI that
