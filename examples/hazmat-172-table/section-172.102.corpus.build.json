@@ -1,0 +1,23 @@
+{
+  "baselines": [
+    {
+      "artifact": "cfr-49-172.102-xml",
+      "asOf": "2026-01-01",
+      "hashDerivation": "ecfr-versioner-xml",
+      "sourceId": "cfr-49-172.102"
+    }
+  ],
+  "corpusId": "cfr-49-172.102",
+  "derivations": [],
+  "external": [],
+  "schema": "rules-corpus/build/1",
+  "sources": [
+    {
+      "id": "cfr-49-172.102-xml",
+      "mediaType": "application/xml",
+      "notes": "The eCFR versioner XML, byte for byte as retrieved. The baseline names this source directly: the corpus is the retrieved file, with no derivation. A work of the United States Government, in the public domain.",
+      "origin": "https://www.ecfr.gov/api/versioner/v1/full/2026-01-01/title-49.xml?part=172&section=172.102",
+      "path": "section-172.102.xml"
+    }
+  ]
+}

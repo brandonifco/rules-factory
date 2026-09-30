@@ -1,0 +1,6 @@
+{
+  "expectNotVerified": [
+    "artifact srd-pdf",
+    "rebuild srd-extraction"
+  ]
+}
