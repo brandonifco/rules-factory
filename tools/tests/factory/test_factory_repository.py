@@ -750,6 +750,20 @@ class TestThePacketJudgesTheSurfaceInTheEnginesTerms(RepositoryCase):
         self.assertEqual(f"src/{NAME}/X.cs", packet.engine_relative(f"src/{NAME}/X.cs", ""))
         self.assertTrue(packet.is_semantic(f"src/{NAME}/X.cs", ["src/**"]))
 
+    def test_the_repair_brief_judges_the_surface_as_the_gate_does(self):
+        host = init(os.path.join(self.tmp, "host"))
+        engine = os.path.join(host, "engine")
+        self.produce(engine, "--repo-root", host)
+        repair = self.script(engine, "repair-packet")
+        self.assertEqual("engine", repair.engine_path())
+        patterns = ["src/**", "tests/**", "overlay/**"]
+        changed = [f"engine/src/{NAME}/Setup/FieldBoard.cs", "engine/README.md", "tools/build-map.py", "README.md"]
+        on_surface = repair.semantic_surface(changed, patterns, "engine")
+        self.assertEqual([f"engine/src/{NAME}/Setup/FieldBoard.cs"], on_surface)
+        gate = self.script(engine, "conformance-gate")
+        self.assertEqual([f"engine/{path}" for path in gate.semantic_surface(changed, patterns, "engine")],
+                         on_surface, "the brief and the gate agree on what is on the surface")
+
     def test_a_path_outside_the_engine_is_not_its_surface(self):
         host = init(os.path.join(self.tmp, "host"))
         engine = os.path.join(host, "engine")
