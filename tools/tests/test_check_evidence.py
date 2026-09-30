@@ -61,6 +61,7 @@ class TestTheLockDescribesThisTree(unittest.TestCase):
     def test_the_committed_lock_verifies(self):
         self.assertEqual([], evidence.verify(pathlib.Path(ROOT), LOCK))
 
+    @unittest.skipIf(MEASURING, WHILE_MEASURING)
     def test_it_names_every_tracked_artifact_and_no_other(self):
         on_disk = set(evidence.tracked(pathlib.Path(ROOT)))
         named = {a["path"] for a in LOCK["artifacts"]}
@@ -481,9 +482,19 @@ class TestAMeasurementIsTakenOverAGreenGate(unittest.TestCase):
         decorator = "@unittest.skipIf(MEASURING, " + "WHILE_MEASURING)"
         lines = [line for line in open(__file__, encoding="utf-8").read().splitlines()
                  if line.strip() == decorator]
-        self.assertEqual(6, len(lines),
+        self.assertEqual(7, len(lines),
                          "a test comparing the committed lock with the tree is left running "
                          "during a measurement, and would perturb it (#408)")
+
+    def test_the_membership_test_is_one_of_them(self):
+        """#443: the count above cannot say *which* test lost its guard. Membership -- the lock
+        naming every tracked artifact -- is stale mid-rewrite for the same reason content is,
+        and when it was left running `--measure` could not add an artifact without
+        `--allow-partial`, which records `complete: false` for a run where nothing was wrong."""
+        lines = open(__file__, encoding="utf-8").read().splitlines()
+        at = lines.index("    def test_it_names_every_tracked_artifact_and_no_other(self):")
+        self.assertEqual("    @unittest.skipIf(MEASURING, " + "WHILE_MEASURING)",
+                         lines[at - 1])
 
 
 class TestTheProseFiguresAreDerivedFromTheLockAndHeldToIt(unittest.TestCase):
