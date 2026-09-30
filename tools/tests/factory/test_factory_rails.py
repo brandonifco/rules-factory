@@ -533,6 +533,121 @@ class TestTheGuard(unittest.TestCase):
         code, stderr = self.bash("git commit -m 'x\n\nCo-Authored-By: A <noreply@example.invalid>'", cwd=worktree)
         self.assertEqual(code, 0, stderr)
 
+    # `git worktree add` judges the path, not the value of an option that takes one (#496).
+
+    def outside(self, name="wt"):
+        return os.path.join(self.tmp, "outside", name)
+
+    def assertAllowed(self, command, cwd=None):
+        code, stderr = self.bash(command, cwd=cwd)
+        self.assertEqual(code, 0, f"{command!r} was blocked: {stderr}")
+
+    def assertBlocked(self, command, cwd=None):
+        code, stderr = self.bash(command, cwd=cwd)
+        self.assertEqual(code, 2, f"{command!r} was allowed")
+        return stderr
+
+    def test_a_worktree_for_a_new_branch_outside_the_repository_is_allowed(self):
+        for options in ("-b issue-9-foo", "-B issue-9-foo", "--track -b issue-9-foo", "-fb issue-9-foo",
+                        "-b issue-9-foo --lock", "--reason because -b issue-9-foo"):
+            with self.subTest(options=options):
+                self.assertAllowed(f"git worktree add {options} {self.outside()} origin/main")
+
+    def test_the_reason_of_a_locked_worktree_is_not_its_path(self):
+        self.assertAllowed(f"git worktree add --lock --reason 'in flight' {self.outside()} main")
+        self.assertAllowed(f"git worktree add --lock --reason=inflight {self.outside()} main")
+
+    def test_a_worktree_inside_the_repository_is_blocked_and_the_message_names_the_path(self):
+        for options in ("-b issue-9-foo", "-B issue-9-foo", "--reason because",
+                        "--reason=because -b issue-9-foo", "-b issue-9-foo --track"):
+            with self.subTest(options=options):
+                stderr = self.assertBlocked(f"git worktree add {options} wt-inside origin/main")
+                self.assertIn("creating a worktree inside the repository (wt-inside)", stderr)
+                self.assertNotIn("issue-9-foo)", stderr)
+        stderr = self.assertBlocked(f"git worktree add -b outside-name {os.path.join(self.primary, 'sub', 'wt')}")
+        self.assertIn(os.path.join(self.primary, "sub", "wt"), stderr)
+
+    def test_the_forms_of_worktree_add_without_a_valued_option_keep_their_behaviour(self):
+        for options in ("", "--detach", "-f", "--force", "--lock", "--no-checkout", "--track",
+                        "--guess-remote", "-q", "--quiet"):
+            with self.subTest(options=options):
+                self.assertAllowed(f"git worktree add {options} {self.outside()} main")
+                self.assertBlocked(f"git worktree add {options} wt-inside main")
+        self.assertAllowed(f"git worktree add -- {self.outside()} main")
+        self.assertBlocked("git worktree add -- wt-inside main")
+
+    # A `cd` earlier in the same command moves what a segment is judged against (#463).
+
+    def worktree(self, name="issue-cd"):
+        path = os.path.join(self.tmp, "worktrees", name)
+        git(self.primary, "worktree", "add", "-q", "-b", name, path)
+        return path
+
+    def test_a_commit_after_a_cd_into_a_worktree_is_judged_there(self):
+        worktree = self.worktree()
+        self.assertAllowed(f"cd {worktree} && git commit -m 'x'")
+        self.assertAllowed(f"cd {worktree}; git commit -m 'x'")
+        self.assertAllowed(f"cd {worktree}\ngit commit -m 'x'")
+        self.assertAllowed(f"cd '{worktree}' && git add README.md && git commit -m 'x'")
+        self.assertBlocked("git commit -m 'x'")
+
+    def test_a_write_after_a_cd_into_a_directory_outside_the_repository_is_judged_there(self):
+        scratch = self.outside("scratch")
+        self.assertAllowed(f"cd {scratch} && cat > probe.csproj <<'EOF'\n<Project />\nEOF")
+        self.assertAllowed(f"cd {scratch} && echo hi > out.txt")
+        self.assertAllowed(f"cd {scratch} && sed -i 's/a/b/' f.md && rm f.md && tee g.md")
+        self.assertAllowed(f"mkdir -p {scratch}/probe && cd {scratch}/probe && echo hi >> out.txt")
+        self.assertAllowed(f"cd ../outside && echo hi > out.txt", cwd=os.path.join(self.tmp, "engine"))
+        self.assertBlocked("echo hi > out.txt")
+
+    def test_a_cd_into_the_primary_checkout_is_still_judged_there(self):
+        self.assertBlocked(f"cd {self.primary}/src && echo hi > out.txt")
+        self.assertBlocked(f"cd {self.primary} && git commit -m 'x'")
+        self.assertBlocked("cd src && echo hi > out.txt")
+        # A directory the command is about to make is inside the repository its parent is in.
+        self.assertBlocked("mkdir -p fresh/dir && cd fresh/dir && echo hi > out.txt")
+        # Standing in a worktree, a `cd` back to the primary checkout is what moves the command
+        # into it -- the payload's cwd would have let this through.
+        worktree = self.worktree("issue-cd-back")
+        self.assertBlocked(f"cd {self.primary} && git commit -m 'x'", cwd=worktree)
+        self.assertBlocked(f"cd {self.primary} && rm README.md", cwd=worktree)
+
+    def test_a_cd_the_guard_cannot_resolve_keeps_the_command_judged_as_it_was(self):
+        scratch = self.outside("scratch")
+        for command in ('cd "$DIR" && echo hi > out.txt',
+                        'cd "$(mktemp -d)" && git commit -m x',
+                        "cd - && echo hi > out.txt",
+                        "cd /tmp/no*such && echo hi > out.txt",
+                        "cd $SP/probe && cat > probe.csproj <<'EOF'\n<Project />\nEOF"):
+            with self.subTest(command=command):
+                self.assertBlocked(command)
+        # An earlier literal cd does not survive an unreadable one: the shell is somewhere the
+        # guard cannot see, so the primary checkout is one of the places the write may land.
+        self.assertBlocked(f'cd {scratch} && cd "$DIR" && echo hi > out.txt')
+        self.assertBlocked(f"cd {scratch} && cd - && git commit -m x")
+        # ...and a literal one afterwards names the place again.
+        self.assertAllowed(f'cd "$DIR" && cd {scratch} && echo hi > out.txt')
+
+    def test_a_cd_that_may_not_take_effect_is_judged_in_every_place_it_may_leave_the_shell(self):
+        scratch = self.outside("scratch")
+        self.assertBlocked(f"cd {scratch} || true; echo hi > out.txt")
+        self.assertBlocked(f"true || cd {scratch} && echo hi > out.txt")
+        self.assertBlocked(f"cd {scratch} && false || echo hi > out.txt")
+        self.assertBlocked(f"cd {scratch} | cat; echo hi > out.txt")
+        self.assertBlocked(f"cd {scratch} & echo hi > out.txt")
+        # A cd that cannot fail to take effect is not made suspect by what follows it.
+        self.assertAllowed(f"cd {scratch} && true || true")
+
+    def test_a_cd_the_guard_does_not_read_is_treated_as_one_it_cannot_resolve(self):
+        scratch = self.outside("scratch")
+        self.assertBlocked(f"(cd {scratch} && echo hi > out.txt)")
+        self.assertBlocked(f'cd {scratch} && (cd "$DIR"; echo hi > out.txt)')
+        self.assertBlocked(f'cd {scratch} && if cd "$DIR"; then echo hi > out.txt; fi')
+        self.assertBlocked(f'cd {scratch} && pushd "$DIR" && echo hi > out.txt')
+        self.assertBlocked(f'cd {scratch} && eval "cd $DIR" && echo hi > out.txt')
+        # An argument that only spells "cd" is not a directory change.
+        self.assertAllowed(f"cd {scratch} && echo cd > out.txt")
+
 
 if __name__ == "__main__":
     unittest.main()

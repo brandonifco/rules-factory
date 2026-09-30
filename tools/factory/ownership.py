@@ -127,8 +127,10 @@ TABLE = (
         "the semantic reviewer's charter, read-only, on the deepest tier: the role not to economise on "
         "(0029 amendment, #455); it reads the semantic cut, which carries the entry packets and not the "
         "implementer's case for its own reading (#467); it starts from a clean session, reads a full, delta or final packet as each asks, and names the claim of each finding (0071)"),
-    Row(".claude/hooks/primary-checkout-guard.py", MANAGED, 1,
-        "the PreToolUse guard that keeps implementation work out of the primary checkout (0029)"),
+    Row(".claude/hooks/primary-checkout-guard.py", MANAGED, 2,
+        "the PreToolUse guard that keeps implementation work out of the primary checkout (0029); it judges "
+        "the path of a `worktree add -b <branch> <path>`, not the branch (#496), and follows a literal `cd` "
+        "earlier in the same command, failing closed on one it cannot read (#463)"),
     Row(".claude/settings.json", MANAGED, 1, "which tools the guard runs before (0029)"),
     Row("tools/dispatch-agent.sh", MANAGED, 6,
         "one issue, one worktree, one branch; it refuses what is not ready to work, and --sweep "
@@ -352,6 +354,7 @@ RECIPE_SHA256 = {
     },
     ".claude/hooks/primary-checkout-guard.py": {
         1: "a263531db502dfad98b38bf1dd90df7b1bec5f22133db016b6f30dc38509d16d",
+        2: "89d3bc82623f65c7b7bab8292fe80479419340bde92af15f1d147a89f91070d8",
     },
     ".claude/settings.json": {
         1: "4d410acd10ba5b6ed2d3c6a016cc2cfde1cf8e621da54424755376a80da30aa0",
