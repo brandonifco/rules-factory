@@ -38,7 +38,8 @@ What this cannot see, stated here rather than in a commit message:
 
 Usage:
   check-evidence.py               verify the lock against the tree, and re-hash every artifact
-  check-evidence.py --measure     re-run the readers under the audit hook and rewrite the lock
+  check-evidence.py --measure     re-run the readers under the audit hook, rewrite the lock and
+                                  the figures the README and the inventory derive from it (#439)
   check-evidence.py --roles       print the classification and its totals
 
 Exit 0 when the lock and the tree agree; 1 when they do not, or when the lock is empty; 2 on a

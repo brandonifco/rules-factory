@@ -2,7 +2,7 @@
 
 `examples/` is this repository's evidence: five corpora, nine maps, the transcripts of blind
 second mappings, trial reports, independent verdicts, and the results of the injection, collapse
-and validator-attack measurements: <!-- derived:evidence-totals -->224 tracked files, 15.8 MB, out of 20.4 MB tracked in all<!-- /derived:evidence-totals -->.
+and validator-attack measurements: <!-- derived:evidence-totals -->224 tracked files, 15.8 MB, out of 21.2 MB tracked in all<!-- /derived:evidence-totals -->.
 Those figures are written by `check-evidence.py --measure` and held to the lock by the gate, the way
 the commit named under *By trial* is
 ([#439](https://github.com/brandonifco/rules-factory/issues/439)): a count typed here that the
@@ -35,20 +35,20 @@ proves about a trial report is that the report's links work. So a read by that s
 
 | `readBy` | what reads it | files | size |
 |---|---|---|---|
-| `checks` | a gate step, for what is in it | 93 | 11.0 MB |
-| `checks`, `package` | that, and `pack-map.py` | 18 | 2.5 MB |
+| `checks` | a gate step, for what is in it | 91 | 10.8 MB |
+| `checks`, `package` | that, and `pack-map.py` | 26 | 2.7 MB |
 | `checks`, `links` | a gate step, and the link check | 17 | 420 KB |
-| `links` | **only** the markdown link check | 46 | 941 KB |
-| `package` | only `pack-map.py` | 2 | 1 KB |
-| *(nothing)* | nothing the measurement could see | **38** | **937 KB** |
+| `links` | **only** the markdown link check | 47 | 959 KB |
+| `package` | only `pack-map.py` | 6 | 4 KB |
+| *(nothing)* | nothing the measurement could see | **37** | **986 KB** |
 
 The role follows from the readers:
 
 | role | files | size | may its bytes live outside the repository? |
 |---|---|---|---|
-| `release` — `pack-map.py` reads it | 32 | 2.8 MB | no: its bytes reach nuget.org |
+| `release` — `pack-map.py` reads it | 32 | 2.7 MB | no: its bytes reach nuget.org |
 | `active` — some other part of the gate reads it | 155 | 12.1 MB | no: a check that fetches its inputs cannot be run offline |
-| `archived` — nothing reads it | 37 | 952 KB | yes |
+| `archived` — nothing reads it | 37 | 986 KB | yes |
 
 `check-evidence.py` refuses a lock that gives a non-null `archive` to an `active` or `release`
 artifact, and refuses a role its own `readBy` does not support. That pair of rules is what keeps a
@@ -68,7 +68,7 @@ A reader deciding what could be retired should know which of the two they are lo
 
 ## By trial
 
-Measured at `26acd4f`, over a gate run that failed no step (`measuredOver` in the lock says so,
+Measured at `006e55a`, over a gate run that failed no step (`measuredOver` in the lock says so,
 and `--measure` refuses a run with a failing step unless it is told to record that it was
 partial; [#408](https://github.com/brandonifco/rules-factory/issues/408)). It names a commit
 `main` holds rather than the branch commit `--measure` would otherwise have recorded, because a
@@ -84,16 +84,16 @@ squash merge destroys the second and #404's check is then right to refuse the lo
 | `examples/hoyle-blind-rebuild` | 432 KB | — | 61 KB |
 | `examples/srd-52-conditions` | 254 KB | 101 KB | 28 KB |
 | `examples/tax-121-principal-residence` | 191 KB | 86 KB | 101 KB |
-| `examples/blind-mapping-trial` | 183 KB | — | 165 KB |
+| `examples/blind-mapping-trial` | 146 KB | — | 201 KB |
 | `examples/frcp-6-12-81` | 199 KB | — | 2 KB |
 | `examples/faa-part-107-temporal` | 146 KB | — | 37 KB |
 | `examples/srd-52-playing-the-game` | 39 KB | 145 KB | — |
 | `examples/srd-52-damage-and-healing` | 21 KB | 50 KB | — |
 | `examples/injection-trial` | 72 KB | — | 51 KB |
 | `examples/validator-attack` | 61 KB | — | — |
-| `examples` | 34 KB | — | — |
+| `examples` | 37 KB | — | — |
 | `examples/tax-121-build` | 31 KB | — | — |
-| `examples/acceptance-4-5` | 28 KB | — | 2 KB |
+| `examples/acceptance-4-5` | 31 KB | — | — |
 | `examples/collapse-trial` | 13 KB | — | 3 KB |
 
 Three things there are worth saying out loud.
@@ -128,7 +128,7 @@ honest about a gap rather than the gap being new.
 
 ## The artifacts nothing reads
 
-952 KB across 37 files, listed by `check-evidence.py --roles`. By kind:
+986 KB across 37 files, listed by `check-evidence.py --roles`. By kind:
 
 - **blind-mapping working files** — the second mapper's `blind-map.json`, the `build.py` that made
   it and the `compare.py` that compared it, for `srd-52-combat`, `tax-121-principal-residence` and
@@ -153,7 +153,7 @@ manifest's `contentHash`, a staged blind input by its record's digests, trial 9'
 should go to a versioned, content-addressed, immutable archive, with
 [`tools/fetch-evidence.py`](../tools/fetch-evidence.py) retrieving and hash-verifying it.
 
-**Nothing has been moved, and the number is why.** The movable set is 937 KB: 4.5% of what is
+**Nothing has been moved, and the number is why.** The movable set is 986 KB: 4.5% of what is
 tracked, and about 1.8% of a clone once the 33 MB of history is counted. Against that: an external
 store to keep alive for as long as the decision records that cite it, a fetch inside the
 verification path, and a reviewer who cannot follow a link to a trial report without a network.
