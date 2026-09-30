@@ -35,6 +35,46 @@ reason is kept because it is a bug this file already had:
   * A target built from an unexpanded variable (`$DIR/out.txt`) or a command substitution
     cannot be resolved without expanding the shell, which this guard deliberately does not
     do. It says so by allowing the command, rather than asserting a location it cannot see.
+  * `git worktree add` options that take a value (`-b`, `-B`, `--reason`) have that value
+    consumed, so the path judged is the first positional argument. Taking "the first token
+    that does not start with `-`" judged the BRANCH name, which resolves under the
+    repository, and blocked `worktree add -b <branch> <path outside>` -- the documented
+    dispatch command.
+  * A `cd <literal>` earlier in the same command moves the directory every later segment is
+    judged against, for the git checks and the shell-write checks alike, because a guard
+    that blocks the correct action (`cd <worktree> && git commit`) is the same failure as
+    one that misses the wrong one: it teaches agents to reach for the escape hatch.
+    The rules, and what is deliberately left out:
+      - Only a `cd` the guard can read statically moves anything: `cd /abs/dir`, `cd rel`,
+        `cd ~/dir`, with or without `-L`/`-P`/`--`, joined to what follows by `&&`, `;` or a
+        newline. The `cd` is assumed to succeed; the directory often does not exist yet
+        (`mkdir -p /x && cd /x && ...`), so existence is not asked.
+      - An UNRESOLVABLE target (`cd "$DIR"`, `cd "$(mktemp -d)"`, `cd -`, a glob) neither
+        moves the directory to the target nor leaves it where it was: the segments that
+        follow are judged against the directory they were judged against before AND against
+        the hook payload's own cwd. This inverts the convention for an unresolvable PATH
+        (`_is_unresolvable` allows, because nothing is asserted), and it must: allowing here
+        would let every later segment through, and leaving an earlier literal `cd` in force
+        would judge `cd /out && cd "$X" && echo > f` against `/out` when the shell is
+        somewhere the guard cannot see. Keeping the payload's cwd in the set keeps today's
+        behaviour for every case the guard cannot see, and only the case it can see becomes
+        right. Do not "fix" the inconsistency.
+      - A `cd` that may not take effect yields the SET of directories the shell might be in,
+        and a segment is blocked when it is blocked in ANY of them: the two sides of `||`
+        (`cd X || true; cmd`), and a `cd` on either side of `|` or `&`, which the shell runs
+        in a subshell. After `||`, the set is every directory seen so far.
+      - A subshell `( ... )` and a command substitution `$( ... )` are scopes: a `cd` at the
+        head of one is read like any other, and the shell is put back where it was at the
+        `)`, so `(cd x)&&git commit` judges the commit where the shell was before the
+        subshell. Parentheses stuck to an operator (`)&&`, `);`) are split apart first.
+      - A reserved word before a command (`then`, `do`, `else`, `elif`, `if`, `while`,
+        `until`, `!`, `{`, `time`) and the parentheses around one are not the command:
+        `if true; then git commit -m x; fi` is judged as `git commit -m x`.
+      - Out of scope, declared so it is not inferred: a `cd` behind a reserved word, `{`,
+        `builtin`/`command`, mid-segment inside a substitution, and `pushd`/`popd`/`eval`/
+        `source`. Each is treated as a `cd` the guard could not read, which is the
+        unresolvable case above. A directory change made by a shell function, an alias or a
+        sourced file cannot be seen and is not modelled.
 
 Escape hatch, deliberately explicit and documented in AGENTS.md section 4:
 
@@ -144,6 +184,21 @@ def git(args: list[str], cwd: str) -> str | None:
     return result.stdout.strip() if result.returncode == 0 else None
 
 
+def existing_directory(path: str) -> str | None:
+    """`path` itself, or its nearest ancestor that exists, or None.
+
+    A directory a command is about to create (`mkdir -p src && cd src && ...`) does not exist
+    when the hook runs, and git cannot be asked about it. The question that matters is which
+    repository it would be inside, and its nearest existing ancestor answers that.
+    """
+    current = Path(path)
+    while not current.is_dir():
+        if current.parent == current:
+            return None
+        current = current.parent
+    return str(current)
+
+
 def is_primary_checkout(path: str) -> tuple[bool, str | None]:
     """True when `path` sits in the primary checkout rather than a linked worktree.
 
@@ -152,7 +207,8 @@ def is_primary_checkout(path: str) -> tuple[bool, str | None]:
     Resolving them against the process cwd instead of `path` silently compares unrelated
     paths, which made this answer False everywhere except the repository root.
     """
-    if not Path(path).is_dir():
+    path = existing_directory(path)
+    if path is None:
         return False, None
     top = git(["rev-parse", "--show-toplevel"], path)
     if not top:
@@ -202,6 +258,18 @@ def strip_heredocs(command: str) -> str:
     return "\n".join(kept)
 
 
+def _split_parentheses(token: str) -> list[str]:
+    """`)&&` is `)` then `&&`: shlex returns a run of operator characters as ONE token.
+
+    Left fused, `(cd x)&&git commit` had no `&&` in it for the segment splitter to see, and
+    the `git` after it was an argument of nothing. Only a token made entirely of operator
+    characters is split, so an argument such as `fix (x)` is never touched.
+    """
+    if ("(" in token or ")" in token) and set(token) <= set(_PUNCTUATION):
+        return re.findall(r"[()]|[^()]+", token)
+    return [token]
+
+
 def full_tokenize(command: str) -> list[str]:
     """Tokenise an entire (heredoc-stripped) command in one quote-aware pass.
 
@@ -216,7 +284,7 @@ def full_tokenize(command: str) -> list[str]:
         lexer = shlex.shlex(command, posix=True, punctuation_chars=_PUNCTUATION)
         lexer.whitespace_split = True
         lexer.whitespace = lexer.whitespace.replace("\n", "")
-        return list(lexer)
+        return [piece for token in lexer for piece in _split_parentheses(token)]
     except ValueError:
         # Unbalanced quotes. Fall back to whitespace splitting rather than failing
         # open on a command we could not parse -- segment and redirect boundaries are
@@ -230,13 +298,27 @@ def split_segments(tokens: list[str]) -> list[list[str]]:
     Redirect operators (`>`, `<`, ...) stay inside their segment -- a redirect does not
     end a command, it decorates one -- only SEGMENT_SEPARATORS do.
     """
-    segments: list[list[str]] = [[]]
+    return [segment for _before, segment, _after in split_chain(tokens)]
+
+
+def split_chain(tokens: list[str]) -> list[tuple[str, list[str], str]]:
+    """Like `split_segments`, but each segment also says which separator joins it.
+
+    Returns (separator before, segment, separator after), "" at either end of the command.
+    What a `cd` means to the segments after it depends on how it is joined to them, which
+    the bare segment list throws away.
+    """
+    pieces: list[tuple[str, list[str]]] = [("", [])]
     for token in tokens:
         if token in SEGMENT_SEPARATORS:
-            segments.append([])
+            pieces.append((token, []))
         else:
-            segments[-1].append(token)
-    return [segment for segment in segments if segment]
+            pieces[-1][1].append(token)
+    kept = [(before, segment) for before, segment in pieces if segment]
+    return [
+        (before, segment, kept[index + 1][0] if index + 1 < len(kept) else "")
+        for index, (before, segment) in enumerate(kept)
+    ]
 
 
 def _is_unresolvable(raw: str) -> bool:
@@ -374,6 +456,41 @@ def parse_git(tokens: list[str], cwd: str) -> tuple[str, str, list[str]] | None:
     return None
 
 
+#: `git worktree add` options whose value is the next token (`--reason=<s>` and `-b<name>` carry
+#: it attached). Every other option there is a flag.
+WORKTREE_ADD_VALUE_SHORT = {"b", "B"}
+WORKTREE_ADD_VALUE_LONG = {"--reason"}
+
+
+def worktree_add_path(args: list[str]) -> str | None:
+    """The path `git worktree add <options> <path> [<commit-ish>]` creates, or None.
+
+    Option values are consumed, not judged: in `-b <branch> <path>` the first token that does
+    not start with `-` is the branch. Short options bundle the way git's parser reads them
+    (`-fb <branch>`): a value-taking letter takes the rest of its token, or the next token
+    when nothing follows it.
+    """
+    index = 0
+    while index < len(args):
+        arg = args[index]
+        index += 1
+        if arg == "--":
+            return args[index] if index < len(args) else None
+        if arg.startswith("--"):
+            if arg in WORKTREE_ADD_VALUE_LONG:
+                index += 1
+            continue
+        if arg.startswith("-") and len(arg) > 1:
+            for position, letter in enumerate(arg[1:], start=1):
+                if letter in WORKTREE_ADD_VALUE_SHORT:
+                    if position == len(arg) - 1:
+                        index += 1
+                    break
+            continue
+        return arg
+    return None
+
+
 def check_git(tokens: list[str], cwd: str) -> None:
     parsed = parse_git(tokens, cwd)
     if parsed is None:
@@ -422,11 +539,10 @@ def check_git(tokens: list[str], cwd: str) -> None:
         )
 
     if verb == "worktree" and rest and rest[0] == "add":
-        for arg in rest[1:]:
-            if arg.startswith("-"):
-                continue
+        arg = worktree_add_path(rest[1:])
+        if arg is not None:
             target = (Path(effective_cwd) / arg).resolve()
-            top = git(["rev-parse", "--show-toplevel"], effective_cwd)
+            top = git(["rev-parse", "--show-toplevel"], existing_directory(effective_cwd) or effective_cwd)
             if top and _is_within(target, Path(top).resolve()):
                 emit(
                     f"creating a worktree inside the repository ({arg})",
@@ -435,7 +551,6 @@ def check_git(tokens: list[str], cwd: str) -> None:
                     f"clean step. Put it under ${WORKTREE_ROOT_VARIABLE}, outside the repository\n"
                     "(AGENTS.md section 4).",
                 )
-            break
     if verb == "worktree" and rest and rest[0] == "remove" and (
         "--force" in rest or "-f" in rest
     ):
@@ -500,6 +615,130 @@ def check_shell_writes(tokens: list[str], cwd: str) -> None:
             blocked_if_inside(arg, f"`{command}`")
 
 
+#: Separators after which the next segment runs only when this one failed, or beside it.
+UNCERTAIN_JOINS = {"||", "|", "&"}
+
+#: Words that leave the next word in command position, so a `cd` after one is still a `cd`.
+COMMAND_PREFIX_WORDS = {"{", "!", "if", "then", "else", "elif", "do", "while", "until", "time",
+                        "builtin", "command", "exec", "sudo", "env", "nohup"}
+
+#: Reserved words that put the next word in command position: `if git commit; then git push; fi`
+#: runs both. A segment is judged from the word after them.
+SHELL_KEYWORDS = {"!", "if", "then", "else", "elif", "do", "while", "until", "{", "time"}
+
+
+def command_of(segment: list[str]) -> list[str]:
+    """The simple command a segment holds: without the subshell parentheses and reserved words
+    that lead it, and the closing parentheses that trail it.
+
+    `then git commit -m x` and `(git commit -m x)` are `git commit -m x`. Without this the
+    guard read their first word, `then` or `(`, as the command, and a `git` behind either
+    was never looked at.
+    """
+    start, end = 0, len(segment)
+    while start < end and (segment[start] in SHELL_KEYWORDS or segment[start] == "("):
+        start += 1
+    while end > start and segment[end - 1] == ")":
+        end -= 1
+    return segment[start:end]
+
+
+#: Commands that change the shell's directory, or run text that may, in a way not read here.
+UNREADABLE_DIRECTORY_CHANGERS = {"pushd", "popd", "eval", "source", "."}
+
+
+def _is_opener(token: str) -> bool:
+    return token in COMMAND_PREFIX_WORDS or ("(" in token and set(token) <= set(_PUNCTUATION))
+
+
+def _changes_directory_unreadably(segment: list[str]) -> bool:
+    """True when a word in command position may change the directory in a way not read here.
+
+    That is a `cd` behind a subshell, group, keyword or substitution opener, and
+    `pushd`/`popd`/`eval`/`source`. An argument that merely spells "cd" (`echo cd`) is not.
+    """
+    for index, word in enumerate(segment):
+        if index and not _is_opener(segment[index - 1]):
+            continue
+        if (word == "cd" and index) or word in UNREADABLE_DIRECTORY_CHANGERS:
+            return True
+    return False
+
+
+def _cd_target(args: list[str]) -> str | None:
+    """The directory a `cd` with these arguments goes to, or None when it cannot be read.
+
+    `cd` with no operand goes to $HOME, which is resolved here the way `~` is. `cd -` is the
+    shell's previous directory, and a variable, substitution or glob is not a path yet.
+    """
+    operands: list[str] = []
+    options_over = False
+    for arg in args:
+        if not options_over and arg == "--":
+            options_over = True
+        elif not options_over and arg in {"-L", "-P", "-e", "-@"}:
+            continue
+        else:
+            operands.append(arg)
+    if len(operands) > 1:
+        return None
+    target = os.path.expanduser(operands[0] if operands else "~")
+    if target == "-" or target.startswith("~") or _is_unresolvable(target):
+        return None
+    if any(char in target for char in "*?[{"):
+        return None
+    return target
+
+
+def _remember(candidates: list[str], more: list[str]) -> list[str]:
+    return candidates + [c for c in more if c not in candidates]
+
+
+def directories_seen_by(tokens: list[str], cwd: str) -> list[tuple[list[str], list[str]]]:
+    """For each segment of a command: (segment, the directories it may run in).
+
+    See the design notes at the top of the file for the rules. The result is a SET of
+    directories per segment, and a segment is judged in each of them: where the guard cannot
+    tell where the shell is, it says "here, or where the hook was invoked" rather than
+    picking the more convenient of the two.
+    """
+    chain = split_chain(tokens)
+    candidates = [cwd]
+    seen = [cwd]
+    scopes: list[list[str]] = []
+    result: list[tuple[list[str], list[str]]] = []
+    for before, segment, after in chain:
+        if before == "||":
+            candidates = list(seen)
+        result.append((segment, list(candidates)))
+
+        # A subshell, and a command substitution, is a scope: what a `cd` inside it does is
+        # undone at its `)`. Its opening parentheses save where the shell was, its closing
+        # ones put it back.
+        scopes += [list(candidates)] * segment.count("(")
+        core = command_of(segment)
+        leading = 0
+        while leading < len(segment) and segment[leading] == "(":
+            leading += 1
+        if core and core[0] == "cd" and segment[leading:leading + 1] == ["cd"]:
+            args = extract_redirects(core)[0][1:]
+            target = _cd_target(args)
+            if target is None:
+                moved = _remember(candidates, [cwd])
+            else:
+                moved = [str((Path(c) / target).resolve()) for c in candidates]
+            if before in UNCERTAIN_JOINS or after in UNCERTAIN_JOINS:
+                moved = _remember(candidates, moved)
+            candidates = moved
+        elif _changes_directory_unreadably(segment):
+            candidates = _remember(candidates, [cwd])
+        seen = _remember(seen, candidates)
+        for _ in range(segment.count(")")):
+            if scopes:
+                candidates = scopes.pop()
+    return result
+
+
 def main() -> int:
     if os.environ.get(ESCAPE_HATCH) == "1":
         return 0
@@ -530,9 +769,10 @@ def main() -> int:
 
     command = tool_input.get("command", "") or ""
     tokens = full_tokenize(strip_heredocs(command))
-    for segment in split_segments(tokens):
-        check_git(segment, cwd)
-        check_shell_writes(segment, cwd)
+    for segment, directories in directories_seen_by(tokens, cwd):
+        for directory in directories:
+            check_git(command_of(segment), directory)
+            check_shell_writes(command_of(segment), directory)
 
     return 0
 
