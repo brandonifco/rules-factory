@@ -127,8 +127,10 @@ TABLE = (
         "the semantic reviewer's charter, read-only, on the deepest tier: the role not to economise on "
         "(0029 amendment, #455); it reads the semantic cut, which carries the entry packets and not the "
         "implementer's case for its own reading (#467); it starts from a clean session, reads a full, delta or final packet as each asks, and names the claim of each finding (0071)"),
-    Row(".claude/hooks/primary-checkout-guard.py", MANAGED, 1,
-        "the PreToolUse guard that keeps implementation work out of the primary checkout (0029)"),
+    Row(".claude/hooks/primary-checkout-guard.py", MANAGED, 2,
+        "the PreToolUse guard that keeps implementation work out of the primary checkout (0029); it judges "
+        "the path of a `worktree add -b <branch> <path>`, not the branch (#496), and follows a literal `cd` "
+        "earlier in the same command, failing closed on one it cannot read (#463)"),
     Row(".claude/settings.json", MANAGED, 1, "which tools the guard runs before (0029)"),
     Row("tools/dispatch-agent.sh", MANAGED, 6,
         "one issue, one worktree, one branch; it refuses what is not ready to work, and --sweep "
@@ -145,11 +147,12 @@ TABLE = (
     Row("tools/mutate.py", MANAGED, 1,
         "a recorded mutation, run: the edit, the named test, and the source put back, so the evidence "
         "AGENTS.md asks for is re-runnable by the reviewer rather than a sentence (#454)"),
-    Row("tools/re-produce.sh", MANAGED, 7,
+    Row("tools/re-produce.sh", MANAGED, 8,
         "an overlay edit is finished by a re-produce, from the factory commit the record names (#192); "
         "a record a merge left conflicted is named as one, and --resolve-record settles it (#252); "
         "the repository root comes from the record too, so an embedded engine re-produces with no "
-        "arguments of its own (#517, 0069)"),
+        "arguments of its own (#517, 0069); an engine made from several corpora is re-produced from "
+        "every corpus the record names, the principal first (#531, 0070)"),
     Row("tools/review-packet.py", MANAGED, 15,
         "everything a reviewer needs about one pull request, in the order it is read (0029); every map is "
         "read once and the entry packets are built from those bytes, and a refused packet writes nothing "
@@ -163,12 +166,12 @@ TABLE = (
         "dependencies, a lexical reference graph and recorded fingerprints; the delta packet a bounded "
         "review reads, or the reasons a full one is owed; the self-review skeleton and check; an "
         "attestation's integrity; and review telemetry (0071)"),
-    Row("tools/repair-packet.py", MANAGED, 4,
+    Row("tools/repair-packet.py", MANAGED, 5,
         "the bounded brief for one repair attempt: the head, the branch, the worktree, the issue's "
         "acceptance criteria, the entries and the verdicts standing at that head, all derived -- and the "
         "blocking findings, which are the caller's judgement and the only thing it is given (#465); a section "
         "of the issue keeps what is nested under it (#484); it makes the readiness refusal dispatch "
-        "makes, and says a semantic verdict is owed only when the change owes one (#483); the brief says to commit the attestation it answers and that the next review is a delta of it (0071)"),
+        "makes, and says a semantic verdict is owed only when the change owes one (#483); the brief says to commit the attestation it answers and that the next review is a delta of it (0071); the worktree it names is checked against the head it advertises, and every path it prints is quoted (#482)"),
     Row("tools/pr-policy.py", MANAGED, 11,
         "the pull request contract, checked mechanically; a produce update's claim is checked, not taken "
         "(#193); every document the engine owns is accounted for (#236); the entry declaration, linked issue "
@@ -353,6 +356,7 @@ RECIPE_SHA256 = {
     },
     ".claude/hooks/primary-checkout-guard.py": {
         1: "a263531db502dfad98b38bf1dd90df7b1bec5f22133db016b6f30dc38509d16d",
+        2: "89d3bc82623f65c7b7bab8292fe80479419340bde92af15f1d147a89f91070d8",
     },
     ".claude/settings.json": {
         1: "4d410acd10ba5b6ed2d3c6a016cc2cfde1cf8e621da54424755376a80da30aa0",
@@ -432,6 +436,7 @@ RECIPE_SHA256 = {
         5: "4533319092ce21ccdcaaeade46dd4f10cdfa2209bb6f565efe0e9d163ef0b185",
         6: "27f0459e33e943fb7c6cd185b808f52ffa7165a7de44f267adbcd8654ce65262",
         7: "f60fa36f676144fd3a6ac4f7a29a5f85d2d2eaa5ecab3664594caf2fc4a8af86",
+        8: "9c0eb1c3178b16fd3799037316554ca8256f0ccebf82998d69658d781b1526b2",
     },
     "tools/review-packet.py": {
         1: "2e989c02c1827bf6d3da8fce9a35874e25ea4baf14f62eeb64aab78c30b1f392",
@@ -455,6 +460,7 @@ RECIPE_SHA256 = {
         2: "7ec00d9a68ff35fa0af4ab65714411ac6b39cfce34baf448359d9be5e393c2f5",
         3: "d3a63261fd6edfbb352b01259d797bcba434b9a5845d4be458d2bc7b2ae83adf",
         4: "4ac24b78411f3ea457e497838f5959d0374c8f3126c249bfb88393c2485318ed",
+        5: "c9c35317247883f7076972c29a19e9ca5ccfc3166882a5b2e218a6108dcddd9f",
     },
     "tools/pr-policy.py": {
         1: "79a33c7fe1ea8d888e4d6912a43ac60afe285c7a8bf43fbe9f7be87d6947b76e",

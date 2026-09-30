@@ -115,5 +115,8 @@ jobs:
           dotnet-version: ${{ steps.pin.outputs.sdk }}
 
       # Fails, never skips, if that SDK is missing. FACTORY_DOTNET_SDK_OVERRIDE is refused here.
+      # --brief: the same steps and verdicts, with a passing step reduced to what it proved. A
+      # step that fails prints everything it printed, so a failure is diagnosable from this log
+      # alone; the whole output of a pass goes to a file on the runner that nobody reads (#476).
       - name: Produce, build and test an engine
-        run: ./scripts/validate-engine.sh
+        run: ./scripts/validate-engine.sh --brief
