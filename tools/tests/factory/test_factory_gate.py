@@ -1220,7 +1220,7 @@ class TestCorpusPosture(GateCase):
             handle.write(b"\n")
         code, output = self.posture(engine)
         self.assertEqual(code, 1, output)
-        self.assertIn("the manifest pins", output)
+        self.assertIn("is not cfr-14-107 at its declared baseline: rules-corpus gives", output)
 
     def test_local_copy_without_its_bytes_is_not_verified_never_ok(self):
         engine = self.engine()
@@ -1237,18 +1237,54 @@ class TestCorpusPosture(GateCase):
         code, output = self.posture(engine, path, env={"FACTORY_TEST_CORPUS": PART107_XML})
         self.assertEqual(code, 0, output)
 
-    def test_the_gate_recomputes_with_intakes_table_and_has_none_of_its_own(self):
-        """#106: the gate kept a copy of the derivation table, and the SRD's derivation was missing from it."""
+    def test_the_gate_verifies_through_rules_corpus_and_has_no_recipe_of_its_own(self):
+        """#106, #558: the gate kept a copy of the derivation table, which drifted; then it used the
+        vendored intake's, which every engine held a copy of. It now holds no recipe at all: the
+        corpus is built by rules-corpus from the definition the engine carries beside it."""
         engine = self.engine()
-        with open(os.path.join(engine, "scripts", "engine-gate.py"), encoding="utf-8") as handle:
-            own = re.search(r"(?m)^\s*[A-Z_]*DERIVATIONS\s*=.*$", handle.read())
-        self.assertIsNone(own, "the gate declares a derivation table of its own, which can drift from intake's")
-        # Take Part 107's derivation out of the vendored intake.py: the gate must stop being able to verify.
-        edit(os.path.join(engine, "scripts", "factory", "intake.py"),
-             lambda t: t.replace('    "ecfr-versioner-xml": _sha256_of_bytes,\n', "", 1))
+        for relative in ("scripts/engine-gate.py", "scripts/factory/intake.py"):
+            with open(os.path.join(engine, *relative.split("/")), encoding="utf-8") as handle:
+                text = handle.read()
+            self.assertIsNone(re.search(r"(?m)^\s*[A-Z_]*DERIVATIONS\s*=\s*\{", text),
+                              f"{relative} declares a derivation table, a recipe that can drift from rules-corpus")
+            self.assertNotIn("hashlib.sha256(data)", text)
+        self.assertTrue(os.path.isfile(os.path.join(engine, "scripts", "factory", "rulescorpus.py")))
+        # Without the definition it carries, the gate has nothing to build from and no fallback.
+        os.remove(os.path.join(engine, "corpus", "part107.corpus.build.json"))
         code, output = self.posture(engine)
         self.assertEqual(code, 1, output)
-        self.assertIn("cannot recompute hashDerivation 'ecfr-versioner-xml'", output)
+        self.assertIn("part107.corpus.build.json does not exist", output)
+
+    def test_the_gate_holds_srd_to_exactly_the_checks_its_expectation_names(self):
+        """rules-corpus decision 0008 through the engine's own gate: a corpus with an unstored PDF
+        and an external extraction verifies only when its expectation names exactly those two."""
+        engine = self.engine()
+        srd = os.path.join(REPO, "examples", "srd-52-combat")
+        for name in ("srd-5.2.1.txt", "srd-5.2.1.corpus.build.json", "srd-5.2.1.corpus.expect.json"):
+            shutil.copy(os.path.join(srd, name), os.path.join(engine, "corpus", name))
+        with open(os.path.join(srd, "corpus-manifest.json"), encoding="utf-8") as handle:
+            manifest = json.load(handle)
+        manifest["corpora"][0]["committedPath"] = "srd-5.2.1.txt"
+        manifest_path = os.path.join(self.tmp, "srd-manifest.json")
+        write_json(manifest_path, manifest)
+        expectation = os.path.join(engine, "corpus", "srd-5.2.1.corpus.expect.json")
+
+        def posture_with(names):
+            write_json(expectation, {"expectNotVerified": names})
+            return self.posture(engine, manifest_path)
+
+        exact = ["artifact srd-pdf", "rebuild srd-extraction"]
+        code, output = posture_with(exact)
+        self.assertEqual(code, 0, output)
+        self.assertIn("verified: srd-5.2.1 (committed-copy", output)
+        for names, reason in ((["artifact srd-pdf"], "not verified but not expected: rebuild srd-extraction"),
+                              (exact + ["artifact srd-text"], "expected not verified but not reported so: artifact srd-text"),
+                              ([], "exited 3, under the expectation")):
+            with self.subTest(expect=names):
+                code, output = posture_with(names)
+                self.assertEqual(code, 1, output)
+                self.assertIn("NOT VERIFIED -- rules-corpus verify --rebuild", output)
+                self.assertIn(reason, output)
 
     def test_every_packable_example_maps_engine_verifies_its_baseline(self):
         """A corpus admitted with a derivation its engine's gate cannot recompute fails here, without an SDK."""

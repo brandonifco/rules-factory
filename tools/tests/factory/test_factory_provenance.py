@@ -429,8 +429,11 @@ class TestRecompute(ProvenanceCase):
         data = bytearray(pathlib.Path(path).read_bytes())
         data[len(data) // 2] ^= 1
         pathlib.Path(path).write_bytes(bytes(data))
-        self.assert_recompute_names(out, "corpora[cfr-14-107].contentHash",
-                                    "generated[corpus/part107.xml].sha256")
+        # The re-produce runs intake, where rules-corpus builds the changed bytes and the baseline
+        # they give is refused (0074); nothing here re-hashes them a second way.
+        output = self.assert_recompute_names(out, "generated[corpus/part107.xml].sha256",
+                                             "produce refused to re-produce the engine")
+        self.assertIn("is not cfr-14-107 at its declared baseline: rules-corpus gives", output)
 
     def test_a_changed_recipe(self):
         repo = self.own_repo()

@@ -24,11 +24,18 @@ def write_corpus(directory, name, data, source_id, derivation, as_of=None, expec
     path = os.path.join(directory, name)
     with open(path, "wb") as handle:
         handle.write(data)
+    return write_recipe(path, source_id, derivation, as_of, expect)
+
+
+def write_recipe(path, source_id, derivation, as_of=None, expect=()):
+    """Beside the corpus file at `path`, a definition whose baseline names it, and an expectation."""
+    name = os.path.basename(path)
+    media = "application/xml" if name.endswith(".xml") else "text/plain"
     baseline = {"artifact": "corpus", "hashDerivation": derivation, "sourceId": source_id}
     if as_of is not None:
         baseline["asOf"] = as_of
     definition = {"schema": "rules-corpus/build/1", "corpusId": "synthetic",
-                  "sources": [{"id": "corpus", "mediaType": "text/plain", "origin": "synthetic", "path": name}],
+                  "sources": [{"id": "corpus", "mediaType": media, "origin": "synthetic", "path": name}],
                   "derivations": [], "external": [], "baselines": [baseline]}
     definition_path, expectation_path = rulescorpus.companions(path)
     _write(definition_path, json.dumps(definition, indent=2, sort_keys=True) + "\n")

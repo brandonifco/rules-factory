@@ -36,7 +36,8 @@ class PackageCorpusIdentityReproduction(unittest.TestCase):
         self.map_dir = os.path.join(self.tmp, "hoyle-backgammon")
         os.makedirs(self.map_dir)
         for name in ("corpus-map.json", "corpus-manifest.json", "hoyle.txt",
-                     "map-package.json", "CORPUS-LICENCE.txt"):
+                     "map-package.json", "CORPUS-LICENCE.txt",
+                     "hoyle.corpus.build.json", "hoyle.corpus.expect.json"):
             shutil.copy2(os.path.join(HOYLE, name), os.path.join(self.map_dir, name))
         self.out = os.path.join(self.tmp, "out")
 

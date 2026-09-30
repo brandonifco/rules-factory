@@ -71,10 +71,13 @@ LAYERS = {
     # engine cannot disagree about what `public + private` means.
     "compose": {"intake"},
     "gate": set(),
-    "intake": set(),
+    # `rulescorpus`: the one way a corpus is built and verified (0074). It imports nothing of the
+    # factory's, so the pin and the runner are all a produced engine's gate needs beside intake.
+    "intake": {"rulescorpus"},
+    "rulescorpus": set(),
     "overlay": set(),
     "ownership": {"overlay"},
-    "provenance": {"agentrails", "intake", "overlay", "ownership", "pins", "semantics"},
+    "provenance": {"agentrails", "intake", "overlay", "ownership", "pins", "rulescorpus", "semantics"},
     "rails": {"agentrails", "ownership"},
     # Where a produced engine sits in its repository, and the rails a repository root holds for an
     # embedded one (0069). It reads the two modules that hold those recipes -- so the root's copy and

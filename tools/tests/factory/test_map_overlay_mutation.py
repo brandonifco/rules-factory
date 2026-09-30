@@ -356,8 +356,9 @@ class TestTheCommandLineRefuses(unittest.TestCase):
         # module is beside it in a produced engine too (rules-factory 0067) -- and so is intake.py,
         # which compose imports for the one strictest-wins distribution fold (0068). Every module
         # a produced engine receives is `gate.py`'s FILES, and the closure is held to it by
-        # test_factory_modules.py; this fixture is that layout in miniature.
-        for module in ("compose.py", "intake.py"):
+        # test_factory_modules.py; this fixture is that layout in miniature. intake.py imports
+        # rulescorpus.py, which pins and runs rules-corpus (0074).
+        for module in ("compose.py", "intake.py", "rulescorpus.py"):
             shutil.copy(os.path.join(FACTORY, module), os.path.join(scripts, "factory", module))
         self.package_map = os.path.join(self.tmp, "package-map.json")
         self.overlay = os.path.join(self.tmp, "overlay")

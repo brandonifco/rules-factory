@@ -248,7 +248,7 @@ def posture(args):
         try:
             intake.verify_declared_corpus(sid, corpus, str(path))
         except (intake.Refused, intake.Usage) as error:
-            problems.append(f"{sid}: the {where}: {error}")
+            problems.append(f"{sid}: {where}: {error}")
         else:
             verified.append(f"{sid} ({kind}, {boundary}): {where} builds with rules-corpus "
                             f"{intake.rulescorpus.COMMIT[:12]} to the pinned baseline")
