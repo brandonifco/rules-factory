@@ -25,9 +25,10 @@ python3 tools/repo-hygiene.py          # report leftovers; exit 1 when there are
 python3 tools/repo-hygiene.py --fix    # remove what is provably finished
 ```
 
-`--fix` only removes what is finished: a branch whose commits are already in `origin/main`, a
-worktree whose pull request merged at exactly its tip (a squash merge counts: the pull request's
-recorded head is the tip, and its merge commit is in `origin/main`), a clean detached worktree more
+`--fix` only removes what is finished: a branch whose commits are already in `origin/main` or
+whose tip is exactly the head of a pull request that merged into it, a worktree whose pull request
+merged at exactly its tip (a squash merge counts: the pull request's recorded head is the tip, and
+its merge commit is in `origin/main`; the branch goes with it), a clean detached worktree more
 than a day old. It never forces anything, never deletes on GitHub without `--remote`, and never
 tags. It reports what it will not touch and why: every worktree it leaves is named with its reason
 and the command that clears it, and `CLEAN` is printed only when there is none, so a worktree still

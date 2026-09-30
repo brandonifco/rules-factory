@@ -9,9 +9,10 @@ was made. Each operation that made it simply stopped before cleaning up, and not
 This reports every such leftover, and with `--fix` removes the ones that are provably finished:
 
   * behind     the primary checkout is on `main`, clean, and behind `origin/main`: fast-forwarded
-  * branch     a local branch no worktree has checked out, whose tip is already in `origin/main`:
-               deleted. Its commits are in `main`, so nothing is lost, even for a branch that
-               never had a commit of its own
+  * branch     a local branch no worktree has checked out, whose tip is already in `origin/main`,
+               or is exactly the head of a merged pull request that `origin/main` holds (a squash
+               merge): deleted. Its commits are in `main` or on the pull request, so nothing is
+               lost, even for a branch that never had a commit of its own
   * worktree   a clean worktree on a branch whose pull request merged at exactly that tip -- the
                tip is in `origin/main`, or the pull request was squash-merged into `main` and its
                merge commit is -- or a clean detached worktree at a commit in `origin/main`,
@@ -311,23 +312,35 @@ def check_worktrees(root, here, pulls, fix, report):
             report.leftover("worktree", why, removed.stderr.strip())
 
 
-def check_branches(root, fix, report):
+def check_branches(root, pulls, fix, report):
     checked_out = {t.get("branch", "").removeprefix("refs/heads/") for t in worktrees(root)}
     checked_out.add(git("rev-parse", "--abbrev-ref", "HEAD", cwd=root).stdout.strip())
     listing = git("for-each-ref", "--format=%(refname:short) %(objectname)", "refs/heads", cwd=root)
+    finished = set()
     for line in listing.stdout.splitlines():
         name, sha = line.split()
-        if name == MAIN or name in checked_out or not is_ancestor(root, sha):
+        if name == MAIN or name in checked_out:
             continue
+        if is_ancestor(root, sha):
+            proof, remedy = f"in {UPSTREAM}", f"git branch -d {name}"
+        else:
+            # A squash merge leaves the tip out of main; the pull request merged at exactly this
+            # tip is the same proof a worktree needs (merged_at_tip), and nothing weaker is.
+            pull = merged_at_tip(root, sha, name, pulls) if pulls is not None else None
+            if pull is None:
+                continue
+            proof, remedy = f"its pull request #{pull['number']} merged at this tip", f"git branch -D {name}"
+        finished.add(name)
         if fix:
             # update-ref with the expected old value, not `branch -d`: -d judges "merged" against
-            # the local HEAD, which may be behind origin/main, and the ancestry was checked above.
+            # the local HEAD, which may be behind origin/main. The tip was proven finished above,
+            # and deleting only that exact tip is `branch -D` that cannot delete anything newer.
             git("update-ref", "-d", f"refs/heads/{name}", sha, cwd=root)
-            report.done("branch", f"{name} (in {UPSTREAM})")
+            report.done("branch", f"{name} ({proof})")
         else:
-            report.leftover("branch", f"{name} (in {UPSTREAM})", f"git branch -d {name}")
+            report.leftover("branch", f"{name} ({proof})", remedy)
     unmerged = [n for n in git("branch", "--format=%(refname:short)", "--no-merged", UPSTREAM,
-                               cwd=root).stdout.split() if n not in checked_out]
+                               cwd=root).stdout.split() if n not in checked_out and n not in finished]
     if unmerged:
         report.notes.append(
             "unmerged local branch(es) with no worktree, kept because their commits are not in "
@@ -454,7 +467,7 @@ def main(argv=None):
     check_worktrees(root, here, pulls, args.fix, report)
     if args.fix:
         git("worktree", "prune", cwd=root)
-    check_branches(root, args.fix, report)
+    check_branches(root, pulls, args.fix, report)
     if pulls is not None:
         check_remote(root, pulls, args.fix, args.remote, report)
     if not args.offline:

@@ -269,6 +269,41 @@ class Hygiene(unittest.TestCase):
         code, output = self.run_tool("--fix")
         self.assertEqual(self.worktree_paths(), [])
         self.assertIn("its pull request #385 merged", output)
+        self.assertNotIn("squashed", self.branches(), "AGENTS.md 4: --fix removes the branch too")
+        self.assertIn("fixed     branch    squashed (its pull request #385 merged at this tip)", output)
+        self.assertNotIn("unmerged local branch", output)
+
+    def squash_merged_branch(self, name, **pull):
+        """A squash-merged branch whose worktree is already gone."""
+        tree = self.squash_merged_worktree(name, **pull)
+        self.git(self.clone, "worktree", "remove", tree)
+
+    def test_a_squash_merged_branch_with_no_worktree_is_finished_not_unmerged(self):
+        self.squash_merged_branch("orphan")
+        code, output = self.run_tool()
+        self.assertEqual(code, 1, output)
+        self.assertIn("LEFTOVER  branch    orphan (its pull request #385 merged at this tip)", output)
+        self.assertIn("-> git branch -D orphan", output)
+        self.assertNotIn("unmerged local branch", output)
+        self.assertIn("orphan", self.branches())
+        code, output = self.run_tool("--fix")
+        self.assertNotIn("orphan", self.branches())
+        self.assertNotIn("unmerged local branch", output)
+
+    def test_a_squash_merged_branch_with_a_commit_after_the_merge_is_kept(self):
+        self.squash_merged_branch("moved")
+        self.git(self.clone, "switch", "-q", "moved")
+        self.commit(self.clone, "later.txt", "work after the merge")
+        self.git(self.clone, "switch", "-q", "main")
+        code, output = self.run_tool("--fix")
+        self.assertIn("moved", self.branches())
+        self.assertIn("kept because their commits are not in main: moved", output)
+
+    def test_a_squash_merged_branch_the_pull_request_did_not_merge_into_main_is_kept(self):
+        self.squash_merged_branch("elsewhere-branch", baseRefName="release")
+        code, output = self.run_tool("--fix")
+        self.assertIn("elsewhere-branch", self.branches())
+        self.assertIn("kept because their commits are not in main: elsewhere-branch", output)
 
     def test_a_squash_merge_into_another_base_is_not_proof_the_work_is_in_main(self):
         tree = self.squash_merged_worktree("elsewhere", baseRefName="release")
