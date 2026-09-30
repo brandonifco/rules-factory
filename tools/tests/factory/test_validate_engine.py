@@ -15,6 +15,7 @@ import importlib.util
 import io
 import json
 import os
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -31,6 +32,8 @@ WRAPPER = os.path.join(ROOT, "scripts", "validate-engine.sh")
 _spec = importlib.util.spec_from_file_location("validate_engine", TOOL)
 engine = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(engine)
+# The real one, kept before a test patches the module's name to put its logs where they are cleaned up.
+_brief_log = engine.brief_log
 
 NUGET_CONFIG = """<?xml version="1.0" encoding="utf-8"?>
 <configuration>
@@ -82,16 +85,237 @@ class Arguments(unittest.TestCase):
 
     def test_any_other_argument_is_a_usage_error_naming_the_entry_point(self):
         code, out, err = run_main(["--full"], VALIDATE_ENGINE_ARGV0="./scripts/validate-engine.sh")
-        self.assertEqual((code, out, err), (2, "", "usage: ./scripts/validate-engine.sh [--print-sdk]\n"))
+        self.assertEqual((code, out, err), (2, "", "usage: ./scripts/validate-engine.sh [--print-sdk] [--brief]\n"))
 
     def test_the_wrapper_passes_arguments_exit_codes_and_its_name_through(self):
         pin = subprocess.run([WRAPPER, "--print-sdk"], capture_output=True, text=True)
         self.assertEqual((pin.returncode, pin.stdout), (0, generate_pin() + "\n"), pin.stderr)
         bad = subprocess.run([WRAPPER, "nope"], capture_output=True, text=True)
-        self.assertEqual((bad.returncode, bad.stderr), (2, f"usage: {WRAPPER} [--print-sdk]\n"))
+        self.assertEqual((bad.returncode, bad.stderr), (2, f"usage: {WRAPPER} [--print-sdk] [--brief]\n"))
 
     def test_the_wrapper_stays_a_wrapper(self):
         self.assertLess(os.path.getsize(WRAPPER), 2048)
+
+
+# The names main() calls after the SDK check, in order. The brief tests below run main() with each
+# replaced by a fake that prints what a real step prints; test_the_list_is_what_main_calls holds
+# this list to main's source, so a step added there cannot slip past a test that then runs it.
+STEP_FUNCTIONS = [
+    "pack_the_map", "produce_from_scratch", "reproduce_verifying",
+    "the_restored_package_is_the_packed_one", "provenance_recomputes",
+    "a_seeded_engine_references_randomness", "a_mistyped_handler_is_a_build_error",
+    "a_stale_record_fails_the_gate", "a_request_input_reaches_its_handler",
+    "an_owners_ruling_is_surfaced", "reproduce_beside_the_engines_own_projects",
+    "a_map_version_bump_relocks", "the_rails_run_in_a_produced_engine",
+    "a_determinism_defect_stops_the_build", "every_other_example_passes_its_gate",
+    "a_composed_engine_passes_its_gate",
+]
+
+
+class BriefPrintsLessAndProvesTheSame(unittest.TestCase):
+    """`--brief`: the same steps, the same verdicts, the same exit code, and a passing run that
+    says what it proved rather than everything it did (#476, the rule #470 settled).
+
+    A green run of this script is 720 lines and 45 KB, and almost none of it is evidence anybody
+    reads on a pass. What must not move is anything else, so the tests are mostly about that: a
+    failing step still prints everything it printed, `NOT VERIFIED` is counted rather than
+    dropped, the exit code is the one a loud run gives, and the whole output is really kept where
+    the run says it is.
+    """
+
+    def setUp(self):
+        self.calls = []
+        self.behaviours = {}
+
+        def make(name):
+            def fake(r):
+                self.calls.append(name)
+                behaviour = self.behaviours.get(name)
+                if behaviour is not None:
+                    return behaviour()
+                # Noise a real step makes: this module's own print, and a subprocess writing to
+                # fd 1 and fd 2 directly, which is where the engine gates and `dotnet` write.
+                engine.step(f"step {name}")
+                print(f"noise from {name}")
+                subprocess.run(["sh", "-c", f"echo child stdout of {name}; echo child stderr of {name} >&2"])
+                engine.ok(f"verdict of {name}")
+            return fake
+
+        patches = [mock.patch.object(engine, name, make(name)) for name in STEP_FUNCTIONS]
+        patches.append(mock.patch.object(engine, "the_sdk_is_installed", lambda sdk: None))
+        self.logs = []
+
+        def log_that_is_cleaned_up(*args, **kwargs):
+            path = _brief_log(*args, **kwargs)
+            self.logs.append(path)
+            self.addCleanup(lambda: os.path.exists(path) and os.unlink(path))
+            return path
+        patches.append(mock.patch.object(engine, "brief_log", log_that_is_cleaned_up))
+        for patch in patches:
+            patch.start()
+            self.addCleanup(patch.stop)
+
+    def test_the_list_is_what_main_calls(self):
+        import ast
+        with open(TOOL, encoding="utf-8") as handle:
+            tree = ast.parse(handle.read())
+        main = next(n for n in tree.body if isinstance(n, ast.FunctionDef) and n.name == "main")
+        called = [n.value.func.id for n in ast.walk(main)
+                  if isinstance(n, ast.Expr) and isinstance(n.value, ast.Call)
+                  and isinstance(n.value.func, ast.Name)
+                  and [a.id for a in n.value.args if isinstance(a, ast.Name)] == ["r"]]
+        self.assertEqual(called, STEP_FUNCTIONS)
+
+    def test_the_same_steps_run_in_the_same_order_with_the_same_exit_code(self):
+        loud_code, loud, _ = run_main([])
+        loud_calls, self.calls = self.calls, []
+        brief_code, brief, _ = run_main(["--brief"])
+        self.assertEqual(loud_calls, STEP_FUNCTIONS)
+        self.assertEqual(self.calls, STEP_FUNCTIONS, "brief ran a different list of steps")
+        self.assertEqual((loud_code, brief_code), (0, 0))
+        self.assertIn("validate-engine.sh: PASS", brief)
+
+    def test_a_passing_step_prints_its_heading_and_its_verdict_and_not_what_it_did(self):
+        _, loud, _ = run_main([])
+        _, out, _ = run_main(["--brief"])
+        for name in STEP_FUNCTIONS:
+            self.assertIn(f"==> step {name}\nok   verdict of {name}\n", out)
+            self.assertNotIn(f"noise from {name}", out)
+            self.assertNotIn(f"child stdout of {name}", out)
+            self.assertNotIn(f"child stderr of {name}", out)
+        self.assertLess(len(out), len(loud), "brief did not print less")
+
+    def test_a_step_that_wrote_no_verdict_prints_the_last_line_it_printed(self):
+        def silent():
+            engine.step("a step whose tool says its own count")
+            print("many lines")
+            print("3 lock file(s) compared")
+        self.behaviours["pack_the_map"] = silent
+        _, out, _ = run_main(["--brief"])
+        self.assertIn("==> a step whose tool says its own count\n3 lock file(s) compared\n", out)
+        self.assertNotIn("many lines", out)
+
+    def test_a_step_prints_every_verdict_it_wrote_and_not_the_lines_around_them(self):
+        def several():
+            engine.step("a step with three verdicts")
+            print("noise before")
+            engine.ok("first proved")
+            print("the engine's own gate says: ok   not this script's verdict")
+            engine.ok("second proved")
+            engine.ok("third proved")
+            print("trailing noise")
+        self.behaviours["pack_the_map"] = several
+        _, out, _ = run_main(["--brief"])
+        self.assertIn("==> a step with three verdicts\nok   first proved\nok   second proved\nok   third proved\n", out)
+        self.assertNotIn("trailing noise", out)
+        self.assertNotIn("not this script's verdict", out)
+
+    def test_the_whole_of_it_is_in_the_log_the_run_names(self):
+        _, out, _ = run_main(["--brief"])
+        (log,) = self.logs
+        self.assertIn(f"the whole output of every step above: {log}", out)
+        self.assertTrue(os.path.isfile(log))
+        with open(log, encoding="utf-8") as handle:
+            kept = handle.read()
+        for name in STEP_FUNCTIONS:
+            for said in (f"==> step {name}", f"noise from {name}", f"child stdout of {name}",
+                         f"child stderr of {name}", f"verdict of {name}"):
+                self.assertIn(said, kept, "a log the run names must hold what the run hid")
+
+    def test_the_log_is_named_before_the_first_step_and_is_outside_the_checkout(self):
+        _, out, _ = run_main(["--brief"])
+        (log,) = self.logs
+        self.assertLess(out.index(f"the whole output is in {log}"), out.index("==> step pack_the_map"))
+        self.assertFalse(os.path.realpath(log).startswith(os.path.realpath(ROOT) + os.sep))
+
+    def test_a_failing_step_prints_everything_it_printed_and_stops_with_its_code(self):
+        def fails():
+            engine.step("the step that breaks")
+            print("the first clue")
+            sys.stdout.flush()
+            subprocess.run(["sh", "-c", "echo the second clue >&2"])
+            engine.ok("a check that passed first")
+            engine.fail("something broke")
+        self.behaviours["provenance_recomputes"] = fails
+        code, out, err = run_main(["--brief"])
+        self.assertEqual(code, 1)
+        for clue in ("the first clue", "the second clue", "ok   a check that passed first",
+                     "validate-engine.sh: FAIL -- something broke"):
+            self.assertIn(clue, out + err, "a failure's output is the diagnosis")
+        self.assertNotIn("a_seeded_engine_references_randomness", out + err, "nothing runs after a failure")
+        self.assertEqual(self.calls[-1], "provenance_recomputes")
+        (log,) = self.logs
+        self.assertIn(f"the whole output of every step above: {log}", out)
+        with open(log, encoding="utf-8") as handle:
+            self.assertIn("the second clue", handle.read())
+
+    def test_a_failure_gives_the_exit_code_a_loud_run_gives(self):
+        def stops_with_seven():
+            engine.step("a command that fails")
+            engine.check(7)
+        self.behaviours["pack_the_map"] = stops_with_seven
+        loud = run_main([])[0]
+        quiet = run_main(["--brief"])[0]
+        self.assertEqual((loud, quiet), (7, 7))
+
+    def test_an_exception_still_prints_the_step_it_interrupted_and_puts_the_descriptors_back(self):
+        def explodes():
+            engine.step("a step that raises")
+            print("as far as it got")
+            raise RuntimeError("the thing that went wrong")
+        self.behaviours["produce_from_scratch"] = explodes
+        before = os.fstat(1).st_ino, os.fstat(2).st_ino
+        out, err = io.StringIO(), io.StringIO()
+        with redirect_stdout(out), redirect_stderr(err), self.assertRaises(RuntimeError):
+            engine.main(["--brief"])
+        self.assertIn("as far as it got", out.getvalue())
+        self.assertEqual((os.fstat(1).st_ino, os.fstat(2).st_ino), before)
+        self.assertIsNone(engine.BRIEF, "a later run in this process would inherit a stale capture")
+        (log,) = self.logs
+        with open(log, encoding="utf-8") as handle:
+            self.assertIn("as far as it got", handle.read())
+
+    def test_a_not_verified_is_counted_rather_than_dropped(self):
+        """A step that passed while examining nothing is the defect this repository has found in
+        its own tools twice. Brief may make it quieter; it may not make it invisible."""
+        def unverified():
+            engine.step("a produce that is not verified")
+            print("[skip] status: NOT VERIFIED -- nothing to exercise")
+            print("produced X, NOT VERIFIED -- nothing was built or tested")
+            print("2 files written")
+        self.behaviours["pack_the_map"] = unverified
+        _, out, _ = run_main(["--brief"])
+        (log,) = self.logs
+        self.assertIn(f"2 NOT VERIFIED in this step, named in {log}", out)
+        self.assertNotIn("[skip] status", out)
+
+    def test_a_step_with_nothing_unverified_says_nothing_about_it(self):
+        self.assertNotIn("NOT VERIFIED", run_main(["--brief"])[1])
+
+    def test_output_before_the_first_step_is_printed_in_full(self):
+        """A refusal or a warning has no heading and no verdict to reduce it to."""
+        with mock.patch.object(engine, "sdk_override", return_value="9.9.9"), \
+                mock.patch.object(engine, "verify_module") as module:
+            module.return_value.override_warning.return_value = "warning: the SDK is overridden"
+            _, out, err = run_main(["--brief"])
+        self.assertIn("warning: the SDK is overridden", out + err)
+
+    def test_a_temporary_directory_inside_the_checkout_is_refused(self):
+        inside = tempfile.mkdtemp(prefix=".brief-tmp-for-a-test-", dir=ROOT)
+        self.addCleanup(shutil.rmtree, inside, True)
+        err = io.StringIO()
+        with redirect_stderr(err), self.assertRaises(engine.Stop) as refused:
+            _brief_log(inside)
+        self.assertEqual(refused.exception.code, 2)
+        self.assertIn("inside the checkout", err.getvalue())
+        self.assertIn("$TMPDIR", err.getvalue())
+        self.assertEqual(os.listdir(inside), [], "a refused run wrote a log anyway")
+
+    def test_brief_is_accepted_beside_print_sdk_and_any_other_argument_is_still_refused(self):
+        code, out, _ = run_main(["--brief", "--print-sdk"])
+        self.assertEqual((code, out), (0, generate_pin() + "\n"))
+        code, out, err = run_main(["--brief", "--nope"], VALIDATE_ENGINE_ARGV0="x")
+        self.assertEqual((code, out, err), (2, "", "usage: x [--print-sdk] [--brief]\n"))
 
 
 class Override(unittest.TestCase):

@@ -9,26 +9,37 @@ was made. Each operation that made it simply stopped before cleaning up, and not
 This reports every such leftover, and with `--fix` removes the ones that are provably finished:
 
   * behind     the primary checkout is on `main`, clean, and behind `origin/main`: fast-forwarded
-  * branch     a local branch no worktree has checked out, whose tip is already in `origin/main`:
-               deleted. Its commits are in `main`, so nothing is lost, even for a branch that
-               never had a commit of its own
-  * worktree   a clean worktree on a branch whose pull request merged at exactly that tip, or a
-               clean detached worktree at a commit in `origin/main`, unlocked and more than a day
-               old: removed. A fresh worktree on a new branch is also "in main", so a branch
-               worktree needs the merged pull request as proof -- an agent that has not yet
-               committed is not finished
+  * branch     a local branch no worktree has checked out, whose tip is already in `origin/main`,
+               or is exactly the head of a merged pull request that `origin/main` holds (a squash
+               merge): deleted. Its commits are in `main` or on the pull request, so nothing is
+               lost, even for a branch that never had a commit of its own
+  * worktree   a clean worktree on a branch whose pull request merged at exactly that tip -- the
+               tip is in `origin/main`, or the pull request was squash-merged into `main` and its
+               merge commit is -- or a clean detached worktree at a commit in `origin/main`,
+               unlocked and more than a day old: removed. A fresh worktree on a new branch is also
+               "in main", so a branch worktree needs the merged pull request as proof -- an agent
+               that has not yet committed is not finished
   * prunable   a registered worktree whose directory is gone: pruned
   * cache      `__pycache__` and `.pytest_cache` in the primary checkout: removed
   * remote     a branch on GitHub whose pull request merged at exactly that tip: deleted only with
                `--remote`, because it is a write to GitHub
   * map        a map under `examples/` whose `map-package.json` declares a version with no
-               `map/<name>/v<version>` tag: never fixed here, because the tag publishes to nuget.org
+               `map/<name>/v<version>` tag: never fixed here, because the tag publishes to nuget.org.
+               A map that declares `"held": "<why>"` (0073) is a note instead, since the person who
+               holds it has said so where the version is declared; an empty reason, or a `held`
+               beside a version that is tagged, is a leftover
   * release    an issue labelled `review*-p0` or `review*-p1` closed after the last `factory/v*`
                tag, while `tools/factory/` has changed since it: never fixed here. A tag is a
                decision; this says it is due until one is made
 
 Nothing is ever forced. A worktree with uncommitted or untracked files, a locked detached one, the
 one this command runs in, and a branch with commits outside `main` are reported and left alone.
+
+A worktree the tool will not remove is never left unsaid. One whose pull request merged, but not at
+the tip it holds, is a LEFTOVER (someone finished it, or moved it, and only a person can say which).
+One with no merged pull request is a `note worktree`: it is in use, or the tool cannot tell. Either
+way each names why and the deliberate command that clears it, and `CLEAN` is printed only when no
+worktree is left at all -- with only notes the verdict is "no leftovers", not "CLEAN".
 
 What cannot be read is not called clean: offline, or with `gh` unavailable, the parts that need
 GitHub print NOT CHECKED and the run exits 3 rather than 0.
@@ -55,7 +66,9 @@ DETACHED_MIN_AGE_SECONDS = 24 * 60 * 60
 CACHE_NAMES = ("__pycache__", ".pytest_cache")
 # The released product: provenance records these files' commit, so a change here is what a tag names.
 PRODUCT_PATHS = ("tools/factory", ":(exclude)tools/tests")
-GROUPED_REMEDY = {"remote": "repo-hygiene.py --fix --remote", "worktree": "run without --fix to see each"}
+GROUPED_REMEDY = {"remote": "repo-hygiene.py --fix --remote"}
+# Each worktree has its own reason and its own command, so a run of them is never one finding.
+UNGROUPED = ("worktree",)
 
 
 class Unavailable(Exception):
@@ -116,9 +129,14 @@ def is_within(path, directory):
 class Report:
     def __init__(self):
         self.leftovers, self.fixed, self.unchecked, self.notes = [], [], [], []
+        self.worktree_notes = []
 
     def leftover(self, kind, what, remedy):
         self.leftovers.append((kind, what, remedy))
+
+    def worktree_note(self, what, remedy):
+        """A worktree left in place that is not a leftover: in use, or not provably finished."""
+        self.worktree_notes.append((what, remedy))
 
     def done(self, kind, what):
         self.fixed.append((kind, what))
@@ -131,7 +149,7 @@ class Report:
         for kind, what, remedy in self.leftovers:
             by_kind.setdefault(kind, []).append((what, remedy))
         for kind, items in by_kind.items():
-            if len(items) > 3:
+            if len(items) > 3 and kind not in UNGROUPED:
                 shown = ", ".join(what.split(" ")[0] for what, _ in items[:3])
                 remedy = GROUPED_REMEDY.get(kind, "repo-hygiene.py --fix")
                 print(f"LEFTOVER  {kind:<9} {len(items)} of them: {shown}, ...\n          -> {remedy}")
@@ -142,24 +160,59 @@ class Report:
             print(f"NOT CHECKED {what}")
         for what in self.notes:
             print(f"note      {what}")
+        for what, remedy in self.worktree_notes:
+            print(f"note      worktree  {what}\n          -> {remedy}")
         if self.leftovers:
             print(f"repo-hygiene: {len(self.leftovers)} leftover(s)")
             return 1
         if self.unchecked:
             print("repo-hygiene: NOT VERIFIED -- no leftovers found in what could be read")
             return 3
+        if self.worktree_notes:
+            print(f"repo-hygiene: no leftovers; {len(self.worktree_notes)} worktree(s) left in place, "
+                  "listed above")
+            return 0
         print("repo-hygiene: CLEAN")
         return 0
 
 
 def merged_pulls():
-    """{head branch name: set of head commits} for merged pull requests of this repository."""
+    """{head branch name: {head commit: the pull request}} for merged pull requests.
+
+    A pull request is {"number", "base", "merge"}: where it merged, and the commit that holds it.
+    """
     rows = gh_json("pr", "list", "--repo", REPO, "--state", "merged", "--limit", "1000",
-                   "--json", "headRefName,headRefOid")
+                   "--json", "headRefName,headRefOid,number,baseRefName,mergeCommit")
     heads = {}
     for row in rows or []:
-        heads.setdefault(row["headRefName"], set()).add(row["headRefOid"])
+        heads.setdefault(row["headRefName"], {})[row["headRefOid"]] = {
+            "number": row.get("number"), "base": row.get("baseRefName"),
+            "merge": (row.get("mergeCommit") or {}).get("oid")}
     return heads
+
+
+def merged_at_tip(root, head, branch, pulls):
+    """The pull request that merged exactly `head` into main, or None when that is not provable.
+
+    Either the tip is in `origin/main`, or the pull request's recorded head is this tip and its
+    merge commit is in `origin/main`: a squash or rebase merge replaces the tip with a new commit,
+    which is how this repository merges. The pull request's head is still the same commit, so the
+    worktree holds nothing the merge did not take, and GitHub keeps it at `refs/pull/<n>/head`.
+    """
+    pull = pulls.get(branch, {}).get(head)
+    if pull is None:
+        return None
+    if is_ancestor(root, head):
+        return pull
+    if pull["base"] == MAIN and pull["merge"] and is_ancestor(root, pull["merge"]):
+        return pull
+    return None
+
+
+def clear_command(path, tree):
+    """The deliberate command that removes a worktree git would otherwise refuse to."""
+    unlock = f"git worktree unlock {path} && " if "locked" in tree else ""
+    return f"{unlock}git worktree remove {path}"
 
 
 def check_primary(root, fix, report):
@@ -178,6 +231,37 @@ def check_primary(root, fix, report):
         report.leftover("behind", what, "git merge --ff-only origin/main")
 
 
+def leave_alone(root, tree, path, branch, head, pulls, report):
+    """Say why a worktree the tool is not removing is still here, and how to clear it."""
+    command = clear_command(path, tree)
+    in_main = is_ancestor(root, head)
+    if not branch:
+        if in_main:
+            report.worktree_note(f"{path} (detached at {head[:7]}, in {UPSTREAM}; a review may be "
+                                 "running, so it is removed once it is a day old)", command)
+        else:
+            report.worktree_note(f"{path} (detached at {head[:7]}, which {UPSTREAM} does not hold)",
+                                 command)
+        return
+    merged = pulls.get(branch, {})
+    if merged:
+        numbers = ", ".join(f"#{p['number']}" for p in merged.values())
+        state = f"in {UPSTREAM}" if in_main else f"not in {UPSTREAM}"
+        report.leftover(
+            "worktree",
+            f"{path} ({branch}: pull request {numbers} merged, but not at this tip {head[:7]}, "
+            f"which is {state})", f"{command}; the branch stays, look at git log first")
+    elif in_main:
+        report.worktree_note(
+            f"{path} ({branch}, tip {head[:7]} is in {UPSTREAM}, no pull request merged at it: "
+            "just started, or finished without one)", command)
+    else:
+        ahead = git("rev-list", "--count", f"{UPSTREAM}..{head}", cwd=root, check=False).stdout.strip()
+        report.worktree_note(
+            f"{path} ({branch}, {ahead} commit(s) not in {UPSTREAM}, no pull request merged: "
+            "in progress)", f"{command}, once it is abandoned or finished")
+
+
 def check_worktrees(root, here, pulls, fix, report):
     for tree in worktrees(root):
         path = tree["worktree"]
@@ -192,15 +276,20 @@ def check_worktrees(root, here, pulls, fix, report):
         branch = tree.get("branch", "").removeprefix("refs/heads/")
         if branch:
             if pulls is None:
-                continue  # unchecked; said once by the caller
-            finished = head in pulls.get(branch, set()) and is_ancestor(root, head)
-            why = f"{path} ({branch}, its pull request merged)"
+                # Not judged, and the caller says why once; the worktree is still here.
+                report.worktree_note(f"{path} ({branch}, not judged: merged pull requests were "
+                                     "not read)", clear_command(path, tree))
+                continue
+            pull = merged_at_tip(root, head, branch, pulls)
+            finished = pull is not None
+            why = f"{path} ({branch}, its pull request #{pull['number']} merged)" if pull else ""
         else:
             admin = os.path.join(root, ".git", "worktrees", os.path.basename(path))
             age = time.time() - os.path.getmtime(admin) if os.path.exists(admin) else 0
             finished = is_ancestor(root, head) and age > DETACHED_MIN_AGE_SECONDS
             why = f"{path} (detached at {head[:7]}, in {UPSTREAM}, {int(age // 3600)}h old)"
         if not finished:
+            leave_alone(root, tree, path, branch, head, pulls, report)
             continue
         blocked = None
         if is_within(here, path):
@@ -226,23 +315,35 @@ def check_worktrees(root, here, pulls, fix, report):
             report.leftover("worktree", why, removed.stderr.strip())
 
 
-def check_branches(root, fix, report):
+def check_branches(root, pulls, fix, report):
     checked_out = {t.get("branch", "").removeprefix("refs/heads/") for t in worktrees(root)}
     checked_out.add(git("rev-parse", "--abbrev-ref", "HEAD", cwd=root).stdout.strip())
     listing = git("for-each-ref", "--format=%(refname:short) %(objectname)", "refs/heads", cwd=root)
+    finished = set()
     for line in listing.stdout.splitlines():
         name, sha = line.split()
-        if name == MAIN or name in checked_out or not is_ancestor(root, sha):
+        if name == MAIN or name in checked_out:
             continue
+        if is_ancestor(root, sha):
+            proof, remedy = f"in {UPSTREAM}", f"git branch -d {name}"
+        else:
+            # A squash merge leaves the tip out of main; the pull request merged at exactly this
+            # tip is the same proof a worktree needs (merged_at_tip), and nothing weaker is.
+            pull = merged_at_tip(root, sha, name, pulls) if pulls is not None else None
+            if pull is None:
+                continue
+            proof, remedy = f"its pull request #{pull['number']} merged at this tip", f"git branch -D {name}"
+        finished.add(name)
         if fix:
             # update-ref with the expected old value, not `branch -d`: -d judges "merged" against
-            # the local HEAD, which may be behind origin/main, and the ancestry was checked above.
+            # the local HEAD, which may be behind origin/main. The tip was proven finished above,
+            # and deleting only that exact tip is `branch -D` that cannot delete anything newer.
             git("update-ref", "-d", f"refs/heads/{name}", sha, cwd=root)
-            report.done("branch", f"{name} (in {UPSTREAM})")
+            report.done("branch", f"{name} ({proof})")
         else:
-            report.leftover("branch", f"{name} (in {UPSTREAM})", f"git branch -d {name}")
+            report.leftover("branch", f"{name} ({proof})", remedy)
     unmerged = [n for n in git("branch", "--format=%(refname:short)", "--no-merged", UPSTREAM,
-                               cwd=root).stdout.split() if n not in checked_out]
+                               cwd=root).stdout.split() if n not in checked_out and n not in finished]
     if unmerged:
         report.notes.append(
             "unmerged local branch(es) with no worktree, kept because their commits are not in "
@@ -254,7 +355,7 @@ def check_remote(root, pulls, fix, remote, report):
                   "refs/remotes/origin", cwd=root)
     for line in listing.stdout.splitlines():
         name, sha = line.split()
-        if name in (MAIN, "HEAD") or sha not in pulls.get(name, set()):
+        if name in (MAIN, "HEAD") or sha not in pulls.get(name, {}):
             continue
         what = f"origin/{name} (its pull request merged)"
         if fix and remote:
@@ -305,16 +406,32 @@ def check_map_releases(root, report):
         if shown.returncode != 0:
             continue
         try:
-            version = json.loads(shown.stdout)["version"]
+            document = json.loads(shown.stdout)
+            version = document["version"]
         except (ValueError, KeyError, TypeError):
             report.leftover("map", f"examples/{name}/map-package.json has no readable version",
                             "fix the file; tools/pack-map.py says what it needs")
             continue
-        if f"map/{name}/v{version}" not in tags:
+        tag = f"map/{name}/v{version}"
+        held = document.get("held") if isinstance(document, dict) else None
+        declared = "held" in document if isinstance(document, dict) else False
+        if declared and (not isinstance(held, str) or not held.strip()):
+            report.leftover("map", f"examples/{name}/map-package.json declares `held` with no reason",
+                            'give the reason ("held": "<why>"), or remove the field; '
+                            "tools/pack-map.py refuses an empty one")
+        elif declared and tag in tags:
+            report.leftover("map", f"examples/{name} is declared held ({held.strip()}), and {tag} is tagged",
+                            "remove `held` from map-package.json: the version is published")
+        elif declared:
+            report.notes.append(
+                f"examples/{name} declares {version}, held on purpose, so {tag} is not tagged: "
+                f"{held.strip()}. To publish it, remove `held` in a reviewed commit, then tag it")
+        elif tag not in tags:
             report.leftover(
-                "map", f"examples/{name} declares {version}, and map/{name}/v{version} is not tagged",
-                f"publish it (git tag map/{name}/v{version} on origin/main; publish-map.yml runs on the "
-                "tag), or say in the map's README why it is held")
+                "map", f"examples/{name} declares {version}, and {tag} is not tagged",
+                f"publish it (git tag {tag} on origin/main; publish-map.yml runs on the tag), or "
+                f'declare why it is held: "held": "<why>" in examples/{name}/map-package.json '
+                "(docs/decisions/0073)")
 
 
 def remove_caches(root, fix, report):
@@ -369,7 +486,7 @@ def main(argv=None):
     check_worktrees(root, here, pulls, args.fix, report)
     if args.fix:
         git("worktree", "prune", cwd=root)
-    check_branches(root, args.fix, report)
+    check_branches(root, pulls, args.fix, report)
     if pulls is not None:
         check_remote(root, pulls, args.fix, args.remote, report)
     if not args.offline:
