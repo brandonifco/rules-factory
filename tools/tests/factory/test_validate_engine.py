@@ -15,6 +15,7 @@ import importlib.util
 import io
 import json
 import os
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -194,6 +195,21 @@ class BriefPrintsLessAndProvesTheSame(unittest.TestCase):
         self.assertIn("==> a step whose tool says its own count\n3 lock file(s) compared\n", out)
         self.assertNotIn("many lines", out)
 
+    def test_a_step_prints_every_verdict_it_wrote_and_not_the_lines_around_them(self):
+        def several():
+            engine.step("a step with three verdicts")
+            print("noise before")
+            engine.ok("first proved")
+            print("the engine's own gate says: ok   not this script's verdict")
+            engine.ok("second proved")
+            engine.ok("third proved")
+            print("trailing noise")
+        self.behaviours["pack_the_map"] = several
+        _, out, _ = run_main(["--brief"])
+        self.assertIn("==> a step with three verdicts\nok   first proved\nok   second proved\nok   third proved\n", out)
+        self.assertNotIn("trailing noise", out)
+        self.assertNotIn("not this script's verdict", out)
+
     def test_the_whole_of_it_is_in_the_log_the_run_names(self):
         _, out, _ = run_main(["--brief"])
         (log,) = self.logs
@@ -286,7 +302,7 @@ class BriefPrintsLessAndProvesTheSame(unittest.TestCase):
 
     def test_a_temporary_directory_inside_the_checkout_is_refused(self):
         inside = tempfile.mkdtemp(prefix=".brief-tmp-for-a-test-", dir=ROOT)
-        self.addCleanup(lambda: os.path.isdir(inside) and os.rmdir(inside))
+        self.addCleanup(shutil.rmtree, inside, True)
         err = io.StringIO()
         with redirect_stderr(err), self.assertRaises(engine.Stop) as refused:
             _brief_log(inside)
