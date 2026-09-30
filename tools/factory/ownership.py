@@ -145,11 +145,12 @@ TABLE = (
     Row("tools/mutate.py", MANAGED, 1,
         "a recorded mutation, run: the edit, the named test, and the source put back, so the evidence "
         "AGENTS.md asks for is re-runnable by the reviewer rather than a sentence (#454)"),
-    Row("tools/re-produce.sh", MANAGED, 7,
+    Row("tools/re-produce.sh", MANAGED, 8,
         "an overlay edit is finished by a re-produce, from the factory commit the record names (#192); "
         "a record a merge left conflicted is named as one, and --resolve-record settles it (#252); "
         "the repository root comes from the record too, so an embedded engine re-produces with no "
-        "arguments of its own (#517, 0069)"),
+        "arguments of its own (#517, 0069); an engine made from several corpora is re-produced from "
+        "every corpus the record names, the principal first (#531, 0070)"),
     Row("tools/review-packet.py", MANAGED, 15,
         "everything a reviewer needs about one pull request, in the order it is read (0029); every map is "
         "read once and the entry packets are built from those bytes, and a refused packet writes nothing "
@@ -429,6 +430,7 @@ RECIPE_SHA256 = {
         5: "4533319092ce21ccdcaaeade46dd4f10cdfa2209bb6f565efe0e9d163ef0b185",
         6: "27f0459e33e943fb7c6cd185b808f52ffa7165a7de44f267adbcd8654ce65262",
         7: "f60fa36f676144fd3a6ac4f7a29a5f85d2d2eaa5ecab3664594caf2fc4a8af86",
+        8: "9c0eb1c3178b16fd3799037316554ca8256f0ccebf82998d69658d781b1526b2",
     },
     "tools/review-packet.py": {
         1: "2e989c02c1827bf6d3da8fce9a35874e25ea4baf14f62eeb64aab78c30b1f392",
