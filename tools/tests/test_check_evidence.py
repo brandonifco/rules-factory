@@ -61,6 +61,7 @@ class TestTheLockDescribesThisTree(unittest.TestCase):
     def test_the_committed_lock_verifies(self):
         self.assertEqual([], evidence.verify(pathlib.Path(ROOT), LOCK))
 
+    @unittest.skipIf(MEASURING, WHILE_MEASURING)
     def test_it_names_every_tracked_artifact_and_no_other(self):
         on_disk = set(evidence.tracked(pathlib.Path(ROOT)))
         named = {a["path"] for a in LOCK["artifacts"]}
@@ -481,6 +482,148 @@ class TestAMeasurementIsTakenOverAGreenGate(unittest.TestCase):
         decorator = "@unittest.skipIf(MEASURING, " + "WHILE_MEASURING)"
         lines = [line for line in open(__file__, encoding="utf-8").read().splitlines()
                  if line.strip() == decorator]
-        self.assertEqual(6, len(lines),
+        self.assertEqual(7, len(lines),
                          "a test comparing the committed lock with the tree is left running "
                          "during a measurement, and would perturb it (#408)")
+
+    def test_the_membership_test_is_one_of_them(self):
+        """#443: the count above cannot say *which* test lost its guard. Membership -- the lock
+        naming every tracked artifact -- is stale mid-rewrite for the same reason content is,
+        and when it was left running `--measure` could not add an artifact without
+        `--allow-partial`, which records `complete: false` for a run where nothing was wrong."""
+        lines = open(__file__, encoding="utf-8").read().splitlines()
+        at = lines.index("    def test_it_names_every_tracked_artifact_and_no_other(self):")
+        self.assertEqual("    @unittest.skipIf(MEASURING, " + "WHILE_MEASURING)",
+                         lines[at - 1])
+
+
+class TestTheProseFiguresAreDerivedFromTheLockAndHeldToIt(unittest.TestCase):
+    """#439: the inventory said 207 files where the lock said 214, and the README and the
+    inventory disagreed about one figure. Only `measuredAt` was held, so nothing failed.
+
+    `--measure` now writes the sentences and `verify` refuses prose that disagrees. What the
+    committed documents say is held by `test_the_committed_lock_verifies`, which calls `verify`.
+    """
+
+    TOTALS = "3 tracked files, 4.5 MB, out of 30.0 MB tracked in all"
+    ROLES = ("3.0 MB read by the checks, 1.0 MB packed into published packages, "
+             "and 0.5 MB read by nothing at all")
+
+    def lock(self):
+        lock = copy.deepcopy(LOCK)
+        lock["repository"] = {"trackedFiles": 500, "trackedBytes": 30 * (1 << 20)}
+        lock["artifacts"] = [
+            {"path": "examples/a", "bytes": 3 * (1 << 20), "role": "active"},
+            {"path": "examples/b", "bytes": 1 << 20, "role": "release"},
+            {"path": "examples/c", "bytes": 1 << 19, "role": "archived"},
+        ]
+        return lock
+
+    def documents(self, root, totals, roles):
+        (root / "docs").mkdir()
+        (root / "docs" / "evidence-inventory.md").write_text(
+            "Evidence: <!-- derived:evidence-totals -->" + totals
+            + "<!-- /derived:evidence-totals -->.\n", encoding="utf-8")
+        (root / "README.md").write_text(
+            "Found: <!-- derived:evidence-roles -->" + roles
+            + "<!-- /derived:evidence-roles -->\n", encoding="utf-8")
+
+    def test_the_figures_come_from_the_lock(self):
+        self.assertEqual({"evidence-totals": self.TOTALS, "evidence-roles": self.ROLES},
+                         evidence.figures(self.lock()))
+
+    def test_prose_that_agrees_is_accepted(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = pathlib.Path(tmp)
+            self.documents(root, self.TOTALS, self.ROLES)
+            self.assertEqual([], evidence.derived_problems(root, self.lock()))
+
+    def test_a_stale_count_in_the_inventory_is_refused(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = pathlib.Path(tmp)
+            self.documents(root, "2 tracked files, 4.5 MB, out of 30.0 MB tracked in all",
+                           self.ROLES)
+            problems = evidence.derived_problems(root, self.lock())
+            self.assertEqual(1, len(problems), problems)
+            self.assertIn("docs/evidence-inventory.md", problems[0])
+            self.assertIn("3 tracked files", problems[0])
+
+    def test_a_stale_size_in_the_readme_is_refused(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = pathlib.Path(tmp)
+            self.documents(root, self.TOTALS, self.ROLES.replace("3.0 MB", "2.9 MB"))
+            problems = evidence.derived_problems(root, self.lock())
+            self.assertEqual(1, len(problems), problems)
+            self.assertIn("README.md", problems[0])
+
+    def test_removing_the_markers_is_not_a_way_out(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = pathlib.Path(tmp)
+            self.documents(root, self.TOTALS, self.ROLES)
+            (root / "README.md").write_text("Found: " + self.ROLES + "\n", encoding="utf-8")
+            problems = evidence.derived_problems(root, self.lock())
+            self.assertTrue(any("README.md has no" in p for p in problems), problems)
+
+    def test_a_lock_that_does_not_record_the_repository_total_is_refused(self):
+        lock = self.lock()
+        del lock["repository"]
+        with tempfile.TemporaryDirectory() as tmp:
+            root = pathlib.Path(tmp)
+            self.documents(root, self.TOTALS, self.ROLES)
+            problems = evidence.derived_problems(root, lock)
+            self.assertTrue(any("does not record" in p for p in problems), problems)
+
+    def test_writing_makes_the_prose_agree_and_a_second_write_changes_nothing(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = pathlib.Path(tmp)
+            self.documents(root, "1 tracked files, 1.0 MB, out of 2.0 MB tracked in all",
+                           "9.9 MB read by the checks, 9.9 MB packed into published packages, "
+                           "and 9.9 MB read by nothing at all")
+            lock = self.lock()
+            self.assertEqual(["README.md", "docs/evidence-inventory.md"],
+                             sorted(evidence.write_derived(root, lock)))
+            self.assertEqual([], evidence.derived_problems(root, lock))
+            self.assertEqual([], evidence.write_derived(root, lock))
+
+    def test_verify_holds_the_committed_documents_to_the_lock(self):
+        """Through the whole verifier, against the real documents: a lock whose repository total
+        differs from what they say fails the gate's step and not only this helper."""
+        lock = copy.deepcopy(LOCK)
+        lock["repository"] = {"trackedFiles": 1, "trackedBytes": 1 << 40}
+        problems = evidence.verify(pathlib.Path(ROOT), lock)
+        self.assertTrue(any("evidence-inventory.md says" in p for p in problems), problems)
+
+    def test_a_measurement_records_what_the_repository_tracks_in_all(self):
+        lock = evidence.build(pathlib.Path(ROOT),
+                              {p: [] for p in evidence.tracked(pathlib.Path(ROOT))}, None, [])
+        self.assertGreater(lock["repository"]["trackedFiles"], len(lock["artifacts"]))
+        self.assertGreater(lock["repository"]["trackedBytes"],
+                           sum(a["bytes"] for a in lock["artifacts"]))
+
+    def test_measure_writes_the_prose_it_derived(self):
+        """The whole path `--measure` takes, in a throwaway repository: the figures in both
+        documents are what the lock it just wrote says, without anyone typing them."""
+        with tempfile.TemporaryDirectory() as tmp:
+            root = pathlib.Path(tmp)
+            env = {**os.environ, "GIT_AUTHOR_NAME": "t", "GIT_AUTHOR_EMAIL": "t@example.invalid",
+                   "GIT_COMMITTER_NAME": "t", "GIT_COMMITTER_EMAIL": "t@example.invalid"}
+            (root / "examples").mkdir()
+            (root / "examples" / "one.txt").write_text("x" * 1024, encoding="utf-8")
+            (root / "tools").mkdir()
+            self.documents(root, "stale", "stale")
+            for args in (["init", "-q"], ["add", "."], ["commit", "-q", "-m", "x"]):
+                subprocess.run(["git", *args], cwd=root, check=True, env=env,
+                               capture_output=True)
+            old = (evidence.ROOT, evidence.LOCK, evidence.measure)
+            evidence.ROOT, evidence.LOCK = root, root / "tools" / "evidence-lock.json"
+            evidence.measure = lambda _root: ({"examples/one.txt": ["checks"]}, [])
+            try:
+                with redirect_stdout(io.StringIO()):
+                    self.assertEqual(0, evidence.main(["--measure", "--lock",
+                                                       str(evidence.LOCK)]))
+            finally:
+                evidence.ROOT, evidence.LOCK, evidence.measure = old
+            lock = json.loads((root / "tools" / "evidence-lock.json").read_text(encoding="utf-8"))
+            self.assertEqual([], evidence.derived_problems(root, lock))
+            self.assertIn("1 tracked files", (root / "docs" / "evidence-inventory.md").read_text(
+                encoding="utf-8"))

@@ -90,8 +90,32 @@ class Hygiene(unittest.TestCase):
         self.git(scratch, "merge", "-q", "--no-ff", "-m", f"merge {branch}", f"origin/{branch}")
         self.git(scratch, "push", "-q", "origin", "main")
 
-    def merged_pr(self, branch, sha):
-        self.state["pr list"].append({"headRefName": branch, "headRefOid": sha})
+    def merged_pr(self, branch, sha, **more):
+        self.state["pr list"].append(dict(
+            {"headRefName": branch, "headRefOid": sha, "number": len(self.state["pr list"]) + 1},
+            **more))
+
+    def squash_on_origin(self, branch):
+        """Squash-merge a pushed branch into origin's main; returns the new commit on main."""
+        scratch = os.path.join(self.tmp, f"squash-{branch}")
+        self.git(self.tmp, "clone", "-q", self.origin, scratch)
+        self.git(scratch, "merge", "-q", "--squash", f"origin/{branch}")
+        self.git(scratch, "commit", "-q", "-m", f"squash {branch}")
+        self.git(scratch, "push", "-q", "origin", "main")
+        return self.git(scratch, "rev-parse", "HEAD")
+
+    def squash_merged_worktree(self, name, **pull):
+        """A worktree on a branch whose pull request was squash-merged: the tip is not in main."""
+        self.git(self.clone, "switch", "-q", "-c", name)
+        sha = self.commit(self.clone, f"{name}.txt", name)
+        self.git(self.clone, "push", "-q", "origin", name)
+        self.git(self.clone, "switch", "-q", "main")
+        squashed = self.squash_on_origin(name)
+        self.merged_pr(name, sha, **dict(
+            {"number": 385, "baseRefName": "main", "mergeCommit": {"oid": squashed}}, **pull))
+        tree = os.path.join(self.tmp, f"wt-{name}")
+        self.git(self.clone, "worktree", "add", "-q", tree, name)
+        return tree
 
     def run_tool(self, *args, cwd=None):
         with open(os.environ["FAKE_GH_STATE"], "w", encoding="utf-8") as handle:
@@ -233,6 +257,235 @@ class Hygiene(unittest.TestCase):
         self.run_tool("--fix")
         self.assertEqual(self.worktree_paths(), [])
 
+    # -- a worktree the tool will not remove is reported, never skipped in silence (#441) -------
+
+    def test_a_squash_merged_worktree_at_the_recorded_head_is_finished(self):
+        tree = self.squash_merged_worktree("squashed")
+        code, output = self.run_tool()  # fetches, so origin/main holds the squash commit
+        self.assertFalse(hygiene.is_ancestor(self.clone, self.git(tree, "rev-parse", "HEAD")),
+                         "the case is a tip main does not hold")
+        self.assertEqual(code, 1, output)
+        self.assertIn(f"git worktree remove {tree}", output)
+        code, output = self.run_tool("--fix")
+        self.assertEqual(self.worktree_paths(), [])
+        self.assertIn("its pull request #385 merged", output)
+        self.assertNotIn("squashed", self.branches(), "AGENTS.md 4: --fix removes the branch too")
+        self.assertIn("fixed     branch    squashed (its pull request #385 merged at this tip)", output)
+        self.assertNotIn("unmerged local branch", output)
+
+    def squash_merged_branch(self, name, **pull):
+        """A squash-merged branch whose worktree is already gone."""
+        tree = self.squash_merged_worktree(name, **pull)
+        self.git(self.clone, "worktree", "remove", tree)
+
+    def test_a_squash_merged_branch_with_no_worktree_is_finished_not_unmerged(self):
+        self.squash_merged_branch("orphan")
+        code, output = self.run_tool()
+        self.assertEqual(code, 1, output)
+        self.assertIn("LEFTOVER  branch    orphan (its pull request #385 merged at this tip)", output)
+        self.assertIn("-> git branch -D orphan", output)
+        self.assertNotIn("unmerged local branch", output)
+        self.assertIn("orphan", self.branches())
+        code, output = self.run_tool("--fix")
+        self.assertNotIn("orphan", self.branches())
+        self.assertNotIn("unmerged local branch", output)
+
+    def test_a_squash_merged_branch_with_a_commit_after_the_merge_is_kept(self):
+        self.squash_merged_branch("moved")
+        self.git(self.clone, "switch", "-q", "moved")
+        self.commit(self.clone, "later.txt", "work after the merge")
+        self.git(self.clone, "switch", "-q", "main")
+        code, output = self.run_tool("--fix")
+        self.assertIn("moved", self.branches())
+        self.assertIn("kept because their commits are not in main: moved", output)
+
+    def test_a_squash_merged_branch_the_pull_request_did_not_merge_into_main_is_kept(self):
+        self.squash_merged_branch("elsewhere-branch", baseRefName="release")
+        code, output = self.run_tool("--fix")
+        self.assertIn("elsewhere-branch", self.branches())
+        self.assertIn("kept because their commits are not in main: elsewhere-branch", output)
+
+    def test_a_squash_merge_into_another_base_is_not_proof_the_work_is_in_main(self):
+        tree = self.squash_merged_worktree("elsewhere", baseRefName="release")
+        code, output = self.run_tool("--fix")
+        self.assertEqual(self.worktree_paths(), [tree])
+        self.assertEqual(code, 1, output)
+        self.assertIn("LEFTOVER  worktree", output)
+        self.assertIn(f"git worktree remove {tree}", output)
+
+    def test_a_squash_merge_whose_merge_commit_main_does_not_hold_is_not_proof(self):
+        tree = self.squash_merged_worktree("phantom", mergeCommit={"oid": "0" * 40})
+        code, output = self.run_tool("--fix")
+        self.assertEqual(self.worktree_paths(), [tree])
+        self.assertEqual(code, 1, output)
+
+    # -- a pull request brought up to date on GitHub before it merged (#554) ----------------------
+
+    def updated_on_github(self, name, **pull):
+        """A worktree whose branch was updated on GitHub, then squash-merged: its tip is behind.
+
+        `main` requires an up-to-date branch, so the ordinary path is `gh pr update-branch`,
+        which adds a merge commit the local branch never had. The pull request's recorded head
+        is that commit, reachable from `refs/pull/<n>/head` on origin and in no local ref.
+        """
+        self.git(self.clone, "switch", "-q", "-c", name)
+        tip = self.commit(self.clone, f"{name}.txt", name)
+        self.git(self.clone, "push", "-q", "origin", name)
+        self.git(self.clone, "switch", "-q", "main")
+        elsewhere = os.path.join(self.tmp, f"moved-on-{name}")
+        self.git(self.tmp, "clone", "-q", self.origin, elsewhere)
+        self.commit(elsewhere, f"moved-on-{name}.txt", "main moved on")
+        self.git(elsewhere, "push", "-q", "origin", "main")
+        self.git(elsewhere, "switch", "-q", name)
+        self.git(elsewhere, "merge", "-q", "--no-ff", "-m", "update branch", "origin/main")
+        self.git(elsewhere, "push", "-q", "origin", name)
+        head = self.git(elsewhere, "rev-parse", "HEAD")
+        self.git(elsewhere, "push", "-q", "origin", f"{head}:refs/pull/385/head")
+        squashed = self.squash_on_origin(name)
+        self.git(elsewhere, "push", "-q", "origin", "--delete", name)  # GitHub deletes it on merge
+        self.merged_pr(name, head, **dict(
+            {"number": 385, "baseRefName": "main", "mergeCommit": {"oid": squashed}}, **pull))
+        tree = os.path.join(self.tmp, f"wt-{name}")
+        self.git(self.clone, "worktree", "add", "-q", tree, name)
+        self.assertEqual(self.git(tree, "rev-parse", "HEAD"), tip)
+        self.assertNotEqual(tip, head)
+        return tree, tip, head
+
+    def pull_refs(self):
+        return self.git(self.clone, "for-each-ref", "refs/pull", "refs/remotes/origin/pull").split()
+
+    def test_a_worktree_behind_its_pull_requests_head_is_finished_and_leaves_no_ref(self):
+        tree, tip, head = self.updated_on_github("updated")
+        self.assertNotEqual(subprocess.run(["git", "cat-file", "-e", head], cwd=self.clone).returncode,
+                            0, "the case is a pull request head the clone has never seen")
+        code, output = self.run_tool()
+        self.assertEqual(code, 1, output)
+        self.assertIn(f"-> git worktree remove {tree}", output)
+        self.assertEqual(self.worktree_paths(), [tree], "a report removes nothing")
+        code, output = self.run_tool("--fix")
+        self.assertEqual(self.worktree_paths(), [])
+        self.assertNotIn("updated", self.branches(), "AGENTS.md 4: --fix removes the branch too")
+        self.assertIn("fixed     worktree", output)
+        self.assertIn("fixed     branch    updated (its pull request #385 merged", output)
+        self.assertEqual(self.pull_refs(), [], "fetching the head left a ref behind")
+        self.assertEqual(code, 0, output)
+        self.assertNotIn("LEFTOVER", output)
+
+    def test_a_worktree_with_a_commit_the_pull_requests_head_lacks_is_kept(self):
+        tree, tip, head = self.updated_on_github("extra")
+        self.commit(tree, "later.txt", "work the pull request never had")
+        code, output = self.run_tool("--fix")
+        self.assertEqual(self.worktree_paths(), [tree])
+        self.assertIn("extra", self.branches())
+        self.assertEqual(code, 1, output)
+        self.assertIn(f"LEFTOVER  worktree  {tree} (extra: pull request #385 merged, but not at this tip",
+                      output)
+
+    def test_a_worktree_behind_a_head_that_cannot_be_fetched_is_kept(self):
+        tree, tip, head = self.updated_on_github("unfetchable")
+        self.git(self.origin, "update-ref", "-d", "refs/pull/385/head")
+        code, output = self.run_tool("--fix")
+        self.assertEqual(self.worktree_paths(), [tree])
+        self.assertIn("unfetchable", self.branches())
+        self.assertEqual(code, 1, output)
+
+    def test_a_worktree_behind_a_head_merged_into_another_base_is_kept(self):
+        tree, tip, head = self.updated_on_github("release-update", baseRefName="release")
+        code, output = self.run_tool("--fix")
+        self.assertEqual(self.worktree_paths(), [tree])
+        self.assertEqual(code, 1, output)
+
+    def test_a_branch_behind_its_pull_requests_head_is_finished_with_no_worktree(self):
+        tree, tip, head = self.updated_on_github("orphan-updated")
+        self.git(self.clone, "worktree", "remove", tree)
+        code, output = self.run_tool()
+        self.assertEqual(code, 1, output)
+        self.assertIn("LEFTOVER  branch    orphan-updated (its pull request #385 merged", output)
+        self.assertIn("-> git branch -D orphan-updated", output)
+        self.assertIn("orphan-updated", self.branches())
+        code, output = self.run_tool("--fix")
+        self.assertNotIn("orphan-updated", self.branches())
+        self.assertNotIn("unmerged local branch", output)
+        self.assertEqual(self.pull_refs(), [])
+
+    def test_a_branch_with_a_commit_the_pull_requests_head_lacks_is_kept(self):
+        tree, tip, head = self.updated_on_github("extra-branch")
+        self.commit(tree, "later.txt", "work the pull request never had")
+        self.git(self.clone, "worktree", "remove", tree)
+        code, output = self.run_tool("--fix")
+        self.assertIn("extra-branch", self.branches())
+        self.assertIn("kept because their commits are not in main: extra-branch", output)
+
+    def test_a_worktree_left_in_place_is_never_clean_and_says_why(self):
+        tree = os.path.join(self.tmp, "wt-busy")
+        self.git(self.clone, "worktree", "add", "-q", "-b", "busy", tree)
+        self.commit(tree, "busy.txt", "in progress")
+        code, output = self.run_tool("--fix")
+        self.assertEqual(code, 0, output)
+        self.assertNotIn("repo-hygiene: CLEAN", output)
+        self.assertIn(f"note      worktree  {tree} (busy, 1 commit(s) not in {hygiene.UPSTREAM}", output)
+        self.assertIn(f"-> git worktree remove {tree}", output)
+        self.assertIn("no leftovers; 1 worktree(s) left in place", output)
+
+    def test_a_fresh_worktree_is_named_not_skipped(self):
+        tree = os.path.join(self.tmp, "wt-fresh")
+        self.git(self.clone, "worktree", "add", "-q", "-b", "just-started", tree)
+        code, output = self.run_tool()
+        self.assertNotIn("repo-hygiene: CLEAN", output)
+        self.assertIn(f"note      worktree  {tree} (just-started, tip", output)
+
+    def test_a_locked_worktree_names_the_unlock_in_its_command(self):
+        tree = os.path.join(self.tmp, "wt-locked")
+        self.git(self.clone, "worktree", "add", "-q", "-b", "held", tree)
+        self.git(self.clone, "worktree", "lock", tree)
+        code, output = self.run_tool()
+        self.assertIn(f"-> git worktree unlock {tree} && git worktree remove {tree}", output)
+
+    def test_a_worktree_whose_pull_request_merged_at_another_tip_is_a_leftover(self):
+        tree = self.finished_worktree("moved-on")
+        self.commit(tree, "later.txt", "a commit after the merge")
+        code, output = self.run_tool()
+        self.assertEqual(code, 1, output)
+        self.assertIn(f"LEFTOVER  worktree  {tree} (moved-on: pull request", output)
+        self.assertIn("merged, but not at this tip", output)
+        self.assertIn(f"-> git worktree remove {tree}", output)
+
+    def test_every_worktree_is_listed_however_many_there_are(self):
+        trees = []
+        for n in range(5):
+            tree = self.finished_worktree(f"moved-{n}")
+            self.commit(tree, "later.txt", "after the merge")
+            trees.append(tree)
+        code, output = self.run_tool()
+        self.assertEqual(code, 1, output)
+        for tree in trees:
+            self.assertIn(tree, output)
+        self.assertEqual(output.count("LEFTOVER  worktree"), 5)
+
+    def test_a_detached_worktree_that_is_not_yet_a_day_old_is_named(self):
+        tree = os.path.join(self.tmp, "review-tree")
+        self.git(self.clone, "worktree", "add", "-q", "--detach", tree, "origin/main")
+        code, output = self.run_tool("--fix")
+        self.assertEqual(code, 0, output)
+        self.assertIn(f"note      worktree  {tree} (detached at", output)
+        self.assertNotIn("repo-hygiene: CLEAN", output)
+
+    def test_offline_a_branch_worktree_is_still_named(self):
+        tree = os.path.join(self.tmp, "wt-offline")
+        self.git(self.clone, "worktree", "add", "-q", "-b", "unjudged", tree)
+        code, output = self.run_tool("--offline")
+        self.assertEqual(code, 3, output)
+        self.assertIn(f"note      worktree  {tree} (unjudged, not judged", output)
+
+    def test_a_squash_merged_worktree_with_untracked_files_is_reported_not_removed(self):
+        tree = self.squash_merged_worktree("squash-messy")
+        with open(os.path.join(tree, "notes.txt"), "w", encoding="utf-8") as handle:
+            handle.write("not committed\n")
+        code, output = self.run_tool("--fix")
+        self.assertEqual(code, 1, output)
+        self.assertIn("uncommitted or untracked files", output)
+        self.assertEqual(self.worktree_paths(), [tree])
+
     def test_a_merged_remote_branch_is_deleted_only_with_remote(self):
         self.pushed_branch("on-github")
         code, output = self.run_tool("--fix")
@@ -269,6 +522,51 @@ class Hygiene(unittest.TestCase):
         self.assertIn("examples/some-map declares 2.0.0, and map/some-map/v2.0.0 is not tagged", output)
         self.git(self.clone, "tag", "map/some-map/v2.0.0")
         self.assertEqual(self.run_tool("--fix")[0], 0)
+
+    def map_package(self, name, **package):
+        path = os.path.join(self.clone, "examples", name, "map-package.json")
+        os.makedirs(os.path.dirname(path), exist_ok=True)
+        with open(path, "w", encoding="utf-8") as handle:
+            json.dump(dict({"version": "2.0.0"}, **package), handle)
+        self.git(self.clone, "add", "-A")
+        self.git(self.clone, "commit", "-q", "-m", f"{name} package {package}")
+        self.git(self.clone, "push", "-q", "origin", "main")
+
+    def test_the_remedy_an_untagged_map_names_is_one_the_tool_accepts(self):
+        self.map_package("some-map")
+        code, output = self.run_tool("--fix")
+        self.assertEqual(code, 1, output)
+        self.assertIn('"held": "<why>"', output)
+        self.assertIn("docs/decisions/0073", output)
+        self.assertNotIn("README", output)
+        self.map_package("some-map", held="not until the owner decides")
+        code, output = self.run_tool("--fix")
+        self.assertEqual(code, 0, output)
+        self.assertNotIn("LEFTOVER", output)
+
+    def test_a_held_map_is_a_note_that_says_why_and_how_to_publish(self):
+        self.map_package("some-map", held="waiting on the owner's decision")
+        code, output = self.run_tool("--fix")
+        self.assertEqual(code, 0, output)
+        self.assertIn("note      examples/some-map declares 2.0.0, held on purpose, so "
+                      "map/some-map/v2.0.0 is not tagged: waiting on the owner's decision", output)
+        self.assertIn("remove `held` in a reviewed commit, then tag it", output)
+
+    def test_a_held_map_with_no_reason_is_a_leftover(self):
+        for reason in ("", "   ", None, 3):
+            with self.subTest(held=reason):
+                self.map_package("some-map", held=reason)
+                code, output = self.run_tool()
+                self.assertEqual(code, 1, output)
+                self.assertIn("examples/some-map/map-package.json declares `held` with no reason", output)
+
+    def test_a_held_map_whose_version_is_tagged_is_a_leftover(self):
+        self.map_package("some-map", held="a reason that stopped being true")
+        self.git(self.clone, "tag", "map/some-map/v2.0.0")
+        code, output = self.run_tool()
+        self.assertEqual(code, 1, output)
+        self.assertIn("is declared held (a reason that stopped being true), and map/some-map/v2.0.0 "
+                      "is tagged", output)
 
     def release_setup(self, product_change):
         self.git(self.clone, "tag", "-a", "factory/v0.1.0", "-m", "v0.1.0")

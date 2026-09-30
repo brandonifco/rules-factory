@@ -35,6 +35,7 @@ import io
 import json
 import os
 import re
+import shlex
 import shutil
 import subprocess
 import sys
@@ -532,6 +533,166 @@ class TestTheGuard(unittest.TestCase):
         git(self.primary, "worktree", "add", "-q", "-b", "issue-3", worktree)
         code, stderr = self.bash("git commit -m 'x\n\nCo-Authored-By: A <noreply@example.invalid>'", cwd=worktree)
         self.assertEqual(code, 0, stderr)
+
+    # `git worktree add` judges the path, not the value of an option that takes one (#496).
+
+    def outside(self, name="wt"):
+        return os.path.join(self.tmp, "outside", name)
+
+    def assertAllowed(self, command, cwd=None):
+        code, stderr = self.bash(command, cwd=cwd)
+        self.assertEqual(code, 0, f"{command!r} was blocked: {stderr}")
+
+    def assertBlocked(self, command, cwd=None):
+        code, stderr = self.bash(command, cwd=cwd)
+        self.assertEqual(code, 2, f"{command!r} was allowed")
+        return stderr
+
+    def test_a_worktree_for_a_new_branch_outside_the_repository_is_allowed(self):
+        for options in ("-b issue-9-foo", "-B issue-9-foo", "--track -b issue-9-foo", "-fb issue-9-foo",
+                        "-b issue-9-foo --lock", "--reason because -b issue-9-foo"):
+            with self.subTest(options=options):
+                self.assertAllowed(f"git worktree add {options} {self.outside()} origin/main")
+
+    def test_the_reason_of_a_locked_worktree_is_not_its_path(self):
+        self.assertAllowed(f"git worktree add --lock --reason 'in flight' {self.outside()} main")
+        self.assertAllowed(f"git worktree add --lock --reason=inflight {self.outside()} main")
+
+    def test_a_worktree_inside_the_repository_is_blocked_and_the_message_names_the_path(self):
+        for options in ("-b issue-9-foo", "-B issue-9-foo", "--reason because",
+                        "--reason=because -b issue-9-foo", "-b issue-9-foo --track"):
+            with self.subTest(options=options):
+                stderr = self.assertBlocked(f"git worktree add {options} wt-inside origin/main")
+                self.assertIn("creating a worktree inside the repository (wt-inside)", stderr)
+                self.assertNotIn("issue-9-foo)", stderr)
+        stderr = self.assertBlocked(f"git worktree add -b outside-name {os.path.join(self.primary, 'sub', 'wt')}")
+        self.assertIn(os.path.join(self.primary, "sub", "wt"), stderr)
+
+    def test_the_forms_of_worktree_add_without_a_valued_option_keep_their_behaviour(self):
+        for options in ("", "--detach", "-f", "--force", "--lock", "--no-checkout", "--track",
+                        "--guess-remote", "-q", "--quiet"):
+            with self.subTest(options=options):
+                self.assertAllowed(f"git worktree add {options} {self.outside()} main")
+                self.assertBlocked(f"git worktree add {options} wt-inside main")
+        self.assertAllowed(f"git worktree add -- {self.outside()} main")
+        self.assertBlocked("git worktree add -- wt-inside main")
+
+    # A `cd` earlier in the same command moves what a segment is judged against (#463).
+
+    def worktree(self, name="issue-cd"):
+        path = os.path.join(self.tmp, "worktrees", name)
+        git(self.primary, "worktree", "add", "-q", "-b", name, path)
+        return path
+
+    def test_a_commit_after_a_cd_into_a_worktree_is_judged_there(self):
+        worktree = self.worktree()
+        self.assertAllowed(f"cd {worktree} && git commit -m 'x'")
+        self.assertAllowed(f"cd {worktree}; git commit -m 'x'")
+        self.assertAllowed(f"cd {worktree}\ngit commit -m 'x'")
+        self.assertAllowed(f"cd '{worktree}' && git add README.md && git commit -m 'x'")
+        self.assertBlocked("git commit -m 'x'")
+
+    def test_a_write_after_a_cd_into_a_directory_outside_the_repository_is_judged_there(self):
+        scratch = self.outside("scratch")
+        self.assertAllowed(f"cd {scratch} && cat > probe.csproj <<'EOF'\n<Project />\nEOF")
+        self.assertAllowed(f"cd {scratch} && echo hi > out.txt")
+        self.assertAllowed(f"cd {scratch} && sed -i 's/a/b/' f.md && rm f.md && tee g.md")
+        self.assertAllowed(f"mkdir -p {scratch}/probe && cd {scratch}/probe && echo hi >> out.txt")
+        self.assertAllowed(f"cd ../outside && echo hi > out.txt", cwd=os.path.join(self.tmp, "engine"))
+        self.assertBlocked("echo hi > out.txt")
+
+    def test_a_cd_into_the_primary_checkout_is_still_judged_there(self):
+        self.assertBlocked(f"cd {self.primary}/src && echo hi > out.txt")
+        self.assertBlocked(f"cd {self.primary} && git commit -m 'x'")
+        self.assertBlocked("cd src && echo hi > out.txt")
+        # A directory the command is about to make is inside the repository its parent is in.
+        self.assertBlocked("mkdir -p fresh/dir && cd fresh/dir && echo hi > out.txt")
+        # Standing in a worktree, a `cd` back to the primary checkout is what moves the command
+        # into it -- the payload's cwd would have let this through.
+        worktree = self.worktree("issue-cd-back")
+        self.assertBlocked(f"cd {self.primary} && git commit -m 'x'", cwd=worktree)
+        self.assertBlocked(f"cd {self.primary} && rm README.md", cwd=worktree)
+
+    def test_a_cd_the_guard_cannot_resolve_keeps_the_command_judged_as_it_was(self):
+        scratch = self.outside("scratch")
+        for command in ('cd "$DIR" && echo hi > out.txt',
+                        'cd "$(mktemp -d)" && git commit -m x',
+                        "cd - && echo hi > out.txt",
+                        "cd /tmp/no*such && echo hi > out.txt",
+                        "cd $SP/probe && cat > probe.csproj <<'EOF'\n<Project />\nEOF"):
+            with self.subTest(command=command):
+                self.assertBlocked(command)
+        # An earlier literal cd does not survive an unreadable one: the shell is somewhere the
+        # guard cannot see, so the primary checkout is one of the places the write may land.
+        self.assertBlocked(f'cd {scratch} && cd "$DIR" && echo hi > out.txt')
+        self.assertBlocked(f"cd {scratch} && cd - && git commit -m x")
+        # ...and a literal one afterwards names the place again.
+        self.assertAllowed(f'cd "$DIR" && cd {scratch} && echo hi > out.txt')
+
+    def test_a_cd_that_may_not_take_effect_is_judged_in_every_place_it_may_leave_the_shell(self):
+        scratch = self.outside("scratch")
+        self.assertBlocked(f"cd {scratch} || true; echo hi > out.txt")
+        self.assertBlocked(f"true || cd {scratch} && echo hi > out.txt")
+        self.assertBlocked(f"cd {scratch} && false || echo hi > out.txt")
+        self.assertBlocked(f"cd {scratch} | cat; echo hi > out.txt")
+        self.assertBlocked(f"cd {scratch} & echo hi > out.txt")
+        # A cd that cannot fail to take effect is not made suspect by what follows it.
+        self.assertAllowed(f"cd {scratch} && true || true")
+
+    def test_a_cd_the_guard_does_not_read_is_treated_as_one_it_cannot_resolve(self):
+        scratch = self.outside("scratch")
+        self.assertBlocked(f'cd {scratch} && (cd "$DIR"; echo hi > out.txt)')
+        self.assertBlocked(f'cd {scratch} && if cd "$DIR"; then echo hi > out.txt; fi')
+        self.assertBlocked(f'cd {scratch} && pushd "$DIR" && echo hi > out.txt')
+        self.assertBlocked(f'cd {scratch} && eval "cd $DIR" && echo hi > out.txt')
+        # An argument that only spells "cd" is not a directory change.
+        self.assertAllowed(f"cd {scratch} && echo cd > out.txt")
+
+    # A git command behind a subshell's `)&&` or a reserved word is still a git command (#550).
+
+    def test_a_command_after_a_subshell_glued_to_its_operator_is_judged(self):
+        self.assertBlocked("(cd src)&&git commit -m x")
+        self.assertBlocked("(true);git commit -m x")
+        self.assertBlocked("(true)&&(git commit -m x)")
+        self.assertBlocked("(true)&&rm README.md")
+        self.assertBlocked("(true)||echo hi > out.txt")
+        self.assertBlocked("echo $(true)&&git commit -m x")
+        # A quoted argument that has parentheses in it is one argument, not operators.
+        worktree = self.worktree("issue-parens")
+        self.assertAllowed("git commit -m 'fix (x)&&(y)'", cwd=worktree)
+
+    def test_the_directory_of_a_subshell_is_not_carried_out_of_it(self):
+        scratch = self.outside("scratch")
+        worktree = self.worktree("issue-subshell")
+        self.assertBlocked(f"(cd {scratch})&&git commit -m x")
+        self.assertBlocked(f"(cd {scratch}) && echo hi > out.txt")
+        self.assertBlocked(f"(cd {scratch}); echo hi > out.txt")
+        self.assertBlocked(f"echo $(cd {scratch} && pwd) && echo hi > out.txt")
+        self.assertBlocked(f"(cd {worktree}); git commit -m x")
+        # The subshell's own segments are judged where its `cd` put them, and the parent is
+        # judged where it was.
+        self.assertAllowed(f"(cd {worktree} && git commit -m x)")
+        self.assertAllowed(f"(cd {scratch} && echo hi > out.txt)")
+        # The `)` that closes a subshell is not an argument of the command before it.
+        self.assertAllowed(f"(rm -f {scratch}/out.txt)")
+        self.assertAllowed(f"cd {worktree} && (cd {scratch})&&git commit -m x")
+        self.assertBlocked(f"(cd {worktree} && true)&&git commit -m x")
+
+    def test_a_command_after_a_reserved_word_is_judged(self):
+        for command in ("if true; then git commit -m x; fi",
+                        "if true; then true; else git commit -m x; fi",
+                        "for i in 1 2; do git commit -m x; done",
+                        "while true; do git commit -m x; done",
+                        "if git commit -m x; then true; fi",
+                        "! git commit -m x",
+                        "time git commit -m x",
+                        "if true; then rm README.md; fi",
+                        "if true; then git add -A; fi"):
+            with self.subTest(command=command):
+                self.assertBlocked(command)
+        worktree = self.worktree("issue-keyword")
+        self.assertAllowed("if true; then git commit -m x; fi", cwd=worktree)
+        self.assertAllowed("for i in 1 2; do rm -f build.log; done", cwd=worktree)
 
 
 if __name__ == "__main__":
@@ -1990,6 +2151,9 @@ class TestTheRepairPacket(RailsInAGitEngine):
             "statuses": statuses or {},
         })
 
+    def worktree_path(self, branch=BRANCH):
+        return os.path.join(self.worktrees, branch)
+
     def brief(self, *extra, **environment):
         return subprocess.run([sys.executable, os.path.join(self.out, "tools", "repair-packet.py"), "5", *extra],
                               cwd=self.out, capture_output=True, text=True,
@@ -2161,6 +2325,85 @@ class TestTheRepairPacket(RailsInAGitEngine):
         self.pull_request(head, branch="issue-31-somebody-elses-machine")
         text = self.rendered()
         self.assertIn("git fetch origin issue-31-somebody-elses-machine", text)
+
+    # --- the place it sends the attempt to (#482) -----------------------------------------------
+
+    def test_a_worktree_behind_the_pull_request_head_is_named_as_such(self):
+        """"One agent, one attempt" is exactly the arrangement in which the previous attempt may
+        have pushed from a machine this one does not have. Matching the branch name then sends the
+        repair to bytes nobody reviewed, under a header advertising the ones that were."""
+        self.commit_engine()
+        self.fixture({"issue": {"27": {"title": "Widen the altitude limit", "state": "OPEN",
+                                       "labels": [{"name": "state:ready"}, {"name": "risk:normal"}]}}})
+        self.assertEqual(self.dispatch("27").returncode, 0)
+        worktree = self.worktree_path()
+        self.pull_request("b" * 40)          # the pull request is somewhere this machine is not
+        text = self.rendered()
+        self.assertIn("not at the head this brief is about", text)
+        self.assertIn(worktree, text)
+        self.assertIn("git fetch origin", text, "and the command that brings it over")
+        self.assertIn(f"merge --ff-only {'b' * 40}", text,
+                      "a fast-forward: a checkout of the sha would leave the attempt on a detached HEAD")
+        self.assertNotIn("checkout bbbb", text)
+        self.assertIn("cannot tell which of the two is the attempt", text,
+                      "and it does not decide for the agent which side to keep")
+
+    def test_a_local_branch_behind_the_pull_request_is_not_recreated_as_it_stands(self):
+        """The recreate path had the same hole: `git worktree add <root>/<branch> <branch>` checks out
+        an existing local branch without asking whether its tip is the head the brief names."""
+        self.commit_engine()
+        self.change()                             # the branch exists; nothing has it checked out
+        self.pull_request("c" * 40)               # ... and the pull request has moved on
+        text = self.rendered()
+        self.assertIn("The local branch is not at the pull request's head", text)
+        command = [line for line in text.splitlines() if line.startswith("git fetch origin")][0]
+        self.assertIn(f"-B {self.BRANCH} {'c' * 40}", command, "the branch is put at the head, not left where it was")
+        self.assertIn("git worktree add", command)
+
+    def test_a_worktree_at_the_head_says_nothing_about_reconciling(self):
+        self.commit_engine()
+        self.fixture({"issue": {"27": {"title": "Widen the altitude limit", "state": "OPEN",
+                                       "labels": [{"name": "state:ready"}, {"name": "risk:normal"}]}}})
+        self.assertEqual(self.dispatch("27").returncode, 0)
+        head = git(self.worktree_path(), "rev-parse", "HEAD")
+        self.pull_request(head)
+        text = self.rendered()
+        self.assertNotIn("not at the head this brief is about", text)
+        self.assertNotIn("git fetch origin", text)
+
+    def test_a_dirty_worktree_is_reported_and_not_tidied(self):
+        self.commit_engine()
+        self.fixture({"issue": {"27": {"title": "Widen the altitude limit", "state": "OPEN",
+                                       "labels": [{"name": "state:ready"}, {"name": "risk:normal"}]}}})
+        self.assertEqual(self.dispatch("27").returncode, 0)
+        worktree = self.worktree_path()
+        with open(os.path.join(worktree, "somebody-elses-work.txt"), "w", encoding="utf-8") as handle:
+            handle.write("not mine\n")
+        self.pull_request(git(worktree, "rev-parse", "HEAD"))
+        text = self.rendered()
+        self.assertIn("uncommitted or untracked files", text)
+        self.assertIn("do not delete what you did not create", text)
+
+    def test_a_worktree_root_inside_the_repository_is_refused(self):
+        """`tools/dispatch-agent.sh` refuses this and says why. The brief printed it as a command
+        to run."""
+        self.commit_engine()
+        self.pull_request(self.change())
+        done = self.brief("--finding", "x", RULES_ENGINE_WORKTREE_ROOT=os.path.join(self.out, "worktrees"))
+        self.assertEqual(done.returncode, 1, done.stdout)
+        self.assertIn("resolves inside the repository", done.stderr)
+        self.assertIn("RULES_ENGINE_WORKTREE_ROOT", done.stderr)
+
+    def test_every_path_in_a_printed_command_is_quoted(self):
+        """A rail's commands are run as written (#203), and a worktree root with a space in it
+        produced a command git reads as two arguments."""
+        self.commit_engine()
+        self.pull_request(self.change())
+        spaced = os.path.join(self.tmp, "engine worktrees")
+        text = self.rendered(RULES_ENGINE_WORKTREE_ROOT=spaced)
+        command = [line for line in text.splitlines() if line.startswith("git worktree add")][0]
+        self.assertIn("'", command, f"the path is unquoted: {command}")
+        self.assertEqual(len(shlex.split(command)), 5, f"git reads this as {len(shlex.split(command))} words")
 
     # --- what it refuses ------------------------------------------------------------------
 
@@ -6416,6 +6659,165 @@ class TestReProducingAnEmbeddedEngine(AFactoryToReProduceFrom, RailsInAGitEngine
         self.assertEqual(done.returncode, 1, done.stdout + done.stderr)
         self.assertIn("does not compose back", done.stderr)
         self.assertFalse(os.path.exists(os.path.join(self.out, "re-produced-by.json")))
+
+
+class TestReProducingAnEngineOfSeveralCorpora(AFactoryToReProduceFrom, RailsInAGitEngine):
+    """#531: an engine produced from two corpora re-produces, from every corpus its record names.
+
+    `factory produce --corpus A --corpus B` records each corpus under `corpora` (0070), sorted by
+    sourceId, with `principal: true` on the one the map's envelope names. The script used to count
+    `corpus/` files under `generated` and refuse anything but one, so the finishing step of an
+    overlay edit did not exist for such an engine. Produce takes the principal first, so the record
+    is what says which is which and the order of `corpora` is not.
+    """
+
+    def write_record(self, record):
+        with open(os.path.join(self.out, "provenance.json"), "w", encoding="utf-8") as handle:
+            handle.write(json.dumps(record, indent=2, ensure_ascii=False) + "\n")
+
+    def read_record(self):
+        with open(os.path.join(self.out, "provenance.json"), encoding="utf-8") as handle:
+            return json.load(handle)
+
+    def add_corpus(self, source_id, principal=False):
+        """Add a second corpus to the produced engine's record, and a file for it to name."""
+        record = self.read_record()
+        extra = dict(record["corpora"][0], sourceId=source_id, path=f"corpus/{source_id}.txt",
+                     principal=principal)
+        record["corpora"].append(extra)
+        record["generated"].append({"path": extra["path"], "sha256": "0" * 64})
+        with open(os.path.join(self.out, *extra["path"].split("/")), "w", encoding="utf-8") as handle:
+            handle.write(source_id)
+        self.write_record(record)
+        return extra
+
+    def two_corpora(self, principal_last=True):
+        """A committed two-corpus engine, `corpora` sorted by sourceId as produce writes it.
+
+        By default the principal sorts *last*: a record that already listed it first would pass by
+        never reordering anything.
+        """
+        self.produced()
+        repo, commits = self.factory_repo()
+        self.record_commit(commits["recorded"])
+        record = self.read_record()
+        record["corpora"][0]["sourceId"] = "b-principal" if principal_last else "a-principal"
+        self.write_record(record)
+        principal = record["corpora"][0]
+        secondary = self.add_corpus("a-secondary" if principal_last else "b-secondary")
+        record = self.read_record()
+        record["corpora"].sort(key=lambda c: c["sourceId"])
+        self.write_record(record)
+        self.commit_engine_as_is()
+        return repo, principal, secondary
+
+    def corpus_arguments(self):
+        with open(os.path.join(self.out, "re-produced-by.json"), encoding="utf-8") as handle:
+            argv = json.load(handle)["argv"]
+        return [argv[i + 1] for i, argument in enumerate(argv) if argument == "--corpus"]
+
+    def test_it_passes_one_corpus_per_entry_with_the_principal_first(self):
+        repo, principal, secondary = self.two_corpora()
+        self.assertEqual(secondary["path"], self.read_record()["corpora"][0]["path"],
+                         "the fixture does not list the principal last")
+        done = self.re_produce(repo=repo)
+        self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+        self.assertEqual([os.path.join(self.out, principal["path"]), os.path.join(self.out, secondary["path"])],
+                         self.corpus_arguments(), "the principal is not first, or a corpus is missing")
+
+    def test_the_order_is_unchanged_when_the_record_already_lists_the_principal_first(self):
+        repo, principal, secondary = self.two_corpora(principal_last=False)
+        self.assertEqual(principal["path"], self.read_record()["corpora"][0]["path"])
+        done = self.re_produce(repo=repo)
+        self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+        self.assertEqual([os.path.join(self.out, principal["path"]), os.path.join(self.out, secondary["path"])],
+                         self.corpus_arguments())
+
+    def test_a_dry_run_says_every_corpus(self):
+        repo, principal, secondary = self.two_corpora()
+        done = self.re_produce("--dry-run", repo=repo)
+        self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+        self.assertIn(f"--corpus {os.path.join(self.out, principal['path'])} "
+                      f"--corpus {os.path.join(self.out, secondary['path'])} --name", done.stdout)
+
+    def test_a_single_corpus_engine_is_told_its_one_corpus_as_before(self):
+        self.produced()
+        repo, commits = self.factory_repo()
+        self.record_commit(commits["recorded"])
+        self.commit_engine_as_is()
+        done = self.re_produce(repo=repo)
+        self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+        self.assertEqual([os.path.join(self.out, "corpus", "part107.xml")], self.corpus_arguments())
+
+    def test_an_embedded_engine_of_several_corpora_still_gets_its_repository_root(self):
+        self.repo = os.path.join(self.tmp, "repo")
+        self.out = os.path.join(self.repo, "engine")
+        self.produced("--repo-root", self.repo)
+        stub, commits = self.factory_repo()
+        self.record_commit(commits["recorded"])
+        self.add_corpus("zz-board")
+        git(self.repo, "init", "-q", "-b", "main")
+        git(self.repo, "config", "user.email", "t@example.invalid")
+        git(self.repo, "config", "user.name", "t")
+        git(self.repo, "add", ".")
+        git(self.repo, "commit", "-qm", "the produced engine")
+        done = self.re_produce(repo=stub)
+        self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+        with open(os.path.join(self.out, "re-produced-by.json"), encoding="utf-8") as handle:
+            argv = json.load(handle)["argv"]
+        self.assertEqual(self.repo, argv[argv.index("--repo-root") + 1])
+        self.assertEqual(2, argv.count("--corpus"))
+
+    def rewritten(self, change):
+        """Two corpora, then `change(record)`; returns the re-produce that follows."""
+        repo, principal, secondary = self.two_corpora()
+        record = self.read_record()
+        change(record)
+        self.write_record(record)
+        return self.re_produce(repo=repo)
+
+    def test_a_record_that_marks_no_corpus_as_principal_is_refused(self):
+        def change(record):
+            for corpus in record["corpora"]:
+                corpus["principal"] = False
+        done = self.rewritten(change)
+        self.assertEqual(done.returncode, 1, done.stdout + done.stderr)
+        self.assertIn("marks 0 corpora as principal", done.stderr)
+        self.assertFalse(os.path.exists(os.path.join(self.out, "re-produced-by.json")))
+
+    def test_a_record_that_marks_two_corpora_as_principal_is_refused(self):
+        def change(record):
+            for corpus in record["corpora"]:
+                corpus["principal"] = True
+        done = self.rewritten(change)
+        self.assertEqual(done.returncode, 1, done.stdout + done.stderr)
+        self.assertIn("marks 2 corpora as principal", done.stderr)
+
+    def test_a_record_that_names_no_corpora_is_refused(self):
+        done = self.rewritten(lambda record: record.update(corpora=[]))
+        self.assertEqual(done.returncode, 1, done.stdout + done.stderr)
+        self.assertIn("names no corpus under `corpora`", done.stderr)
+
+    def test_a_corpus_named_twice_is_refused(self):
+        def change(record):
+            record["corpora"][0]["path"] = record["corpora"][1]["path"]
+        done = self.rewritten(change)
+        self.assertEqual(done.returncode, 1, done.stdout + done.stderr)
+        self.assertIn("more than once", done.stderr)
+
+    def test_a_corpus_that_is_not_under_corpus_is_refused(self):
+        def change(record):
+            record["corpora"][0]["path"] = "src/Rules.cs"
+        done = self.rewritten(change)
+        self.assertEqual(done.returncode, 1, done.stdout + done.stderr)
+        self.assertIn("names no corpus/ file at corpora[0].path", done.stderr)
+
+    def test_a_corpus_the_engine_does_not_carry_is_refused(self):
+        repo, principal, secondary = self.two_corpora()
+        os.remove(os.path.join(self.out, secondary["path"]))
+        done = self.re_produce(repo=repo)
+        self.assertEqual(done.returncode, 1, done.stdout + done.stderr)
+        self.assertIn(f"names the corpus {secondary['path']}, which is not in this engine", done.stderr)
 
 
 class TestReProducingAStandaloneEngineIsUnchanged(AFactoryToReProduceFrom, RailsInAGitEngine):
