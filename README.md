@@ -345,7 +345,7 @@ found at run time, not at compile time. The string-keyed `Registry` and reflecti
 | Corpus maps — schema, checker, packages | this | maps of six corpus slices; `hoyle-backgammon`, `faa-part-107` and `srd-52-combat` published as packages; `tax-121-principal-residence` declares a package and has no `map/` tag, so it is unpublished |
 | Corpus toolkit — adapters, locators, boundary policy | none | locator checkers for four citation grammars live here (page markers, eCFR sections, PDF-extracted text, USLM court rules); no adapters |
 | Domain packs — tabletop, legal | none | not implemented |
-| Agent rails for produced engines | this | decided ([0029](docs/decisions/0029-the-rails-are-emitted-by-default-and-vendor-choice-is-engine-owned-configuration.md)), and they stay copied into each engine rather than being externalised — 204 KB of an engine that is 801 KB to 1378 KB, against losing offline verification, per-file provenance and per-file adoption ([0052](docs/decisions/0052-the-rails-stay-in-the-engine-that-runs-on-them.md)); emitted and enforced: the contract, the roles, the charters, the guard, the packets, dispatch, the PR contract, the recorded verdicts, `.github/agent-policy.json`, and `factory rails --apply`, which makes the three checks required. Proven on a real rule: `faa-part-107`'s `control-links-working` went issue to merge through them ([#157](https://github.com/brandonifco/rules-factory/issues/157)) |
+| Agent rails for produced engines | this | decided ([0029](docs/decisions/0029-the-rails-are-emitted-by-default-and-vendor-choice-is-engine-owned-configuration.md)), and they stay copied into each engine rather than being externalised — 507 KB (29 files, as of 2026-09-29 at commit 006e55a) of an engine that is 801 KB to 1378 KB, against losing offline verification, per-file provenance and per-file adoption ([0052](docs/decisions/0052-the-rails-stay-in-the-engine-that-runs-on-them.md)); emitted and enforced: the contract, the roles, the charters, the guard, the packets, dispatch, the PR contract, the recorded verdicts, `.github/agent-policy.json`, and `factory rails --apply`, which makes the three checks required. Proven on a real rule: `faa-part-107`'s `control-links-working` went issue to merge through them ([#157](https://github.com/brandonifco/rules-factory/issues/157)) |
 | **Factory — intake, generation, gate, backlog, provenance, verify** | **this** | implemented; acceptance test ([#3](https://github.com/brandonifco/rules-factory/issues/3)) met 2026-09-16 |
 | Produced engines | [`hoyle-backgammon`](https://github.com/brandonifco/hoyle-backgammon), [`faa-part-107`](https://github.com/brandonifco/faa-part-107), [`srd-52-combat`](https://github.com/brandonifco/srd-52-combat) | produced by the factory, with hand-written rule handlers; each engine's `provenance.json` names the factory and map versions it was built from ([evidence](examples/acceptance-4-5/EVIDENCE.md)) |
 | Hand-built engines | `deckard`, `SRD_Combat` | built by hand, before the factory |
@@ -382,11 +382,12 @@ backlog       not a file in the engine: GitHub issues, one per entry still to
 provenance    factory commit, map package, corpus, kernel, recipe hashes, and the
               generated, managed, engine-owned and build-input files; "packs": []
 rails         AGENTS.md, the roles, the three charters, the primary-checkout guard,
-              dispatch, the entry, review and repair packets, the orchestrator's
-              status report, the pull request template and its policy check, the
-              recorded verdict and its conformance gate, the review attestations,
-              delta packets and adversarial self-review a repair chain is bounded
-              by (0071), and .github/agent-policy.json, which the engine owns
+              dispatch, the entry, review and repair packets, the mutation runner,
+              the orchestrator's status report, the pull request template and its
+              policy check, the recorded verdict and its conformance gate, the review
+              attestations, delta packets and adversarial self-review a repair chain
+              is bounded by (0071), and .github/agent-policy.json, which the engine
+              owns
 
 not implemented: a domain pack as input
 ```
