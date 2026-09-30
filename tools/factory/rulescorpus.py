@@ -183,6 +183,20 @@ def _stored_sources(definition, where):
     return paths
 
 
+def carried(corpus_path):
+    """Every file building the corpus at `corpus_path` reads, relative to its directory: the
+    definition, the expectation and each stored source (the corpus file among them). What an engine
+    carries in `corpus/` for a corpus is exactly this."""
+    definition_path, expectation_path = companions(corpus_path)
+    try:
+        with open(definition_path, encoding="utf-8") as handle:
+            definition = json.load(handle)
+    except (OSError, UnicodeDecodeError, json.JSONDecodeError) as error:
+        raise Refused(f"{definition_path} cannot be read as a build definition ({error})")
+    return [os.path.basename(definition_path), os.path.basename(expectation_path),
+            *_stored_sources(definition, definition_path)]
+
+
 def _report(document, stderr):
     if not isinstance(document, dict):
         return stderr.strip()

@@ -21,8 +21,8 @@ The recipe is the factory's, not the engine's, so it is rewritten on every `prod
     `correspondence`, `pins`, `scaffold`, `agentrails` -- #171 split them out of one 88 KB module,
     and an engine cannot import half a generator), ownership.py and rulings.py, rulings.py also by
     map-overlay.py to check the owner's rulings of decision 0027; provenance.py's embedding, which
-    imports intake; and intake.py's HASH_DERIVATIONS, the one table engine-gate.py's posture
-    recomputes a baseline with; and overlay.py, which is where the engine's own evidence is read
+    imports intake; intake.py, through which engine-gate.py's posture builds and verifies a corpus,
+    and rulescorpus.py, which pins and runs rules-corpus for it (#558); and overlay.py, which is where the engine's own evidence is read
     from and is read by all of them. Every file written here is in provenance.json's `generated`,
     which is what ties these bytes to a factory version;
   * `.github/workflows/validate.yml` -- runs `validate.sh full` and nothing else.
@@ -61,6 +61,9 @@ FILES = {
     "scripts/factory/ownership.py": (os.path.join(HERE, "ownership.py"), False),
     "scripts/factory/provenance.py": (os.path.join(HERE, "provenance.py"), False),
     "scripts/factory/rulings.py": (os.path.join(HERE, "rulings.py"), False),
+    # The one way a corpus is built and verified (#558): intake.py imports it, and the gate's
+    # posture reaches it through intake.
+    "scripts/factory/rulescorpus.py": (os.path.join(HERE, "rulescorpus.py"), False),
     # What a review covered and what a repair invalidates of it (0071): the engine's review-packet,
     # review-scope and record-verdict compute with the factory's model rather than a copy of it.
     "scripts/factory/reviewscope.py": (os.path.join(HERE, "reviewscope.py"), False),
