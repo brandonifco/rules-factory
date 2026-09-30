@@ -34,8 +34,10 @@ need only be declared in the manifest, so a map whose rules cross two served doc
 10's, where a code printed in § 172.101's table is stated in § 172.102 — cites both, and the
 manifest pins both. A served-document boundary is a delivery artifact, and
 [0039](decisions/0039-the-manifest-pins-every-corpus-a-map-cites.md) declines to let it split one
-mapping problem into two maps. Packaging and factory intake independently re-hash **every** cited
-corpus under the one canonical hashDerivation implementation. Packaging runs citation checks on an
+mapping problem into two maps. Packaging and factory intake independently build and verify
+**every** cited corpus with rules-corpus, from the build definition committed beside it
+([0074](decisions/0074-a-corpus-is-built-and-verified-by-rules-corpus-from-the-definition-committed-beside-it.md)).
+Packaging runs citation checks on an
 immutable snapshot of those exact bytes and records their identities in map/verification.json;
 intake requires its resolved corpus bytes to re-derive to those same identities before accepting
 the package ([0048](decisions/0048-a-verified-map-package-binds-the-exact-artifacts-its-publish-gate-read.md)).
@@ -1683,8 +1685,14 @@ covers. A boundary policy is a property of the licence, and the two engines this
 derived from answer it in opposite directions — one commits its extracted corpus because the
 SRD is CC-BY, the other commits nothing because its rulebook is commercial.
 
-`hashDerivation` is drawn from a closed set — `intake.HASH_DERIVATIONS` — and a corpus naming a
-derivation that is not in it is refused rather than hashed some other way. One of them describes
+`hashDerivation` is drawn from a closed set — `intake.ADMITTED_HASH_DERIVATIONS` — and a corpus
+naming a derivation that is not in it is refused. The set is names and what each claims; the digest
+is not computed by the factory. Every corpus commits a rules-corpus build definition beside it,
+`<stem>.corpus.build.json`, whose baseline declares the same name, and `<stem>.corpus.expect.json`,
+the rules-corpus checks it accepts as not verified. rules-corpus builds the corpus and records the
+SHA-256 of the artifact the baseline names
+([0074](decisions/0074-a-corpus-is-built-and-verified-by-rules-corpus-from-the-definition-committed-beside-it.md)).
+One of them describes
 text no tool produced: `transcribed-from-page-images-page-marked` is SHA-256 over a committed
 page-marked text for a source that is a **scan**, a PDF of page images with no text layer, from
 which `pdftotext` returns nothing. The digest is exact, because the committed file is the

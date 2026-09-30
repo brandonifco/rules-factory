@@ -66,6 +66,18 @@ jobs:
       - name: Install pytest
         run: python3 -m pip install --quiet --disable-pip-version-check --require-hashes -r tools/requirements-dev.txt
 
+      # Intake builds and verifies every corpus with rules-corpus, fetched at the commit
+      # tools/factory/rulescorpus.py pins and run with `dotnet run` (#558), so the checkers' own
+      # tests need the SDK too. The version is the factory's pin, read as the engine job reads it.
+      - name: Read the pinned SDK
+        id: pin
+        run: echo "sdk=$(./scripts/validate-engine.sh --print-sdk)" >> "$GITHUB_OUTPUT"
+
+      - name: Set up .NET
+        uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
+        with:
+          dotnet-version: ${{ steps.pin.outputs.sdk }}
+
       # Checks every map against the schema and for a review of its bytes, every citation
       # against its corpus, the checkers' own tests, every repository link, and the decision
       # index. No count here: the run prints the counts, and a number in a comment drifts.
