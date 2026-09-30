@@ -2493,6 +2493,33 @@ class TestTheRepairPacket(RailsInAGitEngine):
         self.assertIn("not required as this pull request stands", text)
         self.assertIn("Your repair can change that", text, "and it says the requirement can come back")
 
+    def test_the_semantic_verdict_is_judged_in_the_engine_s_terms_when_it_is_embedded(self):
+        """GitHub reports `engine/overlay/x.json`; the policy's surface says `overlay/**` (0069, #535).
+
+        Matched as reported, nothing in an embedded engine is ever on the surface and the brief tells
+        a repairing agent no verdict is owed, when the conformance gate will ask for one.
+        """
+        self.commit_engine()
+        path = os.path.join(self.out, "provenance.json")
+        record = json.load(open(path, encoding="utf-8"))
+        record.setdefault("repository", {})["enginePath"] = "engine"
+        with open(path, "w", encoding="utf-8") as handle:
+            json.dump(record, handle, indent=2)
+        git(self.out, "commit", "-qam", "embed the engine")
+        head = self.change()
+        self.pull_request(head)
+        document = json.load(open(self.fixture_path, encoding="utf-8"))
+        document["pr"]["5"]["files"] = [{"path": "engine/overlay/altitude-limit.json"}]
+        self.fixture(document)
+        self.assertIn("a semantic verdict at the new head", self.rendered(),
+                      "an engine's overlay is its semantic surface wherever the engine sits")
+
+        document["pr"]["5"]["files"] = [{"path": "overlay/altitude-limit.json"}, {"path": "README.md"}]
+        self.fixture(document)
+        self.assertIn("not required as this pull request stands", self.rendered(),
+                      "a file of the host repository is not on this engine's surface, even when its name "
+                      "looks like a path on it")
+
     def test_a_truncated_file_list_leaves_what_is_owed_undecidable(self):
         self.commit_engine()
         head = self.change()
