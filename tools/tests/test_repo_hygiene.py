@@ -426,6 +426,51 @@ class Hygiene(unittest.TestCase):
         self.git(self.clone, "tag", "map/some-map/v2.0.0")
         self.assertEqual(self.run_tool("--fix")[0], 0)
 
+    def map_package(self, name, **package):
+        path = os.path.join(self.clone, "examples", name, "map-package.json")
+        os.makedirs(os.path.dirname(path), exist_ok=True)
+        with open(path, "w", encoding="utf-8") as handle:
+            json.dump(dict({"version": "2.0.0"}, **package), handle)
+        self.git(self.clone, "add", "-A")
+        self.git(self.clone, "commit", "-q", "-m", f"{name} package {package}")
+        self.git(self.clone, "push", "-q", "origin", "main")
+
+    def test_the_remedy_an_untagged_map_names_is_one_the_tool_accepts(self):
+        self.map_package("some-map")
+        code, output = self.run_tool("--fix")
+        self.assertEqual(code, 1, output)
+        self.assertIn('"held": "<why>"', output)
+        self.assertIn("docs/decisions/0073", output)
+        self.assertNotIn("README", output)
+        self.map_package("some-map", held="not until the owner decides")
+        code, output = self.run_tool("--fix")
+        self.assertEqual(code, 0, output)
+        self.assertNotIn("LEFTOVER", output)
+
+    def test_a_held_map_is_a_note_that_says_why_and_how_to_publish(self):
+        self.map_package("some-map", held="waiting on the owner's decision")
+        code, output = self.run_tool("--fix")
+        self.assertEqual(code, 0, output)
+        self.assertIn("note      examples/some-map declares 2.0.0, held on purpose, so "
+                      "map/some-map/v2.0.0 is not tagged: waiting on the owner's decision", output)
+        self.assertIn("remove `held` in a reviewed commit, then tag it", output)
+
+    def test_a_held_map_with_no_reason_is_a_leftover(self):
+        for reason in ("", "   ", None, 3):
+            with self.subTest(held=reason):
+                self.map_package("some-map", held=reason)
+                code, output = self.run_tool()
+                self.assertEqual(code, 1, output)
+                self.assertIn("examples/some-map/map-package.json declares `held` with no reason", output)
+
+    def test_a_held_map_whose_version_is_tagged_is_a_leftover(self):
+        self.map_package("some-map", held="a reason that stopped being true")
+        self.git(self.clone, "tag", "map/some-map/v2.0.0")
+        code, output = self.run_tool()
+        self.assertEqual(code, 1, output)
+        self.assertIn("is declared held (a reason that stopped being true), and map/some-map/v2.0.0 "
+                      "is tagged", output)
+
     def release_setup(self, product_change):
         self.git(self.clone, "tag", "-a", "factory/v0.1.0", "-m", "v0.1.0")
         self.git(self.clone, "push", "-q", "origin", "factory/v0.1.0")

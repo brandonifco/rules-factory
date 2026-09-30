@@ -61,6 +61,13 @@ verbatim, whitespace aside, for every corpus the map cites. A map with no terms 
 that does not restate the manifest, or a cited corpus with no `licence` is refused and nothing is
 written. Nothing defaults to Apache-2.0.
 
+A held map (0073, #448). `map-package.json` may declare `"held": "<why>"`: the version it declares
+is deliberately not published yet. The reason must be a non-empty string, and one that is not is a
+usage error whether or not `--tag` is given. A held map still packs, because it is packed for a
+composed engine and by every pull request's gate; only the publish path, `--tag`, is refused, and
+nothing writes. The field is removed in a reviewed commit, and only then is the tag pushed -- so
+publishing a held map is a person's two deliberate acts, not one.
+
 Entries are stored uncompressed with a fixed timestamp and fixed attributes, in a fixed
 order, and the core-properties part is named from a digest of the content rather than a
 random GUID. `dotnet pack` does none of that (measured: two packs of the same project a
@@ -263,6 +270,10 @@ def read_inputs(map_dir):
     version = settings.get("version") if isinstance(settings, dict) else None
     if not isinstance(version, str) or not SEMVER.match(version):
         raise Usage(f"{version_path}: `version` is {version!r}, which is not MAJOR.MINOR.PATCH")
+    held = settings.get("held")
+    if "held" in settings and (not isinstance(held, str) or not held.strip()):
+        raise Usage(f"{version_path}: `held` is {held!r}; it declares why this version is not "
+                    f"published, so it is a non-empty string, or it is removed (0073)")
     map_raw, document = load(map_path)
     manifest_raw, manifest = load(manifest_path)
     try:
@@ -277,6 +288,7 @@ def read_inputs(map_dir):
         raise Usage(f"cannot read the factory's own licence {FACTORY_LICENCE}: {error}")
     return {
         "dir": map_dir, "name": name, "version": version, "id": package_id(name),
+        "held": held.strip() if isinstance(held, str) else None,
         "settings_path": version_path, "settings": settings,
         "map_path": map_path, "map_raw": map_raw, "map": document,
         "manifest_path": manifest_path, "manifest_raw": manifest_raw, "manifest": manifest,
@@ -683,6 +695,10 @@ def main(argv=None):
         if args.tag is not None and args.tag != tag_for(inputs["name"], inputs["version"]):
             raise Usage(f"tag {args.tag!r} does not match {tag_for(inputs['name'], inputs['version'])!r} "
                         f"from map-package.json; bump the version in a reviewed commit, then tag that commit")
+        if args.tag is not None and inputs["held"]:
+            raise Refused(f"{inputs['name']} {inputs['version']} is held: {inputs['held']}. `--tag` is "
+                          f"the publish path, so remove `held` from map-package.json in a reviewed "
+                          f"commit, then tag that commit (docs/decisions/0073)")
         print(f"{inputs['id']} {inputs['version']} from {inputs['map_path']}")
         inputs["corpus_terms"] = corpus_terms(inputs)
         inputs["packaged_manifest_raw"] = packaged_manifest(inputs)

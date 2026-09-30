@@ -24,7 +24,10 @@ This reports every such leftover, and with `--fix` removes the ones that are pro
   * remote     a branch on GitHub whose pull request merged at exactly that tip: deleted only with
                `--remote`, because it is a write to GitHub
   * map        a map under `examples/` whose `map-package.json` declares a version with no
-               `map/<name>/v<version>` tag: never fixed here, because the tag publishes to nuget.org
+               `map/<name>/v<version>` tag: never fixed here, because the tag publishes to nuget.org.
+               A map that declares `"held": "<why>"` (0073) is a note instead, since the person who
+               holds it has said so where the version is declared; an empty reason, or a `held`
+               beside a version that is tagged, is a leftover
   * release    an issue labelled `review*-p0` or `review*-p1` closed after the last `factory/v*`
                tag, while `tools/factory/` has changed since it: never fixed here. A tag is a
                decision; this says it is due until one is made
@@ -403,16 +406,32 @@ def check_map_releases(root, report):
         if shown.returncode != 0:
             continue
         try:
-            version = json.loads(shown.stdout)["version"]
+            document = json.loads(shown.stdout)
+            version = document["version"]
         except (ValueError, KeyError, TypeError):
             report.leftover("map", f"examples/{name}/map-package.json has no readable version",
                             "fix the file; tools/pack-map.py says what it needs")
             continue
-        if f"map/{name}/v{version}" not in tags:
+        tag = f"map/{name}/v{version}"
+        held = document.get("held") if isinstance(document, dict) else None
+        declared = "held" in document if isinstance(document, dict) else False
+        if declared and (not isinstance(held, str) or not held.strip()):
+            report.leftover("map", f"examples/{name}/map-package.json declares `held` with no reason",
+                            'give the reason ("held": "<why>"), or remove the field; '
+                            "tools/pack-map.py refuses an empty one")
+        elif declared and tag in tags:
+            report.leftover("map", f"examples/{name} is declared held ({held.strip()}), and {tag} is tagged",
+                            "remove `held` from map-package.json: the version is published")
+        elif declared:
+            report.notes.append(
+                f"examples/{name} declares {version}, held on purpose, so {tag} is not tagged: "
+                f"{held.strip()}. To publish it, remove `held` in a reviewed commit, then tag it")
+        elif tag not in tags:
             report.leftover(
-                "map", f"examples/{name} declares {version}, and map/{name}/v{version} is not tagged",
-                f"publish it (git tag map/{name}/v{version} on origin/main; publish-map.yml runs on the "
-                "tag), or say in the map's README why it is held")
+                "map", f"examples/{name} declares {version}, and {tag} is not tagged",
+                f"publish it (git tag {tag} on origin/main; publish-map.yml runs on the tag), or "
+                f'declare why it is held: "held": "<why>" in examples/{name}/map-package.json '
+                "(docs/decisions/0073)")
 
 
 def remove_caches(root, fix, report):

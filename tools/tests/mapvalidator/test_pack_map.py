@@ -414,6 +414,56 @@ class TestRefuses(PackCase):
         self.assert_refused(code, output, expect_code=2)
 
 
+class TestAHeldMapIsNotPublishedByATag(PackCase):
+    """0073 (#448): `"held": "<why>"` in map-package.json says the declared version is deliberately
+    unpublished. A tag publishes and cannot be undone, so a held map is refused on `--tag` until a
+    reviewed commit removes the field; it still packs, because a composed engine and every pull
+    request's gate pack maps that are not published."""
+
+    def hold(self, reason):
+        self.edit("map-package.json", lambda settings: settings.__setitem__("held", reason))
+
+    def test_a_held_map_is_refused_on_the_publish_path_and_nothing_is_written(self):
+        self.hold("the owner has not decided")
+        code, output = self.pack("--tag", TAG)
+        self.assert_refused(code, output)
+        self.assertIn("is held: the owner has not decided", output)
+        self.assertIn("docs/decisions/0073", output)
+
+    def test_a_held_map_still_packs_when_it_is_not_being_published(self):
+        self.hold("the owner has not decided")
+        code, output = self.pack()
+        self.assertEqual(code, 0, output)
+        self.assertEqual(self.packages(), [NUPKG], output)
+
+    def test_holding_a_map_does_not_change_the_bytes_of_its_package(self):
+        self.assertEqual(self.pack()[0], 0)
+        with open(os.path.join(self.out, NUPKG), "rb") as handle:
+            unheld = handle.read()
+        self.hold("the owner has not decided")
+        second = os.path.join(self.tmp, "held-out")
+        self.assertEqual(self.pack(out=second)[0], 0)
+        with open(os.path.join(second, NUPKG), "rb") as handle:
+            self.assertEqual(unheld, handle.read())
+
+    def test_removing_the_field_is_what_lets_the_tag_through(self):
+        self.hold("the owner has not decided")
+        self.assertEqual(self.pack("--tag", TAG)[0], 1)
+        self.edit("map-package.json", lambda settings: settings.pop("held"))
+        code, output = self.pack("--tag", TAG)
+        self.assertEqual(code, 0, output)
+        self.assertEqual(self.packages(), [NUPKG], output)
+
+    def test_a_held_field_with_no_reason_is_refused_with_or_without_a_tag(self):
+        for reason in ("", "   ", None, 3, ["why"]):
+            for extra in ((), ("--tag", TAG)):
+                with self.subTest(held=reason, extra=extra):
+                    self.hold(reason)
+                    code, output = self.pack(*extra)
+                    self.assert_refused(code, output, expect_code=2)
+                    self.assertIn("`held`", output)
+
+
 def nuspec_and_licence(nupkg, package):
     with zipfile.ZipFile(nupkg) as archive:
         return (archive.read(f"{package}.nuspec").decode("utf-8"),
