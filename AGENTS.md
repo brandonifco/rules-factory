@@ -25,10 +25,14 @@ python3 tools/repo-hygiene.py          # report leftovers; exit 1 when there are
 python3 tools/repo-hygiene.py --fix    # remove what is provably finished
 ```
 
-`--fix` only removes what is finished: a branch whose commits are already in `origin/main`, a
-worktree whose pull request merged at exactly its tip, a clean detached worktree more than a day
-old. It never forces anything, never deletes on GitHub without `--remote`, and never tags. It
-reports what it will not touch and why. For Claude Code, `.claude/settings.json` runs `--fix` at
+`--fix` only removes what is finished: a branch whose commits are already in `origin/main` or
+whose tip is exactly the head of a pull request that merged into it, a worktree whose pull request
+merged at exactly its tip (a squash merge counts: the pull request's recorded head is the tip, and
+its merge commit is in `origin/main`; the branch goes with it), a clean detached worktree more
+than a day old. It never forces anything, never deletes on GitHub without `--remote`, and never
+tags. It reports what it will not touch and why: every worktree it leaves is named with its reason
+and the command that clears it, and `CLEAN` is printed only when there is none, so a worktree still
+in use gives "no leftovers", never `CLEAN`. For Claude Code, `.claude/settings.json` runs `--fix` at
 the start of every session, so a session starts from the steady state or is told why it cannot.
 
 ## 2. One change: an issue, a branch, a worktree, a pull request
@@ -48,7 +52,9 @@ the start of every session, so a session starts from the steady state or is told
   same exit code, and a **passing** step reduced to its verdict and the line that says what it
   examined, with the whole output in a log the run names. A failing step still prints everything.
   It is there because a successful run is 157 KB, and an agent that pastes that into a pull
-  request carries it for the rest of its life.
+  request carries it for the rest of its life. `./scripts/validate-engine.sh --brief`, which the
+  `engine` job runs, is the same rule for the run that produces an engine: 720 lines and 45 KB
+  become 91 lines and 6 KB, a failing step still prints everything, and the log is named.
 - A test is watched failing. The pull request names the mutation that made each new test fail.
 
 ## 3. Every pull request checks all documentation
