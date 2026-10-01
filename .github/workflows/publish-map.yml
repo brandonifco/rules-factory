@@ -45,7 +45,10 @@ permissions:
 jobs:
   gate:
     runs-on: ubuntu-24.04
-    timeout-minutes: 10
+    # 20, as validate.yml's validate job: this runs the same suite (`validate-repo.py --release`),
+    # in which every corpus a test touches is built and verified by rules-corpus (0074). At 10 it
+    # was cancelled after 10m14s on map/faa-part-107/v5.0.0, before anything was pushed (#563).
+    timeout-minutes: 20
     permissions:
       contents: read
     outputs:
