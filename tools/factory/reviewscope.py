@@ -452,8 +452,31 @@ def resolve_implemented_in(value, paths):
 
 
 def test_names(row):
-    return [str(test.get("name")) for test in (row or {}).get("tests") or []
-            if isinstance(test, dict) and test.get("name")]
+    """The tests an overlay row names, under the key the overlay writes them by: `test`.
+
+    `scripts/map-overlay.py` and `rulings.py` read `test`, and every engine writes it. This read
+    `name` until #577, so in every real engine no claim was anchored on its own tests, and a repair
+    that weakened one invalidated nothing.
+    """
+    return [str(test.get("test")) for test in (row or {}).get("tests") or []
+            if isinstance(test, dict) and test.get("test")]
+
+
+def declaring_test_files(name, index):
+    """The test files `name` can be declared in: by its method, and by its class when it has one.
+
+    An overlay names a test as the runner reports it -- `ClassTests.Method`, or the method alone --
+    and an identifier never holds a dot, so the dotted name is looked up a part at a time: the
+    method, narrowed to the files that also mention the class when any do. Empty when no file
+    mentions the method, which `state` answers by depending on every test file.
+    """
+    parts = [part for part in str(name).split(".") if part]
+    if not parts:
+        return []
+    found = set(index.get(parts[-1], ()))
+    if len(parts) > 1:
+        found = (found & set(index.get(parts[-2], ()))) or found
+    return sorted(found)
 
 
 TEST_METHOD = re.compile(r"\b(?:void|Task|ValueTask)\s+@?([A-Za-z_][A-Za-z0-9_]*)\s*\(")
@@ -585,7 +608,7 @@ def state(snapshot):
             else:
                 anchors += found
         for name in test_names(row):
-            declaring = test_index.get(name)
+            declaring = declaring_test_files(name, test_index)
             if declaring:
                 anchors += declaring
             else:
@@ -1207,7 +1230,7 @@ def render_delta_packet(*, prior, prior_digest, head, base, current, impact_reco
     lines.append("\n## 6. Tests and mutations\n")
     for entry, items in sorted(tests.items()):
         lines.append(f"- `{entry}`")
-        lines += [f"  - `{t.get('name')}` — mutation: {t.get('mutation')}" for t in items] or [
+        lines += [f"  - `{t.get('test')}` — mutation: {t.get('mutation')}" for t in items] or [
             "  - **no test named in the overlay** — that is a finding"]
     lines.append("\n## 7. The implementation in scope\n")
     lines.append("Every hand-written file the review set rests on, by the lexical reference graph. Changed files "

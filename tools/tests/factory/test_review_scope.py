@@ -71,7 +71,8 @@ class Engine:
                      "evidence": f"The rule {letter} holds.",
                      "dependsOn": ["c"] if letter == "d" else []}
             overlay = {"status": "implemented", "implementedIn": f"Rules/{letter.upper()}Rule.cs",
-                       "tests": [{"name": f"{letter.upper()}Rule_holds", "mutation": f"return zero from rule {letter}"}]}
+                       "tests": [{"test": f"{letter.upper()}RuleTests.{letter.upper()}Rule_holds",
+                                  "mutation": f"return zero from rule {letter}"}]}
             self.entries[letter] = {"entry": entry, "overlay": overlay}
         self.files = {}
         for letter in LETTERS:
@@ -179,6 +180,22 @@ class TestAnIsolatedRepair(Scenario):
         engine.files["src/Engine/Rules/Unused.cs"] = b"internal static class Unused { }\n"
         result = self.m.impact(prior, self.m.state(engine.snapshot(self.m)))
         self.assertEqual(result["review"], ["change:src/Engine/Rules/Unused.cs"])
+
+    def test_a_repair_that_weakens_an_entrys_named_test_invalidates_that_entry(self):
+        """#577. The overlay names a test as `Class.Method` under `test`, and a claim rests on the file
+        that declares it: weakening the test is a change to what the entry was reviewed on."""
+        engine, _, prior = self.baseline()
+        engine.files["tests/Engine.Tests/ERuleTests.cs"] = spec_for("e").replace(b"Assert.Equal(1,", b"Assert.NotNull(")
+        result = self.m.impact(prior, self.m.state(engine.snapshot(self.m)))
+        self.assertEqual(result["review"], ["entry:e"])
+        self.assertIn("unit-changed: file:tests/Engine.Tests/ERuleTests.cs", result["invalidated"]["entry:e"])
+
+    def test_a_named_test_is_found_by_its_method_and_narrowed_by_its_class(self):
+        index = {"Holds": ["tests/A.cs", "tests/B.cs"], "ATests": ["tests/A.cs"]}
+        self.assertEqual(self.m.declaring_test_files("ATests.Holds", index), ["tests/A.cs"])
+        self.assertEqual(self.m.declaring_test_files("Holds", index), ["tests/A.cs", "tests/B.cs"])
+        self.assertEqual(self.m.declaring_test_files("Missing.Holds", index), ["tests/A.cs", "tests/B.cs"])
+        self.assertEqual(self.m.declaring_test_files("ATests.Absent", index), [])
 
     def test_an_implementation_nobody_can_find_depends_on_every_source_file(self):
         engine = Engine()
