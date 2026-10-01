@@ -60,7 +60,7 @@ LAYERS = {
                  "pins", "registry", "rulings", "scaffold", "semantics"},
     # The rest of the factory.
     "__main__": {"backlog", "compose", "gate", "generate", "intake", "ownership", "provenance",
-                 "rails", "repository", "transaction", "verify"},
+                 "rails", "repository", "trace", "transaction", "verify"},
     # `compose`: a backlog is the whole engine's work, so an engine composed of several map
     # packages is rendered from all of them, composed the way the factory composed them (#460).
     "backlog": {"agentrails", "compose", "intake", "overlay", "semantics"},
@@ -90,6 +90,10 @@ LAYERS = {
     # arguments and nothing else, so the engine's rails and the benchmark read the same model.
     "reviewscope": set(),
     "rulings": set(),
+    # What an engine's records say about each entry (#576). It reads through the modules that own
+    # each record -- the map packages as the backlog reads them, the composition, the overlay and
+    # its merge, the topology, the review model's lexical analysis -- so it has no reader of its own.
+    "trace": {"backlog", "compose", "overlay", "provenance", "repository", "reviewscope", "semantics"},
     "transaction": {"intake"},
     "verify": {"intake"},
 }

@@ -658,7 +658,7 @@ def _issues(repo, gh):
     return issues
 
 
-def _recorded_packages(record, package, why):
+def recorded_packages(record, package, why, consequence="the issue bodies cannot be checked"):
     """[(package id, parts, the manifest corpus its map cites)] for every map provenance.json records.
 
     Read from `package` (a .nupkg path or Id@Version) or else Id@Version from provenance.json, taken
@@ -670,14 +670,19 @@ def _recorded_packages(record, package, why):
     of it and say nothing about the rest. An explicit `--package` still names one, for the caller
     who has the file and wants it used; it then stands for the package whose recorded digests it
     matches, and a file matching none is refused by the digest check below as it always was.
+
+    Public because `factory trace` reads an engine's maps the same way and must not have a second
+    reader to drift from this one (#576); `why` and `consequence` are the caller's, so a refusal
+    says what that caller could not do.
     """
     maps = [m for m in record.get("maps") or [] if isinstance(m, dict)]
     if not maps:
         raise BacklogError(f"provenance.json names no map package, so {why} cannot be read")
-    return [_one_recorded_package(source, package if len(maps) == 1 else None, why) for source in maps]
+    return [_one_recorded_package(source, package if len(maps) == 1 else None, why, consequence)
+            for source in maps]
 
 
-def _one_recorded_package(source, package, why):
+def _one_recorded_package(source, package, why, consequence):
     spec = package or f"{source.get('packageId')}@{source.get('version')}"
     if os.path.isfile(spec):
         nupkg = spec
@@ -688,7 +693,7 @@ def _one_recorded_package(source, package, why):
                  if lower else "")
         if not os.path.isfile(nupkg):
             raise BacklogError(f"{why}, and its map package {spec} is not a local file or in the NuGet global "
-                               f"packages folder, so the issue bodies cannot be checked; pass --package")
+                               f"packages folder, so {consequence}; pass --package")
     try:
         _, _, parts = intake.read_package(nupkg)
     except (intake.Refused, intake.Usage) as error:
@@ -696,8 +701,7 @@ def _one_recorded_package(source, package, why):
     recorded = {f.get("role"): f.get("sha256") for f in source.get("files") or [] if isinstance(f, dict)}
     for role in ("map", "manifest"):
         if hashlib.sha256(parts[role][1]).hexdigest() != recorded.get(role):
-            raise BacklogError(f"{nupkg}'s {role} is not the {role} provenance.json records, so it cannot say what "
-                               f"the issue bodies must or must not carry")
+            raise BacklogError(f"{nupkg}'s {role} is not the {role} provenance.json records, so {consequence}")
     try:
         document = json.loads(parts["map"][1].decode("utf-8"))
         manifest = json.loads(parts["manifest"][1].decode("utf-8"))
@@ -713,7 +717,7 @@ def engine_backlog(engine_dir, package=None):
 
     Since #243 no engine holds a `backlog/`, so the rendering is made here rather than read. The two
     inputs are exactly the ones `produce` merged: the map package `provenance.json` records
-    (`_recorded_package`, which refuses any package whose map and manifest are not the bytes the
+    (`recorded_packages`, which refuses any package whose map and manifest are not the bytes the
     record hashed) and the engine's own `overlay/` (#247), merged under decision 0015 by
     the factory's own `semantics.merge`. So what `create` files, and what `--render` prints, is the
     backlog of the engine as it stands -- and an overlay edit shows up in it with no produce at all,
@@ -736,7 +740,7 @@ def engine_backlog(engine_dir, package=None):
     if not isinstance(name, str) or not name:
         raise BacklogError(f"{path} records no engine.name, so the backlog's items cannot say which engine "
                            f"they are for; run `factory produce` again")
-    read = _recorded_packages(record, package,
+    read = recorded_packages(record, package,
                               "the backlog is rendered from the map packages the record names (0023)")
     documents = []
     for package_id, parts, corpus in read:
