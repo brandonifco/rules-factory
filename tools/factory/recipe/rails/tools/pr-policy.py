@@ -497,9 +497,16 @@ def named_entries(conformance):
     the bullet, for everything that needs the entries a pull request names: this file judges it, and
     `tools/review-packet.py` loads it, so a pull request this file accepted names the same entries
     in the packet a reviewer is handed (#464). Nothing is added to a finding here.
+
+    A value that is exactly `none` names **no entry**: it is how a factory update, which has no single
+    entry id, fills the line, and it is how `show_entries` renders an empty set. `none` also matches
+    the overlay-file id pattern, so reading it as an id made the semantic packet ask the map for an
+    entry called `none`, and a produce pull request could not be given a verdict (#572).
     """
     raw = labelled(conformance, "entry") if conformance is not None else None
     if raw is None:
+        return [], []
+    if raw.strip("` \t") == "none":
         return [], []
     entries = [part.strip().strip("`") for part in raw.split(",")]
     unreadable = [part for part in entries if not OVERLAY_FILE.match(f"overlay/{part}.json")]
