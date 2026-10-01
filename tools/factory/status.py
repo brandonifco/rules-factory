@@ -1,6 +1,7 @@
 """What can be said about a produced engine right now, from what it already records (#585).
 
   python3 tools/factory status --engine <engine dir> [--json] [--package <nupkg path | Id@Version>]
+  python3 tools/factory status --engine <engine dir> --verify [--json] [--package ...]
 
 A reporter, not a judge. Every number and every fact here comes from the trace (trace.py) of the
 same engine, or from `provenance.json` through the trace's reader, so there is no second reader of
@@ -17,9 +18,16 @@ that can disagree with it. So:
   * provenance's `verification` is reported as what it is: a recorded fact about **the produce that
     wrote the record**. It says nothing about the tree as it stands, and the report says so;
   * a clean working tree is reported as a git fact and never as "verified";
-  * the report says verification was **not run by this invocation**.
+  * without `--verify` the report says verification was **not run by this invocation**.
 
-**Read-only.** No restore, no build, no gate, no network, nothing written: the git
+**`--verify` delegates (#586).** It runs `factory verify` itself, by its own command line in this
+process -- the same parser, stages, refusals and exit codes -- and reports that it ran now, which
+authority ran, the exit code and the verifier's last line. The exit code of `status --verify` is
+the verifier's. Nothing here knows what `verify` checks, so a new rule there changes what this
+reports with no edit here. `verify` restores and may write lock files: `--verify` is not the
+read-only mode, and the read-only part of the report is computed before it runs.
+
+**Read-only by default.** No restore, no build, no gate, no network, nothing written: the git
 fact is asked with `--no-optional-locks`, so even git's index refresh is not written. Standard
 library only.
 """
@@ -121,7 +129,30 @@ def build(engine_dir, package=None):
     }
 
 
+def ran(exit_code, output, engine_dir):
+    """What `factory verify` said when `--verify` ran it: that it ran now, who, its exit code, its last line."""
+    lines = [line for line in output.split("\n") if line.strip()]
+    return {"ranNow": True, "authority": f"factory verify --engine {engine_dir}", "exitCode": exit_code,
+            "lastLine": lines[-1] if lines else None,
+            "says": "the verifier's own result, unchanged; its exit code is this command's exit code. Everything "
+                    "else on this page was read before it ran, and verify may have written lock files since"}
+
+
+def refused(why):
+    """The report when the engine's records could not be read, and `--verify` asks the verifier anyway."""
+    return {"statusFormat": FORMAT, "refused": why, "verification": {"ranNow": False, "says": NOT_RUN}}
+
+
 def text(status):
+    if "refused" in status:
+        check = status["verification"]
+        return (f"status        REFUSED: {status['refused']}\n"
+                f"verification  ran now by {check['authority']}: exit {check['exitCode']}; it said: "
+                f"{check['lastLine']}\n") if check["ranNow"] else f"status        REFUSED: {status['refused']}\n"
+    return _page(status)
+
+
+def _page(status):
     """The human page: the same data, in lines."""
     def value(node):
         if not isinstance(node, dict) or "evidence" not in node:
@@ -160,7 +191,12 @@ def text(status):
         moved = tree["value"]
         out.append("working tree  " + ("clean" if moved["clean"] else f"{moved['changedPaths']} changed path(s)")
                    + " [git] -- not a verification")
-    out.append(f"verification  {status['verification']['says']}")
+    check = status["verification"]
+    if check["ranNow"]:
+        out.append(f"verification  ran now by {check['authority']}: exit {check['exitCode']}; it said: "
+                   f"{check['lastLine']}")
+    else:
+        out.append(f"verification  {check['says']}")
     for gap in status["gaps"]:
         out.append(f"gap           {gap['relationship']}: {gap['why']}")
     return "\n".join(out) + "\n"
