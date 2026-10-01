@@ -18,12 +18,14 @@ Asserted:
     record is unknown;
   * the topology is read from the record and from git and never corrected: standalone, embedded, a
     moved engine, no repository, and a record from before format 9;
-  * no corpus text reaches the trace, the same engine gives the same bytes, and no absolute path is
-    printed;
+  * the map's evidence quotations are never emitted and the engine's distribution always is, the
+    same engine gives the same bytes, and no absolute path is printed;
+  * a malformed overlay `tests` and an unreadable source file are gaps, not tracebacks;
   * what is not a produced engine is refused, exit 1, and a non-directory is a usage error, exit 2.
 
 Run: python3 -m pytest tools/tests/factory/test_factory_trace.py
 """
+import collections
 import io
 import json
 import os
@@ -182,15 +184,21 @@ class TraceOfATwoCorpusEngine(unittest.TestCase):
                 self.assertTrue(fact.get("why"), fact)
         self.assertEqual(seen, set(CLASSES))
 
-    def test_every_unknown_is_also_a_gap(self):
+    def test_every_unknown_is_also_a_gap_about_the_same_subject(self):
+        self.implemented([{"test": "ListedTests.Bare"}])
+        self.record(lambda r: r.pop("kernel"))
         trace, _ = self.trace()
-        unknowns = [f["why"] for f in facts(trace) if f["evidence"] == "unknown"]
-        self.assertTrue(unknowns)
-        gaps = [g["why"] for g in trace["gaps"]]
-        for why in unknowns:
-            self.assertIn(why, gaps)
+        unknowns = collections.Counter()
+        for listed in trace["entries"]:
+            unknowns.update((f"entry:{listed['id']['value']}", f["why"]) for f in facts(listed)
+                            if f["evidence"] == "unknown")
+        for section in ("engine", "topology"):
+            unknowns.update(("engine", f["why"]) for f in facts(trace[section]) if f["evidence"] == "unknown")
+        self.assertEqual({why for _, why in unknowns} >= {"overlay/listed-in-the-table.json tests[0] records no "
+                                                          "mutation the test was watched catching"}, True)
+        gaps = collections.Counter((g["subject"], g["why"]) for g in trace["gaps"])
+        self.assertEqual(unknowns - gaps, collections.Counter(), "an unknown with no gap of its own")
         self.assertEqual(sum(trace["summary"]["gaps"].values()), len(trace["gaps"]))
-        self.assertEqual(trace["summary"]["evidence"]["unknown"], len(unknowns))
 
     # --- tests and mutations ------------------------------------------------------------------
 
@@ -203,6 +211,8 @@ class TraceOfATwoCorpusEngine(unittest.TestCase):
         self.assertEqual(test["mutation"], {"value": MUTATION, "evidence": "recorded",
                                             "basis": "overlay/listed-in-the-table.json tests[0].mutation"})
         self.assertEqual(listed["status"]["basis"], "overlay/listed-in-the-table.json status")
+        self.assertEqual(listed["package"]["basis"], "provenance.json maps[0].packageId, the one map package, "
+                                                     "whose map/corpus-map.json holds the entry")
         self.assertEqual(listed["implementedIn"]["value"], {"ruleset": "fixture", "version": 1})
 
     def test_a_test_with_no_mutation_is_unknown_and_a_gap(self):
@@ -226,6 +236,14 @@ class TraceOfATwoCorpusEngine(unittest.TestCase):
         self.assertIn("no overlay/w-is-water-only.json", water["status"]["basis"])
         self.assertNotIn("implementedIn", water)
 
+    def test_tests_that_are_not_a_list_are_a_gap_not_a_traceback(self):
+        self.implemented(5)
+        trace, _ = self.trace()
+        listed = entry(trace, "listed-in-the-table")
+        self.assertEqual(listed["tests"], [])
+        self.assertEqual([g["why"] for g in trace["gaps"] if g["relationship"] == "entry -> test"],
+                         ["overlay/listed-in-the-table.json tests is not a list, so it names no test anybody can run"])
+
     # --- implementation -----------------------------------------------------------------------
 
     def test_implementation_is_inferred_from_the_handler_and_never_recorded(self):
@@ -247,6 +265,25 @@ class TraceOfATwoCorpusEngine(unittest.TestCase):
         for listed in trace["entries"]:
             for fact in listed["implementation"]:
                 self.assertIn(fact["evidence"], ("inferred", "unknown"))
+
+    def test_a_file_with_another_partial_type_names_no_handler_symbol(self):
+        self.implemented([{"test": "ListedTests.Holds", "mutation": MUTATION}])
+        self.source("src/TwoSection/Mixed.cs",
+                    "namespace TwoSection;\n\ninternal static partial class Handlers\n{\n}\n\n"
+                    "internal static partial class Other\n{\n    internal static void ListedInTheTable() { }\n}\n")
+        (candidate,) = entry(self.trace()[0], "listed-in-the-table")["implementation"]
+        self.assertEqual(candidate["value"], {"path": "src/TwoSection/Mixed.cs", "symbol": None})
+        self.assertIn("reviewscope.entry_references", candidate["mechanism"])
+
+    @unittest.skipIf(hasattr(os, "geteuid") and os.geteuid() == 0, "root reads a file whatever its mode")
+    def test_a_source_file_that_cannot_be_read_is_a_gap_not_a_traceback(self):
+        self.source("src/TwoSection/Handlers/ListedInTheTable.cs", HANDLER)
+        path = os.path.join(self.engine, "src", "TwoSection", "Handlers", "ListedInTheTable.cs")
+        os.chmod(path, 0)
+        self.addCleanup(os.chmod, path, 0o644)
+        trace, _ = self.trace()
+        (gap,) = [g for g in trace["gaps"] if g["relationship"] == "engine -> implementation files"]
+        self.assertIn("src/TwoSection/Handlers/ListedInTheTable.cs could not be read", gap["why"])
 
     def test_an_implemented_entry_nothing_implements_is_unknown_and_a_gap(self):
         self.implemented([{"test": "ListedTests.Holds", "mutation": MUTATION}])
@@ -281,8 +318,10 @@ class TraceOfATwoCorpusEngine(unittest.TestCase):
         self.assertIn({"subject": "entry:w-is-water-only", "relationship": "locator -> corpus",
                        "why": water["corpus"]["why"]}, trace["gaps"])
 
-    def test_no_corpus_text_reaches_the_trace(self):
-        _, text = self.trace()
+    def test_the_maps_evidence_is_never_emitted_and_the_distribution_always_is(self):
+        trace, text = self.trace()
+        self.assertEqual(trace["engine"]["distribution"], {"value": "public", "evidence": "recorded",
+                                                           "basis": "provenance.json distribution"})
         for row in two.ENTRIES:
             self.assertNotIn(row["evidence"], text)
         for _, _, corpus in two.SECTIONS:
@@ -344,6 +383,22 @@ class TraceOfATwoCorpusEngine(unittest.TestCase):
         self.assertEqual(said["value"], None)
         self.assertEqual(said["evidence"], "derived")
         self.assertIn("repository.from_record", said["basis"])
+
+    def test_a_repository_section_with_no_engine_path_is_unknown_not_null(self):
+        git_init(self.engine)
+        self.record(lambda r: r["repository"].pop("enginePath"))
+        trace, _ = self.trace()
+        topology = trace["topology"]
+        self.assertEqual(topology["recordedEnginePath"]["evidence"], "unknown")
+        self.assertIsNone(topology["agrees"])
+        self.assertIn("engine -> recorded enginePath", [g["relationship"] for g in trace["gaps"]])
+
+    def test_a_map_fact_the_record_does_not_carry_is_unknown(self):
+        self.record(lambda r: r["maps"][0].pop("nupkgSha256"))
+        trace, _ = self.trace()
+        self.assertEqual(trace["maps"][0]["nupkgSha256"]["evidence"], "unknown")
+        self.assertIn("map:RulesFactory.Maps.TwoSectionFixture -> nupkgSha256",
+                      [g["relationship"] for g in trace["gaps"]])
 
     def test_a_fact_an_older_record_does_not_carry_is_unknown(self):
         self.record(lambda r: r.pop("kernel"))
@@ -413,6 +468,7 @@ class TraceOfAComposedEngine(unittest.TestCase):
         self.assertEqual(prone["package"]["evidence"], "derived")
         self.assertEqual(prone["id"]["evidence"], "derived")
         self.assertIn("compose.union", prone["id"]["basis"])
+        self.assertIn("entries['prone']", prone["name"]["basis"], "the basis names the id the package's map holds")
         for listed in self.trace["entries"]:
             self.assertEqual(listed["id"]["evidence"], "derived")
             self.assertTrue(listed["id"]["value"].startswith(("Srd52Combat.", "Srd52Conditions.")))

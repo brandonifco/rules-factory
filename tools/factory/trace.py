@@ -35,9 +35,13 @@ bytes it names is not settled, and a trace that resolved it would settle it by a
 locator is reported as the map records it, the corpus it names is matched against provenance's
 corpora, and the segment is `unknown`.
 
-**No corpus text is emitted.** A map entry's `evidence` is a quotation of its corpus, and a trace
-of an engine whose distribution is private must not carry it anywhere the engine's own files do
-not go. Entry names, locators, test names and mutations are the engine's and the map's own words.
+**The trace is as private as the engine.** It never emits a map entry's `evidence`, which is the
+quotation itself. But entry names, locators and mutations are the map's and the engine's own words,
+and those words quote the corpus: in a licensed engine, half the mutations carry a run of ten words
+or more straight from it. So the trace reports the engine's recorded `distribution` (`engine.distribution`), and a
+trace of a private engine goes only where the engine's own files may go (0068). Hashing those fields
+would make the trace safe to publish and useless to read. The rule is the one the backlog already
+follows: `factory backlog --create` refuses to file a private engine's items anywhere public.
 
 **Readers, not parsers.** The map packages are read by `backlog.recorded_packages`, which refuses
 a package whose map and manifest are not the bytes provenance hashed; several are composed by
@@ -121,8 +125,13 @@ def read_record(engine_dir):
 
 def topology(engine_dir, record, gaps):
     """Where the record says the engine is, where git says it is, and whether they agree."""
-    if isinstance(record.get("repository"), dict):
+    section = record.get("repository")
+    if isinstance(section, dict) and "enginePath" in section:
         said = recorded(repository_step.from_record(record).engine_path, "provenance.json repository.enginePath")
+    elif isinstance(section, dict):
+        said = unknown("provenance.json has a repository section with no enginePath, so nothing says where the "
+                       "engine sits under its repository root")
+        gaps.append(_gap("engine", "engine -> recorded enginePath", said["why"]))
     else:
         said = derived(None, "provenance.json has no repository section (a record before format 9); "
                              "repository.from_record reads that as an engine that is its own repository root")
@@ -134,8 +143,8 @@ def topology(engine_dir, record, gaps):
     else:
         seen = derived(repository_step.under(top, engine_dir) or None,
                        "git rev-parse --show-toplevel (repository.git_root), relative to the engine directory")
-        agrees = seen["value"] == said["value"]
-        if not agrees:
+        agrees = None if said["evidence"] == "unknown" else seen["value"] == said["value"]
+        if agrees is False:
             gaps.append(_gap("engine", "engine -> repository root",
                              f"provenance.json records enginePath {said['value']!r} and the directory traced is at "
                              f"{seen['value']!r} under its repository root; the trace reports both and corrects "
@@ -162,8 +171,8 @@ def engine_facts(record, gaps):
 def read_maps(record, package):
     """[(package id, map document, manifest document)] for every map the record names."""
     try:
-        read = backlog_step.recorded_packages(record, package, "the trace is read from the map packages the "
-                                              "record names", consequence="the entries cannot be traced")
+        read = backlog_step.recorded_packages(record, package, "the map an engine's entries are traced from",
+                                              consequence="the entries cannot be traced")
     except backlog_step.BacklogError as error:
         raise TraceError(str(error))
     found = []
@@ -176,19 +185,32 @@ def read_maps(record, package):
     return found
 
 
-def maps_section(record, documents):
+def held(document, key, basis, subject, gaps):
+    """`document[key]` as recorded, or unknown and a gap when the record does not hold it."""
+    if isinstance(document, dict) and document.get(key) is not None:
+        return recorded(document[key], basis)
+    fact = unknown(f"{basis} is not recorded")
+    gaps.append(_gap(subject, f"{subject} -> {key}", fact["why"]))
+    return fact
+
+
+def maps_section(record, documents, gaps):
     """Each map package: its identity as provenance records it, and the corpora its manifest pins."""
     sources = [m for m in record.get("maps") or [] if isinstance(m, dict)]
     out = []
     for position, (source, (package_id, document, manifest)) in enumerate(zip(sources, documents)):
         at = f"provenance.json maps[{position}]"
+        subject = f"map:{package_id}"
         cites = [c.get("sourceId") for c in manifest.get("corpora") or [] if isinstance(c, dict)]
+        files = held(source, "files", f"{at}.files", subject, gaps)
+        if files["evidence"] == "recorded":
+            files["value"] = [{k: f.get(k) for k in ("role", "path", "sha256")}
+                              for f in files["value"] if isinstance(f, dict)]
         out.append({
             "packageId": recorded(package_id, f"{at}.packageId"),
-            "version": recorded(source.get("version"), f"{at}.version"),
-            "nupkgSha256": recorded(source.get("nupkgSha256"), f"{at}.nupkgSha256"),
-            "files": recorded([{k: f.get(k) for k in ("role", "path", "sha256")}
-                               for f in source.get("files") or [] if isinstance(f, dict)], f"{at}.files"),
+            "version": held(source, "version", f"{at}.version", subject, gaps),
+            "nupkgSha256": held(source, "nupkgSha256", f"{at}.nupkgSha256", subject, gaps),
+            "files": files,
             "principalCorpus": recorded(document.get("corpus"), f"{package_id} map/corpus-map.json corpus"),
             "corpora": recorded(cites, f"{package_id} map/corpus-manifest.json corpora[].sourceId"),
         })
@@ -215,14 +237,19 @@ def compose_maps(documents):
     origin = {}
     for package_id, one in pairs:
         named = one if len(pairs) == 1 else compose.namespaced(one, package_id)
-        for entry in named.get("entries") or []:
+        held_ids = [e.get("id") if isinstance(e, dict) else None for e in one.get("entries") or []]
+        for entry, own in zip(named.get("entries") or [], held_ids):
             if isinstance(entry, dict) and isinstance(entry.get("id"), str):
-                origin[entry["id"]] = package_id
+                origin[entry["id"]] = (package_id, own)
     return document, origin
 
 
-def implementation_files(engine_dir):
-    """{engine-relative path: bytes} of the hand-written C# under src/, build output pruned."""
+def implementation_files(engine_dir, gaps):
+    """{engine-relative path: bytes} of the hand-written C# under src/, build output pruned.
+
+    A file that cannot be read is a gap, not a refusal: every other inference still stands, and
+    the gap says which file it could not see.
+    """
     root = os.path.join(engine_dir, "src")
     found = {}
     for directory, dirs, names in os.walk(root):
@@ -231,24 +258,34 @@ def implementation_files(engine_dir):
             path = os.path.join(directory, name)
             relative = os.path.relpath(path, engine_dir).replace(os.sep, "/")
             if reviewscope.classify(relative) == "implementation" and os.path.isfile(path):
-                with open(path, "rb") as handle:
-                    found[relative] = handle.read()
+                try:
+                    with open(path, "rb") as handle:
+                        found[relative] = handle.read()
+                except OSError as error:
+                    gaps.append(_gap("engine", "engine -> implementation files",
+                                     f"{relative} could not be read ({error.strerror}), so no entry's "
+                                     f"implementation was inferred from it"))
     return dict(sorted(found.items(), key=lambda item: item[0].encode("utf-8")))
 
 
 def handler_files(files):
-    """{member name: sorted paths} of the files whose partial `Handlers` declares that member."""
+    """{member name: sorted paths} of the files whose partial `Handlers` declares that member.
+
+    `reviewscope.partial_members` answers for a file, not for one type in it, so a file that also
+    declares another partial type cannot say whose member a name is. Only a file whose one partial
+    type is `Handlers` names the symbol; the others still reach the entry by reference.
+    """
     found = {}
     for path, data in files.items():
         types, members = reviewscope.partial_members(data.decode("utf-8", "replace"))
-        if HANDLERS in types:
+        if types == {HANDLERS}:
             for member in members:
                 found.setdefault(member, []).append(path)
     return found
 
 
-HANDLER_MECHANISM = (f"reviewscope.partial_members: a hand-written file under src/ whose partial {HANDLERS} "
-                     f"declares the entry's generated handler member (semantics.pascal of the entry id)")
+HANDLER_MECHANISM = (f"reviewscope.partial_members: a hand-written file under src/ whose one partial type, "
+                     f"{HANDLERS}, declares the entry's generated handler member (semantics.pascal of the entry id)")
 REFERENCE_MECHANISM = ("reviewscope.entry_references: a hand-written file under src/ that names the entry's "
                        "member, its request type, or its id as a string literal")
 
@@ -264,17 +301,17 @@ def implementation(entry_id, member, handlers, references):
 
 def entry_trace(entry, origin, item, corpora, handlers, references, single, gaps):
     entry_id = entry["id"]
-    package_id = origin.get(entry_id)
-    in_map = f"{package_id} map/corpus-map.json entries[{entry_id!r}]" if single else (
-        f"{package_id} map/corpus-map.json, the entry composed as {entry_id!r}")
+    package_id, own_id = origin.get(entry_id, (None, entry_id))
+    in_map = f"{package_id} map/corpus-map.json entries[{own_id!r}]"
     overlay_path = overlay_step.path_for(entry_id)
     subject = f"entry:{entry_id}"
     out = {
         "id": (recorded(entry_id, f"{in_map}.id") if single else
                derived(entry_id, "compose.union: the map's entry id qualified by its package (0067)")),
-        "package": (recorded(package_id, f"{package_id} map/corpus-map.json holds the entry") if single else
-                    derived(package_id, "compose.namespaced: the package whose map held the entry before its id "
-                                        "was qualified")),
+        "package": (recorded(package_id, "provenance.json maps[0].packageId, the one map package, whose "
+                                         "map/corpus-map.json holds the entry") if single else
+                    derived(package_id, f"compose.namespaced: provenance.json maps[].packageId of the package whose "
+                                        f"map holds the entry as {own_id!r}")),
         "name": recorded(entry.get("name"), f"{in_map}.name"),
     }
     locator = entry.get("locator") if isinstance(entry.get("locator"), dict) else None
@@ -303,7 +340,12 @@ def entry_trace(entry, origin, item, corpora, handlers, references, single, gaps
         out["status"] = recorded(entry.get("status"), f"{in_map}.status; the engine has no {overlay_path}")
         tests_at = f"{in_map}.tests"
     tests = []
-    for position, test in enumerate(entry.get("tests") or []):
+    rows = entry.get("tests") if entry.get("tests") is not None else []
+    listed = isinstance(rows, list)
+    if not listed:
+        gaps.append(_gap(subject, "entry -> test", f"{tests_at} is not a list, so it names no test anybody can run"))
+        rows = []
+    for position, test in enumerate(rows):
         test = test if isinstance(test, dict) else {}
         at = f"{tests_at}[{position}]"
         name = test.get("test")
@@ -319,7 +361,7 @@ def entry_trace(entry, origin, item, corpora, handlers, references, single, gaps
             gaps.append(_gap(subject, "entry -> test", row["name"]["why"]))
         tests.append(row)
     out["tests"] = tests
-    if entry.get("status") == "implemented" and not tests:
+    if entry.get("status") == "implemented" and listed and not tests:
         gaps.append(_gap(subject, "entry -> test", "the entry is implemented and names no test"))
 
     candidates = implementation(entry_id, semantics.pascal(entry_id), handlers, references)
@@ -358,7 +400,7 @@ def build(engine_dir, package=None):
     except (overlay_step.OverlayError, semantics.GenerationError) as error:
         raise TraceError(f"the map and {overlay_step.DIRECTORY}/ do not merge, so there is no engine map to trace "
                          f"(the engine's own gate refuses this too): {error}")
-    files = implementation_files(engine_dir)
+    files = implementation_files(engine_dir, gaps)
     entries = [e for e in merged.get("entries") or [] if isinstance(e, dict) and isinstance(e.get("id"), str)]
     references = reviewscope.entry_references(files, {e["id"]: semantics.pascal(e["id"]) for e in entries})
     handlers = handler_files(files)
@@ -367,7 +409,7 @@ def build(engine_dir, package=None):
         "traceFormat": FORMAT,
         "engine": engine_facts(record, gaps),
         "topology": topology(engine_dir, record, gaps),
-        "maps": maps_section(record, documents),
+        "maps": maps_section(record, documents, gaps),
         "corpora": corpora_section(record),
         "entries": [entry_trace(e, origin, items.get(e["id"]), corpora, handlers, references,
                                 len(documents) == 1, gaps) for e in entries],
