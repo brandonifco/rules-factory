@@ -77,7 +77,7 @@ class Engine:
             implemented = entry["id"] in self.slice
             self.entries[entry["id"]] = {"entry": entry, "overlay": {
                 "status": "implemented", "implementedIn": f"Handlers/{pascal(entry['id'])}.cs",
-                "tests": [{"name": f"{pascal(entry['id'])}_Holds", "mutation": f"invert {entry['id']}"}]}
+                "tests": [{"test": f"{pascal(entry['id'])}_Holds", "mutation": f"invert {entry['id']}"}]}
                 if implemented else None}
         self.files = {"src/Engine/Handlers/Shared.cs": self.primitive(),
                       "src/Engine/Engine.csproj": b"<Project />\n"}
