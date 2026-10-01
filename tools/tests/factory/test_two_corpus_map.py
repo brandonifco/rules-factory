@@ -57,6 +57,8 @@ try:
 finally:
     sys.path.remove(TOOLS)
 
+from tests.factory.corpus_recipe import write_recipe  # noqa: E402
+
 NOT_VERIFIED = 3
 
 FIRST = """<ROOT><DIV8 N="9.101" TYPE="SECTION"><HEAD>&#167; 9.101 The table.</HEAD>
@@ -131,6 +133,7 @@ class TwoCorpusMap(unittest.TestCase):
             path = os.path.join(directory, name)
             with open(path, "w", encoding="utf-8") as handle:
                 handle.write(text)
+            write_recipe(path, source_id, "ecfr-versioner-xml", "2026-01-01")
             digests[source_id] = sha256(text.encode("utf-8"))
         with open(os.path.join(directory, "CORPUS-LICENCE.txt"), "w", encoding="utf-8") as handle:
             handle.write(LICENCE)
@@ -218,13 +221,14 @@ class TwoCorpusMap(unittest.TestCase):
         self.assertEqual(code, NOT_VERIFIED, output)
         for source_id in ("cfr-9-9.101", "cfr-9-9.102"):
             self.assertIn(f"corpus {source_id}:", output)
-            self.assertIn("recomputed from", output)
+            self.assertIn("built and verified by rules-corpus", output)
         self.assertIn("agreed by all 2 cited corpus(es)", output)
 
     def test_a_wrong_principal_corpus_is_refused_by_name(self):
         tampered = os.path.join(self.tmp, "section-9.101.xml")
         with open(tampered, "w", encoding="utf-8") as handle:
             handle.write(FIRST.replace("listed in the table", "listed in this table"))
+        write_recipe(tampered, "cfr-9-9.101", "ecfr-versioner-xml", "2026-01-01")
         code, output, _ = self.produce(tampered, self.corpus("section-9.102.xml"))
         self.assertNotEqual(code, NOT_VERIFIED, output)
         self.assertIn("is not cfr-9-9.101 at its declared baseline", output)
@@ -233,6 +237,7 @@ class TwoCorpusMap(unittest.TestCase):
         tampered = os.path.join(self.tmp, "section-9.102.xml")
         with open(tampered, "w", encoding="utf-8") as handle:
             handle.write(SECOND.replace("by water", "by rail"))
+        write_recipe(tampered, "cfr-9-9.102", "ecfr-versioner-xml", "2026-01-01")
         code, output, _ = self.produce(self.corpus("section-9.101.xml"), tampered)
         self.assertNotEqual(code, NOT_VERIFIED, output)
         self.assertIn("is not cfr-9-9.102 at its declared baseline", output)
@@ -250,10 +255,11 @@ class TwoCorpusMap(unittest.TestCase):
             source_id: {"contentHash": sha256(data), "hashDerivation": "ecfr-versioner-xml"}
             for source_id, data in values
         }
+        # Each resolved corpus as intake holds it: the digest is the one rules-corpus computed (0074).
         verified = [
             {"sourceId": source_id,
              "corpus": {"hashDerivation": "ecfr-versioner-xml"},
-             "bytes": (b"changed" if source_id == "cfr-9-9.103" else data),
+             "contentHash": sha256(b"changed" if source_id == "cfr-9-9.103" else data),
              "path": source_id + ".xml"}
             for source_id, data in values
         ]
@@ -372,7 +378,7 @@ class TwoCorpusMap(unittest.TestCase):
                 with redirect_stdout(buffer), redirect_stderr(buffer):
                     factory.main(["provenance", "--engine", out, "--package", self.nupkg])
                 printed = buffer.getvalue()
-                self.assertIn(f"corpora[{source_id}].contentHash", printed)
+                self.assertIn(f"is not {source_id} at its declared baseline: rules-corpus gives", printed)
                 self.assertIn(f"generated[corpus/{name}].sha256", printed)
 
 

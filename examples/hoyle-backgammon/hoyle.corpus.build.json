@@ -1,0 +1,22 @@
+{
+  "baselines": [
+    {
+      "artifact": "hoyle-1909-text",
+      "hashDerivation": "gutenberg-plain-text-including-boilerplate",
+      "sourceId": "hoyle-1909"
+    }
+  ],
+  "corpusId": "hoyle-1909",
+  "derivations": [],
+  "external": [],
+  "schema": "rules-corpus/build/1",
+  "sources": [
+    {
+      "id": "hoyle-1909-text",
+      "mediaType": "text/plain",
+      "notes": "The Project Gutenberg plain-text edition, byte for byte as retrieved, including its licence header and footer (examples/hoyle-backgammon/README.md, finding 6). The baseline names this source directly. The underlying work is in the public domain; Project Gutenberg's trademark terms apply to the edition.",
+      "origin": "https://www.gutenberg.org/ebooks/39445.txt.utf-8",
+      "path": "hoyle.txt"
+    }
+  ]
+}

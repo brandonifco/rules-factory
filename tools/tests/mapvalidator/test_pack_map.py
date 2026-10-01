@@ -30,6 +30,8 @@ REPO = os.path.dirname(os.path.dirname(os.path.dirname(HERE)))
 TOOL = os.path.join(os.path.dirname(os.path.dirname(HERE)), "pack-map.py")
 HOYLE = os.path.join(REPO, "examples", "hoyle-backgammon")
 
+from tests.factory.corpus_recipe import write_recipe  # noqa: E402
+
 _spec = importlib.util.spec_from_file_location("pack_map", TOOL)
 pack_map = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(pack_map)
@@ -48,7 +50,7 @@ class PackCase(unittest.TestCase):
         self.map_dir = os.path.join(self.tmp, "hoyle-backgammon")
         os.makedirs(self.map_dir)
         for name in ("corpus-map.json", "corpus-manifest.json", "hoyle.txt", "map-package.json",
-                     "CORPUS-LICENCE.txt"):
+                     "CORPUS-LICENCE.txt", "hoyle.corpus.build.json", "hoyle.corpus.expect.json"):
             shutil.copy(os.path.join(HOYLE, name), self.map_dir)
         self.out = os.path.join(self.tmp, "out")
 
@@ -272,14 +274,14 @@ class TestRefuses(PackCase):
         self.assert_refused(code, output)
         self.assertIn("malformed contentHash", output)
 
-    def test_an_unsupported_hash_derivation_is_refused_by_the_canonical_digest_table(self):
+    def test_an_unsupported_hash_derivation_is_refused_as_not_admitted(self):
         self.edit("corpus-manifest.json",
                   lambda m: m["corpora"][0].__setitem__("hashDerivation", "unknown-derivation"))
         self.edit("corpus-map.json",
                   lambda m: m["baseline"].__setitem__("hashDerivation", "unknown-derivation"))
         code, output = self.pack()
         self.assert_refused(code, output)
-        self.assertIn("no way to compute hashDerivation 'unknown-derivation'", output)
+        self.assertIn("hashDerivation 'unknown-derivation', which this factory does not admit", output)
 
     def test_an_adapter_with_no_locator_checker_is_refused(self):
         self.edit("corpus-manifest.json", lambda m: m["corpora"][0].__setitem__("adapter", "pdf"))
@@ -492,7 +494,9 @@ class TestACorpusCommittedBesideTheMap(PackCase):
     def beside(self, at, path):
         """Move the corpus to `at` under the temporary root, and point the manifest at `path`."""
         os.makedirs(os.path.dirname(at), exist_ok=True)
-        shutil.move(os.path.join(self.map_dir, "hoyle.txt"), at)
+        # The corpus moves with its recipe, which is committed beside it wherever it is (0074).
+        for name in ("hoyle.txt", "hoyle.corpus.build.json", "hoyle.corpus.expect.json"):
+            shutil.move(os.path.join(self.map_dir, name), os.path.join(os.path.dirname(at), name))
         self.edit("corpus-manifest.json",
                   lambda m: m["corpora"][0].__setitem__("committedPath", path))
 
@@ -622,7 +626,7 @@ class TestSrdAttribution(unittest.TestCase):
         cls.map_dir = os.path.join(cls.tmp, "srd-52-combat")
         os.makedirs(cls.map_dir)
         for name in ("corpus-map.json", "corpus-manifest.json", "srd-5.2.1.txt", "map-package.json",
-                     "CORPUS-LICENCE.txt"):
+                     "CORPUS-LICENCE.txt", "srd-5.2.1.corpus.build.json", "srd-5.2.1.corpus.expect.json"):
             shutil.copy(os.path.join(cls.SRD, name), cls.map_dir)
         with open(os.path.join(cls.SRD, "map-package.json"), encoding="utf-8") as handle:
             version = json.load(handle)["version"]
@@ -775,6 +779,9 @@ class TestPageMarkedTextAdapter(unittest.TestCase):
         # the gate's: the corpus travels beside the manifest and the PDF does not travel at all.
         corpus["committedPath"] = os.path.basename(self.CORPUS)
         corpus.pop("sourcePdf", None)
+        # The recipe beside the copy declares the same name for the same bytes (0074).
+        write_recipe(os.path.join(self.map_dir, os.path.basename(self.CORPUS)), corpus["sourceId"],
+                     derivation, corpus.get("asOf"))
         with open(manifest_path, "w", encoding="utf-8") as handle:
             json.dump(manifest, handle, indent=2, ensure_ascii=False)
         map_path = os.path.join(self.map_dir, "corpus-map.json")
@@ -825,4 +832,4 @@ class TestPageMarkedTextAdapter(unittest.TestCase):
         code, output = self.pack()
         self.assertEqual(code, 1, output)
         self.assertEqual([], self.packages(), f"a refused map left a package behind:\n{output}")
-        self.assertIn("no way to compute hashDerivation", output)
+        self.assertIn("which this factory does not admit", output)

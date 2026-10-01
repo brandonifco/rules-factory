@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "measuredAt": "006e55a3eb07c392be3e19e57216391b1906fa14",
+  "measuredAt": "25da8d412547a83ed1f05ccc147bafdbd1831238",
   "measuredBy": "tools/check-evidence.py --measure",
   "measuredOver": {
     "gateStepsFailed": [],
@@ -17,8 +17,8 @@
     "package": "tools/pack-map.py"
   },
   "repository": {
-    "trackedFiles": 496,
-    "trackedBytes": 22209389
+    "trackedFiles": 514,
+    "trackedBytes": 22413669
   },
   "artifacts": [
     {
@@ -45,10 +45,8 @@
       "path": "examples/acceptance-4-5/check-provenance.sh",
       "sha256": "976e1bfd5a7759c3e0f4f449b1e1f53750b7a6e27a9b37767864f88bca60400e",
       "bytes": 2248,
-      "role": "active",
-      "readBy": [
-        "checks"
-      ],
+      "role": "archived",
+      "readBy": [],
       "archive": null
     },
     {
@@ -65,8 +63,10 @@
       "path": "examples/blind-mapping-trial/blind-map.json",
       "sha256": "04930e7e62054a17cd54faab0410efec8ec87aaac56f8bf2ff5597caa8a743c1",
       "bytes": 37125,
-      "role": "archived",
-      "readBy": [],
+      "role": "active",
+      "readBy": [
+        "checks"
+      ],
       "archive": null
     },
     {
@@ -515,6 +515,28 @@
       "archive": null
     },
     {
+      "path": "examples/faa-part-107/part107.corpus.build.json",
+      "sha256": "ea49f31ec4558816b7263d6de46f4de9357c94ca31bd5f8c3b1c8d92ad3aa134",
+      "bytes": 731,
+      "role": "release",
+      "readBy": [
+        "checks",
+        "package"
+      ],
+      "archive": null
+    },
+    {
+      "path": "examples/faa-part-107/part107.corpus.expect.json",
+      "sha256": "cb350f41601a38a1e82d0c54c5b6190ab0077e095ab98e68e43044afb3647230",
+      "bytes": 30,
+      "role": "release",
+      "readBy": [
+        "checks",
+        "package"
+      ],
+      "archive": null
+    },
+    {
       "path": "examples/faa-part-107/part107.xml",
       "sha256": "80f6bc4b002df9dcc60a651fec30a2dc3590081cc3e5fd431d9885c69b7ce35e",
       "bytes": 79880,
@@ -718,6 +740,22 @@
       "archive": null
     },
     {
+      "path": "examples/hazmat-172-table/section-172.101.corpus.build.json",
+      "sha256": "cb9b03aadfd77021fcabf9534454ef1cab4cbe9e66ac650b5275044cae2c1f59",
+      "bytes": 771,
+      "role": "archived",
+      "readBy": [],
+      "archive": null
+    },
+    {
+      "path": "examples/hazmat-172-table/section-172.101.corpus.expect.json",
+      "sha256": "cb350f41601a38a1e82d0c54c5b6190ab0077e095ab98e68e43044afb3647230",
+      "bytes": 30,
+      "role": "archived",
+      "readBy": [],
+      "archive": null
+    },
+    {
       "path": "examples/hazmat-172-table/section-172.101.xml",
       "sha256": "979bfc51b90b56ce337662ff6cb39d159c460e79a61f9b716a97be3cd0ee8227",
       "bytes": 2919857,
@@ -725,6 +763,22 @@
       "readBy": [
         "checks"
       ],
+      "archive": null
+    },
+    {
+      "path": "examples/hazmat-172-table/section-172.102.corpus.build.json",
+      "sha256": "8ed13062d5da3e95a4ec0a798c893df6329df4003b916a2ea4daaa04502233c4",
+      "bytes": 771,
+      "role": "archived",
+      "readBy": [],
+      "archive": null
+    },
+    {
+      "path": "examples/hazmat-172-table/section-172.102.corpus.expect.json",
+      "sha256": "cb350f41601a38a1e82d0c54c5b6190ab0077e095ab98e68e43044afb3647230",
+      "bytes": 30,
+      "role": "archived",
+      "readBy": [],
       "archive": null
     },
     {
@@ -889,6 +943,28 @@
       "path": "examples/hoyle-backgammon/corpus-map.json",
       "sha256": "384814cfc06a4b293ede04d11c70ceb046b82370d1487b66080a5f01c08ecc67",
       "bytes": 59503,
+      "role": "release",
+      "readBy": [
+        "checks",
+        "package"
+      ],
+      "archive": null
+    },
+    {
+      "path": "examples/hoyle-backgammon/hoyle.corpus.build.json",
+      "sha256": "6738661837995d907162f1ccb50ced6dfc060ec45079bd75172f9e0acc51eef6",
+      "bytes": 790,
+      "role": "release",
+      "readBy": [
+        "checks",
+        "package"
+      ],
+      "archive": null
+    },
+    {
+      "path": "examples/hoyle-backgammon/hoyle.corpus.expect.json",
+      "sha256": "cb350f41601a38a1e82d0c54c5b6190ab0077e095ab98e68e43044afb3647230",
+      "bytes": 30,
       "role": "release",
       "readBy": [
         "checks",
@@ -1666,6 +1742,28 @@
       "archive": null
     },
     {
+      "path": "examples/srd-52-combat/srd-5.2.1.corpus.build.json",
+      "sha256": "df93a644386e3b7b3ceaa6b26cec7d8f735f653563d73004f05891892e082433",
+      "bytes": 2477,
+      "role": "release",
+      "readBy": [
+        "checks",
+        "package"
+      ],
+      "archive": null
+    },
+    {
+      "path": "examples/srd-52-combat/srd-5.2.1.corpus.expect.json",
+      "sha256": "e9657b72087c40088bc1e09614922a950285b219e2daaecfbe3cbab180e5d265",
+      "bytes": 86,
+      "role": "release",
+      "readBy": [
+        "checks",
+        "package"
+      ],
+      "archive": null
+    },
+    {
       "path": "examples/srd-52-combat/srd-5.2.1.txt",
       "sha256": "c55926cb77bc7ea09096fc652db1411d763eae89d430c52221ed8709a075b100",
       "bytes": 1413945,
@@ -2186,6 +2284,28 @@
       "role": "active",
       "readBy": [
         "checks"
+      ],
+      "archive": null
+    },
+    {
+      "path": "examples/tax-121-principal-residence/section-1.121-1.corpus.build.json",
+      "sha256": "9e5fc337255d709ec1e392d7025cf456cde51321ee84983bc01366750d489b44",
+      "bytes": 769,
+      "role": "release",
+      "readBy": [
+        "checks",
+        "package"
+      ],
+      "archive": null
+    },
+    {
+      "path": "examples/tax-121-principal-residence/section-1.121-1.corpus.expect.json",
+      "sha256": "cb350f41601a38a1e82d0c54c5b6190ab0077e095ab98e68e43044afb3647230",
+      "bytes": 30,
+      "role": "release",
+      "readBy": [
+        "checks",
+        "package"
       ],
       "archive": null
     },

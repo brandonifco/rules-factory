@@ -17,8 +17,9 @@ The gate, in order:
     private map is allowed, because that is how a private project builds the package its own
     `factory produce` consumes; packing one **with `--tag`** is refused, because `--tag` is the
     publish path and `publish-map.yml` is its only caller. There is no flag that opens it;
-  * every cited corpus's committed bytes are read and recomputed through intake's one
-    `hashDerivation` table. Unknown derivations, malformed digests and mismatches are refusals;
+  * every cited corpus is built and verified by rules-corpus from the build definition committed
+    beside it, through intake (rulescorpus.py, #558). A missing definition or expectation, a
+    refused build or verification, a malformed digest and a mismatch are refusals;
   * exact map, packaged-manifest and verified-corpus bytes are written to a private immutable
     snapshot for the verification run (0048);
   * `check-map.py --phase publish` -- every check, structural and status-dependent, against that snapshot;
@@ -545,8 +546,7 @@ def verification_record(inputs, verified):
             {
                 "sourceId": item["sourceId"],
                 "hashDerivation": item["corpus"]["hashDerivation"],
-                "contentHash": intake.verify_declared_corpus_digest(
-                    item["sourceId"], item["corpus"], item["bytes"], item["path"]),
+                "contentHash": item["contentHash"],
             }
             for item in sorted(verified, key=lambda value: value["sourceId"].encode("utf-8"))
         ],

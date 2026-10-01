@@ -83,7 +83,7 @@ The factory is now code, in standard-library Python under
 
 | Milestone | Modules | State on `main` |
 |---|---|---|
-| M1 intake | `intake.py` | merged. The package is read as data and never run ([0016](docs/decisions/0016-a-map-package-is-data-not-code.md)); every cited corpus is re-hashed, and [0048](docs/decisions/0048-a-verified-map-package-binds-the-exact-artifacts-its-publish-gate-read.md) binds those resolved bytes to the exact map, manifest and packaged checker that passed the publish gate |
+| M1 intake | `intake.py` | merged. The package is read as data and never run ([0016](docs/decisions/0016-a-map-package-is-data-not-code.md)); every cited corpus is built and verified by rules-corpus from the definition committed beside it ([0074](docs/decisions/0074-a-corpus-is-built-and-verified-by-rules-corpus-from-the-definition-committed-beside-it.md)), and [0048](docs/decisions/0048-a-verified-map-package-binds-the-exact-artifacts-its-publish-gate-read.md) binds those resolved bytes to the exact map, manifest and packaged checker that passed the publish gate |
 | M2 scaffold and generation | `generate.py` over `semantics.py`, `csharp.py`, `entries.py`, `registry.py`, `contracts.py`, `correspondence.py`, `pins.py`, `scaffold.py`, `agentrails.py`; `ownership.py` | merged. The registry, map entries and correspondence tests as `*.g.cs`; one ownership class per file ([0018](docs/decisions/0018-every-file-the-factory-writes-has-one-owner.md)). `generate.py` was one 88 KB module until [#171](https://github.com/brandonifco/rules-factory/issues/171) split it by what it emits; it is now the composition, and the name a produced engine imports |
 | M3 gate recipe | `gate.py`, `recipe/` | merged. Every engine carries `scripts/validate.sh` and a CI workflow that runs it |
 | M4 provenance | `provenance.py` | merged. `provenance.json` (format 3), and a command that recomputes it |
@@ -272,7 +272,7 @@ Every artifact under `examples/` is named in
 [`tools/evidence-lock.json`](tools/evidence-lock.json) with its SHA-256 and the parts of CI that
 read it, and the gate holds the tree to that list in both directions on every run. The roles are
 measured rather than declared — an audit hook records what each checker opens — and what they
-found is in [docs/evidence-inventory.md](docs/evidence-inventory.md): <!-- derived:evidence-roles -->12.1 MB read by the checks, 2.7 MB packed into published packages, and 1.0 MB read by nothing at all<!-- /derived:evidence-roles -->
+found is in [docs/evidence-inventory.md](docs/evidence-inventory.md): <!-- derived:evidence-roles -->12.1 MB read by the checks, 2.8 MB packed into published packages, and 0.9 MB read by nothing at all<!-- /derived:evidence-roles -->
 ([0051](docs/decisions/0051-every-evidence-artifact-says-which-check-reads-it.md)).
 
 ### What it does not prove
@@ -315,7 +315,7 @@ found is in [docs/evidence-inventory.md](docs/evidence-inventory.md): <!-- deriv
   local repository, and those tags are unsigned, so a tag made or moved locally is recorded as a
   released version
   ([#175](https://github.com/brandonifco/rules-factory/issues/175)); a package named as
-  `Id@Version` carries no expected digest, so intake re-hashes and binds the bytes it resolved
+  `Id@Version` carries no expected digest, so intake verifies and binds the bytes it resolved
   ([0048](docs/decisions/0048-a-verified-map-package-binds-the-exact-artifacts-its-publish-gate-read.md))
   without being able to say those were the intended bytes
   ([#176](https://github.com/brandonifco/rules-factory/issues/176)). Both are limits of the claim,

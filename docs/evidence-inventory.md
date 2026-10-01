@@ -2,7 +2,7 @@
 
 `examples/` is this repository's evidence: five corpora, nine maps, the transcripts of blind
 second mappings, trial reports, independent verdicts, and the results of the injection, collapse
-and validator-attack measurements: <!-- derived:evidence-totals -->224 tracked files, 15.8 MB, out of 21.2 MB tracked in all<!-- /derived:evidence-totals -->.
+and validator-attack measurements: <!-- derived:evidence-totals -->236 tracked files, 15.8 MB, out of 21.4 MB tracked in all<!-- /derived:evidence-totals -->.
 Those figures are written by `check-evidence.py --measure` and held to the lock by the gate, the way
 the commit named under *By trial* is
 ([#439](https://github.com/brandonifco/rules-factory/issues/439)): a count typed here that the
@@ -68,7 +68,7 @@ A reader deciding what could be retired should know which of the two they are lo
 
 ## By trial
 
-Measured at `006e55a`, over a gate run that failed no step (`measuredOver` in the lock says so,
+Measured at `25da8d4`, over a gate run that failed no step (`measuredOver` in the lock says so,
 and `--measure` refuses a run with a failing step unless it is told to record that it was
 partial; [#408](https://github.com/brandonifco/rules-factory/issues/408)). It names a commit
 `main` holds rather than the branch commit `--measure` would otherwise have recorded, because a

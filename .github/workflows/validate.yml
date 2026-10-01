@@ -43,7 +43,11 @@ jobs:
     # before, and a corpus checker whose answers depend on the Python it met is worse than
     # no checker.
     runs-on: ubuntu-24.04
-    timeout-minutes: 10
+    # 20, as the engine job: since 0074 every corpus a test builds is built and verified by
+    # rules-corpus through `dotnet run`. On four workers locally the suite went from 1m54s to
+    # 3m29s, and this job already took about 6.4 minutes of its 10. A timeout is a hang detector,
+    # not a budget; the time itself is reported by every run.
+    timeout-minutes: 20
     steps:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -65,6 +69,18 @@ jobs:
 
       - name: Install pytest
         run: python3 -m pip install --quiet --disable-pip-version-check --require-hashes -r tools/requirements-dev.txt
+
+      # Intake builds and verifies every corpus with rules-corpus, fetched at the commit
+      # tools/factory/rulescorpus.py pins and run with `dotnet run` (#558), so the checkers' own
+      # tests need the SDK too. The version is the factory's pin, read as the engine job reads it.
+      - name: Read the pinned SDK
+        id: pin
+        run: echo "sdk=$(./scripts/validate-engine.sh --print-sdk)" >> "$GITHUB_OUTPUT"
+
+      - name: Set up .NET
+        uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
+        with:
+          dotnet-version: ${{ steps.pin.outputs.sdk }}
 
       # Checks every map against the schema and for a review of its bytes, every citation
       # against its corpus, the checkers' own tests, every repository link, and the decision

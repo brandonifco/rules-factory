@@ -45,6 +45,9 @@ _spec.loader.exec_module(factory)
 intake = factory.intake_step
 
 HOYLE_TEXT = os.path.join(REPO, "examples", "hoyle-backgammon", "hoyle.txt")
+
+from tests.factory.corpus_recipe import carry_recipe  # noqa: E402
+
 PART107_XML = os.path.join(REPO, "examples", "faa-part-107", "part107.xml")
 HOYLE_ID, HOYLE_VERSION = "RulesFactory.Maps.HoyleBackgammon", "6.0.0"
 PART107_ID = "RulesFactory.Maps.FaaPart107"
@@ -222,10 +225,19 @@ class TestRefuses(IntakeCase):
         changed = os.path.join(self.tmp, "part107.xml")
         with open(changed, "wb") as handle:
             handle.write(data)
-        self.assert_refused(self.part107, changed, "is not cfr-14-107 at its declared baseline")
+        carry_recipe(PART107_XML, changed)
+        self.assert_refused(self.part107, changed, "is not cfr-14-107 at its declared baseline",
+                            "rules-corpus gives")
 
     def test_the_other_corpus(self):
-        self.assert_refused(self.part107, HOYLE_TEXT, "is not cfr-14-107")
+        # Hoyle's own recipe builds Hoyle, whose baseline is not the one this map cites.
+        self.assert_refused(self.part107, HOYLE_TEXT, "declares no baseline for cfr-14-107")
+
+    def test_a_corpus_without_its_build_definition(self):
+        copy = os.path.join(self.tmp, "part107.xml")
+        shutil.copyfile(PART107_XML, copy)
+        self.assert_refused(self.part107, copy, "part107.corpus.build.json does not exist",
+                            "built by rules-corpus")
 
     def test_a_manifest_that_is_not_committed_copy(self):
         with zipfile.ZipFile(self.part107) as archive:
@@ -343,7 +355,23 @@ class TestRefuses(IntakeCase):
             "map/corpus-map.json": json.dumps(document).encode("utf-8"),
             "map/corpus-manifest.json": json.dumps(manifest).encode("utf-8"),
         })
-        self.assert_refused(package, HOYLE_TEXT, "no way to compute hashDerivation 'work-text-only'")
+        self.assert_refused(package, HOYLE_TEXT, "hashDerivation 'work-text-only', which this factory does not admit")
+
+    def test_an_admitted_hash_derivation_the_build_definition_does_not_declare(self):
+        """The name is the build definition's to declare and rules-corpus's to record (#558): a
+        manifest naming another admitted one is refused, though the digest is the same."""
+        with zipfile.ZipFile(self.hoyle) as archive:
+            document = json.loads(archive.read("map/corpus-map.json"))
+            manifest = json.loads(archive.read("map/corpus-manifest.json"))
+        document["baseline"]["hashDerivation"] = "ecfr-versioner-xml"
+        manifest["corpora"][0]["hashDerivation"] = "ecfr-versioner-xml"
+        package = rewrite(self.hoyle, os.path.join(self.tmp, "derivation.nupkg"), {
+            "map/corpus-map.json": json.dumps(document).encode("utf-8"),
+            "map/corpus-manifest.json": json.dumps(manifest).encode("utf-8"),
+        })
+        self.assert_refused(package, HOYLE_TEXT,
+                            "declares hoyle-1909's hashDerivation 'gutenberg-plain-text-including-boilerplate'",
+                            "the manifest declares 'ecfr-versioner-xml'")
 
     def test_a_map_the_consumer_checks_fail(self):
         package = rewrite(self.hoyle, os.path.join(self.tmp, "status.nupkg"),
@@ -634,6 +662,7 @@ class TestEverySourceIsBounded(IntakeCase):
         """
         size = intake.MAX_CORPUS_BYTES + 1
         corpus = self.sparse("too-big-corpus.txt", size)
+        carry_recipe(HOYLE_TEXT, corpus)
         declaration = self.hoyle_corpus_declaration()
         error, opened = self.files_opened_during(
             lambda: intake.verify_one(declaration["sourceId"], declaration, corpus))

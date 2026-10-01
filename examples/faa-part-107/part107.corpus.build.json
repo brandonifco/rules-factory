@@ -1,0 +1,23 @@
+{
+  "baselines": [
+    {
+      "artifact": "cfr-14-107-xml",
+      "asOf": "2026-01-01",
+      "hashDerivation": "ecfr-versioner-xml",
+      "sourceId": "cfr-14-107"
+    }
+  ],
+  "corpusId": "cfr-14-107",
+  "derivations": [],
+  "external": [],
+  "schema": "rules-corpus/build/1",
+  "sources": [
+    {
+      "id": "cfr-14-107-xml",
+      "mediaType": "application/xml",
+      "notes": "The eCFR versioner XML, byte for byte as retrieved. The baseline names this source directly: the corpus is the retrieved file, with no derivation. A work of the United States Government, in the public domain.",
+      "origin": "https://www.ecfr.gov/api/versioner/v1/full/2026-01-01/title-14.xml?part=107",
+      "path": "part107.xml"
+    }
+  ]
+}

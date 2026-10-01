@@ -9,7 +9,8 @@ finds nothing to examine fails: a check with no inputs has proven nothing.
   lock-files                         every project on disk has a packages.lock.json
   randomness --manifest M --map MAP  RulesKernel.Randomness is reachable only as the corpus declares
   posture --manifest M --map MAP --name N
-                                     the committed corpus hashes to the baseline, under its posture
+                                     rules-corpus builds the committed corpus to its baseline, under
+                                     its posture
   regenerate --package-map P --package-manifest M --package-id ID --package-version V --name N [--write]
                                      every *.g.cs is exactly what the factory generates
   provenance                         provenance.json still hashes the files on disk, the overlay set
@@ -178,41 +179,29 @@ def randomness(args):
 
 # --- the corpus --------------------------------------------------------------------------
 
-def derivations():
-    """The hashDerivations this gate can recompute: intake's HASH_DERIVATIONS, from the copy of the
-    factory's intake.py that `factory produce` vendored under scripts/factory/ beside this file.
-
-    There is one table, not two. This gate once kept its own, and a derivation the factory admitted
-    (#108, the SRD's) was missing from it, so every engine of that corpus failed here (#106). The
-    vendored intake.py is already what `regenerate` imports its siblings from, and its bytes are in
-    provenance.json's `generated`. A declared derivation not in the table is a failure: a digest
-    nobody re-derived is unchecked."""
-    sys.path.insert(0, str(ROOT / "scripts" / "factory"))
-    try:
-        import intake  # noqa: E402  (the factory's intake, vendored by produce)
-    except ImportError as error:
-        return None, f"scripts/factory/intake.py cannot be imported ({error}); run `factory produce` again"
-    table = getattr(intake, "HASH_DERIVATIONS", None)
-    if not isinstance(table, dict) or not table:
-        return None, "scripts/factory/intake.py declares no HASH_DERIVATIONS; run `factory produce` again"
-    return table, None
-
-
 def posture(args):
     """rules-factory decision 0013: how a baseline is verified is a property of the corpus.
 
-    committed-copy: the bytes are under corpus/; hashed here and in CI.
-    local-copy: the bytes are not in the repository; hashed from $envVar when it is set, and
+    committed-copy: the bytes are under corpus/; built and verified here and in CI.
+    local-copy: the bytes are not in the repository; built from $envVar when it is set, and
     otherwise NOT VERIFIED (exit 3) -- neither ok nor FAIL, and never silent.
+
+    Building and verifying is rules-corpus's, through the factory's intake vendored under
+    scripts/factory/ (rulescorpus.py pins which rules-corpus): the build definition and expectation
+    committed beside the corpus are built, `verify --rebuild` runs under that expectation, and the
+    baseline it computes must be the manifest's. This gate holds no digest recipe of its own; an
+    earlier one kept a table, which drifted from the factory's (#106, #558).
     """
     manifest = json.loads(pathlib.Path(args.manifest).read_text(encoding="utf-8"))
     mapped = json.loads(pathlib.Path(args.map).read_text(encoding="utf-8"))
     entries_cs = ROOT / "src" / args.name / "Generated" / "MapEntries.g.cs"
     cited = re.search(r'contentHash: "([0-9a-f]{64})"', entries_cs.read_text(encoding="utf-8")) if entries_cs.is_file() else None
 
-    table, problem = derivations()
-    if problem:
-        return report([problem], "")
+    sys.path.insert(0, str(ROOT / "scripts" / "factory"))
+    try:
+        import intake  # noqa: E402  (the factory's intake, vendored by produce; it runs rules-corpus)
+    except ImportError as error:
+        return report([f"scripts/factory/intake.py cannot be imported ({error}); run `factory produce` again"], "")
     problems, verified, unverified = [], [], []
     corpora = [c for c in manifest.get("corpora") or [] if isinstance(c, dict)]
     if not corpora:
@@ -222,7 +211,6 @@ def posture(args):
         kind = corpus.get("verification")
         boundary = corpus.get("boundaryPolicy")
         expected = corpus.get("contentHash")
-        derive = table.get(corpus.get("hashDerivation"))
         if sid == mapped.get("corpus"):
             if (mapped.get("baseline") or {}).get("contentHash") != expected:
                 problems.append(f"{sid}: the map's baseline is {(mapped.get('baseline') or {}).get('contentHash')}, "
@@ -235,10 +223,6 @@ def posture(args):
             continue
         if boundary == "never-commit" and kind == "committed-copy":
             problems.append(f"{sid}: a never-commit corpus cannot be committed-copy")
-            continue
-        if derive is None:
-            problems.append(f"{sid}: this gate cannot recompute hashDerivation {corpus.get('hashDerivation')!r}, "
-                            f"so the baseline is unchecked (known: {', '.join(sorted(table))})")
             continue
         if kind == "committed-copy":
             name = os.path.basename(str(corpus.get("committedPath") or ""))
@@ -261,11 +245,13 @@ def posture(args):
                 problems.append(f"{sid}: ${var} is {str(path)!r}, which is not a file")
                 continue
             where = f"local copy at ${var}"
-        digest = derive(path.read_bytes())
-        if digest != expected:
-            problems.append(f"{sid}: the {where} hashes to {digest}, the manifest pins {expected}")
+        try:
+            intake.verify_declared_corpus(sid, corpus, str(path))
+        except (intake.Refused, intake.Usage) as error:
+            problems.append(f"{sid}: {where}: {error}")
         else:
-            verified.append(f"{sid} ({kind}, {boundary}): {where} hashes to the pinned baseline")
+            verified.append(f"{sid} ({kind}, {boundary}): {where} builds with rules-corpus "
+                            f"{intake.rulescorpus.COMMIT[:12]} to the pinned baseline")
 
     for p in problems:
         print(f"error: {p}", file=sys.stderr)

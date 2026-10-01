@@ -22,8 +22,10 @@ The fields, and where each comes from:
   * `corpora` -- one entry per corpus the map cites, **sorted by `sourceId`**: its
     sourceId, contentHash, hashDerivation, asOf, the `corpus/` path the engine carries it at,
     and `principal: true` on the one the map's envelope names and its `baseline` stamps. Each
-    carries `recomputed: true`: intake derived contentHash from the bytes in hand under
-    hashDerivation and it matched; it was not copied across from the manifest. A map may cite
+    carries `recomputed: true`: rules-corpus built the corpus from the bytes in hand and the build
+    definition beside them, and the baseline it computed matched; it was not copied across from
+    the manifest (rulescorpus.py, #558). The engine carries that definition and its expectation in
+    `corpus/` beside the corpus, so the recompute below builds it again. A map may cite
     several corpora (0039), so this is a collection and not one object -- an engine built from a
     map whose rules cross two served documents depends on both, and a record naming one of them
     would asserts a correspondence it only half-checked.
@@ -148,6 +150,7 @@ import intake as intake_step
 import overlay as overlay_step
 import ownership
 import pins
+import rulescorpus
 import semantics
 
 FILE_NAME = "provenance.json"
@@ -774,39 +777,38 @@ def recompute(engine_dir, produce_into, package=None):
         on_disk = claimed(recorded_inputs, build_inputs(engine_dir, recorded_generated))
         mismatches.extend(diff(recorded_inputs, on_disk, "buildInputs"))
 
-    # Every corpus the record names is re-hashed from the engine's own copy, and the set of
-    # `corpus/` files the record generated has to be exactly the set it names (0039). Changing,
-    # removing or substituting any one of them is a named mismatch, not a silence.
+    # Every corpus the record names is carried with exactly what rebuilds it -- its build
+    # definition, its expectation and its stored sources (rulescorpus.carried) -- and nothing else
+    # sits in `corpus/`, so changing, removing or substituting any of them is a named mismatch, not
+    # a silence (0039). Its baseline is not re-hashed here: the re-produce below runs intake, which
+    # builds and verifies it with rules-corpus, and a corpus that no longer builds to its baseline
+    # is refused there.
     corpora = [c for c in recorded.get("corpora") or [] if isinstance(c, dict)]
     if not corpora:
         return mismatches + ["corpora: the record names no corpus; provenance written by a factory "
                              "before provenanceFormat 5 records `corpus` and is not comparable"]
     generated_corpus = {g["path"] for g in recorded.get("generated") or []
                         if str(g.get("path", "")).startswith("corpus/")}
-    named = {str(c.get("path")) for c in corpora}
-    if generated_corpus != named:
-        mismatches.append(f"corpora: the record names {sorted(named)} and generated "
-                          f"{sorted(generated_corpus)}; every cited corpus is carried and no other")
     corpus_files = []
+    expected_corpus = set()
     for corpus in sorted(corpora, key=lambda c: str(c.get("sourceId")).encode("utf-8")):
         source_id = corpus.get("sourceId")
         relative = str(corpus.get("path"))
         corpus_files.append(relative)
+        expected_corpus.add(relative)
         corpus_path = os.path.join(engine_dir, *relative.split("/"))
-        derive = intake_step.HASH_DERIVATIONS.get(corpus.get("hashDerivation"))
-        if derive is None:
-            mismatches.append(f"corpora[{source_id}].hashDerivation: "
-                              f"{corpus.get('hashDerivation')!r} cannot be computed")
-        elif not os.path.isfile(corpus_path):
+        if not os.path.isfile(corpus_path):
             mismatches.append(f"corpora[{source_id}]: {relative} is named by the record and is not "
                               f"in the engine, so its baseline cannot be re-derived")
-        else:
-            with open(corpus_path, "rb") as handle:
-                actual = derive(handle.read())
-            if actual != corpus.get("contentHash"):
-                mismatches.append(f"corpora[{source_id}].contentHash: recorded "
-                                  f"{corpus.get('contentHash')}, {relative} gives {actual} under "
-                                  f"{corpus.get('hashDerivation')}")
+            continue
+        try:
+            expected_corpus.update(f"corpus/{p}" for p in rulescorpus.carried(corpus_path))
+        except rulescorpus.Refused as error:
+            mismatches.append(f"corpora[{source_id}]: {error}")
+    if generated_corpus != expected_corpus:
+        mismatches.append(f"corpora: the record generated {sorted(generated_corpus)} under corpus/ and "
+                          f"the cited corpora are built from {sorted(expected_corpus)}; every cited "
+                          f"corpus is carried with what rebuilds it, and nothing else")
 
     recorded_maps = [m for m in recorded.get("maps") or [] if isinstance(m, dict)]
     if not recorded_maps:

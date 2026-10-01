@@ -21,8 +21,9 @@ Three kinds of output, one per ownership class (ownership.py holds the table, de
     hashes each one. Hand-written code lives in any other file and is never touched.
 
 
-The corpus is copied to `corpus/` on every run; intake has already proved its bytes, and that its
-licence permits committing them (decision 0028).
+The corpus is copied to `corpus/` on every run, with the rules-corpus build definition and
+expectation it was verified from (#558); intake has already proved its bytes, and that its licence
+permits committing them (decision 0028).
 
 What is where. This module is the composition: it decides what `produce` writes, in what order,
 and under which ownership class. It is also the name an engine knows the generator by -- the gate
@@ -227,6 +228,19 @@ def produce(intake, name, out, log=None, adopt=(), reset=(), engine_path=None):
         raise GenerationError(f"two cited corpora are committed under the same file name "
                               f"({', '.join(sorted(corpus_files.values()))}); an engine's corpus/ "
                               f"directory would hold one of them")
+    # Each corpus is carried with what rules-corpus builds it from -- its build definition, its
+    # expectation and its stored sources, at their paths beside it (rulescorpus.py, #558) -- so the
+    # engine's gate builds it again. The definition names the corpus file by the name it was supplied
+    # under, and the engine holds it under its committed name, so the two must be one name.
+    corpus_writes = {}
+    for verified in intake.corpora:
+        if corpus_files[verified["sourceId"]] != verified["name"]:
+            raise GenerationError(f"{verified['path']} is supplied for {verified['sourceId']}, which the "
+                                  f"manifest commits as {corpus_files[verified['sourceId']]!r}; its build "
+                                  f"definition names the file it was supplied as, so supply it under that name")
+        for relative, data in verified["files"].items():
+            if corpus_writes.setdefault(relative, data) != data:
+                raise GenerationError(f"two cited corpora are built from different files at corpus/{relative}")
 
     written = []
     for relative, text in scaffold.engine_owned(model).items():
@@ -240,10 +254,9 @@ def produce(intake, name, out, log=None, adopt=(), reset=(), engine_path=None):
         if relative in agentrails.EXECUTABLE:
             os.chmod(path, 0o755)
         written.append(relative)
-    for verified in intake.corpora:
-        name_on_disk = corpus_files[verified["sourceId"]]
-        _write(os.path.join(out, "corpus", name_on_disk), verified["bytes"])
-        written.append(f"corpus/{name_on_disk}")
+    for relative, data in sorted(corpus_writes.items()):
+        _write(os.path.join(out, "corpus", *relative.split("/")), data)
+        written.append(f"corpus/{relative}")
     for relative, text in generated(model).items():
         _write(os.path.join(out, *relative.split("/")), text.encode("utf-8"))
         written.append(relative)

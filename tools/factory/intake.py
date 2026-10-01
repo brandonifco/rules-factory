@@ -23,10 +23,12 @@ refusal rather than a warning:
      VERIFIED. The package's distribution requirement is the strictest of its corpora's, and
      `private` restricts where the engine may go, never what is established about it.
   5. **Every resolved corpus file is the exact identity this package was verified against.**
-     The map's principal `baseline` agrees with the manifest; each supplied file is recomputed
-     under the one canonical `hashDerivation` table, must equal its manifest contentHash, and
-     must equal the package verification record's contentHash for that same sourceId. Unknown
-     derivations and malformed declared digests fail closed.
+     The map's principal `baseline` agrees with the manifest; each supplied file is built and
+     verified by rules-corpus from the build definition committed beside it (rulescorpus.py,
+     #558), and the baseline rules-corpus computes must equal the manifest's declaration --
+     contentHash, hashDerivation and asOf -- and the package verification record's contentHash
+     for that same sourceId. A missing definition or expectation, a build or verification
+     rules-corpus refuses, and a malformed declared digest all fail closed.
   6. **The corpora agree on whether the engine may draw random values** (0019): `randomness` is
      `none` or `seeded`. A package whose manifest predates the field declares nothing, and is
      refused rather than read as `none`: the answer is the corpus's, and a default would be the
@@ -85,40 +87,35 @@ import xml.etree.ElementTree as ET
 import xml.parsers.expat
 import zipfile
 
+import rulescorpus
+
 FLAT_CONTAINER = "https://api.nuget.org/v3-flatcontainer"
 
-# What each `hashDerivation` covers, and how to recompute it from the file an engine commits.
+# The `hashDerivation` names the factory admits, and what each claims about the bytes it names. The
+# set is closed: a corpus naming anything else is refused (intake, pack-map and every engine's gate
+# all ask `verify_declared_corpus`), because each name is a claim a reviewer read -- that a text is
+# what a tool extracted, or what a reader transcribed -- and an unreviewed one claims nothing.
 #
-# Both derivations in use today are SHA-256 over the file's bytes exactly as retrieved from
-# the manifest's `retrievedFrom`; their names differ because the *bytes* differ from what a
-# reader might assume, and that is the whole point of naming a derivation (corpus-map.md):
+# The digest itself is not computed here. rules-corpus builds the corpus from the build definition
+# committed beside it and records the SHA-256 of the artifact its baseline names (rulescorpus.py,
+# #558). This module once held a function per name, the recipe every engine received a copy of,
+# and the copies drifted (rules-corpus#4). What bytes a name covers is now the definition's
+# derivation chain, and the name has to be the one that definition's baseline declares.
 #
 #   * ecfr-versioner-xml -- the XML document the eCFR versioner API serves for the part and
 #     date, not the rendered HTML or the printed volume (examples/faa-part-107/README.md);
 #   * gutenberg-plain-text-including-boilerplate -- the Project Gutenberg `.txt.utf-8`
 #     including its licence header and footer, not the work text alone
 #     (examples/hoyle-backgammon/README.md, finding 6).
-#
-# A derivation that needs normalisation (stripping boilerplate, canonicalising XML) gets its
-# own function here; it must never be approximated by the raw-bytes one.
-#
-# This is the only table. Every engine's gate (recipe/engine-gate.py, `posture`) imports it from
-# the copy of this file produce vendors at scripts/factory/intake.py, so a derivation admitted here
-# is one every engine's gate can recompute (#106). Keep this module importable standalone, standard
-# library only, from that directory.
-def _sha256_of_bytes(data):
-    return hashlib.sha256(data).hexdigest()
-
-
-HASH_DERIVATIONS = {
-    "ecfr-versioner-xml": _sha256_of_bytes,
-    "gutenberg-plain-text-including-boilerplate": _sha256_of_bytes,
+ADMITTED_HASH_DERIVATIONS = frozenset({
+    "ecfr-versioner-xml",
+    "gutenberg-plain-text-including-boilerplate",
     # SHA-256 over the committed page-marked text, byte for byte -- which is *not* what was
     # retrieved: WotC publishes a PDF, and examples/srd-52-combat/extract.py derives the text
-    # from it with pdftotext 24.02.0 and a `{N}` marker per page. The raw-bytes function is exact
-    # here because the committed file is the derivation's output; the PDF's own digest is the
+    # from it with pdftotext 24.02.0 and a `{N}` marker per page. The digest is exact
+    # because the committed file is the derivation's output; the PDF's own digest is the
     # manifest's `sourcePdf.sha256`, and `extract.py --check` holds the two together.
-    "srd-5.2.1-pdftotext-24.02.0-page-marked": _sha256_of_bytes,
+    "srd-5.2.1-pdftotext-24.02.0-page-marked",
     # SHA-256 over the committed page-marked text, byte for byte -- for a source no tool can
     # read. A scan carries page images and no text layer, so `pdftotext` returns nothing from
     # it and the only text it can have is one a reader transcribed from those images and
@@ -127,7 +124,7 @@ HASH_DERIVATIONS = {
     # it, because no machine wrote it. A corpus declaring this says so in the open, rather
     # than borrowing the name of a tool that never ran over it, and the project that commits
     # it holds this digest to its source scan's the way `extract.py --check` does (0013).
-    "transcribed-from-page-images-page-marked": _sha256_of_bytes,
+    "transcribed-from-page-images-page-marked",
     # SHA-256 over the committed page-marked text, byte for byte -- for a born-digital print
     # master whose extraction order is not its reading order. Between the two names above sits
     # a source neither describes: the text layer is real and complete, so nothing is
@@ -142,7 +139,7 @@ HASH_DERIVATIONS = {
     # commits it holds the corpus to its source by re-deriving and comparing byte for byte, the
     # way `extract.py --check` does (0013). The digest is exact because the committed file is
     # the derivation's output; the PDF's own digest is the manifest's `sourcePdf.sha256`.
-    "pdftotext-24.02.0-bbox-layout-declared-reading-order-page-marked": _sha256_of_bytes,
+    "pdftotext-24.02.0-bbox-layout-declared-reading-order-page-marked",
     # SHA-256 over the committed page-marked text, byte for byte -- for a printed board, read by
     # grid position and not in reading order, some of whose facts are artwork. Two claims, in
     # stated proportions, and the name carries both. The cell text is the text layer's, cut by a
@@ -152,8 +149,8 @@ HASH_DERIVATIONS = {
     # track -- is printed as artwork, and the corpus states it as **labels a reader wrote**,
     # checked only by a second reading. Neither sibling says that: the reading-order name claims
     # every byte is the layer's, and the transcription name claims no machine wrote any.
-    "pdftotext-24.02.0-bbox-layout-declared-cells-and-artwork-labels-page-marked": _sha256_of_bytes,
-}
+    "pdftotext-24.02.0-bbox-layout-declared-cells-and-artwork-labels-page-marked",
+})
 SHA256_HEX = re.compile(r"^[0-9a-f]{64}$")
 VERIFICATION_FORMAT = 1
 
@@ -646,30 +643,51 @@ def bind_corpora(cited, corpora, corpus_paths):
     return bound
 
 
-def verify_declared_corpus_digest(source_id, corpus, corpus_bytes, where):
-    """Return the canonical digest after proving bytes equal the manifest declaration (0048)."""
+def verify_declared_corpus(source_id, corpus, corpus_path):
+    """rules-corpus's build of the corpus at `corpus_path`, once its baseline for `source_id` is the
+    manifest's declaration (0048, #558). The digest is rules-corpus's; nothing here computes one.
+
+    The supplied file must be the artifact the baseline names, so the identity proved is of these
+    bytes and not of some other source the definition declares.
+    """
     derivation = corpus.get("hashDerivation") if isinstance(corpus, dict) else None
-    derive = HASH_DERIVATIONS.get(derivation)
-    if derive is None:
-        raise Refused(f"NOT VERIFIED -- no way to compute hashDerivation {derivation!r}; known: "
-                      f"{', '.join(sorted(HASH_DERIVATIONS))}")
     expected = corpus.get("contentHash") if isinstance(corpus, dict) else None
     if not isinstance(expected, str) or SHA256_HEX.fullmatch(expected) is None:
         raise Refused(f"{source_id} declares malformed contentHash {expected!r}; expected 64 lower-case "
                       f"hexadecimal SHA-256 characters for {derivation}")
-    actual = derive(corpus_bytes)
-    if actual != expected:
-        raise Refused(f"{where} is not {source_id} at its declared baseline: {derivation} gives {actual}, "
-                      f"the manifest declares {expected}")
-    return actual
+    if derivation not in ADMITTED_HASH_DERIVATIONS:
+        raise Refused(f"NOT VERIFIED -- {source_id} declares hashDerivation {derivation!r}, which this "
+                      f"factory does not admit; admitted: {', '.join(sorted(ADMITTED_HASH_DERIVATIONS))}")
+    try:
+        built = rulescorpus.build_and_verify(corpus_path, read_corpus)
+    except (rulescorpus.Refused, rulescorpus.Unavailable) as error:
+        raise Refused(str(error))
+    definition = rulescorpus.companions(corpus_path)[0]
+    baseline = built["baselines"].get(source_id)
+    if baseline is None:
+        raise Refused(f"{definition} declares no baseline for {source_id} (it declares "
+                      f"{', '.join(sorted(built['baselines'])) or 'none'})")
+    if baseline["path"] != os.path.basename(corpus_path):
+        raise Refused(f"{definition}'s baseline for {source_id} is the artifact at {baseline['path']!r}, "
+                      f"not the supplied {os.path.basename(corpus_path)!r}")
+    if baseline["hashDerivation"] != derivation:
+        raise Refused(f"{definition} declares {source_id}'s hashDerivation {baseline['hashDerivation']!r}; "
+                      f"the manifest declares {derivation!r}")
+    if baseline["contentHash"] != expected:
+        raise Refused(f"{corpus_path} is not {source_id} at its declared baseline: rules-corpus gives "
+                      f"{baseline['contentHash']} under {derivation}, the manifest declares {expected}")
+    if baseline["asOf"] != corpus.get("asOf"):
+        raise Refused(f"{definition} declares {source_id} as of {baseline['asOf']!r}; the manifest "
+                      f"declares {corpus.get('asOf')!r}")
+    return built
 
 
 def read_corpus(corpus_path):
     """The corpus's bytes, under MAX_CORPUS_BYTES, measured before the file is opened (#229).
 
-    The corpus is held whole because every derivation in HASH_DERIVATIONS is over the whole file
-    and the map's entries are located in it afterwards; the question is only how much of it intake
-    will hold. `os.stat` answers that without opening anything, so a corpus over the cap is refused
+    Every file rules-corpus builds from is read through here (rulescorpus.py), and the corpus is
+    held whole because the map's entries are located in it afterwards; the question is only how much
+    of it intake will hold. `os.stat` answers that without opening anything, so a corpus over the cap is refused
     without a byte of it being read -- which is the difference between a refusal and the
     exhaustion the refusal exists to prevent.
 
@@ -702,7 +720,8 @@ def read_corpus(corpus_path):
 
 
 def verify_one(source_id, corpus, corpus_path):
-    """(corpus, bytes, distribution) once this corpus is admissible and is its own baseline.
+    """(corpus, built, distribution) once this corpus is admissible and rules-corpus has built it to
+    its declared baseline (`built` is rulescorpus.build_and_verify's result).
 
     Admission is the first thing read (0028, 0068), before the posture, so a corpus the factory
     may not consume is refused for that and not reported as NOT VERIFIED.
@@ -719,21 +738,20 @@ def verify_one(source_id, corpus, corpus_path):
         raise Refused(f"{source_id} declares randomness {randomness!r}; a corpus declares none or seeded "
                       f"(0019), and a manifest without the field is refused, not read as none")
 
-    corpus_bytes = read_corpus(corpus_path)
-    verify_declared_corpus_digest(source_id, corpus, corpus_bytes, corpus_path)
-    return corpus, corpus_bytes, distribution
+    built = verify_declared_corpus(source_id, corpus, corpus_path)
+    return corpus, built, distribution
 
 
 def verify_corpora(document, manifest, corpus_paths):
-    """Every corpus the map cites, each resolved through the manifest and hashed here (0039).
+    """Every corpus the map cites, each resolved through the manifest and built by rules-corpus (0039).
 
     The manifest is the authority for the set: a map may cite several corpora, and each one's
     bytes are pinned by its own manifest entry rather than by the envelope's single `baseline`.
     The envelope's stamp still has to agree with its own corpus's entry -- that is
     `check-map.py --only manifest`'s -- and it pins that corpus and no other.
 
-    The hash is **recomputed here from the bytes in hand**, never read across from the manifest:
-    the manifest is what says which bytes are wanted, not evidence that these are they.
+    The baseline is **recomputed by rules-corpus from the bytes in hand**, never read across from
+    the manifest: the manifest is what says which bytes are wanted, not evidence that these are they.
     """
     if not isinstance(document, dict) or not isinstance(manifest, dict):
         raise Refused("the packaged map or manifest is not a JSON object")
@@ -756,10 +774,12 @@ def verify_corpora(document, manifest, corpus_paths):
     bound = bind_corpora(cited, declared, list(corpus_paths))
     verified = []
     for source_id in sorted(cited):
-        corpus, corpus_bytes, distribution = verify_one(source_id, declared[source_id], bound[source_id])
-        verified.append({"sourceId": source_id, "corpus": corpus, "bytes": corpus_bytes,
-                         "path": bound[source_id], "name": os.path.basename(bound[source_id]),
-                         "distribution": distribution})
+        corpus, built, distribution = verify_one(source_id, declared[source_id], bound[source_id])
+        name = os.path.basename(bound[source_id])
+        verified.append({"sourceId": source_id, "corpus": corpus, "bytes": built["files"][name],
+                         "path": bound[source_id], "name": name, "distribution": distribution,
+                         "contentHash": built["baselines"][source_id]["contentHash"],
+                         "files": built["files"]})
 
     # An engine has one randomness posture (0019) and nothing says whose it would be. Two corpora
     # that disagree are refused rather than resolved by taking the envelope's, which would be
@@ -856,8 +876,7 @@ def verify_resolved_corpora_binding(bound, verified):
                       f"{sorted(bound)}")
     for item in verified:
         source_id = item["sourceId"]
-        declaration = item["corpus"]
-        actual = HASH_DERIVATIONS[declaration["hashDerivation"]](item["bytes"])
+        actual = item["contentHash"]
         expected = bound[source_id]["contentHash"]
         if actual != expected:
             raise Refused(f"{item['path']} resolves {source_id} as {actual}, but this package was verified "
@@ -955,8 +974,8 @@ def intake(package_spec, corpus_paths, log=None):
     verify_resolved_corpora_binding(bound_corpora, corpora)
     for verified in corpora:
         corpus = verified["corpus"]
-        _note(log, f"corpus {corpus['sourceId']}: {corpus['hashDerivation']} {corpus['contentHash']} "
-                   f"recomputed from {verified['path']}")
+        _note(log, f"corpus {corpus['sourceId']}: {corpus['hashDerivation']} {verified['contentHash']} "
+                   f"built and verified by rules-corpus {rulescorpus.COMMIT[:12]} from {verified['path']}")
     _note(log, f"randomness {corpora[0]['corpus']['randomness']} (0019), agreed by all "
                f"{len(corpora)} cited corpus(es)")
     distribution = strictest_distribution(v["distribution"] for v in corpora)
