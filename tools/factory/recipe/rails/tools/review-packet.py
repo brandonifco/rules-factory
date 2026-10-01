@@ -155,6 +155,34 @@ def gh(*args):
     return done.stdout
 
 
+# GitHub's REST statuses, spelled as `gh pr view --json files` spells a `changeType`, so a path read
+# either way compares the same.
+_CHANGE_TYPES = {"added": "ADDED", "removed": "DELETED", "modified": "MODIFIED", "renamed": "RENAMED",
+                 "copied": "COPIED", "changed": "CHANGED"}
+
+
+def listed_files(pull, number):
+    """Every changed file of the pull request, as `{"path", "changeType"}` (#562).
+
+    `gh pr view --json files` stops at 100 files without a word, and `changedFiles` says how many
+    there are. Where the two disagree, the list is read again from the REST endpoint, which pages
+    to 3,000 files; what that returns is still held to `changedFiles` by the caller, so a list
+    GitHub will not give whole is refused as it always was, and never judged in part.
+    """
+    files = [{"path": f["path"], "changeType": f.get("changeType") or ""} for f in pull.get("files") or []]
+    count = pull.get("changedFiles")
+    if not isinstance(count, int) or len(files) == count:
+        return files
+    listing = gh("api", f"repos/{{owner}}/{{repo}}/pulls/{number}/files?per_page=100", "--paginate",
+                 "--jq", '.[] | [.filename, .status] | @tsv')
+    whole = []
+    for line in listing.splitlines():
+        path, _, status = line.partition("\t")
+        if path:
+            whole.append({"path": path, "changeType": _CHANGE_TYPES.get(status, status.upper())})
+    return whole
+
+
 def git(*args):
     done = subprocess.run(["git", *args], stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, cwd=ROOT)
     if done.returncode != 0:
@@ -632,9 +660,10 @@ def build(number, base, package_maps=(), recordable=True, role=ALL, review_type=
                 if label in (labels.get("normalRisk"), labels.get("independentRisk"))]
         independent = labels.get("independentRisk") in issue_labels
 
-        changed = [f["path"] for f in pull.get("files") or []]
+        changed = [f["path"] for f in listed_files(pull, number)]
         # `gh pr view --json files` caps at 100 files, silently: no error, no warning, and
-        # `changedFiles` says how many there really are. `tools/conformance-gate.py` has refused a
+        # `changedFiles` says how many there really are; `listed_files` reads the rest from the
+        # REST endpoint (#562), and what is still short is refused here. `tools/conformance-gate.py` has refused a
         # truncated list since #193, because the semantic surface cannot be decided from half the
         # files -- and since the cuts of #467 these paths decide what the diff *contains*, not only
         # what it is labelled. On a truncated list a semantic packet can drop a changed source file
