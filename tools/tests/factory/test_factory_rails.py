@@ -4380,6 +4380,47 @@ class TestAProduceUpdateIsAPullRequestLikeAnyOther(TestPrPolicy):
         self.assertIn("corpus-map.overlay.json", done.stdout)
         self.assertIn("claim is void", done.stdout)
 
+    def test_gh_s_spelling_of_a_deletion_is_a_deletion(self):
+        """#566: `gh pr view --json files` reports a deleted file as DELETED, and the two retired
+        deletions a migration produce makes -- the old `backlog/` and the split shared overlay -- are
+        admitted under that spelling exactly as under REMOVED."""
+        self.commit_engine()
+        files = self.retired_files(change="DELETED")
+        self.pull_request(body=self.produce_body(files=files), files=files, base_record=self.retired_base())
+        done = self.policy_check()
+        self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+        self.assertIn("claim was admitted", done.stdout)
+
+        write_overlay(self.out, self.SHARED_OVERLAY)
+        files = self.produced_files(extra=[{"path": "corpus-map.overlay.json", "changeType": "DELETED"}])
+        self.pull_request(body=self.produce_body(), files=files, base_record=self.overlay_base())
+        done = self.policy_check()
+        self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+        self.assertIn("claim was admitted", done.stdout)
+
+    def test_the_split_implements_nothing_in_an_ordinary_pull_request(self):
+        """#566: a factory move that carries a hand edit is an ordinary pull request, and the split
+        of #247 adds an `overlay/<entry id>.json` for every entry. An entry already implemented in
+        the shared overlay at the base is not implemented by this pull request -- its row there is
+        its base -- while one this diff does implement still is."""
+        self.commit_engine()
+        implemented = {"status": "implemented", "implementedIn": "Rules/AltitudeLimit.cs",
+                       "tests": [{"name": "AltitudeLimit_DeclinesAboveTheCeiling",
+                                  "mutation": "return the ceiling instead of declining"}]}
+        files = [{"path": "overlay/altitude-limit.json", "changeType": "ADDED"},
+                 {"path": "overlay/speed-limit.json", "changeType": "ADDED"},
+                 {"path": "corpus-map.overlay.json", "changeType": "DELETED"},
+                 {"path": f"src/{NAME}/Rules/AltitudeLimit.cs", "changeType": "MODIFIED"}]
+        base = self.overlay_base({"altitude-limit": {"status": "mapped"},
+                                  "speed-limit": self.SHARED_OVERLAY["speed-limit"]})
+        self.pull_request(files=files, base_record=base,
+                          head_overlay={"altitude-limit": implemented,
+                                        "speed-limit": self.SHARED_OVERLAY["speed-limit"]})
+        done = self.policy_check()
+        self.assertNotIn("cannot be read at the pull request head", done.stdout)
+        self.assertNotIn("this diff sets", done.stdout,
+                         "speed-limit was implemented at the base, so the split does not implement it")
+
     def test_a_retired_path_added_or_modified_voids_the_claim(self):
         """`backlog/notes.md` is hand-written and matches `backlog/*.md`. A produce deletes; it
         never adds to or edits a retired pattern, so a diff that does is somebody's decision."""
