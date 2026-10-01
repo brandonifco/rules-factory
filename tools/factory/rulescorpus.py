@@ -43,7 +43,7 @@ import subprocess
 import tempfile
 
 REPOSITORY = "https://github.com/brandonifco/rules-corpus"
-COMMIT = "09602e1dded1cb9625c6ce0fbfbea0853cbf49c7"
+COMMIT = "ffc04287774917e8721c743db0749dffde2afcbe"
 CLI_PROJECT = "src/RulesCorpus.Cli/RulesCorpus.Cli.csproj"
 
 DEFINITION_SUFFIX = ".corpus.build.json"
