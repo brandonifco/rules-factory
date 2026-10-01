@@ -44,9 +44,9 @@ jobs:
     # no checker.
     runs-on: ubuntu-24.04
     # 20, as the engine job: since 0074 every corpus a test builds is built and verified by
-    # rules-corpus through `dotnet run`, and the suite alone took 7m20s on four workers locally
-    # (it was inside 10 minutes when it hashed with Python). A timeout is a hang detector, not a
-    # budget; the time itself is reported by every run.
+    # rules-corpus through `dotnet run`. On four workers locally the suite went from 1m54s to
+    # 3m29s, and this job already took about 6.4 minutes of its 10. A timeout is a hang detector,
+    # not a budget; the time itself is reported by every run.
     timeout-minutes: 20
     steps:
       - name: Checkout
