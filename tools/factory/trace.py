@@ -22,13 +22,19 @@ fact from a guess will act on the guess:
     relationship is listed under `gaps`. Unknown is never promoted to inferred, and inferred is
     never promoted to recorded.
 
-**Entry -> implementation is inferred or unknown, never recorded.** The overlay's `implementedIn`
-is `{ruleset, version}` in every engine the factory has produced: it records which ruleset the
-entry was implemented against, not which file implements it. It is reported as the overlay
-records it. The files are found by the review model's own lexical analysis (reviewscope.py): the
-hand-written file whose partial `Handlers` declares the entry's generated handler, and the files
+**Entry -> handler is derived; handler -> file is inferred (#582).** The generator binds every
+entry to a handler on the generated `Handlers` class (contracts.py), required or an optional hook.
+`handler` is what the generator declares *for this map and overlay*, computed through its own model
+and contract (`semantics.Model`, `semantics.contract`), so which entries need one is decided there
+and stated nowhere here. It is not read from `Generated/Contracts.g.cs`, which predates any overlay
+edit made since the last produce. A map the generator cannot model leaves every handler unknown, as
+a gap, rather than refusing the trace: the rest of the trace still stands. Which
+file writes that handler is recorded nowhere -- the overlay's `implementedIn` is `{ruleset,
+version}` in every engine the factory has produced, which ruleset the entry was implemented
+against, not where -- so the files are found by the review model's own lexical analysis
+(reviewscope.py): the hand-written file whose partial `Handlers` writes the handler, and the files
 that name the entry's member, its request type or its id. That is evidence of where to look, not a
-binding, and it is labelled so.
+binding, and it is labelled inferred. Whether the current tree builds is not the trace's to say.
 
 **A locator is not resolved to corpus text.** Which component resolves a citation to the exact
 bytes it names is not settled, and a trace that resolved it would settle it by accident. So the
@@ -58,6 +64,7 @@ engine sits under its repository root. Standard library only.
 import json
 import os
 import re
+import types
 
 import backlog as backlog_step
 import compose
@@ -298,7 +305,7 @@ def handler_files(files):
 HANDLER_MECHANISM = (f"reviewscope.partial_members and the generated handler signature (contracts.py): a "
                      f"hand-written file under src/ that declares the partial {HANDLERS} and writes "
                      f"`partial Resolution<...> <Member>(` or `partial void <Member>(` for the entry's member "
-                     f"(semantics.pascal of the entry id)")
+                     f"(the member semantics.Model gives the entry)")
 REFERENCE_MECHANISM = ("reviewscope.entry_references: a hand-written file under src/ that names the entry's "
                        "member, its request type, or its id as a string literal")
 
@@ -312,7 +319,31 @@ def implementation(entry_id, member, handlers, references):
     return candidates
 
 
-def entry_trace(entry, origin, item, corpora, handlers, references, single, gaps):
+def generator_model(record, merged, documents):
+    """The generator's own model of the merged map, for the two facts the trace takes from it.
+
+    `semantics.Model` reads six attributes of an intake, duck-typed. The trace has no intake --
+    it reads a produced engine, not a package being produced -- so it hands in the package ids and
+    versions provenance recorded and nothing else; the members and correspondence rows the model
+    computes depend on the merged map alone.
+    """
+    sources = [m for m in record.get("maps") or [] if isinstance(m, dict)]
+    packages = [types.SimpleNamespace(package_id=package_id, version=str(source.get("version")))
+                for (package_id, _, _), source in zip(documents, sources)]
+    name = (record.get("engine") or {}).get("name") if isinstance(record.get("engine"), dict) else None
+    try:
+        return semantics.Model(types.SimpleNamespace(packages=packages, superseded={}, randomness=None), merged,
+                               str(name or "Engine")), None
+    except (semantics.GenerationError, KeyError, TypeError, AttributeError) as error:
+        return None, (f"the generator cannot model this engine's merged map ({error}), so no handler is derived "
+                      f"for any entry")
+
+
+HANDLER_BASIS = ("semantics.contract over semantics.Model: the handler the generator declares on Handlers for this map "
+                 "and overlay (contracts.py); not read from Generated/Contracts.g.cs, which may predate the overlay")
+
+
+def entry_trace(entry, origin, item, corpora, handlers, references, single, gaps, generated):
     entry_id = entry["id"]
     package_id, own_id = origin.get(entry_id, (None, entry_id))
     in_map = f"{package_id} map/corpus-map.json entries[{own_id!r}]"
@@ -377,12 +408,20 @@ def entry_trace(entry, origin, item, corpora, handlers, references, single, gaps
     if entry.get("status") == "implemented" and listed and not tests:
         gaps.append(_gap(subject, "entry -> test", "the entry is implemented and names no test"))
 
-    candidates = implementation(entry_id, semantics.pascal(entry_id), handlers, references)
+    if generated.get("item") is None:
+        member = semantics.pascal(entry_id)
+        out["handler"] = unknown(generated["why"])
+        gaps.append(_gap(subject, "entry -> handler", generated["why"]))
+    else:
+        contract = semantics.contract(generated["model"], generated["item"])
+        member = generated["item"]["member"]
+        out["handler"] = derived({"symbol": f"{HANDLERS}.{member}", "required": contract["required"]}, HANDLER_BASIS)
+    candidates = implementation(entry_id, member, handlers, references)
     if candidates:
         out["implementation"] = candidates
     else:
-        why = (f"no hand-written file under src/ declares {HANDLERS}.{semantics.pascal(entry_id)} or names the "
-               f"entry, and no artifact records which file implements it")
+        why = (f"no hand-written file under src/ writes {HANDLERS}.{member} or names the entry, and no artifact "
+               f"records which file implements it")
         out["implementation"] = [unknown(why)]
         gaps.append(_gap(subject, "entry -> implementation", why))
     return out
@@ -415,7 +454,13 @@ def build(engine_dir, package=None):
                          f"(the engine's own gate refuses this too): {error}")
     files = implementation_files(engine_dir, gaps)
     entries = [e for e in merged.get("entries") or [] if isinstance(e, dict) and isinstance(e.get("id"), str)]
-    references = reviewscope.entry_references(files, {e["id"]: semantics.pascal(e["id"]) for e in entries})
+    model, unmodelled = generator_model(record, merged, documents)
+    generated = {e["id"]: {"why": unmodelled} for e in entries}
+    for item in (model.entries if model else []):
+        generated[item["entry"]["id"]] = {"model": model, "item": item}
+    references = reviewscope.entry_references(files, {
+        e["id"]: generated[e["id"]]["item"]["member"] if "item" in generated[e["id"]] else semantics.pascal(e["id"])
+        for e in entries})
     handlers = handler_files(files)
     corpora = {c.get("sourceId") for c in record.get("corpora") or [] if isinstance(c, dict)}
     trace = {
@@ -425,7 +470,7 @@ def build(engine_dir, package=None):
         "maps": maps_section(record, documents, gaps),
         "corpora": corpora_section(record),
         "entries": [entry_trace(e, origin, items.get(e["id"]), corpora, handlers, references,
-                                len(documents) == 1, gaps) for e in entries],
+                                len(documents) == 1, gaps, generated[e["id"]]) for e in entries],
     }
     tally = dict.fromkeys(CLASSES, 0)
     count(trace, tally)

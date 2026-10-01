@@ -12,7 +12,9 @@ Asserted:
     one names its basis, an inferred one its mechanism, and an unknown one says why and is a gap;
   * named tests and mutations are the overlay's bytes, attributed to the overlay field that holds
     them, and a test with no mutation is unknown rather than assumed;
-  * entry -> implementation is inferred from the handler declaration and never recorded, build
+  * entry -> handler is derived through the generator's own model and contract (#582), required for
+    an implemented entry and an optional hook otherwise, with the rule stated nowhere in trace.py;
+  * entry -> implementation file is inferred from the handler declaration and never recorded, build
     output is not read, and an implemented entry nothing implements is unknown;
   * each corpus an entry cites is kept distinct, and a locator naming a corpus provenance does not
     record is unknown;
@@ -296,6 +298,39 @@ class TraceOfATwoCorpusEngine(unittest.TestCase):
         trace, _ = self.trace()
         (gap,) = [g for g in trace["gaps"] if g["relationship"] == "engine -> implementation files"]
         self.assertIn("src/TwoSection/Handlers/ListedInTheTable.cs could not be read", gap["why"])
+
+    def test_an_implemented_entrys_handler_is_derived_from_the_generator_and_required(self):
+        self.implemented([{"test": "ListedTests.Holds", "mutation": MUTATION}])
+        handler = entry(self.trace()[0], "listed-in-the-table")["handler"]
+        self.assertEqual(handler["value"], {"symbol": "Handlers.ListedInTheTable", "required": True})
+        self.assertEqual(handler["evidence"], "derived")
+        self.assertIn("semantics.contract over semantics.Model", handler["basis"])
+
+    def test_an_entry_that_is_not_implemented_has_an_optional_hook(self):
+        handler = entry(self.trace()[0], "w-is-water-only")["handler"]
+        self.assertEqual(handler["value"], {"symbol": "Handlers.WIsWaterOnly", "required": False})
+
+    def test_whether_a_handler_is_required_is_the_generators_rule_and_not_restated(self):
+        self.implemented([{"test": "ListedTests.Holds", "mutation": MUTATION}])
+        real = factory.trace_step.semantics.contract
+        with mock.patch.object(factory.trace_step.semantics, "contract",
+                               side_effect=lambda model, item: dict(real(model, item), required=False)):
+            handler = entry(self.trace()[0], "listed-in-the-table")["handler"]
+        self.assertFalse(handler["value"]["required"])
+
+    def test_a_map_the_generator_cannot_model_leaves_every_handler_unknown_and_traces_the_rest(self):
+        with mock.patch.object(factory.trace_step.semantics, "Model",
+                               side_effect=factory.trace_step.semantics.GenerationError("two entries, one member")):
+            trace, _ = self.trace()
+        for listed in trace["entries"]:
+            self.assertEqual(listed["handler"]["evidence"], "unknown")
+            self.assertIn("two entries, one member", listed["handler"]["why"])
+            self.assertEqual(listed["locator"]["evidence"], "recorded")
+        self.assertEqual(trace["summary"]["gaps"]["entry -> handler"], 2)
+
+    def test_the_handler_basis_says_it_was_not_read_from_the_generated_file(self):
+        basis = entry(self.trace()[0], "w-is-water-only")["handler"]["basis"]
+        self.assertIn("not read from Generated/Contracts.g.cs", basis)
 
     def test_an_implemented_entry_nothing_implements_is_unknown_and_a_gap(self):
         self.implemented([{"test": "ListedTests.Holds", "mutation": MUTATION}])

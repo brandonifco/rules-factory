@@ -139,7 +139,7 @@ def render_entry(entry, gaps_by_subject, positions):
     entry_id = entry["id"]["value"]
     parts = [f'<section class="{classes_of(entry, gaps_by_subject, positions)}" id="{esc(anchor(entry_id))}">',
              f'<h3><a href="#{esc(anchor(entry_id))}">{esc(entry_id)}</a></h3>', "<table>"]
-    for label in ("id", "name", "package", "locator", "corpus", "segment", "status", "implementedIn"):
+    for label in ("id", "name", "package", "locator", "corpus", "segment", "status", "implementedIn", "handler"):
         if label in entry:
             parts.append(row(label, entry[label]))
     parts.append("</table>")
