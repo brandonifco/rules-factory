@@ -202,7 +202,13 @@ switch this throw true try typeof uint ulong unchecked unsafe ushort using var v
 yield""".split())
 
 
-def _literal_end(text, i):
+#: How deep literals may nest inside interpolation holes before the scanner stops following them. No
+#: hand-written C# comes near it; a file that does is blanked to its end rather than overflowing the
+#: stack, which would fail the whole reference graph instead of one file.
+MAX_NESTING = 64
+
+
+def _literal_end(text, i, depth=0):
     """The index just past the string literal that starts at `i` (with its `$`/`@` prefix).
 
     An interpolated string's holes are code, and code can hold a string of its own:
@@ -236,7 +242,7 @@ def _literal_end(text, i):
         elif interpolated and c in "{}" and text[j + 1:j + 2] == c:
             j += 2                                            # `{{` or `}}`: a brace, not a hole
         elif interpolated and c == "{":
-            j = _hole_end(text, j + 1)
+            j = _hole_end(text, j + 1, verbatim, depth + 1)
         else:
             j += 1
     return n
@@ -250,21 +256,42 @@ def _char_end(text, i):
     return j + 1
 
 
-def _hole_end(text, j):
-    """The index just past the `}` that closes an interpolation hole whose code starts at `j`."""
-    n, depth = len(text), 0
+def _hole_end(text, j, verbatim=False, depth=0):
+    """The index just past the `}` that closes an interpolation hole whose code starts at `j`.
+
+    The hole is code -- comments, nested literals, char literals, braces and parentheses -- up to
+    its format clause: a `:` outside every brace and parenthesis (C# requires a conditional in a hole
+    to be parenthesised, so this `:` is never one), after which everything up to the `}` is format
+    text, where an apostrophe or a quote is a character and not a literal.
+    """
+    n, braces, parens = len(text), 0, 0
+    if depth > MAX_NESTING:
+        return n
     while j < n:
         c = text[j]
-        if c == '"' or (c in "$@" and '"' in text[j:j + 3]):
-            j = _literal_end(text, j)
+        if text.startswith("//", j):
+            j = n if text.find("\n", j) < 0 else text.find("\n", j) + 1
+        elif text.startswith("/*", j):
+            j = n if text.find("*/", j + 2) < 0 else text.find("*/", j + 2) + 2
+        elif c == '"' or (c in "$@" and '"' in text[j:j + 3]):
+            j = _literal_end(text, j, depth)
         elif c == "'":
             j = _char_end(text, j)
+        elif c in "([":
+            parens, j = parens + 1, j + 1
+        elif c in ")]":
+            parens, j = max(parens - 1, 0), j + 1
         elif c == "{":
-            depth, j = depth + 1, j + 1
+            braces, j = braces + 1, j + 1
         elif c == "}":
-            if depth == 0:
+            if braces == 0:
                 return j + 1
-            depth, j = depth - 1, j + 1
+            braces, j = braces - 1, j + 1
+        elif c == ":" and braces == 0 and parens == 0 and text[j + 1:j + 2] != ":" and text[j - 1:j] != ":":
+            j += 1
+            while j < n and text[j] != "}":
+                j += 2 if text[j] == "\\" and not verbatim else 1
+            return min(j + 1, n)
         else:
             j += 1
     return n
