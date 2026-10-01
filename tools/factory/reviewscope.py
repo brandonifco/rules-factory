@@ -202,12 +202,81 @@ switch this throw true try typeof uint ulong unchecked unsafe ushort using var v
 yield""".split())
 
 
+def _literal_end(text, i):
+    """The index just past the string literal that starts at `i` (with its `$`/`@` prefix).
+
+    An interpolated string's holes are code, and code can hold a string of its own:
+    `$"{(x ? $"Round {n}'s" : "none")}"`. So a hole is scanned as code to its closing brace -- nested
+    literals, char literals and braces included -- and the outer literal ends at the first quote
+    *outside* every hole (#581). Until then it ended at the nested literal's opening quote, the
+    nested literal's contents were read as code, and an apostrophe in them opened a char literal
+    that ran to the end of the file.
+    """
+    n, k = len(text), i
+    while k < n and text[k] in "$@":
+        k += 1
+    prefix = text[i:k]
+    verbatim, interpolated = "@" in prefix, "$" in prefix
+    quotes = 0
+    while k + quotes < n and text[k + quotes] == '"':
+        quotes += 1
+    if quotes >= 3:                                           # a raw string literal
+        j = text.find('"' * quotes, k + quotes)
+        return n if j < 0 else j + quotes
+    j = k + 1
+    while j < n:
+        c = text[j]
+        if c == "\\" and not verbatim:
+            j += 2
+        elif c == '"':
+            if verbatim and text[j + 1:j + 2] == '"':
+                j += 2
+                continue
+            return j + 1
+        elif interpolated and c in "{}" and text[j + 1:j + 2] == c:
+            j += 2                                            # `{{` or `}}`: a brace, not a hole
+        elif interpolated and c == "{":
+            j = _hole_end(text, j + 1)
+        else:
+            j += 1
+    return n
+
+
+def _char_end(text, i):
+    """The index just past the char literal that starts at `i`."""
+    j = i + 1
+    while j < len(text) and text[j] != "'":
+        j += 2 if text[j] == "\\" else 1
+    return j + 1
+
+
+def _hole_end(text, j):
+    """The index just past the `}` that closes an interpolation hole whose code starts at `j`."""
+    n, depth = len(text), 0
+    while j < n:
+        c = text[j]
+        if c == '"' or (c in "$@" and '"' in text[j:j + 3]):
+            j = _literal_end(text, j)
+        elif c == "'":
+            j = _char_end(text, j)
+        elif c == "{":
+            depth, j = depth + 1, j + 1
+        elif c == "}":
+            if depth == 0:
+                return j + 1
+            depth, j = depth - 1, j + 1
+        else:
+            j += 1
+    return n
+
+
 def blank_literals(text):
     """`text` with every comment and every string or character literal's contents replaced by spaces.
 
     Only for finding where a type's body and its members are: a brace inside `$"{x}"` or a comment
     is not structure. Newlines are kept, so positions still mean lines. Identifiers are read from
-    the unblanked text elsewhere, because a name inside a string can still be code.
+    the unblanked text elsewhere, because a name inside a string can still be code. An interpolated
+    string is blanked whole, holes included, and ends where `_literal_end` says it does.
     """
     out, i, n = list(text), 0, len(text)
 
@@ -229,37 +298,13 @@ def blank_literals(text):
             blank(i, j)
             i = j
         elif c == '"' or (c in "$@" and '"' in text[i:i + 3]):
-            k = i
-            while k < n and text[k] in "$@":
-                k += 1
-            verbatim = "@" in text[i:k]
-            quotes = 0
-            while k + quotes < n and text[k + quotes] == '"':
-                quotes += 1
-            if quotes >= 3:                                   # a raw string literal
-                j = text.find('"' * quotes, k + quotes)
-                j = n if j < 0 else j + quotes
-            else:
-                j = k + 1
-                while j < n:
-                    if text[j] == "\\" and not verbatim:
-                        j += 2
-                        continue
-                    if text[j] == '"':
-                        if verbatim and j + 1 < n and text[j + 1] == '"':
-                            j += 2
-                            continue
-                        j += 1
-                        break
-                    j += 1
+            j = _literal_end(text, i)
             blank(i, j)
             i = j
         elif c == "'":
-            j = i + 1
-            while j < n and text[j] != "'":
-                j += 2 if text[j] == "\\" else 1
-            blank(i, j + 1)
-            i = j + 1
+            j = _char_end(text, i)
+            blank(i, j)
+            i = j
         else:
             i += 1
     return "".join(out)
