@@ -577,6 +577,45 @@ class TestTheGeneratorsConventions(Scenario):
         self.assertEqual(self.m.partial_members(text), ({"Handlers"}, {"Label", "Clamp"}))
 
 
+class TestNestedLiterals(Scenario):
+    """#581. A string nested in an interpolation hole is a literal, and the outer one ends after it."""
+
+    HEAD = "static partial class Handlers {\n  static string A(int x) => "
+    TAIL = ";\n  static partial void B();\n}\n"
+
+    def members(self, literal):
+        return sorted(self.m.partial_members(self.HEAD + literal + self.TAIL)[1])
+
+    def test_a_nested_string_is_not_read_as_code(self):
+        self.assertEqual(self.members('$"v {(x > 0 ? $"n {x}" : "none")}"'), ["A", "B"])
+
+    def test_an_apostrophe_in_a_nested_string_does_not_swallow_the_rest_of_the_file(self):
+        self.assertEqual(self.members('$"v {(x > 0 ? $"Round {x}\'s" : "none")}"'), ["A", "B"])
+
+    def test_a_property_pattern_and_doubled_braces_in_an_interpolated_string(self):
+        self.assertEqual(self.members('$"v {(x is { } y ? $"n {y}" : "none")} {{ open"'), ["A", "B"])
+
+    def test_a_format_clause_is_text_and_a_comment_in_a_hole_is_a_comment(self):
+        for literal in ('$"{x:0\' pts}"', '$"{x:\\"0\\"}"', '$"{x /* don\'t */}"', '$"{x // it\'s\n}"',
+                        '$"{(x > 0 ? x : -x):N2}"', '$"{global::System.Math.Abs(x)}"'):
+            with self.subTest(literal):
+                self.assertEqual(self.members(literal), ["A", "B"])
+
+    def test_nesting_beyond_reason_is_not_a_crash(self):
+        deep = '$"{' * 500 + "x" + '}"' * 500
+        self.assertIn("A", self.members(deep))
+
+    def test_a_handler_after_a_nested_literal_is_still_a_dependency(self):
+        files = {"src/E/Handlers.cs": (self.HEAD + '$"v {(x > 0 ? $"Round {x}\'s" : "none")}"' + self.TAIL
+                                      ).replace("static partial void B();",
+                                                "static partial void B();\n  internal static int Late() => 1;").encode(),
+                 # A second file of the partial type, so the files are joined by the members each declares
+                 # and not by the type's name (partial_members).
+                 "src/E/Handlers.More.cs": b"static partial class Handlers {\n  static int Other() => 1;\n}\n",
+                 "src/E/Caller.cs": b"internal static class Caller { static int Call() => Handlers.Late(); }\n"}
+        self.assertEqual(self.m.reference_graph(files)["src/E/Caller.cs"], ["src/E/Handlers.cs"])
+
+
 class TestWhatAnAdversaryFound(Scenario):
     """The holes an adversarial review of this model found (#532), each held shut."""
 

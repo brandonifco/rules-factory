@@ -202,12 +202,108 @@ switch this throw true try typeof uint ulong unchecked unsafe ushort using var v
 yield""".split())
 
 
+#: How deep literals may nest inside interpolation holes before the scanner stops following them. No
+#: hand-written C# comes near it; a file that does is blanked to its end rather than overflowing the
+#: stack, which would fail the whole reference graph instead of one file.
+MAX_NESTING = 64
+
+
+def _literal_end(text, i, depth=0):
+    """The index just past the string literal that starts at `i` (with its `$`/`@` prefix).
+
+    An interpolated string's holes are code, and code can hold a string of its own:
+    `$"{(x ? $"Round {n}'s" : "none")}"`. So a hole is scanned as code to its closing brace -- nested
+    literals, char literals and braces included -- and the outer literal ends at the first quote
+    *outside* every hole (#581). Until then it ended at the nested literal's opening quote, the
+    nested literal's contents were read as code, and an apostrophe in them opened a char literal
+    that ran to the end of the file.
+    """
+    n, k = len(text), i
+    while k < n and text[k] in "$@":
+        k += 1
+    prefix = text[i:k]
+    verbatim, interpolated = "@" in prefix, "$" in prefix
+    quotes = 0
+    while k + quotes < n and text[k + quotes] == '"':
+        quotes += 1
+    if quotes >= 3:                                           # a raw string literal
+        j = text.find('"' * quotes, k + quotes)
+        return n if j < 0 else j + quotes
+    j = k + 1
+    while j < n:
+        c = text[j]
+        if c == "\\" and not verbatim:
+            j += 2
+        elif c == '"':
+            if verbatim and text[j + 1:j + 2] == '"':
+                j += 2
+                continue
+            return j + 1
+        elif interpolated and c in "{}" and text[j + 1:j + 2] == c:
+            j += 2                                            # `{{` or `}}`: a brace, not a hole
+        elif interpolated and c == "{":
+            j = _hole_end(text, j + 1, verbatim, depth + 1)
+        else:
+            j += 1
+    return n
+
+
+def _char_end(text, i):
+    """The index just past the char literal that starts at `i`."""
+    j = i + 1
+    while j < len(text) and text[j] != "'":
+        j += 2 if text[j] == "\\" else 1
+    return j + 1
+
+
+def _hole_end(text, j, verbatim=False, depth=0):
+    """The index just past the `}` that closes an interpolation hole whose code starts at `j`.
+
+    The hole is code -- comments, nested literals, char literals, braces and parentheses -- up to
+    its format clause: a `:` outside every brace and parenthesis (C# requires a conditional in a hole
+    to be parenthesised, so this `:` is never one), after which everything up to the `}` is format
+    text, where an apostrophe or a quote is a character and not a literal.
+    """
+    n, braces, parens = len(text), 0, 0
+    if depth > MAX_NESTING:
+        return n
+    while j < n:
+        c = text[j]
+        if text.startswith("//", j):
+            j = n if text.find("\n", j) < 0 else text.find("\n", j) + 1
+        elif text.startswith("/*", j):
+            j = n if text.find("*/", j + 2) < 0 else text.find("*/", j + 2) + 2
+        elif c == '"' or (c in "$@" and '"' in text[j:j + 3]):
+            j = _literal_end(text, j, depth)
+        elif c == "'":
+            j = _char_end(text, j)
+        elif c in "([":
+            parens, j = parens + 1, j + 1
+        elif c in ")]":
+            parens, j = max(parens - 1, 0), j + 1
+        elif c == "{":
+            braces, j = braces + 1, j + 1
+        elif c == "}":
+            if braces == 0:
+                return j + 1
+            braces, j = braces - 1, j + 1
+        elif c == ":" and braces == 0 and parens == 0 and text[j + 1:j + 2] != ":" and text[j - 1:j] != ":":
+            j += 1
+            while j < n and text[j] != "}":
+                j += 2 if text[j] == "\\" and not verbatim else 1
+            return min(j + 1, n)
+        else:
+            j += 1
+    return n
+
+
 def blank_literals(text):
     """`text` with every comment and every string or character literal's contents replaced by spaces.
 
     Only for finding where a type's body and its members are: a brace inside `$"{x}"` or a comment
     is not structure. Newlines are kept, so positions still mean lines. Identifiers are read from
-    the unblanked text elsewhere, because a name inside a string can still be code.
+    the unblanked text elsewhere, because a name inside a string can still be code. An interpolated
+    string is blanked whole, holes included, and ends where `_literal_end` says it does.
     """
     out, i, n = list(text), 0, len(text)
 
@@ -229,37 +325,13 @@ def blank_literals(text):
             blank(i, j)
             i = j
         elif c == '"' or (c in "$@" and '"' in text[i:i + 3]):
-            k = i
-            while k < n and text[k] in "$@":
-                k += 1
-            verbatim = "@" in text[i:k]
-            quotes = 0
-            while k + quotes < n and text[k + quotes] == '"':
-                quotes += 1
-            if quotes >= 3:                                   # a raw string literal
-                j = text.find('"' * quotes, k + quotes)
-                j = n if j < 0 else j + quotes
-            else:
-                j = k + 1
-                while j < n:
-                    if text[j] == "\\" and not verbatim:
-                        j += 2
-                        continue
-                    if text[j] == '"':
-                        if verbatim and j + 1 < n and text[j + 1] == '"':
-                            j += 2
-                            continue
-                        j += 1
-                        break
-                    j += 1
+            j = _literal_end(text, i)
             blank(i, j)
             i = j
         elif c == "'":
-            j = i + 1
-            while j < n and text[j] != "'":
-                j += 2 if text[j] == "\\" else 1
-            blank(i, j + 1)
-            i = j + 1
+            j = _char_end(text, i)
+            blank(i, j)
+            i = j
         else:
             i += 1
     return "".join(out)
