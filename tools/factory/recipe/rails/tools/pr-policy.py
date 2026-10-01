@@ -150,6 +150,10 @@ PRODUCE_MARKER = "<!-- rules-factory-produce -->"
 ENTRY_MARKER = re.compile(r"<!--\s*rules-factory-entry:\s*(?P<entry>[^\s>]+)\s*-->")
 OVERLAY_FILE = re.compile(r"\Aoverlay/(?P<entry>[A-Za-z0-9][A-Za-z0-9._-]*)\.json\Z")
 RETIRED_OVERLAY = "corpus-map.overlay.json"
+# How a deleted file is reported. `gh pr view --json files` spells it DELETED (and so does
+# `listed_files`, from the REST endpoint's `removed`); REMOVED is kept because it is the word this
+# file and its tests used before that was noticed, and both mean the file is gone (#566).
+REMOVALS = frozenset({"DELETED", "REMOVED"})
 INVALID_ISSUE_ENTRY = object()
 # The three facts a produce update declares, and where provenance.json holds each. A declaration is
 # only worth checking because it can be wrong: each of these is in the diff the pull request carries.
@@ -422,12 +426,32 @@ def base_object(path, change, base_oid, findings):
     return json_object(raw, f"base commit {base_oid}'s `{path}`", findings)
 
 
+_RETIRED_ROWS = {}
+
+
+def retired_rows(base_oid, prefix):
+    """`{entry id: row}` of the retired shared overlay at the base commit, or {} when it has none.
+
+    Read once per run, and only when an added per-entry overlay file needs a base: what the split
+    of #247 carries over is that entry's row, not an empty one (#566).
+    """
+    if base_oid not in _RETIRED_ROWS:
+        raw = base_bytes(base_oid, f"{prefix}/{RETIRED_OVERLAY}" if prefix else RETIRED_OVERLAY)
+        try:
+            rows = json.loads(raw.decode("utf-8")) if raw is not None else {}
+        except (UnicodeDecodeError, ValueError):
+            rows = {}
+        _RETIRED_ROWS[base_oid] = rows if isinstance(rows, dict) else {}
+    return _RETIRED_ROWS[base_oid]
+
+
 def implemented_entries(changed, base_oid, findings):
     """Entry ids whose overlay status becomes `implemented` in this pull request.
 
     The ordinary form is one file per entry. The retired shared overlay remains readable here so
     an engine whose own policy still names it gets the same protection before its next produce.
-    A removed overlay implements nothing; produce-mode migrations are exempt before this is called.
+    A removed overlay implements nothing; produce-mode migrations are exempt before this is called,
+    and an entry the split of #247 moves out of the retired overlay keeps that row as its base.
     """
     implemented = set()
     prefix = engine_path()
@@ -439,15 +463,20 @@ def implemented_entries(changed, base_oid, findings):
             continue
         match = OVERLAY_FILE.match(inside)
         if match:
-            if change == "REMOVED":
+            if change in REMOVALS:
                 continue
             before = base_object(path, change, base_oid, findings)
+            if change == "ADDED" and before == {}:
+                # The overlay split (#247) adds one file per entry, and an entry that was already
+                # implemented in the retired shared overlay at the base is not implemented by this
+                # pull request: its row there is its base (#566).
+                before = retired_rows(base_oid, prefix).get(match["entry"], {})
             after = head_object(inside, findings)
             if before is None or after is None:
                 continue
             if after.get("status") == "implemented" and before.get("status") != "implemented":
                 implemented.add(match["entry"])
-        elif inside == RETIRED_OVERLAY and change != "REMOVED":
+        elif inside == RETIRED_OVERLAY and change not in REMOVALS:
             before = base_object(path, change, base_oid, findings)
             after = head_object(inside, findings)
             if before is None or after is None:
@@ -574,7 +603,7 @@ def factory_written(path, change, ownership, name, attributed):
     A **retired** pattern (`ownership.RETIRED`) is one the factory used to write and now deletes, so
     a migration produce's deletions are its work and not somebody's decision carried in beside them.
     That is a narrow admission and it is written narrowly: the change must be a **deletion**
-    (`changeType == "REMOVED"`), and `attributed` -- `the_factorys_to_delete`, which calls the same
+    (`changeType` in `REMOVALS`), and `attributed` -- `the_factorys_to_delete`, which calls the same
     `ownership.authorised` the remover does -- must say so of the base commit's bytes at that path.
     A hand-written `backlog/notes.md` matches the pattern too, and so does one the factory wrote and
     somebody has edited since; a `corpus-map.overlay.json` holding a key `overlay/` does not is
@@ -592,7 +621,7 @@ def factory_written(path, change, ownership, name, attributed):
         row = getattr(ownership, "classify_repository", lambda _p: None)(path)
         return row is not None and row.cls == ownership.GENERATED
     if retired_here(ownership, path, name) is not None:
-        return change == "REMOVED" and attributed(path)
+        return change in REMOVALS and attributed(path)
     row = ownership.classify(inside, name)
     if row is None:
         return False
