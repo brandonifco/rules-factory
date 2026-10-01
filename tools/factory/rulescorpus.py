@@ -35,6 +35,7 @@ engine's gate imports it through intake.py.
 """
 import contextlib
 import fcntl
+import hashlib
 import json
 import os
 import shutil
@@ -47,6 +48,15 @@ CLI_PROJECT = "src/RulesCorpus.Cli/RulesCorpus.Cli.csproj"
 
 DEFINITION_SUFFIX = ".corpus.build.json"
 EXPECTATION_SUFFIX = ".corpus.expect.json"
+
+# Verified builds already made in this process, by the identity of everything they were made from:
+# the pin, the checkout's location, and the exact bytes of the definition, the expectation and every
+# stored source. rules-corpus's own promise -- and its gate's evidence -- is that the same bytes and
+# the same declared derivation produce the same corpus, so asking it again within one process learns
+# nothing; the factory asks once per corpus per run of produce, and its test suite asked the same
+# few corpora some three thousand times (#558). Only a verified result is kept: a refusal is always
+# asked again, and nothing is kept on disk or across processes.
+_VERIFIED = {}
 
 
 class Refused(Exception):
@@ -242,16 +252,27 @@ def build_and_verify(corpus_path, read):
 
     files = {os.path.basename(definition_path): definition_bytes,
              os.path.basename(expectation_path): expectation_bytes}
+    sources = _stored_sources(definition, definition_path)
+    for relative in sources:
+        files[relative] = read(os.path.join(directory, *relative.split("/")))
+
+    identity = hashlib.sha256()
+    for part in (REPOSITORY, COMMIT, _cache_root(), definition_bytes, expectation_bytes,
+                 *(item for relative in sources for item in (relative, files[relative]))):
+        data = part if isinstance(part, bytes) else part.encode("utf-8")
+        identity.update(len(data).to_bytes(8, "big") + data)
+    key = identity.hexdigest()
+    if key in _VERIFIED:
+        return dict(_VERIFIED[key], files=files)
+
     with tempfile.TemporaryDirectory(prefix="factory-corpus-") as scratch:
         with open(os.path.join(scratch, "corpus.build.json"), "wb") as handle:
             handle.write(definition_bytes)
-        for relative in _stored_sources(definition, definition_path):
-            data = read(os.path.join(directory, *relative.split("/")))
-            files[relative] = data
+        for relative in sources:
             target = os.path.join(scratch, *relative.split("/"))
             os.makedirs(os.path.dirname(target), exist_ok=True)
             with open(target, "wb") as handle:
-                handle.write(data)
+                handle.write(files[relative])
 
         code, document, stderr = run("build", "--dir", scratch)
         if code != 0:
@@ -279,5 +300,7 @@ def build_and_verify(corpus_path, read):
             "asOf": baseline.get("asOf"),
             "path": artifact.get("path"),
         }
-    return {"baselines": baselines, "files": files, "expectNotVerified": expected,
-            "contentDigest": manifest.get("contentDigest")}
+    result = {"baselines": baselines, "expectNotVerified": expected,
+              "contentDigest": manifest.get("contentDigest")}
+    _VERIFIED[key] = result
+    return dict(result, files=files)

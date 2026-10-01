@@ -129,6 +129,37 @@ class TestTheExpectation(RulesCorpusCase):
         self.assert_refused(path, "invented.corpus.build.json does not exist")
 
 
+class TestAVerifiedBuildIsRememberedOnlyForTheSameBytes(RulesCorpusCase):
+    """rulescorpus keeps a verified build for the rest of the process, keyed by every byte it was
+    made from (#558). Nothing it keeps may answer for bytes it was not made from."""
+
+    def test_a_changed_corpus_byte_is_built_again(self):
+        path = self.corpus()
+        first = rulescorpus.build_and_verify(path, read)["baselines"]["invented"]["contentHash"]
+        with open(path, "ab") as handle:
+            handle.write(b"another line\n")
+        second = rulescorpus.build_and_verify(path, read)["baselines"]["invented"]["contentHash"]
+        self.assertNotEqual(first, second)
+        self.assertEqual(second, __import__("hashlib").sha256(DATA + b"another line\n").hexdigest())
+
+    def test_a_changed_expectation_is_verified_again(self):
+        path = self.corpus()
+        rulescorpus.build_and_verify(path, read)
+        with open(rulescorpus.companions(path)[1], "w", encoding="utf-8") as handle:
+            json.dump({"expectNotVerified": ["artifact elsewhere"]}, handle)
+        self.assert_refused(path, "expected not verified but not reported so: artifact elsewhere")
+
+    def test_a_refusal_is_not_remembered(self):
+        path = self.corpus(unstored=True)
+        self.assert_refused(path, "not-verified: artifact elsewhere")
+        with open(rulescorpus.companions(path)[1], "w", encoding="utf-8") as handle:
+            json.dump({"expectNotVerified": ["artifact elsewhere"]}, handle)
+        rulescorpus.build_and_verify(path, read)
+        with open(rulescorpus.companions(path)[1], "w", encoding="utf-8") as handle:
+            json.dump({"expectNotVerified": []}, handle)
+        self.assert_refused(path, "not-verified: artifact elsewhere")
+
+
 class TestNoFallback(RulesCorpusCase):
     """When the pinned rules-corpus is not there to ask, nothing is verified and nothing hashes instead."""
 
