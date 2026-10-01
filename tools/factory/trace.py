@@ -1,0 +1,388 @@
+"""What a produced engine's records say about each of its rules, and what they do not say (#576).
+
+  python3 tools/factory trace --engine <engine dir> --json [--package <nupkg path | Id@Version>]
+
+An engine already holds every fact this reports. `provenance.json` names the map packages, the
+corpora, the kernel and where the engine sits in its repository. The map package gives each entry
+its locator. `overlay/<entry id>.json` gives each entry its status, the tests it names and the
+mutation each test was watched catching. What nothing showed was how those records join up per
+entry, and which of the joins no record makes. That is all this module does. It adds no fact and
+writes nothing: the trace is a reading of artifacts that already have owners, computed again on
+every run, so a changed overlay or a re-produced engine is reflected the next time it is asked.
+
+**Every relationship carries its evidence class**, because a reader who cannot tell a recorded
+fact from a guess will act on the guess:
+
+  * `recorded` -- an existing artifact states it. `basis` names the artifact and the field.
+  * `derived` -- it follows from recorded facts through a reader the factory already has, with no
+    choice made by heuristic. `basis` names the reader.
+  * `inferred` -- deterministic analysis suggests it, and nothing records it. `mechanism` names
+    the analysis.
+  * `unknown` -- nothing establishes it. `why` says what was tried and why it failed, and the same
+    relationship is listed under `gaps`. Unknown is never promoted to inferred, and inferred is
+    never promoted to recorded.
+
+**Entry -> implementation is inferred or unknown, never recorded.** The overlay's `implementedIn`
+is `{ruleset, version}` in every engine the factory has produced: it records which ruleset the
+entry was implemented against, not which file implements it. It is reported as the overlay
+records it. The files are found by the review model's own lexical analysis (reviewscope.py): the
+hand-written file whose partial `Handlers` declares the entry's generated handler, and the files
+that name the entry's member, its request type or its id. That is evidence of where to look, not a
+binding, and it is labelled so.
+
+**A locator is not resolved to corpus text.** Which component resolves a citation to the exact
+bytes it names is not settled, and a trace that resolved it would settle it by accident. So the
+locator is reported as the map records it, the corpus it names is matched against provenance's
+corpora, and the segment is `unknown`.
+
+**No corpus text is emitted.** A map entry's `evidence` is a quotation of its corpus, and a trace
+of an engine whose distribution is private must not carry it anywhere the engine's own files do
+not go. Entry names, locators, test names and mutations are the engine's and the map's own words.
+
+**Readers, not parsers.** The map packages are read by `backlog.recorded_packages`, which refuses
+a package whose map and manifest are not the bytes provenance hashed; several are composed by
+`compose.union`; the overlay is read by `overlay.load` and merged by `semantics.merge`, so a
+trace sees exactly the merge the engine's gate and generator see. The topology is
+`repository.from_record` against `repository.git_root`. Where the supplied directory and the
+recorded `enginePath` disagree, both are reported and the disagreement is a gap: nothing is
+corrected.
+
+Deterministic for the same bytes: entries in map order, tests in overlay order, files in byte
+order of path, no clock, no absolute path. Paths are engine-relative; `topology` says where the
+engine sits under its repository root. Standard library only.
+"""
+import json
+import os
+
+import backlog as backlog_step
+import compose
+import overlay as overlay_step
+import provenance
+import repository as repository_step
+import reviewscope
+import semantics
+
+FORMAT = 1
+CLASSES = ("recorded", "derived", "inferred", "unknown")
+
+#: The generated class every entry's handler is a partial method of (contracts.py). A hand-written
+#: file that declares a member of it is where that entry's handler is written.
+HANDLERS = "Handlers"
+
+SEGMENT_WHY = ("the trace reports a locator as the map records it and does not resolve it to corpus text: "
+               "which component resolves a citation to the bytes it names is not settled, and the trace "
+               "does not settle it")
+
+
+class TraceError(Exception):
+    """The directory cannot be traced: it is not a produced engine, or its inputs cannot be read.
+
+    A refusal, not a gap. A gap is a relationship an engine's records do not establish; this is a
+    record that is not there to be read, which no trace of it could be truthful about.
+    """
+
+
+def recorded(value, basis):
+    return {"value": value, "evidence": "recorded", "basis": basis}
+
+
+def derived(value, basis):
+    return {"value": value, "evidence": "derived", "basis": basis}
+
+
+def inferred(value, mechanism):
+    return {"value": value, "evidence": "inferred", "mechanism": mechanism}
+
+
+def unknown(why):
+    return {"value": None, "evidence": "unknown", "why": why}
+
+
+def _gap(subject, relationship, why):
+    return {"subject": subject, "relationship": relationship, "why": why}
+
+
+def read_record(engine_dir):
+    """The engine's provenance.json as an object, or a refusal naming what is wrong with it."""
+    path = os.path.join(engine_dir, provenance.FILE_NAME)
+    if not os.path.isfile(path):
+        raise TraceError(f"{engine_dir} has no {provenance.FILE_NAME}, so it is not a directory `factory "
+                         f"produce` wrote and nothing records what it was built from; pass the engine "
+                         f"directory itself, which for an embedded engine is below its repository root")
+    try:
+        with open(path, encoding="utf-8") as handle:
+            record = json.load(handle)
+    except (OSError, ValueError) as error:
+        raise TraceError(f"cannot read {provenance.FILE_NAME}: {error}")
+    if not isinstance(record, dict):
+        raise TraceError(f"{provenance.FILE_NAME} is not a JSON object")
+    return record
+
+
+def topology(engine_dir, record, gaps):
+    """Where the record says the engine is, where git says it is, and whether they agree."""
+    if isinstance(record.get("repository"), dict):
+        said = recorded(repository_step.from_record(record).engine_path, "provenance.json repository.enginePath")
+    else:
+        said = derived(None, "provenance.json has no repository section (a record before format 9); "
+                             "repository.from_record reads that as an engine that is its own repository root")
+    top = repository_step.git_root(engine_dir)
+    if top is None:
+        seen = unknown("the engine directory is in no git work tree, so nothing says where its repository root is")
+        gaps.append(_gap("engine", "engine -> repository root", seen["why"]))
+        agrees = None
+    else:
+        seen = derived(repository_step.under(top, engine_dir) or None,
+                       "git rev-parse --show-toplevel (repository.git_root), relative to the engine directory")
+        agrees = seen["value"] == said["value"]
+        if not agrees:
+            gaps.append(_gap("engine", "engine -> repository root",
+                             f"provenance.json records enginePath {said['value']!r} and the directory traced is at "
+                             f"{seen['value']!r} under its repository root; the trace reports both and corrects "
+                             f"neither"))
+    return {"recordedEnginePath": said, "observedEnginePath": seen, "agrees": agrees}
+
+
+def engine_facts(record, gaps):
+    def field(path):
+        value = record
+        for part in path.split("."):
+            value = value.get(part) if isinstance(value, dict) else None
+        if value is not None:
+            return recorded(value, f"provenance.json {path}")
+        fact = unknown(f"provenance.json records no {path}")
+        gaps.append(_gap("engine", f"engine -> {path}", fact["why"]))
+        return fact
+    return {"name": field("engine.name"), "distribution": field("distribution"),
+            "provenanceFormat": field("provenanceFormat"),
+            "kernel": {"packageId": field("kernel.packageId"), "version": field("kernel.version")},
+            "factory": {"version": field("factory.version"), "commit": field("factory.commit")}}
+
+
+def read_maps(record, package):
+    """[(package id, map document, manifest document)] for every map the record names."""
+    try:
+        read = backlog_step.recorded_packages(record, package, "the trace is read from the map packages the "
+                                              "record names", consequence="the entries cannot be traced")
+    except backlog_step.BacklogError as error:
+        raise TraceError(str(error))
+    found = []
+    for package_id, parts, _ in read:
+        try:
+            found.append((package_id, json.loads(parts["map"][1].decode("utf-8")),
+                          json.loads(parts["manifest"][1].decode("utf-8"))))
+        except (ValueError, UnicodeDecodeError) as error:
+            raise TraceError(f"the map package {package_id} does not hold readable JSON: {error}")
+    return found
+
+
+def maps_section(record, documents):
+    """Each map package: its identity as provenance records it, and the corpora its manifest pins."""
+    sources = [m for m in record.get("maps") or [] if isinstance(m, dict)]
+    out = []
+    for position, (source, (package_id, document, manifest)) in enumerate(zip(sources, documents)):
+        at = f"provenance.json maps[{position}]"
+        cites = [c.get("sourceId") for c in manifest.get("corpora") or [] if isinstance(c, dict)]
+        out.append({
+            "packageId": recorded(package_id, f"{at}.packageId"),
+            "version": recorded(source.get("version"), f"{at}.version"),
+            "nupkgSha256": recorded(source.get("nupkgSha256"), f"{at}.nupkgSha256"),
+            "files": recorded([{k: f.get(k) for k in ("role", "path", "sha256")}
+                               for f in source.get("files") or [] if isinstance(f, dict)], f"{at}.files"),
+            "principalCorpus": recorded(document.get("corpus"), f"{package_id} map/corpus-map.json corpus"),
+            "corpora": recorded(cites, f"{package_id} map/corpus-manifest.json corpora[].sourceId"),
+        })
+    return out
+
+
+def corpora_section(record):
+    out = []
+    for position, corpus in enumerate(c for c in record.get("corpora") or [] if isinstance(c, dict)):
+        at = f"provenance.json corpora[{position}]"
+        out.append({key: recorded(corpus.get(key), f"{at}.{key}")
+                    for key in ("sourceId", "contentHash", "hashDerivation", "asOf", "path", "principal")
+                    if key in corpus})
+    return out
+
+
+def compose_maps(documents):
+    """The engine's map as the factory composed it, and which package each entry id came from."""
+    pairs = [(package_id, document) for package_id, document, _ in documents]
+    try:
+        document = compose.union(pairs)
+    except compose.Refused as error:
+        raise TraceError(f"the map packages this engine records do not compose: {error}")
+    origin = {}
+    for package_id, one in pairs:
+        named = one if len(pairs) == 1 else compose.namespaced(one, package_id)
+        for entry in named.get("entries") or []:
+            if isinstance(entry, dict) and isinstance(entry.get("id"), str):
+                origin[entry["id"]] = package_id
+    return document, origin
+
+
+def implementation_files(engine_dir):
+    """{engine-relative path: bytes} of the hand-written C# under src/, build output pruned."""
+    root = os.path.join(engine_dir, "src")
+    found = {}
+    for directory, dirs, names in os.walk(root):
+        dirs[:] = sorted(d for d in dirs if d not in provenance.SKIP_DIRS)
+        for name in names:
+            path = os.path.join(directory, name)
+            relative = os.path.relpath(path, engine_dir).replace(os.sep, "/")
+            if reviewscope.classify(relative) == "implementation" and os.path.isfile(path):
+                with open(path, "rb") as handle:
+                    found[relative] = handle.read()
+    return dict(sorted(found.items(), key=lambda item: item[0].encode("utf-8")))
+
+
+def handler_files(files):
+    """{member name: sorted paths} of the files whose partial `Handlers` declares that member."""
+    found = {}
+    for path, data in files.items():
+        types, members = reviewscope.partial_members(data.decode("utf-8", "replace"))
+        if HANDLERS in types:
+            for member in members:
+                found.setdefault(member, []).append(path)
+    return found
+
+
+HANDLER_MECHANISM = (f"reviewscope.partial_members: a hand-written file under src/ whose partial {HANDLERS} "
+                     f"declares the entry's generated handler member (semantics.pascal of the entry id)")
+REFERENCE_MECHANISM = ("reviewscope.entry_references: a hand-written file under src/ that names the entry's "
+                       "member, its request type, or its id as a string literal")
+
+
+def implementation(entry_id, member, handlers, references):
+    candidates = [inferred({"path": path, "symbol": f"{HANDLERS}.{member}"}, HANDLER_MECHANISM)
+                  for path in handlers.get(member, [])]
+    declaring = {c["value"]["path"] for c in candidates}
+    candidates += [inferred({"path": path, "symbol": None}, REFERENCE_MECHANISM)
+                   for path, reached in references.items() if entry_id in reached and path not in declaring]
+    return candidates
+
+
+def entry_trace(entry, origin, item, corpora, handlers, references, single, gaps):
+    entry_id = entry["id"]
+    package_id = origin.get(entry_id)
+    in_map = f"{package_id} map/corpus-map.json entries[{entry_id!r}]" if single else (
+        f"{package_id} map/corpus-map.json, the entry composed as {entry_id!r}")
+    overlay_path = overlay_step.path_for(entry_id)
+    subject = f"entry:{entry_id}"
+    out = {
+        "id": (recorded(entry_id, f"{in_map}.id") if single else
+               derived(entry_id, "compose.union: the map's entry id qualified by its package (0067)")),
+        "package": (recorded(package_id, f"{package_id} map/corpus-map.json holds the entry") if single else
+                    derived(package_id, "compose.namespaced: the package whose map held the entry before its id "
+                                        "was qualified")),
+        "name": recorded(entry.get("name"), f"{in_map}.name"),
+    }
+    locator = entry.get("locator") if isinstance(entry.get("locator"), dict) else None
+    if locator is None:
+        out["locator"] = unknown("the map entry has no locator")
+        gaps.append(_gap(subject, "entry -> locator", out["locator"]["why"]))
+    else:
+        out["locator"] = recorded(locator, f"{in_map}.locator")
+    source = (locator or {}).get("sourceId")
+    if source in corpora:
+        out["corpus"] = derived(source, "the locator's sourceId is a sourceId provenance.json corpora[] records")
+    else:
+        why = (f"the locator names corpus {source!r}, which provenance.json corpora[] does not record" if source
+               else "the locator names no corpus")
+        out["corpus"] = unknown(why)
+        gaps.append(_gap(subject, "locator -> corpus", why))
+    out["segment"] = unknown(SEGMENT_WHY)
+    gaps.append(_gap(subject, "locator -> corpus segment", SEGMENT_WHY))
+
+    if item is not None:
+        out["status"] = recorded(entry.get("status"), f"{overlay_path} status")
+        if "implementedIn" in item:
+            out["implementedIn"] = recorded(item.get("implementedIn"), f"{overlay_path} implementedIn")
+        tests_at = f"{overlay_path} tests"
+    else:
+        out["status"] = recorded(entry.get("status"), f"{in_map}.status; the engine has no {overlay_path}")
+        tests_at = f"{in_map}.tests"
+    tests = []
+    for position, test in enumerate(entry.get("tests") or []):
+        test = test if isinstance(test, dict) else {}
+        at = f"{tests_at}[{position}]"
+        name = test.get("test")
+        mutation = test.get("mutation")
+        row = {"name": recorded(name, f"{at}.test") if isinstance(name, str) and name.strip()
+               else unknown(f"{at} names no test")}
+        if isinstance(mutation, str) and mutation.strip():
+            row["mutation"] = recorded(mutation, f"{at}.mutation")
+        else:
+            row["mutation"] = unknown(f"{at} records no mutation the test was watched catching")
+            gaps.append(_gap(subject, "test -> mutation", row["mutation"]["why"]))
+        if row["name"]["evidence"] == "unknown":
+            gaps.append(_gap(subject, "entry -> test", row["name"]["why"]))
+        tests.append(row)
+    out["tests"] = tests
+    if entry.get("status") == "implemented" and not tests:
+        gaps.append(_gap(subject, "entry -> test", "the entry is implemented and names no test"))
+
+    candidates = implementation(entry_id, semantics.pascal(entry_id), handlers, references)
+    if candidates:
+        out["implementation"] = candidates
+    else:
+        why = (f"no hand-written file under src/ declares {HANDLERS}.{semantics.pascal(entry_id)} or names the "
+               f"entry, and no artifact records which file implements it")
+        out["implementation"] = [unknown(why)]
+        gaps.append(_gap(subject, "entry -> implementation", why))
+    return out
+
+
+def count(node, tally):
+    """Every fact under `node`, by evidence class."""
+    if isinstance(node, dict):
+        if node.get("evidence") in CLASSES and "value" in node:
+            tally[node["evidence"]] += 1
+            return
+        for value in node.values():
+            count(value, tally)
+    elif isinstance(node, list):
+        for value in node:
+            count(value, tally)
+
+
+def build(engine_dir, package=None):
+    """The trace of the engine at `engine_dir`, as plain data: what `--json` prints."""
+    record = read_record(engine_dir)
+    gaps = []
+    documents = read_maps(record, package)
+    document, origin = compose_maps(documents)
+    try:
+        items = overlay_step.load(engine_dir, document)
+        merged = semantics.merge(document, items, root=engine_dir)
+    except (overlay_step.OverlayError, semantics.GenerationError) as error:
+        raise TraceError(f"the map and {overlay_step.DIRECTORY}/ do not merge, so there is no engine map to trace "
+                         f"(the engine's own gate refuses this too): {error}")
+    files = implementation_files(engine_dir)
+    entries = [e for e in merged.get("entries") or [] if isinstance(e, dict) and isinstance(e.get("id"), str)]
+    references = reviewscope.entry_references(files, {e["id"]: semantics.pascal(e["id"]) for e in entries})
+    handlers = handler_files(files)
+    corpora = {c.get("sourceId") for c in record.get("corpora") or [] if isinstance(c, dict)}
+    trace = {
+        "traceFormat": FORMAT,
+        "engine": engine_facts(record, gaps),
+        "topology": topology(engine_dir, record, gaps),
+        "maps": maps_section(record, documents),
+        "corpora": corpora_section(record),
+        "entries": [entry_trace(e, origin, items.get(e["id"]), corpora, handlers, references,
+                                len(documents) == 1, gaps) for e in entries],
+    }
+    tally = dict.fromkeys(CLASSES, 0)
+    count(trace, tally)
+    by_relationship = {}
+    for gap in gaps:
+        by_relationship[gap["relationship"]] = by_relationship.get(gap["relationship"], 0) + 1
+    trace["summary"] = {"entries": len(entries), "evidence": tally,
+                        "gaps": dict(sorted(by_relationship.items()))}
+    trace["gaps"] = gaps
+    return trace
+
+
+def dumps(trace):
+    """The trace's bytes as `--json` prints them: the same bytes for the same engine, every time."""
+    return json.dumps(trace, indent=2, ensure_ascii=False) + "\n"

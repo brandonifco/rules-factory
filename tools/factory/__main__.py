@@ -105,6 +105,14 @@ global.json's pin, without changing global.json or what provenance checks, and v
 say so in a WARNING and on their last line.
 See verify.py.
 
+  python3 tools/factory trace --engine <dir> --json [--package <nupkg path | Id@Version>]
+
+prints what the engine's records say about each entry -- its locator, status, named tests and the
+mutation each was watched catching, and the files that appear to implement it -- with every
+relationship labelled recorded, derived, inferred or unknown, and every unknown listed as a gap.
+It reads and writes nothing else, and an unknown is a finding, not a failure: exit 0 whenever the
+engine could be read. See trace.py.
+
 Exit 0 when every step passed; 1 when a step refused; 2 on a usage error; 3 when a step could
 prove nothing and said so -- today that is `produce --no-verify`, which writes an engine that was
 never built or tested. 3 is NOT VERIFIED: not a pass, not a failure, and never silent (0013).
@@ -138,6 +146,7 @@ import intake as intake_step  # noqa: E402
 import provenance  # noqa: E402
 import rails as rails_step  # noqa: E402
 import repository as repository_step  # noqa: E402
+import trace as trace_step  # noqa: E402
 import transaction  # noqa: E402
 import verify as verify_step  # noqa: E402
 
@@ -682,6 +691,11 @@ def build_parser():
     v = commands.add_parser("verify", help="prove an engine: provenance, restore if unlocked, then its gate")
     v.add_argument("--engine", required=True, help="the engine directory")
     v.add_argument("--package", help="the .nupkg or Id@Version (default: Id@Version from provenance.json)")
+    t = commands.add_parser("trace", help="report what an engine's records say about each entry, and what they do not")
+    t.add_argument("--engine", required=True, help="the engine directory (below the repository root when embedded)")
+    t.add_argument("--json", required=True, action="store_true",
+                   help="print the trace as JSON: every relationship labelled recorded, derived, inferred or unknown")
+    t.add_argument("--package", help="the .nupkg or Id@Version (default: Id@Version from provenance.json)")
     return parser
 
 
@@ -708,6 +722,11 @@ def main(argv=None):
             return rails_step.run(args.repo, args.dir, os.environ.get("FACTORY_GH", "gh"), sys.stdout, args.apply)
         if args.command == "provenance":
             return check_provenance(args)
+        if args.command == "trace":
+            if not os.path.isdir(args.engine):
+                raise intake_step.Usage(f"--engine {args.engine} is not a directory")
+            sys.stdout.write(trace_step.dumps(trace_step.build(args.engine, args.package)))
+            return 0
         if args.command == "verify":
             overridden = verify_step.verify(args.engine, recompute_provenance, args.package, log=sys.stdout)
             print(f"verify {args.engine}: PASS" + overridden_suffix(overridden, verify_step.pinned_sdk(args.engine)))
@@ -720,6 +739,9 @@ def main(argv=None):
     except intake_step.Usage as error:
         print(f"factory: {error}", file=sys.stderr)
         return 2
+    except trace_step.TraceError as error:
+        print(f"factory: trace REFUSED -- {error}", file=sys.stderr)
+        return 1
     except rails_step.RailsError as error:
         # Not "nothing was produced": `rails` produces nothing either way, and `--apply` may have
         # made some of its changes before the one that failed. Every change it makes is idempotent,

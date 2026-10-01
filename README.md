@@ -142,6 +142,10 @@ the diff ([AGENTS.md](AGENTS.md) §3).
 | `verify` | — | implemented | provenance, then restore if the engine has no lock files, then the engine's own gate |
 | `verify` | `--engine` | implemented | the engine directory |
 | `verify` | `--package` | implemented | default: `Id@Version` from `provenance.json` |
+| `trace` | — | implemented | what an engine's own records say about each entry: its locator and corpus, its status, its named tests and the mutation each was watched catching, and the files that appear to implement it. Every relationship is labelled `recorded`, `derived`, `inferred` or `unknown`, and every unknown is listed as a gap. Entry → code is never `recorded`, because no artifact records it (`implementedIn` names a ruleset, not a file). It reads and writes nothing else, emits no corpus text, and exits 0 when the engine could be read, however many gaps there are ([#576](https://github.com/brandonifco/rules-factory/issues/576)) |
+| `trace` | `--engine` | implemented | the engine directory: below the repository root when the engine is embedded. Where the directory sits is compared with `provenance.json`'s `repository.enginePath`, and a disagreement is reported, not corrected |
+| `trace` | `--json` | implemented | print the trace as JSON, the same bytes for the same engine |
+| `trace` | `--package` | implemented | default: `Id@Version` from `provenance.json`, from the NuGet global packages folder |
 <!-- factory-cli-status:end -->
 
 ### What the factory exits with
