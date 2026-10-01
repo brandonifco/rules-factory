@@ -17,6 +17,7 @@ Asserted:
 Run: python3 -m pytest tools/tests/factory/test_factory_status.py
 """
 import copy
+import io
 import json
 import os
 import re
@@ -24,6 +25,7 @@ import shutil
 import subprocess
 import tempfile
 import unittest
+from contextlib import redirect_stderr, redirect_stdout
 from unittest import mock
 
 # The fixtures, by module: a TestCase bound here would be collected and run a second time.
@@ -271,6 +273,62 @@ class StatusVerifyDelegates(EngineCase):
         self.assertEqual(check["exitCode"], 1)
         self.assertIn("stage gate -- the stand-in says no", check["lastLine"])
         self.assertIn("the stand-in says no", err, "the verifier's own output goes to stderr in --json")
+
+    def test_verify_runs_even_when_the_engines_records_cannot_be_read(self):
+        with open(os.path.join(self.engine, "overlay", "listed-in-the-table.json"), "w", encoding="utf-8") as handle:
+            handle.write("{not json")
+        with mock.patch.object(factory.verify_step, "verify", return_value=None) as stand_in:
+            code, out, err = self.status("--verify", "--json")
+        stand_in.assert_called_once()
+        self.assertEqual(code, 0, err)
+        report = json.loads(out)
+        self.assertIn("cannot read overlay/listed-in-the-table.json", report["refused"])
+        self.assertEqual((report["verification"]["ranNow"], report["verification"]["exitCode"]), (True, 0))
+
+    def test_the_exit_code_is_the_verifiers_even_when_the_verifier_refuses_its_arguments(self):
+        direct, _, _ = fixture.run(["verify", "--engine", self.engine, "--package", "not a package"], self.packages)
+        code, out, _ = self.status("--verify", "--json", "--package", "not a package")
+        report = json.loads(out)
+        self.assertNotEqual(direct, 0)
+        self.assertEqual(code, direct)
+        self.assertEqual(report["verification"]["exitCode"], direct)
+        self.assertIn("refused", report, "status could not read the engine with that package either, and says so")
+
+    def test_an_engine_whose_name_begins_with_a_dash_is_still_verified(self):
+        shutil.copytree(self.engine, os.path.join(self.tmp, "-eng"))
+        here = os.getcwd()
+        os.chdir(self.tmp)
+        self.addCleanup(os.chdir, here)
+        seen = []
+        with mock.patch.object(factory.verify_step, "verify", side_effect=lambda engine, *a, **k: seen.append(engine)):
+            code, out, err = fixture.run(["status", "--engine=-eng", "--verify", "--json"], self.packages)
+        self.assertEqual(code, 0, err)
+        self.assertEqual(seen, ["-eng"], "a relative name beginning with `-` reaches verify as a value")
+        json.loads(out)
+
+    def test_what_verify_printed_is_shown_as_it_runs_even_when_it_crashes(self):
+        def crashes(engine, recompute, package=None, log=None, **_):
+            print("verify: restoring the engine", file=log)
+            raise RuntimeError("the machine went away")
+        err = io.StringIO()
+        with mock.patch.dict(os.environ, {"NUGET_PACKAGES": self.packages}), \
+                mock.patch.object(factory.verify_step, "verify", side_effect=crashes), \
+                redirect_stdout(io.StringIO()), redirect_stderr(err):
+            with self.assertRaises(RuntimeError):
+                factory.main(["status", "--engine", self.engine, "--verify", "--json"])
+        self.assertIn("verify: restoring the engine", err.getvalue())
+
+    def test_the_report_says_it_was_read_before_verify_ran(self):
+        self.commit()
+
+        def writes(engine, *a, **k):
+            with open(os.path.join(engine, "overlay", "listed-in-the-table.json"), "a", encoding="utf-8") as handle:
+                handle.write("\n")
+        with mock.patch.object(factory.verify_step, "verify", side_effect=writes):
+            code, out, err = self.status("--verify", "--json")
+        report = json.loads(out)
+        self.assertEqual(report["currentTree"]["value"], {"clean": True, "changedPaths": 0})
+        self.assertIn("read before it ran", report["verification"]["says"])
 
     def test_the_read_only_report_still_comes_with_it(self):
         with mock.patch.object(factory.verify_step, "verify", return_value=None):

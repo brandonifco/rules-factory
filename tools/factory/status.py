@@ -134,10 +134,25 @@ def ran(exit_code, output, engine_dir):
     lines = [line for line in output.split("\n") if line.strip()]
     return {"ranNow": True, "authority": f"factory verify --engine {engine_dir}", "exitCode": exit_code,
             "lastLine": lines[-1] if lines else None,
-            "says": "the verifier's own result, unchanged; its exit code is this command's exit code"}
+            "says": "the verifier's own result, unchanged; its exit code is this command's exit code. Everything "
+                    "else on this page was read before it ran, and verify may have written lock files since"}
+
+
+def refused(why):
+    """The report when the engine's records could not be read, and `--verify` asks the verifier anyway."""
+    return {"statusFormat": FORMAT, "refused": why, "verification": {"ranNow": False, "says": NOT_RUN}}
 
 
 def text(status):
+    if "refused" in status:
+        check = status["verification"]
+        return (f"status        REFUSED: {status['refused']}\n"
+                f"verification  ran now by {check['authority']}: exit {check['exitCode']}; it said: "
+                f"{check['lastLine']}\n") if check["ranNow"] else f"status        REFUSED: {status['refused']}\n"
+    return _page(status)
+
+
+def _page(status):
     """The human page: the same data, in lines."""
     def value(node):
         if not isinstance(node, dict) or "evidence" not in node:

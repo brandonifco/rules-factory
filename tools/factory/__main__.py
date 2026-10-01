@@ -119,7 +119,9 @@ inside the engine. See trace.py.
 says what the engine's records establish now -- identity, inputs, how much is implemented and
 named-tested, the trace's gaps, what provenance recorded about the produce that wrote it, and
 whether git sees the tree moved -- and issues no verdict: verification is reported as not run by
-this invocation. Read-only. See status.py.
+this invocation, and the command is read-only. `--verify` also runs `factory verify` by its own
+command line, streams what it prints, reports its exit code and last line, and exits with its code;
+it is not read-only, because verify restores. See status.py.
 
 Exit 0 when every step passed; 1 when a step refused; 2 on a usage error; 3 when a step could
 prove nothing and said so -- today that is `produce --no-verify`, which writes an engine that was
@@ -635,17 +637,38 @@ def render_backlog(args):
     return 0
 
 
-def verify_now(engine, package):
+def verify_now(engine, package, to):
     """(exit code, everything it printed) of `factory verify`, run by its own command line (#586).
 
     `status --verify` is a caller of the verifier and nothing more: the parser, the stages, the
     refusals and the exit codes are verify's, so what status reports changes when verify does and
     never otherwise.
+
+    Its output is streamed to `to` as it is written -- a gate runs for minutes, and a run that is
+    interrupted must still have shown what it did -- and kept, so its last line can be reported.
+    The arguments are spelled `--engine=<dir>`, so a directory whose name begins with `-` is a
+    value and not an option, and an argparse exit inside the nested run is the exit code it carries.
     """
-    buffer = io.StringIO()
-    with contextlib.redirect_stdout(buffer), contextlib.redirect_stderr(buffer):
-        code = main(["verify", "--engine", engine] + (["--package", package] if package else []))
-    return code, buffer.getvalue()
+    tee = _Tee(to)
+    with contextlib.redirect_stdout(tee), contextlib.redirect_stderr(tee):
+        try:
+            code = main(["verify", f"--engine={engine}"] + ([f"--package={package}"] if package else []))
+        except SystemExit as error:
+            code = error.code if isinstance(error.code, int) else 2
+    return code, tee.getvalue()
+
+
+class _Tee(io.StringIO):
+    """A StringIO that also writes everything to `to` as it arrives."""
+
+    def __init__(self, to):
+        super().__init__()
+        self.to = to
+
+    def write(self, text):
+        self.to.write(text)
+        self.to.flush()
+        return super().write(text)
 
 
 def build_parser():
@@ -758,11 +781,17 @@ def main(argv=None):
         if args.command == "status":
             if not os.path.isdir(args.engine):
                 raise intake_step.Usage(f"--engine {args.engine} is not a directory")
-            report = status_step.build(args.engine, args.package)
+            try:
+                report = status_step.build(args.engine, args.package)
+            except trace_step.TraceError as error:
+                if not args.verify:
+                    raise
+                # The verifier is still asked: what status could not read is no reason to withhold
+                # what the authority says, and its exit code is still this command's.
+                report = status_step.refused(str(error))
             code = 0
             if args.verify:
-                code, said = verify_now(args.engine, args.package)
-                (sys.stderr if args.json else sys.stdout).write(said)
+                code, said = verify_now(args.engine, args.package, sys.stderr if args.json else sys.stdout)
                 report["verification"] = status_step.ran(code, said, args.engine)
             sys.stdout.write(json.dumps(report, indent=2, ensure_ascii=False) + "\n" if args.json
                              else status_step.text(report))
