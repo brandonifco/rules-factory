@@ -268,7 +268,7 @@ class TestScaffold(ProduceCase):
         self.assertEqual(json.loads(self.read(out, "global.json"))["sdk"], {"version": "10.0.112", "rollForward": "disable"})
         packages = self.read(out, PACKAGES_PROPS)
         self.assertIn('<PackageVersion Include="RulesKernel" Version="1.0.0" />', packages)
-        self.assertIn(f'<PackageVersion Include="{MAP_ID}" Version="[4.0.0]" />', packages)
+        self.assertIn(f'<PackageVersion Include="{MAP_ID}" Version="[5.0.0]" />', packages)
         self.assertIn(f"<ItemGroup Condition=\"'$(MSBuildProjectName)' == '{NAME}'\">", packages)
         self.assertIn(f'<PackageReference Include="{MAP_ID}" PrivateAssets="all" />', packages)
         central = self.read(out, "Directory.Packages.props")
