@@ -2059,7 +2059,7 @@ Only the altitude limit. The speed limit's unit gap is untouched (#31).
 ## Map and rules conformance
 
 - entry id(s): altitude-limit
-- map package and version: RulesFactory.Maps.FaaPart107 4.0.0
+- map package and version: RulesFactory.Maps.FaaPart107 5.0.0
 - source locator(s): § 107.51(b)
 - owner's rulings used, if any: none
 
@@ -4176,7 +4176,7 @@ class TestAProduceUpdateIsAPullRequestLikeAnyOther(TestPrPolicy):
                                              kernel=record["kernel"]["version"], version=record["maps"][0]["version"])
         body = body.replace("## Exact behavioural claim", f"{section}\n## Exact behavioural claim")
         body = body.replace("""- entry id(s): altitude-limit
-- map package and version: RulesFactory.Maps.FaaPart107 4.0.0
+- map package and version: RulesFactory.Maps.FaaPart107 5.0.0
 - source locator(s): § 107.51(b)
 - owner's rulings used, if any: none""",
                             conformance if conformance is not None else

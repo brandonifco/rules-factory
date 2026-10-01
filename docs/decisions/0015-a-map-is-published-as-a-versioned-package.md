@@ -314,6 +314,14 @@ which quotes § 107.29(b) whole, and a sentence in `visual-observer-conditions`'
 pointer needed no declaration is replaced. No entry is added or removed, and no `dependsOn`,
 gate, kind, scope or status changes. A correction to what the map says is major. 47 entries.
 
+`faa-part-107` `5.0.0` is the first version to carry `map/verification.json` (0048), which no earlier
+`faa-part-107` package does, so the current factory refuses every one of them (#473). It takes the
+major bump 0048 requires of each existing map's next publication, and it is major twice more
+on its own: the packaged checker's bytes changed (31 commits since `4.0.0`, #216 to #442), and so did one entry's
+evidence, `flash-rate-sufficient`'s, which now quotes § 107.29(a)(2) whole, its second sentence
+included, because an ellipsis skips whole paragraphs and never words inside one. No entry is added or
+removed, and no clarity, gate, kind, scope or status changes. 47 entries.
+
 `tax-121-principal-residence`'s first version was `1.0.0`, the first mapping. `2.0.0` is the map
 the blind second mapping produced, promoted to be `corpus-map.json` (#8, 0014, 0017): a new entry
 (`combined-sale-nets-dwelling-loss`, § 1.121-1(b)(4) Example 4), `enabledBy: [effective-date]` on
