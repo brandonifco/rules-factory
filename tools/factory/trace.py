@@ -438,6 +438,21 @@ def build(engine_dir, package=None):
     return trace
 
 
+def refuse_inside(engine_dir, path):
+    """Refuse a report written inside the engine: a committed rendering is truth that goes stale.
+
+    The trace is recomputed from the engine's records every time it is asked for. A copy of it
+    beside those records would be a second statement of them that no produce updates -- the state
+    #243 removed for the backlog. Outside the engine, the path is the caller's business.
+    """
+    engine = os.path.realpath(os.path.abspath(engine_dir))
+    for spelling in (os.path.abspath(path), os.path.realpath(os.path.abspath(path))):
+        if os.path.commonpath([engine, spelling]) == engine:
+            raise TraceError(f"--html {path} is inside the engine at {engine_dir}: a report committed beside the "
+                             f"records it is computed from goes stale at the next overlay edit. Write it outside "
+                             f"the engine")
+
+
 def dumps(trace):
     """The trace's bytes as `--json` prints them: the same bytes for the same engine, every time."""
     return json.dumps(trace, indent=2, ensure_ascii=False) + "\n"

@@ -60,7 +60,7 @@ LAYERS = {
                  "pins", "registry", "rulings", "scaffold", "semantics"},
     # The rest of the factory.
     "__main__": {"backlog", "compose", "gate", "generate", "intake", "ownership", "provenance",
-                 "rails", "repository", "trace", "transaction", "verify"},
+                 "rails", "repository", "trace", "tracereport", "transaction", "verify"},
     # `compose`: a backlog is the whole engine's work, so an engine composed of several map
     # packages is rendered from all of them, composed the way the factory composed them (#460).
     "backlog": {"agentrails", "compose", "intake", "overlay", "semantics"},
@@ -94,6 +94,9 @@ LAYERS = {
     # each record -- the map packages as the backlog reads them, the composition, the overlay and
     # its merge, the topology, the review model's lexical analysis -- so it has no reader of its own.
     "trace": {"backlog", "compose", "overlay", "provenance", "repository", "reviewscope", "semantics"},
+    # The trace as a page (#580): a function of the trace's plain data and nothing else, so it can
+    # say nothing the JSON does not. No factory import is what holds that.
+    "tracereport": set(),
     "transaction": {"intake"},
     "verify": {"intake"},
 }
