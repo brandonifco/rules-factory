@@ -158,6 +158,7 @@ class StatusOfAnEngine(unittest.TestCase):
     def test_a_tree_in_no_repository_is_unknown(self):
         tree = self.report()["currentTree"]
         self.assertEqual(tree["evidence"], "unknown")
+        self.assertIn("git could not read the engine's repository", tree["why"])
 
     def test_there_is_no_verdict_anywhere(self):
         self.commit()
@@ -180,6 +181,30 @@ class StatusOfAnEngine(unittest.TestCase):
             code, _, err = self.status(*extra)
             self.assertEqual(code, 0, err)
         self.assertEqual(snapshot(self.engine), before)
+
+    def test_every_value_in_the_json_is_on_the_text_page(self):
+        self.commit()
+        report = self.report()
+        _, text, _ = self.status()
+        for fact in fixture.facts(report):
+            if fact["evidence"] == "unknown":
+                self.assertIn(fact["why"], text)
+            elif not isinstance(fact["value"], dict):
+                # Beside its own evidence class, as the page prints every fact: a `True` elsewhere on
+                # the page is not this one.
+                self.assertIn(f"{fact['value']}  [{fact['evidence']}]", text, fact)
+
+    def test_an_engine_git_does_not_track_is_unknown_not_clean(self):
+        outer = os.path.join(self.tmp, "outer")
+        os.makedirs(outer)
+        fixture.git_init(outer)
+        with open(os.path.join(outer, ".gitignore"), "w", encoding="utf-8") as handle:
+            handle.write("eng/\n")
+        shutil.copytree(self.engine, os.path.join(outer, "eng"))
+        code, out, err = self.status("--json", engine=os.path.join(outer, "eng"))
+        tree = json.loads(out)["currentTree"]
+        self.assertEqual(tree["evidence"], "unknown")
+        self.assertIn("git tracks no file under the engine", tree["why"])
 
     def test_the_text_and_the_json_say_the_same_things(self):
         self.commit()

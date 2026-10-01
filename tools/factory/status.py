@@ -50,18 +50,36 @@ def counted(trace, basis="counted from the trace of this engine (factory trace)"
             "evidence": trace["summary"]["evidence"], "gaps": trace["summary"]["gaps"]}
 
 
-def working_tree(engine_dir):
-    """Whether git sees uncommitted changes under the engine: a git fact, asked without writing."""
+def _git(engine_dir, *args):
+    """(exit code, stdout, stderr) of a read-only git command in the engine, or None when git cannot run."""
     try:
-        done = subprocess.run(["git", "--no-optional-locks", "-C", engine_dir, "status", "--porcelain=v1",
-                               "--untracked-files=normal", "--", "."],
+        done = subprocess.run(["git", "--no-optional-locks", "-C", engine_dir, *args],
                               capture_output=True, text=True, timeout=120)
-    except (OSError, subprocess.TimeoutExpired) as error:
-        return trace_step.unknown(f"git could not be asked about the working tree ({error})")
-    if done.returncode != 0:
-        return trace_step.unknown("the engine directory is in no git work tree, so nothing says whether it has "
-                                  "moved since a commit")
-    changed = [line for line in done.stdout.split("\n") if line.strip()]
+    except (OSError, subprocess.TimeoutExpired):
+        return None
+    return done.returncode, done.stdout, done.stderr.strip()
+
+
+def working_tree(engine_dir):
+    """Whether git sees uncommitted changes under the engine: a git fact, asked without writing.
+
+    Clean is said only of an engine git tracks. An engine git has never been told about -- one the
+    repository ignores, or one never committed -- shows no changes and has no commit to be clean
+    against, so it is unknown.
+    """
+    tracked = _git(engine_dir, "ls-files", "--", ".")
+    if tracked is None:
+        return trace_step.unknown("git could not be run, so nothing says whether the tree has moved since a commit")
+    if tracked[0] != 0:
+        return trace_step.unknown(f"git could not read the engine's repository ({tracked[2] or 'no message'}), so "
+                                  f"nothing says whether the tree has moved since a commit")
+    if not tracked[1].strip():
+        return trace_step.unknown("git tracks no file under the engine (it is ignored, or never committed), so there "
+                                  "is no commit for the tree to be clean against")
+    done = _git(engine_dir, "status", "--porcelain=v1", "--untracked-files=normal", "--", ".")
+    if done is None or done[0] != 0:
+        return trace_step.unknown(f"git could not report the working tree ({(done or (0, '', ''))[2] or 'no message'})")
+    changed = [line for line in done[1].split("\n") if line.strip()]
     value = {"clean": not changed, "changedPaths": len(changed)}
     return trace_step.derived(value, "git --no-optional-locks status --porcelain -- <engine>; a clean tree is a git "
                                      "fact and is not a verification")
@@ -123,15 +141,18 @@ def text(status):
     for package in inputs["maps"]:
         out.append(f"map           {value(package['packageId'])} {value(package['version'])}")
     for corpus in inputs["corpora"]:
-        out.append(f"corpus        {value(corpus.get('sourceId'))} contentHash {value(corpus.get('contentHash'))}")
+        out.append(f"corpus        {value(corpus.get('sourceId'))} contentHash {value(corpus.get('contentHash'))} "
+                   f"asOf {value(corpus.get('asOf'))}")
     out.append(f"entries       {done['entries']}: " + ", ".join(f"{n} {s}" for s, n in done["byStatus"].items()))
     out.append(f"named tests   {done['namedTests']}, {done['mutationsRecorded']} with a recorded mutation")
     out.append("evidence      " + ", ".join(f"{n} {c}" for c, n in done["evidence"].items()))
     out.append("trace gaps    " + (", ".join(f"{n} {r}" for r, n in done["gaps"].items()) or "none"))
     provenance = status["provenance"]
-    out.append(f"provenance    format {value(provenance['format'])}; factory {value(provenance['factory']['version'])}")
-    out.append(f"produced as   verified {value(provenance['verification']['verified'])} -- "
-               f"{provenance['verification']['scope']}")
+    factory = provenance["factory"]
+    out.append(f"provenance    format {value(provenance['format'])}; factory {value(factory['version'])} at "
+               f"{value(factory['commit'])}, dirty {value(factory['dirty'])}")
+    out.append(f"at produce    provenance records verification.verified = {value(provenance['verification']['verified'])}, "
+               f"ran {value(provenance['verification']['ran'])} -- {provenance['verification']['scope']}")
     tree = status["currentTree"]
     if tree["evidence"] == "unknown":
         out.append(f"working tree  {value(tree)}")
@@ -141,5 +162,5 @@ def text(status):
                    + " [git] -- not a verification")
     out.append(f"verification  {status['verification']['says']}")
     for gap in status["gaps"]:
-        out.append(f"gap           {gap['subject']} {gap['relationship']}: {gap['why']}")
+        out.append(f"gap           {gap['relationship']}: {gap['why']}")
     return "\n".join(out) + "\n"
