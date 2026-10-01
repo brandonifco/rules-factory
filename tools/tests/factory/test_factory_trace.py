@@ -266,7 +266,7 @@ class TraceOfATwoCorpusEngine(unittest.TestCase):
             for fact in listed["implementation"]:
                 self.assertIn(fact["evidence"], ("inferred", "unknown"))
 
-    def test_a_file_with_another_partial_type_names_no_handler_symbol(self):
+    def test_a_member_of_another_partial_type_is_not_a_handler(self):
         self.implemented([{"test": "ListedTests.Holds", "mutation": MUTATION}])
         self.source("src/TwoSection/Mixed.cs",
                     "namespace TwoSection;\n\ninternal static partial class Handlers\n{\n}\n\n"
@@ -274,6 +274,18 @@ class TraceOfATwoCorpusEngine(unittest.TestCase):
         (candidate,) = entry(self.trace()[0], "listed-in-the-table")["implementation"]
         self.assertEqual(candidate["value"], {"path": "src/TwoSection/Mixed.cs", "symbol": None})
         self.assertIn("reviewscope.entry_references", candidate["mechanism"])
+
+    def test_a_handler_file_that_also_extends_the_request_type_still_names_the_handler(self):
+        """srd-52-combat's shape: the handler file declares the entry's inputs on its partial request
+        type (#93) beside the partial Handlers, and the handler is still the one it writes."""
+        self.implemented([{"test": "ListedTests.Holds", "mutation": MUTATION}])
+        self.source("src/TwoSection/Handlers/ListedInTheTable.cs",
+                    "namespace TwoSection;\n\nnamespace Requests\n{\n    public sealed partial class "
+                    "ListedInTheTableRequest\n    {\n        public int Material { get; init; }\n    }\n}\n\n"
+                    + HANDLER.split("\n", 2)[2])
+        candidates = entry(self.trace()[0], "listed-in-the-table")["implementation"]
+        self.assertEqual(candidates[0]["value"], {"path": "src/TwoSection/Handlers/ListedInTheTable.cs",
+                                                  "symbol": "Handlers.ListedInTheTable"})
 
     @unittest.skipIf(hasattr(os, "geteuid") and os.geteuid() == 0, "root reads a file whatever its mode")
     def test_a_source_file_that_cannot_be_read_is_a_gap_not_a_traceback(self):

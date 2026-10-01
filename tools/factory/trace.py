@@ -57,6 +57,7 @@ engine sits under its repository root. Standard library only.
 """
 import json
 import os
+import re
 
 import backlog as backlog_step
 import compose
@@ -268,24 +269,36 @@ def implementation_files(engine_dir, gaps):
     return dict(sorted(found.items(), key=lambda item: item[0].encode("utf-8")))
 
 
-def handler_files(files):
-    """{member name: sorted paths} of the files whose partial `Handlers` declares that member.
+#: The two handler shapes the generator declares (contracts.py), as the hand-written half writes them:
+#: `partial Resolution<TOutput> {Member}(` for an implemented entry, `partial void {Member}(` for the
+#: optional hook every other entry gets. Matched on the text with its literals and comments blanked.
+HANDLER_SIGNATURE = re.compile(r"\bpartial\s+(?:Resolution\s*<[^(){};]*>|void)\s+@?([A-Za-z_][A-Za-z0-9_]*)\s*\(")
 
-    `reviewscope.partial_members` answers for a file, not for one type in it, so a file that also
-    declares another partial type cannot say whose member a name is. Only a file whose one partial
-    type is `Handlers` names the symbol; the others still reach the entry by reference.
+
+def handler_files(files):
+    """{member name: sorted paths} of the files that write an entry's generated handler.
+
+    A file qualifies when `reviewscope.partial_members` finds it declaring the partial `Handlers`,
+    and the member is one it declares with the generator's own handler signature. Both, because
+    `partial_members` answers for the file and not for one type in it: an engine's handler file
+    also extends the entry's partial request type with the inputs it reads (#93), and a member of
+    that type is not a handler.
     """
     found = {}
     for path, data in files.items():
-        types, members = reviewscope.partial_members(data.decode("utf-8", "replace"))
-        if types == {HANDLERS}:
-            for member in members:
-                found.setdefault(member, []).append(path)
+        text = data.decode("utf-8", "replace")
+        types, members = reviewscope.partial_members(text)
+        if HANDLERS not in types:
+            continue
+        for member in sorted(members & set(HANDLER_SIGNATURE.findall(reviewscope.blank_literals(text)))):
+            found.setdefault(member, []).append(path)
     return found
 
 
-HANDLER_MECHANISM = (f"reviewscope.partial_members: a hand-written file under src/ whose one partial type, "
-                     f"{HANDLERS}, declares the entry's generated handler member (semantics.pascal of the entry id)")
+HANDLER_MECHANISM = (f"reviewscope.partial_members and the generated handler signature (contracts.py): a "
+                     f"hand-written file under src/ that declares the partial {HANDLERS} and writes "
+                     f"`partial Resolution<...> <Member>(` or `partial void <Member>(` for the entry's member "
+                     f"(semantics.pascal of the entry id)")
 REFERENCE_MECHANISM = ("reviewscope.entry_references: a hand-written file under src/ that names the entry's "
                        "member, its request type, or its id as a string literal")
 
