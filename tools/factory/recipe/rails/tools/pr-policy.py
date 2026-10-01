@@ -972,7 +972,8 @@ def truncation(pull, changed, findings):
     request with more than a hundred changed files whose rule-bearing ones sort past the first
     hundred would be judged on a diff that is not the diff. A map version bump regenerates hundreds
     of files, which is exactly the case this check is for. So the count is asked for alongside the
-    list, and a short list refuses rather than deciding on the half it was given: a check that
+    list, a short one is read again whole from the REST endpoint (`listed_files`, #562), and a list
+    still short after that refuses rather than deciding on the half it was given: a check that
     examines some of what it is for is not a pass either.
     """
     count = pull.get("changedFiles")
