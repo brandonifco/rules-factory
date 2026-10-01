@@ -206,7 +206,7 @@ class TestRecord(ProvenanceCase):
         self.assertEqual(record["factory"], {"version": f"0.0.0-dev+{commit[:12]}", "commit": commit, "dirty": False})
         self.assertEqual(record["engine"], {"name": NAME})
         self.assertEqual(record["maps"][0]["packageId"], "RulesFactory.Maps.FaaPart107")
-        self.assertEqual(record["maps"][0]["version"], "4.0.0")
+        self.assertEqual(record["maps"][0]["version"], "5.0.0")
         self.assertEqual(record["maps"][0]["nupkgSha256"], sha256_file(self.part107))
         with zipfile.ZipFile(self.part107) as archive:
             expected = [{"role": role, "path": path, "sha256": hashlib.sha256(archive.read(path)).hexdigest()}

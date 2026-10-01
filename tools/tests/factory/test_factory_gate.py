@@ -168,7 +168,7 @@ class GateCase(unittest.TestCase):
     def regenerate(self, engine):
         return self.script(engine, "engine-gate.py", "regenerate", "--package-map", self.package_map,
                            "--package-manifest", self.package_manifest,
-                           "--package-id", PACKAGE_ID, "--package-version", "4.0.0", "--name", NAME)
+                           "--package-id", PACKAGE_ID, "--package-version", "5.0.0", "--name", NAME)
 
     def merge(self, engine):
         merged = os.path.join(self.tmp, "merged.json")
@@ -286,7 +286,7 @@ class TestTheRecordHashesWhatIsOnDisk(GateCase):
         write_overlay(engine, self.IMPLEMENTED)
         code, output = self.script(engine, "engine-gate.py", "regenerate", "--package-map", self.package_map,
                                    "--package-manifest", self.package_manifest, "--package-id", PACKAGE_ID,
-                                   "--package-version", "4.0.0", "--name", NAME, "--write")
+                                   "--package-version", "5.0.0", "--name", NAME, "--write")
         self.assertEqual(code, 0, output)  # the leak: refreshing the C# is not a failure, and it is not enough
 
         code, output = self.provenance(engine)
@@ -1096,7 +1096,7 @@ class TestRandomnessNone(GateCase):
         self.assertIn("declares randomness None", output)
         code, output = self.script(engine, "engine-gate.py", "regenerate", "--package-map", self.package_map,
                                    "--package-manifest", path, "--package-id", PACKAGE_ID,
-                                   "--package-version", "4.0.0", "--name", NAME)
+                                   "--package-version", "5.0.0", "--name", NAME)
         self.assertEqual(code, 1, output)
 
 
@@ -1514,7 +1514,7 @@ class TestValidateShWithDotnet(GateCase):
         engine = self.copy()
         write_overlay(engine, {"no-such-entry": {"status": "mapped"}})
         self.assertFailsAt(self.validate(engine, "full"),
-                           f"merge({PACKAGE_ID}@4.0.0, overlay/) obeys 0015")
+                           f"merge({PACKAGE_ID}@5.0.0, overlay/) obeys 0015")
 
     def test_fails_on_implemented_without_tests(self):
         engine = self.copy()
@@ -1563,7 +1563,7 @@ class TestValidateShWithDotnet(GateCase):
                                     "tests": [{"test": "SpeedTests.t", "mutation": MUTATION}]}})
         code, output = self.script(engine, "engine-gate.py", "regenerate", "--package-map", self.package_map,
                                    "--package-manifest", self.package_manifest, "--package-id", PACKAGE_ID,
-                                   "--package-version", "4.0.0", "--name", NAME, "--write")
+                                   "--package-version", "5.0.0", "--name", NAME, "--write")
         self.assertEqual(code, 0, output)
         result = self.validate(engine, "full")
         self.assertFailsAt(result, "provenance.json hashes the generated files, the managed files and every "
