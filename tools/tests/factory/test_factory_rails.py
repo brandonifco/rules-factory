@@ -771,7 +771,7 @@ class TestTheEntryPacketOfAComposedEngine(unittest.TestCase):
         the version a defect is reported against. Each of these entries is a different package's,
         and each packet says its own -- not the first, and not all of them."""
         combat = self.rendered("Srd52Combat.opportunity-attack")
-        self.assertIn("map `RulesFactory.Maps.Srd52Combat` 2.0.0", combat)
+        self.assertIn("map `RulesFactory.Maps.Srd52Combat` 3.0.0", combat)
         self.assertNotIn("map `RulesFactory.Maps.Srd52Conditions`", combat)
         conditions = self.rendered("Srd52Conditions.blinded")
         self.assertIn("map `RulesFactory.Maps.Srd52Conditions` 1.0.0", conditions)

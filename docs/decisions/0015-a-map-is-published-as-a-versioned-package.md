@@ -322,6 +322,13 @@ evidence, `flash-rate-sufficient`'s, which now quotes § 107.29(a)(2) whole, its
 included, because an ellipsis skips whole paragraphs and never words inside one. No entry is added or
 removed, and no clarity, gate, kind, scope or status changes. 47 entries.
 
+`srd-52-combat` `3.0.0` is the first version to carry `map/verification.json` (0048), which `2.0.0` does
+not, so the current factory refuses `2.0.0` as it refused `faa-part-107`'s `4.0.0`. It takes the major
+bump 0048 requires, and is major twice more on its own: the packaged checker's bytes changed (31 commits
+since `2.0.0`), and so did one entry, `round-down`'s `evidence` and `note` (#445: the cited page chooses
+among the printings the heading path selects). No entry is added or removed, and no clarity, gate, kind,
+scope or status changes. 95 entries.
+
 `tax-121-principal-residence`'s first version was `1.0.0`, the first mapping. `2.0.0` is the map
 the blind second mapping produced, promoted to be `corpus-map.json` (#8, 0014, 0017): a new entry
 (`combined-sale-nets-dwelling-loss`, § 1.121-1(b)(4) Example 4), `enabledBy: [effective-date]` on
