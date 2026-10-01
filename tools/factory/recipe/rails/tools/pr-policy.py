@@ -935,6 +935,34 @@ def check_issue_labels(number, settings, findings):
     return issue
 
 
+# GitHub's REST statuses, spelled as `gh pr view --json files` spells a `changeType`, so a path read
+# either way compares the same.
+_CHANGE_TYPES = {"added": "ADDED", "removed": "DELETED", "modified": "MODIFIED", "renamed": "RENAMED",
+                 "copied": "COPIED", "changed": "CHANGED"}
+
+
+def listed_files(pull, number):
+    """Every changed file of the pull request, as `{"path", "changeType"}` (#562).
+
+    `gh pr view --json files` stops at 100 files without a word, and `changedFiles` says how many
+    there are. Where the two disagree, the list is read again from the REST endpoint, which pages
+    to 3,000 files; what that returns is still held to `changedFiles` by the caller, so a list
+    GitHub will not give whole is refused as it always was, and never judged in part.
+    """
+    files = [{"path": f["path"], "changeType": f.get("changeType") or ""} for f in pull.get("files") or []]
+    count = pull.get("changedFiles")
+    if not isinstance(count, int) or len(files) == count:
+        return files
+    listing = gh("api", f"repos/{{owner}}/{{repo}}/pulls/{number}/files?per_page=100", "--paginate",
+                 "--jq", '.[] | [.filename, .status] | @tsv')
+    whole = []
+    for line in listing.splitlines():
+        path, _, status = line.partition("\t")
+        if path:
+            whole.append({"path": path, "changeType": _CHANGE_TYPES.get(status, status.upper())})
+    return whole
+
+
 def truncation(pull, changed, findings):
     """Whether `gh pr view --json files` gave a partial list (#193). True means decide nothing from it.
 
@@ -944,7 +972,8 @@ def truncation(pull, changed, findings):
     request with more than a hundred changed files whose rule-bearing ones sort past the first
     hundred would be judged on a diff that is not the diff. A map version bump regenerates hundreds
     of files, which is exactly the case this check is for. So the count is asked for alongside the
-    list, and a short list refuses rather than deciding on the half it was given: a check that
+    list, a short one is read again whole from the REST endpoint (`listed_files`, #562), and a list
+    still short after that refuses rather than deciding on the half it was given: a check that
     examines some of what it is for is not a pass either.
     """
     count = pull.get("changedFiles")
@@ -979,7 +1008,7 @@ def main(argv=None):
         # path -> how it changed, as GitHub reports it (ADDED, MODIFIED, REMOVED, RENAMED...). The
         # produce predicate needs it: a retired path is the factory's when deleted and nobody's
         # otherwise. An absent changeType reads as "" and is therefore never a deletion.
-        changed = {f["path"]: f.get("changeType") or "" for f in pull.get("files") or []}
+        changed = {f["path"]: f["changeType"] for f in listed_files(pull, args.pr)}
         truncated = truncation(pull, changed, findings)
         # In the engine's own terms: the semantic surface is `src/**`, and GitHub reports
         # `engine/src/**` for an engine embedded under a repository root (0069).

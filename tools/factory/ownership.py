@@ -154,14 +154,14 @@ TABLE = (
         "the repository root comes from the record too, so an embedded engine re-produces with no "
         "arguments of its own (#517, 0069); an engine made from several corpora is re-produced from "
         "every corpus the record names, the principal first (#531, 0070)"),
-    Row("tools/review-packet.py", MANAGED, 16,
+    Row("tools/review-packet.py", MANAGED, 17,
         "everything a reviewer needs about one pull request, in the order it is read (0029); every map is "
         "read once and the entry packets are built from those bytes, and a refused packet writes nothing "
         "(#371, #372); a composed engine's maps are each checked against their own recorded digest and the "
         "identity names all of them (#460); --role cuts it for one reviewer, the changed paths carry the "
         "reviewed commit's own ownership class, and the identity names the role (#467); the semantic cut names the files it withheld rather than counting them, the policy among them (#475); "
         "a cut section keeps what is nested under it (#484); a truncated file list is refused, because a cut "
-        "made from one drops a change and says it did not (#478); a packet with entry evidence writes the scope a verdict attests, --review final and --prior make the acceptance review and the reasoned full one, and it is refused until the self-review is current (0071); the semantic diff is asked for by paths anchored at the repository root, and a listed path the diff shows no change to is a refusal and not an empty fence (#522, #526); the entries are the ones pr-policy.py reads from the conformance bullet as well as the marker (#464)"),
+        "made from one drops a change and says it did not (#478); a packet with entry evidence writes the scope a verdict attests, --review final and --prior make the acceptance review and the reasoned full one, and it is refused until the self-review is current (0071); the semantic diff is asked for by paths anchored at the repository root, and a listed path the diff shows no change to is a refusal and not an empty fence (#522, #526); the entries are the ones pr-policy.py reads from the conformance bullet as well as the marker (#464); a list past the 100 files `gh pr view --json files` gives is read whole from the REST endpoint, and refused only when that is short too (#562)"),
     Row("tools/review-scope.py", MANAGED, 1,
         "what a semantic review covered and what a repair invalidates of it, computed from the map's "
         "dependencies, a lexical reference graph and recorded fingerprints; the delta packet a bounded "
@@ -173,7 +173,7 @@ TABLE = (
         "blocking findings, which are the caller's judgement and the only thing it is given (#465); a section "
         "of the issue keeps what is nested under it (#484); it makes the readiness refusal dispatch "
         "makes, and says a semantic verdict is owed only when the change owes one (#483); the brief says to commit the attestation it answers and that the next review is a delta of it (0071); the worktree it names is checked against the head it advertises, and every path it prints is quoted (#482); the changed paths are matched against the semantic surface in the engine's own terms, as the gate matches them, so an embedded engine is not told no verdict is owed when the gate will ask for one (#535)"),
-    Row("tools/pr-policy.py", MANAGED, 12,
+    Row("tools/pr-policy.py", MANAGED, 13,
         "the pull request contract, checked mechanically; a produce update's claim is checked, not taken "
         "(#193); every document the engine owns is accounted for (#236); the entry declaration, linked issue "
         "marker and overlay transition must identify the same work (#451); a changed path is judged in the "
@@ -181,15 +181,15 @@ TABLE = (
         "reports (#501, 0069), the documentation skeleton included (#507); a changed document outside an "
         "embedded engine is listed under its path relative to the engine, `../README.md`, by the check and "
         "the skeleton alike, and a rename is its new path (#523, #511); the entry ids the conformance "
-        "bullet names are read by one function that review-packet.py loads, so the two cannot disagree (#464)"),
+        "bullet names are read by one function that review-packet.py loads, so the two cannot disagree (#464); a list past the 100 files `gh pr view --json files` gives is read whole from the REST endpoint, and refused only when that is short too (#562)"),
     Row("tools/record-verdict.py", MANAGED, 6,
         "a review verdict as a commit status on the exact commit reviewed, from entry evidence bound to "
         "that commit (0029, #372) -- every map of a composed engine, not one of them (#460); and from a packet "
         "whose role could carry it, because a structural cut holds no entry evidence at all (#467); every verdict leaves a validated attestation whose digest is in the status, a delta PASS posts a context no gate requires, and a carry posts a comprehensive PASS again only when nothing moved (0071)"),
-    Row("tools/conformance-gate.py", MANAGED, 4,
+    Row("tools/conformance-gate.py", MANAGED, 5,
         "whether the verdicts this change needs are recorded at the commit being merged; a truncated "
         "file list is undecidable (0029, #193); the semantic surface is read in the engine's own paths, "
-        "which for an embedded engine is not what GitHub reports (#507, 0069)"),
+        "which for an embedded engine is not what GitHub reports (#507, 0069); a list past the 100 files `gh pr view --json files` gives is read whole from the REST endpoint, and refused only when that is short too (#562)"),
     Row("tools/requeue-gate.py", MANAGED, 2,
         "asks the gate to report again when something outside the pull request changed what it "
         "would answer: a verdict recorded at its head (#191), or the risk label on the issue it "
@@ -459,6 +459,7 @@ RECIPE_SHA256 = {
         14: "1c9adb51ce31986d763ce3c48a445bae95ceca0a95b7372767f02221a2840fa9",
         15: "bbbfd33e2385ab884863f02d35c3a836405d21fbf95d3347fddd937f92ece238",
         16: "035d4fe896df6573a295f2350ac16739f05a09fa4f4c718972fa1c6f2eddafc3",
+        17: "09a783f9e0a7a6e995167389f0c8398da73d3e4f44653fe451e2a8e47cacc291",
     },
     "tools/repair-packet.py": {
         1: "7ec00d9a68ff35fa0af4ab65714411ac6b39cfce34baf448359d9be5e393c2f5",
@@ -481,6 +482,7 @@ RECIPE_SHA256 = {
         10: "9017ed3f13402056e4a5b6ebb3f9b52349348904addf75ff6f0701f8dc7b5512",
         11: "c8fce86c6cffc79afca5c3b1a06cfe8bcfc1a42962013f2c530dc81f9a7bb286",
         12: "03d43a550a8f6fec9e2943f5f06f0f830dfc450650eed79e3f0640c537235268",
+        13: "37c2cee713e940b7799130fe5117074201e5390635d62700a4572582cb7a914b",
     },
     "tools/record-verdict.py": {
         1: "48f7b11f7fc829cdaebd776a3eb5db04e27cade97c427c6806b72f58805d83db",
@@ -495,6 +497,7 @@ RECIPE_SHA256 = {
         2: "6e4a57468144caf4eaf74dce4d178a582322235ba37eb04d92bd72ddb929e58a",
         3: "ed0db727f1ac5500be0496bc42351d19faa353f3fc578b6d195e0b41cc23c634",
         4: "4c0e5daef3375bb4b17d7a751bc5fb5d221925fabbb2b13e38fac519c556574b",
+        5: "efa4ebba282b25abe388aea2721633d8565de22faaf591e09361c2ac1759c031",
     },
     "tools/requeue-gate.py": {
         1: "a4315a5fa76a696ee616e5ef190d6bbec0d023c04e22086082d4031c460aec8d",

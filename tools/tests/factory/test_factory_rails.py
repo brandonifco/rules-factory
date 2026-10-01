@@ -985,6 +985,18 @@ if kind == "api" and "/status" in argv[1]:
         sys.exit(0)
     print(json.dumps((fixture.get("statuses") or {}).get(sha) or []))
     sys.exit(0)
+if kind == "api" and "/pulls/" in argv[1] and argv[1].split("?")[0].endswith("/files"):
+    endpoint = argv[1]
+    # `gh api repos/{owner}/{repo}/pulls/<n>/files --paginate --jq '... @tsv'`: the whole changed-file
+    # list, read when `gh pr view --json files` gave fewer than `changedFiles` (#562). A fixture's
+    # `allFiles` is what the REST endpoint holds; without one it holds no more than the short list.
+    number = endpoint.split("/pulls/", 1)[1].split("/")[0]
+    pull = (fixture.get("pr") or {}).get(number) or {}
+    rows = pull["allFiles"] if pull.get("allFiles") is not None else pull.get("files") or []
+    statuses = {"ADDED": "added", "DELETED": "removed", "MODIFIED": "modified", "RENAMED": "renamed"}
+    for row in rows:
+        print(row["path"] + "\t" + statuses.get(row.get("changeType") or "MODIFIED", "modified"))
+    sys.exit(0)
 if kind == "api":
     # `gh api repos/{owner}/{repo}/contents/<path>?ref=<sha> --jq .content`: a file at the base
     # commit, base64 as GitHub returns it. pr-policy.py reads the record this way and then hashes
@@ -3325,6 +3337,22 @@ class TestTheReviewPacketRoles(TestTheReviewPacket):
             self.assertIn("say nothing was dropped", done.stderr)
             self.assertEqual(done.stdout, "", "a refused packet prints nothing a reviewer could read")
 
+    def test_a_list_past_a_hundred_is_read_whole_and_packed(self):
+        """#562: the packet is cut from the whole list the REST endpoint pages through, so a long
+        pull request gets a packet instead of a refusal."""
+        self.commit_engine()
+        head = self.change()
+        self.pull_request(head)
+        document = json.load(open(self.fixture_path, encoding="utf-8"))
+        listed = document["pr"]["5"]["files"]
+        document["pr"]["5"]["allFiles"] = listed
+        document["pr"]["5"]["files"] = listed[:1]
+        document["pr"]["5"]["changedFiles"] = len(listed)
+        self.fixture(document)
+        done = self.packet("--stdout")
+        self.assertEqual(done.returncode, 0, done.stderr)
+        self.assertNotIn("changed files, so the file list is truncated", done.stderr)
+
     def test_a_complete_file_list_is_not_refused(self):
         """The refusal is about disagreement, not about the field being present: a pull request
         whose count matches is assembled exactly as before."""
@@ -3920,6 +3948,23 @@ ceiling instead of declining" (observed).""", "Tests pass.")
         self.assertEqual(done.returncode, 1, done.stdout)
         self.assertIn("GitHub returned 1 of this pull request's 140 changed files", done.stdout)
         self.assertIn("cannot be decided from a partial list", done.stdout)
+
+    def test_a_list_past_a_hundred_is_read_whole_and_judged(self):
+        # #562: past the 100 `gh pr view --json files` stops at, the REST endpoint pages on, so a
+        # long pull request is judged on its whole diff rather than refused -- and the file the short
+        # list never showed is the one judged.
+        self.produced()
+        whole = [{"path": "README.md"}] + [{"path": f"docs/note-{n:03}.md", "changeType": "ADDED"}
+                                            for n in range(139)]
+        self.pull_request(files=whole[:1], changed_files=140)
+        document = json.load(open(self.fixture_path, encoding="utf-8"))
+        document["pr"]["5"]["allFiles"] = whole
+        self.fixture(document)
+        done = self.policy_check()
+        self.assertNotIn("GitHub returned", done.stdout)
+        self.assertNotIn("cannot be decided from a partial list", done.stdout)
+        self.assertIn("`docs/note-138.md` is changed by this pull request and is not listed", done.stdout,
+                      "a document only the whole list names is judged like any other")
 
 
 class TestPrPolicyOfAnEmbeddedEngine(RailsInAGitEngine):
@@ -4897,6 +4942,20 @@ if argv_api := [a for a in sys.argv[1:] if a.startswith("repos/")]:
         self.assertIn("listed 1 of PR #5's 140 changed files", done.stderr)
         self.assertIn("cannot be decided from a partial list", done.stderr)
 
+    def test_a_list_past_a_hundred_is_read_whole_and_decided(self):
+        # #562: the verdict requirement comes from the whole list. The short one names only the
+        # README; the 139 files past it are source, so the semantic verdict is owed.
+        self.produced()
+        whole = [{"path": "README.md"}] + [{"path": f"src/{NAME}/Rules/Note{n:03}.cs"} for n in range(139)]
+        self.scenario(files=whole[:1], changed_files=140)
+        document = json.load(open(self.fixture_path, encoding="utf-8"))
+        document["pr"]["5"]["allFiles"] = whole
+        self.fixture(document)
+        done = self.gate()
+        self.assertNotIn("partial list", done.stdout + done.stderr)
+        self.assertNotIn("no rules verdict required", done.stdout)
+        self.assertEqual(done.returncode, 1, done.stdout + done.stderr)
+
     def test_a_produce_update_touching_the_generated_code_still_needs_the_semantic_verdict(self):
         # Produce mode lives in pr-policy.py and buys nothing here: the gate reads the changed
         # paths and nothing else, and a map bump rewrites the generated code, the pins and both
@@ -4945,6 +5004,17 @@ def statuses():
 
 if argv[0] == "api":
     endpoint = argv[1]
+    if "/pulls/" in endpoint and endpoint.split("?")[0].endswith("/files"):
+        # `gh api repos/{owner}/{repo}/pulls/<n>/files --paginate --jq '... @tsv'`: the whole changed-file
+        # list, read when `gh pr view --json files` gave fewer than `changedFiles` (#562). A fixture's
+        # `allFiles` is what the REST endpoint holds; without one it holds no more than the short list.
+        number = endpoint.split("/pulls/", 1)[1].split("/")[0]
+        pull = (fixture.get("pr") or {}).get(number) or {}
+        rows = pull["allFiles"] if pull.get("allFiles") is not None else pull.get("files") or []
+        statuses = {"ADDED": "added", "DELETED": "removed", "MODIFIED": "modified", "RENAMED": "renamed"}
+        for row in rows:
+            print(row["path"] + "\t" + statuses.get(row.get("changeType") or "MODIFIED", "modified"))
+        raise SystemExit(0)
     if endpoint.endswith("/rerun"):
         # The 30-day limit, when the fixture asks for it: GitHub refuses the re-run, and nothing
         # else can produce a run at that commit.
