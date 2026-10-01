@@ -147,6 +147,10 @@ the diff ([AGENTS.md](AGENTS.md) §3).
 | `trace` | `--json` | implemented | print the trace as JSON, the same bytes for the same engine; this or `--html` |
 | `trace` | `--html` | implemented | write the same trace as one self-contained HTML page: a renderer over the JSON's data that adds no fact. Every relationship shows its evidence badge and how it is known; inferred implementation candidates are boxed apart from recorded test evidence; a summary counts classes and gaps and gives no score or verdict; filters are CSS alone. A private engine's page says first that it is as private as the engine. Refused inside the engine, where a committed copy would go stale ([#580](https://github.com/brandonifco/rules-factory/issues/580)) |
 | `trace` | `--package` | implemented | default: `Id@Version` from `provenance.json`, from the NuGet global packages folder |
+| `status` | — | implemented | what an engine's records establish now: identity, distribution, topology and kernel; map packages and corpora; entries by status, named tests and recorded mutations, and the trace's evidence and gap counts; provenance's `verification` as a recorded fact about the produce that wrote it; and whether git sees the working tree moved. Every count is the trace's. No overall verdict, score or severity, and verification is reported as not run by this invocation, because `verify` is the authority. Read-only: no restore, build, gate or network, and git is asked with `--no-optional-locks` ([#585](https://github.com/brandonifco/rules-factory/issues/585)) |
+| `status` | `--engine` | implemented | the engine directory, as `trace` takes it |
+| `status` | `--json` | implemented | the same report as JSON, instead of lines |
+| `status` | `--package` | implemented | default: `Id@Version` from `provenance.json`, from the NuGet global packages folder |
 <!-- factory-cli-status:end -->
 
 ### What the factory exits with

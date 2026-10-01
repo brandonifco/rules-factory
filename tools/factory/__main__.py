@@ -114,6 +114,13 @@ It reads and writes nothing else, and an unknown is a finding, not a failure: ex
 engine could be read. `--html` writes the same trace as one page (tracereport.py), anywhere but
 inside the engine. See trace.py.
 
+  python3 tools/factory status --engine <dir> [--json] [--package <nupkg path | Id@Version>]
+
+says what the engine's records establish now -- identity, inputs, how much is implemented and
+named-tested, the trace's gaps, what provenance recorded about the produce that wrote it, and
+whether git sees the tree moved -- and issues no verdict: verification is reported as not run by
+this invocation. Read-only. See status.py.
+
 Exit 0 when every step passed; 1 when a step refused; 2 on a usage error; 3 when a step could
 prove nothing and said so -- today that is `produce --no-verify`, which writes an engine that was
 never built or tested. 3 is NOT VERIFIED: not a pass, not a failure, and never silent (0013).
@@ -147,6 +154,7 @@ import intake as intake_step  # noqa: E402
 import provenance  # noqa: E402
 import rails as rails_step  # noqa: E402
 import repository as repository_step  # noqa: E402
+import status as status_step  # noqa: E402
 import trace as trace_step  # noqa: E402
 import tracereport  # noqa: E402
 import transaction  # noqa: E402
@@ -701,6 +709,10 @@ def build_parser():
     form.add_argument("--html", metavar="FILE",
                       help="write the same trace as one self-contained HTML page; refused inside the engine (#580)")
     t.add_argument("--package", help="the .nupkg or Id@Version (default: Id@Version from provenance.json)")
+    s = commands.add_parser("status", help="say what an engine's records establish now, with no verdict of its own")
+    s.add_argument("--engine", required=True, help="the engine directory (below the repository root when embedded)")
+    s.add_argument("--json", action="store_true", help="print the status as JSON instead of lines")
+    s.add_argument("--package", help="the .nupkg or Id@Version (default: Id@Version from provenance.json)")
     return parser
 
 
@@ -727,6 +739,13 @@ def main(argv=None):
             return rails_step.run(args.repo, args.dir, os.environ.get("FACTORY_GH", "gh"), sys.stdout, args.apply)
         if args.command == "provenance":
             return check_provenance(args)
+        if args.command == "status":
+            if not os.path.isdir(args.engine):
+                raise intake_step.Usage(f"--engine {args.engine} is not a directory")
+            report = status_step.build(args.engine, args.package)
+            sys.stdout.write(json.dumps(report, indent=2, ensure_ascii=False) + "\n" if args.json
+                             else status_step.text(report))
+            return 0
         if args.command == "trace":
             if not os.path.isdir(args.engine):
                 raise intake_step.Usage(f"--engine {args.engine} is not a directory")
