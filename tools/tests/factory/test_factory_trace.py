@@ -318,6 +318,20 @@ class TraceOfATwoCorpusEngine(unittest.TestCase):
             handler = entry(self.trace()[0], "listed-in-the-table")["handler"]
         self.assertFalse(handler["value"]["required"])
 
+    def test_a_map_the_generator_cannot_model_leaves_every_handler_unknown_and_traces_the_rest(self):
+        with mock.patch.object(factory.trace_step.semantics, "Model",
+                               side_effect=factory.trace_step.semantics.GenerationError("two entries, one member")):
+            trace, _ = self.trace()
+        for listed in trace["entries"]:
+            self.assertEqual(listed["handler"]["evidence"], "unknown")
+            self.assertIn("two entries, one member", listed["handler"]["why"])
+            self.assertEqual(listed["locator"]["evidence"], "recorded")
+        self.assertEqual(trace["summary"]["gaps"]["entry -> handler"], 2)
+
+    def test_the_handler_basis_says_it_was_not_read_from_the_generated_file(self):
+        basis = entry(self.trace()[0], "w-is-water-only")["handler"]["basis"]
+        self.assertIn("not read from Generated/Contracts.g.cs", basis)
+
     def test_an_implemented_entry_nothing_implements_is_unknown_and_a_gap(self):
         self.implemented([{"test": "ListedTests.Holds", "mutation": MUTATION}])
         trace, _ = self.trace()

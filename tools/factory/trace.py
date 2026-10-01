@@ -23,10 +23,12 @@ fact from a guess will act on the guess:
     never promoted to recorded.
 
 **Entry -> handler is derived; handler -> file is inferred (#582).** The generator binds every
-entry to a handler on the generated `Handlers` class (contracts.py): an implemented entry off
-correspondence row 8 gets a *required* partial method the engine does not build without (CS8795),
-and every other entry an optional hook. So `handler` is derived through the generator's own model
-and contract (`semantics.Model`, `semantics.contract`), and the rule is stated nowhere here. Which
+entry to a handler on the generated `Handlers` class (contracts.py), required or an optional hook.
+`handler` is what the generator declares *for this map and overlay*, computed through its own model
+and contract (`semantics.Model`, `semantics.contract`), so which entries need one is decided there
+and stated nowhere here. It is not read from `Generated/Contracts.g.cs`, which predates any overlay
+edit made since the last produce. A map the generator cannot model leaves every handler unknown, as
+a gap, rather than refusing the trace: the rest of the trace still stands. Which
 file writes that handler is recorded nowhere -- the overlay's `implementedIn` is `{ruleset,
 version}` in every engine the factory has produced, which ruleset the entry was implemented
 against, not where -- so the files are found by the review model's own lexical analysis
@@ -331,14 +333,14 @@ def generator_model(record, merged, documents):
     name = (record.get("engine") or {}).get("name") if isinstance(record.get("engine"), dict) else None
     try:
         return semantics.Model(types.SimpleNamespace(packages=packages, superseded={}, randomness=None), merged,
-                               str(name or "Engine"))
-    except (semantics.GenerationError, KeyError, TypeError) as error:
-        raise TraceError(f"the generator cannot model this engine's merged map, so no handler can be derived: {error}")
+                               str(name or "Engine")), None
+    except (semantics.GenerationError, KeyError, TypeError, AttributeError) as error:
+        return None, (f"the generator cannot model this engine's merged map ({error}), so no handler is derived "
+                      f"for any entry")
 
 
-HANDLER_BASIS = ("semantics.contract over semantics.Model: the generated Handlers class declares this member for "
-                 "the entry (contracts.py); required means the entry is implemented and off correspondence row 8, "
-                 "so the engine does not build without it, and otherwise it is an optional hook")
+HANDLER_BASIS = ("semantics.contract over semantics.Model: the handler the generator declares on Handlers for this map "
+                 "and overlay (contracts.py); not read from Generated/Contracts.g.cs, which may predate the overlay")
 
 
 def entry_trace(entry, origin, item, corpora, handlers, references, single, gaps, generated):
@@ -406,9 +408,14 @@ def entry_trace(entry, origin, item, corpora, handlers, references, single, gaps
     if entry.get("status") == "implemented" and listed and not tests:
         gaps.append(_gap(subject, "entry -> test", "the entry is implemented and names no test"))
 
-    contract = semantics.contract(generated["model"], generated["item"])
-    member = generated["item"]["member"]
-    out["handler"] = derived({"symbol": f"{HANDLERS}.{member}", "required": contract["required"]}, HANDLER_BASIS)
+    if generated.get("item") is None:
+        member = semantics.pascal(entry_id)
+        out["handler"] = unknown(generated["why"])
+        gaps.append(_gap(subject, "entry -> handler", generated["why"]))
+    else:
+        contract = semantics.contract(generated["model"], generated["item"])
+        member = generated["item"]["member"]
+        out["handler"] = derived({"symbol": f"{HANDLERS}.{member}", "required": contract["required"]}, HANDLER_BASIS)
     candidates = implementation(entry_id, member, handlers, references)
     if candidates:
         out["implementation"] = candidates
@@ -447,9 +454,13 @@ def build(engine_dir, package=None):
                          f"(the engine's own gate refuses this too): {error}")
     files = implementation_files(engine_dir, gaps)
     entries = [e for e in merged.get("entries") or [] if isinstance(e, dict) and isinstance(e.get("id"), str)]
-    model = generator_model(record, merged, documents)
-    generated = {item["entry"]["id"]: {"model": model, "item": item} for item in model.entries}
-    references = reviewscope.entry_references(files, {e["id"]: generated[e["id"]]["item"]["member"] for e in entries})
+    model, unmodelled = generator_model(record, merged, documents)
+    generated = {e["id"]: {"why": unmodelled} for e in entries}
+    for item in (model.entries if model else []):
+        generated[item["entry"]["id"]] = {"model": model, "item": item}
+    references = reviewscope.entry_references(files, {
+        e["id"]: generated[e["id"]]["item"]["member"] if "item" in generated[e["id"]] else semantics.pascal(e["id"])
+        for e in entries})
     handlers = handler_files(files)
     corpora = {c.get("sourceId") for c in record.get("corpora") or [] if isinstance(c, dict)}
     trace = {
