@@ -3476,6 +3476,43 @@ class TestTheReviewPacketRoles(TestTheReviewPacket):
         finally:
             sys.dont_write_bytecode = writes
 
+    def policy_module(self):
+        rails = os.path.join(FACTORY, "recipe", "rails", "tools")
+        spec = importlib.util.spec_from_file_location("pp_under_test", os.path.join(rails, "pr-policy.py"))
+        module = importlib.util.module_from_spec(spec)
+        writes, sys.dont_write_bytecode = sys.dont_write_bytecode, True
+        try:
+            spec.loader.exec_module(module)
+        finally:
+            sys.dont_write_bytecode = writes
+        return module
+
+    def test_a_line_that_says_none_names_no_entry(self):
+        """#572: a factory update fills the line with `none`, and `none` is not an entry called none."""
+        module = self.policy_module()
+        for line in ("- entry id(s): none", "- entry id(s): `none`", "- entry id(s):  `none`  ",
+                     "- Entry id(s): none"):
+            self.assertEqual(([], []), module.named_entries("## Map and rules conformance\n" + line + "\n"), line)
+
+    def test_only_a_line_that_is_exactly_none_names_no_entry(self):
+        """#572: an id that merely contains the word, or a list that includes it, is still read as ids."""
+        module = self.policy_module()
+        read = lambda line: module.named_entries("## Map and rules conformance\n" + line + "\n")
+        self.assertEqual((["none-of-the-above"], []), read("- entry id(s): `none-of-the-above`"))
+        self.assertEqual((["nonexistent"], []), read("- entry id(s): nonexistent"))
+        self.assertEqual((["none", "speed-limit"], []), read("- entry id(s): none, speed-limit"))
+        self.assertEqual((["altitude-limit", "speed-limit"], []), read("- entry id(s): `altitude-limit`, speed-limit"))
+        self.assertEqual((["see the issue"], ["see the issue"]), read("- entry id(s): see the issue"))
+
+    def test_a_produce_pull_request_that_names_no_entry_gets_a_semantic_packet(self):
+        """#572: the packet asked the map for an entry called `none` and refused."""
+        self.named_by_the_bullet("- entry id(s): `none`\n- map package and version: x 1")
+        out = os.path.join(self.tmp, "produce-packet")
+        done = self.packet("--role", "semantic", "--out", out)
+        self.assertEqual(done.returncode, 0, done.stderr)
+        self.assertNotIn("no entry packet for", done.stderr)
+        self.assertFalse(os.path.exists(os.path.join(out, "entry-none.md")), "a packet for an entry called none")
+
     def test_a_part_of_the_bullet_that_is_no_entry_id_is_reported_and_not_read_as_one(self):
         self.named_by_the_bullet("- entry id(s): `altitude-limit`, see the issue")
         text = self.cut("structural")
@@ -3718,6 +3755,25 @@ ceiling instead of declining" (observed).""", "Tests pass.")
         done = self.policy_check()
         self.assertEqual(done.returncode, 1, done.stdout)
         self.assertIn("names `speed-limit`, but this diff sets `altitude-limit`", done.stdout)
+
+    def test_an_ordinary_pull_request_that_says_none_is_still_refused_when_its_diff_implements_an_entry(self):
+        """#572: reading `none` as no entry must not let a pull request that implements one say so."""
+        self.produced()
+        self.pull_request(body=GOOD_PR_BODY.replace("- entry id(s): altitude-limit", "- entry id(s): none"))
+        done = self.policy_check()
+        self.assertEqual(done.returncode, 1, done.stdout)
+        self.assertIn("the pull request names none, but this diff sets `altitude-limit` to `implemented`",
+                      done.stdout)
+
+    def test_an_ordinary_pull_request_that_says_none_is_still_refused_against_its_issues_entry(self):
+        """#572: the same, with no status transition: the linked issue's marker still binds the entry."""
+        self.produced()
+        body = GOOD_PR_BODY.replace("- entry id(s): altitude-limit", "- entry id(s): `none`")
+        self.pull_request(body=body, files=[{"path": f"src/{NAME}/Rules/AltitudeLimit.cs"}],
+                          issue_body="<!-- rules-factory-entry: altitude-limit -->\n")
+        done = self.policy_check()
+        self.assertEqual(done.returncode, 1, done.stdout)
+        self.assertIn("issue #27 names `altitude-limit`, but the pull request names none", done.stdout)
 
     def test_linked_issue_must_name_the_entry_the_diff_implements(self):
         """#451: the right PR declaration cannot disguise a crossed Closes line."""
