@@ -382,7 +382,7 @@ def entry_trace(entry, origin, item, corpora, handlers, references, single, gaps
         out["implementation"] = candidates
     else:
         why = (f"no hand-written file under src/ declares {HANDLERS}.{semantics.pascal(entry_id)} or names the "
-               f"entry, and no artifact records which file implements it")
+               f"entry, and no artifact binds the entry to a file")
         out["implementation"] = [unknown(why)]
         gaps.append(_gap(subject, "entry -> implementation", why))
     return out
@@ -436,6 +436,21 @@ def build(engine_dir, package=None):
                         "gaps": dict(sorted(by_relationship.items()))}
     trace["gaps"] = gaps
     return trace
+
+
+def refuse_inside(engine_dir, path):
+    """Refuse a report written inside the engine: a committed rendering is truth that goes stale.
+
+    The trace is recomputed from the engine's records every time it is asked for. A copy of it
+    beside those records would be a second statement of them that no produce updates -- the state
+    #243 removed for the backlog. Outside the engine, the path is the caller's business.
+    """
+    engine = os.path.realpath(os.path.abspath(engine_dir))
+    for spelling in (os.path.abspath(path), os.path.realpath(os.path.abspath(path))):
+        if os.path.commonpath([engine, spelling]) == engine:
+            raise TraceError(f"--html {path} is inside the engine at {engine_dir}: a report committed beside the "
+                             f"records it is computed from goes stale at the next overlay edit. Write it outside "
+                             f"the engine")
 
 
 def dumps(trace):
