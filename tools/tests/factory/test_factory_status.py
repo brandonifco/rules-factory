@@ -9,7 +9,10 @@ Asserted:
   * nothing anywhere is an overall verdict, a score or a severity, and verification is "not run";
   * a run writes nothing: every byte and every timestamp under the engine and its .git is unchanged;
   * the text and the JSON say the same things;
-  * what is not an engine is refused, exit 1, and a non-directory is a usage error, exit 2.
+  * what is not an engine is refused, exit 1, and a non-directory is a usage error, exit 2;
+  * `--verify` delegates (#586): a broken engine fails because `factory verify` fails, with verify's
+    own exit code and last line; a stand-in verifier changes the report with no change to status;
+    and in `--json` the verifier's output goes to stderr so stdout stays one JSON document.
 
 Run: python3 -m pytest tools/tests/factory/test_factory_status.py
 """
@@ -60,7 +63,9 @@ def snapshot(root):
     return found
 
 
-class StatusOfAnEngine(unittest.TestCase):
+class EngineCase(unittest.TestCase):
+    """A produced two-corpus engine with one implemented entry, and the helpers both classes use."""
+
     @classmethod
     def setUpClass(cls):
         cls.shared = tempfile.mkdtemp(prefix="status-")
@@ -99,6 +104,9 @@ class StatusOfAnEngine(unittest.TestCase):
         subprocess.run(["git", "-C", self.engine, "-c", "user.name=t", "-c", "user.email=t@t", "commit", "-q",
                         "-m", "engine"], check=True)
 
+
+
+class StatusOfAnEngine(EngineCase):
     def test_every_count_is_the_traces(self):
         report = self.report()
         done = report["implementation"]
@@ -227,6 +235,49 @@ class StatusOfAnEngine(unittest.TestCase):
         self.assertIn("has no provenance.json", err)
         code, _, _ = self.status(engine=os.path.join(self.tmp, "absent"))
         self.assertEqual(code, 2)
+
+
+class StatusVerifyDelegates(EngineCase):
+    """`status --verify` is a caller of `factory verify` and nothing more."""
+
+    def verify_directly(self):
+        code, out, err = fixture.run(["verify", "--engine", self.engine, "--package", self.nupkg], self.packages)
+        lines = [line for line in (out + err).split("\n") if line.strip()]
+        return code, lines[-1]
+
+    def test_a_broken_engine_fails_because_verify_fails(self):
+        # The overlay setUp wrote after produce is an input provenance does not record: verify's own
+        # provenance stage refuses it, before any SDK is needed.
+        expected = self.verify_directly()
+        self.assertEqual(expected[0], 1)
+        self.assertIn("stage provenance", expected[1])
+        code, out, _ = self.status("--verify", "--package", self.nupkg)
+        self.assertEqual(code, expected[0])
+        self.assertIn(f"verification  ran now by factory verify --engine {self.engine}: exit 1; it said: "
+                      f"{expected[1]}", out)
+
+    def test_a_stand_in_verifier_changes_the_report_with_no_change_to_status(self):
+        verify_step = factory.verify_step
+        with mock.patch.object(verify_step, "verify", return_value=None):
+            code, out, err = self.status("--verify", "--json")
+        self.assertEqual(code, 0, err)
+        check = json.loads(out)["verification"]
+        self.assertEqual((check["ranNow"], check["exitCode"]), (True, 0))
+        self.assertEqual(check["lastLine"], f"verify {self.engine}: PASS")
+        with mock.patch.object(verify_step, "verify", side_effect=verify_step.Failed("gate", "the stand-in says no")):
+            code, out, err = self.status("--verify", "--json")
+        self.assertEqual(code, 1)
+        check = json.loads(out)["verification"]
+        self.assertEqual(check["exitCode"], 1)
+        self.assertIn("stage gate -- the stand-in says no", check["lastLine"])
+        self.assertIn("the stand-in says no", err, "the verifier's own output goes to stderr in --json")
+
+    def test_the_read_only_report_still_comes_with_it(self):
+        with mock.patch.object(factory.verify_step, "verify", return_value=None):
+            code, out, _ = self.status("--verify", "--json")
+        report = json.loads(out)
+        self.assertEqual(report["implementation"]["entries"], 2)
+        self.assertNotIn("overall", report)
 
 
 if __name__ == "__main__":

@@ -635,6 +635,19 @@ def render_backlog(args):
     return 0
 
 
+def verify_now(engine, package):
+    """(exit code, everything it printed) of `factory verify`, run by its own command line (#586).
+
+    `status --verify` is a caller of the verifier and nothing more: the parser, the stages, the
+    refusals and the exit codes are verify's, so what status reports changes when verify does and
+    never otherwise.
+    """
+    buffer = io.StringIO()
+    with contextlib.redirect_stdout(buffer), contextlib.redirect_stderr(buffer):
+        code = main(["verify", "--engine", engine] + (["--package", package] if package else []))
+    return code, buffer.getvalue()
+
+
 def build_parser():
     """The CLI. README.md's status table is checked against this (tools/check-readme-status.py)."""
     parser = argparse.ArgumentParser(prog="factory", description="Produce a rules engine from a corpus-map package.")
@@ -712,6 +725,9 @@ def build_parser():
     s = commands.add_parser("status", help="say what an engine's records establish now, with no verdict of its own")
     s.add_argument("--engine", required=True, help="the engine directory (below the repository root when embedded)")
     s.add_argument("--json", action="store_true", help="print the status as JSON instead of lines")
+    s.add_argument("--verify", action="store_true",
+                   help="also run `factory verify` now and report what it said, with its exit code; not read-only: "
+                        "verify restores and may write lock files (#586)")
     s.add_argument("--package", help="the .nupkg or Id@Version (default: Id@Version from provenance.json)")
     return parser
 
@@ -743,9 +759,14 @@ def main(argv=None):
             if not os.path.isdir(args.engine):
                 raise intake_step.Usage(f"--engine {args.engine} is not a directory")
             report = status_step.build(args.engine, args.package)
+            code = 0
+            if args.verify:
+                code, said = verify_now(args.engine, args.package)
+                (sys.stderr if args.json else sys.stdout).write(said)
+                report["verification"] = status_step.ran(code, said, args.engine)
             sys.stdout.write(json.dumps(report, indent=2, ensure_ascii=False) + "\n" if args.json
                              else status_step.text(report))
-            return 0
+            return code
         if args.command == "trace":
             if not os.path.isdir(args.engine):
                 raise intake_step.Usage(f"--engine {args.engine} is not a directory")
