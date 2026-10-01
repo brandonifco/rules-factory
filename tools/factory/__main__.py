@@ -736,8 +736,12 @@ def main(argv=None):
             if not args.html:
                 sys.stdout.write(trace_step.dumps(built))
                 return 0
-            with open(args.html, "w", encoding="utf-8", newline="\n") as handle:
-                handle.write(tracereport.render(built))
+            page = tracereport.render(built)
+            try:
+                with open(args.html, "w", encoding="utf-8", newline="\n") as handle:
+                    handle.write(page)
+            except OSError as error:
+                raise trace_step.TraceError(f"cannot write --html {args.html}: {error.strerror}")
             print(f"wrote {args.html}: the trace of {len(built['entries'])} entries, {len(built['gaps'])} gap(s)")
             return 0
         if args.command == "verify":

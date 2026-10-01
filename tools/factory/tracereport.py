@@ -56,7 +56,7 @@ th { font-weight: 600; white-space: nowrap; }
 .b-inferred { color: var(--inferred); border-style: dashed; }
 .b-unknown { color: var(--unknown); border-style: dotted; }
 .fact { margin: 2px 0 6px; }
-.entry { border: 1px solid var(--rule); padding: 12px 14px; margin: 12px 0; scroll-margin-top: 12px; }
+section.entry { border: 1px solid var(--rule); padding: 12px 14px; margin: 12px 0; scroll-margin-top: 12px; }
 .test { border: 1px solid var(--rule); padding: 8px 10px; margin: 6px 0; }
 .candidate { border: 1px dashed var(--inferred); padding: 8px 10px; margin: 6px 0; }
 .candidate.none { border: 1px dotted var(--unknown); }
@@ -114,17 +114,30 @@ def anchor(entry_id):
     return "entry-" + "".join(c if c.isalnum() or c in "-_." else "_" for c in str(entry_id))
 
 
-def classes_of(entry, gaps_by_subject):
-    status = entry.get("status", {}).get("value")
-    names = ["entry", f"status-{status}" if status else "status-unknown"]
+def status_of(entry):
+    """An entry's status as the page names it: the trace's value, shown, whatever its type."""
+    return shown((entry.get("status") or {}).get("value"))
+
+
+def statuses(entries):
+    """{status as shown: its position}, in first-seen order. A filter and an entry's class are named by
+    the position and never by the value, so no two statuses can share a name and no value reaches CSS."""
+    found = {}
+    for entry in entries:
+        found.setdefault(status_of(entry), len(found))
+    return found
+
+
+def classes_of(entry, gaps_by_subject, positions):
+    names = ["entry", f"st-{positions[status_of(entry)]}"]
     if gaps_by_subject.get(f"entry:{entry['id']['value']}"):
         names.append("has-gaps")
-    return " ".join("".join(c if c.isalnum() or c in "-_" else "_" for c in n) for n in names)
+    return " ".join(names)
 
 
-def render_entry(entry, gaps_by_subject):
+def render_entry(entry, gaps_by_subject, positions):
     entry_id = entry["id"]["value"]
-    parts = [f'<section class="{esc(classes_of(entry, gaps_by_subject))}" id="{esc(anchor(entry_id))}">',
+    parts = [f'<section class="{classes_of(entry, gaps_by_subject, positions)}" id="{esc(anchor(entry_id))}">',
              f'<h3><a href="#{esc(anchor(entry_id))}">{esc(entry_id)}</a></h3>', "<table>"]
     for label in ("id", "name", "package", "locator", "corpus", "segment", "status", "implementedIn"):
         if label in entry:
@@ -149,17 +162,11 @@ def render_entry(entry, gaps_by_subject):
     return "\n".join(parts)
 
 
-def filters(entries, gaps_by_subject):
+def filters(positions):
     """Radio buttons and the CSS that hides what they rule out: a filter with no script."""
-    statuses = []
-    for entry in entries:
-        status = entry.get("status", {}).get("value")
-        if status and status not in statuses:
-            statuses.append(status)
     choices = [("all", "all", None), ("gaps", "with gaps", ".entry:not(.has-gaps)")]
-    for status in statuses:
-        safe = "".join(c if c.isalnum() or c in "-_" else "_" for c in status)
-        choices.append((f"s-{safe}", f"status {status}", f".entry:not(.status-{safe})"))
+    for status, position in positions.items():
+        choices.append((f"st-{position}", f"status {status}", f".entry:not(.st-{position})"))
     inputs, rules = [], []
     for position, (key, label, hides) in enumerate(choices):
         checked = " checked" if position == 0 else ""
@@ -181,7 +188,8 @@ def render(trace):
     for gap in gaps:
         gaps_by_subject.setdefault(gap.get("subject"), []).append(gap)
     summary = trace.get("summary") or {}
-    inputs, rules = filters(entries, gaps_by_subject)
+    positions = statuses(entries)
+    inputs, rules = filters(positions)
 
     out = ["<!doctype html>", '<html lang="en">', "<head>", '<meta charset="utf-8">',
            '<meta name="viewport" content="width=device-width, initial-scale=1">',
@@ -189,7 +197,8 @@ def render(trace):
            "<body>", "<main>", f"<h1>Trace of {esc(name)}</h1>",
            f'<div class="muted">factory trace, format {esc(trace.get("traceFormat"))}. Every relationship '
            f"below is labelled with how it is known.</div>"]
-    private = distribution == "private"
+    # Fails closed: only a record that says `public` gets the public wording.
+    private = distribution != "public"
     out.append(f'<div class="banner{" private" if private else ""}">Distribution: <strong>{esc(shown(distribution))}'
                f"</strong>. " + ("This page is as private as the engine: entry names and mutations can quote "
                                  "the corpus, so it goes only where the engine's own files may go."
@@ -216,7 +225,9 @@ def render(trace):
     out += nested_rows("", engine)
     topology = trace.get("topology") or {}
     out += nested_rows("topology.", {k: v for k, v in topology.items() if isinstance(v, dict)})
-    out.append(f"<tr><th>topology.agrees</th><td><code>{esc(shown(topology.get('agrees')))}</code></td></tr>")
+    out.append(f"<tr><th>topology.agrees</th><td><code>{esc(shown(topology.get('agrees')))}</code> "
+               f'<span class="why">no class of its own: the trace\'s comparison of the two rows above, which '
+               f"no artifact states</span></td></tr>")
     out.append("</table>")
     engine_gaps = [g for g in gaps if not str(g.get("subject", "")).startswith("entry:")]
     if engine_gaps:
@@ -232,18 +243,20 @@ def render(trace):
     for corpus in trace.get("corpora") or []:
         out.append("<table>" + "".join(nested_rows("", corpus)) + "</table>")
 
-    out.append("<h2>Entries</h2><table><tr><th>entry</th><th>status</th><th>named tests</th><th>gaps</th></tr>")
+    # The radios come first, then the index and the entries as their siblings: one choice filters both.
+    out.append('<h2>Entries</h2><div class="filters"><span class="muted">show:</span>' + "".join(inputs))
+    out.append('<table class="entries index"><tr><th>entry</th><th>status</th><th>named tests</th><th>gaps</th></tr>')
     for entry in entries:
         entry_id = entry["id"]["value"]
-        out.append(f'<tr><td><a href="#{esc(anchor(entry_id))}"><code>{esc(entry_id)}</code></a></td>'
-                   f"<td>{esc(shown(entry.get('status', {}).get('value')))}</td>"
+        status = entry.get("status") or {}
+        out.append(f'<tr class="{classes_of(entry, gaps_by_subject, positions)}">'
+                   f'<td><a href="#{esc(anchor(entry_id))}"><code>{esc(entry_id)}</code></a></td>'
+                   f"<td>{badge(status.get('evidence', 'unknown'))} {esc(status_of(entry))}</td>"
                    f"<td>{len(entry.get('tests') or [])}</td>"
                    f"<td>{len(gaps_by_subject.get(f'entry:{entry_id}') or [])}</td></tr>")
     out.append("</table>")
-    # The radios are siblings of `.entries`, which is what lets `#f-x:checked ~ .entries` hide by CSS.
-    out.append('<div class="filters"><span class="muted">show:</span>' + "".join(inputs))
     out.append('<div class="entries">')
-    out += [render_entry(entry, gaps_by_subject) for entry in entries]
+    out += [render_entry(entry, gaps_by_subject, positions) for entry in entries]
     out.append("</div></div>")
     out += ["</main>", "</body>", "</html>"]
     return "\n".join(out) + "\n"

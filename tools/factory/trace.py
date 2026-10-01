@@ -382,7 +382,7 @@ def entry_trace(entry, origin, item, corpora, handlers, references, single, gaps
         out["implementation"] = candidates
     else:
         why = (f"no hand-written file under src/ declares {HANDLERS}.{semantics.pascal(entry_id)} or names the "
-               f"entry, and no artifact binds the entry to a file")
+               f"entry, and no artifact records which file implements it")
         out["implementation"] = [unknown(why)]
         gaps.append(_gap(subject, "entry -> implementation", why))
     return out

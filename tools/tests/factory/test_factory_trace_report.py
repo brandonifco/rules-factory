@@ -21,6 +21,7 @@ import re
 import shutil
 import tempfile
 import unittest
+import unittest.mock
 
 # The fixtures, by module: a TestCase bound here would be collected and run a second time.
 from tests.factory import test_factory_trace as fixture  # noqa: E402
@@ -104,6 +105,18 @@ class TraceReport(unittest.TestCase):
         for item in self.parsed.facts:
             self.assertIn(item["evidence"].upper(), item["text"])
 
+    def test_each_relationship_wears_its_own_badge_beside_its_own_value(self):
+        """Matched one to one: a badge swapped between two facts, or a value printed away from its
+        badge, leaves some fact of the trace with no rendered fact that carries all three."""
+        unused = list(self.parsed.facts)
+        for item in every_fact(self.trace):
+            how = item.get("basis") or item.get("mechanism") or item.get("why")
+            value = None if item["evidence"] == "unknown" else tracereport.shown(item["value"])
+            match = next((f for f in unused if f["evidence"] == item["evidence"] and how in f["text"]
+                          and (value is None or value in f["text"])), None)
+            self.assertIsNotNone(match, item)
+            unused.remove(match)
+
     def test_every_value_and_how_it_is_known_is_on_the_page(self):
         for item in every_fact(self.trace):
             how = item.get("basis") or item.get("mechanism") or item.get("why")
@@ -142,16 +155,39 @@ class TraceReport(unittest.TestCase):
 
     def test_the_filters_are_css_over_radios_beside_the_entries(self):
         self.assertIn("#f-gaps:checked ~ .entries .entry:not(.has-gaps) { display: none; }", self.page)
-        self.assertIn("#f-s-implemented:checked ~ .entries .entry:not(.status-implemented) { display: none; }",
-                      self.page)
-        filters = self.page.split('<div class="filters">', 1)[1].split('<div class="entries">', 1)[0]
+        self.assertIn("#f-st-0:checked ~ .entries .entry:not(.st-0) { display: none; }", self.page)
+        self.assertIn('<label for="f-st-0">status implemented</label>', self.page)
+        filters = self.page.split('<div class="filters">', 1)[1].split('<table class="entries index">', 1)[0]
         self.assertNotIn("<div", filters, "a radio inside another element is no sibling of .entries")
         self.assertIn('id="f-gaps"', filters)
+        index = self.page.split('<table class="entries index">', 1)[1].split("</table>", 1)[0]
+        self.assertIn('<tr class="entry st-0', index, "the index rows are filtered with the entries")
+
+    def test_statuses_that_spell_alike_or_are_not_strings_get_filters_of_their_own(self):
+        odd = copy.deepcopy(self.trace)
+        first, second = odd["entries"]
+        third, fourth = copy.deepcopy(first), copy.deepcopy(second)
+        third["id"]["value"], fourth["id"]["value"] = "third", "fourth"
+        odd["entries"] = [first, second, third, fourth]
+        for listed, status in zip(odd["entries"], ("in review", "in_review", 5, None)):
+            listed["status"]["value"] = status
+        page = tracereport.render(odd)
+        ids = re.findall(r'<input type="radio" name="filter" id="([^"]+)"', page)
+        self.assertEqual(len(ids), len(set(ids)))
+        self.assertEqual(ids, ["f-all", "f-gaps", "f-st-0", "f-st-1", "f-st-2", "f-st-3"])
+        self.assertNotIn("in review", page.split("</style>", 1)[0])
 
     def test_the_pages_own_words_claim_no_more_than_the_evidence(self):
-        # The fixture's own data says none of these words, so any on the page are the renderer's.
-        self.assertIsNone(OVERCLAIMS.search(json.dumps(self.trace)))
-        text = html.unescape(re.sub(r"<[^>]+>", " ", self.page.split("</style>", 1)[1]))
+        # Every string the trace holds, except the evidence classes, becomes "x": what is left on the
+        # page is the renderer's own wording, whatever words an engine's data happens to use.
+        def blank(node, key=None):
+            if isinstance(node, dict):
+                return {k: blank(v, k) for k, v in node.items()}
+            if isinstance(node, list):
+                return [blank(v) for v in node]
+            return "x" if isinstance(node, str) and key != "evidence" else node
+        page = tracereport.render(blank(self.trace))
+        text = html.unescape(re.sub(r"<[^>]+>", " ", page.split("</style>", 1)[1]))
         self.assertIsNone(OVERCLAIMS.search(text), OVERCLAIMS.search(text))
 
     def test_one_file_no_script_no_external_asset_and_the_same_bytes_every_time(self):
@@ -177,6 +213,16 @@ class TraceReport(unittest.TestCase):
         self.assertLess(banner, page.index("How to read it"))
         self.assertNotIn("as private as the engine", self.page)
 
+    def test_a_distribution_the_record_does_not_state_is_treated_as_private(self):
+        unstated = copy.deepcopy(self.trace)
+        unstated["engine"]["distribution"] = {"value": None, "evidence": "unknown", "why": "not recorded"}
+        self.assertIn("as private as the engine", tracereport.render(unstated))
+
+    def test_the_topology_comparison_says_it_has_no_class_of_its_own(self):
+        row = self.page.split("<th>topology.agrees</th>", 1)[1].split("</tr>", 1)[0]
+        self.assertIn("no class of its own", row)
+        self.assertNotIn("data-evidence", row)
+
     def test_the_cli_writes_the_page_outside_the_engine_and_the_same_bytes_twice(self):
         target = os.path.join(self.shared, "out", "trace.html")
         os.makedirs(os.path.dirname(target))
@@ -192,11 +238,32 @@ class TraceReport(unittest.TestCase):
         self.assertIn("wrote", out)
 
     def test_a_report_inside_the_engine_is_refused_and_nothing_is_written(self):
-        target = os.path.join(self.engine, "docs", "trace.html")
-        code, _, err = fixture.run(["trace", "--engine", self.engine, "--html", target], self.packages)
+        os.makedirs(os.path.join(self.engine, "docs"), exist_ok=True)
+        outside = os.path.join(self.shared, "link-into-engine")
+        os.symlink(os.path.join(self.engine, "docs"), outside)
+        self.addCleanup(os.remove, outside)
+        for target in (os.path.join(self.engine, "docs", "trace.html"),
+                       os.path.join(outside, "trace.html"),
+                       os.path.join(self.engine, "docs", "..", "trace.html")):
+            code, _, err = fixture.run(["trace", "--engine", self.engine, "--html", target], self.packages)
+            self.assertEqual(code, 1, target)
+            self.assertIn("inside the engine", err)
+            self.assertFalse(os.path.exists(target), target)
+
+    def test_a_page_that_cannot_be_written_is_refused_and_an_old_one_survives_a_failed_render(self):
+        code, _, err = fixture.run(["trace", "--engine", self.engine, "--html",
+                                    os.path.join(self.shared, "no-such-dir", "x.html")], self.packages)
         self.assertEqual(code, 1)
-        self.assertIn("inside the engine", err)
-        self.assertFalse(os.path.exists(target))
+        self.assertIn("cannot write --html", err)
+        target = os.path.join(self.shared, "kept.html")
+        with open(target, "w", encoding="utf-8") as handle:
+            handle.write("PREVIOUS")
+        self.addCleanup(os.remove, target)
+        with unittest.mock.patch.object(tracereport, "render", side_effect=RuntimeError("render failed")):
+            with self.assertRaises(RuntimeError):
+                fixture.run(["trace", "--engine", self.engine, "--html", target], self.packages)
+        with open(target, encoding="utf-8") as handle:
+            self.assertEqual(handle.read(), "PREVIOUS")
 
     def test_json_and_html_together_is_a_usage_error(self):
         with self.assertRaises(SystemExit) as caught:
