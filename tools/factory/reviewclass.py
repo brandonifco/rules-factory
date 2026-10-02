@@ -105,7 +105,11 @@ def _section(body, heading):
     for line in text.splitlines():
         found = re.match(r"^##\s+(.*?)\s*$", line)
         if found:
+            # A repeated heading restarts the section, as `tools/pr-policy.py`'s own parser does, so the
+            # two read one section and a body cannot say one thing to each.
             current = found.group(1)
+            if current == heading:
+                lines = []
         elif current == heading:
             lines.append(line)
     return "\n".join(lines).strip()
@@ -296,8 +300,6 @@ def _path_class(path, change, patterns, read, fclass, compared):
         return DOCUMENTATION, "a document beside the decision records, which records none"
     if path.startswith("corpus/") or path.startswith("overlay/"):
         return SEMANTIC_IMPLEMENTATION, "the map's interpretation or its source text"
-    if path.endswith(".md"):
-        return DOCUMENTATION, "a document inside a semantic directory"
     if path.endswith(".cs") and change not in REMOVALS and change != "ADDED":
         compared[0] += 1
         if compared[0] <= COMMENT_COMPARE_LIMIT and comment_only(read(path, "base"), read(path, "head")):

@@ -228,7 +228,8 @@ def main(argv=None):
         sha = pull.get("headRefOid")
         if not sha:
             raise Undecidable(f"PR #{args.pr} has no head commit")
-        changed = [f["path"] for f in listed_files(pull, args.pr)]
+        files = listed_files(pull, args.pr)
+        changed = [f["path"] for f in files]
         # `gh pr view --json files` caps at 100 files, silently: no error, no warning, and
         # `changedFiles` says how many there really are; `listed_files` reads the rest from the
         # REST endpoint (#562), and what is still short is refused here. Which verdicts this change needs is decided
@@ -243,7 +244,7 @@ def main(argv=None):
         # Which verdicts this change needs is its review class's to say (0076). The surface is still
         # the policy's: it decides which paths *can* be semantic, and the class decides which of
         # those the diff proves are not.
-        changes = {f["path"]: f["changeType"] for f in listed_files(pull, args.pr)}
+        changes = {f["path"]: f["changeType"] for f in files}
         result, effective, problems_of_class, hints, declared, reviewclass = review_class(
             changes, review.get("semanticPaths") or [], engine_path(), pull.get("body") or "",
             pull.get("baseRefOid"))

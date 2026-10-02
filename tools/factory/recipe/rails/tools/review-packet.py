@@ -751,7 +751,8 @@ def build(number, base, package_maps=(), recordable=True, role=ALL, review_type=
                 if label in (labels.get("normalRisk"), labels.get("independentRisk"))]
         independent = labels.get("independentRisk") in issue_labels
 
-        changed = [f["path"] for f in listed_files(pull, number)]
+        files = listed_files(pull, number)
+        changed = [f["path"] for f in files]
         # `gh pr view --json files` caps at 100 files, silently: no error, no warning, and
         # `changedFiles` says how many there really are; `listed_files` reads the rest from the
         # REST endpoint (#562), and what is still short is refused here. `tools/conformance-gate.py` has refused a
@@ -782,7 +783,7 @@ def build(number, base, package_maps=(), recordable=True, role=ALL, review_type=
 
         # What this change owes is its review class's to say (0076), and the surface a semantic
         # reviewer is handed is what that class says is semantic: not every path the policy lists.
-        changes = {f["path"]: f["changeType"] for f in listed_files(pull, number)}
+        changes = {f["path"]: f["changeType"] for f in files}
         result, effective, class_problems, class_hints, declared, classes = review_class(
             snapshot, record, changes, review.get("semanticPaths") or [], pull.get("body") or "", base_sha)
         prefix = engine_path()

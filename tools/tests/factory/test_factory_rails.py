@@ -5707,6 +5707,9 @@ PLACEHOLDERS = {"<n>": "1", "<issue number>": "1", "<entry id>": "speed-limit", 
                 # the entry it names, and the pull request the next review packet is made from.
                 "{entry_id}": "speed-limit", "{number}": "1",
                 '"..."': "Title", "pass|fail": "pass",
+                # A decision record's path (0076): `tools/review-scope.py ruling-review <decision record>`.
+                # None exists in the test engine, so the tool answers about the record and not the spelling.
+                "<decision record>": "docs/decisions/0007-an-owners-ruling.md",
                 # `--package-map <path>`: the map this engine was produced from, which is what an
                 # engine's own restore would put there.
                 "<path>": os.path.join(PART107, "corpus-map.json"),

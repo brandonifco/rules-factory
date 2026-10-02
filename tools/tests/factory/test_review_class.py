@@ -157,9 +157,12 @@ class TestEachClass(unittest.TestCase):
         self.assertEqual((result["class"], result["onSurface"]), (rc.DOCUMENTATION, []))
         self.assertEqual(rc.judge(result, None), (rc.DOCUMENTATION, [], []))
 
-    def test_a_document_inside_a_semantic_directory_is_documentation(self):
-        result = Repo().classify({f"src/{NAME}/README.md": "MODIFIED"})
-        self.assertEqual(result["class"], rc.DOCUMENTATION)
+    def test_a_markdown_file_inside_a_semantic_directory_is_not_proved_inert(self):
+        # A file under src/ or tests/ can be an embedded resource or a fixture a test parses, and nothing
+        # here can tell. mutation: call every .md documentation wherever it sits
+        for path in (f"src/{NAME}/README.md", f"tests/{NAME}.Tests/cases.md"):
+            with self.subTest(path=path):
+                self.assertEqual(Repo().classify({path: "MODIFIED"})["class"], rc.SEMANTIC_IMPLEMENTATION)
 
     def test_a_comment_only_change_to_a_handler_is_documentation(self):
         # mutation: return True from comment_only whenever the file changed
@@ -504,10 +507,32 @@ class TestWhatAPullRequestSays(unittest.TestCase):
         body = "## Scope\n\n- review class: documentation\n\n## Map and rules conformance\n\n- entry id(s): x\n"
         self.assertIsNone(rc.declared_class(body))
 
+    def test_a_repeated_conformance_section_is_read_as_pr_policy_reads_it(self):
+        # mutation: concatenate the sections instead of letting the last one stand
+        body = ("## Map and rules conformance\n\n- review class: documentation\n\n"
+                "## Map and rules conformance\n\n- review class: decision-record-only\n")
+        self.assertEqual(rc.declared_class(body), "decision-record-only")
+
     def test_a_decision_scope_is_read(self):
         body = self.body("- decision scope: the Story Mode victory rule")
         self.assertEqual(rc.declared_scope(body), "the Story Mode victory rule")
         self.assertIsNone(rc.declared_scope(self.body("- decision scope:")))
+
+
+class TestTheRecordersNamesAreTheModulesClasses(unittest.TestCase):
+    """`record-verdict.py` names the classes that owe no semantic review and cannot import the module that does."""
+
+    def test_the_names_it_refuses_a_semantic_verdict_for_are_the_classes_that_owe_none(self):
+        # mutation: add a class to reviewclass.py and not to the recorder, or the reverse
+        import ast
+        path = os.path.join(os.path.dirname(os.path.dirname(HERE)), "factory", "recipe", "rails", "tools",
+                            "record-verdict.py")
+        with open(path, encoding="utf-8") as handle:
+            tree = ast.parse(handle.read())
+        named = next(ast.literal_eval(node.value.args[0]) for node in ast.walk(tree)
+                     if isinstance(node, ast.Assign) and getattr(node.targets[0], "id", "") == "NO_SEMANTIC_REVIEW")
+        self.assertEqual(set(named), set(rc.CLASSES) - rc.SEMANTIC)
+        self.assertEqual({c for c in rc.CLASSES if not rc.owes(c)["verdict"]}, set(named))
 
 
 if __name__ == "__main__":
