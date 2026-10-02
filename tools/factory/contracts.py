@@ -37,6 +37,8 @@ inside every engine build. A generated partial declaration costs nothing of that
 C# the regeneration gate already compares byte for byte, and the C# compiler itself refuses a
 missing or mis-typed handler.
 """
+import re
+
 import csharp
 import semantics
 
@@ -87,6 +89,36 @@ public sealed class RuleEntry<TInput, TOutput>
 """
 
 
+#: The one description of an entry's handler, which generation and the trace (trace.py) both read.
+#: `class` is the generated partial class; `returns` is the return type of each form, `{output}` the
+#: entry's value type: `required` for an implemented entry off row 8, `hook` for every other entry.
+HANDLER_CLASS = "Handlers"
+HANDLER_RETURNS = {"required": "Resolution<{output}>", "hook": "void"}
+
+
+def handler(model, item):
+    """The handler the generator declares for one entry: its class, member, form and return type.
+
+    `contracts_cs` declares it from this and the trace reports it from this, so renaming the class,
+    or changing a form, changes both at once.
+    """
+    c = semantics.contract(model, item)
+    form = "required" if c["required"] else "hook"
+    return {"class": HANDLER_CLASS, "member": item["member"], "form": form, "required": c["required"],
+            "returns": HANDLER_RETURNS[form].format(output=c["output"])}
+
+
+def handler_signature():
+    """A compiled pattern that finds `partial <return type> <Member>(` for either form, text-side.
+
+    Built from `HANDLER_RETURNS`, so a hand-written file is recognised by the same forms the
+    generator declares. Group 1 is the member.
+    """
+    forms = [r"[^(){};]*".join(re.escape(part).replace("<", r"\s*<") for part in template.split("{output}"))
+             for template in HANDLER_RETURNS.values()]
+    return re.compile(r"\bpartial\s+(?:" + "|".join(forms) + r")\s+@?([A-Za-z_][A-Za-z0-9_]*)\s*\(")
+
+
 def contracts_cs(model):
     """`Contracts.g.cs`: the typed entry points (`EntryPoints`) and the handler declarations (`Handlers`)."""
     lines = [model.header,
@@ -111,18 +143,18 @@ def contracts_cs(model):
         "/// hook may stay unimplemented; implemented, it answers once the entry is <c>implemented</c>, and a\n"
         "/// resolution it leaves null falls through to the row's default.\n"
         "/// </summary>\n"
-        "internal static partial class Handlers\n{\n")
+        f"internal static partial class {HANDLER_CLASS}\n{{\n")
     hooks = []
     for item in model.entries:
-        entry, c = item["entry"], semantics.contract(model, item)
+        entry, c, h = item["entry"], semantics.contract(model, item), handler(model, item)
         summary = f"    /// <summary>{csharp.xml_text(entry.get('name', entry['id']))} (<c>{csharp.xml_text(entry['id'])}</c>)"
-        if c["required"]:
+        if h["form"] == "required":
             lines.append(f"{summary}: required, the entry is implemented.</summary>\n"
-                         f"    internal static partial Resolution<{c['output']}> {item['member']}({c['request_cs']} request);\n\n")
+                         f"    internal static partial {h['returns']} {h['member']}({c['request_cs']} request);\n\n")
         else:
             hooks.append(item)
             lines.append(f"{summary}: optional.</summary>\n"
-                         f"    static partial void {item['member']}({c['request_cs']} request, ref Resolution<{c['output']}>? resolution);\n\n")
+                         f"    static partial {h['returns']} {h['member']}({c['request_cs']} request, ref Resolution<{c['output']}>? resolution);\n\n")
     lines.append("    /// <summary>\n"
                  "    /// The typed handler's resolution of <paramref name=\"entryId\"/>, or null when it has none or leaves it null.\n"
                  "    /// The handler receives <paramref name=\"request\"/> when it is of the entry's request type, and otherwise\n"
@@ -156,7 +188,7 @@ def contracts_cs(model):
             lines.append(f"        {csharp.cs_string(item['entry']['id'])} => Hooked({csharp.cs_string(item['member'])}, typeof({c['request_cs']})),\n")
     lines.append("        _ => false,\n    };\n\n")
     lines.append("    private static bool Hooked(string name, Type request) =>\n"
-                 "        typeof(Handlers).GetMethod(name, BindingFlags.NonPublic | BindingFlags.Static, [request, typeof(Resolution<object>).MakeByRefType()]) is not null;\n")
+                 f"        typeof({HANDLER_CLASS}).GetMethod(name, BindingFlags.NonPublic | BindingFlags.Static, [request, typeof(Resolution<object>).MakeByRefType()]) is not null;\n")
     lines.append("}\n")
     return "".join(lines)
 

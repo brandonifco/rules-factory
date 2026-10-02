@@ -96,7 +96,9 @@ LAYERS = {
     # What an engine's records say about each entry (#576). It reads through the modules that own
     # each record -- the map packages as the backlog reads them, the composition, the overlay and
     # its merge, the topology, the review model's lexical analysis -- so it has no reader of its own.
-    "trace": {"backlog", "compose", "overlay", "provenance", "repository", "reviewscope", "semantics"},
+    # `contracts` is imported for one thing, the handler descriptor generation emits from (#599).
+    "trace": {"backlog", "compose", "contracts", "overlay", "provenance", "repository", "reviewscope",
+              "semantics"},
     # What an engine's records establish now (#585): read through the trace, so it has no reader of
     # its own and counts nothing the trace does not.
     "status": {"trace"},
