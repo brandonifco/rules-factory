@@ -110,9 +110,9 @@ See verify.py.
 prints what the engine's records say about each entry -- its locator, status, named tests and the
 mutation each was watched catching, and the files that appear to implement it -- with every
 relationship labelled recorded, derived, inferred or unknown, and every unknown listed as a gap.
-It reads and writes nothing else in the engine or its repository, and an unknown is a finding, not a failure: exit 0 whenever the
+It reads and writes nothing else, and an unknown is a finding, not a failure: exit 0 whenever the
 engine could be read. `--html` writes the same trace as one page (tracereport.py), anywhere but
-inside the engine. See trace.py.
+inside the engine; elsewhere in the engine's repository is the caller's to choose. See trace.py.
 
   python3 tools/factory status --engine <dir> [--json] [--package <nupkg path | Id@Version>]
 
