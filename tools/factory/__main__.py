@@ -792,7 +792,7 @@ def main(argv=None):
             code = 0
             if args.verify:
                 code, said = verify_now(args.engine, args.package, sys.stderr if args.json else sys.stdout)
-                report["verification"] = status_step.ran(code, said, args.engine)
+                report["verification"] = status_step.ran(code, said)
             sys.stdout.write(json.dumps(report, indent=2, ensure_ascii=False) + "\n" if args.json
                              else status_step.text(report))
             return code
