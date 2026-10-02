@@ -249,6 +249,28 @@ that two traces of faa-part-107 were byte-identical.
 temporary directory, so the reviewer reproduced in memory. It did not run `status --verify`, which
 may write lock files.
 
+### `review10-*` — the closing review of the observability work, 2026-10-02
+
+Round ten is an independent Codex review of `4a00004`, the commit that closed round nine's findings
+(#599–#603). It ran read-only against a detached worktree pinned to that commit, was given no earlier
+reviewer's conclusions, and was forbidden the two private engines. Its subject was the observability
+program (`trace`, `trace --html`, `status`, `status --verify`, the derived handler), `reviewscope`,
+`reviewclass` and their tests. Its ordered list is
+[#618](https://github.com/brandonifco/rules-factory/issues/618). It found **no p0**, and nothing that
+reaches provenance integrity, the verdict-to-commit binding, `verify`'s own checks or the produce
+transaction.
+
+| Label | What belongs in it |
+|---|---|
+| `review10-p1` | **A claim narrowed.** An unreadable base policy reads as a new one in the review class (#612); a `//` comment inside an interpolation hole ends only at LF (#613); `trace --html` can write elsewhere in the engine's repository, which the docs now say (#614); and `record-verdict.py` keeps an obligation set of its own beside `reviewclass.OWES` (#615). |
+| `review10-p2` | **A reading tool saying slightly more than it established.** The HTML counts every test row as named (#616); `topology.agrees` carries no evidence class (#617). |
+
+#614 and #616 were fixed, because each is a claim the observability work makes itself and the same
+kind of defect as round nine's. #612, #613, #615 and #617 carry `post-1.0`: none lets an engine report
+verified when its build or tests failed or did not run, and each needs a constructed input (a failing
+API read together with a policy-emptying diff, source with a bare CR in an interpolation hole, a
+packet identity the factory does not write). The reviewer could not run `pytest`, as in round nine.
+
 ### `post-1.0`, `known-limitation` — the ship-first triage, 2026-09-21
 
 An open issue records knowledge. It does not authorise implementation. From 2026-09-21 every open
