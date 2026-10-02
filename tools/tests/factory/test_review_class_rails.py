@@ -448,6 +448,23 @@ class TestSemanticRuling(ClassRails):
                                  "--packet", os.path.join(out, f"pr-5-{head[:12]}-semantic.review.json"))
         self.assertEqual(recorded.returncode, 0, recorded.stdout + recorded.stderr)
 
+    def test_a_ruling_that_names_entries_owes_their_packets_and_no_self_review(self):
+        # mutation: ask an entry a ruling names for the self-review of code the ruling does not write
+        self.committed_ruling()
+        head = self.ruling_record(entries=["altitude-limit"])
+        self.pull_request(self.body(self.SCOPE, evidence=self.NO_TEST,
+                                    documentation=f"- [x] `{DECISION}` — updated: reversed"),
+                          {DECISION: "MODIFIED"}, contents={DECISION: self.ORIGINAL}, head=head,
+                          base=rails.git(self.out, "rev-parse", "main"),
+                          issue_body="<!-- rules-factory-entry: altitude-limit -->\n## Acceptance criteria\n- [ ] it declines")
+        out = os.path.join(self.tmp, "ruling-with-entries")
+        done = self.packet("--role", "semantic", "--out", out,
+                           "--package-map", os.path.join(rails.PART107, "corpus-map.json"))
+        self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+        self.assertTrue(os.path.isfile(os.path.join(out, "entry-altitude-limit.md")),
+                        "the entry it names is still handed to the reviewer")
+        self.assertFalse(os.path.exists(os.path.join(self.out, "reviews", "self-review")))
+
     def test_a_review_of_the_ruling_goes_stale_when_the_ruling_is_edited(self):
         # mutation: do not bind the record to the decision's bytes
         self.committed_ruling()
@@ -631,8 +648,54 @@ class TestDocumentation(ClassRails):
         self.assertEqual(self.gate().returncode, 2)
 
 
+class TestAnEmbeddedEngineIsClassifiedInItsOwnTerms(ClassRails):
+    """GitHub reports `engine/docs/decisions/0007-x.md`; the policy, the table and the base are the engine's (0069)."""
+
+    PATH = f"engine/{DECISION}"
+
+    def setUp(self):
+        super().setUp()
+        self.repo = os.path.join(self.tmp, "repo")
+        self.out = os.path.join(self.repo, "engine")
+        self.produced("--repo-root", self.repo)
+
+    def request(self, files, contents, conformance="- review class: decision-record-only\n- entry id(s): none"):
+        self.pull_request(self.body(conformance, evidence=self.NO_TEST,
+                                    documentation=f"- [x] `{DECISION}` — updated: the record"),
+                          files, contents=contents)
+
+    def test_a_new_record_beneath_the_root_is_a_record_and_nothing_else(self):
+        # mutation: match the repository-relative path against the engine-relative surface and class nothing
+        self.write(DECISION, RECORD_TEXT)
+        self.request({self.PATH: "ADDED"}, {})
+        done = self.policy()
+        self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+        self.assertIn("review class: `decision-record-only`", done.stdout)
+        gate = self.gate()
+        self.assertEqual(gate.returncode, 0, gate.stdout + gate.stderr)
+        self.assertIn("no rules verdict required", gate.stdout)
+
+    def test_the_base_is_read_at_the_path_github_knows_it_by(self):
+        # A reflow of an existing record is cosmetic only if the base was read: with the engine's own
+        # path asked of the API the base is missing, and a record that cannot be compared is a ruling.
+        # mutation: read the base by the engine-relative path
+        self.write(DECISION, "The furthest player wins.\n")
+        self.request({self.PATH: "MODIFIED"}, {self.PATH: "The furthest\nplayer   wins.\n\n"})
+        done = self.policy()
+        self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+        self.assertIn("review class: `decision-record-only`", done.stdout)
+        self.assertEqual(self.gate().returncode, 0)
+
+    def test_a_host_files_change_is_not_the_engines_surface_and_is_documentation(self):
+        self.write("README.md", "# the engine\n")
+        self.pull_request(self.body("N/A", evidence=self.NO_TEST,
+                                    documentation="- [x] `../tools/build-map.py` — checked, no change: not a document"),
+                          {"tools/build-map.py": "MODIFIED"})
+        self.assertEqual(self.gate().returncode, 0)
+
+
 for _cls in (ClassRails, TestDecisionRecordOnly, TestSemanticImplementation, TestSemanticRuling,
-             TestGeneratedOrProvenance, TestDocumentation):
+             TestGeneratedOrProvenance, TestDocumentation, TestAnEmbeddedEngineIsClassifiedInItsOwnTerms):
     only_its_own_tests(_cls)
 del _cls
 

@@ -101,32 +101,32 @@ TABLE = (
         "brief the next one reads (#465); section 3 says the orchestrator holds the scheduling decision and the repository holds the state, and names the command that reads it (#466); section 7 says a reviewer is given what its role judges, "
         "and that the role is part of the packet identity (#467); section 3 says where the rails are when the "
         "engine is embedded under a repository root, because GitHub runs a workflow only from the root (#501, "
-        "0069); section 7 says a review leaves an attestation, the review after a repair is a delta of it, a full review needs a reason, a final acceptance review rereads the slice once, a reviewer starts clean, and no reviewer is paid before the self-review (0071); section 4 says a changed document outside an embedded engine is listed under its path relative to the engine, `../README.md` (#523); section 9 says the semantic surface is the engine's alone, so a host repository gates its own rule-bearing files (0072)"),
+        "0069); section 7 says a review leaves an attestation, the review after a repair is a delta of it, a full review needs a reason, a final acceptance review rereads the slice once, a reviewer starts clean, and no reviewer is paid before the self-review (0071); section 4 says a changed document outside an embedded engine is listed under its path relative to the engine, `../README.md` (#523); section 9 says the semantic surface is the engine's alone, so a host repository gates its own rule-bearing files (0072); section 7 says what a change owes the semantic review is its review class, computed from the diff and failing closed: a new decision record that overrules nothing, a regeneration with the rules unmoved and a document owe structural validation only, and an exemption is claimed on the pull request's `review class:` line and never assumed (0076)"),
     Row("CLAUDE.md", MANAGED, 1,
         "a pointer to AGENTS.md and the Claude adapters; it states no rule of its own (0029)"),
     Row("docs/agent-team.md", MANAGED, 11,
         "the four roles, what each may not do, and what a turn costs: the tiering the two reviews are "
         "dispatched on, stated without naming any vendor's model (0029 amendment, #455); one instance of "
         "the implementer is one attempt, and a fourth consequence of the cost model says why (#465); the orchestrator holds the scheduling decision and reads the rest (#466); each reviewer's section "
-        "names the cut of the packet it reads and what that cut leaves out (#467); the semantic reviewer starts clean with a packet and reads what a repair could have changed, and a fifth consequence of the cost model says why (0071)"),
+        "names the cut of the packet it reads and what that cut leaves out (#467); the semantic reviewer starts clean with a packet and reads what a repair could have changed, and a fifth consequence of the cost model says why (0071); the structural review is the whole review for a change that owes no semantic one (0076)"),
     Row("docs/review-evidence.md", MANAGED, 2,
         "what a review covered and what a repair invalidates of it: the lifecycle, what can be reused, when a "
         "full review is mandatory, the final acceptance review, clean reviewer sessions, reading an "
-        "attestation, and migrating an engine produced before it (0071)"),
+        "attestation, and migrating an engine produced before it (0071); only a semantic-implementation or a semantic-ruling owes any of this evidence (0076)"),
     Row("docs/adversarial-self-review.md", MANAGED, 2,
         "the twenty classes an implementer attacks before a reviewer is paid, each with a test template, and "
-        "the record a semantic packet requires per entry (0071)"),
+        "the record a semantic packet requires per entry (0071); only a semantic-implementation owes the self-review; a semantic-ruling owes the review of the ruling, `reviews/rulings/<decision>.json`, six classes bound to the decision record's bytes (0076)"),
     Row(".claude/agents/engine-dev.md", MANAGED, 12,
         "the implementer's charter (0029); it ends with the attempt, and says what a repair attempt "
-        "reads and what it may not reconstruct (#465); it attacks its own work before review and commits the attestation a repair answers (0071)"),
+        "reads and what it may not reconstruct (#465); it attacks its own work before review and commits the attestation a repair answers (0071); say what the change is before asking for review, and a ruling's own review record in place of a self-review (0076)"),
     Row(".claude/agents/repo-steward.md", MANAGED, 5,
         "the structural reviewer's charter, read-only, and on the cheaper tier its description has always "
         "claimed (0029 amendment, #455); it reads the structural cut of the packet, which carries no entry "
-        "packet and needs no restored map package (#467); it knows a committed attestation or self-review record is review evidence the rails ask for, and what makes one a finding (0071)"),
+        "packet and needs no restored map package (#467); it knows a committed attestation or self-review record is review evidence the rails ask for, and what makes one a finding (0071); checks what a review class rests on, because for a change that owes no semantic review it is the whole review (0076)"),
     Row(".claude/agents/rules-conformance.md", MANAGED, 8,
         "the semantic reviewer's charter, read-only, on the deepest tier: the role not to economise on "
         "(0029 amendment, #455); it reads the semantic cut, which carries the entry packets and not the "
-        "implementer's case for its own reading (#467); it starts from a clean session, reads a full, delta or final packet as each asks, and names the claim of each finding (0071)"),
+        "implementer's case for its own reading (#467); it starts from a clean session, reads a full, delta or final packet as each asks, and names the claim of each finding (0071); a packet is written only for a change that owes a semantic review, and how a ruling is judged (0076)"),
     Row(".claude/hooks/primary-checkout-guard.py", MANAGED, 3,
         "the PreToolUse guard that keeps implementation work out of the primary checkout (0029); it judges "
         "the path of a `worktree add -b <branch> <path>`, not the branch (#496), and follows a literal `cd` "
@@ -161,18 +161,18 @@ TABLE = (
         "identity names all of them (#460); --role cuts it for one reviewer, the changed paths carry the "
         "reviewed commit's own ownership class, and the identity names the role (#467); the semantic cut names the files it withheld rather than counting them, the policy among them (#475); "
         "a cut section keeps what is nested under it (#484); a truncated file list is refused, because a cut "
-        "made from one drops a change and says it did not (#478); a packet with entry evidence writes the scope a verdict attests, --review final and --prior make the acceptance review and the reasoned full one, and it is refused until the self-review is current (0071); the semantic diff is asked for by paths anchored at the repository root, and a listed path the diff shows no change to is a refusal and not an empty fence (#522, #526); the entries are the ones pr-policy.py reads from the conformance bullet as well as the marker (#464); a list past the 100 files `gh pr view --json files` gives is read whole from the REST endpoint, and refused only when that is short too (#562)"),
+        "made from one drops a change and says it did not (#478); a packet with entry evidence writes the scope a verdict attests, --review final and --prior make the acceptance review and the reasoned full one, and it is refused until the self-review is current (0071); the semantic diff is asked for by paths anchored at the repository root, and a listed path the diff shows no change to is a refusal and not an empty fence (#522, #526); the entries are the ones pr-policy.py reads from the conformance bullet as well as the marker (#464); a list past the 100 files `gh pr view --json files` gives is read whole from the REST endpoint, and refused only when that is short too (#562); the review class is computed from the reviewed snapshot and stated first; a semantic packet is refused for a change that owes none; the self-review gate is an implementation's, and a ruling owes its decision-scoped review record instead (0076)"),
     Row("tools/review-scope.py", MANAGED, 2,
         "what a semantic review covered and what a repair invalidates of it, computed from the map's "
         "dependencies, a lexical reference graph and recorded fingerprints; the delta packet a bounded "
         "review reads, or the reasons a full one is owed; the self-review skeleton and check; an "
-        "attestation's integrity; and review telemetry (0071)"),
+        "attestation's integrity; and review telemetry (0071); `ruling-review` prints and checks the review of a ruling (0076)"),
     Row("tools/repair-packet.py", MANAGED, 7,
         "the bounded brief for one repair attempt: the head, the branch, the worktree, the issue's "
         "acceptance criteria, the entries and the verdicts standing at that head, all derived -- and the "
         "blocking findings, which are the caller's judgement and the only thing it is given (#465); a section "
         "of the issue keeps what is nested under it (#484); it makes the readiness refusal dispatch "
-        "makes, and says a semantic verdict is owed only when the change owes one (#483); the brief says to commit the attestation it answers and that the next review is a delta of it (0071); the worktree it names is checked against the head it advertises, and every path it prints is quoted (#482); the changed paths are matched against the semantic surface in the engine's own terms, as the gate matches them, so an embedded engine is not told no verdict is owed when the gate will ask for one (#535)"),
+        "makes, and says a semantic verdict is owed only when the change owes one (#483); the brief says to commit the attestation it answers and that the next review is a delta of it (0071); the worktree it names is checked against the head it advertises, and every path it prints is quoted (#482); the changed paths are matched against the semantic surface in the engine's own terms, as the gate matches them, so an embedded engine is not told no verdict is owed when the gate will ask for one (#535); the brief says a semantic verdict is owed from the review class the gate reads, and from the surface when it cannot read the base (0076)"),
     Row("tools/pr-policy.py", MANAGED, 16,
         "the pull request contract, checked mechanically; a produce update's claim is checked, not taken "
         "(#193); every document the engine owns is accounted for (#236); the entry declaration, linked issue "
@@ -181,15 +181,15 @@ TABLE = (
         "reports (#501, 0069), the documentation skeleton included (#507); a changed document outside an "
         "embedded engine is listed under its path relative to the engine, `../README.md`, by the check and "
         "the skeleton alike, and a rename is its new path (#523, #511); the entry ids the conformance "
-        "bullet names are read by one function that review-packet.py loads, so the two cannot disagree (#464); a list past the 100 files `gh pr view --json files` gives is read whole from the REST endpoint, and refused only when that is short too (#562); a deletion is a deletion whether GitHub spells it DELETED or REMOVED, and an entry the overlay split moves out of the retired shared overlay keeps that row as its base, so the split implements nothing (#566); an `entry id(s):` line that is exactly `none` names no entry, so a factory update's semantic packet is not asked for an entry called `none` (#572)"),
+        "bullet names are read by one function that review-packet.py loads, so the two cannot disagree (#464); a list past the 100 files `gh pr view --json files` gives is read whole from the REST endpoint, and refused only when that is short too (#562); a deletion is a deletion whether GitHub spells it DELETED or REMOVED, and an entry the overlay split moves out of the retired shared overlay keeps that row as its base, so the split implements nothing (#566); an `entry id(s):` line that is exactly `none` names no entry, so a factory update's semantic packet is not asked for an entry called `none` (#572); the review class of the diff is computed by `scripts/factory/reviewclass.py` and the pull request's `review class:` line is checked against it: it can claim an exemption the diff shows and raise a class, never lower one; a ruling names its scope or entries; only an implementation names a mutation; `generated-or-provenance` needs the produce claim admitted (0076)"),
     Row("tools/record-verdict.py", MANAGED, 7,
         "a review verdict as a commit status on the exact commit reviewed, from entry evidence bound to "
         "that commit (0029, #372) -- every map of a composed engine, not one of them (#460); and from a packet "
-        "whose role could carry it, because a structural cut holds no entry evidence at all (#467); every verdict leaves a validated attestation whose digest is in the status, a delta PASS posts a context no gate requires, and a carry posts a comprehensive PASS again only when nothing moved (0071)"),
+        "whose role could carry it, because a structural cut holds no entry evidence at all (#467); every verdict leaves a validated attestation whose digest is in the status, a delta PASS posts a context no gate requires, and a carry posts a comprehensive PASS again only when nothing moved (0071); refuses a semantic verdict on a packet whose review class owes none (0076)"),
     Row("tools/conformance-gate.py", MANAGED, 6,
         "whether the verdicts this change needs are recorded at the commit being merged; a truncated "
         "file list is undecidable (0029, #193); the semantic surface is read in the engine's own paths, "
-        "which for an embedded engine is not what GitHub reports (#507, 0069); a list past the 100 files `gh pr view --json files` gives is read whole from the REST endpoint, and refused only when that is short too (#562)"),
+        "which for an embedded engine is not what GitHub reports (#507, 0069); a list past the 100 files `gh pr view --json files` gives is read whole from the REST endpoint, and refused only when that is short too (#562); which verdicts a change needs is its review class's to say, read from the one vendored module; a module it cannot load is an undecidable gate and not a weaker answer (0076)"),
     Row("tools/requeue-gate.py", MANAGED, 2,
         "asks the gate to report again when something outside the pull request changed what it "
         "would answer: a verdict recorded at its head (#191), or the risk label on the issue it "
@@ -197,7 +197,7 @@ TABLE = (
     Row(".github/pull_request_template.md", MANAGED, 6,
         "the pull request shape pr-policy.py checks, documentation section included (0029, #236); "
         "\"Unrelated changes\" says what belongs in it and what is part of the change (#196); the entry list "
-        "states the correspondence pr-policy checks (#451)"),
+        "states the correspondence pr-policy checks (#451); a `review class:` line, checked against the diff and never taken, and a `decision scope:` line (0076)"),
     Row(".github/workflows/pr-policy.yml", MANAGED, 1, "the required check that runs pr-policy.py (0029)"),
     Row(".github/workflows/conformance-gate.yml", MANAGED, 2,
         "the required check that runs conformance-gate.py (0029)"),
