@@ -79,7 +79,7 @@ DECISION_RECORD = re.compile(r"\Adocs/decisions/\d{4}-[^/]+\.md\Z")
 #: record may say that a later record is the only way it can be overturned, which is the opposite.
 SUPERSESSION = re.compile(r"(?im)^[ \t>*_-]*(?:supersedes|amends|overrules|overturns|reverses|replaces|"
                           r"retracts|withdraws)\b[*_]*[ \t]*:")
-DECLARATION = re.compile(r"(?im)^[ \t]*[-*][ \t]+[^\n:]*\breview class\b[^:\n]*:[ \t]*`?([A-Za-z-]+)`?[ \t]*$")
+DECLARATION = re.compile(r"(?im)^[ \t]*[-*][ \t]+[^\n:]*\breview class\b[^:\n]*:[ \t*]*`?([A-Za-z-]+)")
 SCOPE_LINE = re.compile(r"(?im)^[ \t]*[-*][ \t]+[^\n:]*\bdecision scope\b[^:\n]*:[ \t]*(\S.*?)[ \t]*$")
 CONFORMANCE = "Map and rules conformance"
 #: A comparison of more C# files than this is not worth the reads: past it the diff is reviewed.
@@ -193,7 +193,7 @@ def code_signature(text):
             buffer.append(c)
             i += 1
     flush()
-    return "".join(out)
+    return "".join(out).strip()
 
 
 def comment_only(base, head):
@@ -476,6 +476,16 @@ def judge(result, declared):
     problems.append(f"the pull request claims `{declared}`, and this diff is `{computed}`; the claim does not "
                     f"match, so it is reviewed as an implementation")
     return SEMANTIC_IMPLEMENTATION, problems, hints
+
+
+def semantic_files(result, effective):
+    """The files a semantic reviewer is handed for a change judged `effective`: the surface it touches, or none.
+
+    Not `result["semanticFiles"]`, which follows the *computed* class: an exemption nobody claimed
+    makes a computed `decision-record-only` an effective `semantic-implementation`, and the reviewer
+    of that is owed the files the diff computed as inert as much as any other on the surface.
+    """
+    return list(result["onSurface"]) if effective in SEMANTIC else []
 
 
 def owes(effective):

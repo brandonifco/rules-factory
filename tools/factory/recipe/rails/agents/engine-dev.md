@@ -128,7 +128,7 @@ that is only a new decision record, a regeneration with the rules unmoved, or a 
 entry, no self-review and no semantic verdict, and you claim that on the line rather than inventing
 an entry to satisfy a policy. A decision that overrules one already in force is a
 `semantic-ruling`: it owes `reviews/rulings/<decision>.json` instead
-(`tools/review-scope.py ruling-review`). Everything else is below.
+(`tools/review-scope.py ruling-review <decision record>`). Everything else is below.
 
 For a `semantic-implementation`, no semantic packet is written until every entry it names has a committed
 `reviews/self-review/<entry id>.json` answering all twenty classes of

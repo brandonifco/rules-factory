@@ -1122,7 +1122,7 @@ def main(argv=None):
             effective, class_problems, class_hints = module.SEMANTIC_IMPLEMENTATION, [], []
             semantic_files = set(result["onSurface"])
         else:
-            semantic_files = set(result["semanticFiles"]) if effective in module.SEMANTIC else set()
+            semantic_files = set(module.semantic_files(result, effective))
         findings.extend(class_problems)
 
         linked = check_closes(body, findings)

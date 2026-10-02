@@ -247,7 +247,8 @@ def main(argv=None):
         result, effective, problems_of_class, hints, declared, reviewclass = review_class(
             changes, review.get("semanticPaths") or [], engine_path(), pull.get("body") or "",
             pull.get("baseRefOid"))
-        touched = list(result["semanticFiles"]) if effective in reviewclass.SEMANTIC else []
+        touched = reviewclass.semantic_files(result, effective)
+        owes_verdict = effective in reviewclass.SEMANTIC
 
         issues = pull.get("closingIssuesReferences") or []
         if len(issues) != 1:
@@ -283,7 +284,7 @@ def main(argv=None):
                             f"fix the code, fix the map, or get an owner's ruling. Recording a pass at another "
                             f"context does not clear it.")
 
-    if touched and recorded.get(semantic_context) != "success":
+    if owes_verdict and recorded.get(semantic_context) != "success":
         problems.append(f"{semantic_context} is not recorded as a success at {sha[:12]}, and this change is a "
                         f"`{effective}`, which owes a semantic verdict. Review the head commit and record the verdict "
                         f"(`tools/review-packet.py {args.pr}`, then `tools/record-verdict.py --pr "
@@ -305,9 +306,9 @@ def main(argv=None):
         for problem in problems:
             print(f"  X  {problem}")
         return 1
-    if not touched:
-        print(f"  a `{effective}` change owes no rules verdict: structural and provenance validation are "
-              f"pr-policy's, and this gate asks for nothing more")
+    if not owes_verdict:
+        print(f"  a `{effective}` change: no rules verdict required for this change (structural and "
+              f"provenance validation are pr-policy's, and this gate asks for nothing more)")
     print("\nconformance-gate: the verdicts this change needs are recorded at the commit being merged.")
     return 0
 

@@ -786,8 +786,7 @@ def build(number, base, package_maps=(), recordable=True, role=ALL, review_type=
         result, effective, class_problems, class_hints, declared, classes = review_class(
             snapshot, record, changes, review.get("semanticPaths") or [], pull.get("body") or "", base_sha)
         prefix = engine_path()
-        semantic = [f"{prefix}/{path}" if prefix else path for path in result["semanticFiles"]] \
-            if effective in classes.SEMANTIC else []
+        semantic = [f"{prefix}/{path}" if prefix else path for path in classes.semantic_files(result, effective)]
         owed = classes.owes(effective)
         if recordable and role == SEMANTIC and not owed["verdict"]:
             raise Refused(f"this change is `{effective}`, which owes no semantic review: "

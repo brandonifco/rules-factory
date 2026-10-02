@@ -310,9 +310,9 @@ class TestBytecodeStaysOutOfTheCheckout(unittest.TestCase):
         # being skipped by a check that examined whatever it happened to find.
         self.assertEqual(sorted(importers),
                          ["scripts/engine-gate.py", "scripts/map-overlay.py", "tools/agent-doctor.py",
-                          "tools/entry-packet.py", "tools/orchestrator-status.py",
-                          "tools/pr-policy.py", "tools/record-verdict.py", "tools/review-packet.py",
-                          "tools/review-scope.py"])
+                          "tools/conformance-gate.py", "tools/entry-packet.py", "tools/orchestrator-status.py",
+                          "tools/pr-policy.py", "tools/record-verdict.py", "tools/repair-packet.py",
+                          "tools/review-packet.py", "tools/review-scope.py"])
 
 
 class TestAProducedEngine(unittest.TestCase):
@@ -5086,7 +5086,7 @@ if argv_api := [a for a in sys.argv[1:] if a.startswith("repos/")]:
 
 GH_STATUS_STUB = '''#!/usr/bin/env python3
 """A stand-in for `gh` that also keeps commit statuses, workflow runs and re-runs in JSON files."""
-import json, os, sys
+import base64, json, os, sys
 
 fixture = json.load(open(os.environ["GH_FIXTURE"], encoding="utf-8"))
 store = os.environ["GH_STATUSES"]
@@ -5111,6 +5111,17 @@ if argv[0] == "api":
         statuses = {"ADDED": "added", "DELETED": "removed", "MODIFIED": "modified", "RENAMED": "renamed"}
         for row in rows:
             print(row["path"] + "\t" + statuses.get(row.get("changeType") or "MODIFIED", "modified"))
+        raise SystemExit(0)
+    if "/contents/" in endpoint:
+        # `gh api repos/{owner}/{repo}/contents/<path>?ref=<sha> --jq .content`: a file at the base commit,
+        # base64 as GitHub returns it, which the review class reads for the files it compares (0076).
+        route, _, query = endpoint.partition("?")
+        wanted, ref = route.split("/contents/", 1)[1], query.split("ref=")[-1]
+        body = ((fixture.get("contents") or {}).get(ref) or {}).get(wanted)
+        if body is None:
+            sys.stderr.write(f"no {wanted} at {ref}\\n")
+            sys.exit(1)
+        print(base64.b64encode(body.encode("utf-8")).decode("ascii"))
         raise SystemExit(0)
     if endpoint.endswith("/rerun"):
         # The 30-day limit, when the fixture asks for it: GitHub refuses the re-run, and nothing
