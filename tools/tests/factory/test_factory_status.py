@@ -102,6 +102,11 @@ class EngineCase(unittest.TestCase):
 
     def commit(self):
         fixture.git_init(self.engine)
+        # A commit may start git's auto-maintenance in the background, which creates and deletes
+        # `.git/objects/maintenance.lock` while a test is reading `.git`: the snapshot would race it,
+        # and a write git makes on its own would be charged to status. Neither is under test here.
+        for key, value in (("gc.auto", "0"), ("maintenance.auto", "false")):
+            subprocess.run(["git", "-C", self.engine, "config", key, value], check=True)
         subprocess.run(["git", "-C", self.engine, "add", "-A"], check=True)
         subprocess.run(["git", "-C", self.engine, "-c", "user.name=t", "-c", "user.email=t@t", "commit", "-q",
                         "-m", "engine"], check=True)
