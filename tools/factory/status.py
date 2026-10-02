@@ -51,6 +51,8 @@ def counted(trace, basis="counted from the trace of this engine (factory trace)"
         status = entry["status"]["value"]
         by_status[str(status)] = by_status.get(str(status), 0) + 1
         for test in entry["tests"]:
+            if test["name"]["evidence"] != "recorded":
+                continue    # a row that names no test is the trace's `entry -> test` gap, not a named test
             tests += 1
             mutations += test["mutation"]["evidence"] == "recorded"
     return {"basis": basis, "entries": len(trace["entries"]), "byStatus": dict(sorted(by_status.items())),
