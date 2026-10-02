@@ -2,5 +2,6 @@
   "version": "1.0.0",
   "licence": {
     "corpusTerms": "CORPUS-LICENCE.txt"
-  }
+  },
+  "held": "Public NuGet publication is intentionally withheld pending owner authorization; publishing cannot be undone."
 }

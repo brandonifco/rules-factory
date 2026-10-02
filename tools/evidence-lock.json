@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "measuredAt": "f97cb3c2af656ade3425bc151efd597e3beafb80",
+  "measuredAt": "6644647a01966e8c7503ff64ab25256c8ab20a45",
   "measuredBy": "tools/check-evidence.py --measure",
   "measuredOver": {
     "gateStepsFailed": [],
@@ -17,8 +17,8 @@
     "package": "tools/pack-map.py"
   },
   "repository": {
-    "trackedFiles": 514,
-    "trackedBytes": 22437658
+    "trackedFiles": 526,
+    "trackedBytes": 22790051
   },
   "artifacts": [
     {
@@ -1889,8 +1889,8 @@
     },
     {
       "path": "examples/srd-52-conditions/map-package.json",
-      "sha256": "5efde0fb404f88ca2651b7315b7310f464ca9258e33ad07e87ff3539d667957c",
-      "bytes": 85,
+      "sha256": "3a09fa17e74ce91fdd2164291fca9495437630469f73ea8f1546ec289bc2f38b",
+      "bytes": 207,
       "role": "release",
       "readBy": [
         "package"
@@ -1972,8 +1972,8 @@
     },
     {
       "path": "examples/srd-52-damage-and-healing/map-package.json",
-      "sha256": "5efde0fb404f88ca2651b7315b7310f464ca9258e33ad07e87ff3539d667957c",
-      "bytes": 85,
+      "sha256": "3a09fa17e74ce91fdd2164291fca9495437630469f73ea8f1546ec289bc2f38b",
+      "bytes": 207,
       "role": "release",
       "readBy": [
         "checks",
@@ -2055,8 +2055,8 @@
     },
     {
       "path": "examples/srd-52-playing-the-game/map-package.json",
-      "sha256": "5efde0fb404f88ca2651b7315b7310f464ca9258e33ad07e87ff3539d667957c",
-      "bytes": 85,
+      "sha256": "3a09fa17e74ce91fdd2164291fca9495437630469f73ea8f1546ec289bc2f38b",
+      "bytes": 207,
       "role": "release",
       "readBy": [
         "package"
