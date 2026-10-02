@@ -18,7 +18,8 @@ So this checks what can be checked mechanically, and nothing it cannot:
   1. exactly one real `Closes #<n>` -- one branch closes one issue;
   2. every mandatory section is present and filled, not left as its placeholder;
   3. the evidence section shows a command and its output, not a claim that it passed;
-  4. a change touching the semantic surface names an entry and a locator;
+  4. a change that owes a semantic review names what it is a review of: an entry and a locator for an
+     implementation, an entry or a decision scope for a ruling (the review class, below);
   5. the named entry, linked issue and overlay status transition describe the same work;
   6. agent provenance says who implemented and who reviewed;
   7. the linked issue carries exactly one risk label and exactly one state label;
@@ -92,6 +93,19 @@ not apply with two that are harder to fake: the map package and version and what
 an entry and a locator; and the produce command, the gate's output and a `factory provenance`
 recompute, in place of a named mutation.
 
+**The review class (rules-factory 0076, #595).** What a change owes the semantic review is not "does
+it touch `review.semanticPaths`" -- that put a decision record, a regeneration and a comment on the
+same ceremony as a handler. `scripts/factory/reviewclass.py` computes the class from the diff:
+`semantic-implementation`, `semantic-ruling`, `decision-record-only`, `generated-or-provenance` or
+`documentation`. The `## Map and rules conformance` section carries a `- review class:` line, and
+what it says is **checked against the diff, never taken**: it can claim an exemption the diff shows
+(a new decision record that overrules nothing; a regeneration with the maps, the corpora and the
+randomness unmoved; a document), and it can raise a class. It cannot lower one. A diff that touches
+the semantic surface and claims nothing is an implementation, as it always was, and this says so
+without failing it. `generated-or-provenance` is the one claim that also needs the `## Produced by
+the factory` section admitted, because that is where the provenance is checked. Only an
+implementation names a mutation: a ruling, a record and a document write no test.
+
 **What it cannot check, and does not pretend to.** Whether the behavioural claim is true, whether
 the evidence was really run, whether the mutation was really observed to fail, or whether the
 named reviewer really reviewed. Those are a reviewer's, and the review verdict recorded against
@@ -111,6 +125,7 @@ import posixpath
 import re
 import subprocess
 import sys
+import urllib.parse
 
 # The produce claim is classified by the engine's vendored scripts/factory/ownership.py, and an
 # imported module leaves its bytecode behind: scripts/factory/__pycache__/, a path no ownership row
@@ -260,12 +275,74 @@ def retired_here(ownership, path, name):
 
 
 def is_semantic(path, patterns):
-    """Whether `path` is on the semantic surface. `**` spans directories; `*` does not."""
+    """Whether `path` is on the semantic surface the policy declares. `**` spans directories; `*` does not.
+
+    What the review class (0076) starts from: the surface says which paths *can* be semantic, and the
+    class says which of those the diff proves are not.
+    """
     for pattern in patterns:
         regex = re.escape(pattern).replace(r"\*\*/", "(?:.*/)?").replace(r"\*\*", ".*").replace(r"\*", "[^/]*")
         if re.fullmatch(regex, path):
             return True
     return False
+
+
+def reviewclass_module():
+    """The engine's vendored `scripts/factory/reviewclass.py`: the one reading of what review a diff owes (0076)."""
+    sys.path.insert(0, str(ROOT / "scripts" / "factory"))
+    try:
+        import reviewclass  # noqa: E402  (the factory's review classes, vendored by produce)
+    except ImportError as error:
+        raise Failed(f"scripts/factory/reviewclass.py is not importable ({error}); run `factory produce` again")
+    return reviewclass
+
+
+def base_patterns(base_oid, prefix):
+    """The `review.semanticPaths` the base commit's policy lists, or None when it cannot be read."""
+    raw = base_bytes(base_oid, f"{prefix}/{POLICY}" if prefix else POLICY) if base_oid else None
+    try:
+        review = json.loads(raw.decode("utf-8")).get("review") or {}
+    except (AttributeError, UnicodeDecodeError, ValueError):
+        return None
+    listed = review.get("semanticPaths") if isinstance(review, dict) else None
+    return listed if isinstance(listed, list) else None
+
+
+def review_class(files, patterns, body, base_oid):
+    """`(result, effective class, problems, hints, declared, module)` for the pull request's diff.
+
+    `files` is GitHub's list, a rename carrying the path it came from, judged in the engine's own terms,
+    against the surface the base and the head policies both list (0076). The
+    head's bytes are this checkout's and the base's are the API's, read only for the files a class
+    needs them for. An engine whose ownership table cannot be loaded has no file the factory wrote,
+    so nothing is exempt -- the produce check says why, in its own finding.
+    """
+    module = reviewclass_module()
+    prefix = engine_path()
+    inside = {}
+    patterns = module.surface_patterns(patterns, base_patterns(base_oid, prefix))
+    for path, change in module.changes_of(files).items():
+        relative = engine_relative(path, prefix)
+        if relative is not None:
+            inside[relative] = change
+    try:
+        ownership, name, _ = engine_ownership()
+        fclass = module.factory_class(ownership, name)
+    except (Failed, OSError, ValueError):
+        fclass = lambda _path: None  # noqa: E731
+
+    def read(path, side):
+        if side == "head":
+            try:
+                return (ROOT / path).read_bytes()
+            except OSError:
+                return None
+        return base_bytes(base_oid, f"{prefix}/{path}" if prefix else path) if base_oid else None
+
+    result = module.classify(inside, patterns, read=read, fclass=fclass)
+    declared = module.declared_class(body)
+    effective, problems, hints = module.judge(result, declared)
+    return result, effective, problems, hints, declared, module
 
 
 def sections(body):
@@ -370,7 +447,10 @@ def base_bytes(base_oid, path):
     failure returns None, and None admits nothing.
     """
     try:
-        encoded = gh("api", f"repos/{{owner}}/{{repo}}/contents/{path}?ref={base_oid}", "--jq", ".content")
+        # Percent-encoded: a `#` in a file name is a fragment to the URL, and the API would be asked for
+        # another file at another ref (0076).
+        encoded = gh("api", f"repos/{{owner}}/{{repo}}/contents/{urllib.parse.quote(path)}?ref={base_oid}",
+                     "--jq", ".content")
         return base64.b64decode(encoded)
     except (Failed, OSError, ValueError, binascii.Error):
         return None
@@ -714,7 +794,7 @@ def check_produce(body, filled, changed, findings, base_oid=None):
     return True
 
 
-def check_evidence(filled, findings, produce=False):
+def check_evidence(filled, findings, produce=False, mutation_required=True):
     evidence = filled.get("Tests and evidence")
     if evidence is None:
         return
@@ -742,7 +822,7 @@ def check_evidence(filled, findings, produce=False):
                 findings.append(f"`## Tests and evidence` shows no `{command}`, and this is a factory update: "
                                 f"show {why}, and what it printed. A produce update names no mutation because it "
                                 f"writes no test; this is what it shows instead.")
-    elif "mutation" not in evidence.lower():
+    elif mutation_required and "mutation" not in evidence.lower():
         findings.append("`## Tests and evidence` names no mutation. Every test records the mutation that makes it "
                         "fail, and you must have watched it fail -- a test nobody has watched fail is not yet a test.")
 
@@ -943,6 +1023,21 @@ def check_conformance(filled, semantic_files, findings, produce=False):
             findings.append(f"`## Map and rules conformance` does not name {what}.")
 
 
+def check_ruling(filled, body, module, findings):
+    """A ruling names what it rules on: an entry, or a decision scope (0076).
+
+    There is no implementation to cite, so no locator and no map is asked for. What a semantic
+    reviewer cannot do is review a decision nobody said the scope of, and a record that decides
+    "the greenhouse readings" and names neither an entry nor what they are has no scope at all.
+    """
+    conformance = filled.get("Map and rules conformance") or ""
+    entries, _ = named_entries(conformance)
+    if not entries and not module.declared_scope(body):
+        findings.append("`## Map and rules conformance` does not say what this ruling is a ruling on: name the "
+                        "entries it affects on the `entry id(s):` line, or its scope on a `- decision scope:` line. "
+                        "A decision no reviewer can scope cannot be reviewed.")
+
+
 def check_provenance(filled, findings):
     provenance = filled.get("Agent provenance")
     if provenance is None:
@@ -987,15 +1082,21 @@ def listed_files(pull, number):
     """
     files = [{"path": f["path"], "changeType": f.get("changeType") or ""} for f in pull.get("files") or []]
     count = pull.get("changedFiles")
-    if not isinstance(count, int) or len(files) == count:
+    # A rename is named by its new path alone in `gh pr view --json files`, and the REST endpoint says
+    # where it came from (0076): the old path is a deletion, and a handler moved off the surface is one.
+    renamed = any(f["changeType"] in ("RENAMED", "COPIED") for f in files)
+    if isinstance(count, int) and len(files) == count and not renamed:
+        return files
+    if not isinstance(count, int) and not renamed:
         return files
     listing = gh("api", f"repos/{{owner}}/{{repo}}/pulls/{number}/files?per_page=100", "--paginate",
-                 "--jq", '.[] | [.filename, .status] | @tsv')
+                 "--jq", '.[] | [.filename, .status, (.previous_filename // "")] | @tsv')
     whole = []
     for line in listing.splitlines():
-        path, _, status = line.partition("\t")
+        path, _, rest = line.partition("\t")
+        status, _, previous = rest.partition("\t")
         if path:
-            whole.append({"path": path, "changeType": _CHANGE_TYPES.get(status, status.upper())})
+            whole.append({"path": path, "changeType": _CHANGE_TYPES.get(status, status.upper()), "previous": previous})
     return whole
 
 
@@ -1044,14 +1145,22 @@ def main(argv=None):
         # path -> how it changed, as GitHub reports it (ADDED, MODIFIED, REMOVED, RENAMED...). The
         # produce predicate needs it: a retired path is the factory's when deleted and nobody's
         # otherwise. An absent changeType reads as "" and is therefore never a deletion.
-        changed = {f["path"]: f["changeType"] for f in listed_files(pull, args.pr)}
+        files = listed_files(pull, args.pr)
+        changed = {f["path"]: f["changeType"] for f in files}
         truncated = truncation(pull, changed, findings)
         # In the engine's own terms: the semantic surface is `src/**`, and GitHub reports
-        # `engine/src/**` for an engine embedded under a repository root (0069).
-        prefix = engine_path()
-        semantic_files = {inside for path in changed
-                          for inside in [engine_relative(path, prefix)] if inside is not None
-                          and is_semantic(inside, (settings.get("review") or {}).get("semanticPaths") or [])}
+        # `engine/src/**` for an engine embedded under a repository root (0069). What the diff owes
+        # the semantic review is its review class's to say (0076); on a truncated list nothing can be
+        # proved inert, so the surface is the whole of what is owed, as it was.
+        patterns = (settings.get("review") or {}).get("semanticPaths") or []
+        result, effective, class_problems, class_hints, declared, module = review_class(
+            files, patterns, body, pull.get("baseRefOid"))
+        if truncated:
+            effective, class_problems, class_hints = module.SEMANTIC_IMPLEMENTATION, [], []
+            semantic_files = set(result["onSurface"])
+        else:
+            semantic_files = set(module.semantic_files(result, effective))
+        findings.extend(class_problems)
 
         linked = check_closes(body, findings)
         filled = check_sections(body, findings)
@@ -1059,15 +1168,23 @@ def main(argv=None):
         # factory writes, and a list that is missing some cannot say that about the ones it lost.
         produce = False if truncated else check_produce(body, filled, changed, findings,
                                                         pull.get("baseRefOid"))
-        check_evidence(filled, findings, produce=produce)
-        check_conformance(filled, semantic_files, findings, produce=produce)
+        if declared == module.GENERATED_OR_PROVENANCE and result["onSurface"] and not produce:
+            findings.append("`review class: generated-or-provenance` claims a regeneration with no behavioural change, "
+                            "and that is checked where provenance is: the `## Produced by the factory` section, "
+                            "admitted. This pull request makes no admitted claim, so nothing has shown the "
+                            "regeneration is the factory's. Add the section, or it is an implementation.")
+        check_evidence(filled, findings, produce=produce, mutation_required=effective == module.SEMANTIC_IMPLEMENTATION)
+        if effective == module.SEMANTIC_RULING:
+            check_ruling(filled, body, module, findings)
+        elif effective == module.SEMANTIC_IMPLEMENTATION:
+            check_conformance(filled, semantic_files, findings, produce=produce)
         living = check_documentation(filled, changed, findings, truncated=truncated, produce=produce)
         check_provenance(filled, findings)
         if linked is not None:
             issue = check_issue_labels(linked, settings, findings)
             # A produce changes the map as a whole, and a truncated file list cannot identify all
             # transitions. Both cases are explicitly outside this correspondence decision.
-            if not produce and not truncated:
+            if not produce and not truncated and effective == module.SEMANTIC_IMPLEMENTATION:
                 implemented = implemented_entries(changed, pull.get("baseRefOid"), findings)
                 check_entry_correspondence(filled, issue, implemented, findings)
     except Failed as error:
@@ -1079,11 +1196,17 @@ def main(argv=None):
 
     if findings:
         print(f"pr-policy: PR #{args.pr} does not satisfy the contract ({len(findings)} finding(s)):\n")
+        for hint in class_hints:
+            print(f"  note: {hint}\n")
         for finding in findings:
             print(f"  X  {finding}\n")
         print("The contract is .github/pull_request_template.md and AGENTS.md. None of this is about form: each "
               "line above is something a reviewer would otherwise have to take on trust.")
         return 1
+    for line in module.describe(result, effective, declared):
+        print(line)
+    for hint in class_hints:
+        print(f"note: {hint}")
     print(f"pr-policy: PR #{args.pr} satisfies the contract "
           f"({len(SECTIONS) - len(OPTIONAL)} required sections, one linked issue, evidence and provenance present, "
           f"{living if living is not None else 0} living document(s) accounted for).")

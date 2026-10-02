@@ -42,6 +42,10 @@ import shlex
 import subprocess
 import sys
 
+# The review class is decided by the engine's vendored scripts/factory/reviewclass.py, and an imported
+# module leaves its bytecode beside it (#194).
+sys.dont_write_bytecode = True
+
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 POLICY = ".github/agent-policy.json"
 # The marker `factory backlog --create` puts under an item's title: what ties a pull request back
@@ -332,13 +336,63 @@ def semantic_surface(changed, patterns, prefix):
             and is_semantic(engine_relative(path, prefix), patterns)]
 
 
+def owed_review(pull, patterns):
+    """`(semantic verdict owed, the review class it comes from)`, decided as the gate decides it (0076).
+
+    The brief must not say a change owes something the gate will not ask for (#483), nor the reverse,
+    so this reads the one review class the gate reads. Anything it cannot read -- the module, the
+    base commit, a file -- is the old answer, which is that anything on the surface owes a verdict:
+    a brief that overstates what is owed is the safe direction to be wrong in.
+    """
+    changed = [f["path"] for f in pull.get("files") or []]
+    surface = semantic_surface(changed, patterns, engine_path())
+    try:
+        sys.path.insert(0, str(ROOT / "scripts" / "factory"))
+        import reviewclass  # noqa: E402
+        import ownership  # noqa: E402
+        prefix = engine_path()
+        where = f"{prefix}/" if prefix else ""
+        where_policy = f"{where}.github/agent-policy.json"
+        if any((f.get("changeType") or "") in ("RENAMED", "COPIED") for f in pull.get("files") or []):
+            # `gh pr view --json files` does not say where a rename came from, and a handler moved off the
+            # surface is a deletion of it: the gate reads the old path from the REST list, this brief cannot.
+            return True, "semantic-implementation"
+        record = json.loads((ROOT / "provenance.json").read_text(encoding="utf-8"))
+        name = (record.get("engine") or {}).get("name")
+        inside = {engine_relative(path, prefix): change
+                  for path, change in reviewclass.changes_of(pull.get("files") or []).items()
+                  if engine_relative(path, prefix) is not None}
+        base_policy = subprocess.run(["git", "show", f"{pull.get('baseRefOid')}:{where_policy}"], cwd=ROOT,
+                                     stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        try:
+            listed = json.loads(base_policy.stdout.decode("utf-8")).get("review", {}).get("semanticPaths") \
+                if base_policy.returncode == 0 else None
+        except (UnicodeDecodeError, ValueError, AttributeError):
+            listed = None
+        patterns = reviewclass.surface_patterns(patterns, listed if isinstance(listed, list) else None)
+
+        def read(path, side):
+            commit = pull.get("headRefOid") if side == "head" else pull.get("baseRefOid")
+            if not commit:
+                return None
+            done = subprocess.run(["git", "show", f"{commit}:{where}{path}"], cwd=ROOT, stdout=subprocess.PIPE,
+                                  stderr=subprocess.PIPE)
+            return done.stdout if done.returncode == 0 else None
+
+        result = reviewclass.classify(inside, patterns, read=read, fclass=reviewclass.factory_class(ownership, name))
+        effective, _, _ = reviewclass.judge(result, reviewclass.declared_class(pull.get("body") or ""))
+        return effective in reviewclass.SEMANTIC, effective
+    except Exception:  # noqa: BLE001  (unreadable is the old answer)
+        return bool(surface), "semantic-implementation" if surface else "documentation"
+
+
 def section(title, body):
     return f"## {title}\n\n{body.rstrip()}\n"
 
 
 def build(number, findings):
     pull = json.loads(gh("pr", "view", str(number), "--json",
-                         "number,title,state,isDraft,headRefOid,headRefName,baseRefName,"
+                         "number,title,state,isDraft,headRefOid,baseRefOid,headRefName,baseRefName,"
                          "body,files,changedFiles,closingIssuesReferences"))
     state = (pull.get("state") or "").upper()
     if state != "OPEN":
@@ -496,12 +550,13 @@ def build(number, findings):
     # semantic surface. It used to be asserted unconditionally, so a repair that fixed a README was
     # told it owed a verdict neither of them would ask for -- and a rail that overstates what is
     # owed is a rail agents learn to read past (#483).
-    semantic = semantic_surface(changed, review.get("semanticPaths") or [], engine_path())
+    semantic, owed_class = owed_review(pull, review.get("semanticPaths") or [])
     gates = ["- `validate` — `./scripts/validate.sh full`, whole, and paste what it printed",
-             f"- `{review.get('semanticContext', '(unset)')}` — a semantic verdict at the new head"
+             f"- `{review.get('semanticContext', '(unset)')}` — a semantic verdict at the new head "
+             f"(this change is `{owed_class}`)"
              if semantic else
              f"- `{review.get('semanticContext', '(unset)')}` — **not required as this pull request stands**: "
-             f"nothing in it touches the semantic surface. Your repair can change that, and then it is."]
+             f"it is `{owed_class}`, which owes no semantic review. Your repair can change that, and then it is."]
     if independent:
         chain = " → ".join(link.get("context", "?") for link in review.get("independentFallback") or [])
         gates.append(f"- one of: {chain} — required, because issue #{issue_number} is "

@@ -5,6 +5,7 @@
     tools/review-scope.py impact --prior <path> [--commit REF] [--entry ID ...] --package-map PATH [--json]
     tools/review-scope.py state [--commit REF] [--entry ID ...] --package-map PATH
     tools/review-scope.py self-review <entry id> [--commit REF] --package-map PATH [--check]
+    tools/review-scope.py ruling-review <decision record path> [--commit REF] [--check]
     tools/review-scope.py verify <attestation path> [--commit REF]
     tools/review-scope.py telemetry [<attestation> ...]
 
@@ -505,6 +506,39 @@ def command_self_review(args):
     return 0
 
 
+def command_ruling_review(args):
+    """The review of a ruling a `semantic-ruling` owes in place of a self-review (0076).
+
+    Needs no map: a ruling has no entry packet to build. It is bound to the decision record's
+    bytes at the commit, so an edit to the ruling after it was reviewed makes the record stale.
+    """
+    head, parent, snapshot = snapshot_for(args.commit)
+    try:
+        model = scope_model()
+        target = snapshot / args.decision
+        data = target.read_bytes() if target.is_file() else b""
+        digest = hashlib.sha256(data).hexdigest()
+        path = snapshot / model.RULING_REVIEWS / f"{model.ruling_review_stem(args.decision)}.json"
+        if not args.check:
+            print(f"# Review of the ruling `{args.decision}` at {head[:12]} (record sha256 {digest})")
+            print(f"# Write it to {model.RULING_REVIEWS}/{model.ruling_review_stem(args.decision)}.json and commit it; "
+                  f"docs/adversarial-self-review.md says what each class asks.")
+            for identifier, question in model.RULING_REVIEW_CLASSES:
+                print(f"#  {identifier}: {question}")
+            sys.stdout.write(model.pretty(model.ruling_review_skeleton(args.decision, digest)).decode("utf-8"))
+            return 0
+        record = read_json(path, str(path.relative_to(snapshot))) if path.is_file() else None
+        problems = model.ruling_review_problems(record, args.decision, digest)
+    finally:
+        PACKET.remove_reviewed_snapshot(parent, snapshot)
+    if problems:
+        print("ruling-review: INCOMPLETE\n" + "\n".join(f"  X  {p}" for p in problems), file=sys.stderr)
+        return 1
+    print(f"ruling-review: {args.decision} answers all {len(model.RULING_REVIEW_IDS)} classes at record "
+          f"sha256 {digest[:12]}")
+    return 0
+
+
 def command_verify(args):
     head = PACKET.git("rev-parse", f"{args.commit}^{{commit}}").strip()
     parent, snapshot = PACKET.reviewed_snapshot(head)
@@ -562,6 +596,10 @@ def main(argv=None):
     self_review.add_argument("--commit", default="HEAD")
     self_review.add_argument("--check", action="store_true")
     maps(self_review)
+    ruling = sub.add_parser("ruling-review", help="the review skeleton for a decision record a ruling changes, or --check it")
+    ruling.add_argument("decision", help="the decision record's engine-relative path, docs/decisions/NNNN-....md")
+    ruling.add_argument("--commit", default="HEAD")
+    ruling.add_argument("--check", action="store_true")
     verify = sub.add_parser("verify", help="whether a committed attestation is the one recorded")
     verify.add_argument("attestation")
     verify.add_argument("--commit", default="HEAD")
@@ -570,7 +608,8 @@ def main(argv=None):
     args = parser.parse_args(argv)
     try:
         return {"delta": command_delta, "impact": command_impact, "state": command_state,
-                "self-review": command_self_review, "verify": command_verify,
+                "self-review": command_self_review, "ruling-review": command_ruling_review,
+                "verify": command_verify,
                 "telemetry": command_telemetry}[args.command](args)
     except (Refused, PACKET.Refused) as error:
         print(f"review-scope: REFUSED -- {error}", file=sys.stderr)

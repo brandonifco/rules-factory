@@ -18,6 +18,19 @@ repair could have changed. The rule is:
 > Verification scales with the semantic impact of a change, not with the size of the engine or of
 > the conversation. A changed commit alone invalidates nothing.
 
+## What owes any of this
+
+Only a change whose review class (`AGENTS.md` §7) is `semantic-implementation` or `semantic-ruling`.
+A new decision record that overrules nothing, a regeneration with the rules unmoved and a document
+get structural and provenance validation and nothing below: no entry, no self-review, no packet, no
+verdict, and no attestation, because there is no review for one to record. The class is computed from
+the diff, so a change that touches the semantic surface and cannot be shown inert is here.
+
+A `semantic-ruling` leaves an attestation only if it names entries; its review is bound by
+`reviews/rulings/<decision>.json` (`docs/adversarial-self-review.md`) and a packet with no entry
+evidence says it is unscoped, so it is never a delta's parent and each review of one is a full
+review.
+
 ## The lifecycle
 
 1. Implement, run the gate (`./scripts/validate.sh full`), record the mutations.

@@ -82,6 +82,9 @@ ROOT = pathlib.Path(__file__).resolve().parents[1]
 POLICY = ".github/agent-policy.json"
 PROVENANCE = "provenance.json"
 SEMANTIC = "semantic"
+#: The review classes (rules-factory 0076) whose changes owe no semantic review. Named here and not
+#: imported: this tool reads a packet identity, and the identity carries the word.
+NO_SEMANTIC_REVIEW = frozenset({"decision-record-only", "generated-or-provenance", "documentation"})
 PACKET_FORMAT = 2
 #: The cuts that `tools/review-packet.py` makes with its `--role` flag, and the whole packet.
 #: Which bytes a reviewer actually read now depends on the cut as well as on the commit, so the
@@ -482,6 +485,15 @@ def main(argv=None):
 
         context = context_for(args.reviewer, identity["policy"])
         role_carries(args.reviewer, identity["role"])
+        # A packet that says what the change was computed to be (0076) cannot carry a semantic verdict
+        # for a class that owes none: the verdict would read as a review that was never owed, and a
+        # reader of the status could not tell it from one that was.
+        review_class = (identity["document"].get("reviewContext") or {}).get("reviewClass")
+        if args.reviewer == SEMANTIC and isinstance(review_class, dict) \
+                and review_class.get("effective") in NO_SEMANTIC_REVIEW:
+            raise Refused(f"this packet's change is `{review_class['effective']}`, which owes no semantic review "
+                          f"(rules-factory 0076), so a semantic verdict on it would record a review nobody was owed. "
+                          f"Nothing is recorded.")
         model = scope_model()
         attestation = None
         if identity["reviewType"] == "carry":

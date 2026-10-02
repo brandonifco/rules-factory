@@ -67,6 +67,9 @@ FILES = {
     # What a review covered and what a repair invalidates of it (0071): the engine's review-packet,
     # review-scope and record-verdict compute with the factory's model rather than a copy of it.
     "scripts/factory/reviewscope.py": (os.path.join(HERE, "reviewscope.py"), False),
+    # What kind of review a change owes, named once from the diff (0076): pr-policy, the conformance
+    # gate and the review packet read the one answer instead of each deciding it from the paths.
+    "scripts/factory/reviewclass.py": (os.path.join(HERE, "reviewclass.py"), False),
     ".github/workflows/validate.yml": (os.path.join(RECIPE, "validate.yml"), False),
 }
 

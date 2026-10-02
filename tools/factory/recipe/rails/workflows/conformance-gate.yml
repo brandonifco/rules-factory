@@ -7,6 +7,9 @@ name: conformance-gate
 #
 # It re-runs on `synchronize` because that is the point: a new commit means the verdicts recorded
 # on the old one no longer describe what is being merged, and this check goes red again by itself.
+# And on `edited`, because what a change owes is its review class's to say (rules-factory 0076) and
+# the class a pull request claims is a line in its body: take the line out, or raise it, and the
+# commit is unchanged while what the gate asks of it is not.
 #
 # It deliberately does NOT trigger on `status`, though recording a verdict is exactly when this
 # check must be asked again. A `status` run belongs to the default branch's commit, not to the
@@ -19,7 +22,7 @@ name: conformance-gate
 
 on:
   pull_request:
-    types: [opened, synchronize, reopened, labeled, unlabeled]
+    types: [opened, edited, synchronize, reopened, labeled, unlabeled]
     branches: [main]
 
 concurrency:

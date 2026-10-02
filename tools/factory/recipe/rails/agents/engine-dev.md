@@ -122,7 +122,15 @@ name.
 
 ## Before you ask for review: attack it yourself
 
-No semantic packet is written until every entry it names has a committed
+**First, say what the change is.** `tools/pr-policy.py` computes its review class from the diff
+(`AGENTS.md` §7) and checks the `review class:` line of your pull request against it. A change
+that is only a new decision record, a regeneration with the rules unmoved, or a document owes no
+entry, no self-review and no semantic verdict, and you claim that on the line rather than inventing
+an entry to satisfy a policy. A decision that overrules one already in force is a
+`semantic-ruling`: it owes `reviews/rulings/<decision>.json` instead
+(`tools/review-scope.py ruling-review <decision record>`). Everything else is below.
+
+For a `semantic-implementation`, no semantic packet is written until every entry it names has a committed
 `reviews/self-review/<entry id>.json` answering all twenty classes of
 [`docs/adversarial-self-review.md`](../../docs/adversarial-self-review.md) — integer extremes,
 overflow, empty collections, crafted input, invalid construction, phase boundaries, order

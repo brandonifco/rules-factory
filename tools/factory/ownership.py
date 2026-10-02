@@ -90,7 +90,7 @@ TABLE = (
     Row("scripts/engine-gate.py", GENERATED, None, "the gate recipe: its non-dotnet checks"),
     Row("scripts/factory/*.py", GENERATED, None, "the factory's generator, vendored so the gate can regenerate"),
     Row(".github/workflows/validate.yml", GENERATED, None, "the gate recipe: CI runs validate.sh full"),
-    Row("AGENTS.md", MANAGED, 27,
+    Row("AGENTS.md", MANAGED, 28,
         "the governing contract every agent works this engine under (decision 0029); section 4 carries "
         "the sweep, the documentation section, and delete-only-what-you-created (#236); a packet that "
         "names an entry is made with the map the reviewed commit declares, one per package for a "
@@ -101,32 +101,32 @@ TABLE = (
         "brief the next one reads (#465); section 3 says the orchestrator holds the scheduling decision and the repository holds the state, and names the command that reads it (#466); section 7 says a reviewer is given what its role judges, "
         "and that the role is part of the packet identity (#467); section 3 says where the rails are when the "
         "engine is embedded under a repository root, because GitHub runs a workflow only from the root (#501, "
-        "0069); section 7 says a review leaves an attestation, the review after a repair is a delta of it, a full review needs a reason, a final acceptance review rereads the slice once, a reviewer starts clean, and no reviewer is paid before the self-review (0071); section 4 says a changed document outside an embedded engine is listed under its path relative to the engine, `../README.md` (#523); section 9 says the semantic surface is the engine's alone, so a host repository gates its own rule-bearing files (0072)"),
+        "0069); section 7 says a review leaves an attestation, the review after a repair is a delta of it, a full review needs a reason, a final acceptance review rereads the slice once, a reviewer starts clean, and no reviewer is paid before the self-review (0071); section 4 says a changed document outside an embedded engine is listed under its path relative to the engine, `../README.md` (#523); section 9 says the semantic surface is the engine's alone, so a host repository gates its own rule-bearing files (0072); section 7 says what a change owes the semantic review is its review class, computed from the diff and failing closed: a new decision record that overrules nothing, a regeneration with the rules unmoved and a document owe structural validation only, and an exemption is claimed on the pull request's `review class:` line and never assumed (0076)"),
     Row("CLAUDE.md", MANAGED, 1,
         "a pointer to AGENTS.md and the Claude adapters; it states no rule of its own (0029)"),
-    Row("docs/agent-team.md", MANAGED, 10,
+    Row("docs/agent-team.md", MANAGED, 11,
         "the four roles, what each may not do, and what a turn costs: the tiering the two reviews are "
         "dispatched on, stated without naming any vendor's model (0029 amendment, #455); one instance of "
         "the implementer is one attempt, and a fourth consequence of the cost model says why (#465); the orchestrator holds the scheduling decision and reads the rest (#466); each reviewer's section "
-        "names the cut of the packet it reads and what that cut leaves out (#467); the semantic reviewer starts clean with a packet and reads what a repair could have changed, and a fifth consequence of the cost model says why (0071)"),
-    Row("docs/review-evidence.md", MANAGED, 1,
+        "names the cut of the packet it reads and what that cut leaves out (#467); the semantic reviewer starts clean with a packet and reads what a repair could have changed, and a fifth consequence of the cost model says why (0071); the structural review is the whole review for a change that owes no semantic one (0076)"),
+    Row("docs/review-evidence.md", MANAGED, 2,
         "what a review covered and what a repair invalidates of it: the lifecycle, what can be reused, when a "
         "full review is mandatory, the final acceptance review, clean reviewer sessions, reading an "
-        "attestation, and migrating an engine produced before it (0071)"),
-    Row("docs/adversarial-self-review.md", MANAGED, 1,
+        "attestation, and migrating an engine produced before it (0071); only a semantic-implementation or a semantic-ruling owes any of this evidence (0076)"),
+    Row("docs/adversarial-self-review.md", MANAGED, 2,
         "the twenty classes an implementer attacks before a reviewer is paid, each with a test template, and "
-        "the record a semantic packet requires per entry (0071)"),
-    Row(".claude/agents/engine-dev.md", MANAGED, 11,
+        "the record a semantic packet requires per entry (0071); only a semantic-implementation owes the self-review; a semantic-ruling owes the review of the ruling, `reviews/rulings/<decision>.json`, six classes bound to the decision record's bytes (0076)"),
+    Row(".claude/agents/engine-dev.md", MANAGED, 12,
         "the implementer's charter (0029); it ends with the attempt, and says what a repair attempt "
-        "reads and what it may not reconstruct (#465); it attacks its own work before review and commits the attestation a repair answers (0071)"),
-    Row(".claude/agents/repo-steward.md", MANAGED, 4,
+        "reads and what it may not reconstruct (#465); it attacks its own work before review and commits the attestation a repair answers (0071); say what the change is before asking for review, and a ruling's own review record in place of a self-review (0076)"),
+    Row(".claude/agents/repo-steward.md", MANAGED, 5,
         "the structural reviewer's charter, read-only, and on the cheaper tier its description has always "
         "claimed (0029 amendment, #455); it reads the structural cut of the packet, which carries no entry "
-        "packet and needs no restored map package (#467); it knows a committed attestation or self-review record is review evidence the rails ask for, and what makes one a finding (0071)"),
-    Row(".claude/agents/rules-conformance.md", MANAGED, 7,
+        "packet and needs no restored map package (#467); it knows a committed attestation or self-review record is review evidence the rails ask for, and what makes one a finding (0071); checks what a review class rests on, because for a change that owes no semantic review it is the whole review (0076)"),
+    Row(".claude/agents/rules-conformance.md", MANAGED, 8,
         "the semantic reviewer's charter, read-only, on the deepest tier: the role not to economise on "
         "(0029 amendment, #455); it reads the semantic cut, which carries the entry packets and not the "
-        "implementer's case for its own reading (#467); it starts from a clean session, reads a full, delta or final packet as each asks, and names the claim of each finding (0071)"),
+        "implementer's case for its own reading (#467); it starts from a clean session, reads a full, delta or final packet as each asks, and names the claim of each finding (0071); a packet is written only for a change that owes a semantic review, and how a ruling is judged (0076)"),
     Row(".claude/hooks/primary-checkout-guard.py", MANAGED, 3,
         "the PreToolUse guard that keeps implementation work out of the primary checkout (0029); it judges "
         "the path of a `worktree add -b <branch> <path>`, not the branch (#496), and follows a literal `cd` "
@@ -154,26 +154,26 @@ TABLE = (
         "the repository root comes from the record too, so an embedded engine re-produces with no "
         "arguments of its own (#517, 0069); an engine made from several corpora is re-produced from "
         "every corpus the record names, the principal first (#531, 0070)"),
-    Row("tools/review-packet.py", MANAGED, 17,
+    Row("tools/review-packet.py", MANAGED, 18,
         "everything a reviewer needs about one pull request, in the order it is read (0029); every map is "
         "read once and the entry packets are built from those bytes, and a refused packet writes nothing "
         "(#371, #372); a composed engine's maps are each checked against their own recorded digest and the "
         "identity names all of them (#460); --role cuts it for one reviewer, the changed paths carry the "
         "reviewed commit's own ownership class, and the identity names the role (#467); the semantic cut names the files it withheld rather than counting them, the policy among them (#475); "
         "a cut section keeps what is nested under it (#484); a truncated file list is refused, because a cut "
-        "made from one drops a change and says it did not (#478); a packet with entry evidence writes the scope a verdict attests, --review final and --prior make the acceptance review and the reasoned full one, and it is refused until the self-review is current (0071); the semantic diff is asked for by paths anchored at the repository root, and a listed path the diff shows no change to is a refusal and not an empty fence (#522, #526); the entries are the ones pr-policy.py reads from the conformance bullet as well as the marker (#464); a list past the 100 files `gh pr view --json files` gives is read whole from the REST endpoint, and refused only when that is short too (#562)"),
-    Row("tools/review-scope.py", MANAGED, 1,
+        "made from one drops a change and says it did not (#478); a packet with entry evidence writes the scope a verdict attests, --review final and --prior make the acceptance review and the reasoned full one, and it is refused until the self-review is current (0071); the semantic diff is asked for by paths anchored at the repository root, and a listed path the diff shows no change to is a refusal and not an empty fence (#522, #526); the entries are the ones pr-policy.py reads from the conformance bullet as well as the marker (#464); a list past the 100 files `gh pr view --json files` gives is read whole from the REST endpoint, and refused only when that is short too (#562); the review class is computed from the reviewed snapshot and stated first; a semantic packet is refused for a change that owes none; the self-review gate is an implementation's, and a ruling owes its decision-scoped review record instead (0076)"),
+    Row("tools/review-scope.py", MANAGED, 2,
         "what a semantic review covered and what a repair invalidates of it, computed from the map's "
         "dependencies, a lexical reference graph and recorded fingerprints; the delta packet a bounded "
         "review reads, or the reasons a full one is owed; the self-review skeleton and check; an "
-        "attestation's integrity; and review telemetry (0071)"),
-    Row("tools/repair-packet.py", MANAGED, 6,
+        "attestation's integrity; and review telemetry (0071); `ruling-review` prints and checks the review of a ruling (0076)"),
+    Row("tools/repair-packet.py", MANAGED, 7,
         "the bounded brief for one repair attempt: the head, the branch, the worktree, the issue's "
         "acceptance criteria, the entries and the verdicts standing at that head, all derived -- and the "
         "blocking findings, which are the caller's judgement and the only thing it is given (#465); a section "
         "of the issue keeps what is nested under it (#484); it makes the readiness refusal dispatch "
-        "makes, and says a semantic verdict is owed only when the change owes one (#483); the brief says to commit the attestation it answers and that the next review is a delta of it (0071); the worktree it names is checked against the head it advertises, and every path it prints is quoted (#482); the changed paths are matched against the semantic surface in the engine's own terms, as the gate matches them, so an embedded engine is not told no verdict is owed when the gate will ask for one (#535)"),
-    Row("tools/pr-policy.py", MANAGED, 15,
+        "makes, and says a semantic verdict is owed only when the change owes one (#483); the brief says to commit the attestation it answers and that the next review is a delta of it (0071); the worktree it names is checked against the head it advertises, and every path it prints is quoted (#482); the changed paths are matched against the semantic surface in the engine's own terms, as the gate matches them, so an embedded engine is not told no verdict is owed when the gate will ask for one (#535); the brief says a semantic verdict is owed from the review class the gate reads, and from the surface when it cannot read the base (0076)"),
+    Row("tools/pr-policy.py", MANAGED, 16,
         "the pull request contract, checked mechanically; a produce update's claim is checked, not taken "
         "(#193); every document the engine owns is accounted for (#236); the entry declaration, linked issue "
         "marker and overlay transition must identify the same work (#451); a changed path is judged in the "
@@ -181,26 +181,26 @@ TABLE = (
         "reports (#501, 0069), the documentation skeleton included (#507); a changed document outside an "
         "embedded engine is listed under its path relative to the engine, `../README.md`, by the check and "
         "the skeleton alike, and a rename is its new path (#523, #511); the entry ids the conformance "
-        "bullet names are read by one function that review-packet.py loads, so the two cannot disagree (#464); a list past the 100 files `gh pr view --json files` gives is read whole from the REST endpoint, and refused only when that is short too (#562); a deletion is a deletion whether GitHub spells it DELETED or REMOVED, and an entry the overlay split moves out of the retired shared overlay keeps that row as its base, so the split implements nothing (#566); an `entry id(s):` line that is exactly `none` names no entry, so a factory update's semantic packet is not asked for an entry called `none` (#572)"),
-    Row("tools/record-verdict.py", MANAGED, 6,
+        "bullet names are read by one function that review-packet.py loads, so the two cannot disagree (#464); a list past the 100 files `gh pr view --json files` gives is read whole from the REST endpoint, and refused only when that is short too (#562); a deletion is a deletion whether GitHub spells it DELETED or REMOVED, and an entry the overlay split moves out of the retired shared overlay keeps that row as its base, so the split implements nothing (#566); an `entry id(s):` line that is exactly `none` names no entry, so a factory update's semantic packet is not asked for an entry called `none` (#572); the review class of the diff is computed by `scripts/factory/reviewclass.py` and the pull request's `review class:` line is checked against it: it can claim an exemption the diff shows and raise a class, never lower one; a ruling names its scope or entries; only an implementation names a mutation; `generated-or-provenance` needs the produce claim admitted (0076)"),
+    Row("tools/record-verdict.py", MANAGED, 7,
         "a review verdict as a commit status on the exact commit reviewed, from entry evidence bound to "
         "that commit (0029, #372) -- every map of a composed engine, not one of them (#460); and from a packet "
-        "whose role could carry it, because a structural cut holds no entry evidence at all (#467); every verdict leaves a validated attestation whose digest is in the status, a delta PASS posts a context no gate requires, and a carry posts a comprehensive PASS again only when nothing moved (0071)"),
-    Row("tools/conformance-gate.py", MANAGED, 5,
+        "whose role could carry it, because a structural cut holds no entry evidence at all (#467); every verdict leaves a validated attestation whose digest is in the status, a delta PASS posts a context no gate requires, and a carry posts a comprehensive PASS again only when nothing moved (0071); refuses a semantic verdict on a packet whose review class owes none (0076)"),
+    Row("tools/conformance-gate.py", MANAGED, 6,
         "whether the verdicts this change needs are recorded at the commit being merged; a truncated "
         "file list is undecidable (0029, #193); the semantic surface is read in the engine's own paths, "
-        "which for an embedded engine is not what GitHub reports (#507, 0069); a list past the 100 files `gh pr view --json files` gives is read whole from the REST endpoint, and refused only when that is short too (#562)"),
+        "which for an embedded engine is not what GitHub reports (#507, 0069); a list past the 100 files `gh pr view --json files` gives is read whole from the REST endpoint, and refused only when that is short too (#562); which verdicts a change needs is its review class's to say, read from the one vendored module; a module it cannot load is an undecidable gate and not a weaker answer (0076)"),
     Row("tools/requeue-gate.py", MANAGED, 2,
         "asks the gate to report again when something outside the pull request changed what it "
         "would answer: a verdict recorded at its head (#191), or the risk label on the issue it "
         "closes (#230)"),
-    Row(".github/pull_request_template.md", MANAGED, 5,
+    Row(".github/pull_request_template.md", MANAGED, 6,
         "the pull request shape pr-policy.py checks, documentation section included (0029, #236); "
         "\"Unrelated changes\" says what belongs in it and what is part of the change (#196); the entry list "
-        "states the correspondence pr-policy checks (#451)"),
+        "states the correspondence pr-policy checks (#451); a `review class:` line, checked against the diff and never taken, and a `decision scope:` line (0076)"),
     Row(".github/workflows/pr-policy.yml", MANAGED, 1, "the required check that runs pr-policy.py (0029)"),
-    Row(".github/workflows/conformance-gate.yml", MANAGED, 2,
-        "the required check that runs conformance-gate.py (0029)"),
+    Row(".github/workflows/conformance-gate.yml", MANAGED, 3,
+        "the required check that runs conformance-gate.py (0029); the gate re-runs when the pull request body is edited, because the review class a pull request claims is a line in it (0076)"),
     Row(".github/workflows/verdict-requeue.yml", MANAGED, 2,
         "runs requeue-gate.py on the status and issues events; deliberately not a required check "
         "(#191, #230)"),
@@ -321,12 +321,15 @@ RETIRED = (
 RECIPE_SHA256 = {
     "docs/review-evidence.md": {
         1: "acd33f7680250b25b17620781c9cb0eff18b05f6fe693f55fd878e459651c3dd",
+        2: "f829299ce4c7a6deff646d6196378da5ff8cf9d5ee49f2e53d3f58a54254d305",
     },
     "docs/adversarial-self-review.md": {
         1: "9faff906492d809a701516c2a741fb89d5563e646b7a759e0d27bb64f08c3b06",
+        2: "38a3904e97c80e28ccfda7a2511aadd0f475a12e4e65f6db3d8b521d59a6e6a2",
     },
     "tools/review-scope.py": {
         1: "84a69642db7a30efe6729d9557725794567462354072655ff4c223c7f6cbccf4",
+        2: "e96aeaf830d5bc23c4dcaa25e29fd91ac8c4be6b3ddba6a6618f4ab184a3e155",
     },
     ".claude/agents/engine-dev.md": {
         1: "22dbac892b04903992d13516e5a08ac04d92d02b0d8d4ce5e4bfa9ef53543287",
@@ -340,12 +343,14 @@ RECIPE_SHA256 = {
         9: "9bb4c07be9a29dd45b6e6d2e7ea96be95fa7227c9fbb20ea8251b21aaed6b693",
         10: "57f96a153377f78df2a926fc29e0b998c3a547687a82f650881438b7924c2eac",
         11: "10ac2f2159b2b93d65f6665274453902fa252c56f2d2cd0707ac76fda2e2d9fe",
+        12: "8fa4ba9fee9989fce1f9647b333e332a068ece02cf3eee315b3bdb92ac8e7dfd",
     },
     ".claude/agents/repo-steward.md": {
         1: "6a2662ac958da76bb02263914d4e3b293a8dc15837e8a6ffccb14177b013bde7",
         2: "2a991d61d6827a519878eb2659004c3ff451292a971a34636378a8bd449a2e43",
         3: "4c022efad144ceec74ffe6036710eb0f8b8defd5379ebc0a4b22e8bfd69429af",
         4: "df19aaa2a13662ff88c556e11b49b4033c4efa188386e5528631142aa7579834",
+        5: "00082b74a007eba0f7d6b7b541cf074431bc8aced8733574ff947161f4e8534d",
     },
     ".claude/agents/rules-conformance.md": {
         1: "95eac2e802b474bdefad5a6053528dceda7465bbacfc946a0dd3c52a09705e78",
@@ -355,6 +360,7 @@ RECIPE_SHA256 = {
         5: "84289349255eee63078b42e155ebe7174e336c8b5028f35a01c2d38b22e40c05",
         6: "80e8837ae312f1452ceaf6fa32b9fe5e54bb2db352472f998f83300de508585c",
         7: "a86b4d07daccede53261077c430114fae3236d7611e7dfc287431caded6ecc04",
+        8: "241ff918ba8221b27afaf7cceeafd157bcba17178125a13dc0c6f2ac64498940",
     },
     ".claude/hooks/primary-checkout-guard.py": {
         1: "a263531db502dfad98b38bf1dd90df7b1bec5f22133db016b6f30dc38509d16d",
@@ -392,6 +398,7 @@ RECIPE_SHA256 = {
         25: "6c95e3eafff98e597eca267f100a5a615aa086624f1f3fd5df7a1e8f16bdcacc",
         26: "8be45eef569c2a2e46dfaac0b564798431f688bba229c850d7ac73f95d0b70d0",
         27: "0fc0caeb0b289d9a4ed6c3cc397529b746f07ed7ac3bebbd8cc219f85e5f51f0",
+        28: "c764a5a4d78e8cf475847fd7143fbd35c3aac652285908065f22768f3a34c8a8",
     },
     "CLAUDE.md": {
         1: "04c07ad36e742fa60efafeca54d20bd96d16b6e338a44e46fad2b679ab8dfd9f",
@@ -407,6 +414,7 @@ RECIPE_SHA256 = {
         8: "3b11dcacc164b799313061341f8c65bf1c1765fd3754a92647d72268804dc97d",
         9: "b426507e5f18c1602779d685aaf788b28764ee21ccfac865da342a127636ea30",
         10: "e1fd3fe7e2a27ba99d485e946a00b893b2e2e39b6fece2cca001b1f9fd82c40d",
+        11: "d1ee84c9c31e5f44a4be7111f686c07b89b5a7fd318e458d287ab1f0b8d6bdbe",
     },
     "tools/dispatch-agent.sh": {
         1: "868ce983b51d784a83a6a0fcac7456608b31f0af025c75ac5eeac64a373dca2b",
@@ -460,6 +468,7 @@ RECIPE_SHA256 = {
         15: "bbbfd33e2385ab884863f02d35c3a836405d21fbf95d3347fddd937f92ece238",
         16: "035d4fe896df6573a295f2350ac16739f05a09fa4f4c718972fa1c6f2eddafc3",
         17: "09a783f9e0a7a6e995167389f0c8398da73d3e4f44653fe451e2a8e47cacc291",
+        18: "cf48164f9f65042716b1dae08436c3573dc26073fc6f22053dc1899de6e58a85",
     },
     "tools/repair-packet.py": {
         1: "7ec00d9a68ff35fa0af4ab65714411ac6b39cfce34baf448359d9be5e393c2f5",
@@ -468,6 +477,7 @@ RECIPE_SHA256 = {
         4: "4ac24b78411f3ea457e497838f5959d0374c8f3126c249bfb88393c2485318ed",
         5: "c9c35317247883f7076972c29a19e9ca5ccfc3166882a5b2e218a6108dcddd9f",
         6: "67e36ff58616171e5222ac3449bee618b13bba840f376069ecfcc7d577f8bc9f",
+        7: "bb9158eaf9132975677d9be5da5150f652ac422226f666dcfffaa3d9af18a7da",
     },
     "tools/pr-policy.py": {
         1: "79a33c7fe1ea8d888e4d6912a43ac60afe285c7a8bf43fbe9f7be87d6947b76e",
@@ -485,6 +495,7 @@ RECIPE_SHA256 = {
         13: "37c2cee713e940b7799130fe5117074201e5390635d62700a4572582cb7a914b",
         14: "a68e3e9603684143232a8badf4e36642ce2762a20a38fbed5e33f7255d2629ac",
         15: "49e4845fb7d07855fe719c353b9493da9802f4bf80be3465a2ae8c991d957938",
+        16: "80fda4f86822f5c2b9c8cd4e8a1b23f85b30a2d32b681749e788821d9d78bd07",
     },
     "tools/record-verdict.py": {
         1: "48f7b11f7fc829cdaebd776a3eb5db04e27cade97c427c6806b72f58805d83db",
@@ -493,6 +504,7 @@ RECIPE_SHA256 = {
         4: "79ce6388ca3409c99bfdecccf46b3b9e0277756bfd6d0f7588a79fb6181f48cf",
         5: "fd493c0e21a738f5e6bdc47c406a907e0a121e124fadfe3b9358d70580ac26e4",
         6: "9dc1d7aafa536a37278bf526693893e106a43c43183bdcccddceac4e8fe45231",
+        7: "8e7ba67c30672e69e714ccd801a9b5a59ba18d1aa63c08b9b50b385264672e75",
     },
     "tools/conformance-gate.py": {
         1: "567972b60f16d1f86c661e97efa56fa2878c9a5aa92fb820c4aea07a402cbd24",
@@ -500,6 +512,7 @@ RECIPE_SHA256 = {
         3: "ed0db727f1ac5500be0496bc42351d19faa353f3fc578b6d195e0b41cc23c634",
         4: "4c0e5daef3375bb4b17d7a751bc5fb5d221925fabbb2b13e38fac519c556574b",
         5: "efa4ebba282b25abe388aea2721633d8565de22faaf591e09361c2ac1759c031",
+        6: "3fafa402a1c56bdcdedc7d9411e6d13bec638752ecdc81f11950790d537c44d7",
     },
     "tools/requeue-gate.py": {
         1: "a4315a5fa76a696ee616e5ef190d6bbec0d023c04e22086082d4031c460aec8d",
@@ -511,6 +524,7 @@ RECIPE_SHA256 = {
         3: "89a364ba817959aa0c3842b1fa3a9138df39d2dccd9f59f04ba33ce90d064f71",
         4: "3c21dc914830df9656fb49ec5cd56cbb56542f8121a219395cfc7d13f08aab74",
         5: "3a343651e908d6b6bc36594fa663c2aee9e88996147516173c39e3bea63ede78",
+        6: "bb75cd6f5877d65d65cccf6e0cbfdddf86112899ecb11e6bbe61a77a9e459740",
     },
     ".github/workflows/pr-policy.yml": {
         1: "caa3394a473d5fdd45b274176d8e28c48d9f5425176318194ba68fbea8453fa2",
@@ -518,6 +532,7 @@ RECIPE_SHA256 = {
     ".github/workflows/conformance-gate.yml": {
         1: "851d64e8705363b70711b74fe1b25306c3fac1c1e26c88a9805defc3a03042a8",
         2: "d66ae8a37a37874369ac962fbecbf9ac1b98cf0246541a61ea5089b23f8ea702",
+        3: "5ddfd5e6b2fba8553e4f9f7d0f6bd40de9d51529acf983b3ac65d5f94857f16a",
     },
     ".github/workflows/verdict-requeue.yml": {
         1: "b1a48c75587dcbcf15638f83a703025c08f5449d9e2611550c4f15a448fcb178",

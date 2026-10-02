@@ -310,9 +310,9 @@ class TestBytecodeStaysOutOfTheCheckout(unittest.TestCase):
         # being skipped by a check that examined whatever it happened to find.
         self.assertEqual(sorted(importers),
                          ["scripts/engine-gate.py", "scripts/map-overlay.py", "tools/agent-doctor.py",
-                          "tools/entry-packet.py", "tools/orchestrator-status.py",
-                          "tools/pr-policy.py", "tools/record-verdict.py", "tools/review-packet.py",
-                          "tools/review-scope.py"])
+                          "tools/conformance-gate.py", "tools/entry-packet.py", "tools/orchestrator-status.py",
+                          "tools/pr-policy.py", "tools/record-verdict.py", "tools/repair-packet.py",
+                          "tools/review-packet.py", "tools/review-scope.py"])
 
 
 class TestAProducedEngine(unittest.TestCase):
@@ -993,9 +993,9 @@ if kind == "api" and "/pulls/" in argv[1] and argv[1].split("?")[0].endswith("/f
     number = endpoint.split("/pulls/", 1)[1].split("/")[0]
     pull = (fixture.get("pr") or {}).get(number) or {}
     rows = pull["allFiles"] if pull.get("allFiles") is not None else pull.get("files") or []
-    statuses = {"ADDED": "added", "DELETED": "removed", "MODIFIED": "modified", "RENAMED": "renamed"}
+    statuses = {"ADDED": "added", "DELETED": "removed", "MODIFIED": "modified", "RENAMED": "renamed", "COPIED": "copied"}
     for row in rows:
-        print(row["path"] + "\t" + statuses.get(row.get("changeType") or "MODIFIED", "modified"))
+        print(row["path"] + "\t" + statuses.get(row.get("changeType") or "MODIFIED", "modified") + "\t" + (row.get("previous") or ""))
     sys.exit(0)
 if kind == "api":
     # `gh api repos/{owner}/{repo}/contents/<path>?ref=<sha> --jq .content`: a file at the base
@@ -5086,7 +5086,7 @@ if argv_api := [a for a in sys.argv[1:] if a.startswith("repos/")]:
 
 GH_STATUS_STUB = '''#!/usr/bin/env python3
 """A stand-in for `gh` that also keeps commit statuses, workflow runs and re-runs in JSON files."""
-import json, os, sys
+import base64, json, os, sys, urllib.parse
 
 fixture = json.load(open(os.environ["GH_FIXTURE"], encoding="utf-8"))
 store = os.environ["GH_STATUSES"]
@@ -5108,9 +5108,22 @@ if argv[0] == "api":
         number = endpoint.split("/pulls/", 1)[1].split("/")[0]
         pull = (fixture.get("pr") or {}).get(number) or {}
         rows = pull["allFiles"] if pull.get("allFiles") is not None else pull.get("files") or []
-        statuses = {"ADDED": "added", "DELETED": "removed", "MODIFIED": "modified", "RENAMED": "renamed"}
+        statuses = {"ADDED": "added", "DELETED": "removed", "MODIFIED": "modified", "RENAMED": "renamed", "COPIED": "copied"}
         for row in rows:
-            print(row["path"] + "\t" + statuses.get(row.get("changeType") or "MODIFIED", "modified"))
+            print(row["path"] + "\t" + statuses.get(row.get("changeType") or "MODIFIED", "modified") + "\t" + (row.get("previous") or ""))
+        raise SystemExit(0)
+    if "/contents/" in endpoint:
+        # `gh api repos/{owner}/{repo}/contents/<path>?ref=<sha> --jq .content`: a file at the base commit,
+        # base64 as GitHub returns it, which the review class reads for the files it compares (0076).
+        # As HTTP does: everything after a `#` is a fragment and never reaches the server, and a name
+        # reaches it percent-encoded. A rail that sends `H.cs#v.cs` raw is asked for `H.cs`, at no ref.
+        route, _, query = endpoint.split("#", 1)[0].partition("?")
+        wanted, ref = urllib.parse.unquote(route.split("/contents/", 1)[1]), query.split("ref=")[-1]
+        body = ((fixture.get("contents") or {}).get(ref) or {}).get(wanted)
+        if body is None:
+            sys.stderr.write(f"no {wanted} at {ref}\\n")
+            sys.exit(1)
+        print(base64.b64encode(body.encode("utf-8")).decode("ascii"))
         raise SystemExit(0)
     if endpoint.endswith("/rerun"):
         # The 30-day limit, when the fixture asks for it: GitHub refuses the re-run, and nothing
@@ -5696,6 +5709,9 @@ PLACEHOLDERS = {"<n>": "1", "<issue number>": "1", "<entry id>": "speed-limit", 
                 # the entry it names, and the pull request the next review packet is made from.
                 "{entry_id}": "speed-limit", "{number}": "1",
                 '"..."': "Title", "pass|fail": "pass",
+                # A decision record's path (0076): `tools/review-scope.py ruling-review <decision record>`.
+                # None exists in the test engine, so the tool answers about the record and not the spelling.
+                "<decision record>": "docs/decisions/0007-an-owners-ruling.md",
                 # `--package-map <path>`: the map this engine was produced from, which is what an
                 # engine's own restore would put there.
                 "<path>": os.path.join(PART107, "corpus-map.json"),

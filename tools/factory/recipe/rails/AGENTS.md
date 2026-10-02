@@ -134,7 +134,8 @@ reads as present (rules-factory decision 0069).
 
 The pull request is filled in from `.github/pull_request_template.md`, and `tools/pr-policy.py`
 checks it mechanically as a required check: one linked issue, every section filled, a command and
-its output rather than a claim, an entry and a locator for semantic work, a line for every living
+its output rather than a claim, an entry and a locator for an implementation (§7, *what a change
+owes*), a line for every living
 document this engine owns, who reviewed, and exactly one state and one risk label on the issue.
 None of that is about form. Each line of it is something a reviewer would otherwise have to take
 on trust.
@@ -223,12 +224,17 @@ Two things follow, and neither is a loophole:
 - **An edit the new input forces is a separate issue.** A new map version that adds an entry, or a
   handler whose contract changed, is a rules decision the factory did not make. Putting it in the
   same branch makes the claim false and the diff unreviewable; file it, and work it under §5.
-- **The claim waives no verdict.** It changes what the pull request must *say* — no single entry id
-  and no locator where a map bump regenerates every entry, and no mutation where nothing wrote a
-  test — and never what it must prove. `tools/conformance-gate.py` still decides which verdicts are
-  needed from the changed paths, and a regeneration touches the semantic surface several times
-  over. What replaces the mutation is the produce command and its output, the gate's output, and a
-  provenance recompute showing the committed record is the one a re-produce writes.
+- **The claim waives no verdict the diff owes.** It changes what the pull request must *say* — no
+  single entry id and no locator where a map bump regenerates every entry, and no mutation where
+  nothing wrote a test — and never what it must prove. `tools/conformance-gate.py` decides which
+  verdicts are needed from the diff's review class (§7). A factory update that moved the map, the
+  corpora or the randomness, or that carries one hand-written file, is a `semantic-implementation`
+  and owes the verdict a regeneration of rules always did. One that moved none of them — a new
+  factory or kernel, the same map — is `generated-or-provenance` when its pull request claims it
+  on the `review class:` line, and owes the structural and provenance validation that is
+  `tools/pr-policy.py`'s: what replaces the mutation is the produce command and its output, the
+  gate's output, and a provenance recompute showing the committed record is the one a re-produce
+  writes.
 
 `.claude/hooks/primary-checkout-guard.py` enforces the primary checkout's cleanliness for Claude
 agents. It is accident prevention, not security — a determined process bypasses it trivially, and
@@ -433,8 +439,9 @@ decline that names why and cites where — that is the engine working, not the e
   it stays red until an independent verdict is recorded at the head being merged. Lowering risk
   takes the same route, and the gate then finds the independent verdict no longer required.
 
-  A change touching the semantic surface needs the semantic verdict; an issue classified as
-  needing independent review needs one of the configured independent contexts as well. **A
+  A change that owes a semantic review needs the semantic verdict (*what a change owes*, below);
+  an issue classified as needing independent review needs one of the configured independent
+  contexts as well. **A
   recorded failure at any configured context blocks outright**, and a pass recorded elsewhere does
   not clear it: the chain advances when a provider is unavailable, never because its verdict was
   unwelcome. A failure is answered by fixing the code, fixing the map, or getting an owner's
@@ -465,8 +472,36 @@ decline that names why and cites where — that is the engine working, not the e
   an earlier pass. `docs/review-evidence.md` says how to
   read all of it, what can and cannot be reused, and how an engine produced before this migrates:
   its first review is a full one, and that is its baseline.
-- **No reviewer is paid before the implementer has attacked its own work.** A semantic,
-  independent or final packet is refused until every entry it names has a committed
+- **What a change owes is its review class's to say.** `scripts/factory/reviewclass.py` computes
+  it from the diff, one reading for `tools/pr-policy.py`, `tools/conformance-gate.py` and
+  `tools/review-packet.py`, and the first section of every packet states it. Five classes:
+
+  | Class | What it is | What it owes |
+  |---|---|---|
+  | `semantic-implementation` | handlers, rule behaviour, the overlay, the corpus, anything on the semantic surface that is not shown below to be inert | named entries and a locator, `reviews/self-review/<entry>.json` for each, a semantic packet, a semantic verdict |
+  | `semantic-ruling` | a decision that changes how rules are read: an existing decision record edited or deleted, or a new one whose header says it supersedes another | the entries it affects, or a `decision scope:`; `reviews/rulings/<decision>.json` in place of a self-review; a semantic packet; a semantic verdict |
+  | `decision-record-only` | one or more **new** decision records that overrule none, and nothing else | structural validation: no entry, no self-review, no packet, no verdict |
+  | `generated-or-provenance` | a factory update whose maps, corpora and randomness are the same at the base and the head, every changed file one the factory writes and hashed by the head record | structural and provenance validation (the `## Produced by the factory` section, admitted): no self-review, no verdict |
+  | `documentation` | a document, a process file, or C# whose code is byte-identical to its base line for line and differs only in what its comments say | structural validation |
+
+  **The diff decides; the pull request's words can only add review.** The `review class:` line of
+  `## Map and rules conformance` is checked against the computed class. It can claim an
+  exemption the diff shows and it can raise a class; it cannot lower one. A diff that touches the
+  semantic surface and claims nothing is reviewed as a `semantic-implementation`, exactly as it was
+  before the classes existed, and `tools/pr-policy.py` says how to claim the exemption. **A diff
+  that cannot be shown inert is an implementation**: a path the table cannot place, a file that
+  cannot be read, a record that cannot be compared, a factory update with a hand-written file in
+  it, a handler renamed off the surface (the old path of a rename is read and counts as deleted).
+  The surface a diff is judged by is the union of the base's policy and the head's, so a pull
+  request cannot narrow it for its own change. A new decision record is `decision-record-only` and
+  an edit to an existing one is a `semantic-ruling`, because a tool cannot tell a typo from a
+  reversal, and a reviewer can; only line endings and trailing space are cosmetic, since in a
+  nested list the indentation is the meaning.
+  `tools/review-packet.py` refuses a **semantic** packet for a change that owes none: an entry, a
+  self-review and a packet written to satisfy a policy are the ceremony this removes.
+- **No reviewer is paid before the implementer has attacked its own work.** For a
+  `semantic-implementation`, a semantic, independent or final packet is refused until every entry
+  it names has a committed
   `reviews/self-review/<entry id>.json` answering the twenty classes of
   `docs/adversarial-self-review.md`, bound to the entry's claim digest at the reviewed head
   (`tools/review-scope.py self-review <entry id> --package-map <path>`). A repair that touches what

@@ -32,6 +32,13 @@ it before you read the rule. What it carries, in this order: the reviewed commit
 packets, the issue's acceptance criteria, the overlay's change, and the semantic surface and its
 diff.
 
+**A packet is written only for a change that owes a semantic review**, and its first section says
+which kind (`AGENTS.md` §7): a `semantic-implementation`, judged against the entries it names, or a
+`semantic-ruling`, a decision that changes how rules are read. For a ruling there is no handler to
+read first; judge each ruling against what the corpus says and against the decisions already
+recorded, and say which implemented entries it makes wrong. The implementer's own review of it is
+`reviews/rulings/<decision>.json`, and it is evidence for you to test, not an answer to accept.
+
 **Three kinds of packet** ([`docs/review-evidence.md`](../../docs/review-evidence.md)):
 
 - **Full** — the first review of a change, or one a delta was refused for; its section 0 then says
