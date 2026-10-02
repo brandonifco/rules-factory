@@ -138,6 +138,21 @@ class TraceReport(unittest.TestCase):
         self.assertIn("dashed", rule("b-inferred"))
         self.assertNotIn("dashed", rule("b-recorded"))
 
+    def test_a_row_that_names_no_test_is_shown_but_is_not_counted_as_a_named_test(self):
+        trace = copy.deepcopy(self.trace)
+        listed = next(e for e in trace["entries"] if e["id"]["value"] == "listed-in-the-table")
+        before = len(listed["tests"])
+        listed["tests"].append(dict(copy.deepcopy(listed["tests"][0]),
+                                    name={"evidence": "unknown", "why": "no test named"}))
+        page = tracereport.render(trace)
+        self.assertEqual(before, 1)
+        self.assertIn(f"Named tests ({before})", page)
+        self.assertNotIn(f"Named tests ({before + 1})", page)
+        self.assertIn("no test named", page, "the unnamed row is still on the page")
+        index = re.search(r'<a href="#entry-listed-in-the-table">.*?</tr>', page, re.S).group(0)
+        cells = re.findall(r"<td>(.*?)</td>", index, re.S)
+        self.assertEqual(cells[1], str(before), "the index's named-tests column")
+
     def test_every_entry_has_an_anchor_and_the_index_links_to_it(self):
         links = collections.Counter(self.parsed.links)
         for listed in self.trace["entries"]:
