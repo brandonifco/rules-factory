@@ -27,6 +27,10 @@ the verifier's. Nothing here knows what `verify` checks, so a new rule there cha
 reports with no edit here. `verify` restores and may write lock files: `--verify` is not the
 read-only mode, and the read-only part of the report is computed before it runs.
 
+**As private as the trace.** `refused`, the report when the records cannot be read, is the trace's
+own refusal text, and a merge refusal can quote the corpus (trace.py, #600): a private engine's
+`status --verify --json` goes only where that engine's files may go (0068).
+
 **Read-only by default.** No restore, no build, no gate, no network, and nothing written in the
 engine or its repository: the git fact is asked with `--no-optional-locks`, so even git's index
 refresh is not written. That is the whole claim. Under `python3 tools/factory ...` CPython may
