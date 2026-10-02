@@ -162,7 +162,7 @@ def declared_scope(body):
     return found.group(1).strip("` ") if found else None
 
 
-# --- C#: is a change only to comments and formatting? ------------------------------------------
+# --- C#: is a change only to what comments say? ----------------------------------------------------
 
 
 #: Every character C# ends a line with, and a `//` comment with. LF alone is not it: a CR, a NEL or a
@@ -243,7 +243,7 @@ def code_signature(text):
 
 
 def comment_only(base, head):
-    """Whether two versions of a C# file differ in comments and formatting alone. Unprovable is False."""
+    """Whether two versions of a C# file differ only in what their comments say. Unprovable is False."""
     if base is None or head is None:
         return False
     try:
@@ -285,7 +285,7 @@ def decision_record(path, change, base, head):
     own pull request with its own entries. So a new record is `decision-record-only` unless its
     header says it overrules another (`**Supersedes:**`), which changes a ruling that is already in
     force. An existing record is different in kind: it may be the one the engine is built to, and
-    nothing here can tell a typo from a reversal, so an edit that is more than whitespace, and a
+    nothing here can tell a typo from a reversal, so an edit that is more than line endings and trailing space, and a
     deletion, is a `semantic-ruling`.
     """
     if change in REMOVALS:
@@ -364,7 +364,7 @@ def _path_class(path, change, patterns, read, fclass, compared):
     if path.endswith(".cs") and change not in REMOVALS and change != "ADDED":
         compared[0] += 1
         if compared[0] <= COMMENT_COMPARE_LIMIT and comment_only(read(path, "base"), read(path, "head")):
-            return DOCUMENTATION, "C# that differs from its base in comments and formatting alone"
+            return DOCUMENTATION, "C# whose code is byte-identical to its base, line for line, and differs only in what its comments say"
     return SEMANTIC_IMPLEMENTATION, "executable or build-affecting content on the semantic surface"
 
 

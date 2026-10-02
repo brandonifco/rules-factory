@@ -99,11 +99,24 @@ judgement:
   factory and the kernel may differ, which is what a factory update is. A moved map, a hand-written
   file, an overlay row, a decision record, a retired path, a dirty factory and a hand-edited generated
   file each leave a pull request an implementation, and each is a test.
-* **C# is `documentation` only if its code is the same.** Comments are removed and replaced by a
-  separator, every string and character literal and every preprocessor line is kept byte for byte,
-  and whether two tokens are separated is kept while by how much is not, so `a + ++b` and `a++ + b`
-  differ. A literal or comment the scanner cannot end is unprovable. It is built on the scanner the
-  reference graph already uses, and a `//` inside a changed string is code.
+* **C# is `documentation` only if its code is the same.** Not the same tokens: the same bytes, line for
+  line. The compiler reads source text and positions (`CallerLineNumber`, `CallerArgumentExpression`,
+  `#line`), so a blank line added above a call, or `1 +  2` for `1 + 2` inside an argument, is a
+  different program with the same tokens; the independent review of this decision found both. A comment's
+  content is removed, the spacing before it with it, a block comment keeps its line breaks so no line
+  moves, and every string and character literal and every preprocessor line is kept byte for byte. A
+  `//` comment ends at any of the five C# line terminators and not at LF alone. A literal or comment the
+  scanner cannot end is unprovable. It is built on the scanner the reference graph already uses, and a
+  `//` inside a changed string is code.
+* **A diff is judged by the surface it started with.** The surface is the union of the base's policy and
+  the head's, so a pull request that sets `semanticPaths` to `[]` and changes a handler is judged by the
+  surface it removed. `gh pr view --json files` names a rename by its new path alone, so the rails read the
+  REST list, which says where it came from, and the old path counts as deleted: a handler moved to
+  `notes/` is a handler removed. A renamed or copied decision record is a ruling whatever its new name,
+  and the factory writes paths and does not move them, so a renamed generated file is not its own.
+  Paths are percent-encoded for the API, because a `#` in a file name is a URL fragment and the request
+  would have returned another file. The conformance gate re-runs when the pull request body is edited,
+  because the class a pull request claims is a line in it.
 
 **What each class owes is one table**, `reviewclass.OWES`, which the rails read, so "owes a
 verdict" has one source. `review-packet.py` **refuses a semantic packet** for a change that owes
@@ -135,13 +148,20 @@ is still handed their packets, and owes no self-review of code it does not write
   effect, and a comment-only change owes none. That reviews have failed on prose beside code is a
   reason for a reviewer to read a comment when they read the code, which they still do for any change
   that has code in it.
+* **A forged provenance.** The classifier reads the ownership table and the provenance record the pull
+  request carries. A pull request that forges both consistently, together with the rails that read them,
+  is the trust model's existing limit and not a new one: those rails run from the pull request's own
+  tree, and the regeneration `validate.sh full` runs is what catches a forged generated file.
+* **Source text read from inside a comment.** A comment can appear or disappear inside an argument list
+  that `CallerArgumentExpression` reads. Nothing in a rules engine has a reason to, and the determinism
+  rules do not name it; if one does, the fact joins the predicate.
 * **A weaker surface.** `review.semanticPaths` is still the engine's, still the policy's, and still
   what decides which paths *can* be semantic. This only decides, for the ones that are on it, which
   the diff proves are not.
 
 ## Compatibility
 
-Fourteen managed files change: six tools (`pr-policy`, `conformance-gate`, `review-packet`,
+Fifteen managed files change: the conformance gate's workflow, six tools (`pr-policy`, `conformance-gate`, `review-packet`,
 `review-scope`, `repair-packet` and `record-verdict`) and the eight documents that say what they do
 (the contract, the three charters, the pull request template, and the agent-team, review-evidence and
 adversarial-self-review documents). One module is vendored that was not

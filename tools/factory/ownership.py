@@ -200,7 +200,7 @@ TABLE = (
         "states the correspondence pr-policy checks (#451); a `review class:` line, checked against the diff and never taken, and a `decision scope:` line (0076)"),
     Row(".github/workflows/pr-policy.yml", MANAGED, 1, "the required check that runs pr-policy.py (0029)"),
     Row(".github/workflows/conformance-gate.yml", MANAGED, 3,
-        "the required check that runs conformance-gate.py (0029)"),
+        "the required check that runs conformance-gate.py (0029); the gate re-runs when the pull request body is edited, because the review class a pull request claims is a line in it (0076)"),
     Row(".github/workflows/verdict-requeue.yml", MANAGED, 2,
         "runs requeue-gate.py on the status and issues events; deliberately not a required check "
         "(#191, #230)"),
@@ -398,7 +398,7 @@ RECIPE_SHA256 = {
         25: "6c95e3eafff98e597eca267f100a5a615aa086624f1f3fd5df7a1e8f16bdcacc",
         26: "8be45eef569c2a2e46dfaac0b564798431f688bba229c850d7ac73f95d0b70d0",
         27: "0fc0caeb0b289d9a4ed6c3cc397529b746f07ed7ac3bebbd8cc219f85e5f51f0",
-        28: "f2286f76e1f70350f7ef997ce921e16f158c0db156a4430c5b76fc7c81ed06d3",
+        28: "c764a5a4d78e8cf475847fd7143fbd35c3aac652285908065f22768f3a34c8a8",
     },
     "CLAUDE.md": {
         1: "04c07ad36e742fa60efafeca54d20bd96d16b6e338a44e46fad2b679ab8dfd9f",

@@ -482,7 +482,7 @@ decline that names why and cites where — that is the engine working, not the e
   | `semantic-ruling` | a decision that changes how rules are read: an existing decision record edited or deleted, or a new one whose header says it supersedes another | the entries it affects, or a `decision scope:`; `reviews/rulings/<decision>.json` in place of a self-review; a semantic packet; a semantic verdict |
   | `decision-record-only` | one or more **new** decision records that overrule none, and nothing else | structural validation: no entry, no self-review, no packet, no verdict |
   | `generated-or-provenance` | a factory update whose maps, corpora and randomness are the same at the base and the head, every changed file one the factory writes and hashed by the head record | structural and provenance validation (the `## Produced by the factory` section, admitted): no self-review, no verdict |
-  | `documentation` | a document, a comment or formatting change to C# the scanner proves is only that, a process file | structural validation |
+  | `documentation` | a document, a process file, or C# whose code is byte-identical to its base line for line and differs only in what its comments say | structural validation |
 
   **The diff decides; the pull request's words can only add review.** The `review class:` line of
   `## Map and rules conformance` is checked against the computed class. It can claim an
@@ -491,8 +491,12 @@ decline that names why and cites where — that is the engine working, not the e
   before the classes existed, and `tools/pr-policy.py` says how to claim the exemption. **A diff
   that cannot be shown inert is an implementation**: a path the table cannot place, a file that
   cannot be read, a record that cannot be compared, a factory update with a hand-written file in
-  it. A new decision record is `decision-record-only` and an edit to an existing one is a
-  `semantic-ruling`, because a tool cannot tell a typo from a reversal, and a reviewer can.
+  it, a handler renamed off the surface (the old path of a rename is read and counts as deleted).
+  The surface a diff is judged by is the union of the base's policy and the head's, so a pull
+  request cannot narrow it for its own change. A new decision record is `decision-record-only` and
+  an edit to an existing one is a `semantic-ruling`, because a tool cannot tell a typo from a
+  reversal, and a reviewer can; only line endings and trailing space are cosmetic, since in a
+  nested list the indentation is the meaning.
   `tools/review-packet.py` refuses a **semantic** packet for a change that owes none: an entry, a
   self-review and a packet written to satisfy a policy are the ceremony this removes.
 - **No reviewer is paid before the implementer has attacked its own work.** For a

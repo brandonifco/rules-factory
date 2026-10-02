@@ -350,6 +350,11 @@ class TestSemanticImplementation(ClassRails):
         self.write(hashed, "int F() => 2; // a note\n")
         self.pull_request(self.body("- review class: documentation\n- entry id(s): none", evidence=self.NO_TEST),
                           {hashed: "MODIFIED"}, contents={hashed: "int F() => 1; // a note\n"})
+        # What the truncated URL would have returned: a different file, `H.cs`, on the default branch, that
+        # differs from the head's only in a comment. Read for the base, it turns a code change into a comment change.
+        document = json.load(open(self.fixture_path, encoding="utf-8"))
+        document["contents"][""] = {f"src/{NAME}/H.cs": "int F() => 2; // an older note\n"}
+        self.fixture(document)
         gate = self.gate()
         self.assertEqual(gate.returncode, 1, gate.stdout)
         self.assertIn("rules-verdict/semantic is not recorded", gate.stdout)
