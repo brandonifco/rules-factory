@@ -86,6 +86,13 @@ template is filled with actual output rather than claims.
 That is the next role's, and a structural reviewer that starts arguing semantics stops being
 cheap.
 
+**Is the whole review for a change that owes no semantic one.** What a change owes is its review
+class's to say (`AGENTS.md` §7, rules-factory 0076): a new decision record that overrules nothing, a
+regeneration with the rules unmoved and a document get this role, `tools/pr-policy.py` and the gate,
+and no entry, no self-review, no semantic packet and no semantic verdict. The class is computed from
+the diff and fails closed, so removing that ceremony removes none of the review a change to a rule
+gets.
+
 ## Rules conformance reviewer
 
 High-reasoning, **read-only**, semantic review: does this implementation actually do what the

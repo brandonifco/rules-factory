@@ -8,8 +8,13 @@ Emitted by rules-factory as a managed file (decision 0029), and run by
 
 **What it asks.** For the pull request's current head commit:
 
-  1. does the change touch the semantic surface (`review.semanticPaths`)? Then the semantic
-     verdict must be recorded, and successful, at that commit.
+  1. does the change owe a semantic review? That is decided by its **review class**, computed from
+     the diff by the factory's one `scripts/factory/reviewclass.py` (rules-factory 0076): a change
+     that touches the semantic surface (`review.semanticPaths`) is a `semantic-implementation`, or
+     a `semantic-ruling` when it is a decision that changes how rules are read, unless the diff
+     provably is none of that and the pull request claims so -- a new decision record that
+     overrules nothing, a regeneration with the maps and corpora unmoved, a document. Then the
+     semantic verdict must be recorded, and successful, at that commit.
   2. is the linked issue classified as needing independent review? Then one of the configured
      independent contexts must also be recorded, and successful, at that commit.
   3. is any configured context recorded as a failure at that commit? Then this blocks, whatever
@@ -37,15 +42,27 @@ written in the engine's own paths. For an engine embedded under a repository roo
 decision 0069) those are not the same string, and the engine's record says what the difference is
 (`repository.enginePath`).
 
+**Where it stays as strict as it was.** The class is the diff's, never the pull request's: a
+pull request can claim an exemption the diff shows, or ask for more review, and cannot lower what
+the diff computes. A diff that touches the semantic surface and says nothing is an implementation,
+exactly as it was; and anything the classifier cannot prove inert -- a file it cannot read, a
+record it cannot compare, a module it cannot load -- is an implementation, or an undecidable gate,
+which fails.
+
 Standard library only, plus `gh` (or `$RULES_ENGINE_GH`).
 """
 import argparse
+import base64
+import binascii
 import json
 import os
 import pathlib
-import re
 import subprocess
 import sys
+
+# The class is decided by the engine's vendored scripts/factory/reviewclass.py, and an imported
+# module leaves its bytecode beside it: a path no ownership row covers, so the checkout goes dirty (#194).
+sys.dont_write_bytecode = True
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 POLICY = ".github/agent-policy.json"
@@ -120,19 +137,68 @@ def engine_relative(path, prefix):
     return path[len(prefix) + 1:] if path.startswith(prefix + "/") else None
 
 
-def semantic_surface(changed, patterns, prefix):
-    """The changed paths on the semantic surface, in the engine's own terms, sorted."""
-    return sorted({inside for path in changed
-                   for inside in [engine_relative(path, prefix)]
-                   if inside is not None and is_semantic(inside, patterns)})
+def factory_module(name):
+    """One of the engine's vendored `scripts/factory` modules, or Undecidable: a gate that cannot load
+    what decides the class has no honest answer, and says so rather than falling back to a weaker one."""
+    sys.path.insert(0, str(ROOT / "scripts" / "factory"))
+    try:
+        return __import__(name)
+    except ImportError as error:
+        raise Undecidable(f"scripts/factory/{name}.py is not importable ({error}); run `factory produce` again")
+    finally:
+        sys.path.pop(0)
 
 
-def is_semantic(path, patterns):
-    for pattern in patterns:
-        regex = re.escape(pattern).replace(r"\*\*/", "(?:.*/)?").replace(r"\*\*", ".*").replace(r"\*", "[^/]*")
-        if re.fullmatch(regex, path):
-            return True
-    return False
+def engine_name():
+    try:
+        record = json.loads((ROOT / "provenance.json").read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return None
+    name = (record.get("engine") or {}).get("name") if isinstance(record, dict) else None
+    return name if isinstance(name, str) and name else None
+
+
+def base_bytes(base_oid, path):
+    """The bytes of `path` (as GitHub spells it) at the commit the pull request is based on, or None."""
+    try:
+        return base64.b64decode(gh("api", f"repos/{{owner}}/{{repo}}/contents/{path}?ref={base_oid}",
+                                   "--jq", ".content"))
+    except (Undecidable, ValueError, binascii.Error):
+        return None
+
+
+def review_class(changed, patterns, prefix, body, base_oid):
+    """`(result, effective class, problems, hints, declared)` for the diff, in the engine's own terms.
+
+    `changed` is `{path as GitHub reports it: change type}`. The head's bytes are read from this
+    checkout and the base's from the API, only for the files the class needs them for. Where the
+    engine's own ownership table cannot be loaded nothing is the factory's, so nothing is exempt.
+    """
+    reviewclass = factory_module("reviewclass")
+    inside = {}
+    for path, change in changed.items():
+        relative = engine_relative(path, prefix)
+        if relative is not None:
+            inside[relative] = change
+    name = engine_name()
+    try:
+        ownership = factory_module("ownership")
+        fclass = reviewclass.factory_class(ownership, name) if name else (lambda _path: None)
+    except Undecidable:
+        fclass = lambda _path: None  # noqa: E731
+
+    def read(path, side):
+        if side == "head":
+            try:
+                return (ROOT / path).read_bytes()
+            except OSError:
+                return None
+        return base_bytes(base_oid, f"{prefix}/{path}" if prefix else path) if base_oid else None
+
+    result = reviewclass.classify(inside, patterns, read=read, fclass=fclass)
+    declared = reviewclass.declared_class(body)
+    effective, problems, hints = reviewclass.judge(result, declared)
+    return result, effective, problems, hints, declared, reviewclass
 
 
 def statuses(repository, sha):
@@ -158,7 +224,7 @@ def main(argv=None):
             raise Undecidable(f"{POLICY} sets no review.semanticContext")
 
         pull = json.loads(gh("pr", "view", str(args.pr), "--json",
-                             "number,headRefOid,files,changedFiles,closingIssuesReferences"))
+                             "number,headRefOid,baseRefOid,body,files,changedFiles,closingIssuesReferences"))
         sha = pull.get("headRefOid")
         if not sha:
             raise Undecidable(f"PR #{args.pr} has no head commit")
@@ -174,7 +240,14 @@ def main(argv=None):
             raise Undecidable(f"GitHub listed {len(changed)} of PR #{args.pr}'s {count} changed files, so the file "
                               f"list is truncated. The semantic surface cannot be decided from a partial list, and "
                               f"a gate that decides on half the files is the failure this check exists to prevent")
-        touched = semantic_surface(changed, review.get("semanticPaths") or [], engine_path())
+        # Which verdicts this change needs is its review class's to say (0076). The surface is still
+        # the policy's: it decides which paths *can* be semantic, and the class decides which of
+        # those the diff proves are not.
+        changes = {f["path"]: f["changeType"] for f in listed_files(pull, args.pr)}
+        result, effective, problems_of_class, hints, declared, reviewclass = review_class(
+            changes, review.get("semanticPaths") or [], engine_path(), pull.get("body") or "",
+            pull.get("baseRefOid"))
+        touched = list(result["semanticFiles"]) if effective in reviewclass.SEMANTIC else []
 
         issues = pull.get("closingIssuesReferences") or []
         if len(issues) != 1:
@@ -196,6 +269,10 @@ def main(argv=None):
 
     print(f"conformance-gate: PR #{args.pr}, head {sha[:12]}")
     print(f"  semantic surface: {len(touched)} changed file(s)" + (f" ({', '.join(touched[:4])})" if touched else ""))
+    for line in reviewclass.describe(result, effective, declared):
+        print(f"  {line}")
+    for line in hints + problems_of_class:
+        print(f"  note: {line}")
     print(f"  recorded at this commit: {', '.join(f'{c}={s}' for c, s in sorted(recorded.items())) or 'nothing'}")
 
     problems = []
@@ -207,8 +284,8 @@ def main(argv=None):
                             f"context does not clear it.")
 
     if touched and recorded.get(semantic_context) != "success":
-        problems.append(f"{semantic_context} is not recorded as a success at {sha[:12]}, and this change touches the "
-                        f"semantic surface. Review the head commit and record the verdict "
+        problems.append(f"{semantic_context} is not recorded as a success at {sha[:12]}, and this change is a "
+                        f"`{effective}`, which owes a semantic verdict. Review the head commit and record the verdict "
                         f"(`tools/review-packet.py {args.pr}`, then `tools/record-verdict.py --pr "
                         f"{args.pr} --reviewer semantic --verdict pass --packet <its .review.json>`). "
                         f"A verdict on an earlier commit is a verdict on bytes nobody is merging.")
@@ -229,7 +306,8 @@ def main(argv=None):
             print(f"  X  {problem}")
         return 1
     if not touched:
-        print("  nothing on the semantic surface: no rules verdict required for this change")
+        print(f"  a `{effective}` change owes no rules verdict: structural and provenance validation are "
+              f"pr-policy's, and this gate asks for nothing more")
     print("\nconformance-gate: the verdicts this change needs are recorded at the commit being merged.")
     return 0
 

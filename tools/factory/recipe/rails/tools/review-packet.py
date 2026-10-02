@@ -65,9 +65,19 @@ whose delta was refused for a stated reason (`--review full --prior <attestation
 acceptance review at the merge boundary (`--review final --prior <attestation>`).
 
 **A reviewer is paid only after the implementer has attacked its own work.** A semantic,
-independent or whole packet that names an entry is refused until every entry has a committed
-`reviews/self-review/<entry id>.json` answering all twenty classes of
+independent or whole packet for a `semantic-implementation` that names an entry is refused until
+every entry has a committed `reviews/self-review/<entry id>.json` answering all twenty classes of
 `docs/adversarial-self-review.md`, made against the entry's claim digest at the reviewed head.
+
+**What a change owes is its review class's to say** (rules-factory 0076): `scripts/factory/
+reviewclass.py` computes it from the diff, and the first section of every packet states it. A
+`semantic-ruling` is owed a decision-scoped record, `reviews/rulings/<decision>.json`
+(`docs/adversarial-self-review.md`), in place of the self-review it has no code to attack with. A
+change whose class owes no semantic review -- a new decision record that overrules nothing, a
+regeneration with the rules unmoved, a document -- is refused a **semantic** packet outright:
+a packet and a self-review written only to satisfy a policy are the ceremony this class exists to
+remove. The structural cut, which is the review such a change gets, is unaffected, and so is
+`--stdout`, which writes nothing a verdict could be recorded from.
 
 **Ephemeral**, for the reason an entry packet is: written outside the repository, never committed.
 
@@ -435,6 +445,87 @@ def section(title, body):
     return f"## {title}\n\n{body.rstrip()}\n"
 
 
+def factory_module(name):
+    """One of this engine's own vendored `scripts/factory` modules, or a refusal that says to produce again."""
+    sys.path.insert(0, str(ROOT / "scripts" / "factory"))
+    try:
+        return __import__(name)
+    except ImportError as error:
+        raise Refused(f"scripts/factory/{name}.py is not importable ({error}); run `factory produce` again")
+    finally:
+        sys.path.pop(0)
+
+
+def git_show(commit, path):
+    """The bytes of an engine-relative `path` as `commit` commits it, or None."""
+    prefix = (engine_path() + "/") if engine_path() else ""
+    done = subprocess.run(["git", "show", f"{commit}:{prefix}{path}"], cwd=ROOT, stdout=subprocess.PIPE,
+                          stderr=subprocess.PIPE)
+    return done.stdout if done.returncode == 0 else None
+
+
+def review_class(snapshot, record, changes, patterns, body, base_sha):
+    """`(result, effective, problems, hints, declared, module)`: what the reviewed diff owes (0076).
+
+    `changes` is `{path as GitHub reports it: change type}`. The head's bytes are the reviewed
+    snapshot's and the base's are the base commit's, so neither is the caller's checkout. The
+    ownership table is the reviewed commit's own, as for the changed-path classes below: a path is
+    the factory's by the rows that wrote it. Where that table cannot be loaded nothing is the
+    factory's, and nothing is exempt.
+    """
+    module = factory_module("reviewclass")
+    prefix = engine_path()
+    inside = {}
+    for path, change in changes.items():
+        relative = engine_relative(path, prefix)
+        if relative is not None:
+            inside[relative] = change
+    name = (record.get("engine") or {}).get("name")
+    fclass = lambda _path: None  # noqa: E731
+    if isinstance(name, str) and name:
+        sys.path.insert(0, str(snapshot / "scripts" / "factory"))
+        try:
+            import ownership  # noqa: E402  (the reviewed commit's own table)
+            fclass = module.factory_class(ownership, name)
+        except ImportError:
+            pass
+
+    def read(path, side):
+        if side == "head":
+            try:
+                return (snapshot / path).read_bytes()
+            except OSError:
+                return None
+        return git_show(base_sha, path)
+
+    result = module.classify(inside, patterns, read=read, fclass=fclass)
+    declared = module.declared_class(body)
+    effective, problems, hints = module.judge(result, declared)
+    return result, effective, problems, hints, declared, module
+
+
+def ruling_review_problems(snapshot, result, base_sha):
+    """Every way the decision records this change rules on lack the review record they owe (0076).
+
+    One `reviews/rulings/<decision>.json` per decision record, made against that record's bytes at
+    the reviewed head, so an edit to the ruling after it was reviewed makes the record stale.
+    """
+    model = factory_module("reviewscope")
+    out = []
+    for path in result["decisionRecords"]:
+        try:
+            data = (snapshot / path).read_bytes()
+        except OSError:
+            data = b""          # a deleted record: the ruling withdrawn is reviewed against nothing
+        record_path = snapshot / model.RULING_REVIEWS / f"{model.ruling_review_stem(path)}.json"
+        try:
+            record = json.loads(record_path.read_text(encoding="utf-8")) if record_path.is_file() else None
+        except (OSError, ValueError) as error:
+            record = {"unreadable": str(error)}
+        out += model.ruling_review_problems(record, path, hashlib.sha256(data).hexdigest())
+    return out
+
+
 def ownership_of(snapshot, record):
     """`path -> ownership class`, from the reviewed commit's own vendored table, or `(None, why)`.
 
@@ -564,7 +655,7 @@ def scope_tool():
     return module
 
 
-def review_scope(snapshot, checked_maps, entries, head, review, prior, base=None):
+def review_scope(snapshot, checked_maps, entries, head, review, prior, base=None, self_review=True):
     """The scope record a comprehensive review is formed on, after the self-review gate (0071).
 
     Refuses when an entry has no current adversarial self-review, when `--review final` has no
@@ -575,7 +666,7 @@ def review_scope(snapshot, checked_maps, entries, head, review, prior, base=None
     try:
         model, current, facts = tool.engine_state(snapshot, checked_maps, entries)
         problems = []
-        for entry_id in entries:
+        for entry_id in (entries if self_review else ()):
             record_path = snapshot / model.SELF_REVIEWS / f"{entry_id}.json"
             try:
                 record = json.loads(record_path.read_text(encoding="utf-8")) if record_path.is_file() else None
@@ -682,14 +773,31 @@ def build(number, base, package_maps=(), recordable=True, role=ALL, review_type=
         # the wrong one told a semantic reviewer that twenty new handlers and their tests were not its
         # business, with the entry packets withheld because the surface looked empty (#515). A path
         # outside the engine is not this engine's surface and is listed among what was withheld.
-        semantic = semantic_surface(changed, review.get("semanticPaths") or [], engine_path())
-
         try:
             provenance_bytes = (snapshot / PROVENANCE).read_bytes()
             record = json.loads(provenance_bytes.decode("utf-8"))
             policy_bytes = (snapshot / POLICY).read_bytes()
         except (OSError, UnicodeDecodeError, ValueError) as error:
             raise Refused(f"reviewed commit {head[:12]} does not carry readable review context ({error})")
+
+        # What this change owes is its review class's to say (0076), and the surface a semantic
+        # reviewer is handed is what that class says is semantic: not every path the policy lists.
+        changes = {f["path"]: f["changeType"] for f in listed_files(pull, number)}
+        result, effective, class_problems, class_hints, declared, classes = review_class(
+            snapshot, record, changes, review.get("semanticPaths") or [], pull.get("body") or "", base_sha)
+        prefix = engine_path()
+        semantic = [f"{prefix}/{path}" if prefix else path for path in result["semanticFiles"]] \
+            if effective in classes.SEMANTIC else []
+        owed = classes.owes(effective)
+        if recordable and role == SEMANTIC and not owed["verdict"]:
+            raise Refused(f"this change is `{effective}`, which owes no semantic review: "
+                          + "; ".join(result["reasons"][:3] or [effective])
+                          + ". A semantic packet, and the entries and self-review it would require, written only to "
+                            "satisfy a policy are the ceremony the review classes remove. The review it gets is "
+                            "structural (`--role structural`) and the pull request policy's. If this change is "
+                            "more than that, say so on the `review class:` line of its conformance section; if "
+                            "you want to read this packet anyway, `--stdout` writes nothing a verdict can be "
+                            "recorded from.")
 
         entries, unreadable = entries_named(issue.get("body"), pull.get("body"))
 
@@ -771,8 +879,10 @@ def build(number, base, package_maps=(), recordable=True, role=ALL, review_type=
                                     "bytes are not here (`docs/agent-team.md`). That review runs after you, "
                                     "on a packet built for it."
                                   if entries else
-                                  NAMES_NO_ENTRY + " For a change to the rules surface that is a finding: the "
-                                  "next reviewer cannot check an implementation against a rule nobody named.")
+                                  NAMES_NO_ENTRY + (" For a change to the rules surface that is a finding: the "
+                                  "next reviewer cannot check an implementation against a rule nobody named."
+                                                    if effective == classes.SEMANTIC_IMPLEMENTATION else
+                                                    f" A `{effective}` change owes no entry."))
                                  + naming_note(unreadable)))
         elif entries:
             rendered = []
@@ -807,19 +917,39 @@ def build(number, base, package_maps=(), recordable=True, role=ALL, review_type=
                     "from them, not from the implementation.\n\n" + "\n".join(rendered) + naming_note(unreadable))
             parts.append(section("3. The entries, as the map has them", body))
         else:
-            body = (NAMES_NO_ENTRY + " For a change to the rules surface that is a finding: the reviewer cannot "
-                    "check an implementation against a rule nobody named." + naming_note(unreadable))
+            body = (NAMES_NO_ENTRY + (" For a change to the rules surface that is a finding: the reviewer cannot "
+                    "check an implementation against a rule nobody named."
+                                      if effective == classes.SEMANTIC_IMPLEMENTATION else
+                                      f" A `{effective}` change owes no entry.") + naming_note(unreadable))
             parts.append(section("3. The entries, as the map has them", body))
 
         # What a comprehensive review is formed on, and the gate in front of it: only for a packet a
         # verdict can be recorded from, and only where there is entry evidence to scope (0071). After
         # the entry packets, so an entry nobody can build a packet for is refused for that first.
-        scope, prior_document = ((review_scope(snapshot, checked_maps, entries, head, review_type, prior, base_sha))
+        if recordable and effective == classes.SEMANTIC_RULING and role in READS_ENTRIES:
+            problems = ruling_review_problems(snapshot, result, base_sha)
+            if problems:
+                raise Refused("the implementer's review of the ruling is not complete at this head, so no reviewer "
+                              "is paid yet:\n" + "\n".join(f"  - {p}" for p in problems)
+                              + "\nWrite each record from `tools/review-scope.py ruling-review <decision record>` and "
+                                "commit it under reviews/rulings/ (docs/adversarial-self-review.md).")
+        scope, prior_document = ((review_scope(snapshot, checked_maps, entries, head, review_type, prior, base_sha,
+                                               self_review=owed["self_review"]))
                                  if recordable and entries and role in READS_ENTRIES and maps_read
                                  else (None, None))
         if prior and scope is None and recordable:
             raise Refused("--prior applies to a packet that carries entry evidence: a semantic, independent or whole "
                           "packet that names an entry, with --package-map")
+        parts.insert(3, section("0. What this change owes",
+                                "\n".join(classes.describe(result, effective, declared))
+                                + "".join(f"\n- note: {line}" for line in class_hints + class_problems)
+                                + ("".join(f"\n- ruling: `{path}`, reviewed by `reviews/rulings/"
+                                           f"{factory_module('reviewscope').ruling_review_stem(path)}.json`"
+                                           for path in result["decisionRecords"])
+                                   if effective == classes.SEMANTIC_RULING else "")
+                                + "\n\nThis is computed from the diff, not taken from the pull request: its "
+                                  "`review class:` line can claim an exemption the diff shows or ask for more, and "
+                                  "cannot lower what the diff computes (rules-factory 0076)."))
         if review_type == "final":
             parts.insert(3, section("0. Final acceptance review",
                                     "This is the **final acceptance review**: the complete claimed slice, reread once, from "
@@ -921,9 +1051,9 @@ def build(number, base, package_maps=(), recordable=True, role=ALL, review_type=
                              "engine declaring `none` may not reference a randomness package at all."))
 
         gates = [f"- `validate` — `./scripts/validate.sh full`",
-                 f"- `{review.get('semanticContext', '(unset)')}` — required for this change"
-                 if semantic else f"- `{review.get('semanticContext', '(unset)')}` — not required: nothing here touches "
-                                  f"the semantic surface"]
+                 f"- `{review.get('semanticContext', '(unset)')}` — required for this change (`{effective}`)"
+                 if semantic or owed["verdict"] else
+                 f"- `{review.get('semanticContext', '(unset)')}` — not required: this change is `{effective}`"]
         if independent:
             chain = " → ".join(link.get("context", "?") for link in review.get("independentFallback") or [])
             gates.append(f"- one of: {chain} — required, because the issue is {labels.get('independentRisk')}")
@@ -997,6 +1127,9 @@ def build(number, base, package_maps=(), recordable=True, role=ALL, review_type=
                 }
                 for package in map_packages(record)
             ],
+            # What this change was computed to be, and what it was judged as once the pull request's
+            # claim was weighed (0076): the recorder refuses a semantic verdict on a class that owes none.
+            "reviewClass": {"computed": result["class"], "effective": effective, "declared": declared},
             "mapsReadFrom": ("--package-map, checked against the reviewed commit, and the entry packets "
                              "built from those exact bytes" if maps_read
                              else "MSBuild inside the reviewed tree -- NOT VERIFIED" if entries

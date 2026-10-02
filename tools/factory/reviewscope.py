@@ -145,6 +145,7 @@ CHARTER = ".claude/agents/rules-conformance.md"
 POLICY = ".github/agent-policy.json"
 ATTESTATIONS = "reviews/attestations"
 SELF_REVIEWS = "reviews/self-review"
+RULING_REVIEWS = "reviews/rulings"
 INVARIANTS = "reviews/invariants.json"
 
 
@@ -1240,6 +1241,78 @@ def self_review_problems(record, entry_id, digest, declared_tests):
     unknown = sorted(set(classes) - set(SELF_REVIEW_IDS))
     if unknown:
         out.append(f"{entry_id}: unknown classes {', '.join(unknown)}")
+    return out
+
+
+# --- the review of a ruling ----------------------------------------------------------------------
+
+RULING_REVIEW_FORMAT = 1
+#: What an implementer owes before a reviewer is paid to read a *ruling*: the decision-scoped
+#: counterpart of the twenty classes, for a change that decides how rules are read and implements
+#: none (0076). The attack on a ruling is not an off-by-one; it is a ruling that contradicts one in
+#: force, rests on nothing the owner said, or makes behaviour already built wrong without saying so.
+RULING_REVIEW_CLASSES = (
+    ("corpus-basis", "What does the corpus say on each question this decides, and does the ruling follow it or depart from it? A departure is the owner's, and says so."),
+    ("owner-authority", "Who made each ruling, where, and is every one the owner's own answer rather than an implementer's inference?"),
+    ("conflicts", "Which recorded decisions or overlay rulings does this contradict, supersede or narrow, and how is each resolved?"),
+    ("implemented-behaviour", "Which implemented entries does this make wrong, and which issue changes them? If none, why none?"),
+    ("unreached-cases", "What does the ruling leave open, and does the engine decline it rather than guess?"),
+    ("pinning-test", "For each ruling, the test that will pin it when it is built, or why none can exist yet."),
+)
+RULING_REVIEW_IDS = tuple(identifier for identifier, _ in RULING_REVIEW_CLASSES)
+RULING_REVIEW_OUTCOMES = ("answered", "not-applicable")
+
+
+def ruling_review_stem(path):
+    """The record's name for a decision record at `path`: `docs/decisions/0007-x.md` -> `0007-x`."""
+    return path.rsplit("/", 1)[-1][:-3] if path.endswith(".md") else path.rsplit("/", 1)[-1]
+
+
+def ruling_review_skeleton(path, digest):
+    """The record an implementer fills in for one decision record: every class, unanswered."""
+    return {"rulingReviewFormat": RULING_REVIEW_FORMAT, "decision": path, "recordSha256": digest,
+            "scope": "", "entries": [],
+            "classes": {identifier: {"outcome": "", "answer": "", "reason": ""} for identifier in RULING_REVIEW_IDS}}
+
+
+def ruling_review_problems(record, path, digest):
+    """Every way `record` does not show the review of the ruling at `path`. Empty when it does.
+
+    `digest` is the SHA-256 of the decision record's bytes at the head under review, so a record
+    made before the last edit to the ruling is stale. An answer is held to the floor a self-review
+    reason is: a sentence somebody could disagree with, and not a word that fills a box.
+    """
+    if not isinstance(record, dict):
+        return [f"{path}: no ruling review record"]
+    out = []
+    if record.get("rulingReviewFormat") != RULING_REVIEW_FORMAT:
+        out.append(f"{path}: rulingReviewFormat is {record.get('rulingReviewFormat')!r}, not {RULING_REVIEW_FORMAT}")
+    if record.get("decision") != path:
+        out.append(f"{path}: the record is for {record.get('decision')!r}")
+    if record.get("recordSha256") != digest:
+        out.append(f"{path}: the record was made against decision bytes {str(record.get('recordSha256'))[:12]}, and "
+                   f"the decision is now {digest[:12]}: it was edited since, so review it again")
+    if _placeholder(str(record.get("scope") or "")):
+        out.append(f"{path}: `scope` says nothing anybody can check; say what this ruling decides")
+    entries = record.get("entries")
+    if not isinstance(entries, list) or not all(isinstance(e, str) and e for e in entries):
+        out.append(f"{path}: `entries` is a list of the entry ids this ruling affects, and empty when its scope is general")
+    classes = record.get("classes") if isinstance(record.get("classes"), dict) else {}
+    for identifier in RULING_REVIEW_IDS:
+        answer = classes.get(identifier)
+        if not isinstance(answer, dict):
+            out.append(f"{path}: {identifier} is not answered")
+            continue
+        outcome = answer.get("outcome")
+        text = answer.get("answer") if outcome == "answered" else answer.get("reason")
+        if outcome not in RULING_REVIEW_OUTCOMES:
+            out.append(f"{path}: {identifier} has outcome {outcome!r}; one of {', '.join(RULING_REVIEW_OUTCOMES)}")
+        elif _placeholder(str(text or "")):
+            out.append(f"{path}: {identifier} is {outcome} with no "
+                       f"{'answer' if outcome == 'answered' else 'reason'} anybody can check")
+    unknown = sorted(set(classes) - set(RULING_REVIEW_IDS))
+    if unknown:
+        out.append(f"{path}: unknown classes {', '.join(unknown)}")
     return out
 
 

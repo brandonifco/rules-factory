@@ -56,11 +56,34 @@ Closes #
 
      A factory update (above) names the map package and version and nothing else here: a map
      version bump regenerates every entry, so there is no single entry id and no single locator,
-     and "all of them" names nothing a reviewer can check. -->
+     and "all of them" names nothing a reviewer can check.
 
+     **The review class** says what review this change owes (rules-factory 0076). tools/pr-policy.py
+     computes it from the diff and checks this line against it: the line can claim an exemption the
+     diff shows, or ask for more review, and cannot lower what the diff computes. Leave it empty and
+     a change that touches the semantic surface is reviewed as an implementation, as it always was.
+
+       semantic-implementation   a handler, a rule, the overlay, the corpus: names its entries and a
+                                 locator, has a self-review of each, a semantic packet and a verdict
+       semantic-ruling           a decision that changes how rules are read -- an existing decision
+                                 record edited, or one that says it supersedes another: names the
+                                 entries it affects or a `decision scope:`, has a review of the
+                                 ruling, a semantic packet and a verdict
+       decision-record-only      a new decision record that overrules nothing, and nothing else:
+                                 no entry, no self-review, no packet, no verdict
+       generated-or-provenance   a factory update with the maps, corpora and randomness unmoved,
+                                 which claims no behavioural change; needs the produce section above
+       documentation             a document, a comment, a process file with no executable effect
+
+     A decision that settles a question the corpus leaves open is recorded as a decision record; if
+     it overrules one already in force it is a `semantic-ruling`, and says so on its header with a
+     `**Supersedes:**` line. -->
+
+- review class:
 - entry id(s):
 - map package and version:
 - source locator(s):
+- decision scope:
 - owner's rulings used, if any:
 
 ## Tests and evidence

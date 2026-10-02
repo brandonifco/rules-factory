@@ -89,6 +89,9 @@ LAYERS = {
     # What a review covered and what a repair invalidates of it (0071). A function of its
     # arguments and nothing else, so the engine's rails and the benchmark read the same model.
     "reviewscope": set(),
+    # What kind of review a change owes (0076). It reads the C# scanner the review model owns, so a
+    # comment is told from a literal by the one scanner the reference graph is built with.
+    "reviewclass": {"reviewscope"},
     "rulings": set(),
     # What an engine's records say about each entry (#576). It reads through the modules that own
     # each record -- the map packages as the backlog reads them, the composition, the overlay and

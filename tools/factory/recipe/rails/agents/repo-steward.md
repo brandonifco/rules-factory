@@ -67,6 +67,17 @@ locator. A decline names why and where.
 notes, this engine's own docs. A change that silently invalidates a recorded decision is a
 finding even when the code is right.
 
+**The review class.** The first section of your packet says what the diff owes, computed from it
+(`AGENTS.md` §7), and for a change that owes no semantic review **you are the review it gets**.
+Check what the class rests on, because nobody after you will: for `decision-record-only`, that
+every changed file is a new decision record and the header overrules none; for
+`generated-or-provenance`, that the packet's regeneration facts hold — the maps, the corpora and the
+randomness the same at the base and the head, every changed file one the factory writes — and
+that the pull request names the factory, map and kernel versions `provenance.json` records; for
+`documentation`, that nothing a class-by-class reading would call behaviour is in it. A claimed
+class the diff contradicts, or one that would exempt a change that is more than it says, is a
+blocking finding.
+
 ## What you do not do
 
 - You do not judge whether the implementation **reads the rule correctly**. That is the rules
