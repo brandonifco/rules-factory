@@ -202,50 +202,100 @@ switch this throw true try typeof uint ulong unchecked unsafe ushort using var v
 yield""".split())
 
 
-#: How deep literals may nest inside interpolation holes before the scanner stops following them. No
-#: hand-written C# comes near it; a file that does is blanked to its end rather than overflowing the
-#: stack, which would fail the whole reference graph instead of one file.
-MAX_NESTING = 64
+def _open_literal(text, i):
+    """(the frame of the literal that starts at `i`, the index after its opening quote).
 
-
-def _literal_end(text, i, depth=0):
-    """The index just past the string literal that starts at `i` (with its `$`/`@` prefix).
-
-    An interpolated string's holes are code, and code can hold a string of its own:
-    `$"{(x ? $"Round {n}'s" : "none")}"`. So a hole is scanned as code to its closing brace -- nested
-    literals, char literals and braces included -- and the outer literal ends at the first quote
-    *outside* every hole (#581). Until then it ended at the nested literal's opening quote, the
-    nested literal's contents were read as code, and an apostrophe in them opened a char literal
-    that ran to the end of the file.
+    A raw string literal holds no hole this scanner follows, so it is not opened as a frame: the
+    frame is None and the index is already the one just past its closing quotes.
     """
     n, k = len(text), i
     while k < n and text[k] in "$@":
         k += 1
     prefix = text[i:k]
-    verbatim, interpolated = "@" in prefix, "$" in prefix
     quotes = 0
     while k + quotes < n and text[k + quotes] == '"':
         quotes += 1
     if quotes >= 3:                                           # a raw string literal
         j = text.find('"' * quotes, k + quotes)
-        return n if j < 0 else j + quotes
-    j = k + 1
-    while j < n:
-        c = text[j]
-        if c == "\\" and not verbatim:
-            j += 2
-        elif c == '"':
-            if verbatim and text[j + 1:j + 2] == '"':
+        return None, n if j < 0 else j + quotes
+    return {"hole": False, "verbatim": "@" in prefix, "interpolated": "$" in prefix}, k + 1
+
+
+def _literal_end(text, i):
+    """The index just past the string literal that starts at `i` (with its `$`/`@` prefix).
+
+    An interpolated string's holes are code, and code can hold a string of its own:
+    `$"{(x ? $"Round {n}'s" : "none")}"`. So a hole is scanned as code to its closing brace -- nested
+    literals, char literals, comments, braces and parentheses included -- up to its format clause, a
+    `:` outside every brace and parenthesis (C# requires a conditional in a hole to be
+    parenthesised, so this `:` is never one), after which everything up to the `}` is format text.
+    The outer literal ends at the first quote *outside* every hole (#581).
+
+    One loop over an explicit stack of open literals and holes, so no depth of nesting can exhaust
+    the interpreter's stack and none is cut short (#598): a scanner that gave up at some depth would
+    blank everything after it, and every declaration there would leave the reference graph -- the
+    one direction the review model may never err in.
+    """
+    n = len(text)
+    frame, j = _open_literal(text, i)
+    if frame is None:
+        return j
+    stack = [frame]
+    while j < n and stack:
+        top, c = stack[-1], text[j]
+        if not top["hole"]:
+            if c == "\\" and not top["verbatim"]:
                 j += 2
-                continue
-            return j + 1
-        elif interpolated and c in "{}" and text[j + 1:j + 2] == c:
-            j += 2                                            # `{{` or `}}`: a brace, not a hole
-        elif interpolated and c == "{":
-            j = _hole_end(text, j + 1, verbatim, depth + 1)
+            elif c == '"':
+                if top["verbatim"] and text[j + 1:j + 2] == '"':
+                    j += 2
+                else:
+                    stack.pop()
+                    j += 1
+            elif top["interpolated"] and c in "{}" and text[j + 1:j + 2] == c:
+                j += 2                                        # `{{` or `}}`: a brace, not a hole
+            elif top["interpolated"] and c == "{":
+                stack.append({"hole": True, "verbatim": top["verbatim"], "braces": 0, "parens": 0})
+                j += 1
+            else:
+                j += 1
+        elif text.startswith("//", j):
+            end = text.find("\n", j)
+            j = n if end < 0 else end + 1
+        elif text.startswith("/*", j):
+            end = text.find("*/", j + 2)
+            j = n if end < 0 else end + 2
+        elif c == '"' or (c in "$@" and '"' in text[j:j + 3]):
+            opened, j = _open_literal(text, j)
+            if opened is not None:
+                stack.append(opened)
+        elif c == "'":
+            j = _char_end(text, j)
+        elif c in "([":
+            top["parens"] += 1
+            j += 1
+        elif c in ")]":
+            top["parens"] = max(top["parens"] - 1, 0)
+            j += 1
+        elif c == "{":
+            top["braces"] += 1
+            j += 1
+        elif c == "}":
+            if top["braces"] == 0:
+                stack.pop()
+            else:
+                top["braces"] -= 1
+            j += 1
+        elif (c == ":" and top["braces"] == 0 and top["parens"] == 0 and text[j + 1:j + 2] != ":"
+              and text[j - 1:j] != ":"):
+            j += 1                                            # the format clause: text up to the `}`
+            while j < n and text[j] != "}":
+                j += 2 if text[j] == "\\" and not top["verbatim"] else 1
+            stack.pop()
+            j += 1
         else:
             j += 1
-    return n
+    return min(j, n)
 
 
 def _char_end(text, i):
@@ -254,47 +304,6 @@ def _char_end(text, i):
     while j < len(text) and text[j] != "'":
         j += 2 if text[j] == "\\" else 1
     return j + 1
-
-
-def _hole_end(text, j, verbatim=False, depth=0):
-    """The index just past the `}` that closes an interpolation hole whose code starts at `j`.
-
-    The hole is code -- comments, nested literals, char literals, braces and parentheses -- up to
-    its format clause: a `:` outside every brace and parenthesis (C# requires a conditional in a hole
-    to be parenthesised, so this `:` is never one), after which everything up to the `}` is format
-    text, where an apostrophe or a quote is a character and not a literal.
-    """
-    n, braces, parens = len(text), 0, 0
-    if depth > MAX_NESTING:
-        return n
-    while j < n:
-        c = text[j]
-        if text.startswith("//", j):
-            j = n if text.find("\n", j) < 0 else text.find("\n", j) + 1
-        elif text.startswith("/*", j):
-            j = n if text.find("*/", j + 2) < 0 else text.find("*/", j + 2) + 2
-        elif c == '"' or (c in "$@" and '"' in text[j:j + 3]):
-            j = _literal_end(text, j, depth)
-        elif c == "'":
-            j = _char_end(text, j)
-        elif c in "([":
-            parens, j = parens + 1, j + 1
-        elif c in ")]":
-            parens, j = max(parens - 1, 0), j + 1
-        elif c == "{":
-            braces, j = braces + 1, j + 1
-        elif c == "}":
-            if braces == 0:
-                return j + 1
-            braces, j = braces - 1, j + 1
-        elif c == ":" and braces == 0 and parens == 0 and text[j + 1:j + 2] != ":" and text[j - 1:j] != ":":
-            j += 1
-            while j < n and text[j] != "}":
-                j += 2 if text[j] == "\\" and not verbatim else 1
-            return min(j + 1, n)
-        else:
-            j += 1
-    return n
 
 
 def blank_literals(text):

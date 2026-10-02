@@ -601,9 +601,19 @@ class TestNestedLiterals(Scenario):
             with self.subTest(literal):
                 self.assertEqual(self.members(literal), ["A", "B"])
 
-    def test_nesting_beyond_reason_is_not_a_crash(self):
-        deep = '$"{' * 500 + "x" + '}"' * 500
-        self.assertIn("A", self.members(deep))
+    def test_no_depth_of_nesting_loses_what_follows_it(self):
+        """#598. A cap on nesting that blanked the rest of the file dropped `B` at the 65th hole."""
+        for depth in (64, 65, 500, 5000):
+            with self.subTest(depth):
+                self.assertEqual(self.members('$"{' * depth + "x" + '}"' * depth), ["A", "B"])
+
+    def test_a_deeply_nested_literal_keeps_its_file_in_the_claim_that_reaches_it(self):
+        deep = '$"{' * 100 + "x" + '}"' * 100
+        files = {"src/E/Handlers.cs": (self.HEAD + deep + self.TAIL).replace(
+                     "static partial void B();", "static partial void B();\n  internal static int Late() => 1;").encode(),
+                 "src/E/Handlers.More.cs": b"static partial class Handlers {\n  static int Other() => 1;\n}\n",
+                 "src/E/Caller.cs": b"internal static class Caller { static int Call() => Handlers.Late(); }\n"}
+        self.assertEqual(self.m.reference_graph(files)["src/E/Caller.cs"], ["src/E/Handlers.cs"])
 
     def test_a_handler_after_a_nested_literal_is_still_a_dependency(self):
         files = {"src/E/Handlers.cs": (self.HEAD + '$"v {(x > 0 ? $"Round {x}\'s" : "none")}"' + self.TAIL
