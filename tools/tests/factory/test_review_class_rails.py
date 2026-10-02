@@ -257,8 +257,9 @@ class TestDecisionRecordOnly(ClassRails):
 class TestSemanticImplementation(ClassRails):
     """Reykholt #77: handlers, tests and overlay rows. Nothing about it got cheaper."""
 
-    def implementation_request(self, conformance=None, files=None):
-        self.engine()
+    def implementation_request(self, conformance=None, files=None, engine=True):
+        if engine:
+            self.engine()
         self.write(HANDLER, "// the altitude limit\n")
         self.write_overlay_row()
         self.pull_request(
@@ -296,9 +297,10 @@ class TestSemanticImplementation(ClassRails):
 
     def test_a_claim_cannot_lower_it(self):
         # mutation: honour a declared non-semantic class over a diff that computes a semantic one
-        for claim in ("decision-record-only", "generated-or-provenance", "documentation", "semantic-ruling"):
+        for position, claim in enumerate(("decision-record-only", "generated-or-provenance", "documentation",
+                                          "semantic-ruling")):
             with self.subTest(claim=claim):
-                self.implementation_request(conformance=f"- review class: {claim}\n- entry id(s): altitude-limit\n"
+                self.implementation_request(engine=position == 0, conformance=f"- review class: {claim}\n- entry id(s): altitude-limit\n"
                                                         "- map package and version: x 1\n- source locator(s): y")
                 done = self.policy()
                 self.assertEqual(done.returncode, 1, done.stdout)
