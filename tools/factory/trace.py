@@ -43,8 +43,9 @@ locator is reported as the map records it, the corpus it names is matched agains
 corpora, and the segment is `unknown`.
 
 **The trace is as private as the engine.** It never emits a map entry's `evidence`, which is the
-quotation itself. But entry names, locators and mutations are the map's and the engine's own words,
-and those words quote the corpus: in a licensed engine, half the mutations carry a run of ten words
+quotation itself. But entry names, locators, mutations and a refusal's text are the map's and the
+engine's own words, and those words quote the corpus (a merge refusal can carry a bound's example
+text, rulings.py, and `status --verify --json` puts that refusal in its report): in a licensed engine, half the mutations carry a run of ten words
 or more straight from it. So the trace reports the engine's recorded `distribution` (`engine.distribution`), and a
 trace of a private engine goes only where the engine's own files may go (0068). Hashing those fields
 would make the trace safe to publish and useless to read. The rule is the one the backlog already

@@ -508,6 +508,17 @@ class TraceOfATwoCorpusEngine(unittest.TestCase):
         self.assertEqual((code, out), (1, ""))
         self.assertIn("do not merge", err)
 
+    def test_a_merge_refusal_reaches_the_trace_unchanged_and_so_can_quote_the_corpus(self):
+        """The docs name a refusal's text as a field that can quote the corpus (#600). That is true
+        because the trace forwards the merge's own error whole; a summary that dropped the quotation
+        would be the other fix, and this test is what says which one holds."""
+        said = 'the ruling contradicts the corpus: "a run of corpus words"'
+        with mock.patch.object(factory.trace_step.semantics, "merge",
+                               side_effect=factory.trace_step.semantics.GenerationError(said)):
+            code, out, err = run(["trace", "--engine", self.engine, "--json"], self.packages)
+        self.assertEqual((code, out), (1, ""))
+        self.assertIn(said, err)
+
     def test_an_engine_that_is_not_a_directory_is_a_usage_error(self):
         code, _, err = run(["trace", "--engine", os.path.join(self.tmp, "absent"), "--json"], self.packages)
         self.assertEqual(code, 2, err)
