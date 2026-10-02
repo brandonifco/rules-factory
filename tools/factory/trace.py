@@ -23,10 +23,11 @@ fact from a guess will act on the guess:
     never promoted to recorded.
 
 **Entry -> handler is derived; handler -> file is inferred (#582).** The generator binds every
-entry to a handler on the generated `Handlers` class (contracts.py), required or an optional hook.
+entry to a handler on a generated partial class (contracts.py), required or an optional hook.
 `handler` is what the generator declares *for this map and overlay*, computed through its own model
-and contract (`semantics.Model`, `semantics.contract`), so which entries need one is decided there
-and stated nowhere here. It is not read from `Generated/Contracts.g.cs`, which predates any overlay
+and its one handler descriptor (`semantics.Model`, `contracts.handler`), which also names the class
+and the signature forms that generation emits and that the file search below looks for. So which
+entries need one, the class and the forms are decided there and stated nowhere here. It is not read from `Generated/Contracts.g.cs`, which predates any overlay
 edit made since the last produce. A map the generator cannot model leaves every handler unknown, as
 a gap, rather than refusing the trace: the rest of the trace still stands. Which
 file writes that handler is recorded nowhere -- the overlay's `implementedIn` is `{ruleset,
@@ -69,6 +70,7 @@ import types
 
 import backlog as backlog_step
 import compose
+import contracts
 import overlay as overlay_step
 import provenance
 import repository as repository_step
@@ -77,10 +79,6 @@ import semantics
 
 FORMAT = 1
 CLASSES = ("recorded", "derived", "inferred", "unknown")
-
-#: The generated class every entry's handler is a partial method of (contracts.py). A hand-written
-#: file that declares a member of it is where that entry's handler is written.
-HANDLERS = "Handlers"
 
 SEGMENT_WHY = ("the trace reports a locator as the map records it and does not resolve it to corpus text: "
                "which component resolves a citation to the bytes it names is not settled, and the trace "
@@ -277,10 +275,9 @@ def implementation_files(engine_dir, gaps):
     return dict(sorted(found.items(), key=lambda item: item[0].encode("utf-8")))
 
 
-#: The two handler shapes the generator declares (contracts.py), as the hand-written half writes them:
-#: `partial Resolution<TOutput> {Member}(` for an implemented entry, `partial void {Member}(` for the
-#: optional hook every other entry gets. Matched on the text with its literals and comments blanked.
-HANDLER_SIGNATURE = re.compile(r"\bpartial\s+(?:Resolution\s*<[^(){};]*>|void)\s+@?([A-Za-z_][A-Za-z0-9_]*)\s*\(")
+#: The class and the signature forms are contracts.py's (`HANDLER_CLASS`, `handler_signature`), read
+#: at the time they are used so that nothing here restates them. Matched on the text with its
+#: literals and comments blanked.
 
 
 def handler_files(files):
@@ -293,26 +290,31 @@ def handler_files(files):
     that type is not a handler.
     """
     found = {}
+    signature = contracts.handler_signature()
     for path, data in files.items():
         text = data.decode("utf-8", "replace")
         types, members = reviewscope.partial_members(text)
-        if HANDLERS not in types:
+        if contracts.HANDLER_CLASS not in types:
             continue
-        for member in sorted(members & set(HANDLER_SIGNATURE.findall(reviewscope.blank_literals(text)))):
+        for member in sorted(members & set(signature.findall(reviewscope.blank_literals(text)))):
             found.setdefault(member, []).append(path)
     return found
 
 
-HANDLER_MECHANISM = (f"reviewscope.partial_members and the generated handler signature (contracts.py): a "
-                     f"hand-written file under src/ that declares the partial {HANDLERS} and writes "
-                     f"`partial Resolution<...> <Member>(` or `partial void <Member>(` for the entry's member "
-                     f"(the member semantics.Model gives the entry)")
+def handler_mechanism():
+    shapes = " or ".join(f"`partial {returns.replace('{output}', '...')} <Member>(`"
+                         for returns in contracts.HANDLER_RETURNS.values())
+    return (f"reviewscope.partial_members and the generated handler signature (contracts.handler_signature): a "
+            f"hand-written file under src/ that declares the partial {contracts.HANDLER_CLASS} and writes "
+            f"{shapes} for the entry's member (the member semantics.Model gives the entry)")
+
+
 REFERENCE_MECHANISM = ("reviewscope.entry_references: a hand-written file under src/ that names the entry's "
                        "member, its request type, or its id as a string literal")
 
 
 def implementation(entry_id, member, handlers, references):
-    candidates = [inferred({"path": path, "symbol": f"{HANDLERS}.{member}"}, HANDLER_MECHANISM)
+    candidates = [inferred({"path": path, "symbol": f"{contracts.HANDLER_CLASS}.{member}"}, handler_mechanism())
                   for path in handlers.get(member, [])]
     declaring = {c["value"]["path"] for c in candidates}
     candidates += [inferred({"path": path, "symbol": None}, REFERENCE_MECHANISM)
@@ -340,8 +342,8 @@ def generator_model(record, merged, documents):
                       f"for any entry")
 
 
-HANDLER_BASIS = ("semantics.contract over semantics.Model: the handler the generator declares on Handlers for this map "
-                 "and overlay (contracts.py); not read from Generated/Contracts.g.cs, which may predate the overlay")
+HANDLER_BASIS = ("contracts.handler over semantics.Model: the handler descriptor the generator declares from for this "
+                 "map and overlay; not read from Generated/Contracts.g.cs, which may predate the overlay")
 
 
 def entry_trace(entry, origin, item, corpora, handlers, references, single, gaps, generated):
@@ -414,14 +416,15 @@ def entry_trace(entry, origin, item, corpora, handlers, references, single, gaps
         out["handler"] = unknown(generated["why"])
         gaps.append(_gap(subject, "entry -> handler", generated["why"]))
     else:
-        contract = semantics.contract(generated["model"], generated["item"])
-        member = generated["item"]["member"]
-        out["handler"] = derived({"symbol": f"{HANDLERS}.{member}", "required": contract["required"]}, HANDLER_BASIS)
+        described = contracts.handler(generated["model"], generated["item"])
+        member = described["member"]
+        out["handler"] = derived({"symbol": f"{described['class']}.{member}", "required": described["required"]},
+                                 HANDLER_BASIS)
     candidates = implementation(entry_id, member, handlers, references)
     if candidates:
         out["implementation"] = candidates
     else:
-        why = (f"no hand-written file under src/ writes {HANDLERS}.{member} or names the entry, and no artifact "
+        why = (f"no hand-written file under src/ writes {contracts.HANDLER_CLASS}.{member} or names the entry, and no artifact "
                f"records which file implements it")
         out["implementation"] = [unknown(why)]
         gaps.append(_gap(subject, "entry -> implementation", why))

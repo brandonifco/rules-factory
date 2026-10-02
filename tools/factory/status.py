@@ -58,6 +58,8 @@ def counted(trace, basis="counted from the trace of this engine (factory trace)"
         status = entry["status"]["value"]
         by_status[str(status)] = by_status.get(str(status), 0) + 1
         for test in entry["tests"]:
+            if test["name"]["evidence"] != "recorded":
+                continue    # a row that names no test is the trace's `entry -> test` gap, not a named test
             tests += 1
             mutations += test["mutation"]["evidence"] == "recorded"
     return {"basis": basis, "entries": len(trace["entries"]), "byStatus": dict(sorted(by_status.items())),
@@ -136,10 +138,14 @@ def build(engine_dir, package=None):
     }
 
 
-def ran(exit_code, output, engine_dir):
-    """What `factory verify` said when `--verify` ran it: that it ran now, who, its exit code, its last line."""
+def ran(exit_code, output):
+    """What `factory verify` said when `--verify` ran it: that it ran now, who, its exit code, its last line.
+
+    The authority is named `factory verify` and no more: the caller's `--engine` spelling, relative or
+    absolute, is not part of who ran, and would carry a local path into a report made to be pasted.
+    """
     lines = [line for line in output.split("\n") if line.strip()]
-    return {"ranNow": True, "authority": f"factory verify --engine {engine_dir}", "exitCode": exit_code,
+    return {"ranNow": True, "authority": "factory verify", "exitCode": exit_code,
             "lastLine": lines[-1] if lines else None,
             "says": "the verifier's own result, unchanged; its exit code is this command's exit code. Everything "
                     "else on this page was read before it ran, and verify may have written lock files since"}

@@ -304,7 +304,7 @@ class TraceOfATwoCorpusEngine(unittest.TestCase):
         handler = entry(self.trace()[0], "listed-in-the-table")["handler"]
         self.assertEqual(handler["value"], {"symbol": "Handlers.ListedInTheTable", "required": True})
         self.assertEqual(handler["evidence"], "derived")
-        self.assertIn("semantics.contract over semantics.Model", handler["basis"])
+        self.assertIn("contracts.handler over semantics.Model", handler["basis"])
 
     def test_an_entry_that_is_not_implemented_has_an_optional_hook(self):
         handler = entry(self.trace()[0], "w-is-water-only")["handler"]
@@ -317,6 +317,36 @@ class TraceOfATwoCorpusEngine(unittest.TestCase):
                                side_effect=lambda model, item: dict(real(model, item), required=False)):
             handler = entry(self.trace()[0], "listed-in-the-table")["handler"]
         self.assertFalse(handler["value"]["required"])
+
+    def test_the_handler_class_is_the_descriptors_and_the_trace_follows_it(self):
+        """#599: the class the trace reports and searches for is contracts.py's, not its own."""
+        self.implemented([{"test": "ListedTests.Holds", "mutation": MUTATION}])
+        self.source("src/TwoSection/Handlers/ListedInTheTable.cs", HANDLER.replace("Handlers", "Hooks"))
+        contracts = factory.trace_step.contracts
+        today = entry(self.trace()[0], "listed-in-the-table")["implementation"]
+        self.assertEqual([c["value"]["symbol"] for c in today], [None],
+                         "under the generator's class today the file only names the entry; it is not a handler")
+        with mock.patch.object(contracts, "HANDLER_CLASS", "Hooks"):
+            listed = entry(self.trace()[0], "listed-in-the-table")
+        self.assertEqual(listed["handler"]["value"], {"symbol": "Hooks.ListedInTheTable", "required": True})
+        self.assertEqual(listed["implementation"][0]["value"],
+                         {"path": "src/TwoSection/Handlers/ListedInTheTable.cs", "symbol": "Hooks.ListedInTheTable"})
+        self.assertIn("declares the partial Hooks", listed["implementation"][0]["mechanism"])
+
+    def test_the_signature_forms_are_the_descriptors_and_the_trace_follows_them(self):
+        """#599: a changed signature form changes which hand-written file the trace recognises."""
+        self.implemented([{"test": "ListedTests.Holds", "mutation": MUTATION}])
+        self.source("src/TwoSection/Handlers/ListedInTheTable.cs", HANDLER.replace("Resolution<object>", "Outcome<object>"))
+        contracts = factory.trace_step.contracts
+
+        def declaring():
+            return [c["value"]["path"] for c in entry(self.trace()[0], "listed-in-the-table")["implementation"]
+                    if c["value"] and c["value"].get("symbol")]
+        self.assertEqual(declaring(), [])
+        with mock.patch.dict(contracts.HANDLER_RETURNS, {"required": "Outcome<{output}>"}):
+            self.assertEqual(declaring(), ["src/TwoSection/Handlers/ListedInTheTable.cs"])
+            mechanism = entry(self.trace()[0], "listed-in-the-table")["implementation"][0]["mechanism"]
+        self.assertIn("`partial Outcome<...> <Member>(`", mechanism)
 
     def test_a_map_the_generator_cannot_model_leaves_every_handler_unknown_and_traces_the_rest(self):
         with mock.patch.object(factory.trace_step.semantics, "Model",
