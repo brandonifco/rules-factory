@@ -126,6 +126,18 @@ class StatusOfAnEngine(EngineCase):
         self.assertEqual(done["gaps"], traced["summary"]["gaps"])
         self.assertEqual(report["engine"]["topology"], traced["topology"])
 
+    def test_a_row_that_names_no_test_is_not_a_named_test(self):
+        with open(os.path.join(self.engine, "overlay", "listed-in-the-table.json"), "w", encoding="utf-8") as handle:
+            json.dump({"status": "implemented", "implementedIn": {"ruleset": "fixture", "version": 1},
+                       "tests": [{"test": "ListedTests.Holds", "mutation": fixture.MUTATION},
+                                 {"mutation": fixture.MUTATION}]}, handle)
+        report = self.report()
+        done = report["implementation"]
+        self.assertEqual((done["namedTests"], done["mutationsRecorded"]), (1, 1))
+        self.assertEqual(done["gaps"]["entry -> test"], 1, "the unnamed row is still the trace's gap")
+        _, text, _ = self.status()
+        self.assertIn("named tests   1, 1 with a recorded mutation", text)
+
     def test_a_different_trace_is_a_different_status(self):
         """No second reader: what `status` counts is what the trace says, whatever the overlay says."""
         with mock.patch.dict(os.environ, {"NUGET_PACKAGES": self.packages}):
