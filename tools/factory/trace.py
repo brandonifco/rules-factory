@@ -7,7 +7,7 @@ corpora, the kernel and where the engine sits in its repository. The map package
 its locator. `overlay/<entry id>.json` gives each entry its status, the tests it names and the
 mutation each test was watched catching. What nothing showed was how those records join up per
 entry, and which of the joins no record makes. That is all this module does. It adds no fact and
-writes nothing: the trace is a reading of artifacts that already have owners, computed again on
+writes nothing in the engine or its repository: the trace is a reading of artifacts that already have owners, computed again on
 every run, so a changed overlay or a re-produced engine is reflected the next time it is asked.
 
 **Every relationship carries its evidence class**, because a reader who cannot tell a recorded
