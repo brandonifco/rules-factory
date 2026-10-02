@@ -27,9 +27,12 @@ the verifier's. Nothing here knows what `verify` checks, so a new rule there cha
 reports with no edit here. `verify` restores and may write lock files: `--verify` is not the
 read-only mode, and the read-only part of the report is computed before it runs.
 
-**Read-only by default.** No restore, no build, no gate, no network, nothing written: the git
-fact is asked with `--no-optional-locks`, so even git's index refresh is not written. Standard
-library only.
+**Read-only by default.** No restore, no build, no gate, no network, and nothing written in the
+engine or its repository: the git fact is asked with `--no-optional-locks`, so even git's index
+refresh is not written. That is the whole claim. Under `python3 tools/factory ...` CPython may
+compile the entry point to bytecode in the factory's own checkout, and `provenance.
+discard_entry_point_bytecode` deletes it (#373): that is every factory command's, and not a write
+to the engine. Standard library only.
 """
 import os
 import subprocess
@@ -131,10 +134,14 @@ def build(engine_dir, package=None):
     }
 
 
-def ran(exit_code, output, engine_dir):
-    """What `factory verify` said when `--verify` ran it: that it ran now, who, its exit code, its last line."""
+def ran(exit_code, output):
+    """What `factory verify` said when `--verify` ran it: that it ran now, who, its exit code, its last line.
+
+    The authority is named `factory verify` and no more: the caller's `--engine` spelling, relative or
+    absolute, is not part of who ran, and would carry a local path into a report made to be pasted.
+    """
     lines = [line for line in output.split("\n") if line.strip()]
-    return {"ranNow": True, "authority": f"factory verify --engine {engine_dir}", "exitCode": exit_code,
+    return {"ranNow": True, "authority": "factory verify", "exitCode": exit_code,
             "lastLine": lines[-1] if lines else None,
             "says": "the verifier's own result, unchanged; its exit code is this command's exit code. Everything "
                     "else on this page was read before it ran, and verify may have written lock files since"}

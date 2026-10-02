@@ -110,7 +110,7 @@ See verify.py.
 prints what the engine's records say about each entry -- its locator, status, named tests and the
 mutation each was watched catching, and the files that appear to implement it -- with every
 relationship labelled recorded, derived, inferred or unknown, and every unknown listed as a gap.
-It reads and writes nothing else, and an unknown is a finding, not a failure: exit 0 whenever the
+It reads and writes nothing else in the engine or its repository, and an unknown is a finding, not a failure: exit 0 whenever the
 engine could be read. `--html` writes the same trace as one page (tracereport.py), anywhere but
 inside the engine. See trace.py.
 
@@ -119,7 +119,7 @@ inside the engine. See trace.py.
 says what the engine's records establish now -- identity, inputs, how much is implemented and
 named-tested, the trace's gaps, what provenance recorded about the produce that wrote it, and
 whether git sees the tree moved -- and issues no verdict: verification is reported as not run by
-this invocation, and the command is read-only. `--verify` also runs `factory verify` by its own
+this invocation, and the command writes nothing in the engine or its repository. `--verify` also runs `factory verify` by its own
 command line, streams what it prints, reports its exit code and last line, and exits with its code;
 it is not read-only, because verify restores. See status.py.
 
@@ -792,7 +792,7 @@ def main(argv=None):
             code = 0
             if args.verify:
                 code, said = verify_now(args.engine, args.package, sys.stderr if args.json else sys.stdout)
-                report["verification"] = status_step.ran(code, said, args.engine)
+                report["verification"] = status_step.ran(code, said)
             sys.stdout.write(json.dumps(report, indent=2, ensure_ascii=False) + "\n" if args.json
                              else status_step.text(report))
             return code

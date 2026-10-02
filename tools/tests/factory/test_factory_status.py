@@ -197,7 +197,10 @@ class StatusOfAnEngine(EngineCase):
         self.assertIsNone(VERDICTS.search(fixture.MUTATION))
         self.assertIsNone(VERDICTS.search(text), VERDICTS.search(text))
 
-    def test_a_run_writes_nothing_not_even_gits_index(self):
+    def test_a_run_writes_nothing_in_the_engine_not_even_gits_index(self):
+        """The claim is the engine's and its repository's. The factory's own entry-point bytecode is
+        written and removed in the factory's checkout before this interpreter runs (#373), so a
+        snapshot taken from inside it cannot see that and does not say anything about it."""
         self.commit()
         # Make the index stale, so that a git that may refresh it would write it.
         path = os.path.join(self.engine, "overlay", "listed-in-the-table.json")
@@ -272,7 +275,7 @@ class StatusVerifyDelegates(EngineCase):
         self.assertIn("stage provenance", expected[1])
         code, out, _ = self.status("--verify", "--package", self.nupkg)
         self.assertEqual(code, expected[0])
-        self.assertIn(f"verification  ran now by factory verify --engine {self.engine}: exit 1; it said: "
+        self.assertIn(f"verification  ran now by factory verify: exit 1; it said: "
                       f"{expected[1]}", out)
 
     def test_a_stand_in_verifier_changes_the_report_with_no_change_to_status(self):
@@ -283,6 +286,8 @@ class StatusVerifyDelegates(EngineCase):
         check = json.loads(out)["verification"]
         self.assertEqual((check["ranNow"], check["exitCode"]), (True, 0))
         self.assertEqual(check["lastLine"], f"verify {self.engine}: PASS")
+        self.assertEqual(check["authority"], "factory verify", "no caller's path in who ran")
+        self.assertNotIn(self.engine, check["authority"])
         with mock.patch.object(verify_step, "verify", side_effect=verify_step.Failed("gate", "the stand-in says no")):
             code, out, err = self.status("--verify", "--json")
         self.assertEqual(code, 1)
