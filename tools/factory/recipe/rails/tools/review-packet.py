@@ -181,15 +181,21 @@ def listed_files(pull, number):
     """
     files = [{"path": f["path"], "changeType": f.get("changeType") or ""} for f in pull.get("files") or []]
     count = pull.get("changedFiles")
-    if not isinstance(count, int) or len(files) == count:
+    # A rename is named by its new path alone in `gh pr view --json files`, and the REST endpoint says
+    # where it came from (0076): the old path is a deletion, and a handler moved off the surface is one.
+    renamed = any(f["changeType"] in ("RENAMED", "COPIED") for f in files)
+    if isinstance(count, int) and len(files) == count and not renamed:
+        return files
+    if not isinstance(count, int) and not renamed:
         return files
     listing = gh("api", f"repos/{{owner}}/{{repo}}/pulls/{number}/files?per_page=100", "--paginate",
-                 "--jq", '.[] | [.filename, .status] | @tsv')
+                 "--jq", '.[] | [.filename, .status, (.previous_filename // "")] | @tsv')
     whole = []
     for line in listing.splitlines():
-        path, _, status = line.partition("\t")
+        path, _, rest = line.partition("\t")
+        status, _, previous = rest.partition("\t")
         if path:
-            whole.append({"path": path, "changeType": _CHANGE_TYPES.get(status, status.upper())})
+            whole.append({"path": path, "changeType": _CHANGE_TYPES.get(status, status.upper()), "previous": previous})
     return whole
 
 
@@ -464,10 +470,11 @@ def git_show(commit, path):
     return done.stdout if done.returncode == 0 else None
 
 
-def review_class(snapshot, record, changes, patterns, body, base_sha):
+def review_class(snapshot, record, files, patterns, body, base_sha):
     """`(result, effective, problems, hints, declared, module)`: what the reviewed diff owes (0076).
 
-    `changes` is `{path as GitHub reports it: change type}`. The head's bytes are the reviewed
+    `files` is GitHub's list, a rename carrying the path it came from, judged against the surface the base
+    and the head policies both list (0076). The head's bytes are the reviewed
     snapshot's and the base's are the base commit's, so neither is the caller's checkout. The
     ownership table is the reviewed commit's own, as for the changed-path classes below: a path is
     the factory's by the rows that wrote it. Where that table cannot be loaded nothing is the
@@ -476,7 +483,13 @@ def review_class(snapshot, record, changes, patterns, body, base_sha):
     module = factory_module("reviewclass")
     prefix = engine_path()
     inside = {}
-    for path, change in changes.items():
+    try:
+        base_policy = json.loads((git_show(base_sha, POLICY) or b"").decode("utf-8")).get("review") or {}
+        base_listed = base_policy.get("semanticPaths") if isinstance(base_policy, dict) else None
+    except (UnicodeDecodeError, ValueError, AttributeError):
+        base_listed = None
+    patterns = module.surface_patterns(patterns, base_listed if isinstance(base_listed, list) else None)
+    for path, change in module.changes_of(files).items():
         relative = engine_relative(path, prefix)
         if relative is not None:
             inside[relative] = change
@@ -783,9 +796,8 @@ def build(number, base, package_maps=(), recordable=True, role=ALL, review_type=
 
         # What this change owes is its review class's to say (0076), and the surface a semantic
         # reviewer is handed is what that class says is semantic: not every path the policy lists.
-        changes = {f["path"]: f["changeType"] for f in files}
         result, effective, class_problems, class_hints, declared, classes = review_class(
-            snapshot, record, changes, review.get("semanticPaths") or [], pull.get("body") or "", base_sha)
+            snapshot, record, files, review.get("semanticPaths") or [], pull.get("body") or "", base_sha)
         prefix = engine_path()
         semantic = [f"{prefix}/{path}" if prefix else path for path in classes.semantic_files(result, effective)]
         owed = classes.owes(effective)

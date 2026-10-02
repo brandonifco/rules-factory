@@ -351,11 +351,25 @@ def owed_review(pull, patterns):
         import reviewclass  # noqa: E402
         import ownership  # noqa: E402
         prefix = engine_path()
+        where = f"{prefix}/" if prefix else ""
+        where_policy = f"{where}.github/agent-policy.json"
+        if any((f.get("changeType") or "") in ("RENAMED", "COPIED") for f in pull.get("files") or []):
+            # `gh pr view --json files` does not say where a rename came from, and a handler moved off the
+            # surface is a deletion of it: the gate reads the old path from the REST list, this brief cannot.
+            return True, "semantic-implementation"
         record = json.loads((ROOT / "provenance.json").read_text(encoding="utf-8"))
         name = (record.get("engine") or {}).get("name")
-        inside = {engine_relative(f["path"], prefix): f.get("changeType") or "" for f in pull.get("files") or []
-                  if engine_relative(f["path"], prefix) is not None}
-        where = f"{prefix}/" if prefix else ""
+        inside = {engine_relative(path, prefix): change
+                  for path, change in reviewclass.changes_of(pull.get("files") or []).items()
+                  if engine_relative(path, prefix) is not None}
+        base_policy = subprocess.run(["git", "show", f"{pull.get('baseRefOid')}:{where_policy}"], cwd=ROOT,
+                                     stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        try:
+            listed = json.loads(base_policy.stdout.decode("utf-8")).get("review", {}).get("semanticPaths") \
+                if base_policy.returncode == 0 else None
+        except (UnicodeDecodeError, ValueError, AttributeError):
+            listed = None
+        patterns = reviewclass.surface_patterns(patterns, listed if isinstance(listed, list) else None)
 
         def read(path, side):
             commit = pull.get("headRefOid") if side == "head" else pull.get("baseRefOid")

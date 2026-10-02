@@ -993,9 +993,9 @@ if kind == "api" and "/pulls/" in argv[1] and argv[1].split("?")[0].endswith("/f
     number = endpoint.split("/pulls/", 1)[1].split("/")[0]
     pull = (fixture.get("pr") or {}).get(number) or {}
     rows = pull["allFiles"] if pull.get("allFiles") is not None else pull.get("files") or []
-    statuses = {"ADDED": "added", "DELETED": "removed", "MODIFIED": "modified", "RENAMED": "renamed"}
+    statuses = {"ADDED": "added", "DELETED": "removed", "MODIFIED": "modified", "RENAMED": "renamed", "COPIED": "copied"}
     for row in rows:
-        print(row["path"] + "\t" + statuses.get(row.get("changeType") or "MODIFIED", "modified"))
+        print(row["path"] + "\t" + statuses.get(row.get("changeType") or "MODIFIED", "modified") + "\t" + (row.get("previous") or ""))
     sys.exit(0)
 if kind == "api":
     # `gh api repos/{owner}/{repo}/contents/<path>?ref=<sha> --jq .content`: a file at the base
@@ -5086,7 +5086,7 @@ if argv_api := [a for a in sys.argv[1:] if a.startswith("repos/")]:
 
 GH_STATUS_STUB = '''#!/usr/bin/env python3
 """A stand-in for `gh` that also keeps commit statuses, workflow runs and re-runs in JSON files."""
-import base64, json, os, sys
+import base64, json, os, sys, urllib.parse
 
 fixture = json.load(open(os.environ["GH_FIXTURE"], encoding="utf-8"))
 store = os.environ["GH_STATUSES"]
@@ -5108,15 +5108,17 @@ if argv[0] == "api":
         number = endpoint.split("/pulls/", 1)[1].split("/")[0]
         pull = (fixture.get("pr") or {}).get(number) or {}
         rows = pull["allFiles"] if pull.get("allFiles") is not None else pull.get("files") or []
-        statuses = {"ADDED": "added", "DELETED": "removed", "MODIFIED": "modified", "RENAMED": "renamed"}
+        statuses = {"ADDED": "added", "DELETED": "removed", "MODIFIED": "modified", "RENAMED": "renamed", "COPIED": "copied"}
         for row in rows:
-            print(row["path"] + "\t" + statuses.get(row.get("changeType") or "MODIFIED", "modified"))
+            print(row["path"] + "\t" + statuses.get(row.get("changeType") or "MODIFIED", "modified") + "\t" + (row.get("previous") or ""))
         raise SystemExit(0)
     if "/contents/" in endpoint:
         # `gh api repos/{owner}/{repo}/contents/<path>?ref=<sha> --jq .content`: a file at the base commit,
         # base64 as GitHub returns it, which the review class reads for the files it compares (0076).
-        route, _, query = endpoint.partition("?")
-        wanted, ref = route.split("/contents/", 1)[1], query.split("ref=")[-1]
+        # As HTTP does: everything after a `#` is a fragment and never reaches the server, and a name
+        # reaches it percent-encoded. A rail that sends `H.cs#v.cs` raw is asked for `H.cs`, at no ref.
+        route, _, query = endpoint.split("#", 1)[0].partition("?")
+        wanted, ref = urllib.parse.unquote(route.split("/contents/", 1)[1]), query.split("ref=")[-1]
         body = ((fixture.get("contents") or {}).get(ref) or {}).get(wanted)
         if body is None:
             sys.stderr.write(f"no {wanted} at {ref}\\n")

@@ -68,10 +68,11 @@ class ClassRails(rails.RailsInAGitEngine):
         """The produced engine, committed, with a record that says the factory was clean."""
         self.commit_engine()
         record = json.loads(self.read("provenance.json"))
-        record["factory"]["dirty"] = False
-        self.write("provenance.json", json.dumps(record, indent=2) + "\n")
-        git = rails.git
-        git(self.out, "commit", "-qam", "a clean factory")
+        if record["factory"]["dirty"] is not False:
+            # A factory checkout with uncommitted changes records itself dirty; a clean one already says not.
+            record["factory"]["dirty"] = False
+            self.write("provenance.json", json.dumps(record, indent=2) + "\n")
+            rails.git(self.out, "commit", "-qam", "a clean factory")
 
     def write(self, relative, text):
         path = os.path.join(self.out, *relative.split("/"))
@@ -101,7 +102,9 @@ class ClassRails(rails.RailsInAGitEngine):
     def pull_request(self, body, files, contents=None, head=None, issue_body="", labels=("state:ready", "risk:normal"),
                      changed=None, base=None):
         """Fixture the pull request. `files` is `{path: change type}`; `contents` is the base commit's files."""
-        listed = [{"path": path, "changeType": change} for path, change in files.items()]
+        listed = [{"path": path, "changeType": change} if isinstance(change, str) else
+                  {"path": path, "changeType": change[0], "previous": change[1]}
+                  for path, change in files.items()]
         self.fixture({
             "pr": {"5": {"number": 5, "title": "A change", "body": body, "files": listed,
                          "changedFiles": len(listed) if changed is None else changed,
@@ -304,6 +307,61 @@ class TestSemanticImplementation(ClassRails):
                 self.assertEqual(gate.returncode, 1, gate.stdout)
                 self.assertIn("rules-verdict/semantic is not recorded", gate.stdout)
                 self.assertIn("`semantic-implementation`, which owes a semantic verdict", gate.stdout)
+
+    def test_a_diff_that_empties_the_surface_is_judged_by_the_surface_it_removed(self):
+        # Codex: a head policy with `semanticPaths: []` made the handler it changed "not on the surface".
+        # mutation: judge by the head's surface alone
+        self.engine()
+        policy = json.loads(self.read(".github/agent-policy.json"))
+        before = json.dumps(policy)
+        policy["review"]["semanticPaths"] = []
+        self.write(".github/agent-policy.json", json.dumps(policy))
+        self.write(HANDLER, "int Limit() => 401;\n")
+        self.pull_request(self.body("- review class: documentation\n- entry id(s): none", evidence=self.NO_TEST),
+                          {HANDLER: "MODIFIED", ".github/agent-policy.json": "MODIFIED"},
+                          contents={HANDLER: "int Limit() => 400;\n", ".github/agent-policy.json": before})
+        gate = self.gate()
+        self.assertEqual(gate.returncode, 1, gate.stdout)
+        self.assertIn("`semantic-implementation`, which owes a semantic verdict", gate.stdout)
+        done = self.policy()
+        self.assertEqual(done.returncode, 1, done.stdout)
+        self.assertIn("claims `documentation`, and this diff is `semantic-implementation`", done.stdout)
+
+    def test_a_handler_renamed_off_the_surface_is_still_a_handler_removed(self):
+        # Codex: GitHub lists a rename by its new path alone, so moving a handler to notes/ left the
+        # surface with nothing on it. mutation: ignore `previous_filename`
+        self.engine()
+        self.write("notes/Altitude.md", "# the altitude limit\n")
+        self.pull_request(self.body("- review class: documentation\n- entry id(s): none", evidence=self.NO_TEST,
+                                    documentation="- [x] `notes/Altitude.md` — updated: moved here"),
+                          {"notes/Altitude.md": ("RENAMED", HANDLER)}, contents={HANDLER: "int Limit() => 400;\n"})
+        gate = self.gate()
+        self.assertEqual(gate.returncode, 1, gate.stdout)
+        self.assertIn("rules-verdict/semantic is not recorded", gate.stdout)
+        done = self.policy()
+        self.assertEqual(done.returncode, 1, done.stdout)
+        self.assertIn("claims `documentation`, and this diff is `semantic-implementation`", done.stdout)
+
+    def test_a_path_with_a_hash_in_it_is_asked_for_by_name_and_at_its_ref(self):
+        # Codex: `src/E/H.cs#variant.cs` sent raw is read as `H.cs` on the default branch. The stub drops
+        # the fragment as HTTP does. mutation: build the URL from the raw path
+        self.engine()
+        hashed = f"src/{NAME}/H.cs#variant.cs"
+        self.write(hashed, "int F() => 2; // a note\n")
+        self.pull_request(self.body("- review class: documentation\n- entry id(s): none", evidence=self.NO_TEST),
+                          {hashed: "MODIFIED"}, contents={hashed: "int F() => 1; // a note\n"})
+        gate = self.gate()
+        self.assertEqual(gate.returncode, 1, gate.stdout)
+        self.assertIn("rules-verdict/semantic is not recorded", gate.stdout)
+        done = self.policy()
+        self.assertIn("claims `documentation`, and this diff is `semantic-implementation`", done.stdout)
+
+    def test_the_gate_reruns_when_the_body_is_edited(self):
+        # What a change owes is its body's `review class:` line's to claim, so editing the body must
+        # re-ask the gate. mutation: drop `edited` from the workflow's types
+        workflow = open(os.path.join(rails.FACTORY, "recipe", "rails", "workflows", "conformance-gate.yml"),
+                        encoding="utf-8").read()
+        self.assertRegex(workflow, r"types: \[[^\]]*\bedited\b[^\]]*\]")
 
     def test_the_gate_wants_the_verdict_and_takes_it_when_it_is_recorded(self):
         self.implementation_request()
@@ -676,11 +734,11 @@ class TestAnEmbeddedEngineIsClassifiedInItsOwnTerms(ClassRails):
         self.assertIn("no rules verdict required", gate.stdout)
 
     def test_the_base_is_read_at_the_path_github_knows_it_by(self):
-        # A reflow of an existing record is cosmetic only if the base was read: with the engine's own
-        # path asked of the API the base is missing, and a record that cannot be compared is a ruling.
+        # A change of line endings is cosmetic only if the base was read: with the engine's own path
+        # asked of the API the base is missing, and a record that cannot be compared is a ruling.
         # mutation: read the base by the engine-relative path
         self.write(DECISION, "The furthest player wins.\n")
-        self.request({self.PATH: "MODIFIED"}, {self.PATH: "The furthest\nplayer   wins.\n\n"})
+        self.request({self.PATH: "MODIFIED"}, {self.PATH: "The furthest player wins.  \r\n"})
         done = self.policy()
         self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
         self.assertIn("review class: `decision-record-only`", done.stdout)

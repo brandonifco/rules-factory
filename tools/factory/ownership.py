@@ -199,7 +199,7 @@ TABLE = (
         "\"Unrelated changes\" says what belongs in it and what is part of the change (#196); the entry list "
         "states the correspondence pr-policy checks (#451); a `review class:` line, checked against the diff and never taken, and a `decision scope:` line (0076)"),
     Row(".github/workflows/pr-policy.yml", MANAGED, 1, "the required check that runs pr-policy.py (0029)"),
-    Row(".github/workflows/conformance-gate.yml", MANAGED, 2,
+    Row(".github/workflows/conformance-gate.yml", MANAGED, 3,
         "the required check that runs conformance-gate.py (0029)"),
     Row(".github/workflows/verdict-requeue.yml", MANAGED, 2,
         "runs requeue-gate.py on the status and issues events; deliberately not a required check "
@@ -468,7 +468,7 @@ RECIPE_SHA256 = {
         15: "bbbfd33e2385ab884863f02d35c3a836405d21fbf95d3347fddd937f92ece238",
         16: "035d4fe896df6573a295f2350ac16739f05a09fa4f4c718972fa1c6f2eddafc3",
         17: "09a783f9e0a7a6e995167389f0c8398da73d3e4f44653fe451e2a8e47cacc291",
-        18: "0b34af83fa61ad4cb11434df9a1cce6c2a1776b7a46606aece521aec4b4fd31a",
+        18: "cf48164f9f65042716b1dae08436c3573dc26073fc6f22053dc1899de6e58a85",
     },
     "tools/repair-packet.py": {
         1: "7ec00d9a68ff35fa0af4ab65714411ac6b39cfce34baf448359d9be5e393c2f5",
@@ -477,7 +477,7 @@ RECIPE_SHA256 = {
         4: "4ac24b78411f3ea457e497838f5959d0374c8f3126c249bfb88393c2485318ed",
         5: "c9c35317247883f7076972c29a19e9ca5ccfc3166882a5b2e218a6108dcddd9f",
         6: "67e36ff58616171e5222ac3449bee618b13bba840f376069ecfcc7d577f8bc9f",
-        7: "cdca2ead6c240f021d16ef7756f96b62008ecaab8fda8ee0101fcc33e0ea7327",
+        7: "bb9158eaf9132975677d9be5da5150f652ac422226f666dcfffaa3d9af18a7da",
     },
     "tools/pr-policy.py": {
         1: "79a33c7fe1ea8d888e4d6912a43ac60afe285c7a8bf43fbe9f7be87d6947b76e",
@@ -495,7 +495,7 @@ RECIPE_SHA256 = {
         13: "37c2cee713e940b7799130fe5117074201e5390635d62700a4572582cb7a914b",
         14: "a68e3e9603684143232a8badf4e36642ce2762a20a38fbed5e33f7255d2629ac",
         15: "49e4845fb7d07855fe719c353b9493da9802f4bf80be3465a2ae8c991d957938",
-        16: "c0050a295ef2903ad4183dd7731ca54cc9f16ba7c9316eb6ae21ab0c5ad8dd7e",
+        16: "80fda4f86822f5c2b9c8cd4e8a1b23f85b30a2d32b681749e788821d9d78bd07",
     },
     "tools/record-verdict.py": {
         1: "48f7b11f7fc829cdaebd776a3eb5db04e27cade97c427c6806b72f58805d83db",
@@ -512,7 +512,7 @@ RECIPE_SHA256 = {
         3: "ed0db727f1ac5500be0496bc42351d19faa353f3fc578b6d195e0b41cc23c634",
         4: "4c0e5daef3375bb4b17d7a751bc5fb5d221925fabbb2b13e38fac519c556574b",
         5: "efa4ebba282b25abe388aea2721633d8565de22faaf591e09361c2ac1759c031",
-        6: "5b0aa732bbf75b03467bc9864c39b2deb9c775dfb0091985b146a3b1799b38d0",
+        6: "3fafa402a1c56bdcdedc7d9411e6d13bec638752ecdc81f11950790d537c44d7",
     },
     "tools/requeue-gate.py": {
         1: "a4315a5fa76a696ee616e5ef190d6bbec0d023c04e22086082d4031c460aec8d",
@@ -532,6 +532,7 @@ RECIPE_SHA256 = {
     ".github/workflows/conformance-gate.yml": {
         1: "851d64e8705363b70711b74fe1b25306c3fac1c1e26c88a9805defc3a03042a8",
         2: "d66ae8a37a37874369ac962fbecbf9ac1b98cf0246541a61ea5089b23f8ea702",
+        3: "5ddfd5e6b2fba8553e4f9f7d0f6bd40de9d51529acf983b3ac65d5f94857f16a",
     },
     ".github/workflows/verdict-requeue.yml": {
         1: "b1a48c75587dcbcf15638f83a703025c08f5449d9e2611550c4f15a448fcb178",

@@ -115,10 +115,16 @@ class TestEachClass(unittest.TestCase):
                 "record, never by editing this one.\n")
         result = Repo({}, {RECORD: doc(text)}).classify({RECORD: "ADDED"})
         self.assertEqual(result["class"], rc.DECISION_RECORD_ONLY)
+        # ... nor is a line that begins with the verb and goes on to prose.
+        for line in ("Replaces nothing in the engine.", "Amends the way we talk about it.", "Reverses are rare."):
+            with self.subTest(line=line):
+                self.assertEqual(Repo({}, {RECORD: doc(f"# 0008\n\n{line}\n")}).classify({RECORD: "ADDED"})["class"],
+                                 rc.DECISION_RECORD_ONLY)
 
     def test_a_record_that_supersedes_another_is_a_semantic_ruling(self):
         # mutation: drop the SUPERSESSION header check, and a ruling already in force changes unreviewed
-        for header in ("- **Supersedes:** 0003", "**Supersedes**: decision 0003", "Overrules: 0003"):
+        for header in ("- **Supersedes:** 0003", "**Supersedes**: decision 0003", "Overrules: 0003",
+                       "Supersedes 0003", "- Amends decision 0004", "> Replaces record 0002"):
             with self.subTest(header=header):
                 result = Repo({}, {RECORD: doc(f"# 0008\n\n{header}\n")}).classify({RECORD: "ADDED"})
                 self.assertEqual(result["class"], rc.SEMANTIC_RULING)
@@ -133,10 +139,59 @@ class TestEachClass(unittest.TestCase):
         self.assertEqual(rc.owes(rc.SEMANTIC_RULING), {"entries": False, "self_review": False, "ruling_review": True,
                                                        "packet": True, "verdict": True})
 
-    def test_a_whitespace_only_edit_of_a_record_is_cosmetic(self):
-        # mutation: compare the bytes and not the words, and a reflow is a ruling
-        repo = Repo({RECORD: doc("The furthest\nplayer wins.\n")}, {RECORD: doc("The furthest player   wins.\n\n")})
+    def test_line_endings_and_trailing_space_are_cosmetic_in_a_record(self):
+        # mutation: compare the bytes, and a file saved with other line endings is a ruling
+        repo = Repo({RECORD: doc("The furthest\nplayer wins.\n")}, {RECORD: doc("\ufeffThe furthest   \r\nplayer wins.  \r\n\r\n")})
         self.assertEqual(repo.classify({RECORD: "MODIFIED"})["class"], rc.DECISION_RECORD_ONLY)
+
+    def test_indentation_and_blocks_are_not_cosmetic_in_a_record(self):
+        # In a nested list the indentation is the meaning: `- You may attack.` beside a condition and under
+        # it are two rulings. mutation: collapse every whitespace run, as the first version did
+        before = "- When stunned:\n  - You cannot move.\n- You may attack.\n"
+        after = "- When stunned:\n  - You cannot move.\n  - You may attack.\n"
+        self.assertEqual(Repo({RECORD: doc(before)}, {RECORD: doc(after)}).classify({RECORD: "MODIFIED"})["class"],
+                         rc.SEMANTIC_RULING)
+        self.assertEqual(Repo({RECORD: doc("A.\n\nB.\n")}, {RECORD: doc("A.\nB.\n")}).classify({RECORD: "MODIFIED"})["class"],
+                         rc.SEMANTIC_RULING)
+
+    def test_a_supersession_is_found_through_a_byte_order_mark_and_old_line_endings(self):
+        # mutation: search the raw text, whose `^` knows neither a BOM nor a lone CR
+        for raw in (b"\xef\xbb\xbfSupersedes: 0001\nPlayers may attack.\n",
+                    b"# 0002\rSupersedes: 0001\rPlayers may attack.\r",
+                    "# 0002\u2028Supersedes: 0001\u2028x".encode("utf-8"), b"# 0002\r\nSupersedes: 0001\r\n"):
+            with self.subTest(raw=raw):
+                self.assertEqual(Repo({}, {RECORD: raw}).classify({RECORD: "ADDED"})["class"], rc.SEMANTIC_RULING)
+
+    def test_a_decision_record_renamed_or_copied_is_a_ruling_wherever_it_lands(self):
+        # GitHub's list names the new path alone, so a rename can drop a numbered record's number and
+        # rewrite it. mutation: classify a renamed path by its name
+        new = "docs/decisions/combat.md"
+        for change in ("RENAMED", "COPIED"):
+            with self.subTest(change=change):
+                self.assertEqual(Repo({}, {new: doc("Players may attack.\n"), RECORD: doc("x")}).classify({new: change})["class"],
+                                 rc.SEMANTIC_RULING)
+                self.assertEqual(Repo({}, {RECORD: doc("x")}).classify({RECORD: change})["class"], rc.SEMANTIC_RULING)
+                # Even where both sides read and agree: the path it came from is the one not in the list.
+                self.assertEqual(Repo({RECORD: doc("x")}, {RECORD: doc("x")}).classify({RECORD: change})["class"],
+                                 rc.SEMANTIC_RULING)
+
+    def test_the_old_path_of_a_rename_is_a_deletion(self):
+        # mutation: forget where a rename came from, and a handler moved to notes/ leaves the surface unseen
+        files = [{"path": "notes/Handlers.md", "changeType": "RENAMED", "previous": HANDLER}]
+        changes = rc.changes_of(files)
+        self.assertEqual(changes, {"notes/Handlers.md": "RENAMED", HANDLER: "DELETED"})
+        self.assertEqual(Repo({HANDLER: b"int F() => 1;"}, {}).classify(changes)["class"], rc.SEMANTIC_IMPLEMENTATION)
+        self.assertEqual(rc.changes_of([{"path": "b", "changeType": "COPIED", "previous": "a"}]), {"b": "COPIED"})
+
+    def test_a_diff_cannot_narrow_the_surface_it_is_judged_by(self):
+        # mutation: judge by the head's patterns alone
+        self.assertEqual(rc.surface_patterns([], ["src/**", "tests/**"]), ["src/**", "tests/**"])
+        self.assertEqual(rc.surface_patterns(["src/**", "x/**"], ["src/**", "tests/**"]), ["src/**", "x/**", "tests/**"])
+        self.assertEqual(rc.surface_patterns(["src/**"], None), ["src/**"])
+        repo = Repo({HANDLER: b"int F() => 1;"}, {HANDLER: b"int F() => 2;"})
+        self.assertEqual(repo.classify({HANDLER: "MODIFIED"}, patterns=[])["class"], rc.DOCUMENTATION)
+        self.assertEqual(repo.classify({HANDLER: "MODIFIED"}, patterns=rc.surface_patterns([], PATTERNS))["class"],
+                         rc.SEMANTIC_IMPLEMENTATION)
 
     def test_a_deleted_record_is_a_semantic_ruling(self):
         # mutation: let a deletion pass as an edit with no text to compare
@@ -167,7 +222,7 @@ class TestEachClass(unittest.TestCase):
     def test_a_comment_only_change_to_a_handler_is_documentation(self):
         # mutation: return True from comment_only whenever the file changed
         repo = Repo({HANDLER: b"int F() { return 1; } // the old note\n"},
-                    {HANDLER: b"int F() { return 1; } // a better note\n/* and a block */\n"})
+                    {HANDLER: b"int F() { return 1; } // a better note\n"})
         result = repo.classify({HANDLER: "MODIFIED"})
         self.assertEqual(result["class"], rc.DOCUMENTATION)
         self.assertEqual(rc.judge(result, rc.DOCUMENTATION)[0], rc.DOCUMENTATION)
@@ -408,6 +463,14 @@ class TestARegenerationIsInertOnlyWhenTheRulesDidNotMove(unittest.TestCase):
         paths = {**FactoryUpdate.paths(), "backlog/notes.md": "DELETED"}
         self.assertEqual(repo.classify(paths)["class"], rc.SEMANTIC_IMPLEMENTATION)
 
+    def test_a_renamed_generated_file_is_not_the_factorys(self):
+        # The factory writes a path; it does not move one, and a move hides the old path.
+        # mutation: let a renamed or copied file count as written by the factory
+        for change in ("RENAMED", "COPIED"):
+            with self.subTest(change=change):
+                paths = {**FactoryUpdate.paths(), GENERATED: change}
+                self.assertEqual(FactoryUpdate().repo().classify(paths)["class"], rc.SEMANTIC_IMPLEMENTATION)
+
     def test_the_factory_and_the_kernel_may_move(self):
         # The point of a factory update. mutation: require them equal too, and no update is ever inert.
         result = self.classify(FactoryUpdate())
@@ -427,14 +490,33 @@ class TestCommentOnlyIsProvedNotAssumed(unittest.TestCase):
     def same(self, before, after):
         return rc.comment_only(before.encode(), after.encode())
 
-    def test_comments_and_spacing_are_not_code(self):
-        self.assertTrue(self.same("int x = 1; // a", "int   x  =  1;\n\n/* b */\n"))
-        self.assertTrue(self.same("a /*c*/ b", "a b"))
+    def test_only_what_a_comment_says_may_differ(self):
+        self.assertTrue(self.same("int x = 1; // a", "int x = 1;"))
+        self.assertTrue(self.same("int x = 1; // a", "int x = 1;      // something else entirely"))
+        self.assertTrue(self.same("a /* c */ b", "a /* quite another */ b"))
+        self.assertTrue(self.same("a\n    // one\nb", "a\n// two\nb"))
 
-    def test_whether_there_is_space_between_tokens_is_kept_and_how_much_is_not(self):
-        # Conservative on purpose: `x=1` and `x = 1` are the same program, and a scanner that says so
-        # must also say `a+ ++b` and `a++ +b` are, which they are not.
+    def test_the_code_must_be_byte_identical_line_for_line(self):
+        # The compiler reads text and positions: CallerLineNumber, CallerArgumentExpression, #line.
+        # mutation: compare tokens, ignoring how much space separates them or how many lines there are
+        self.assertFalse(self.same("F(1 + 2);", "F(1 +  2);"))
+        self.assertFalse(self.same("a();\nF(1);", "a();\n// a note on its own line\nF(1);"))
+        self.assertFalse(self.same("a();\nF(1);", "a();\n\nF(1);"))
         self.assertFalse(self.same("int x=1;", "int x = 1;"))
+        self.assertFalse(self.same("a();\n    b();", "a();\nb();"))
+
+    def test_a_block_comment_keeps_the_line_it_was_on(self):
+        self.assertTrue(self.same("a /* x\ny */ b", "a /* z\nw */ b"))
+        self.assertFalse(self.same("a /* x\ny */ b", "a /* z */ b"))
+
+    def test_every_line_terminator_ends_a_line_comment(self):
+        # C# ends a `//` comment at CR, NEL, LS and PS as well as LF, and what follows is code.
+        # mutation: look for LF alone
+        for terminator in ("\r", "\u0085", "\u2028", "\u2029", "\r\n"):
+            with self.subTest(terminator=repr(terminator)):
+                self.assertFalse(self.same(f"// note{terminator}return 1;", f"// note{terminator}return 2;"))
+                self.assertFalse(self.same(f"x(); // note{terminator}if (a) return 1;",
+                                           f"x(); // note{terminator}if (a) return 2;"))
 
     def test_a_comment_is_a_separator_not_nothing(self):
         # mutation: delete comments instead of replacing them, so `a/*c*/b` becomes the one token `ab`

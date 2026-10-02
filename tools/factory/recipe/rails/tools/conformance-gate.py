@@ -57,8 +57,10 @@ import binascii
 import json
 import os
 import pathlib
+import re
 import subprocess
 import sys
+import urllib.parse
 
 # The class is decided by the engine's vendored scripts/factory/reviewclass.py, and an imported
 # module leaves its bytecode beside it: a path no ownership row covers, so the checkout goes dirty (#194).
@@ -96,15 +98,21 @@ def listed_files(pull, number):
     """
     files = [{"path": f["path"], "changeType": f.get("changeType") or ""} for f in pull.get("files") or []]
     count = pull.get("changedFiles")
-    if not isinstance(count, int) or len(files) == count:
+    # A rename is named by its new path alone in `gh pr view --json files`, and the REST endpoint says
+    # where it came from (0076): the old path is a deletion, and a handler moved off the surface is one.
+    renamed = any(f["changeType"] in ("RENAMED", "COPIED") for f in files)
+    if isinstance(count, int) and len(files) == count and not renamed:
+        return files
+    if not isinstance(count, int) and not renamed:
         return files
     listing = gh("api", f"repos/{{owner}}/{{repo}}/pulls/{number}/files?per_page=100", "--paginate",
-                 "--jq", '.[] | [.filename, .status] | @tsv')
+                 "--jq", '.[] | [.filename, .status, (.previous_filename // "")] | @tsv')
     whole = []
     for line in listing.splitlines():
-        path, _, status = line.partition("\t")
+        path, _, rest = line.partition("\t")
+        status, _, previous = rest.partition("\t")
         if path:
-            whole.append({"path": path, "changeType": _CHANGE_TYPES.get(status, status.upper())})
+            whole.append({"path": path, "changeType": _CHANGE_TYPES.get(status, status.upper()), "previous": previous})
     return whole
 
 
@@ -137,6 +145,26 @@ def engine_relative(path, prefix):
     return path[len(prefix) + 1:] if path.startswith(prefix + "/") else None
 
 
+def semantic_surface(changed, patterns, prefix):
+    """The changed paths on the semantic surface, in the engine's own terms, sorted.
+
+    The surface the policy declares, before the review class (0076) says which of it the diff proves
+    inert: kept as the one place a path is matched against `semanticPaths` in the engine's own terms,
+    which the embedded-engine tests hold to (#507).
+    """
+    return sorted({inside for path in changed
+                   for inside in [engine_relative(path, prefix)]
+                   if inside is not None and is_semantic(inside, patterns)})
+
+
+def is_semantic(path, patterns):
+    for pattern in patterns:
+        regex = re.escape(pattern).replace(r"\*\*/", "(?:.*/)?").replace(r"\*\*", ".*").replace(r"\*", "[^/]*")
+        if re.fullmatch(regex, path):
+            return True
+    return False
+
+
 def factory_module(name):
     """One of the engine's vendored `scripts/factory` modules, or Undecidable: a gate that cannot load
     what decides the class has no honest answer, and says so rather than falling back to a weaker one."""
@@ -161,22 +189,35 @@ def engine_name():
 def base_bytes(base_oid, path):
     """The bytes of `path` (as GitHub spells it) at the commit the pull request is based on, or None."""
     try:
-        return base64.b64decode(gh("api", f"repos/{{owner}}/{{repo}}/contents/{path}?ref={base_oid}",
-                                   "--jq", ".content"))
+        return base64.b64decode(gh("api", f"repos/{{owner}}/{{repo}}/contents/{urllib.parse.quote(path)}"
+                                   f"?ref={base_oid}", "--jq", ".content"))
     except (Undecidable, ValueError, binascii.Error):
         return None
 
 
-def review_class(changed, patterns, prefix, body, base_oid):
+def base_patterns(base_oid, prefix):
+    """The `review.semanticPaths` the base commit's policy lists, or None when it cannot be read."""
+    raw = base_bytes(base_oid, f"{prefix}/{POLICY}" if prefix else POLICY) if base_oid else None
+    try:
+        review = json.loads(raw.decode("utf-8")).get("review") or {}
+    except (AttributeError, UnicodeDecodeError, ValueError):
+        return None
+    listed = review.get("semanticPaths") if isinstance(review, dict) else None
+    return listed if isinstance(listed, list) else None
+
+
+def review_class(files, patterns, prefix, body, base_oid):
     """`(result, effective class, problems, hints, declared)` for the diff, in the engine's own terms.
 
-    `changed` is `{path as GitHub reports it: change type}`. The head's bytes are read from this
+    `files` is GitHub's list, a rename carrying the path it came from, judged against the surface the
+    base and the head policies both list, so a diff cannot narrow the surface it is judged by. The head's bytes are read from this
     checkout and the base's from the API, only for the files the class needs them for. Where the
     engine's own ownership table cannot be loaded nothing is the factory's, so nothing is exempt.
     """
     reviewclass = factory_module("reviewclass")
     inside = {}
-    for path, change in changed.items():
+    patterns = reviewclass.surface_patterns(patterns, base_patterns(base_oid, prefix))
+    for path, change in reviewclass.changes_of(files).items():
         relative = engine_relative(path, prefix)
         if relative is not None:
             inside[relative] = change
@@ -244,9 +285,8 @@ def main(argv=None):
         # Which verdicts this change needs is its review class's to say (0076). The surface is still
         # the policy's: it decides which paths *can* be semantic, and the class decides which of
         # those the diff proves are not.
-        changes = {f["path"]: f["changeType"] for f in files}
         result, effective, problems_of_class, hints, declared, reviewclass = review_class(
-            changes, review.get("semanticPaths") or [], engine_path(), pull.get("body") or "",
+            files, review.get("semanticPaths") or [], engine_path(), pull.get("body") or "",
             pull.get("baseRefOid"))
         touched = reviewclass.semantic_files(result, effective)
         owes_verdict = effective in reviewclass.SEMANTIC

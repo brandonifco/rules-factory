@@ -75,10 +75,11 @@ OWES = {
 REMOVALS = frozenset({"DELETED", "REMOVED"})
 DERIVED = "derived"
 DECISION_RECORD = re.compile(r"\Adocs/decisions/\d{4}-[^/]+\.md\Z")
-#: A header line that says a new record overrules an earlier one. A word in the prose does not: a
-#: record may say that a later record is the only way it can be overturned, which is the opposite.
+#: A header line that says a new record overrules an earlier one: the verb opens the line and is
+#: followed by a colon or by the number of the record. A word in the prose does not: a record may say
+#: that a later record is the only way it can be overturned, which is the opposite.
 SUPERSESSION = re.compile(r"(?im)^[ \t>*_-]*(?:supersedes|amends|overrules|overturns|reverses|replaces|"
-                          r"retracts|withdraws)\b[*_]*[ \t]*:")
+                          r"retracts|withdraws)\b[*_]*[ \t]*(?::|(?:decisions?[ \t]+|records?[ \t]+)?\d{4}\b)")
 DECLARATION = re.compile(r"(?im)^[ \t]*[-*][ \t]+[^\n:]*\breview class\b[^:\n]*:[ \t*]*`?([A-Za-z-]+)")
 SCOPE_LINE = re.compile(r"(?im)^[ \t]*[-*][ \t]+[^\n:]*\bdecision scope\b[^:\n]*:[ \t]*(\S.*?)[ \t]*$")
 CONFORMANCE = "Map and rules conformance"
@@ -93,6 +94,37 @@ def on_surface(path, patterns):
         if re.fullmatch(regex, path):
             return True
     return False
+
+
+def surface_patterns(head, base):
+    """The semantic surface a diff is judged by: every pattern the head's policy lists and every one the base's did.
+
+    The head's policy is the pull request's own file, and a diff that empties `semanticPaths` while it
+    changes a handler would otherwise judge itself by a surface it removed. A pattern that was on the
+    surface when the change began stays on it for the change that removes it. `base` is None where the
+    base policy cannot be read (a policy being added), and then the head's stands alone.
+    """
+    out = []
+    for patterns in (head, base):
+        for pattern in patterns or []:
+            if isinstance(pattern, str) and pattern not in out:
+                out.append(pattern)
+    return out
+
+
+def changes_of(files):
+    """`{path: change type}` from GitHub's file list, with the old path of a rename listed as DELETED.
+
+    `gh pr view --json files` names a rename by its new path alone, so a handler moved to `notes/X.md`
+    would leave the surface without a line saying it had been on it. Each file may carry `previous`, the
+    path it was renamed from, and that is a deletion of it.
+    """
+    out = {}
+    for item in files:
+        out[item["path"]] = item.get("changeType") or ""
+        if item.get("previous") and (item.get("changeType") or "") == "RENAMED":
+            out.setdefault(item["previous"], "DELETED")
+    return out
 
 
 # --- what a pull request says ------------------------------------------------------------------
@@ -133,71 +165,81 @@ def declared_scope(body):
 # --- C#: is a change only to comments and formatting? ------------------------------------------
 
 
+#: Every character C# ends a line with, and a `//` comment with. LF alone is not it: a CR, a NEL or a
+#: Unicode line or paragraph separator ends the comment too, and code after one is code.
+LINE_ENDS = "\n\r\u0085\u2028\u2029"
+
+
+def _line_end(text, i):
+    """The index of the first line terminator at or after `i`, or the end of the text."""
+    for j in range(i, len(text)):
+        if text[j] in LINE_ENDS:
+            return j
+    return len(text)
+
+
 def code_signature(text):
-    """`text` with every comment removed and the amount of whitespace ignored, or None when unprovable.
+    """`text` with the **content** of every comment removed and nothing else changed, or None when unprovable.
 
-    Two files with the same signature compile to the same program: a comment is a separator and
-    never a token, a string or character literal is kept byte for byte, a preprocessor line is kept
-    whole, and whether two tokens are separated is kept while by how much is not (`a+ ++b` and
-    `a++ +b` differ). Built on the scanner `reviewscope` already owns for the reference graph.
+    Two files with the same signature are the same code byte for byte, line for line: only what a
+    comment says differs, and the spacing that sat just before one. That is stricter than "the same
+    tokens" on purpose. The compiler reads source text and positions -- `CallerLineNumber`,
+    `CallerArgumentExpression`, `#line` -- so a blank line added above a call, or `1 +  2` for `1 + 2`
+    inside an argument, is a different program with the same tokens, and a comment change that moves a
+    line is not a comment change. A block comment keeps its line breaks, so no line moves.
 
-    **It returns None rather than guess.** A literal or comment that runs to the end of the file
-    means the scanner and the compiler disagree about where something ends, and a comment-only
-    verdict about text the scanner cannot read is exactly the one that lets code through.
+    Every string and character literal and every preprocessor line is kept byte for byte, and the
+    scanner is the one `reviewscope` already owns for the reference graph. **It returns None rather
+    than guess:** a literal or comment that runs to the end of the file means the scanner and the
+    compiler disagree about where something ends.
     """
-    out, buffer, i, n = [], [], 0, len(text)
+    out, i, n = [], 0, len(text)
     line_start = True
 
-    def flush():
-        if buffer:
-            chunk = re.sub(r"[ \t\r\f\v]+", " ", "".join(buffer))
-            out.append(re.sub(r" ?\n[ \n]*", "\n", chunk))
-            buffer.clear()
+    def trim():
+        # The spacing before a comment belongs to the comment: `x(); // note` and `x();` are one line of code.
+        while out and out[-1] in (" ", "\t"):
+            out.pop()
 
     while i < n:
         c = text[i]
         if line_start and c in " \t":
-            buffer.append(c)
+            out.append(c)
             i += 1
             continue
         if line_start and c == "#":
-            end = text.find("\n", i)
-            end = n if end < 0 else end
-            flush()
-            out.append("\x00" + text[i:end].rstrip("\r") + "\x01")
+            end = _line_end(text, i)
+            out.append(text[i:end])
             i = end
             line_start = False
             continue
-        line_start = c == "\n"
+        line_start = c in LINE_ENDS
         if text.startswith("//", i):
-            end = text.find("\n", i)
-            buffer.append(" ")
-            i = n if end < 0 else end
+            trim()
+            i = _line_end(text, i)
         elif text.startswith("/*", i):
             end = text.find("*/", i + 2)
             if end < 0:
                 return None
-            buffer.append(" ")
+            trim()
+            out.append(" " + "".join(ch for ch in text[i:end + 2] if ch in LINE_ENDS))
             i = end + 2
         elif c == '"' or (c in "$@" and '"' in text[i:i + 3]):
             end = reviewscope._literal_end(text, i)
             if end >= n:
                 return None
-            flush()
-            out.append("\x00" + text[i:end] + "\x01")
+            out.append(text[i:end])
             i = end
         elif c == "'":
             end = reviewscope._char_end(text, i)
             if end > n:
                 return None
-            flush()
-            out.append("\x00" + text[i:end] + "\x01")
+            out.append(text[i:end])
             i = end
         else:
-            buffer.append(c)
+            out.append(c)
             i += 1
-    flush()
-    return "".join(out).strip()
+    return "".join(out)
 
 
 def comment_only(base, head):
@@ -224,8 +266,16 @@ def _text(data):
         return None
 
 
-def _normal(text):
-    return re.sub(r"\s+", " ", text).strip()
+def _lines(text):
+    """`text` as its lines: BOM gone, every line terminator the same, trailing space gone from each line.
+
+    What a cosmetic edit may differ in and nothing else. Indentation, blank lines and where a block
+    begins are not cosmetic in a document whose nesting is its meaning: `- You may attack.` under a
+    condition and beside it are two rulings.
+    """
+    text = text.lstrip("\ufeff")
+    text = re.sub(r"\r\n|[\r\u0085\u2028\u2029]", "\n", text)
+    return [line.rstrip() for line in text.strip("\n").split("\n")]
 
 
 def decision_record(path, change, base, head):
@@ -243,8 +293,11 @@ def decision_record(path, change, base, head):
     new = _text(head)
     if new is None:
         return SEMANTIC_RULING, "a decision record that cannot be read at the head"
+    if change in ("RENAMED", "COPIED"):
+        return SEMANTIC_RULING, ("a decision record renamed or copied: the old path is not in the list GitHub gives, "
+                                 "so what was withdrawn and what was changed cannot be told apart")
     if change == "ADDED":
-        found = SUPERSESSION.search(new)
+        found = SUPERSESSION.search("\n".join(_lines(new)))
         if found:
             return SEMANTIC_RULING, (f"a new record that says it {found.group(0).strip(' *_->:').lower()} "
                                      f"another: a ruling already in force changes")
@@ -252,8 +305,8 @@ def decision_record(path, change, base, head):
     old = _text(base)
     if old is None:
         return SEMANTIC_RULING, "a decision record that cannot be read at the base, so what changed in it is unknown"
-    if _normal(old) == _normal(new):
-        return DECISION_RECORD_ONLY, "a decision record changed in whitespace alone"
+    if _lines(old) == _lines(new):
+        return DECISION_RECORD_ONLY, "a decision record changed in line endings and trailing space alone"
     return SEMANTIC_RULING, ("an existing decision record edited: it may be the ruling the engine is built to, "
                              "and a typo cannot be told from a reversal by a tool")
 
@@ -282,20 +335,28 @@ def factory_class(ownership, name):
     return classify
 
 
-def _is_derived(path, fclass):
-    """A file the factory writes. The corpus copy is excluded: it is rule text, and is never derived."""
-    return not path.startswith("corpus/") and fclass(path) in ("generated", "managed", "lock")
+def _is_derived(path, fclass, change=None):
+    """A file the factory writes. The corpus copy is excluded: it is rule text, and is never derived.
+
+    A rename is excluded too: the factory writes a path, it does not move one, and a moved file is the
+    case where the old path is not in the list.
+    """
+    return (not path.startswith("corpus/") and change not in ("RENAMED", "COPIED")
+            and fclass(path) in ("generated", "managed", "lock"))
 
 
 def _path_class(path, change, patterns, read, fclass, compared):
     """`(class, why)` for one changed path, or `(DERIVED, why)` for a file the factory writes."""
     surface = on_surface(path, patterns)
-    if _is_derived(path, fclass):
+    if _is_derived(path, fclass, change):
         return DERIVED, "a file the factory writes"
     if not surface:
         return DOCUMENTATION, "not on the semantic surface"
     if DECISION_RECORD.match(path):
         return decision_record(path, change, read(path, "base"), read(path, "head"))
+    if path.startswith("docs/decisions/") and change in ("RENAMED", "COPIED"):
+        return SEMANTIC_RULING, ("moved or copied into the decision records from a path this list does not show: "
+                                 "what it was is unknown")
     if path.startswith("docs/decisions/") and path.endswith(".md"):
         return DOCUMENTATION, "a document beside the decision records, which records none"
     if path.startswith("corpus/") or path.startswith("overlay/"):
@@ -344,7 +405,7 @@ def regeneration(changed, read, fclass):
     not replace. A forged record is the same bytes forged and is caught there too.
     """
     facts = []
-    foreign = sorted(p for p in changed if not _is_derived(p, fclass))
+    foreign = sorted(p for p in changed if not _is_derived(p, fclass, changed[p]))
     if foreign:
         return False, [f"not every changed file is one the factory writes: {', '.join(f'`{p}`' for p in foreign[:5])}"
                        + ("..." if len(foreign) > 5 else "")]
