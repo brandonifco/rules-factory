@@ -223,6 +223,32 @@ independent reviewer confirming a stated limit is worth as much as one finding a
 out of scope. It read source, tests and the installed git documentation, created no files, and left
 the pinned worktree clean; the worktree was removed when the findings were filed (`AGENTS.md` §6).
 
+### `review9-*` — the review of the observability work, 2026-10-02
+
+Round nine is an independent Codex review (`gpt-5.6-sol`) of `e76d09a`. It ran read-only against a
+detached worktree pinned to that commit and was given no earlier reviewer's conclusions. Its subject
+was named in the brief: the eight changes since `0f894dd`, which are `factory trace` and
+`trace --html` (#578, #587), `factory status` and `status --verify` (#589, #592), the derived handler
+(#590), two fixes to the vendored review model (#579, #588), and decision
+[0075](decisions/0075-observability-is-a-reading-of-the-owners-evidence-and-needs-no-fifth-component.md)
+(#593). The brief forbade reading the two private engines, so that their contents would not leave
+the machine, and the reviewer's log shows it did not. Its ordered list is
+[#597](https://github.com/brandonifco/rules-factory/issues/597).
+
+| Label | What belongs in it |
+|---|---|
+| `review9-p1` | **The review model narrowed a claim.** #588's cap on interpolation nesting blanked everything after the 65th nested hole, so the declarations there left the reference graph (#598). The reviewer filed it as p0. It is p1 here, because it is reachable only by constructed source and the lexical model is best-effort, not adversary-proof. It is still a regression in what decides a review's scope. |
+| `review9-p2` | **A reading tool saying slightly more than it established.** The derived handler restates the generated class and signatures (#599); a merge refusal's corpus quotation reaches `status --verify --json` (#600); an unnamed test row is counted as named (#601); "writes nothing" overlooks the entry point's own bytecode (#602); and `--verify` labels its authority with the caller's path (#603). |
+
+It found **no p0**, and nothing that reaches provenance integrity, the verdict-to-commit binding,
+`verify`'s own checks or the produce transaction. It confirmed that `status --verify` reaches the
+real `verify` path with no copied check, that the trace delegates every reader to its owner, and
+that two traces of faa-part-107 were byte-identical.
+
+**What it could not examine.** pytest could not start in the read-only sandbox, which has no
+temporary directory, so the reviewer reproduced in memory. It did not run `status --verify`, which
+may write lock files.
+
 ### `post-1.0`, `known-limitation` — the ship-first triage, 2026-09-21
 
 An open issue records knowledge. It does not authorise implementation. From 2026-09-21 every open
