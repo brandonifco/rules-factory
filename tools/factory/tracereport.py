@@ -119,6 +119,15 @@ def status_of(entry):
     return shown((entry.get("status") or {}).get("value"))
 
 
+def named(entry):
+    """How many of an entry's test rows name a test: the rows whose `name` is recorded, as `status` counts them.
+
+    A row with a mutation and no name is still rendered, as the trace holds it, and is the trace's
+    `entry -> test` gap; it is not a named test.
+    """
+    return sum(1 for test in entry.get("tests") or [] if (test.get("name") or {}).get("evidence") == "recorded")
+
+
 def statuses(entries):
     """{status as shown: its position}, in first-seen order. A filter and an entry's class are named by
     the position and never by the value, so no two statuses can share a name and no value reaches CSS."""
@@ -143,7 +152,7 @@ def render_entry(entry, gaps_by_subject, positions):
         if label in entry:
             parts.append(row(label, entry[label]))
     parts.append("</table>")
-    parts.append(f'<div class="label">Named tests ({len(entry.get("tests") or [])})</div>')
+    parts.append(f'<div class="label">Named tests ({named(entry)})</div>')
     for test in entry.get("tests") or []:
         parts.append('<div class="test">' + fact(test["name"]) + '<div class="muted">mutation the test was '
                      'watched catching:</div>' + fact(test["mutation"]) + "</div>")
@@ -252,7 +261,7 @@ def render(trace):
         out.append(f'<tr class="{classes_of(entry, gaps_by_subject, positions)}">'
                    f'<td><a href="#{esc(anchor(entry_id))}"><code>{esc(entry_id)}</code></a></td>'
                    f"<td>{badge(status.get('evidence', 'unknown'))} {esc(status_of(entry))}</td>"
-                   f"<td>{len(entry.get('tests') or [])}</td>"
+                   f"<td>{named(entry)}</td>"
                    f"<td>{len(gaps_by_subject.get(f'entry:{entry_id}') or [])}</td></tr>")
     out.append("</table>")
     out.append('<div class="entries">')
