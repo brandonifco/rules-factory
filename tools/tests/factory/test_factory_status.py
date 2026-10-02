@@ -185,7 +185,10 @@ class StatusOfAnEngine(EngineCase):
         self.assertIsNone(VERDICTS.search(fixture.MUTATION))
         self.assertIsNone(VERDICTS.search(text), VERDICTS.search(text))
 
-    def test_a_run_writes_nothing_not_even_gits_index(self):
+    def test_a_run_writes_nothing_in_the_engine_not_even_gits_index(self):
+        """The claim is the engine's and its repository's. The factory's own entry-point bytecode is
+        written and removed in the factory's checkout before this interpreter runs (#373), so a
+        snapshot taken from inside it cannot see that and does not say anything about it."""
         self.commit()
         # Make the index stale, so that a git that may refresh it would write it.
         path = os.path.join(self.engine, "overlay", "listed-in-the-table.json")
