@@ -6787,8 +6787,11 @@ plan = json.loads(pathlib.Path(os.environ["DOTNET_PLAN"]).read_text())
 state = pathlib.Path(os.environ["DOTNET_CALLS"])
 calls = json.loads(state.read_text()) if state.exists() else []
 step = plan[min(len(calls), len(plan) - 1)]
-watched = pathlib.Path(os.environ["DOTNET_WATCH"])
-calls.append({"argv": sys.argv[1:], "watched": watched.read_text() if watched.exists() else None})
+names = os.environ["DOTNET_WATCH"].split(os.pathsep)
+watched = pathlib.Path(names[0])
+calls.append({"argv": sys.argv[1:], "watched": watched.read_text() if watched.exists() else None,
+              "watchedFiles": {pathlib.Path(n).name: pathlib.Path(n).read_text() if pathlib.Path(n).exists() else None
+                               for n in names}})
 state.write_text(json.dumps(calls))
 print(step["say"])
 sys.exit(step.get("code", 0))
@@ -6837,10 +6840,10 @@ class TestTheMutationRunner(RailsInAGitEngine):
         with open(self.calls_path, encoding="utf-8") as handle:
             return json.load(handle)
 
-    def mutate(self, spec, *flags, hatch=True):
+    def mutate(self, spec, *flags, hatch=True, watch=(PROBE,)):
         environment = {**os.environ, "PATH": self.bin + os.pathsep + os.environ["PATH"],
                        "DOTNET_PLAN": self.plan_path, "DOTNET_CALLS": self.calls_path,
-                       "DOTNET_WATCH": os.path.join(self.out, PROBE)}
+                       "DOTNET_WATCH": os.pathsep.join(os.path.join(self.out, name) for name in watch)}
         if hatch:
             environment["RULES_ENGINE_ALLOW_PRIMARY_MUTATION"] = "1"
         return subprocess.run([sys.executable, os.path.join(self.out, "tools", "mutate.py"), "-", *flags],
@@ -7007,6 +7010,98 @@ class TestTheMutationRunner(RailsInAGitEngine):
         done = self.mutate({"edits": [{"file": PROBE, "old": "beta", "new": "BETA"}]})
         self.assertEqual(done.returncode, 1)
         self.assertIn("names no `test`", done.stdout + done.stderr)
+
+    # -- several edits in one spec: each is applied to what the earlier ones produced (#623) -------
+
+    GREEN_THEN_RED = ({"say": "Passed!  - Failed:     0, Passed:     1"},
+                      {"say": "Failed!  - Failed:     1, Passed:     0", "code": 1})
+
+    def edit(self, old, new, file=PROBE, **more):
+        return {"file": file, "old": old, "new": new, **more}
+
+    def test_two_edits_to_one_file_are_both_in_place_for_the_run_and_both_undone_after_it(self):
+        """The defect: each edit was planned against the file's original bytes, so the last write won."""
+        self.engine_with_a_probe()
+        self.plan(*self.GREEN_THEN_RED)
+        done = self.mutate(self.spec(extra_edits=(self.edit("gamma", "GAMMA"),)))
+        self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+        calls = self.calls()
+        self.assertEqual(calls[1]["watched"], "alpha\nBETA\nGAMMA\n",
+                         "the run saw only some of the spec's edits")
+        self.assertEqual(self.on_disk(), ORIGINAL, "the file was not restored to its original bytes")
+
+    def test_edits_to_two_files_are_both_in_place_for_the_run_and_both_undone_after_it(self):
+        probe = self.engine_with_a_probe()
+        other = os.path.join(self.out, "other.txt")
+        with open(other, "w", encoding="utf-8") as handle:
+            handle.write("one\ntwo\n")
+        self.plan(*self.GREEN_THEN_RED)
+        done = self.mutate(self.spec(extra_edits=(self.edit("two", "TWO", file="other.txt"),)),
+                           watch=(PROBE, "other.txt"))
+        self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+        seen = self.calls()[1]["watchedFiles"]
+        self.assertEqual(seen, {PROBE: "alpha\nBETA\ngamma\n", "other.txt": "one\nTWO\n"})
+        self.assertEqual(self.on_disk(), ORIGINAL)
+        with open(other, encoding="utf-8") as handle:
+            self.assertEqual(handle.read(), "one\ntwo\n")
+
+    def test_an_edit_after_one_that_changes_the_length_still_lands_on_its_own_text(self):
+        """The written spans move when a later edit changes lengths before them.
+
+        Edit 1 writes `BETA!!`; edit 2 shortens the text before it; edit 3 starts exactly where
+        edit 1's text ends. With edit 1's span left where it was written, edit 3 would look like an
+        overlap and be refused.
+        """
+        self.engine_with_a_probe()
+        self.plan(*self.GREEN_THEN_RED)
+        done = self.mutate(self.spec(new="BETA!!", extra_edits=(self.edit("alpha", "AL"),
+                                                                 self.edit("\ngamma", "\nGAMMA"))))
+        self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+        self.assertEqual(self.calls()[1]["watched"], "AL\nBETA!!\nGAMMA\n")
+        self.assertEqual(self.on_disk(), ORIGINAL)
+
+    def test_an_edit_whose_old_an_earlier_edit_removed_is_refused_and_nothing_is_written(self):
+        self.engine_with_a_probe()
+        self.plan()
+        done = self.mutate(self.spec(extra_edits=(self.edit("beta", "zeta"),)))
+        self.assertEqual(done.returncode, 1, done.stdout + done.stderr)
+        said = done.stdout + done.stderr
+        self.assertIn("edit 1", said)
+        self.assertIn("occurs 0 time(s)", said)
+        self.assertIn(PROBE, said)
+        self.assertEqual(self.calls(), [], "a refused spec reached dotnet")
+        self.assertEqual(self.on_disk(), ORIGINAL, "a refused spec left its first edit written")
+
+    def test_an_edit_inside_text_an_earlier_edit_wrote_is_refused_and_nothing_is_written(self):
+        self.engine_with_a_probe()
+        self.plan()
+        done = self.mutate(self.spec(old="beta", new="be-ta", extra_edits=(self.edit("-t", "+t"),)))
+        self.assertEqual(done.returncode, 1, done.stdout + done.stderr)
+        said = done.stdout + done.stderr
+        self.assertIn("edit 1", said)
+        self.assertIn("overlaps text edit 0 wrote", said)
+        self.assertIn(PROBE, said)
+        self.assertEqual(self.calls(), [])
+        self.assertEqual(self.on_disk(), ORIGINAL)
+
+    def test_an_edit_that_straddles_the_edge_of_text_an_earlier_edit_wrote_is_refused(self):
+        """Part of `old` is the original's and part is the earlier edit's: still the edit's output."""
+        self.engine_with_a_probe()
+        self.plan()
+        done = self.mutate(self.spec(extra_edits=(self.edit("A\ng", "A\nG"),), new="BETA"))
+        self.assertEqual(done.returncode, 1, done.stdout + done.stderr)
+        self.assertIn("overlaps text edit 0 wrote", done.stdout + done.stderr)
+        self.assertEqual(self.on_disk(), ORIGINAL)
+
+    def test_an_edit_whose_old_exists_only_because_an_earlier_edit_made_it_is_refused(self):
+        """Deleting `pha` joins `l` to `\n`; `l\nb` is in no file the spec's author could read."""
+        self.engine_with_a_probe()
+        self.plan()
+        done = self.mutate(self.spec(old="pha", new="", extra_edits=(self.edit("l\nb", "L\nB"),)))
+        self.assertEqual(done.returncode, 1, done.stdout + done.stderr)
+        self.assertIn("overlaps text edit 0 wrote", done.stdout + done.stderr)
+        self.assertEqual(self.calls(), [])
+        self.assertEqual(self.on_disk(), ORIGINAL)
 
 
 class TestReProducingAnEmbeddedEngine(AFactoryToReProduceFrom, RailsInAGitEngine):
