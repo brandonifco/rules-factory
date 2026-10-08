@@ -334,9 +334,11 @@ decline that names why and cites where — that is the engine working, not the e
   writes anything: a mutation applied to the wrong site, or to nothing, proves nothing and would
   still print a colour. A spec's edits apply in order, each to the text the earlier ones left, so
   `old` is counted there and may not overlap text an earlier edit wrote. A failed write puts back
-  what was already written, and restoration is byte for byte: the file is matched and written as
-  UTF-8 with its line endings untouched, so CR LF is two characters and an `old` holding LF alone
-  does not match it. It runs each test unmutated first, because a test that was already red
+  what was already written, and restoration is byte for byte, for every name the spec gave a file.
+  Matching is plain substring search on the file's text as UTF-8 with its line endings untouched:
+  CR LF is two characters, so an `old` that spans a line ending must name the file's own ending,
+  and an `old` of LF alone also matches the LF inside a CR LF. It refuses an empty `old`, and a
+  spec whose edits cancel out and would leave every file as it was. It runs each test unmutated first, because a test that was already red
   proves nothing either. And it names the one failure the prose cannot — **a mutation that leaves
   its test green**, which is precisely the test nobody has watched fail — by reporting it and
   exiting non-zero. Paste its output into the pull request as the evidence, and put the specs

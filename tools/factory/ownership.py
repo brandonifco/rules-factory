@@ -149,7 +149,9 @@ TABLE = (
         "a recorded mutation, run: the edit, the named test, and the source put back, so the evidence "
         "AGENTS.md asks for is re-runnable by the reviewer rather than a sentence (#454); a spec's edits "
         "apply in order, each to the text the earlier ones left, so every edit to a file is in place for "
-        "the run, and one that reads another's output is refused (#623)"),
+        "the run, and one that reads another's output is refused (#623); an interrupt or SIGTERM puts every "
+        "file back, every name of a hard-linked file is restored, and a spec that names no site or "
+        "cancels itself out is refused (#623)"),
     Row("tools/re-produce.sh", MANAGED, 8,
         "an overlay edit is finished by a re-produce, from the factory commit the record names (#192); "
         "a record a merge left conflicted is named as one, and --resolve-record settles it (#252); "
@@ -401,7 +403,7 @@ RECIPE_SHA256 = {
         26: "8be45eef569c2a2e46dfaac0b564798431f688bba229c850d7ac73f95d0b70d0",
         27: "0fc0caeb0b289d9a4ed6c3cc397529b746f07ed7ac3bebbd8cc219f85e5f51f0",
         28: "c764a5a4d78e8cf475847fd7143fbd35c3aac652285908065f22768f3a34c8a8",
-        29: "d9894e0b7faebfeba56a2f5534928ecb782bf4226396ce18b15c8ec0c81d0a0c",
+        29: "747d6d7c57d43b7caad66e0017c29c4102223ccba62c1787e98f07e25a7c13c5",
     },
     "CLAUDE.md": {
         1: "04c07ad36e742fa60efafeca54d20bd96d16b6e338a44e46fad2b679ab8dfd9f",
@@ -442,7 +444,7 @@ RECIPE_SHA256 = {
     },
     "tools/mutate.py": {
         1: "d33f7ddedc923388af4582ffb6c04a1434c09f695738ca34f191839f21847901",
-        2: "6e3667a82b17a1c04fe0f7503417da332e7a4f187ed8dab2fad0b9214235cd2c",
+        2: "c0e3dea4a39bd758d9a374e564bad989d54b2e7952a82857d86980b8f6448213",
     },
     "tools/re-produce.sh": {
         1: "2a281f94f81ce141733494a94744caa96c88af3cd9fa848cec21c13e73739499",

@@ -31,12 +31,14 @@ should turn it red:
 in the order they are named, each to the text the earlier ones left, so a spec may edit one file
 several times.
 
-**What it matches.** The text of a file exactly as it is on disk: decoded as UTF-8 with no newline
-translation, so a CR LF line ending is two characters, and an `old` that holds an LF does not match
-it. To edit across such a line ending, put the CR in `old` too.
+**What it matches.** Plain substring search on the text of a file exactly as it is on disk: decoded
+as UTF-8 with no newline translation. A CR LF line ending is therefore two characters, so an `old`
+that spans a line ending must name the file's own ending (CR LF in a CR LF file), and an `old` of LF
+alone also matches the LF inside a CR LF. There is no line-ending special case.
 
 **What it refuses**, before anything is written:
 
+- An empty `old`: it names no site.
 - An `old` string that does not occur exactly `count` times -- counted in the text the spec's
   earlier edits left, not in the file as it was read: a mutation applied to the wrong site, or to
   nothing, proves nothing and the run would still print a colour.
@@ -45,15 +47,21 @@ it. To edit across such a line ending, put the CR in `old` too.
   same reason: it edits the mutation, not the code.
 - Replacement text that cannot be written as UTF-8, so a bad `new` never leaves a file half
   written.
+- A spec whose edits cancel out, so that every file it names would be written with the bytes it
+  already holds: the test would run against the unmutated source, and a red result would be
+  certified as an observed mutation.
 - The primary checkout, for the reason the rails block writes there at all.
 
-Two names for one file (a hard link) are one file, and are edited as one. If a write fails
-anyway, every file already written is put back before the refusal is raised. Anything it cannot
-restore, it says loudly.
+Two names for one file (a hard link) are one file, and are edited as one; each name the spec
+gave is restored. If a write fails anyway, or is interrupted, every file already written is put back
+before the failure is raised. Anything it cannot restore, it says loudly.
 
 **Restoring is not best-effort.** The original bytes are held in memory and written back in a
-`finally`, byte for byte, then read again and compared. An interrupted run leaves no mutated file,
-because the one thing worse than no mutation evidence is a source tree quietly carrying a mutation.
+`finally`, byte for byte, then read again and compared. An interrupted run leaves no mutated file:
+an interrupt (^C) in the middle of applying or restoring finishes putting every file back before it
+is raised again, and SIGTERM is turned into the same interrupt from just before the first write
+until the last file is back. (SIGKILL cannot be caught, and nothing here pretends otherwise.) The
+one thing worse than no mutation evidence is a source tree quietly carrying a mutation.
 
 **A mutation that does not compile is not a red test.** It is reported as its own outcome and
 counts as a failure of the run: the test was never asked the question.
@@ -71,6 +79,7 @@ import json
 import os
 import pathlib
 import re
+import signal
 import subprocess
 import sys
 
@@ -191,6 +200,8 @@ def checked(spec, where):
         for key in ("file", "old", "new"):
             if not isinstance(edit.get(key), str):
                 raise Refused(f"{where} edit {index} has no `{key}`")
+        if edit["old"] == "":
+            raise Refused(f"{where} edit {index} has an empty `old`, which names no site")
         if edit["old"] == edit["new"]:
             raise Refused(f"{where} edit {index} replaces a string with itself, which mutates nothing")
         count = edit.get("count", 1)
@@ -206,20 +217,25 @@ def apply(spec, where):
     occurrences of `old` are counted in that text, not in the file as it was read. A file the spec
     edits twice is read once, and the pair returned for it holds the bytes from before any edit.
     Files are told apart by what they are (device and inode), not by the name a spec gave them, so
-    two names for one file are one file.
+    two names for one file are one file, planned and written once. The pairs returned hold one entry
+    for every distinct path the spec named, aliases sharing the same original bytes, because the run
+    may replace one name with another inode and restoring "the file" would then miss the other name.
 
     An edit is refused when its `old` does not occur exactly `count` times in that text, when two
     occurrences of it overlap one another (the site is ambiguous), and when any occurrence of it
     overlaps text an earlier edit of the same spec wrote: that is an edit to the mutation, not to
     the code the test is about, and no one reading the source could have written it. Every check,
     for every edit, and the encoding of every file, is made before the first byte is written, so a
-    spec whose later edit is refused does not leave an earlier one applied.
+    spec whose later edit is refused does not leave an earlier one applied. So is the last check: a
+    spec whose planned text equals the original bytes of every file it names (`a` to `ab`, then `bc`
+    to `c`, in `abbc`) changes nothing, and is refused.
 
-    If a write fails after all that, every file already written is put back from its original
-    bytes before the failure is raised, so a refusal never leaves a half-applied spec.
+    If a write fails after all that, or is interrupted (any BaseException, a ^C or a SIGTERM that
+    main() turned into one), every file already written is put back from its original bytes before
+    the failure is raised, so neither leaves a half-applied spec.
     """
     texts = {}      # file identity -> the text so far, after the earlier edits of this spec
-    paths = {}      # file identity -> the first path the spec named it by
+    paths = {}      # file identity -> every distinct path the spec named it by, in order
     originals = {}  # file identity -> the bytes before any edit, in the order the files first appear
     written = {}    # file identity -> [(start, end, index of the edit that wrote it)] in its text
     for index, edit in enumerate(spec["edits"]):
@@ -234,7 +250,9 @@ def apply(spec, where):
                 # Decoded and matched exactly as it is on disk: no newline translation, so CR LF is
                 # two characters and an `old` holding LF alone does not match it.
                 texts[identity] = raw.decode("utf-8")
-                originals[identity], paths[identity], written[identity] = raw, path, []
+                originals[identity], paths[identity], written[identity] = raw, [], []
+            if path not in paths[identity]:
+                paths[identity].append(path)
         except (OSError, ValueError) as error:
             raise Refused(f"{where} edit {index} cannot read {edit['file']}: {error}")
         text, spans = texts[identity], written[identity]
@@ -283,40 +301,74 @@ def apply(spec, where):
         try:
             planned.append((paths[identity], originals[identity], mutated.encode("utf-8")))
         except ValueError as error:
-            raise Refused(f"{where}: the edited text of {paths[identity].relative_to(ROOT)} cannot be "
+            raise Refused(f"{where}: the edited text of {paths[identity][0].relative_to(ROOT)} cannot be "
                           f"written as UTF-8 ({error}); nothing was written")
+    if all(mutated == original for _, original, mutated in planned):
+        raise Refused(f"{where}: the edits cancel out; the test would run against the unmutated source, "
+                      f"and a red result would be certified as an observed mutation of source that did "
+                      f"not change")
 
-    done = []
-    for path, original, mutated in planned:
-        try:
-            path.write_bytes(mutated)
-        except OSError as error:
-            # The file that failed is put back too if the failed write changed it (a write can
-            # truncate and then fail), and left alone if it did not: it may be unwritable.
-            touched = done + ([(path, original)] if _bytes_of(path) != original else [])
-            failed = restore(touched)
-            if failed:
-                raise NotRestored(
-                    f"{where}: writing {path.relative_to(ROOT)} failed ({error}), and these files were "
-                    f"mutated and could not be restored -- fix them before anything else:\n  "
-                    + "\n  ".join(str(p) for p in failed))
-            raise Refused(f"{where}: writing {path.relative_to(ROOT)} failed ({error}); the files "
-                          f"already written were put back and nothing is left mutated")
-        done.append((path, original))
-    return [(path, original) for path, original, _ in planned]
+    done = []       # (path, original bytes) for every name of every file written whole
+    current = []    # the same for the file being written now
+    culprit = None
+    try:
+        for names, original, mutated in planned:
+            current = [(name, original) for name in names]
+            culprit = names[0]
+            culprit.write_bytes(mutated)    # one inode, however many names: the first writes them all
+            done += current
+            current = []
+    except BaseException as error:
+        # The file that failed is put back too if the failed write changed it (a write can truncate
+        # and then fail), and left alone if it did not: it may be unwritable. Whatever interrupted
+        # the writes, ^C included, the files already written go back before it is raised again.
+        touched = done + (current if current and _bytes_of(current[0][0]) != current[0][1] else [])
+        failed = restore(touched)
+        reason = error if isinstance(error, OSError) else type(error).__name__
+        writing = f"writing {culprit.relative_to(ROOT)}" if culprit else "writing"
+        if failed:
+            raise NotRestored(
+                f"{where}: {writing} failed ({reason}), and these files were "
+                f"mutated and could not be restored -- fix them before anything else:\n  "
+                + "\n  ".join(str(p) for p in failed)) from error
+        if isinstance(error, OSError):
+            raise Refused(f"{where}: {writing} failed ({reason}); the files "
+                          f"already written were put back and nothing is left mutated") from error
+        raise
+    return [(name, original) for names, original, _ in planned for name in names]
 
 
 def restore(pairs):
-    """Put every file back, byte for byte, and prove it went back. Returns the paths that did not."""
-    failed = []
+    """Put every file back, byte for byte, and prove it went back. Returns the paths that did not.
+
+    One file's failure does not stop the rest. An OSError marks that file failed. Anything else (a
+    ^C, a SIGTERM that main() turned into KeyboardInterrupt) is not swallowed: the file it hit is
+    tried once more, every remaining file is restored, and then the first such exception is raised.
+    """
+    failed, interrupt = [], None
     for path, original in pairs:
         try:
-            path.write_bytes(original)
-            if path.read_bytes() != original:
+            if not _put_back(path, original):
                 failed.append(path)
-        except OSError:
-            failed.append(path)
+        except BaseException as error:
+            interrupt = interrupt or error
+            try:
+                if not _put_back(path, original):
+                    failed.append(path)
+            except BaseException:
+                failed.append(path)
+    if interrupt is not None:
+        raise interrupt
     return failed
+
+
+def _put_back(path, original):
+    """True when `path` holds `original` after writing it and reading it back."""
+    try:
+        path.write_bytes(original)
+        return path.read_bytes() == original
+    except OSError:
+        return False
 
 
 def run_test(solution, test, configuration):
@@ -364,6 +416,11 @@ def _excerpt(text, width=70):
     return repr(one_line if len(one_line) <= width else one_line[:width] + "...")
 
 
+def _terminated(signum, frame):
+    """SIGTERM while a file is mutated is an interrupt like ^C, so the `finally` clauses run."""
+    raise KeyboardInterrupt(f"terminated by signal {signum}")
+
+
 def main(argv=None):
     parser = argparse.ArgumentParser(
         description="Run each recorded mutation and report whether it turns its test red.")
@@ -402,24 +459,40 @@ def main(argv=None):
             results.append((label, f"BASELINE {baselines[test]}", "the test was not green before the mutation"))
             continue
 
-        restore_pairs = []
+        # From just before the first write until the last file is back, SIGTERM is an interrupt: a
+        # terminated process runs no `finally`, and would leave the source mutated. `apply` puts
+        # back what it wrote if it is interrupted, and `restore` finishes every file before it
+        # raises.
+        previous = signal.signal(signal.SIGTERM, _terminated)
         try:
-            restore_pairs = apply(spec, f"spec {number}")
-        except NotRestored as error:
-            print(f"REFUSED: {error}", file=sys.stderr)
-            return 1
-        except Refused as error:
-            print(f"[{number}/{len(specs)}] {label}\n    REFUSED: {error}", file=sys.stderr, flush=True)
-            results.append((label, "REFUSED", str(error)))
-            continue
-        try:
-            outcome, line = run_test(solution, test, args.configuration)
-        finally:
-            failed = restore(restore_pairs)
-            if failed:
-                print("REFUSED: these files were mutated and could not be restored -- fix them before "
-                      "anything else:\n  " + "\n  ".join(str(p) for p in failed), file=sys.stderr)
+            try:
+                restore_pairs = apply(spec, f"spec {number}")
+            except NotRestored as error:
+                print(f"REFUSED: {error}", file=sys.stderr)
                 return 1
+            except Refused as error:
+                print(f"[{number}/{len(specs)}] {label}\n    REFUSED: {error}", file=sys.stderr, flush=True)
+                results.append((label, "REFUSED", str(error)))
+                continue
+            try:
+                outcome, line = run_test(solution, test, args.configuration)
+            finally:
+                try:
+                    failed = restore(restore_pairs)
+                except BaseException:
+                    failed = [path for path, original in restore_pairs if _bytes_of(path) != original]
+                    if not failed:
+                        raise
+                if failed:
+                    print("REFUSED: these files were mutated and could not be restored -- fix them "
+                          "before anything else:\n  " + "\n  ".join(str(p) for p in failed), file=sys.stderr)
+                    return 1
+        except KeyboardInterrupt as error:
+            print(f"INTERRUPTED: {error or 'interrupted'}; every file the mutation touched was put "
+                  f"back.", file=sys.stderr)
+            return 1
+        finally:
+            signal.signal(signal.SIGTERM, previous)
         results.append((label, outcome, line))
         print(f"[{number}/{len(specs)}] {label}\n    {outcome}: {line}", flush=True)
 
