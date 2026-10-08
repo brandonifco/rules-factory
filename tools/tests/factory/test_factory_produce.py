@@ -288,6 +288,16 @@ class TestScaffold(ProduceCase):
         with open(PART107_XML, "rb") as handle, open(os.path.join(out, "corpus", "part107.xml"), "rb") as copy:
             self.assertEqual(handle.read(), copy.read())
 
+    def test_every_configuration_is_built_optimized(self):
+        """0077: Optimize is set unconditionally in the recipe-owned props, so Debug runs optimized code too."""
+        build = self.read(self.produced(), "Directory.Build.props")
+        self.assertRegex(build, r"<Optimize>true</Optimize>")
+        self.assertNotRegex(build, r"<Optimize\s[^>]*Condition")
+        optimize = build.index("<Optimize>")
+        group_start = build.rindex("<PropertyGroup", 0, optimize)
+        self.assertNotIn("Condition", build[group_start:build.index(">", group_start)],
+                         "the PropertyGroup holding Optimize is unconditional")
+
     def test_hand_written_and_scaffold_files_survive_a_rerun(self):
         out = self.produced()
         hand = os.path.join(out, "src", NAME, "Rules", "Speed.cs")
