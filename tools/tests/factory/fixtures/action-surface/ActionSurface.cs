@@ -187,6 +187,8 @@ public sealed partial class ActionSurfaceAcceptance
 
     private static Counter? shared;
 
+    private static Counter? lastResult;
+
     // The runs a violation is committed in: a quarter of the alpha configuration's seeds, so the
     // completion fraction the fixture declares still holds.
     private static bool Affected(Counter state) => state.Configuration == "alpha" && state.Seed % 4 == 0 && state.Value >= 6;
@@ -285,6 +287,16 @@ public sealed partial class ActionSurfaceAcceptance
         if (Variant == "decline-history" && Zero(state))
         {
             return Open<Counter>("rubber-scoring");
+        }
+
+        if (Variant == "alias" && state.Configuration == "alpha" && state.Seed == 0)
+        {
+            // The result of one offered action is changed by the probe of the next: the chosen
+            // result must be kept exactly as it was returned.
+            lastResult?.Poke();
+            var result = state.Next(action.By, state.Stamp());
+            lastResult = result;
+            return Resolution<Counter>.FromValue(result);
         }
 
         if (Variant == "transient" && state.Configuration == "alpha" && state.Seed == 0)

@@ -423,6 +423,7 @@ VIOLATIONS = {
     # Review of 354edd7, finding 1: a call that changes the state it was given.
     "mutate": ("Every_offered_action_is_accepted", "Apply of offered action 0 changed the state it was given"),
     "mutate-legal": ("Every_offered_action_is_accepted", "LegalActions changed the state it was given"),
+    "alias": ("Every_offered_action_is_accepted", "the state the chosen action returned was changed by a later call"),
     # Finding 2: a Start that hands out one object, whose private stamp every Start moves on.
     "singleton": ("Replay_is_deterministic_compared_structurally", "the states first differ structurally at step 0"),
     # Findings 3 and 6: the whole run is compared, the step it ends on and how it ended included.
