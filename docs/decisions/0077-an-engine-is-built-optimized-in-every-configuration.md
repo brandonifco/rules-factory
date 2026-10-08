@@ -2,9 +2,11 @@
 
 ## Status
 
-Accepted — 2026-10-08. Changes the managed `Directory.Build.props` (recipe 2 → 3, decision
+Accepted — 2026-10-08. Records the decision on
+[#626](https://github.com/brandonifco/rules-factory/issues/626). Changes the managed
+`Directory.Build.props` (recipe 2 → 3, decision
 [0018](0018-every-file-the-factory-writes-has-one-owner.md)). Changes no engine-owned file, no gate
-step, no test, and not the CI timeout.
+step, no test an engine runs, and not the CI timeout.
 
 ## Context
 
