@@ -79,7 +79,8 @@ TABLE = (
     Row("src/{name}/Generated/*.g.cs", GENERATED, None,
         "the map, registry, typed contracts and embedded provenance, from merge(package, overlay)"),
     Row("tests/{name}.Tests/Generated/*.g.cs", GENERATED, None,
-        "the correspondence and provenance tests, from the same merge"),
+        "the correspondence and provenance tests, from the same merge; and the action-surface "
+        "acceptance harness, only for an engine whose `acceptance.json` declares one (0078)"),
     Row("corpus/*", GENERATED, None,
         "the corpus copy intake proved against the map's baseline"),
     Row("DISTRIBUTION.md", GENERATED, None,
@@ -237,6 +238,10 @@ TABLE = (
     Row("tests/{name}.Tests/{name}.Tests.csproj", ENGINE_OWNED, None, "the engine adds test references"),
     Row(f"{overlay.DIRECTORY}/*{overlay.SUFFIX}", ENGINE_OWNED, None,
         "the engine's three fields for one entry, one file per entry (0015, #247)"),
+    Row("acceptance.json", ENGINE_OWNED, None,
+        "the engine's declaration of an action surface: how many seeds, the step cap, the completion "
+        "fraction and the allowlist of readings. Its presence asks `produce` for the full-play "
+        "acceptance harness, and `produce` never writes it (0078)"),
     Row(".github/agent-policy.json", ENGINE_OWNED, None,
         "the engine's own rails configuration: labels, review contexts and chain, worktree "
         "variables. Written once so a factory change can never undo a consumer's choice (0029)"),

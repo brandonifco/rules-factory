@@ -307,6 +307,7 @@ def regenerate(args):
                       for package_id, version in zip(ids, versions)],
             package_id=ids[0], version=versions[0], randomness=declared),
                                generate.merge(package, overlay, root=str(ROOT)), args.name, rulings.collect(overlay))
+        generate.declare_acceptance(model, str(ROOT))  # acceptance.json, if the engine declares a surface (0078)
         expected = {**generate.generated(model), **provenance.embedding(model)}
     except generate.GenerationError as error:
         return report([f"the generator refuses merge(package, overlay): {error}"], "")
