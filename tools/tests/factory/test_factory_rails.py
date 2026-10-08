@@ -7401,6 +7401,16 @@ class TestTheMutationRunner(RailsInAGitEngine):
         self.assertEqual(self.calls(), [], "dotnet ran for a spec that was refused as a spec")
         self.assertEqual(self.on_disk(), "a")
 
+    def test_an_empty_old_is_refused_even_when_its_count_matches_every_position_in_the_file(self):
+        """`` occurs once between every two characters and at both ends; a count of 3 fits `ab`."""
+        self.engine_with_a_probe("ab")
+        self.plan()
+        done = self.mutate(self.spec(old="", new="-", count=3))
+        self.assertEqual(done.returncode, 1, done.stdout + done.stderr)
+        self.assertIn("empty `old`", done.stdout + done.stderr)
+        self.assertEqual(self.calls(), [], "dotnet ran against a file with a dash between every character")
+        self.assertEqual(self.on_disk(), "ab")
+
     def test_a_spec_whose_edits_cancel_out_is_refused_before_any_write(self):
         """`a`->`ab` then `bc`->`c` on `abbc` passes every other check and writes `abbc` again."""
         self.engine_with_a_probe("abbc")
