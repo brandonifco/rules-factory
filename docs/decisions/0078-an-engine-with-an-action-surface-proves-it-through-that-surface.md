@@ -227,7 +227,8 @@ cap of 40, a completion fraction of 0.5 and one allowlisted reading. The engine 
 violation is selected by an environment variable the adapter reads, committed in a quarter of one
 configuration's seeds (or, for the replay violations, in the first seed's play or replay) so that the
 completion fraction still holds and the invariant under test is the only one that goes red. The
-adapter file also carries four plain facts over the structural dump, on paired values (section 2).
+adapter file also carries plain facts over the structural dump, on paired values (section 2), and
+two engines are built beside it for the exact threshold (two seeds, one of which completes).
 
 **Each invariant goes red under the adapter that violates exactly it**, and it alone (the test asserts
 the set of failed facts is that one, and that all eight ran):
@@ -235,7 +236,7 @@ the set of failed facts is that one, and that all eight ran):
 | Invariant | Fixture violation | Observed failure |
 |---|---|---|
 | 1. every offered action is accepted | `Apply` answers an offered +2 with `UnsupportedRule` | `Every_offered_action_is_accepted`: `offered action 1 '+2' was answered with UnsupportedRule` |
-| 1. neither call changes the state it is given | `Apply` increments a field of its input; separately, `LegalActions` does | `Every_offered_action_is_accepted`: `Apply of offered action 0 changed the state it was given`; `LegalActions changed the state it was given` |
+| 1. no call changes the state it is given | `Apply` increments a field of its input; separately, `LegalActions` does; separately, `IsOver` caches an incrementing stamp on a terminal state | `Every_offered_action_is_accepted`: `Apply of offered action 0 changed the state it was given`; `LegalActions changed the state it was given`; `IsOver changed the state it was given` |
 | 1. the chosen result is kept as returned | `Apply` changes the result of the offered action before it | `Every_offered_action_is_accepted`: `the state the chosen action returned was changed by a later call on the step before` |
 | 2. nothing throws | `LegalActions` throws | `Nothing_throws`: `threw System.InvalidOperationException: the fixture throws here [first frame: ...]` |
 | 3. nothing stalls without a reason | `LegalActions` offers an empty array | `Nothing_stalls_without_a_reason`: `the state is not over, offers no action and gives no reason` |
@@ -249,14 +250,23 @@ the set of failed facts is that one, and that all eight ran):
 | 7. the ending is compared | the play declines on the allowlisted locator; the replay is over in a state with equal fields | `the runs ended differently: 'stopped: RequiresInterpretation ...' then 'completed'` |
 | 7. every step's state is compared | a private stamp in the intermediate states that is gone from the final state | `the states first differ structurally at step ...` |
 | 7. unequal actions render unequally | `Render` returns a constant | `offered actions 0 and 1 are not equal and both render as '+'` |
+| 7. endings are fields, not a display string | the play and the replay decline off the allowlist on locators that print alike (`a b` and `c`; `a` and `b c`) | `Replay_is_deterministic_compared_structurally` (and `Runs_stop_early_only_on_the_allowlist`, which the decline is also a finding under): `the runs ended differently: 'invariant 5: RequiresInterpretation at a b c ...' then 'invariant 5: RequiresInterpretation at a b c ...'` |
+| 6. the threshold is exact | two seeds, one completes, `leastCompleted` is `0.50000000000000001` (and `0.5` passes) | `Enough_runs_complete`: `alpha: 1 of 2 seeds reached a natural end, below the declared 0.50000000000000001` |
 | allowlist locator uniqueness | an allowlisted entry whose passage four other entries cite | `Allowlisted_locators_are_cited_by_one_entry_only`: `its locator is also cited by ...` |
 
-The four facts over the dump each pass on a correct dump and go red under the edit that breaks them: a
+The eleven facts over the dump each pass on a correct dump and go red under the edit that breaks them: a
 sequence of `KeyValuePair` keeps its order while a dictionary does not depend on the order it was
 filled in; a boxed `1` and `1L`, the keys `1` and `1L`, and a default `ImmutableArray<int>` and
 `<string>` dump differently; `TimeOnly` seconds apart, ticks apart, `DateTime` kinds and
 `DateTimeOffset` offsets dump differently; an engine's own enumerable is its fields and its items,
-and a list's capacity is not its value.
+and a list's capacity is not its value; two groupings with different keys over the same items, and
+two `Uri`s that differ only in the string they were made from, dump differently (a `Uri` made from
+one string and read the same way dumps alike); a ring of nodes is written as a reference back, and
+two rings with different labels dump differently; `0m` and negative zero, and `1.0m` and `1.00m`,
+dump differently; `T` of `List<>` and `TKey` of `Dictionary<,>` (both position 0), and an enum value
+of two types, dump differently; a dictionary whose key and value split one text two ways, and a field
+that carries the next one, dump differently, and a string is written `System.String[5]:alice`; and the
+endings of two declines whose locators split their source and citation differently dump differently.
 
 A correct adapter passes all eight. An allowlisted `RequiresInterpretation` decline ends runs early
 and fails nothing. An allowlisted item no run reached is named in the test output of the allowlist
@@ -265,16 +275,16 @@ members, each named (and CS0246 for the two type aliases the adapter binds).
 
 **Cost, in the gate.** `HoyleBackgammon`, produced and verified by the factory at the branch head, then
 the same engine with `acceptance.json` and the fixture adapter, each gate run twice
-(`./scripts/validate.sh full`, 24 cores, SDK 10.0.112, re-measured after the repair). Seconds, run 1 / run 2:
+(`./scripts/validate.sh full`, 24 cores, SDK 10.0.112, re-measured after the second repair). Seconds, run 1 / run 2:
 
 | | without | with |
 |---|---|---|
 | `produce --no-verify` | 0.9 | 0.9 |
-| verified `produce` (restore, build, test, gate) | 12.7 | 13.1 |
-| gate: `dotnet format --verify-no-changes` | 2.5 / 2.4 | 4.5 / 4.5 |
-| gate: build + test Debug | 2.1 / 1.9 | 2.2 / 1.9 |
-| gate: build + test Release | 2.1 / 1.9 | 2.2 / 1.9 |
-| whole gate | 8.9 / 8.4 | 11.1 / 10.4 |
+| verified `produce` (restore, build, test, gate) | 11.3 | 13.1 |
+| gate: `dotnet format --verify-no-changes` | 2.4 / 2.4 | 4.6 / 4.6 |
+| gate: build + test Debug | 2.1 / 2.0 | 2.3 / 1.9 |
+| gate: build + test Release | 2.1 / 2.0 | 2.2 / 1.9 |
+| whole gate | 8.9 / 8.5 | 11.4 / 10.6 |
 
 The harness plays 40 toy runs plus 2 replays, and dumps the state around every call of the two
 capturing runs, in well under a second, so the test steps do not move; the added 2 s is the
@@ -282,10 +292,11 @@ formatter reading the adapter. What the harness costs an engine is the cost of t
 runs, and of a dump of its state around every call of two runs per configuration, which is why
 section 4 says to make the engine faster.
 
-**Cost, in the factory's own tests.** `test_factory_acceptance.py` runs 35 tests: 27 need no SDK and
-take about 8 s, and the 8 that build and run the produced engine add about 35 s (one build, then
-about 1 s per violation), 43 s for the module on this machine. They skip, saying why, without the
-pinned SDK, as `test_factory_provenance.py`'s `dotnet test` of a produced engine does.
+**Cost, in the factory's own tests.** `test_factory_acceptance.py` runs 39 tests: 29 need no SDK and
+take about 9 s, and the 10 that build and run the produced engine add about 48 s (one build, then
+about 1 s per violation, and two more builds for the exact threshold), 56 s for the module on this
+machine. They skip, saying why, without the pinned SDK, as `test_factory_provenance.py`'s `dotnet
+test` of a produced engine does.
 
 **What was watched failing.** Each of these edits to the factory turns the named tests red, and was
 reverted: dropping a `[Fact]` from the harness; comparing final states with record equality instead of
@@ -308,6 +319,17 @@ accepting a placeholder allowlist sentence; putting no upper bound on the counts
 `leastCompleted` as a float; and following a symlinked `acceptance.json`. The new tests were also run
 against the first head's two generator modules (with the dump made reachable so that they build), and
 every one of them is red there.
+
+After the second review, each repair was shown red the same way (each reverted): not comparing the
+state after `IsOver` (so that the final dump, taken before `IsOver`, is the last one); dumping a
+`System` enumerable by its items alone, and a `System` `IFormattable` as a scalar; writing a string
+without its length; comparing the endings by their display string; reading the threshold as a
+`double`; writing a decimal by its text and not its bits; naming a generic parameter by its `FullName`;
+and not recognising a cycle. The new tests were also run against the two generator modules of the
+head the second review read, 44614be (with the ending kept as a display string, so that the fixture
+builds), and these are red there: the `IsOver` violation, the groupings, the `Uri`s, the framed
+strings, the generic parameters, negative zero, the endings, the exact threshold and the emitted
+literal.
 
 ## Compatibility
 
