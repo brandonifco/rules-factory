@@ -271,9 +271,10 @@ class TestTheTable(OwnershipCase):
 class TestManaged(OwnershipCase):
     def test_a_bumped_recipe_updates_an_unedited_managed_file(self):
         self.produced()
+        current = next(row.recipe for row in ownership.TABLE if row.pattern == "Directory.Build.props")
         with bumped("Directory.Build.props", "global.json") as versions:
             output = self.produced()
-            self.assertIn(f"updated managed Directory.Build.props from recipe 2 to {versions['Directory.Build.props']}", output)
+            self.assertIn(f"updated managed Directory.Build.props from recipe {current} to {versions['Directory.Build.props']}", output)
             self.assertTrue(self.read("Directory.Build.props").endswith(f"<!-- recipe {versions['Directory.Build.props']} -->\n"))
             self.assertTrue(self.read("global.json").endswith("}\n\n"))
             recorded = {m["path"]: m["recipeVersion"] for m in self.record()["managed"]}
@@ -291,7 +292,10 @@ class TestManaged(OwnershipCase):
             "NuGet.config": re.sub(r"<!-- Restore.*?-->", "<!-- Restore talks to nuget.org and nothing else; "
                                    "packages.lock.json pins every content hash. -->", current["NuGet.config"], flags=re.S),
             "Directory.Build.props": re.sub(r"<!-- Zero-warning.*?-->", "<!-- Produced by rules-factory tools/factory. "
-                                            "Zero-warning, deterministic builds. -->", current["Directory.Build.props"],
+                                            "Zero-warning, deterministic builds. -->",
+                                            # recipe 3 added the Optimize group (0077); version 1 predates it
+                                            re.sub(r"  <!-- Optimized in every.*?</PropertyGroup>\n\n", "",
+                                                   current["Directory.Build.props"], flags=re.S),
                                             flags=re.S),
         }
         for path, text in legacy.items():
@@ -300,7 +304,7 @@ class TestManaged(OwnershipCase):
                 handle.write(text)
         output = self.produced()
         for path in legacy:
-            self.assertIn(f"updated managed {path} from recipe 1 to 2", output)
+            self.assertIn(f"updated managed {path} from recipe 1 to {ownership.classify(path, NAME).recipe}", output)
             self.assertEqual(self.read(path), current[path])
 
     def test_a_hand_edited_managed_file_is_refused(self):

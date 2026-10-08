@@ -227,8 +227,9 @@ TABLE = (
         "the kernel's SDK pin and roll-forward policy; an engine that must move it adopts it"),
     Row("NuGet.config", MANAGED, 2,
         "package sources and source mapping: supply-chain policy; an extra feed is an adoption"),
-    Row("Directory.Build.props", MANAGED, 2,
-        "target frameworks, analyzers, warnings-as-errors, determinism and lock-file policy"),
+    Row("Directory.Build.props", MANAGED, 3,
+        "target frameworks, analyzers, warnings-as-errors, determinism and lock-file policy, and every "
+        "configuration built optimized, Debug included (0077)"),
     Row("Directory.Packages.props", ENGINE_OWNED, None,
         "central package management and the test packages an engine bumps; imports the generated pins"),
     Row("{name}.slnx", ENGINE_OWNED, None, "the engine adds projects to its solution"),
@@ -572,6 +573,7 @@ RECIPE_SHA256 = {
     "Directory.Build.props": {
         1: "1392b57192cfe16ac70aa847f932c52f136765c9ce60ed94254d73dafd0d14ef",
         2: "73c373b1457e4149eb7ab7da1aed49314536ca8945dea8022c1efbd49c7a1a8f",
+        3: "06222da635f4a0085395208fd47ebcb3d999bd1acfe49ba16d9aea9d3b1ac893",
     },
 }
 
